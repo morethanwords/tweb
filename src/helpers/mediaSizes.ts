@@ -126,5 +126,5 @@ class MediaSizes extends EventListenerBase<{
 }
 
 const mediaSizes = new MediaSizes();
-MOUNT_CLASS_TO && (MOUNT_CLASS_TO.mediaSizes = mediaSizes);
+MOUNT_CLASS_TO.mediaSizes = mediaSizes;
 export default mediaSizes;

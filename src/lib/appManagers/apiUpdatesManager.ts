@@ -632,5 +632,5 @@ export class ApiUpdatesManager {
 }
 
 const apiUpdatesManager = new ApiUpdatesManager();
-MOUNT_CLASS_TO && (MOUNT_CLASS_TO.apiUpdatesManager = apiUpdatesManager);
+MOUNT_CLASS_TO.apiUpdatesManager = apiUpdatesManager;
 export default apiUpdatesManager

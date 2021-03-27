@@ -2375,9 +2375,6 @@ export class AppMessagesManager {
           case 'messageMediaInvoice':
             message.media = {_: 'messageMediaUnsupportedWeb'};
             break;
-          case 'messageMediaGeoLive':
-            message.media._ = 'messageMediaGeo';
-            break;
         }
       }
 
@@ -2504,7 +2501,11 @@ export class AppMessagesManager {
   public wrapMessageForReply(message: any, text: string = message.message, usingMids?: number[], plain?: boolean, highlightWord?: string): DocumentFragment | string {
     const parts: (HTMLElement | string)[] = [];
 
-    const addPart = (part: string | HTMLElement, text?: string) => {
+    const addPart = (langKey: LangPackKey, part?: string | HTMLElement, text?: string) => {
+      if(langKey) {
+        part = plain ? I18n.format(langKey, true) : i18n(langKey);
+      }
+      
       if(plain) {
         parts.push(part);
       } else {
@@ -2538,7 +2539,7 @@ export class AppMessagesManager {
 
         if(usingFullAlbum) {
           text = this.getAlbumText(message.grouped_id).message;
-          addPart(i18n('AttachAlbum'), text);
+          addPart('AttachAlbum', undefined, text);
         }
       } else {
         usingFullAlbum = false;
@@ -2548,36 +2549,50 @@ export class AppMessagesManager {
         const media = message.media;
         switch(media._) {
           case 'messageMediaPhoto':
-            addPart(i18n('AttachPhoto'), message.message);
+            addPart('AttachPhoto', undefined, message.message);
             break;
           case 'messageMediaDice':
-            addPart(plain ? media.emoticon : RichTextProcessor.wrapEmojiText(media.emoticon));
+            addPart(undefined, plain ? media.emoticon : RichTextProcessor.wrapEmojiText(media.emoticon));
             break;
+          case 'messageMediaVenue': {
+            const text = plain ? media.title : RichTextProcessor.wrapEmojiText(media.title);
+            addPart('AttachLocation', undefined, text);
+            parts.push(htmlToDocumentFragment(text) as any);
+            break;
+          }
           case 'messageMediaGeo':
-            addPart(i18n('AttachLiveLocation'));
+            addPart('AttachLocation');
+            break;
+          case 'messageMediaGeoLive':
+            addPart('AttachLiveLocation');
             break;
           case 'messageMediaPoll':
-            addPart(plain ? '📊' + ' ' + (media.poll.question || 'poll') : media.poll.rReply);
+            addPart(undefined, plain ? '📊' + ' ' + (media.poll.question || 'poll') : media.poll.rReply);
             break;
           case 'messageMediaContact':
-            addPart(i18n('AttachContact'));
+            addPart('AttachContact');
             break;
+          case 'messageMediaGame': {
+            const prefix = '🎮' + ' ';
+            addPart(undefined, plain ? prefix + media.game.title : RichTextProcessor.wrapEmojiText(prefix + media.game.title));
+            break;
+          }
           case 'messageMediaDocument':
             let document = media.document;
   
             if(document.type === 'video') {
-              addPart(i18n('AttachVideo'), message.message);
+              addPart('AttachVideo', undefined, message.message);
             } else if(document.type === 'voice') {
-              addPart(i18n('AttachAudio'), message.message);
+              addPart('AttachAudio', undefined, message.message);
             } else if(document.type === 'gif') {
-              addPart(i18n('AttachGif'), message.message);
+              addPart('AttachGif', undefined, message.message);
             } else if(document.type === 'round') {
-              addPart(i18n('AttachRound'), message.message);
+              addPart('AttachRound', undefined, message.message);
             } else if(document.type === 'sticker') {
-              addPart(((plain ? document.stickerEmojiRaw : document.stickerEmoji) || '') + 'Sticker');
+              addPart(undefined, ((plain ? document.stickerEmojiRaw : document.stickerEmoji) || '') + 'Sticker');
               text = '';
             } else {
-              addPart(document.file_name, message.message);
+              addPart(document.file_name, undefined, message.message);
             }
   
             break;
@@ -2593,7 +2608,7 @@ export class AppMessagesManager {
     if(message.action) {
       const actionWrapped = this.wrapMessageActionTextNew(message, plain);
       if(actionWrapped) {
-        addPart(actionWrapped);
+        addPart(undefined, actionWrapped);
       }
     }
 
@@ -2699,6 +2714,7 @@ export class AppMessagesManager {
 
         case 'messageActionPinMessage':
         case 'messageActionContactSignUp':
+        case 'messageActionChatReturn':
         case 'messageActionChatLeave':
         case 'messageActionChatJoined':
         case 'messageActionChatCreate':
@@ -4305,16 +4321,16 @@ export class AppMessagesManager {
       case 'updateChannelReadMessagesContents':
       case 'updateReadMessagesContents': {
         const channelId = (update as Update.updateChannelReadMessagesContents).channel_id;
-        const peerId = channelId ? -channelId : this.getMessageById(update.messages[0]).peerId;
-        const messages: number[] = update.messages;
-        for(const messageId of messages) {
-          const message = this.getMessageByPeer(peerId, messageId);
+        const mids = (update as Update.updateReadMessagesContents).messages.map(id => this.generateMessageId(id));
+        const peerId = channelId ? -channelId : this.getMessageById(mids[0]).peerId;
+        for(const mid of mids) {
+          const message = this.getMessageByPeer(peerId, mid);
           if(!message.deleted) {
             delete message.pFlags.media_unread;
           }
         }
 
-        rootScope.broadcast('messages_media_read', {peerId, mids: messages.map(id => this.generateMessageId(id))});
+        rootScope.broadcast('messages_media_read', {peerId, mids});
         break;
       }
 
@@ -5289,5 +5305,5 @@ export class AppMessagesManager {
 }
 
 const appMessagesManager = new AppMessagesManager();
-MOUNT_CLASS_TO && (MOUNT_CLASS_TO.appMessagesManager = appMessagesManager);
+MOUNT_CLASS_TO.appMessagesManager = appMessagesManager;
 export default appMessagesManager;

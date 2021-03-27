@@ -66,5 +66,5 @@ export class WebpWorkerController {
 }
 
 const webpWorkerController = new WebpWorkerController();
-MOUNT_CLASS_TO && (MOUNT_CLASS_TO.webpWorkerController = webpWorkerController);
+MOUNT_CLASS_TO.webpWorkerController = webpWorkerController;
 export default webpWorkerController;

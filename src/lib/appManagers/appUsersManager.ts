@@ -794,5 +794,5 @@ export class AppUsersManager {
 }
 
 const appUsersManager = new AppUsersManager();
-MOUNT_CLASS_TO && (MOUNT_CLASS_TO.appUsersManager = appUsersManager);
+MOUNT_CLASS_TO.appUsersManager = appUsersManager;
 export default appUsersManager

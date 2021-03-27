@@ -238,10 +238,14 @@ export default class PopupNewMedia extends PopupElement {
             const video = document.createElement('video');
             const source = document.createElement('source');
             source.src = params.objectURL = URL.createObjectURL(file);
-            video.autoplay = false;
+            video.autoplay = true;
             video.controls = false;
             video.muted = true;
             video.setAttribute('playsinline', 'true');
+
+            video.addEventListener('timeupdate', () => {
+              video.pause();
+            }, {once: true});
 
             onVideoLoad(video).then(() => {
               params.width = video.videoWidth;

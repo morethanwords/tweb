@@ -748,5 +748,5 @@ class LottieLoader {
 }
 
 const lottieLoader = new LottieLoader();
-MOUNT_CLASS_TO && (MOUNT_CLASS_TO.lottieLoader = lottieLoader);
+MOUNT_CLASS_TO.lottieLoader = lottieLoader;
 export default lottieLoader;

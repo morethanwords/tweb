@@ -747,7 +747,7 @@ namespace RichTextProcessor {
   }
 }
 
-MOUNT_CLASS_TO && (MOUNT_CLASS_TO.RichTextProcessor = RichTextProcessor);
+MOUNT_CLASS_TO.RichTextProcessor = RichTextProcessor;
 
 export {RichTextProcessor};
 export default RichTextProcessor;

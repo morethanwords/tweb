@@ -1397,5 +1397,5 @@ export class AppDialogsManager {
 }
 
 const appDialogsManager = new AppDialogsManager();
-MOUNT_CLASS_TO && (MOUNT_CLASS_TO.appDialogsManager = appDialogsManager);
+MOUNT_CLASS_TO.appDialogsManager = appDialogsManager;
 export default appDialogsManager;

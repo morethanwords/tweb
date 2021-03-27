@@ -475,5 +475,5 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
 }
 
 const apiManagerProxy = new ApiManagerProxy();
-MOUNT_CLASS_TO && (MOUNT_CLASS_TO.apiManagerProxy = apiManagerProxy);
+MOUNT_CLASS_TO.apiManagerProxy = apiManagerProxy;
 export default apiManagerProxy;

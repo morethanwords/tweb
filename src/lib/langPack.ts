@@ -330,4 +330,4 @@ export function join(elements: HTMLElement[], useLast = true) {
 	return arr;
 }
 
-MOUNT_CLASS_TO && (MOUNT_CLASS_TO.I18n = I18n);
+MOUNT_CLASS_TO.I18n = I18n;

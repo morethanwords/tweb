@@ -397,5 +397,5 @@ export class AppPhotosManager {
 }
 
 const appPhotosManager = new AppPhotosManager();
-MOUNT_CLASS_TO && (MOUNT_CLASS_TO.appPhotosManager = appPhotosManager);
+MOUNT_CLASS_TO.appPhotosManager = appPhotosManager;
 export default appPhotosManager;

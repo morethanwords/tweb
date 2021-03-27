@@ -46,5 +46,5 @@ class PagesManager {
 }
 
 const pagesManager = new PagesManager();
-MOUNT_CLASS_TO && (MOUNT_CLASS_TO.pagesManager = pagesManager);
+MOUNT_CLASS_TO.pagesManager = pagesManager;
 export default pagesManager;

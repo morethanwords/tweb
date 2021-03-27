@@ -17,14 +17,23 @@ export class AppNavigationController {
   private manual = false;
   private log = logger('NC');
   private debug = true;
+  private currentHash = window.location.hash;
+  public onHashChange: () => void;
 
   constructor() {
     let isPossibleSwipe = false;
     window.addEventListener('popstate', (e) => {
       this.debug && this.log('popstate', e, isPossibleSwipe);
 
+      if(window.location.hash !== this.currentHash) {
+        this.onHashChange && this.onHashChange();
+        this.replaceState();
+        return;
+      }
+      this.currentHash = window.location.hash;
+
       const id: number = e.state;
-      if(id !== this.id) {
+      if(id !== this.id/*  && !this.navigations.length */) {
         this.pushState();
         return;
       }
@@ -148,7 +157,7 @@ export class AppNavigationController {
   }
 
   public replaceState() {
-    history.replaceState(this.id, '');
+    history.replaceState(this.id, '', location.origin + location.pathname);
   }
 
   public removeItem(item: NavigationItem) {
@@ -170,5 +179,5 @@ export class AppNavigationController {
 }
 
 const appNavigationController = new AppNavigationController();
-MOUNT_CLASS_TO && (MOUNT_CLASS_TO.appNavigationController = appNavigationController);
+MOUNT_CLASS_TO.appNavigationController = appNavigationController;
 export default appNavigationController;

@@ -265,5 +265,5 @@ class AppMediaPlaybackController {
 }
 
 const appMediaPlaybackController = new AppMediaPlaybackController();
-MOUNT_CLASS_TO && (MOUNT_CLASS_TO.appMediaPlaybackController = appMediaPlaybackController);
+MOUNT_CLASS_TO.appMediaPlaybackController = appMediaPlaybackController;
 export default appMediaPlaybackController;

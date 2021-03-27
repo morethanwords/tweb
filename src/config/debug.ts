@@ -1,8 +1,23 @@
 import Modes from "./modes";
 
 export const DEBUG = process.env.NODE_ENV !== 'production' || Modes.debug;
-export const MOUNT_CLASS_TO: any = DEBUG ? (typeof(window) !== 'undefined' ? window : self) : null;
+const ctx: any = typeof(window) !== 'undefined' ? window : self;
+export const MOUNT_CLASS_TO: any = DEBUG/*  && false */ ? ctx : {};
 export default DEBUG;
+
+//let m = DEBUG;
+if(!DEBUG/*  || true */) {
+  ctx.sandpitTurtle = () => {
+    //if(!m) {
+      for(let i in MOUNT_CLASS_TO) {
+        ctx[i] = MOUNT_CLASS_TO[i];
+      }
+      //m = true;
+    //}
+  
+    //DEBUG = !DEBUG;
+  };
+}
 
 /* export const superDebug = (object: any, key: string) => {
   var d = object[key];
@@ -32,4 +47,4 @@ export default DEBUG;
   dada(key + '_' + 'after', afterStr);
 }
 
-MOUNT_CLASS_TO && (MOUNT_CLASS_TO.superDebug = superDebug); */
+MOUNT_CLASS_TO.superDebug = superDebug; */

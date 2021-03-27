@@ -718,5 +718,5 @@ export class AppChatsManager {
 }
 
 const appChatsManager = new AppChatsManager();
-MOUNT_CLASS_TO && (MOUNT_CLASS_TO.appChatsManager = appChatsManager);
+MOUNT_CLASS_TO.appChatsManager = appChatsManager;
 export default appChatsManager;

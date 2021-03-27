@@ -118,47 +118,8 @@ export class AppImManager {
     this.createNewChat();
     this.chatsSelectTab(this.chat.container);
 
-    window.addEventListener('hashchange', (e) => {
-      const hash = location.hash;
-      const splitted = hash.split('?');
-
-      if(!splitted[1]) {
-        return;
-      }
-
-      const params: any = {};
-      splitted[1].split('&').forEach(item => {
-        params[item.split('=')[0]] = decodeURIComponent(item.split('=')[1]);
-      });
-
-      this.log('hashchange', hash, splitted[0], params);
-
-      switch(splitted[0]) {
-        case '#/im': {
-          const p = params.p;
-          let postId = params.post !== undefined ? appMessagesManager.generateMessageId(+params.post) : undefined;
-
-          switch(p[0]) {
-            case '@': {
-              appUsersManager.resolveUsername(p).then(peer => {
-                const isUser = peer._ === 'user';
-                const peerId = isUser ? peer.id : -peer.id;
-  
-                this.setInnerPeer(peerId, postId);
-              });
-              break;
-            }
-
-            default: { // peerId
-              this.setInnerPeer(postId ? -+p : +p, postId);
-              break;
-            }
-          }
-        }
-      }
-
-      location.hash = '';
-    });
+    appNavigationController.onHashChange = this.onHashChange;
+    //window.addEventListener('hashchange', this.onHashChange);
 
     this.setSettings();
     rootScope.on('settings_updated', this.setSettings);
@@ -204,6 +165,49 @@ export class AppImManager {
       sessionStorage.setToCache('chatPositions', c || {});
     }); */
   }
+
+  private onHashChange = () => {
+    const hash = location.hash;
+    const splitted = hash.split('?');
+
+    if(!splitted[1]) {
+      return;
+    }
+
+    const params: any = {};
+    splitted[1].split('&').forEach(item => {
+      params[item.split('=')[0]] = decodeURIComponent(item.split('=')[1]);
+    });
+
+    this.log('hashchange', hash, splitted[0], params);
+
+    switch(splitted[0]) {
+      case '#/im': {
+        const p = params.p;
+        let postId = params.post !== undefined ? appMessagesManager.generateMessageId(+params.post) : undefined;
+
+        switch(p[0]) {
+          case '@': {
+            appUsersManager.resolveUsername(p).then(peer => {
+              const isUser = peer._ === 'user';
+              const peerId = isUser ? peer.id : -peer.id;
+
+              this.setInnerPeer(peerId, postId);
+            });
+            break;
+          }
+
+          default: { // peerId
+            this.setInnerPeer(postId ? -+p : +p, postId);
+            break;
+          }
+        }
+      }
+    }
+
+    //appNavigationController.replaceState();
+    //location.hash = '';
+  };
 
   public setBackground(url: string, broadcastEvent = true): Promise<void> {
     const promises = this.chats.map(chat => chat.setBackground(url));
@@ -594,14 +598,20 @@ export class AppImManager {
     this.chats.push(chat);
   }
 
-  private spliceChats(fromIndex: number, justReturn = true, animate?: boolean) {
+  private spliceChats(fromIndex: number, justReturn = true, animate?: boolean, spliced?: Chat[]) {
     if(fromIndex >= this.chats.length) return;
 
     if(this.chats.length > 1 && justReturn) {
       rootScope.broadcast('peer_changing', this.chat);
     }
 
-    const spliced = this.chats.splice(fromIndex, this.chats.length - fromIndex);
+    if(!spliced) {
+      spliced = this.chats.splice(fromIndex, this.chats.length - fromIndex);
+    }
+
+    for(let i = 0; i < spliced.length; ++i) {
+      appNavigationController.removeByType('chat', true);
+    }
 
     // * fix middle chat z-index on animation
     if(spliced.length > 1) {
@@ -655,8 +665,20 @@ export class AppImManager {
         return;
       }
     } else if(chatIndex > 0 && chat.peerId && chat.peerId !== peerId) {
-      this.spliceChats(1, false, animate);
-      return this.setPeer(peerId, lastMsgId);
+      // const firstChat = this.chats[0];
+      // if(firstChat.peerId !== chat.peerId) {
+        /* // * slice idx > 0, set background and slice first, so new one will be the first
+        const spliced = this.chats.splice(1, this.chats.length - 1);
+        this.createNewChat();
+        this.chats.splice(0, 1); */
+        const spliced = this.chats.splice(1, this.chats.length - 1);
+        const ret = this.setPeer(peerId, lastMsgId);
+        this.spliceChats(0, false, false, spliced);
+      // } else {
+      //   this.spliceChats(1, false, animate);
+      // }
+
+      return ret;
     }
 
     // * don't reset peer if returning

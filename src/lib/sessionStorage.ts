@@ -24,5 +24,5 @@ const sessionStorage = new AppStorage<{
 } & State>({
   storeName: 'session'
 });
-MOUNT_CLASS_TO && (MOUNT_CLASS_TO.appStorage = sessionStorage);
+MOUNT_CLASS_TO.appStorage = sessionStorage;
 export default sessionStorage;

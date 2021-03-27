@@ -280,5 +280,5 @@ export class AppStickersManager {
 }
 
 const appStickersManager = new AppStickersManager();
-MOUNT_CLASS_TO && (MOUNT_CLASS_TO.appStickersManager = appStickersManager);
+MOUNT_CLASS_TO.appStickersManager = appStickersManager;
 export default appStickersManager;

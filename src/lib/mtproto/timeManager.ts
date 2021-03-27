@@ -66,5 +66,5 @@ export class TimeManager {
 }
 
 const timeManager = new TimeManager();
-MOUNT_CLASS_TO && (MOUNT_CLASS_TO.timeManager = timeManager);
+MOUNT_CLASS_TO.timeManager = timeManager;
 export default timeManager;

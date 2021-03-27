@@ -1065,7 +1065,13 @@ $chat-helper-size: 39px;
 	}
 
 	@include respond-to(handhelds) {
-    padding: 0 .75rem 0 .5rem;
+    padding: 0 .5rem;
+
+		.is-out {
+			.bubble-content-wrapper {
+				margin-right: .25rem;
+			}
+		}
 
     html.is-mac & {
       -webkit-user-select: none;

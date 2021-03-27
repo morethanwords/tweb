@@ -173,5 +173,5 @@ export class OpusDecodeController {
 }
 
 const opusDecodeController = new OpusDecodeController();
-MOUNT_CLASS_TO && (MOUNT_CLASS_TO.opusDecodeController = opusDecodeController);
+MOUNT_CLASS_TO.opusDecodeController = opusDecodeController;
 export default opusDecodeController;

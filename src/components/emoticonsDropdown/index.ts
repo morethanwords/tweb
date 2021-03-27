@@ -424,5 +424,5 @@ export class EmoticonsDropdown {
 }
 
 const emoticonsDropdown = new EmoticonsDropdown();
-MOUNT_CLASS_TO && (MOUNT_CLASS_TO.emoticonsDropdown = emoticonsDropdown);
+MOUNT_CLASS_TO.emoticonsDropdown = emoticonsDropdown;
 export default emoticonsDropdown;

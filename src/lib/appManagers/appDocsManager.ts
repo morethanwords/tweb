@@ -395,5 +395,5 @@ export class AppDocsManager {
 }
 
 const appDocsManager = new AppDocsManager();
-MOUNT_CLASS_TO && (MOUNT_CLASS_TO.appDocsManager = appDocsManager);
+MOUNT_CLASS_TO.appDocsManager = appDocsManager;
 export default appDocsManager;

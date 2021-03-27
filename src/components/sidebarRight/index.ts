@@ -125,5 +125,5 @@ export class AppSidebarRight extends SidebarSlider {
 }
 
 const appSidebarRight = new AppSidebarRight();
-MOUNT_CLASS_TO && (MOUNT_CLASS_TO.appSidebarRight = appSidebarRight);
+MOUNT_CLASS_TO.appSidebarRight = appSidebarRight;
 export default appSidebarRight;

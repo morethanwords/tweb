@@ -101,7 +101,7 @@ export default class AppSelectPeers {
     if(this.placeholder) {
       _i18n(this.input, this.placeholder, undefined, 'placeholder');
     } else {
-      _i18n(this.input, !this.peerType.includes('dialogs') ? 'SendMessageTo' : 'SelectChat', undefined, 'placeholder');
+      _i18n(this.input, 'SendMessageTo', undefined, 'placeholder');
     }
 
     this.input.type = 'text';

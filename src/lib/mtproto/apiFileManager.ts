@@ -574,5 +574,5 @@ export class ApiFileManager {
 }
 
 const apiFileManager = new ApiFileManager();
-MOUNT_CLASS_TO && (MOUNT_CLASS_TO.apiFileManager = apiFileManager);
+MOUNT_CLASS_TO.apiFileManager = apiFileManager;
 export default apiFileManager;
