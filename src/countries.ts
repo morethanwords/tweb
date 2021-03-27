@@ -39,7 +39,7 @@ arr.forEach((el, idx) => {
 });
 */
 
-MOUNT_CLASS_TO && (MOUNT_CLASS_TO.Countries = Countries);
+MOUNT_CLASS_TO.Countries = Countries;
 
 export default Countries;
 export {PhoneCodesMain};

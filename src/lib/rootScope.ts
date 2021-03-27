@@ -159,5 +159,5 @@ class RootScope extends EventListenerBase<any> {
 }
 
 const rootScope = new RootScope();
-MOUNT_CLASS_TO && (MOUNT_CLASS_TO.rootScope = rootScope);
+MOUNT_CLASS_TO.rootScope = rootScope;
 export default rootScope;

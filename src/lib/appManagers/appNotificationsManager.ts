@@ -717,5 +717,5 @@ export class AppNotificationsManager {
 }
 
 const appNotificationsManager = new AppNotificationsManager();
-MOUNT_CLASS_TO && (MOUNT_CLASS_TO.appNotificationsManager = appNotificationsManager);
+MOUNT_CLASS_TO.appNotificationsManager = appNotificationsManager;
 export default appNotificationsManager;

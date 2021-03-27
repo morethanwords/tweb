@@ -125,5 +125,5 @@ class CryptoWorker extends CryptoWorkerMethods {
 }
 
 const cryptoWorker = new CryptoWorker();
-MOUNT_CLASS_TO && (MOUNT_CLASS_TO.CryptoWorker = cryptoWorker);
+MOUNT_CLASS_TO.CryptoWorker = cryptoWorker;
 export default cryptoWorker;

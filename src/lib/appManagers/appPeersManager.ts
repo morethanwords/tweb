@@ -288,5 +288,5 @@ export class AppPeersManager {
 }
 
 const appPeersManager = new AppPeersManager();
-MOUNT_CLASS_TO && (MOUNT_CLASS_TO.appPeersManager = appPeersManager);
+MOUNT_CLASS_TO.appPeersManager = appPeersManager;
 export default appPeersManager;

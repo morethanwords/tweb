@@ -221,5 +221,5 @@ export class AppDraftsManager {
 }
 
 const appDraftsManager = new AppDraftsManager();
-MOUNT_CLASS_TO && (MOUNT_CLASS_TO.appDraftsManager = appDraftsManager);
+MOUNT_CLASS_TO.appDraftsManager = appDraftsManager;
 export default appDraftsManager;

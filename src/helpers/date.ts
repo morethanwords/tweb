@@ -454,4 +454,4 @@ function getDayOfWeek(q: string) {
   return -1;
 }
 
-MOUNT_CLASS_TO && (MOUNT_CLASS_TO.fillTipDates = fillTipDates);
+MOUNT_CLASS_TO.fillTipDates = fillTipDates;

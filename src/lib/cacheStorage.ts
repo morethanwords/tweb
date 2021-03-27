@@ -117,5 +117,5 @@ export default class CacheStorageController {
 }
 
 //const cacheStorage = new CacheStorageController(); 
-//MOUNT_CLASS_TO && (MOUNT_CLASS_TO.cacheStorage = cacheStorage);
+//MOUNT_CLASS_TO.cacheStorage = cacheStorage;
 //export default cacheStorage;

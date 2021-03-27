@@ -115,5 +115,5 @@ class ReferenceDatabase {
 }
 
 const referenceDatabase = new ReferenceDatabase();
-MOUNT_CLASS_TO && (MOUNT_CLASS_TO.referenceDatabase = referenceDatabase);
+MOUNT_CLASS_TO.referenceDatabase = referenceDatabase;
 export default referenceDatabase;

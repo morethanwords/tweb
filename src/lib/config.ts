@@ -20,5 +20,5 @@ const Config = {
   TLD,
   MediaSizes: mediaSizes
 };
-MOUNT_CLASS_TO && (MOUNT_CLASS_TO.Config = Config);
+MOUNT_CLASS_TO.Config = Config;
 export default Config;

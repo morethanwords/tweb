@@ -2356,7 +2356,7 @@ export default class ChatBubbles {
         
         default:
           bubble.classList.remove('is-message-empty');
-          messageDiv.innerHTML = 'unrecognized media type: ' + message.media._;
+          messageDiv.innerHTML = '<i class="media-not-supported">This message is currently not supported on Telegram Web. Try <a href="https://desktop.telegram.org/" target="_blank">desktop.telegram.org</a></i>';
           messageDiv.append(timeSpan);
           this.log.warn('unrecognized media type:', message.media._, message);
           break;

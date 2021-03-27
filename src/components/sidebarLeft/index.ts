@@ -499,5 +499,5 @@ export const generateSection = (appendTo: Scrollable, name?: LangPackKey, captio
 };
 
 const appSidebarLeft = new AppSidebarLeft();
-MOUNT_CLASS_TO && (MOUNT_CLASS_TO.appSidebarLeft = appSidebarLeft);
+MOUNT_CLASS_TO.appSidebarLeft = appSidebarLeft;
 export default appSidebarLeft;

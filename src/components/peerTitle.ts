@@ -11,7 +11,7 @@ export type PeerTitleOptions = {
 
 const weakMap: WeakMap<HTMLElement, PeerTitle> = new WeakMap();
 
-MOUNT_CLASS_TO && (MOUNT_CLASS_TO.peerTitleWeakMap = weakMap);
+MOUNT_CLASS_TO.peerTitleWeakMap = weakMap;
 
 rootScope.on('peer_title_edit', (peerId) => {
   const elements = Array.from(document.querySelectorAll(`.peer-title[data-peer-id="${peerId}"]`)) as HTMLElement[];

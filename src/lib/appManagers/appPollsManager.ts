@@ -239,5 +239,5 @@ export class AppPollsManager {
 }
 
 const appPollsManager = new AppPollsManager();
-MOUNT_CLASS_TO && (MOUNT_CLASS_TO.appPollsManager = appPollsManager);
+MOUNT_CLASS_TO.appPollsManager = appPollsManager;
 export default appPollsManager;

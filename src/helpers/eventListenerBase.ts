@@ -41,7 +41,7 @@ import type { ArgumentTypes, SuperReturnType } from "../types";
 // console.log = () => {};
 
 // const e = new EventSystem();
-// MOUNT_CLASS_TO && (MOUNT_CLASS_TO.e = e);
+// MOUNT_CLASS_TO.e = e;
 
 /**
  * Better not to remove listeners during setting

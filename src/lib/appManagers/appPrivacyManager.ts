@@ -124,5 +124,5 @@ export class AppPrivacyManager {
 }
 
 const appPrivacyManager = new AppPrivacyManager();
-MOUNT_CLASS_TO && (MOUNT_CLASS_TO.appPrivacyManager = appPrivacyManager);
+MOUNT_CLASS_TO.appPrivacyManager = appPrivacyManager;
 export default appPrivacyManager;

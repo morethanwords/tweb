@@ -281,5 +281,5 @@ export class AppStateManager extends EventListenerBase<{
 //console.trace('appStateManager include');
 
 const appStateManager = new AppStateManager();
-MOUNT_CLASS_TO && (MOUNT_CLASS_TO.appStateManager = appStateManager);
+MOUNT_CLASS_TO.appStateManager = appStateManager;
 export default appStateManager;

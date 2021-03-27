@@ -104,5 +104,5 @@ export class PasswordManager {
 }
 
 const passwordManager = new PasswordManager();
-MOUNT_CLASS_TO && (MOUNT_CLASS_TO.passwordManager = passwordManager);
+MOUNT_CLASS_TO.passwordManager = passwordManager;
 export default passwordManager;

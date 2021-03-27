@@ -303,7 +303,7 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
       } else if(doc.supportsStreaming) {
         if(noAutoDownload) {
           loadPromise = Promise.reject();
-        } else {
+        } else if(!doc.downloaded) { // * check for uploading video
           preloader.attach(container, false, null);
           video.addEventListener(isSafari ? 'timeupdate' : 'canplay', () => {
             preloader.detach();

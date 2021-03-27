@@ -134,7 +134,7 @@ export function getRichValue(field: HTMLElement, entities?: MessageEntity[]) {
   return value;
 }
 
-MOUNT_CLASS_TO && (MOUNT_CLASS_TO.getRichValue = getRichValue);
+MOUNT_CLASS_TO.getRichValue = getRichValue;
 
 export type MarkdownType = 'bold' | 'italic' | 'underline' | 'strikethrough' | 'monospace' | 'link';
 export type MarkdownTag = {
@@ -336,7 +336,7 @@ export function generatePathData(x: number, y: number, width: number, height: nu
   return data.join(' ');
 };
 
-MOUNT_CLASS_TO && (MOUNT_CLASS_TO.generatePathData = generatePathData);
+MOUNT_CLASS_TO.generatePathData = generatePathData;
 
 //export function findUpClassName<T>(el: any, className: string): T;
 export function findUpClassName(el: any, className: string): HTMLElement {
@@ -442,7 +442,7 @@ export function calcImageInBox(imageW: number, imageH: number, boxW: number, box
   return {w: boxedImageW, h: boxedImageH};
 }
 
-MOUNT_CLASS_TO && (MOUNT_CLASS_TO.calcImageInBox = calcImageInBox);
+MOUNT_CLASS_TO.calcImageInBox = calcImageInBox;
 
 export function positionElementByIndex(element: HTMLElement, container: HTMLElement, pos: number) {
   const prevPos = element.parentElement === container ? whichChild(element) : -1;
@@ -651,7 +651,7 @@ export const getElementByPoint = (container: HTMLElement, verticalSide: 'top' | 
   return document.elementFromPoint(x, y) as any;
 };
 
-MOUNT_CLASS_TO && (MOUNT_CLASS_TO.getElementByPoint = getElementByPoint);
+MOUNT_CLASS_TO.getElementByPoint = getElementByPoint;
 
 export async function getFilesFromEvent(e: ClipboardEvent | DragEvent, onlyTypes = false): Promise<any[]> {
   const files: any[] = [];

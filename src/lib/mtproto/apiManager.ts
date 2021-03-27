@@ -12,7 +12,7 @@ import type { MethodDeclMap } from '../../layer';
 import { CancellablePromise, deferredPromise } from '../../helpers/cancellablePromise';
 import { bytesFromHex, bytesToHex } from '../../helpers/bytes';
 //import { clamp } from '../../helpers/number';
-import { isSafari } from '../../helpers/userAgent';
+import { ctx, isSafari } from '../../helpers/userAgent';
 import App from '../../config/app';
 import { MOUNT_CLASS_TO } from '../../config/debug';
 
@@ -275,7 +275,7 @@ export class ApiManager {
       });
   
       const startTime = Date.now();
-      const interval = MOUNT_CLASS_TO.setInterval(() => {
+      const interval = ctx.setInterval(() => {
         this.log.error('Request is still processing:', method, params, options, 'time:', (Date.now() - startTime) / 1000);
         //this.cachedUploadNetworkers[2].requestMessageStatus();
       }, 5e3);
@@ -426,5 +426,5 @@ export class ApiManager {
 }
 
 const apiManager = new ApiManager();
-MOUNT_CLASS_TO && (MOUNT_CLASS_TO.apiManager = apiManager);
+MOUNT_CLASS_TO.apiManager = apiManager;
 export default apiManager;

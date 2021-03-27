@@ -239,4 +239,4 @@ function alignLimit(limit: number) {
 
 //export default () => {};
 
-//MOUNT_CLASS_TO && (MOUNT_CLASS_TO.onFetch = onFetch);
+//MOUNT_CLASS_TO.onFetch = onFetch;

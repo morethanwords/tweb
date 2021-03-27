@@ -811,6 +811,6 @@ class TLDeserialization {
   }
 }
 
-MOUNT_CLASS_TO && (MOUNT_CLASS_TO.TLDeserialization = TLDeserialization);
-MOUNT_CLASS_TO && (MOUNT_CLASS_TO.TLSerialization = TLSerialization);
+MOUNT_CLASS_TO.TLDeserialization = TLDeserialization;
+MOUNT_CLASS_TO.TLSerialization = TLSerialization;
 export { TLDeserialization, TLSerialization };

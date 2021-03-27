@@ -77,7 +77,7 @@ export function putPreloader(elem: Element, returnDiv = false): HTMLElement {
   return elem.lastElementChild as HTMLElement;
 }
 
-MOUNT_CLASS_TO && (MOUNT_CLASS_TO.putPreloader = putPreloader);
+MOUNT_CLASS_TO.putPreloader = putPreloader;
 
 export function setButtonLoader(elem: HTMLButtonElement, icon = 'check') {
   elem.classList.remove('tgico-' + icon);
