@@ -805,3 +805,9 @@ export function htmlToDocumentFragment(html: string) {
   template.innerHTML = html;
   return template.content;
 }
+
+export function htmlToSpan(html: string) {
+  const span = document.createElement('span');
+  span.innerHTML = html;
+  return span;
+}

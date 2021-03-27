@@ -29,7 +29,7 @@ const lang = {
   "Chat.Subscribe": "SUBSCRIBE",
   "Chat.Selection.MessagesCount": {
     "one_value": "%d Message",
-    "other_value": "%d Messages",
+    "other_value": "%d Messages"
   },
   "Chat.Selection.LimitToast": "Max selection count reached.",
   "Saved": "Saved",
@@ -253,12 +253,12 @@ const lang = {
   "Chat.Service.BotPermissionAllowed": "You allowed this bot to message you when you logged in on %@",
   "Chat.Poll.Unvote": "Retract Vote",
   "Chat.Poll.Stop": "Stop Poll",
-  /* "Chat.Poll.Stop.Confirm.Header": "Stop Poll?",
-  "Chat.Poll.Stop.Confirm.Text": "If you stop this poll now, nobody will be able to vote in it anymore. This action cannot be undone.", */
-  /* "Chat.Pinned.UnpinAll": {
-    "one_value": "Unpin %d Message",
-    "other_value": "Unpin All %d Messages"
-  }, */
+  // "Chat.Poll.Stop.Confirm.Header": "Stop Poll?",
+  // "Chat.Poll.Stop.Confirm.Text": "If you stop this poll now, nobody will be able to vote in it anymore. This action cannot be undone.",
+  // "Chat.Pinned.UnpinAll": {
+  //   "one_value": "Unpin %d Message",
+  //   "other_value": "Unpin All %d Messages"
+  // },
   "Chat.Pinned.DontShow": "Don't Show Pinned Messages",
   "Chat.Title.Comments": {
     "one_value": "%d Comment",
@@ -340,7 +340,7 @@ const lang = {
     "one_value": "%d user",
     "other_value": "%d users"
   },
-  "RcentSessions.Error.FreshReset": "For security reasons, you can't terminate older sessions from a device that you've just connected. Please use an earlier connection or wait for a few hours.",
+  "RecentSessions.Error.FreshReset": "For security reasons, you can't terminate older sessions from a device that you've just connected. Please use an earlier connection or wait for a few hours.",
   "Message.Context.Select": "Select",
   "Message.Context.Pin": "Pin",
   "Message.Context.Unpin": "Unpin",
@@ -348,7 +348,7 @@ const lang = {
   "NewPoll.Explanation.Placeholder": "Add a Comment (Optional)",
   "NewPoll.OptionsAddOption": "Add an Option",
   "NewPoll.MultipleChoice": "Multiple Answers",
-  "NewPoll.Quiz": "Quiz Mode",
+  "NewPoll.Quiz": "Quiz Mode"
 };
 
 export default lang;

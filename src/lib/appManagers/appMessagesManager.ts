@@ -40,7 +40,7 @@ import SlicedArray, { Slice, SliceEnd } from "../../helpers/slicedArray";
 import appNotificationsManager, { NotifyOptions } from "./appNotificationsManager";
 import PeerTitle from "../../components/peerTitle";
 import { forEachReverse } from "../../helpers/array";
-import { htmlToDocumentFragment } from "../../helpers/dom";
+import { htmlToDocumentFragment, htmlToSpan } from "../../helpers/dom";
 
 //console.trace('include');
 // TODO: если удалить сообщение в непрогруженном диалоге, то при обновлении, из-за стейта, последнего сообщения в чатлисте не будет
@@ -2722,7 +2722,7 @@ export class AppMessagesManager {
             args.push(getNameDivHTML(message.fromId, plain));
           }
 
-          args.push(plain ? action.title : htmlToDocumentFragment(RichTextProcessor.wrapEmojiText(action.title)));
+          args.push(plain ? action.title : htmlToSpan(RichTextProcessor.wrapEmojiText(action.title)));
           break;
         }
 
@@ -2764,7 +2764,7 @@ export class AppMessagesManager {
             }]
           });
 
-          const node = htmlToDocumentFragment(anchorHTML);
+          const node = htmlToSpan(anchorHTML);
           
           langPackKey = langPack[_];
           args = [node];
