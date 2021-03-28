@@ -111,6 +111,10 @@
         padding-top: 15px;
       }
     }
+
+    .sidebar-left-section {
+      padding-bottom: 0;
+    }
   }
 
   &-container {
@@ -142,7 +146,7 @@
     text-align: center;
     color: $color-gray;
     font-size: 14px;
-    margin-bottom: 2px;
+    margin-bottom: .875rem;
     margin-top: 1px;
 
     @include respond-to(handhelds) {
@@ -216,7 +220,8 @@
   }
 
   &-avatar {
-    margin: 1px auto 10px;
+    margin: .5rem auto 10px;
+    display: block;
     //flex: 0 0 auto;
 
     @include respond-to(handhelds) {
@@ -650,14 +655,12 @@
       font-size: 15px;
       border-radius: 16px;
       font-weight: 400;
-      width: 52px;
-      //width: auto; //68 - Added //52 - Add
+      width: auto;
       transition: width 0.2s;
 
       &.gray {
         background: #F1F3F4;
         color: #707579;
-        width: 68px;
       }
     }
 

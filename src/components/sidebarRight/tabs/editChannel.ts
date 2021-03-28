@@ -10,6 +10,8 @@ import appProfileManager from "../../../lib/appManagers/appProfileManager";
 import { attachClickEvent, toggleDisability } from "../../../helpers/dom";
 import PopupPeer from "../../popups/peer";
 import { addCancelButton } from "../../popups";
+import { i18n } from "../../../lib/langPack";
+import { numberThousandSplitter } from "../../../helpers/number";
 
 export default class AppEditChannelTab extends SliderSuperTab {
   private nameInputField: InputField;
@@ -19,7 +21,7 @@ export default class AppEditChannelTab extends SliderSuperTab {
 
   protected async init() {
     this.container.classList.add('edit-peer-container', 'edit-channel-container');
-    this.title.innerHTML = 'Edit';
+    this.setTitle('Edit');
 
     const chatFull = await appProfileManager.getChannelFull(-this.peerId, true);
 
@@ -33,12 +35,12 @@ export default class AppEditChannelTab extends SliderSuperTab {
         inputWrapper.classList.add('input-wrapper');
     
         this.nameInputField = new InputField({
-          label: 'Name',
+          label: 'Channel.ChannelNameHolder',
           name: 'channel-name',
           maxLength: 255
         });
         this.descriptionInputField = new InputField({
-          label: 'Description',
+          label: 'DescriptionPlaceholder',
           name: 'channel-description',
           maxLength: 255
         });
@@ -89,8 +91,8 @@ export default class AppEditChannelTab extends SliderSuperTab {
 
       if(appChatsManager.hasRights(-this.peerId, 'change_type')) {
         const channelTypeRow = new Row({
-          title: 'Channel Type',
-          subtitle: 'Private',
+          titleLangKey: 'ChannelType',
+          subtitleLangKey: 'TypePrivate',
           clickable: true,
           icon: 'lock'
         });
@@ -100,8 +102,8 @@ export default class AppEditChannelTab extends SliderSuperTab {
 
       if(appChatsManager.hasRights(-this.peerId, 'change_info')) {
         const discussionRow = new Row({
-          title: 'Discussion',
-          subtitle: 'Add',
+          titleLangKey: 'PeerInfo.Discussion',
+          subtitleLangKey: 'PeerInfo.Discussion.Add',
           clickable: true,
           icon: 'message'
         });
@@ -110,7 +112,7 @@ export default class AppEditChannelTab extends SliderSuperTab {
       }
 
       const administratorsRow = new Row({
-        title: 'Administrators',
+        titleLangKey: 'PeerInfo.Administrators',
         subtitle: '' + chatFull.admins_count,
         icon: 'admin',
         clickable: true
@@ -120,7 +122,7 @@ export default class AppEditChannelTab extends SliderSuperTab {
 
       if(appChatsManager.hasRights(-this.peerId, 'change_info')) {
         const signMessagesCheckboxField = new CheckboxField({
-          text: 'Sign Messages',
+          text: 'PeerInfo.SignMessages',
           checked: false
         });
 
@@ -136,11 +138,12 @@ export default class AppEditChannelTab extends SliderSuperTab {
       });
 
       const subscribersRow = new Row({
-        title: 'Subscribers',
-        subtitle: '335 356 subscribers',
+        titleLangKey: 'PeerInfo.Subscribers',
         icon: 'newgroup',
         clickable: true
       });
+
+      subscribersRow.subtitle.append(i18n('Subscribers', [numberThousandSplitter(335356)]));
 
       section.content.append(subscribersRow.container);
 
@@ -152,15 +155,22 @@ export default class AppEditChannelTab extends SliderSuperTab {
         
       });
 
-      const btnDelete = Button('btn-primary btn-transparent danger', {icon: 'delete', text: 'Delete Channel'});
+      const btnDelete = Button('btn-primary btn-transparent danger', {icon: 'delete', text: 'PeerInfo.DeleteChannel'});
 
       attachClickEvent(btnDelete, () => {
         new PopupPeer('popup-delete-channel', {
           peerId: this.peerId,
-          title: 'Delete Channel?',
-          description: `Are you sure you want to delete this channel? All subscribers will be removed and all messages will be lost.`,
+          titleLangKey: 'ChannelDeleteMenu',
+          descriptionLangKey: 'AreYouSureDeleteAndExitChannel',
           buttons: addCancelButton([{
-            text: 'DELETE',
+            langKey: 'ChannelDeleteMenu',
+            callback: () => {
+              const toggle = toggleDisability([btnDelete], true);
+
+            },
+            isDanger: true
+          }, {
+            langKey: 'DeleteChannelForAll',
             callback: () => {
               const toggle = toggleDisability([btnDelete], true);
 

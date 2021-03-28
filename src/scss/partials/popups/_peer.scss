@@ -47,3 +47,9 @@
     }
   }
 }
+
+.popup-peer, .popup-confirm-action {
+  .popup-container {
+    max-width: unquote('min(400px, 100%)');
+  }
+}

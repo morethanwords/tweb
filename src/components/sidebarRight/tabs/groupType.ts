@@ -13,6 +13,7 @@ import { SettingSection } from "../../sidebarLeft";
 import { toast } from "../../toast";
 import { UsernameInputField } from "../../usernameInputField";
 import { SliderSuperTabEventable } from "../../sliderTab";
+import I18n from "../../../lib/langPack";
 
 export default class AppGroupTypeTab extends SliderSuperTabEventable {
   public peerId: number;
@@ -20,28 +21,28 @@ export default class AppGroupTypeTab extends SliderSuperTabEventable {
 
   protected init() {
     this.container.classList.add('edit-peer-container', 'group-type-container');
-    this.title.innerHTML = 'Group Type';
+    this.setTitle('GroupType');
 
     const section = new SettingSection({
-      name: 'Group Type'
+      name: 'GroupType'
     });
 
     const random = randomLong();
     const privateRow = new Row({
       radioField: new RadioField({
-        text: 'Private Group', 
+        langKey: 'MegaPrivate', 
         name: random, 
         value: 'private'
       }),
-      subtitle: 'Private groups can only be joined if you were invited or have an invite link.'
+      subtitleLangKey: 'MegaPrivateInfo'
     });
     const publicRow = new Row({
       radioField: new RadioField({
-        text: 'Public Group', 
+        langKey: 'MegaPublic', 
         name: random, 
         value: 'public'
       }),
-      subtitle: 'Public groups can be found in search, history is available to everyone and anyone can join.'
+      subtitleLangKey: 'MegaPublicInfo'
     });
     const form = RadioFormFromRows([privateRow, publicRow], (value) => {
       const a = [privateSection, publicSection];
@@ -62,18 +63,18 @@ export default class AppGroupTypeTab extends SliderSuperTabEventable {
     //let revoked = false;
     const linkRow = new Row({
       title: (this.chatFull.exported_invite as ExportedChatInvite.chatInviteExported).link,
-      subtitle: 'People can join your group by following this link. You can revoke the link at any time.',
+      subtitleLangKey: 'MegaPrivateLinkHelp',
       clickable: () => {
         copyTextToClipboard((this.chatFull.exported_invite as ExportedChatInvite.chatInviteExported).link);
-        toast('Invite link copied to clipboard.');
+        toast(I18n.format('LinkCopied', true));
       }
     });
 
-    const btnRevoke = Button('btn-primary btn-transparent danger', {icon: 'delete', text: 'Revoke Link'});
+    const btnRevoke = Button('btn-primary btn-transparent danger', {icon: 'delete', text: 'RevokeLink'});
 
     attachClickEvent(btnRevoke, () => {
       new PopupConfirmAction('revoke-link', [{
-        text: 'OK',
+        langKey: 'RevokeButton',
         callback: () => {
           const toggle = toggleDisability([btnRevoke], true);
           
@@ -85,15 +86,15 @@ export default class AppGroupTypeTab extends SliderSuperTabEventable {
           });
         }
       }], {
-        title: 'Revoke Link?',
-        text: 'Your previous link will be deactivated and we\'ll generate a new invite link for you.'
+        title: 'RevokeLink',
+        text: 'RevokeAlert'
       }).show();
     }, {listenerSetter: this.listenerSetter});
 
     privateSection.content.append(linkRow.container, btnRevoke);
 
     const publicSection = new SettingSection({
-      caption: 'People can share this link with others and find your group using Telegram search.',
+      caption: 'Channel.UsernameAboutGroup',
       noDelimiter: true
     });
 
@@ -109,13 +110,13 @@ export default class AppGroupTypeTab extends SliderSuperTabEventable {
     };
 
     const linkInputField = new UsernameInputField({
-      label: 'Link',
+      label: 'SetUrlPlaceholder',
       name: 'group-public-link',
       plainText: true,
       listenerSetter: this.listenerSetter,
-      availableText: 'Link is available',
+      availableText: 'Link.Available',
       invalidText: 'Link is invalid',
-      takenText: 'Link is already taken',
+      takenText: 'Link.Taken',
       onChange: onChange,
       peerId: this.peerId,
       head: placeholder

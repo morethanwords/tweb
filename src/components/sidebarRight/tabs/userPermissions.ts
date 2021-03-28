@@ -19,13 +19,13 @@ export default class AppUserPermissionsTab extends SliderSuperTabEventable {
 
   protected init() {
     this.container.classList.add('edit-peer-container', 'user-permissions-container');
-    this.title.innerHTML = 'User Permissions';
+    this.setTitle('UserRestrictions');
 
     let destroyListener: () => void;
 
     {
       const section = new SettingSection({
-        name: 'What can this user do?',
+        name: 'UserRestrictionsCanDo',
       });
       
       const div = document.createElement('div');
@@ -43,7 +43,7 @@ export default class AppUserPermissionsTab extends SliderSuperTabEventable {
         avatarSize: 48
       });
 
-      dom.lastMessageSpan.innerHTML = appUsersManager.getUserStatusString(this.userId);
+      dom.lastMessageSpan.append(appUsersManager.getUserStatusString(this.userId));
 
       const p = new ChatPermissions({
         chatId: this.chatId,
@@ -71,7 +71,7 @@ export default class AppUserPermissionsTab extends SliderSuperTabEventable {
       const section = new SettingSection({});
 
       if(this.participant._ === 'channelParticipantBanned') {
-        const btnDeleteException = Button('btn-primary btn-transparent danger', {icon: 'delete', text: 'Delete Exception'});
+        const btnDeleteException = Button('btn-primary btn-transparent danger', {icon: 'delete', text: 'GroupPermission.Delete'});
 
         attachClickEvent(btnDeleteException, () => {
           const toggle = toggleDisability([btnDeleteException], true);
@@ -86,10 +86,15 @@ export default class AppUserPermissionsTab extends SliderSuperTabEventable {
         section.content.append(btnDeleteException);
       }
 
-      const btnDelete = Button('btn-primary btn-transparent danger', {icon: 'deleteuser', text: 'Ban and Remove From Group'});
+      const btnDelete = Button('btn-primary btn-transparent danger', {icon: 'deleteuser', text: 'UserRestrictionsBlock'});
 
       attachClickEvent(btnDelete, () => {
-        new PopupPeer('popup-group-kick-user', {
+        const toggle = toggleDisability([btnDelete], true);
+        appChatsManager.kickFromChannel(this.chatId, this.participant).then(() => {
+          this.eventListener.removeEventListener('destroy', destroyListener);
+          this.close();
+        });
+        /* new PopupPeer('popup-group-kick-user', {
           peerId: -this.chatId,
           title: 'Ban User?',
           description: `Are you sure you want to ban <b>${appPeersManager.getPeerTitle(this.userId)}</b>`,
@@ -107,7 +112,7 @@ export default class AppUserPermissionsTab extends SliderSuperTabEventable {
             },
             isDanger: true
           }])
-        }).show();
+        }).show(); */
       }, {listenerSetter: this.listenerSetter});
 
       section.content.append(btnDelete);

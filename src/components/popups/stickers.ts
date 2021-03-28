@@ -6,10 +6,12 @@ import { wrapSticker } from "../wrappers";
 import LazyLoadQueue from "../lazyLoadQueue";
 import { putPreloader } from "../misc";
 import animationIntersector from "../animationIntersector";
-import { findUpClassName } from "../../helpers/dom";
+import { findUpClassName, toggleDisability } from "../../helpers/dom";
 import appImManager from "../../lib/appManagers/appImManager";
 import { StickerSet } from "../../layer";
 import mediaSizes from "../../helpers/mediaSizes";
+import { i18n } from "../../lib/langPack";
+import Button from "../button";
 
 const ANIMATION_GROUP = 'STICKERS-POPUP';
 
@@ -28,7 +30,7 @@ export default class PopupStickers extends PopupElement {
     super('popup-stickers', null, {closable: true, overlayClosable: true, body: true});
 
     this.h6 = document.createElement('h6');
-    this.h6.innerText = 'Loading...';
+    this.h6.append(i18n('Loading'));
 
     this.header.append(this.h6);
 
@@ -51,7 +53,7 @@ export default class PopupStickers extends PopupElement {
 
     div.append(this.stickersDiv);
 
-    this.stickersFooter.innerText = 'Loading...';
+    this.stickersFooter.append(i18n('Loading'));
 
     this.body.append(div);
     const scrollable = new Scrollable(this.body);
@@ -66,12 +68,12 @@ export default class PopupStickers extends PopupElement {
   }
 
   onFooterClick = () => {
-    this.stickersFooter.setAttribute('disabled', 'true');
+    const toggle = toggleDisability([this.stickersFooter], true);
 
     appStickersManager.toggleStickerSet(this.set).then(() => {
-      this.btnClose.click();
+      this.hide();
     }).catch(() => {
-      this.stickersFooter.removeAttribute('disabled');
+      toggle();
     });
   };
 
@@ -81,7 +83,7 @@ export default class PopupStickers extends PopupElement {
 
     const fileId = target.dataset.docId;
     if(appImManager.chat.input.sendMessageWithDocument(fileId)) {
-      this.btnClose.click();
+      this.hide();
     } else {
       console.warn('got no doc by id:', fileId);
     }
@@ -97,9 +99,20 @@ export default class PopupStickers extends PopupElement {
 
       this.h6.innerHTML = RichTextProcessor.wrapEmojiText(set.set.title);
       !set.set.installed_date ? this.stickersFooter.classList.add('add') : this.stickersFooter.classList.remove('add');
-      this.stickersFooter.innerHTML = set.set.hasOwnProperty('installed_date') ? '<div style="cursor: pointer; margin: 0 auto; width: 150px;">Remove stickers</div>' : `<button class="btn-primary btn-color-primary">ADD ${set.set.count} STICKERS</button>`;
 
-      this.stickersFooter.addEventListener('click', this.onFooterClick);
+      let button: HTMLElement;
+      if(set.set.hasOwnProperty('installed_date')) {
+        button = Button('btn-primary btn-primary-transparent danger', {noRipple: true});
+        button.append(i18n('StickerPack.Remove', [set.set.count]));
+      } else {
+        button = Button('btn-primary btn-color-primary', {noRipple: true});
+        button.append(i18n('StickerPack.Add1', [set.set.count]));
+      }
+
+      this.stickersFooter.textContent = '';
+      this.stickersFooter.append(button);
+
+      button.addEventListener('click', this.onFooterClick);
 
       if(set.documents.length) {
         this.stickersDiv.addEventListener('click', this.onStickersClick);

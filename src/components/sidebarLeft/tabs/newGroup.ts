@@ -89,15 +89,7 @@ export default class AppNewGroupTab extends SliderSuperTab {
           avatarSize: 48
         });
 
-        let subtitle = '';
-        subtitle = appUsersManager.getUserStatusString(userId);
-        if(subtitle === 'online') {
-          subtitle = `<i>${subtitle}</i>`;
-        }
-
-        if(subtitle) {
-          dom.lastMessageSpan.innerHTML = subtitle;
-        }
+        dom.lastMessageSpan.append(appUsersManager.getUserStatusString(userId));
       });
 
       this.searchGroup.nameEl.textContent = '';

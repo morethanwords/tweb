@@ -29,6 +29,7 @@ import { months, ONE_DAY } from "../helpers/date";
 import { SearchSuperContext } from "./appSearchSuper.";
 import { Message, PhotoSize } from "../layer";
 import { forEachReverse } from "../helpers/array";
+import AppSharedMediaTab from "./sidebarRight/tabs/sharedMedia";
 
 // TODO: масштабирование картинок (не SVG) при ресайзе, и правильный возврат на исходную позицию
 // TODO: картинки "обрезаются" если возвращаются или появляются с места, где есть их перекрытие (топбар, поле ввода)
@@ -1159,7 +1160,10 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
       //.then(() => mediaSizes.isMobile ? appSidebarRight.sharedMediaTab.closeBtn.click() : Promise.resolve())
       .then(() => {
         if(mediaSizes.isMobile) {
-          appSidebarRight.closeTab(AppSidebarRight.SLIDERITEMSIDS.sharedMedia);
+          const tab = appSidebarRight.getTab(AppSharedMediaTab);
+          if(tab) {
+            tab.close();
+          }
         }
 
         const message = appMessagesManager.getMessageByPeer(peerId, mid);

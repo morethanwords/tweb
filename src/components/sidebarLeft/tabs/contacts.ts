@@ -100,7 +100,7 @@ export default class AppContactsTab extends SliderSuperTab {
           });
   
           let status = appUsersManager.getUserStatusString(user.id);
-          dom.lastMessageSpan.innerHTML = status === 'online' ? `<i>${status}</i>` : status;
+          dom.lastMessageSpan.append(status);
         });
 
         if(!sorted.length) renderPage = undefined;

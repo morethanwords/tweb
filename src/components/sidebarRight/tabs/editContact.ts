@@ -14,6 +14,7 @@ import rootScope from "../../../lib/rootScope";
 import appPeersManager from "../../../lib/appManagers/appPeersManager";
 import PopupPeer from "../../popups/peer";
 import { addCancelButton } from "../../popups";
+import { i18n } from "../../../lib/langPack";
 
 export default class AppEditContactTab extends SliderSuperTab {
   private nameInputField: InputField;
@@ -23,7 +24,7 @@ export default class AppEditContactTab extends SliderSuperTab {
 
   protected init() {
     this.container.classList.add('edit-peer-container', 'edit-contact-container');
-    this.title.innerHTML = 'Edit';
+    this.setTitle('Edit');
 
     {
       const section = new SettingSection({noDelimiter: true});
@@ -33,12 +34,12 @@ export default class AppEditContactTab extends SliderSuperTab {
       inputWrapper.classList.add('input-wrapper');
   
       this.nameInputField = new InputField({
-        label: 'Name',
+        label: 'EditProfile.FirstNameLabel',
         name: 'contact-name',
         maxLength: 70
       });
       this.lastNameInputField = new InputField({
-        label: 'Last Name',
+        label: 'Login.Register.LastName.Placeholder',
         name: 'contact-lastname',
         maxLength: 70
       });
@@ -103,7 +104,7 @@ export default class AppEditContactTab extends SliderSuperTab {
 
       const profileSubtitleDiv = document.createElement('div');
       profileSubtitleDiv.classList.add('profile-subtitle');
-      profileSubtitleDiv.innerHTML = 'original name';
+      profileSubtitleDiv.append(i18n('EditContact.OriginalName'));
 
       section.content.append(div, profileNameDiv, profileSubtitleDiv, inputWrapper, notificationsRow.container);
 
@@ -130,10 +131,10 @@ export default class AppEditContactTab extends SliderSuperTab {
       attachClickEvent(btnDelete, () => {
         new PopupPeer('popup-delete-contact', {
           peerId: this.peerId,
-          title: 'Delete Contact?',
-          description: `Are you sure you want to delete <b>${appPeersManager.getPeerTitle(this.peerId)}</b> from your contact list?`,
+          titleLangKey: 'DeleteContact',
+          descriptionLangKey: 'AreYouSureDeleteContact',
           buttons: addCancelButton([{
-            text: 'DELETE',
+            langKey: 'Delete',
             callback: () => {
               const toggle = toggleDisability([btnDelete], true);
 

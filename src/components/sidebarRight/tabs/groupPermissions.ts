@@ -5,6 +5,7 @@ import { ChannelParticipant, Chat, ChatBannedRights, Update } from "../../../lay
 import appChatsManager, { ChatRights } from "../../../lib/appManagers/appChatsManager";
 import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
 import appProfileManager from "../../../lib/appManagers/appProfileManager";
+import I18n, { i18n } from "../../../lib/langPack";
 import rootScope from "../../../lib/rootScope";
 import CheckboxField from "../../checkboxField";
 import PopupPickUser from "../../popups/pickUser";
@@ -29,14 +30,14 @@ export class ChatPermissions {
     participant?: ChannelParticipant.channelParticipantBanned
   }) {
     this.v = [
-      {flags: ['send_messages'], text: 'Send Messages'},
-      {flags: ['send_media'], text: 'Send Media'},
-      {flags: ['send_stickers', 'send_gifs'], text: 'Send Stickers & GIFs'},
-      {flags: ['send_polls'], text: 'Send Polls'},
-      {flags: ['embed_links'], text: 'Send Links'},
-      {flags: ['invite_users'], text: 'Add Users'},
-      {flags: ['pin_messages'], text: 'Pin Messages'},
-      {flags: ['change_info'], text: 'Change Chat Info'}
+      {flags: ['send_messages'], text: 'UserRestrictionsSend'},
+      {flags: ['send_media'], text: 'UserRestrictionsSendMedia'},
+      {flags: ['send_stickers', 'send_gifs'], text: 'UserRestrictionsSendStickers'},
+      {flags: ['send_polls'], text: 'UserRestrictionsSendPolls'},
+      {flags: ['embed_links'], text: 'UserRestrictionsEmbedLinks'},
+      {flags: ['invite_users'], text: 'UserRestrictionsInviteUsers'},
+      {flags: ['pin_messages'], text: 'UserRestrictionsPinMessages'},
+      {flags: ['change_info'], text: 'UserRestrictionsChangeInfo'}
     ];
 
     this.toggleWith = {
@@ -71,7 +72,7 @@ export class ChatPermissions {
         }); */
 
         attachClickEvent(info.checkboxField.label, (e) => {
-          toast('This option is disabled for all members in Group Permissions.');
+          toast(I18n.format('UserRestrictionsDisabled', true));
         }, {listenerSetter: options.listenerSetter});
       }
 
@@ -116,12 +117,12 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
 
   protected async init() {
     this.container.classList.add('edit-peer-container', 'group-permissions-container');
-    this.title.innerHTML = 'Permissions';
+    this.setTitle('ChannelPermissions');
 
     let chatPermissions: ChatPermissions;
     {
       const section = new SettingSection({
-        name: 'What can members of this group do?',
+        name: 'ChannelPermissionsHeader',
       });
 
       chatPermissions = new ChatPermissions({
@@ -139,12 +140,12 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
     
     {
       const section = new SettingSection({
-        name: 'Exceptions'
+        name: 'PrivacyExceptions'
       });
 
       const addExceptionRow = new Row({
-        title: 'Add Exception',
-        subtitle: 'Loading...',
+        titleLangKey: 'ChannelAddException',
+        subtitleLangKey: 'Loading',
         icon: 'adduser',
         clickable: () => {
           new PopupPickUser({
@@ -177,8 +178,8 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
       };
 
       const removedUsersRow = new Row({
-        title: 'Removed Users',
-        subtitle: 'No removed users',
+        titleLangKey: 'ChannelBlockedUsers',
+        subtitleLangKey: 'NoBlockedUsers',
         icon: 'deleteuser',
         clickable: true
       });
@@ -277,7 +278,8 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
       });
 
       const setLength = () => {
-        addExceptionRow.subtitle.innerHTML = exceptionsCount ? exceptionsCount + ' exceptions' : 'None';
+        addExceptionRow.subtitle.textContent = '';
+        addExceptionRow.subtitle.append(i18n(exceptionsCount ? 'Permissions.ExceptionsCount' : 'Permissions.NoExceptions', [exceptionsCount]));
       };
 
       let exceptionsCount = 0;

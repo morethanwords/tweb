@@ -5,6 +5,7 @@ import { roundPercents } from "../../poll";
 import { RichTextProcessor } from "../../../lib/richtextprocessor";
 import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
 import { ripple } from "../../ripple";
+import { i18n } from "../../../lib/langPack";
 
 export default class AppPollResultsTab extends SliderSuperTab {
   private resultsDiv: HTMLElement;
@@ -12,8 +13,6 @@ export default class AppPollResultsTab extends SliderSuperTab {
   protected init() {
     this.container.id = 'poll-results-container';
     this.container.classList.add('chatlist-container');
-
-    this.title.innerHTML = 'Results';
 
     this.resultsDiv = document.createElement('div');
     this.resultsDiv.classList.add('poll-results');
@@ -23,6 +22,8 @@ export default class AppPollResultsTab extends SliderSuperTab {
   public open(message: any) {
     const ret = super.open();
     const poll = appPollsManager.getPoll(message.media.poll.id);
+
+    this.setTitle(poll.poll.pFlags.quiz ? 'PollResults.Title.Quiz' : 'PollResults.Title.Poll');
 
     const title = document.createElement('h3');
     title.innerHTML = poll.poll.rQuestion;
@@ -82,7 +83,7 @@ export default class AppPollResultsTab extends SliderSuperTab {
 
           if(offset) {
             left -= votesList.votes.length;
-            (showMore.lastElementChild as HTMLElement).innerText = `Show ${Math.min(20, left)} more voter${left > 1 ? 's' : ''}`;
+            (showMore.lastElementChild as HTMLElement).replaceWith(i18n('PollResults.LoadMore', [Math.min(20, left)]));
           }
           
           offset = votesList.next_offset;
@@ -101,11 +102,12 @@ export default class AppPollResultsTab extends SliderSuperTab {
       if(left <= 0) return;
 
       const showMore = document.createElement('div');
-      showMore.classList.add('poll-results-more', 'show-more');
+      showMore.classList.add('poll-results-more', 'show-more', 'rp-overflow');
       showMore.addEventListener('click', load);
-
-      showMore.innerHTML = `<div class="tgico-down"></div><div>Show ${Math.min(20, left)} more voter${left > 1 ? 's' : ''}</div>`;
       ripple(showMore);
+      const down = document.createElement('div');
+      down.classList.add('tgico-down');
+      showMore.append(down, i18n('PollResults.LoadMore', [Math.min(20, left)]));
 
       fragment.append(showMore);
     });

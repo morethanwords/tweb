@@ -11,6 +11,7 @@ import { wrapSticker } from "../../wrappers";
 import appSidebarRight from "..";
 import { StickerSet, StickerSetCovered } from "../../../layer";
 import { forEachReverse } from "../../../helpers/array";
+import { i18n } from "../../../lib/langPack";
 
 export default class AppStickersTab extends SliderSuperTab {
   private inputSearch: InputSearch;
@@ -23,7 +24,7 @@ export default class AppStickersTab extends SliderSuperTab {
 
     this.lazyLoadQueue = new LazyLoadQueue();
 
-    this.inputSearch = new InputSearch('Search Stickers', (value) => {
+    this.inputSearch = new InputSearch('StickersTab.SearchPlaceholder', (value) => {
       this.search(value);
     });
 
@@ -57,7 +58,8 @@ export default class AppStickersTab extends SliderSuperTab {
         appStickersManager.getStickerSet({id, access_hash}).then(full => {
           appStickersManager.toggleStickerSet(full.set).then(changed => {
             if(changed) {
-              button.innerText = full.set.installed_date ? 'Added' : 'Add';
+              button.textContent = '';
+              button.append(i18n(full.set.installed_date ? 'Stickers.SearchAdded' : 'Stickers.SearchAdd'));
               button.classList.toggle('gray', !!full.set.installed_date);
             }
           }).finally(() => {
@@ -91,12 +93,16 @@ export default class AppStickersTab extends SliderSuperTab {
     details.classList.add('sticker-set-details');
     details.innerHTML = `
       <div class="sticker-set-name">${RichTextProcessor.wrapEmojiText(set.title)}</div>
-      <div class="sticker-set-count">${set.count} stickers</div>
     `;
+
+    const countDiv = document.createElement('div');
+    countDiv.classList.add('sticker-set-count');
+    countDiv.append(i18n('Stickers.Count', [set.count]));
+    details.append(countDiv);
     
     const button = document.createElement('button');
     button.classList.add('btn-primary', 'btn-color-primary', 'sticker-set-button');
-    button.innerText = set.installed_date ? 'Added' : 'Add';
+    button.append(i18n(set.installed_date ? 'Stickers.SearchAdded' : 'Stickers.SearchAdd'));
    // button.style.width = set.installed_date ? '68px' : '52px';
 
     if(set.installed_date) {
