@@ -197,7 +197,8 @@ namespace I18n {
 		let input: string;
 		if(str) {
 			if(str._ === 'langPackStringPluralized' && args?.length) {
-				const v = args[0] as number;
+				let v = args[0] as number | string;
+				if(typeof(v) === 'string') v = +v.replace(/\D/g, '');
 				const s = pluralRules.select(v);
 				// @ts-ignore
 				input = str[s + '_value'] || str['other_value'];

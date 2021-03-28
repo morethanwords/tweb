@@ -3,6 +3,7 @@ import { MOUNT_CLASS_TO } from "../../config/debug";
 import { tsNow } from "../../helpers/date";
 import { safeReplaceObject, isObject } from "../../helpers/object";
 import { InputUser, Update, User as MTUser, UserStatus } from "../../layer";
+import I18n, { i18n, LangPackKey } from "../langPack";
 //import apiManager from '../mtproto/apiManager';
 import apiManager from '../mtproto/mtprotoworker';
 import { REPLIES_PEER_ID } from "../mtproto/mtproto_config";
@@ -386,79 +387,92 @@ export class AppUsersManager {
     return this.getUser(rootScope.myId);
   }
 
-  public getUserStatusString(userId: number) {
+  public getUserStatusString(userId: number): HTMLElement {
+    let key: LangPackKey;
+    let args: any[];
+
     switch(userId) {
       case REPLIES_PEER_ID:
-        return 'reply notifications';
+        key = 'Peer.RepliesNotifications';
+        break;
       case 777000:
-        return 'service notifications';
-    }
+        key = 'Peer.ServiceNotifications';
+        break;
+      default: {
+        if(this.isBot(userId)) {
+          key = 'Presence.bot';
+          break;
+        }
 
-    if(this.isBot(userId)) {
-      return 'bot';
-    }
+        const user = this.getUser(userId);
+        if(!user) {
+          key = '';
+          break;
+        }
 
-    const user = this.getUser(userId);
-    if(!user) {
-      return '';
-    }
+        if(user.pFlags.support) {
+          key = 'Presence.Support';
+          break;
+        }
 
-    if(user.pFlags.support) {
-      return 'support';
+        switch(user.status?._) {
+          case 'userStatusRecently': {
+            key = 'Peer.Status.recently';
+            break;
+          }
+    
+          case 'userStatusLastWeek': {
+            key = 'Peer.Status.lastWeek';
+            break;
+          }
+    
+          case 'userStatusLastMonth': {
+            key = 'Peer.Status.lastMonth';
+            break;
+          }
+          
+          case 'userStatusOffline': {
+            key = 'last seen ';
+          
+            const date = user.status.was_online;
+            const now = Date.now() / 1000;
+            
+            if((now - date) < 60) {
+              key = 'Peer.Status.justNow';
+            } else if((now - date) < 3600) {
+              key = 'Peer.Status.minAgo';
+              const c = (now - date) / 60 | 0;
+              args = [c];
+            } else if(now - date < 86400) {
+              key = 'LastSeen.HoursAgo';
+              const c = (now - date) / 3600 | 0;
+              args = [c];
+            } else {
+              key = 'Peer.Status.LastSeenAt';
+              const d = new Date(date * 1000);
+              args = [('0' + d.getDate()).slice(-2) + '.' + ('0' + (d.getMonth() + 1)).slice(-2), 
+                ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2)];
+            }
+            
+            break;
+          }
+    
+          case 'userStatusOnline': {
+            key = 'Peer.Status.online';
+            break;
+          }
+    
+          default: {
+            key = 'Peer.Status.longTimeAgo';
+            break;
+          }
+        }
+
+        break;
+      }
     }
     
-    let str = '';
-    switch(user.status?._) {
-      case 'userStatusRecently': {
-        str = 'last seen recently';
-        break;
-      }
-
-      case 'userStatusLastWeek': {
-        str = 'last seen last week';
-        break;
-      }
-
-      case 'userStatusLastMonth': {
-        str = 'last seen last month';
-        break;
-      }
-      
-      case 'userStatusOffline': {
-        str = 'last seen ';
-      
-        const date = user.status.was_online;
-        const now = Date.now() / 1000;
-        
-        if((now - date) < 60) {
-          str += ' just now';
-        } else if((now - date) < 3600) {
-          const c = (now - date) / 60 | 0;
-          str += c + ' ' + (c === 1 ? 'minute' : 'minutes') + ' ago';
-        } else if(now - date < 86400) {
-          const c = (now - date) / 3600 | 0;
-          str += c + ' ' + (c === 1 ? 'hour' : 'hours') + ' ago';
-        } else {
-          const d = new Date(date * 1000);
-          str += ('0' + d.getDate()).slice(-2) + '.' + ('0' + (d.getMonth() + 1)).slice(-2) + ' at ' + 
-          ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
-        }
-        
-        break;
-      }
-
-      case 'userStatusOnline': {
-        str = 'online';
-        break;
-      }
-
-      default: {
-        str = 'last seen a long time ago';
-        break;
-      }
-    }
-
-    return str;
+    return i18n(key, args);
   }
 
   public isBot(id: number) {

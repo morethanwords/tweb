@@ -38,6 +38,7 @@ import { MOUNT_CLASS_TO } from '../../config/debug';
 import appNavigationController from '../../components/appNavigationController';
 import appNotificationsManager from './appNotificationsManager';
 import AppPrivateSearchTab from '../../components/sidebarRight/tabs/search';
+import { i18n } from '../langPack';
 
 //console.log('appImManager included33!');
 
@@ -742,8 +743,8 @@ export class AppImManager {
   }
 
   public async getPeerStatus(peerId: number) {
-    let subtitle = '';
-    if(!peerId) return subtitle;
+    let subtitle: HTMLElement;
+    if(!peerId) return '';
 
     if(peerId < 0) { // not human
       const chat = appPeersManager.getPeer(peerId);
@@ -756,10 +757,10 @@ export class AppImManager {
         subtitle = appChatsManager.getChatMembersString(-peerId);
 
         if(participants_count < 2) return subtitle;
-        const onlines = await appChatsManager.getOnlines(chat.id);
+        /* const onlines = await appChatsManager.getOnlines(chat.id);
         if(onlines > 1) {
-          subtitle += ', ' + numberThousandSplitter(onlines, ' ') + ' online';
-        }
+          subtitle += ', ' + numberThousandSplitter(onlines) + ' online';
+        } */
   
         return subtitle;
       //}
@@ -774,15 +775,19 @@ export class AppImManager {
         if(!appUsersManager.isBot(peerId)) {
           const typings = appChatsManager.typingsInPeer[peerId];
           if(typings && typings.length) {
-            return '<span class="online">typing...</span>';
-          } else if(subtitle === 'online') {
-            return `<span class="online">${subtitle}</span>`;
-          } else {
-            return subtitle;
+            const span = document.createElement('span');
+            span.classList.add('online');
+            span.append(i18n('Peer.Activity.User.TypingText'));
+            return span;
+          } else if(user.status?._ === 'userStatusOnline') {
+            const span = document.createElement('span');
+            span.classList.add('online');
+            span.append(subtitle);
+            return span;
           }
-        } else {
-          return subtitle;
         }
+        
+        return subtitle;
       }
     }
   }

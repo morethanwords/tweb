@@ -245,6 +245,12 @@
       background: hover-color($color-blue);
     }
 
+    &.danger {
+      @include hover() {
+        background: hover-color($color-red);
+      }
+    }
+
     .preloader-circular .preloader-path {
       stroke: $color-blue;
     }

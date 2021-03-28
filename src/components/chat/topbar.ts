@@ -555,7 +555,8 @@ export default class ChatTopbar {
         return;
       }
 
-      this.subtitle.innerHTML = subtitle;
+      this.subtitle.textContent = '';
+      this.subtitle.append(subtitle);
     });
   };
 }

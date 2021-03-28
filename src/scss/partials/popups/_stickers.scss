@@ -11,18 +11,19 @@
   }
 
   .sticker-set-footer {
-    padding: 19px 0 17px 0;
     border-top: 1px solid $lightgrey;
     text-align: center;
     color: $color-blue;
 
     .btn-primary {
-      width: 164px;
+      text-transform: uppercase;
+      width: auto;
+      padding: 0 1.0625rem;
       height: 44px;
     }
   }
 
-  .sticker-set-footer.add {
+  .sticker-set-footer {
     padding: 8px 0;
   }
 

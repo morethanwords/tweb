@@ -54,7 +54,12 @@ export default class AppBlockedUsersTab extends SliderSuperTab {
       });
 
       const user = appUsersManager.getUser(peerId);
-      dom.lastMessageSpan.innerHTML = user.pFlags.bot ? ('@' + user.username) : user.rPhone || (user.username ? '@' + user.username : appUsersManager.getUserStatusString(peerId));
+      if(user.pFlags.bot) {
+        dom.lastMessageSpan.append('@' + user.username);
+      } else {
+        if(user.rPhone) dom.lastMessageSpan.innerHTML = user.rPhone;
+        else dom.lastMessageSpan.append(user.username ? '@' + user.username : appUsersManager.getUserStatusString(peerId));
+      }
 
       //dom.titleSpan.innerHTML = 'Raaid El Syed';
       //dom.lastMessageSpan.innerHTML = '+1 234 567891';

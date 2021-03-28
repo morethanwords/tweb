@@ -5,10 +5,11 @@ import appPollsManager, { Poll, PollResults } from "../lib/appManagers/appPollsM
 import serverTimeManager from "../lib/mtproto/serverTimeManager";
 import { RichTextProcessor } from "../lib/richtextprocessor";
 import rootScope from "../lib/rootScope";
-import { attachClickEvent, cancelEvent, detachClickEvent, findUpClassName } from "../helpers/dom";
+import { attachClickEvent, cancelEvent, detachClickEvent, findUpClassName, replaceContent } from "../helpers/dom";
 import { ripple } from "./ripple";
 import appSidebarRight from "./sidebarRight";
 import AppPollResultsTab from "./sidebarRight/tabs/pollResults";
+import { i18n, LangPackKey } from "../lib/langPack";
 
 let lineTotalLength = 0;
 const tailLength = 9;
@@ -200,7 +201,7 @@ export default class PollElement extends HTMLElement {
 
     //console.log('pollElement poll:', poll, results);
 
-    let desc = '';
+    let descKey: LangPackKey = '';
     if(poll.pFlags) {
       this.isPublic = !!poll.pFlags.public_voters;
       this.isQuiz = !!poll.pFlags.quiz;
@@ -208,11 +209,12 @@ export default class PollElement extends HTMLElement {
       this.isMultiple = !!poll.pFlags.multiple_choice;
 
       if(this.isClosed) {
-        desc = 'Final results';
+        descKey = 'Chat.Poll.Type.Closed';
         this.classList.add('is-closed');
+      } else if(this.isQuiz) {
+        descKey = this.isPublic ? 'Chat.Poll.Type.Quiz' : 'Chat.Poll.Type.AnonymousQuiz';
       } else {
-        let type = this.isQuiz ? 'Quiz' : 'Poll';
-        desc = (this.isPublic ? '' : 'Anonymous ') + type;
+        descKey = this.isPublic ? 'Chat.Poll.Type.Public' : 'Chat.Poll.Type.Anonymous';
       }
     }
 
@@ -240,19 +242,18 @@ export default class PollElement extends HTMLElement {
     this.innerHTML = `
       <div class="poll-title">${poll.rQuestion}</div>
       <div class="poll-desc">
-        <div class="poll-type">${desc}</div>
+        <div class="poll-type"></div>
         <div class="poll-avatars"></div>
       </div>
-      ${votes}
-      <div class="poll-footer">
-        <div class="poll-footer-button poll-view-results hide">View Results</div>
-        <div class="poll-votes-count"></div>
-      </div>
-    `;
+      ${votes}`;
 
     this.descDiv = this.firstElementChild.nextElementSibling as HTMLElement;
     this.typeDiv = this.descDiv.firstElementChild as HTMLElement;
     this.avatarsDiv = this.descDiv.lastElementChild as HTMLElement;
+
+    if(descKey) {
+      this.typeDiv.append(i18n(descKey));
+    }
 
     if(this.isQuiz) {
       this.classList.add('is-quiz');
@@ -332,9 +333,18 @@ export default class PollElement extends HTMLElement {
     this.svgLines = Array.from(this.querySelectorAll('.poll-line')) as SVGSVGElement[];
     this.numberDivs = Array.from(this.querySelectorAll('.poll-answer-percents')) as HTMLDivElement[];
 
-    const footerDiv = this.lastElementChild;
-    this.viewResults = footerDiv.firstElementChild as HTMLElement;
-    this.votersCountDiv = footerDiv.lastElementChild as HTMLDivElement;
+    const footerDiv = document.createElement('div');
+    footerDiv.classList.add('poll-footer');
+
+    this.viewResults = document.createElement('div');
+    this.viewResults.className = 'poll-footer-button poll-view-results hide';
+    this.viewResults.append(i18n('Chat.Poll.ViewResults'));
+
+    this.votersCountDiv = document.createElement('div');
+    this.votersCountDiv.className = 'poll-votes-count';
+
+    footerDiv.append(this.viewResults, this.votersCountDiv);
+    this.append(footerDiv);
 
     this.viewResults.addEventListener('click', (e) => {
       cancelEvent(e);
@@ -348,7 +358,7 @@ export default class PollElement extends HTMLElement {
     if(this.isMultiple) {
       this.sendVoteBtn = document.createElement('div');
       this.sendVoteBtn.classList.add('poll-footer-button', 'poll-send-vote');
-      this.sendVoteBtn.innerText = 'Vote';
+      this.sendVoteBtn.append(i18n('Chat.Poll.SubmitVote'));
       ripple(this.sendVoteBtn);
 
       if(!poll.chosenIndexes.length) {
@@ -495,7 +505,7 @@ export default class PollElement extends HTMLElement {
 
     if(this.isClosed) {
       this.classList.add('is-closed');
-      this.typeDiv.innerText = 'Final results';
+      replaceContent(this.typeDiv, i18n('Chat.Poll.Type.Closed'));
     }
 
     // set chosen
@@ -534,7 +544,7 @@ export default class PollElement extends HTMLElement {
        */
       results.recent_voters/* .slice().reverse() */.forEach((userId, idx) => {
         const style = idx === 0 ? '' : `style="transform: translateX(-${idx * 3}px);"`;
-        html += `<avatar-element class="avatar-18" dialog="0" peer="${userId}" ${style}></avatar-element>`;
+        html += `<avatar-element class="avatar-16" dialog="0" peer="${userId}" ${style}></avatar-element>`;
       });
       this.avatarsDiv.innerHTML = html;
     }
@@ -612,9 +622,16 @@ export default class PollElement extends HTMLElement {
 
   setVotersCount(results: PollResults) {
     const votersCount = results.total_voters || 0;
-    const votersOrAnswers = this.isQuiz ? (votersCount > 1 || !votersCount ? 'answers' : 'answer') : (votersCount > 1 || !votersCount ? 'votes' : 'vote');
-
-    this.votersCountDiv.innerText = `${results.total_voters ? results.total_voters + ' ' + votersOrAnswers : 'No ' + votersOrAnswers}`;
+    let key: LangPackKey, args = [votersCount];
+    if(this.isClosed) {
+      if(this.isQuiz) key = votersCount ? 'Chat.Quiz.TotalVotes' : 'Chat.Quiz.TotalVotesResultEmpty';
+      else key = votersCount ? 'Chat.Poll.TotalVotes1' : 'Chat.Poll.TotalVotesResultEmpty';
+    } else {
+      if(this.isQuiz) key = votersCount ? 'Chat.Quiz.TotalVotes' : 'Chat.Quiz.TotalVotesEmpty';
+      else key = votersCount ? 'Chat.Poll.TotalVotes1' : 'Chat.Poll.TotalVotesEmpty';
+    }
+    
+    replaceContent(this.votersCountDiv, i18n(key, args));
   }
 
   setLineProgress(index: number, percents: number) {

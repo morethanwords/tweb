@@ -11,7 +11,7 @@ import { FocusDirection } from "../helpers/fastSmoothScroll";
 import CheckboxField from "./checkboxField";
 import appProfileManager from "../lib/appManagers/appProfileManager";
 import { safeAssign } from "../helpers/object";
-import { LangPackKey, _i18n } from "../lib/langPack";
+import { i18n, LangPackKey, _i18n } from "../lib/langPack";
 
 type PeerType = 'contacts' | 'dialogs' | 'channelParticipants';
 
@@ -434,19 +434,16 @@ export default class AppSelectPeers {
         dom.containerEl.prepend(checkboxField.label);
       }
 
-      let subtitle = '';
+      let subtitleEl: HTMLElement;
       if(peerId < 0) {
-        subtitle = appChatsManager.getChatMembersString(-peerId);
+        subtitleEl = appChatsManager.getChatMembersString(-peerId);
       } else if(peerId === rootScope.myId) {
-        subtitle = 'chat with yourself';
+        subtitleEl = i18n('Presence.YourChat');
       } else {
-        subtitle = appUsersManager.getUserStatusString(peerId);
-        if(subtitle === 'online') {
-          subtitle = `<i>${subtitle}</i>`;
-        }
+        subtitleEl = appUsersManager.getUserStatusString(peerId);
       }
 
-      dom.lastMessageSpan.innerHTML = subtitle;
+      dom.lastMessageSpan.append(subtitleEl);
     });
   }
 

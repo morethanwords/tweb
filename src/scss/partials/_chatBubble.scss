@@ -2069,13 +2069,17 @@ poll-element {
       font-size: 14px;
       color: #707579;
       margin-top: 2px;
-      margin-bottom: 7px;
+      margin-bottom: 5px;
       display: flex;
       position: relative;
 
       // @include respond-to(handhelds) {
       //   max-width: 280px;
       // }
+    }
+
+    &-type {
+      margin-top: 2px;
     }
 
     &-hint {
@@ -2296,6 +2300,8 @@ poll-element {
   avatar-element {
     border: 1px solid #fff;
     cursor: pointer;
+    width: 18px;
+    height: 18px;
   }
 
   .circle-hover {

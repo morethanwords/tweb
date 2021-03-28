@@ -2,14 +2,14 @@ import appImManager from "../../../lib/appManagers/appImManager";
 import appMessagesManager from "../../../lib/appManagers/appMessagesManager";
 import appPeersManager from "../../../lib/appManagers/appPeersManager";
 import appProfileManager from "../../../lib/appManagers/appProfileManager";
-import appUsersManager from "../../../lib/appManagers/appUsersManager";
+import appUsersManager, { User } from "../../../lib/appManagers/appUsersManager";
 import { logger } from "../../../lib/logger";
 import { RichTextProcessor } from "../../../lib/richtextprocessor";
 import rootScope from "../../../lib/rootScope";
 import AppSearchSuper, { SearchSuperType } from "../../appSearchSuper.";
 import AvatarElement from "../../avatar";
 import Scrollable from "../../scrollable";
-import { SliderTab } from "../../slider";
+import SidebarSlider, { SliderSuperTab, SliderTab } from "../../slider";
 import CheckboxField from "../../checkboxField";
 import { attachClickEvent } from "../../../helpers/dom";
 import appSidebarRight from "..";
@@ -19,27 +19,25 @@ import AppEditGroupTab from "./editGroup";
 import PeerTitle from "../../peerTitle";
 import AppEditChannelTab from "./editChannel";
 import AppEditContactTab from "./editContact";
-import appChatsManager from "../../../lib/appManagers/appChatsManager";
+import appChatsManager, { Channel } from "../../../lib/appManagers/appChatsManager";
 import { Chat } from "../../../layer";
+import Button from "../../button";
+import ButtonIcon from "../../buttonIcon";
+import I18n, { i18n } from "../../../lib/langPack";
+import { SettingSection } from "../../sidebarLeft";
+import Row from "../../row";
+import { copyTextToClipboard } from "../../../helpers/clipboard";
+import { toast } from "../../toast";
 
-let setText = (text: string, el: HTMLDivElement) => {
+let setText = (text: string, row: Row) => {
   window.requestAnimationFrame(() => {
-    if(el.childElementCount > 1) {
-      el.firstElementChild.remove();
-    }
-    
-    let p = document.createElement('p');
-    p.innerHTML = text;
-    el.prepend(p);
-    
-    el.style.display = '';
+    row.title.innerHTML = text;
+    row.container.style.display = '';
   });
 };
 
 // TODO: отредактированное сообщение не изменится
-export default class AppSharedMediaTab implements SliderTab {
-  public container: HTMLElement;
-  public closeBtn: HTMLButtonElement;
+export default class AppSharedMediaTab extends SliderSuperTab {
   public editBtn: HTMLElement;
 
   private peerId = 0;
@@ -50,12 +48,10 @@ export default class AppSharedMediaTab implements SliderTab {
     avatar: AvatarElement,
     name: HTMLDivElement,
     subtitle: HTMLDivElement,
-    bio: HTMLDivElement,
-    username: HTMLDivElement,
-    phone: HTMLDivElement,
-    notificationsRow: HTMLDivElement,
-    notificationsCheckbox: HTMLInputElement,
-    notificationsStatus: HTMLParagraphElement
+    bio: Row,
+    username: Row,
+    phone: Row,
+    notifications: Row
   } = {} as any;
 
   public historiesStorage: {
@@ -64,8 +60,6 @@ export default class AppSharedMediaTab implements SliderTab {
     }>
   } = {};
 
-  public scroll: Scrollable = null;
-
   private log = logger('SM'/* , LogLevels.error */);
   setPeerStatusInterval: number;
   cleaned: boolean;
@@ -73,44 +67,118 @@ export default class AppSharedMediaTab implements SliderTab {
 
   private setBioTimeout: number;
 
-  public init() {
-    this.container = document.getElementById('shared-media-container');
-    this.closeBtn = this.container.querySelector('.sidebar-header .btn-icon');
-    this.closeBtn.classList.add('sidebar-close-button');
-    this.editBtn = this.container.querySelector('.sidebar-header .tgico-edit');
+  constructor(slider: SidebarSlider) {
+    super(slider, false);
+  }
 
-    this.profileContentEl = this.container.querySelector('.profile-content');
-    this.profileElements = {
-      avatar: this.profileContentEl.querySelector('.profile-avatar'),
-      name: this.profileContentEl.querySelector('.profile-name'),
-      subtitle: this.profileContentEl.querySelector('.profile-subtitle'),
-      bio: this.profileContentEl.querySelector('.profile-row-bio'),
-      username: this.profileContentEl.querySelector('.profile-row-username'),
-      phone: this.profileContentEl.querySelector('.profile-row-phone'),
-      notificationsRow: this.profileContentEl.querySelector('.profile-row-notifications'),
-      notificationsCheckbox: null,
-      notificationsStatus: this.profileContentEl.querySelector('.profile-row-notifications > p')
-    };
+  protected init() {
+    this.container.id = 'shared-media-container';
+    this.container.classList.add('profile-container');
 
-    const checkboxField = new CheckboxField({
-      text: 'Notifications', 
-      name: 'notifications'
+    // * header
+    const newCloseBtn = Button('btn-icon sidebar-close-button', {noRipple: true});
+    this.closeBtn.replaceWith(newCloseBtn);
+    this.closeBtn = newCloseBtn;
+
+    const animatedCloseIcon = document.createElement('div');
+    animatedCloseIcon.classList.add('animated-close-icon');
+    newCloseBtn.append(animatedCloseIcon);
+
+    const transitionContainer = document.createElement('div');
+    transitionContainer.className = 'transition slide-fade';
+    
+    const transitionFirstItem = document.createElement('div');
+    transitionFirstItem.classList.add('transition-item');
+
+    this.title.append(i18n('Telegram.PeerInfoController'));
+    this.editBtn = ButtonIcon('edit');
+    const moreBtn = ButtonIcon('more');
+
+    transitionFirstItem.append(this.title, this.editBtn, moreBtn);
+
+    const transitionLastItem = document.createElement('div');
+    transitionLastItem.classList.add('transition-item');
+
+    const secondTitle: HTMLElement = this.title.cloneNode() as any;
+    secondTitle.append(i18n('PeerInfo.SharedMedia'));
+
+    transitionLastItem.append(secondTitle);
+
+    transitionContainer.append(transitionFirstItem, transitionLastItem);
+
+    this.header.append(transitionContainer);
+
+    // * body
+    
+    this.profileContentEl = document.createElement('div');
+    this.profileContentEl.classList.add('profile-content');
+
+    const section = new SettingSection({
+      noDelimiter: true
     });
-    this.profileElements.notificationsCheckbox = checkboxField.input;
-    this.profileElements.notificationsCheckbox.checked = true;
-    this.profileElements.notificationsRow.prepend(checkboxField.label);
 
-    this.scroll = new Scrollable(this.container, 'SR', 400);
+    this.profileElements.avatar = new AvatarElement();
+    this.profileElements.avatar.classList.add('profile-avatar', 'avatar-120');
+    this.profileElements.avatar.setAttribute('dialog', '1');
+    this.profileElements.avatar.setAttribute('clickable', '');
+
+    this.profileElements.name = document.createElement('div');
+    this.profileElements.name.classList.add('profile-name');
+
+    this.profileElements.subtitle = document.createElement('div');
+    this.profileElements.subtitle.classList.add('profile-subtitle');
+
+    this.profileElements.bio = new Row({
+      title: ' ',
+      subtitleLangKey: 'UserBio',
+      icon: 'info',
+      clickable: () => {
+        appProfileManager.getProfileByPeerId(this.peerId).then(full => {
+          copyTextToClipboard(full.about);
+          toast(I18n.format('BioCopied', true));
+        });
+      }
+    });
+
+    this.profileElements.username = new Row({
+      title: ' ',
+      subtitleLangKey: 'Username',
+      icon: 'username',
+      clickable: () => {
+        const peer: Channel | User = appPeersManager.getPeer(this.peerId);
+        copyTextToClipboard('@' + peer.username);
+        toast(I18n.format('UsernameCopied', true));
+      }
+    });
+
+    this.profileElements.phone = new Row({
+      title: ' ',
+      subtitleLangKey: 'Phone',
+      icon: 'phone',
+      clickable: () => {
+        const peer: User = appUsersManager.getUser(this.peerId);
+        copyTextToClipboard('+' + peer.phone);
+        toast(I18n.format('PhoneCopied', true));
+      }
+    });
+
+    this.profileElements.notifications = new Row({
+      checkboxField: new CheckboxField({text: 'Notifications'})
+    });
+    
+    section.content.append(this.profileElements.avatar, this.profileElements.name, this.profileElements.subtitle, 
+      this.profileElements.bio.container, this.profileElements.username.container, this.profileElements.phone.container, this.profileElements.notifications.container);
+    this.profileContentEl.append(section.container);
+    this.scrollable.append(this.profileContentEl);
 
     const HEADER_HEIGHT = 56;
-    const closeIcon = this.closeBtn.firstElementChild as HTMLElement;
-    this.scroll.onAdditionalScroll = () => {
+    this.scrollable.onAdditionalScroll = () => {
       const rect = this.searchSuper.nav.getBoundingClientRect(); 
       if(!rect.width) return;
 
       const top = rect.top;
       const isSharedMedia = top <= HEADER_HEIGHT;
-      closeIcon.classList.toggle('state-back', isSharedMedia);
+      animatedCloseIcon.classList.toggle('state-back', isSharedMedia);
       transition(+isSharedMedia);
 
       if(!isSharedMedia) {
@@ -118,16 +186,16 @@ export default class AppSharedMediaTab implements SliderTab {
       }
     };
 
-    const transition = TransitionSlider(this.closeBtn.nextElementSibling as HTMLElement, 'slide-fade', 400, null, false);
+    const transition = TransitionSlider(transitionContainer, 'slide-fade', 400, null, false);
 
     transition(0);
 
     attachClickEvent(this.closeBtn, (e) => {
       if(this.closeBtn.firstElementChild.classList.contains('state-back')) {
-        this.scroll.scrollIntoViewNew(this.scroll.container.firstElementChild as HTMLElement, 'start');
+        this.scrollable.scrollIntoViewNew(this.scrollable.container.firstElementChild as HTMLElement, 'start');
         transition(0);
-        closeIcon.classList.remove('state-back');
-      } else if(!this.scroll.isHeavyAnimationInProgress) {
+        animatedCloseIcon.classList.remove('state-back');
+      } else if(!this.scrollable.isHeavyAnimationInProgress) {
         appSidebarRight.onCloseBtnClick();
       }
     });
@@ -153,9 +221,13 @@ export default class AppSharedMediaTab implements SliderTab {
       }
     });
 
-    this.container.prepend(this.closeBtn.parentElement);
+    //this.container.prepend(this.closeBtn.parentElement);
 
-    this.profileElements.notificationsCheckbox.addEventListener('change', () => {
+    this.profileElements.notifications.checkboxField.input.addEventListener('change', (e) => {
+      if(!e.isTrusted) {
+        return;
+      }
+
       //let checked = this.profileElements.notificationsCheckbox.checked;
       appMessagesManager.mutePeer(this.peerId);
     });
@@ -163,8 +235,7 @@ export default class AppSharedMediaTab implements SliderTab {
     rootScope.on('dialog_notify_settings', (dialog) => {
       if(this.peerId === dialog.peerId) {
         const muted = appNotificationsManager.isPeerLocalMuted(this.peerId, false);
-        this.profileElements.notificationsCheckbox.checked = !muted;
-        this.profileElements.notificationsStatus.innerText = muted ? 'Disabled' : 'Enabled';
+        this.profileElements.notifications.checkboxField.checked = !muted;
       }
     });
 
@@ -208,7 +279,7 @@ export default class AppSharedMediaTab implements SliderTab {
       inputFilter: 'inputMessagesFilterMusic',
       name: 'SharedMusicTab2',
       type: 'music'
-    }], this.scroll/* , undefined, undefined, false */);
+    }], this.scrollable/* , undefined, undefined, false */);
 
     this.profileContentEl.append(this.searchSuper.container);
   }
@@ -226,7 +297,8 @@ export default class AppSharedMediaTab implements SliderTab {
         return;
       }
 
-      this.profileElements.subtitle.innerHTML = subtitle || '';
+      this.profileElements.subtitle.textContent = '';
+      this.profileElements.subtitle.append(subtitle || '');
     });
   };
 
@@ -287,16 +359,15 @@ export default class AppSharedMediaTab implements SliderTab {
       }
     }
 
-    this.scroll.onScroll();
+    this.scrollable.onScroll();
   }
 
   public cleanupHTML() {
-    this.profileElements.bio.style.display = 'none';
-    this.profileElements.phone.style.display = 'none';
-    this.profileElements.username.style.display = 'none';
-    this.profileElements.notificationsRow.style.display = '';
-    this.profileElements.notificationsCheckbox.checked = true;
-    this.profileElements.notificationsStatus.innerText = 'Enabled';
+    this.profileElements.bio.container.style.display = 'none';
+    this.profileElements.phone.container.style.display = 'none';
+    this.profileElements.username.container.style.display = 'none';
+    this.profileElements.notifications.container.style.display = '';
+    this.profileElements.notifications.checkboxField.checked = true;
     this.editBtn.style.display = 'none';
     if(this.setBioTimeout) {
       window.clearTimeout(this.setBioTimeout);
@@ -351,11 +422,10 @@ export default class AppSharedMediaTab implements SliderTab {
       }
       
       const muted = appNotificationsManager.isPeerLocalMuted(peerId, false);
-      this.profileElements.notificationsCheckbox.checked = !muted;
-      this.profileElements.notificationsStatus.innerText = muted ? 'Disabled' : 'Enabled';
+      this.profileElements.notifications.checkboxField.checked = !muted;
     } else {
       window.requestAnimationFrame(() => {
-        this.profileElements.notificationsRow.style.display = 'none';
+        this.profileElements.notifications.container.style.display = 'none';
       });
     }
     
@@ -446,6 +516,6 @@ export default class AppSharedMediaTab implements SliderTab {
   }
 
   onOpenAfterTimeout() {
-    this.scroll.onScroll();
+    this.scrollable.onScroll();
   }
 }

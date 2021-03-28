@@ -2,6 +2,7 @@ import { MOUNT_CLASS_TO } from "../../config/debug";
 import { numberThousandSplitter } from "../../helpers/number";
 import { isObject, safeReplaceObject, copy, deepEqual } from "../../helpers/object";
 import { ChannelParticipant, Chat, ChatAdminRights, ChatBannedRights, ChatFull, ChatParticipant, ChatParticipants, InputChannel, InputChatPhoto, InputFile, InputPeer, SendMessageAction, Update, Updates } from "../../layer";
+import { i18n, LangPackKey } from "../langPack";
 import apiManagerProxy from "../mtproto/mtprotoworker";
 import apiManager from '../mtproto/mtprotoworker';
 import { RichTextProcessor } from "../richtextprocessor";
@@ -402,7 +403,9 @@ export class AppChatsManager {
 
     const isChannel = this.isBroadcast(id);
     count = count || 1;
-    return numberThousandSplitter(count, ' ') + ' ' + (isChannel ? (count > 1 ? 'subscribers' : 'subscriber') : (count > 1 ? 'members' : 'member'));
+
+    let key: LangPackKey = isChannel ? 'Peer.Status.Subscribers' : 'Peer.Status.Member';
+    return i18n(key, [numberThousandSplitter(count)]);
   }
 
   public wrapForFull(id: number, fullChat: any) {

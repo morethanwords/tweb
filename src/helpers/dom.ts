@@ -811,3 +811,13 @@ export function htmlToSpan(html: string) {
   span.innerHTML = html;
   return span;
 }
+
+export function replaceContent(elem: HTMLElement, node: string | Node) {
+  if(elem.children.length === 1) {
+    elem.firstChild.remove();
+  } else {
+    elem.textContent = '';
+  }
+
+  elem.append(node);
+}

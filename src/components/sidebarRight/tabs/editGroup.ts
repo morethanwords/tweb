@@ -14,6 +14,7 @@ import { addCancelButton } from "../../popups";
 import AppGroupTypeTab from "./groupType";
 import rootScope from "../../../lib/rootScope";
 import AppGroupPermissionsTab from "./groupPermissions";
+import { i18n } from "../../../lib/langPack";
 
 export default class AppEditGroupTab extends SliderSuperTab {
   private groupNameInputField: InputField;
@@ -27,7 +28,7 @@ export default class AppEditGroupTab extends SliderSuperTab {
     this.scrollable.container.innerHTML = '';
 
     this.container.classList.add('edit-peer-container', 'edit-group-container');
-    this.title.innerHTML = 'Edit';
+    this.setTitle('Edit');
 
     const chatFull = await appProfileManager.getChatFull(this.chatId, true);
 
@@ -39,12 +40,12 @@ export default class AppEditGroupTab extends SliderSuperTab {
       inputWrapper.classList.add('input-wrapper');
   
       this.groupNameInputField = new InputField({
-        label: 'Group Name',
+        label: 'CreateGroup.NameHolder',
         name: 'group-name',
         maxLength: 255
       });
       this.descriptionInputField = new InputField({
-        label: 'Description',
+        label: 'DescriptionPlaceholder',
         name: 'group-description',
         maxLength: 255
       });
@@ -70,7 +71,7 @@ export default class AppEditGroupTab extends SliderSuperTab {
 
       if(appChatsManager.hasRights(this.chatId, 'change_type')) {
         const groupTypeRow = new Row({
-          title: 'Group Type',
+          titleLangKey: 'GroupType',
           clickable: () => {
             const tab = new AppGroupTypeTab(this.slider);
             tab.peerId = -this.chatId;
@@ -83,7 +84,8 @@ export default class AppEditGroupTab extends SliderSuperTab {
         });
 
         const setGroupTypeSubtitle = () => {
-          groupTypeRow.subtitle.innerHTML = chat.username ? 'Public' : 'Private';
+          groupTypeRow.subtitle.textContent = '';
+          groupTypeRow.subtitle.append(i18n(chat.username ? 'TypePublicGroup' : 'TypePrivateGroup'));
         };
 
         setGroupTypeSubtitle();
@@ -103,7 +105,7 @@ export default class AppEditGroupTab extends SliderSuperTab {
         ] as ChatRights[];
 
         const permissionsRow = new Row({
-          title: 'Permissions',
+          titleLangKey: 'ChannelPermissions',
           clickable: () => {
             const tab = new AppGroupPermissionsTab(this.slider);
             tab.chatId = this.chatId;
@@ -127,7 +129,7 @@ export default class AppEditGroupTab extends SliderSuperTab {
       }
 
       const administratorsRow = new Row({
-        title: 'Administrators',
+        titleLangKey: 'PeerInfo.Administrators',
         subtitle: '' + ((chatFull as ChatFull.channelFull).admins_count || 1),
         icon: 'admin',
         clickable: true
@@ -170,7 +172,7 @@ export default class AppEditGroupTab extends SliderSuperTab {
       });
 
       const membersRow = new Row({
-        title: 'Members',
+        titleLangKey: 'GroupMembers',
         subtitle: '2 500',
         icon: 'newgroup',
         clickable: true
@@ -197,15 +199,21 @@ export default class AppEditGroupTab extends SliderSuperTab {
     if(appChatsManager.isChannel(this.chatId) && appChatsManager.hasRights(this.chatId, 'delete_chat')) {
       const section = new SettingSection({});
 
-      const btnDelete = Button('btn-primary btn-transparent danger', {icon: 'delete', text: 'Delete Group'});
+      const btnDelete = Button('btn-primary btn-transparent danger', {icon: 'delete', text: 'DeleteMega'});
 
       attachClickEvent(btnDelete, () => {
         new PopupPeer('popup-delete-group', {
           peerId: -this.chatId,
-          title: 'Delete Group?',
-          description: `Are you sure you want to delete this group? All members will be removed, and all messages will be lost.`,
+          titleLangKey: 'DeleteMegaMenu',
+          descriptionLangKey: 'AreYouSureDeleteAndExit',
           buttons: addCancelButton([{
-            text: 'DELETE',
+            langKey: 'DeleteMegaMenu',
+            callback: () => {
+              const toggle = toggleDisability([btnDelete], true);
+            },
+            isDanger: true
+          }, {
+            langKey: 'DeleteChat.DeleteGroupForAll',
             callback: () => {
               const toggle = toggleDisability([btnDelete], true);
 
@@ -214,6 +222,12 @@ export default class AppEditGroupTab extends SliderSuperTab {
               }, () => {
                 toggle();
               });
+
+              /* appChatsManager.deleteChannel(this.chatId).then(() => {
+                this.close();
+              }, () => {
+                toggle();
+              }); */
             },
             isDanger: true
           }])

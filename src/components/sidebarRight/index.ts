@@ -6,32 +6,23 @@ import { MOUNT_CLASS_TO } from "../../config/debug";
 
 export const RIGHT_COLUMN_ACTIVE_CLASSNAME = 'is-right-column-shown';
 
-const sharedMediaTab = new AppSharedMediaTab();
-
 export class AppSidebarRight extends SidebarSlider {
-  public static SLIDERITEMSIDS = {
-    sharedMedia: 0,
-  };
-
   public sharedMediaTab: AppSharedMediaTab;
 
   constructor() {
     super({
       sidebarEl: document.getElementById('column-right') as HTMLElement,
-      tabs: new Map([
-        [AppSidebarRight.SLIDERITEMSIDS.sharedMedia, sharedMediaTab],
-      ] as any[]), 
       canHideFirst: true,
       navigationType: 'right'
     });
-
-    this.sharedMediaTab = sharedMediaTab;
 
     mediaSizes.addEventListener('changeScreen', (from, to) => {
       if(to === ScreenSize.medium && from !== ScreenSize.mobile) {
         this.toggleSidebar(false);
       }
     });
+
+    this.sharedMediaTab = new AppSharedMediaTab(this);
   }
 
   public onCloseTab(id: number, animate: boolean, isNavigation?: boolean) {
@@ -72,7 +63,8 @@ export class AppSidebarRight extends SidebarSlider {
     if(!willChange) return Promise.resolve();
 
     if(!active && !this.historyTabIds.length) {
-      this.selectTab(AppSidebarRight.SLIDERITEMSIDS.sharedMedia);
+      this.sharedMediaTab.open();
+      //this.selectTab(this.sharedMediaTab);
     }
 
     const animationPromise = appImManager.selectTab(active ? 1 : 2, animate);
