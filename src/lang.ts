@@ -71,7 +71,7 @@ const lang = {
   "Permissions.NoExceptions": "No exceptions",
   "Permissions.ExceptionsCount": {
     "one_value": "%d exception",
-    "other_value": "%d exceptions",
+    "other_value": "%d exceptions"
   },
   "Link.Available": "Link is available",
   "Link.Taken": "Link is already taken",
@@ -512,7 +512,7 @@ const lang = {
   "NewPoll.OptionsAddOption": "Add an Option",
   "NewPoll.MultipleChoice": "Multiple Answers",
   "NewPoll.Quiz": "Quiz Mode",
-  "GroupPermission.Delete": "Delete Exception",
+  "GroupPermission.Delete": "Delete Exception"
 };
 
 export default lang;
