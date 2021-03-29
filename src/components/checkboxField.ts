@@ -3,21 +3,23 @@ import { getDeepProperty } from "../helpers/object";
 import { ripple } from "./ripple";
 import { LangPackKey, _i18n } from "../lib/langPack";
 
+export type CheckboxFieldOptions = {
+  text?: LangPackKey,
+  textArgs?: any[],
+  name?: string, 
+  round?: boolean, 
+  stateKey?: string,
+  disabled?: boolean,
+  checked?: boolean,
+  restriction?: boolean,
+  withRipple?: boolean
+};
 export default class CheckboxField {
   public input: HTMLInputElement;
   public label: HTMLLabelElement;
   public span: HTMLSpanElement;
 
-  constructor(options: {
-    text?: LangPackKey, 
-    name?: string, 
-    round?: boolean, 
-    stateKey?: string,
-    disabled?: boolean,
-    checked?: boolean,
-    restriction?: boolean,
-    withRipple?: boolean
-  } = {}) {
+  constructor(options: CheckboxFieldOptions = {}) {
     const label = this.label = document.createElement('label');
     label.classList.add('checkbox-field');
 
@@ -57,7 +59,7 @@ export default class CheckboxField {
     if(options.text) {
       span = this.span = document.createElement('span');
       span.classList.add('checkbox-caption');
-      _i18n(span, options.text);
+      _i18n(span, options.text, options.textArgs);
     } else {
       label.classList.add('checkbox-without-caption');
     }

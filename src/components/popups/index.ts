@@ -93,13 +93,13 @@ export default class PopupElement {
         const button = document.createElement('button');
         button.className = 'btn' + (b.isDanger ? ' danger' : ' primary');
 
+        ripple(button);
+        
         if(b.text) {
           button.innerHTML =  b.text;
         } else {
           button.append(i18n(b.langKey, b.langArgs));
         }
-
-        ripple(button);
   
         if(b.callback) {
           button.addEventListener('click', () => {

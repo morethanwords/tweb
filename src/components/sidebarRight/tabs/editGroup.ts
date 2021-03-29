@@ -15,6 +15,7 @@ import AppGroupTypeTab from "./groupType";
 import rootScope from "../../../lib/rootScope";
 import AppGroupPermissionsTab from "./groupPermissions";
 import { i18n } from "../../../lib/langPack";
+import PopupDeleteDialog from "../../popups/deleteDialog";
 
 export default class AppEditGroupTab extends SliderSuperTab {
   private groupNameInputField: InputField;
@@ -196,42 +197,20 @@ export default class AppEditGroupTab extends SliderSuperTab {
       this.scrollable.append(section.container);
     }
 
-    if(appChatsManager.isChannel(this.chatId) && appChatsManager.hasRights(this.chatId, 'delete_chat')) {
+    if(appChatsManager.hasRights(this.chatId, 'delete_chat')) {
       const section = new SettingSection({});
 
       const btnDelete = Button('btn-primary btn-transparent danger', {icon: 'delete', text: 'DeleteMega'});
 
       attachClickEvent(btnDelete, () => {
-        new PopupPeer('popup-delete-group', {
-          peerId: -this.chatId,
-          titleLangKey: 'DeleteMegaMenu',
-          descriptionLangKey: 'AreYouSureDeleteAndExit',
-          buttons: addCancelButton([{
-            langKey: 'DeleteMegaMenu',
-            callback: () => {
-              const toggle = toggleDisability([btnDelete], true);
-            },
-            isDanger: true
-          }, {
-            langKey: 'DeleteChat.DeleteGroupForAll',
-            callback: () => {
-              const toggle = toggleDisability([btnDelete], true);
-
-              appChatsManager.deleteChannel(this.chatId).then(() => {
-                this.close();
-              }, () => {
-                toggle();
-              });
-
-              /* appChatsManager.deleteChannel(this.chatId).then(() => {
-                this.close();
-              }, () => {
-                toggle();
-              }); */
-            },
-            isDanger: true
-          }])
-        }).show();
+        new PopupDeleteDialog(-this.chatId, undefined, (promise) => {
+          const toggle = toggleDisability([btnDelete], true);
+          promise.then(() => {
+            this.close();
+          }, () => {
+            toggle();
+          });
+        });
       }, {listenerSetter: this.listenerSetter});
 
       section.content.append(btnDelete);

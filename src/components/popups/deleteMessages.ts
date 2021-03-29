@@ -1,14 +1,18 @@
 import appChatsManager from "../../lib/appManagers/appChatsManager";
 import appMessagesManager from "../../lib/appManagers/appMessagesManager";
-import appPeersManager from "../../lib/appManagers/appPeersManager";
 import rootScope from "../../lib/rootScope";
-import { PopupButton } from ".";
+import { addCancelButton, PopupButton } from ".";
 import PopupPeer from "./peer";
 import { ChatType } from "../chat/chat";
+import { i18n, LangPackKey } from "../../lib/langPack";
+import PeerTitle from "../peerTitle";
 
 export default class PopupDeleteMessages {
   constructor(peerId: number, mids: number[], type: ChatType, onConfirm?: () => void) {
-    const firstName = appPeersManager.getPeerTitle(peerId, false, true);
+    const peerTitleElement = new PeerTitle({
+      peerId,
+      onlyFirstName: true
+    }).element;
 
     mids = mids.slice();
     const callback = (revoke?: true) => {
@@ -20,26 +24,29 @@ export default class PopupDeleteMessages {
       }
     };
 
-    let title: string, description: string, buttons: PopupButton[];
-    title = `Delete ${mids.length === 1 ? '' : mids.length + ' '}Message${mids.length === 1 ? '' : 's'}?`;
-    description = `Are you sure you want to delete ${mids.length === 1 ? 'this message' : 'these messages'}?`;
+    let title: LangPackKey, titleArgs: any[], description: LangPackKey, descriptionArgs: any[], buttons: PopupButton[];
+    if(mids.length === 1) {
+      title = 'DeleteSingleMessagesTitle';
+    } else {
+      title = 'DeleteMessagesTitle';
+      titleArgs = [i18n('messages', [mids.length])];
+    }
+    
+    description = mids.length === 1 ? 'AreYouSureDeleteSingleMessage' : 'AreYouSureDeleteFewMessages';
+
+    buttons = [{
+      langKey: 'Delete',
+      isDanger: true,
+      callback: () => callback()
+    }];
 
     if(peerId === rootScope.myId || type === 'scheduled') {
-      buttons = [{
-        text: 'DELETE',
-        isDanger: true,
-        callback: () => callback()
-      }];
+      
     } else {
-      buttons = [{
-        text: 'DELETE JUST FOR ME',
-        isDanger: true,
-        callback: () => callback()
-      }];
-
       if(peerId > 0) {
         buttons.push({
-          text: 'DELETE FOR ME AND ' + firstName,
+          langKey: 'DeleteMessagesOptionAlso',
+          langArgs: [peerTitleElement],
           isDanger: true,
           callback: () => callback(true)
         });
@@ -56,44 +63,36 @@ export default class PopupDeleteMessages {
           if(canRevoke.length) {
             if(canRevoke.length === mids.length) {
               buttons.push({
-                text: 'DELETE FOR ALL',
+                langKey: 'DeleteForAll',
                 isDanger: true,
                 callback: () => callback(true)
               });
             } else {
-              const buttonText = 'Unsend my and delete';
               buttons.push({
-                text: buttonText,
+                langKey: 'DeleteMessagesOption',
                 isDanger: true,
                 callback: () => callback(true)
               });
-  
-              description = `You can also delete the ${canRevoke.length} message${canRevoke.length > 1 ? 's' : ''} you sent from the inboxes of other group members by pressing "${buttonText}".`;
+
+              description = 'DeleteMessagesTextGroup';
+              descriptionArgs = [i18n('messages', [canRevoke.length])];
+              //description = `You can also delete the ${canRevoke.length} message${canRevoke.length > 1 ? 's' : ''} you sent from the inboxes of other group members by pressing "${buttonText}".`;
             }
           }
         } else {
-          //if(!hasRights || appChatsManager.isBroadcast(-peerId) || appChatsManager.isMegagroup(-peerId)) {
-            buttons.shift();
-          //}
-
-          buttons.push({
-            text: 'DELETE FOR ALL',
-            isDanger: true,
-            callback: () => callback(true)
-          });
+          buttons[0].callback = () => callback(true);
         }
       }
     }
 
-    buttons.push({
-      text: 'CANCEL',
-      isCancel: true
-    });
+    addCancelButton(buttons);
 
     const popup = new PopupPeer('popup-delete-chat', {
       peerId,
-      title,
-      description,
+      titleLangKey: title,
+      titleLangArgs: titleArgs,
+      descriptionLangKey: description,
+      descriptionLangArgs: descriptionArgs,
       buttons
     });
 

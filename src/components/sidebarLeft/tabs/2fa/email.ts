@@ -6,12 +6,12 @@ import { SliderSuperTab } from "../../../slider";
 import { wrapSticker } from "../../../wrappers";
 import InputField from "../../../inputField";
 import { attachClickEvent, cancelEvent, canFocus } from "../../../../helpers/dom";
-import PopupConfirmAction from "../../../popups/confirmAction";
 import { putPreloader } from "../../../misc";
 import passwordManager from "../../../../lib/mtproto/passwordManager";
 import AppTwoStepVerificationSetTab from "./passwordSet";
 import AppTwoStepVerificationEmailConfirmationTab from "./emailConfirmation";
 import RichTextProcessor from "../../../../lib/richtextprocessor";
+import PopupPeer from "../../../popups/peer";
 
 export default class AppTwoStepVerificationEmailTab extends SliderSuperTab {
   public inputField: InputField;
@@ -129,30 +129,31 @@ export default class AppTwoStepVerificationEmailTab extends SliderSuperTab {
     };
 
     attachClickEvent(btnSkip, (e) => {
-      const popup = new PopupConfirmAction('popup-skip-email', [{
-        text: 'CANCEL',
-        isCancel: true
-      }, {
-        text: 'SKIP',
-        callback: () => {
-          //inputContent.classList.add('sidebar-left-section-disabled');
-          toggleButtons(true);
-          putPreloader(btnSkip);
-          passwordManager.updateSettings({
-            hint: this.hint, 
-            currentPassword: this.plainPassword,
-            newPassword: this.newPassword,
-            email: ''
-          }).then(() => {
-            goNext();
-          }, (err) => {
-            toggleButtons(false);
-          });
-        },
-        isDanger: true,
-      }], {
-        title: 'Warning',
-        text: 'No, seriously.<br/><br/>If you forget your password, you will lose access to your Telegram account. There will be no way to restore it.'
+      const popup = new PopupPeer('popup-skip-email', {
+        buttons: [{
+          text: 'CANCEL',
+          isCancel: true
+        }, {
+          text: 'SKIP',
+          callback: () => {
+            //inputContent.classList.add('sidebar-left-section-disabled');
+            toggleButtons(true);
+            putPreloader(btnSkip);
+            passwordManager.updateSettings({
+              hint: this.hint, 
+              currentPassword: this.plainPassword,
+              newPassword: this.newPassword,
+              email: ''
+            }).then(() => {
+              goNext();
+            }, (err) => {
+              toggleButtons(false);
+            });
+          },
+          isDanger: true,
+        }], 
+        titleLangKey: 'Warning',
+        descriptionLangKey: 'No, seriously.<br/><br/>If you forget your password, you will lose access to your Telegram account. There will be no way to restore it.'
       });
 
       popup.show();

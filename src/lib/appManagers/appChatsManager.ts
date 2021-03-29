@@ -62,16 +62,17 @@ export class AppChatsManager {
 
         case 'updateUserTyping':
         case 'updateChatUserTyping': {
-          if(rootScope.myId === update.user_id) {
+          const fromId = (update as Update.updateUserTyping).user_id || appPeersManager.getPeerId((update as Update.updateChatUserTyping).from_id);
+          if(rootScope.myId === fromId) {
             return;
           }
           
-          const peerId = update._ === 'updateUserTyping' ? update.user_id : -update.chat_id;
+          const peerId = update._ === 'updateUserTyping' ? fromId : -update.chat_id;
           const typings = this.typingsInPeer[peerId] ?? (this.typingsInPeer[peerId] = []);
-          let typing = typings.find(t => t.userId === update.user_id);
+          let typing = typings.find(t => t.userId === fromId);
           if(!typing) {
             typing = {
-              userId: update.user_id
+              userId: fromId
             };
 
             typings.push(typing);
@@ -81,7 +82,7 @@ export class AppChatsManager {
           
           typing.action = update.action;
           
-          if(!appUsersManager.hasUser(update.user_id)) {
+          if(!appUsersManager.hasUser(fromId)) {
             if(update._ === 'updateChatUserTyping') {
               if(update.chat_id && appChatsManager.hasChat(update.chat_id) && !appChatsManager.isChannel(update.chat_id)) {
                 appProfileManager.getChatFull(update.chat_id);
@@ -91,13 +92,13 @@ export class AppChatsManager {
             //return;
           }
           
-          appUsersManager.forceUserOnline(update.user_id);
+          appUsersManager.forceUserOnline(fromId);
 
           if(typing.timeout !== undefined) clearTimeout(typing.timeout);
 
           typing.timeout = window.setTimeout(() => {
             delete typing.timeout;
-            typings.findAndSplice(t => t.userId === update.user_id);
+            typings.findAndSplice(t => t.userId === fromId);
  
             rootScope.broadcast('peer_typings', {peerId, typings});
 
@@ -571,20 +572,34 @@ export class AppChatsManager {
     }).then(this.onChatUpdated.bind(this, id));
   }
 
-  public leaveChat(id: number) {
-    return this.deleteChatUser(id, appUsersManager.getSelf().id).then(() => {
+  public leaveChat(id: number, flushHistory = true) {
+    let promise: Promise<any> = this.deleteChatUser(id, appUsersManager.getSelf().id)
+    if(flushHistory) promise = promise.then(() => {
       return appMessagesManager.flushHistory(-id);
     });
+    return promise;;
   }
 
   public leave(id: number) {
     return this.isChannel(id) ? this.leaveChannel(id) : this.leaveChat(id);
   }
 
+  public delete(id: number) {
+    return this.isChannel(id) ? this.deleteChannel(id) : this.deleteChat(id);
+  }
+
   public deleteChannel(id: number) {
     return apiManager.invokeApi('channels.deleteChannel', {
       channel: this.getChannelInput(id)
     }).then(this.onChatUpdated.bind(this, id));
+  }
+
+  public deleteChat(id: number) {
+    //return this.leaveChat(id).then(() => {
+      return apiManager.invokeApi('messages.deleteChat', {
+        chat_id: id
+      });
+    //});
   }
 
   public migrateChat(id: number): Promise<number> {

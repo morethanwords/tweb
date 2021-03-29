@@ -39,6 +39,7 @@ import appNavigationController from '../../components/appNavigationController';
 import appNotificationsManager from './appNotificationsManager';
 import AppPrivateSearchTab from '../../components/sidebarRight/tabs/search';
 import { i18n } from '../langPack';
+import { SendMessageAction } from '../../layer';
 
 //console.log('appImManager included33!');
 
@@ -742,6 +743,26 @@ export class AppImManager {
     this.setInnerPeer(peerId, undefined, 'scheduled');
   }
 
+  private getTypingElement(action: SendMessageAction) {
+    const el = document.createElement('span');
+    el.classList.add('peer-typing');
+    switch(action._) {
+      //case 'sendMessageTypingAction': {
+      default: {
+        const c = 'peer-typing-text';
+        el.classList.add(c);
+        for(let i = 0; i < 3; ++i) {
+          const dot = document.createElement('span');
+          dot.className = c + '-dot';
+          el.append(dot);
+        }
+        break;
+      }
+    }
+
+    return el;
+  }
+
   public async getPeerStatus(peerId: number) {
     let subtitle: HTMLElement;
     if(!peerId) return '';
@@ -777,7 +798,7 @@ export class AppImManager {
           if(typings && typings.length) {
             const span = document.createElement('span');
             span.classList.add('online');
-            span.append(i18n('Peer.Activity.User.TypingText'));
+            span.append(this.getTypingElement(typings[0].action), i18n('Peer.Activity.User.TypingText'));
             return span;
           } else if(user.status?._ === 'userStatusOnline') {
             const span = document.createElement('span');

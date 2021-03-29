@@ -2,6 +2,7 @@ import appDownloadManager from "../../lib/appManagers/appDownloadManager";
 import resizeableImage from "../../lib/cropper";
 import PopupElement from ".";
 import { ripple } from "../ripple";
+import { _i18n } from "../../lib/langPack";
 
 export default class PopupAvatar extends PopupElement {
   private cropContainer: HTMLElement;
@@ -24,7 +25,7 @@ export default class PopupAvatar extends PopupElement {
     super('popup-avatar', null, {closable: true});
 
     this.h6 = document.createElement('h6');
-    this.h6.innerText = 'Drag to Reposition';
+    _i18n(this.h6, 'Popup.Avatar.Title');
 
     this.btnClose.classList.remove('btn-icon');
 

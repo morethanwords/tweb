@@ -6,7 +6,6 @@ import appChatsManager from "../../../lib/appManagers/appChatsManager";
 import appProfileManager from "../../../lib/appManagers/appProfileManager";
 import Button from "../../button";
 import { setButtonLoader } from "../../misc";
-import PopupConfirmAction from "../../popups/confirmAction";
 import RadioField from "../../radioField";
 import Row, { RadioFormFromRows } from "../../row";
 import { SettingSection } from "../../sidebarLeft";
@@ -14,6 +13,7 @@ import { toast } from "../../toast";
 import { UsernameInputField } from "../../usernameInputField";
 import { SliderSuperTabEventable } from "../../sliderTab";
 import I18n from "../../../lib/langPack";
+import PopupPeer from "../../popups/peer";
 
 export default class AppGroupTypeTab extends SliderSuperTabEventable {
   public peerId: number;
@@ -73,21 +73,22 @@ export default class AppGroupTypeTab extends SliderSuperTabEventable {
     const btnRevoke = Button('btn-primary btn-transparent danger', {icon: 'delete', text: 'RevokeLink'});
 
     attachClickEvent(btnRevoke, () => {
-      new PopupConfirmAction('revoke-link', [{
-        langKey: 'RevokeButton',
-        callback: () => {
-          const toggle = toggleDisability([btnRevoke], true);
-          
-          appProfileManager.getChatInviteLink(-this.peerId, true).then(link => {
-            toggle();
-            linkRow.title.innerHTML = link;
-            //revoked = true;
-            //onChange();
-          });
-        }
-      }], {
-        title: 'RevokeLink',
-        text: 'RevokeAlert'
+      new PopupPeer('revoke-link', {
+        buttons: [{
+          langKey: 'RevokeButton',
+          callback: () => {
+            const toggle = toggleDisability([btnRevoke], true);
+            
+            appProfileManager.getChatInviteLink(-this.peerId, true).then(link => {
+              toggle();
+              linkRow.title.innerHTML = link;
+              //revoked = true;
+              //onChange();
+            });
+          }
+        }],
+        titleLangKey: 'RevokeLink',
+        descriptionLangKey: 'RevokeAlert'
       }).show();
     }, {listenerSetter: this.listenerSetter});
 

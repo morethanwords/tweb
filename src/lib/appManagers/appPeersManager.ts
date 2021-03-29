@@ -1,6 +1,7 @@
 import { MOUNT_CLASS_TO } from "../../config/debug";
 import { isObject } from "../../helpers/object";
 import { DialogPeer, InputDialogPeer, InputNotifyPeer, InputPeer, Peer, Update } from "../../layer";
+import { LangPackKey } from "../langPack";
 import { RichTextProcessor } from "../richtextprocessor";
 import rootScope from "../rootScope";
 import appChatsManager from "./appChatsManager";
@@ -275,14 +276,19 @@ export class AppPeersManager {
     }
   }
 
-  public getDeleteButtonText(peerId: number) {
+  public getDeleteButtonText(peerId: number): LangPackKey {
     switch(this.getDialogType(peerId)) {
-      case 'megagroup':
       case 'channel':
-        return 'Leave';
+        return 'ChatList.Context.LeaveChannel';
+
+      case 'megagroup':
+        return 'ChatList.Context.LeaveGroup';
+
+      case 'group':
+        return 'ChatList.Context.DeleteAndExit';
       
       default:
-        return 'Delete';
+        return 'ChatList.Context.DeleteChat';
     }
   }
 }

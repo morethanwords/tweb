@@ -1,28 +1,51 @@
-import { PopupButton } from ".";
 import appChatsManager from "../../lib/appManagers/appChatsManager";
 import appMessagesManager from "../../lib/appManagers/appMessagesManager";
 import appPeersManager, { PeerType } from "../../lib/appManagers/appPeersManager";
-import PopupPeer from "./peer";
+import { LangPackKey } from "../../lib/langPack";
+import PeerTitle from "../peerTitle";
+import PopupPeer, { PopupPeerButtonCallbackCheckboxes, PopupPeerOptions } from "./peer";
 
 export default class PopupDeleteDialog {
-  constructor(peerId: number, peerType: PeerType = appPeersManager.getDialogType(peerId)) {
-    let firstName = appPeersManager.getPeerTitle(peerId, false, true);
+  constructor(peerId: number, peerType: PeerType = appPeersManager.getDialogType(peerId), onSelect?: (promise: Promise<any>) => void) {
+    const peerTitleElement = new PeerTitle({
+      peerId,
+      onlyFirstName: true
+    }).element;
 
-    let callbackFlush = (justClear?: true) => {
-      appMessagesManager.flushHistory(peerId, justClear);
+    /* const callbackFlush = (checked: PopupPeerButtonCallbackCheckboxes) => {
+      const promise = appMessagesManager.flushHistory(peerId, checkboxes ? !checked[checkboxes[0].text] : undefined);
+      onSelect && onSelect(promise);
+    }; */
+
+    const callbackLeave = (checked: PopupPeerButtonCallbackCheckboxes) => {
+      const promise = appChatsManager.leave(-peerId);
+      onSelect && onSelect(promise);
     };
 
-    let callbackLeave = () => {
-      appChatsManager.leave(-peerId);
+    const callbackDelete = (checked: PopupPeerButtonCallbackCheckboxes) => {
+      let promise: Promise<any>;
+
+      if(peerId > 0) {
+        promise = appMessagesManager.flushHistory(peerId, false, checkboxes ? checked[checkboxes[0].text] : undefined);
+      } else {
+        if(checked[checkboxes[0].text]) {
+          promise = appChatsManager.delete(-peerId);
+        } else {
+          promise = appChatsManager.leave(-peerId);
+        }
+      }
+      
+      onSelect && onSelect(promise);
     };
 
-    let title: string, description: string, buttons: PopupButton[];
+    let title: LangPackKey, description: LangPackKey, descriptionArgs: any[], buttons: PopupPeerOptions['buttons'], checkboxes: PopupPeerOptions['checkboxes'];
     switch(peerType) {
       case 'channel': {
-        title = 'Leave Channel?';
-        description = `Are you sure you want to leave this channel?`;
+        title = 'LeaveChannelMenu';
+        description = 'ChannelLeaveAlertWithName';
+        descriptionArgs = [peerTitleElement];
         buttons = [{
-          text: 'LEAVE ' + firstName,
+          langKey: 'LeaveChannel',
           isDanger: true,
           callback: callbackLeave
         }];
@@ -30,71 +53,90 @@ export default class PopupDeleteDialog {
         break;
       }
 
-      case 'megagroup': {
+      /* case 'megagroup': {
         title = 'Leave Group?';
         description = `Are you sure you want to leave this group?`;
         buttons = [{
-          text: 'LEAVE ' + firstName,
+          text: 'LEAVE ' + peerTitleElement,
           isDanger: true,
           callback: callbackLeave
         }];
 
         break;
-      }
+      } */
 
       case 'chat': {
-        title = 'Delete Chat?';
-        description = `Are you sure you want to delete chat with <b>${firstName}</b>?`;
+        title = 'DeleteChatUser';
+        description = 'AreYouSureDeleteThisChatWithUser';
+        descriptionArgs = [peerTitleElement];
+
+        checkboxes = [{
+          text: 'DeleteMessagesOptionAlso',
+          textArgs: [
+            new PeerTitle({
+              peerId,
+              onlyFirstName: true
+            }).element
+          ]
+        }];
+
         buttons = [{
-          text: 'DELETE FOR ME AND ' + firstName,
+          langKey: 'DeleteChatUser',
           isDanger: true,
-          callback: () => callbackFlush()
-        }, {
-          text: 'DELETE JUST FOR ME',
-          isDanger: true,
-          callback: () => callbackFlush(true)
+          callback: callbackDelete
         }];
 
         break;
       }
 
       case 'saved': {
-        title = 'Delete Saved Messages?';
-        description = `Are you sure you want to delete all your saved messages?`;
+        title = 'DeleteChatUser';
+        description = 'AreYouSureDeleteThisChatSavedMessages';
         buttons = [{
-          text: 'DELETE SAVED MESSAGES',
+          langKey: 'DeleteChatUser',
           isDanger: true,
-          callback: () => callbackFlush()
+          callback: callbackDelete
         }];
 
         break;
       }
 
+      case 'megagroup':
       case 'group': {
-        title = 'Delete and leave Group?';
-        description = `Are you sure you want to delete all message history and leave <b>${firstName}</b>?`;
-        buttons = [{
-          text: 'DELETE AND LEAVE ' + firstName,
-          isDanger: true,
-          callback: () => callbackLeave()
-        }];
+        if(appChatsManager.hasRights(-peerId, 'delete_chat')) {
+          title = 'DeleteMegaMenu';
+          description = 'AreYouSureDeleteAndExit';
+          buttons = [{
+            langKey: 'DeleteMegaMenu',
+            isDanger: true,
+            callback: callbackDelete
+          }];
+
+          checkboxes = [{
+            text: 'DeleteChat.DeleteGroupForAll'
+          }];
+        } else {
+          title = 'LeaveMegaMenu';
+          description = 'AreYouSureDeleteAndExitName';
+          descriptionArgs = [peerTitleElement];
+          buttons = [{
+            langKey: 'DeleteChatUser',
+            isDanger: true,
+            callback: callbackLeave
+          }];
+        }
 
         break;
       }
     }
 
-    buttons.push({
-      text: 'CANCEL',
-      isCancel: true
-    });
-
-    let popup = new PopupPeer('popup-delete-chat', {
+    new PopupPeer('popup-delete-chat', {
       peerId,
-      title,
-      description,
-      buttons
-    });
-
-    popup.show();
+      titleLangKey: title,
+      descriptionLangKey: description,
+      descriptionLangArgs: descriptionArgs,
+      buttons,
+      checkboxes
+    }).show();
   }
 }

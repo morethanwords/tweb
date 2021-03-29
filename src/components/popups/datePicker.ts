@@ -1,7 +1,7 @@
 import PopupElement, { PopupOptions } from ".";
 import { getFullDate } from "../../helpers/date";
 import mediaSizes from "../../helpers/mediaSizes";
-import I18n from "../../lib/langPack";
+import I18n, { i18n, LangPackKey } from "../../lib/langPack";
 import InputField from "../inputField";
 
 export default class PopupDatePicker extends PopupElement {
@@ -237,23 +237,47 @@ export default class PopupDatePicker extends PopupElement {
 
   public setTimeTitle() {
     if(this.btnConfirm && this.selectedDate) {
-      let dayStr = '';
+      let key: LangPackKey, args: any[] = [];
       const date = new Date();
       date.setHours(0, 0, 0, 0);
 
+      const timeOptions: Intl.DateTimeFormatOptions = {
+        minute: '2-digit',
+        hour: '2-digit',
+        hour12: false
+      };
+      
+      const sendDate = new Date(this.selectedDate.getTime());
+      sendDate.setHours(+this.hoursInputField.value, +this.minutesInputField.value);
+
       if(this.selectedDate.getTime() === date.getTime()) {
-        dayStr = 'Today';
-      } else if(this.selectedDate.getTime() === (date.getTime() + 86400e3)) {
+        key = 'Schedule.SendToday';
+      }/*  else if(this.selectedDate.getTime() === (date.getTime() + 86400e3)) {
         dayStr = 'Tomorrow';
-      } else {
-        dayStr = 'on ' + getFullDate(this.selectedDate, {
-          noTime: true,
-          monthAsNumber: true,
-          leadingZero: true
-        });
+      } */ else {
+        key = 'Schedule.SendDate';
+
+        const dateOptions: Intl.DateTimeFormatOptions = {
+          month: 'short',
+          day: 'numeric'
+        };
+
+        if(sendDate.getFullYear() !== date.getFullYear()) {
+          dateOptions.year = 'numeric';
+        }
+
+        args.push(new I18n.IntlDateElement({
+          date: sendDate,
+          options: dateOptions
+        }).element);
       }
 
-      this.btnConfirm.firstChild.nodeValue = 'Send ' + dayStr + ' at ' + ('00' + this.hoursInputField.value).slice(-2) + ':' + ('00' + this.minutesInputField.value).slice(-2);
+      args.push(new I18n.IntlDateElement({
+        date: sendDate,
+        options: timeOptions
+      }).element);
+
+      this.btnConfirm.firstChild.replaceWith(i18n(key, args));
     }
   }
 

@@ -63,15 +63,16 @@ function camelizeName(string, camelizeFirstLetterIfFound, camelizeFirstLetterIfN
   });
 }
 
-/** @type {(type: string) => any} */
-const processParamType = (type) => {
+/** @type {(type: string, parseBooleanFlags: boolean) => any} */
+const processParamType = (type, parseBooleanFlags) => {
   const isAdditional = type.indexOf('flags.-1?') === 0;
-  if(type.includes('?')) {
+  const isFlag = type.includes('?');
+  if(isFlag) {
     type = type.split('?')[1];
   }
 
   if(type.includes('Vector')) {
-    return `Array<${processParamType(type.slice(7, -1))}>`;
+    return `Array<${processParamType(type.slice(7, -1), parseBooleanFlags)}>`;
   }
 
   switch(type) {
@@ -80,7 +81,7 @@ const processParamType = (type) => {
       return 'number';
 
     case 'true':
-      return 'true';
+      return parseBooleanFlags ? 'true' : 'boolean';
 
     case 'Bool':
       return 'boolean';
@@ -121,7 +122,7 @@ const processParams = (params, object = {}, parseBooleanFlags = true) => {
       type = replace[name];
     }
 
-    const processed = processParamType(type);
+    const processed = processParamType(type, parseBooleanFlags);
     if(type.includes('?true') && parseBooleanFlags) {
       if(!object.pFlags) object.pFlags = {};
       object.pFlags[name] = processed;
@@ -236,7 +237,7 @@ mtproto.methods.forEach((_method) => {
 
   const camelizedMethod = camelizeName(method, true, true);
 
-  methodsMap[method] = {req: camelizedMethod, res: processParamType(type)};
+  methodsMap[method] = {req: camelizedMethod, res: processParamType(type, false)};
 
   let str = `export type ${camelizedMethod} = {\n`;
 

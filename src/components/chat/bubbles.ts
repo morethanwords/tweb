@@ -811,7 +811,7 @@ export default class ChatBubbles {
     
     if(['IMG', 'DIV', "AVATAR-ELEMENT", 'SPAN'/* , 'A' */].indexOf(target.tagName) === -1) target = findUpTag(target, 'DIV');
     
-    if(['DIV', 'SPAN'].indexOf(target.tagName) !== -1/*  || target.tagName === 'A' */) {
+    if(['DIV', 'SPAN', 'AVATAR-ELEMENT'].indexOf(target.tagName) !== -1/*  || target.tagName === 'A' */) {
       if(target.classList.contains('goto-original')) {
         const savedFrom = bubble.dataset.savedFrom;
         const splitted = savedFrom.split('_');
@@ -2420,7 +2420,7 @@ export default class ChatBubbles {
           } else {
             /* const fromTitle = message.fromId === this.myID || appPeersManager.isBroadcast(message.fwdFromId || message.fromId) ? '' : `<div class="name" data-peer-id="${message.fromId}" style="color: ${appPeersManager.getPeerColorByID(message.fromId, false)};">${appPeersManager.getPeerTitle(message.fromId)}</div>`;
             nameDiv.innerHTML = fromTitle + 'Forwarded from ' + title; */
-            nameDiv.append('Forwarded from ', title);
+            nameDiv.append(i18n('ForwardedFrom', [title]));
 
             if(savedFrom) {
               nameDiv.dataset.savedFrom = savedFrom;

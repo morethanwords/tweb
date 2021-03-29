@@ -1991,9 +1991,10 @@ export class AppMessagesManager {
     });
   }
 
-  private doFlushHistory(inputPeer: any, justClear?: true): Promise<true> {
+  private doFlushHistory(inputPeer: any, justClear?: boolean, revoke?: boolean): Promise<true> {
     return apiManager.invokeApi('messages.deleteHistory', {
       just_clear: justClear,
+      revoke: revoke,
       peer: inputPeer,
       max_id: 0
     }).then((affectedHistory) => {
@@ -2014,7 +2015,7 @@ export class AppMessagesManager {
     })
   }
 
-  public async flushHistory(peerId: number, justClear?: true) {
+  public async flushHistory(peerId: number, justClear?: boolean, revoke?: boolean) {
     if(appPeersManager.isChannel(peerId)) {
       const promise = this.getHistory(peerId, 0, 1);
 
@@ -2039,7 +2040,7 @@ export class AppMessagesManager {
       });
     }
 
-    return this.doFlushHistory(appPeersManager.getInputPeerById(peerId), justClear).then(() => {
+    return this.doFlushHistory(appPeersManager.getInputPeerById(peerId), justClear, revoke).then(() => {
       delete this.historiesStorage[peerId];
       delete this.messagesStorageByPeerId[peerId];
 

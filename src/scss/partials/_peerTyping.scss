@@ -1,0 +1,107 @@
+.peer-typing {
+  display: inline-block;
+  margin-right: 4px;
+
+  &-text {
+    &-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background-color: $color-blue;
+      margin: 0 1px;
+      display: inline-block;
+      vertical-align: middle;
+      animation-duration: .6s;
+      animation-iteration-count: infinite;
+      animation-timing-function: linear;
+      animation-name: dotMiddle;
+    }
+
+    &-dot:first-child {
+      animation-name: dotFirst;
+    }
+
+    &-dot:last-child {
+      animation-name: dotLast;
+    }
+  }
+}
+
+$scale-max: 1;
+$scale-step: 1 / 6;
+$scale-mid: $scale-max - $scale-step;
+$scale-min: $scale-max - ($scale-step * 2);
+$opacity-max: 1;
+$opacity-step: .1;
+$opacity-mid: $opacity-max - $opacity-step;
+$opacity-min: $opacity-max - ($opacity-step * 2);
+@keyframes dotFirst {
+  0% {
+    transform: scale($scale-min);
+    opacity: $opacity-min;
+  }
+  
+  50% {
+    transform: scale($scale-min);
+    opacity: $opacity-min;
+  }
+
+  75% {
+    transform: scale($scale-max);
+    opacity: $opacity-max;
+  }
+
+  100% {
+    transform: scale($scale-min);
+    opacity: $opacity-min;
+  }
+}
+
+@keyframes dotMiddle {
+  0% {
+    transform: scale($scale-mid);
+    opacity: $opacity-mid;
+  }
+
+  12.5% {
+    transform: scale($scale-min);
+    opacity: $opacity-min;
+  }
+  
+  62.5% {
+    transform: scale($scale-min);
+    opacity: $opacity-min;
+  }
+
+  87.5% {
+    transform: scale($scale-max);
+    opacity: $opacity-max;
+  }
+
+  100% {
+    transform: scale($scale-mid);
+    opacity: $opacity-mid;
+  }
+}
+
+@keyframes dotLast {
+  0% {
+    transform: scale($scale-max);
+    opacity: $opacity-max;
+  }
+
+  25% {
+    transform: scale($scale-min);
+    opacity: $opacity-min;
+  }
+  
+  75% {
+    transform: scale($scale-min);
+    opacity: $opacity-min;
+  }
+
+  100% {
+    transform: scale($scale-max);
+    opacity: $opacity-max;
+  }
+}

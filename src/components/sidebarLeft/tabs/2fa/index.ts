@@ -4,7 +4,7 @@ import { AccountPassword } from "../../../../layer";
 import appStickersManager from "../../../../lib/appManagers/appStickersManager";
 import passwordManager from "../../../../lib/mtproto/passwordManager";
 import Button from "../../../button";
-import PopupConfirmAction from "../../../popups/confirmAction";
+import PopupPeer from "../../../popups/peer";
 import { SliderSuperTab } from "../../../slider";
 import { wrapSticker } from "../../../wrappers";
 import AppSettingsTab from "../settings";
@@ -62,18 +62,19 @@ export default class AppTwoStepVerificationTab extends SliderSuperTab {
       });
 
       attachClickEvent(btnDisablePassword, () => {
-        const popup = new PopupConfirmAction('popup-disable-password', [{
-          text: 'DISABLE',
-          callback: () => {
-            passwordManager.updateSettings({currentPassword: this.plainPassword}).then(() => {
-              this.slider.sliceTabsUntilTab(AppSettingsTab, this);
-              this.close();
-            });
-          },
-          isDanger: true,
-        }], {
-          title: 'Warning',
-          text: 'Are you sure you want to disable<br/>your password?'
+        const popup = new PopupPeer('popup-disable-password', {
+          buttons: [{
+            text: 'DISABLE',
+            callback: () => {
+              passwordManager.updateSettings({currentPassword: this.plainPassword}).then(() => {
+                this.slider.sliceTabsUntilTab(AppSettingsTab, this);
+                this.close();
+              });
+            },
+            isDanger: true,
+          }], 
+          titleLangKey: 'Warning',
+          descriptionLangKey: 'Are you sure you want to disable<br/>your password?'
         });
 
         popup.show();
