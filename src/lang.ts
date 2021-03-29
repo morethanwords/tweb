@@ -81,6 +81,12 @@ const lang = {
     "one_value": "Remove %d Sticker",
     "other_value": "Remove %d Stickers"
   },
+  "ForwardedFrom": "Forwarded from %s",
+  "Popup.Avatar.Title": "Drag to Reposition",
+  "Popup.Unpin.AllTitle": "Unpin all messages",
+  "Popup.Unpin.HideTitle": "Hide pinned messages",
+  "Popup.Unpin.HideDescription": "Do you want to hide the pinned message bar? It wil stay hidden until a new message is pinned.",
+  "Popup.Unpin.Hide": "Hide",
 
   // * android
   "ActionCreateChannel": "Channel created",
@@ -153,6 +159,10 @@ const lang = {
     "one_value": "%1$d member",
     "other_value": "%1$d members"
   },
+  "messages": {
+    "one_value": "%1$d message",
+    "other_value": "%1$d messages"
+  },
   "UsernameHelpLink": "This link opens a chat with you:\n%1$s",
   "NewChannel": "New Channel",
   "NewGroup": "New Group",
@@ -214,6 +224,13 @@ const lang = {
   "TerminateAllSessions": "Terminate All Other Sessions",
   "TerminateSessionText": "Are you sure you want to terminate this session?",
   "OtherSessions": "Active sessions",
+  "AreYouSureDeleteSingleMessage": "Are you sure you want to delete this message?",
+  "AreYouSureDeleteFewMessages": "Are you sure you want to delete these messages?",
+  "AreYouSureDeleteSingleMessageMega": "Are you sure you want to delete this message for everyone?",
+  "AreYouSureDeleteFewMessagesMega": "Are you sure you want to delete these messages for everyone?",
+  "AreYouSureDeleteAndExitName": "Are you sure you want to delete and leave the group **%1$s**?",
+  "AreYouSureDeleteThisChatSavedMessages": "Are you sure you want to delete **Saved Messages**?",
+  "AreYouSureDeleteThisChatWithUser": "Are you sure you want to delete the chat with **%1$s**?",
   "AreYouSureSessionTitle": "Terminate session",
   "AreYouSureSessionsTitle": "Terminate sessions",
   "AreYouSureSessions": "Are you sure you want to terminate all other sessions?",
@@ -314,6 +331,27 @@ const lang = {
     "other_value": "%1$d subscribers"
   },
   "SearchGifsTitle": "Search GIFs",
+  "PinMessageAlert": "Pin this message in the group?",
+  "PinMessageAlertTitle": "Pin message",
+  "PinMessageAlertChannel": "Do you want to pin this message in this channel?",
+  "PinMessageAlertChat": "Do you want to pin this message at the top of the chat?",
+  "UnpinMessageAlertTitle": "Unpin message",
+  "UnpinMessageAlert": "Do you want to unpin this message?",
+  "PinNotify": "Notify all members",
+  "PinMessage": "Pin",
+  "UnpinMessage": "Unpin",
+  "PinAlsoFor": "Also pin for %1$s",
+  "DeleteMessagesTitle": "Delete %1$s",
+  "DeleteSingleMessagesTitle": "Delete message",
+  "DeleteMessagesOption": "Unsend My Messages",
+  "DeleteMessagesOptionAlso": "Also delete for %1$s",
+  "DeleteForAll": "Delete for all members",
+  "DeleteMessagesTextGroup": "You can also delete the %1$s you sent from the inboxes of other group members by checking \"Unsend my messages\".",
+  "LeaveChannel": "Leave Channel",
+  "LeaveChannelMenu": "Leave channel",
+  "ChannelLeaveAlertWithName": "Are you sure you want to leave **%1$s**?",
+  "LeaveMegaMenu": "Leave group",
+  "DeleteChatUser": "Delete chat",
 
   // * macos
   "AccountSettings.Filters": "Chat Folders",
@@ -324,6 +362,7 @@ const lang = {
   "Channel.UsernameAboutChannel": "People can share this link with others and can find your channel using Telegram search.",
   "Channel.UsernameAboutGroup": "People can share this link with others and find your group using Telegram search.",
   "Chat.CopySelectedText": "Copy Selected Text",
+  "Chat.Confirm.Unpin": "Would you like to unpin this message?",
   "Chat.Date.ScheduledFor": "Scheduled for %@",
   //"Chat.Date.ScheduledUntilOnline": "Scheduled until online",
   "Chat.Date.ScheduledForToday": "Scheduled for today",
@@ -368,10 +407,18 @@ const lang = {
   "Chat.Send.WithoutSound": "Send Without Sound",
   "Chat.Send.SetReminder": "Set a Reminder",
   "Chat.Send.ScheduledMessage": "Schedule Message",
+  "Chat.UnpinAllMessagesConfirmation": {
+    "one_value": "Do you want to unpin %d message in this chat?",
+    "other_value": "Do you want to unpin all %d messages in this chat?"
+  },
   "ChatList.Context.Mute": "Mute",
   "ChatList.Context.Unmute": "Unmute",
   "ChatList.Context.Pin": "Pin",
   "ChatList.Context.Unpin": "Unpin",
+  "ChatList.Context.DeleteChat": "Delete Chat",
+  "ChatList.Context.DeleteAndExit": "Delete and Leave",
+  "ChatList.Context.LeaveChannel": "Leave Channel",
+  "ChatList.Context.LeaveGroup": "Leave Group",
   "ChatList.Service.Call.incoming": "Incoming Call (%@)",
   "ChatList.Service.Call.outgoing": "Outgoing Call (%@)",
   "ChatList.Service.Call.Cancelled": "Cancelled Call",
@@ -458,6 +505,7 @@ const lang = {
   "PeerInfo.SignMessages": "Sign Messages",
   "PeerInfo.SharedMedia": "Shared Media",
   "PeerInfo.Subscribers": "Subscribers",
+  "PeerInfo.DeleteContact": "Delete Contact",
   "PollResults.Title.Poll": "Poll Results",
   "PollResults.Title.Quiz": "Quiz Results",
   "PollResults.LoadMore": {
@@ -512,7 +560,10 @@ const lang = {
   "NewPoll.OptionsAddOption": "Add an Option",
   "NewPoll.MultipleChoice": "Multiple Answers",
   "NewPoll.Quiz": "Quiz Mode",
-  "GroupPermission.Delete": "Delete Exception"
+  "GroupPermission.Delete": "Delete Exception",
+  "Schedule.SendToday": "Send today at %@",
+  "Schedule.SendDate": "Send on %@ at %@",
+  //"Schedule.SendWhenOnline": "Send When Online"
 };
 
 export default lang;

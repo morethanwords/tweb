@@ -7,11 +7,11 @@ import { formatDateAccordingToToday } from "../../../helpers/date";
 import { attachContextMenuListener, openBtnMenu, positionMenu } from "../../misc";
 import { attachClickEvent, findUpClassName, toggleDisability } from "../../../helpers/dom";
 import ButtonMenu from "../../buttonMenu";
-import PopupConfirmAction from "../../popups/confirmAction";
 import apiManager from "../../../lib/mtproto/mtprotoworker";
 import { toast } from "../../toast";
 import AppPrivacyAndSecurityTab from "./privacyAndSecurity";
 import I18n from "../../../lib/langPack";
+import PopupPeer from "../../popups/peer";
 
 export default class AppActiveSessionsTab extends SliderSuperTab {
   public privacyTab: AppPrivacyAndSecurityTab;
@@ -56,23 +56,24 @@ export default class AppActiveSessionsTab extends SliderSuperTab {
       if(authorizations.length) {
         const btnTerminate = Button('btn-primary btn-transparent danger', {icon: 'stop', text: 'TerminateAllSessions'});
         attachClickEvent(btnTerminate, (e) => {
-          new PopupConfirmAction('revoke-session', [{
-            langKey: 'Terminate',
-            isDanger: true,
-            callback: () => {
-              const toggle = toggleDisability([btnTerminate], true);
-              apiManager.invokeApi('auth.resetAuthorizations').then(value => {
-                //toggleDisability([btnTerminate], false);
-                btnTerminate.remove();
-                otherSection.container.remove();
-                this.privacyTab.updateActiveSessions();
-              }, onError).finally(() => {
-                toggle();
-              });
-            }
-          }], {
-            title: 'AreYouSureSessionsTitle',
-            text: 'AreYouSureSessions'
+          new PopupPeer('revoke-session', {
+            buttons: [{
+              langKey: 'Terminate',
+              isDanger: true,
+              callback: () => {
+                const toggle = toggleDisability([btnTerminate], true);
+                apiManager.invokeApi('auth.resetAuthorizations').then(value => {
+                  //toggleDisability([btnTerminate], false);
+                  btnTerminate.remove();
+                  otherSection.container.remove();
+                  this.privacyTab.updateActiveSessions();
+                }, onError).finally(() => {
+                  toggle();
+                });
+              }
+            }],
+            titleLangKey: 'AreYouSureSessionsTitle',
+            descriptionLangKey: 'AreYouSureSessions'
           }).show();
         });
   
@@ -106,21 +107,22 @@ export default class AppActiveSessionsTab extends SliderSuperTab {
     const onTerminateClick = () => {
       const hash = target.dataset.hash;
       
-      new PopupConfirmAction('revoke-session', [{
-        langKey: 'Terminate',
-        isDanger: true,
-        callback: () => {
-          apiManager.invokeApi('account.resetAuthorization', {hash})
-          .then(value => {
-            if(value) {
-              target.remove();
-              this.privacyTab.updateActiveSessions();
-            }
-          }, onError);
-        }
-      }], {
-        title: 'AreYouSureSessionTitle',
-        text: 'TerminateSessionText'
+      new PopupPeer('revoke-session', {
+        buttons: [{
+          langKey: 'Terminate',
+          isDanger: true,
+          callback: () => {
+            apiManager.invokeApi('account.resetAuthorization', {hash})
+            .then(value => {
+              if(value) {
+                target.remove();
+                this.privacyTab.updateActiveSessions();
+              }
+            }, onError);
+          }
+        }],
+        titleLangKey: 'AreYouSureSessionTitle',
+        descriptionLangKey: 'TerminateSessionText'
       }).show();
     };
 

@@ -126,7 +126,7 @@ export default class AppEditContactTab extends SliderSuperTab {
         
       });
 
-      const btnDelete = Button('btn-primary btn-transparent danger', {icon: 'delete', text: 'Delete Contact'});
+      const btnDelete = Button('btn-primary btn-transparent danger', {icon: 'delete', text: 'PeerInfo.DeleteContact'});
 
       attachClickEvent(btnDelete, () => {
         new PopupPeer('popup-delete-contact', {

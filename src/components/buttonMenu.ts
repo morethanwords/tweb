@@ -19,9 +19,8 @@ const ButtonMenuItem = (options: ButtonMenuItemOptions) => {
   const {icon, text, onClick} = options;
   const el = document.createElement('div');
   el.className = 'btn-menu-item tgico-' + icon;
-  el.append(i18n(text));
-
   ripple(el);
+  el.append(i18n(text));
 
   // * cancel keyboard close
   attachClickEvent(el, CLICK_EVENT_NAME !== 'click' ? (e) => {

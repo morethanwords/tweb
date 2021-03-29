@@ -1,12 +1,15 @@
 import appMessagesManager from "../../lib/appManagers/appMessagesManager";
-import { PopupButton } from ".";
+import { addCancelButton, PopupButton } from ".";
 import PopupPeer from "./peer";
 import appPeersManager from "../../lib/appManagers/appPeersManager";
 import rootScope from "../../lib/rootScope";
+import { LangPackKey } from "../../lib/langPack";
+import appChatsManager from "../../lib/appManagers/appChatsManager";
+import PeerTitle from "../peerTitle";
 
 export default class PopupPinMessage {
   constructor(peerId: number, mid: number, unpin?: true, onConfirm?: () => void) {
-    let title: string, description: string, buttons: PopupButton[] = [];
+    let title: LangPackKey, description: string, buttons: PopupButton[] = [];
 
     const canUnpin = appPeersManager.canPinMessage(peerId);
 
@@ -29,74 +32,76 @@ export default class PopupPinMessage {
       }, 300);
     };
 
-    const firstName = appPeersManager.getPeerTitle(peerId, false, true);
-
     if(unpin) {
-      let buttonText = 'UNPIN';
+      let buttonText: LangPackKey = 'UnpinMessage';
       if(!mid) {
         if(canUnpin) {
-          title = 'Unpin All Messages?';
-          description = 'Would you like to unpin all messages?';
+          title = 'Popup.Unpin.AllTitle';
+          description = 'Chat.UnpinAllMessagesConfirmation';
         } else {
-          title = 'Hide Pinned Messages?';
-          description = 'Do you want to hide the pinned message bar? It wil stay hidden until a new message is pinned.';
-          buttonText = 'HIDE';
+          title = 'Popup.Unpin.HideTitle';
+          description = 'Popup.Unpin.HideDescription';
+          buttonText = 'Popup.Unpin.Hide';
         }
       } else {
-        title = `Unpin Message?`;
-        description = 'Would you like to unpin this message?';
+        title = 'UnpinMessageAlertTitle';
+        description = 'Chat.Confirm.Unpin';
       }
       
       buttons.push({
-        text: buttonText,
+        langKey: buttonText,
         isDanger: true,
         callback: () => callback()
       });
     } else {
-      title = 'Pin Message?';
+      title = 'PinMessageAlertTitle';
+      const pinButtonText: LangPackKey = 'PinMessage';
       
       if(peerId < 0) {
-        description = 'Do you want to pin this message for all members in the group?';
         buttons.push({
-          text: 'PIN AND NOTIFY',
+          langKey: pinButtonText,
           callback: () => callback()
         });
 
-        buttons.push({
-          text: 'PIN WITHOUT NOTIFYING',
-          callback: () => callback(undefined, true)
-        });
+        if(appChatsManager.isBroadcast(-peerId)) {
+          description = 'PinMessageAlertChannel';
+        } else {
+          description = 'PinMessageAlert';
+  
+          buttons.push({
+            langKey: 'PinNotify',
+            callback: () => callback(undefined, true)
+          });
+        }
       } else {
-        description = 'Would you like to pin this message?';
+        description = 'PinMessageAlertChat';
 
         if(peerId === rootScope.myId) {
           buttons.push({
-            text: 'PIN',
+            langKey: pinButtonText,
             callback: () => callback()
           });
         } else {
           buttons.push({
-            text: 'PIN JUST FOR ME',
+            langKey: pinButtonText,
             callback: () => callback(true)
           });
   
           buttons.push({
-            text: 'PIN FOR ME AND ' + firstName,
+            langKey: 'PinAlsoFor',
+            langArgs: [new PeerTitle({peerId, onlyFirstName: true}).element],
             callback: () => callback()
           });
         }
       }
     }
 
-    buttons.push({
-      text: 'CANCEL',
-      isCancel: true
-    });
+    addCancelButton(buttons);
 
     const popup = new PopupPeer('popup-delete-chat', {
       peerId,
-      title,
-      description,
+      titleLangKey: title,
+      descriptionLangKey: description,
       buttons
     });
 

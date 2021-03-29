@@ -11,6 +11,7 @@
     
     &-container {
       padding: 1rem 1.5rem .75rem 1rem;
+      max-width: unquote('min(400px, 100%)');
     }
 
     &-title {
@@ -46,10 +47,16 @@
       }
     }
   }
-}
 
-.popup-peer, .popup-confirm-action {
-  .popup-container {
-    max-width: unquote('min(400px, 100%)');
+  .checkbox-field {
+    display: flex;
+    align-items: center;
+    height: 3.5rem;
+    padding: 0 1.1875rem;
+    margin: 0;
+
+    .checkbox-box {
+      left: auto;
+    }
   }
 }

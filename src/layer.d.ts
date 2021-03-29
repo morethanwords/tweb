@@ -179,7 +179,8 @@ export namespace InputMedia {
 		_: 'inputMediaDocument',
 		flags?: number,
 		id: InputDocument,
-		ttl_seconds?: number
+		ttl_seconds?: number,
+		query?: string
 	};
 
 	export type inputMediaVenue = {
@@ -315,7 +316,7 @@ export namespace InputPhoto {
 /**
  * @link https://core.telegram.org/type/InputFileLocation
  */
-export type InputFileLocation = InputFileLocation.inputFileLocation | InputFileLocation.inputEncryptedFileLocation | InputFileLocation.inputDocumentFileLocation | InputFileLocation.inputSecureFileLocation | InputFileLocation.inputTakeoutFileLocation | InputFileLocation.inputPhotoFileLocation | InputFileLocation.inputPhotoLegacyFileLocation | InputFileLocation.inputPeerPhotoFileLocation | InputFileLocation.inputStickerSetThumb;
+export type InputFileLocation = InputFileLocation.inputFileLocation | InputFileLocation.inputEncryptedFileLocation | InputFileLocation.inputDocumentFileLocation | InputFileLocation.inputSecureFileLocation | InputFileLocation.inputTakeoutFileLocation | InputFileLocation.inputPhotoFileLocation | InputFileLocation.inputPhotoLegacyFileLocation | InputFileLocation.inputPeerPhotoFileLocation | InputFileLocation.inputStickerSetThumb | InputFileLocation.inputGroupCallStream;
 
 export namespace InputFileLocation {
   export type inputFileLocation = {
@@ -384,6 +385,13 @@ export namespace InputFileLocation {
 		stickerset: InputStickerSet,
 		volume_id: string,
 		local_id: number
+	};
+
+	export type inputGroupCallStream = {
+		_: 'inputGroupCallStream',
+		call: InputGroupCall,
+		time_ms: string,
+		scale: number
 	};
 }
 
@@ -485,6 +493,7 @@ export namespace User {
 			support?: true,
 			scam?: true,
 			apply_min_photo?: true,
+			fake?: true,
 		}>,
 		id: number,
 		access_hash?: string,
@@ -583,6 +592,8 @@ export namespace Chat {
 			kicked?: true,
 			left?: true,
 			deactivated?: true,
+			call_active?: true,
+			call_not_empty?: true,
 		}>,
 		id: number,
 		title: string,
@@ -619,6 +630,9 @@ export namespace Chat {
 			has_geo?: true,
 			slowmode_enabled?: true,
 			call_active?: true,
+			call_not_empty?: true,
+			fake?: true,
+			gigagroup?: true,
 		}>,
 		id: number,
 		access_hash?: string,
@@ -666,10 +680,13 @@ export namespace ChatFull {
 		participants: ChatParticipants,
 		chat_photo?: Photo,
 		notify_settings: PeerNotifySettings,
-		exported_invite: ExportedChatInvite,
+		exported_invite?: ExportedChatInvite,
 		bot_info?: Array<BotInfo>,
 		pinned_msg_id?: number,
-		folder_id?: number
+		folder_id?: number,
+		call?: InputGroupCall,
+		ttl_period?: number,
+		groupcall_default_join_as?: Peer
 	};
 
 	export type channelFull = {
@@ -697,7 +714,7 @@ export namespace ChatFull {
 		unread_count: number,
 		chat_photo: Photo,
 		notify_settings: PeerNotifySettings,
-		exported_invite: ExportedChatInvite,
+		exported_invite?: ExportedChatInvite,
 		bot_info: Array<BotInfo>,
 		migrated_from_chat_id?: number,
 		migrated_from_max_id?: number,
@@ -710,7 +727,11 @@ export namespace ChatFull {
 		slowmode_seconds?: number,
 		slowmode_next_send_date?: number,
 		stats_dc?: number,
-		pts: number
+		pts: number,
+		call?: InputGroupCall,
+		ttl_period?: number,
+		pending_suggestions?: Array<string>,
+		groupcall_default_join_as?: Peer
 	};
 }
 
@@ -791,7 +812,9 @@ export type Message = Message.messageEmpty | Message.message | Message.messageSe
 export namespace Message {
   export type messageEmpty = {
 		_: 'messageEmpty',
+		flags?: number,
 		id: number,
+		peer_id?: Peer,
 		deleted?: boolean
 	};
 
@@ -829,6 +852,7 @@ export namespace Message {
 		post_author?: string,
 		grouped_id?: string,
 		restriction_reason?: Array<RestrictionReason>,
+		ttl_period?: number,
 		mid?: number,
 		deleted?: boolean,
 		peerId?: number,
@@ -856,6 +880,7 @@ export namespace Message {
 		reply_to?: MessageReplyHeader,
 		date: number,
 		action: MessageAction,
+		ttl_period?: number,
 		mid?: number,
 		deleted?: boolean,
 		peerId?: number,
@@ -967,7 +992,7 @@ export namespace MessageMedia {
 /**
  * @link https://core.telegram.org/type/MessageAction
  */
-export type MessageAction = MessageAction.messageActionEmpty | MessageAction.messageActionChatCreate | MessageAction.messageActionChatEditTitle | MessageAction.messageActionChatEditPhoto | MessageAction.messageActionChatDeletePhoto | MessageAction.messageActionChatAddUser | MessageAction.messageActionChatDeleteUser | MessageAction.messageActionChatJoinedByLink | MessageAction.messageActionChannelCreate | MessageAction.messageActionChatMigrateTo | MessageAction.messageActionChannelMigrateFrom | MessageAction.messageActionPinMessage | MessageAction.messageActionHistoryClear | MessageAction.messageActionGameScore | MessageAction.messageActionPaymentSentMe | MessageAction.messageActionPaymentSent | MessageAction.messageActionPhoneCall | MessageAction.messageActionScreenshotTaken | MessageAction.messageActionCustomAction | MessageAction.messageActionBotAllowed | MessageAction.messageActionSecureValuesSentMe | MessageAction.messageActionSecureValuesSent | MessageAction.messageActionContactSignUp | MessageAction.messageActionGeoProximityReached | MessageAction.messageActionChatLeave | MessageAction.messageActionChannelDeletePhoto | MessageAction.messageActionChannelEditTitle | MessageAction.messageActionChannelEditPhoto | MessageAction.messageActionChannelEditVideo | MessageAction.messageActionChatEditVideo | MessageAction.messageActionChatAddUsers | MessageAction.messageActionChatJoined | MessageAction.messageActionChatReturn | MessageAction.messageActionChatJoinedYou | MessageAction.messageActionChatReturnYou;
+export type MessageAction = MessageAction.messageActionEmpty | MessageAction.messageActionChatCreate | MessageAction.messageActionChatEditTitle | MessageAction.messageActionChatEditPhoto | MessageAction.messageActionChatDeletePhoto | MessageAction.messageActionChatAddUser | MessageAction.messageActionChatDeleteUser | MessageAction.messageActionChatJoinedByLink | MessageAction.messageActionChannelCreate | MessageAction.messageActionChatMigrateTo | MessageAction.messageActionChannelMigrateFrom | MessageAction.messageActionPinMessage | MessageAction.messageActionHistoryClear | MessageAction.messageActionGameScore | MessageAction.messageActionPaymentSentMe | MessageAction.messageActionPaymentSent | MessageAction.messageActionPhoneCall | MessageAction.messageActionScreenshotTaken | MessageAction.messageActionCustomAction | MessageAction.messageActionBotAllowed | MessageAction.messageActionSecureValuesSentMe | MessageAction.messageActionSecureValuesSent | MessageAction.messageActionContactSignUp | MessageAction.messageActionGeoProximityReached | MessageAction.messageActionGroupCall | MessageAction.messageActionInviteToGroupCall | MessageAction.messageActionSetMessagesTTL | MessageAction.messageActionChatLeave | MessageAction.messageActionChannelDeletePhoto | MessageAction.messageActionChannelEditTitle | MessageAction.messageActionChannelEditPhoto | MessageAction.messageActionChannelEditVideo | MessageAction.messageActionChatEditVideo | MessageAction.messageActionChatAddUsers | MessageAction.messageActionChatJoined | MessageAction.messageActionChatReturn | MessageAction.messageActionChatJoinedYou | MessageAction.messageActionChatReturnYou;
 
 export namespace MessageAction {
   export type messageActionEmpty = {
@@ -1101,6 +1126,24 @@ export namespace MessageAction {
 		from_id: Peer,
 		to_id: Peer,
 		distance: number
+	};
+
+	export type messageActionGroupCall = {
+		_: 'messageActionGroupCall',
+		flags?: number,
+		call: InputGroupCall,
+		duration?: number
+	};
+
+	export type messageActionInviteToGroupCall = {
+		_: 'messageActionInviteToGroupCall',
+		call: InputGroupCall,
+		users: Array<number>
+	};
+
+	export type messageActionSetMessagesTTL = {
+		_: 'messageActionSetMessagesTTL',
+		period: number
 	};
 
 	export type messageActionChatLeave = {
@@ -1432,6 +1475,7 @@ export namespace PeerSettings {
 			need_contacts_exception?: true,
 			report_geo?: true,
 			autoarchived?: true,
+			invite_members?: true,
 		}>,
 		geo_distance?: number
 	};
@@ -1473,7 +1517,7 @@ export namespace WallPaper {
 /**
  * @link https://core.telegram.org/type/ReportReason
  */
-export type ReportReason = ReportReason.inputReportReasonSpam | ReportReason.inputReportReasonViolence | ReportReason.inputReportReasonPornography | ReportReason.inputReportReasonChildAbuse | ReportReason.inputReportReasonOther | ReportReason.inputReportReasonCopyright | ReportReason.inputReportReasonGeoIrrelevant;
+export type ReportReason = ReportReason.inputReportReasonSpam | ReportReason.inputReportReasonViolence | ReportReason.inputReportReasonPornography | ReportReason.inputReportReasonChildAbuse | ReportReason.inputReportReasonOther | ReportReason.inputReportReasonCopyright | ReportReason.inputReportReasonGeoIrrelevant | ReportReason.inputReportReasonFake;
 
 export namespace ReportReason {
   export type inputReportReasonSpam = {
@@ -1493,8 +1537,7 @@ export namespace ReportReason {
 	};
 
 	export type inputReportReasonOther = {
-		_: 'inputReportReasonOther',
-		text: string
+		_: 'inputReportReasonOther'
 	};
 
 	export type inputReportReasonCopyright = {
@@ -1503,6 +1546,10 @@ export namespace ReportReason {
 
 	export type inputReportReasonGeoIrrelevant = {
 		_: 'inputReportReasonGeoIrrelevant'
+	};
+
+	export type inputReportReasonFake = {
+		_: 'inputReportReasonFake'
 	};
 }
 
@@ -1532,6 +1579,7 @@ export namespace UserFull {
 		pinned_msg_id?: number,
 		common_chats_count: number,
 		folder_id?: number,
+		ttl_period?: number,
 		rAbout?: string
 	};
 }
@@ -1834,7 +1882,7 @@ export namespace MessagesFilter {
 /**
  * @link https://core.telegram.org/type/Update
  */
-export type Update = Update.updateNewMessage | Update.updateMessageID | Update.updateDeleteMessages | Update.updateUserTyping | Update.updateChatUserTyping | Update.updateChatParticipants | Update.updateUserStatus | Update.updateUserName | Update.updateUserPhoto | Update.updateNewEncryptedMessage | Update.updateEncryptedChatTyping | Update.updateEncryption | Update.updateEncryptedMessagesRead | Update.updateChatParticipantAdd | Update.updateChatParticipantDelete | Update.updateDcOptions | Update.updateNotifySettings | Update.updateServiceNotification | Update.updatePrivacy | Update.updateUserPhone | Update.updateReadHistoryInbox | Update.updateReadHistoryOutbox | Update.updateWebPage | Update.updateReadMessagesContents | Update.updateChannelTooLong | Update.updateChannel | Update.updateNewChannelMessage | Update.updateReadChannelInbox | Update.updateDeleteChannelMessages | Update.updateChannelMessageViews | Update.updateChatParticipantAdmin | Update.updateNewStickerSet | Update.updateStickerSetsOrder | Update.updateStickerSets | Update.updateSavedGifs | Update.updateBotInlineQuery | Update.updateBotInlineSend | Update.updateEditChannelMessage | Update.updateBotCallbackQuery | Update.updateEditMessage | Update.updateInlineBotCallbackQuery | Update.updateReadChannelOutbox | Update.updateDraftMessage | Update.updateReadFeaturedStickers | Update.updateRecentStickers | Update.updateConfig | Update.updatePtsChanged | Update.updateChannelWebPage | Update.updateDialogPinned | Update.updatePinnedDialogs | Update.updateBotWebhookJSON | Update.updateBotWebhookJSONQuery | Update.updateBotShippingQuery | Update.updateBotPrecheckoutQuery | Update.updatePhoneCall | Update.updateLangPackTooLong | Update.updateLangPack | Update.updateFavedStickers | Update.updateChannelReadMessagesContents | Update.updateContactsReset | Update.updateChannelAvailableMessages | Update.updateDialogUnreadMark | Update.updateMessagePoll | Update.updateChatDefaultBannedRights | Update.updateFolderPeers | Update.updatePeerSettings | Update.updatePeerLocated | Update.updateNewScheduledMessage | Update.updateDeleteScheduledMessages | Update.updateTheme | Update.updateGeoLiveViewed | Update.updateLoginToken | Update.updateMessagePollVote | Update.updateDialogFilter | Update.updateDialogFilterOrder | Update.updateDialogFilters | Update.updatePhoneCallSignalingData | Update.updateChannelParticipant | Update.updateChannelMessageForwards | Update.updateReadChannelDiscussionInbox | Update.updateReadChannelDiscussionOutbox | Update.updatePeerBlocked | Update.updateChannelUserTyping | Update.updatePinnedMessages | Update.updatePinnedChannelMessages;
+export type Update = Update.updateNewMessage | Update.updateMessageID | Update.updateDeleteMessages | Update.updateUserTyping | Update.updateChatUserTyping | Update.updateChatParticipants | Update.updateUserStatus | Update.updateUserName | Update.updateUserPhoto | Update.updateNewEncryptedMessage | Update.updateEncryptedChatTyping | Update.updateEncryption | Update.updateEncryptedMessagesRead | Update.updateChatParticipantAdd | Update.updateChatParticipantDelete | Update.updateDcOptions | Update.updateNotifySettings | Update.updateServiceNotification | Update.updatePrivacy | Update.updateUserPhone | Update.updateReadHistoryInbox | Update.updateReadHistoryOutbox | Update.updateWebPage | Update.updateReadMessagesContents | Update.updateChannelTooLong | Update.updateChannel | Update.updateNewChannelMessage | Update.updateReadChannelInbox | Update.updateDeleteChannelMessages | Update.updateChannelMessageViews | Update.updateChatParticipantAdmin | Update.updateNewStickerSet | Update.updateStickerSetsOrder | Update.updateStickerSets | Update.updateSavedGifs | Update.updateBotInlineQuery | Update.updateBotInlineSend | Update.updateEditChannelMessage | Update.updateBotCallbackQuery | Update.updateEditMessage | Update.updateInlineBotCallbackQuery | Update.updateReadChannelOutbox | Update.updateDraftMessage | Update.updateReadFeaturedStickers | Update.updateRecentStickers | Update.updateConfig | Update.updatePtsChanged | Update.updateChannelWebPage | Update.updateDialogPinned | Update.updatePinnedDialogs | Update.updateBotWebhookJSON | Update.updateBotWebhookJSONQuery | Update.updateBotShippingQuery | Update.updateBotPrecheckoutQuery | Update.updatePhoneCall | Update.updateLangPackTooLong | Update.updateLangPack | Update.updateFavedStickers | Update.updateChannelReadMessagesContents | Update.updateContactsReset | Update.updateChannelAvailableMessages | Update.updateDialogUnreadMark | Update.updateMessagePoll | Update.updateChatDefaultBannedRights | Update.updateFolderPeers | Update.updatePeerSettings | Update.updatePeerLocated | Update.updateNewScheduledMessage | Update.updateDeleteScheduledMessages | Update.updateTheme | Update.updateGeoLiveViewed | Update.updateLoginToken | Update.updateMessagePollVote | Update.updateDialogFilter | Update.updateDialogFilterOrder | Update.updateDialogFilters | Update.updatePhoneCallSignalingData | Update.updateChannelMessageForwards | Update.updateReadChannelDiscussionInbox | Update.updateReadChannelDiscussionOutbox | Update.updatePeerBlocked | Update.updateChannelUserTyping | Update.updatePinnedMessages | Update.updatePinnedChannelMessages | Update.updateChat | Update.updateGroupCallParticipants | Update.updateGroupCall | Update.updatePeerHistoryTTL | Update.updateChatParticipant | Update.updateChannelParticipant | Update.updateBotStopped;
 
 export namespace Update {
   export type updateNewMessage = {
@@ -1866,7 +1914,7 @@ export namespace Update {
 	export type updateChatUserTyping = {
 		_: 'updateChatUserTyping',
 		chat_id: number,
-		user_id: number,
+		from_id: Peer,
 		action: SendMessageAction
 	};
 
@@ -2087,6 +2135,7 @@ export namespace Update {
 		user_id: number,
 		query: string,
 		geo?: GeoPoint,
+		peer_type?: InlineQueryPeerType,
 		offset: string
 	};
 
@@ -2354,17 +2403,6 @@ export namespace Update {
 		data: Uint8Array
 	};
 
-	export type updateChannelParticipant = {
-		_: 'updateChannelParticipant',
-		flags?: number,
-		channel_id: number,
-		date: number,
-		user_id: number,
-		prev_participant?: ChannelParticipant,
-		new_participant?: ChannelParticipant,
-		qts: number
-	};
-
 	export type updateChannelMessageForwards = {
 		_: 'updateChannelMessageForwards',
 		channel_id: number,
@@ -2400,7 +2438,7 @@ export namespace Update {
 		flags?: number,
 		channel_id: number,
 		top_msg_id?: number,
-		user_id: number,
+		from_id: Peer,
 		action: SendMessageAction
 	};
 
@@ -2426,6 +2464,65 @@ export namespace Update {
 		messages: Array<number>,
 		pts: number,
 		pts_count: number
+	};
+
+	export type updateChat = {
+		_: 'updateChat',
+		chat_id: number
+	};
+
+	export type updateGroupCallParticipants = {
+		_: 'updateGroupCallParticipants',
+		call: InputGroupCall,
+		participants: Array<GroupCallParticipant>,
+		version: number
+	};
+
+	export type updateGroupCall = {
+		_: 'updateGroupCall',
+		chat_id: number,
+		call: GroupCall
+	};
+
+	export type updatePeerHistoryTTL = {
+		_: 'updatePeerHistoryTTL',
+		flags?: number,
+		peer: Peer,
+		ttl_period?: number
+	};
+
+	export type updateChatParticipant = {
+		_: 'updateChatParticipant',
+		flags?: number,
+		chat_id: number,
+		date: number,
+		actor_id: number,
+		user_id: number,
+		prev_participant?: ChatParticipant,
+		new_participant?: ChatParticipant,
+		invite?: ExportedChatInvite,
+		qts: number
+	};
+
+	export type updateChannelParticipant = {
+		_: 'updateChannelParticipant',
+		flags?: number,
+		channel_id: number,
+		date: number,
+		actor_id: number,
+		user_id: number,
+		prev_participant?: ChannelParticipant,
+		new_participant?: ChannelParticipant,
+		invite?: ExportedChatInvite,
+		qts: number
+	};
+
+	export type updateBotStopped = {
+		_: 'updateBotStopped',
+		user_id: number,
+		date: number,
+		stopped: boolean,
+		qts: number
 	};
 }
 
@@ -2511,7 +2608,8 @@ export namespace Updates {
 		fwd_from?: MessageFwdHeader,
 		via_bot_id?: number,
 		reply_to?: MessageReplyHeader,
-		entities?: Array<MessageEntity>
+		entities?: Array<MessageEntity>,
+		ttl_period?: number
 	};
 
 	export type updateShortChatMessage = {
@@ -2533,7 +2631,8 @@ export namespace Updates {
 		fwd_from?: MessageFwdHeader,
 		via_bot_id?: number,
 		reply_to?: MessageReplyHeader,
-		entities?: Array<MessageEntity>
+		entities?: Array<MessageEntity>,
+		ttl_period?: number
 	};
 
 	export type updateShort = {
@@ -2572,7 +2671,8 @@ export namespace Updates {
 		pts_count: number,
 		date: number,
 		media?: MessageMedia,
-		entities?: Array<MessageEntity>
+		entities?: Array<MessageEntity>,
+		ttl_period?: number
 	};
 }
 
@@ -2816,6 +2916,10 @@ export namespace EncryptedChat {
 
 	export type encryptedChatDiscarded = {
 		_: 'encryptedChatDiscarded',
+		flags?: number,
+		pFlags?: Partial<{
+			history_deleted?: true,
+		}>,
 		id: number
 	};
 }
@@ -3052,7 +3156,7 @@ export namespace NotifyPeer {
 /**
  * @link https://core.telegram.org/type/SendMessageAction
  */
-export type SendMessageAction = SendMessageAction.sendMessageTypingAction | SendMessageAction.sendMessageCancelAction | SendMessageAction.sendMessageRecordVideoAction | SendMessageAction.sendMessageUploadVideoAction | SendMessageAction.sendMessageRecordAudioAction | SendMessageAction.sendMessageUploadAudioAction | SendMessageAction.sendMessageUploadPhotoAction | SendMessageAction.sendMessageUploadDocumentAction | SendMessageAction.sendMessageGeoLocationAction | SendMessageAction.sendMessageChooseContactAction | SendMessageAction.sendMessageGamePlayAction | SendMessageAction.sendMessageRecordRoundAction | SendMessageAction.sendMessageUploadRoundAction;
+export type SendMessageAction = SendMessageAction.sendMessageTypingAction | SendMessageAction.sendMessageCancelAction | SendMessageAction.sendMessageRecordVideoAction | SendMessageAction.sendMessageUploadVideoAction | SendMessageAction.sendMessageRecordAudioAction | SendMessageAction.sendMessageUploadAudioAction | SendMessageAction.sendMessageUploadPhotoAction | SendMessageAction.sendMessageUploadDocumentAction | SendMessageAction.sendMessageGeoLocationAction | SendMessageAction.sendMessageChooseContactAction | SendMessageAction.sendMessageGamePlayAction | SendMessageAction.sendMessageRecordRoundAction | SendMessageAction.sendMessageUploadRoundAction | SendMessageAction.speakingInGroupCallAction | SendMessageAction.sendMessageHistoryImportAction;
 
 export namespace SendMessageAction {
   export type sendMessageTypingAction = {
@@ -3109,6 +3213,15 @@ export namespace SendMessageAction {
 
 	export type sendMessageUploadRoundAction = {
 		_: 'sendMessageUploadRoundAction',
+		progress: number
+	};
+
+	export type speakingInGroupCallAction = {
+		_: 'speakingInGroupCallAction'
+	};
+
+	export type sendMessageHistoryImportAction = {
+		_: 'sendMessageHistoryImportAction',
 		progress: number
 	};
 }
@@ -3611,16 +3724,23 @@ export namespace ReceivedNotifyMessage {
 /**
  * @link https://core.telegram.org/type/ExportedChatInvite
  */
-export type ExportedChatInvite = ExportedChatInvite.chatInviteEmpty | ExportedChatInvite.chatInviteExported;
+export type ExportedChatInvite = ExportedChatInvite.chatInviteExported;
 
 export namespace ExportedChatInvite {
-  export type chatInviteEmpty = {
-		_: 'chatInviteEmpty'
-	};
-
-	export type chatInviteExported = {
+  export type chatInviteExported = {
 		_: 'chatInviteExported',
-		link: string
+		flags?: number,
+		pFlags?: Partial<{
+			revoked?: true,
+			permanent?: true,
+		}>,
+		link: string,
+		admin_id: number,
+		date: number,
+		start_date?: number,
+		expire_date?: number,
+		usage_limit?: number,
+		usage?: number
 	};
 }
 
@@ -3708,7 +3828,7 @@ export namespace StickerSet {
 		access_hash: string,
 		title: string,
 		short_name: string,
-		thumb?: PhotoSize,
+		thumbs?: Array<PhotoSize>,
 		thumb_dc_id?: number,
 		count: number,
 		hash: number
@@ -4569,6 +4689,9 @@ export namespace MessageFwdHeader {
   export type messageFwdHeader = {
 		_: 'messageFwdHeader',
 		flags?: number,
+		pFlags?: Partial<{
+			imported?: true,
+		}>,
 		from_id?: Peer,
 		from_name?: string,
 		date: number,
@@ -5601,7 +5724,7 @@ export namespace PaymentsSavedInfo {
 /**
  * @link https://core.telegram.org/type/InputPaymentCredentials
  */
-export type InputPaymentCredentials = InputPaymentCredentials.inputPaymentCredentialsSaved | InputPaymentCredentials.inputPaymentCredentials | InputPaymentCredentials.inputPaymentCredentialsApplePay | InputPaymentCredentials.inputPaymentCredentialsAndroidPay;
+export type InputPaymentCredentials = InputPaymentCredentials.inputPaymentCredentialsSaved | InputPaymentCredentials.inputPaymentCredentials | InputPaymentCredentials.inputPaymentCredentialsApplePay | InputPaymentCredentials.inputPaymentCredentialsGooglePay;
 
 export namespace InputPaymentCredentials {
   export type inputPaymentCredentialsSaved = {
@@ -5624,10 +5747,9 @@ export namespace InputPaymentCredentials {
 		payment_data: DataJSON
 	};
 
-	export type inputPaymentCredentialsAndroidPay = {
-		_: 'inputPaymentCredentialsAndroidPay',
-		payment_token: DataJSON,
-		google_transaction_id: string
+	export type inputPaymentCredentialsGooglePay = {
+		_: 'inputPaymentCredentialsGooglePay',
+		payment_token: DataJSON
 	};
 }
 
@@ -5953,7 +6075,7 @@ export namespace LangPackLanguage {
 /**
  * @link https://core.telegram.org/type/ChannelAdminLogEventAction
  */
-export type ChannelAdminLogEventAction = ChannelAdminLogEventAction.channelAdminLogEventActionChangeTitle | ChannelAdminLogEventAction.channelAdminLogEventActionChangeAbout | ChannelAdminLogEventAction.channelAdminLogEventActionChangeUsername | ChannelAdminLogEventAction.channelAdminLogEventActionChangePhoto | ChannelAdminLogEventAction.channelAdminLogEventActionToggleInvites | ChannelAdminLogEventAction.channelAdminLogEventActionToggleSignatures | ChannelAdminLogEventAction.channelAdminLogEventActionUpdatePinned | ChannelAdminLogEventAction.channelAdminLogEventActionEditMessage | ChannelAdminLogEventAction.channelAdminLogEventActionDeleteMessage | ChannelAdminLogEventAction.channelAdminLogEventActionParticipantJoin | ChannelAdminLogEventAction.channelAdminLogEventActionParticipantLeave | ChannelAdminLogEventAction.channelAdminLogEventActionParticipantInvite | ChannelAdminLogEventAction.channelAdminLogEventActionParticipantToggleBan | ChannelAdminLogEventAction.channelAdminLogEventActionParticipantToggleAdmin | ChannelAdminLogEventAction.channelAdminLogEventActionChangeStickerSet | ChannelAdminLogEventAction.channelAdminLogEventActionTogglePreHistoryHidden | ChannelAdminLogEventAction.channelAdminLogEventActionDefaultBannedRights | ChannelAdminLogEventAction.channelAdminLogEventActionStopPoll | ChannelAdminLogEventAction.channelAdminLogEventActionChangeLinkedChat | ChannelAdminLogEventAction.channelAdminLogEventActionChangeLocation | ChannelAdminLogEventAction.channelAdminLogEventActionToggleSlowMode;
+export type ChannelAdminLogEventAction = ChannelAdminLogEventAction.channelAdminLogEventActionChangeTitle | ChannelAdminLogEventAction.channelAdminLogEventActionChangeAbout | ChannelAdminLogEventAction.channelAdminLogEventActionChangeUsername | ChannelAdminLogEventAction.channelAdminLogEventActionChangePhoto | ChannelAdminLogEventAction.channelAdminLogEventActionToggleInvites | ChannelAdminLogEventAction.channelAdminLogEventActionToggleSignatures | ChannelAdminLogEventAction.channelAdminLogEventActionUpdatePinned | ChannelAdminLogEventAction.channelAdminLogEventActionEditMessage | ChannelAdminLogEventAction.channelAdminLogEventActionDeleteMessage | ChannelAdminLogEventAction.channelAdminLogEventActionParticipantJoin | ChannelAdminLogEventAction.channelAdminLogEventActionParticipantLeave | ChannelAdminLogEventAction.channelAdminLogEventActionParticipantInvite | ChannelAdminLogEventAction.channelAdminLogEventActionParticipantToggleBan | ChannelAdminLogEventAction.channelAdminLogEventActionParticipantToggleAdmin | ChannelAdminLogEventAction.channelAdminLogEventActionChangeStickerSet | ChannelAdminLogEventAction.channelAdminLogEventActionTogglePreHistoryHidden | ChannelAdminLogEventAction.channelAdminLogEventActionDefaultBannedRights | ChannelAdminLogEventAction.channelAdminLogEventActionStopPoll | ChannelAdminLogEventAction.channelAdminLogEventActionChangeLinkedChat | ChannelAdminLogEventAction.channelAdminLogEventActionChangeLocation | ChannelAdminLogEventAction.channelAdminLogEventActionToggleSlowMode | ChannelAdminLogEventAction.channelAdminLogEventActionStartGroupCall | ChannelAdminLogEventAction.channelAdminLogEventActionDiscardGroupCall | ChannelAdminLogEventAction.channelAdminLogEventActionParticipantMute | ChannelAdminLogEventAction.channelAdminLogEventActionParticipantUnmute | ChannelAdminLogEventAction.channelAdminLogEventActionToggleGroupCallSetting | ChannelAdminLogEventAction.channelAdminLogEventActionParticipantJoinByInvite | ChannelAdminLogEventAction.channelAdminLogEventActionExportedInviteDelete | ChannelAdminLogEventAction.channelAdminLogEventActionExportedInviteRevoke | ChannelAdminLogEventAction.channelAdminLogEventActionExportedInviteEdit | ChannelAdminLogEventAction.channelAdminLogEventActionParticipantVolume | ChannelAdminLogEventAction.channelAdminLogEventActionChangeHistoryTTL;
 
 export namespace ChannelAdminLogEventAction {
   export type channelAdminLogEventActionChangeTitle = {
@@ -6070,6 +6192,63 @@ export namespace ChannelAdminLogEventAction {
 		prev_value: number,
 		new_value: number
 	};
+
+	export type channelAdminLogEventActionStartGroupCall = {
+		_: 'channelAdminLogEventActionStartGroupCall',
+		call: InputGroupCall
+	};
+
+	export type channelAdminLogEventActionDiscardGroupCall = {
+		_: 'channelAdminLogEventActionDiscardGroupCall',
+		call: InputGroupCall
+	};
+
+	export type channelAdminLogEventActionParticipantMute = {
+		_: 'channelAdminLogEventActionParticipantMute',
+		participant: GroupCallParticipant
+	};
+
+	export type channelAdminLogEventActionParticipantUnmute = {
+		_: 'channelAdminLogEventActionParticipantUnmute',
+		participant: GroupCallParticipant
+	};
+
+	export type channelAdminLogEventActionToggleGroupCallSetting = {
+		_: 'channelAdminLogEventActionToggleGroupCallSetting',
+		join_muted: boolean
+	};
+
+	export type channelAdminLogEventActionParticipantJoinByInvite = {
+		_: 'channelAdminLogEventActionParticipantJoinByInvite',
+		invite: ExportedChatInvite
+	};
+
+	export type channelAdminLogEventActionExportedInviteDelete = {
+		_: 'channelAdminLogEventActionExportedInviteDelete',
+		invite: ExportedChatInvite
+	};
+
+	export type channelAdminLogEventActionExportedInviteRevoke = {
+		_: 'channelAdminLogEventActionExportedInviteRevoke',
+		invite: ExportedChatInvite
+	};
+
+	export type channelAdminLogEventActionExportedInviteEdit = {
+		_: 'channelAdminLogEventActionExportedInviteEdit',
+		prev_invite: ExportedChatInvite,
+		new_invite: ExportedChatInvite
+	};
+
+	export type channelAdminLogEventActionParticipantVolume = {
+		_: 'channelAdminLogEventActionParticipantVolume',
+		participant: GroupCallParticipant
+	};
+
+	export type channelAdminLogEventActionChangeHistoryTTL = {
+		_: 'channelAdminLogEventActionChangeHistoryTTL',
+		prev_value: number,
+		new_value: number
+	};
 }
 
 /**
@@ -6125,6 +6304,8 @@ export namespace ChannelAdminLogEventsFilter {
 			pinned?: true,
 			edit?: true,
 			delete?: true,
+			group_call?: true,
+			invites?: true,
 		}>
 	};
 }
@@ -7182,6 +7363,7 @@ export namespace ChatAdminRights {
 			add_admins?: true,
 			anonymous?: true,
 			manage_call?: true,
+			other?: true,
 		}>
 	};
 }
@@ -8222,6 +8404,311 @@ export namespace StatsMessageStats {
 	};
 }
 
+/**
+ * @link https://core.telegram.org/type/GroupCall
+ */
+export type GroupCall = GroupCall.groupCallDiscarded | GroupCall.groupCall;
+
+export namespace GroupCall {
+  export type groupCallDiscarded = {
+		_: 'groupCallDiscarded',
+		id: string,
+		access_hash: string,
+		duration: number
+	};
+
+	export type groupCall = {
+		_: 'groupCall',
+		flags?: number,
+		pFlags?: Partial<{
+			join_muted?: true,
+			can_change_join_muted?: true,
+			join_date_asc?: true,
+		}>,
+		id: string,
+		access_hash: string,
+		participants_count: number,
+		params?: DataJSON,
+		title?: string,
+		stream_dc_id?: number,
+		record_start_date?: number,
+		version: number
+	};
+}
+
+/**
+ * @link https://core.telegram.org/type/InputGroupCall
+ */
+export type InputGroupCall = InputGroupCall.inputGroupCall;
+
+export namespace InputGroupCall {
+  export type inputGroupCall = {
+		_: 'inputGroupCall',
+		id: string,
+		access_hash: string
+	};
+}
+
+/**
+ * @link https://core.telegram.org/type/GroupCallParticipant
+ */
+export type GroupCallParticipant = GroupCallParticipant.groupCallParticipant;
+
+export namespace GroupCallParticipant {
+  export type groupCallParticipant = {
+		_: 'groupCallParticipant',
+		flags?: number,
+		pFlags?: Partial<{
+			muted?: true,
+			left?: true,
+			can_self_unmute?: true,
+			just_joined?: true,
+			versioned?: true,
+			min?: true,
+			muted_by_you?: true,
+			volume_by_admin?: true,
+			self?: true,
+		}>,
+		peer: Peer,
+		date: number,
+		active_date?: number,
+		source: number,
+		volume?: number,
+		about?: string,
+		raise_hand_rating?: string
+	};
+}
+
+/**
+ * @link https://core.telegram.org/type/phone.GroupCall
+ */
+export type PhoneGroupCall = PhoneGroupCall.phoneGroupCall;
+
+export namespace PhoneGroupCall {
+  export type phoneGroupCall = {
+		_: 'phone.groupCall',
+		call: GroupCall,
+		participants: Array<GroupCallParticipant>,
+		participants_next_offset: string,
+		chats: Array<Chat>,
+		users: Array<User>
+	};
+}
+
+/**
+ * @link https://core.telegram.org/type/phone.GroupParticipants
+ */
+export type PhoneGroupParticipants = PhoneGroupParticipants.phoneGroupParticipants;
+
+export namespace PhoneGroupParticipants {
+  export type phoneGroupParticipants = {
+		_: 'phone.groupParticipants',
+		count: number,
+		participants: Array<GroupCallParticipant>,
+		next_offset: string,
+		chats: Array<Chat>,
+		users: Array<User>,
+		version: number
+	};
+}
+
+/**
+ * @link https://core.telegram.org/type/InlineQueryPeerType
+ */
+export type InlineQueryPeerType = InlineQueryPeerType.inlineQueryPeerTypeSameBotPM | InlineQueryPeerType.inlineQueryPeerTypePM | InlineQueryPeerType.inlineQueryPeerTypeChat | InlineQueryPeerType.inlineQueryPeerTypeMegagroup | InlineQueryPeerType.inlineQueryPeerTypeBroadcast;
+
+export namespace InlineQueryPeerType {
+  export type inlineQueryPeerTypeSameBotPM = {
+		_: 'inlineQueryPeerTypeSameBotPM'
+	};
+
+	export type inlineQueryPeerTypePM = {
+		_: 'inlineQueryPeerTypePM'
+	};
+
+	export type inlineQueryPeerTypeChat = {
+		_: 'inlineQueryPeerTypeChat'
+	};
+
+	export type inlineQueryPeerTypeMegagroup = {
+		_: 'inlineQueryPeerTypeMegagroup'
+	};
+
+	export type inlineQueryPeerTypeBroadcast = {
+		_: 'inlineQueryPeerTypeBroadcast'
+	};
+}
+
+/**
+ * @link https://core.telegram.org/type/messages.HistoryImport
+ */
+export type MessagesHistoryImport = MessagesHistoryImport.messagesHistoryImport;
+
+export namespace MessagesHistoryImport {
+  export type messagesHistoryImport = {
+		_: 'messages.historyImport',
+		id: string
+	};
+}
+
+/**
+ * @link https://core.telegram.org/type/messages.HistoryImportParsed
+ */
+export type MessagesHistoryImportParsed = MessagesHistoryImportParsed.messagesHistoryImportParsed;
+
+export namespace MessagesHistoryImportParsed {
+  export type messagesHistoryImportParsed = {
+		_: 'messages.historyImportParsed',
+		flags?: number,
+		pFlags?: Partial<{
+			pm?: true,
+			group?: true,
+		}>,
+		title?: string
+	};
+}
+
+/**
+ * @link https://core.telegram.org/type/messages.AffectedFoundMessages
+ */
+export type MessagesAffectedFoundMessages = MessagesAffectedFoundMessages.messagesAffectedFoundMessages;
+
+export namespace MessagesAffectedFoundMessages {
+  export type messagesAffectedFoundMessages = {
+		_: 'messages.affectedFoundMessages',
+		pts: number,
+		pts_count: number,
+		offset: number,
+		messages: Array<number>
+	};
+}
+
+/**
+ * @link https://core.telegram.org/type/ChatInviteImporter
+ */
+export type ChatInviteImporter = ChatInviteImporter.chatInviteImporter;
+
+export namespace ChatInviteImporter {
+  export type chatInviteImporter = {
+		_: 'chatInviteImporter',
+		user_id: number,
+		date: number
+	};
+}
+
+/**
+ * @link https://core.telegram.org/type/messages.ExportedChatInvites
+ */
+export type MessagesExportedChatInvites = MessagesExportedChatInvites.messagesExportedChatInvites;
+
+export namespace MessagesExportedChatInvites {
+  export type messagesExportedChatInvites = {
+		_: 'messages.exportedChatInvites',
+		count: number,
+		invites: Array<ExportedChatInvite>,
+		users: Array<User>
+	};
+}
+
+/**
+ * @link https://core.telegram.org/type/messages.ExportedChatInvite
+ */
+export type MessagesExportedChatInvite = MessagesExportedChatInvite.messagesExportedChatInvite | MessagesExportedChatInvite.messagesExportedChatInviteReplaced;
+
+export namespace MessagesExportedChatInvite {
+  export type messagesExportedChatInvite = {
+		_: 'messages.exportedChatInvite',
+		invite: ExportedChatInvite,
+		users: Array<User>
+	};
+
+	export type messagesExportedChatInviteReplaced = {
+		_: 'messages.exportedChatInviteReplaced',
+		invite: ExportedChatInvite,
+		new_invite: ExportedChatInvite,
+		users: Array<User>
+	};
+}
+
+/**
+ * @link https://core.telegram.org/type/messages.ChatInviteImporters
+ */
+export type MessagesChatInviteImporters = MessagesChatInviteImporters.messagesChatInviteImporters;
+
+export namespace MessagesChatInviteImporters {
+  export type messagesChatInviteImporters = {
+		_: 'messages.chatInviteImporters',
+		count: number,
+		importers: Array<ChatInviteImporter>,
+		users: Array<User>
+	};
+}
+
+/**
+ * @link https://core.telegram.org/type/ChatAdminWithInvites
+ */
+export type ChatAdminWithInvites = ChatAdminWithInvites.chatAdminWithInvites;
+
+export namespace ChatAdminWithInvites {
+  export type chatAdminWithInvites = {
+		_: 'chatAdminWithInvites',
+		admin_id: number,
+		invites_count: number,
+		revoked_invites_count: number
+	};
+}
+
+/**
+ * @link https://core.telegram.org/type/messages.ChatAdminsWithInvites
+ */
+export type MessagesChatAdminsWithInvites = MessagesChatAdminsWithInvites.messagesChatAdminsWithInvites;
+
+export namespace MessagesChatAdminsWithInvites {
+  export type messagesChatAdminsWithInvites = {
+		_: 'messages.chatAdminsWithInvites',
+		admins: Array<ChatAdminWithInvites>,
+		users: Array<User>
+	};
+}
+
+/**
+ * @link https://core.telegram.org/type/messages.CheckedHistoryImportPeer
+ */
+export type MessagesCheckedHistoryImportPeer = MessagesCheckedHistoryImportPeer.messagesCheckedHistoryImportPeer;
+
+export namespace MessagesCheckedHistoryImportPeer {
+  export type messagesCheckedHistoryImportPeer = {
+		_: 'messages.checkedHistoryImportPeer',
+		confirm_text: string
+	};
+}
+
+/**
+ * @link https://core.telegram.org/type/phone.JoinAsPeers
+ */
+export type PhoneJoinAsPeers = PhoneJoinAsPeers.phoneJoinAsPeers;
+
+export namespace PhoneJoinAsPeers {
+  export type phoneJoinAsPeers = {
+		_: 'phone.joinAsPeers',
+		peers: Array<Peer>,
+		chats: Array<Chat>,
+		users: Array<User>
+	};
+}
+
+/**
+ * @link https://core.telegram.org/type/phone.ExportedGroupCallInvite
+ */
+export type PhoneExportedGroupCallInvite = PhoneExportedGroupCallInvite.phoneExportedGroupCallInvite;
+
+export namespace PhoneExportedGroupCallInvite {
+  export type phoneExportedGroupCallInvite = {
+		_: 'phone.exportedGroupCallInvite',
+		link: string
+	};
+}
+
 export interface ConstructorDeclMap {
 	'error': Error.error,
 	'inputPeerEmpty': InputPeer.inputPeerEmpty,
@@ -8462,7 +8949,6 @@ export interface ConstructorDeclMap {
 	'inputMediaVenue': InputMedia.inputMediaVenue,
 	'messageMediaVenue': MessageMedia.messageMediaVenue,
 	'receivedNotifyMessage': ReceivedNotifyMessage.receivedNotifyMessage,
-	'chatInviteEmpty': ExportedChatInvite.chatInviteEmpty,
 	'chatInviteExported': ExportedChatInvite.chatInviteExported,
 	'chatInviteAlready': ChatInvite.chatInviteAlready,
 	'chatInvite': ChatInvite.chatInvite,
@@ -8770,7 +9256,6 @@ export interface ConstructorDeclMap {
 	'channelAdminLogEventActionChangeStickerSet': ChannelAdminLogEventAction.channelAdminLogEventActionChangeStickerSet,
 	'messageActionCustomAction': MessageAction.messageActionCustomAction,
 	'inputPaymentCredentialsApplePay': InputPaymentCredentials.inputPaymentCredentialsApplePay,
-	'inputPaymentCredentialsAndroidPay': InputPaymentCredentials.inputPaymentCredentialsAndroidPay,
 	'inputMessagesFilterGeo': MessagesFilter.inputMessagesFilterGeo,
 	'inputMessagesFilterContacts': MessagesFilter.inputMessagesFilterContacts,
 	'updateChannelAvailableMessages': Update.updateChannelAvailableMessages,
@@ -9042,7 +9527,6 @@ export interface ConstructorDeclMap {
 	'statsGroupTopInviter': StatsGroupTopInviter.statsGroupTopInviter,
 	'stats.megagroupStats': StatsMegagroupStats.statsMegagroupStats,
 	'globalPrivacySettings': GlobalPrivacySettings.globalPrivacySettings,
-	'updateChannelParticipant': Update.updateChannelParticipant,
 	'phoneConnectionWebrtc': PhoneConnection.phoneConnectionWebrtc,
 	'help.countryCode': HelpCountryCode.helpCountryCode,
 	'help.country': HelpCountry.helpCountry,
@@ -9069,6 +9553,56 @@ export interface ConstructorDeclMap {
 	'stats.messageStats': StatsMessageStats.statsMessageStats,
 	'messageActionGeoProximityReached': MessageAction.messageActionGeoProximityReached,
 	'photoPathSize': PhotoSize.photoPathSize,
+	'speakingInGroupCallAction': SendMessageAction.speakingInGroupCallAction,
+	'groupCallDiscarded': GroupCall.groupCallDiscarded,
+	'groupCall': GroupCall.groupCall,
+	'inputGroupCall': InputGroupCall.inputGroupCall,
+	'messageActionGroupCall': MessageAction.messageActionGroupCall,
+	'messageActionInviteToGroupCall': MessageAction.messageActionInviteToGroupCall,
+	'groupCallParticipant': GroupCallParticipant.groupCallParticipant,
+	'updateChat': Update.updateChat,
+	'updateGroupCallParticipants': Update.updateGroupCallParticipants,
+	'updateGroupCall': Update.updateGroupCall,
+	'phone.groupCall': PhoneGroupCall.phoneGroupCall,
+	'phone.groupParticipants': PhoneGroupParticipants.phoneGroupParticipants,
+	'inlineQueryPeerTypeSameBotPM': InlineQueryPeerType.inlineQueryPeerTypeSameBotPM,
+	'inlineQueryPeerTypePM': InlineQueryPeerType.inlineQueryPeerTypePM,
+	'inlineQueryPeerTypeChat': InlineQueryPeerType.inlineQueryPeerTypeChat,
+	'inlineQueryPeerTypeMegagroup': InlineQueryPeerType.inlineQueryPeerTypeMegagroup,
+	'inlineQueryPeerTypeBroadcast': InlineQueryPeerType.inlineQueryPeerTypeBroadcast,
+	'channelAdminLogEventActionStartGroupCall': ChannelAdminLogEventAction.channelAdminLogEventActionStartGroupCall,
+	'channelAdminLogEventActionDiscardGroupCall': ChannelAdminLogEventAction.channelAdminLogEventActionDiscardGroupCall,
+	'channelAdminLogEventActionParticipantMute': ChannelAdminLogEventAction.channelAdminLogEventActionParticipantMute,
+	'channelAdminLogEventActionParticipantUnmute': ChannelAdminLogEventAction.channelAdminLogEventActionParticipantUnmute,
+	'channelAdminLogEventActionToggleGroupCallSetting': ChannelAdminLogEventAction.channelAdminLogEventActionToggleGroupCallSetting,
+	'inputPaymentCredentialsGooglePay': InputPaymentCredentials.inputPaymentCredentialsGooglePay,
+	'messages.historyImport': MessagesHistoryImport.messagesHistoryImport,
+	'sendMessageHistoryImportAction': SendMessageAction.sendMessageHistoryImportAction,
+	'messages.historyImportParsed': MessagesHistoryImportParsed.messagesHistoryImportParsed,
+	'inputReportReasonFake': ReportReason.inputReportReasonFake,
+	'messages.affectedFoundMessages': MessagesAffectedFoundMessages.messagesAffectedFoundMessages,
+	'messageActionSetMessagesTTL': MessageAction.messageActionSetMessagesTTL,
+	'updatePeerHistoryTTL': Update.updatePeerHistoryTTL,
+	'updateChatParticipant': Update.updateChatParticipant,
+	'updateChannelParticipant': Update.updateChannelParticipant,
+	'updateBotStopped': Update.updateBotStopped,
+	'chatInviteImporter': ChatInviteImporter.chatInviteImporter,
+	'messages.exportedChatInvites': MessagesExportedChatInvites.messagesExportedChatInvites,
+	'messages.exportedChatInvite': MessagesExportedChatInvite.messagesExportedChatInvite,
+	'messages.exportedChatInviteReplaced': MessagesExportedChatInvite.messagesExportedChatInviteReplaced,
+	'messages.chatInviteImporters': MessagesChatInviteImporters.messagesChatInviteImporters,
+	'chatAdminWithInvites': ChatAdminWithInvites.chatAdminWithInvites,
+	'messages.chatAdminsWithInvites': MessagesChatAdminsWithInvites.messagesChatAdminsWithInvites,
+	'channelAdminLogEventActionParticipantJoinByInvite': ChannelAdminLogEventAction.channelAdminLogEventActionParticipantJoinByInvite,
+	'channelAdminLogEventActionExportedInviteDelete': ChannelAdminLogEventAction.channelAdminLogEventActionExportedInviteDelete,
+	'channelAdminLogEventActionExportedInviteRevoke': ChannelAdminLogEventAction.channelAdminLogEventActionExportedInviteRevoke,
+	'channelAdminLogEventActionExportedInviteEdit': ChannelAdminLogEventAction.channelAdminLogEventActionExportedInviteEdit,
+	'channelAdminLogEventActionParticipantVolume': ChannelAdminLogEventAction.channelAdminLogEventActionParticipantVolume,
+	'channelAdminLogEventActionChangeHistoryTTL': ChannelAdminLogEventAction.channelAdminLogEventActionChangeHistoryTTL,
+	'messages.checkedHistoryImportPeer': MessagesCheckedHistoryImportPeer.messagesCheckedHistoryImportPeer,
+	'inputGroupCallStream': InputFileLocation.inputGroupCallStream,
+	'phone.joinAsPeers': PhoneJoinAsPeers.phoneJoinAsPeers,
+	'phone.exportedGroupCallInvite': PhoneExportedGroupCallInvite.phoneExportedGroupCallInvite,
 	'messageEntityEmoji': MessageEntity.messageEntityEmoji,
 	'messageEntityHighlight': MessageEntity.messageEntityHighlight,
 	'messageEntityLinebreak': MessageEntity.messageEntityLinebreak,
@@ -9141,7 +9675,7 @@ export type AuthBindTempAuthKey = {
 
 export type AccountRegisterDevice = {
 	flags?: number,
-	no_muted?: true,
+	no_muted?: boolean,
 	token_type: number,
 	token: string,
 	app_sandbox: boolean,
@@ -9185,7 +9719,8 @@ export type AccountGetWallPapers = {
 
 export type AccountReportPeer = {
 	peer: InputPeer,
-	reason: ReportReason
+	reason: ReportReason,
+	message: string
 };
 
 export type UsersGetUsers = {
@@ -9239,7 +9774,7 @@ export type MessagesGetMessages = {
 
 export type MessagesGetDialogs = {
 	flags?: number,
-	exclude_pinned?: true,
+	exclude_pinned?: boolean,
 	folder_id?: number,
 	offset_date: number,
 	offset_id: number,
@@ -9283,15 +9818,15 @@ export type MessagesReadHistory = {
 
 export type MessagesDeleteHistory = {
 	flags?: number,
-	just_clear?: true,
-	revoke?: true,
+	just_clear?: boolean,
+	revoke?: boolean,
 	peer: InputPeer,
 	max_id: number
 };
 
 export type MessagesDeleteMessages = {
 	flags?: number,
-	revoke?: true,
+	revoke?: boolean,
 	id: Array<number>
 };
 
@@ -9308,10 +9843,10 @@ export type MessagesSetTyping = {
 
 export type MessagesSendMessage = {
 	flags?: number,
-	no_webpage?: true,
-	silent?: true,
-	background?: true,
-	clear_draft?: true,
+	no_webpage?: boolean,
+	silent?: boolean,
+	background?: boolean,
+	clear_draft?: boolean,
 	peer: InputPeer,
 	reply_to_msg_id?: number,
 	message: string,
@@ -9323,9 +9858,9 @@ export type MessagesSendMessage = {
 
 export type MessagesSendMedia = {
 	flags?: number,
-	silent?: true,
-	background?: true,
-	clear_draft?: true,
+	silent?: boolean,
+	background?: boolean,
+	clear_draft?: boolean,
 	peer: InputPeer,
 	reply_to_msg_id?: number,
 	media: InputMedia,
@@ -9338,9 +9873,9 @@ export type MessagesSendMedia = {
 
 export type MessagesForwardMessages = {
 	flags?: number,
-	silent?: true,
-	background?: true,
-	with_my_score?: true,
+	silent?: boolean,
+	background?: boolean,
+	with_my_score?: boolean,
 	from_peer: InputPeer,
 	id: Array<number>,
 	random_id: Array<string>,
@@ -9359,7 +9894,8 @@ export type MessagesGetPeerSettings = {
 export type MessagesReport = {
 	peer: InputPeer,
 	id: Array<number>,
-	reason: ReportReason
+	reason: ReportReason,
+	message: string
 };
 
 export type MessagesGetChats = {
@@ -9387,6 +9923,8 @@ export type MessagesAddChatUser = {
 };
 
 export type MessagesDeleteChatUser = {
+	flags?: number,
+	revoke_history?: boolean,
 	chat_id: number,
 	user_id: InputUser
 };
@@ -9431,8 +9969,8 @@ export type UploadSaveFilePart = {
 
 export type UploadGetFile = {
 	flags?: number,
-	precise?: true,
-	cdn_supported?: true,
+	precise?: boolean,
+	cdn_supported?: boolean,
 	location: InputFileLocation,
 	offset: number,
 	limit: number
@@ -9479,6 +10017,8 @@ export type MessagesAcceptEncryption = {
 };
 
 export type MessagesDiscardEncryption = {
+	flags?: number,
+	delete_history?: boolean,
 	chat_id: number
 };
 
@@ -9494,7 +10034,7 @@ export type MessagesReadEncryptedHistory = {
 
 export type MessagesSendEncrypted = {
 	flags?: number,
-	silent?: true,
+	silent?: boolean,
 	peer: InputEncryptedChat,
 	random_id: string,
 	data: Uint8Array
@@ -9502,7 +10042,7 @@ export type MessagesSendEncrypted = {
 
 export type MessagesSendEncryptedFile = {
 	flags?: number,
-	silent?: true,
+	silent?: boolean,
 	peer: InputEncryptedChat,
 	random_id: string,
 	data: Uint8Array,
@@ -9670,7 +10210,11 @@ export type InvokeWithoutUpdates = {
 };
 
 export type MessagesExportChatInvite = {
-	peer: InputPeer
+	flags?: number,
+	legacy_revoke_permanent?: boolean,
+	peer: InputPeer,
+	expire_date?: number,
+	usage_limit?: number
 };
 
 export type MessagesCheckChatInvite = {
@@ -9760,8 +10304,9 @@ export type ChannelsGetFullChannel = {
 
 export type ChannelsCreateChannel = {
 	flags?: number,
-	broadcast?: true,
-	megagroup?: true,
+	broadcast?: boolean,
+	megagroup?: boolean,
+	for_import?: boolean,
 	title: string,
 	about: string,
 	geo_point?: InputGeoPoint,
@@ -9814,7 +10359,7 @@ export type ChannelsDeleteChannel = {
 
 export type UpdatesGetChannelDifference = {
 	flags?: number,
-	force?: true,
+	force?: boolean,
 	channel: InputChannel,
 	filter: ChannelMessagesFilter,
 	pts: number,
@@ -9846,7 +10391,7 @@ export type MessagesSearchGlobal = {
 
 export type MessagesReorderStickerSets = {
 	flags?: number,
-	masks?: true,
+	masks?: boolean,
 	order: Array<string>
 };
 
@@ -9876,8 +10421,8 @@ export type MessagesGetInlineBotResults = {
 
 export type MessagesSetInlineBotResults = {
 	flags?: number,
-	gallery?: true,
-	private?: true,
+	gallery?: boolean,
+	private?: boolean,
 	query_id: string,
 	results: Array<InputBotInlineResult>,
 	cache_time: number,
@@ -9887,10 +10432,10 @@ export type MessagesSetInlineBotResults = {
 
 export type MessagesSendInlineBotResult = {
 	flags?: number,
-	silent?: true,
-	background?: true,
-	clear_draft?: true,
-	hide_via?: true,
+	silent?: boolean,
+	background?: boolean,
+	clear_draft?: boolean,
+	hide_via?: boolean,
 	peer: InputPeer,
 	reply_to_msg_id?: number,
 	random_id: string,
@@ -9901,8 +10446,8 @@ export type MessagesSendInlineBotResult = {
 
 export type ChannelsExportMessageLink = {
 	flags?: number,
-	grouped?: true,
-	thread?: true,
+	grouped?: boolean,
+	thread?: boolean,
 	channel: InputChannel,
 	id: number
 };
@@ -9929,7 +10474,7 @@ export type MessagesGetMessageEditData = {
 
 export type MessagesEditMessage = {
 	flags?: number,
-	no_webpage?: true,
+	no_webpage?: boolean,
 	peer: InputPeer,
 	id: number,
 	message?: string,
@@ -9941,7 +10486,7 @@ export type MessagesEditMessage = {
 
 export type MessagesEditInlineBotMessage = {
 	flags?: number,
-	no_webpage?: true,
+	no_webpage?: boolean,
 	id: InputBotInlineMessageID,
 	message?: string,
 	media?: InputMedia,
@@ -9951,7 +10496,7 @@ export type MessagesEditInlineBotMessage = {
 
 export type MessagesGetBotCallbackAnswer = {
 	flags?: number,
-	game?: true,
+	game?: boolean,
 	peer: InputPeer,
 	msg_id: number,
 	data?: Uint8Array,
@@ -9960,7 +10505,7 @@ export type MessagesGetBotCallbackAnswer = {
 
 export type MessagesSetBotCallbackAnswer = {
 	flags?: number,
-	alert?: true,
+	alert?: boolean,
 	query_id: string,
 	message?: string,
 	url?: string,
@@ -9969,14 +10514,14 @@ export type MessagesSetBotCallbackAnswer = {
 
 export type ContactsGetTopPeers = {
 	flags?: number,
-	correspondents?: true,
-	bots_pm?: true,
-	bots_inline?: true,
-	phone_calls?: true,
-	forward_users?: true,
-	forward_chats?: true,
-	groups?: true,
-	channels?: true,
+	correspondents?: boolean,
+	bots_pm?: boolean,
+	bots_inline?: boolean,
+	phone_calls?: boolean,
+	forward_users?: boolean,
+	forward_chats?: boolean,
+	groups?: boolean,
+	channels?: boolean,
 	offset: number,
 	limit: number,
 	hash: number
@@ -9993,7 +10538,7 @@ export type MessagesGetPeerDialogs = {
 
 export type MessagesSaveDraft = {
 	flags?: number,
-	no_webpage?: true,
+	no_webpage?: boolean,
 	reply_to_msg_id?: number,
 	peer: InputPeer,
 	message: string,
@@ -10014,25 +10559,25 @@ export type MessagesReadFeaturedStickers = {
 
 export type MessagesGetRecentStickers = {
 	flags?: number,
-	attached?: true,
+	attached?: boolean,
 	hash: number
 };
 
 export type MessagesSaveRecentSticker = {
 	flags?: number,
-	attached?: true,
+	attached?: boolean,
 	id: InputDocument,
 	unsave: boolean
 };
 
 export type MessagesClearRecentStickers = {
 	flags?: number,
-	attached?: true
+	attached?: boolean
 };
 
 export type MessagesGetArchivedStickers = {
 	flags?: number,
-	masks?: true,
+	masks?: boolean,
 	offset_id: string,
 	limit: number
 };
@@ -10049,8 +10594,8 @@ export type AccountConfirmPhone = {
 
 export type ChannelsGetAdminedPublicChannels = {
 	flags?: number,
-	by_location?: true,
-	check_limit?: true
+	by_location?: boolean,
+	check_limit?: boolean
 };
 
 export type MessagesGetMaskStickers = {
@@ -10067,8 +10612,8 @@ export type AuthDropTempAuthKeys = {
 
 export type MessagesSetGameScore = {
 	flags?: number,
-	edit_message?: true,
-	force?: true,
+	edit_message?: boolean,
+	force?: boolean,
 	peer: InputPeer,
 	id: number,
 	user_id: InputUser,
@@ -10077,8 +10622,8 @@ export type MessagesSetGameScore = {
 
 export type MessagesSetInlineGameScore = {
 	flags?: number,
-	edit_message?: true,
-	force?: true,
+	edit_message?: boolean,
+	force?: boolean,
 	id: InputBotInlineMessageID,
 	user_id: InputUser,
 	score: number
@@ -10117,13 +10662,13 @@ export type MessagesGetWebPage = {
 
 export type MessagesToggleDialogPin = {
 	flags?: number,
-	pinned?: true,
+	pinned?: boolean,
 	peer: InputDialogPeer
 };
 
 export type MessagesReorderPinnedDialogs = {
 	flags?: number,
-	force?: true,
+	force?: boolean,
 	folder_id: number,
 	order: Array<InputDialogPeer>
 };
@@ -10158,7 +10703,7 @@ export type PaymentsGetPaymentReceipt = {
 
 export type PaymentsValidateRequestedInfo = {
 	flags?: number,
-	save?: true,
+	save?: boolean,
 	msg_id: number,
 	info: PaymentRequestedInfo
 };
@@ -10182,8 +10727,8 @@ export type PaymentsGetSavedInfo = {
 
 export type PaymentsClearSavedInfo = {
 	flags?: number,
-	credentials?: true,
-	info?: true
+	credentials?: boolean,
+	info?: boolean
 };
 
 export type MessagesSetBotShippingResults = {
@@ -10195,15 +10740,15 @@ export type MessagesSetBotShippingResults = {
 
 export type MessagesSetBotPrecheckoutResults = {
 	flags?: number,
-	success?: true,
+	success?: boolean,
 	query_id: string,
 	error?: string
 };
 
 export type StickersCreateStickerSet = {
 	flags?: number,
-	masks?: true,
-	animated?: true,
+	masks?: boolean,
+	animated?: boolean,
 	user_id: InputUser,
 	title: string,
 	short_name: string,
@@ -10236,7 +10781,7 @@ export type PhoneGetCallConfig = {
 
 export type PhoneRequestCall = {
 	flags?: number,
-	video?: true,
+	video?: boolean,
 	user_id: InputUser,
 	random_id: number,
 	g_a_hash: Uint8Array,
@@ -10262,7 +10807,7 @@ export type PhoneReceivedCall = {
 
 export type PhoneDiscardCall = {
 	flags?: number,
-	video?: true,
+	video?: boolean,
 	peer: InputPhoneCall,
 	duration: number,
 	reason: PhoneCallDiscardReason,
@@ -10271,7 +10816,7 @@ export type PhoneDiscardCall = {
 
 export type PhoneSetCallRating = {
 	flags?: number,
-	user_initiative?: true,
+	user_initiative?: boolean,
 	peer: InputPhoneCall,
 	rating: number,
 	comment: string
@@ -10404,9 +10949,9 @@ export type MessagesGetRecentLocations = {
 
 export type MessagesSendMultiMedia = {
 	flags?: number,
-	silent?: true,
-	background?: true,
-	clear_draft?: true,
+	silent?: boolean,
+	background?: boolean,
+	clear_draft?: boolean,
 	peer: InputPeer,
 	reply_to_msg_id?: number,
 	multi_media: Array<InputSingleMedia>,
@@ -10432,7 +10977,7 @@ export type AccountResetWebAuthorizations = {
 
 export type MessagesSearchStickerSets = {
 	flags?: number,
-	exclude_featured?: true,
+	exclude_featured?: boolean,
 	q: string,
 	hash: number
 };
@@ -10520,18 +11065,18 @@ export type ChannelsGetLeftChannels = {
 
 export type AccountInitTakeoutSession = {
 	flags?: number,
-	contacts?: true,
-	message_users?: true,
-	message_chats?: true,
-	message_megagroups?: true,
-	message_channels?: true,
-	files?: true,
+	contacts?: boolean,
+	message_users?: boolean,
+	message_chats?: boolean,
+	message_megagroups?: boolean,
+	message_channels?: boolean,
+	files?: boolean,
 	file_max_size?: number
 };
 
 export type AccountFinishTakeoutSession = {
 	flags?: number,
-	success?: true
+	success?: boolean
 };
 
 export type MessagesGetSplitRanges = {
@@ -10550,7 +11095,7 @@ export type InvokeWithTakeout = {
 
 export type MessagesMarkDialogUnread = {
 	flags?: number,
-	unread?: true,
+	unread?: boolean,
 	peer: InputDialogPeer
 };
 
@@ -10585,9 +11130,9 @@ export type LangpackGetLanguage = {
 
 export type MessagesUpdatePinnedMessage = {
 	flags?: number,
-	silent?: true,
-	unpin?: true,
-	pm_oneside?: true,
+	silent?: boolean,
+	unpin?: boolean,
+	pm_oneside?: boolean,
 	peer: InputPeer,
 	id: number
 };
@@ -10628,7 +11173,7 @@ export type AccountSetContactSignUpNotification = {
 
 export type AccountGetNotifyExceptions = {
 	flags?: number,
-	compare_sound?: true,
+	compare_sound?: boolean,
 	peer?: InputNotifyPeer
 };
 
@@ -10649,7 +11194,7 @@ export type MessagesGetOnlines = {
 
 export type MessagesGetStatsURL = {
 	flags?: number,
-	dark?: true,
+	dark?: boolean,
 	peer: InputPeer,
 	params: string
 };
@@ -10695,8 +11240,8 @@ export type AccountGetAutoDownloadSettings = {
 
 export type AccountSaveAutoDownloadSettings = {
 	flags?: number,
-	low?: true,
-	high?: true,
+	low?: boolean,
+	high?: boolean,
 	settings: AutoDownloadSettings
 };
 
@@ -10740,17 +11285,20 @@ export type ChannelsSetDiscussionGroup = {
 };
 
 export type MessagesRequestUrlAuth = {
-	peer: InputPeer,
-	msg_id: number,
-	button_id: number
+	flags?: number,
+	peer?: InputPeer,
+	msg_id?: number,
+	button_id?: number,
+	url?: string
 };
 
 export type MessagesAcceptUrlAuth = {
 	flags?: number,
-	write_allowed?: true,
-	peer: InputPeer,
-	msg_id: number,
-	button_id: number
+	write_allowed?: boolean,
+	peer?: InputPeer,
+	msg_id?: number,
+	button_id?: number,
+	url?: string
 };
 
 export type MessagesHidePeerSettingsBar = {
@@ -10759,7 +11307,7 @@ export type MessagesHidePeerSettingsBar = {
 
 export type ContactsAddContact = {
 	flags?: number,
-	add_phone_privacy_exception?: true,
+	add_phone_privacy_exception?: boolean,
 	id: InputUser,
 	first_name: string,
 	last_name: string,
@@ -10778,7 +11326,7 @@ export type ChannelsEditCreator = {
 
 export type ContactsGetLocated = {
 	flags?: number,
-	background?: true,
+	background?: boolean,
 	geo_point: InputGeoPoint,
 	self_expires?: number
 };
@@ -10847,7 +11395,7 @@ export type AccountSaveTheme = {
 
 export type AccountInstallTheme = {
 	flags?: number,
-	dark?: true,
+	dark?: boolean,
 	format?: string,
 	theme?: InputTheme
 };
@@ -10879,7 +11427,7 @@ export type AuthAcceptLoginToken = {
 
 export type AccountSetContentSettings = {
 	flags?: number,
-	sensitive_enabled?: true
+	sensitive_enabled?: boolean
 };
 
 export type AccountGetContentSettings = {
@@ -10905,9 +11453,9 @@ export type MessagesGetPollVotes = {
 
 export type MessagesToggleStickerSets = {
 	flags?: number,
-	uninstall?: true,
-	archive?: true,
-	unarchive?: true,
+	uninstall?: boolean,
+	archive?: boolean,
+	unarchive?: boolean,
 	stickersets: Array<InputStickerSet>
 };
 
@@ -10935,7 +11483,7 @@ export type MessagesUpdateDialogFiltersOrder = {
 
 export type StatsGetBroadcastStats = {
 	flags?: number,
-	dark?: true,
+	dark?: boolean,
 	channel: InputChannel
 };
 
@@ -10975,7 +11523,7 @@ export type PhoneSendSignalingData = {
 
 export type StatsGetMegagroupStats = {
 	flags?: number,
-	dark?: true,
+	dark?: boolean,
 	channel: InputChannel
 };
 
@@ -10988,6 +11536,7 @@ export type AccountSetGlobalPrivacySettings = {
 };
 
 export type HelpDismissSuggestion = {
+	peer: InputPeer,
 	suggestion: string
 };
 
@@ -11021,9 +11570,9 @@ export type MessagesReadDiscussion = {
 
 export type ContactsBlockFromReplies = {
 	flags?: number,
-	delete_message?: true,
-	delete_history?: true,
-	report_spam?: true,
+	delete_message?: boolean,
+	delete_history?: boolean,
+	report_spam?: boolean,
 	msg_id: number
 };
 
@@ -11038,13 +11587,193 @@ export type StatsGetMessagePublicForwards = {
 
 export type StatsGetMessageStats = {
 	flags?: number,
-	dark?: true,
+	dark?: boolean,
 	channel: InputChannel,
 	msg_id: number
 };
 
 export type MessagesUnpinAllMessages = {
 	peer: InputPeer
+};
+
+export type PhoneCreateGroupCall = {
+	peer: InputPeer,
+	random_id: number
+};
+
+export type PhoneJoinGroupCall = {
+	flags?: number,
+	muted?: boolean,
+	call: InputGroupCall,
+	join_as: InputPeer,
+	invite_hash?: string,
+	params: DataJSON
+};
+
+export type PhoneLeaveGroupCall = {
+	call: InputGroupCall,
+	source: number
+};
+
+export type PhoneInviteToGroupCall = {
+	call: InputGroupCall,
+	users: Array<InputUser>
+};
+
+export type PhoneDiscardGroupCall = {
+	call: InputGroupCall
+};
+
+export type PhoneToggleGroupCallSettings = {
+	flags?: number,
+	reset_invite_hash?: boolean,
+	call: InputGroupCall,
+	join_muted?: boolean
+};
+
+export type PhoneGetGroupCall = {
+	call: InputGroupCall
+};
+
+export type PhoneGetGroupParticipants = {
+	call: InputGroupCall,
+	ids: Array<InputPeer>,
+	sources: Array<number>,
+	offset: string,
+	limit: number
+};
+
+export type PhoneCheckGroupCall = {
+	call: InputGroupCall,
+	source: number
+};
+
+export type MessagesDeleteChat = {
+	chat_id: number
+};
+
+export type MessagesDeletePhoneCallHistory = {
+	flags?: number,
+	revoke?: boolean
+};
+
+export type MessagesCheckHistoryImport = {
+	import_head: string
+};
+
+export type MessagesInitHistoryImport = {
+	peer: InputPeer,
+	file: InputFile,
+	media_count: number
+};
+
+export type MessagesUploadImportedMedia = {
+	peer: InputPeer,
+	import_id: string,
+	file_name: string,
+	media: InputMedia
+};
+
+export type MessagesStartHistoryImport = {
+	peer: InputPeer,
+	import_id: string
+};
+
+export type MessagesGetExportedChatInvites = {
+	flags?: number,
+	revoked?: boolean,
+	peer: InputPeer,
+	admin_id: InputUser,
+	offset_date?: number,
+	offset_link?: string,
+	limit: number
+};
+
+export type MessagesGetExportedChatInvite = {
+	peer: InputPeer,
+	link: string
+};
+
+export type MessagesEditExportedChatInvite = {
+	flags?: number,
+	revoked?: boolean,
+	peer: InputPeer,
+	link: string,
+	expire_date?: number,
+	usage_limit?: number
+};
+
+export type MessagesDeleteRevokedExportedChatInvites = {
+	peer: InputPeer,
+	admin_id: InputUser
+};
+
+export type MessagesDeleteExportedChatInvite = {
+	peer: InputPeer,
+	link: string
+};
+
+export type MessagesGetAdminsWithInvites = {
+	peer: InputPeer
+};
+
+export type MessagesGetChatInviteImporters = {
+	peer: InputPeer,
+	link: string,
+	offset_date: number,
+	offset_user: InputUser,
+	limit: number
+};
+
+export type MessagesSetHistoryTTL = {
+	peer: InputPeer,
+	period: number
+};
+
+export type AccountReportProfilePhoto = {
+	peer: InputPeer,
+	photo_id: InputPhoto,
+	reason: ReportReason,
+	message: string
+};
+
+export type ChannelsConvertToGigagroup = {
+	channel: InputChannel
+};
+
+export type MessagesCheckHistoryImportPeer = {
+	peer: InputPeer
+};
+
+export type PhoneToggleGroupCallRecord = {
+	flags?: number,
+	start?: boolean,
+	call: InputGroupCall,
+	title?: string
+};
+
+export type PhoneEditGroupCallParticipant = {
+	flags?: number,
+	muted?: boolean,
+	call: InputGroupCall,
+	participant: InputPeer,
+	volume?: number,
+	raise_hand?: boolean
+};
+
+export type PhoneEditGroupCallTitle = {
+	call: InputGroupCall,
+	title: string
+};
+
+export type PhoneGetGroupCallJoinAs = {
+	peer: InputPeer
+};
+
+export type PhoneExportGroupCallInvite = {
+	flags?: number,
+	can_self_unmute?: boolean,
+	call: InputGroupCall
 };
 
 export interface MethodDeclMap {
@@ -11398,5 +12127,36 @@ export interface MethodDeclMap {
 	'stats.getMessagePublicForwards': {req: StatsGetMessagePublicForwards, res: MessagesMessages},
 	'stats.getMessageStats': {req: StatsGetMessageStats, res: StatsMessageStats},
 	'messages.unpinAllMessages': {req: MessagesUnpinAllMessages, res: MessagesAffectedHistory},
+	'phone.createGroupCall': {req: PhoneCreateGroupCall, res: Updates},
+	'phone.joinGroupCall': {req: PhoneJoinGroupCall, res: Updates},
+	'phone.leaveGroupCall': {req: PhoneLeaveGroupCall, res: Updates},
+	'phone.inviteToGroupCall': {req: PhoneInviteToGroupCall, res: Updates},
+	'phone.discardGroupCall': {req: PhoneDiscardGroupCall, res: Updates},
+	'phone.toggleGroupCallSettings': {req: PhoneToggleGroupCallSettings, res: Updates},
+	'phone.getGroupCall': {req: PhoneGetGroupCall, res: PhoneGroupCall},
+	'phone.getGroupParticipants': {req: PhoneGetGroupParticipants, res: PhoneGroupParticipants},
+	'phone.checkGroupCall': {req: PhoneCheckGroupCall, res: boolean},
+	'messages.deleteChat': {req: MessagesDeleteChat, res: boolean},
+	'messages.deletePhoneCallHistory': {req: MessagesDeletePhoneCallHistory, res: MessagesAffectedFoundMessages},
+	'messages.checkHistoryImport': {req: MessagesCheckHistoryImport, res: MessagesHistoryImportParsed},
+	'messages.initHistoryImport': {req: MessagesInitHistoryImport, res: MessagesHistoryImport},
+	'messages.uploadImportedMedia': {req: MessagesUploadImportedMedia, res: MessageMedia},
+	'messages.startHistoryImport': {req: MessagesStartHistoryImport, res: boolean},
+	'messages.getExportedChatInvites': {req: MessagesGetExportedChatInvites, res: MessagesExportedChatInvites},
+	'messages.getExportedChatInvite': {req: MessagesGetExportedChatInvite, res: MessagesExportedChatInvite},
+	'messages.editExportedChatInvite': {req: MessagesEditExportedChatInvite, res: MessagesExportedChatInvite},
+	'messages.deleteRevokedExportedChatInvites': {req: MessagesDeleteRevokedExportedChatInvites, res: boolean},
+	'messages.deleteExportedChatInvite': {req: MessagesDeleteExportedChatInvite, res: boolean},
+	'messages.getAdminsWithInvites': {req: MessagesGetAdminsWithInvites, res: MessagesChatAdminsWithInvites},
+	'messages.getChatInviteImporters': {req: MessagesGetChatInviteImporters, res: MessagesChatInviteImporters},
+	'messages.setHistoryTTL': {req: MessagesSetHistoryTTL, res: Updates},
+	'account.reportProfilePhoto': {req: AccountReportProfilePhoto, res: boolean},
+	'channels.convertToGigagroup': {req: ChannelsConvertToGigagroup, res: Updates},
+	'messages.checkHistoryImportPeer': {req: MessagesCheckHistoryImportPeer, res: MessagesCheckedHistoryImportPeer},
+	'phone.toggleGroupCallRecord': {req: PhoneToggleGroupCallRecord, res: Updates},
+	'phone.editGroupCallParticipant': {req: PhoneEditGroupCallParticipant, res: Updates},
+	'phone.editGroupCallTitle': {req: PhoneEditGroupCallTitle, res: Updates},
+	'phone.getGroupCallJoinAs': {req: PhoneGetGroupCallJoinAs, res: PhoneJoinAsPeers},
+	'phone.exportGroupCallInvite': {req: PhoneExportGroupCallInvite, res: PhoneExportedGroupCallInvite},
 }
 

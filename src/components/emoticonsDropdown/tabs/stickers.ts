@@ -200,7 +200,7 @@ export default class StickersTab implements EmoticonsTab {
 
     //console.log('got stickerSet', stickerSet, li);
     
-    if(stickerSet.set.thumb) {
+    if(stickerSet.set.thumbs?.length) {
       const downloadOptions = appStickersManager.getStickerSetThumbDownloadOptions(stickerSet.set);
       const promise = appDownloadManager.download(downloadOptions);
 

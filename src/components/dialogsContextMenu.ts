@@ -6,6 +6,7 @@ import { findUpTag } from "../helpers/dom";
 import { positionMenu, openBtnMenu } from "./misc";
 import ButtonMenu, { ButtonMenuItemOptions } from "./buttonMenu";
 import PopupDeleteDialog from "./popups/deleteDialog";
+import { i18n } from "../lib/langPack";
 
 export default class DialogsContextMenu {
   private element: HTMLElement;
@@ -150,7 +151,7 @@ export default class DialogsContextMenu {
     });
 
     // delete button
-    this.buttons[this.buttons.length - 1].element.firstChild.nodeValue = appPeersManager.getDeleteButtonText(this.selectedId);
+    this.buttons[this.buttons.length - 1].element.lastChild.replaceWith(i18n(appPeersManager.getDeleteButtonText(this.selectedId)));
 
     li.classList.add('menu-open');
     positionMenu(e, this.element);

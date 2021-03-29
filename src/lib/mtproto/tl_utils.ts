@@ -276,7 +276,7 @@ class TLSerialization {
   
     this.storeInt(methodData.id, methodName + '[id]');
 
-    const pFlags = params.pFlags;
+    const pFlags = params.pFlags || params; // * support pFlags, though am not expecting it to be there
     const flagsOffsets: {[paramName: string]: number} = {};
     //console.log('storeMethod', len, methodData);
     for(const param of methodData.params) {
@@ -287,7 +287,7 @@ class TLSerialization {
         const fieldBit = condType[0].split('.');
 
         if(!(params[fieldBit[0]] & (1 << +fieldBit[1]))) {
-          if((condType[1] === 'true' && pFlags && pFlags[param.name]) || params[param.name] !== undefined) {
+          if(condType[1] === 'true' ? pFlags[param.name] : params[param.name] !== undefined) {
             //console.log('storeMethod autocompleting', methodName, param.name, params[param.name], type);
             params[fieldBit[0]] |= 1 << +fieldBit[1];
           } else {
@@ -399,7 +399,7 @@ class TLSerialization {
         //console.log('storeObject fieldBit', fieldBit, obj[fieldBit[0]]);
 
         if(!(obj[fieldBit[0]] & (1 << +fieldBit[1]))) {
-          if((condType[1] === 'true' && pFlags && pFlags[param.name]) || obj[param.name] !== undefined) {
+          if(condType[1] === 'true' ? pFlags && pFlags[param.name] : obj[param.name] !== undefined) {
             //console.log('storeObject autocompleting', param.name, obj[param.name], type);
             obj[fieldBit[0]] |= 1 << +fieldBit[1];
           } else {

@@ -123,7 +123,7 @@ export class AppStickersManager {
   }
 
   public getStickerSetThumbDownloadOptions(stickerSet: StickerSet.stickerSet) {
-    const thumb = stickerSet.thumb as PhotoSize.photoSize;
+    const thumb = stickerSet.thumbs[0] as PhotoSize.photoSize;
     const dcId = stickerSet.thumb_dc_id;
 
     const isAnimated = stickerSet.pFlags?.animated;
