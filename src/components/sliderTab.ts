@@ -71,8 +71,13 @@ export default class SliderSuperTab implements SliderTab {
     if(this.init) {
       const result = this.init();
       this.init = null;
+
       if(result instanceof Promise) {
-        await result;
+        try {
+          await result;
+        } catch(err) {
+          console.error('open tab error', err);
+        }
       }
     }
 

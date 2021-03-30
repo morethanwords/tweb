@@ -9,12 +9,20 @@ import { AuthAuthorization, AuthLoginToken } from '../layer';
 import { bytesCmp, bytesToBase64 } from '../helpers/bytes';
 import { pause } from '../helpers/schedulers';
 import App from '../config/app';
+import Button from '../components/button';
 
 let onFirstMount = async() => {
   const pageElement = page.pageEl;
   const imageDiv = pageElement.querySelector('.auth-image') as HTMLDivElement;
 
-  page.pageEl.querySelector('.a-qr').addEventListener('click', () => {
+  const inputWrapper = document.createElement('div');
+  inputWrapper.classList.add('input-wrapper');
+
+  const btnBack = Button('btn-primary btn-secondary btn-primary-transparent primary', {text: 'Or log in using your phone number'});
+  inputWrapper.append(btnBack);
+  imageDiv.parentElement.append(inputWrapper);
+
+  btnBack.addEventListener('click', () => {
     pageSignIn.mount();
     stop = true;
   });
@@ -76,11 +84,10 @@ let onFirstMount = async() => {
   
           let encoded = bytesToBase64(loginToken.token);
           let url = "tg://login?token=" + encoded.replace(/\+/g, "-").replace(/\//g, "_").replace(/\=+$/, "");
-    
-          imageDiv.innerHTML = '';
+
           const qrCode = new QRCodeStyling({
-            width: 166,
-            height: 166,
+            width: 166 * window.devicePixelRatio,
+            height: 166 * window.devicePixelRatio,
             data: url,
             image: "assets/img/logo_padded.svg",
             dotsOptions: {
@@ -97,7 +104,16 @@ let onFirstMount = async() => {
               errorCorrectionLevel: "L"
             }
           });
+
           qrCode.append(imageDiv);
+          (imageDiv.lastChild as HTMLCanvasElement).classList.add('qr-canvas');
+
+          // * это костыль, но библиотека не предоставляет никаких событий
+          qrCode._drawingPromise.then(() => {
+            Array.from(imageDiv.children).slice(0, -1).forEach(el => {
+              el.remove();
+            });
+          });
         }
   
         let timestamp = Date.now() / 1000;

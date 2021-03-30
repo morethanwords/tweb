@@ -90,6 +90,19 @@
       transition: none;
     }
   }
+
+  &.hover-effect {
+    display: flex;
+    align-items: center;
+    height: 3.5rem;
+    padding: 0 1.1875rem;
+    margin-left: 0;
+    margin-right: 0;
+
+    .checkbox-box {
+      left: auto;
+    }
+  }
 }
 
 .checkbox-ripple {

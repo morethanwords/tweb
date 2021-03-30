@@ -12,7 +12,8 @@ export type CheckboxFieldOptions = {
   disabled?: boolean,
   checked?: boolean,
   restriction?: boolean,
-  withRipple?: boolean
+  withRipple?: boolean,
+  withHover?: boolean,
 };
 export default class CheckboxField {
   public input: HTMLInputElement;
@@ -92,6 +93,8 @@ export default class CheckboxField {
     if(options.withRipple) {
       label.classList.add('checkbox-ripple', 'hover-effect');
       ripple(label, undefined, undefined, true);
+    } else if(options.withHover) {
+      label.classList.add('hover-effect');
     }
   }
 

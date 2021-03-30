@@ -3,10 +3,10 @@ import { attachClickEvent, cancelEvent } from "../../../../helpers/dom";
 import { AccountPassword } from "../../../../layer";
 import Button from "../../../button";
 import PasswordInputField from "../../../passwordInputField";
-import { ripple } from "../../../ripple";
 import { SliderSuperTab } from "../../../slider";
 import TrackingMonkey from "../../../monkeys/tracking";
 import AppTwoStepVerificationHintTab from "./hint";
+import { InputState } from "../../../inputField";
 
 export default class AppTwoStepVerificationReEnterPasswordTab extends SliderSuperTab {
   public state: AccountPassword;
@@ -16,7 +16,7 @@ export default class AppTwoStepVerificationReEnterPasswordTab extends SliderSupe
 
   protected init() {
     this.container.classList.add('two-step-verification', 'two-step-verification-enter-password', 'two-step-verification-re-enter-password');
-    this.title.innerHTML = 'Re-Enter your Password';
+    this.setTitle('PleaseReEnterPassword');
 
     const section = new SettingSection({
       noDelimiter: true
@@ -27,13 +27,12 @@ export default class AppTwoStepVerificationReEnterPasswordTab extends SliderSupe
 
     const passwordInputField = this.passwordInputField = new PasswordInputField({
       name: 're-enter-password',
-      label: 'Re-Enter your Password'
+      label: 'PleaseReEnterPassword'
     });
 
     const monkey = new TrackingMonkey(passwordInputField, 157);
-    monkey.load();
 
-    const btnContinue = Button('btn-primary btn-color-primary', {text: 'CONTINUE'});
+    const btnContinue = Button('btn-primary btn-color-primary', {text: 'Continue'});
 
     inputWrapper.append(passwordInputField.container, btnContinue);
     section.content.append(monkey.container, inputWrapper);
@@ -42,9 +41,7 @@ export default class AppTwoStepVerificationReEnterPasswordTab extends SliderSupe
 
     passwordInputField.input.addEventListener('keypress', (e) => {
       if(passwordInputField.input.classList.contains('error')) {
-        passwordInputField.input.classList.remove('error');
-        btnContinue.innerText = 'CONTINUE';
-        ripple(btnContinue);
+        passwordInputField.setState(InputState.Neutral);
       }
   
       if(e.key === 'Enter') {
@@ -54,7 +51,7 @@ export default class AppTwoStepVerificationReEnterPasswordTab extends SliderSupe
 
     const verifyInput = () => {
       if(this.newPassword !== passwordInputField.value) {
-        passwordInputField.input.classList.add('error');
+        passwordInputField.setError();
         return false;
       }
 
@@ -75,6 +72,8 @@ export default class AppTwoStepVerificationReEnterPasswordTab extends SliderSupe
       tab.open();
     };
     attachClickEvent(btnContinue, onContinueClick);
+
+    return monkey.load();
   }
   
   onOpenAfterTimeout() {

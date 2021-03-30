@@ -105,7 +105,7 @@ function runNow(fn: NoneToVoidFunction) {
   fn();
 } */
 
-export const pause = (ms: number) => new Promise((resolve) => {
+export const pause = (ms: number) => new Promise<void>((resolve) => {
   setTimeout(resolve, ms);
 });
 

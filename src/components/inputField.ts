@@ -62,6 +62,7 @@ export type InputFieldOptions = {
   placeholder?: LangPackKey, 
   label?: LangPackKey, 
   labelOptions?: any[],
+  labelText?: string,
   name?: string, 
   maxLength?: number, 
   showLengthOn?: number,
@@ -89,7 +90,9 @@ class InputField {
       options.showLengthOn = Math.round(options.maxLength / 3);
     }
 
-    const {placeholder, label, maxLength, showLengthOn, name, plainText} = options;
+    const {placeholder, maxLength, showLengthOn, name, plainText} = options;
+
+    let label = options.label || options.labelText;
 
     let input: HTMLElement;
     if(!plainText) {
@@ -148,7 +151,7 @@ class InputField {
 
     if(label) {
       this.label = document.createElement('label');
-      this.label.append(i18n(label, options.labelOptions));
+      this.setLabel();
       this.container.append(this.label);
     }
 
@@ -168,12 +171,11 @@ class InputField {
         //this.onLengthChange && this.onLengthChange(inputLength, isError);
 
         if(isError || diff <= showLengthOn) {
-          labelEl.innerHTML = '';
-          labelEl.append(i18n(label, options.labelOptions), ` (${maxLength - inputLength})`);
+          this.setLabel();
+          labelEl.append(` (${maxLength - inputLength})`);
           if(!showingLength) showingLength = true;
         } else if((wasError && !isError) || showingLength) {
-          labelEl.innerHTML = '';
-          labelEl.append(i18n(label, options.labelOptions));
+          this.setLabel();
           showingLength = false;
         }
       };
@@ -182,6 +184,15 @@ class InputField {
     }
 
     this.input = input;
+  }
+
+  public setLabel() {
+    this.label.textContent = '';
+    if(this.options.labelText) {
+      this.label.innerHTML = this.options.labelText;
+    } else {
+      this.label.append(i18n(this.options.label, this.options.labelOptions));
+    }
   }
 
   public onFakeInput() {

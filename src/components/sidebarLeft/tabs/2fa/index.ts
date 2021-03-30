@@ -2,6 +2,7 @@ import { SettingSection } from "../..";
 import { attachClickEvent } from "../../../../helpers/dom";
 import { AccountPassword } from "../../../../layer";
 import appStickersManager from "../../../../lib/appManagers/appStickersManager";
+import { _i18n } from "../../../../lib/langPack";
 import passwordManager from "../../../../lib/mtproto/passwordManager";
 import Button from "../../../button";
 import PopupPeer from "../../../popups/peer";
@@ -17,7 +18,7 @@ export default class AppTwoStepVerificationTab extends SliderSuperTab {
 
   protected init() {
     this.container.classList.add('two-step-verification', 'two-step-verification-main');
-    this.title.innerHTML = 'Two-Step Verification';
+    this.setTitle('TwoStepVerificationTitle');
 
     const section = new SettingSection({
       caption: ' ',
@@ -48,11 +49,11 @@ export default class AppTwoStepVerificationTab extends SliderSuperTab {
 
     const c = section.generateContentElement();
     if(this.state.pFlags.has_password) {
-      section.caption.innerHTML = 'You have enabled Two-Step verification.<br/>You\'ll need the password you set up here to log in to your Telegram account.';
+      _i18n(section.caption, 'TwoStepAuth.GenericHelp');
 
-      const btnChangePassword = Button('btn-primary btn-transparent', {icon: 'edit', text: 'Change Password'});
-      const btnDisablePassword = Button('btn-primary btn-transparent', {icon: 'passwordoff', text: 'Turn Password Off'});
-      const btnSetRecoveryEmail = Button('btn-primary btn-transparent', {icon: 'email', text: this.state.pFlags.has_recovery ? 'Change Recovery Email' : 'Set Recovery Email'});
+      const btnChangePassword = Button('btn-primary btn-transparent', {icon: 'edit', text: 'TwoStepAuth.ChangePassword'});
+      const btnDisablePassword = Button('btn-primary btn-transparent', {icon: 'passwordoff', text: 'TwoStepAuth.RemovePassword'});
+      const btnSetRecoveryEmail = Button('btn-primary btn-transparent', {icon: 'email', text: this.state.pFlags.has_recovery ? 'TwoStepAuth.ChangeEmail' : 'TwoStepAuth.SetupEmail'});
 
       attachClickEvent(btnChangePassword, () => {
         const tab = new AppTwoStepVerificationEnterPasswordTab(this.slider);
@@ -64,7 +65,7 @@ export default class AppTwoStepVerificationTab extends SliderSuperTab {
       attachClickEvent(btnDisablePassword, () => {
         const popup = new PopupPeer('popup-disable-password', {
           buttons: [{
-            text: 'DISABLE',
+            langKey: 'Disable',
             callback: () => {
               passwordManager.updateSettings({currentPassword: this.plainPassword}).then(() => {
                 this.slider.sliceTabsUntilTab(AppSettingsTab, this);
@@ -73,8 +74,8 @@ export default class AppTwoStepVerificationTab extends SliderSuperTab {
             },
             isDanger: true,
           }], 
-          titleLangKey: 'Warning',
-          descriptionLangKey: 'Are you sure you want to disable<br/>your password?'
+          titleLangKey: 'TurnPasswordOffQuestionTitle',
+          descriptionLangKey: 'TurnPasswordOffQuestion'
         });
 
         popup.show();
@@ -92,12 +93,12 @@ export default class AppTwoStepVerificationTab extends SliderSuperTab {
 
       c.append(btnChangePassword, btnDisablePassword, btnSetRecoveryEmail);
     } else {
-      section.caption.innerHTML = 'You can set a password that will be required when you log in on a new device in addition to the code you get in the SMS.';
+      _i18n(section.caption, 'TwoStepAuth.SetPasswordHelp');
 
       const inputWrapper = document.createElement('div');
       inputWrapper.classList.add('input-wrapper');
 
-      const btnSetPassword = Button('btn-primary btn-color-primary', {text: 'SET PASSWORD'});
+      const btnSetPassword = Button('btn-primary btn-color-primary', {text: 'TwoStepVerificationSetPassword'});
       
       inputWrapper.append(btnSetPassword);
       c.append(inputWrapper);

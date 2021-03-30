@@ -34,6 +34,7 @@ export default class AppEditFolderTab extends SliderSuperTab {
   private originalFilter: DialogFilter;
 
   private type: 'edit' | 'create';
+  private loadAnimationPromise: Promise<void>;
 
   protected init() {
     this.container.classList.add('edit-folder-container');
@@ -160,16 +161,6 @@ export default class AppEditFolderTab extends SliderSuperTab {
       new AppIncludedChatsTab(this.slider).open(this.filter, 'excluded', this);
     });
 
-    lottieLoader.loadAnimationFromURL({
-      container: this.stickerContainer,
-      loop: false,
-      autoplay: true,
-      width: 86,
-      height: 86
-    }, 'assets/img/Folders_2.tgs').then(player => {
-      this.animation = player;
-    });
-
     this.confirmBtn.addEventListener('click', () => {
       if(this.nameInputField.input.classList.contains('error')) {
         return;
@@ -216,12 +207,25 @@ export default class AppEditFolderTab extends SliderSuperTab {
       this.filter.title = this.nameInputField.value;
       this.editCheckForChange();
     });
+
+    return this.loadAnimationPromise = lottieLoader.loadAnimationFromURL({
+      container: this.stickerContainer,
+      loop: false,
+      autoplay: false,
+      width: 86,
+      height: 86
+    }, 'assets/img/Folders_2.tgs').then(player => {
+      this.animation = player;
+
+      return lottieLoader.waitForFirstFrame(player);
+    });
   }
 
-  onOpen() {
-    if(this.animation) {
-      this.animation.restart();
-    }
+  onOpenAfterTimeout() {
+    this.loadAnimationPromise.then(() => {
+      this.animation.autoplay = true;
+      this.animation.play();
+    });
   }
 
   private onCreateOpen() {

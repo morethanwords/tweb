@@ -4,6 +4,7 @@ import { MOUNT_CLASS_TO } from '../config/debug';
 import EventListenerBase from "../helpers/eventListenerBase";
 import mediaSizes from "../helpers/mediaSizes";
 import { clamp } from '../helpers/number';
+import { pause } from '../helpers/schedulers';
 import { isAndroid, isApple, isAppleMobile, isSafari } from "../helpers/userAgent";
 import { logger, LogLevels } from "./logger";
 import apiManager from "./mtproto/mtprotoworker";
@@ -501,7 +502,8 @@ class QueryableWorker extends EventListenerBase<any> {
 }
 
 class LottieLoader {
-  public loadPromise: Promise<void>;
+  public isWebAssemblySupported = typeof(WebAssembly) !== 'undefined';
+  public loadPromise: Promise<void> = !this.isWebAssemblySupported ? Promise.reject() : undefined;
   public loaded = false;
 
   // https://github.com/telegramdesktop/tdesktop/blob/97d8ee75d51874fcb74a9bfadc79f835c82be54a/Telegram/SourceFiles/chat_helpers/stickers_emoji_pack.cpp#L46
@@ -569,9 +571,9 @@ class LottieLoader {
   }
 
   public loadLottieWorkers() {
-    if(typeof(WebAssembly) === 'undefined') return Promise.reject();
-
-    if(this.loadPromise) return this.loadPromise;
+    if(this.loadPromise) {
+      return this.loadPromise;
+    }
 
     return this.loadPromise = new Promise((resolve, reject) => {
       let remain = this.workersLimit;
@@ -633,7 +635,11 @@ class LottieLoader {
     }
   }
 
-  public loadAnimationFromURL(params: Omit<RLottieOptions, 'animationData'>, url: string) {
+  public loadAnimationFromURL(params: Omit<RLottieOptions, 'animationData'>, url: string): Promise<RLottiePlayer> {
+    if(!this.isWebAssemblySupported) {
+      return this.loadPromise as any;
+    }
+    
     if(!this.loaded) {
       this.loadLottieWorkers();
     }
@@ -641,12 +647,27 @@ class LottieLoader {
     return fetch(url)
     .then(res => res.arrayBuffer())
     .then(data => apiManager.gzipUncompress<string>(data, true))
+    /* .then(str => {
+      return new Promise<string>((resolve) => setTimeout(() => resolve(str), 2e3));
+    }) */
     .then(str => {
       return this.loadAnimationWorker(Object.assign(params, {animationData: str/* JSON.parse(str) */, needUpscale: true}));
     });
   }
 
-  public async loadAnimationWorker(params: RLottieOptions, group = '', toneIndex = -1) {
+  public waitForFirstFrame(player: RLottiePlayer): Promise<void> {
+    return Promise.race([
+      new Promise<void>((resolve) => {
+        player.addEventListener('firstFrame', resolve, true);
+      }),
+      pause(2500)
+    ]);
+  }
+
+  public async loadAnimationWorker(params: RLottieOptions, group = '', toneIndex = -1): Promise<RLottiePlayer> {
+    if(!this.isWebAssemblySupported) {
+      return this.loadPromise as any;
+    }
     //params.autoplay = true;
 
     if(toneIndex >= 1 && toneIndex <= 5) {

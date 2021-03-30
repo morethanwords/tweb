@@ -25,6 +25,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
   private animation: RLottiePlayer;
 
   private filtersRendered: {[filterId: number]: HTMLElement} = {};
+  private loadAnimationPromise: Promise<void>;
 
   private renderFolder(dialogFilter: DialogFilterSuggested | DialogFilter | MyDialogFilter, container?: HTMLElement, div?: HTMLElement) {
     let filter: DialogFilter | MyDialogFilter;
@@ -101,7 +102,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
     return div;
   }
 
-  protected init() {
+  protected async init() {
     this.container.classList.add('chat-folders-container');
     this.setTitle('ChatList.Filter.List.Title');
 
@@ -138,16 +139,6 @@ export default class AppChatFoldersTab extends SliderSuperTab {
         new AppEditFolderTab(this.slider).open();
       }
     }, {listenerSetter: this.listenerSetter});
-
-    lottieLoader.loadAnimationFromURL({
-      container: this.stickerContainer,
-      loop: false,
-      autoplay: true,
-      width: 86,
-      height: 86
-    }, 'assets/img/Folders_1.tgs').then(player => {
-      this.animation = player;
-    });
 
     const onFiltersContainerUpdate = () => {
       this.foldersSection.container.style.display = Object.keys(this.filtersRendered).length ? '' : 'none';
@@ -200,6 +191,25 @@ export default class AppChatFoldersTab extends SliderSuperTab {
     });
 
     this.getSuggestedFilters();
+
+    return this.loadAnimationPromise = lottieLoader.loadAnimationFromURL({
+      container: this.stickerContainer,
+      loop: false,
+      autoplay: false,
+      width: 86,
+      height: 86
+    }, 'assets/img/Folders_1.tgs').then(player => {
+      this.animation = player;
+
+      return lottieLoader.waitForFirstFrame(player);
+    });
+  }
+
+  onOpenAfterTimeout() {
+    this.loadAnimationPromise.then(() => {
+      this.animation.autoplay = true;
+      this.animation.play();
+    });
   }
 
   private getSuggestedFilters() {
@@ -233,11 +243,5 @@ export default class AppChatFoldersTab extends SliderSuperTab {
         }, {listenerSetter: this.listenerSetter});
       });
     });
-  }
-
-  onOpen() {
-    if(this.animation) {
-      this.animation.restart();
-    }
   }
 }

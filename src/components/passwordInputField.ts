@@ -8,7 +8,8 @@ export default class PasswordInputField extends InputField {
 
   constructor(options: {
     label?: string,
-    name?: string
+    name?: string,
+    labelText?: string,
   } = {}) {
     super({
       plainText: true,

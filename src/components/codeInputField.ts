@@ -20,7 +20,7 @@ export default class CodeInputField extends InputField {
     let lastLength = 0;
     this.input.addEventListener('input', (e) => {
       this.input.classList.remove('error');
-      this.label.innerText = options.label;
+      this.setLabel();
   
       const value = this.value.replace(/\D/g, '').slice(0, options.length);
       this.setValueSilently(value);

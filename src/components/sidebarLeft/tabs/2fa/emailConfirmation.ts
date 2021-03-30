@@ -4,12 +4,13 @@ import appStickersManager from "../../../../lib/appManagers/appStickersManager";
 import Button from "../../../button";
 import { SliderSuperTab } from "../../../slider";
 import { wrapSticker } from "../../../wrappers";
-import { attachClickEvent, canFocus, toggleDisability } from "../../../../helpers/dom";
+import { attachClickEvent, canFocus, replaceContent, toggleDisability } from "../../../../helpers/dom";
 import passwordManager from "../../../../lib/mtproto/passwordManager";
 import AppTwoStepVerificationSetTab from "./passwordSet";
 import CodeInputField from "../../../codeInputField";
 import AppTwoStepVerificationEmailTab from "./email";
 import { putPreloader } from "../../../misc";
+import { i18n, _i18n } from "../../../../lib/langPack";
 
 export default class AppTwoStepVerificationEmailConfirmationTab extends SliderSuperTab {
   public codeInputField: CodeInputField;
@@ -20,14 +21,14 @@ export default class AppTwoStepVerificationEmailConfirmationTab extends SliderSu
 
   protected init() {
     this.container.classList.add('two-step-verification', 'two-step-verification-email-confirmation');
-    this.title.innerHTML = 'Recovery Email';
+    this.setTitle('TwoStepAuth.RecoveryTitle');
 
     const section = new SettingSection({
-      caption: 'Please enter code we\'ve just emailed at <b></b>',
+      caption: true,
       noDelimiter: true
     });
 
-    (section.caption.lastElementChild as HTMLElement).innerText = this.email;
+    _i18n(section.caption, 'TwoStepAuth.ConfirmEmailCodeDesc', [this.email]);
 
     const emoji = '📬';
     const doc = appStickersManager.getAnimatedEmojiSticker(emoji);
@@ -58,7 +59,7 @@ export default class AppTwoStepVerificationEmailConfirmationTab extends SliderSu
 
     const inputField = this.codeInputField = new CodeInputField({
       name: 'recovery-email-code',
-      label: 'Code',
+      label: 'TwoStepAuth.RecoveryCode',
       length: this.length,
       onFill: (code) => {
         freeze(true);
@@ -75,7 +76,12 @@ export default class AppTwoStepVerificationEmailConfirmationTab extends SliderSu
           switch(err.type) {
             case 'CODE_INVALID':
               inputField.input.classList.add('error');
-              inputField.label.innerText = 'Invalid Code';
+              replaceContent(inputField.label, i18n('TwoStepAuth.RecoveryCodeInvalid'));
+              break;
+
+            case 'EMAIL_HASH_EXPIRED':
+              inputField.input.classList.add('error');
+              replaceContent(inputField.label, i18n('TwoStepAuth.RecoveryCodeExpired'));
               break;
             
             default:
@@ -88,8 +94,8 @@ export default class AppTwoStepVerificationEmailConfirmationTab extends SliderSu
       }
     });
 
-    const btnChange = Button('btn-primary btn-primary-transparent primary', {text: 'CHANGE EMAIL'});
-    const btnResend = Button('btn-primary btn-secondary btn-primary-transparent primary', {text: 'RE-SEND CODE'});
+    const btnChange = Button('btn-primary btn-primary-transparent primary', {text: 'TwoStepAuth.EmailCodeChangeEmail'});
+    const btnResend = Button('btn-primary btn-secondary btn-primary-transparent primary', {text: 'ResendCode'});
 
     const goNext = () => {
       new AppTwoStepVerificationSetTab(this.slider).open();

@@ -23,7 +23,7 @@ export default class AppTwoStepVerificationEmailTab extends SliderSuperTab {
 
   protected init() {
     this.container.classList.add('two-step-verification', 'two-step-verification-email');
-    this.title.innerHTML = 'Recovery Email';
+    this.setTitle('RecoveryEmailTitle');
 
     const section = new SettingSection({
       caption: '',
@@ -59,7 +59,7 @@ export default class AppTwoStepVerificationEmailTab extends SliderSuperTab {
 
     const inputField = this.inputField = new InputField({
       name: 'recovery-email',
-      label: 'Recovery Email',
+      label: 'RecoveryEmail',
       plainText: true
     });
 
@@ -74,8 +74,8 @@ export default class AppTwoStepVerificationEmailTab extends SliderSuperTab {
       inputField.input.classList.remove('error');
     });
 
-    const btnContinue = Button('btn-primary btn-color-primary', {text: 'CONTINUE'});
-    const btnSkip = Button('btn-primary btn-secondary btn-primary-transparent primary', {text: 'SKIP'});
+    const btnContinue = Button('btn-primary btn-color-primary', {text: 'Continue'});
+    const btnSkip = Button('btn-primary btn-secondary btn-primary-transparent primary', {text: 'YourEmailSkip'});
 
     const goNext = () => {
       new AppTwoStepVerificationSetTab(this.slider).open();
@@ -131,10 +131,10 @@ export default class AppTwoStepVerificationEmailTab extends SliderSuperTab {
     attachClickEvent(btnSkip, (e) => {
       const popup = new PopupPeer('popup-skip-email', {
         buttons: [{
-          text: 'CANCEL',
+          langKey: 'Cancel',
           isCancel: true
         }, {
-          text: 'SKIP',
+          langKey: 'YourEmailSkip',
           callback: () => {
             //inputContent.classList.add('sidebar-left-section-disabled');
             toggleButtons(true);
@@ -152,8 +152,8 @@ export default class AppTwoStepVerificationEmailTab extends SliderSuperTab {
           },
           isDanger: true,
         }], 
-        titleLangKey: 'Warning',
-        descriptionLangKey: 'No, seriously.<br/><br/>If you forget your password, you will lose access to your Telegram account. There will be no way to restore it.'
+        titleLangKey: 'YourEmailSkipWarning',
+        descriptionLangKey: 'YourEmailSkipWarningText'
       });
 
       popup.show();

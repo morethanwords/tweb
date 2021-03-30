@@ -11,6 +11,7 @@ import AppChatFoldersTab from "./chatFolders";
 import AppNotificationsTab from "./notifications";
 import PeerTitle from "../../peerTitle";
 import AppLanguageTab from "./language";
+import lottieLoader from "../../../lib/lottieLoader";
 //import AppMediaViewer from "../../appMediaViewerNew";
 
 export default class AppSettingsTab extends SliderSuperTab {
@@ -27,7 +28,7 @@ export default class AppSettingsTab extends SliderSuperTab {
     language: HTMLButtonElement
   } = {} as any;
 
-  init() {
+  protected init() {
     this.container.classList.add('settings-container');
     this.setTitle('Settings');
     
@@ -135,6 +136,10 @@ export default class AppSettingsTab extends SliderSuperTab {
     this.buttons.language.addEventListener('click', () => {
       new AppLanguageTab(this.slider).open();
     });
+
+    lottieLoader.loadLottieWorkers();
+
+    this.fillElements();
   }
 
   public fillElements() {
@@ -143,14 +148,5 @@ export default class AppSettingsTab extends SliderSuperTab {
 
     this.nameDiv.append(new PeerTitle({peerId: user.id}).element);
     this.phoneDiv.innerHTML = user.rPhone || '';
-  }
-
-  public onOpen() {
-    if(this.init) {
-      this.init();
-      this.init = null;
-    }
-
-    this.fillElements();
   }
 }

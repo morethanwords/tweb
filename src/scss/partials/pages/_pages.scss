@@ -116,6 +116,13 @@
   }
 }
 
+.page-sign {
+  .checkbox-field {
+    margin-top: .5rem;
+    margin-bottom: .5rem;
+  }
+}
+
 .page-sign, .page-signUp {
   .auth-image {
     width: 7.5rem;
@@ -142,6 +149,10 @@
 }
 
 .page-sign, .page-signQR {
+  .btn-secondary {
+    font-weight: normal;
+  }
+
   .qr {
     margin-top: 1.5rem;
   }
@@ -161,9 +172,18 @@
       width: 166px;
       height: 166px;
     }
+
+    .qr-canvas {
+      width: 100%;
+      height: 100%;
+    }
   }
 
-  h4, .qr-description, .qr {
+  .input-wrapper {
+    margin-top: 1rem !important;
+  }
+
+  h4 {
     flex: 0 0 auto;
   }
 }

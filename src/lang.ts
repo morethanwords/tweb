@@ -87,6 +87,9 @@ const lang = {
   "Popup.Unpin.HideTitle": "Hide pinned messages",
   "Popup.Unpin.HideDescription": "Do you want to hide the pinned message bar? It wil stay hidden until a new message is pinned.",
   "Popup.Unpin.Hide": "Hide",
+  "TwoStepAuth.InvalidPassword": "Invalid password",
+  "TwoStepAuth.EmailCodeChangeEmail": "Change Email",
+  "PleaseWait": "Please wait...",
 
   // * android
   "ActionCreateChannel": "Channel created",
@@ -197,6 +200,7 @@ const lang = {
   "BlockedUsersInfo": "Blocked users will not be able to contact you and will not see your Last Seen time.",
   "BlockedEmpty": "None", 
   "TwoStepVerification": "Two-Step Verification",
+  "TwoStepVerificationTitle": "Two-Step Verification",
   "PinnedMessage": "Pinned Message",
   "PinnedMessagesCount": {
     "one_value": "Pinned Message",
@@ -352,6 +356,25 @@ const lang = {
   "ChannelLeaveAlertWithName": "Are you sure you want to leave **%1$s**?",
   "LeaveMegaMenu": "Leave group",
   "DeleteChatUser": "Delete chat",
+  "PleaseEnterCurrentPassword": "Enter your password",
+  "PleaseEnterFirstPassword": "Enter a password",
+  "PleaseReEnterPassword": "Re-enter your password",
+  "LoginPassword": "Password",
+  "Continue": "Continue",
+  "YourEmailSkip": "Skip",
+  "YourEmailSkipWarning": "Warning",
+  "YourEmailSkipWarningText": "No, seriously.\n\nIf you forget your password, you will lose access to your Telegram account. There will be no way to restore it.",
+  "TurnPasswordOffQuestionTitle": "Disable password",
+  "TurnPasswordOffQuestion": "Are you sure you want to disable your password?",
+  "Disable": "Disable",
+  "TwoStepVerificationSetPassword": "Set Password",
+  "TwoStepVerificationPasswordSet": "Password Set!",
+  "TwoStepVerificationPasswordSetInfo": "This password will be required when you log in on a new device in addition to the code you get in the SMS.",
+  "TwoStepVerificationPasswordReturnSettings": "Return to Settings",
+  "RecoveryEmail": "Recovery email",
+  "RecoveryEmailTitle": "Recovery Email",
+  "ResendCode": "Resend code",
+  "PasswordAsHintError": "Hint must be different from your password",
 
   // * macos
   "AccountSettings.Filters": "Chat Folders",
@@ -563,7 +586,21 @@ const lang = {
   "GroupPermission.Delete": "Delete Exception",
   "Schedule.SendToday": "Send today at %@",
   "Schedule.SendDate": "Send on %@ at %@",
-  //"Schedule.SendWhenOnline": "Send When Online"
+  //"Schedule.SendWhenOnline": "Send When Online",
+  "TwoStepAuth.SetPasswordHelp": "You can set a password that will be required when you log in on a new device in addition to the code you get in the SMS.",
+  "TwoStepAuth.GenericHelp": "You have enabled Two-Step verification.\nYou'll need the password you set up here to log in to your Telegram account.",
+  "TwoStepAuth.ChangePassword": "Change Password",
+  "TwoStepAuth.RemovePassword": "Turn Password Off",
+  "TwoStepAuth.SetupEmail": "Set Recovery Email",
+  "TwoStepAuth.ChangeEmail": "Change Recovery Email",
+  "TwoStepAuth.ConfirmEmailCodeDesc": "Please enter the code we've just emailed to %@.",
+  "TwoStepAuth.RecoveryTitle": "Email Code",
+  "TwoStepAuth.RecoveryCode": "Code",
+  "TwoStepAuth.RecoveryCodeInvalid": "Invalid code. Please try again.",
+  "TwoStepAuth.RecoveryCodeExpired": "Code Expired",
+  "TwoStepAuth.SetupHintTitle": "Password Hint",
+  "TwoStepAuth.SetupHintPlaceholder": "Hint",
+  "PHONE_CODE_INVALID": "Invalid code",
 };
 
 export default lang;

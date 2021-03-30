@@ -4,10 +4,9 @@ import Countries, { Country as _Country } from "../countries";
 import appStateManager from "../lib/appManagers/appStateManager";
 import apiManager from "../lib/mtproto/mtprotoworker";
 import { RichTextProcessor } from '../lib/richtextprocessor';
-import { findUpTag, findUpClassName } from "../helpers/dom";
+import { findUpTag } from "../helpers/dom";
 import Page from "./page";
 import pageAuthCode from "./pageAuthCode";
-import pageSignQR from './pageSignQR';
 import InputField from "../components/inputField";
 import CheckboxField from "../components/checkboxField";
 import Button from "../components/button";
@@ -301,7 +300,8 @@ let onFirstMount = () => {
 
   const signedCheckboxField = new CheckboxField({
     text: 'Keep me signed in', 
-    name: 'keepSession'
+    name: 'keepSession',
+    withRipple: true
   });
   signedCheckboxField.input.checked = true;
 
@@ -346,22 +346,16 @@ let onFirstMount = () => {
       }
     });
   });
-  
-  const qrDiv = document.createElement('div');
-  qrDiv.classList.add('qr');
 
-  const qrLink = document.createElement('a');
-  qrLink.href = '#';
-  qrLink.classList.add('a-qr');
-  qrLink.innerText = 'Quick log in using QR code';
+  const btnQr = Button('btn-primary btn-secondary btn-primary-transparent primary', {text: 'Quick log in using QR code'});
 
-  qrDiv.append(qrLink);
-
-  qrLink.addEventListener('click', () => {
-    pageSignQR.mount();
+  btnQr.addEventListener('click', () => {
+    import('./pageSignQR').then(module => {
+      module.default.mount();
+    });
   });
 
-  inputWrapper.append(countryInputField.container, telInputField.container, signedCheckboxField.label, btnNext, qrDiv);
+  inputWrapper.append(countryInputField.container, telInputField.container, signedCheckboxField.label, btnNext, btnQr);
 
   page.pageEl.querySelector('.container').append(inputWrapper);
 

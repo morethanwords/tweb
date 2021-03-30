@@ -293,7 +293,7 @@ export default class MTPNetworker {
       serializer.storeString(navigator.platform || 'Unknown Platform', 'system_version');
       serializer.storeString(App.version, 'app_version');
       serializer.storeString(navigator.language || 'en', 'system_lang_code');
-      serializer.storeString('', 'lang_pack');
+      serializer.storeString(App.langPack, 'lang_pack');
       serializer.storeString(navigator.language || 'en', 'lang_code');
       //serializer.storeInt(0x0, 'proxy');
       /* serializer.storeMethod('initConnection', {
