@@ -363,6 +363,10 @@
   }
 }
 
+.btn-secondary:not(:first-child) {
+  margin-top: .5rem !important;
+}
+
 .btn-color-primary {
   background: $color-blue;
   color: #fff;

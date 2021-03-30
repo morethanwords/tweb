@@ -73,7 +73,7 @@ export function putPreloader(elem: Element, returnDiv = false): HTMLElement {
     return div;
   }
   
-  elem.innerHTML += html;
+  elem.insertAdjacentHTML('beforeend', html);
   return elem.lastElementChild as HTMLElement;
 }
 

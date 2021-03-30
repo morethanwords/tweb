@@ -1,14 +1,14 @@
 import AppTwoStepVerificationTab from ".";
 import { SettingSection } from "../..";
-import { attachClickEvent, cancelEvent, canFocus } from "../../../../helpers/dom";
+import { attachClickEvent, cancelEvent, canFocus, replaceContent } from "../../../../helpers/dom";
 import { AccountPassword } from "../../../../layer";
+import I18n, { i18n } from "../../../../lib/langPack";
 import passwordManager from "../../../../lib/mtproto/passwordManager";
 import RichTextProcessor from "../../../../lib/richtextprocessor";
 import Button from "../../../button";
 import { putPreloader } from "../../../misc";
 import PasswordMonkey from "../../../monkeys/password";
 import PasswordInputField from "../../../passwordInputField";
-import { ripple } from "../../../ripple";
 import { SliderSuperTab } from "../../../slider";
 import AppTwoStepVerificationReEnterPasswordTab from "./reEnterPassword";
 
@@ -21,7 +21,7 @@ export default class AppTwoStepVerificationEnterPasswordTab extends SliderSuperT
   protected init() {
     const isNew = !this.state.pFlags.has_password || this.plainPassword;
     this.container.classList.add('two-step-verification', 'two-step-verification-enter-password');
-    this.title.innerHTML = isNew ? 'Enter a Password' : 'Enter your Password';
+    this.setTitle(isNew ? 'PleaseEnterFirstPassword' : 'PleaseEnterCurrentPassword');
 
     const section = new SettingSection({
       noDelimiter: true
@@ -32,13 +32,16 @@ export default class AppTwoStepVerificationEnterPasswordTab extends SliderSuperT
 
     const passwordInputField = this.passwordInputField = new PasswordInputField({
       name: 'enter-password',
-      label: isNew ? 'Enter a Password' : (this.state.hint ?? 'Password')
+      label: isNew ? 'PleaseEnterFirstPassword' : (this.state.hint ? undefined : 'LoginPassword'),
+      labelText: !isNew && this.state.hint ? RichTextProcessor.wrapEmojiText(this.state.hint) : undefined
     });
 
     const monkey = new PasswordMonkey(passwordInputField, 157);
-    monkey.load();
 
-    const btnContinue = Button('btn-primary btn-color-primary', {text: 'CONTINUE'});
+    const btnContinue = Button('btn-primary btn-color-primary');
+    const textEl = new I18n.IntlElement({key: 'Continue'});
+
+    btnContinue.append(textEl.element);
 
     inputWrapper.append(passwordInputField.container, btnContinue);
     section.content.append(monkey.container, inputWrapper);
@@ -48,8 +51,8 @@ export default class AppTwoStepVerificationEnterPasswordTab extends SliderSuperT
     passwordInputField.input.addEventListener('keypress', (e) => {
       if(passwordInputField.input.classList.contains('error')) {
         passwordInputField.input.classList.remove('error');
-        btnContinue.innerText = 'CONTINUE';
-        ripple(btnContinue);
+        textEl.key = 'Continue';
+        textEl.update();
       }
   
       if(e.key === 'Enter') {
@@ -79,7 +82,11 @@ export default class AppTwoStepVerificationEnterPasswordTab extends SliderSuperT
         return passwordManager.getState().then(_state => {
           this.state = _state;
   
-          passwordInputField.label.innerHTML = this.state.hint ? RichTextProcessor.wrapEmojiText(this.state.hint) : 'Password';
+          if(this.state.hint) {
+            passwordInputField.label.innerHTML = RichTextProcessor.wrapEmojiText(this.state.hint);
+          } else {
+            replaceContent(passwordInputField.label, i18n('LoginPassword'));
+          }
         });
       };
   
@@ -90,8 +97,9 @@ export default class AppTwoStepVerificationEnterPasswordTab extends SliderSuperT
         }
 
         btnContinue.setAttribute('disabled', 'true');
-        btnContinue.textContent = 'PLEASE WAIT...';
-        putPreloader(btnContinue);
+        textEl.key = 'PleaseWait';
+        textEl.update();
+        const preloader = putPreloader(btnContinue);
   
         const plainPassword = passwordInputField.value;
         passwordManager.check(passwordInputField.value, this.state).then(auth => {
@@ -113,7 +121,9 @@ export default class AppTwoStepVerificationEnterPasswordTab extends SliderSuperT
           switch(err.type) {
             default:
               //btnContinue.innerText = err.type;
-              btnContinue.innerText = 'INVALID PASSWORD';
+              textEl.key = 'TwoStepAuth.InvalidPassword';
+              textEl.update();
+              preloader.remove();
               break;
           }
   
@@ -141,6 +151,8 @@ export default class AppTwoStepVerificationEnterPasswordTab extends SliderSuperT
     }
 
     attachClickEvent(btnContinue, onContinueClick);
+
+    return monkey.load();
   }
 
   onOpenAfterTimeout() {

@@ -8,6 +8,7 @@ import InputField from "../../../inputField";
 import AppTwoStepVerificationEmailTab from "./email";
 import { attachClickEvent, cancelEvent } from "../../../../helpers/dom";
 import { toast } from "../../../toast";
+import I18n from "../../../../lib/langPack";
 
 export default class AppTwoStepVerificationHintTab extends SliderSuperTab {
   public inputField: InputField;
@@ -17,7 +18,7 @@ export default class AppTwoStepVerificationHintTab extends SliderSuperTab {
 
   protected init() {
     this.container.classList.add('two-step-verification', 'two-step-verification-hint');
-    this.title.innerHTML = 'Password Hint';
+    this.setTitle('TwoStepAuth.SetupHintTitle');
 
     const section = new SettingSection({
       noDelimiter: true
@@ -50,7 +51,7 @@ export default class AppTwoStepVerificationHintTab extends SliderSuperTab {
 
     const inputField = this.inputField = new InputField({
       name: 'hint',
-      label: 'Hint'
+      label: 'TwoStepAuth.SetupHintPlaceholder'
     });
 
     inputField.input.addEventListener('keypress', (e) => {
@@ -67,7 +68,7 @@ export default class AppTwoStepVerificationHintTab extends SliderSuperTab {
       
       const hint = saveHint ? inputField.value : undefined;
       if(hint && this.newPassword === hint) {
-        toast('Hint must be different from your password');
+        toast(I18n.format('PasswordAsHintError', true));
         return;
       }
 
@@ -80,8 +81,8 @@ export default class AppTwoStepVerificationHintTab extends SliderSuperTab {
       tab.open();
     };
 
-    const btnContinue = Button('btn-primary btn-color-primary', {text: 'CONTINUE'});
-    const btnSkip = Button('btn-primary btn-secondary btn-primary-transparent primary', {text: 'SKIP'});
+    const btnContinue = Button('btn-primary btn-color-primary', {text: 'Continue'});
+    const btnSkip = Button('btn-primary btn-secondary btn-primary-transparent primary', {text: 'YourEmailSkip'});
 
     const onContinueClick = (e?: Event) => goNext(e, true);
     const onSkipClick = (e?: Event) => goNext(e, false);

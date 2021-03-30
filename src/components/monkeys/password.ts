@@ -5,7 +5,7 @@ export default class PasswordMonkey {
   public container: HTMLElement;
   public animation: RLottiePlayer;
   public needFrame = 0;
-  protected loadPromise: Promise<any>;
+  protected loadPromise: Promise<void>;
 
   constructor(protected passwordInputField: PasswordInputField, protected size: number) {
     this.container = document.createElement('div');
@@ -48,6 +48,8 @@ export default class PasswordMonkey {
           this.animation.play();
         }
       };
+
+      return lottieLoader.waitForFirstFrame(_animation);
     });
   }
 

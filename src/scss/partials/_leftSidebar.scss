@@ -908,8 +908,8 @@
     }
   }
 
-  .btn-secondary {
-    margin-top: .5rem !important;
+  .btn-primary:not(.btn-transparent) {
+    text-transform: uppercase;
   }
 
   .media-sticker-wrapper {

@@ -95,6 +95,8 @@ export default class TrackingMonkey {
         if(!this.inputField.value.length) {
           animation.play();
         }
+
+        return lottieLoader.waitForFirstFrame(animation);
       }),
 
       lottieLoader.loadAnimationFromURL({
@@ -131,6 +133,8 @@ export default class TrackingMonkey {
           }
         });
         //console.log(animation.getDuration(), animation.getDuration(true));
+
+        return lottieLoader.waitForFirstFrame(_animation);
       })
     ]);
   }
@@ -139,6 +143,4 @@ export default class TrackingMonkey {
     if(this.animation) this.animation.remove();
     if(this.idleAnimation) this.idleAnimation.remove();
   }
-
-
 }

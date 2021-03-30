@@ -2,17 +2,17 @@ import { SettingSection } from "../..";
 import { attachClickEvent } from "../../../../helpers/dom";
 import appStickersManager from "../../../../lib/appManagers/appStickersManager";
 import Button from "../../../button";
-import SidebarSlider, { SliderSuperTab } from "../../../slider";
+import { SliderSuperTab } from "../../../slider";
 import { wrapSticker } from "../../../wrappers";
 import AppSettingsTab from "../settings";
 
 export default class AppTwoStepVerificationSetTab extends SliderSuperTab {
   protected init() {
     this.container.classList.add('two-step-verification', 'two-step-verification-set');
-    this.title.innerHTML = 'Password Set!';
+    this.setTitle('TwoStepVerificationPasswordSet');
 
     const section = new SettingSection({
-      caption: 'This password will be required when you log in on a new device in addition to the code you get via SMS.',
+      caption: 'TwoStepVerificationPasswordSetInfo',
       noDelimiter: true
     });
 
@@ -42,7 +42,7 @@ export default class AppTwoStepVerificationSetTab extends SliderSuperTab {
     const inputWrapper = document.createElement('div');
     inputWrapper.classList.add('input-wrapper');
 
-    const btnReturn = Button('btn-primary btn-color-primary', {text: 'RETURN TO SETTINGS'});
+    const btnReturn = Button('btn-primary btn-color-primary', {text: 'TwoStepVerificationPasswordReturnSettings'});
 
     attachClickEvent(btnReturn, (e) => {
       this.close();
