@@ -10,6 +10,7 @@ import { bytesCmp, bytesToBase64 } from '../helpers/bytes';
 import { pause } from '../helpers/schedulers';
 import App from '../config/app';
 import Button from '../components/button';
+import { _i18n, i18n } from '../lib/langPack';
 
 let onFirstMount = async() => {
   const pageElement = page.pageEl;
@@ -18,9 +19,23 @@ let onFirstMount = async() => {
   const inputWrapper = document.createElement('div');
   inputWrapper.classList.add('input-wrapper');
 
-  const btnBack = Button('btn-primary btn-secondary btn-primary-transparent primary', {text: 'Or log in using your phone number'});
+  const btnBack = Button('btn-primary btn-secondary btn-primary-transparent primary', {text: 'Login.QR.Cancel'});
   inputWrapper.append(btnBack);
-  imageDiv.parentElement.append(inputWrapper);
+
+  const container = imageDiv.parentElement;
+
+  const h4 = document.createElement('h4');
+  _i18n(h4, 'Login.QR.Title');
+
+  const helpList = document.createElement('ol');
+  helpList.classList.add('qr-description');
+  ['Login.QR.Help1', 'Login.QR.Help2', 'Login.QR.Help3'].forEach((key) => {
+    const li = document.createElement('li');
+    li.append(i18n(key));
+    helpList.append(li);
+  });
+
+  container.append(h4, helpList, inputWrapper);
 
   btnBack.addEventListener('click', () => {
     pageSignIn.mount();
@@ -86,8 +101,8 @@ let onFirstMount = async() => {
           let url = "tg://login?token=" + encoded.replace(/\+/g, "-").replace(/\//g, "_").replace(/\=+$/, "");
 
           const qrCode = new QRCodeStyling({
-            width: 166 * window.devicePixelRatio,
-            height: 166 * window.devicePixelRatio,
+            width: 240 * window.devicePixelRatio,
+            height: 240 * window.devicePixelRatio,
             data: url,
             image: "assets/img/logo_padded.svg",
             dotsOptions: {
@@ -108,8 +123,22 @@ let onFirstMount = async() => {
           qrCode.append(imageDiv);
           (imageDiv.lastChild as HTMLCanvasElement).classList.add('qr-canvas');
 
+          let promise: Promise<void>;
+          if(qrCode._drawingPromise) {
+            promise = qrCode._drawingPromise;
+          } else {
+            promise = Promise.race([
+              pause(1000),
+              new Promise<void>((resolve) => {
+                qrCode._canvas._image.addEventListener('load', () => {
+                  window.requestAnimationFrame(() => resolve());
+                }, {once: true});
+              })
+            ]);
+          }
+
           // * это костыль, но библиотека не предоставляет никаких событий
-          qrCode._drawingPromise.then(() => {
+          promise.then(() => {
             Array.from(imageDiv.children).slice(0, -1).forEach(el => {
               el.remove();
             });

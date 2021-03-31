@@ -2,6 +2,7 @@ import DEBUG, { MOUNT_CLASS_TO } from "../config/debug";
 import { safeAssign } from "../helpers/object";
 import { capitalizeFirstLetter } from "../helpers/string";
 import type lang from "../lang";
+import type langSign from "../langSign";
 import { LangPackDifference, LangPackString } from "../layer";
 import apiManager from "./mtproto/mtprotoworker";
 import sessionStorage from "./sessionStorage";
@@ -41,21 +42,23 @@ export const langPack: {[actionType: string]: LangPackKey} = {
 	"messageActionBotAllowed": "Chat.Service.BotPermissionAllowed"
 };
 
-export type LangPackKey = string | keyof typeof lang;
+export type LangPackKey = string | keyof typeof lang | keyof typeof langSign;
 
 namespace I18n {
 	export const strings: Map<LangPackKey, LangPackString> = new Map();
 	let pluralRules: Intl.PluralRules;
 
-	let lastRequestedLangCode: string;
+	let cacheLangPackPromise: Promise<LangPackDifference>;
+	export let lastRequestedLangCode: string;
 	export function getCacheLangPack(): Promise<LangPackDifference> {
-		return Promise.all([
+		if(cacheLangPackPromise) return cacheLangPackPromise;
+		return cacheLangPackPromise = Promise.all([
 			sessionStorage.get('langPack'),
 			polyfillPromise
 		]).then(([langPack]) => {
 			if(!langPack/*  || true */) {
-				return getLangPack('en');
-			} else if(DEBUG) {
+				return loadLocalLangPack();
+			} else if(DEBUG/*  && false */) {
 				return getLangPack(langPack.lang_code);
 			} else if(langPack.appVersion !== App.langPackVersion) {
 				return getLangPack(langPack.lang_code);
@@ -67,41 +70,87 @@ namespace I18n {
 			
 			applyLangPack(langPack);
 			return langPack;
+		}).finally(() => {
+			cacheLangPackPromise = undefined;
 		});
 	}
 
-	export function getLangPack(langCode: string) {
-		lastRequestedLangCode = langCode;
+	export function loadLocalLangPack() {
+		const defaultCode = 'en';
+		lastRequestedLangCode = defaultCode;
 		return Promise.all([
-			apiManager.invokeApi('langpack.getLangPack', {
+			import('../lang'),
+			import('../langSign')
+		]).then(([lang, langSign]) => {
+			const strings: LangPackString[] = [];
+			formatLocalStrings(lang, strings);
+			formatLocalStrings(langSign, strings);
+
+			const langPack: LangPackDifference = {
+				_: 'langPackDifference',
+				from_version: 0,
+				lang_code: defaultCode,
+				strings,
+				version: 0
+			};
+			return saveLangPack(langPack);
+		});
+	}
+
+	export function loadLangPack(langCode: string) {
+		return Promise.all([
+			apiManager.invokeApiCacheable('langpack.getLangPack', {
 				lang_code: langCode,
-				lang_pack: 'macos'
+				lang_pack: App.langPack
 			}),
-			apiManager.invokeApi('langpack.getLangPack', {
+			apiManager.invokeApiCacheable('langpack.getLangPack', {
 				lang_code: langCode,
 				lang_pack: 'android'
 			}),
 			import('../lang'),
+			import('../langSign'),
 			polyfillPromise
-		]).then(([langPack, _langPack, __langPack, _]) => {
-			let strings: LangPackString[] = [];
-			for(const i in __langPack.default) {
-				// @ts-ignore
-				const v = __langPack.default[i];
-				if(typeof(v) === 'string') {
-					strings.push({
-						_: 'langPackString',
-						key: i,
-						value: v
-					});
-				} else {
-					strings.push({
-						_: 'langPackStringPluralized',
-						key: i,
-						...v
-					});
-				}
+		]);
+	}
+
+	export function getStrings(langCode: string, strings: string[]) {
+		return apiManager.invokeApi('langpack.getStrings', {
+			lang_pack: App.langPack,
+			lang_code: langCode,
+			keys: strings
+		});
+	}
+
+	export function formatLocalStrings(strings: any, pushTo: LangPackString[] = []) {
+		for(const i in strings) {
+			// @ts-ignore
+			const v = strings[i];
+			if(typeof(v) === 'string') {
+				pushTo.push({
+					_: 'langPackString',
+					key: i,
+					value: v
+				});
+			} else {
+				pushTo.push({
+					_: 'langPackStringPluralized',
+					key: i,
+					...v
+				});
 			}
+		}
+
+		return pushTo;
+	}
+
+	export function getLangPack(langCode: string) {
+		lastRequestedLangCode = langCode;
+		return loadLangPack(langCode).then(([langPack, _langPack, __langPack, ___langPack, _]) => {
+			let strings: LangPackString[] = [];
+
+			[__langPack, ___langPack].forEach(l => {
+				formatLocalStrings(l.default as any, strings);
+			});
 
 			strings = strings.concat(langPack.strings);
 
@@ -110,13 +159,17 @@ namespace I18n {
 			}
 
 			langPack.strings = strings;
-			// @ts-ignore
-			langPack.appVersion = App.langPackVersion;
+			return saveLangPack(langPack);
+		});
+	}
 
-			return sessionStorage.set({langPack}).then(() => {
-				applyLangPack(langPack);
-				return langPack;
-			});
+	export function saveLangPack(langPack: LangPackDifference) {
+		// @ts-ignore
+		langPack.appVersion = App.langPackVersion;
+
+		return sessionStorage.set({langPack}).then(() => {
+			applyLangPack(langPack);
+			return langPack;
 		});
 	}
 
