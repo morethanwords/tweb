@@ -4,7 +4,7 @@ import Countries, { Country as _Country } from "../countries";
 import appStateManager from "../lib/appManagers/appStateManager";
 import apiManager from "../lib/mtproto/mtprotoworker";
 import { RichTextProcessor } from '../lib/richtextprocessor';
-import { findUpTag } from "../helpers/dom";
+import { findUpTag, attachClickEvent, cancelEvent, replaceContent } from "../helpers/dom";
 import Page from "./page";
 import pageAuthCode from "./pageAuthCode";
 import InputField from "../components/inputField";
@@ -15,6 +15,8 @@ import fastSmoothScroll from "../helpers/fastSmoothScroll";
 import { isTouchSupported } from "../helpers/touchSupport";
 import App from "../config/app";
 import Modes from "../config/modes";
+import I18n, { _i18n, i18n } from "../lib/langPack";
+import { LangPackString } from "../layer";
 
 type Country = _Country & {
   li?: HTMLLIElement[]
@@ -45,7 +47,7 @@ let onFirstMount = () => {
   inputWrapper.classList.add('input-wrapper');
 
   const countryInputField = new InputField({
-    label: 'Country',
+    label: 'Login.CountrySelectorLabel',
     name: 'countryCode',
     plainText: true
   });
@@ -227,14 +229,13 @@ let onFirstMount = () => {
   let lastValue = '';
   
   const telInputField = new InputField({
-    label: 'Phone Number',
+    label: 'Login.PhoneLabel',
     plainText: true,
     name: 'phone'
   });
   let telEl = telInputField.input as HTMLInputElement;
   telEl.type = 'tel';
   telEl.autocomplete = 'rr55RandomRR55';
-  const telLabel = telEl.nextElementSibling as HTMLLabelElement;
   telEl.addEventListener('input', function(this: typeof telEl, e) {
     //console.log('input', this.value);
     this.classList.remove('error');
@@ -247,7 +248,7 @@ let onFirstMount = () => {
 
     pasted = false;
 
-    telLabel.innerText = 'Phone Number';
+    telInputField.setLabel();
 
     let formatted: string, country: Country;
     if(this.value.replace(/\++/, '+') === '+') {
@@ -299,19 +300,19 @@ let onFirstMount = () => {
   });*/
 
   const signedCheckboxField = new CheckboxField({
-    text: 'Keep me signed in', 
+    text: 'Login.KeepSigned', 
     name: 'keepSession',
     withRipple: true
   });
   signedCheckboxField.input.checked = true;
 
-  btnNext = Button('btn-primary btn-color-primary', {text: 'NEXT'});
+  btnNext = Button('btn-primary btn-color-primary', {text: 'Login.Next'});
   btnNext.style.visibility = 'hidden';
 
   btnNext.addEventListener('click', function(this: HTMLElement, e) {
     this.setAttribute('disabled', 'true');
 
-    this.textContent = 'PLEASE WAIT...';
+    replaceContent(this, i18n('PleaseWait'));
     putPreloader(this);
     //this.innerHTML = 'PLEASE WAIT...';
 
@@ -333,11 +334,12 @@ let onFirstMount = () => {
     }).catch(err => {
       this.removeAttribute('disabled');
 
-      this.innerText = 'NEXT';
       switch(err.type) {
         case 'PHONE_NUMBER_INVALID':
-          telLabel.innerText = 'Phone Number Invalid';
+          telInputField.setError();
+          replaceContent(telInputField.label, i18n('Login.PhoneLabelInvalid'));
           telEl.classList.add('error');
+          replaceContent(this, i18n('Login.Next'));
           break;
         default:
           console.error('auth.sendCode error:', err);
@@ -347,7 +349,7 @@ let onFirstMount = () => {
     });
   });
 
-  const btnQr = Button('btn-primary btn-secondary btn-primary-transparent primary', {text: 'Quick log in using QR code'});
+  const btnQr = Button('btn-primary btn-secondary btn-primary-transparent primary', {text: 'Login.QR.Login'});
 
   btnQr.addEventListener('click', () => {
     import('./pageSignQR').then(module => {
@@ -357,7 +359,14 @@ let onFirstMount = () => {
 
   inputWrapper.append(countryInputField.container, telInputField.container, signedCheckboxField.label, btnNext, btnQr);
 
-  page.pageEl.querySelector('.container').append(inputWrapper);
+  const h4 = document.createElement('h4');
+  _i18n(h4, 'Login.Title');
+
+  const subtitle = document.createElement('div');
+  subtitle.classList.add('subtitle');
+  _i18n(subtitle, 'Login.StartText');
+
+  page.pageEl.querySelector('.container').append(h4, subtitle, inputWrapper);
 
   let tryAgain = () => {
     apiManager.invokeApi('help.getNearestDc').then((nearestDcResult) => {
@@ -405,12 +414,52 @@ let onFirstMount = () => {
     }, 0);
   }
 
+  apiManager.invokeApi('help.getConfig').then(config => {
+    if(config.suggested_lang_code !== I18n.lastRequestedLangCode) {
+      //I18n.loadLangPack(config.suggested_lang_code);
+
+      Promise.all([
+        I18n.getStrings(config.suggested_lang_code, ['Login.ContinueOnLanguage']),
+        I18n.getCacheLangPack()
+      ]).then(res => {
+        const backup: LangPackString[] = [];
+        res[0].forEach(string => {
+          const backupString = I18n.strings.get(string.key);
+          if(!backupString) {
+            return;
+          }
+          
+          backup.push(backupString);
+          I18n.strings.set(string.key, string);
+        });
+
+        const btnChangeLanguage = Button('btn-primary btn-secondary btn-primary-transparent primary', {text: 'Login.ContinueOnLanguage'});
+        inputWrapper.append(btnChangeLanguage);
+
+        backup.forEach(string => {
+          I18n.strings.set(string.key, string);
+        });
+        
+        attachClickEvent(btnChangeLanguage, (e) => {
+          cancelEvent(e);
+
+          btnChangeLanguage.disabled = true;
+          putPreloader(btnChangeLanguage);
+
+          I18n.getLangPack(config.suggested_lang_code).then(() => {
+            btnChangeLanguage.remove();
+          });
+        });
+      });
+    }
+  });
+
   tryAgain();
 };
 
 const page = new Page('page-sign', true, onFirstMount, () => {
   if(btnNext) {
-    btnNext.textContent = 'NEXT';
+    replaceContent(btnNext, i18n('Login.Next'));
     btnNext.removeAttribute('disabled');
   }
 

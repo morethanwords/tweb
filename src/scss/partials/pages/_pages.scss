@@ -3,6 +3,8 @@
   overflow: hidden;
 
   .btn-primary {
+    text-transform: uppercase;
+
     @include respond-to(handhelds) {
       height: 50px;
     }
@@ -89,7 +91,7 @@
         flex-direction: column;
 
         @media screen and (max-height: 810px) {
-          height: 700px;
+          height: 760px;
         }
       }
     }
@@ -156,22 +158,13 @@
   .qr {
     margin-top: 1.5rem;
   }
-
-  p.qr-description {
-    color: #707579;
-    line-height: 1.85;
-    text-align: left;
-    margin-left: auto;
-    margin-right: auto;
-  }
 }
 
 .page-signQR {
   .auth-image {
-    @include respond-to(handhelds) {
-      width: 166px;
-      height: 166px;
-    }
+    width: 240px !important;
+    height: 240px !important;
+    overflow: hidden;
 
     .qr-canvas {
       width: 100%;
@@ -185,6 +178,17 @@
 
   h4 {
     flex: 0 0 auto;
+  }
+
+  .qr-description {
+    max-width: 480px;
+    margin: 1rem auto;
+    line-height: 1.3125;
+    text-align: left;
+
+    li {
+      margin-top: .5rem;
+    }
   }
 }
 
