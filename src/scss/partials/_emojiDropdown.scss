@@ -4,7 +4,7 @@
 	width: 100%;
 	//height: 282px;
 	height: unquote('min(282px, calc(var(--vh) * 100 - 135px))');
-	background: #fff;
+	background: var(--surface-color);
 	overflow: hidden;
 	flex: 1 1 auto;
 	max-height: 100%;
@@ -81,7 +81,7 @@
 			//font-size: .85rem;
 			font-size: 14px;
 			font-weight: 500;
-			color: $color-gray;
+			color: var(--secondary-text-color);
 			//background: linear-gradient(to bottom,#fff 0,rgba(255,255,255,.9) 60%,rgba(255,255,255,0) 100%);
 			z-index: 2;
 			//padding: .53333rem 6PX .66667rem;
@@ -152,6 +152,7 @@
 			width: 100%;
 			box-shadow: 0px 1px 5px -1px rgba(0, 0, 0, 0.21);
 			z-index: 4;
+			background-color: var(--surface-color);
 
 			.menu-horizontal-div-item {
 				margin: 0;
@@ -278,7 +279,6 @@
 			padding: 0;
 			height: 48px;
 			max-width: 100%;
-			//border-top: 1px solid $lightgrey;
 		}
 		
 		.menu-horizontal-div-item {
@@ -287,7 +287,7 @@
 			
 			&.active {
 				&:not(.tgico-recent) {
-					background-color: var(--color-gray-hover);
+					background-color: var(--light-secondary-text-color);
 				}
 			}
 			

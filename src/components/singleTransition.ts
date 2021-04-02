@@ -6,13 +6,13 @@ const SetTransition = (element: HTMLElement, className: string, forwards: boolea
     clearTimeout(+timeout);
   }
 
-  if(forwards) {
+  if(forwards && className) {
     element.classList.add(className);
   }
 
   const afterTimeout = () => {
     delete element.dataset.timeout;
-    if(!forwards) {
+    if(!forwards && className) {
       element.classList.remove('backwards', className);
     }
 

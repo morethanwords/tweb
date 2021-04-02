@@ -1,7 +1,7 @@
 .badge {
   border-radius: .75rem;
   font-weight: 500;
-  color: white;
+  color: var(--badge-text-color);
   font-size: .875rem;
   transition: background-color .2s ease-in-out;
   text-align: center;
@@ -14,14 +14,14 @@
     height: 1.25rem;
     min-width: 1.25rem;
     line-height: 1.25rem !important;
-    padding: 0 5.75px;
+    padding: 0 .375rem;
   }
 
   &-24 {
     height: 1.5rem;
     min-width: 1.5rem;
     line-height: 1.5rem !important;
-    padding: 0 7.75px;
+    padding: 0 .5rem;
 
     &.tgico {
       // width: 1.5rem;
@@ -40,11 +40,11 @@
     background-color: $color-green;
   }
 
-  &-blue {
-    background-color: $color-blue;
+  &-primary {
+    background-color: var(--primary-color);
   }
 
   &-gray {
-    background-color: #c5c9cc;
+    background-color: var(--secondary-color);
   }
 }

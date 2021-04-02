@@ -3,8 +3,7 @@
   flex-direction: column;
   flex: 1;
   min-width: 18rem;
-  // ! -1 because of border-left and border-right on whole page
-  max-width: calc(#{$large-screen} / 4 - 1px);
+  max-width: calc(#{$large-screen} / 4);
 
   @include respond-to(handhelds) {
     width: 100%;
@@ -54,8 +53,8 @@
 
   .menu-horizontal-scrollable {
     z-index: 1;
-    background-color: #fff;
-    border-bottom: 1px solid #dadce0;
+    background-color: var(--surface-color);
+    border-bottom: 1px solid var(--border-color);
     position: relative;
     box-shadow: 0px 1px 5px -1px rgba(0, 0, 0, .16);
     top: unset;
@@ -104,6 +103,16 @@
     &:not(.hide) + .scrollable {
       top: 44px;
       height: calc(100% - 44px);
+
+      #folders-container {
+        li:first-child {
+          margin-top: .5rem;
+        }
+
+        > div {
+          background-color: transparent;
+        }
+      }
     }
   }
 
@@ -192,6 +201,7 @@
     max-height: 100%;
     overflow: hidden;
     position: relative;
+    background-color: var(--surface-color);
   }
 
   #folders-container {
@@ -242,7 +252,7 @@
   }
 
   .sidebar-tools-button .btn-menu {
-    min-width: 217px;
+    width: 300px;
 
     .archived-count {
       justify-self: flex-end;
@@ -454,7 +464,7 @@
     font-size: 0.875rem;
     margin-top: 14px;
     margin-left: 23px;
-    color: #707579;
+    color: var(--secondary-text-color);
     padding-right: 24px;
   }
 }
@@ -539,7 +549,7 @@
 
   .caption {
     text-align: center;
-    color: #707579;
+    color: var(--secondary-text-color);
     font-size: 14px;
     line-height: var(--line-height);
     max-width: 20rem;
@@ -837,7 +847,7 @@
     &-caption {
       margin-top: 1rem;
       font-size: 1rem;
-      color: #707579;
+      color: var(--secondary-text-color);
       line-height: var(--line-height);
       padding: 0 1rem;
 
@@ -877,7 +887,7 @@
   }
 
   &-h2 {
-    color: #707579;
+    color: var(--primary-color);
     font-size: 16px;
     font-weight: 500;
   }
@@ -1005,7 +1015,7 @@
 
     &-title-right {
       font-size: .75rem;
-      color: var(--color-text-secondary);
+      color: var(--secondary-text-color);
       line-height: 1.5;
     }
 
@@ -1064,8 +1074,12 @@
     margin-bottom: 1rem;
   }
 
+  &-name {
+    color: var(--primary-text-color);
+  }
+
   &-value {
-    color: #707579;
+    color: var(--secondary-text-color);
   }
 
   .progress-line {
@@ -1074,11 +1088,11 @@
     background-color: #e6ecf0;
     
     &__filled {
-      background-color: #3390ec;
+      background-color: var(--primary-color);
     }
     
     &__seek {
-      --thumb-color: #3390ec;
+      --thumb-color: var(--primary-color);
       --thumb-size: 12px;
     }
   }
@@ -1097,7 +1111,7 @@
         right: 0;
         bottom: 0;
         left: 0;
-        border: 3px solid $color-blue;
+        border: 3px solid var(--primary-color);
         opacity: 0;
         transition: opacity .2s ease-in-out;
       }

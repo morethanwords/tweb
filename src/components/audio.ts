@@ -74,11 +74,15 @@ function wrapVoiceMessage(audioEl: AudioElement) {
     audioEl.classList.add('is-unread');
   }
 
+  if(message.pFlags.out) {
+    audioEl.classList.add('is-out');
+  }
+
   const barWidth = 2;
-  const barMargin = mediaSizes.isMobile ? 2 : 1;
-  const barHeightMin = mediaSizes.isMobile ? 3 : 2;
-  const barHeightMax = mediaSizes.isMobile ? 16 : 23;
-  const availW = mediaSizes.isMobile ? 152 : 190;
+  const barMargin = 2;      //mediaSizes.isMobile ? 2 : 1;
+  const barHeightMin = 4;   //mediaSizes.isMobile ? 3 : 2;
+  const barHeightMax = 23;  //mediaSizes.isMobile ? 16 : 23;
+  const availW = 150;       //mediaSizes.isMobile ? 152 : 190;
 
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   svg.classList.add('audio-waveform');
@@ -114,7 +118,7 @@ function wrapVoiceMessage(audioEl: AudioElement) {
       const bar_value = Math.max(((maxValue * maxDelta) + ((normValue + 1) / 2)) / (normValue + 1), barHeightMin);
       
       const h = `
-      <rect x="${barX}" y="${barHeightMax - bar_value}" width="2" height="${bar_value}" rx="1" ry="1"></rect>
+      <rect x="${barX}" y="${barHeightMax - bar_value}" width="${barWidth}" height="${bar_value}" rx="1" ry="1"></rect>
       `;
       html += h;
 

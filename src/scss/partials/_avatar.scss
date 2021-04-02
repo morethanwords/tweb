@@ -96,8 +96,8 @@ avatar-element {
       content: " ";
       display: block;
       border-radius: 50%;
-      border: 2px solid white;
-      background-color: #0ac630;
+      border: 2px solid var(--surface-color);
+      background-color: var(--avatar-online-color);
       width: 14px;
       height: 14px;
       left: 2.4375rem;
@@ -146,6 +146,11 @@ avatar-element {
   &.avatar-44 {
     --size: 44px;
     --multiplier: 1.227272;
+  }
+
+  &.avatar-42 {
+    --size: 42px;
+    --multiplier: 1.285714;
   }
 
   &.avatar-40 {

@@ -190,12 +190,7 @@ export class AppImManager {
 
         switch(p[0]) {
           case '@': {
-            appUsersManager.resolveUsername(p).then(peer => {
-              const isUser = peer._ === 'user';
-              const peerId = isUser ? peer.id : -peer.id;
-
-              this.setInnerPeer(peerId, postId);
-            });
+            this.openUsername(p, postId);
             break;
           }
 
@@ -210,6 +205,15 @@ export class AppImManager {
     //appNavigationController.replaceState();
     //location.hash = '';
   };
+
+  public openUsername(username: string, msgId?: number) {
+    return appUsersManager.resolveUsername(username).then(peer => {
+      const isUser = peer._ === 'user';
+      const peerId = isUser ? peer.id : -peer.id;
+
+      return this.setInnerPeer(peerId, msgId);
+    });
+  }
 
   public setBackground(url: string, broadcastEvent = true): Promise<void> {
     const promises = this.chats.map(chat => chat.setBackground(url));

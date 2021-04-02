@@ -505,7 +505,7 @@ namespace RichTextProcessor {
 
             const currentContext = url[0] === '#';
 
-            insertPart(entity, `<a href="${encodeEntities(url)}"${currentContext ? '' : ' target="_blank" rel="noopener noreferrer"'}>`, '</a>');
+            insertPart(entity, `<a class="anchor-url" href="${encodeEntities(url)}"${currentContext ? '' : ' target="_blank" rel="noopener noreferrer"'}>`, '</a>');
           }
 
           break;
@@ -525,7 +525,7 @@ namespace RichTextProcessor {
           if(contextUrl) {
             const entityText = text.substr(entity.offset, entity.length);
             const hashtag = entityText.substr(1);
-            insertPart(entity, `<a href="${contextUrl.replace('{1}', encodeURIComponent(hashtag))}"${contextExternal ? ' target="_blank" rel="noopener noreferrer"' : ''}>`, '</a>');
+            insertPart(entity, `<a class="anchor-hashtag" href="${contextUrl.replace('{1}', encodeURIComponent(hashtag))}"${contextExternal ? ' target="_blank" rel="noopener noreferrer"' : ''}>`, '</a>');
           }
 
           break;

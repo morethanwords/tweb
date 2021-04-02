@@ -1,4 +1,4 @@
-$btn-send-margin: .5625rem;
+$btn-send-margin: .5rem;
 $chat-helper-size: 39px;
 
 /* #bubble-contextmenu > div {
@@ -40,7 +40,7 @@ $chat-helper-size: 39px;
 	}
 
 	@include respond-to(not-handhelds) {
-		--bottom: 21px;
+		--bottom: 20px;
 	}
 
 	@include respond-to(esg-bottom) {
@@ -204,7 +204,7 @@ $chat-helper-size: 39px;
 	
 	.btn-send {
 		transition: .2s transform !important;
-		color: #9e9e9e;
+		color: var(--secondary-text-color);
 		z-index: 3;
 
 		> .tgico {
@@ -222,11 +222,11 @@ $chat-helper-size: 39px;
 		}
 
 		.tgico-send {
-			color: $color-blue !important;
+			color: var(--primary-color) !important;
 		}
 
 		.tgico-check {
-			color: $color-blue !important;
+			color: var(--primary-color) !important;
 			height: 32px!important;
 			font-size: 2rem;
 
@@ -236,7 +236,7 @@ $chat-helper-size: 39px;
 		}
 
 		.tgico-schedule {
-			background-color: $color-blue;
+			background-color: var(--primary-color);
 			color: #fff;
 			border-radius: 50%;
 			width: 34px; // * same as for btn-icon in input
@@ -266,7 +266,7 @@ $chat-helper-size: 39px;
 	.btn-record-cancel, .btn-send {
 		font-size: 1.5rem;
 		line-height: 1.5rem;
-		background-color: #fff !important;
+		background-color: var(--surface-color) !important;
 	}
 
 	.record-time {
@@ -467,9 +467,9 @@ $chat-helper-size: 39px;
 		}
 	}
 
-	@include respond-to(not-handhelds) {
-		border-left: 1px solid #DADCE0;
-	}
+	/* @include respond-to(not-handhelds) {
+		border-left: 1px solid var(--border-color);
+	} */
 
 	@include respond-to(floating-left-sidebar) {
 		position: fixed !important;
@@ -555,6 +555,13 @@ $chat-helper-size: 39px;
 		overflow: hidden;
 		background-color: #e6ebee;
 
+		html.night & {
+			background-color: var(--border-color);
+			.chat-background-item {
+				display: none;
+			}
+		}
+
 		&.no-transition:before {
 			transition: none !important;
 		}
@@ -609,7 +616,7 @@ $chat-helper-size: 39px;
 	width: calc(100% - (var(--chat-input-size) + #{$btn-send-margin}));
 	max-width: calc(100% - (var(--chat-input-size) + #{$btn-send-margin}));
 	justify-content: center;
-	background-color: #fff;
+	background-color: var(--surface-color);
 	border-radius: 12px;
 	border-bottom-right-radius: 0;
 	//box-shadow: 0 1px 2px 0 rgba(16, 35, 47, .07);
@@ -795,8 +802,8 @@ $chat-helper-size: 39px;
 
 	.attach-file {
 		&.menu-open {
-			color: $color-blue;
-			background-color: hover-color($color-blue) !important;
+			color: var(--primary-color);
+			background-color: hover-color(var(--primary-color)) !important;
 		}
 
 		.btn-menu {
@@ -901,7 +908,7 @@ $chat-helper-size: 39px;
 	.btn-icon {
 		flex: 0 0 auto;
 		font-size: 24px;
-		color: #8d969c;
+		color: var(--secondary-text-color);
 
 		// ! EXPERIMENTAL
 		margin: 0 .125rem 5px;
@@ -910,7 +917,7 @@ $chat-helper-size: 39px;
 		height: 34px;
 
 		&.active {
-			color: $color-blue;
+			color: var(--primary-color);
 		}
 	}
 }
@@ -950,7 +957,7 @@ $chat-helper-size: 39px;
 	// }
 
 	&.is-chat-input-hidden.is-selecting:not(.backwards) {
-		--translateY: -79px;
+		--translateY: -78px;
 
 		@include respond-to(handhelds) {
 			--translateY: -58px;
@@ -1046,7 +1053,7 @@ $chat-helper-size: 39px;
 	box-sizing: border-box;
 	min-height: 100%;
 	justify-content: flex-end;
-	padding: 0 1rem;
+	padding: 0 $chat-padding;
 	max-width: var(--messages-container-width);
 
 	//padding-top: 10000px;
@@ -1065,13 +1072,7 @@ $chat-helper-size: 39px;
 	}
 
 	@include respond-to(handhelds) {
-    padding: 0 .5rem;
-
-		.is-out {
-			.bubble-content-wrapper {
-				margin-right: .25rem;
-			}
-		}
+    padding: 0 $chat-padding-handhelds;
 
     html.is-mac & {
       -webkit-user-select: none;
@@ -1127,7 +1128,7 @@ $chat-helper-size: 39px;
 
 .bubbles-go-down {
 	position: absolute;
-	background-color: #fff;
+	background-color: var(--surface-color);
 	border-radius: 50%;
 	color: $placeholder-color;
 	font-size: 1.5rem;

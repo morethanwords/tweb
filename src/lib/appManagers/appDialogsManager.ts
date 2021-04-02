@@ -425,7 +425,7 @@ export class AppDialogsManager {
       delete this.chatLists[filter.id];
       delete this.filtersRendered[filter.id];
 
-      if(!Object.keys(this.filtersRendered).length) {
+      if(Object.keys(this.filtersRendered).length <= 1) {
         this.folders.menuScrollContainer.classList.add('hide');
       }
     });
@@ -674,7 +674,7 @@ export class AppDialogsManager {
     if(filter.titleEl) titleSpan.append(filter.titleEl);
     else titleSpan.innerHTML = RichTextProcessor.wrapEmojiText(filter.title);
     const unreadSpan = document.createElement('div');
-    unreadSpan.classList.add('badge', 'badge-20', 'badge-blue');
+    unreadSpan.classList.add('badge', 'badge-20', 'badge-primary');
     const i = document.createElement('i');
     span.append(titleSpan, unreadSpan, i);
     menuTab.append(span);
@@ -694,20 +694,20 @@ export class AppDialogsManager {
     this.chatLists[filter.id] = ul;
     this.setListClickListener(ul, null, true);
 
-    if(!this.showFiltersTimeout) {
-      this.showFiltersTimeout = window.setTimeout(() => {
-        this.showFiltersTimeout = 0;
-        this.folders.menuScrollContainer.classList.remove('hide');
-        this.setFiltersUnreadCount();
-      }, 0);
-    }
-
     this.filtersRendered[filter.id] = {
       menu: menuTab,
       container: div,
       unread: unreadSpan,
       title: titleSpan
     };
+
+    if(!this.showFiltersTimeout && Object.keys(this.filtersRendered).length > 1) {
+      this.showFiltersTimeout = window.setTimeout(() => {
+        this.showFiltersTimeout = 0;
+        this.folders.menuScrollContainer.classList.remove('hide');
+        this.setFiltersUnreadCount();
+      }, 0);
+    }
   }
 
   private loadDialogs(side: SliceSides = 'bottom') {

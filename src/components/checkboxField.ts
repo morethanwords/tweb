@@ -8,6 +8,7 @@ export type CheckboxFieldOptions = {
   textArgs?: any[],
   name?: string, 
   round?: boolean, 
+  toggle?: boolean,
   stateKey?: string,
   disabled?: boolean,
   checked?: boolean,
@@ -39,7 +40,7 @@ export default class CheckboxField {
     const input = this.input = document.createElement('input');
     input.type = 'checkbox';
     if(options.name) {
-      input.id = 'input-' + name;
+      input.id = 'input-' + options.name;
     }
 
     if(options.checked) {
@@ -65,26 +66,36 @@ export default class CheckboxField {
       label.classList.add('checkbox-without-caption');
     }
 
-    const box = document.createElement('div');
-    box.classList.add('checkbox-box');
+    label.append(input);
 
-    const checkSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    checkSvg.classList.add('checkbox-box-check');
-    checkSvg.setAttributeNS(null, 'viewBox', '0 0 24 24');
-    const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
-    use.setAttributeNS(null, 'href', '#check');
-    use.setAttributeNS(null, 'x', '-1');
-    checkSvg.append(use);
+    if(options.toggle) {
+      label.classList.add('checkbox-field-toggle');
 
-    const bg = document.createElement('div');
-    bg.classList.add('checkbox-box-background');
-
-    const border = document.createElement('div');
-    border.classList.add('checkbox-box-border');
-
-    box.append(border, bg, checkSvg);
-
-    label.append(input, box);
+      const toggle = document.createElement('div');
+      toggle.classList.add('checkbox-toggle');
+      label.append(toggle);
+    } else {
+      const box = document.createElement('div');
+      box.classList.add('checkbox-box');
+  
+      const checkSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      checkSvg.classList.add('checkbox-box-check');
+      checkSvg.setAttributeNS(null, 'viewBox', '0 0 24 24');
+      const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+      use.setAttributeNS(null, 'href', '#check');
+      use.setAttributeNS(null, 'x', '-1');
+      checkSvg.append(use);
+  
+      const bg = document.createElement('div');
+      bg.classList.add('checkbox-box-background');
+  
+      const border = document.createElement('div');
+      border.classList.add('checkbox-box-border');
+  
+      box.append(border, bg, checkSvg);
+  
+      label.append(box);
+    }
 
     if(span) {
       label.append(span);

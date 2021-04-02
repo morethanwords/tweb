@@ -22,7 +22,7 @@
     height: 0;
     width: 0;
     
-    border: solid #707579;
+    border: solid var(--secondary-text-color);
     border-radius: 1px;
     border-width: 0 2px 2px 0;
     display: inline-block;
@@ -107,7 +107,7 @@
     &:focus {
       --border-width: 2px;
       --border-width-top: 3px;
-      border-color: $button-primary-background;
+      border-color: var(--primary-color);
       //padding: 0 calc(1rem - 1px);
     }
     
@@ -139,11 +139,11 @@
     &:focus ~ .arrow-down {
       margin-top: -4px;
       transform: rotate(225deg);
-      border-color: $button-primary-background;
+      border-color: var(--primary-color);
     }
     
     &:focus ~ label {
-      color: $button-primary-background;
+      color: var(--primary-color);
       font-weight: 500;
     }
 
@@ -238,8 +238,8 @@ input:focus, button:focus {
   position: relative;
   width: 100%;
   //Vozmojno nado budet vernut margin-left: 22px;, tak kak eto vrode v levom bare tak po verstke, a v pravom bare dlya mobili nado 16, gde stiker seti 
-  margin-left: 1rem;
-  margin-right: .25rem;
+  margin-left: .4375rem;
+  margin-right: .4375rem;
   overflow: hidden;
 
   @include respond-to(handhelds) {
@@ -247,16 +247,16 @@ input:focus, button:focus {
   }
 
   &-input {
-    --height: 40px;
-    background-color: var(--color-gray-hover);
-    padding: 0px calc(42px - var(--border-width));
+    --height: 42px;
+    background-color: var(--input-search-background-color);
+    padding: 0px calc(var(--height) + 3px - var(--border-width));
     height: var(--height);
     min-height: var(--height) !important;
     max-height: var(--height) !important;
     //line-height: calc(var(--height) + 2px - var(--border-width) * 2);
     border-radius: 22px;
     transition: background-color .2s ease-in-out, border-color .2s ease-in-out;
-    border-color: transparent;
+    border-color: var(--input-search-border-color);
     line-height: var(--height);
 
     body.animation-level-0 & {
@@ -273,10 +273,10 @@ input:focus, button:focus {
     &:focus {
       --border-width: 2px;
       background-color: transparent;
-      border-color: $button-primary-background;
+      border-color: var(--primary-color);
 
       & ~ .tgico {
-        color: $button-primary-background;
+        color: var(--primary-color);
         opacity: 1;
       }
     }
@@ -296,10 +296,11 @@ input:focus, button:focus {
     transform: translate(0, -50%);
     text-align: center;
     font-size: 24px;
-    color: $color-gray;
+    color: var(--secondary-text-color);
     opacity: .6;
     transition: all .2s ease-out;
     line-height: 1;
+    z-index: 1;
 
     body.animation-level-0 & {
       transition: none;
@@ -309,7 +310,7 @@ input:focus, button:focus {
   > .tgico-search {
     width: 24px;
     height: 24px;
-    left: .75rem;
+    left: .8125rem;
   }
 
   > .tgico-close {

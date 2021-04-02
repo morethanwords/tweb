@@ -58,7 +58,6 @@ $transition: .2s ease-in-out;
   .you-spin-me-round {
     width: 100%;
     height: 100%;
-    animation: rotate 2s linear infinite;
   }
 
   .preloader-circular {
@@ -73,17 +72,27 @@ $transition: .2s ease-in-out;
     stroke-dasharray: 5, 149.82;
     //stroke-dasharray: 112.36, 149.82;
     stroke-dashoffset: 0;
-    transition: stroke-dasharray $transition, stroke-width $transition;
+    
     stroke-linecap: round;
     stroke: white;
     stroke-width: 2;
+  }
+
+  &.is-visible:not(.manual), &.is-visible.animating {
+    .you-spin-me-round {
+      animation: rotate 2s linear infinite;
+    }
+
+    .preloader-path-new {
+      transition: stroke-dasharray $transition, stroke-width $transition;
+    }
   }
 
   &.preloader-swing {
     cursor: default;
 
     .you-spin-me-round {
-      animation: rotate 1s linear infinite;
+      animation: rotate 1s linear infinite !important;
     }
 
     .preloader-path-new {
@@ -153,7 +162,7 @@ $transition: .2s ease-in-out;
       background-color: #fff;
       left: 50%;
       top: 50%;
-      transform: translate3d(-50%, -50%, 0);
+      transform: translate(-50%, -50%);
     }
   }
 

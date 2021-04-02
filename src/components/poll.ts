@@ -10,6 +10,8 @@ import { ripple } from "./ripple";
 import appSidebarRight from "./sidebarRight";
 import AppPollResultsTab from "./sidebarRight/tabs/pollResults";
 import { i18n, LangPackKey } from "../lib/langPack";
+import { fastRaf } from "../helpers/schedulers";
+import SetTransition from "./singleTransition";
 
 let lineTotalLength = 0;
 const tailLength = 9;
@@ -523,9 +525,13 @@ export default class PollElement extends HTMLElement {
     // is need update
     if(this.chosenIndexes.length || this.isRetracted || this.isClosed) {
       const percents = results.results.map(v => results.total_voters ? v.voters / results.total_voters * 100 : 0);
-      this.setResults(this.isRetracted ? this.percents : percents, this.chosenIndexes);
-      this.percents = percents;
-      this.isRetracted = false;
+
+      SetTransition(this, '', !this.isRetracted, 340);
+      fastRaf(() => {
+        this.setResults(this.isRetracted ? this.percents : percents, this.chosenIndexes);
+        this.percents = percents;
+        this.isRetracted = false;
+      });
     }
     
     this.setVotersCount(results);

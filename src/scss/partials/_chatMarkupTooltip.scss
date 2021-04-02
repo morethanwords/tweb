@@ -78,7 +78,7 @@
 
 		&.active {
 			color: #fff!important;
-			background-color: $color-blue!important;
+			background-color: var(--primary-color)!important;
 		}
 	}
 
@@ -99,7 +99,7 @@
 	}
 
 	&-link-apply {
-		color: $color-blue;
+		color: var(--primary-color);
 		font-size: 2rem;
 
 		&-container {

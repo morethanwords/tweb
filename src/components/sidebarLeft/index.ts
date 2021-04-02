@@ -24,6 +24,7 @@ import AppArchivedTab from "./tabs/archivedTab";
 import AppAddMembersTab from "./tabs/addMembers";
 import { i18n_, LangPackKey } from "../../lib/langPack";
 import ButtonMenu, { ButtonMenuItemOptions } from "../buttonMenu";
+import CheckboxField from "../checkboxField";
 
 export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
 
@@ -56,7 +57,7 @@ export class AppSidebarLeft extends SidebarSlider {
 
     //this._selectTab(0); // make first tab as default
 
-    this.inputSearch = new InputSearch('Telegram Search');
+    this.inputSearch = new InputSearch('Search');
     const sidebarHeader = this.sidebarEl.querySelector('.item-main .sidebar-header');
     sidebarHeader.append(this.inputSearch.container);
 
@@ -82,28 +83,24 @@ export class AppSidebarLeft extends SidebarSlider {
 
     const btnArchive: ButtonMenuItemOptions = {
       icon: 'archive',
-      text: 'ChatList.Menu.Archived',
+      text: 'ArchivedChats',
       onClick: () => {
         new AppArchivedTab(this).open();
       }
     };
 
     const btnMenu = ButtonMenu([{
-      icon: 'newgroup',
-      text: 'NewGroup',
-      onClick: onNewGroupClick
-    }, {
-      icon: 'user',
-      text: 'Contacts',
-      onClick: onContactsClick
-    }, btnArchive, {
       icon: 'savedmessages',
-      text: 'Saved',
+      text: 'SavedMessages',
       onClick: () => {
         setTimeout(() => { // menu doesn't close if no timeout (lol)
           appImManager.setPeer(appImManager.myId);
         }, 0);
       }
+    }, btnArchive, {
+      icon: 'user',
+      text: 'Contacts',
+      onClick: onContactsClick
     }, {
       icon: 'settings',
       text: 'Settings',
@@ -111,10 +108,24 @@ export class AppSidebarLeft extends SidebarSlider {
         new AppSettingsTab(this).open();
       }
     }, {
-      icon: 'help btn-disabled',
+      icon: 'colorize',
+      text: 'DarkMode',
+      onClick: () => {
+        
+      },
+      checkboxField: new CheckboxField({toggle: true})
+    }, {
+      icon: 'lamp',
+      text: 'Animations',
+      onClick: () => {
+        
+      },
+      checkboxField: new CheckboxField({toggle: true, checked: true})
+    }, {
+      icon: 'help',
       text: 'SettingsHelp',
       onClick: () => {
-
+        appImManager.openUsername('TelegramTips');
       }
     }]);
 

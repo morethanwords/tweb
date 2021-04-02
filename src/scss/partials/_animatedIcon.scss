@@ -7,7 +7,7 @@
     width: 1.125rem;
     height: .125rem;
     border-radius: .125rem;
-    background-color: var(--color-text-secondary);
+    background-color: var(--secondary-text-color);
     transition: transform var(--slide-header-transition);
   }
 
@@ -48,7 +48,7 @@
     width: 1.125rem;
     height: .125rem;
     border-radius: .125rem;
-    background-color: var(--color-text-secondary);
+    background-color: var(--secondary-text-color);
     transition: transform .25s;
     transform: rotate(0);
   }

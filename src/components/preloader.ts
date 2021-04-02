@@ -165,7 +165,10 @@ export default class ProgressivePreloader {
         }
       } else {
         if(this.tryAgainOnFail) {
-          this.setManual();
+          SetTransition(this.preloader, '', true, TRANSITION_TIME);
+          fastRaf(() => {
+            this.setManual();
+          });
         } else {
           this.detach();
         }

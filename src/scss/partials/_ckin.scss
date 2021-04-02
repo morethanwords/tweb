@@ -281,7 +281,7 @@ video::-webkit-media-controls-enclosure {
 
   &__seek {
     --thumb-size: 13px;
-    --thumb-color: #63a2e3;
+    --thumb-color: var(--primary-color);
     -webkit-appearance: none;
     -moz-appearance: none;
     background: transparent;

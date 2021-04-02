@@ -77,7 +77,7 @@
 
       .drop.is-dragover & {
         animation: drop-outline-move .5s linear infinite;
-        stroke: $color-blue;
+        stroke: var(--primary-color);
       }
 
       /* .drop.is-dragover.backwards & {
@@ -108,7 +108,7 @@
   }
 
   &.is-dragover {
-    color: $color-blue;
+    color: var(--primary-color);
   }
 
   & + & {
