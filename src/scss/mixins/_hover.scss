@@ -1,9 +1,9 @@
 @mixin hover($color: null, $property: null, $use-transition: false) {
   @if $color {
     @if $color == gray {
-      $color: var(--color-gray-hover);
+      $color: var(--light-secondary-text-color);
     } @else if $color == blue or $color == primary {
-      $color: var(--color-blue-hover);
+      $color: var(--light-primary-color);
     } @else if $color == red {
       $color: var(--color-red-hover);
     }

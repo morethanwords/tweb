@@ -2,21 +2,11 @@ $placeholder-color: #9e9e9e;
 $border-radius: 8px;
 $border-radius-medium: 10px;
 $border-radius-big: 12px;
-$button-primary-background: #4EA4F6;
 
 $color-green: #4DCD5E;
-$color-error: #E53935;
-$color-red: #E53935;
-$color-gray: #707579;
-$color-blue: #50a2e9;
+$color-error: #df3f40;
+$color-red: #df3f40;
 $hover-alpha: .08;
-
-$darkgreen: #50af4f;
-$color-text-green: $darkgreen;
-
-$lightgrey: #dadce0;
-
-$light: rgba($color-gray, $hover-alpha);
 
 //$small-screen: 720px;
 $small-screen: 600px;
@@ -30,7 +20,7 @@ $messages-container-width: 728px;
 
 $chat-input-size: 3.375rem;
 $chat-input-handhelds-size: 2.875rem;
-$chat-padding: 1rem;
+$chat-padding: .8125rem;
 $chat-padding-handhelds: .5rem;
 
 @function hover-color($color) {
@@ -43,11 +33,10 @@ $chat-padding-handhelds: .5rem;
 :root {
   --vh: 1vh;
   --z-below: -1;
+  --hover-alpha: #{$hover-alpha};
+
   --color-gray: #c4c9cc;
-  --color-gray-hover: #{hover-color($color-gray)};
-  --color-blue-hover: #{hover-color($color-blue)};
   --color-red-hover: #{hover-color($color-red)};
-  --color-text-secondary: #{$color-gray};
   --pm-transition: .2s ease-in-out;
   --layer-transition: .2s ease-in-out;
   --slide-header-transition: .4s ease-in-out;
@@ -105,6 +94,82 @@ $chat-padding-handhelds: .5rem;
   }
 }
 
+:root {
+  // * Day theme
+  --body-background-color: #fff;
+  //--background-color: #f4f4f5;
+  --background-color: #fff;
+  --border-color: #dfe1e5;
+  --surface-color: #fff;
+
+  --input-search-background-color: #fff;
+  --input-search-border-color: #dfe1e5;
+
+  $primary-color: #3390ec;
+  --primary-color: #{$primary-color};
+  --primary-text-color: #000;
+
+  --light-primary-color: #{hover-color($primary-color)};
+  --dark-primary-color: #{darken($primary-color, $hover-alpha * 100)};
+
+  $secondary-text-color: #707579;
+  --secondary-color: #c4c9cc;
+  --secondary-text-color: #707579;
+
+  --light-secondary-text-color: #{hover-color($secondary-text-color)};
+
+  --avatar-online-color: #0ac630;
+  --chatlist-status-color: var(--avatar-online-color);
+  --chatlist-pinned-color: #a2abb2;
+  --badge-text-color: #fff;
+
+  --message-background-color: var(--surface-color);
+  --message-out-background-color: #eeffde;
+  --message-out-primary-color: #4fae4e;
+  --message-out-secondary-color: #4fae4e;
+  --message-out-audio-play-button-color: #fff;
+
+  // * Day theme end
+}
+
+html.night {
+//:root {
+  // * Night theme
+  --body-background-color: #181818;
+  //--background-color: #181818;
+  --background-color: #212121;
+  --border-color: #0f0f0f;
+  --surface-color: #212121;
+
+  --input-search-background-color: #181818;
+  --input-search-border-color: #2f2f2f;
+
+  $primary-color: #878afd;
+  --primary-color: #{$primary-color};
+  --primary-text-color: #fff;
+
+  --light-primary-color: #{hover-color($primary-color)};
+  --dark-primary-color: #{darken($primary-color, $hover-alpha * 100)};
+
+  $secondary-text-color: #aaaaaa;
+  --secondary-color: #707579;
+  --secondary-text-color: #{$secondary-text-color};
+
+  --light-secondary-text-color: #{hover-color($secondary-text-color)};
+
+  --avatar-online-color: #0ac630;
+  --chatlist-status-color: var(--primary-color);
+  --chatlist-pinned-color: var(--secondary-color);
+  --badge-text-color: #fff;
+
+  --message-background-color: var(--surface-color);
+  --message-out-background-color: #ae582d;
+  --message-out-primary-color: #fff;
+  --message-out-secondary-color: #4fae4e;
+  --message-out-audio-play-button-color: var(--message-out-background-color);
+  // * Night theme end
+}
+
 @import "partials/ico";
 @import "partials/input";
 @import "partials/button";
@@ -138,6 +203,7 @@ $chat-padding-handhelds: .5rem;
 @import "partials/audio";
 @import "partials/quizHint";
 @import "partials/peerTyping";
+@import "partials/poll";
 
 @import "partials/popups/popup";
 @import "partials/popups/editAvatar";
@@ -280,6 +346,7 @@ html {
 
 body {
   touch-action: pan-x pan-y;
+  background-color: var(--body-background-color);
 }
 
 /* body {
@@ -292,7 +359,7 @@ body {
 } */
 
 a {
-  color: $color-blue;
+  color: var(--primary-color);
 }
 
 button, input, optgroup, select, textarea, html {
@@ -347,7 +414,8 @@ h4 {
 }
 
 input, [contenteditable=true] {
-  caret-color: $button-primary-background;
+  caret-color: var(--primary-color);
+  color: var(--primary-text-color);
 }
 
 input, textarea {
@@ -356,7 +424,7 @@ input, textarea {
 
 .subtitle {
   /* font-weight: 500; */
-  color: #707579;
+  color: var(--secondary-text-color);
   line-height: 1.35;
 }
 
@@ -369,10 +437,10 @@ input, textarea {
 }
 
 .blue, .primary {
-  color: $color-blue!important;
+  color: var(--primary-color)!important;
 
   .c-ripple__circle {
-    background-color: var(--color-blue-hover);
+    background-color: var(--light-primary-color);
   }
 }
 
@@ -466,13 +534,13 @@ input, textarea {
 hr {
   width: 100%;
   border: none;
-  border-top: 1px solid #DADCE0;
+  border-top: 1px solid var(--border-color);
   margin: 0;
   padding-bottom: .5rem;
 }
 
 .user-title, b/* , .user-last-message b */ {
-  color: #000;
+  color: var(--primary-text-color);
   font-weight: bolder;
   //font-weight: 500;
   //font-weight: normal;
@@ -494,7 +562,7 @@ hr {
     max-height: 100%;
     width: 100%;
     height: 100%;
-    background-color: $color-blue;
+    background-color: var(--primary-color);
   }
 
   .tgico-cameraadd {
@@ -715,7 +783,7 @@ img.emoji {
     padding-right: 32px;
     padding-left: 16px;
     font-size: 24px;
-    color: #707579;
+    color: var(--secondary-text-color);
   }
 }
 
@@ -728,7 +796,7 @@ img.emoji {
 // }
 
 .content-empty {
-  color: #707579;
+  color: var(--secondary-text-color);
 }
 
 @keyframes grow-icon {
@@ -1113,6 +1181,7 @@ middle-ellipsis-element {
   }
 
   &-title {
+    color: var(--primary-text-color);
     line-height: var(--line-height);
 
     &-right {
@@ -1132,7 +1201,7 @@ middle-ellipsis-element {
       position: absolute;
       left: 1rem;
       font-size: 1.5rem;
-      color: var(--color-text-secondary);
+      color: var(--secondary-text-color);
     }
   }
 
@@ -1157,7 +1226,7 @@ middle-ellipsis-element {
   }
 
   &-subtitle {
-    color: var(--color-text-secondary) !important;
+    color: var(--secondary-text-color) !important;
     font-size: .875rem !important;
     line-height: var(--line-height);
     margin-top: .125rem;

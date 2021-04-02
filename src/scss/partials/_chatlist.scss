@@ -18,7 +18,7 @@
     }
 
     &__name {
-      color: $color-gray;
+      color: var(--secondary-text-color);
       padding: 0 23px;
       padding-bottom: 1rem;
       font-weight: 500;
@@ -86,6 +86,7 @@ ul.chatlist {
   flex-direction: column;
   position: relative;
   width: 100%;
+  background-color: var(--surface-color);
 
   user-select: none;
   -webkit-user-select: none; /* disable selection/Copy of UIWebView */
@@ -102,7 +103,6 @@ ul.chatlist {
   } */
 
   li {
-    background-color: #fff;
     //height: var(--height);
     height: 72px;
     //max-height: var(--height);
@@ -112,7 +112,7 @@ ul.chatlist {
     flex-direction: row;
     position: relative;
     cursor: pointer;
-    padding: 9px 8.5px;
+    padding: .5625rem;
     /* padding-top: calc((var(--height) - var(--avatarSize)) / 2);
     padding-bottom: calc((var(--height) - var(--avatarSize)) / 2);
     padding-right: 8.5px;
@@ -174,7 +174,7 @@ ul.chatlist {
     }
 
     .text-highlight {
-      color: #000;
+      color: var(--primary-text-color);
     }
 
     /* img.emoji {
@@ -187,12 +187,12 @@ ul.chatlist {
     } */
 
     &.menu-open {
-      background: var(--color-gray-hover);
+      background: var(--light-secondary-text-color);
     }
 
     @include respond-to(not-handhelds) {
       &.active {
-        background: var(--color-gray-hover);
+        background: var(--light-secondary-text-color);
       }
     }
   }
@@ -226,10 +226,9 @@ ul.chatlist {
     max-width: 100%;
     max-height: 100%;
     overflow: hidden;
-    color: $color-gray;
+    color: var(--secondary-text-color);
     flex: 1 1 auto;
-    //padding: 1px 3.5px 1px 9px; - DO MAKETA JS3
-    padding: 1px 8.5px 1px 9px; // JS3
+    padding: .0625rem .4375rem .0625rem .5625rem;
   }
 
   .user-title {
@@ -277,7 +276,7 @@ ul.chatlist {
   .user-title, .user-last-message {
     i {
       font-style: normal;
-      //color: $color-blue;
+      //color: var(--primary-color);
     }
   }
 
@@ -289,7 +288,7 @@ ul.chatlist {
     vertical-align: middle;
 
     &[class*=" tgico-"] {
-      color: $color-green;
+      color: var(--chatlist-status-color);
       font-size: 1.25rem;
     }
 
@@ -314,7 +313,7 @@ ul.chatlist {
     position: relative;
 
     &:before {
-      color: #a2abb2;
+      color: var(--chatlist-pinned-color);
       transition: opacity .2s ease-in-out;
       opacity: 1;
       position: absolute;
@@ -330,11 +329,11 @@ ul.chatlist {
   }
 
   .unread, li.is-muted.backwards .unread {
-    background: $color-green;
+    background-color: var(--chatlist-status-color);
   }
 
   li.is-muted .unread {
-    background: #c5c9cc;
+    background-color: var(--secondary-color);
   }
 }
 

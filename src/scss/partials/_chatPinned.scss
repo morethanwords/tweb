@@ -11,7 +11,7 @@
       height: 32px;
       width: 2px;
       border-radius: 1px;
-      background: $color-blue;
+      background: var(--primary-color);
     }
 
     &-mask {
@@ -19,7 +19,7 @@
     }
 
     &-wrapper {
-      color: $color-blue;
+      color: var(--primary-color);
       background: #50a2e988;
       position: relative;
     }
@@ -82,7 +82,7 @@
   }
 
   &-title {
-    color: $color-blue;
+    color: var(--primary-color);
   }
   
   &-title, &-subtitle {
@@ -135,12 +135,8 @@
 
   i {
     font-style: normal;
-    //color: $color-blue;
-    color: #707579;
-
-    /* &.document-title {
-      color: #707579;
-    } */
+    //color: var(--primary-color);
+    color: var(--secondary-text-color);
   }
 
   img.emoji {
@@ -163,14 +159,14 @@
   }
 
   /* html.no-touch &:hover {
-    background-color: var(--color-gray-hover);
+    background-color: var(--light-secondary-text-color);
   } */
 
   &-border {
     height: 2rem;
     border-radius: 1px;
     min-width: 2px;
-    background: $color-blue;
+    background: var(--primary-color);
   }
 }
 
@@ -241,7 +237,7 @@
     border-radius: 4px;
 
     /* html.no-touch &:hover {
-      background-color: var(--color-gray-hover);
+      background-color: var(--light-secondary-text-color);
     } */
   }
 }
@@ -466,7 +462,7 @@
   }
 
   &-subtitle {
-    color: #707579;
+    color: var(--secondary-text-color);
   }
 
   &-title, &-subtitle {

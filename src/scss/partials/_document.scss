@@ -1,5 +1,5 @@
 .document {
-  --background-color: #{$color-blue};
+  --background-color: #{var(--primary-color)};
   $border-radius: .375rem;
   padding-left: 4.25rem;
   height: 70px;
@@ -102,7 +102,7 @@
 
   &-size {
     white-space: nowrap;
-    color: $color-gray;
+    color: var(--secondary-text-color);
     font-size: .875rem;
     //padding-right: 32px;
     line-height: 1.3;

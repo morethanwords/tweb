@@ -2,6 +2,7 @@
   /* display: grid; */
   /* grid-template-columns: 25% 50%; */
   display: flex;
+  max-width: calc(#{$large-screen} + 2px) !important;
 
   .avatar-edit {
     .tgico-cameraadd {
@@ -93,7 +94,7 @@
     
     // ! do not change it to &-path
     .preloader-path {
-      stroke: $button-primary-background;
+      stroke: var(--primary-color);
     }
   }
 
@@ -116,7 +117,7 @@
     border-left-width: 1px;
     border-right-width: 1px;
     border-style: solid;
-    border-color: #DADCE0;
+    border-color: var(--border-color);
   }
 
   .avatar-edit {

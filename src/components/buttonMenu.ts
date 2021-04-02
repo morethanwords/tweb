@@ -1,6 +1,7 @@
 import { attachClickEvent, AttachClickOptions, cancelEvent, CLICK_EVENT_NAME } from "../helpers/dom";
 import ListenerSetter from "../helpers/listenerSetter";
 import { i18n, LangPackKey } from "../lib/langPack";
+import CheckboxField from "./checkboxField";
 import { closeBtnMenu } from "./misc";
 import { ripple } from "./ripple";
 
@@ -9,7 +10,8 @@ export type ButtonMenuItemOptions = {
   text: LangPackKey, 
   onClick: (e: MouseEvent | TouchEvent) => void, 
   element?: HTMLElement,
-  options?: AttachClickOptions
+  options?: AttachClickOptions,
+  checkboxField?: CheckboxField,
   /* , cancelEvent?: true */
 };
 
@@ -20,7 +22,16 @@ const ButtonMenuItem = (options: ButtonMenuItemOptions) => {
   const el = document.createElement('div');
   el.className = 'btn-menu-item tgico-' + icon;
   ripple(el);
-  el.append(i18n(text));
+  const t = i18n(text);
+  t.classList.add('btn-menu-item-text');
+  el.append(t);
+
+  if(options.checkboxField) {
+    el.append(options.checkboxField.label);
+    attachClickEvent(el, () => {
+      options.checkboxField.checked = !options.checkboxField.checked;
+    }, options.options);
+  }
 
   // * cancel keyboard close
   attachClickEvent(el, CLICK_EVENT_NAME !== 'click' ? (e) => {

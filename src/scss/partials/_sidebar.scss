@@ -1,13 +1,10 @@
 .sidebar {
-  background-color: #fff;
-  //overflow: hidden;
-
   &-header {
-    background-color: #fff;
+    background-color: var(--surface-color);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 7.5px 16px;
+    padding: 0 1rem;
     min-height: 56px;
     flex: 0 0 auto;
     user-select: none;
@@ -27,6 +24,7 @@
       font-weight: 500;
       padding-left: 24px;
       font-size: 20px;
+      color: var(--primary-text-color);
     }
 
     .btn-icon + .btn-icon {

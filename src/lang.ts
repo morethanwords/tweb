@@ -1,6 +1,8 @@
 const lang = {
+  "Animations": "Animations",
   "AttachAlbum": "Album",
   "BlockModal.Search.Placeholder": "Block user...",
+  "DarkMode": "Sith Mode",
   "FilterIncludeExcludeInfo": "Choose chats and types of chats that will\nappear and never appear in this folder.",
   "FilterNameInputLabel": "Folder Name",
   "FilterMenuDelete": "Delete Folder",
@@ -21,7 +23,7 @@ const lang = {
   "EditProfile.Username.Invalid": "Username is invalid",
   "EditProfile.Username.Help": "You can choose a username on Telegram. If you do, people will be able to find you by this username and contact you without needing your phone number.\n\nYou can use a–z, 0–9 and underscores. Minimum length is 5 characters.",
   "ExceptionModal.Search.Placeholder": "Add exception...",
-  "ChatList.Menu.Archived": "Archived",
+  //"ChatList.Menu.Archived": "Archived",
   "Chat.Menu.SelectMessages": "Select Messages",
   "Chat.Menu.ClearSelection": "Clear Selection",
   "Chat.Input.UnpinAll": "Unpin All Messages",
@@ -33,7 +35,7 @@ const lang = {
     "other_value": "%d Messages"
   },
   "Chat.Selection.LimitToast": "Max selection count reached.",
-  "Saved": "Saved",
+  //"Saved": "Saved",
   "General.Keyboard": "Keyboard",
   "General.SendShortcut.Enter": "Send by Enter",
   "General.SendShortcut.CtrlEnter": "Send by %s + Enter",

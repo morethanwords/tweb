@@ -1,5 +1,6 @@
 #column-right {
   position: relative;
+  overflow: unset;
 
   @include respond-to(only-small-screens) {
     box-shadow: 0 0.25rem 0.5rem 0.1rem hsla(0, 0%, 44.7%, .25);
@@ -17,7 +18,7 @@
     position: absolute;
     right: 0;
     z-index: 3;
-    transform: translate3d(var(--right-column-width), 0, 0);
+    transform: translate3d(calc(var(--right-column-width) + 1px), 0, 0);
   
     .sidebar-content {
       min-width: var(--right-column-width);
@@ -36,9 +37,20 @@
 		}
   }
 
-  @include respond-to(medium-screens) {
-    border-left: 1px solid #DADCE0;
+  &:before {
+    position: absolute;
+    content: " ";
+    display: block;
+    height: 56px;
+    width: 1px;
+    background-color: var(--border-color);
+    left: -1px;
+    top: 0;
   }
+
+  /* @include respond-to(medium-screens) {
+    border-left: 1px solid var(--border-color);
+  } */
 
   /* body.is-forward-active & {
     z-index: 4;
@@ -135,6 +147,7 @@
     word-break: break-word;
     max-width: 340px;
     margin: 0 auto;
+    color: var(--primary-text-color);
 
     span.emoji {
       vertical-align: inherit;
@@ -144,7 +157,7 @@
 
   &-subtitle {
     text-align: center;
-    color: $color-gray;
+    color: var(--secondary-text-color);
     font-size: 14px;
     margin-bottom: .875rem;
     margin-top: 1px;
@@ -154,7 +167,7 @@
     }
 
     .online {
-      color: $color-blue;
+      color: var(--primary-color);
     }
   }
 
@@ -179,7 +192,7 @@
       left: 24px;
       /* top: 0; */
       font-size: 24px;
-      color: $color-gray;
+      color: var(--secondary-text-color);
 
       @include respond-to(handhelds) {
         left: 15px;
@@ -204,7 +217,7 @@
     }
 
     &-label {
-      color: #707579 !important;
+      color: var(--secondary-text-color) !important;
       font-size: 14px !important;
       line-height: 1.6;
 
@@ -269,7 +282,7 @@
   flex-direction: column;
 
   .search-group__show-more {
-    color: $color-blue;
+    color: var(--primary-color);
     cursor: pointer;
     font-weight: 400;
   }
@@ -278,7 +291,7 @@
     border-top: 1px solid #dadce0;
     padding: 24px 0px 0px 24px;
     font-weight: 500;
-    color: #707579;
+    color: var(--secondary-text-color);
 
     @include respond-to(handhelds) {
       padding: 18px 0px 0px 16px;
@@ -308,7 +321,7 @@
     //top: -1px;
     top: 0px;
     z-index: 2;
-    background-color: #fff;
+    background-color: var(--surface-color);
 
     &:before {
       position: absolute;
@@ -505,7 +518,7 @@
           font-size: 2rem;
           color: #fff;
           text-transform: uppercase;
-          background-color: $color-blue;
+          background-color: var(--primary-color);
         }
       }
 
@@ -552,10 +565,8 @@
     }
 
     .audio {
-      padding-left: 61px;
       /* min-height: 58px; */
       justify-content: unset;
-      height: 48px;
       margin-bottom: 1.5rem;
 
       @include respond-to(not-handhelds) {
@@ -569,23 +580,6 @@
       /* &-no-subtitle {
         padding-bottom: 16px;
       } */
-
-      &-ico, &-download {
-        width: 48px;
-        height: 48px;
-      }
-
-      .part {
-        height: 112px !important;
-        width: 112px !important;
-        position: absolute;
-        background-color: white;
-
-        @include respond-to(handhelds) {
-          width: 100px !important;
-          height: 100px !important;
-        }
-      }
     }
   }
 }
@@ -607,7 +601,7 @@
     margin-left: 8px;
     margin-top: 3px;
     font-size: 12px;
-    color: #707579;
+    color: var(--secondary-text-color);
   }
 
   .search-group.is-short {
@@ -636,7 +630,7 @@
 
     &-count {
       font-size: 14px;
-      color: #707579;  
+      color: var(--secondary-text-color);  
     }
 
     &-header {
@@ -660,7 +654,7 @@
 
       &.gray {
         background: #F1F3F4;
-        color: #707579;
+        color: var(--secondary-text-color);
       }
     }
 
@@ -677,7 +671,7 @@
 
       &:hover {
         border-radius: 12px;
-        background-color: var(--color-gray-hover);
+        background-color: var(--light-secondary-text-color);
       }
 
       img {
@@ -696,7 +690,7 @@
     width: 100%;
   
     &-answer {
-      color: #707579;
+      color: var(--secondary-text-color);
       padding: 0 16px 8px 16px;
       margin: 0;
       font-weight: 500;
@@ -726,7 +720,7 @@
         padding-right: 32px;
         padding-left: 16.5px;
         font-size: 24px;
-        color: #707579;
+        color: var(--secondary-text-color);
       }
     }
 

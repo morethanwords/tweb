@@ -5,7 +5,7 @@
   right: 0;
   bottom: 0;
   background: rgba(0, 0, 0, .88);
-  /* color: $color-gray; */
+  /* color: var(--secondary-text-color); */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -107,7 +107,7 @@
     position: absolute;
     text-align: center;
     color: #fff;
-    //color: #707579;
+    //color: var(--secondary-text-color);
     word-break: break-word;
     overflow: hidden;
     text-overflow: ellipsis;

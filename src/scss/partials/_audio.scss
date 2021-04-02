@@ -12,7 +12,7 @@
   &-toggle, &-download {
     overflow: hidden;
     border-radius: 50%;
-    background-color: $color-blue;
+    background-color: var(--primary-color);
     align-items: center;
   }
 
@@ -340,32 +340,36 @@
 
   &-waveform {
     height: 23px;
-    margin-top: -3px;
+    margin-top: 1px;
     
-    @include respond-to(handhelds) {
+    /* @include respond-to(handhelds) {
       margin-top: -4px;
-    }
+    } */
 
     //overflow: visible!important;
 
     rect {
+      fill: var(--primary-color);
       //overflow: visible!important;
-      fill: #CBCBCB;
+      opacity: .3;
 
-      &.active, .audio.is-unread & {
-        fill: $color-blue;
+      &.active, .audio.is-unread:not(.is-out) & {
+        opacity: 1;
       }
     }
   }
 
-  //&.audio-54 {
-    &-details {
-      margin-top: 4px;
-      margin-bottom: 2px;
-    }
-  //}
+  // //&.audio-54 {
+  //   &-details {
+  //     margin-top: 4px;
+  //     margin-bottom: 2px;
+  //   }
+  // //}
 
-  &.audio-48 {
+  // &.audio-48 {
+    height: 3rem;
+    padding-left: calc(3rem + .5625rem);
+
     .audio-details {
       margin-top: 3px;
       margin-bottom: 0;
@@ -374,7 +378,24 @@
     .audio-title {
       margin-bottom: -2px;
     }
-  }
+
+    &-ico, &-download {
+      width: 3rem;
+      height: 3rem;
+    }
+
+    .part {
+      height: 112px !important;
+      width: 112px !important;
+      position: absolute;
+      background-color: white;
+
+      @include respond-to(handhelds) {
+        width: 100px !important;
+        height: 100px !important;
+      }
+    }
+  // }
 
   &-title {
     font-size: 1rem;
@@ -383,7 +404,7 @@
 
   &-time, &-subtitle {
     font-size: 14px;
-    color: $color-gray;
+    color: var(--secondary-text-color);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -433,11 +454,13 @@
           content: " ";
           width: .5rem;
           height: .5rem;
-          background-color: $color-blue;
+          background-color: var(--primary-color);
           border-radius: 50%;
           margin-left: .375rem;
           display: inline;
-          margin-top: 2px;
+          top: 50%;
+          transform: translateY(-50%);
+          position: relative;
         }
       }
     }
@@ -451,7 +474,7 @@
     margin-left: 5px;
 
     &__filled {
-      background-color: #0089ff;
+      background-color: var(--primary-color);
 
       &:not(.progress-line__loaded) {
         z-index: 1;
@@ -464,7 +487,7 @@
 
     &__seek {
       --thumb-size: 12px;
-      --thumb-color: #0089ff;
+      --thumb-color: var(--primary-color);
       //background-color: #e6ecf0;
       background-color: rgba(193, 207, 220, .39);
     }

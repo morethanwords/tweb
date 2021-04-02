@@ -11,9 +11,9 @@
   }
 
   .sticker-set-footer {
-    border-top: 1px solid $lightgrey;
+    border-top: 1px solid var(--border-color);
     text-align: center;
-    color: $color-blue;
+    color: var(--primary-color);
 
     .btn-primary {
       text-transform: uppercase;
@@ -75,7 +75,7 @@
 
       &:hover {
         border-radius: 12px;
-        background-color: var(--color-gray-hover);
+        background-color: var(--light-secondary-text-color);
       }
 
       img {

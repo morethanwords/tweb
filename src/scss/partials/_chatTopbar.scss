@@ -6,7 +6,7 @@
 	z-index: 1;
 	min-height: 3.5rem;
 	max-height: 3.5rem;
-	// border-bottom: 1px solid #DADCE0;
+	border-left: 1px solid var(--border-color);
 
 	&.is-pinned-floating {
 		&.is-pinned-audio-shown, &.is-pinned-message-shown:not(.hide-pinned) {
@@ -46,7 +46,7 @@
 			}
 
 			.chat-info {
-				padding-left: 7px;
+				padding-left: .1875rem;
 			}
 		}
 	}
@@ -76,9 +76,10 @@
 
 	.user-title {
 		cursor: pointer;
-		font-size: 18px;
+		font-size: 1rem;
 		line-height: 24px;
 		max-width: calc(100% - 1.5rem);
+		margin-bottom: 1px;
 	
 		/* @include respond-to(handhelds) {
 			text-overflow: ellipsis;
@@ -95,10 +96,7 @@
 		white-space: nowrap;
 		text-overflow: ellipsis;
 		overflow: hidden;
-	}
-	
-	.info {
-		margin-top: -2px;
+		line-height: var(--line-height);
 	}
 
 	.btn-menu-toggle {
@@ -179,7 +177,7 @@
 	
 	.content {
 		flex: 1 1 auto;
-		padding-left: 10px;
+		padding-left: 1.125rem;
 		max-width: 100%;
 		overflow: hidden;
 	}
@@ -194,12 +192,12 @@
 		}
 
 		.bottom {
-			font-size: 14px;
+			font-size: .875rem;
 			//line-height: 18px;
-			color: #707579;
+			color: var(--secondary-text-color);
 			
 			.online {
-				color: $color-blue;
+				color: var(--primary-color);
 			}
 		}
 	}
