@@ -132,13 +132,19 @@ export default class AppSharedMediaTab extends SliderSuperTab {
       title: ' ',
       subtitleLangKey: 'UserBio',
       icon: 'info',
-      clickable: () => {
+      clickable: (e) => {
+        if((e.target as HTMLElement).tagName === 'A') {
+          return;
+        }
+        
         appProfileManager.getProfileByPeerId(this.peerId).then(full => {
           copyTextToClipboard(full.about);
           toast(I18n.format('BioCopied', true));
         });
       }
     });
+
+    this.profileElements.bio.title.classList.add('pre-wrap');
 
     this.profileElements.username = new Row({
       title: ' ',

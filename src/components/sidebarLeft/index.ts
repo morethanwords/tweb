@@ -113,14 +113,21 @@ export class AppSidebarLeft extends SidebarSlider {
       onClick: () => {
         
       },
-      checkboxField: new CheckboxField({toggle: true})
+      checkboxField: new CheckboxField({
+        toggle: true,
+        stateKey: 'settings.nightTheme',
+      })
     }, {
       icon: 'lamp',
       text: 'Animations',
       onClick: () => {
         
       },
-      checkboxField: new CheckboxField({toggle: true, checked: true})
+      checkboxField: new CheckboxField({
+        toggle: true, 
+        checked: true,
+        stateKey: 'settings.animationsEnabled',
+      })
     }, {
       icon: 'help',
       text: 'SettingsHelp',

@@ -97,7 +97,7 @@ export default class AppStickersTab extends SliderSuperTab {
 
     const countDiv = document.createElement('div');
     countDiv.classList.add('sticker-set-count');
-    countDiv.append(i18n('Stickers.Count', [set.count]));
+    countDiv.append(i18n('Stickers', [set.count]));
     details.append(countDiv);
     
     const button = document.createElement('button');

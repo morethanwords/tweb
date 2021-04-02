@@ -29,3 +29,15 @@ export function rgbToHsl(r: number, g: number, b: number) {
     l: l,
   });
 }
+
+// * https://github.com/TelegramMessenger/Telegram-iOS/blob/3d062fff78cc6b287c74e6171f855a3500c0156d/submodules/TelegramPresentationData/Sources/PresentationData.swift#L453
+export function highlightningColor(pixel: Uint8ClampedArray) {
+  let {h, s, l} = rgbToHsl(pixel[0], pixel[1], pixel[2]);
+  if(s > 0.0) {
+    s = Math.min(1.0, s + 0.05 + 0.1 * (1.0 - s));
+  }
+  l = Math.max(0.0, l * 0.65);
+  
+  const hsla = `hsla(${h * 360}, ${s * 100}%, ${l * 100}%, .4)`;
+  return hsla;
+};

@@ -45,7 +45,7 @@
   }
 
   &-user {
-    color: #000;
+    color: var(--primary-text-color);
     background-color: var(--light-secondary-text-color);
     font-size: 16px;
     padding: 0 17px 0px 0px;
@@ -99,7 +99,7 @@
         content: $tgico-close;
         left: 0;
         top: 0;
-        background-color: #df3f40;
+        background-color: $color-error;
         height: 100%;
         width: 100%;
         z-index: 2;
@@ -174,12 +174,12 @@
   }
 
   .checkbox-field-round {
+    pointer-events: none;
     position: absolute;
     right: 1.125rem;
     --size: 1.25rem;
 
     .checkbox-box-border {
-      border-color: #dadbdc;
       z-index: unset;
     }
 

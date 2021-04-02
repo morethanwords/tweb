@@ -20,8 +20,19 @@
 
     &-wrapper {
       color: var(--primary-color);
-      background: #50a2e988;
       position: relative;
+
+      &:before {
+        position: absolute;
+        content: " ";
+        left: 0;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        display: block;
+        background: var(--primary-color);
+        opacity: .53;
+      }
     }
 
     &-bars {
@@ -99,10 +110,6 @@
     // 	line-height: 13px;
     // }
   }
-  
-  &-subtitle {
-    color: #111;
-  }
 
   &-media {
     height: 2rem;
@@ -178,7 +185,7 @@
     position: absolute !important;
     top: 100%;
     width: 100% !important;
-    background: #fff !important;
+    background: var(--surface-color) !important;
     left: 0;
     max-height: 100% !important;
     height: 52px;

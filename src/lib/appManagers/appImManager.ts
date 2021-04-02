@@ -40,6 +40,7 @@ import appNotificationsManager from './appNotificationsManager';
 import AppPrivateSearchTab from '../../components/sidebarRight/tabs/search';
 import { i18n } from '../langPack';
 import { SendMessageAction } from '../../layer';
+import { highlightningColor } from '../../helpers/color';
 
 //console.log('appImManager included33!');
 
@@ -250,12 +251,18 @@ export class AppImManager {
   private setSettings = () => {
     document.documentElement.style.setProperty('--messages-text-size', rootScope.settings.messagesTextSize + 'px');
 
-    if(rootScope.settings.background.highlightningColor) {
-      document.documentElement.style.setProperty('--message-highlightning-color', rootScope.settings.background.highlightningColor);
+    if(rootScope.settings.nightTheme) {
+      document.documentElement.style.setProperty('--message-highlightning-color', highlightningColor(new Uint8ClampedArray([15, 15, 15, 1])));
     } else {
-      document.documentElement.style.removeProperty('--message-highlightning-color');
+      if(rootScope.settings.background.highlightningColor) {
+        document.documentElement.style.setProperty('--message-highlightning-color', rootScope.settings.background.highlightningColor);
+      } else {
+        document.documentElement.style.removeProperty('--message-highlightning-color');
+      }
     }
-
+    
+    document.documentElement.classList.toggle('night', rootScope.settings.nightTheme);
+    
     document.body.classList.toggle('animation-level-0', !rootScope.settings.animationsEnabled);
     document.body.classList.toggle('animation-level-1', false);
     document.body.classList.toggle('animation-level-2', rootScope.settings.animationsEnabled);

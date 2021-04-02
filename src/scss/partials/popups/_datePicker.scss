@@ -99,15 +99,15 @@
       }
 
       &-date:disabled {
-        color: #c2c3c4;
+        opacity: .7 !important;
       }
 
       .btn-icon:not(:disabled) {
-        color: #000;
+        color: var(--primary-text-color);
       }
 
       .btn-icon.active {
-        color: #fff;
+        color: var(--badge-text-color);
         border-radius: 50%;
         background-color: var(--primary-color) !important;
       }
@@ -128,10 +128,6 @@
 
     .btn-icon {
       font-size: 22px;
-    }
-
-    .popup-close {
-      color: #52585d;
     }
   }
 
@@ -191,7 +187,7 @@
 
       &-day {
         font-weight: bold;
-        color: black !important;
+        color: var(--primary-text-color) !important;
         font-size: 14px !important;
       }
     }
@@ -228,8 +224,6 @@
 
     &-controls {
       .btn-icon {
-        color: #2a8ee4;
-
         &:disabled {
           visibility: visible;
           //opacity: 1;

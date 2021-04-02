@@ -8,7 +8,7 @@
 		padding: 0 8px;
 		flex: 0 0 auto;
 		width: 100%;
-		background-color: #fff;
+		background-color: var(--surface-color);
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
@@ -17,7 +17,7 @@
 
 		.chat-search-count {
 			margin-left: 8px;
-			color: #949596;
+			color: var(--secondary-text-color);
 		}
 	
 		& + .chat-input {
@@ -49,7 +49,7 @@
 		left: 0;
 		visibility: hidden;
 		opacity: 0;
-		background-color: #fff;
+		background-color: var(--surface-color);
 		transition: .2s ease;
 
 		body.animation-level-0 & {

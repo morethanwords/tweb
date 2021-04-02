@@ -79,10 +79,6 @@ const lang = {
   "Link.Taken": "Link is already taken",
   "Link.Invalid": "Link is invalid",
   "StickersTab.SearchPlaceholder": "Search Stickers",
-  "StickerPack.Remove": {
-    "one_value": "Remove %d Sticker",
-    "other_value": "Remove %d Stickers"
-  },
   "ForwardedFrom": "Forwarded from %s",
   "Popup.Avatar.Title": "Drag to Reposition",
   "Popup.Unpin.AllTitle": "Unpin all messages",
@@ -377,6 +373,12 @@ const lang = {
   "RecoveryEmailTitle": "Recovery Email",
   "ResendCode": "Resend code",
   "PasswordAsHintError": "Hint must be different from your password",
+  "AddStickersCount": "ADD %1$s",
+  "RemoveStickersCount": "REMOVE %1$s",
+  "Stickers": {
+    "one_value": "%1$d sticker",
+    "other_value": "%1$d stickers"
+  },
 
   // * macos
   "AccountSettings.Filters": "Chat Folders",
@@ -480,14 +482,6 @@ const lang = {
   "Telegram.InstalledStickerPacksController": "Stickers",
   "Telegram.NotificationSettingsViewController": "Notifications",
   "Telegram.PeerInfoController": "Info",
-  "StickerPack.Add1": {
-    "one_value": "Add %d Sticker",
-    "other_value": "Add %d Stickers"
-  },
-  "Stickers.Count": {
-    "one_value": "%d sticker",
-    "other_value": "%d stickers"
-  },
   "Stickers.SearchAdd": "Add",
   "Stickers.SearchAdded": "Added",
   "Stickers.SuggestStickers": "Suggest Stickers by Emoji",

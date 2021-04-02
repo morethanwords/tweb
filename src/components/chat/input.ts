@@ -39,6 +39,7 @@ import { tsNow } from '../../helpers/date';
 import appNavigationController from '../appNavigationController';
 import { isMobile } from '../../helpers/userAgent';
 import { i18n } from '../../lib/langPack';
+import { generateTail } from './bubbles';
 
 const RECORD_MIN_TIME = 500;
 const POSTING_MEDIA_NOT_ALLOWED = 'Posting media content isn\'t allowed in this group.';
@@ -135,6 +136,9 @@ export default class ChatInput {
 
     this.rowsWrapper = document.createElement('div');
     this.rowsWrapper.classList.add('rows-wrapper', 'chat-input-wrapper');
+
+    const tail = generateTail();
+    this.rowsWrapper.append(tail);
 
     const fakeRowsWrapper = this.fakeRowsWrapper = document.createElement('div');
     fakeRowsWrapper.classList.add('fake-wrapper', 'fake-rows-wrapper');
