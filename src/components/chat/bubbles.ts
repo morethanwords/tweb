@@ -2515,6 +2515,8 @@ export default class ChatBubbles {
 
     if(canHaveTail) {
       bubble.classList.add('can-have-tail');
+
+      bubbleContainer.append(generateTail());
     }
 
     return bubble;
@@ -3097,4 +3099,19 @@ export default class ChatBubbles {
       }
     }
   }
+}
+
+export function generateTail() {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttributeNS(null, 'viewBox', '0 0 11 20');
+  svg.setAttributeNS(null, 'width', '11');
+  svg.setAttributeNS(null, 'height', '20');
+  svg.classList.add('bubble-tail');
+
+  const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+  use.setAttributeNS(null, 'href', '#message-tail-filled');
+
+  svg.append(use);
+
+  return svg;
 }

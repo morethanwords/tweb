@@ -44,16 +44,17 @@ export default class PopupStickers extends PopupElement {
     div.classList.add('sticker-set');
 
     this.stickersDiv = document.createElement('div');
-    this.stickersDiv.classList.add('sticker-set-stickers');
+    this.stickersDiv.classList.add('sticker-set-stickers', 'is-loading');
 
-    putPreloader(this.stickersDiv);
+    putPreloader(this.stickersDiv, true);
 
     this.stickersFooter = document.createElement('div');
     this.stickersFooter.classList.add('sticker-set-footer');
 
     div.append(this.stickersDiv);
 
-    this.stickersFooter.append(i18n('Loading'));
+    const btn = Button('btn-primary btn-primary-transparent disable-hover', {noRipple: true, text: 'Loading'});
+    this.stickersFooter.append(btn);
 
     this.body.append(div);
     const scrollable = new Scrollable(this.body);
@@ -98,15 +99,15 @@ export default class PopupStickers extends PopupElement {
       animationIntersector.setOnlyOnePlayableGroup(ANIMATION_GROUP);
 
       this.h6.innerHTML = RichTextProcessor.wrapEmojiText(set.set.title);
-      !set.set.installed_date ? this.stickersFooter.classList.add('add') : this.stickersFooter.classList.remove('add');
+      this.stickersFooter.classList.toggle('add', !set.set.installed_date);
 
       let button: HTMLElement;
-      if(set.set.hasOwnProperty('installed_date')) {
+      if(set.set.installed_date) {
         button = Button('btn-primary btn-primary-transparent danger', {noRipple: true});
-        button.append(i18n('StickerPack.Remove', [set.set.count]));
+        button.append(i18n('RemoveStickersCount', [i18n('Stickers', [set.set.count])]));
       } else {
         button = Button('btn-primary btn-color-primary', {noRipple: true});
-        button.append(i18n('StickerPack.Add1', [set.set.count]));
+        button.append(i18n('AddStickersCount', [i18n('Stickers', [set.set.count])]));
       }
 
       this.stickersFooter.textContent = '';
@@ -120,6 +121,7 @@ export default class PopupStickers extends PopupElement {
 
       const lazyLoadQueue = new LazyLoadQueue();
       
+      this.stickersDiv.classList.remove('is-loading');
       this.stickersDiv.innerHTML = '';
       for(let doc of set.documents) {
         if(doc._ === 'documentEmpty') {

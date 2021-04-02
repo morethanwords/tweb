@@ -288,6 +288,7 @@
   }
 
   &-transparent {
+    color: var(--primary-color);
     background-color: transparent;
 
     @include hover() {

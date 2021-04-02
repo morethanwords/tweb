@@ -46,7 +46,7 @@
     z-index: 2;
     height: 1.5rem;
     transform: translate(0, 0);
-    background-color: #fff;
+    background-color: var(--surface-color);
     transition: .2s transform, .2s padding, .1s opacity, font-weight 0s .1s;
     transform-origin: left center;
     pointer-events: none;
@@ -65,6 +65,7 @@
     --border-width-top: 2px;
     border: var(--border-width) solid #DADCE0;
     border-radius: $border-radius-medium;
+    background-color: transparent;
     //padding: 0 1rem;
     padding: calc(var(--padding) - var(--border-width-top)) calc(var(--padding-horizontal) - var(--border-width));
     box-sizing: border-box;
@@ -298,7 +299,7 @@ input:focus, button:focus {
     font-size: 24px;
     color: var(--secondary-text-color);
     opacity: .6;
-    transition: all .2s ease-out;
+    transition: opacity .2s ease-out, color .2s ease-out;
     line-height: 1;
     z-index: 1;
 
@@ -316,6 +317,8 @@ input:focus, button:focus {
   > .tgico-close {
     right: 0px;
     z-index: 1;
+    width: 42px;
+    height: 42px;
 
     &:before { // ! я сгорел, почему-то здесь иконка сдвигается на пиксель влево, и это происходит из-за position: absolute на .tgico ...
       margin-right: -1px;

@@ -31,9 +31,10 @@ html:not(.is-safari):not(.is-ios) {
   }
   
   .scrollable:hover::-webkit-scrollbar-thumb {
-    height: 200px;
+    min-height: 5rem;
+    max-height: 12.5rem;
     border-radius: $border-radius-medium;
-    background-color: rgba(0, 0, 0, .2);
+    background-color: var(--scrollbar-color);
     opacity: 1;
   }
 }

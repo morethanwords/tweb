@@ -66,7 +66,8 @@ export type State = Partial<{
     },
     notifications: {
       sound: boolean
-    }
+    },
+    nightTheme: boolean,
   },
   drafts: AppDraftsManager['drafts']
 }>;
@@ -115,7 +116,8 @@ export const STATE_INIT: State = {
     },
     notifications: {
       sound: false
-    }
+    },
+    nightTheme: false
   },
   drafts: {}
 };

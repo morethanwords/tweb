@@ -94,6 +94,18 @@ $chat-padding-handhelds: .5rem;
   }
 }
 
+@mixin splitColor($property, $color, $light: true, $dark: true) {
+  --#{$property}: #{$color};
+
+  @if $light != false {
+    --light-#{$property}: #{hover-color($color)};
+  }
+
+  @if $dark != false {
+    --dark-#{$property}: #{darken($color, $hover-alpha * 100)};
+  }
+}
+
 :root {
   // * Day theme
   --body-background-color: #fff;
@@ -101,22 +113,18 @@ $chat-padding-handhelds: .5rem;
   --background-color: #fff;
   --border-color: #dfe1e5;
   --surface-color: #fff;
+  --scrollbar-color: rgba(0, 0, 0, .2);
 
   --input-search-background-color: #fff;
   --input-search-border-color: #dfe1e5;
 
-  $primary-color: #3390ec;
-  --primary-color: #{$primary-color};
+  @include splitColor(primary-color, #3390ec, true, true);
   --primary-text-color: #000;
 
-  --light-primary-color: #{hover-color($primary-color)};
-  --dark-primary-color: #{darken($primary-color, $hover-alpha * 100)};
-
-  $secondary-text-color: #707579;
   --secondary-color: #c4c9cc;
-  --secondary-text-color: #707579;
+  @include splitColor(secondary-text-color, #707579, true, false);
 
-  --light-secondary-text-color: #{hover-color($secondary-text-color)};
+  @include splitColor(danger-color, #df3f40, true, false);
 
   --avatar-online-color: #0ac630;
   --chatlist-status-color: var(--avatar-online-color);
@@ -140,22 +148,18 @@ html.night {
   --background-color: #212121;
   --border-color: #0f0f0f;
   --surface-color: #212121;
+  --scrollbar-color: rgba(255, 255, 255, .2);
 
   --input-search-background-color: #181818;
   --input-search-border-color: #2f2f2f;
 
-  $primary-color: #878afd;
-  --primary-color: #{$primary-color};
+  @include splitColor(primary-color, #878afd, true, true);
   --primary-text-color: #fff;
 
-  --light-primary-color: #{hover-color($primary-color)};
-  --dark-primary-color: #{darken($primary-color, $hover-alpha * 100)};
-
-  $secondary-text-color: #aaaaaa;
   --secondary-color: #707579;
-  --secondary-text-color: #{$secondary-text-color};
+  @include splitColor(secondary-text-color, #aaaaaa, true, false);
 
-  --light-secondary-text-color: #{hover-color($secondary-text-color)};
+  @include splitColor(danger-color, #ff595a, true, false);
 
   --avatar-online-color: #0ac630;
   --chatlist-status-color: var(--primary-color);
@@ -347,6 +351,7 @@ html {
 body {
   touch-action: pan-x pan-y;
   background-color: var(--body-background-color);
+  color: var(--primary-text-color);
 }
 
 /* body {
@@ -416,6 +421,7 @@ h4 {
 input, [contenteditable=true] {
   caret-color: var(--primary-color);
   color: var(--primary-text-color);
+  background-color: transparent;
 }
 
 input, textarea {
@@ -1167,6 +1173,11 @@ middle-ellipsis-element {
   flex-direction: column;
   justify-content: center;
 
+  a {
+    position: relative;
+    z-index: 1;
+  }
+
   &-title-row {
     display: flex;
     justify-content: space-between;
@@ -1202,6 +1213,7 @@ middle-ellipsis-element {
       left: 1rem;
       font-size: 1.5rem;
       color: var(--secondary-text-color);
+      pointer-events: none;
     }
   }
 

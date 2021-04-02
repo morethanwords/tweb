@@ -59,6 +59,15 @@
       @include respond-to(handhelds) {
         grid-template-columns: repeat(4, 1fr);
       }
+
+      &.is-loading {
+        min-height: 6rem;
+      }
+
+      .preloader-circular {
+        width: 3rem;
+        height: 3rem;
+      }
     }
 
     &-sticker {

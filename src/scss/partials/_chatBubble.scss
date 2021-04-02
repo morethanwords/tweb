@@ -102,11 +102,11 @@ $bubble-margin: .25rem;
       margin-left: -50%;
       margin-right: -50%;
       text-align: center;
-      color: #538BCC;
+      color: var(--primary-text-color);
       line-height: 2.1;
       font-weight: 500;
       font-size: 15px;
-      background-color: rgba(255, 255, 255, .95);
+      background-color: var(--surface-color);
       z-index: 2;
       position: relative;
     }
@@ -302,7 +302,7 @@ $bubble-margin: .25rem;
     align-items: center;
     display: flex;
     justify-content: center;
-    color: #fff;
+    color: var(--badge-color);
     border-radius: 50%;
     //background: rgba(0, 0, 0, .16);
     background: var(--message-highlightning-color);
@@ -1339,29 +1339,39 @@ $bubble-margin: .25rem;
       }
     }
   }
+
+  .bubble-tail {
+    display: none;
+  }
   
-  &.can-have-tail.is-group-last .bubble-content:after {
+  //&.can-have-tail.is-group-last .bubble-content:after {
+  &.can-have-tail.is-group-last .bubble-tail {
     position: absolute;
     //bottom: 0;
     width: 11px;
     height: 20px;
-    background-repeat: no-repeat no-repeat;
-    content: '';
-    background-size: 11px 20px;
-    background-position-y: 1px;
+    //background-repeat: no-repeat no-repeat;
+    //content: '';
+    //background-size: 11px 20px;
+    //background-position-y: 1px;
     z-index: -2;
+    display: block;
+    fill: var(--message-background-color);
+    transform: translateY(1px);
   }
 
   &.photo, &.video {
     &.is-message-empty.is-group-last:not(.with-replies) {
-      .bubble-content:after {
+      //.bubble-content:after {
+      .bubble-tail {
         display: none;
       }
     }
   }
 
   &.is-message-empty.is-group-last.with-media-tail {
-    .bubble-content:after {
+    //.bubble-content:after {
+    .bubble-tail {
       display: none;
     }
 
@@ -1415,7 +1425,7 @@ $bubble-margin: .25rem;
 
     &-footer {
       height: 51px;
-      border-top: 2px solid #e6e7ea;
+      border-top: 2px solid var(--border-color);
       position: relative;
       display: flex;
       align-items: center;
@@ -1435,7 +1445,7 @@ $bubble-margin: .25rem;
         margin-left: 9px;
         display: flex;
         align-items: center;
-        color: #1f88e3;
+        color: var(--primary-color);
       }
   
       &-avatars {
@@ -1445,7 +1455,7 @@ $bubble-margin: .25rem;
         avatar-element {
           width: 34px;
           height: 34px;
-          border: 2px solid #fff;
+          border: 2px solid var(--surface-color);
           cursor: pointer;
           z-index: 0; // * fix border blinking
 
@@ -1609,11 +1619,15 @@ $bubble-margin: .25rem;
       .bubble-content, .poll-footer-button {
         border-bottom-left-radius: 0;
       }
+
+      .bubble-tail {
+        margin-left: -8.4px;
+      }
   
-      .bubble-content:after {
+      /* .bubble-content:after {
         margin-left: -8.4px;
         background-image: url('assets/img/msg-tail-left.svg');
-      }
+      } */
     }
 
     &:not(.can-have-tail) {
@@ -1751,11 +1765,16 @@ $bubble-margin: .25rem;
       .bubble-content, .poll-footer-button {
         border-bottom-right-radius: 0;
       }
+
+      .bubble-tail {
+        right: -8.4px;
+        transform: translateY(1px) scaleX(-1);
+      }
       
-      .bubble-content:after {
+      /* .bubble-content:after {
         right: -8.4px;
         background-image: url('assets/img/msg-tail-right.svg');
-      }
+      } */
     }
 
     &:not(.can-have-tail) {
