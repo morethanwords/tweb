@@ -1,0 +1,10 @@
+@mixin text-overflow($no-wrap: true) {
+  @if $no-wrap != false {
+    white-space: nowrap;
+  } @else {
+    word-break: break-word;
+  }
+
+  text-overflow: ellipsis;
+  overflow: hidden;
+}

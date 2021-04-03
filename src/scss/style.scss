@@ -4,8 +4,6 @@ $border-radius-medium: 10px;
 $border-radius-big: 12px;
 
 $color-green: #4DCD5E;
-$color-error: #df3f40;
-$color-red: #df3f40;
 $hover-alpha: .08;
 
 //$small-screen: 720px;
@@ -29,6 +27,7 @@ $chat-padding-handhelds: .5rem;
 
 @import "mixins/hover";
 @import "mixins/respondTo";
+@import "mixins/textOverflow";
 
 :root {
   --vh: 1vh;
@@ -36,7 +35,6 @@ $chat-padding-handhelds: .5rem;
   --hover-alpha: #{$hover-alpha};
 
   --color-gray: #c4c9cc;
-  --color-red-hover: #{hover-color($color-red)};
   --pm-transition: .2s ease-in-out;
   --layer-transition: .2s ease-in-out;
   --slide-header-transition: .4s ease-in-out;
@@ -53,6 +51,7 @@ $chat-padding-handhelds: .5rem;
   --messages-secondary-text-size: calc(var(--messages-text-size) - 1px);
   --line-height: 1.3125;
   --esg-sticker-size: 80px;
+  --disabled-opacity: .3;
 
   // https://github.com/overtake/TelegramSwift/blob/5cc7d2475fe4738a6aa0486c23eaf80a89d33b97/submodules/TGUIKit/TGUIKit/PresentationTheme.swift#L2054
   --peer-avatar-red-top: #ff885e;
@@ -130,11 +129,16 @@ $chat-padding-handhelds: .5rem;
   --chatlist-status-color: var(--avatar-online-color);
   --chatlist-pinned-color: #a2abb2;
   --badge-text-color: #fff;
+  --link-color: #00488f;
 
   --message-background-color: var(--surface-color);
-  --message-out-background-color: #eeffde;
+  --message-checkbox-color: #61c642;
+  --message-checkbox-border-color: #fff;
+  --message-secondary-color: var(--secondary-color);
+
+  @include splitColor(message-out-background-color, #eeffde, true, true);
+  --message-out-link-color: var(--link-color);
   --message-out-primary-color: #4fae4e;
-  --message-out-secondary-color: #4fae4e;
   --message-out-audio-play-button-color: #fff;
 
   // * Day theme end
@@ -165,11 +169,16 @@ html.night {
   --chatlist-status-color: var(--primary-color);
   --chatlist-pinned-color: var(--secondary-color);
   --badge-text-color: #fff;
+  --link-color: var(--primary-color);
 
   --message-background-color: var(--surface-color);
-  --message-out-background-color: #ae582d;
+  --message-checkbox-color: var(--primary-color);
+  --message-checkbox-border-color: #fff;
+  --message-secondary-color: var(--secondary-color);
+
+  @include splitColor(message-out-background-color, #ae582d, true, true);
+  --message-out-link-color: #fff;
   --message-out-primary-color: #fff;
-  --message-out-secondary-color: #4fae4e;
   --message-out-audio-play-button-color: var(--message-out-background-color);
   // * Night theme end
 }
@@ -364,7 +373,7 @@ body {
 } */
 
 a {
-  color: var(--primary-color);
+  color: var(--link-color);
 }
 
 button, input, optgroup, select, textarea, html {
@@ -435,15 +444,15 @@ input, textarea {
 }
 
 .danger {
-  color: $color-error!important;
+  color: var(--danger-color) !important;
 
   .c-ripple__circle {
-    background-color: var(--color-red-hover);
+    background-color: var(--light-danger-color);
   }
 }
 
 .blue, .primary {
-  color: var(--primary-color)!important;
+  color: var(--primary-color) !important;
 
   .c-ripple__circle {
     background-color: var(--light-primary-color);
@@ -464,6 +473,21 @@ input, textarea {
   bottom: auto !important;
   width: auto !important;
   z-index: 4 !important;
+}
+
+.preloader {
+  width: 50px;
+  height: 50px;
+  
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  
+  // ! do not change it to &-path
+  .preloader-path {
+    stroke: var(--primary-color);
+  }
 }
 
 @keyframes fade-in-opacity {
@@ -1194,6 +1218,8 @@ middle-ellipsis-element {
   &-title {
     color: var(--primary-text-color);
     line-height: var(--line-height);
+
+    @include text-overflow();
 
     &-right {
       flex: 0 0 auto !important;

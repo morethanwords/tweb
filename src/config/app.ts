@@ -4,6 +4,7 @@ const App = {
   version: '0.4.0',
   langPackVersion: '0.0.5',
   langPack: 'macos',
+  langPackCode: 'en',
   domains: [] as string[],
   baseDcId: 2
 };

@@ -81,7 +81,7 @@ export default class TrackingMonkey {
 
   public load() {
     if(this.loadPromise) return this.loadPromise;
-    this.loadPromise = Promise.all([
+    return this.loadPromise = Promise.all([
       lottieLoader.loadAnimationFromURL({
         container: this.container,
         loop: true,

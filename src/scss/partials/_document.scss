@@ -14,24 +14,31 @@
       padding: 1.5625rem .25rem 0 .25rem;
 
       @include respond-to(handhelds) {
-        padding: 14px 0px 0px 0px;
+        padding: 1.5rem 0px 0px 0px;
         font-size: 14px;
+
+        &:after {
+          --size: .875rem;
+        }
       }
     }
 
     &:after {
+      --size: 1.125rem;
       content: "";
       display: block;
       position: absolute;
       top: 0;
       right: 0;
-      width: 1.125rem;
-      height: 1.125rem;
+      width: var(--size);
+      height: var(--size);
       border-bottom-left-radius: .25rem;
-      border-left: .5625rem solid rgba(0, 0, 0, .25);
-      border-bottom: .5625rem solid rgba(0, 0, 0, .25);
-      border-top: .5625rem solid #fff;
-      border-right: .5625rem solid #fff;
+      border-style: solid;
+      border-width: calc(var(--size) / 2);
+      border-left-color: rgba(0, 0, 0, .25);
+      border-bottom-color: rgba(0, 0, 0, .25);
+      border-top-color: #fff;
+      border-right-color: #fff;
     }
   }
   
@@ -141,11 +148,6 @@
     width: 3.375rem;
     height: 3.375rem;
     color: #fff;
-
-    @include respond-to(handhelds) {
-      height: 2.25rem;
-      width: 2.25rem;
-    }
   }
 
   &-download {

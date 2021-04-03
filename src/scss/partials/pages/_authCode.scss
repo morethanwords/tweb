@@ -19,7 +19,7 @@
     }
     
     .phone.error {
-      border-color: $color-error!important;
+      border-color: var(--danger-color) !important;
     }
   }
 

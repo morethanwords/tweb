@@ -83,21 +83,6 @@
     }
   } */
   
-  .preloader {
-    width: 50px;
-    height: 50px;
-    
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate3d(-50%, -50%, 0);
-    
-    // ! do not change it to &-path
-    .preloader-path {
-      stroke: var(--primary-color);
-    }
-  }
-
   #search-container, .sidebar-search {
     flex-direction: column;
     width: 100%;
@@ -108,7 +93,6 @@
     left: 0;
     top: 0;
     z-index: 3;
-    background: #fff;
   }
 
   @include respond-to(large-screens) {

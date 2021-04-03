@@ -141,7 +141,7 @@
       border-radius: var(--border-radius);
   
       &__filled {
-        background: #63a2e3;
+        background: var(--primary-color);
       }
   
       &__loaded, & {
@@ -272,6 +272,7 @@ video::-webkit-media-controls-enclosure {
 }
 
 .progress-line {
+  --color: var(--primary-color);
   --height: 5px;
   --border-radius: 6px;
   border-radius: var(--border-radius);
@@ -279,9 +280,19 @@ video::-webkit-media-controls-enclosure {
   position: relative;
   cursor: pointer;
 
+  &:before {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    display: block;
+    content: " ";
+    border-radius: inherit;
+  }
+
   &__seek {
     --thumb-size: 13px;
-    --thumb-color: var(--primary-color);
     -webkit-appearance: none;
     -moz-appearance: none;
     background: transparent;
@@ -315,7 +326,7 @@ video::-webkit-media-controls-enclosure {
       height: var(--thumb-size);
       width: var(--thumb-size);
       border-radius: 50%;
-      background-color: var(--thumb-color);
+      background-color: var(--color);
       cursor: pointer;
       -webkit-appearance: none;
       border: none;
@@ -326,7 +337,7 @@ video::-webkit-media-controls-enclosure {
       height: var(--thumb-size);
       width: var(--thumb-size);
       border-radius: 50%;
-      background-color: var(--thumb-color);
+      background-color: var(--color);
       cursor: pointer;
       -webkit-appearance: none;
       border: none;
@@ -337,7 +348,7 @@ video::-webkit-media-controls-enclosure {
       height: var(--thumb-size);
       width: var(--thumb-size);
       border-radius: 50%;
-      background-color: var(--thumb-color);
+      background-color: var(--color);
       cursor: pointer;
       -webkit-appearance: none;
       border: none;
@@ -357,6 +368,16 @@ video::-webkit-media-controls-enclosure {
   &__filled {
     padding-right: 1px; // * need because there is border-radius
     max-width: 100%;
+
+    &:not(.progress-line__loaded) {
+      background-color: var(--color);
+      z-index: 1;
+    }
+  }
+
+  &__loaded, &:before {
+    opacity: .3;
+    background-color: var(--secondary-color);
   }
 
   &__seek, &__filled, &__loaded {

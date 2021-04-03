@@ -6,6 +6,7 @@ import { clamp } from "../../helpers/number";
 import { isTouchSupported } from "../../helpers/touchSupport";
 import { isApple, isMobile } from "../../helpers/userAgent";
 import appNavigationController from "../appNavigationController";
+import { _i18n } from "../../lib/langPack";
 //import { logger } from "../../lib/logger";
 
 export default class MarkupTooltip {
@@ -64,7 +65,7 @@ export default class MarkupTooltip {
 
     this.linkBackButton = ButtonIcon('arrow_back', {noRipple: true});
     this.linkInput = document.createElement('input');
-    this.linkInput.placeholder = 'Enter URL...';
+    _i18n(this.linkInput, 'MarkupTooltip.LinkPlaceholder', undefined, 'placeholder');
     this.linkInput.classList.add('input-clear');
     this.linkInput.addEventListener('keydown', (e) => {
       const valid = !this.linkInput.value.length || !!RichTextProcessor.matchUrl(this.linkInput.value);///^(http)|(https):\/\//i.test(this.linkInput.value);

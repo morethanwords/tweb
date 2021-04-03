@@ -58,11 +58,11 @@ namespace I18n {
 		]).then(([langPack]) => {
 			if(!langPack/*  || true */) {
 				return loadLocalLangPack();
-			} else if(DEBUG/*  && false */) {
+			} else if(DEBUG && false) {
 				return getLangPack(langPack.lang_code);
-			} else if(langPack.appVersion !== App.langPackVersion) {
+			}/*  else if(langPack.appVersion !== App.langPackVersion) {
 				return getLangPack(langPack.lang_code);
-			}
+			} */
 			
 			if(!lastRequestedLangCode) {
 				lastRequestedLangCode = langPack.lang_code;
@@ -76,15 +76,15 @@ namespace I18n {
 	}
 
 	export function loadLocalLangPack() {
-		const defaultCode = 'en';
+		const defaultCode = App.langPackCode;
 		lastRequestedLangCode = defaultCode;
 		return Promise.all([
 			import('../lang'),
 			import('../langSign')
 		]).then(([lang, langSign]) => {
 			const strings: LangPackString[] = [];
-			formatLocalStrings(lang, strings);
-			formatLocalStrings(langSign, strings);
+			formatLocalStrings(lang.default, strings);
+			formatLocalStrings(langSign.default, strings);
 
 			const langPack: LangPackDifference = {
 				_: 'langPackDifference',

@@ -11,7 +11,7 @@
 
   &.checkbox-disabled {
     pointer-events: none !important;
-    opacity: .25;
+    opacity: var(--disabled-opacity);
   }
 
   @include respond-to(handhelds) {
@@ -127,7 +127,7 @@
     }
 
     &-check {
-      --offset: 10px;
+      --offset: calc(var(--size) - (var(--size) / 2 + .125rem));
     }
   }
 }
@@ -250,7 +250,7 @@
 
   &:disabled + .checkbox-box, &:disabled ~ .checkbox-caption {
     cursor: default;
-    opacity: .25;
+    opacity: var(--disabled-opacity);
   }
 }
 
@@ -288,7 +288,7 @@
     }
 
     .checkbox-box-background {
-      background-color: $color-red;
+      background-color: var(--danger-color);
     }
   }
 }
