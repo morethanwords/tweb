@@ -17,6 +17,7 @@ import App from "../config/app";
 import Modes from "../config/modes";
 import I18n, { _i18n, i18n } from "../lib/langPack";
 import { LangPackString } from "../layer";
+import lottieLoader from "../lib/lottieLoader";
 
 type Country = _Country & {
   li?: HTMLLIElement[]
@@ -240,6 +241,8 @@ let onFirstMount = () => {
     //console.log('input', this.value);
     this.classList.remove('error');
 
+    lottieLoader.loadLottieWorkers();
+
     const value = this.value;
     const diff = Math.abs(value.length - lastValue.length);
     if(diff > 1 && !pasted && isAppleMobile) {
@@ -351,9 +354,24 @@ let onFirstMount = () => {
 
   const btnQr = Button('btn-primary btn-secondary btn-primary-transparent primary', {text: 'Login.QR.Login'});
 
+  let qrMounted = false;
   btnQr.addEventListener('click', () => {
-    import('./pageSignQR').then(module => {
+    const promise = import('./pageSignQR');
+    btnQr.disabled = true;
+
+    let preloaderDiv: HTMLElement;
+    if(!qrMounted) {
+      preloaderDiv = putPreloader(btnQr);
+      qrMounted = true;
+    }
+
+    promise.then(module => {
       module.default.mount();
+
+      setTimeout(() => {
+        btnQr.removeAttribute('disabled');
+        preloaderDiv.remove();
+      }, 200);
     });
   });
 

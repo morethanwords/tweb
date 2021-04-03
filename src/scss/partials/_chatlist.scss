@@ -9,7 +9,6 @@
 
   .search-group {
     width: 100%;
-    //border-bottom: 1px solid #DADCE0;
     padding: 1rem 0 .5rem;
     margin-bottom: 17px;
 
@@ -31,7 +30,7 @@
     }
 
     &-contacts {
-      border-bottom: 1px solid #dadce0;
+      border-bottom: 1px solid var(--border-color);
 
       @include respond-to(handhelds) {
         padding: 0px 0 2px;
@@ -130,9 +129,10 @@ ul.chatlist {
         &:after {
           flex: 0 0 auto;
           content: $tgico-nosound;
-          color: #a3a3a3;
+          color: var(--secondary-text-color);
           font-size: 1.125rem;
           margin-left: .125rem;
+          opacity: .7;
         }
       }
 

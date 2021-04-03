@@ -3,7 +3,7 @@
 	$widthLink: 420px;
 	$padding: 7px;
 
-	background: #fff;
+	background: var(--surface-color);
 	border-radius: $border-radius-medium;
 	transform: translateZ(0);
 	opacity: 0;
@@ -67,7 +67,7 @@
 	&-delimiter {
 		width: 1px;
 		height: 25px;
-		background-color: #DADCE0;
+		background-color: var(--border-color);
 	}
 
 	.btn-icon {

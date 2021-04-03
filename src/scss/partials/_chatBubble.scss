@@ -164,9 +164,13 @@ $bubble-margin: .25rem;
     left: 0;
     display: flex;
     margin: 0;
+    
+    .checkbox-box-border {
+      border-color: var(--message-checkbox-border-color);
+    }
 
     .checkbox-box-background {
-      background-color: #61c642;
+      background-color: var(--message-checkbox-color);
     }
 
     .checkbox-box-check {
@@ -302,7 +306,7 @@ $bubble-margin: .25rem;
     align-items: center;
     display: flex;
     justify-content: center;
-    color: var(--badge-color);
+    color: var(--badge-text-color);
     border-radius: 50%;
     //background: rgba(0, 0, 0, .16);
     background: var(--message-highlightning-color);
@@ -360,11 +364,11 @@ $bubble-margin: .25rem;
     display: none;
   }
 
-  &:not(.hide-name) {
+  /* &:not(.hide-name) {
     .audio {
       margin: 4px 0;
     }
-  }
+  } */
 
   /* .goto-original {
     opacity: 1;
@@ -614,7 +618,7 @@ $bubble-margin: .25rem;
   }
 
   .album-item {
-    background-color: rgba(0, 0, 0, .06);
+    background-color: var(--message-highlightning-color);
     max-width: 100%;
     cursor: pointer;
     position: absolute;
@@ -664,6 +668,12 @@ $bubble-margin: .25rem;
           border-radius: 0;
         }
       }
+    }
+  }
+
+  a {
+    @include hover() {
+      text-decoration: underline;
     }
   }
 
@@ -786,7 +796,8 @@ $bubble-margin: .25rem;
       .reply {
         padding: 10px;
         border-radius: 12px;
-        border: 1px solid #ccc;
+        background-color: var(--message-background-color);
+        border: 1px solid var(--border-color);
         max-width: 300px;
         height: 54px;
         max-height: 54px;
@@ -828,6 +839,15 @@ $bubble-margin: .25rem;
     }
   }
 
+  @include respond-to(handhelds) {
+    .document, .audio {
+      &-ico, &-download {
+        height: 2.25rem;
+        width: 2.25rem;
+      }
+    }
+  }
+
   .audio {
     padding-right: 2px;
     
@@ -843,8 +863,8 @@ $bubble-margin: .25rem;
     }
     
     @include respond-to(handhelds) {
-      height: 42px;
-      padding-left: 47px;
+      height: 2.375rem;
+      padding-left: calc(2.375rem + .5625rem);
 
       .audio-details {
         margin-top: 2px;
@@ -918,6 +938,15 @@ $bubble-margin: .25rem;
 
       @include respond-to(handhelds) {
         padding-left: 44px; //было 44
+        height: 44px;
+
+        .document-size {
+          font-size: .75rem;
+        }
+
+        &:not(.document-with-thumb) .document-ico {
+          padding: 1.125rem 0px 0px 0px;
+        }
       }
 
       &-name {
@@ -1019,24 +1048,24 @@ $bubble-margin: .25rem;
       .bubble-select-checkbox {
         left: 2rem;
         top: 2rem;
-        width: 1.5rem;
-        height: 1.5rem;
         background: #fff;
         border-radius: 50%;
 
         @include respond-to(handhelds) {
+          --size: 1.125rem;
           left: 20px;
           top: 25px;
         }
 
         &:before {
+          --inner-size: .125rem;
           content: " ";
           position: absolute;
-          width: 1.25rem;
-          height: 1.25rem;
-          left: .125rem;
-          top: .125rem;
-          border: 2px solid #c4c9cc;
+          width: calc(var(--size) - (var(--inner-size) * 2));
+          height: calc(var(--size) - (var(--inner-size) * 2));
+          left: var(--inner-size);
+          top: var(--inner-size);
+          border: 2px solid var(--secondary-color);
           border-radius: inherit;
         }
       }
@@ -1084,10 +1113,14 @@ $bubble-margin: .25rem;
 
     .document {
       height: 54px !important;
+      
+      @include respond-to(handhelds) {
+        height: 38px !important;
+      }
     }
 
     .document-wrapper {
-      background-color: #fff;
+      background-color: var(--message-background-color);
       padding: .25rem .5rem;
 
       > .name {
@@ -1424,8 +1457,8 @@ $bubble-margin: .25rem;
     }
 
     &-footer {
-      height: 51px;
-      border-top: 2px solid var(--border-color);
+      height: 50px;
+      border-top: 1px solid var(--border-color);
       position: relative;
       display: flex;
       align-items: center;
@@ -1655,7 +1688,7 @@ $bubble-margin: .25rem;
     &.emoji-big, &.sticker {
       .reply {
         left: calc(100% + 10px);
-        background-color: #fff;
+        background-color: var(--message-background-color);
 
         @include respond-to(handhelds) {
           left: calc(100% + 1px);
@@ -1718,6 +1751,9 @@ $bubble-margin: .25rem;
 .bubble.is-out {
   flex-direction: row-reverse;
   --message-background-color: var(--message-out-background-color);
+  --light-message-background-color: var(--light-message-out-background-color);
+  --dark-message-background-color: var(--dark-message-out-background-color);
+  --link-color: var(--message-out-link-color);
 
   .bubble-content {
     &, .poll-footer-button {
@@ -1729,20 +1765,22 @@ $bubble-margin: .25rem;
     }
 
     &-wrapper {
-      transform: translateX(calc((var(--chat-input-size) + #{$btn-send-margin}) * -1));
+      @include respond-to(not-handhelds) {
+        transform: translateX(calc((var(--chat-input-size) + #{$btn-send-margin}) * -1));
 
-      @include respond-to(no-floating-left-sidebar) {
-        body.is-right-column-shown & {
-          transform: translateX(0);
-
-          &.zoom-fade {
-            transform: scale3d(.8, .8, 1) translateX(0);
+        @include respond-to(no-floating-left-sidebar) {
+          body.is-right-column-shown & {
+            transform: translateX(0);
+  
+            &.zoom-fade {
+              transform: scale3d(.8, .8, 1) translateX(0);
+            }
           }
         }
-      }
-
-      &.zoom-fade {
-        transform: scale3d(.8, .8, 1) translateX(calc((var(--chat-input-size) + #{$btn-send-margin}) * -1));
+  
+        &.zoom-fade {
+          transform: scale3d(.8, .8, 1) translateX(calc((var(--chat-input-size) + #{$btn-send-margin}) * -1));
+        }
       }
     }
   }
@@ -1792,16 +1830,14 @@ $bubble-margin: .25rem;
 
   .quote {
     @include hover() {
-      background-color: rgba($color-green, .12);
+      background-color: var(--light-message-background-color);
     }
   }
 
   &.is-reply {
     &.emoji-big, &.sticker {
       .web, .reply {
-        background-color: var(--message-out-background-color);
         right: calc(100% + 10px);
-        border-color: rgba($color-green, .12);
       }
     }
   }
@@ -1868,8 +1904,8 @@ $bubble-margin: .25rem;
   } */
 
   .document-ico:after {
-    border-top-color: var(--message-out-background-color);
-    border-right-color: var(--message-out-background-color);
+    border-top-color: var(--message-background-color);
+    border-right-color: var(--message-background-color);
   }
 
   .audio {
@@ -1970,20 +2006,17 @@ $bubble-margin: .25rem;
     pointer-events: none;
   }
 
-  .audio:not(.is-voice) {
+  .audio {
     .progress-line {
-      &__loaded {
-        background-color: #90e18d !important;
+      --color: var(--message-out-primary-color);
+
+      &:before, &__loaded {
+        background-color: var(--message-out-primary-color);
       }
-  
-      &__filled {
-        background-color: #47aa41;
-      }
-  
-      &__seek {
-        --thumb-color: #47aa41;
-        background-color: rgba(124, 195, 107, .52);
-      }
+    }
+
+    .preloader-container {
+      --color: var(--message-background-color);
     }
   }
 
@@ -2000,14 +2033,14 @@ $bubble-margin: .25rem;
   &.is-multiple-documents {
     .document-container {
       .bubble-select-checkbox {
-        background-color: var(--message-out-background-color);
+        background-color: var(--message-background-color);
 
         &:before {
-          border-color: #9ed695;
+          border-color: var(--dark-message-background-color);
         }
 
         .checkbox-box-border {
-          border-color: var(--message-out-background-color);
+          border-color: var(--message-background-color);
         }
       }
 
@@ -2017,7 +2050,7 @@ $bubble-margin: .25rem;
     }
 
     .document-wrapper {
-      background-color: var(--message-out-background-color);
+      background-color: var(--message-background-color);
     }
   }
 }

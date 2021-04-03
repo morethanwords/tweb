@@ -25,6 +25,8 @@ import AppAddMembersTab from "./tabs/addMembers";
 import { i18n_, LangPackKey } from "../../lib/langPack";
 import ButtonMenu, { ButtonMenuItemOptions } from "../buttonMenu";
 import CheckboxField from "../checkboxField";
+import { isMobileSafari } from "../../helpers/userAgent";
+import appNavigationController from "../appNavigationController";
 
 export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
 
@@ -34,15 +36,9 @@ export class AppSidebarLeft extends SidebarSlider {
   //private searchInput = document.getElementById('global-search') as HTMLInputElement;
   private inputSearch: InputSearch;
   
-  private menuEl: HTMLElement;
   public archivedCount: HTMLSpanElement;
 
   private newBtnMenu: HTMLElement;
-  private newButtons: {
-    channel: HTMLButtonElement,
-    group: HTMLButtonElement,
-    privateChat: HTMLButtonElement,
-  } = {} as any;
 
   //private log = logger('SL');
 
@@ -140,7 +136,6 @@ export class AppSidebarLeft extends SidebarSlider {
 
     this.toolsBtn.append(btnMenu);
 
-    this.menuEl = this.toolsBtn.querySelector('.btn-menu');
     this.newBtnMenu = this.sidebarEl.querySelector('#new-menu');
 
     const _newBtnMenu = ButtonMenu([{
@@ -242,7 +237,7 @@ export class AppSidebarLeft extends SidebarSlider {
     let selectedMinDate = 0;
     let selectedMaxDate = 0;
     const updatePicked = () => {
-      (this.inputSearch.input as HTMLInputElement).placeholder = pickedElements.length ? 'Search' : 'Telegram Search';
+      //(this.inputSearch.input as HTMLInputElement).placeholder = pickedElements.length ? 'Search' : 'Telegram Search';
       this.inputSearch.container.classList.toggle('is-picked-twice', pickedElements.length === 2);
       this.inputSearch.container.classList.toggle('is-picked', !!pickedElements.length);
 
@@ -438,6 +433,15 @@ export class AppSidebarLeft extends SidebarSlider {
       this.newBtnMenu.classList.add('is-hidden');
       this.toolsBtn.parentElement.firstElementChild.classList.toggle('state-back', true);
 
+      if(!isMobileSafari) {
+        appNavigationController.pushItem({
+          onPop: () => {
+            close();
+          },
+          type: 'global-search'
+        });
+      }
+
       transition(1);
     };
 
@@ -448,6 +452,8 @@ export class AppSidebarLeft extends SidebarSlider {
       this.toolsBtn.classList.add(activeClassName);
       this.backBtn.classList.remove(activeClassName);
       this.toolsBtn.parentElement.firstElementChild.classList.toggle('state-back', false);
+
+      appNavigationController.removeByType('global-search');
 
       transition(0);
     });

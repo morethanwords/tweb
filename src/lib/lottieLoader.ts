@@ -657,6 +657,11 @@ class LottieLoader {
 
   public waitForFirstFrame(player: RLottiePlayer): Promise<void> {
     return Promise.race([
+      /* new Promise<void>((resolve) => {
+        player.addEventListener('firstFrame', () => {
+          setTimeout(() => resolve(), 1500);
+        }, true);
+      }) */
       new Promise<void>((resolve) => {
         player.addEventListener('firstFrame', resolve, true);
       }),

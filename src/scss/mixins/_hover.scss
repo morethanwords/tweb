@@ -5,7 +5,7 @@
     } @else if $color == blue or $color == primary {
       $color: var(--light-primary-color);
     } @else if $color == red {
-      $color: var(--color-red-hover);
+      $color: var(--light-danger-color);
     }
   }
 

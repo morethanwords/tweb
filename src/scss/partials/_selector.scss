@@ -58,13 +58,16 @@
     user-select: none;
     flex: 0 0 auto;
     transition: .2s opacity, .2s transform, .2s background-color;
+    max-width: 10rem;
+
+    @include text-overflow();
 
     body.animation-level-0 & {
       transition: none;
     }
 
     @include hover() {
-      background-color: #fae2e3;
+      background-color: var(--light-danger-color);
       cursor: pointer;
 
       .selector-user-avatar:after {
@@ -99,7 +102,7 @@
         content: $tgico-close;
         left: 0;
         top: 0;
-        background-color: $color-error;
+        background-color: var(--danger-color);
         height: 100%;
         width: 100%;
         z-index: 2;

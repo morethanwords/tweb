@@ -85,12 +85,12 @@ rootScope.on('poll_update', (e) => {
 rootScope.on('poll_update', (e) => {
   const {poll, results} = e as {poll: Poll, results: PollResults};
 
-  const pollElement = document.querySelector(`poll-element[poll-id="${poll.id}"]`) as PollElement;
-  //console.log('poll_update', poll, results);
-  if(pollElement) {
+  const pollElements = Array.from(document.querySelectorAll(`poll-element[poll-id="${poll.id}"]`)) as PollElement[];
+  pollElements.forEach(pollElement => {
+    //console.log('poll_update', poll, results);
     pollElement.isClosed = !!poll.pFlags.closed;
     pollElement.performResults(results, poll.chosenIndexes);
-  }
+  });
 });
 
 rootScope.on('peer_changed', () => {

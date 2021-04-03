@@ -63,7 +63,7 @@
     --padding-horizontal: 1rem;
     --border-width: 1px;
     --border-width-top: 2px;
-    border: var(--border-width) solid #DADCE0;
+    border: var(--border-width) solid var(--input-search-border-color);
     border-radius: $border-radius-medium;
     background-color: transparent;
     //padding: 0 1rem;
@@ -118,10 +118,10 @@
     }
     
     &.error {
-      border-color: $color-error;
+      border-color: var(--danger-color);
 
       & ~ label {
-        color: $color-error!important;
+        color: var(--danger-color) !important;
       }
     }
 
@@ -208,7 +208,7 @@ input:focus, button:focus {
 
   &.error {
     body.animation-level-0 & {
-      color: $color-error!important;
+      color: var(--danger-color) !important;
     }
 
     body:not(.animation-level-0) & {
@@ -312,6 +312,7 @@ input:focus, button:focus {
     width: 24px;
     height: 24px;
     left: .8125rem;
+    pointer-events: none;
   }
 
   > .tgico-close {

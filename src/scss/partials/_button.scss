@@ -34,9 +34,8 @@
   }
 
   &:disabled {
-    color: #cacaca;
     pointer-events: none !important;
-    opacity: .25;
+    opacity: var(--disabled-opacity);
   }
 }
 
@@ -296,9 +295,7 @@
     }
 
     &.danger {
-      @include hover() {
-        background: hover-color($color-red);
-      }
+      @include hover-background-effect(red, false);
     }
 
     .preloader-circular .preloader-path {
@@ -318,7 +315,7 @@
 
   &:disabled {
     pointer-events: none !important;
-    opacity: .25;
+    opacity: var(--disabled-opacity);
   }
 }
 

@@ -5,9 +5,9 @@
   height: 54px;
   user-select: none;
 
-  @include respond-to(handhelds) {
+  /* @include respond-to(handhelds) {
     padding-left: 45px;
-  }
+  } */
 
   &-toggle, &-download {
     overflow: hidden;
@@ -399,7 +399,7 @@
 
   &-title {
     font-size: 1rem;
-    color: #000;
+    color: var(--primary-text-color);
   }
 
   &-time, &-subtitle {
@@ -473,23 +473,8 @@
     flex: 1 1 auto;
     margin-left: 5px;
 
-    &__filled {
-      background-color: var(--primary-color);
-
-      &:not(.progress-line__loaded) {
-        z-index: 1;
-      }
-    }
-
-    &__loaded {
-      background-color: #cacaca;
-    }
-
     &__seek {
-      --thumb-size: 12px;
-      --thumb-color: var(--primary-color);
-      //background-color: #e6ecf0;
-      background-color: rgba(193, 207, 220, .39);
+      --thumb-size: .75rem;
     }
   }
 }

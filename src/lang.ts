@@ -88,6 +88,7 @@ const lang = {
   "TwoStepAuth.InvalidPassword": "Invalid password",
   "TwoStepAuth.EmailCodeChangeEmail": "Change Email",
   "PleaseWait": "Please wait...",
+  "MarkupTooltip.LinkPlaceholder": "Enter URL...",
 
   // * android
   "ActionCreateChannel": "Channel created",

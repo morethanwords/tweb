@@ -314,7 +314,7 @@ poll-element {
       stroke-dashoffset: 0;
       stroke-opacity: 1;
       stroke-width: 2;
-      stroke: #dadbdc;
+      stroke: var(--border-color);
       fill: transparent;
     }
   }

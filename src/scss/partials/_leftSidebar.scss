@@ -134,9 +134,8 @@
       .selector-user {
         height: 30px;
         position: absolute!important;
-        left: 5px;
-        top: 5px;
-        background: #f1f3f4;
+        left: 6px;
+        top: 6px;
         z-index: 1;
         margin-left: 0;
       }
@@ -174,8 +173,8 @@
         margin-top: 7px;
         font-size: 14px;
 
-        &:hover {
-          background-color: rgba(80, 162, 233, .2);
+        @include hover() {
+          background-color: var(--light-primary-color);
         }
 
         &-avatar:after {
@@ -722,29 +721,6 @@
 
       [type="checkbox"] + span {
         padding-left: 26px;
-      }
-    }
-  }
-
-  .checkbox [type="checkbox"] {
-    & + span:after {
-      border-radius: 50%;
-      height: 20px;
-      width: 20px;
-      border-color: #dadbdc;
-    }
-
-    &:checked {
-      & + span {
-        &:before {
-          top: 5px;
-          left: 0px;
-        }
-
-        &:after {
-          background-color: #4EA4F6;
-          border: none;
-        }
       }
     }
   }

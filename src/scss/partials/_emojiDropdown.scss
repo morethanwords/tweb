@@ -11,7 +11,7 @@
 	
 	@include respond-to(esg-top) {
 		position: absolute !important;
-		left: 1rem;
+		left: $chat-padding;
 		bottom: 85px;
 		width: 420px !important;
 		height: 420px;
@@ -49,10 +49,6 @@
 		max-width: 100%;
 		overflow: hidden;
 		height: 100%;
-	}
-
-	.btn-icon {
-		color: #8d969c;
 	}
 
 	.emoji-tabs {
