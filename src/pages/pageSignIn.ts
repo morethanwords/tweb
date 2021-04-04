@@ -4,7 +4,7 @@ import Countries, { Country as _Country } from "../countries";
 import appStateManager from "../lib/appManagers/appStateManager";
 import apiManager from "../lib/mtproto/mtprotoworker";
 import { RichTextProcessor } from '../lib/richtextprocessor';
-import { findUpTag, attachClickEvent, cancelEvent, replaceContent } from "../helpers/dom";
+import { attachClickEvent, cancelEvent, replaceContent } from "../helpers/dom";
 import Page from "./page";
 import pageAuthCode from "./pageAuthCode";
 import InputField from "../components/inputField";
@@ -15,9 +15,11 @@ import fastSmoothScroll from "../helpers/fastSmoothScroll";
 import { isTouchSupported } from "../helpers/touchSupport";
 import App from "../config/app";
 import Modes from "../config/modes";
-import I18n, { _i18n, i18n } from "../lib/langPack";
+import I18n, { _i18n, i18n, LangPackKey } from "../lib/langPack";
 import { LangPackString } from "../layer";
 import lottieLoader from "../lib/lottieLoader";
+import { ripple } from "../components/ripple";
+import findUpTag from "../helpers/dom/findUpTag";
 
 type Country = _Country & {
   li?: HTMLLIElement[]
@@ -370,7 +372,9 @@ let onFirstMount = () => {
 
       setTimeout(() => {
         btnQr.removeAttribute('disabled');
-        preloaderDiv.remove();
+        if(preloaderDiv) {
+          preloaderDiv.remove();
+        }
       }, 200);
     });
   });
@@ -442,20 +446,20 @@ let onFirstMount = () => {
       ]).then(res => {
         const backup: LangPackString[] = [];
         res[0].forEach(string => {
-          const backupString = I18n.strings.get(string.key);
+          const backupString = I18n.strings.get(string.key as LangPackKey);
           if(!backupString) {
             return;
           }
           
           backup.push(backupString);
-          I18n.strings.set(string.key, string);
+          I18n.strings.set(string.key as LangPackKey, string);
         });
 
         const btnChangeLanguage = Button('btn-primary btn-secondary btn-primary-transparent primary', {text: 'Login.ContinueOnLanguage'});
         inputWrapper.append(btnChangeLanguage);
 
         backup.forEach(string => {
-          I18n.strings.set(string.key, string);
+          I18n.strings.set(string.key as LangPackKey, string);
         });
         
         attachClickEvent(btnChangeLanguage, (e) => {
@@ -478,6 +482,7 @@ let onFirstMount = () => {
 const page = new Page('page-sign', true, onFirstMount, () => {
   if(btnNext) {
     replaceContent(btnNext, i18n('Login.Next'));
+    ripple(btnNext, undefined, undefined, true);
     btnNext.removeAttribute('disabled');
   }
 

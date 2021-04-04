@@ -8,23 +8,35 @@ import pageIm from './pageIm';
 import Button from '../components/button';
 import PasswordInputField from '../components/passwordInputField';
 import PasswordMonkey from '../components/monkeys/password';
-import { ripple } from '../components/ripple';
 import RichTextProcessor from '../lib/richtextprocessor';
+import I18n from '../lib/langPack';
+import LoginPage from './loginPage';
+import { replaceContent } from '../helpers/dom';
 
 const TEST = false;
 let passwordInput: HTMLInputElement;
 
 let onFirstMount = (): Promise<any> => {
-  const btnNext = Button('btn-primary btn-color-primary', {text: 'NEXT'});
+  const page = new LoginPage({
+    className: 'page-password',
+    withInputWrapper: true,
+    titleLangKey: 'Login.Password.Title',
+    subtitleLangKey: 'Login.Password.Subtitle'
+  });
+
+  const btnNext = Button('btn-primary btn-color-primary');
+  const btnNextI18n = new I18n.IntlElement({key: 'Login.Next'});
+
+  btnNext.append(btnNextI18n.element);
 
   const passwordInputField = new PasswordInputField({
-    label: 'Password',
+    label: 'LoginPassword',
     name: 'password'
   });
 
   passwordInput = passwordInputField.input as HTMLInputElement;
 
-  page.pageEl.querySelector('.input-wrapper').append(passwordInputField.container, btnNext);
+  page.inputWrapper.append(passwordInputField.container, btnNext);
 
   let getStateInterval: number;
 
@@ -37,22 +49,12 @@ let onFirstMount = (): Promise<any> => {
     return !TEST && passwordManager.getState().then(_state => {
       state = _state;
 
-      passwordInputField.label.innerHTML = state.hint ? RichTextProcessor.wrapEmojiText(state.hint) : 'Password';
+      if(state.hint) {
+        replaceContent(passwordInputField.label, RichTextProcessor.wrapEmojiText(state.hint));
+      } else {
+        passwordInputField.setLabel();
+      }
     });
-  };
-
-  let handleError = (err: any) => {
-    btnNext.removeAttribute('disabled');
-    passwordInputField.input.classList.add('error');
-    
-    switch(err.type) {
-      default:
-        //btnNext.innerText = err.type;
-        btnNext.innerText = 'INVALID PASSWORD';
-        break;
-    }
-
-    getState();
   };
 
   let state: AccountPassword;
@@ -66,8 +68,8 @@ let onFirstMount = (): Promise<any> => {
     this.setAttribute('disabled', 'true');
     let value = passwordInput.value;
 
-    this.textContent = 'PLEASE WAIT...';
-    putPreloader(this);
+    btnNextI18n.update({key: 'PleaseWait'});
+    const preloader = putPreloader(this);
 
     passwordManager.check(value, state).then((response) => {
       //console.log('passwordManager response:', response);
@@ -80,17 +82,30 @@ let onFirstMount = (): Promise<any> => {
           break;
         default:
           btnNext.removeAttribute('disabled');
-          btnNext.innerText = response._;
-          ripple(btnNext);
+          btnNextI18n.update({key: response._ as any});
+          preloader.remove();
           break;
       }
-    }).catch(handleError);
+    }).catch((err: any) => {
+      btnNext.removeAttribute('disabled');
+      passwordInputField.input.classList.add('error');
+      
+      switch(err.type) {
+        default:
+          //btnNext.innerText = err.type;
+          btnNextI18n.update({key: 'PASSWORD_HASH_INVALID'});
+          break;
+      }
+
+      preloader.remove();
+  
+      getState();
+    });
   });
 
   passwordInput.addEventListener('keypress', function(this, e) {
     this.classList.remove('error');
-    btnNext.innerText = 'NEXT';
-    ripple(btnNext);
+    btnNextI18n.update({key: 'Login.Next'});
 
     if(e.key === 'Enter') {
       return btnNext.click();
@@ -99,7 +114,7 @@ let onFirstMount = (): Promise<any> => {
 
   const size = mediaSizes.isMobile ? 100 : 166;
   const monkey = new PasswordMonkey(passwordInputField, size);
-  page.pageEl.querySelector('.auth-image').append(monkey.container);
+  page.imageDiv.append(monkey.container);
   return Promise.all([
     monkey.load(),
     getState()

@@ -14,7 +14,7 @@ import apiManager from "../../lib/mtproto/mtprotoworker";
 //import Recorder from '../opus-recorder/dist/recorder.min';
 import opusDecodeController from "../../lib/opusDecodeController";
 import RichTextProcessor from "../../lib/richtextprocessor";
-import { attachClickEvent, blurActiveElement, cancelEvent, cancelSelection, findUpClassName, getRichValue, isInputEmpty, markdownTags, MarkdownType, placeCaretAtEnd, isSendShortcutPressed } from "../../helpers/dom";
+import { attachClickEvent, blurActiveElement, cancelEvent, cancelSelection, getRichValue, isInputEmpty, markdownTags, MarkdownType, placeCaretAtEnd, isSendShortcutPressed } from "../../helpers/dom";
 import { ButtonMenuItemOptions } from '../buttonMenu';
 import emoticonsDropdown from "../emoticonsDropdown";
 import PopupCreatePoll from "../popups/createPoll";
@@ -40,6 +40,7 @@ import appNavigationController from '../appNavigationController';
 import { isMobile } from '../../helpers/userAgent';
 import { i18n } from '../../lib/langPack';
 import { generateTail } from './bubbles';
+import findUpClassName from '../../helpers/dom/findUpClassName';
 
 const RECORD_MIN_TIME = 500;
 const POSTING_MEDIA_NOT_ALLOWED = 'Posting media content isn\'t allowed in this group.';

@@ -8,7 +8,7 @@ import type { AppDocsManager } from "../../lib/appManagers/appDocsManager";
 import type { AppPeersManager } from "../../lib/appManagers/appPeersManager";
 import type sessionStorage from '../../lib/sessionStorage';
 import type Chat from "./chat";
-import { findUpClassName, cancelEvent, findUpTag, whichChild, getElementByPoint, attachClickEvent, positionElementByIndex, reflowScrollableElement } from "../../helpers/dom";
+import { cancelEvent, whichChild, getElementByPoint, attachClickEvent, positionElementByIndex, reflowScrollableElement } from "../../helpers/dom";
 import { getObjectKeysAndSort } from "../../helpers/object";
 import { isTouchSupported } from "../../helpers/touchSupport";
 import { logger } from "../../lib/logger";
@@ -49,6 +49,8 @@ import { SliceEnd } from "../../helpers/slicedArray";
 import serverTimeManager from "../../lib/mtproto/serverTimeManager";
 import PeerTitle from "../peerTitle";
 import { forEachReverse } from "../../helpers/array";
+import findUpClassName from "../../helpers/dom/findUpClassName";
+import findUpTag from "../../helpers/dom/findUpTag";
 
 const USE_MEDIA_TAILS = false;
 const IGNORE_ACTIONS: Message.messageService['action']['_'][] = [/* 'messageActionHistoryClear' */];

@@ -5,13 +5,15 @@ import appPeersManager from "../lib/appManagers/appPeersManager";
 import appPhotosManager from "../lib/appManagers/appPhotosManager";
 import appUsersManager from "../lib/appManagers/appUsersManager";
 import rootScope from "../lib/rootScope";
-import { cancelEvent, findUpAttribute, findUpClassName } from "../helpers/dom";
+import { cancelEvent } from "../helpers/dom";
 import Scrollable from "./scrollable";
 import { FocusDirection } from "../helpers/fastSmoothScroll";
 import CheckboxField from "./checkboxField";
 import appProfileManager from "../lib/appManagers/appProfileManager";
 import { safeAssign } from "../helpers/object";
 import { i18n, LangPackKey, _i18n } from "../lib/langPack";
+import findUpAttribute from "../helpers/dom/findUpAttribute";
+import findUpClassName from "../helpers/dom/findUpClassName";
 
 type PeerType = 'contacts' | 'dialogs' | 'channelParticipants';
 

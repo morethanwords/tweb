@@ -167,7 +167,7 @@ export default class AppEditGroupTab extends SliderSuperTab {
       }, {listenerSetter: this.listenerSetter});
     }
 
-    {
+    /* {
       const section = new SettingSection({
 
       });
@@ -195,7 +195,7 @@ export default class AppEditGroupTab extends SliderSuperTab {
       }
 
       this.scrollable.append(section.container);
-    }
+    } */
 
     if(appChatsManager.hasRights(this.chatId, 'delete_chat')) {
       const section = new SettingSection({});

@@ -26,7 +26,7 @@ export default class AppTwoStepVerificationEmailTab extends SliderSuperTab {
     this.setTitle('RecoveryEmailTitle');
 
     const section = new SettingSection({
-      caption: '',
+      caption: true,
       noDelimiter: true
     });
 

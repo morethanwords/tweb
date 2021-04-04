@@ -1,15 +1,15 @@
 import type { Poll } from "../../lib/appManagers/appPollsManager";
 import type Chat from "../chat/chat";
 import PopupElement from ".";
-import { cancelEvent, findUpTag, getRichValue, isInputEmpty, whichChild } from "../../helpers/dom";
+import { cancelEvent, getRichValue, isInputEmpty, whichChild } from "../../helpers/dom";
 import CheckboxField from "../checkboxField";
 import InputField from "../inputField";
 import RadioField from "../radioField";
 import Scrollable from "../scrollable";
-import { toast } from "../toast";
 import SendContextMenu from "../chat/sendContextMenu";
 import { MessageEntity } from "../../layer";
 import I18n, { _i18n, i18n } from "../../lib/langPack";
+import findUpTag from "../../helpers/dom/findUpTag";
 
 const MAX_LENGTH_QUESTION = 255;
 const MAX_LENGTH_OPTION = 100;

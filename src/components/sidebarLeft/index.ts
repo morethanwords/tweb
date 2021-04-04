@@ -5,7 +5,6 @@ import appPeersManager from "../../lib/appManagers/appPeersManager";
 import appStateManager from "../../lib/appManagers/appStateManager";
 import appUsersManager from "../../lib/appManagers/appUsersManager";
 import rootScope from "../../lib/rootScope";
-import { attachClickEvent, findUpClassName, findUpTag } from "../../helpers/dom";
 import { SearchGroup } from "../appSearch";
 import "../avatar";
 import Scrollable, { ScrollableX } from "../scrollable";
@@ -27,6 +26,8 @@ import ButtonMenu, { ButtonMenuItemOptions } from "../buttonMenu";
 import CheckboxField from "../checkboxField";
 import { isMobileSafari } from "../../helpers/userAgent";
 import appNavigationController from "../appNavigationController";
+import findUpClassName from "../../helpers/dom/findUpClassName";
+import findUpTag from "../../helpers/dom/findUpTag";
 
 export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
 

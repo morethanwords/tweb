@@ -1,11 +1,12 @@
-import { attachClickEvent, findUpTag } from "../../../helpers/dom";
+import { attachClickEvent } from "../../../helpers/dom";
+import findUpTag from "../../../helpers/dom/findUpTag";
 import ListenerSetter from "../../../helpers/listenerSetter";
 import ScrollableLoader from "../../../helpers/listLoader";
 import { ChannelParticipant, Chat, ChatBannedRights, Update } from "../../../layer";
 import appChatsManager, { ChatRights } from "../../../lib/appManagers/appChatsManager";
 import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
 import appProfileManager from "../../../lib/appManagers/appProfileManager";
-import I18n, { i18n } from "../../../lib/langPack";
+import I18n, { i18n, LangPackKey } from "../../../lib/langPack";
 import rootScope from "../../../lib/rootScope";
 import CheckboxField from "../../checkboxField";
 import PopupPickUser from "../../popups/pickUser";
@@ -18,7 +19,7 @@ import AppUserPermissionsTab from "./userPermissions";
 export class ChatPermissions {
   public v: Array<{
     flags: ChatRights[],
-    text: string,
+    text: LangPackKey,
     checkboxField?: CheckboxField
   }>;
   private toggleWith: Partial<{[chatRight in ChatRights]: ChatRights[]}>;

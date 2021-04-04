@@ -5,13 +5,14 @@ import appPollsManager, { Poll, PollResults } from "../lib/appManagers/appPollsM
 import serverTimeManager from "../lib/mtproto/serverTimeManager";
 import { RichTextProcessor } from "../lib/richtextprocessor";
 import rootScope from "../lib/rootScope";
-import { attachClickEvent, cancelEvent, detachClickEvent, findUpClassName, replaceContent } from "../helpers/dom";
+import { attachClickEvent, cancelEvent, detachClickEvent, replaceContent } from "../helpers/dom";
 import { ripple } from "./ripple";
 import appSidebarRight from "./sidebarRight";
 import AppPollResultsTab from "./sidebarRight/tabs/pollResults";
 import { i18n, LangPackKey } from "../lib/langPack";
 import { fastRaf } from "../helpers/schedulers";
 import SetTransition from "./singleTransition";
+import findUpClassName from "../helpers/dom/findUpClassName";
 
 let lineTotalLength = 0;
 const tailLength = 9;
@@ -203,7 +204,7 @@ export default class PollElement extends HTMLElement {
 
     //console.log('pollElement poll:', poll, results);
 
-    let descKey: LangPackKey = '';
+    let descKey: LangPackKey;
     if(poll.pFlags) {
       this.isPublic = !!poll.pFlags.public_voters;
       this.isQuiz = !!poll.pFlags.quiz;

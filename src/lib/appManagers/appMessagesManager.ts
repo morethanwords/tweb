@@ -2690,7 +2690,7 @@ export class AppMessagesManager {
     } else {
       let _ = action._;
       //let suffix = '';
-      let langPackKey: LangPackKey = '';
+      let langPackKey: LangPackKey;
       let args: any[];
 
       const getNameDivHTML = (peerId: number, plain: boolean) => {
@@ -2789,14 +2789,14 @@ export class AppMessagesManager {
         }
 
         default:
-          langPackKey = langPack[_] || `[${action._}]`;
+          langPackKey = (langPack[_] || `[${action._}]`) as any;
           break;
       }
 
       if(!langPackKey) {
         langPackKey = langPack[_];
         if(langPackKey === undefined) {
-          langPackKey = '[' + _ + ']';
+          langPackKey = '[' + _ + ']' as any;
         }
       }
 

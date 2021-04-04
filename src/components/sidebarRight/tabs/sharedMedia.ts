@@ -92,9 +92,9 @@ export default class AppSharedMediaTab extends SliderSuperTab {
 
     this.title.append(i18n('Telegram.PeerInfoController'));
     this.editBtn = ButtonIcon('edit');
-    const moreBtn = ButtonIcon('more');
+    //const moreBtn = ButtonIcon('more');
 
-    transitionFirstItem.append(this.title, this.editBtn, moreBtn);
+    transitionFirstItem.append(this.title, this.editBtn/* , moreBtn */);
 
     const transitionLastItem = document.createElement('div');
     transitionLastItem.classList.add('transition-item');

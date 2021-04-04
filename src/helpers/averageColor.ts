@@ -1,4 +1,4 @@
-import { renderImageFromUrl } from "../components/misc";
+import renderImageFromUrl from "./dom/renderImageFromUrl";
 
 export const averageColor = (imageUrl: string): Promise<Uint8ClampedArray> => {
   const img = document.createElement('img');

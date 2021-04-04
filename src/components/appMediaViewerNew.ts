@@ -11,7 +11,7 @@ import { logger } from "../lib/logger";
 import VideoPlayer from "../lib/mediaPlayer";
 import { RichTextProcessor } from "../lib/richtextprocessor";
 import rootScope from "../lib/rootScope";
-import { cancelEvent, fillPropertyValue, findUpClassName, generatePathData } from "../helpers/dom";
+import { cancelEvent, fillPropertyValue, generatePathData } from "../helpers/dom";
 import animationIntersector from "./animationIntersector";
 import appMediaPlaybackController from "./appMediaPlaybackController";
 import AvatarElement from "./avatar";
@@ -19,7 +19,6 @@ import ButtonIcon from "./buttonIcon";
 import { ButtonMenuItemOptions } from "./buttonMenu";
 import ButtonMenuToggle from "./buttonMenuToggle";
 import { LazyLoadQueueBase } from "./lazyLoadQueue";
-import { renderImageFromUrl } from "./misc";
 import PopupForward from "./popups/forward";
 import ProgressivePreloader from "./preloader";
 import Scrollable from "./scrollable";
@@ -30,6 +29,8 @@ import { SearchSuperContext } from "./appSearchSuper.";
 import { Message, PhotoSize } from "../layer";
 import { forEachReverse } from "../helpers/array";
 import AppSharedMediaTab from "./sidebarRight/tabs/sharedMedia";
+import findUpClassName from "../helpers/dom/findUpClassName";
+import renderImageFromUrl from "../helpers/dom/renderImageFromUrl";
 
 // TODO: масштабирование картинок (не SVG) при ресайзе, и правильный возврат на исходную позицию
 // TODO: картинки "обрезаются" если возвращаются или появляются с места, где есть их перекрытие (топбар, поле ввода)
@@ -1101,7 +1102,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
       onClick: this.onForwardClick
     }, {
       icon: 'download',
-      text: 'Download',
+      text: 'MediaViewer.Context.Download',
       onClick: this.onDownloadClick
     }, {
       icon: 'delete danger btn-disabled',
@@ -1338,7 +1339,7 @@ export class AppMediaViewerAvatar extends AppMediaViewerBase<'', 'delete', AppMe
 
     this.setBtnMenuToggle([{
       icon: 'download',
-      text: 'Download',
+      text: 'MediaViewer.Context.Download',
       onClick: this.onDownloadClick
     }, {
       icon: 'delete danger btn-disabled',

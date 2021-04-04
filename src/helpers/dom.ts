@@ -338,56 +338,6 @@ export function generatePathData(x: number, y: number, width: number, height: nu
 
 MOUNT_CLASS_TO.generatePathData = generatePathData;
 
-//export function findUpClassName<T>(el: any, className: string): T;
-export function findUpClassName(el: any, className: string): HTMLElement {
-  return el.closest('.' + className);
-  /* if(el.classList.contains(className)) return el; // 03.02.2020
-
-  while(el.parentElement) {
-    el = el.parentElement;
-    if(el.classList.contains(className)) 
-      return el;
-  }
-  return null; */
-}
-
-export function findUpTag(el: any, tag: string): HTMLElement {
-  return el.closest(tag);
-  /* if(el.tagName === tag) return el; // 03.02.2020
-
-  while(el.parentElement) {
-    el = el.parentElement;
-    if(el.tagName === tag) 
-      return el;
-  }
-  return null; */
-}
-
-export function findUpAttribute(el: any, attribute: string): HTMLElement {
-  return el.closest(`[${attribute}]`);
-  /* if(el.getAttribute(attribute) !== null) return el; // 03.02.2020
-
-  while(el.parentElement) {
-    el = el.parentElement;
-    if(el.getAttribute(attribute) !== null) 
-      return el;
-  }
-  return null; */
-}
-
-export function findUpAsChild(el: any, parent: any) {
-  if(el.parentElement === parent) return el;
-  
-  while(el.parentElement) {
-    el = el.parentElement;
-    if(el.parentElement === parent) {
-      return el;
-    }
-  }
-
-  return null;
-}
-
 export function whichChild(elem: Node) {
   if(!elem.parentNode) {
     return -1;
@@ -497,26 +447,6 @@ export function blurActiveElement() {
   }
 
   return false;
-}
-
-export function fixSafariStickyInput(input: HTMLElement) {
-  input.style.transform = 'translateY(-99999px)';
-  /* input.style.position = 'fixed';
-  input.style.top = '-99999px';
-  input.style.left = '0'; */
-  input.focus();
-  
-  setTimeout(() => {
-    //fastSmoothScroll(findUpClassName(input, 'scrollable-y') || window as any, document.activeElement as HTMLElement, 'start', 4, undefined, FocusDirection.Static);
-    /* input.style.position = '';
-    input.style.top = ''; */
-    input.style.transform = '';
-    //fastSmoothScroll(findUpClassName(input, 'scrollable-y') || window as any, document.activeElement as HTMLElement, 'start', 4, undefined, FocusDirection.Static);
-    
-    /* setTimeout(() => {
-      fastSmoothScroll(findUpClassName(input, 'scrollable-y') || window as any, document.activeElement as HTMLElement, 'start', 4);
-    }, 50); */
-  }, 0);
 }
 
 export const CLICK_EVENT_NAME: 'mousedown' | 'touchend' | 'click' = (isTouchSupported ? 'mousedown' : 'click') as any;

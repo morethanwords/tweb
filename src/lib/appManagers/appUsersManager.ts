@@ -406,7 +406,7 @@ export class AppUsersManager {
 
         const user = this.getUser(userId);
         if(!user) {
-          key = '';
+          key = '' as any;
           break;
         }
 
@@ -432,8 +432,6 @@ export class AppUsersManager {
           }
           
           case 'userStatusOffline': {
-            key = 'last seen ';
-          
             const date = user.status.was_online;
             const now = Date.now() / 1000;
             

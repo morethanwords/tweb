@@ -1,10 +1,10 @@
+import renderImageFromUrl from "../../helpers/dom/renderImageFromUrl";
 import { limitSymbols } from "../../helpers/string";
 import appImManager, { CHAT_ANIMATION_GROUP } from "../../lib/appManagers/appImManager";
 import appMessagesManager from "../../lib/appManagers/appMessagesManager";
 import appPhotosManager from "../../lib/appManagers/appPhotosManager";
 import { RichTextProcessor } from "../../lib/richtextprocessor";
 import DivAndCaption from "../divAndCaption";
-import { renderImageFromUrl } from "../misc";
 import { wrapSticker } from "../wrappers";
 
 export function wrapReplyDivAndCaption(options: {

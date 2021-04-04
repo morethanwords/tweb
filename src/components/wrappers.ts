@@ -19,7 +19,6 @@ import AudioElement from './audio';
 import ReplyContainer from './chat/replyContainer';
 import { Layouter, RectPart } from './groupedLayout';
 import LazyLoadQueue from './lazyLoadQueue';
-import { renderImageFromUrl } from './misc';
 import PollElement from './poll';
 import ProgressivePreloader from './preloader';
 import './middleEllipsis';
@@ -30,6 +29,7 @@ import { SearchSuperContext } from './appSearchSuper.';
 import rootScope from '../lib/rootScope';
 import { onVideoLoad } from '../helpers/files';
 import { animateSingle } from '../helpers/animation';
+import renderImageFromUrl from '../helpers/dom/renderImageFromUrl';
 
 const MAX_VIDEO_AUTOPLAY_SIZE = 50 * 1024 * 1024; // 50 MB
 

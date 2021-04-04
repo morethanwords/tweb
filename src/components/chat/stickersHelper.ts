@@ -1,6 +1,6 @@
-import { findUpClassName } from "../../helpers/dom";
+import findUpClassName from "../../helpers/dom/findUpClassName";
 import { MyDocument } from "../../lib/appManagers/appDocsManager";
-import appImManager, { CHAT_ANIMATION_GROUP } from "../../lib/appManagers/appImManager";
+import { CHAT_ANIMATION_GROUP } from "../../lib/appManagers/appImManager";
 import appStickersManager from "../../lib/appManagers/appStickersManager";
 import { EmoticonsDropdown } from "../emoticonsDropdown";
 import { SuperStickerRenderer } from "../emoticonsDropdown/tabs/stickers";

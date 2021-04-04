@@ -1,9 +1,7 @@
-import InputField from "./inputField";
+import InputField, { InputFieldOptions } from "./inputField";
 
 export default class CodeInputField extends InputField {
-  constructor(options: {
-    label?: string,
-    name?: string,
+  constructor(options: InputFieldOptions & {
     length: number,
     onFill: (code: number) => void
   }) {
