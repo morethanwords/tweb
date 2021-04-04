@@ -1540,10 +1540,13 @@ $bubble-margin: .25rem;
 }
 
 .bubble-content-wrapper {
-  transition: transform var(--layer-transition), opacity var(--layer-transition);
   transform: scale(1) translateX(0);
   transform-origin: center;
   opacity: 1;
+  
+  @include animation-level(2) {
+    transition: transform var(--layer-transition), opacity var(--layer-transition);
+  }
 
   &.zoom-fade /* .bubble-content */ {
     //transform: scale(.8) translateZ(0);

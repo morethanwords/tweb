@@ -81,7 +81,7 @@ function wrapVoiceMessage(audioEl: AudioElement) {
   const barWidth = 2;
   const barMargin = 2;      //mediaSizes.isMobile ? 2 : 1;
   const barHeightMin = 4;   //mediaSizes.isMobile ? 3 : 2;
-  const barHeightMax = 23;  //mediaSizes.isMobile ? 16 : 23;
+  const barHeightMax = mediaSizes.isMobile ? 16 : 23;
   const availW = 150;       //mediaSizes.isMobile ? 152 : 190;
 
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");

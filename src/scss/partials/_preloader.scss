@@ -80,13 +80,15 @@ $transition: .2s ease-in-out;
     stroke-width: 2;
   }
 
-  &.is-visible:not(.manual), &.is-visible.animating {
-    .you-spin-me-round {
-      animation: rotate 2s linear infinite;
-    }
-
-    .preloader-path-new {
-      transition: stroke-dasharray $transition, stroke-width $transition;
+  @include animation-level(2) {
+    &.is-visible:not(.manual), &.is-visible.animating {
+      .you-spin-me-round {
+        animation: rotate 2s linear infinite;
+      }
+  
+      .preloader-path-new {
+        transition: stroke-dasharray $transition, stroke-width $transition;
+      }
     }
   }
 
@@ -117,9 +119,12 @@ $transition: .2s ease-in-out;
     color: var(--color);
     width: 56%;
     height: 56%;
-    transition: opacity .2s ease-in-out/* , transform .2s ease-in-out */;
     //transform: scale(1);
     opacity: 1;
+    
+    @include animation-level(2) {
+      transition: opacity .2s ease-in-out/* , transform .2s ease-in-out */;
+    }
 
     path {
       fill: var(--color);

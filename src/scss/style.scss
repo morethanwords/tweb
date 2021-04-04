@@ -28,6 +28,7 @@ $chat-padding-handhelds: .5rem;
 @import "mixins/hover";
 @import "mixins/respondTo";
 @import "mixins/textOverflow";
+@import "mixins/animationLevel";
 
 :root {
   --vh: 1vh;
@@ -217,6 +218,7 @@ html.night {
 @import "partials/quizHint";
 @import "partials/peerTyping";
 @import "partials/poll";
+@import "partials/transition";
 
 @import "partials/popups/popup";
 @import "partials/popups/editAvatar";
@@ -358,7 +360,7 @@ html {
 }
 
 body {
-  touch-action: pan-x pan-y;
+  //touch-action: pan-x pan-y;
   background-color: var(--body-background-color);
   color: var(--primary-text-color);
 }
@@ -778,7 +780,7 @@ img.emoji {
     margin-right: 0;
   } */
   
-  > img, > .rlottie {
+  /* > img, > .rlottie {
     position: absolute;
     left: 0;
     top: 0;
@@ -787,9 +789,12 @@ img.emoji {
   }
 
   > img {
-    animation: fade-in-opacity .2s ease forwards;
     object-fit: contain;
-  }
+    
+    @include animation-level(2) {
+      animation: fade-in-opacity .2s ease forwards;
+    }
+  } */
 }
 
 .fade-in-transition {
@@ -974,203 +979,6 @@ img.emoji {
   } */
 }
 
-.transition {
-  --easeOutSine: cubic-bezier(.39, .575, .565, 1);
-  --easeInSine: cubic-bezier(.47, 0, .745, .715);
-
-  .transition-item {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    animation-fill-mode: forwards!important;
-
-    &:not(.active):not(.from):not(.to) {
-      display: none !important; // Best performance when animating container
-    }
-  }
-
-  /*
-   * zoom-fade
-   */
-   &.zoom-fade {
-    > .from {
-      transform-origin: center;
-      transform: scale(1);
-      opacity: 1;
-    }
-
-    > .to {
-      transform-origin: center;
-      opacity: 0;
-    }
-
-    &.animating {
-      > .from {
-        animation: fade-out-opacity .15s ease;
-      }
-
-      > .to {
-        animation: fade-in-opacity .15s ease, zoom-fade-in-move .15s ease;
-      }
-    }
-  }
-
-  &.zoom-fade.backwards {
-    > .from {
-      transform: scale(1);
-    }
-
-    > .to {
-      transform: scale(0.95);
-    }
-
-    &.animating {
-      > .from {
-        animation: fade-in-backwards-opacity .1s ease, zoom-fade-in-backwards-move .15s ease;
-      }
-
-      > .to {
-        animation: fade-out-backwards-opacity .15s ease, zoom-fade-out-backwards-move .15s ease;
-      }
-    }
-  }
-
-  /*
-   * slide-fade
-   */
-  &.slide-fade {
-    position: relative;
-
-    > .from {
-      transform-origin: left center;
-      transform: translateX(0);
-      opacity: 1;
-    }
-
-    > .to {
-      transform-origin: left center;
-      transform: translateX(1.5rem);
-      opacity: 0;
-    }
-
-    &.animating {
-      > .from {
-        animation: fade-out-opacity .4s ease-out, slide-fade-out-move .4s;
-      }
-
-      > .to {
-        animation: fade-in-opacity .4s var(--easeInSine), slide-fade-in-move .4s;
-      }
-    }
-  }
-
-  &.slide-fade.backwards {
-    > .from {
-      transform: translateX(0);
-      opacity: 1;
-    }
-
-    > .to {
-      transform: translateX(-1.5rem);
-      opacity: 0;
-    }
-
-    &.animating {
-      > .from {
-        animation: fade-in-backwards-opacity .4s ease-out, slide-fade-in-backwards-move .4s;
-      }
-
-      > .to {
-        animation: fade-out-backwards-opacity .4s var(--easeOutSine), slide-fade-out-backwards-move .4s;
-      }
-    }
-  }
-}
-
-/*
- * zoom-fade
- */
- @keyframes zoom-fade-in-move {
-  0% {
-    transform: scale(1.1);
-  }
-  100% {
-    transform: scale(1);
-  }
-}
-
-@keyframes zoom-fade-in-backwards-move {
-  0% {
-    transform: scale(1);
-  }
-  100% {
-    transform: scale(1.1);
-  }
-}
-
-@keyframes zoom-fade-out-backwards-move {
-  0% {
-    transform: scale(0.95);
-  }
-  100% {
-    transform: scale(1);
-  }
-}
-
-/*
- * slide-fade
- */
-@keyframes slide-fade-in-move {
-  0% {
-    transform: translateX(1.5rem);
-  }
-  100% {
-    transform: translateX(0);
-  }
-}
-
-@keyframes slide-fade-out-move {
-  0% {
-    transform: translateX(0);
-  }
-  100% {
-    transform: translateX(-1.5rem);
-  }
-}
-
-@keyframes slide-fade-in-backwards-move {
-  0% {
-    transform: translateX(0);
-  }
-  100% {
-    transform: translateX(1.5rem);
-  }
-}
-
-@keyframes slide-fade-out-backwards-move {
-  0% {
-    transform: translateX(-1.5rem);
-  }
-  100% {
-    transform: translateX(0);
-  }
-}
-
-/* .zoom-fade {
-  transition: .15s ease-in-out opacity, .15s ease-in-out transform;
-  transform: scale3d(1.1, 1.1, 1);
-  opacity: 0;
-  display: flex;
-
-  &.active {
-    transform: scale3d(1, 1, 1);
-    transform-origin: center;
-    opacity: 1;
-  }
-} */
-
 // *:not(input):not(textarea) {
 //   -webkit-user-select: none; /* disable selection/Copy of UIWebView */
 //   -webkit-touch-callout: none; /* disable the IOS popup when long-press on a link */
@@ -1305,7 +1113,9 @@ middle-ellipsis-element {
 }
 
 .rlottie.fade-in {
-  animation: fade-in-opacity .2s ease-in-out forwards;
+  @include animation-level(2) {
+    animation: fade-in-opacity .2s ease-in-out forwards;
+  }
 }
 
 .rlottie-vector {
@@ -1319,12 +1129,14 @@ middle-ellipsis-element {
   bottom: 0;
   left: 0;
 
-  &.fade-in {
-    animation: fade-in-opacity .2s ease-in-out forwards;
-  }
-
-  &.fade-out {
-    animation: fade-out-opacity .2s ease-in-out forwards;
+  @include animation-level(2) {
+    &.fade-in {
+      animation: fade-in-opacity .2s ease-in-out forwards;
+    }
+  
+    &.fade-out {
+      animation: fade-out-opacity .2s ease-in-out forwards;
+    }
   }
 }
 
@@ -1334,6 +1146,11 @@ middle-ellipsis-element {
 
 .media-sticker {
   margin: auto;
+  object-fit: contain;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
 }
 
 .media-round {

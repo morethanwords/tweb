@@ -316,7 +316,7 @@ const lang = {
   "UserRestrictionsBlock": "Ban and remove from group",
   "ChannelPublic": "Public Channel",
   "MegaPublic": "Public Group",
-  "MegaLocation": "Location-based Group",
+  //"MegaLocation": "Location-based Group",
   "ChannelPublicInfo": "Public channels can be found in search, anyone can join them.",
   "MegaPublicInfo": "Public groups can be found in search, chat history is available to everyone and anyone can join.",
   "ChannelPrivate": "Private Channel",

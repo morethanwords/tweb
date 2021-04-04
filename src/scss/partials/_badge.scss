@@ -3,8 +3,11 @@
   font-weight: 500;
   color: var(--badge-text-color);
   font-size: .875rem;
-  transition: background-color .2s ease-in-out;
   text-align: center;
+  
+  @include animation-level(2) {
+    transition: background-color .2s ease-in-out;
+  }
 
   &:not(.tgico):empty {
     display: none;

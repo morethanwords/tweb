@@ -35,17 +35,17 @@
     body.animation-level-0 & {
 			transition: none;
 		}
-  }
 
-  &:before {
-    position: absolute;
-    content: " ";
-    display: block;
-    height: 56px;
-    width: 1px;
-    background-color: var(--border-color);
-    left: -1px;
-    top: 0;
+    &:before {
+      position: absolute;
+      content: " ";
+      display: block;
+      height: 56px;
+      width: 1px;
+      background-color: var(--border-color);
+      left: -1px;
+      top: 0;
+    }
   }
 
   /* @include respond-to(medium-screens) {

@@ -443,8 +443,17 @@
       line-height: 1;
       margin-left: -1px;
       margin-top: 7px;
-      @include respond-to(handhelds) {
-        margin-top: 2px;
+      align-items: center;
+    }
+
+    @include respond-to(handhelds) {
+      .audio-time {
+        margin-top: .3125rem;
+      }
+
+      .audio-waveform {
+        height: 16px;
+        margin-top: 0;
       }
     }
 
@@ -457,10 +466,6 @@
           background-color: var(--primary-color);
           border-radius: 50%;
           margin-left: .375rem;
-          display: inline;
-          top: 50%;
-          transform: translateY(-50%);
-          position: relative;
         }
       }
     }

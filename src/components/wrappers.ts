@@ -30,6 +30,7 @@ import rootScope from '../lib/rootScope';
 import { onVideoLoad } from '../helpers/files';
 import { animateSingle } from '../helpers/animation';
 import renderImageFromUrl from '../helpers/dom/renderImageFromUrl';
+import { fastRaf } from '../helpers/schedulers';
 
 const MAX_VIDEO_AUTOPLAY_SIZE = 50 * 1024 * 1024; // 50 MB
 
@@ -721,7 +722,7 @@ export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withT
       renderImageFromUrl(image, cacheContext.url || photo.url, () => {
         container.append(image);
 
-        window.requestAnimationFrame(() => {
+        fastRaf(() => {
           resolve();
         });
         //resolve();
@@ -787,7 +788,7 @@ export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withT
   };
 }
 
-export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, onlyThumb, emoji, width, height, withThumb, loop, loadPromises}: {
+export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, onlyThumb, emoji, width, height, withThumb, loop, loadPromises, needFadeIn}: {
   doc: MyDocument, 
   div: HTMLElement, 
   middleware?: () => boolean, 
@@ -800,7 +801,8 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
   height?: number,
   withThumb?: boolean,
   loop?: boolean,
-  loadPromises?: Promise<any>[]
+  loadPromises?: Promise<any>[],
+  needFadeIn?: boolean,
 }) {
   const stickerType = doc.sticker;
 
@@ -828,10 +830,11 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
   //console.log('wrap sticker', doc, div, onlyThumb);
 
   const toneIndex = emoji ? getEmojiToneIndex(emoji) : -1;
+  const downloaded = doc.downloaded && !needFadeIn;
   
   let loadThumbPromise = deferredPromise<void>();
   let haveThumbCached = false;
-  if((doc.thumbs?.length || doc.stickerCachedThumbs) && !div.firstElementChild && (!doc.downloaded || stickerType === 2 || onlyThumb)/*  && doc.thumbs[0]._ !== 'photoSizeEmpty' */) {
+  if((doc.thumbs?.length || doc.stickerCachedThumbs) && !div.firstElementChild && (!downloaded || stickerType === 2 || onlyThumb)/*  && doc.thumbs[0]._ !== 'photoSizeEmpty' */) {
     let thumb = doc.stickerCachedThumbs && doc.stickerCachedThumbs[toneIndex] || doc.thumbs[0];
     
     //console.log('wrap sticker', thumb, div);
@@ -920,8 +923,7 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
     return Promise.resolve();
   }
   
-  let downloaded = doc.downloaded;
-  let load = async() => {
+  const load = async() => {
     if(middleware && !middleware()) return;
 
     if(stickerType === 2) {
@@ -957,7 +959,7 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
   
         animation.addEventListener('firstFrame', () => {
           const element = div.firstElementChild;
-          const needFadeIn = !element || element.tagName === 'svg';
+          needFadeIn = (needFadeIn || !element || element.tagName === 'svg') && rootScope.settings.animationsEnabled;
 
           const cb = () => {
             if(element && element !== animation.canvas) {
@@ -1003,8 +1005,8 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
       //console.timeEnd('render sticker' + doc.id);
     } else if(stickerType === 1) {
       const image = new Image();
-      const thumbImage = div.firstElementChild && div.firstElementChild !== image ? div.firstElementChild : null;
-      const needFadeIn = !downloaded || thumbImage;
+      const thumbImage = div.firstElementChild !== image && div.firstElementChild;
+      needFadeIn = (needFadeIn || !downloaded || thumbImage) && rootScope.settings.animationsEnabled;
 
       image.classList.add('media-sticker');
 
@@ -1022,7 +1024,7 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
               thumbImage.classList.add('fade-out');
             }
   
-            window.requestAnimationFrame(() => {
+            fastRaf(() => {
               resolve();
             });
   
@@ -1045,11 +1047,11 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
     }
   };
 
-  const loadPromise: Promise<any> = lazyLoadQueue && (!doc.downloaded || stickerType === 2) ? 
+  const loadPromise: Promise<any> = lazyLoadQueue && (!downloaded || stickerType === 2) ? 
     (lazyLoadQueue.push({div, load}), Promise.resolve()) : 
     load();
 
-  if(doc.downloaded && stickerType === 1) {
+  if(downloaded && stickerType === 1) {
     loadThumbPromise = loadPromise;
     if(loadPromises) {
       loadPromises.push(loadThumbPromise);

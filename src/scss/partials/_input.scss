@@ -47,14 +47,13 @@
     height: 1.5rem;
     transform: translate(0, 0);
     background-color: var(--surface-color);
-    transition: .2s transform, .2s padding, .1s opacity, font-weight 0s .1s;
     transform-origin: left center;
     pointer-events: none;
     margin-top: calc((var(--height) - 1.5rem) / 2); // * Center of first line
     user-select: none;
 
-    body.animation-level-0 & {
-      transition: none;
+    @include animation-level(2) {
+      transition: .2s transform, .2s padding, .1s opacity, font-weight 0s .1s;
     }
   }
   
@@ -83,8 +82,8 @@
       --padding: .9375rem;
     }
 
-    body.animation-level-0 & {
-      transition: none;
+    @include animation-level(0) {
+      transition: none !important;
     }
 
     @include hover() {
@@ -256,12 +255,11 @@ input:focus, button:focus {
     max-height: var(--height) !important;
     //line-height: calc(var(--height) + 2px - var(--border-width) * 2);
     border-radius: 22px;
-    transition: background-color .2s ease-in-out, border-color .2s ease-in-out;
     border-color: var(--input-search-border-color);
     line-height: var(--height);
-
-    body.animation-level-0 & {
-      transition: none;
+    
+    @include animation-level(2) {
+      transition: background-color .2s ease-in-out, border-color .2s ease-in-out;
     }
 
     @include hover() {
@@ -299,12 +297,11 @@ input:focus, button:focus {
     font-size: 24px;
     color: var(--secondary-text-color);
     opacity: .6;
-    transition: opacity .2s ease-out, color .2s ease-out;
     line-height: 1;
     z-index: 1;
-
-    body.animation-level-0 & {
-      transition: none;
+    
+    @include animation-level(2) {
+      transition: opacity .2s ease-out, color .2s ease-out;
     }
   }
 
