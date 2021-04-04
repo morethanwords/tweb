@@ -1,9 +1,10 @@
 import rootScope from "../../lib/rootScope";
-import { blurActiveElement, findUpClassName } from "../../helpers/dom";
+import { blurActiveElement } from "../../helpers/dom";
 import { ripple } from "../ripple";
 import animationIntersector from "../animationIntersector";
 import appNavigationController, { NavigationItem } from "../appNavigationController";
 import { i18n, LangPackKey } from "../../lib/langPack";
+import findUpClassName from "../../helpers/dom/findUpClassName";
 
 export type PopupButton = {
   text?: string,
@@ -17,7 +18,7 @@ export type PopupButton = {
 export type PopupOptions = Partial<{
   closable: true, 
   overlayClosable: true, 
-  withConfirm: LangPackKey, 
+  withConfirm: LangPackKey | true, 
   body: true
 }>;
 
@@ -69,7 +70,9 @@ export default class PopupElement {
     if(options.withConfirm) {
       this.btnConfirm = document.createElement('button');
       this.btnConfirm.classList.add('btn-primary', 'btn-color-primary');
-      this.btnConfirm.append(i18n(options.withConfirm));
+      if(options.withConfirm !== true) {
+        this.btnConfirm.append(i18n(options.withConfirm));
+      }
       this.header.append(this.btnConfirm);
       ripple(this.btnConfirm);
     }

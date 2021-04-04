@@ -1,13 +1,14 @@
 import { SliderSuperTab } from "../../slider";
 import { SettingSection } from "..";
 import { attachContextMenuListener, openBtnMenu, positionMenu } from "../../misc";
-import { attachClickEvent, findUpTag } from "../../../helpers/dom";
+import { attachClickEvent } from "../../../helpers/dom";
 import ButtonMenu from "../../buttonMenu";
 import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
 import appUsersManager from "../../../lib/appManagers/appUsersManager";
 import Button from "../../button";
 import PopupPickUser from "../../popups/pickUser";
 import rootScope from "../../../lib/rootScope";
+import findUpTag from "../../../helpers/dom/findUpTag";
 
 export default class AppBlockedUsersTab extends SliderSuperTab {
   public peerIds: number[];

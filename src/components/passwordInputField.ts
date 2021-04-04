@@ -1,16 +1,12 @@
 import { cancelEvent } from "../helpers/dom";
-import InputField from "./inputField";
+import InputField, { InputFieldOptions } from "./inputField";
 
 export default class PasswordInputField extends InputField {
   public passwordVisible = false;
   public toggleVisible: HTMLElement;
   public onVisibilityClickAdditional: () => void;
 
-  constructor(options: {
-    label?: string,
-    name?: string,
-    labelText?: string,
-  } = {}) {
+  constructor(options: InputFieldOptions = {}) {
     super({
       plainText: true,
       ...options

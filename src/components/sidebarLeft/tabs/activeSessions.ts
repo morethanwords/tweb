@@ -5,13 +5,14 @@ import Row from "../../row";
 import { Authorization } from "../../../layer";
 import { formatDateAccordingToToday } from "../../../helpers/date";
 import { attachContextMenuListener, openBtnMenu, positionMenu } from "../../misc";
-import { attachClickEvent, findUpClassName, toggleDisability } from "../../../helpers/dom";
+import { attachClickEvent, toggleDisability } from "../../../helpers/dom";
 import ButtonMenu from "../../buttonMenu";
 import apiManager from "../../../lib/mtproto/mtprotoworker";
 import { toast } from "../../toast";
 import AppPrivacyAndSecurityTab from "./privacyAndSecurity";
 import I18n from "../../../lib/langPack";
 import PopupPeer from "../../popups/peer";
+import findUpClassName from "../../../helpers/dom/findUpClassName";
 
 export default class AppActiveSessionsTab extends SliderSuperTab {
   public privacyTab: AppPrivacyAndSecurityTab;

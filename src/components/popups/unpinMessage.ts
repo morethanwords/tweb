@@ -9,7 +9,7 @@ import PeerTitle from "../peerTitle";
 
 export default class PopupPinMessage {
   constructor(peerId: number, mid: number, unpin?: true, onConfirm?: () => void) {
-    let title: LangPackKey, description: string, buttons: PopupButton[] = [];
+    let title: LangPackKey, description: LangPackKey, buttons: PopupButton[] = [];
 
     const canUnpin = appPeersManager.canPinMessage(peerId);
 

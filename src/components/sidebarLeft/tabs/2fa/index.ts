@@ -21,7 +21,7 @@ export default class AppTwoStepVerificationTab extends SliderSuperTab {
     this.setTitle('TwoStepVerificationTitle');
 
     const section = new SettingSection({
-      caption: ' ',
+      caption: true,
       noDelimiter: true
     });
 

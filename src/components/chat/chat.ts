@@ -18,18 +18,18 @@ import type sessionStorage from '../../lib/sessionStorage';
 import EventListenerBase from "../../helpers/eventListenerBase";
 import { logger, LogLevels } from "../../lib/logger";
 import rootScope from "../../lib/rootScope";
-import appSidebarRight, { AppSidebarRight } from "../sidebarRight";
+import appSidebarRight from "../sidebarRight";
 import ChatBubbles from "./bubbles";
 import ChatContextMenu from "./contextMenu";
 import ChatInput from "./input";
 import ChatSelection from "./selection";
 import ChatTopbar from "./topbar";
 import { REPLIES_PEER_ID } from "../../lib/mtproto/mtproto_config";
-import { renderImageFromUrl } from "../misc";
 import SetTransition from "../singleTransition";
 import { fastRaf } from "../../helpers/schedulers";
 import AppPrivateSearchTab from "../sidebarRight/tabs/search";
 import type { State } from "../../lib/appManagers/appStateManager";
+import renderImageFromUrl from "../../helpers/dom/renderImageFromUrl";
 
 export type ChatType = 'chat' | 'pinned' | 'replies' | 'discussion' | 'scheduled';
 

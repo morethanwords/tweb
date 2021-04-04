@@ -4,7 +4,7 @@ import type { AppMessagesManager } from "../../lib/appManagers/appMessagesManage
 import type { AppPeersManager } from "../../lib/appManagers/appPeersManager";
 import type { AppSidebarRight } from "../sidebarRight";
 import type Chat from "./chat";
-import { findUpClassName, cancelEvent, attachClickEvent, blurActiveElement } from "../../helpers/dom";
+import { cancelEvent, attachClickEvent, blurActiveElement } from "../../helpers/dom";
 import mediaSizes, { ScreenSize } from "../../helpers/mediaSizes";
 import { isSafari } from "../../helpers/userAgent";
 import rootScope from "../../lib/rootScope";
@@ -24,6 +24,7 @@ import { LEFT_COLUMN_ACTIVE_CLASSNAME } from "../sidebarLeft";
 import AppPrivateSearchTab from "../sidebarRight/tabs/search";
 import PeerTitle from "../peerTitle";
 import { i18n } from "../../lib/langPack";
+import findUpClassName from "../../helpers/dom/findUpClassName";
 
 export default class ChatTopbar {
   container: HTMLDivElement;

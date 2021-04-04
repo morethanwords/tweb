@@ -1,30 +1,51 @@
+import type { CancellablePromise } from '../helpers/cancellablePromise';
+import type { InputFile } from '../layer';
+import type { AuthState } from '../types';
 import Button from '../components/button';
 import InputField from '../components/inputField';
 import { putPreloader } from '../components/misc';
 import PopupAvatar from '../components/popups/avatar';
+import { replaceContent } from '../helpers/dom';
 import appStateManager from '../lib/appManagers/appStateManager';
+import I18n, { i18n } from '../lib/langPack';
 //import apiManager from '../lib/mtproto/apiManager';
 import apiManager from '../lib/mtproto/mtprotoworker';
 import RichTextProcessor from '../lib/richtextprocessor';
-import { AuthState } from '../types';
+import LoginPage from './loginPage';
 import Page from './page';
 import pageIm from './pageIm';
 
 let authCode: AuthState.signUp['authCode'] = null;
 
 const onFirstMount = () => import('../lib/appManagers/appProfileManager').then(imported => {
-  const pageElement = page.pageEl;
-  const avatarPreview = pageElement.querySelector('#canvas-avatar') as HTMLCanvasElement;
+  const page = new LoginPage({
+    className: 'page-signUp',
+    withInputWrapper: true,
+    titleLangKey: 'YourName',
+    subtitleLangKey: 'Login.Register.Subtitle'
+  });
+
+  page.imageDiv.classList.add('avatar-edit');
+
+  page.title.classList.add('fullName');
+
+  const avatarPreview = document.createElement('canvas');
+  avatarPreview.id = 'canvas-avatar';
+  avatarPreview.className = 'avatar-edit-canvas';
+
+  const addIco = document.createElement('span');
+  addIco.className = 'tgico tgico-cameraadd';
+
+  page.imageDiv.append(avatarPreview, addIco);
+  
   const appProfileManager = imported.default;
 
-  let uploadAvatar: () => Promise<any>;
-  pageElement.querySelector('.auth-image').addEventListener('click', () => {
+  let uploadAvatar: () => CancellablePromise<InputFile>;
+  page.imageDiv.addEventListener('click', () => {
     new PopupAvatar().open(avatarPreview, (_uploadAvatar) => {
       uploadAvatar = _uploadAvatar;
     });
   });
-
-  const headerName = pageElement.getElementsByClassName('fullName')[0] as HTMLHeadingElement;
 
   const handleInput = (e: Event) => {
     const name = nameInputField.value || '';
@@ -32,9 +53,10 @@ const onFirstMount = () => import('../lib/appManagers/appProfileManager').then(i
 
     const fullName = name || lastName 
       ? (name + ' ' + lastName).trim() 
-      : 'Your Name';
+      : '';
     
-    if(headerName.innerHTML !== fullName) headerName.innerHTML = RichTextProcessor.wrapEmojiText(fullName);
+    if(fullName) replaceContent(page.title, RichTextProcessor.wrapEmojiText(fullName));
+    else replaceContent(page.title, i18n('YourName'));
   };
 
   let sendAvatar = () => new Promise<void>((resolve, reject) => {
@@ -44,32 +66,28 @@ const onFirstMount = () => import('../lib/appManagers/appProfileManager').then(i
     }
 
     //console.log('invoking uploadFile...');
-    uploadAvatar().then((inputFile: any) => {
+    uploadAvatar().then((inputFile) => {
       //console.log('uploaded smthn', inputFile);
   
       appProfileManager.uploadProfilePhoto(inputFile).then(resolve, reject);
     }, reject);
   });
 
-  const inputWrapper = document.createElement('div');
-  inputWrapper.classList.add('input-wrapper');
-
   const nameInputField = new InputField({
-    label: 'Name',
+    label: 'FirstName',
     maxLength: 70
   });
 
   const lastNameInputField = new InputField({
-    label: 'Last Name (optional)',
+    label: 'LastName',
     maxLength: 64
   });
 
   const btnSignUp = Button('btn-primary btn-color-primary');
-  btnSignUp.append('START MESSAGING');
+  const btnI18n = new I18n.IntlElement({key: 'StartMessaging'});
+  btnSignUp.append(btnI18n.element);
 
-  inputWrapper.append(nameInputField.container, lastNameInputField.container, btnSignUp);
-
-  headerName.parentElement.append(inputWrapper);
+  page.inputWrapper.append(nameInputField.container, lastNameInputField.container, btnSignUp);
 
   nameInputField.input.addEventListener('input', handleInput);
   lastNameInputField.input.addEventListener('input', handleInput);
@@ -84,7 +102,7 @@ const onFirstMount = () => import('../lib/appManagers/appProfileManager').then(i
       return false;
     }
 
-    this.setAttribute('disabled', 'true');
+    this.disabled = true;
 
     const name = nameInputField.value.trim();
     const lastName = lastNameInputField.value.trim();
@@ -98,8 +116,8 @@ const onFirstMount = () => import('../lib/appManagers/appProfileManager').then(i
 
     //console.log('invoking auth.signUp with params:', params);
 
-    this.textContent = 'PLEASE WAIT...';
-    putPreloader(this);
+    btnI18n.update({key: 'PleaseWait'});
+    const preloader = putPreloader(this);
 
     apiManager.invokeApi('auth.signUp', params)
     .then((response) => {
@@ -115,7 +133,9 @@ const onFirstMount = () => import('../lib/appManagers/appProfileManager').then(i
           
           break;
         default:
-          this.innerText = response._;
+          btnI18n.update({key: response._ as any});
+          this.removeAttribute('disabled');
+          preloader.remove();
           break;
       }
 
@@ -123,10 +143,11 @@ const onFirstMount = () => import('../lib/appManagers/appProfileManager').then(i
       pageAuthCode(Object.assign(code, {phoneNumber})); */
     }).catch(err => {
       this.removeAttribute('disabled');
+      preloader.remove();
 
       switch(err.type) {
         default:
-          this.innerText = err.type;
+          btnI18n.update({key: err.type});
           break;
       }
     });

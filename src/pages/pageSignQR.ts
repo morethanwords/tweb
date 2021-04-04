@@ -10,7 +10,7 @@ import { bytesCmp, bytesToBase64 } from '../helpers/bytes';
 import { pause } from '../helpers/schedulers';
 import App from '../config/app';
 import Button from '../components/button';
-import { _i18n, i18n } from '../lib/langPack';
+import { _i18n, i18n, LangPackKey } from '../lib/langPack';
 
 let onFirstMount = async() => {
   const pageElement = page.pageEl;
@@ -29,7 +29,7 @@ let onFirstMount = async() => {
 
   const helpList = document.createElement('ol');
   helpList.classList.add('qr-description');
-  ['Login.QR.Help1', 'Login.QR.Help2', 'Login.QR.Help3'].forEach((key) => {
+  (['Login.QR.Help1', 'Login.QR.Help2', 'Login.QR.Help3'] as LangPackKey[]).forEach((key) => {
     const li = document.createElement('li');
     li.append(i18n(key));
     helpList.append(li);

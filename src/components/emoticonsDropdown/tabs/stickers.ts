@@ -1,5 +1,6 @@
 import emoticonsDropdown, { EmoticonsDropdown, EMOTICONSSTICKERGROUP, EmoticonsTab } from "..";
 import { readBlobAsText } from "../../../helpers/blob";
+import renderImageFromUrl from "../../../helpers/dom/renderImageFromUrl";
 import mediaSizes from "../../../helpers/mediaSizes";
 import { MessagesAllStickers, StickerSet } from "../../../layer";
 import appDocsManager, { MyDocument } from "../../../lib/appManagers/appDocsManager";
@@ -10,7 +11,7 @@ import { RichTextProcessor } from "../../../lib/richtextprocessor";
 import rootScope from "../../../lib/rootScope";
 import animationIntersector from "../../animationIntersector";
 import LazyLoadQueue, { LazyLoadQueueRepeat } from "../../lazyLoadQueue";
-import { putPreloader, renderImageFromUrl } from "../../misc";
+import { putPreloader } from "../../misc";
 import Scrollable, { ScrollableX } from "../../scrollable";
 import StickyIntersector from "../../stickyIntersector";
 import { wrapSticker } from "../../wrappers";

@@ -42,7 +42,7 @@ export const langPack: {[actionType: string]: LangPackKey} = {
 	"messageActionBotAllowed": "Chat.Service.BotPermissionAllowed"
 };
 
-export type LangPackKey = string | keyof typeof lang | keyof typeof langSign;
+export type LangPackKey = /* string |  */keyof typeof lang | keyof typeof langSign;
 
 namespace I18n {
 	export const strings: Map<LangPackKey, LangPackString> = new Map();
@@ -50,10 +50,11 @@ namespace I18n {
 
 	let cacheLangPackPromise: Promise<LangPackDifference>;
 	export let lastRequestedLangCode: string;
+	export let requestedServerLanguage = false;
 	export function getCacheLangPack(): Promise<LangPackDifference> {
 		if(cacheLangPackPromise) return cacheLangPackPromise;
 		return cacheLangPackPromise = Promise.all([
-			sessionStorage.get('langPack'),
+			sessionStorage.get('langPack') as Promise<LangPackDifference>,
 			polyfillPromise
 		]).then(([langPack]) => {
 			if(!langPack/*  || true */) {
@@ -91,13 +92,15 @@ namespace I18n {
 				from_version: 0,
 				lang_code: defaultCode,
 				strings,
-				version: 0
+				version: 0,
+				local: true
 			};
 			return saveLangPack(langPack);
 		});
 	}
 
 	export function loadLangPack(langCode: string) {
+		requestedServerLanguage = true;
 		return Promise.all([
 			apiManager.invokeApiCacheable('langpack.getLangPack', {
 				lang_code: langCode,
@@ -164,7 +167,6 @@ namespace I18n {
 	}
 
 	export function saveLangPack(langPack: LangPackDifference) {
-		// @ts-ignore
 		langPack.appVersion = App.langPackVersion;
 
 		return sessionStorage.set({langPack}).then(() => {

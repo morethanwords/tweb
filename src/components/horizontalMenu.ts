@@ -1,9 +1,10 @@
-import { whichChild, findUpAsChild } from "../helpers/dom";
+import { whichChild } from "../helpers/dom";
 import { TransitionSlider } from "./transition";
 import { ScrollableX } from "./scrollable";
 import rootScope from "../lib/rootScope";
 import { fastRaf } from "../helpers/schedulers";
 import { FocusDirection } from "../helpers/fastSmoothScroll";
+import findUpAsChild from "../helpers/dom/findUpAsChild";
 
 export function horizontalMenu(tabs: HTMLElement, content: HTMLElement, onClick?: (id: number, tabContent: HTMLDivElement) => void, onTransitionEnd?: () => void, transitionTime = 250, scrollableX?: ScrollableX) {
   const selectTab = TransitionSlider(content, tabs || content.dataset.animation === 'tabs' ? 'tabs' : 'navigation', transitionTime, onTransitionEnd);

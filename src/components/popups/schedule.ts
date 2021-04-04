@@ -13,7 +13,7 @@ export default class PopupSchedule extends PopupDatePicker {
       noButtons: true,
       noTitle: true,
       closable: true,
-      withConfirm: 'Send Today',
+      withConfirm: true,
       minDate: getMinDate(),
       maxDate: (() => {
         const date = new Date();

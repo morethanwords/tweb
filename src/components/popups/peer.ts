@@ -3,7 +3,7 @@ import PopupElement, { addCancelButton, PopupButton, PopupOptions } from ".";
 import { i18n, LangPackKey } from "../../lib/langPack";
 import CheckboxField, { CheckboxFieldOptions } from "../checkboxField";
 
-export type PopupPeerButtonCallbackCheckboxes = {[text in LangPackKey]: boolean};
+export type PopupPeerButtonCallbackCheckboxes = Partial<{[text in LangPackKey]: boolean}>;
 export type PopupPeerButtonCallback = (checkboxes?: PopupPeerButtonCallbackCheckboxes) => void;
 
 export type PopupPeerOptions = PopupOptions & Partial<{

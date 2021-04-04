@@ -1,5 +1,5 @@
 import { formatDateAccordingToToday, months } from "../helpers/date";
-import { findUpClassName, positionElementByIndex } from "../helpers/dom";
+import { positionElementByIndex } from "../helpers/dom";
 import { copy, getObjectKeysAndSort } from "../helpers/object";
 import { escapeRegExp, limitSymbols } from "../helpers/string";
 import appChatsManager from "../lib/appManagers/appChatsManager";
@@ -17,13 +17,15 @@ import AppMediaViewer from "./appMediaViewer";
 import { SearchGroup, SearchGroupType } from "./appSearch";
 import { horizontalMenu } from "./horizontalMenu";
 import LazyLoadQueue from "./lazyLoadQueue";
-import { renderImageFromUrl, putPreloader, formatPhoneNumber } from "./misc";
+import { putPreloader, formatPhoneNumber } from "./misc";
 import { ripple } from "./ripple";
 import Scrollable, { ScrollableX } from "./scrollable";
 import { wrapDocument, wrapPhoto, wrapVideo } from "./wrappers";
 import useHeavyAnimationCheck, { getHeavyAnimationPromise } from "../hooks/useHeavyAnimationCheck";
 import { isSafari } from "../helpers/userAgent";
 import { LangPackKey, i18n } from "../lib/langPack";
+import findUpClassName from "../helpers/dom/findUpClassName";
+import renderImageFromUrl from "../helpers/dom/renderImageFromUrl";
 
 //const testScroll = false;
 

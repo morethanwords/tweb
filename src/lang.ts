@@ -87,8 +87,8 @@ const lang = {
   "Popup.Unpin.Hide": "Hide",
   "TwoStepAuth.InvalidPassword": "Invalid password",
   "TwoStepAuth.EmailCodeChangeEmail": "Change Email",
-  "PleaseWait": "Please wait...",
   "MarkupTooltip.LinkPlaceholder": "Enter URL...",
+  "MediaViewer.Context.Download": "Download",
 
   // * android
   "ActionCreateChannel": "Channel created",
@@ -358,7 +358,6 @@ const lang = {
   "PleaseEnterCurrentPassword": "Enter your password",
   "PleaseEnterFirstPassword": "Enter a password",
   "PleaseReEnterPassword": "Re-enter your password",
-  "LoginPassword": "Password",
   "Continue": "Continue",
   "YourEmailSkip": "Skip",
   "YourEmailSkipWarning": "Warning",
@@ -391,6 +390,8 @@ const lang = {
   "Channel.UsernameAboutGroup": "People can share this link with others and find your group using Telegram search.",
   "Chat.CopySelectedText": "Copy Selected Text",
   "Chat.Confirm.Unpin": "Would you like to unpin this message?",
+  "Chat.Context.Scheduled.SendNow": "Send Now",
+  "Chat.Context.Scheduled.Reschedule": "Re-schedule",
   "Chat.Date.ScheduledFor": "Scheduled for %@",
   //"Chat.Date.ScheduledUntilOnline": "Scheduled until online",
   "Chat.Date.ScheduledForToday": "Scheduled for today",
@@ -483,6 +484,7 @@ const lang = {
   "Telegram.InstalledStickerPacksController": "Stickers",
   "Telegram.NotificationSettingsViewController": "Notifications",
   "Telegram.PeerInfoController": "Info",
+  "Telegram.LanguageViewController": "Language",
   "Stickers.SearchAdd": "Add",
   "Stickers.SearchAdded": "Added",
   "Stickers.SuggestStickers": "Suggest Stickers by Emoji",
@@ -596,8 +598,7 @@ const lang = {
   "TwoStepAuth.RecoveryCodeInvalid": "Invalid code. Please try again.",
   "TwoStepAuth.RecoveryCodeExpired": "Code Expired",
   "TwoStepAuth.SetupHintTitle": "Password Hint",
-  "TwoStepAuth.SetupHintPlaceholder": "Hint",
-  "PHONE_CODE_INVALID": "Invalid code",
+  "TwoStepAuth.SetupHintPlaceholder": "Hint"
 };
 
 export default lang;

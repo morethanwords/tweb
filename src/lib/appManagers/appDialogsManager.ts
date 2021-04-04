@@ -11,7 +11,7 @@ import { isSafari } from "../../helpers/userAgent";
 import { logger, LogLevels } from "../logger";
 import { RichTextProcessor } from "../richtextprocessor";
 import rootScope from "../rootScope";
-import { findUpTag, positionElementByIndex } from "../../helpers/dom";
+import { positionElementByIndex } from "../../helpers/dom";
 import appImManager from "./appImManager";
 import appMessagesManager, { Dialog } from "./appMessagesManager";
 import {MyDialogFilter as DialogFilter} from "../storages/filters";
@@ -30,6 +30,7 @@ import appNotificationsManager from "./appNotificationsManager";
 import { InputNotifyPeer } from "../../layer";
 import PeerTitle from "../../components/peerTitle";
 import { i18n } from "../langPack";
+import findUpTag from "../../helpers/dom/findUpTag";
 
 type DialogDom = {
   avatarEl: AvatarElement,

@@ -3,7 +3,7 @@ import type ChatBubbles from "./bubbles";
 import type ChatInput from "./input";
 import type Chat from "./chat";
 import { isTouchSupported } from "../../helpers/touchSupport";
-import { blurActiveElement, cancelEvent, cancelSelection, findUpClassName, getSelectedText } from "../../helpers/dom";
+import { blurActiveElement, cancelEvent, cancelSelection, getSelectedText } from "../../helpers/dom";
 import Button from "../button";
 import ButtonIcon from "../buttonIcon";
 import CheckboxField from "../checkboxField";
@@ -16,6 +16,7 @@ import PopupSendNow from "../popups/sendNow";
 import appNavigationController from "../appNavigationController";
 import { isMobileSafari } from "../../helpers/userAgent";
 import I18n, { i18n, _i18n } from "../../lib/langPack";
+import findUpClassName from "../../helpers/dom/findUpClassName";
 
 const MAX_SELECTION_LENGTH = 100;
 //const MIN_CLICK_MOVE = 32; // minimum bubble height

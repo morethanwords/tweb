@@ -6043,7 +6043,9 @@ export namespace LangPackDifference {
 		lang_code: string,
 		from_version: number,
 		version: number,
-		strings: Array<LangPackString>
+		strings: Array<LangPackString>,
+		local?: boolean,
+		appVersion?: string
 	};
 }
 

@@ -1,5 +1,5 @@
+import findUpClassName from "../helpers/dom/findUpClassName";
 import {isTouchSupported} from "../helpers/touchSupport";
-import { findUpClassName } from "../helpers/dom";
 import rootScope from "../lib/rootScope";
 
 let rippleClickId = 0;

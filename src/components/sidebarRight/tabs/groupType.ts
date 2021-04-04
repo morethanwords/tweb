@@ -116,7 +116,7 @@ export default class AppGroupTypeTab extends SliderSuperTabEventable {
       plainText: true,
       listenerSetter: this.listenerSetter,
       availableText: 'Link.Available',
-      invalidText: 'Link is invalid',
+      invalidText: 'Link.Invalid',
       takenText: 'Link.Taken',
       onChange: onChange,
       peerId: this.peerId,

@@ -11,8 +11,8 @@ import { MyDocument } from "./appDocsManager";
 import appDownloadManager from "./appDownloadManager";
 import appUsersManager from "./appUsersManager";
 import blur from "../../helpers/blur";
-import { renderImageFromUrl } from "../../components/misc";
 import { MOUNT_CLASS_TO } from "../../config/debug";
+import renderImageFromUrl from "../../helpers/dom/renderImageFromUrl";
 
 export type MyPhoto = Photo.photo;
 

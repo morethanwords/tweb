@@ -1,5 +1,5 @@
 import type { AppImManager } from "../../lib/appManagers/appImManager";
-import { MarkdownType, cancelEvent, getSelectedNodes, markdownTags, findUpClassName, attachClickEvent, cancelSelection, isSelectionEmpty } from "../../helpers/dom";
+import { MarkdownType, cancelEvent, getSelectedNodes, markdownTags, attachClickEvent, isSelectionEmpty } from "../../helpers/dom";
 import RichTextProcessor from "../../lib/richtextprocessor";
 import ButtonIcon from "../buttonIcon";
 import { clamp } from "../../helpers/number";

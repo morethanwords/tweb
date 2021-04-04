@@ -2,11 +2,11 @@ import appDialogsManager from "../lib/appManagers/appDialogsManager";
 import appMessagesManager, {Dialog} from "../lib/appManagers/appMessagesManager";
 import appPeersManager from "../lib/appManagers/appPeersManager";
 import rootScope from "../lib/rootScope";
-import { findUpTag } from "../helpers/dom";
 import { positionMenu, openBtnMenu } from "./misc";
 import ButtonMenu, { ButtonMenuItemOptions } from "./buttonMenu";
 import PopupDeleteDialog from "./popups/deleteDialog";
 import { i18n } from "../lib/langPack";
+import findUpTag from "../helpers/dom/findUpTag";
 
 export default class DialogsContextMenu {
   private element: HTMLElement;

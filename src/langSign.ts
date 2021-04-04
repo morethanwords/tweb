@@ -5,9 +5,22 @@ const lang = {
   "Login.PhoneLabelInvalid": "Phone Number Invalid",
   "Login.KeepSigned": "Keep me signed in",
   "Login.StartText": "Please confirm your country and\nenter your phone number.",
+  "Login.Code.SentSms": "We have sent you an SMS\nwith the code.",
+  "Login.Code.SentInApp": "We have sent you a message in Telegram\nwith the code.",
+  "Login.Code.SentCall": "We will call you and voice\nthe code.",
+  "Login.Code.SentUnknown": "Please check everything\nfor a code (type: %s)",
+  "Login.Password.Title": "Enter Your Password",
+  "Login.Password.Subtitle": "Your account is protected with\nan additional password",
+  "Login.Register.Subtitle": "Enter your name and add\na profile picture",
+  "PleaseWait": "Please wait...",
 
   // * android
-  
+  "Code": "Code",
+  "LoginPassword": "Password",
+  "YourName": "Your Name",
+  "FirstName": "First name (required)",
+  "LastName": "Last name (optional)",
+  "StartMessaging": "Start Messaging",
 
   // * macos
   "Login.Next": "Next",
@@ -18,6 +31,9 @@ const lang = {
   "Login.QR.Help3": "Point your phone at this screen to confirm login",
   "Login.QR.Cancel": "Log in by phone Number",
   "Login.QR.Login": "Log in by QR Code",
+  "PHONE_CODE_INVALID": "Invalid code",
+  "PHONE_CODE_EXPIRED": "Code expired",
+  "PASSWORD_HASH_INVALID": "Incorrect password"
 };
 
 export default lang;

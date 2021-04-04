@@ -9,6 +9,8 @@ import pageSignIn from './pageSignIn';
 import pageSignUp from './pageSignUp';
 import TrackingMonkey from '../components/monkeys/tracking';
 import CodeInputField from '../components/codeInputField';
+import { replaceContent } from '../helpers/dom';
+import { i18n, LangPackKey } from '../lib/langPack';
 
 let authCode: AuthSentCode.authSentCode = null;
 
@@ -89,12 +91,12 @@ let onFirstMount = (): Promise<any> => {
           break;
         case 'PHONE_CODE_EXPIRED':
           codeInput.classList.add('error');
-          codeInputField.label.innerText = 'Code expired';
+          replaceContent(codeInputField.label, i18n('PHONE_CODE_EXPIRED'));
           break;
         case 'PHONE_CODE_EMPTY':
         case 'PHONE_CODE_INVALID':
           codeInput.classList.add('error');
-          codeInputField.label.innerText = 'Invalid Code';
+          replaceContent(codeInputField.label, i18n('PHONE_CODE_INVALID'));
           break;
         default:
           codeInputField.label.innerText = err.type;
@@ -127,20 +129,24 @@ const page = new Page('page-authCode', true, onFirstMount, (_authCode: typeof au
   }
 
   headerElement.innerText = authCode.phone_number;
+  let key: LangPackKey, args: any[];
   switch(authCode.type._) {
     case 'auth.sentCodeTypeSms':
-      sentTypeElement.innerHTML = 'We have sent you an SMS<br>with the code.';
+      key = 'Login.Code.SentSms';
       break;
     case 'auth.sentCodeTypeApp': 
-      sentTypeElement.innerHTML = 'We have sent you a message in Telegram<br>with the code.';
+      key = 'Login.Code.SentInApp';
       break;
     case 'auth.sentCodeTypeCall': 
-      sentTypeElement.innerHTML = 'We will call you and voice<br>the code.';
+      key = 'Login.Code.SentCall';
       break;
     default:
-      sentTypeElement.innerHTML = `Please check everything<br>for a code (type: ${authCode.type._})`;
+      key = 'Login.Code.SentUnknown';
+      args = [authCode.type._];
       break;
   }
+
+  replaceContent(sentTypeElement, i18n(key, args));
 
   appStateManager.pushToState('authState', {_: 'authStateAuthCode', sentCode: _authCode});
   appStateManager.saveState();
