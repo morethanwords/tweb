@@ -6,7 +6,7 @@ import { createPosterForVideo } from "../../helpers/files";
 import { copy, defineNotNumerableProperties, getObjectKeysAndSort } from "../../helpers/object";
 import { randomLong } from "../../helpers/random";
 import { splitStringByLength, limitSymbols, escapeRegExp } from "../../helpers/string";
-import { Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MessagesPeerDialogs, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update } from "../../layer";
+import { Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MessagesPeerDialogs, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update } from "../../layer";
 import { InvokeApiOptions } from "../../types";
 import I18n, { i18n, join, langPack, LangPackKey, _i18n } from "../langPack";
 import { logger, LogLevels } from "../logger";
@@ -1842,13 +1842,22 @@ export class AppMessagesManager {
     } = {};
 
     const newMessages = mids.map(mid => {
-      const originalMessage = this.getMessageByPeer(fromPeerId, mid);
-      const message = this.generateOutgoingMessage(peerId, options);
+      const originalMessage: Message.message = this.getMessageByPeer(fromPeerId, mid);
+      const message: Message.message = this.generateOutgoingMessage(peerId, options);
       message.fwd_from = this.generateForwardHeader(peerId, originalMessage);
 
       (['entities', 'forwards', 'message', 'media', 'reply_markup', 'views'] as any as Array<keyof MyMessage>).forEach(key => {
+        // @ts-ignore
         message[key] = originalMessage[key];
       });
+
+      const document = (message.media as MessageMedia.messageMediaDocument)?.document as MyDocument;
+      if(document) {
+        const types: MyDocument['type'][] = ['round', 'voice'];
+        if(types.includes(document.type)) {
+          (message as MyMessage).pFlags.media_unread = true;
+        }
+      }
 
       if(originalMessage.grouped_id) {
         const group = groups[originalMessage.grouped_id] ?? (groups[originalMessage.grouped_id] = {tempId: '' + ++this.groupedTempId, messages: []});

@@ -1,17 +1,15 @@
 .stickers-helper {
 	position: absolute !important;
 	bottom: calc(100% + 10px);
-	opacity: 0;
-	transition: opacity .2s ease-in-out;
 	overflow: hidden;
 	padding: 0 !important;
-    border-radius: 10px !important;
+  border-radius: 10px !important;
 
 	> .scrollable {
 		position: relative;
 		max-height: 220px;
-  		min-height: var(--esg-sticker-size);
-	  	padding: 7px;
+  	min-height: var(--esg-sticker-size);
+	  padding: 7px;
 	}
 
 	&-stickers {
@@ -35,9 +33,13 @@
 		display: none;
 	}
 
-	&.is-visible {
-		&:not(.backwards) {
-			opacity: 1;
+	@include animation-level(2) {
+		&.is-visible {
+			animation: fade-out-opacity .2s ease-in-out forwards;
+
+			&:not(.backwards) {
+				animation: fade-in-opacity .2s ease-in-out forwards;
+			}
 		}
 	}
 }

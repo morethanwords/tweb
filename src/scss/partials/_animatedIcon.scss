@@ -8,7 +8,6 @@
     height: .125rem;
     border-radius: .125rem;
     background-color: var(--secondary-text-color);
-    transition: transform var(--slide-header-transition);
   }
 
   &:before, &:after {
@@ -22,9 +21,15 @@
     transform: rotate(90deg);
   }
 
-  &.no-transition {
+  @include animation-level(2) {
     &, &:before, &:after {
-      transition: none;
+      transition: transform var(--slide-header-transition);
+    }
+
+    &.no-transition {
+      &, &:before, &:after {
+        transition: none;
+      }
     }
   }
 
@@ -49,8 +54,13 @@
     height: .125rem;
     border-radius: .125rem;
     background-color: var(--secondary-text-color);
-    transition: transform .25s;
     transform: rotate(0);
+  }
+
+  @include animation-level(2) {
+    &, &:before, &:after {
+      transition: transform .25s;
+    }
   }
 
   &:before, &:after {

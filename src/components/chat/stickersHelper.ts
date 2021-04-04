@@ -41,7 +41,7 @@ export default class StickersHelper {
     }
 
     appStickersManager.getStickersByEmoticon(emoticon)
-    .then(stickers => {
+    .then((stickers) => {
       if(this.lastEmoticon !== emoticon) {
         return;
       }
@@ -51,16 +51,31 @@ export default class StickersHelper {
         this.init = null;
       }
 
-      this.stickersContainer.innerHTML = '';
+      const container = this.stickersContainer.cloneNode() as HTMLElement;
+
+      let ready: Promise<void>;
+
       this.lazyLoadQueue.clear();
       if(stickers.length) {
-        stickers.forEach(sticker => {
-          this.stickersContainer.append(this.superStickerRenderer.renderSticker(sticker as MyDocument));
+        ready = new Promise<void>((resolve) => {
+          const promises: Promise<any>[] = [];
+          stickers.forEach(sticker => {
+            container.append(this.superStickerRenderer.renderSticker(sticker as MyDocument, undefined, promises));
+          });
+
+          (Promise.all(promises) as Promise<any>).then(resolve, resolve);
         });
+      } else {
+        ready = Promise.resolve();
       }
 
-      SetTransition(this.container, 'is-visible', true, 200);
-      this.scrollable.scrollTop = 0;
+      ready.then(() => {
+        this.stickersContainer.replaceWith(container);
+        this.stickersContainer = container;
+
+        SetTransition(this.container, 'is-visible', !!stickers.length, 200);
+        this.scrollable.scrollTop = 0;
+      });
     });
   }
 

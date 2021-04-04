@@ -7,7 +7,10 @@
   cursor: pointer;
   min-width: var(--size);
   min-height: var(--size);
-  transition: .2s opacity;
+  
+  @include animation-level(2) {
+    transition: .2s opacity;
+  }
 
   &.checkbox-disabled {
     pointer-events: none !important;
@@ -53,8 +56,12 @@
       left: -15%;
       background-color: var(--primary-color);
       transform: scale(1);
-      transition: transform .2s 0s ease-in-out;
       border-radius: 50%;
+      transition: transform .2s 0s ease-in-out;
+      
+      @include animation-level(0) {
+        transition: none !important;
+      }
     }
 
     &-check {
@@ -72,6 +79,10 @@
         stroke-dasharray: 24.19, 24.19;
         stroke-dashoffset: 0;
         transition: stroke-dasharray .1s .15s ease-in-out, visibility 0s .15s;
+        
+        @include animation-level(0) {
+          transition: none !important;
+        }
       }
     }
   }
@@ -87,7 +98,7 @@
     transition: .2s opacity;
     color: var(--primary-text-color);
 
-    body.animation-level-0 & {
+    @include animation-level(0) {
       transition: none;
     }
   }
@@ -180,7 +191,7 @@
       height: var(--size);
       transform: translateY(-50%);
 
-      body.animation-level-0 & {
+      @include animation-level(0) {
         transition: none;
       }
     }

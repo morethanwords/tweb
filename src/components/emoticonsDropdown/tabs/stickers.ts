@@ -28,7 +28,7 @@ export class SuperStickerRenderer {
     });
   }
 
-  renderSticker(doc: MyDocument, div?: HTMLDivElement) {
+  renderSticker(doc: MyDocument, div?: HTMLDivElement, loadPromises?: Promise<any>[]) {
     if(!div) {
       div = document.createElement('div');
       div.classList.add('grid-item', 'super-sticker');
@@ -41,7 +41,7 @@ export class SuperStickerRenderer {
           load: this.processVisibleDiv
         });
       }
-    } 
+    }
 
     // * This will wrap only a thumb
     wrapSticker({
@@ -49,7 +49,8 @@ export class SuperStickerRenderer {
       div,
       lazyLoadQueue: this.regularLazyLoadQueue, 
       group: this.group, 
-      onlyThumb: doc.sticker === 2
+      onlyThumb: doc.sticker === 2,
+      loadPromises
     });
 
     return div;

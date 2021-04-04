@@ -272,7 +272,7 @@ export class AppStickersManager {
         iteratePacks(set.packs);
       }
 
-      const stickers = [...new Set(cachedStickersAnimated.concat(cachedStickersStatic, foundStickers))];
+      const stickers = [...new Set(cachedStickersAnimated.concat(cachedStickersStatic, foundStickers))]/* .filter(doc => !doc.animated) */;
 
       return stickers;
     });

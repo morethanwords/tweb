@@ -125,8 +125,11 @@ $chat-helper-size: 39px;
 		outline: none;
 		white-space: pre-wrap;
 		font-size: var(--messages-text-size);
-		line-height: 1.3125;
-		transition: height .1s;
+		line-height: var(--line-height);
+		
+		@include animation-level(2) {
+			transition: height .1s;
+		}
 
 		@media only screen and (max-height: 30rem) {
 			max-height: unquote('max(39px, calc(100vh - 10rem))');
@@ -172,10 +175,13 @@ $chat-helper-size: 39px;
 	.btn-scheduled {
 		position: absolute;
 		right: 3.625rem;
-		animation: grow-icon .4s forwards ease-in-out !important;
 		align-self: center;
 		display: none !important;
 		margin: 0 !important;
+		
+		@include animation-level(2) {
+			animation: grow-icon .4s forwards ease-in-out !important;
+		}
 
 		&:after {
 			content: "";
@@ -185,7 +191,7 @@ $chat-helper-size: 39px;
 			width: .5rem;
 			height: .5rem;
 			border-radius: 50%;
-			background: #61c642;
+			background: var(--message-checkbox-color);
 		}
 	}
 
@@ -201,9 +207,17 @@ $chat-helper-size: 39px;
 		bottom: 0;
 		padding-bottom: inherit;
 	}
+
+	.btn-icon {
+		transition: .2s color, background-color .2s, .2s opacity;
+
+		@include animation-level(0) {
+			transition: none;
+		}
+	}
 	
 	.btn-send {
-		transition: .2s transform !important;
+		transition: .2s transform;
 		color: var(--secondary-text-color);
 		z-index: 3;
 
@@ -215,7 +229,7 @@ $chat-helper-size: 39px;
 				animation: hide-icon .4s forwards ease-in-out;
 			}
 
-			body.animation-level-0 & {
+			@include animation-level(0) {
 				visibility: hidden;
 				animation: none !important;
 			}
@@ -255,14 +269,6 @@ $chat-helper-size: 39px;
 		}
 	}
 
-	.btn-icon {
-		transition: .2s color, background-color .2s, .2s opacity;
-
-		body.animation-level-0 & {
-			transition: none;
-		}
-	}
-
 	.btn-record-cancel, .btn-send {
 		font-size: 1.5rem;
 		line-height: 1.5rem;
@@ -278,11 +284,14 @@ $chat-helper-size: 39px;
 			content: " ";
 			width: 10px;
 			height: 10px;
-			background-color: #e53935;
+			background-color: var(--danger-color);
 			border-radius: 50%;
 			margin: 0 9px;
 			display: inline-block;
-			animation: recordBlink 1.25s infinite;
+			
+			@include animation-level(2) {
+				animation: recordBlink 1.25s infinite;
+			}
 		}
 	}
 
@@ -361,7 +370,10 @@ $chat-helper-size: 39px;
 	
 	.new-message-wrapper, .pinned-container {
 		opacity: 1;
-		transition: opacity .1s 0s;
+		
+		@include animation-level(2) {
+			transition: opacity .1s 0s;
+		}
 	}
 
 	.pinned-container {
@@ -408,12 +420,14 @@ $chat-helper-size: 39px;
 	}
 
 	.bubbles.is-selecting.backwards ~ & {
-		.new-message-wrapper, .pinned-container {
-			transition: opacity .1s .1s;
-		}
-
-		.selection-wrapper {
-			transition: opacity .1s 0s;
+		@include animation-level(2) {
+			.new-message-wrapper, .pinned-container {
+				transition: opacity .1s .1s;
+			}
+	
+			.selection-wrapper {
+				transition: opacity .1s 0s;
+			}
 		}
 	}
 
@@ -503,7 +517,7 @@ $chat-helper-size: 39px;
 	flex-direction: column;
 	//z-index: 1;
 
-	body.animation-level-0 & {
+	@include animation-level(0) {
 		transition: none !important;
 	}
 
@@ -580,7 +594,7 @@ $chat-helper-size: 39px;
 			background-position: center center;
 			background-color: inherit;
 
-			body.animation-level-2 & {
+			@include animation-level(2) {
 				transition: opacity var(--layer-transition);
 				opacity: 0;
 
@@ -590,7 +604,7 @@ $chat-helper-size: 39px;
 			}
 
 			@include respond-to(medium-screens) {
-				body.animation-level-2 & {
+				@include animation-level(2) {
 					// !WARNING, МАГИЧЕСКОЕ ЧИСЛО
 					margin: -16.5rem 0 -20rem 0;
 					transform: scale(1);
@@ -762,6 +776,10 @@ $chat-helper-size: 39px;
 
 	.bubble-tail {
 		transition: transform .1s;
+
+		@include animation-level(0) {
+			transition: none;
+		}
 	}
 
 	&.is-centering:not(.backwards), &.is-centered {
@@ -850,7 +868,7 @@ $chat-helper-size: 39px;
 		user-select: none;
 		z-index: 2;
 
-		body.animation-level-0 & {
+		@include animation-level(0) {
 			transition: none;
 		}
 
@@ -1024,7 +1042,7 @@ $chat-helper-size: 39px;
 				cursor: pointer;
 				//--translateY: 0;
 				opacity: 1;
-				transition: opacity var(--layer-transition), visibility 0s 0s !important;
+				//transition: opacity var(--layer-transition), visibility 0s 0s !important;
 				visibility: visible;
 
 				/* &.is-broadcast {
@@ -1147,7 +1165,8 @@ $chat-helper-size: 39px;
 	overflow: visible;
 	//--translateY: calc(var(--chat-input-size) + 10px);
 	//--translateY: calc(100% + 10px);
-	transition: opacity var(--layer-transition), visibility 0s .2s !important;
+	//transition: opacity var(--layer-transition), visibility 0s .2s !important;
+	transition: opacity var(--layer-transition);
 	transform: none !important;
 
 	body.animation-level-0 & {
