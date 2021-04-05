@@ -622,7 +622,8 @@ export class AppImManager {
       spliced = this.chats.splice(fromIndex, this.chats.length - fromIndex);
     }
 
-    for(let i = 0; i < spliced.length; ++i) {
+    // * -1 because one item is being sliced when closing the chat by calling .removeByType
+    for(let i = 0; i < spliced.length - 1; ++i) {
       appNavigationController.removeByType('chat', true);
     }
 

@@ -51,6 +51,7 @@ import PeerTitle from "../peerTitle";
 import { forEachReverse } from "../../helpers/array";
 import findUpClassName from "../../helpers/dom/findUpClassName";
 import findUpTag from "../../helpers/dom/findUpTag";
+import { toast } from "../toast";
 
 const USE_MEDIA_TAILS = false;
 const IGNORE_ACTIONS: Message.messageService['action']['_'][] = [/* 'messageActionHistoryClear' */];
@@ -828,8 +829,8 @@ export default class ChatBubbles {
         //appSidebarRight.forwardTab.open([mid]);
         return;
       } else if(target.classList.contains('peer-title') || target.classList.contains('name')) {
+        target = findUpClassName(target, 'name');
         const peerId = +target.dataset.peerId;
-        
         const savedFrom = target.dataset.savedFrom;
         if(savedFrom) {
           const splitted = savedFrom.split('_');
@@ -840,6 +841,8 @@ export default class ChatBubbles {
         } else {
           if(peerId) {
             this.chat.appImManager.setInnerPeer(peerId);
+          } else {
+            toast(I18n.format('HidAccount', true));
           }
         }
 
@@ -849,6 +852,8 @@ export default class ChatBubbles {
         
         if(peerId) {
           this.chat.appImManager.setInnerPeer(peerId);
+        } else {
+          toast(I18n.format('HidAccount', true));
         }
 
         return;
@@ -883,6 +888,8 @@ export default class ChatBubbles {
       
       if(peerId) {
         this.chat.appImManager.setInnerPeer(peerId);
+      } else {
+        toast(I18n.format('HidAccount', true));
       }
     }
     
@@ -2394,6 +2401,7 @@ export default class ChatBubbles {
         ///////this.log('message to render hidden', message);
         title = document.createElement('span');
         title.innerHTML = RichTextProcessor.wrapEmojiText(message.fwd_from.from_name);
+        title.classList.add('peer-title');
         //title = message.fwd_from.from_name;
         bubble.classList.add('hidden-profile');
       } else {

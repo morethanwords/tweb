@@ -82,16 +82,16 @@ export default class StickersHelper {
   private init() {
     this.container = document.createElement('div');
     this.container.classList.add('stickers-helper', 'z-depth-1');
-
-    this.stickersContainer = document.createElement('div');
-    this.stickersContainer.classList.add('stickers-helper-stickers', 'super-stickers');
-    this.stickersContainer.addEventListener('click', (e) => {
+    this.container.addEventListener('click', (e) => {
       if(!findUpClassName(e.target, 'super-sticker')) {
         return;
       }
 
       EmoticonsDropdown.onMediaClick(e, true);
     });
+
+    this.stickersContainer = document.createElement('div');
+    this.stickersContainer.classList.add('stickers-helper-stickers', 'super-stickers');
 
     this.container.append(this.stickersContainer);
 
