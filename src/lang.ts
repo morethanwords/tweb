@@ -379,6 +379,7 @@ const lang = {
     "one_value": "%1$d sticker",
     "other_value": "%1$d stickers"
   },
+  "HidAccount": "The account was hidden by the user",
 
   // * macos
   "AccountSettings.Filters": "Chat Folders",

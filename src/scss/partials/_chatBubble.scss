@@ -144,6 +144,10 @@ $bubble-margin: .25rem;
     &:before, &:after {
       display: none;
     }
+
+    .user-avatar {
+      z-index: 2;
+    }
   }
 
   &.channel-post {
