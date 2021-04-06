@@ -1,8 +1,11 @@
 import { EmoticonsDropdown, EmoticonsTab } from "..";
+import findUpClassName from "../../../helpers/dom/findUpClassName";
+import { fastRaf } from "../../../helpers/schedulers";
 import appImManager from "../../../lib/appManagers/appImManager";
 import appStateManager from "../../../lib/appManagers/appStateManager";
 import Config from "../../../lib/config";
 import { RichTextProcessor } from "../../../lib/richtextprocessor";
+import rootScope from "../../../lib/rootScope";
 import { putPreloader } from "../../misc";
 import Scrollable from "../../scrollable";
 import StickyIntersector from "../../stickyIntersector";
@@ -162,7 +165,29 @@ export default class EmojiTab implements EmoticonsTab {
     }
 
     if(spanEmoji.firstElementChild && !RichTextProcessor.emojiSupported) {
-      (spanEmoji.firstElementChild as HTMLImageElement).setAttribute('loading', 'lazy');
+      const image = spanEmoji.firstElementChild as HTMLImageElement;
+      image.setAttribute('loading', 'lazy');
+      
+      const placeholder = document.createElement('span');
+      placeholder.classList.add('emoji-placeholder');
+
+      if(rootScope.settings.animationsEnabled) {
+        image.style.opacity = '0';
+        placeholder.style.opacity = '1';
+      }
+
+      image.addEventListener('load', () => {
+        fastRaf(() => {
+          if(rootScope.settings.animationsEnabled) {
+            image.style.opacity = '';
+            placeholder.style.opacity = '';
+          }
+
+          spanEmoji.classList.remove('empty');
+        });
+      }, {once: true});
+
+      spanEmoji.append(placeholder);
     }
   
     //spanEmoji = spanEmoji.firstElementChild as HTMLSpanElement;
@@ -185,7 +210,7 @@ export default class EmojiTab implements EmoticonsTab {
     //if(target.tagName !== 'SPAN') return;
 
     if(target.tagName === 'SPAN' && !target.classList.contains('emoji')) {
-      target = target.firstChild as HTMLElement;
+      target = findUpClassName(target, 'category-item').firstChild as HTMLElement;
     } else if(target.tagName === 'DIV') return;
 
     //console.log('contentEmoji div', target);

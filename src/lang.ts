@@ -89,6 +89,7 @@ const lang = {
   "TwoStepAuth.EmailCodeChangeEmail": "Change Email",
   "MarkupTooltip.LinkPlaceholder": "Enter URL...",
   "MediaViewer.Context.Download": "Download",
+  "Profile": "Profile",
 
   // * android
   "ActionCreateChannel": "Channel created",
@@ -484,7 +485,6 @@ const lang = {
   "Telegram.GeneralSettingsViewController": "General Settings",
   "Telegram.InstalledStickerPacksController": "Stickers",
   "Telegram.NotificationSettingsViewController": "Notifications",
-  "Telegram.PeerInfoController": "Info",
   "Telegram.LanguageViewController": "Language",
   "Stickers.SearchAdd": "Add",
   "Stickers.SearchAdded": "Added",

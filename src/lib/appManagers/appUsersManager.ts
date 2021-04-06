@@ -2,7 +2,7 @@ import { formatPhoneNumber } from "../../components/misc";
 import { MOUNT_CLASS_TO } from "../../config/debug";
 import { tsNow } from "../../helpers/date";
 import { safeReplaceObject, isObject } from "../../helpers/object";
-import { InputUser, Update, User as MTUser, UserStatus } from "../../layer";
+import { InputUser, Update, User as MTUser, UserProfilePhoto, UserStatus } from "../../layer";
 import I18n, { i18n, LangPackKey } from "../langPack";
 //import apiManager from '../mtproto/apiManager';
 import apiManager from '../mtproto/mtprotoworker';
@@ -24,7 +24,7 @@ export class AppUsersManager {
   private users: {[userId: number]: User} = {};
   private usernames: {[username: string]: number} = {};
   //public userAccess: {[userId: number]: string} = {};
-  private cachedPhotoLocations: any = {};
+  private cachedPhotoLocations: {[userId: number]: UserProfilePhoto} = {};
   private contactsIndex = searchIndexManager.createIndex();
   private contactsFillPromise: Promise<Set<number>>;
   public contactsList: Set<number> = new Set();
@@ -501,10 +501,12 @@ export class AppUsersManager {
   }
 
   public getUserPhoto(id: number) {
-    var user = this.getUser(id);
+    const user = this.getUser(id);
 
     if(this.cachedPhotoLocations[id] === undefined) {
-      this.cachedPhotoLocations[id] = user && user.photo ? user.photo : {empty: true};
+      this.cachedPhotoLocations[id] = user && user.photo || {
+        _: 'userProfilePhotoEmpty'
+      };
     }
 
     return this.cachedPhotoLocations[id];

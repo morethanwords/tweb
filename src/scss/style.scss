@@ -201,6 +201,7 @@ html.night {
 @import "partials/chatDrop";
 @import "partials/crop";
 @import "partials/sidebar";
+@import "partials/profile";
 @import "partials/leftSidebar";
 @import "partials/rightSidebar";
 @import "partials/mediaViewer";
@@ -998,9 +999,9 @@ middle-ellipsis-element {
 }
 
 .row {
-  min-height: 3.5rem;
+  min-height: 3rem;
   position: relative;
-  padding: .9375rem 1rem;
+  padding: .6875rem 1rem;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -1027,7 +1028,7 @@ middle-ellipsis-element {
     color: var(--primary-text-color);
     line-height: var(--line-height);
 
-    @include text-overflow();
+    @include text-overflow(false);
 
     &-right {
       flex: 0 0 auto !important;
@@ -1046,6 +1047,7 @@ middle-ellipsis-element {
       position: absolute;
       left: 1rem;
       font-size: 1.5rem;
+      margin-top: .25rem;
       color: var(--secondary-text-color);
       pointer-events: none;
     }
