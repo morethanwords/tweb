@@ -129,10 +129,9 @@ export class AppPhotosManager {
       max_id: maxId
     }).then((photosResult) => {
       appUsersManager.saveApiUsers(photosResult.users);
-      const photoIds: string[] = [];
-      photosResult.photos.forEach((photo, idx) => {
+      const photoIds: string[] = photosResult.photos.map((photo, idx) => {
         photosResult.photos[idx] = this.savePhoto(photo, {type: 'profilePhoto', peerId: userId});
-        photoIds.push(photo.id);
+        return photo.id;
       });
       
       return {

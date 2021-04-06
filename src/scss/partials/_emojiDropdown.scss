@@ -19,12 +19,14 @@
 		box-shadow: 0px 5px 10px 5px rgba(16, 35, 47, .14);
 		z-index: 3;
 		border-radius: 10px;
-		transition: transform .2s ease-out;
+		transition: transform .2s, opacity .2s;
+		transition-timing-function: cubic-bezier(.4, 0, .2, 1);
 		transform: scale(0);
+		opacity: 0;
 		transform-origin: 0 100%;
 
 		&.active {
-			transition: transform .2s ease-in;
+			opacity: 1;
 			transform: scale(1);
 		}
 
@@ -182,6 +184,32 @@
 				
 				width: 42px;
 				height: 42px;
+
+				html:not(.emoji-supported) & {
+					position: relative;
+				}
+
+				.emoji-placeholder {
+					position: absolute;
+					left: 7px;
+					top: 7px;
+					width: 1.75rem;
+					height: 1.75rem;
+					border-radius: 50%;
+					background-color: var(--light-secondary-text-color);
+
+					@include animation-level(2) {
+						opacity: 0;
+						transition: opacity .2s ease-in-out;
+					}
+				}
+
+				@include animation-level(2) {
+					img {
+						opacity: 1;
+						transition: opacity .2s ease-in-out;
+					}
+				}
 				
 				.emoji {
 					width: 100%;

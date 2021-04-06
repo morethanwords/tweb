@@ -1,7 +1,7 @@
 import { MOUNT_CLASS_TO } from "../../config/debug";
 import { numberThousandSplitter } from "../../helpers/number";
 import { isObject, safeReplaceObject, copy, deepEqual } from "../../helpers/object";
-import { ChannelParticipant, Chat, ChatAdminRights, ChatBannedRights, ChatFull, ChatParticipant, ChatParticipants, InputChannel, InputChatPhoto, InputFile, InputPeer, SendMessageAction, Update, Updates } from "../../layer";
+import { ChannelParticipant, Chat, ChatAdminRights, ChatBannedRights, ChatFull, ChatParticipant, ChatParticipants, ChatPhoto, InputChannel, InputChatPhoto, InputFile, InputPeer, SendMessageAction, Update, Updates } from "../../layer";
 import { i18n, LangPackKey } from "../langPack";
 import apiManagerProxy from "../mtproto/mtprotoworker";
 import apiManager from '../mtproto/mtprotoworker';
@@ -25,7 +25,7 @@ export class AppChatsManager {
   //public usernames: any = {};
   //public channelAccess: any = {};
   //public megagroups: {[id: number]: true} = {};
-  public cachedPhotoLocations: {[id: number]: any} = {};
+  public cachedPhotoLocations: {[id: number]: ChatPhoto} = {};
 
   public megagroupOnlines: {[id: number]: {timestamp: number, onlines: number}} = {};
 
@@ -371,10 +371,12 @@ export class AppChatsManager {
   }
 
   public getChatPhoto(id: number) {
-    const chat = this.getChat(id);
+    const chat: Chat.chat = this.getChat(id);
 
     if(this.cachedPhotoLocations[id] === undefined) {
-      this.cachedPhotoLocations[id] = chat && chat.photo ? chat.photo : {empty: true};
+      this.cachedPhotoLocations[id] = chat && chat.photo || {
+        _: 'chatPhotoEmpty'
+      };
     }
 
     return this.cachedPhotoLocations[id];

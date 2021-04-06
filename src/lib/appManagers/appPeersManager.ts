@@ -1,6 +1,6 @@
 import { MOUNT_CLASS_TO } from "../../config/debug";
 import { isObject } from "../../helpers/object";
-import { DialogPeer, InputDialogPeer, InputNotifyPeer, InputPeer, Peer, Update } from "../../layer";
+import { ChatPhoto, DialogPeer, InputDialogPeer, InputNotifyPeer, InputPeer, Peer, Update, UserProfilePhoto } from "../../layer";
 import { LangPackKey } from "../langPack";
 import { RichTextProcessor } from "../richtextprocessor";
 import rootScope from "../rootScope";
@@ -46,10 +46,12 @@ export class AppPeersManager {
     return peerId > 0 || appChatsManager.hasRights(-peerId, 'pin_messages');
   }
 
-  public getPeerPhoto(peerId: number) {
-    return peerId > 0
+  public getPeerPhoto(peerId: number): UserProfilePhoto.userProfilePhoto | ChatPhoto.chatPhoto {
+    const photo = peerId > 0
       ? appUsersManager.getUserPhoto(peerId)
       : appChatsManager.getChatPhoto(-peerId);
+
+    return photo._ !== 'chatPhotoEmpty' && photo._ !== 'userProfilePhotoEmpty' ? photo : null;
   }
 
   public getPeerMigratedTo(peerId: number) {

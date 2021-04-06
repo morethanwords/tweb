@@ -8,10 +8,9 @@ import { RichTextProcessor } from "../../../lib/richtextprocessor";
 import rootScope from "../../../lib/rootScope";
 import AppSearchSuper, { SearchSuperType } from "../../appSearchSuper.";
 import AvatarElement from "../../avatar";
-import Scrollable from "../../scrollable";
-import SidebarSlider, { SliderSuperTab, SliderTab } from "../../slider";
+import SidebarSlider, { SliderSuperTab } from "../../slider";
 import CheckboxField from "../../checkboxField";
-import { attachClickEvent } from "../../../helpers/dom";
+import { attachClickEvent, replaceContent } from "../../../helpers/dom";
 import appSidebarRight from "..";
 import { TransitionSlider } from "../../transition";
 import appNotificationsManager from "../../../lib/appManagers/appNotificationsManager";
@@ -20,7 +19,7 @@ import PeerTitle from "../../peerTitle";
 import AppEditChannelTab from "./editChannel";
 import AppEditContactTab from "./editContact";
 import appChatsManager, { Channel } from "../../../lib/appManagers/appChatsManager";
-import { Chat } from "../../../layer";
+import { Chat, UserProfilePhoto } from "../../../layer";
 import Button from "../../button";
 import ButtonIcon from "../../buttonIcon";
 import I18n, { i18n } from "../../../lib/langPack";
@@ -28,13 +27,470 @@ import { SettingSection } from "../../sidebarLeft";
 import Row from "../../row";
 import { copyTextToClipboard } from "../../../helpers/clipboard";
 import { toast } from "../../toast";
+import { fastRaf } from "../../../helpers/schedulers";
+import { safeAssign } from "../../../helpers/object";
+import { forEachReverse } from "../../../helpers/array";
+import appPhotosManager from "../../../lib/appManagers/appPhotosManager";
+import renderImageFromUrl from "../../../helpers/dom/renderImageFromUrl";
 
 let setText = (text: string, row: Row) => {
-  window.requestAnimationFrame(() => {
+  fastRaf(() => {
     row.title.innerHTML = text;
     row.container.style.display = '';
   });
 };
+
+type ListLoaderResult<T> = {count: number, items: any[]};
+class ListLoader<T> {
+  public current: T;
+  public previous: T[] = [];
+  public next: T[] = [];
+
+  public tempId = 0;
+  public loadMore: (anchor: T, older: boolean) => Promise<ListLoaderResult<T>>;
+  public processItem: (item: any) => false | T;
+  public loadCount = 50;
+  public reverse = false; // reverse means next = higher msgid
+
+  public loadedAllUp = false;
+  public loadedAllDown = false;
+  public loadPromiseUp: Promise<void>;
+  public loadPromiseDown: Promise<void>;
+
+  constructor(options: {
+    loadMore: ListLoader<T>['loadMore'],
+    loadCount: ListLoader<T>['loadCount'],
+    processItem?: ListLoader<T>['processItem'],
+  }) {
+    safeAssign(this, options);
+
+
+  }
+
+  public go(length: number) {
+    let items: T[], item: T;
+    if(length > 0) {
+      items = this.next.splice(0, length);
+      item = items.pop();
+      this.previous.push(...items);
+    } else {
+      items = this.previous.splice(this.previous.length - length, length);
+      item = items.shift();
+      this.next.unshift(...items);
+    }
+  }
+
+  public load(older: boolean) {
+    if(older && this.loadedAllDown) return Promise.resolve();
+    else if(!older && this.loadedAllUp) return Promise.resolve();
+
+    if(older && this.loadPromiseDown) return this.loadPromiseDown;
+    else if(!older && this.loadPromiseUp) return this.loadPromiseUp;
+
+    /* const loadCount = 50;
+    const backLimit = older ? 0 : loadCount; */
+  
+    let anchor: T;
+    if(older) {
+      anchor = this.reverse ? this.previous[0] : this.next[this.next.length - 1];
+    } else {
+      anchor = this.reverse ? this.next[this.next.length - 1] : this.previous[0];
+    }
+
+    const promise = this.loadMore(anchor, older).then(result => {
+      if(result.items.length < this.loadCount) {
+        if(older) this.loadedAllDown = true;
+        else this.loadedAllUp = true;
+      }
+
+      const method = older ? result.items.forEach.bind(result.items) : forEachReverse.bind(null, result.items);
+      method((item: any) => {
+        const processed = this.processItem ? this.processItem(item) : item;
+
+        if(!processed) return;
+
+        if(older) {
+          if(this.reverse) this.previous.unshift(processed);
+          else this.next.push(processed);
+        } else {
+          if(this.reverse) this.next.push(processed);
+          else this.previous.unshift(processed);
+        }
+      });
+    }, () => {}).then(() => {
+      if(older) this.loadPromiseDown = null;
+      else this.loadPromiseUp = null;
+    });
+
+    if(older) this.loadPromiseDown = promise;
+    else this.loadPromiseUp = promise;
+
+    return promise;
+  }
+}
+
+class PeerProfileAvatars {
+  public static BASE_CLASS = 'profile-avatars';
+  public container: HTMLElement;
+  public avatars: HTMLElement;
+  public info: HTMLElement;
+  public listLoader: ListLoader<string>;
+  public peerId: number;
+
+  constructor() {
+    this.container = document.createElement('div');
+    this.container.classList.add(PeerProfileAvatars.BASE_CLASS + '-container');
+
+    this.avatars = document.createElement('div');
+    this.avatars.classList.add(PeerProfileAvatars.BASE_CLASS + '-avatars');
+
+    this.info = document.createElement('div');
+    this.info.classList.add(PeerProfileAvatars.BASE_CLASS + '-info');
+
+    this.container.append(this.avatars, this.info);
+
+    attachClickEvent(this.container, (_e) => {
+      const rect = this.container.getBoundingClientRect();
+
+      const e = (_e as TouchEvent).touches ? (_e as TouchEvent).touches[0] : _e as MouseEvent;
+      const x = e.pageX;
+
+      const centerX = rect.right - (rect.width / 2);
+      const toRight = x > centerX;
+
+      const id = this.listLoader.previous.length;
+      const nextId = Math.max(0, id + (toRight ? 1 : -1));
+      this.avatars.style.transform = `translateX(-${100 * nextId}%)`;
+    });
+  }
+
+  public setPeer(peerId: number) {
+    this.peerId = peerId;
+
+    const photo = appPeersManager.getPeerPhoto(peerId);
+    if(!photo) {
+      return;
+    }
+
+    const loadCount = 50;
+    const listLoader: PeerProfileAvatars['listLoader'] = this.listLoader = new ListLoader<string>({
+      loadCount,
+      loadMore: (anchor, older) => {
+        return appPhotosManager.getUserPhotos(peerId, anchor || listLoader.current, loadCount).then(result => {
+          return {
+            count: result.count,
+            items: result.photos
+          };
+        });
+      },
+      processItem: this.processItem
+    });
+
+    listLoader.current = (photo as UserProfilePhoto.userProfilePhoto).photo_id;
+    this.processItem(listLoader.current);
+
+    listLoader.load(true);
+  }
+
+  public processItem = (photoId: string) => {
+    const avatar = document.createElement('div');
+    avatar.classList.add(PeerProfileAvatars.BASE_CLASS + '-avatar');
+
+    const photo = appPhotosManager.getPhoto(photoId);
+    if(photo) {
+      appPhotosManager.preloadPhoto(photo, appPhotosManager.choosePhotoSize(photo, 420, 420, false)).then(() => {
+        const img = new Image();
+        renderImageFromUrl(img, photo.url, () => {
+          avatar.append(img);
+        });
+      });
+    } else {
+      const photo = appPeersManager.getPeerPhoto(this.peerId);
+      appProfileManager.putAvatar(avatar, this.peerId, photo, 'photo_big');
+    }
+
+    this.avatars.append(avatar);
+
+    return photoId;
+  };
+}
+
+class PeerProfile {
+  public element: HTMLElement;
+  private avatars: PeerProfileAvatars;
+  private avatar: AvatarElement;
+  private section: SettingSection;
+  private name: HTMLDivElement;
+  private subtitle: HTMLDivElement;
+  private bio: Row;
+  private username: Row;
+  private phone: Row;
+  private notifications: Row;
+  
+  private cleaned: boolean;
+  private setBioTimeout: number;
+  private setPeerStatusInterval: number;
+
+  private peerId = 0;
+  private threadId: number;
+
+  public init() {
+    this.init = null;
+
+    this.element = document.createElement('div');
+    this.element.classList.add('profile-content');
+
+    this.section = new SettingSection({
+      noDelimiter: true
+    });
+
+    this.avatars = new PeerProfileAvatars();
+
+    this.avatar = new AvatarElement();
+    this.avatar.classList.add('profile-avatar', 'avatar-120');
+    this.avatar.setAttribute('dialog', '1');
+    this.avatar.setAttribute('clickable', '');
+
+    this.name = document.createElement('div');
+    this.name.classList.add('profile-name');
+
+    this.subtitle = document.createElement('div');
+    this.subtitle.classList.add('profile-subtitle');
+
+    this.bio = new Row({
+      title: ' ',
+      subtitleLangKey: 'UserBio',
+      icon: 'info',
+      clickable: (e) => {
+        if((e.target as HTMLElement).tagName === 'A') {
+          return;
+        }
+        
+        appProfileManager.getProfileByPeerId(this.peerId).then(full => {
+          copyTextToClipboard(full.about);
+          toast(I18n.format('BioCopied', true));
+        });
+      }
+    });
+
+    this.bio.title.classList.add('pre-wrap');
+
+    this.username = new Row({
+      title: ' ',
+      subtitleLangKey: 'Username',
+      icon: 'username',
+      clickable: () => {
+        const peer: Channel | User = appPeersManager.getPeer(this.peerId);
+        copyTextToClipboard('@' + peer.username);
+        toast(I18n.format('UsernameCopied', true));
+      }
+    });
+
+    this.phone = new Row({
+      title: ' ',
+      subtitleLangKey: 'Phone',
+      icon: 'phone',
+      clickable: () => {
+        const peer: User = appUsersManager.getUser(this.peerId);
+        copyTextToClipboard('+' + peer.phone);
+        toast(I18n.format('PhoneCopied', true));
+      }
+    });
+
+    this.notifications = new Row({
+      checkboxField: new CheckboxField({text: 'Notifications'})
+    });
+    
+    this.section.content.append(/* this.name, this.subtitle, */ 
+      this.phone.container, this.username.container, this.bio.container, this.notifications.container);
+    this.element.append(this.avatars.container, this.section.container);
+
+    this.notifications.checkboxField.input.addEventListener('change', (e) => {
+      if(!e.isTrusted) {
+        return;
+      }
+
+      //let checked = this.notificationsCheckbox.checked;
+      appMessagesManager.mutePeer(this.peerId);
+    });
+
+    rootScope.on('dialog_notify_settings', (dialog) => {
+      if(this.peerId === dialog.peerId) {
+        const muted = appNotificationsManager.isPeerLocalMuted(this.peerId, false);
+        this.notifications.checkboxField.checked = !muted;
+      }
+    });
+
+    rootScope.on('peer_typings', (e) => {
+      const {peerId} = e;
+
+      if(this.peerId === peerId) {
+        this.setPeerStatus();
+      }
+    });
+
+    rootScope.on('peer_bio_edit', (peerId) => {
+      if(peerId === this.peerId) {
+        this.setBio(true);
+      }
+    });
+
+    rootScope.on('user_update', (e) => {
+      const userId = e;
+
+      if(this.peerId === userId) {
+        this.setPeerStatus();
+      }
+    });
+
+    this.setPeerStatusInterval = window.setInterval(this.setPeerStatus, 60e3);
+  }
+
+  public setPeerStatus = (needClear = false) => {
+    if(!this.peerId) return;
+
+    const peerId = this.peerId;
+    if(needClear) {
+      this.subtitle.innerHTML = '‎'; // ! HERE U CAN FIND WHITESPACE
+    }
+
+    appImManager.getPeerStatus(this.peerId).then((subtitle) => {
+      if(peerId !== this.peerId) {
+        return;
+      }
+
+      this.subtitle.textContent = '';
+      this.subtitle.append(subtitle || '');
+    });
+  };
+
+  public cleanupHTML() {
+    this.bio.container.style.display = 'none';
+    this.phone.container.style.display = 'none';
+    this.username.container.style.display = 'none';
+    this.notifications.container.style.display = '';
+    this.notifications.checkboxField.checked = true;
+    if(this.setBioTimeout) {
+      window.clearTimeout(this.setBioTimeout);
+      this.setBioTimeout = 0;
+    }
+  }
+
+  public fillProfileElements() {
+    if(!this.cleaned) return;
+    this.cleaned = false;
+    
+    const peerId = this.peerId;
+
+    this.cleanupHTML();
+
+    this.avatar.setAttribute('peer', '' + peerId);
+
+    this.avatars.setPeer(peerId);
+    this.avatars.info.append(this.name, this.subtitle);
+
+    // username
+    if(peerId !== rootScope.myId) {
+      let username = appPeersManager.getPeerUsername(peerId);
+      if(username) {
+        setText(appPeersManager.getPeerUsername(peerId), this.username);
+      }
+      
+      const muted = appNotificationsManager.isPeerLocalMuted(peerId, false);
+      this.notifications.checkboxField.checked = !muted;
+    } else {
+      window.requestAnimationFrame(() => {
+        this.notifications.container.style.display = 'none';
+      });
+    }
+    
+    //let membersLi = this.profileTabs.firstElementChild.children[0] as HTMLLIElement;
+    if(peerId > 0) {
+      //membersLi.style.display = 'none';
+
+      let user = appUsersManager.getUser(peerId);
+      if(user.phone && peerId !== rootScope.myId) {
+        setText(user.rPhone, this.phone);
+      }
+    }/*  else {
+      //membersLi.style.display = appPeersManager.isBroadcast(peerId) ? 'none' : '';
+    } */
+
+    this.setBio();
+
+    replaceContent(this.name, new PeerTitle({
+      peerId,
+      dialog: true
+    }).element);
+
+    this.setPeerStatus(true);
+  }
+
+  public setBio(override?: true) {
+    if(this.setBioTimeout) {
+      window.clearTimeout(this.setBioTimeout);
+      this.setBioTimeout = 0;
+    }
+
+    const peerId = this.peerId;
+    const threadId = this.threadId;
+
+    if(!peerId) {
+      return;
+    }
+
+    let promise: Promise<boolean>;
+    if(peerId > 0) {
+      promise = appProfileManager.getProfile(peerId, override).then(userFull => {
+        if(this.peerId !== peerId || this.threadId !== threadId) {
+          //this.log.warn('peer changed');
+          return false;
+        }
+        
+        if(userFull.rAbout && peerId !== rootScope.myId) {
+          setText(userFull.rAbout, this.bio);
+        }
+        
+        //this.log('userFull', userFull);
+        return true;
+      });
+    } else {
+      promise = appProfileManager.getChatFull(-peerId, override).then((chatFull) => {
+        if(this.peerId !== peerId || this.threadId !== threadId) {
+          //this.log.warn('peer changed');
+          return false;
+        }
+        
+        //this.log('chatInfo res 2:', chatFull);
+        
+        if(chatFull.about) {
+          setText(RichTextProcessor.wrapRichText(chatFull.about), this.bio);
+        }
+
+        return true;
+      });
+    }
+
+    promise.then((canSetNext) => {
+      if(canSetNext) {
+        this.setBioTimeout = window.setTimeout(() => this.setBio(true), 60e3);
+      }
+    });
+  }
+
+  public setPeer(peerId: number, threadId = 0) {
+    if(this.peerId === peerId && this.threadId === peerId) return;
+
+    if(this.init) {
+      this.init();
+    }
+
+    this.peerId = peerId;
+    this.threadId = threadId;
+    
+    this.cleaned = true;
+  }
+}
 
 // TODO: отредактированное сообщение не изменится
 export default class AppSharedMediaTab extends SliderSuperTab {
@@ -43,17 +499,6 @@ export default class AppSharedMediaTab extends SliderSuperTab {
   private peerId = 0;
   private threadId = 0;
 
-  public profileContentEl: HTMLDivElement;
-  public profileElements: {
-    avatar: AvatarElement,
-    name: HTMLDivElement,
-    subtitle: HTMLDivElement,
-    bio: Row,
-    username: Row,
-    phone: Row,
-    notifications: Row
-  } = {} as any;
-
   public historiesStorage: {
     [peerId: number]: Partial<{
       [type in SearchSuperType]: {mid: number, peerId: number}[]
@@ -61,11 +506,10 @@ export default class AppSharedMediaTab extends SliderSuperTab {
   } = {};
 
   private log = logger('SM'/* , LogLevels.error */);
-  setPeerStatusInterval: number;
-  cleaned: boolean;
-  searchSuper: AppSearchSuper;
+  private cleaned: boolean;
+  private searchSuper: AppSearchSuper;
 
-  private setBioTimeout: number;
+  public profile: PeerProfile;
 
   constructor(slider: SidebarSlider) {
     super(slider, false);
@@ -90,7 +534,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     const transitionFirstItem = document.createElement('div');
     transitionFirstItem.classList.add('transition-item');
 
-    this.title.append(i18n('Telegram.PeerInfoController'));
+    this.title.append(i18n('Profile'));
     this.editBtn = ButtonIcon('edit');
     //const moreBtn = ButtonIcon('more');
 
@@ -109,73 +553,11 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     this.header.append(transitionContainer);
 
     // * body
+
+    this.profile = new PeerProfile();
+    this.profile.init();
     
-    this.profileContentEl = document.createElement('div');
-    this.profileContentEl.classList.add('profile-content');
-
-    const section = new SettingSection({
-      noDelimiter: true
-    });
-
-    this.profileElements.avatar = new AvatarElement();
-    this.profileElements.avatar.classList.add('profile-avatar', 'avatar-120');
-    this.profileElements.avatar.setAttribute('dialog', '1');
-    this.profileElements.avatar.setAttribute('clickable', '');
-
-    this.profileElements.name = document.createElement('div');
-    this.profileElements.name.classList.add('profile-name');
-
-    this.profileElements.subtitle = document.createElement('div');
-    this.profileElements.subtitle.classList.add('profile-subtitle');
-
-    this.profileElements.bio = new Row({
-      title: ' ',
-      subtitleLangKey: 'UserBio',
-      icon: 'info',
-      clickable: (e) => {
-        if((e.target as HTMLElement).tagName === 'A') {
-          return;
-        }
-        
-        appProfileManager.getProfileByPeerId(this.peerId).then(full => {
-          copyTextToClipboard(full.about);
-          toast(I18n.format('BioCopied', true));
-        });
-      }
-    });
-
-    this.profileElements.bio.title.classList.add('pre-wrap');
-
-    this.profileElements.username = new Row({
-      title: ' ',
-      subtitleLangKey: 'Username',
-      icon: 'username',
-      clickable: () => {
-        const peer: Channel | User = appPeersManager.getPeer(this.peerId);
-        copyTextToClipboard('@' + peer.username);
-        toast(I18n.format('UsernameCopied', true));
-      }
-    });
-
-    this.profileElements.phone = new Row({
-      title: ' ',
-      subtitleLangKey: 'Phone',
-      icon: 'phone',
-      clickable: () => {
-        const peer: User = appUsersManager.getUser(this.peerId);
-        copyTextToClipboard('+' + peer.phone);
-        toast(I18n.format('PhoneCopied', true));
-      }
-    });
-
-    this.profileElements.notifications = new Row({
-      checkboxField: new CheckboxField({text: 'Notifications'})
-    });
-    
-    section.content.append(this.profileElements.avatar, this.profileElements.name, this.profileElements.subtitle, 
-      this.profileElements.bio.container, this.profileElements.username.container, this.profileElements.phone.container, this.profileElements.notifications.container);
-    this.profileContentEl.append(section.container);
-    this.scrollable.append(this.profileContentEl);
+    this.scrollable.append(this.profile.element);
 
     const HEADER_HEIGHT = 56;
     this.scrollable.onAdditionalScroll = () => {
@@ -229,46 +611,6 @@ export default class AppSharedMediaTab extends SliderSuperTab {
 
     //this.container.prepend(this.closeBtn.parentElement);
 
-    this.profileElements.notifications.checkboxField.input.addEventListener('change', (e) => {
-      if(!e.isTrusted) {
-        return;
-      }
-
-      //let checked = this.profileElements.notificationsCheckbox.checked;
-      appMessagesManager.mutePeer(this.peerId);
-    });
-
-    rootScope.on('dialog_notify_settings', (dialog) => {
-      if(this.peerId === dialog.peerId) {
-        const muted = appNotificationsManager.isPeerLocalMuted(this.peerId, false);
-        this.profileElements.notifications.checkboxField.checked = !muted;
-      }
-    });
-
-    rootScope.on('peer_typings', (e) => {
-      const {peerId} = e;
-
-      if(this.peerId === peerId) {
-        this.setPeerStatus();
-      }
-    });
-
-    rootScope.on('peer_bio_edit', (peerId) => {
-      if(peerId === this.peerId) {
-        this.setBio(true);
-      }
-    });
-
-    rootScope.on('user_update', (e) => {
-      const userId = e;
-
-      if(this.peerId === userId) {
-        this.setPeerStatus();
-      }
-    });
-
-    this.setPeerStatusInterval = window.setInterval(this.setPeerStatus, 60e3);
-
     this.searchSuper = new AppSearchSuper([{
       inputFilter: 'inputMessagesFilterPhotoVideo',
       name: 'SharedMediaTab2',
@@ -287,26 +629,8 @@ export default class AppSharedMediaTab extends SliderSuperTab {
       type: 'music'
     }], this.scrollable/* , undefined, undefined, false */);
 
-    this.profileContentEl.append(this.searchSuper.container);
+    this.profile.element.append(this.searchSuper.container);
   }
-
-  public setPeerStatus = (needClear = false) => {
-    if(!this.peerId) return;
-
-    const peerId = this.peerId;
-    if(needClear) {
-      this.profileElements.subtitle.innerHTML = '‎'; // ! HERE U CAN FIND WHITESPACE
-    }
-
-    appImManager.getPeerStatus(this.peerId).then((subtitle) => {
-      if(peerId !== this.peerId) {
-        return;
-      }
-
-      this.profileElements.subtitle.textContent = '';
-      this.profileElements.subtitle.append(subtitle || '');
-    });
-  };
 
   public renderNewMessages(peerId: number, mids: number[]) {
     if(this.init) return; // * not inited yet
@@ -369,17 +693,9 @@ export default class AppSharedMediaTab extends SliderSuperTab {
   }
 
   public cleanupHTML() {
-    this.profileElements.bio.container.style.display = 'none';
-    this.profileElements.phone.container.style.display = 'none';
-    this.profileElements.username.container.style.display = 'none';
-    this.profileElements.notifications.container.style.display = '';
-    this.profileElements.notifications.checkboxField.checked = true;
+    this.profile.cleanupHTML();
+    
     this.editBtn.style.display = 'none';
-    if(this.setBioTimeout) {
-      window.clearTimeout(this.setBioTimeout);
-      this.setBioTimeout = 0;
-    }
-
     this.searchSuper.cleanupHTML();
     this.searchSuper.selectTab(0, false);
   }
@@ -403,122 +719,28 @@ export default class AppSharedMediaTab extends SliderSuperTab {
       //threadId, 
       historyStorage: this.historiesStorage[peerId] ?? (this.historiesStorage[peerId] = {})
     });
+
+    this.profile.setPeer(peerId, threadId);
     this.cleaned = true;
   }
 
-  public loadSidebarMedia(single: boolean) {
-    this.searchSuper.load(single);
-  }
-
   public fillProfileElements() {
-    if(!this.cleaned) return;
-    this.cleaned = false;
-    
-    const peerId = this.peerId;
+    this.profile.fillProfileElements();
 
-    this.cleanupHTML();
-
-    this.profileElements.avatar.setAttribute('peer', '' + peerId);
-
-    // username
-    if(peerId !== rootScope.myId) {
-      let username = appPeersManager.getPeerUsername(peerId);
-      if(username) {
-        setText(appPeersManager.getPeerUsername(peerId), this.profileElements.username);
-      }
-      
-      const muted = appNotificationsManager.isPeerLocalMuted(peerId, false);
-      this.profileElements.notifications.checkboxField.checked = !muted;
-    } else {
-      window.requestAnimationFrame(() => {
-        this.profileElements.notifications.container.style.display = 'none';
-      });
-    }
-    
-    //let membersLi = this.profileTabs.firstElementChild.children[0] as HTMLLIElement;
-    if(peerId > 0) {
-      //membersLi.style.display = 'none';
-
-      let user = appUsersManager.getUser(peerId);
-      if(user.phone && peerId !== rootScope.myId) {
-        setText(user.rPhone, this.profileElements.phone);
-      }
-    }/*  else {
-      //membersLi.style.display = appPeersManager.isBroadcast(peerId) ? 'none' : '';
-    } */
-
-    this.setBio();
-
-    this.profileElements.name.innerHTML = '';
-    this.profileElements.name.append(new PeerTitle({
-      peerId,
-      dialog: true
-    }).element);
-    
-    if(peerId > 0) {
-      if(peerId !== rootScope.myId && appUsersManager.isContact(peerId)) {
+    if(this.peerId > 0) {
+      if(this.peerId !== rootScope.myId && appUsersManager.isContact(this.peerId)) {
         this.editBtn.style.display = '';
       }
     } else {
-      const chat: Chat = appChatsManager.getChat(-peerId);
+      const chat: Chat = appChatsManager.getChat(-this.peerId);
       if(chat._ === 'chat' || (chat as Chat.channel).admin_rights) {
         this.editBtn.style.display = '';
       }
     }
-
-    this.setPeerStatus(true);
   }
 
-  public setBio(override?: true) {
-    if(this.setBioTimeout) {
-      window.clearTimeout(this.setBioTimeout);
-      this.setBioTimeout = 0;
-    }
-
-    const peerId = this.peerId;
-    const threadId = this.threadId;
-
-    if(!peerId) {
-      return;
-    }
-
-    let promise: Promise<boolean>;
-    if(peerId > 0) {
-      promise = appProfileManager.getProfile(peerId, override).then(userFull => {
-        if(this.peerId !== peerId || this.threadId !== threadId) {
-          this.log.warn('peer changed');
-          return false;
-        }
-        
-        if(userFull.rAbout && peerId !== rootScope.myId) {
-          setText(userFull.rAbout, this.profileElements.bio);
-        }
-        
-        //this.log('userFull', userFull);
-        return true;
-      });
-    } else {
-      promise = appProfileManager.getChatFull(-peerId, override).then((chatFull) => {
-        if(this.peerId !== peerId || this.threadId !== threadId) {
-          this.log.warn('peer changed');
-          return false;
-        }
-        
-        //this.log('chatInfo res 2:', chatFull);
-        
-        if(chatFull.about) {
-          setText(RichTextProcessor.wrapRichText(chatFull.about), this.profileElements.bio);
-        }
-
-        return true;
-      });
-    }
-
-    promise.then((canSetNext) => {
-      if(canSetNext) {
-        this.setBioTimeout = window.setTimeout(() => this.setBio(true), 60e3);
-      }
-    });
+  public loadSidebarMedia(single: boolean) {
+    this.searchSuper.load(single);
   }
 
   onOpenAfterTimeout() {

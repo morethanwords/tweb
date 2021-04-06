@@ -41,7 +41,7 @@
 }
 
 .drop {
-  background-color: #fff;
+  background-color: var(--surface-color);
   position: relative;
   //height: 100%;
   border-radius: $border-radius-big;
