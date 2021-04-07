@@ -20,13 +20,17 @@
       height: inherit;
       display: flex;
       flex-wrap: nowrap;
-
+      transform: translateX(0);
+      //transition: transform .2s ease-in-out;
     }
 
     &-avatar {
       width: inherit;
       height: inherit;
+      min-width: 100%;
+      min-height: 100%;
       display: flex;
+      background-color: #000;
 
       /* img, video {
         width: 100%;
@@ -55,6 +59,30 @@
 
       .profile-subtitle {
         opacity: .7;
+      }
+    }
+
+    &-tabs {
+      display: flex;
+      position: absolute;
+      top: .5rem;
+      left: .375rem;
+      right: .375rem;
+      height: .125rem;
+    }
+
+    &-tab {
+      flex: 1 1 auto;
+      border-radius: 4px;
+      margin: 0 .125rem;
+      background-color: var(--secondary-color);
+      opacity: .3;
+      transition: opacity .2s ease-in-out;
+      //min-width: 1.6875rem;
+      height: inherit;
+
+      &.active {
+        opacity: 1;
       }
     }
   }
