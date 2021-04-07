@@ -10,7 +10,7 @@ import AppSearchSuper, { SearchSuperType } from "../../appSearchSuper.";
 import AvatarElement from "../../avatar";
 import SidebarSlider, { SliderSuperTab } from "../../slider";
 import CheckboxField from "../../checkboxField";
-import { attachClickEvent, replaceContent } from "../../../helpers/dom";
+import { attachClickEvent, replaceContent, whichChild } from "../../../helpers/dom";
 import appSidebarRight from "..";
 import { TransitionSlider } from "../../transition";
 import appNotificationsManager from "../../../lib/appManagers/appNotificationsManager";
@@ -32,6 +32,7 @@ import { safeAssign } from "../../../helpers/object";
 import { forEachReverse } from "../../../helpers/array";
 import appPhotosManager from "../../../lib/appManagers/appPhotosManager";
 import renderImageFromUrl from "../../../helpers/dom/renderImageFromUrl";
+import SwipeHandler from "../../swipeHandler";
 
 let setText = (text: string, row: Row) => {
   fastRaf(() => {
@@ -175,7 +176,13 @@ class PeerProfileAvatars {
 
     this.container.append(this.avatars, this.info, this.tabs);
 
+    let cancel = false;
     attachClickEvent(this.container, (_e) => {
+      if(cancel) {
+        cancel = false;
+        return;
+      }
+
       const rect = this.container.getBoundingClientRect();
 
       const e = (_e as TouchEvent).touches ? (_e as TouchEvent).touches[0] : _e as MouseEvent;
@@ -184,7 +191,57 @@ class PeerProfileAvatars {
       const centerX = rect.right - (rect.width / 2);
       const toRight = x > centerX;
 
-      this.listLoader.go(toRight ? 1 : -1);
+      // this.avatars.classList.remove('no-transition');
+      // fastRaf(() => {
+        this.listLoader.go(toRight ? 1 : -1);
+      // });
+    });
+
+    let width = 0, x = 0, lastDiffX = 0, lastIndex = 0, minX = 0;
+    const swipeHandler = new SwipeHandler({
+      element: this.avatars, 
+      onSwipe: (xDiff, yDiff) => {
+        lastDiffX = xDiff;
+        let lastX = x + xDiff * -2;
+        if(lastX > 0) lastX = 0;
+        else if(lastX < minX) lastX = minX;
+
+        this.avatars.style.transform = `translate3d(${lastX}px, 0, -1px) scale(2)`;
+        //console.log(xDiff, yDiff);
+        return false;
+      }, 
+      verifyTouchTarget: (e) => {
+        if(this.tabs.classList.contains('hide')) {
+          return false;
+        }
+
+        return true;
+      }, 
+      onFirstSwipe: () => {
+        const rect = this.avatars.getBoundingClientRect();
+        width = rect.width;
+        minX = -width * (this.tabs.childElementCount - 1);
+
+        /* lastIndex = whichChild(this.tabs.querySelector('.active'));
+        x = -width * lastIndex; */
+        x = rect.left - this.container.getBoundingClientRect().left;
+        
+        this.avatars.style.transform = `translate3d(${x}px, 0, -1px) scale(2)`;
+
+        this.avatars.classList.add('no-transition');
+        void this.avatars.offsetLeft; // reflow
+      },
+      onReset: () => {
+        const addIndex = Math.ceil(Math.abs(lastDiffX) / (width / 2)) * (lastDiffX >= 0 ? 1 : -1);
+        cancel = true;
+        
+        //console.log(addIndex);
+
+        this.avatars.classList.remove('no-transition');
+        fastRaf(() => {
+          this.listLoader.go(addIndex);
+        });
+      }
     });
   }
 
@@ -211,7 +268,7 @@ class PeerProfileAvatars {
       onJump: (item, older) => {
         const id = this.listLoader.index;
         //const nextId = Math.max(0, id);
-        this.avatars.style.transform = `translateX(-${100 * id}%)`;
+        this.avatars.style.transform = `translate3d(-${200 * id}%, 0, -1px) scale(2)`;
 
         const activeTab = this.tabs.querySelector('.active');
         if(activeTab) activeTab.classList.remove('active');
@@ -235,6 +292,8 @@ class PeerProfileAvatars {
     if(this.tabs.childElementCount === 1) {
       tab.classList.add('active');
     }
+
+    this.tabs.classList.toggle('hide', this.tabs.childElementCount <= 1);
   }
 
   public processItem = (photoId: string) => {
@@ -242,16 +301,19 @@ class PeerProfileAvatars {
     avatar.classList.add(PeerProfileAvatars.BASE_CLASS + '-avatar');
 
     const photo = appPhotosManager.getPhoto(photoId);
+    const img = new Image();
+    img.classList.add(PeerProfileAvatars.BASE_CLASS + '-avatar-image');
+    img.draggable = false;
+
     if(photo) {
       appPhotosManager.preloadPhoto(photo, appPhotosManager.choosePhotoSize(photo, 420, 420, false)).then(() => {
-        const img = new Image();
         renderImageFromUrl(img, photo.url, () => {
           avatar.append(img);
         });
       });
     } else {
       const photo = appPeersManager.getPeerPhoto(this.peerId);
-      appProfileManager.putAvatar(avatar, this.peerId, photo, 'photo_big');
+      appProfileManager.putAvatar(avatar, this.peerId, photo, 'photo_big', img);
     }
 
     this.avatars.append(avatar);
@@ -636,18 +698,9 @@ export default class AppSharedMediaTab extends SliderSuperTab {
       transition(+isSharedMedia);
 
       if(!isSharedMedia) {
-        this.searchSuper.goingHard = {};
+        this.searchSuper.cleanScrollPositions();
       }
     };
-
-    this.scrollable.container.addEventListener('scroll', () => {
-      if(this.profile.avatars) {
-        const scrollTop = this.scrollable.scrollTop;
-        const y = scrollTop / 2;
-        this.profile.avatars.avatars.style.transform = `translateY(${y}px)`;
-        //this.profile.avatars.tabs.style.transform = `translateY(${scrollTop}px)`;
-      }
-    });
 
     const transition = TransitionSlider(transitionContainer, 'slide-fade', 400, null, false);
 
@@ -686,25 +739,30 @@ export default class AppSharedMediaTab extends SliderSuperTab {
 
     //this.container.prepend(this.closeBtn.parentElement);
 
-    this.searchSuper = new AppSearchSuper([{
-      inputFilter: 'inputMessagesFilterPhotoVideo',
-      name: 'SharedMediaTab2',
-      type: 'media'
-    }, {
-      inputFilter: 'inputMessagesFilterDocument',
-      name: 'SharedFilesTab2',
-      type: 'files'
-    }, {
-      inputFilter: 'inputMessagesFilterUrl',
-      name: 'SharedLinksTab2',
-      type: 'links'
-    }, {
-      inputFilter: 'inputMessagesFilterMusic',
-      name: 'SharedMusicTab2',
-      type: 'music'
-    }], this.scrollable/* , undefined, undefined, false */);
-
-    this.profile.element.append(this.searchSuper.container);
+    this.searchSuper = new AppSearchSuper({
+      mediaTabs: [{
+        inputFilter: 'inputMessagesFilterEmpty',
+        name: 'PeerMedia.Members',
+        type: 'members'
+      }, {
+        inputFilter: 'inputMessagesFilterPhotoVideo',
+        name: 'SharedMediaTab2',
+        type: 'media'
+      }, {
+        inputFilter: 'inputMessagesFilterDocument',
+        name: 'SharedFilesTab2',
+        type: 'files'
+      }, {
+        inputFilter: 'inputMessagesFilterUrl',
+        name: 'SharedLinksTab2',
+        type: 'links'
+      }, {
+        inputFilter: 'inputMessagesFilterMusic',
+        name: 'SharedMusicTab2',
+        type: 'music'
+      }], 
+      scrollable: this.scrollable
+    });
   }
 
   public renderNewMessages(peerId: number, mids: number[]) {
@@ -713,7 +771,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     if(!this.historiesStorage[peerId]) return;
     
     mids = mids.slice().reverse(); // ! because it will be ascend sorted array
-    for(const type of this.searchSuper.types) {
+    for(const type of this.searchSuper.mediaTabs) {
       const inputFilter = type.inputFilter;
       const filtered = this.searchSuper.filterMessagesByType(mids.map(mid => appMessagesManager.getMessageByPeer(peerId, mid)), inputFilter);
       if(filtered.length) {
@@ -737,7 +795,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     if(!this.historiesStorage[peerId]) return;
 
     for(const mid of mids) {
-      for(const type of this.searchSuper.types) {
+      for(const type of this.searchSuper.mediaTabs) {
         const inputFilter = type.inputFilter;
 
         if(!this.historiesStorage[peerId][inputFilter]) continue;
@@ -773,6 +831,10 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     this.editBtn.style.display = 'none';
     this.searchSuper.cleanupHTML();
     this.searchSuper.selectTab(0, false);
+
+    if(!this.searchSuper.container.parentElement) {
+      this.profile.element.append(this.searchSuper.container);
+    }
   }
 
   public setLoadMutex(promise: Promise<any>) {
@@ -800,6 +862,8 @@ export default class AppSharedMediaTab extends SliderSuperTab {
   }
 
   public fillProfileElements() {
+    this.cleanupHTML();
+
     this.profile.fillProfileElements();
 
     if(this.peerId > 0) {

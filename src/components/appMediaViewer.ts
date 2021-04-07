@@ -194,39 +194,43 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     this.wholeDiv.addEventListener('click', this.onClick);
 
     if(isTouchSupported) {
-      const swipeHandler = new SwipeHandler(this.wholeDiv, (xDiff, yDiff) => {
-        if(VideoPlayer.isFullScreen()) {
-          return;
-        }
-        //console.log(xDiff, yDiff);
+      const swipeHandler = new SwipeHandler({
+        element: this.wholeDiv, 
+        onSwipe: (xDiff, yDiff) => {
+          if(VideoPlayer.isFullScreen()) {
+            return;
+          }
+          //console.log(xDiff, yDiff);
 
-        const percents = Math.abs(xDiff) / appPhotosManager.windowW;
-        if(percents > .2 || xDiff > 125) {
-          //console.log('will swipe', xDiff);
+          const percents = Math.abs(xDiff) / appPhotosManager.windowW;
+          if(percents > .2 || xDiff > 125) {
+            //console.log('will swipe', xDiff);
 
-          if(xDiff < 0) {
-            this.buttons.prev.click();
-          } else {
-            this.buttons.next.click();
+            if(xDiff < 0) {
+              this.buttons.prev.click();
+            } else {
+              this.buttons.next.click();
+            }
+
+            return true;
+          }
+
+          const percentsY = Math.abs(yDiff) / appPhotosManager.windowH;
+          if(percentsY > .2 || yDiff > 125) {
+            this.buttons.close.click();
+            return true;
+          }
+
+          return false;
+        }, 
+        verifyTouchTarget: (evt) => {
+          // * Fix for seek input
+          if((evt.target as HTMLElement).tagName === 'INPUT' || findUpClassName(evt.target, 'media-viewer-caption')) {
+            return false;
           }
 
           return true;
         }
-
-        const percentsY = Math.abs(yDiff) / appPhotosManager.windowH;
-        if(percentsY > .2 || yDiff > 125) {
-          this.buttons.close.click();
-          return true;
-        }
-
-        return false;
-      }, (evt) => {
-        // * Fix for seek input
-        if((evt.target as HTMLElement).tagName === 'INPUT' || findUpClassName(evt.target, 'media-viewer-caption')) {
-          return false;
-        }
-
-        return true;
       });
     }
   }
