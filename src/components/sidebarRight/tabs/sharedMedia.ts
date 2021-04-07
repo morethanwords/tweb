@@ -45,10 +45,12 @@ class ListLoader<T> {
   public current: T;
   public previous: T[] = [];
   public next: T[] = [];
+  public count: number;
 
   public tempId = 0;
   public loadMore: (anchor: T, older: boolean) => Promise<ListLoaderResult<T>>;
   public processItem: (item: any) => false | T;
+  public onJump: (item: T, older: boolean) => void;
   public loadCount = 50;
   public reverse = false; // reverse means next = higher msgid
 
@@ -61,10 +63,15 @@ class ListLoader<T> {
     loadMore: ListLoader<T>['loadMore'],
     loadCount: ListLoader<T>['loadCount'],
     processItem?: ListLoader<T>['processItem'],
+    onJump: ListLoader<T>['onJump'],
   }) {
     safeAssign(this, options);
 
 
+  }
+
+  get index() {
+    return this.count !== undefined ? this.previous.length : -1;
   }
 
   public go(length: number) {
@@ -72,12 +79,23 @@ class ListLoader<T> {
     if(length > 0) {
       items = this.next.splice(0, length);
       item = items.pop();
-      this.previous.push(...items);
+      if(!item) {
+        return;
+      }
+
+      this.previous.push(this.current, ...items);
     } else {
-      items = this.previous.splice(this.previous.length - length, length);
+      items = this.previous.splice(this.previous.length + length, -length);
       item = items.shift();
-      this.next.unshift(...items);
+      if(!item) {
+        return;
+      }
+
+      this.next.unshift(...items, this.current);
     }
+
+    this.current = item;
+    this.onJump(item, length > 0);
   }
 
   public load(older: boolean) {
@@ -101,6 +119,10 @@ class ListLoader<T> {
       if(result.items.length < this.loadCount) {
         if(older) this.loadedAllDown = true;
         else this.loadedAllUp = true;
+      }
+
+      if(this.count === undefined) {
+        this.count = result.count || result.items.length;
       }
 
       const method = older ? result.items.forEach.bind(result.items) : forEachReverse.bind(null, result.items);
@@ -134,6 +156,7 @@ class PeerProfileAvatars {
   public container: HTMLElement;
   public avatars: HTMLElement;
   public info: HTMLElement;
+  public tabs: HTMLDivElement;
   public listLoader: ListLoader<string>;
   public peerId: number;
 
@@ -147,7 +170,10 @@ class PeerProfileAvatars {
     this.info = document.createElement('div');
     this.info.classList.add(PeerProfileAvatars.BASE_CLASS + '-info');
 
-    this.container.append(this.avatars, this.info);
+    this.tabs = document.createElement('div');
+    this.tabs.classList.add(PeerProfileAvatars.BASE_CLASS + '-tabs');
+
+    this.container.append(this.avatars, this.info, this.tabs);
 
     attachClickEvent(this.container, (_e) => {
       const rect = this.container.getBoundingClientRect();
@@ -158,9 +184,7 @@ class PeerProfileAvatars {
       const centerX = rect.right - (rect.width / 2);
       const toRight = x > centerX;
 
-      const id = this.listLoader.previous.length;
-      const nextId = Math.max(0, id + (toRight ? 1 : -1));
-      this.avatars.style.transform = `translateX(-${100 * nextId}%)`;
+      this.listLoader.go(toRight ? 1 : -1);
     });
   }
 
@@ -183,13 +207,34 @@ class PeerProfileAvatars {
           };
         });
       },
-      processItem: this.processItem
+      processItem: this.processItem,
+      onJump: (item, older) => {
+        const id = this.listLoader.index;
+        //const nextId = Math.max(0, id);
+        this.avatars.style.transform = `translateX(-${100 * id}%)`;
+
+        const activeTab = this.tabs.querySelector('.active');
+        if(activeTab) activeTab.classList.remove('active');
+
+        const tab = this.tabs.children[id] as HTMLElement;
+        tab.classList.add('active');
+      }
     });
 
     listLoader.current = (photo as UserProfilePhoto.userProfilePhoto).photo_id;
     this.processItem(listLoader.current);
 
     listLoader.load(true);
+  }
+
+  public addTab() {
+    const tab = document.createElement('div');
+    tab.classList.add(PeerProfileAvatars.BASE_CLASS + '-tab');
+    this.tabs.append(tab);
+
+    if(this.tabs.childElementCount === 1) {
+      tab.classList.add('active');
+    }
   }
 
   public processItem = (photoId: string) => {
@@ -211,13 +256,15 @@ class PeerProfileAvatars {
 
     this.avatars.append(avatar);
 
+    this.addTab();
+
     return photoId;
   };
 }
 
 class PeerProfile {
   public element: HTMLElement;
-  private avatars: PeerProfileAvatars;
+  public avatars: PeerProfileAvatars;
   private avatar: AvatarElement;
   private section: SettingSection;
   private name: HTMLDivElement;
@@ -243,8 +290,6 @@ class PeerProfile {
     this.section = new SettingSection({
       noDelimiter: true
     });
-
-    this.avatars = new PeerProfileAvatars();
 
     this.avatar = new AvatarElement();
     this.avatar.classList.add('profile-avatar', 'avatar-120');
@@ -301,9 +346,8 @@ class PeerProfile {
       checkboxField: new CheckboxField({text: 'Notifications'})
     });
     
-    this.section.content.append(/* this.name, this.subtitle, */ 
-      this.phone.container, this.username.container, this.bio.container, this.notifications.container);
-    this.element.append(this.avatars.container, this.section.container);
+    this.section.content.append(this.phone.container, this.username.container, this.bio.container, this.notifications.container);
+    this.element.append(this.section.container);
 
     this.notifications.checkboxField.input.addEventListener('change', (e) => {
       if(!e.isTrusted) {
@@ -376,6 +420,31 @@ class PeerProfile {
     }
   }
 
+  public setAvatar() {
+    const photo = appPeersManager.getPeerPhoto(this.peerId);
+
+    if(photo) {
+      const oldAvatars = this.avatars;
+      this.avatars = new PeerProfileAvatars();
+      this.avatars.setPeer(this.peerId);
+      this.avatars.info.append(this.name, this.subtitle);
+
+      this.avatar.remove();
+  
+      if(oldAvatars) oldAvatars.container.replaceWith(this.avatars.container);
+      else this.element.prepend(this.avatars.container);
+    } else {
+      if(this.avatars) {
+        this.avatars.container.remove();
+        this.avatars = undefined;
+      }
+
+      this.avatar.setAttribute('peer', '' + this.peerId);
+
+      this.section.content.prepend(this.avatar, this.name, this.subtitle);
+    }
+  }
+
   public fillProfileElements() {
     if(!this.cleaned) return;
     this.cleaned = false;
@@ -384,10 +453,7 @@ class PeerProfile {
 
     this.cleanupHTML();
 
-    this.avatar.setAttribute('peer', '' + peerId);
-
-    this.avatars.setPeer(peerId);
-    this.avatars.info.append(this.name, this.subtitle);
+    this.setAvatar();
 
     // username
     if(peerId !== rootScope.myId) {
@@ -573,6 +639,15 @@ export default class AppSharedMediaTab extends SliderSuperTab {
         this.searchSuper.goingHard = {};
       }
     };
+
+    this.scrollable.container.addEventListener('scroll', () => {
+      if(this.profile.avatars) {
+        const scrollTop = this.scrollable.scrollTop;
+        const y = scrollTop / 2;
+        this.profile.avatars.avatars.style.transform = `translateY(${y}px)`;
+        //this.profile.avatars.tabs.style.transform = `translateY(${scrollTop}px)`;
+      }
+    });
 
     const transition = TransitionSlider(transitionContainer, 'slide-fade', 400, null, false);
 
