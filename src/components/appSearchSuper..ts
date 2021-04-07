@@ -1,6 +1,6 @@
 import { formatDateAccordingToToday, months } from "../helpers/date";
 import { positionElementByIndex } from "../helpers/dom";
-import { copy, getObjectKeysAndSort } from "../helpers/object";
+import { copy, getObjectKeysAndSort, safeAssign } from "../helpers/object";
 import { escapeRegExp, limitSymbols } from "../helpers/string";
 import appChatsManager from "../lib/appManagers/appChatsManager";
 import appDialogsManager from "../lib/appManagers/appDialogsManager";
@@ -25,11 +25,11 @@ import useHeavyAnimationCheck, { getHeavyAnimationPromise } from "../hooks/useHe
 import { isSafari } from "../helpers/userAgent";
 import { LangPackKey, i18n } from "../lib/langPack";
 import findUpClassName from "../helpers/dom/findUpClassName";
-import renderImageFromUrl from "../helpers/dom/renderImageFromUrl";
+import { getMiddleware } from "../helpers/middleware";
 
 //const testScroll = false;
 
-export type SearchSuperType = MyInputMessagesFilter/*  | 'chats' */;
+export type SearchSuperType = MyInputMessagesFilter/*  | 'members' */;
 export type SearchSuperContext = {
   peerId: number,
   inputFilter: MyInputMessagesFilter,
@@ -43,10 +43,20 @@ export type SearchSuperContext = {
   maxDate?: number
 };
 
+export type SearchSuperMediaType = 'members' | 'media' | 'files' | 'links' | 'music' | 'chats' | 'voice';
+export type SearchSuperMediaTab = {
+  inputFilter: SearchSuperType,
+  name: LangPackKey,
+  type: SearchSuperMediaType,
+  contentTab?: HTMLElement,
+  menuTab?: HTMLElement,
+  scroll?: {scrollTop: number, scrollHeight: number}
+};
+
 export default class AppSearchSuper {
   public tabs: {[t in SearchSuperType]: HTMLDivElement} = {} as any;
 
-  public type: SearchSuperType;
+  public mediaTab: SearchSuperMediaTab;
   public tabSelected: HTMLElement;
 
   public container: HTMLElement;
@@ -56,7 +66,7 @@ export default class AppSearchSuper {
   private prevTabId = -1;
   
   private lazyLoadQueue = new LazyLoadQueue();
-  private cleanupObj = {cleaned: false};
+  public middleware = getMiddleware();
 
   public historyStorage: Partial<{[type in SearchSuperType]: {mid: number, peerId: number}[]}> = {};
   public usedFromHistory: Partial<{[type in SearchSuperType]: number}> = {};
@@ -84,9 +94,19 @@ export default class AppSearchSuper {
 
   private searchGroupMedia: SearchGroup;
 
-  public goingHard: Partial<{[type in MyInputMessagesFilter]: {scrollTop: number, scrollHeight: number}}> = {};
+  public mediaTabsMap: Map<SearchSuperMediaType, SearchSuperMediaTab> = new Map();
 
-  constructor(public types: {inputFilter: SearchSuperType, name: LangPackKey, type: string}[], public scrollable: Scrollable, public searchGroups?: {[group in SearchGroupType]: SearchGroup}, public asChatList = false, public groupByMonth = true) {
+  // * arguments
+  public mediaTabs: SearchSuperMediaTab[];
+  public scrollable: Scrollable;
+  public searchGroups?: {[group in SearchGroupType]: SearchGroup};
+  public asChatList? = false;
+  public groupByMonth? = true;
+  public hideEmptyTabs? = true;
+
+  constructor(options: Pick<AppSearchSuper, 'mediaTabs' | 'scrollable' | 'searchGroups' | 'asChatList' | 'groupByMonth' | 'hideEmptyTabs'>) {
+    safeAssign(this, options);
+
     this.container = document.createElement('div');
     this.container.classList.add('search-super');
 
@@ -101,13 +121,13 @@ export default class AppSearchSuper {
 
     navScrollable.container.append(nav);
 
-    for(const type of types) {
+    for(const mediaTab of this.mediaTabs) {
       const menuTab = document.createElement('div');
       menuTab.classList.add('menu-horizontal-div-item');
       const span = document.createElement('span');
       const i = document.createElement('i');
 
-      span.append(i18n(type.name));
+      span.append(i18n(mediaTab.name));
       span.append(i);
 
       menuTab.append(span);
@@ -115,38 +135,29 @@ export default class AppSearchSuper {
       ripple(menuTab);
 
       this.tabsMenu.append(menuTab);
+
+      this.mediaTabsMap.set(mediaTab.type, mediaTab);
+
+      mediaTab.menuTab = menuTab;
     }
 
     this.tabsContainer = document.createElement('div');
     this.tabsContainer.classList.add('search-super-tabs-container', 'tabs-container');
 
-    for(const type of types) {
+    for(const mediaTab of this.mediaTabs) {
       const container = document.createElement('div');
-      container.classList.add('search-super-container-' + type.type/* , 'scrollable', 'scrollable-y' */);
+      container.classList.add('search-super-container-' + mediaTab.type);
 
       const content = document.createElement('div');
-      content.classList.add('search-super-content-' + type.type/* , 'scrollable', 'scrollable-y' */);
-
-      //content.style.overflowY = 'hidden';
-      /* container.style.overflow = 'visible';
-      const v = 236;
-      content.style.top = (v * -1) + 'px';
-      content.style.paddingTop = v + 'px';
-      content.style.height = `calc(100% + ${v}px)`;
-      content.style.maxHeight = `calc(100% + ${v}px)`;
-      content.addEventListener('scroll', (e) => {
-        const scrollTop = content.scrollTop;
-        if(scrollTop <= v) {
-          //this.scrollable.scrollTop = scrollTop;
-          (this.container.previousElementSibling as HTMLElement).style.transform = `translateY(-${scrollTop}px)`;
-        }
-      }); */
+      content.classList.add('search-super-content-' + mediaTab.type);
 
       container.append(content);
 
       this.tabsContainer.append(container);
 
-      this.tabs[type.inputFilter] = content;
+      this.tabs[mediaTab.inputFilter] = content;
+
+      mediaTab.contentTab = content;
     }
 
     this.container.append(navScrollableContainer, this.tabsContainer);
@@ -169,24 +180,24 @@ export default class AppSearchSuper {
       if(this.prevTabId !== -1) {
         this.onTransitionStart();
       }
+      
+      this.mediaTab.scroll = {scrollTop: this.scrollable.scrollTop, scrollHeight: this.scrollable.scrollHeight};
 
-      this.goingHard[this.type] = {scrollTop: this.scrollable.scrollTop, scrollHeight: this.scrollable.scrollHeight};
-
-      const newType = this.types[id].inputFilter;
+      const newMediaTab = this.mediaTabs[id];
       this.tabSelected = tabContent.firstElementChild as HTMLDivElement;
 
-      if(this.goingHard[newType] === undefined) {
+      if(newMediaTab.scroll === undefined) {
         const rect = this.container.getBoundingClientRect();
         const rect2 = this.container.parentElement.getBoundingClientRect();
         const diff = rect.y - rect2.y;
 
         if(this.scrollable.scrollTop > diff) {
-          this.goingHard[newType] = {scrollTop: diff, scrollHeight: 0};
+          newMediaTab.scroll = {scrollTop: diff, scrollHeight: 0};
         }
       }
 
-      if(this.goingHard[newType]) {
-        const diff = this.goingHard[this.type].scrollTop - this.goingHard[newType].scrollTop;
+      if(newMediaTab.scroll) {
+        const diff = this.mediaTab.scroll.scrollTop - newMediaTab.scroll.scrollTop;
         //console.log('what you gonna do', this.goingHard, diff);
 
         if(diff/*  && diff < 0 */) {
@@ -194,7 +205,7 @@ export default class AppSearchSuper {
         }
       }
 
-      this.type = newType;
+      this.mediaTab = newMediaTab;
       
       /* if(this.prevTabId !== -1 && nav.offsetTop) {
         this.scrollable.scrollTop -= nav.offsetTop;
@@ -213,9 +224,9 @@ export default class AppSearchSuper {
       this.scrollable.onScroll();
       
       //console.log('what y', this.tabSelected.style.transform);
-      if(this.goingHard[this.type] !== undefined) {
+      if(this.mediaTab.scroll !== undefined) {
         this.tabSelected.style.transform = '';
-        this.scrollable.scrollTop = this.goingHard[this.type].scrollTop;
+        this.scrollable.scrollTop = this.mediaTab.scroll.scrollTop;
       }
 
       this.onTransitionEnd();
@@ -241,11 +252,11 @@ export default class AppSearchSuper {
       
       const message = appMessagesManager.getMessageByPeer(peerId, mid);
       new AppMediaViewer()
-      .setSearchContext(this.copySearchContext(this.type))
+      .setSearchContext(this.copySearchContext(this.mediaTab.inputFilter))
       .openMedia(message, target, 0, false, targets.slice(0, idx), targets.slice(idx + 1));
     });
 
-    this.type = this.types[0].inputFilter;
+    this.mediaTab = this.mediaTabs[0];
 
     useHeavyAnimationCheck(() => {
       this.lazyLoadQueue.lock();
@@ -381,7 +392,7 @@ export default class AppSearchSuper {
     const elemsToAppend: {element: HTMLElement, message: any}[] = [];
     const sharedMediaDiv: HTMLElement = this.tabs[type];
     const promises: Promise<any>[] = [];
-    const middleware = this.getMiddleware();
+    const middleware = this.middleware.get();
 
     await getHeavyAnimationPromise();
     
@@ -538,23 +549,22 @@ export default class AppSearchSuper {
           
           //this.log('wrapping webpage', webpage);
           
-          previewDiv.innerHTML = RichTextProcessor.getAbbreviation(webpage.title || webpage.display_url || webpage.description || webpage.url, true);
-          previewDiv.classList.add('empty');
           if(webpage.photo) {
-            let load = () => appPhotosManager.preloadPhoto(webpage.photo.id, appPhotosManager.choosePhotoSize(webpage.photo, 60, 60))
-            .then(() => {
-              if(!middleware()) {
-                //this.log.warn('peer changed');
-                return;
-              }
-
-              previewDiv.classList.remove('empty');
-
-              previewDiv.innerText = '';
-              renderImageFromUrl(previewDiv, webpage.photo.url);
+            const res = wrapPhoto({
+              container: previewDiv,
+              message: null,
+              photo: webpage.photo,
+              boxWidth: 0,
+              boxHeight: 0,
+              withoutPreloader: true,
+              lazyLoadQueue: this.lazyLoadQueue,
+              middleware,
+              size: appPhotosManager.choosePhotoSize(webpage.photo, 60, 60, false),
+              loadPromises: promises
             });
-            
-            this.lazyLoadQueue.push({div: previewDiv, load});
+          } else {
+            previewDiv.classList.add('empty');
+            previewDiv.innerHTML = RichTextProcessor.getAbbreviation(webpage.title || webpage.display_url || webpage.description || webpage.url, true);
           }
           
           let title = webpage.rTitle || '';
@@ -624,16 +634,16 @@ export default class AppSearchSuper {
     //}
   }
 
-  private afterPerforming(length: number, tab: HTMLElement) {
-    if(tab) {
-      const parent = tab.parentElement;
+  private afterPerforming(length: number, contentTab: HTMLElement) {
+    if(contentTab) {
+      const parent = contentTab.parentElement;
       Array.from(parent.children).slice(1).forEach(child => {
         child.remove();
       });
 
       //this.contentContainer.classList.add('loaded');
 
-      if(!length && !tab.childElementCount) {
+      if(!length && !contentTab.childElementCount) {
         const div = document.createElement('div');
         div.innerText = 'Nothing interesting here yet...';
         div.classList.add('position-center', 'text-center', 'content-empty', 'no-select');
@@ -645,7 +655,7 @@ export default class AppSearchSuper {
 
   private loadChats() {
     const renderedPeerIds: Set<number> = new Set();
-    const middleware = this.getMiddleware();
+    const middleware = this.middleware.get();
 
     for(let i in this.searchGroups) {
       const group = this.searchGroups[i as SearchGroupType];
@@ -807,6 +817,135 @@ export default class AppSearchSuper {
       ]);
     } else return Promise.resolve();
   }
+
+  private loadType(mediaTab: SearchSuperMediaTab, justLoad: boolean, loadCount: number, middleware: () => boolean) {
+    const type = mediaTab.inputFilter;
+
+    if(this.loadPromises[type]) {
+      return this.loadPromises[type];
+    }
+
+    const history = this.historyStorage[type] ?? (this.historyStorage[type] = []);
+
+    if(type === 'inputMessagesFilterEmpty' && !history.length) {
+      if(!this.loadedChats) {
+        this.loadChats();
+        this.loadedChats = true;
+      }
+
+      if(!this.searchContext.query.trim() && !this.searchContext.peerId && !this.searchContext.minDate) {
+        this.loaded[type] = true;
+        return Promise.resolve();
+      }
+    }
+
+    const logStr = 'load [' + type + ']: ';
+
+    // render from cache
+    if(history.length && this.usedFromHistory[type] < history.length && !justLoad) {
+      let messages: any[] = [];
+      let used = Math.max(0, this.usedFromHistory[type]);
+      let slicedLength = 0;
+
+      do {
+        let ids = history.slice(used, used + loadCount);
+        //this.log(logStr + 'will render from cache', used, history, ids, loadCount);
+        used += ids.length;
+        slicedLength += ids.length;
+
+        messages.push(...this.filterMessagesByType(ids.map(m => appMessagesManager.getMessageByPeer(m.peerId, m.mid)), type));
+      } while(slicedLength < loadCount && used < history.length);
+      
+      // если перебор
+      /* if(slicedLength > loadCount) {
+        let diff = messages.length - loadCount;
+        messages = messages.slice(0, messages.length - diff);
+        used -= diff;
+      } */
+
+      this.usedFromHistory[type] = used;
+      //if(messages.length) {
+        return this.performSearchResult(messages, type).finally(() => {
+          setTimeout(() => {
+            this.scrollable.checkForTriggers();
+          }, 0);
+        });
+      //}
+
+      return Promise.resolve();
+    }
+    
+    let maxId = history.length ? history[history.length - 1].mid : 0;
+    
+    //this.log(logStr + 'search house of glass pre', type, maxId);
+    
+    //let loadCount = history.length ? 50 : 15;
+    return this.loadPromises[type] = appMessagesManager.getSearch({
+      peerId: this.searchContext.peerId, 
+      query: this.searchContext.query,
+      inputFilter: {_: type},
+      maxId, 
+      limit: loadCount,
+      nextRate: this.nextRates[type] ?? (this.nextRates[type] = 0),
+      threadId: this.searchContext.threadId,
+      folderId: this.searchContext.folderId,
+      minDate: this.searchContext.minDate,
+      maxDate: this.searchContext.maxDate
+    }).then(value => {
+      history.push(...value.history.map(m => ({mid: m.mid, peerId: m.peerId})));
+      
+      this.log(logStr + 'search house of glass', type, value);
+
+      if(!middleware()) {
+        //this.log.warn('peer changed');
+        return;
+      }
+
+      // ! Фикс случая, когда не загружаются документы при открытой панели разработчиков (происходит из-за того, что не совпадают критерии отбора документов в getSearch)
+      if(value.history.length < loadCount) {
+      //if((value.count || history.length === value.count) && history.length >= value.count) {
+        //this.log(logStr + 'loaded all media', value, loadCount);
+        this.loaded[type] = true;
+      }
+
+      this.nextRates[type] = value.next_rate;
+
+      if(justLoad) {
+        return Promise.resolve();
+      }
+
+      this.usedFromHistory[type] = history.length;
+
+      if(!this.loaded[type]) {
+        (this.loadPromises[type] || Promise.resolve()).then(() => {
+          setTimeout(() => {
+            if(!middleware()) return;
+            //this.log('will preload more');
+            if(this.mediaTab === mediaTab) {
+              const promise = this.load(true, true);
+              if(promise) {
+                promise.then(() => {
+                  if(!middleware()) return;
+                  //this.log('preloaded more');
+                  setTimeout(() => {
+                    this.scrollable.checkForTriggers();
+                  }, 0);
+                });
+              }
+            }
+          }, 0);
+        });
+      }
+
+      //if(value.history.length) {
+        return this.performSearchResult(this.filterMessagesByType(value.history, type), type);
+      //}
+    }).catch(err => {
+      this.log.error('load error:', err);
+    }).finally(() => {
+      this.loadPromises[type] = null;
+    });
+  }
   
   public load(single = false, justLoad = false) {
     // if(testScroll/*  || 1 === 1 */) {
@@ -818,141 +957,21 @@ export default class AppSearchSuper {
     const peerId = this.searchContext.peerId;
     this.log('load', single, peerId, this.loadPromises);
     
-    let typesToLoad = single ? [this.type] : this.types.filter(t => t.inputFilter !== this.type).map(t => t.inputFilter);
-    typesToLoad = typesToLoad.filter(type => !this.loaded[type] 
-      || (this.historyStorage[type] && this.usedFromHistory[type] < this.historyStorage[type].length));
+    let toLoad = single ? [this.mediaTab] : this.mediaTabs.filter(t => t !== this.mediaTab);
+    toLoad = toLoad.filter(mediaTab => {
+      const inputFilter = mediaTab.inputFilter;
+      return !this.loaded[inputFilter] || (this.historyStorage[inputFilter] && this.usedFromHistory[inputFilter] < this.historyStorage[inputFilter].length);
+    });
 
-    if(!typesToLoad.length) return;
+    if(!toLoad.length) {
+      return;
+    }
 
     const loadCount = justLoad ? 50 : Math.round((appPhotosManager.windowH / 130 | 0) * 3 * 1.25); // that's good for all types
-    
-    const historyStorage = this.historyStorage ?? (this.historyStorage = {});
+    const middleware = this.middleware.get();
 
-    const middleware = this.getMiddleware();
-
-    const promises: Promise<any>[] = typesToLoad.map(type => {
-      if(this.loadPromises[type]) return this.loadPromises[type];
-
-      const history = historyStorage[type] ?? (historyStorage[type] = []);
-
-      if(type === 'inputMessagesFilterEmpty' && !history.length) {
-        if(!this.loadedChats) {
-          this.loadChats();
-          this.loadedChats = true;
-        }
-
-        if(!this.searchContext.query.trim() && !this.searchContext.peerId && !this.searchContext.minDate) {
-          this.loaded[type] = true;
-          return Promise.resolve();
-        }
-      }
-
-      const logStr = 'load [' + type + ']: ';
-
-      // render from cache
-      if(history.length && this.usedFromHistory[type] < history.length && !justLoad) {
-        let messages: any[] = [];
-        let used = Math.max(0, this.usedFromHistory[type]);
-        let slicedLength = 0;
-
-        do {
-          let ids = history.slice(used, used + loadCount);
-          //this.log(logStr + 'will render from cache', used, history, ids, loadCount);
-          used += ids.length;
-          slicedLength += ids.length;
-
-          messages.push(...this.filterMessagesByType(ids.map(m => appMessagesManager.getMessageByPeer(m.peerId, m.mid)), type));
-        } while(slicedLength < loadCount && used < history.length);
-        
-        // если перебор
-        /* if(slicedLength > loadCount) {
-          let diff = messages.length - loadCount;
-          messages = messages.slice(0, messages.length - diff);
-          used -= diff;
-        } */
-
-        this.usedFromHistory[type] = used;
-        //if(messages.length) {
-          return this.performSearchResult(messages, type).finally(() => {
-            setTimeout(() => {
-              this.scrollable.checkForTriggers();
-            }, 0);
-          });
-        //}
-
-        return Promise.resolve();
-      }
-      
-      let maxId = history.length ? history[history.length - 1].mid : 0;
-      
-      //this.log(logStr + 'search house of glass pre', type, maxId);
-      
-      //let loadCount = history.length ? 50 : 15;
-      return this.loadPromises[type] = appMessagesManager.getSearch({
-        peerId, 
-        query: this.searchContext.query,
-        inputFilter: {_: type},
-        maxId, 
-        limit: loadCount,
-        nextRate: this.nextRates[type] ?? (this.nextRates[type] = 0),
-        threadId: this.searchContext.threadId,
-        folderId: this.searchContext.folderId,
-        minDate: this.searchContext.minDate,
-        maxDate: this.searchContext.maxDate
-      }).then(value => {
-        history.push(...value.history.map(m => ({mid: m.mid, peerId: m.peerId})));
-        
-        this.log(logStr + 'search house of glass', type, value);
-
-        if(!middleware()) {
-          //this.log.warn('peer changed');
-          return;
-        }
-
-        // ! Фикс случая, когда не загружаются документы при открытой панели разработчиков (происходит из-за того, что не совпадают критерии отбора документов в getSearch)
-        if(value.history.length < loadCount) {
-        //if((value.count || history.length === value.count) && history.length >= value.count) {
-          //this.log(logStr + 'loaded all media', value, loadCount);
-          this.loaded[type] = true;
-        }
-
-        this.nextRates[type] = value.next_rate;
-
-        if(justLoad) {
-          return Promise.resolve();
-        }
-
-        this.usedFromHistory[type] = history.length;
-
-        if(!this.loaded[type]) {
-          (this.loadPromises[type] || Promise.resolve()).then(() => {
-            setTimeout(() => {
-              if(!middleware()) return;
-              //this.log('will preload more');
-              if(this.type === type) {
-                const promise = this.load(true, true);
-                if(promise) {
-                  promise.then(() => {
-                    if(!middleware()) return;
-                    //this.log('preloaded more');
-                    setTimeout(() => {
-                      this.scrollable.checkForTriggers();
-                    }, 0);
-                  });
-                }
-              }
-            }, 0);
-          });
-        }
-
-        //if(value.history.length) {
-          return this.performSearchResult(this.filterMessagesByType(value.history, type), type);
-        //}
-      }).catch(err => {
-        this.log.error('load error:', err);
-      }).finally(() => {
-        this.loadPromises[type] = null;
-      });
+    const promises: Promise<any>[] = toLoad.map(mediaTab => {
+      return this.loadType(mediaTab, justLoad, loadCount, middleware)
     });
     
     return Promise.all(promises).catch(err => {
@@ -1006,13 +1025,18 @@ export default class AppSearchSuper {
 
     this.lazyLoadQueue.clear();
 
-    this.types.forEach(type => {
-      this.usedFromHistory[type.inputFilter] = -1;
+    this.mediaTabs.forEach(mediaTab => {
+      this.usedFromHistory[mediaTab.inputFilter] = -1;
     });
 
-    this.cleanupObj.cleaned = true;
-    this.cleanupObj = {cleaned: false};
-    this.goingHard = {};
+    this.middleware.clean();
+    this.cleanScrollPositions();
+  }
+
+  public cleanScrollPositions() {
+    this.mediaTabs.forEach(mediaTab => {
+      mediaTab.scroll = undefined;
+    });
   }
 
   public cleanupHTML() {
@@ -1023,15 +1047,15 @@ export default class AppSearchSuper {
       this.urlsToRevoke.length = 0;
     }
 
-    (Object.keys(this.tabs) as SearchSuperType[]).forEach(type => {
-      this.tabs[type].innerHTML = '';
+    this.mediaTabs.forEach((tab) => {
+      tab.contentTab.innerHTML = '';
 
-      if(type === 'inputMessagesFilterEmpty') {
+      if(tab.type === 'chats') {
         return;
       }
       
-      if(!this.historyStorage || !this.historyStorage[type]) {
-        const parent = this.tabs[type].parentElement;
+      if(!this.historyStorage[tab.inputFilter]) {
+        const parent = tab.contentTab.parentElement;
         //if(!testScroll) {
           if(!parent.querySelector('.preloader')) {
             putPreloader(parent, true);
@@ -1044,7 +1068,7 @@ export default class AppSearchSuper {
         }
       }
     });
-    
+
     this.monthContainers = {};
     this.searchGroupMedia.clear();
     this.scrollable.scrollTop = 0;
@@ -1059,14 +1083,6 @@ export default class AppSearchSuper {
         this.tabs.inputMessagesFilterPhotoVideo.append(div);
       }
     } */
-  }
-
-  // * will change .cleaned in cleanup() and new instance will be created
-  public getMiddleware() {
-    const cleanupObj = this.cleanupObj;
-    return () => {
-      return !cleanupObj.cleaned;
-    };
   }
 
   private copySearchContext(newInputFilter: MyInputMessagesFilter) {
@@ -1088,7 +1104,7 @@ export default class AppSearchSuper {
     this.searchContext = {
       peerId: peerId || 0,
       query: query || '',
-      inputFilter: this.type,
+      inputFilter: this.mediaTab.inputFilter,
       threadId,
       folderId,
       minDate,

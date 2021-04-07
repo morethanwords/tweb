@@ -529,6 +529,7 @@ const lang = {
   "PeerInfo.SharedMedia": "Shared Media",
   "PeerInfo.Subscribers": "Subscribers",
   "PeerInfo.DeleteContact": "Delete Contact",
+  "PeerMedia.Members": "Members",
   "PollResults.Title.Poll": "Poll Results",
   "PollResults.Title.Quiz": "Quiz Results",
   "PollResults.LoadMore": {

@@ -112,6 +112,7 @@ export default class SidebarSlider {
       }
 
       this.removeTabFromHistory(tab);
+      appNavigationController.removeByType(this.navigationType, true);
     }
   }
 

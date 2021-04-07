@@ -6,7 +6,6 @@ import { ripple } from "../../components/ripple";
 //import Scrollable from "../../components/scrollable";
 import Scrollable, { ScrollableX, SliceSides } from "../../components/scrollable";
 import { formatDateAccordingToTodayNew } from "../../helpers/date";
-import { escapeRegExp } from "../../helpers/string";
 import { isSafari } from "../../helpers/userAgent";
 import { logger, LogLevels } from "../logger";
 import { RichTextProcessor } from "../richtextprocessor";
@@ -830,11 +829,17 @@ export class AppDialogsManager {
 
       //const scrollTopWas = this.scroll.scrollTop;
 
-      const rect = this.scroll.container.getBoundingClientRect();
-      const rectX = this.chatList.firstElementChild.getBoundingClientRect();
+      const firstElementChild = this.chatList.firstElementChild;
+      const rectContainer = this.scroll.container.getBoundingClientRect();
+      const rectTarget = firstElementChild.getBoundingClientRect();
       const children = Array.from(this.scroll.splitUp.children) as HTMLElement[];
-      const firstElement = findUpTag(document.elementFromPoint(Math.ceil(rectX.x), Math.ceil(rect.y + 1)), 'LI') as HTMLElement;
-      const lastElement = findUpTag(document.elementFromPoint(Math.ceil(rectX.x), Math.floor(rect.y + rect.height - 1)), 'LI') as HTMLElement;
+
+      const offsetTop = this.folders.container.offsetTop;
+      const firstY = rectContainer.y + offsetTop;
+      const lastY = rectContainer.y;
+      
+      const firstElement = findUpTag(document.elementFromPoint(Math.ceil(rectTarget.x), Math.ceil(firstY + 1)), firstElementChild.tagName) as HTMLElement;
+      const lastElement = findUpTag(document.elementFromPoint(Math.ceil(rectTarget.x), Math.floor(lastY + rectContainer.height - 1)), firstElementChild.tagName) as HTMLElement;
 
       //alert('got element:' + rect.y);
 
@@ -845,7 +850,7 @@ export class AppDialogsManager {
       //alert('got element:' + !!firstElement);
 
       const firstElementRect = firstElement.getBoundingClientRect();
-      const elementOverflow = firstElementRect.y - rect.y;
+      const elementOverflow = firstElementRect.y - firstY;
 
       const sliced: HTMLElement[] = [];
       const firstIndex = children.indexOf(firstElement);

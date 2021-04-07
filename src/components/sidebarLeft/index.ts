@@ -193,31 +193,37 @@ export class AppSidebarLeft extends SidebarSlider {
       recent: new SearchGroup('Recent', 'contacts', true, 'search-group-recent', true, true, close)
     };
 
-    const searchSuper = this.searchSuper = new AppSearchSuper([{
-      inputFilter: 'inputMessagesFilterEmpty',
-      name: 'FilterChats',
-      type: 'chats'
-    }, {
-      inputFilter: 'inputMessagesFilterPhotoVideo',
-      name: 'SharedMediaTab2',
-      type: 'media'
-    }, {
-      inputFilter: 'inputMessagesFilterUrl',
-      name: 'SharedLinksTab2',
-      type: 'links'
-    }, {
-      inputFilter: 'inputMessagesFilterDocument',
-      name: 'SharedFilesTab2',
-      type: 'files'
-    }, {
-      inputFilter: 'inputMessagesFilterMusic',
-      name: 'SharedMusicTab2',
-      type: 'music'
-    }, {
-      inputFilter: 'inputMessagesFilterVoice',
-      name: 'SharedVoiceTab2',
-      type: 'voice'
-    }], scrollable, this.searchGroups, true);
+    const searchSuper = this.searchSuper = new AppSearchSuper({
+      mediaTabs: [{
+        inputFilter: 'inputMessagesFilterEmpty',
+        name: 'FilterChats',
+        type: 'chats'
+      }, {
+        inputFilter: 'inputMessagesFilterPhotoVideo',
+        name: 'SharedMediaTab2',
+        type: 'media'
+      }, {
+        inputFilter: 'inputMessagesFilterUrl',
+        name: 'SharedLinksTab2',
+        type: 'links'
+      }, {
+        inputFilter: 'inputMessagesFilterDocument',
+        name: 'SharedFilesTab2',
+        type: 'files'
+      }, {
+        inputFilter: 'inputMessagesFilterMusic',
+        name: 'SharedMusicTab2',
+        type: 'music'
+      }, {
+        inputFilter: 'inputMessagesFilterVoice',
+        name: 'SharedVoiceTab2',
+        type: 'voice'
+      }], 
+      scrollable, 
+      searchGroups: this.searchGroups, 
+      asChatList: true,
+      hideEmptyTabs: false
+    });
 
     searchContainer.prepend(searchSuper.nav.parentElement.parentElement);
     scrollable.container.append(searchSuper.container);
@@ -347,7 +353,7 @@ export class AppSidebarLeft extends SidebarSlider {
       }
       
       if(!selectedPeerId && value.trim()) {
-        const middleware = searchSuper.getMiddleware();
+        const middleware = searchSuper.middleware.get();
         Promise.all([
           appMessagesManager.getConversationsAll(value).then(dialogs => dialogs.map(d => d.peerId)),
           appUsersManager.getContacts(value, true)

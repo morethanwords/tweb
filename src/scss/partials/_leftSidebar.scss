@@ -105,13 +105,7 @@
       height: calc(100% - 44px);
 
       #folders-container {
-        li:first-child {
-          margin-top: .5rem;
-        }
-
-        > div {
-          background-color: transparent;
-        }
+        margin-top: .5rem;
       }
     }
   }
@@ -205,6 +199,10 @@
 
   #folders-container {
     min-height: 100%;
+
+    > div {
+      background-color: transparent;
+    }
   }
 
   .sidebar-slider {

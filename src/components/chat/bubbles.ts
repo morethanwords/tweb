@@ -829,7 +829,7 @@ export default class ChatBubbles {
         //appSidebarRight.forwardTab.open([mid]);
         return;
       } else if(target.classList.contains('peer-title') || target.classList.contains('name')) {
-        target = findUpClassName(target, 'name');
+        target = findUpClassName(target, 'name') || target;
         const peerId = +target.dataset.peerId;
         const savedFrom = target.dataset.savedFrom;
         if(savedFrom) {
