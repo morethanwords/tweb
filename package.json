@@ -16,7 +16,7 @@
     "generate-mtproto-types": "node ./src/scripts/generate_mtproto_types.js src/"
   },
   "author": "",
-  "license": "ISC",
+  "license": "GPL-3.0-only",
   "dependencies": {
     "jsbn": "^1.1.0",
     "webpack-dev-server": "^3.11.2"
