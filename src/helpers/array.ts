@@ -1,3 +1,9 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
 /* import { copy } from "./object";
 
 export function listMergeSorted(list1: any[] = [], list2: any[] = []) {

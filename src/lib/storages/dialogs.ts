@@ -1,3 +1,14 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ * 
+ * Originally from:
+ * https://github.com/zhukov/webogram
+ * Copyright (C) 2014 Igor Zhukov <igor.beatle@gmail.com>
+ * https://github.com/zhukov/webogram/blob/master/LICENSE
+ */
+
 import { tsNow } from "../../helpers/date";
 import type { Message } from "../../layer";
 import type { AppChatsManager } from "../appManagers/appChatsManager";

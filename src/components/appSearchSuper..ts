@@ -1,3 +1,9 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
 import { formatDateAccordingToToday, months } from "../helpers/date";
 import { positionElementByIndex } from "../helpers/dom";
 import { copy, getObjectKeysAndSort, safeAssign } from "../helpers/object";

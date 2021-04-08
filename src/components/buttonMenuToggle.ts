@@ -1,3 +1,9 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
 import { AttachClickOptions, cancelEvent, CLICK_EVENT_NAME } from "../helpers/dom";
 import ListenerSetter from "../helpers/listenerSetter";
 import ButtonIcon from "./buttonIcon";

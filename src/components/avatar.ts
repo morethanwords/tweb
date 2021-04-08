@@ -1,3 +1,9 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
 import appMessagesManager from "../lib/appManagers/appMessagesManager";
 import appProfileManager from "../lib/appManagers/appProfileManager";
 import rootScope from "../lib/rootScope";

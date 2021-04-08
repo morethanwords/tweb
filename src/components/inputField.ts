@@ -1,3 +1,9 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
 import { getRichValue, isInputEmpty } from "../helpers/dom";
 import { debounce } from "../helpers/schedulers";
 import { checkRTL } from "../helpers/string";

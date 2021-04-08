@@ -1,3 +1,9 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
 import rootScope from "../rootScope";
 import apiManager from "../mtproto/mtprotoworker";
 import { deferredPromise, CancellablePromise } from "../../helpers/cancellablePromise";

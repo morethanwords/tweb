@@ -1,3 +1,9 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
 import appProfileManager from "../../../lib/appManagers/appProfileManager";
 import appUsersManager from "../../../lib/appManagers/appUsersManager";
 import InputField from "../../inputField";

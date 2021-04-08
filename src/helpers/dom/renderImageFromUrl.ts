@@ -1,3 +1,9 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
 export const loadedURLs: {[url: string]: boolean} = {};
 const set = (elem: HTMLElement | HTMLImageElement | SVGImageElement | HTMLVideoElement, url: string) => {
   if(elem instanceof HTMLImageElement || elem instanceof HTMLVideoElement) elem.src = url;

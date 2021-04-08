@@ -1,3 +1,9 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
 import { debounce } from "../helpers/schedulers";
 import { logger, LogLevels } from "../lib/logger";
 import VisibilityIntersector, { OnVisibilityChange } from "./visibilityIntersector";

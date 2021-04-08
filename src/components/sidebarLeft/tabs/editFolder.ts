@@ -1,3 +1,9 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
 import { deepEqual, copy } from "../../../helpers/object";
 import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
 import { MyDialogFilter as DialogFilter } from "../../../lib/storages/filters";

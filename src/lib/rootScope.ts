@@ -1,3 +1,9 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
 import type { Message, StickerSet, Update, NotifyPeer, PeerNotifySettings } from "../layer";
 import type { MyDocument } from "./appManagers/appDocsManager";
 import type { AppMessagesManager, Dialog, MessagesStorage } from "./appManagers/appMessagesManager";

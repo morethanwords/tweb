@@ -1,5 +1,11 @@
 //import {stackBlurImage} from '../lib/StackBlur';
 //import appStateManager from "../lib/appManagers/appStateManager";
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
 import { blurActiveElement } from "../helpers/dom";
 import appStateManager from "../lib/appManagers/appStateManager";
 import I18n from "../lib/langPack";

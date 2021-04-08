@@ -1,3 +1,9 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
 import type { AppNotificationsManager } from "../../lib/appManagers/appNotificationsManager";
 import type { AppChatsManager } from "../../lib/appManagers/appChatsManager";
 import type { AppDocsManager } from "../../lib/appManagers/appDocsManager";

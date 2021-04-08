@@ -1,3 +1,9 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
 // @ts-check
 const schema = require(__dirname + '/in/schema.json');
 const additional = require(__dirname + '/in/schema_additional_params.json');

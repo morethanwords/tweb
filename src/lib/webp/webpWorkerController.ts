@@ -1,3 +1,9 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
 import WebpWorker from 'worker-loader!./webp.worker';
 import { MOUNT_CLASS_TO } from '../../config/debug';
 import { CancellablePromise, deferredPromise } from '../../helpers/cancellablePromise';

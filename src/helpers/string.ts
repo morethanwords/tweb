@@ -1,3 +1,9 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
 /* export function stringMiddleOverflow(str: string, maxLength: number) {
   return str.length > maxLength ? str.slice(0, maxLength / 2 | 0) + '...' + str.slice(-Math.round(maxLength / 2)) : str; 
 } */

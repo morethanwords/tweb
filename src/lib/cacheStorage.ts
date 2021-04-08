@@ -1,3 +1,9 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
 import Modes from '../config/modes';
 import { blobConstruct } from '../helpers/blob';
 import FileManager from './filemanager';

@@ -1,3 +1,9 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
 export default function fixSafariStickyInput(input: HTMLElement) {
   input.style.transform = 'translateY(-99999px)';
   /* input.style.position = 'fixed';

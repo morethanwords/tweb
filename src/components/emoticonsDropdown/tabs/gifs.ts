@@ -1,3 +1,9 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
 import emoticonsDropdown, { EmoticonsDropdown, EmoticonsTab, EMOTICONSSTICKERGROUP } from "..";
 import GifsMasonry from "../../gifsMasonry";
 import Scrollable from "../../scrollable";

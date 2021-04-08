@@ -1,3 +1,9 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
 import renderImageFromUrl from "../../helpers/dom/renderImageFromUrl";
 import { limitSymbols } from "../../helpers/string";
 import appImManager, { CHAT_ANIMATION_GROUP } from "../../lib/appManagers/appImManager";

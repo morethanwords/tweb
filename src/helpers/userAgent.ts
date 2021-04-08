@@ -1,3 +1,9 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
 export const userAgent = navigator ? navigator.userAgent : null;
 export const isApple = navigator.userAgent.search(/OS X|iPhone|iPad|iOS/i) !== -1;
 export const isAndroid = navigator.userAgent.toLowerCase().indexOf('android') !== -1;

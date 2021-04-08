@@ -1,4 +1,10 @@
-// * Jolly Cobra's useHeavyAnimationCheck.ts
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
+// * Jolly Cobra's useHeavyAnimationCheck.ts, patched
 
 //import { useEffect } from '../lib/teact/teact';
 import { AnyToVoidFunction } from '../types';

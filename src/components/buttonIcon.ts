@@ -1,3 +1,9 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
 import Button from "./button";
 
 const ButtonIcon = (className: string, options: Partial<{noRipple: true, onlyMobile: true}> = {}) => {

@@ -1,3 +1,9 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
 import type { Poll } from "../../lib/appManagers/appPollsManager";
 import type Chat from "../chat/chat";
 import PopupElement from ".";

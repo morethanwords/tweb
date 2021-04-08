@@ -1,3 +1,9 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
 import { isInDOM } from "../helpers/dom";
 import { RLottiePlayer } from "../lib/lottieLoader";
 import rootScope from "../lib/rootScope";

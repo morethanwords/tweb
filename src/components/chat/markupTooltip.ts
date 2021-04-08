@@ -1,3 +1,9 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
 import type { AppImManager } from "../../lib/appManagers/appImManager";
 import { MarkdownType, cancelEvent, getSelectedNodes, markdownTags, attachClickEvent, isSelectionEmpty } from "../../helpers/dom";
 import RichTextProcessor from "../../lib/richtextprocessor";

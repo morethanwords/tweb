@@ -1,3 +1,9 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
 import appDocsManager, {MyDocument} from "../lib/appManagers/appDocsManager";
 import { RichTextProcessor } from "../lib/richtextprocessor";
 import { formatDate } from "./wrappers";

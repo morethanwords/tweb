@@ -1,3 +1,9 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
 import appSidebarLeft from "..";
 import { InputFile } from "../../../layer";
 import appChatsManager from "../../../lib/appManagers/appChatsManager";
