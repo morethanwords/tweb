@@ -1,3 +1,9 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
 export type Listener = {element: ListenerElement, event: ListenerEvent, callback: ListenerCallback, options?: ListenerOptions};
 export type ListenerElement = any;
 export type ListenerEvent = string;

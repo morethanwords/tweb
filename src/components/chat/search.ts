@@ -1,3 +1,9 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
 import type ChatTopbar from "./topbar";
 import { cancelEvent, whichChild } from "../../helpers/dom";
 import AppSearch, { SearchGroup } from "../appSearch";

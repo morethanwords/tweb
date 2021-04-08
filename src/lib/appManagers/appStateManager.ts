@@ -1,3 +1,9 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
 import type { Dialog } from './appMessagesManager';
 import type { UserAuth } from '../mtproto/mtproto_config';
 import type { AppUsersManager } from './appUsersManager';

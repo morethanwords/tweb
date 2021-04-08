@@ -1,5 +1,11 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
 import type Chat from './chat/chat';
-import { getEmojiToneIndex } from '../emoji';
+import { getEmojiToneIndex } from '../vendor/emoji';
 import { readBlobAsText } from '../helpers/blob';
 import { deferredPromise } from '../helpers/cancellablePromise';
 import { formatDateAccordingToToday, months } from '../helpers/date';

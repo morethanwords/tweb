@@ -1,3 +1,9 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
 export function rgbToHsl(r: number, g: number, b: number) {
   r /= 255, g /= 255, b /= 255;
   let max = Math.max(r, g, b),

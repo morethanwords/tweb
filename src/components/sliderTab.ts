@@ -1,3 +1,9 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
 import EventListenerBase from "../helpers/eventListenerBase";
 import ListenerSetter from "../helpers/listenerSetter";
 import { i18n, LangPackKey } from "../lib/langPack";

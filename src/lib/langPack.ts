@@ -1,3 +1,9 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
 import DEBUG, { MOUNT_CLASS_TO } from "../config/debug";
 import { safeAssign } from "../helpers/object";
 import { capitalizeFirstLetter } from "../helpers/string";

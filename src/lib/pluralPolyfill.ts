@@ -1,3 +1,9 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
 const NumberPluralizationFormZero: Intl.LDMLPluralRule = 'zero';
 const NumberPluralizationFormOne: Intl.LDMLPluralRule = 'one';
 const NumberPluralizationFormTwo: Intl.LDMLPluralRule = 'two';

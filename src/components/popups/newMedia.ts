@@ -1,3 +1,9 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
 import type Chat from "../chat/chat";
 import { isTouchSupported } from "../../helpers/touchSupport";
 import { calcImageInBox, placeCaretAtEnd, isSendShortcutPressed } from "../../helpers/dom";

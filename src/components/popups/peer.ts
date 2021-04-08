@@ -1,3 +1,9 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
 import AvatarElement from "../avatar";
 import PopupElement, { addCancelButton, PopupButton, PopupOptions } from ".";
 import { i18n, LangPackKey } from "../../lib/langPack";

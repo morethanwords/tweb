@@ -1,3 +1,9 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
 import { whichChild } from "../helpers/dom";
 import rootScope from "../lib/rootScope";
 import { CancellablePromise, deferredPromise } from "../helpers/cancellablePromise";

@@ -1,3 +1,14 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ * 
+ * Originally from:
+ * https://github.com/zhukov/webogram
+ * Copyright (C) 2014 Igor Zhukov <igor.beatle@gmail.com>
+ * https://github.com/zhukov/webogram/blob/master/LICENSE
+ */
+
 import { fontFamily } from "../../components/middleEllipsis";
 import { MOUNT_CLASS_TO } from "../../config/debug";
 import { CancellablePromise, deferredPromise } from "../../helpers/cancellablePromise";
@@ -6,15 +17,12 @@ import { copy, deepEqual } from "../../helpers/object";
 import { convertInputKeyToKey } from "../../helpers/string";
 import { isMobile } from "../../helpers/userAgent";
 import { InputNotifyPeer, InputPeerNotifySettings, NotifyPeer, PeerNotifySettings, Update } from "../../layer";
-import Config from "../config";
 import apiManager from "../mtproto/mtprotoworker";
 import rootScope from "../rootScope";
 import sessionStorage from "../sessionStorage";
 import apiUpdatesManager from "./apiUpdatesManager";
-import appChatsManager from "./appChatsManager";
 import appPeersManager from "./appPeersManager";
 import appStateManager from "./appStateManager";
-import appUsersManager from "./appUsersManager";
 
 type MyNotification = Notification & {
   hidden?: boolean,

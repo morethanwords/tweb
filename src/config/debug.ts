@@ -1,3 +1,9 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
 import Modes from "./modes";
 
 export const DEBUG = process.env.NODE_ENV !== 'production' || Modes.debug;

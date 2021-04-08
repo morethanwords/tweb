@@ -1,7 +1,18 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ * 
+ * Originally from:
+ * https://github.com/zhukov/webogram
+ * Copyright (C) 2014 Igor Zhukov <igor.beatle@gmail.com>
+ * https://github.com/zhukov/webogram/blob/master/LICENSE
+ */
+
 import Config from './config';
 
-import emojiRegExp from '../emoji/regex';
-import { encodeEmoji } from '../emoji';
+import emojiRegExp from '../vendor/emoji/regex';
+import { encodeEmoji } from '../vendor/emoji';
 import { MessageEntity } from '../layer';
 import { encodeEntities } from '../helpers/string';
 import { isSafari } from '../helpers/userAgent';

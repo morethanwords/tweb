@@ -1,4 +1,10 @@
 //import { logger } from "../polyfill";
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
 import { formatNumber } from "../../helpers/number";
 import appImManager from "../../lib/appManagers/appImManager";
 import appPeersManager from "../../lib/appManagers/appPeersManager";

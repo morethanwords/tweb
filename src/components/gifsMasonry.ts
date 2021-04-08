@@ -1,3 +1,9 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
 import { calcImageInBox } from "../helpers/dom";
 import appDocsManager, {MyDocument} from "../lib/appManagers/appDocsManager";
 import { wrapVideo } from "./wrappers";

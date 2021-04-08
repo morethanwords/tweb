@@ -1,3 +1,9 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
 import { attachClickEvent, toggleDisability } from "../../../helpers/dom";
 import { deepEqual } from "../../../helpers/object";
 import { ChannelParticipant } from "../../../layer";

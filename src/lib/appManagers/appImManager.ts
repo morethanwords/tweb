@@ -1,3 +1,9 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
 //import apiManager from '../mtproto/apiManager';
 import animationIntersector from '../../components/animationIntersector';
 import appSidebarLeft, { LEFT_COLUMN_ACTIVE_CLASSNAME } from "../../components/sidebarLeft";
@@ -20,7 +26,6 @@ import appStickersManager from './appStickersManager';
 import appWebPagesManager from './appWebPagesManager';
 import { blurActiveElement, cancelEvent, disableTransition, getFilesFromEvent, placeCaretAtEnd, whichChild } from '../../helpers/dom';
 import PopupNewMedia from '../../components/popups/newMedia';
-import { numberThousandSplitter } from '../../helpers/number';
 import MarkupTooltip from '../../components/chat/markupTooltip';
 import { isTouchSupported } from '../../helpers/touchSupport';
 import appPollsManager from './appPollsManager';
