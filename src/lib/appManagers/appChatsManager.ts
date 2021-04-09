@@ -27,7 +27,7 @@ import appUsersManager from "./appUsersManager";
 
 export type Channel = Chat.channel;
 
-export type ChatRights = keyof ChatBannedRights['pFlags'] | keyof ChatAdminRights['pFlags'] | 'change_type' | 'change_permissions' | 'delete_chat';
+export type ChatRights = keyof ChatBannedRights['pFlags'] | keyof ChatAdminRights['pFlags'] | 'change_type' | 'change_permissions' | 'delete_chat' | 'view_participants';
 
 export type UserTyping = Partial<{userId: number, action: SendMessageAction, timeout: number}>;
 
@@ -288,6 +288,10 @@ export class AppChatsManager {
 
       case 'change_permissions': {
         return rights._ === 'chatAdminRights' && myFlags['ban_users'];
+      }
+
+      case 'view_participants': {
+        return !!(chat._ === 'chat' || !chat.pFlags.broadcast || chat.pFlags.creator || chat.admin_rights);
       }
     }
 

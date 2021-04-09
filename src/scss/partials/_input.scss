@@ -95,8 +95,13 @@
     @include hover() {
       &:not(:focus):not(.error):not(.valid) {
         //border-color: var(--color-gray);
-        border-color: #000;
+        //border-color: #000;
+        border-color: var(--primary-color);
         transition: .2s border-color;
+
+        & ~ label {
+          color: var(--primary-color);
+        }
       }
 
       /* &:not(:focus):not(.error):not(.valid) ~ label {

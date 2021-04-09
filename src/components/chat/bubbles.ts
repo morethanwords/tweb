@@ -725,8 +725,30 @@ export default class ChatBubbles {
       return;
     }
 
+    const nameDiv = findUpClassName(target, 'peer-title') || findUpClassName(target, 'name') || findUpTag(target, 'AVATAR-ELEMENT');
+    if(nameDiv) {
+      target = nameDiv || target;
+      const peerId = +(target.dataset.peerId || target.getAttribute('peer'));
+      const savedFrom = target.dataset.savedFrom;
+      if(savedFrom) {
+        const splitted = savedFrom.split('_');
+        const peerId = +splitted[0];
+        const msgId = +splitted[1];
+
+        this.chat.appImManager.setInnerPeer(peerId, msgId);
+      } else {
+        if(peerId) {
+          this.chat.appImManager.setInnerPeer(peerId);
+        } else {
+          toast(I18n.format('HidAccount', true));
+        }
+      }
+
+      return;
+    }
+
     //this.log('chatInner click:', target);
-    const isVideoComponentElement = target.tagName === 'SPAN' && !target.classList.contains('peer-title');
+    const isVideoComponentElement = target.tagName === 'SPAN';
     /* if(isVideoComponentElement) {
       const video = target.parentElement.querySelector('video') as HTMLElement;
       if(video) {
@@ -748,7 +770,7 @@ export default class ChatBubbles {
       return;
     }
 
-    if((target.tagName === 'IMG' && !target.classList.contains('emoji') && target.parentElement.tagName !== "AVATAR-ELEMENT" && !target.classList.contains('document-thumb')) 
+    if((target.tagName === 'IMG' && !target.classList.contains('emoji') && !target.classList.contains('document-thumb')) 
       || target.classList.contains('album-item')
       || isVideoComponentElement
       || (target.tagName === 'VIDEO' && !bubble.classList.contains('round'))) {
@@ -818,9 +840,9 @@ export default class ChatBubbles {
       return;
     }
     
-    if(['IMG', 'DIV', "AVATAR-ELEMENT", 'SPAN'/* , 'A' */].indexOf(target.tagName) === -1) target = findUpTag(target, 'DIV');
+    if(['IMG', 'DIV', 'SPAN'/* , 'A' */].indexOf(target.tagName) === -1) target = findUpTag(target, 'DIV');
     
-    if(['DIV', 'SPAN', 'AVATAR-ELEMENT'].indexOf(target.tagName) !== -1/*  || target.tagName === 'A' */) {
+    if(['DIV', 'SPAN'].indexOf(target.tagName) !== -1/*  || target.tagName === 'A' */) {
       if(target.classList.contains('goto-original')) {
         const savedFrom = bubble.dataset.savedFrom;
         const splitted = savedFrom.split('_');
@@ -833,35 +855,6 @@ export default class ChatBubbles {
         const mid = +bubble.dataset.mid;
         new PopupForward(this.peerId, [mid]);
         //appSidebarRight.forwardTab.open([mid]);
-        return;
-      } else if(target.classList.contains('peer-title') || target.classList.contains('name')) {
-        target = findUpClassName(target, 'name') || target;
-        const peerId = +target.dataset.peerId;
-        const savedFrom = target.dataset.savedFrom;
-        if(savedFrom) {
-          const splitted = savedFrom.split('_');
-          const peerId = +splitted[0];
-          const msgId = +splitted[1];
-
-          this.chat.appImManager.setInnerPeer(peerId, msgId);
-        } else {
-          if(peerId) {
-            this.chat.appImManager.setInnerPeer(peerId);
-          } else {
-            toast(I18n.format('HidAccount', true));
-          }
-        }
-
-        return;
-      } else if(target.tagName === "AVATAR-ELEMENT") {
-        const peerId = +target.getAttribute('peer');
-        
-        if(peerId) {
-          this.chat.appImManager.setInnerPeer(peerId);
-        } else {
-          toast(I18n.format('HidAccount', true));
-        }
-
         return;
       }
       
@@ -888,14 +881,6 @@ export default class ChatBubbles {
           this.chat.appImManager.setInnerPeer(this.peerId, originalMessageId);
         } */
         //this.chat.setMessageId(, originalMessageId);
-      }
-    } else if(target.tagName === 'IMG' && target.parentElement.tagName === "AVATAR-ELEMENT") {
-      let peerId = +target.parentElement.getAttribute('peer');
-      
-      if(peerId) {
-        this.chat.appImManager.setInnerPeer(peerId);
-      } else {
-        toast(I18n.format('HidAccount', true));
       }
     }
     

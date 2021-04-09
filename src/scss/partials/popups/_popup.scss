@@ -5,7 +5,6 @@
  */
 
 .popup {
-  --transition-time: .15s;
   position: fixed!important;
   left: 0;
   top: 0;
@@ -19,7 +18,10 @@
   box-shadow: none;
   opacity: 0;
   visibility: hidden;
-  transition: opacity var(--transition-time) ease-in-out, visibility 0s var(--transition-time) ease-in-out;
+  transition-property: opacity, visibility;
+  transition-duration: var(--popup-transition-time), 0s;
+  transition-delay: 0s, var(--popup-transition-time);
+  transition-timing-function: var(--popup-transition-function);
   overflow: auto;
   display: flex;
 
@@ -30,7 +32,7 @@
   &.active {
     opacity: 1;
     visibility: visible;
-    transition: opacity var(--transition-time) ease-in-out, visibility 0s 0s ease-in-out;
+    transition-delay: 0s, 0s;
     z-index: 4;
 
     .popup-container {
@@ -52,7 +54,7 @@
     padding: 1rem;
     transform: translate3d(0, 3rem, 0);
     backface-visibility: hidden;
-    transition: transform var(--transition-time) ease-in-out;
+    transition: transform var(--popup-transition-time) var(--popup-transition-function);
     display: flex;
     flex-direction: column;
     overflow: hidden;

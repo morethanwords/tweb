@@ -39,6 +39,7 @@ import { forEachReverse } from "../../../helpers/array";
 import appPhotosManager from "../../../lib/appManagers/appPhotosManager";
 import renderImageFromUrl from "../../../helpers/dom/renderImageFromUrl";
 import SwipeHandler from "../../swipeHandler";
+import { MOUNT_CLASS_TO } from "../../../config/debug";
 
 let setText = (text: string, row: Row) => {
   fastRaf(() => {
@@ -628,30 +629,29 @@ class PeerProfile {
 
 // TODO: отредактированное сообщение не изменится
 export default class AppSharedMediaTab extends SliderSuperTab {
-  public editBtn: HTMLElement;
+  private editBtn: HTMLElement;
 
   private peerId = 0;
   private threadId = 0;
 
-  public historiesStorage: {
+  private historiesStorage: {
     [peerId: number]: Partial<{
       [type in SearchSuperType]: {mid: number, peerId: number}[]
     }>
   } = {};
 
-  private log = logger('SM'/* , LogLevels.error */);
-  private cleaned: boolean;
   private searchSuper: AppSearchSuper;
 
-  public profile: PeerProfile;
+  private profile: PeerProfile;
 
   constructor(slider: SidebarSlider) {
     super(slider, false);
   }
 
-  protected init() {
-    this.container.id = 'shared-media-container';
-    this.container.classList.add('profile-container');
+  public init() {
+    const perf = performance.now();
+
+    this.container.classList.add('shared-media-container', 'profile-container');
 
     // * header
     const newCloseBtn = Button('btn-icon sidebar-close-button', {noRipple: true});
@@ -769,6 +769,13 @@ export default class AppSharedMediaTab extends SliderSuperTab {
       }], 
       scrollable: this.scrollable
     });
+
+    this.profile.element.append(this.searchSuper.container);
+
+    const btnAddMembers = Button('btn-corner btn-circle', {icon: 'adduser'});
+    this.content.append(btnAddMembers);
+
+    console.log('construct shared media time:', performance.now() - perf);
   }
 
   public renderNewMessages(peerId: number, mids: number[]) {
@@ -832,15 +839,16 @@ export default class AppSharedMediaTab extends SliderSuperTab {
   }
 
   public cleanupHTML() {
+    const perf = performance.now();
     this.profile.cleanupHTML();
     
     this.editBtn.style.display = 'none';
-    this.searchSuper.cleanupHTML();
-    this.searchSuper.selectTab(0, false);
 
-    if(!this.searchSuper.container.parentElement) {
-      this.profile.element.append(this.searchSuper.container);
-    }
+    this.searchSuper.cleanupHTML(true);
+
+    this.container.classList.toggle('can-add-members', this.searchSuper.canViewMembers() && appChatsManager.hasRights(-this.peerId, 'invite_users'));
+
+    console.log('cleanupHTML shared media time:', performance.now() - perf);
   }
 
   public setLoadMutex(promise: Promise<any>) {
@@ -850,13 +858,14 @@ export default class AppSharedMediaTab extends SliderSuperTab {
   public setPeer(peerId: number, threadId = 0) {
     if(this.peerId === peerId && this.threadId === peerId) return;
 
+    this.peerId = peerId;
+    this.threadId = threadId;
+
     if(this.init) {
       this.init();
       this.init = null;
     }
 
-    this.peerId = peerId;
-    this.threadId = threadId;
     this.searchSuper.setQuery({
       peerId, 
       //threadId, 
@@ -864,7 +873,6 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     });
 
     this.profile.setPeer(peerId, threadId);
-    this.cleaned = true;
   }
 
   public fillProfileElements() {
@@ -892,3 +900,5 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     this.scrollable.onScroll();
   }
 }
+
+MOUNT_CLASS_TO && (MOUNT_CLASS_TO.AppSharedMediaTab = AppSharedMediaTab);

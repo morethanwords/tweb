@@ -920,8 +920,10 @@ export class AppDialogsManager {
     this.loadDialogs(side);
   };
 
-  public setListClickListener(list: HTMLUListElement, onFound?: () => void, withContext = false, autonomous = false) {
+  public setListClickListener(list: HTMLUListElement, onFound?: () => void, withContext = false, autonomous = false, openInner = false) {
     let lastActiveListElement: HTMLElement;
+
+    const setPeerFunc = (openInner ? appImManager.setInnerPeer : appImManager.setPeer).bind(appImManager);
 
     list.dataset.autonomous = '' + +autonomous;
     list.addEventListener('mousedown', (e) => {
@@ -955,9 +957,9 @@ export class AppDialogsManager {
         const peerId = +elem.dataset.peerId;
         const lastMsgId = +elem.dataset.mid || undefined;
 
-        appImManager.setPeer(peerId, lastMsgId);
+        setPeerFunc(peerId, lastMsgId);
       } else {
-        appImManager.setPeer(0);
+        setPeerFunc(0);
       }
     }, {capture: true});
 
