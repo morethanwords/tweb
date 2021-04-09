@@ -46,6 +46,10 @@ $chat-padding-handhelds: .5rem;
   --layer-transition: .2s ease-in-out;
   --slide-header-transition: .4s ease-in-out;
   --tabs-transition: .25s ease-in-out;
+  --btn-menu-transition: .2s cubic-bezier(.4, 0, .2, 1);
+  --esg-transition: var(--btn-menu-transition);
+  --popup-transition-function: cubic-bezier(.4, 0, .2, 1);
+  --popup-transition-time: .15s;
   //--layer-transition: .3s cubic-bezier(.33, 1, .68, 1);
   //--layer-transition: none;
   --btn-corner-transition: .2s cubic-bezier(.34, 1.56, .64, 1);
@@ -137,6 +141,7 @@ $chat-padding-handhelds: .5rem;
   --chatlist-pinned-color: #a2abb2;
   --badge-text-color: #fff;
   --link-color: #00488f;
+  --ripple-color: rgba(0, 0, 0, .08);
 
   --message-background-color: var(--surface-color);
   --message-checkbox-color: #61c642;
@@ -177,6 +182,7 @@ html.night {
   --chatlist-pinned-color: var(--secondary-color);
   --badge-text-color: #fff;
   --link-color: var(--primary-color);
+  --ripple-color: rgba(255, 255, 255, .08);
 
   --message-background-color: var(--surface-color);
   --message-checkbox-color: var(--primary-color);

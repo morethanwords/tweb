@@ -32,6 +32,8 @@ import { isSafari } from "../helpers/userAgent";
 import { LangPackKey, i18n } from "../lib/langPack";
 import findUpClassName from "../helpers/dom/findUpClassName";
 import { getMiddleware } from "../helpers/middleware";
+import appProfileManager from "../lib/appManagers/appProfileManager";
+import { ChannelParticipant, ChatFull, ChatParticipant, ChatParticipants } from "../layer";
 
 //const testScroll = false;
 
@@ -824,11 +826,90 @@ export default class AppSearchSuper {
     } else return Promise.resolve();
   }
 
+  private loadMembers(mediaTab: SearchSuperMediaTab) {
+    const id = -this.searchContext.peerId;
+    const middleware = this.middleware.get();
+    let promise: Promise<void>;
+
+    const renderParticipants = async(participants: (ChatParticipant | ChannelParticipant)[]) => {
+      if(this.loadMutex) {
+        await this.loadMutex;
+
+        if(!middleware()) {
+          return;
+        }
+      }
+      
+      let list = mediaTab.contentTab.firstElementChild as HTMLUListElement;
+      if(!list) {
+        list = appDialogsManager.createChatList();
+        appDialogsManager.setListClickListener(list, undefined, undefined, true, true);
+        mediaTab.contentTab.append(list);
+        this.afterPerforming(1, mediaTab.contentTab);
+      }
+
+      participants.forEach(participant => {
+        let {dialog, dom} = appDialogsManager.addDialogNew({
+          dialog: participant.user_id,
+          container: list,
+          drawStatus: false,
+          avatarSize: 48,
+          autonomous: true,
+          meAsSaved: false,
+          rippleEnabled: false
+        });
+
+        let status = appUsersManager.getUserStatusString(participant.user_id);
+        dom.lastMessageSpan.append(status);
+      });
+    };
+
+    if(appChatsManager.isChannel(id)) {
+      const LOAD_COUNT = 50;
+      promise = appProfileManager.getChannelParticipants(id, undefined, LOAD_COUNT, this.nextRates[mediaTab.inputFilter]).then(participants => {
+        if(!middleware()) {
+          return;
+        }
+
+        let list = mediaTab.contentTab.firstElementChild as HTMLUListElement;
+        this.nextRates[mediaTab.inputFilter] = (list ? list.childElementCount : 0) + participants.participants.length;
+
+        if(participants.participants.length < LOAD_COUNT) {
+          this.loaded[mediaTab.inputFilter] = true;
+        }
+
+        return renderParticipants(participants.participants);
+      });
+    } else {
+      promise = (appProfileManager.getChatFull(id) as Promise<ChatFull.chatFull>).then(chatFull => {
+        if(!middleware()) {
+          return;
+        }
+
+        console.log('anymore', chatFull);
+        this.loaded[mediaTab.inputFilter] = true;
+        return renderParticipants((chatFull.participants as ChatParticipants.chatParticipants).participants);
+      });
+    }
+
+    return this.loadPromises[mediaTab.inputFilter] = promise.finally(() => { 
+      if(!middleware()) {
+        return;
+      }
+
+      this.loadPromises[mediaTab.inputFilter] = null;
+    });
+  }
+
   private loadType(mediaTab: SearchSuperMediaTab, justLoad: boolean, loadCount: number, middleware: () => boolean) {
     const type = mediaTab.inputFilter;
 
     if(this.loadPromises[type]) {
       return this.loadPromises[type];
+    }
+
+    if(mediaTab.type === 'members') {
+      return this.loadMembers(mediaTab);
     }
 
     const history = this.historyStorage[type] ?? (this.historyStorage[type] = []);
@@ -1023,6 +1104,10 @@ export default class AppSearchSuper {
     return containers[dateTimestamp];
   }
 
+  public canViewMembers() {
+    return this.searchContext.peerId < 0 && !appChatsManager.isBroadcast(-this.searchContext.peerId) && appChatsManager.hasRights(-this.searchContext.peerId, 'view_participants');
+  }
+
   public cleanup() {
     this.loadPromises = {};
     this.loaded = {};
@@ -1035,6 +1120,13 @@ export default class AppSearchSuper {
       this.usedFromHistory[mediaTab.inputFilter] = -1;
     });
 
+    // * must go to first tab (это костыль)
+    const membersTab = this.mediaTabsMap.get('members');
+    if(membersTab) {
+      const tab = this.canViewMembers() ? membersTab : this.mediaTabs[this.mediaTabs.indexOf(membersTab) + 1];
+      this.mediaTab = tab;
+    }
+
     this.middleware.clean();
     this.cleanScrollPositions();
   }
@@ -1045,7 +1137,7 @@ export default class AppSearchSuper {
     });
   }
 
-  public cleanupHTML() {
+  public cleanupHTML(goFirst = false) {
     if(this.urlsToRevoke.length) {
       this.urlsToRevoke.forEach(url => {
         URL.revokeObjectURL(url);
@@ -1055,6 +1147,10 @@ export default class AppSearchSuper {
 
     this.mediaTabs.forEach((tab) => {
       tab.contentTab.innerHTML = '';
+
+      /* if(this.hideEmptyTabs) {
+        tab.menuTab.classList.add('hide');
+      } */
 
       if(tab.type === 'chats') {
         return;
@@ -1074,6 +1170,18 @@ export default class AppSearchSuper {
         }
       }
     });
+
+    if(goFirst) {
+      const membersTab = this.mediaTabsMap.get('members');
+      if(membersTab) {
+        let idx = this.canViewMembers() ? 0 : 1;
+        membersTab.menuTab.classList.toggle('hide', idx !== 0);
+
+        this.selectTab(idx, false);
+      } else {
+        this.selectTab(0, false);
+      }
+    }
 
     this.monthContainers = {};
     this.searchGroupMedia.clear();

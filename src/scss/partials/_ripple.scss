@@ -48,7 +48,7 @@
   }
 
   &__circle {
-    background-color: rgba(0, 0, 0, .08);
+    background-color: var(--ripple-color);
     display: block;
     position: absolute;
     transform: scale(0);

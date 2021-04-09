@@ -1130,9 +1130,9 @@ $chat-helper-size: 39px;
 		}
 	}
 
-	/* .bubbles.is-chat-input-hidden & {
-		padding-bottom: 55px;
-	} */
+	.bubbles.is-chat-input-hidden & {
+		margin-bottom: 1.25rem;
+	}
 
 	&:not(.is-channel), &.is-chat {
 		.message {
