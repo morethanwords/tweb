@@ -230,7 +230,8 @@ export class AppSidebarLeft extends SidebarSlider {
       scrollable, 
       searchGroups: this.searchGroups, 
       asChatList: true,
-      hideEmptyTabs: false
+      hideEmptyTabs: false,
+      showSender: true
     });
 
     searchContainer.prepend(searchSuper.nav.parentElement.parentElement);

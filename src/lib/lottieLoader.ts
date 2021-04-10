@@ -507,6 +507,13 @@ class QueryableWorker extends EventListenerBase<any> {
   }
 }
 
+type LottieShape = {
+  c: {
+    k: number[]
+  },
+  ty: 'st' | 'fl',
+  it?: LottieShape[]
+};
 class LottieLoader {
   public isWebAssemblySupported = typeof(WebAssembly) !== 'undefined';
   public loadPromise: Promise<void> = !this.isWebAssemblySupported ? Promise.reject() : undefined;
@@ -604,40 +611,59 @@ class LottieLoader {
     });
   }
 
-  private applyReplacements(object: any, toneIndex: number) {
+  private applyReplacements(object: {
+    layers: Array<{shapes: LottieShape[]}>
+  }, toneIndex: number) {
     const replacements = LottieLoader.COLORREPLACEMENTS[Math.max(toneIndex - 1, 0)];
 
-    const iterateIt = (it: any) => {
-      for(let smth of it) {
-        switch(smth.ty) {
-          case 'st':
-          case 'fl':
-            let k = smth.c.k;
-            let color = convert(k[2]) | (convert(k[1]) << 8) | (convert(k[0]) << 16);
+    const applyTo = (smth: LottieShape) => {
+      const k = smth.c.k;
+      const color = convert(k[2]) | (convert(k[1]) << 8) | (convert(k[0]) << 16);
 
-            let foundReplacement = replacements.find(p => p[0] === color);
-            if(foundReplacement) {
-              k[0] = ((foundReplacement[1] >> 16) & 255) / 255;
-              k[1] = ((foundReplacement[1] >> 8) & 255) / 255;
-              k[2] = (foundReplacement[1] & 255) / 255;
-            }
+      const foundReplacement = replacements.find(p => p[0] === color);
+      if(foundReplacement) {
+        k[0] = ((foundReplacement[1] >> 16) & 255) / 255;
+        k[1] = ((foundReplacement[1] >> 8) & 255) / 255;
+        k[2] = (foundReplacement[1] & 255) / 255;
+      }
 
-            //console.log('foundReplacement!', foundReplacement, color.toString(16), k);
-            break;
-        }
+      //console.log('foundReplacement!', foundReplacement, color.toString(16), k);
+    };
 
-        if(smth.hasOwnProperty('it')) {
-          iterateIt(smth.it);
-        }
+    const checkSmth = (smth: LottieShape) => {
+      switch(smth.ty) {
+        case 'st':
+        case 'fl':
+          applyTo(smth);
+          break;
+      }
+
+      if(smth.hasOwnProperty('it')) {
+        iterateIt(smth.it);
       }
     };
 
-    for(let layer of object.layers) {
-      if(!layer.shapes) continue;
-
-      for(let shape of layer.shapes) {
-        iterateIt(shape.it);
+    const iterateIt = (it: LottieShape['it']) => {
+      for(const smth of it) {
+        checkSmth(smth);
       }
+    };
+
+    try {
+      for(const layer of object.layers) {
+        if(!layer.shapes) continue;
+  
+        for(const shape of layer.shapes) {
+          if(!shape.it) {
+            checkSmth(shape);
+            continue;
+          }
+
+          iterateIt(shape.it);
+        }
+      }
+    } catch(err) {
+      this.log.warn('cant apply replacements', err, object, toneIndex);
     }
   }
 

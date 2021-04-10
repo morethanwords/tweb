@@ -777,6 +777,10 @@ export default class AppSharedMediaTab extends SliderSuperTab {
         inputFilter: 'inputMessagesFilterMusic',
         name: 'SharedMusicTab2',
         type: 'music'
+      }, {
+        inputFilter: 'inputMessagesFilterVoice',
+        name: 'SharedVoiceTab2',
+        type: 'voice'
       }], 
       scrollable: this.scrollable,
       onChangeTab: (mediaTab) => {
@@ -864,8 +868,8 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     if(!this.historiesStorage[peerId]) return;
     
     mids = mids.slice().reverse(); // ! because it will be ascend sorted array
-    for(const type of this.searchSuper.mediaTabs) {
-      const inputFilter = type.inputFilter;
+    for(const mediaTab of this.searchSuper.mediaTabs) {
+      const inputFilter = mediaTab.inputFilter;
       const filtered = this.searchSuper.filterMessagesByType(mids.map(mid => appMessagesManager.getMessageByPeer(peerId, mid)), inputFilter);
       if(filtered.length) {
         if(this.historiesStorage[peerId][inputFilter]) {
@@ -874,7 +878,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
 
         if(this.peerId === peerId && this.searchSuper.usedFromHistory[inputFilter] !== -1) {
           this.searchSuper.usedFromHistory[inputFilter] += filtered.length;
-          this.searchSuper.performSearchResult(filtered, inputFilter, false);
+          this.searchSuper.performSearchResult(filtered, mediaTab, false);
         }
 
         break;
