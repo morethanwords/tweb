@@ -36,3 +36,31 @@ export function forEachReverse<T>(array: Array<T>, callback: (value: T, index?: 
     callback(array[i], i, array);
   }
 };
+
+export function insertInDescendSortedArray<T extends {[smth in K]?: number}, K extends keyof T>(array: Array<T>, element: T, property: K, pos?: number) {
+  if(pos === undefined) {
+    pos = array.indexOf(element);
+    if(pos !== -1) {
+      array.splice(pos, 1);
+    }
+  }
+
+  const sortProperty: number = element[property];
+  const len = array.length;
+  if(!len || sortProperty <= array[len - 1][property]) {
+    return array.push(element) - 1;
+  } else if(sortProperty >= array[0][property]) {
+    array.unshift(element);
+    return 0;
+  } else {
+    for(let i = 0; i < len; i++) {
+      if(sortProperty > array[i][property]) {
+        array.splice(i, 0, element);
+        return i;
+      }
+    }
+  }
+
+  console.error('wtf', array, element);
+  return array.indexOf(element);
+}

@@ -37,7 +37,7 @@ import PeerTitle from "../../components/peerTitle";
 import { i18n } from "../langPack";
 import findUpTag from "../../helpers/dom/findUpTag";
 
-type DialogDom = {
+export type DialogDom = {
   avatarEl: AvatarElement,
   captionDiv: HTMLDivElement,
   titleSpan: HTMLSpanElement,
@@ -1198,7 +1198,7 @@ export class AppDialogsManager {
 
   public addDialogNew(options: {
     dialog: Dialog | number,
-    container?: HTMLUListElement | Scrollable,
+    container?: HTMLUListElement | Scrollable | false,
     drawStatus?: boolean,
     rippleEnabled?: boolean,
     onlyFirstName?: boolean,
@@ -1210,7 +1210,7 @@ export class AppDialogsManager {
     return this.addDialog(options.dialog, options.container, options.drawStatus, options.rippleEnabled, options.onlyFirstName, options.meAsSaved, options.append, options.avatarSize, options.autonomous);
   }
 
-  public addDialog(_dialog: Dialog | number, container?: HTMLUListElement | Scrollable, drawStatus = true, rippleEnabled = true, onlyFirstName = false, meAsSaved = true, append = true, avatarSize = 54, autonomous = !!container) {
+  public addDialog(_dialog: Dialog | number, container?: HTMLUListElement | Scrollable | false, drawStatus = true, rippleEnabled = true, onlyFirstName = false, meAsSaved = true, append = true, avatarSize = 54, autonomous = !!container) {
     let dialog: Dialog;
     
     if(typeof(_dialog) === 'number') {
@@ -1230,7 +1230,7 @@ export class AppDialogsManager {
 
     const peerId: number = dialog.peerId;
 
-    if(!container) {
+    if(container === undefined) {
       if(this.doms[peerId]) return;
 
       const filter = appMessagesManager.filtersStorage.filters[this.filterId];
@@ -1350,7 +1350,7 @@ export class AppDialogsManager {
       }
     } */
     const method: 'append' | 'prepend' = append ? 'append' : 'prepend';
-    if(!container/*  || good */) {
+    if(container === undefined/*  || good */) {
       this.scroll[method](li);
 
       this.doms[dialog.peerId] = dom;
@@ -1365,7 +1365,7 @@ export class AppDialogsManager {
       }
 
       this.setLastMessage(dialog);
-    } else {
+    } else if(container) {
       container[method](li);
     }
 

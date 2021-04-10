@@ -36,7 +36,7 @@ import rootScope from '../lib/rootScope';
 import { onVideoLoad } from '../helpers/files';
 import { animateSingle } from '../helpers/animation';
 import renderImageFromUrl from '../helpers/dom/renderImageFromUrl';
-import { fastRaf } from '../helpers/schedulers';
+import sequentialDom from '../helpers/sequentialDom';
 
 const MAX_VIDEO_AUTOPLAY_SIZE = 50 * 1024 * 1024; // 50 MB
 
@@ -726,22 +726,23 @@ export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withT
 
     return new Promise((resolve) => {
       renderImageFromUrl(image, cacheContext.url || photo.url, () => {
-        container.append(image);
+        sequentialDom.mutateElement(container, () => {
+          container.append(image);
 
-        fastRaf(() => {
           resolve();
+  
+          if(needFadeIn) {
+            image.addEventListener('animationend', () => {
+              sequentialDom.mutate(() => {
+                image.classList.remove('fade-in');
+    
+                if(thumbImage) {
+                  thumbImage.remove();
+                }
+              });
+            }, {once: true});
+          }
         });
-        //resolve();
-
-        if(needFadeIn) {
-          image.addEventListener('animationend', () => {
-            image.classList.remove('fade-in');
-
-            if(thumbImage) {
-              thumbImage.remove();
-            }
-          }, {once: true});
-        }
       });
     });
   };
@@ -849,8 +850,11 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
     const afterRender = () => {
       if(!div.childElementCount) {
         thumbImage.classList.add('media-sticker', 'thumbnail');
-        div.append(thumbImage);
-        loadThumbPromise.resolve();
+        
+        sequentialDom.mutateElement(div, () => {
+          div.append(thumbImage);
+          loadThumbPromise.resolve();
+        });
       }
     };
 
@@ -974,17 +978,23 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
           };
 
           if(!needFadeIn) {
-            cb();
-          } else {
-            animation.canvas.classList.add('fade-in');
             if(element) {
-              element.classList.add('fade-out');
+              sequentialDom.mutate(cb);
             }
-
-            animation.canvas.addEventListener('animationend', () => {
-              animation.canvas.classList.remove('fade-in');
-              cb();
-            }, {once: true});
+          } else {
+            sequentialDom.mutate(() => {
+              animation.canvas.classList.add('fade-in');
+              if(element) {
+                element.classList.add('fade-out');
+              }
+  
+              animation.canvas.addEventListener('animationend', () => {
+                sequentialDom.mutate(() => {
+                  animation.canvas.classList.remove('fade-in');
+                  cb();
+                });
+              }, {once: true});
+            });
           }
 
           appDocsManager.saveLottiePreview(doc, animation.canvas, toneIndex);
@@ -1025,23 +1035,23 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
           if(middleware && !middleware()) return resolve();
   
           renderImageFromUrl(image, doc.url, () => {
-            div.append(image);
-            if(thumbImage) {
-              thumbImage.classList.add('fade-out');
-            }
-  
-            fastRaf(() => {
+            sequentialDom.mutateElement(div, () => {
+              div.append(image);
+              if(thumbImage) {
+                thumbImage.classList.add('fade-out');
+              }
+
               resolve();
+
+              if(needFadeIn) {
+                image.addEventListener('animationend', () => {
+                  image.classList.remove('fade-in');
+                  if(thumbImage) {
+                    thumbImage.remove();
+                  }
+                }, {once: true});
+              }
             });
-  
-            if(needFadeIn) {
-              image.addEventListener('animationend', () => {
-                image.classList.remove('fade-in');
-                if(thumbImage) {
-                  thumbImage.remove();
-                }
-              }, {once: true});
-            }
           });
         };
   
