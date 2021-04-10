@@ -535,7 +535,7 @@ export class AppProfileManager {
         renderImageFromUrl(img, saved[size] as string, () => {
           callback();
           resolve();
-        }, false);
+        }/* , false */);
       });
     });
 

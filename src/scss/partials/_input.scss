@@ -275,7 +275,7 @@ input:focus, button:focus {
 
     @include hover() {
       &:not(:focus) {
-        border-color: var(--color-gray) !important;
+        border-color: var(--secondary-color) !important;
         //border-color: #000;
       }
     }
@@ -288,6 +288,10 @@ input:focus, button:focus {
       & ~ .tgico {
         color: var(--primary-color);
         opacity: 1;
+      }
+
+      & ~ .btn-icon {
+        @include hover-background-effect(primary);
       }
     }
 

@@ -135,10 +135,9 @@ ul.chatlist {
         &:after {
           flex: 0 0 auto;
           content: $tgico-nosound;
-          color: var(--secondary-text-color);
+          color: var(--chatlist-pinned-color);
           font-size: 1.125rem;
           margin-left: .125rem;
-          opacity: .7;
         }
       }
 

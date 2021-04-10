@@ -29,13 +29,17 @@ export function wrapReplyDivAndCaption(options: {
     titleEl.innerHTML = title;
   }
 
-  const media = message && message.media;
+  let media = message && message.media;
   let setMedia = false;
   if(media && mediaEl) {
     subtitleEl.textContent = '';
     subtitleEl.append(appMessagesManager.wrapMessageForReply(message));
 
     //console.log('wrap reply', media);
+
+    if(media.webpage) {
+      media = media.webpage;
+    }
     
     if(media.photo || (media.document && ['video', 'sticker', 'gif'].indexOf(media.document.type) !== -1)) {
       /* const middlewareOriginal = appImManager.chat.bubbles.getMiddleware();
