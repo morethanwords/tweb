@@ -405,8 +405,10 @@ export function calcImageInBox(imageW: number, imageH: number, boxW: number, box
 
 MOUNT_CLASS_TO.calcImageInBox = calcImageInBox;
 
-export function positionElementByIndex(element: HTMLElement, container: HTMLElement, pos: number) {
-  const prevPos = element.parentElement === container ? whichChild(element) : -1;
+export function positionElementByIndex(element: HTMLElement, container: HTMLElement, pos: number, prevPos?: number) {
+  if(prevPos === undefined) {
+    prevPos = element.parentElement === container ? whichChild(element) : -1;
+  }
 
   if(prevPos === pos) {
     return false;

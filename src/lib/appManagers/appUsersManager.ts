@@ -363,14 +363,18 @@ export class AppUsersManager {
     this.userAccess[id] = accessHash;
   } */
 
-  public getUserStatusForSort(status: User['status']) {
+  public getUserStatusForSort(status: User['status'] | number) {
+    if(typeof(status) === 'number') {
+      status = this.getUser(status).status;
+    }
+
     if(status) {
       const expires = status._ === 'userStatusOnline' ? status.expires : (status._ === 'userStatusOffline' ? status.was_online : 0);
       if(expires) {
         return expires;
       }
 
-      const timeNow = tsNow(true);
+      /* const timeNow = tsNow(true);
       switch(status._) {
         case 'userStatusRecently':
           return timeNow - 86400 * 3;
@@ -378,6 +382,14 @@ export class AppUsersManager {
           return timeNow - 86400 * 7;
         case 'userStatusLastMonth':
           return timeNow - 86400 * 30;
+      } */
+      switch(status._) {
+        case 'userStatusRecently':
+          return 3;
+        case 'userStatusLastWeek':
+          return 2;
+        case 'userStatusLastMonth':
+          return 1;
       }
     }
 

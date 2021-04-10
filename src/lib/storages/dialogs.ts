@@ -16,6 +16,7 @@ import type { AppMessagesManager, Dialog, MyMessage } from "../appManagers/appMe
 import type { AppPeersManager } from "../appManagers/appPeersManager";
 import type { ServerTimeManager } from "../mtproto/serverTimeManager";
 import searchIndexManager from "../searchIndexManager";
+import { insertInDescendSortedArray } from "../../helpers/array";
 
 export default class DialogsStorage {
   public dialogs: {[peerId: string]: Dialog} = {};
@@ -181,20 +182,7 @@ export default class DialogsStorage {
       this.dialogsOffsetDate[dialog.folder_id] = offsetDate;
     }
 
-    const index = dialog.index;
-    const len = dialogs.length;
-    if(!len || index < dialogs[len - 1].index) {
-      dialogs.push(dialog);
-    } else if(index >= dialogs[0].index) {
-      dialogs.unshift(dialog);
-    } else {
-      for(let i = 0; i < len; i++) {
-        if(index > dialogs[i].index) {
-          dialogs.splice(i, 0, dialog);
-          break;
-        }
-      }
-    }
+    insertInDescendSortedArray(dialogs, dialog, 'index', pos);
   }
 
   public dropDialog(peerId: number): [Dialog, number] | [] {

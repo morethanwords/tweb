@@ -660,7 +660,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
   }
 
   public init() {
-    const perf = performance.now();
+    //const perf = performance.now();
 
     this.container.classList.add('shared-media-container', 'profile-container');
 
@@ -859,7 +859,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
       }
     });
 
-    console.log('construct shared media time:', performance.now() - perf);
+    //console.log('construct shared media time:', performance.now() - perf);
   }
 
   public renderNewMessages(peerId: number, mids: number[]) {
@@ -923,7 +923,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
   }
 
   public cleanupHTML() {
-    const perf = performance.now();
+    // const perf = performance.now();
     this.profile.cleanupHTML();
     
     this.editBtn.style.display = 'none';
@@ -932,7 +932,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
 
     this.container.classList.toggle('can-add-members', this.searchSuper.canViewMembers() && appChatsManager.hasRights(-this.peerId, 'invite_users'));
 
-    console.log('cleanupHTML shared media time:', performance.now() - perf);
+    // console.log('cleanupHTML shared media time:', performance.now() - perf);
   }
 
   public setLoadMutex(promise: Promise<any>) {

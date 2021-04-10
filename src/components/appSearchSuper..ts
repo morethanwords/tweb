@@ -5,11 +5,11 @@
  */
 
 import { formatDateAccordingToToday, months } from "../helpers/date";
-import { positionElementByIndex } from "../helpers/dom";
+import { positionElementByIndex, isInDOM, replaceContent } from "../helpers/dom";
 import { copy, getObjectKeysAndSort, safeAssign } from "../helpers/object";
 import { escapeRegExp, limitSymbols } from "../helpers/string";
 import appChatsManager from "../lib/appManagers/appChatsManager";
-import appDialogsManager from "../lib/appManagers/appDialogsManager";
+import appDialogsManager, { DialogDom } from "../lib/appManagers/appDialogsManager";
 import appMessagesManager, { MyInputMessagesFilter, MyMessage } from "../lib/appManagers/appMessagesManager";
 import appPeersManager from "../lib/appManagers/appPeersManager";
 import appPhotosManager from "../lib/appManagers/appPhotosManager";
@@ -34,6 +34,7 @@ import findUpClassName from "../helpers/dom/findUpClassName";
 import { getMiddleware } from "../helpers/middleware";
 import appProfileManager from "../lib/appManagers/appProfileManager";
 import { ChannelParticipant, ChatFull, ChatParticipant, ChatParticipants } from "../layer";
+import SortedUserList from "./sortedUserList";
 
 //const testScroll = false;
 
@@ -103,6 +104,8 @@ export default class AppSearchSuper {
   private searchGroupMedia: SearchGroup;
 
   public mediaTabsMap: Map<SearchSuperMediaType, SearchSuperMediaTab> = new Map();
+
+  private membersList: SortedUserList;
 
   // * arguments
   public mediaTabs: SearchSuperMediaTab[];
@@ -850,32 +853,24 @@ export default class AppSearchSuper {
         }
       }
       
-      let list = mediaTab.contentTab.firstElementChild as HTMLUListElement;
-      if(!list) {
-        list = appDialogsManager.createChatList();
-        appDialogsManager.setListClickListener(list, undefined, undefined, true, true);
-        mediaTab.contentTab.append(list);
+      if(!this.membersList) {
+        this.membersList = new SortedUserList();
+        mediaTab.contentTab.append(this.membersList.list);
         this.afterPerforming(1, mediaTab.contentTab);
       }
 
       participants.forEach(participant => {
-        let {dialog, dom} = appDialogsManager.addDialogNew({
-          dialog: participant.user_id,
-          container: list,
-          drawStatus: false,
-          avatarSize: 48,
-          autonomous: true,
-          meAsSaved: false,
-          rippleEnabled: false
-        });
+        const user = appUsersManager.getUser(participant.user_id);
+        if(user.pFlags.deleted) {
+          return;
+        }
 
-        let status = appUsersManager.getUserStatusString(participant.user_id);
-        dom.lastMessageSpan.append(status);
+        this.membersList.add(participant.user_id);
       });
     };
 
     if(appChatsManager.isChannel(id)) {
-      const LOAD_COUNT = 50;
+      const LOAD_COUNT = !this.membersList ? 50 : 200;
       promise = appProfileManager.getChannelParticipants(id, undefined, LOAD_COUNT, this.nextRates[mediaTab.inputFilter]).then(participants => {
         if(!middleware()) {
           return;
@@ -1139,6 +1134,7 @@ export default class AppSearchSuper {
 
     this.middleware.clean();
     this.cleanScrollPositions();
+    this.membersList = undefined;
   }
 
   public cleanScrollPositions() {
