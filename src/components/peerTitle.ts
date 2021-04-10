@@ -7,6 +7,8 @@
 import { MOUNT_CLASS_TO } from "../config/debug";
 import appPeersManager from "../lib/appManagers/appPeersManager";
 import rootScope from "../lib/rootScope";
+import { replaceContent } from "../helpers/dom";
+import { i18n } from "../lib/langPack";
 
 export type PeerTitleOptions = {
   peerId: number,
@@ -59,7 +61,7 @@ export default class PeerTitle {
     if(this.peerId !== rootScope.myId || !this.dialog) {
       this.element.innerHTML = appPeersManager.getPeerTitle(this.peerId, this.plainText, this.onlyFirstName);
     } else {
-      this.element.innerHTML = this.onlyFirstName ? 'Saved' : 'Saved Messages';
+      replaceContent(this.element, i18n(this.onlyFirstName ? 'Saved' : 'SavedMessages'));
     }
   }
 }

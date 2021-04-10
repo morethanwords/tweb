@@ -90,6 +90,7 @@ const lang = {
   "MarkupTooltip.LinkPlaceholder": "Enter URL...",
   "MediaViewer.Context.Download": "Download",
   "Profile": "Profile",
+  "Saved": "Saved",
 
   // * android
   "ActionCreateChannel": "Channel created",

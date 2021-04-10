@@ -36,7 +36,6 @@ export class AppChatsManager {
   //public usernames: any = {};
   //public channelAccess: any = {};
   //public megagroups: {[id: number]: true} = {};
-  public cachedPhotoLocations: {[id: number]: ChatPhoto} = {};
 
   public megagroupOnlines: {[id: number]: {timestamp: number, onlines: number}} = {};
 
@@ -182,11 +181,6 @@ export class AppChatsManager {
 
       safeReplaceObject(oldChat, chat);
       rootScope.broadcast('chat_update', chat.id);
-    }
-
-    if(this.cachedPhotoLocations[chat.id] !== undefined) {
-      safeReplaceObject(this.cachedPhotoLocations[chat.id], chat && 
-        chat.photo ? chat.photo : {empty: true});
     }
 
     if(changedPhoto) {
@@ -388,13 +382,9 @@ export class AppChatsManager {
   public getChatPhoto(id: number) {
     const chat: Chat.chat = this.getChat(id);
 
-    if(this.cachedPhotoLocations[id] === undefined) {
-      this.cachedPhotoLocations[id] = chat && chat.photo || {
-        _: 'chatPhotoEmpty'
-      };
-    }
-
-    return this.cachedPhotoLocations[id];
+    return chat && chat.photo || {
+      _: 'chatPhotoEmpty'
+    };
   }
 
   public getChatString(id: number) {

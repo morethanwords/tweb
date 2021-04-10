@@ -11,7 +11,7 @@ import appPeersManager from "../lib/appManagers/appPeersManager";
 import appPhotosManager from "../lib/appManagers/appPhotosManager";
 import appUsersManager from "../lib/appManagers/appUsersManager";
 import rootScope from "../lib/rootScope";
-import { cancelEvent } from "../helpers/dom";
+import { cancelEvent, replaceContent } from "../helpers/dom";
 import Scrollable from "./scrollable";
 import { FocusDirection } from "../helpers/fastSmoothScroll";
 import CheckboxField from "./checkboxField";
@@ -20,6 +20,7 @@ import { safeAssign } from "../helpers/object";
 import { i18n, LangPackKey, _i18n } from "../lib/langPack";
 import findUpAttribute from "../helpers/dom/findUpAttribute";
 import findUpClassName from "../helpers/dom/findUpClassName";
+import PeerTitle from "./peerTitle";
 
 type PeerType = 'contacts' | 'dialogs' | 'channelParticipants';
 
@@ -475,7 +476,7 @@ export default class AppSelectPeers {
     div.dataset.key = '' + peerId;
     if(typeof(peerId) === 'number') {
       if(title === undefined) {
-        title = peerId === rootScope.myId ? 'Saved' : appPeersManager.getPeerTitle(peerId, false, true);
+        title = new PeerTitle({peerId, onlyFirstName: true}).element;
       }
 
       avatarEl.setAttribute('peer', '' + peerId);
@@ -485,7 +486,7 @@ export default class AppSelectPeers {
       if(typeof(title) === 'string') {
         div.innerHTML = title;
       } else {
-        div.innerHTML = '';
+        replaceContent(div, title);
         div.append(title);
       }
     }
