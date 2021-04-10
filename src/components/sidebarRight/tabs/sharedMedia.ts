@@ -166,6 +166,7 @@ class PeerProfileAvatars {
   public static BASE_CLASS = 'profile-avatars';
   public container: HTMLElement;
   public avatars: HTMLElement;
+  //public gradient: HTMLElement;
   public info: HTMLElement;
   public tabs: HTMLDivElement;
   public listLoader: ListLoader<string>;
@@ -178,13 +179,16 @@ class PeerProfileAvatars {
     this.avatars = document.createElement('div');
     this.avatars.classList.add(PeerProfileAvatars.BASE_CLASS + '-avatars');
 
+    //this.gradient = document.createElement('div');
+    //this.gradient.classList.add(PeerProfileAvatars.BASE_CLASS + '-gradient');
+
     this.info = document.createElement('div');
     this.info.classList.add(PeerProfileAvatars.BASE_CLASS + '-info');
 
     this.tabs = document.createElement('div');
     this.tabs.classList.add(PeerProfileAvatars.BASE_CLASS + '-tabs');
 
-    this.container.append(this.avatars, this.info, this.tabs);
+    this.container.append(this.avatars, /* this.gradient,  */this.info, this.tabs);
 
     let cancel = false;
     attachClickEvent(this.container, (_e) => {
