@@ -111,8 +111,9 @@ export default class AppSearchSuper {
   public asChatList? = false;
   public groupByMonth? = true;
   public hideEmptyTabs? = true;
+  public onChangeTab?: (mediaTab: SearchSuperMediaTab) => void;
 
-  constructor(options: Pick<AppSearchSuper, 'mediaTabs' | 'scrollable' | 'searchGroups' | 'asChatList' | 'groupByMonth' | 'hideEmptyTabs'>) {
+  constructor(options: Pick<AppSearchSuper, 'mediaTabs' | 'scrollable' | 'searchGroups' | 'asChatList' | 'groupByMonth' | 'hideEmptyTabs' | 'onChangeTab'>) {
     safeAssign(this, options);
 
     this.container = document.createElement('div');
@@ -214,6 +215,10 @@ export default class AppSearchSuper {
       }
 
       this.mediaTab = newMediaTab;
+
+      if(this.onChangeTab) {
+        this.onChangeTab(this.mediaTab);
+      }
       
       /* if(this.prevTabId !== -1 && nav.offsetTop) {
         this.scrollable.scrollTop -= nav.offsetTop;

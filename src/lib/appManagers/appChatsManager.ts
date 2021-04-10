@@ -582,6 +582,14 @@ export class AppChatsManager {
     }).then(this.onChatUpdated.bind(this, id));
   }
 
+  public addChatUser(id: number, userId: number, fwdLimit = 100) {
+    return apiManager.invokeApi('messages.addChatUser', {
+      chat_id: id,
+      user_id: appUsersManager.getUserInput(userId),
+      fwd_limit: fwdLimit
+    }).then(this.onChatUpdated.bind(this, id));
+  }
+
   public deleteChatUser(id: number, userId: number) {
     return apiManager.invokeApi('messages.deleteChatUser', {
       chat_id: id,

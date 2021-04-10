@@ -14,7 +14,7 @@ export default class AppAddMembersTab extends SliderSuperTab {
   private nextBtn: HTMLButtonElement;
   private selector: AppSelectPeers;
   private peerType: 'channel' | 'chat' | 'privacy';
-  private takeOut: (peerIds: number[]) => Promise<any> | any;
+  private takeOut: (peerIds: number[]) => Promise<any> | false | void;
   private skippable: boolean;
 
   protected init() {
@@ -31,18 +31,22 @@ export default class AppAddMembersTab extends SliderSuperTab {
         const promise = this.takeOut(peerIds);
 
         if(promise instanceof Promise) {
-          this.nextBtn.classList.remove('tgico-arrow_next');
-          this.nextBtn.disabled = true;
-          putPreloader(this.nextBtn);
-          this.selector.freezed = true;
-  
-          promise.then(() => {
-            this.close();
-          });
-        } else {
+          this.attachToPromise(promise);
+        } else if(promise === undefined) {
           this.close();
         }
       }
+    });
+  }
+
+  public attachToPromise(promise: Promise<any>) {
+    this.nextBtn.classList.remove('tgico-arrow_next');
+    this.nextBtn.disabled = true;
+    putPreloader(this.nextBtn);
+    this.selector.freezed = true;
+
+    promise.then(() => {
+      this.close();
     });
   }
 

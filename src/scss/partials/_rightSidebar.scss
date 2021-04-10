@@ -126,6 +126,36 @@
       align-items: center;
     }
   }
+
+  .btn-corner {
+    &.menu-open:before {
+      content: $tgico-close;
+    }
+
+    @include respond-to(handhelds) {
+      width: 54px;
+      height: 54px;
+      bottom: 14px;
+      right: 14px;
+
+      position: fixed !important;
+      z-index: 1;
+    }
+  }
+
+  &.can-add-members {
+    @include respond-to(handhelds) {
+      .btn-corner:not(.is-hidden) {
+        transform: translateZ(0);
+      }
+    }
+
+    @include hover() {
+      .btn-corner:not(.is-hidden) {
+        transform: translateZ(0);
+      }
+    }
+  }
 }
 
 .search-super {
