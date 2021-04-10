@@ -15,6 +15,7 @@ import type { AppChatsManager } from "../appManagers/appChatsManager";
 import type { AppMessagesManager, Dialog, MyMessage } from "../appManagers/appMessagesManager";
 import type { AppPeersManager } from "../appManagers/appPeersManager";
 import type { ServerTimeManager } from "../mtproto/serverTimeManager";
+import searchIndexManager from "../searchIndexManager";
 
 export default class DialogsStorage {
   public dialogs: {[peerId: string]: Dialog} = {};
@@ -24,6 +25,8 @@ export default class DialogsStorage {
   private dialogsOffsetDate: {[folder_id: number]: number};
   public pinnedOrders: {[folder_id: number]: number[]};
   private dialogsNum: number;
+
+  public dialogsIndex = searchIndexManager.createIndex();
 
   constructor(private appMessagesManager: AppMessagesManager, private appChatsManager: AppChatsManager, private appPeersManager: AppPeersManager, private serverTimeManager: ServerTimeManager) {
     this.reset();
@@ -199,6 +202,7 @@ export default class DialogsStorage {
     if(foundDialog[0]) {
       this.byFolders[foundDialog[0].folder_id].splice(foundDialog[1], 1);
       delete this.dialogs[peerId];
+      searchIndexManager.indexObject(peerId, '', this.dialogsIndex);
     }
 
     return foundDialog;

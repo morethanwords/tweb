@@ -497,28 +497,32 @@ class PeerProfile {
   }
 
   public setAvatar() {
-    const photo = appPeersManager.getPeerPhoto(this.peerId);
+    if(this.peerId !== rootScope.myId) {
+      const photo = appPeersManager.getPeerPhoto(this.peerId);
 
-    if(photo) {
-      const oldAvatars = this.avatars;
-      this.avatars = new PeerProfileAvatars();
-      this.avatars.setPeer(this.peerId);
-      this.avatars.info.append(this.name, this.subtitle);
-
-      this.avatar.remove();
+      if(photo) {
+        const oldAvatars = this.avatars;
+        this.avatars = new PeerProfileAvatars();
+        this.avatars.setPeer(this.peerId);
+        this.avatars.info.append(this.name, this.subtitle);
   
-      if(oldAvatars) oldAvatars.container.replaceWith(this.avatars.container);
-      else this.element.prepend(this.avatars.container);
-    } else {
-      if(this.avatars) {
-        this.avatars.container.remove();
-        this.avatars = undefined;
+        this.avatar.remove();
+    
+        if(oldAvatars) oldAvatars.container.replaceWith(this.avatars.container);
+        else this.element.prepend(this.avatars.container);
+
+        return;
       }
-
-      this.avatar.setAttribute('peer', '' + this.peerId);
-
-      this.section.content.prepend(this.avatar, this.name, this.subtitle);
     }
+
+    if(this.avatars) {
+      this.avatars.container.remove();
+      this.avatars = undefined;
+    }
+
+    this.avatar.setAttribute('peer', '' + this.peerId);
+
+    this.section.content.prepend(this.avatar, this.name, this.subtitle);
   }
 
   public fillProfileElements() {

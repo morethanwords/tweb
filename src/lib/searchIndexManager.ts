@@ -54,12 +54,16 @@ class SearchIndexManager {
   }
 
   public indexObject(id: number, searchText: string, searchIndex: SearchIndex) {
-    if(searchIndex.fullTexts.hasOwnProperty(id)) {
+    /* if(searchIndex.fullTexts.hasOwnProperty(id)) {
       return false;
+    } */
+
+    if(searchText.trim()) {
+      searchText = this.cleanSearchText(searchText);
     }
 
-    searchText = this.cleanSearchText(searchText);
-    if(!searchText.length) {
+    if(!searchText) {
+      delete searchIndex.fullTexts[id];
       return false;
     }
 

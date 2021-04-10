@@ -13,6 +13,7 @@ import { LangPackDifference, LangPackString } from "../layer";
 import apiManager from "./mtproto/mtprotoworker";
 import sessionStorage from "./sessionStorage";
 import App from "../config/app";
+import rootScope from "./rootScope";
 
 export const langPack: {[actionType: string]: LangPackKey} = {
   "messageActionChatCreate": "ActionCreateGroup",
@@ -203,6 +204,8 @@ namespace I18n {
 		for(const string of langPack.strings) {
 			strings.set(string.key as LangPackKey, string);
 		}
+
+		rootScope.broadcast('language_change');
 
 		const elements = Array.from(document.querySelectorAll(`.i18n`)) as HTMLElement[];
 		elements.forEach(element => {

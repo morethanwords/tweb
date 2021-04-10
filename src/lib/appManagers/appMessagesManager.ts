@@ -184,7 +184,6 @@ export class AppMessagesManager {
   private reloadConversationsPromise: Promise<void>;
   private reloadConversationsPeers: number[] = [];
 
-  private dialogsIndex = searchIndexManager.createIndex();
   private cachedResults: {
     query: string,
     count: number,
@@ -226,6 +225,15 @@ export class AppMessagesManager {
           rootScope.broadcast('dialog_notify_settings', dialog);
         });
       });
+    });
+
+    rootScope.on('language_change', (e) => {
+      const peerId = appUsersManager.getSelf().id;
+      const dialog = this.getDialogByPeerId(peerId)[0];
+      if(dialog) {
+        const peerText = appPeersManager.getPeerSearchText(peerId);
+        searchIndexManager.indexObject(peerId, peerText, this.dialogsStorage.dialogsIndex);
+      }
     });
 
     rootScope.on('webpage_updated', (e) => {
@@ -1650,7 +1658,7 @@ export class AppMessagesManager {
         this.cachedResults.query = query;
         this.cachedResults.folderId = folderId;
 
-        const results = searchIndexManager.search(query, this.dialogsIndex);
+        const results = searchIndexManager.search(query, this.dialogsStorage.dialogsIndex);
 
         this.cachedResults.dialogs = [];
 
@@ -3070,7 +3078,7 @@ export class AppMessagesManager {
     }
 
     const peerText = appPeersManager.getPeerSearchText(peerId);
-    searchIndexManager.indexObject(peerId, peerText, this.dialogsIndex);
+    searchIndexManager.indexObject(peerId, peerText, this.dialogsStorage.dialogsIndex);
 
     let mid: number, message;
     if(dialog.top_message) {

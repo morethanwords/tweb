@@ -67,6 +67,10 @@ export function getObjectKeysAndSort(object: any, sort: 'asc' | 'desc' = 'asc') 
 }
 
 export function safeReplaceObject(wasObject: any, newObject: any) {
+  if(!wasObject) {
+    return newObject;
+  }
+
   for(var key in wasObject) {
     if(!newObject.hasOwnProperty(key) && key.charAt(0) !== '$') {
       delete wasObject[key];
@@ -78,6 +82,8 @@ export function safeReplaceObject(wasObject: any, newObject: any) {
       wasObject[key] = newObject[key];
     //}
   }
+  
+  return wasObject;
 }
 
 /**

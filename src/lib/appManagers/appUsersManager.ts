@@ -35,7 +35,6 @@ export class AppUsersManager {
   private users: {[userId: number]: User} = {};
   private usernames: {[username: string]: number} = {};
   //public userAccess: {[userId: number]: string} = {};
-  private cachedPhotoLocations: {[userId: number]: UserProfilePhoto} = {};
   private contactsIndex = searchIndexManager.createIndex();
   private contactsFillPromise: Promise<Set<number>>;
   public contactsList: Set<number> = new Set();
@@ -80,17 +79,12 @@ export class AppUsersManager {
           if(user) {
             this.forceUserOnline(userId);
 
-            if(!user.photo) {
-              user.photo = update.photo;
+            if(update.photo._ === 'userProfilePhotoEmpty') {
+              delete user.photo;
             } else {
-              safeReplaceObject(user.photo, update.photo);
+              user.photo = safeReplaceObject(user.photo, update.photo);
             }
-  
-            if(this.cachedPhotoLocations[userId] !== undefined) {
-              safeReplaceObject(this.cachedPhotoLocations[userId], update.photo ?  
-                update.photo : {empty: true});
-            }
-  
+
             rootScope.broadcast('user_update', userId);
             rootScope.broadcast('avatar_update', userId);
           } else console.warn('No user by id:', userId);
@@ -118,6 +112,11 @@ export class AppUsersManager {
           this.onContactUpdated(update.user_id, update.my_link._ === 'contactLinkContact');
           break; */
       }
+    });
+
+    rootScope.on('language_change', (e) => {
+      const userId = this.getSelf().id;
+      searchIndexManager.indexObject(userId, this.getUserSearchText(userId), this.contactsIndex);
     });
 
     appStateManager.getState().then((state) => {
@@ -198,12 +197,16 @@ export class AppUsersManager {
       return '';
     }
 
-    const serviceText = user.pFlags.self ? 'Saved Messages' : '';
-    return (user.first_name || '') +
-            ' ' + (user.last_name || '') +
-            ' ' + (user.phone || '') +
-            ' ' + (user.username || '') +
-            ' ' + serviceText;
+    const arr: string[] = [
+      user.first_name,
+      user.last_name,
+      user.phone,
+      user.username,
+      user.pFlags.self ? I18n.format('SavedMessages', true) : '',
+      user.pFlags.self ? 'Saved Messages' : ''
+    ];
+
+    return arr.filter(Boolean).join(' ');
   }
 
   public getContacts(query?: string, includeSaved = false) {
@@ -350,11 +353,6 @@ export class AppUsersManager {
     }
 
     rootScope.broadcast('user_update', userId);
-
-    if(this.cachedPhotoLocations[userId] !== undefined) {
-      safeReplaceObject(this.cachedPhotoLocations[userId], user && 
-        user.photo ? user.photo : {empty: true});
-    }
 
     if(changedTitle) {
       rootScope.broadcast('peer_title_edit', user.id);
@@ -514,13 +512,9 @@ export class AppUsersManager {
   public getUserPhoto(id: number) {
     const user = this.getUser(id);
 
-    if(this.cachedPhotoLocations[id] === undefined) {
-      this.cachedPhotoLocations[id] = user && user.photo || {
-        _: 'userProfilePhotoEmpty'
-      };
-    }
-
-    return this.cachedPhotoLocations[id];
+    return user && user.photo || {
+      _: 'userProfilePhotoEmpty'
+    };
   }
 
   public getUserString(id: number) {

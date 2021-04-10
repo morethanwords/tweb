@@ -34,6 +34,8 @@ import { isMobileSafari } from "../../helpers/userAgent";
 import appNavigationController from "../appNavigationController";
 import findUpClassName from "../../helpers/dom/findUpClassName";
 import findUpTag from "../../helpers/dom/findUpTag";
+import PeerTitle from "../peerTitle";
+import { replaceContent } from "../../helpers/dom";
 
 export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
 
@@ -290,7 +292,7 @@ export class AppSidebarLeft extends SidebarSlider {
 
     searchSuper.nav.parentElement.append(helper);
 
-    const renderEntity = (peerId: any, title?: string) => {
+    const renderEntity = (peerId: any, title?: string | HTMLElement) => {
       const div = document.createElement('div');
       div.classList.add('selector-user'/* , 'scale-in' */);
 
@@ -302,7 +304,7 @@ export class AppSidebarLeft extends SidebarSlider {
       div.dataset.key = '' + peerId;
       if(typeof(peerId) === 'number') {
         if(title === undefined) {
-          title = peerId === rootScope.myId ? 'Saved' : appPeersManager.getPeerTitle(peerId, false, true);
+          title = new PeerTitle({peerId, onlyFirstName: true}).element;
         }
 
         avatarEl.setAttribute('peer', '' + peerId);
@@ -311,7 +313,12 @@ export class AppSidebarLeft extends SidebarSlider {
       }
 
       if(title) {
-        div.innerHTML = title;
+        if(typeof(title) === 'string') {
+          div.innerHTML = title;
+        } else {
+          replaceContent(div, title);
+          div.append(title);
+        }
       }
 
       div.insertAdjacentElement('afterbegin', avatarEl);
@@ -446,7 +453,7 @@ export class AppSidebarLeft extends SidebarSlider {
       this.newBtnMenu.classList.add('is-hidden');
       this.toolsBtn.parentElement.firstElementChild.classList.toggle('state-back', true);
 
-      if(!isMobileSafari) {
+      if(!isMobileSafari && !appNavigationController.findItemByType('global-search')) {
         appNavigationController.pushItem({
           onPop: () => {
             close();
