@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { attachClickEvent } from "../../../helpers/dom";
+import { attachClickEvent, replaceContent } from "../../../helpers/dom";
 import findUpTag from "../../../helpers/dom/findUpTag";
 import ListenerSetter from "../../../helpers/listenerSetter";
 import ScrollableLoader from "../../../helpers/listLoader";
@@ -12,7 +12,7 @@ import { ChannelParticipant, Chat, ChatBannedRights, Update } from "../../../lay
 import appChatsManager, { ChatRights } from "../../../lib/appManagers/appChatsManager";
 import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
 import appProfileManager from "../../../lib/appManagers/appProfileManager";
-import I18n, { i18n, LangPackKey } from "../../../lib/langPack";
+import I18n, { i18n, join, LangPackKey } from "../../../lib/langPack";
 import rootScope from "../../../lib/rootScope";
 import CheckboxField from "../../checkboxField";
 import PopupPickUser from "../../popups/pickUser";
@@ -26,7 +26,8 @@ export class ChatPermissions {
   public v: Array<{
     flags: ChatRights[],
     text: LangPackKey,
-    checkboxField?: CheckboxField
+    exceptionText: LangPackKey,
+    checkboxField?: CheckboxField,
   }>;
   private toggleWith: Partial<{[chatRight in ChatRights]: ChatRights[]}>;
 
@@ -37,14 +38,14 @@ export class ChatPermissions {
     participant?: ChannelParticipant.channelParticipantBanned
   }) {
     this.v = [
-      {flags: ['send_messages'], text: 'UserRestrictionsSend'},
-      {flags: ['send_media'], text: 'UserRestrictionsSendMedia'},
-      {flags: ['send_stickers', 'send_gifs'], text: 'UserRestrictionsSendStickers'},
-      {flags: ['send_polls'], text: 'UserRestrictionsSendPolls'},
-      {flags: ['embed_links'], text: 'UserRestrictionsEmbedLinks'},
-      {flags: ['invite_users'], text: 'UserRestrictionsInviteUsers'},
-      {flags: ['pin_messages'], text: 'UserRestrictionsPinMessages'},
-      {flags: ['change_info'], text: 'UserRestrictionsChangeInfo'}
+      {flags: ['send_messages'], text: 'UserRestrictionsSend', exceptionText: 'UserRestrictionsNoSend'},
+      {flags: ['send_media'], text: 'UserRestrictionsSendMedia', exceptionText: 'UserRestrictionsNoSendMedia'},
+      {flags: ['send_stickers', 'send_gifs'], text: 'UserRestrictionsSendStickers', exceptionText: 'UserRestrictionsNoSendStickers'},
+      {flags: ['send_polls'], text: 'UserRestrictionsSendPolls', exceptionText: 'UserRestrictionsNoSendPolls'},
+      {flags: ['embed_links'], text: 'UserRestrictionsEmbedLinks', exceptionText: 'UserRestrictionsNoEmbedLinks'},
+      {flags: ['invite_users'], text: 'UserRestrictionsInviteUsers', exceptionText: 'UserRestrictionsNoInviteUsers'},
+      {flags: ['pin_messages'], text: 'UserRestrictionsPinMessages', exceptionText: 'UserRestrictionsNoPinMessages'},
+      {flags: ['change_info'], text: 'UserRestrictionsChangeInfo', exceptionText: 'UserRestrictionsNoChangeInfo'}
     ];
 
     this.toggleWith = {
@@ -210,34 +211,30 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
       const setSubtitle = (li: Element, participant: ChannelParticipant.channelParticipantBanned) => {
         const bannedRights = participant.banned_rights;//appChatsManager.combineParticipantBannedRights(this.chatId, participant.banned_rights);
         const defaultBannedRights = (appChatsManager.getChat(this.chatId) as Chat.channel).default_banned_rights;
-        const combinedRights = appChatsManager.combineParticipantBannedRights(this.chatId, bannedRights);
+        //const combinedRights = appChatsManager.combineParticipantBannedRights(this.chatId, bannedRights);
 
-        const cantWhat: string[] = [], canWhat: string[] = [];
+        const cantWhat: LangPackKey[] = []/* , canWhat: LangPackKey[] = [] */;
         chatPermissions.v.forEach(info => {
           const mainFlag = info.flags[0];
           // @ts-ignore
           if(bannedRights.pFlags[mainFlag] && !defaultBannedRights.pFlags[mainFlag]) {
-            cantWhat.push(info.text);
+            cantWhat.push(info.exceptionText);
           // @ts-ignore
-          } else if(!combinedRights.pFlags[mainFlag]) {
-            canWhat.push(info.text);
-          }
+          }/*  else if(!combinedRights.pFlags[mainFlag]) {
+            canWhat.push(info.exceptionText);
+          } */
         });
 
-        const el = li.querySelector('.user-last-message');
-        let str: string;
-        if(cantWhat.length) {
-          str = 'Can\'t ' + cantWhat.join(cantWhat.length === 2 ? ' and ' : ', ');
-        } else if(canWhat.length) {
-          str = 'Can ' + canWhat.join(canWhat.length === 2 ? ' and ' : ', ');
-        }
-  
-        //const user = appUsersManager.getUser(participant.user_id);
-        if(str) {
-          el.innerHTML = str;
-        }
+        const el = li.querySelector('.user-last-message') as HTMLElement;
 
-        el.classList.toggle('hide', !str);
+        if(cantWhat.length) {
+          el.innerHTML = '';
+          el.append(...join(cantWhat.map(t => i18n(t)), false));
+        }/*  else if(canWhat.length) {
+          str = 'Can ' + canWhat.join(canWhat.length === 2 ? ' and ' : ', ');
+        } */
+  
+        el.classList.toggle('hide', !cantWhat.length);
       };
 
       const add = (participant: ChannelParticipant.channelParticipantBanned, append: boolean) => {
@@ -285,8 +282,7 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
       });
 
       const setLength = () => {
-        addExceptionRow.subtitle.textContent = '';
-        addExceptionRow.subtitle.append(i18n(exceptionsCount ? 'Permissions.ExceptionsCount' : 'Permissions.NoExceptions', [exceptionsCount]));
+        replaceContent(addExceptionRow.subtitle, i18n(exceptionsCount ? 'Permissions.ExceptionsCount' : 'Permissions.NoExceptions', [exceptionsCount]));
       };
 
       let exceptionsCount = 0;

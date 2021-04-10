@@ -9,7 +9,8 @@ import RadioField from "./radioField";
 import { ripple } from "./ripple";
 import { SliderSuperTab } from "./slider";
 import RadioForm from "./radioForm";
-import { LangPackKey, _i18n } from "../lib/langPack";
+import { i18n, LangPackKey } from "../lib/langPack";
+import { replaceContent } from "../helpers/dom";
 
 export default class Row {
   public container: HTMLElement;
@@ -42,7 +43,7 @@ export default class Row {
     if(options.subtitle) {
       this.subtitle.innerHTML = options.subtitle;
     } else if(options.subtitleLangKey) {
-      _i18n(this.subtitle, options.subtitleLangKey);
+      this.subtitle.append(i18n(options.subtitleLangKey));
     }
 
     let havePadding = false;
@@ -59,7 +60,7 @@ export default class Row {
 
         if(!options.noCheckboxSubtitle) {
           this.checkboxField.input.addEventListener('change', () => {
-            _i18n(this.subtitle, this.checkboxField.input.checked ? 'Checkbox.Enabled' : 'Checkbox.Disabled');
+            replaceContent(this.subtitle, i18n(this.checkboxField.input.checked ? 'Checkbox.Enabled' : 'Checkbox.Disabled'));
           });
         }
       }
@@ -82,7 +83,7 @@ export default class Row {
         if(options.title) {
           this.title.innerHTML = options.title;
         } else {
-          _i18n(this.title, options.titleLangKey);
+          this.title.append(i18n(options.titleLangKey));
         }
         c.append(this.title);
 

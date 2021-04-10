@@ -137,15 +137,16 @@ export class AppNavigationController {
       const ret = this.findItemByType(type);
       if(ret) {
         this.manual = true;
-        if(ret.index !== (this.navigations.length - 1)) {
+        //if(ret.index !== (this.navigations.length - 1)) {
           this.navigations.splice(ret.index, 1);
           this.handleItem(ret.item);
           return;
-        }
+        //}
       }
     }
 
-    history.back();
+    // ! commented because 'popstate' event will be fired with delay
+    //history.back();
   }
 
   public pushItem(item: NavigationItem) {
