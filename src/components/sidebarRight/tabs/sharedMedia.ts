@@ -28,7 +28,7 @@ import appChatsManager, { Channel } from "../../../lib/appManagers/appChatsManag
 import { Chat, UserProfilePhoto } from "../../../layer";
 import Button from "../../button";
 import ButtonIcon from "../../buttonIcon";
-import I18n, { i18n } from "../../../lib/langPack";
+import I18n, { i18n, LangPackKey } from "../../../lib/langPack";
 import { SettingSection } from "../../sidebarLeft";
 import Row from "../../row";
 import { copyTextToClipboard } from "../../../helpers/clipboard";
@@ -40,6 +40,9 @@ import appPhotosManager from "../../../lib/appManagers/appPhotosManager";
 import renderImageFromUrl from "../../../helpers/dom/renderImageFromUrl";
 import SwipeHandler from "../../swipeHandler";
 import { MOUNT_CLASS_TO } from "../../../config/debug";
+import AppAddMembersTab from "../../sidebarLeft/tabs/addMembers";
+import PopupPickUser from "../../popups/pickUser";
+import PopupPeer from "../../popups/peer";
 
 let setText = (text: string, row: Row) => {
   fastRaf(() => {
@@ -767,13 +770,82 @@ export default class AppSharedMediaTab extends SliderSuperTab {
         name: 'SharedMusicTab2',
         type: 'music'
       }], 
-      scrollable: this.scrollable
+      scrollable: this.scrollable,
+      onChangeTab: (mediaTab) => {
+        let timeout = mediaTab.type === 'members' && rootScope.settings.animationsEnabled ? 250 : 0;
+        setTimeout(() => {
+          btnAddMembers.classList.toggle('is-hidden', mediaTab.type !== 'members');
+        }, timeout);
+      }
     });
 
     this.profile.element.append(this.searchSuper.container);
 
-    const btnAddMembers = Button('btn-corner btn-circle', {icon: 'adduser'});
+    const btnAddMembers = Button('btn-corner btn-circle', {icon: 'addmember_filled'});
     this.content.append(btnAddMembers);
+
+    btnAddMembers.addEventListener('click', () => {
+      const id = -this.peerId;
+      const isChannel = appChatsManager.isChannel(id);
+
+      const showConfirmation = (peerIds: number[], callback: () => void) => {
+        let titleLangKey: LangPackKey = 'GroupAddMembers', descriptionLangKey: LangPackKey, descriptionLangArgs: any[];
+
+        if(peerIds.length > 1) {
+          descriptionLangKey = 'PeerInfo.Confirm.AddMembers1';
+          descriptionLangArgs = [peerIds.length];
+        } else {
+          descriptionLangKey = 'PeerInfo.Confirm.AddMember';
+          descriptionLangArgs = [new PeerTitle({
+            peerId: peerIds[0],
+            onlyFirstName: true
+          }).element];
+        }
+
+        new PopupPeer('popup-add-members', {
+          peerId: -id,
+          titleLangKey,
+          descriptionLangKey,
+          descriptionLangArgs,
+          buttons: [{
+            langKey: 'Add',
+            callback: () => {
+              callback();
+            }
+          }]
+        }).show();
+      };
+      
+      if(isChannel) {
+        const tab = new AppAddMembersTab(this.slider);
+        tab.open({
+          peerId: this.peerId,
+          type: 'channel',
+          skippable: false,
+          takeOut: (peerIds) => {
+            showConfirmation(peerIds, () => {
+              tab.attachToPromise(appChatsManager.inviteToChannel(id, peerIds));
+            });
+
+            return false;
+          },
+          title: 'GroupAddMembers',
+          placeholder: 'SendMessageTo'
+        });
+      } else {
+        new PopupPickUser({
+          peerTypes: ['contacts'],
+          placeholder: 'Search',
+          onSelect: (peerId) => {
+            setTimeout(() => {
+              showConfirmation([peerId], () => {
+                appChatsManager.addChatUser(id, peerId);
+              });
+            }, 0);
+          },
+        });
+      }
+    });
 
     console.log('construct shared media time:', performance.now() - perf);
   }

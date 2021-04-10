@@ -529,6 +529,12 @@ const lang = {
   "PeerInfo.SharedMedia": "Shared Media",
   "PeerInfo.Subscribers": "Subscribers",
   "PeerInfo.DeleteContact": "Delete Contact",
+  "PeerInfo.Confirm.AddMembers1": {
+    "one_value": "Add %d user to the group?",
+    "other_value": "Add %d users to the group?"
+  },
+  "PeerInfo.Confirm.AddMember": "Add \"%@\" to the group?",
+  //"PeerInfo.Confirm.RemovePeer": "Remove %@ from the group?",
   "PeerMedia.Members": "Members",
   "PollResults.Title.Poll": "Poll Results",
   "PollResults.Title.Quiz": "Quiz Results",
