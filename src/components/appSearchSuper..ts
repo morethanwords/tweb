@@ -112,8 +112,9 @@ export default class AppSearchSuper {
   public groupByMonth? = true;
   public hideEmptyTabs? = true;
   public onChangeTab?: (mediaTab: SearchSuperMediaTab) => void;
+  public showSender? = false;
 
-  constructor(options: Pick<AppSearchSuper, 'mediaTabs' | 'scrollable' | 'searchGroups' | 'asChatList' | 'groupByMonth' | 'hideEmptyTabs' | 'onChangeTab'>) {
+  constructor(options: Pick<AppSearchSuper, 'mediaTabs' | 'scrollable' | 'searchGroups' | 'asChatList' | 'groupByMonth' | 'hideEmptyTabs' | 'onChangeTab' | 'showSender'>) {
     safeAssign(this, options);
 
     this.container = document.createElement('div');
@@ -401,25 +402,26 @@ export default class AppSearchSuper {
     return filtered;
   }
   
-  public async performSearchResult(messages: any[], type: SearchSuperType, append = true) {
+  public async performSearchResult(messages: any[], mediaTab: SearchSuperMediaTab, append = true) {
     const elemsToAppend: {element: HTMLElement, message: any}[] = [];
-    const sharedMediaDiv: HTMLElement = this.tabs[type];
+    const sharedMediaDiv: HTMLElement = mediaTab.contentTab;
     const promises: Promise<any>[] = [];
     const middleware = this.middleware.get();
+    let inputFilter = mediaTab.inputFilter;
 
     await getHeavyAnimationPromise();
     
     let searchGroup: SearchGroup;
-    if(type === 'inputMessagesFilterPhotoVideo' && !!this.searchContext.query.trim()) {
-      type = 'inputMessagesFilterEmpty';
+    if(inputFilter === 'inputMessagesFilterPhotoVideo' && !!this.searchContext.query.trim()) {
+      inputFilter = 'inputMessagesFilterEmpty';
       searchGroup = this.searchGroupMedia;
       sharedMediaDiv.append(searchGroup.container);
-    } else if(type === 'inputMessagesFilterEmpty') {
+    } else if(inputFilter === 'inputMessagesFilterEmpty') {
       searchGroup = this.searchGroups.messages;
     }
 
     // https://core.telegram.org/type/MessagesFilter
-    switch(type) {
+    switch(inputFilter) {
       case 'inputMessagesFilterEmpty': {
         for(const message of messages) {
           const {dialog, dom} = appDialogsManager.addDialogNew({
@@ -488,17 +490,20 @@ export default class AppSearchSuper {
       case 'inputMessagesFilterMusic':
       case 'inputMessagesFilterDocument': {
         for(const message of messages) {
+          const showSender = this.showSender || message.media.document.type === 'voice';
           const div = wrapDocument({
             message,
-            withTime: !this.asChatList,
+            withTime: !showSender,
             fontWeight: 400,
             voiceAsMusic: true,
-            showSender: this.asChatList,
-            searchContext: this.copySearchContext(type)
+            showSender: showSender,
+            searchContext: this.copySearchContext(inputFilter)
           });
-          if(message.media.document.type === 'audio') {
+
+          if(['audio', 'voice'].includes(message.media.document.type)) {
             div.classList.add('audio-48');
           }
+
           elemsToAppend.push({element: div, message});
         }
         break;
@@ -589,10 +594,10 @@ export default class AppSearchSuper {
             title = RichTextProcessor.wrapPlainText(webpage.display_url.split('/', 1)[0]);
           }
 
-          let sender = this.asChatList ? `<div class="subtitle sender">${appMessagesManager.getSenderToPeerText(message)}</div>` : '';
+          let sender = this.showSender ? `<div class="subtitle sender">${appMessagesManager.getSenderToPeerText(message)}</div>` : '';
 
           let titleAdditionHTML = '';
-          if(this.asChatList) {
+          if(this.showSender) {
             titleAdditionHTML = `<div class="sent-time">${formatDateAccordingToToday(new Date(message.date * 1000))}</div>`;
           }
 
@@ -634,7 +639,7 @@ export default class AppSearchSuper {
       const method = append ? 'append' : 'prepend';
       elemsToAppend.forEach(details => {
         const {element, message} = details;
-        const monthContainer = this.getMonthContainerByTimestamp(this.groupByMonth ? message.date : 0, type);
+        const monthContainer = this.getMonthContainerByTimestamp(this.groupByMonth ? message.date : 0, inputFilter);
         element.classList.add('search-super-item');
         element.dataset.mid = '' + message.mid;
         element.dataset.peerId = '' + message.peerId;
@@ -643,7 +648,7 @@ export default class AppSearchSuper {
     }
     
     //if(type !== 'inputMessagesFilterEmpty') {
-      this.afterPerforming(type === 'inputMessagesFilterEmpty' ? 1 : messages.length, sharedMediaDiv);
+      this.afterPerforming(inputFilter === 'inputMessagesFilterEmpty' ? 1 : messages.length, sharedMediaDiv);
     //}
   }
 
@@ -957,7 +962,7 @@ export default class AppSearchSuper {
 
       this.usedFromHistory[type] = used;
       //if(messages.length) {
-        return this.performSearchResult(messages, type).finally(() => {
+        return this.performSearchResult(messages, mediaTab).finally(() => {
           setTimeout(() => {
             this.scrollable.checkForTriggers();
           }, 0);
@@ -1030,7 +1035,7 @@ export default class AppSearchSuper {
       }
 
       //if(value.history.length) {
-        return this.performSearchResult(this.filterMessagesByType(value.history, type), type);
+        return this.performSearchResult(this.filterMessagesByType(value.history, type), mediaTab);
       //}
     }).catch(err => {
       this.log.error('load error:', err);
