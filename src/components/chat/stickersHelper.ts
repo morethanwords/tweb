@@ -23,7 +23,10 @@ export default class StickersHelper {
   private lastEmoticon = '';
 
   constructor(private appendTo: HTMLElement) {
+    this.container = document.createElement('div');
+    this.container.classList.add('stickers-helper', 'z-depth-1');
 
+    this.appendTo.append(this.container);
   }
 
   public checkEmoticon(emoticon: string) {
@@ -32,7 +35,9 @@ export default class StickersHelper {
     if(this.lastEmoticon && !emoticon) {
       if(this.container) {
         SetTransition(this.container, 'is-visible', false, 200, () => {
-          this.stickersContainer.innerHTML = '';
+          if(this.stickersContainer) {
+            this.stickersContainer.innerHTML = '';
+          }
         });
       }
     }
@@ -86,8 +91,6 @@ export default class StickersHelper {
   }
 
   private init() {
-    this.container = document.createElement('div');
-    this.container.classList.add('stickers-helper', 'z-depth-1');
     this.container.addEventListener('click', (e) => {
       if(!findUpClassName(e.target, 'super-sticker')) {
         return;
@@ -104,7 +107,5 @@ export default class StickersHelper {
     this.scrollable = new Scrollable(this.container);
     this.lazyLoadQueue = new LazyLoadQueue();
     this.superStickerRenderer = new SuperStickerRenderer(this.lazyLoadQueue, CHAT_ANIMATION_GROUP);
-
-    this.appendTo.append(this.container);
   }
 }

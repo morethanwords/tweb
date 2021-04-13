@@ -11,6 +11,7 @@ import appPhotosManager from "../../../lib/appManagers/appPhotosManager";
 import rootScope from "../../../lib/rootScope";
 import InputSearch from "../../inputSearch";
 import { canFocus } from "../../../helpers/dom";
+import { isMobile } from "../../../helpers/userAgent";
 
 // TODO: поиск по людям глобальный, если не нашло в контактах никого
 
@@ -53,7 +54,7 @@ export default class AppContactsTab extends SliderSuperTab {
   }
 
   onOpenAfterTimeout() {
-    if(!canFocus(true)) return;
+    if(isMobile || !canFocus(true)) return;
     this.inputSearch.input.focus();
   }
 

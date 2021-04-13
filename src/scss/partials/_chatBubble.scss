@@ -321,6 +321,17 @@ $bubble-margin: .25rem;
     //background: rgba(0, 0, 0, .16);
     background: var(--message-highlightning-color);
     cursor: pointer;
+
+    html.no-touch & {
+      opacity: 0;
+      transition: opacity .2s ease-in-out;
+    }
+  }
+
+  @include hover() {
+    .bubble-beside-button {
+      opacity: 1;
+    }
   }
 
   .forward {

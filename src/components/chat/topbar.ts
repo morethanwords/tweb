@@ -447,7 +447,8 @@ export default class ChatTopbar {
   public setTitle(count?: number) {
     let titleEl: HTMLElement;
     if(this.chat.type === 'pinned') {
-      titleEl = i18n('PinnedMessagesCount', [count]);
+      if(count === undefined) titleEl = i18n('Loading');
+      else titleEl = i18n('PinnedMessagesCount', [count]);
 
       if(count === undefined) {
         this.appMessagesManager.getSearchCounters(this.peerId, [{_: 'inputMessagesFilterPinned'}]).then(result => {
@@ -481,7 +482,8 @@ export default class ChatTopbar {
         });
       }
     } else if(this.chat.type === 'discussion') {
-      titleEl = i18n('Chat.Title.Comments', [count]);
+      if(count === undefined) titleEl = i18n('Loading');
+      else titleEl = i18n('Chat.Title.Comments', [count]);
 
       if(count === undefined) {
         Promise.all([

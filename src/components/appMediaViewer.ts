@@ -39,6 +39,8 @@ import { forEachReverse } from "../helpers/array";
 import AppSharedMediaTab from "./sidebarRight/tabs/sharedMedia";
 import findUpClassName from "../helpers/dom/findUpClassName";
 import renderImageFromUrl from "../helpers/dom/renderImageFromUrl";
+import findUpAsChild from "../helpers/dom/findUpAsChild";
+import getVisibleRect from "../helpers/dom/getVisibleRect";
 
 // TODO: масштабирование картинок (не SVG) при ресайзе, и правильный возврат на исходную позицию
 // TODO: картинки "обрезаются" если возвращаются или появляются с места, где есть их перекрытие (топбар, поле ввода)
@@ -332,10 +334,6 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
   protected async setMoverToTarget(target: HTMLElement, closing = false, fromRight = 0) {
     const mover = this.content.mover;
 
-    if(!target) {
-      target = this.content.media;
-    }
-
     if(!closing) {
       mover.innerHTML = '';
       //mover.append(this.buttons.prev, this.buttons.next);
@@ -361,15 +359,43 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
 
     let rect: DOMRect;
     if(target) {
-      if(target instanceof AvatarElement) {
+      if(target instanceof AvatarElement || target.classList.contains('grid-item')) {
         realParent = target;
         rect = target.getBoundingClientRect();
       } else if(target instanceof SVGImageElement || target.parentElement instanceof SVGForeignObjectElement) {
         realParent = findUpClassName(target, 'attachment');
         rect = realParent.getBoundingClientRect();
-      } else {
+      } else if(target.classList.contains('profile-avatars-avatar')) {
+        realParent = findUpClassName(target, 'profile-avatars-container');
+        rect = realParent.getBoundingClientRect();
+
+        // * if not active avatar
+        if(closing && target.getBoundingClientRect().left !== rect.left) {
+          target = realParent = rect = undefined;
+        }
+      }
+    }
+
+    if(!target) {
+      target = this.content.media;
+    }
+
+    if(!rect) {
+      realParent = target.parentElement as HTMLElement;
+      rect = target.getBoundingClientRect();
+    }
+
+    let needOpacity = false;
+    if(target !== this.content.media && !target.classList.contains('profile-avatars-avatar')) {
+      const overflowElement = findUpClassName(realParent, 'scrollable');
+      const visibleRect = getVisibleRect(realParent, overflowElement);
+
+      if(closing && (!visibleRect || visibleRect.overflow.vertical === 2 || visibleRect.overflow.horizontal === 2)) {
+        target = this.content.media;
         realParent = target.parentElement as HTMLElement;
         rect = target.getBoundingClientRect();
+      } else if(visibleRect && (visibleRect.overflow.vertical === 1 || visibleRect.overflow.horizontal === 1)) {
+        needOpacity = true;
       }
     }
 
@@ -443,6 +469,8 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     //let borderRadius = '0px 0px 0px 0px';
 
     mover.style.transform = transform;
+
+    needOpacity && (mover.style.opacity = '0'/* !closing ? '0' : '' */);
 
     /* if(wasActive) {
       this.log('setMoverToTarget', mover.style.transform);
@@ -612,6 +640,8 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
       return ret;
     }
 
+    mover.classList.toggle('opening', !closing);
+
     //await new Promise((resolve) => setTimeout(resolve, 0));
     //await new Promise((resolve) => window.requestAnimationFrame(resolve));
     // * одного RAF'а недостаточно, иногда анимация с одним не срабатывает (преимущественно на мобильных)
@@ -624,6 +654,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
 
     mover.style.transform = `translate3d(${containerRect.left}px,${containerRect.top}px,0) scale3d(1,1,1)`;
     //mover.style.transform = `translate(-50%,-50%) scale(1,1)`;
+    needOpacity && (mover.style.opacity = ''/* closing ? '0' : '' */);
 
     if(aspecter) {
       this.setFullAspect(aspecter, containerRect, rect);
@@ -1109,7 +1140,8 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
   
           onAnimationEnd.then(() => {
             if(!media.url) {
-              this.preloader.attach(mover, true, cancellablePromise);
+              this.preloader.attachPromise(cancellablePromise);
+              //this.preloader.attach(mover, true, cancellablePromise);
             }
           });
           
@@ -1157,9 +1189,11 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
               }
             }
     
-            this.preloader.detach();
+            //this.preloader.detach();
           }).catch(err => {
             this.log.error(err);
+            this.preloader.attach(mover);
+            this.preloader.setManual();
           });
   
           return cancellablePromise;

@@ -87,28 +87,18 @@ export function ripple(elem: HTMLElement, callback: (id: number) => Promise<bool
       } */
 
       window.requestAnimationFrame(() => {
-        let rect = r.getBoundingClientRect();
+        const rect = r.getBoundingClientRect();
         elem.classList.add('c-ripple__circle');
 
-        let clickX = clientX - rect.left;
-        let clickY = clientY - rect.top;
+        const clickX = clientX - rect.left;
+        const clickY = clientY - rect.top;
 
-        let size: number, clickPos: number;
-        if(rect.width > rect.height) {
-          size = rect.width;
-          clickPos = clickX;
-        } else {
-          size = rect.height;
-          clickPos = clickY;
-        }
-
-        let offsetFromCenter = clickPos > (size / 2) ? size - clickPos : clickPos;
-        size = size - offsetFromCenter;
-        size *= 1.1;
+        const radius = Math.sqrt((Math.abs(clickY - rect.height / 2) + rect.height / 2) ** 2 + (Math.abs(clickX - rect.width / 2) + rect.width / 2) ** 2);
+        const size = radius;
 
         // center of circle
-        let x = clickX - size / 2;
-        let y = clickY - size / 2;
+        const x = clickX - size / 2;
+        const y = clickY - size / 2;
 
         //console.log('ripple click', offsetFromCenter, size, clickX, clickY);
 

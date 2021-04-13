@@ -10,6 +10,7 @@ import { fastRaf } from "../../../helpers/schedulers";
 import appImManager from "../../../lib/appManagers/appImManager";
 import appStateManager from "../../../lib/appManagers/appStateManager";
 import Config from "../../../lib/config";
+import { i18n, LangPackKey } from "../../../lib/langPack";
 import { RichTextProcessor } from "../../../lib/richtextprocessor";
 import rootScope from "../../../lib/rootScope";
 import { putPreloader } from "../../misc";
@@ -25,19 +26,32 @@ export default class EmojiTab implements EmoticonsTab {
   private scroll: Scrollable;
   private stickyIntersector: StickyIntersector;
 
+  private loadedURLs: Set<string> = new Set();
+
   init() {
     this.content = document.getElementById('content-emoji') as HTMLDivElement;
 
-    const categories = ["Smileys & Emotion", "Animals & Nature", "Food & Drink", "Travel & Places", "Activities", "Objects", /* "Symbols",  */"Flags", "Skin Tones"];
+    const categories: LangPackKey[] = [
+      'Emoji.SmilesAndPeople', 
+      'Emoji.AnimalsAndNature', 
+      'Emoji.FoodAndDrink', 
+      'Emoji.TravelAndPlaces', 
+      'Emoji.ActivityAndSport', 
+      'Emoji.Objects', 
+      /* 'Emoji.Symbols',  */
+      'Emoji.Flags', 
+      'Skin Tones' as any
+    ];
     const divs: {
-      [category: string]: HTMLDivElement
+      [category in LangPackKey]?: HTMLDivElement
     } = {};
 
-    const sorted: {
-      [category: string]: string[]
-    } = {
-      'Recent': []
-    };
+    const sorted: Map<LangPackKey, string[]> = new Map([
+      [
+        'Emoji.Recent',
+        []
+      ]
+    ]);
 
     for(const emoji in Config.Emoji) {
       const details = Config.Emoji[emoji];
@@ -45,32 +59,35 @@ export default class EmojiTab implements EmoticonsTab {
       const category = categories[+i[0] - 1];
       if(!category) continue; // maybe it's skin tones
 
-      if(!sorted[category]) sorted[category] = [];
-      sorted[category][+i.slice(1) || 0] = emoji;
+      let s = sorted.get(category);
+      if(!s) {
+        s = [];
+        sorted.set(category, s);
+      }
+      
+      s[+i.slice(1) || 0] = emoji;
     }
 
     //console.log('emoticons sorted:', sorted);
 
     //Object.keys(sorted).forEach(c => sorted[c].sort((a, b) => a - b));
 
-    categories.pop();
-    delete sorted["Skin Tones"];
+    sorted.delete(categories.pop());
 
     //console.time('emojiParse');
-    for(const category in sorted) {
+    sorted.forEach((emojis, category) => {
       const div = document.createElement('div');
       div.classList.add('emoji-category');
 
       const titleDiv = document.createElement('div');
       titleDiv.classList.add('category-title');
-      titleDiv.innerText = category;
+      titleDiv.append(i18n(category));
 
       const itemsDiv = document.createElement('div');
       itemsDiv.classList.add('category-items');
 
       div.append(titleDiv, itemsDiv);
 
-      const emojis = sorted[category];
       emojis.forEach(emoji => {
         /* if(emojiUnicode(emoji) === '1f481-200d-2642') {
           console.log('append emoji', emoji, emojiUnicode(emoji));
@@ -86,7 +103,8 @@ export default class EmojiTab implements EmoticonsTab {
       });
 
       divs[category] = div;
-    }
+    });
+
     //console.timeEnd('emojiParse');
 
     const menu = this.content.previousElementSibling as HTMLElement;
@@ -107,14 +125,14 @@ export default class EmojiTab implements EmoticonsTab {
     ]).then(() => {
       preloader.remove();
 
-      this.recentItemsDiv = divs['Recent'].querySelector('.category-items');
+      this.recentItemsDiv = divs['Emoji.Recent'].querySelector('.category-items');
       for(const emoji of this.recent) {
         this.appendEmoji(emoji, this.recentItemsDiv);
       }
 
       this.recentItemsDiv.parentElement.classList.toggle('hide', !this.recent.length);
 
-      categories.unshift('Recent');
+      categories.unshift('Emoji.Recent');
       categories.map(category => {
         const div = divs[category];
   
@@ -173,27 +191,32 @@ export default class EmojiTab implements EmoticonsTab {
     if(spanEmoji.firstElementChild && !RichTextProcessor.emojiSupported) {
       const image = spanEmoji.firstElementChild as HTMLImageElement;
       image.setAttribute('loading', 'lazy');
-      
-      const placeholder = document.createElement('span');
-      placeholder.classList.add('emoji-placeholder');
 
-      if(rootScope.settings.animationsEnabled) {
-        image.style.opacity = '0';
-        placeholder.style.opacity = '1';
+      const url = image.src;
+      if(!this.loadedURLs.has(url)) {
+        const placeholder = document.createElement('span');
+        placeholder.classList.add('emoji-placeholder');
+  
+        if(rootScope.settings.animationsEnabled) {
+          image.style.opacity = '0';
+          placeholder.style.opacity = '1';
+        }
+  
+        image.addEventListener('load', () => {
+          fastRaf(() => {
+            if(rootScope.settings.animationsEnabled) {
+              image.style.opacity = '';
+              placeholder.style.opacity = '';
+            }
+  
+            spanEmoji.classList.remove('empty');
+  
+            this.loadedURLs.add(url);
+          });
+        }, {once: true});
+  
+        spanEmoji.append(placeholder);
       }
-
-      image.addEventListener('load', () => {
-        fastRaf(() => {
-          if(rootScope.settings.animationsEnabled) {
-            image.style.opacity = '';
-            placeholder.style.opacity = '';
-          }
-
-          spanEmoji.classList.remove('empty');
-        });
-      }, {once: true});
-
-      spanEmoji.append(placeholder);
     }
   
     //spanEmoji = spanEmoji.firstElementChild as HTMLSpanElement;
@@ -216,7 +239,12 @@ export default class EmojiTab implements EmoticonsTab {
     //if(target.tagName !== 'SPAN') return;
 
     if(target.tagName === 'SPAN' && !target.classList.contains('emoji')) {
-      target = findUpClassName(target, 'category-item').firstChild as HTMLElement;
+      target = findUpClassName(target, 'category-item');
+      if(!target) {
+        return;
+      }
+
+      target = target.firstChild as HTMLElement;
     } else if(target.tagName === 'DIV') return;
 
     //console.log('contentEmoji div', target);

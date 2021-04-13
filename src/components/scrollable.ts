@@ -8,6 +8,7 @@ import { isTouchSupported } from "../helpers/touchSupport";
 import { logger, LogLevels } from "../lib/logger";
 import fastSmoothScroll, { FocusDirection } from "../helpers/fastSmoothScroll";
 import useHeavyAnimationCheck from "../hooks/useHeavyAnimationCheck";
+import { cancelEvent } from "../helpers/dom";
 /*
 var el = $0;
 var height = 0;
@@ -250,10 +251,11 @@ export class ScrollableX extends ScrollableBase {
       const scrollHorizontally = (e: any) => {
         if(!e.deltaX) {
           this.container!.scrollLeft += e.deltaY / 4;
+          cancelEvent(e);
         }
       };
       
-      this.container.addEventListener('wheel', scrollHorizontally, {passive: true});
+      this.container.addEventListener('wheel', scrollHorizontally, {passive: false});
     }
   }
 }

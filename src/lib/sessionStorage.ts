@@ -4,9 +4,10 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import type { ChatSavedPosition } from './appManagers/appImManager';
+import type { State } from './appManagers/appStateManager';
 import { MOUNT_CLASS_TO } from '../config/debug';
 import { LangPackDifference } from '../layer';
-import type { State } from './appManagers/appStateManager';
 import AppStorage from './storage';
 
 const sessionStorage = new AppStorage<{
@@ -21,10 +22,7 @@ const sessionStorage = new AppStorage<{
   server_time_offset: number,
 
   chatPositions: {
-    [peerId_threadId: string]: {
-      mid: number, 
-      top: number
-    }
+    [peerId_threadId: string]: ChatSavedPosition
   },
   langPack: LangPackDifference
 } & State>({

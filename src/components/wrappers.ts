@@ -649,7 +649,7 @@ export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withT
 }) {
   if(!((photo as MyPhoto).sizes || (photo as MyDocument).thumbs)) {
     if(boxWidth && boxHeight && photo._ === 'document') {
-      size = appPhotosManager.setAttachmentSize(photo, container, boxWidth, boxHeight);
+      size = appPhotosManager.setAttachmentSize(photo, container, boxWidth, boxHeight, undefined, message && message.message);
     }
 
     return {
@@ -677,7 +677,7 @@ export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withT
     image = new Image();
 
     if(boxWidth && boxHeight) { // !album
-      size = appPhotosManager.setAttachmentSize(photo, container, boxWidth, boxHeight);
+      size = appPhotosManager.setAttachmentSize(photo, container, boxWidth, boxHeight, undefined, message && message.message);
     }
 
     const gotThumb = appPhotosManager.getStrippedThumbIfNeeded(photo);

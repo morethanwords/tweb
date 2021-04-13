@@ -100,6 +100,7 @@
 }
 
 .shared-media-container {
+  //background-color: var(--background-color-true) !important;
   /* .search-super {
     top: 100%;
     min-height: calc((var(--vh, 1vh) * 100) - 100% - 56px);
@@ -109,8 +110,12 @@
     }
   } */
   .scrollable {
-    perspective: 1px;
+    perspective: 0px;
     perspective-origin: left top;
+
+    &.parallax {
+      perspective: 1px;
+    }
   }
 
   .search-super {
@@ -156,6 +161,23 @@
       }
     }
   }
+
+  .search-super {
+    .menu-horizontal-div-item {
+      height: 3.5rem;
+      padding-top: 0;
+      padding-bottom: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      line-height: var(--line-height);
+    }
+  
+    .menu-horizontal-div i {
+      bottom: calc(-.625rem - 7px);
+    }
+  }
 }
 
 .search-super {
@@ -197,10 +219,10 @@
     flex: 1 1 auto;
     
     //margin-top: 36px;
-    i {
+    /* i {
       padding-right: 1.5rem !important;
 	    margin-left: -.75rem !important;
-    }
+    } */
   }
 
   &-tabs-scrollable {
@@ -211,16 +233,22 @@
     top: 0px;
     z-index: 2;
     background-color: var(--surface-color);
+    height: 3.5rem;
 
     &:before {
       position: absolute;
       width: 100%;
       height: 1px;
       left: 0;
-      top: -1px;
+      top: 0;
       background-color: inherit;
       display: block;
       content: " ";
+      z-index: -1;
+
+      .search-super.is-full-viewport & {
+        top: -1px;
+      }
     }
 
     .scrollable {
@@ -336,16 +364,12 @@
   &-content-media &-month {
     &-items {
       width: 100%;
-      padding: 7.5px;
+      padding-top: 1px;
 
       display: grid;
       grid-template-columns: repeat(3,1fr);
       grid-auto-rows: 1fr;
-      grid-gap: 3.5px;
-
-      @include respond-to(handhelds) {
-        padding: 7.5px 7.5px 7.5px 6.5px;
-      }
+      grid-gap: 1px;
     }
   }
 

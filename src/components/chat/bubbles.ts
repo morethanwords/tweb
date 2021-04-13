@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { CHAT_ANIMATION_GROUP } from "../../lib/appManagers/appImManager";
+import type { AppImManager } from "../../lib/appManagers/appImManager";
 import type { AppMessagesManager, HistoryResult, MyMessage } from "../../lib/appManagers/appMessagesManager";
 import type { AppStickersManager } from "../../lib/appManagers/appStickersManager";
 import type { AppUsersManager } from "../../lib/appManagers/appUsersManager";
@@ -14,6 +14,7 @@ import type { AppDocsManager } from "../../lib/appManagers/appDocsManager";
 import type { AppPeersManager } from "../../lib/appManagers/appPeersManager";
 import type sessionStorage from '../../lib/sessionStorage';
 import type Chat from "./chat";
+import { CHAT_ANIMATION_GROUP } from "../../lib/appManagers/appImManager";
 import { cancelEvent, whichChild, getElementByPoint, attachClickEvent, positionElementByIndex, reflowScrollableElement } from "../../helpers/dom";
 import { getObjectKeysAndSort } from "../../helpers/object";
 import { isTouchSupported } from "../../helpers/touchSupport";
@@ -28,7 +29,6 @@ import ProgressivePreloader from "../preloader";
 import Scrollable from "../scrollable";
 import StickyIntersector from "../stickyIntersector";
 import animationIntersector from "../animationIntersector";
-import { months } from "../../helpers/date";
 import RichTextProcessor from "../../lib/richtextprocessor";
 import mediaSizes from "../../helpers/mediaSizes";
 import { isAndroid, isApple, isSafari } from "../../helpers/userAgent";
@@ -1415,15 +1415,15 @@ export default class ChatBubbles {
       topMessage = 0;
     }
 
-    let readMaxId = 0;//, savedPosition: ReturnType<AppImManager['getChatSavedPosition']>;
+    let readMaxId = 0, savedPosition: ReturnType<AppImManager['getChatSavedPosition']>;
     if(!isTarget) {
-      /* if(!samePeer) {
+      if(!samePeer) {
         savedPosition = this.chat.appImManager.getChatSavedPosition(this.chat);
       }
 
       if(savedPosition) {
-        lastMsgId = savedPosition.mid;
-      } else  */if(topMessage) {
+        
+      } else if(topMessage) {
         readMaxId = this.appMessagesManager.getReadMaxIdIfUnread(peerId, this.chat.threadId);
         if(/* dialog.unread_count */readMaxId && !samePeer) {
           lastMsgId = readMaxId;
@@ -1497,7 +1497,19 @@ export default class ChatBubbles {
 
     this.lazyLoadQueue.lock();
 
-    const {promise, cached} = this.getHistory(lastMsgId, true, isJump, additionMsgId);
+    let result: ReturnType<ChatBubbles['getHistory']>;
+    if(!savedPosition) {
+      result = this.getHistory(lastMsgId, true, isJump, additionMsgId);
+    } else {
+      result = {
+        promise: getHeavyAnimationPromise().then(() => {
+          return this.performHistoryResult(savedPosition.mids, true, false, undefined);
+        }) as any,
+        cached: true
+      };
+    }
+
+    const {promise, cached} = result;
 
     // clear 
     if(!cached) {
@@ -1533,8 +1545,9 @@ export default class ChatBubbles {
       this.lazyLoadQueue.unlock();
 
       //if(dialog && lastMsgID && lastMsgID !== topMessage && (this.bubbles[lastMsgID] || this.firstUnreadBubble)) {
-      /* if(savedPosition) {
-        const mountedByLastMsgId = this.getMountedBubble(lastMsgId);
+      if(savedPosition) {
+        this.scrollable.scrollTop = savedPosition.top;
+        /* const mountedByLastMsgId = this.getMountedBubble(lastMsgId);
         let bubble: HTMLElement = mountedByLastMsgId?.bubble;
         if(!bubble?.parentElement) {
           bubble = this.findNextMountedBubbleByMsgId(lastMsgId);
@@ -1544,8 +1557,8 @@ export default class ChatBubbles {
           const top = bubble.getBoundingClientRect().top;
           const distance = savedPosition.top - top;
           this.scrollable.scrollTop += distance;
-        }
-      } else  */if((topMessage && isJump) || isTarget) {
+        } */
+      } else if((topMessage && isJump) || isTarget) {
         const fromUp = maxBubbleId > 0 && (maxBubbleId < lastMsgId || lastMsgId < 0);
         const followingUnread = readMaxId === lastMsgId && !isTarget;
         if(!fromUp && samePeer) {

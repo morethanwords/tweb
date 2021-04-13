@@ -332,7 +332,9 @@ export default class ChatInput {
 
     this.newMessageWrapper.append(...[this.btnToggleEmoticons, this.inputMessageContainer, this.btnScheduled, this.attachMenu, this.recordTimeEl, this.fileInput].filter(Boolean));
 
-    this.rowsWrapper.append(this.replyElements.container, this.newMessageWrapper);
+    this.rowsWrapper.append(this.replyElements.container);
+    this.stickersHelper = new StickersHelper(this.rowsWrapper);
+    this.rowsWrapper.append(this.newMessageWrapper);
 
     this.btnCancelRecord = ButtonIcon('delete danger btn-circle z-depth-1 btn-record-cancel');
 
@@ -388,8 +390,6 @@ export default class ChatInput {
         return false;
       }
     }, {passive: false, capture: true}); */
-
-    this.stickersHelper = new StickersHelper(this.rowsWrapper);
 
     this.listenerSetter.add(rootScope, 'settings_updated', () => {
       if(this.stickersHelper) {

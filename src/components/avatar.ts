@@ -9,7 +9,7 @@ import appProfileManager from "../lib/appManagers/appProfileManager";
 import rootScope from "../lib/rootScope";
 import { attachClickEvent, cancelEvent } from "../helpers/dom";
 import AppMediaViewer, { AppMediaViewerAvatar } from "./appMediaViewer";
-import { Photo } from "../layer";
+import { Message, Photo } from "../layer";
 import appPeersManager from "../lib/appManagers/appPeersManager";
 //import type { LazyLoadQueueIntersector } from "./lazyLoadQueue";
 
@@ -21,8 +21,72 @@ const onAvatarUpdate = (peerId: number) => {
   });
 };
 
-rootScope.on('avatar_update', onAvatarUpdate); 
-rootScope.on('peer_title_edit', onAvatarUpdate); 
+rootScope.on('avatar_update', onAvatarUpdate);
+rootScope.on('peer_title_edit', onAvatarUpdate);
+
+export async function openAvatarViewer(target: HTMLElement, peerId: number, middleware: () => boolean, message?: any, prevTargets?: {element: HTMLElement, item: string | Message.messageService}[], nextTargets?: typeof prevTargets) {
+  const photo = await appProfileManager.getFullPhoto(peerId);
+  if(!middleware() || !photo) {
+    return;
+  }
+
+  const getTarget = () => {
+    const good = Array.from(target.querySelectorAll('img')).find(img => !img.classList.contains('emoji'));
+    return good ? target : null;
+  };
+
+  if(peerId < 0) {
+    const hadMessage = !!message;
+    const inputFilter = 'inputMessagesFilterChatPhotos';
+    if(!message) {
+      message = await appMessagesManager.getSearch({
+        peerId, 
+        inputFilter: {_: inputFilter}, 
+        maxId: 0, 
+        limit: 1 
+      }).then(value => {
+        //console.log(lol);
+        // ! by descend
+        return value.history[0];
+      });
+
+      if(!middleware()) {
+        return;
+      }
+    }
+
+    if(message) {
+      // ! гений в деле, костылируем (но это гениально)
+      const messagePhoto = message.action.photo;
+      if(messagePhoto.id !== photo.id) {
+        if(!hadMessage) {
+          message = appMessagesManager.generateFakeAvatarMessage(peerId, photo);
+        } else {
+          
+        }
+      }
+
+      const f = (arr: typeof prevTargets) => arr.map(el => ({
+        element: el.element,
+        mid: (el.item as Message.messageService).mid,
+        peerId: (el.item as Message.messageService).peerId
+      }));
+
+      new AppMediaViewer()
+      .setSearchContext({
+        peerId,
+        inputFilter,
+      })
+      .openMedia(message, getTarget(), undefined, undefined, prevTargets ? f(prevTargets) : undefined, nextTargets ? f(nextTargets) : undefined);
+
+      return;
+    }
+  }
+
+  if(photo) {
+    new AppMediaViewerAvatar(peerId).openMedia(photo.id, getTarget());
+  }
+}
 
 export default class AvatarElement extends HTMLElement {
   private peerId: number;
@@ -51,64 +115,7 @@ export default class AvatarElement extends HTMLElement {
         //console.log('avatar clicked');
         const peerId = this.peerId;
         loading = true;
-
-        const photo = await appProfileManager.getFullPhoto(this.peerId);
-        if(this.peerId !== peerId || !photo) {
-          loading = false;
-          return;
-        }
-
-        if(peerId < 0) {
-          const maxId = Number.MAX_SAFE_INTEGER;
-          const inputFilter = 'inputMessagesFilterChatPhotos';
-          let message: any = await appMessagesManager.getSearch({
-            peerId, 
-            inputFilter: {_: inputFilter}, 
-            maxId, 
-            limit: 2, 
-            backLimit: 1
-          }).then(value => {
-            //console.log(lol);
-            // ! by descend
-            return value.history[0];
-          });
-
-          if(message) {
-            // ! гений в деле, костылируем (но это гениально)
-            const messagePhoto = message.action.photo;
-            if(messagePhoto.id !== photo.id) {
-              message = {
-                _: 'message',
-                mid: maxId,
-                media: {
-                  _: 'messageMediaPhoto',
-                  photo: photo
-                },
-                peerId,
-                date: (photo as Photo.photo).date,
-                fromId: peerId
-              };
-
-              appMessagesManager.getMessagesStorage(peerId)[maxId] = message;
-            }
-
-            const good = Array.from(this.querySelectorAll('img')).find(img => !img.classList.contains('emoji'));
-            new AppMediaViewer()
-            .setSearchContext({
-              peerId,
-              inputFilter,
-            })
-            .openMedia(message, good ? this : null);
-            loading = false;
-            return;
-          }
-        }
-
-        if(photo) {
-          const good = Array.from(this.querySelectorAll('img')).find(img => !img.classList.contains('emoji'));
-          new AppMediaViewerAvatar(peerId).openMedia(photo.id, good ? this : null);
-        }
-
+        await openAvatarViewer(this, this.peerId, () => this.peerId === peerId);
         loading = false;
       });
     }

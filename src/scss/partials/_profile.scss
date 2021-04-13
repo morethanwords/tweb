@@ -8,7 +8,8 @@
   &-avatars {
     &-container {
       width: 100%;
-      height: 26.25rem;
+      padding-bottom: 100%;
+      //height: 26.25rem;
       //overflow: hidden;
       position: relative;
       cursor: pointer;
@@ -23,14 +24,14 @@
     }
     
     &-avatars {
-      width: inherit;
-      height: inherit;
+      width: 100%;
+      height: 100%;
       display: flex;
       flex-wrap: nowrap;
       transform: translateZ(-1px) scale(2);
       transform-origin: left top;
       transition: transform .2s ease-in-out;
-      position: relative;
+      position: absolute;
 
       &:before {
         content: " ";
@@ -57,14 +58,14 @@
       }
     }
 
-    /* &-gradient {
+    &-gradient {
       position: absolute;
       left: 0;
       right: 0;
       bottom: 0;
       height: 80px;
-      background: linear-gradient(360deg, var(--secondary-color) 8.98%, rgba(0, 0, 0, 0) 100%);
-    } */
+      background: linear-gradient(360deg, rgba(0, 0, 0, .3) 8.98%, rgba(0, 0, 0, 0) 100%);
+    }
 
     &-info {
       position: absolute;
@@ -74,10 +75,15 @@
       align-items: flex-start;
       left: 1.5rem;
       bottom: .5625rem;
+      pointer-events: none;
 
       .profile-name, .profile-subtitle {
         color: #fff;
         margin: 0;
+      }
+
+      .peer-typing-text-dot {
+        background-color: #fff;
       }
 
       .profile-name {
@@ -100,6 +106,7 @@
       left: .375rem;
       right: .375rem;
       height: .125rem;
+      pointer-events: none;
     }
 
     &-tab {
@@ -152,8 +159,21 @@
       position: relative;
       background-color: var(--surface-color);
       //padding-top: .5625rem;
-      padding-bottom: 0;
+      padding-bottom: .5rem;
+      //margin-bottom: .75rem;
+      //box-shadow: 0px 1px 5px -1px rgba(0, 0, 0, .16);
     }
+
+    /* .search-super {
+      &:before {
+        content: " ";
+        height: 12px;
+        width: 100%;
+        background-color: var(--background-color-true);
+        position: absolute;
+        top: -12px;
+      }
+    } */
   }
 
   &-container {

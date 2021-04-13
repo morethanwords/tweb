@@ -43,8 +43,7 @@
     flex-direction: column;
     position: relative;
 
-    &:before, &:after {
-      content: " ";
+    .auth-placeholder {
       flex: 1;
       min-height: 3rem;
       /* height: 105px; */
@@ -52,7 +51,7 @@
     }
 
     @media screen and (max-height: 810px) {
-      &:after {
+      .auth-placeholder:last-child {
         display: none;
       }
     }

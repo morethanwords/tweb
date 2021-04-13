@@ -17,7 +17,7 @@ import { createPosterForVideo } from "../../helpers/files";
 import { copy, defineNotNumerableProperties, getObjectKeysAndSort } from "../../helpers/object";
 import { randomLong } from "../../helpers/random";
 import { splitStringByLength, limitSymbols, escapeRegExp } from "../../helpers/string";
-import { Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MessagesPeerDialogs, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update } from "../../layer";
+import { Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MessagesPeerDialogs, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo } from "../../layer";
 import { InvokeApiOptions } from "../../types";
 import I18n, { i18n, join, langPack, LangPackKey, _i18n } from "../langPack";
 import { logger, LogLevels } from "../logger";
@@ -1546,6 +1546,24 @@ export class AppMessagesManager {
     }
 
     return fwdHeader;
+  }
+
+  public generateFakeAvatarMessage(peerId: number, photo: Photo) {
+    const maxId = Number.MAX_SAFE_INTEGER;
+    const message = {
+      _: 'messageService',
+      action: {
+        _: 'messageActionChannelEditPhoto',
+        photo
+      },
+      mid: maxId,
+      peerId,
+      date: (photo as Photo.photo).date,
+      fromId: peerId
+    } as Message.messageService;
+
+    this.getMessagesStorage(peerId)[maxId] = message;
+    return message;
   }
 
   public setDialogTopMessage(message: MyMessage, dialog: MTDialog.dialog = this.getDialogByPeerId(message.peerId)[0]) {

@@ -7,8 +7,8 @@
 avatar-element {
   --size: 54px;
   --multiplier: 1;
-  --color-top: var(--peer-avatar-blue-top);
-  --color-bottom: var(--peer-avatar-blue-bottom);
+  --color-top: var(--avatar-color-top);
+  --color-bottom: var(--avatar-color-bottom);
   color: #fff;
   width: var(--size);
   height: var(--size);
@@ -50,6 +50,11 @@ avatar-element {
   &[data-color="pink"] {
     --color-top: var(--peer-avatar-pink-top);
     --color-bottom: var(--peer-avatar-pink-bottom);
+  }
+
+  &[data-color="blue"] {
+    --color-top: var(--peer-avatar-blue-top);
+    --color-bottom: var(--peer-avatar-blue-bottom);
   }
 
   &.tgico:before {

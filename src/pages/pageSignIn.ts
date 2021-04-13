@@ -12,7 +12,6 @@ import apiManager from "../lib/mtproto/mtprotoworker";
 import { RichTextProcessor } from '../lib/richtextprocessor';
 import { attachClickEvent, cancelEvent, replaceContent } from "../helpers/dom";
 import Page from "./page";
-import pageAuthCode from "./pageAuthCode";
 import InputField from "../components/inputField";
 import CheckboxField from "../components/checkboxField";
 import Button from "../components/button";
@@ -341,7 +340,7 @@ let onFirstMount = () => {
     }).then((code) => {
       //console.log('got code', code);
 
-      pageAuthCode.mount(Object.assign(code, {phone_number: phone_number}));
+      import('./pageAuthCode').then(m => m.default.mount(Object.assign(code, {phone_number: phone_number})));
     }).catch(err => {
       this.removeAttribute('disabled');
 

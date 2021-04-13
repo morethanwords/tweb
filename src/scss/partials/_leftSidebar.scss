@@ -60,17 +60,17 @@
   .menu-horizontal-scrollable {
     z-index: 1;
     background-color: var(--surface-color);
-    border-bottom: 1px solid var(--border-color);
     position: relative;
     box-shadow: 0px 1px 5px -1px rgba(0, 0, 0, .16);
     top: unset;
+    height: 43px;
 
     .scrollable {
       position: relative;
     }
 
     .menu-horizontal-div {
-      border-bottom: none;
+      height: 43px;
       position: relative !important;
 
       justify-content: flex-start;
@@ -107,8 +107,8 @@
     }
 
     &:not(.hide) + .scrollable {
-      top: 44px;
-      height: calc(100% - 44px);
+      top: 43px;
+      height: calc(100% - 43px);
 
       #folders-container {
         margin-top: .5rem;
@@ -116,11 +116,13 @@
     }
   }
 
-  .folders-tabs-scrollable .menu-horizontal-div-item:first-child {
-    margin-left: .6875rem;
-
-    @include respond-to(handhelds) {
-      margin-left: .1875rem;
+  .folders-tabs-scrollable {
+    .menu-horizontal-div-item:first-child {
+      margin-left: .6875rem;
+  
+      @include respond-to(handhelds) {
+        margin-left: .1875rem;
+      }
     }
   }
 
@@ -791,6 +793,12 @@
 
 .sidebar-left {
   &-section {
+    /* padding-bottom: .75rem;
+
+    @include respond-to(handhelds) {
+      padding-bottom: .5rem;
+    } */
+
     padding: .5rem 0 1rem;
 
     @include respond-to(handhelds) {
@@ -798,10 +806,8 @@
     }
   
     &-content {
-      margin: 0 .5rem;
-
-      @include respond-to(handhelds) {
-        margin: 0 .25rem;
+      @include respond-to(not-handhelds) {
+        margin: 0 .5rem;
       }
 
       > .btn-primary {
@@ -811,6 +817,13 @@
       > .checkbox-field {
         .checkbox-box {
           left: auto;
+        }
+      }
+
+      @include respond-to(handhelds) {
+        > .checkbox-ripple, 
+        > .btn-primary {
+          border-radius: 0;
         }
       }
     }
@@ -841,6 +854,7 @@
       margin: 0;
     }
 
+    // * comment later
     &:first-child:not(.no-delimiter) {
       padding-top: 0;
     }
@@ -1020,8 +1034,6 @@
     height: 66px;
     padding-top: 9px;
     padding-bottom: 9px;
-
-    border-radius: $border-radius-medium;
   }
 
   .user-caption {
@@ -1035,7 +1047,10 @@
 
   ul {
     margin-top: .3125rem;
-    padding: 0 .6875rem;
+    
+    @include respond-to(not-handhelds) {
+      padding: 0 .6875rem;
+    }
   }
 }
 
