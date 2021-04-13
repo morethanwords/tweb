@@ -7,6 +7,7 @@
 import App from './config/app';
 import findUpClassName from './helpers/dom/findUpClassName';
 import fixSafariStickyInput from './helpers/dom/fixSafariStickyInput';
+import { isMobileSafari } from './helpers/userAgent';
 import './materialize.scss';
 import './scss/style.scss';
 import './scss/tgico.scss';
@@ -258,6 +259,20 @@ console.timeEnd('get storage1'); */
     const authState = state.authState;
     if(authState._ !== 'authStateSignedIn'/*  || 1 === 1 */) {
       console.log('Will mount auth page:', authState._, Date.now() / 1000);
+
+      const el = document.getElementById('auth-pages');
+      if(el) {
+        const scrollable = el.querySelector('.scrollable');
+        if((!touchSupport.isTouchSupported || isMobileSafari)) {
+          scrollable.classList.add('no-scrollbar');
+        }
+
+        const placeholder = document.createElement('div');
+        placeholder.classList.add('auth-placeholder');
+
+        scrollable.prepend(placeholder);
+        scrollable.append(placeholder.cloneNode());
+      }
 
       //langPromise.then(async() => {
         switch(authState._) {

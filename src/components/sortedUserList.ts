@@ -1,8 +1,14 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
 import appDialogsManager, { DialogDom } from "../lib/appManagers/appDialogsManager";
 import { isInDOM, positionElementByIndex, replaceContent } from "../helpers/dom";
 import { getHeavyAnimationPromise } from "../hooks/useHeavyAnimationCheck";
 import appUsersManager from "../lib/appManagers/appUsersManager";
-import { insertInDescendSortedArray, forEachReverse } from "../helpers/array";
+import { insertInDescendSortedArray } from "../helpers/array";
 
 type SortedUser = {
   peerId: number, 

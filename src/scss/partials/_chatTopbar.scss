@@ -89,7 +89,6 @@
 		font-size: 1rem;
 		line-height: 24px;
 		max-width: calc(100% - 1.5rem);
-		margin-bottom: 1px;
 	
 		/* @include respond-to(handhelds) {
 			text-overflow: ellipsis;
@@ -107,6 +106,10 @@
 		text-overflow: ellipsis;
 		overflow: hidden;
 		line-height: var(--line-height);
+	}
+
+	.info:not(:empty) {
+		margin-top: 1px;
 	}
 
 	.btn-menu-toggle {

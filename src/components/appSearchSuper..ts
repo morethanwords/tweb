@@ -5,7 +5,7 @@
  */
 
 import { formatDateAccordingToToday, months } from "../helpers/date";
-import { positionElementByIndex, isInDOM, replaceContent } from "../helpers/dom";
+import { positionElementByIndex } from "../helpers/dom";
 import { copy, getObjectKeysAndSort, safeAssign } from "../helpers/object";
 import { escapeRegExp, limitSymbols } from "../helpers/string";
 import appChatsManager from "../lib/appManagers/appChatsManager";
@@ -124,7 +124,7 @@ export default class AppSearchSuper {
     this.container.classList.add('search-super');
 
     const navScrollableContainer = document.createElement('div');
-    navScrollableContainer.classList.add('search-super-tabs-scrollable', 'menu-horizontal-scrollable');
+    navScrollableContainer.classList.add('search-super-tabs-scrollable', 'menu-horizontal-scrollable', 'sticky');
 
     const navScrollable = new ScrollableX(navScrollableContainer);
 

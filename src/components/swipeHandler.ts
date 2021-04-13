@@ -17,7 +17,7 @@ const attachGlobalListenerTo = window;
 export default class SwipeHandler {
   private element: HTMLElement;
   private onSwipe: (xDiff: number, yDiff: number) => boolean;
-  private verifyTouchTarget: (evt: Touch | MouseEvent) => boolean;
+  private verifyTouchTarget: (evt: TouchEvent | MouseEvent) => boolean;
   private onFirstSwipe: () => void;
   private onReset: () => void;
 
@@ -65,7 +65,7 @@ export default class SwipeHandler {
 
   handleStart = (_e: TouchEvent | MouseEvent) => {
     const e = getEvent(_e);
-    if(this.verifyTouchTarget && !this.verifyTouchTarget(e)) {
+    if(this.verifyTouchTarget && !this.verifyTouchTarget(_e)) {
       return this.reset();
     }
 

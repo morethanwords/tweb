@@ -9,6 +9,7 @@ import { whichChild } from "../helpers/dom";
 import lottieLoader from "../lib/lottieLoader";
 import { horizontalMenu } from "../components/horizontalMenu";
 import { MOUNT_CLASS_TO } from "../config/debug";
+import fastSmoothScroll from "../helpers/fastSmoothScroll";
 
 class PagesManager {
   private pageId = -1;
@@ -16,10 +17,12 @@ class PagesManager {
 
   private selectTab: ReturnType<typeof horizontalMenu>;
   public pagesDiv: HTMLDivElement;
+  public scrollableDiv: HTMLElement;
 
   constructor() {
     this.pagesDiv = document.getElementById('auth-pages') as HTMLDivElement;
-    this.selectTab = horizontalMenu(null, this.pagesDiv.firstElementChild.firstElementChild as HTMLDivElement, null, () => {
+    this.scrollableDiv = this.pagesDiv.querySelector('.scrollable') as HTMLElement;
+    this.selectTab = horizontalMenu(null, this.scrollableDiv.querySelector('.tabs-container') as HTMLDivElement, null, () => {
       if(this.page?.onShown) {
         this.page.onShown();
       }
@@ -39,7 +42,13 @@ class PagesManager {
         lottieLoader.loadLottieWorkers();
       }
 
+
+
       this.pageId = id;
+
+      if(this.scrollableDiv) {
+        fastSmoothScroll(this.scrollableDiv, this.scrollableDiv.firstElementChild as HTMLElement, 'start');
+      }
     } else {
       this.pagesDiv.style.display = 'none';
       page.pageEl.style.display = '';

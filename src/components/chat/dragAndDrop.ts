@@ -5,6 +5,7 @@
  */
 
 import { generatePathData } from "../../helpers/dom";
+import { i18n, LangPackKey } from "../../lib/langPack";
 
 export default class ChatDragAndDrop {
   container: HTMLDivElement;
@@ -14,8 +15,8 @@ export default class ChatDragAndDrop {
 
   constructor(appendTo: HTMLElement, private options: {
     icon: string,
-    header: string,
-    subtitle: string,
+    header: LangPackKey,
+    subtitle: LangPackKey,
     onDrop: (e: DragEvent) => void
   }) {
     this.container = document.createElement('div');
@@ -35,11 +36,11 @@ export default class ChatDragAndDrop {
 
     const dropHeader = document.createElement('div');
     dropHeader.classList.add('drop-header');
-    dropHeader.innerHTML = options.header;//'Drop files here to send them';
+    dropHeader.append(i18n(options.header));
 
     const dropSubtitle = document.createElement('div');
     dropSubtitle.classList.add('drop-subtitle');
-    dropSubtitle.innerHTML = options.subtitle;//'without compression';
+    dropSubtitle.append(i18n(options.subtitle));
 
     this.svg.append(this.path);
     this.outlineWrapper.append(this.svg);

@@ -5,7 +5,6 @@
  */
 
 import type Chat from "../chat/chat";
-import { isTouchSupported } from "../../helpers/touchSupport";
 import { calcImageInBox, placeCaretAtEnd, isSendShortcutPressed } from "../../helpers/dom";
 import InputField from "../inputField";
 import PopupElement from ".";
@@ -14,7 +13,7 @@ import { toast } from "../toast";
 import { prepareAlbum, wrapDocument } from "../wrappers";
 import CheckboxField from "../checkboxField";
 import SendContextMenu from "../chat/sendContextMenu";
-import { createPosterForVideo, createPosterFromVideo, onVideoLoad } from "../../helpers/files";
+import { createPosterFromVideo, onVideoLoad } from "../../helpers/files";
 import { MyDocument } from "../../lib/appManagers/appDocsManager";
 import I18n, { i18n, LangPackKey } from "../../lib/langPack";
 
@@ -50,7 +49,7 @@ export default class PopupNewMedia extends PopupElement {
   inputField: InputField;
 
   constructor(private chat: Chat, files: File[], willAttachType: PopupNewMedia['willAttach']['type']) {
-    super('popup-send-photo popup-new-media', null, {closable: true, withConfirm: 'PreviewSender.Send'});
+    super('popup-send-photo popup-new-media', null, {closable: true, withConfirm: 'Modal.Send'});
 
     this.willAttach.type = willAttachType;
 

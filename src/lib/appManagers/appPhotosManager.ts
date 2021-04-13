@@ -219,7 +219,7 @@ export class AppPhotosManager {
     return {image, loadPromise};
   }
   
-  public setAttachmentSize(photo: MyPhoto | MyDocument, element: HTMLElement | SVGForeignObjectElement, boxWidth: number, boxHeight: number, noZoom = true) {
+  public setAttachmentSize(photo: MyPhoto | MyDocument, element: HTMLElement | SVGForeignObjectElement, boxWidth: number, boxHeight: number, noZoom = true, hasText?: boolean) {
     const photoSize = this.choosePhotoSize(photo, boxWidth, boxHeight);
     //console.log('setAttachmentSize', photo, photo.sizes[0].bytes, div);
     
@@ -233,7 +233,12 @@ export class AppPhotosManager {
       height = 'h' in photoSize ? photoSize.h : 100;
     }
     
-    const {w, h} = calcImageInBox(width, height, boxWidth, boxHeight, noZoom);
+    let {w, h} = calcImageInBox(width, height, boxWidth, boxHeight, noZoom);
+
+    /* if(hasText) {
+      w = Math.max(boxWidth, w);
+    } */
+
     if(element instanceof SVGForeignObjectElement) {
       element.setAttributeNS(null, 'width', '' + w);
       element.setAttributeNS(null, 'height', '' + h);
@@ -257,7 +262,7 @@ export class AppPhotosManager {
       }
 
       const sizes = (photo as MyPhoto).sizes || (photo as MyDocument).thumbs;
-      const thumb = sizes?.length ? sizes[0] : null;
+      const thumb = sizes?.length ? sizes.find(size => size._ === 'photoStrippedSize') : null;
       if(thumb && ('bytes' in thumb)) {
         return appPhotosManager.getImageFromStrippedThumb(thumb as any);
       }

@@ -1,0 +1,110 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
+.row {
+  min-height: 3.5rem;
+  position: relative;
+  padding: .6875rem 1rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+
+  a {
+    position: relative;
+    z-index: 1;
+  }
+
+  &-title-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    order: 0;
+
+    .row-title {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex: 1 1 auto;
+    }
+  }
+
+  &-title {
+    color: var(--primary-text-color);
+    line-height: var(--line-height);
+    order: 0;
+
+    @include text-overflow(false);
+
+    &-right {
+      flex: 0 0 auto !important;
+      margin-left: 1rem;
+    }
+  }
+
+  &-midtitle {
+    font-size: .875rem;
+    order: 1;
+  }
+
+  &-with-padding {
+    padding-left: 4.5rem;
+
+    .row-title.tgico:before {
+      position: absolute;
+      left: 1rem;
+      font-size: 1.5rem;
+      color: var(--secondary-text-color);
+      pointer-events: none;
+      margin-top: -.125rem;
+    }
+
+    .row-subtitle:not(:empty) + .row-title.tgico:before {
+      margin-top: .25rem;
+    }
+  }
+
+  &-clickable {
+    cursor: pointer;
+    overflow: hidden;
+    
+    @include respond-to(not-handhelds) {
+      border-radius: $border-radius-medium;
+    }
+  }
+
+  .radio-field-main, .checkbox-field {
+    padding-left: 3.375rem;
+    margin-left: -3.375rem;
+  }
+
+  .checkbox-field {
+    margin-right: 0;
+    height: auto;
+
+    .checkbox-caption {
+      padding-left: 0;
+    }
+  }
+
+  .checkbox-field-toggle {
+    margin: 0;
+    margin-right: .125rem;
+    padding: 0;
+  }
+
+  &-subtitle {
+    color: var(--secondary-text-color) !important;
+    font-size: .875rem !important;
+    line-height: var(--line-height);
+    margin-top: .125rem;
+    margin-bottom: .0625rem;
+    order: 1;
+
+    &:empty {
+      display: none;
+    }
+  }
+}

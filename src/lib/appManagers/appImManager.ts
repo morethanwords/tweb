@@ -7,7 +7,7 @@
 //import apiManager from '../mtproto/apiManager';
 import animationIntersector from '../../components/animationIntersector';
 import appSidebarLeft, { LEFT_COLUMN_ACTIVE_CLASSNAME } from "../../components/sidebarLeft";
-import appSidebarRight, { AppSidebarRight, RIGHT_COLUMN_ACTIVE_CLASSNAME } from '../../components/sidebarRight';
+import appSidebarRight, { RIGHT_COLUMN_ACTIVE_CLASSNAME } from '../../components/sidebarRight';
 import mediaSizes, { ScreenSize } from '../../helpers/mediaSizes';
 import { logger, LogLevels } from "../logger";
 import apiManager from '../mtproto/mtprotoworker';
@@ -46,6 +46,7 @@ import AppPrivateSearchTab from '../../components/sidebarRight/tabs/search';
 import { i18n } from '../langPack';
 import { SendMessageAction } from '../../layer';
 import { highlightningColor } from '../../helpers/color';
+import { getObjectKeysAndSort } from '../../helpers/object';
 
 //console.log('appImManager included33!');
 
@@ -53,6 +54,11 @@ appSidebarLeft; // just to include
 
 export const CHAT_ANIMATION_GROUP = 'chat';
 const FOCUS_EVENT_NAME = isTouchSupported ? 'touchstart' : 'mousemove';
+
+export type ChatSavedPosition = {
+  mids: number[], 
+  top: number
+};
 
 export class AppImManager {
   public columnEl = document.getElementById('column-center') as HTMLDivElement;
@@ -165,13 +171,13 @@ export class AppImManager {
       this.setInnerPeer(peerId);
     });
 
-    /* rootScope.on('peer_changing', (chat) => {
+    rootScope.on('peer_changing', (chat) => {
       this.saveChatPosition(chat);
     });
 
     sessionStorage.get('chatPositions').then((c) => {
       sessionStorage.setToCache('chatPositions', c || {});
-    }); */
+    });
   }
 
   private onHashChange = () => {
@@ -230,28 +236,34 @@ export class AppImManager {
     });
   }
 
-  /* public saveChatPosition(chat: Chat) {
-    const bubble = chat.bubbles.getBubbleByPoint('top');
-    if(bubble) {
-      const top = bubble.getBoundingClientRect().top;
-      
-      this.log('saving position by bubble:', bubble, top);
+  public saveChatPosition(chat: Chat) {
+    if(!(['chat', 'discussion'] as ChatType[]).includes(chat.type) || !chat.peerId) {
+      return;
+    }
+
+    //const bubble = chat.bubbles.getBubbleByPoint('top');
+    //if(bubble) {
+      //const top = bubble.getBoundingClientRect().top;
+      const top = chat.bubbles.scrollable.scrollTop;
 
       const key = chat.peerId + (chat.threadId ? '_' + chat.threadId : '');
 
       const chatPositions = sessionStorage.getFromCache('chatPositions');
       chatPositions[key] = {
-        mid: +bubble.dataset.mid,
+        mids: getObjectKeysAndSort(chat.bubbles.bubbles, 'desc'),
         top
-      };
-      sessionStorage.set({chatPositions});
-    }
+      } as ChatSavedPosition;
+
+      this.log('saved chat position:', chatPositions[key]);
+
+      sessionStorage.set({chatPositions}, true);
+    //}
   }
 
-  public getChatSavedPosition(chat: Chat) {
+  public getChatSavedPosition(chat: Chat): ChatSavedPosition {
     const key = chat.peerId + (chat.threadId ? '_' + chat.threadId : '');
     return sessionStorage.getFromCache('chatPositions')[key];
-  } */
+  }
 
   private setSettings = () => {
     document.documentElement.style.setProperty('--messages-text-size', rootScope.settings.messagesTextSize + 'px');
@@ -439,8 +451,8 @@ export class AppImManager {
         if(types.length || force) {
           drops.push(new ChatDragAndDrop(dropsContainer, {
             icon: 'dragfiles',
-            header: 'Drop files here to send them',
-            subtitle: 'without compression',
+            header: 'Chat.DropTitle',
+            subtitle: 'Chat.DropAsFilesDesc',
             onDrop: (e: DragEvent) => {
               toggle(e, false);
               appImManager.log('drop', e);
@@ -452,8 +464,8 @@ export class AppImManager {
         if((foundMedia && !foundDocuments) || force) {
           drops.push(new ChatDragAndDrop(dropsContainer, {
             icon: 'dragmedia',
-            header: 'Drop files here to send them',
-            subtitle: 'in a quick way',
+            header: 'Chat.DropTitle',
+            subtitle: 'Chat.DropQuickDesc',
             onDrop: (e: DragEvent) => {
               toggle(e, false);
               appImManager.log('drop', e);

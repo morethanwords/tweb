@@ -18,13 +18,13 @@
 	@include respond-to(esg-top) {
 		position: absolute !important;
 		left: $chat-padding;
-		bottom: 85px;
+		bottom: 84px;
 		width: 420px !important;
 		height: 420px;
 		max-height: 420px;
 		box-shadow: 0px 5px 10px 5px rgba(16, 35, 47, .14);
 		z-index: 3;
-		border-radius: 10px;
+		border-radius: $border-radius-medium;
 		transition: transform var(--esg-transition), opacity var(--esg-transition);
 		transform: scale(0);
 		opacity: 0;

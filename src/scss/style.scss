@@ -118,7 +118,7 @@ $chat-padding-handhelds: .5rem;
 :root {
   // * Day theme
   --body-background-color: #fff;
-  //--background-color: #f4f4f5;
+  --background-color-true: #f4f4f5;
   --background-color: #fff;
   --border-color: #dfe1e5;
   --surface-color: #fff;
@@ -136,6 +136,8 @@ $chat-padding-handhelds: .5rem;
   @include splitColor(danger-color, #df3f40, true, false);
 
   --avatar-online-color: #0ac630;
+  --avatar-color-top: var(--peer-avatar-blue-top);
+  --avatar-color-bottom: var(--peer-avatar-blue-bottom);
   --chatlist-status-color: var(--avatar-online-color);
   --chatlist-pinned-color: #a2abb2;
   --badge-text-color: #fff;
@@ -159,7 +161,7 @@ html.night {
 //:root {
   // * Night theme
   --body-background-color: #181818;
-  //--background-color: #181818;
+  --background-color-true: #181818;
   --background-color: #212121;
   --border-color: #0f0f0f;
   --surface-color: #212121;
@@ -177,6 +179,8 @@ html.night {
   @include splitColor(danger-color, #ff595a, true, false);
 
   --avatar-online-color: #0ac630;
+  --avatar-color-top: var(--peer-avatar-violet-top);
+  --avatar-color-bottom: var(--peer-avatar-violet-bottom);
   --chatlist-status-color: var(--primary-color);
   --chatlist-pinned-color: var(--secondary-color);
   --badge-text-color: #fff;
@@ -231,6 +235,7 @@ html.night {
 @import "partials/peerTyping";
 @import "partials/poll";
 @import "partials/transition";
+@import "partials/row";
 
 @import "partials/popups/popup";
 @import "partials/popups/editAvatar";
@@ -1009,94 +1014,6 @@ middle-ellipsis-element {
   }
 }
 
-.row {
-  min-height: 3.5rem;
-  position: relative;
-  padding: .6875rem 1rem;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-
-  a {
-    position: relative;
-    z-index: 1;
-  }
-
-  &-title-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-
-    .row-title {
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      flex: 1 1 auto;
-    }
-  }
-
-  &-title {
-    color: var(--primary-text-color);
-    line-height: var(--line-height);
-
-    @include text-overflow(false);
-
-    &-right {
-      flex: 0 0 auto !important;
-      margin-left: 1rem;
-    }
-  }
-
-  &-midtitle {
-    font-size: .875rem;
-  }
-
-  &-with-padding {
-    padding-left: 4.5rem;
-
-    .row-title.tgico:before {
-      position: absolute;
-      left: 1rem;
-      font-size: 1.5rem;
-      margin-top: .25rem;
-      color: var(--secondary-text-color);
-      pointer-events: none;
-    }
-  }
-
-  &-clickable {
-    cursor: pointer;
-    border-radius: $border-radius-medium;
-    overflow: hidden;
-  }
-
-  .radio-field-main, .checkbox-field {
-    padding-left: 3.375rem;
-    margin-left: -3.375rem;
-  }
-
-  .checkbox-field {
-    margin-right: 0;
-    height: auto;
-
-    .checkbox-caption {
-      padding-left: 0;
-    }
-  }
-
-  &-subtitle {
-    color: var(--secondary-text-color) !important;
-    font-size: .875rem !important;
-    line-height: var(--line-height);
-    margin-top: .125rem;
-    margin-bottom: .0625rem;
-
-    &:empty {
-      display: none;
-    }
-  }
-}
-
 .hover-effect {
   @include hover-background-effect();
 }
@@ -1191,5 +1108,23 @@ middle-ellipsis-element {
       align-items: center;
       font-size: 1.125rem;
     }
+  }
+}
+
+.gradient-delimiter {
+  width: 100%;
+  height: .75rem;
+  display: flex;
+  background-color: var(--background-color-true);
+  position: relative;
+
+  &:before {
+    content: " ";
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(180deg, rgba(0, 0, 0, .06) 0%, rgba(0, 0, 0, 0) 20%, rgba(0, 0, 0, 0) 94%, rgba(0, 0, 0, .06) 100%);
   }
 }

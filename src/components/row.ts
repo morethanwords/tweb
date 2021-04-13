@@ -31,7 +31,7 @@ export default class Row {
     noCheckboxSubtitle: boolean,
     title: string,
     titleLangKey: LangPackKey,
-    titleRight: string,
+    titleRight: string | HTMLElement,
     clickable: boolean | ((e: Event) => void),
     navigationTab: SliderSuperTab
   }> = {}) {
@@ -45,6 +45,7 @@ export default class Row {
     } else if(options.subtitleLangKey) {
       this.subtitle.append(i18n(options.subtitleLangKey));
     }
+    this.container.append(this.subtitle);
 
     let havePadding = false;
     if(options.radioField || options.checkboxField) {
@@ -56,9 +57,16 @@ export default class Row {
 
       if(options.checkboxField) {
         this.checkboxField = options.checkboxField;
-        this.container.append(this.checkboxField.label);
+        
+        const isToggle = options.checkboxField.label.classList.contains('checkbox-field-toggle');
+        if(isToggle) {
+          this.container.classList.add('row-with-toggle');
+          options.titleRight = this.checkboxField.label;
+        } else {
+          this.container.append(this.checkboxField.label);
+        }
 
-        if(!options.noCheckboxSubtitle) {
+        if(!options.noCheckboxSubtitle && !isToggle) {
           this.checkboxField.input.addEventListener('change', () => {
             replaceContent(this.subtitle, i18n(this.checkboxField.input.checked ? 'Checkbox.Enabled' : 'Checkbox.Disabled'));
           });
@@ -67,39 +75,45 @@ export default class Row {
 
       const i = options.radioField || options.checkboxField;
       i.label.classList.add('disable-hover');
-    } else {
-      if(options.title || options.titleLangKey) {
-        let c: HTMLElement;
-        if(options.titleRight) {
-          c = document.createElement('div');
-          c.classList.add('row-title-row');
-          this.container.append(c);
-        } else {
-          c = this.container;
-        }
+    } 
+    
+    if(options.title || options.titleLangKey) {
+      let c: HTMLElement;
+      if(options.titleRight) {
+        c = document.createElement('div');
+        c.classList.add('row-title-row');
+        this.container.append(c);
+      } else {
+        c = this.container;
+      }
 
-        this.title = document.createElement('div');
-        this.title.classList.add('row-title');
-        if(options.title) {
-          this.title.innerHTML = options.title;
-        } else {
-          this.title.append(i18n(options.titleLangKey));
-        }
-        c.append(this.title);
+      this.title = document.createElement('div');
+      this.title.classList.add('row-title');
+      if(options.title) {
+        this.title.innerHTML = options.title;
+      } else {
+        this.title.append(i18n(options.titleLangKey));
+      }
+      c.append(this.title);
 
-        if(options.titleRight) {
-          const titleRight = document.createElement('div');
-          titleRight.classList.add('row-title', 'row-title-right');
+      if(options.titleRight) {
+        const titleRight = document.createElement('div');
+        titleRight.classList.add('row-title', 'row-title-right');
+
+        if(typeof(options.titleRight) === 'string') {
           titleRight.innerHTML = options.titleRight;
-          c.append(titleRight);
+        } else {
+          titleRight.append(options.titleRight);
         }
-      }
 
-      if(options.icon) {
-        havePadding = true;
-        this.title.classList.add('tgico', 'tgico-' + options.icon);
-        this.container.classList.add('row-with-icon');
+        c.append(titleRight);
       }
+    }
+
+    if(options.icon) {
+      havePadding = true;
+      this.title.classList.add('tgico', 'tgico-' + options.icon);
+      this.container.classList.add('row-with-icon');
     }
 
     if(havePadding) {
@@ -125,8 +139,6 @@ export default class Row {
         this.container.prepend(this.container.lastElementChild);
       } */
     }
-
-    this.container.append(this.subtitle);
   }
 
 

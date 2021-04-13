@@ -4,6 +4,23 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+.menu-horizontal-scrollable {
+  &:after {
+    content: " ";
+    position: absolute;
+    height: 1px;
+    border-bottom: 1px solid var(--border-color);
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: -1;
+  }
+
+  .menu-horizontal-div {
+    border-bottom: none;
+  }
+}
+
 .menu-horizontal-div {
   width: 100%;
   display: flex;
@@ -64,7 +81,7 @@
 
   i {
     position: absolute;
-    bottom: calc(-.625rem - 2px);
+    bottom: calc(-.625rem - 3px);
     left: 0;
     opacity: 0;
     background-color: var(--primary-color);
@@ -72,8 +89,8 @@
     width: 100%;
     border-radius: .1875rem .1875rem 0 0;
     pointer-events: none;
-    padding-right: .5rem;
-    margin-left: -.25rem;
+    /* padding-right: .5rem;
+    margin-left: -.25rem; */
     box-sizing: content-box;
     transform-origin: left;
     z-index: 1;

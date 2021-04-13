@@ -236,6 +236,10 @@ ul.chatlist {
     padding: .0625rem .4375rem .0625rem .5625rem;
   }
 
+  .dialog-avatar, .user-caption {
+    pointer-events: none;
+  }
+
   .user-title {
     display: flex !important;
     align-items: center;

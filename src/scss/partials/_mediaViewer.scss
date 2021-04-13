@@ -282,11 +282,15 @@
     }
 
     &.active {
-      transition: var(--open-duration) transform, var(--open-duration) border-radius;
+      transition: transform var(--open-duration), border-radius var(--open-duration), opacity var(--open-duration) calc(var(--open-duration) / 8);
+    }
+
+    &.active.opening {
+      transition: transform var(--open-duration), border-radius var(--open-duration), opacity var(--open-duration) 0s;
     }
 
     &.moving {
-      transition: var(--move-duration) transform ease;
+      transition: transform var(--move-duration) ease;
     }
 
     /* &.center {

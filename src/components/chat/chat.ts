@@ -251,8 +251,10 @@ export default class Chat extends EventListenerBase<{
       }
     });
 
-    appSidebarRight.sharedMediaTab.setLoadMutex(this.setPeerPromise);
-    appSidebarRight.sharedMediaTab.loadSidebarMedia(true);
+    if(!samePeer) {
+      appSidebarRight.sharedMediaTab.setLoadMutex(this.setPeerPromise);
+      appSidebarRight.sharedMediaTab.loadSidebarMedia(true);
+    }
     /* this.setPeerPromise.then(() => {
       appSidebarRight.sharedMediaTab.loadSidebarMedia(false);
     }); */

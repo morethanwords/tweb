@@ -5,18 +5,17 @@
  */
 
 import appImManager from "../../../lib/appManagers/appImManager";
-import appMessagesManager from "../../../lib/appManagers/appMessagesManager";
+import appMessagesManager, { AppMessagesManager } from "../../../lib/appManagers/appMessagesManager";
 import appPeersManager from "../../../lib/appManagers/appPeersManager";
 import appProfileManager from "../../../lib/appManagers/appProfileManager";
 import appUsersManager, { User } from "../../../lib/appManagers/appUsersManager";
-import { logger } from "../../../lib/logger";
 import { RichTextProcessor } from "../../../lib/richtextprocessor";
 import rootScope from "../../../lib/rootScope";
 import AppSearchSuper, { SearchSuperType } from "../../appSearchSuper.";
-import AvatarElement from "../../avatar";
+import AvatarElement, { openAvatarViewer } from "../../avatar";
 import SidebarSlider, { SliderSuperTab } from "../../slider";
 import CheckboxField from "../../checkboxField";
-import { attachClickEvent, replaceContent, whichChild } from "../../../helpers/dom";
+import { attachClickEvent, replaceContent, cancelEvent } from "../../../helpers/dom";
 import appSidebarRight from "..";
 import { TransitionSlider } from "../../transition";
 import appNotificationsManager from "../../../lib/appManagers/appNotificationsManager";
@@ -25,7 +24,7 @@ import PeerTitle from "../../peerTitle";
 import AppEditChannelTab from "./editChannel";
 import AppEditContactTab from "./editContact";
 import appChatsManager, { Channel } from "../../../lib/appManagers/appChatsManager";
-import { Chat, UserProfilePhoto } from "../../../layer";
+import { Chat, Message, MessageAction, ChatFull, Photo } from "../../../layer";
 import Button from "../../button";
 import ButtonIcon from "../../buttonIcon";
 import I18n, { i18n, LangPackKey } from "../../../lib/langPack";
@@ -43,6 +42,8 @@ import { MOUNT_CLASS_TO } from "../../../config/debug";
 import AppAddMembersTab from "../../sidebarLeft/tabs/addMembers";
 import PopupPickUser from "../../popups/pickUser";
 import PopupPeer from "../../popups/peer";
+import Scrollable from "../../scrollable";
+import { isTouchSupported } from "../../../helpers/touchSupport";
 
 let setText = (text: string, row: Row) => {
   fastRaf(() => {
@@ -166,21 +167,21 @@ class PeerProfileAvatars {
   public static BASE_CLASS = 'profile-avatars';
   public container: HTMLElement;
   public avatars: HTMLElement;
-  //public gradient: HTMLElement;
+  public gradient: HTMLElement;
   public info: HTMLElement;
   public tabs: HTMLDivElement;
-  public listLoader: ListLoader<string>;
+  public listLoader: ListLoader<string | Message.messageService>;
   public peerId: number;
 
-  constructor() {
+  constructor(public scrollable: Scrollable) {
     this.container = document.createElement('div');
     this.container.classList.add(PeerProfileAvatars.BASE_CLASS + '-container');
 
     this.avatars = document.createElement('div');
     this.avatars.classList.add(PeerProfileAvatars.BASE_CLASS + '-avatars');
 
-    //this.gradient = document.createElement('div');
-    //this.gradient.classList.add(PeerProfileAvatars.BASE_CLASS + '-gradient');
+    this.gradient = document.createElement('div');
+    this.gradient.classList.add(PeerProfileAvatars.BASE_CLASS + '-gradient');
 
     this.info = document.createElement('div');
     this.info.classList.add(PeerProfileAvatars.BASE_CLASS + '-info');
@@ -188,12 +189,32 @@ class PeerProfileAvatars {
     this.tabs = document.createElement('div');
     this.tabs.classList.add(PeerProfileAvatars.BASE_CLASS + '-tabs');
 
-    this.container.append(this.avatars, /* this.gradient,  */this.info, this.tabs);
+    this.container.append(this.avatars, this.gradient, this.info, this.tabs);
 
+    const checkScrollTop = () => {
+      if(this.scrollable.scrollTop !== 0) {
+        this.scrollable.scrollIntoViewNew(this.scrollable.container.firstElementChild as HTMLElement, 'start');
+        return false;
+      }
+
+      return true;
+    };
+
+    const SWITCH_ZONE = 1 / 3;
     let cancel = false;
-    attachClickEvent(this.container, (_e) => {
+    let freeze = false;
+    attachClickEvent(this.container, async(_e) => {
+      if(freeze) {
+        cancelEvent(_e);
+        return;
+      }
+
       if(cancel) {
         cancel = false;
+        return;
+      }
+
+      if(!checkScrollTop()) {
         return;
       }
 
@@ -202,14 +223,42 @@ class PeerProfileAvatars {
       const e = (_e as TouchEvent).touches ? (_e as TouchEvent).touches[0] : _e as MouseEvent;
       const x = e.pageX;
 
-      const centerX = rect.right - (rect.width / 2);
-      const toRight = x > centerX;
+      const clickX = x - rect.left;
+      if(clickX > (rect.width * SWITCH_ZONE) && clickX < (rect.width - rect.width * SWITCH_ZONE)) {
+        const peerId = this.peerId;
 
-      // this.avatars.classList.remove('no-transition');
-      // fastRaf(() => {
-        this.listLoader.go(toRight ? 1 : -1);
-      // });
+        const targets: {element: HTMLElement, item: string | Message.messageService}[] = [];
+        this.listLoader.previous.concat(this.listLoader.current, this.listLoader.next).forEach((item, idx) => {
+          targets.push({
+            element: /* null */this.avatars.children[idx] as HTMLElement,
+            item
+          });
+        });
+
+        const prevTargets = targets.slice(0, this.listLoader.previous.length);
+        const nextTargets = targets.slice(this.listLoader.previous.length + 1);
+
+        const target = this.avatars.children[this.listLoader.previous.length] as HTMLElement;
+        freeze = true;
+        openAvatarViewer(target, peerId, () => peerId === this.peerId, this.listLoader.current, prevTargets, nextTargets);
+        freeze = false;
+      } else {
+        const centerX = rect.right - (rect.width / 2);
+        const toRight = x > centerX;
+  
+        // this.avatars.classList.remove('no-transition');
+        // fastRaf(() => {
+          this.listLoader.go(toRight ? 1 : -1);
+        // });
+      }
     });
+
+    const cancelNextClick = () => {
+      cancel = true;
+      document.body.addEventListener(isTouchSupported ? 'touchend' : 'click', (e) => {
+        cancel = false;
+      }, {once: true});
+    };
 
     let width = 0, x = 0, lastDiffX = 0, lastIndex = 0, minX = 0;
     const swipeHandler = new SwipeHandler({
@@ -225,7 +274,11 @@ class PeerProfileAvatars {
         return false;
       }, 
       verifyTouchTarget: (e) => {
-        if(this.tabs.classList.contains('hide')) {
+        if(!checkScrollTop()) {
+          cancelNextClick();
+          cancelEvent(e);
+          return false;
+        } else if(this.tabs.classList.contains('hide') || freeze) {
           return false;
         }
 
@@ -247,7 +300,7 @@ class PeerProfileAvatars {
       },
       onReset: () => {
         const addIndex = Math.ceil(Math.abs(lastDiffX) / (width / 2)) * (lastDiffX >= 0 ? 1 : -1);
-        cancel = true;
+        cancelNextClick();
         
         //console.log(addIndex);
 
@@ -268,15 +321,51 @@ class PeerProfileAvatars {
     }
 
     const loadCount = 50;
-    const listLoader: PeerProfileAvatars['listLoader'] = this.listLoader = new ListLoader<string>({
+    const listLoader: PeerProfileAvatars['listLoader'] = this.listLoader = new ListLoader<string | Message.messageService>({
       loadCount,
       loadMore: (anchor, older) => {
-        return appPhotosManager.getUserPhotos(peerId, anchor || listLoader.current, loadCount).then(result => {
-          return {
-            count: result.count,
-            items: result.photos
-          };
-        });
+        if(peerId > 0) {
+          return appPhotosManager.getUserPhotos(peerId, (anchor || listLoader.current) as any, loadCount).then(result => {
+            return {
+              count: result.count,
+              items: result.photos
+            };
+          });
+        } else {
+          const promises: [Promise<ChatFull>, ReturnType<AppMessagesManager['getSearch']>] = [] as any;
+          if(!listLoader.current) {
+            promises.push(appProfileManager.getChatFull(peerId));
+          }
+          
+          promises.push(appMessagesManager.getSearch({
+            peerId,
+            maxId: Number.MAX_SAFE_INTEGER,
+            inputFilter: {
+              _: 'inputMessagesFilterChatPhotos'
+            },
+            limit: loadCount,
+            backLimit: 0
+          }));
+
+          return Promise.all(promises).then((result) => {
+            const value = result.pop() as typeof result[1];
+
+            if(!listLoader.current) {
+              const chatFull = result[0];
+              const message = value.history.findAndSplice(m => {
+                return ((m as Message.messageService).action as MessageAction.messageActionChannelEditPhoto).photo.id === chatFull.chat_photo.id;
+              }) as Message.messageService;
+              
+              listLoader.current = message || appMessagesManager.generateFakeAvatarMessage(this.peerId, chatFull.chat_photo);
+            }
+
+            //console.log('avatars loaded:', value);
+            return {
+              count: value.count,
+              items: value.history
+            };
+          });
+        }
       },
       processItem: this.processItem,
       onJump: (item, older) => {
@@ -292,7 +381,10 @@ class PeerProfileAvatars {
       }
     });
 
-    listLoader.current = (photo as UserProfilePhoto.userProfilePhoto).photo_id;
+    if(photo._ === 'userProfilePhoto') {
+      listLoader.current = photo.photo_id;
+    }
+
     this.processItem(listLoader.current);
 
     listLoader.load(true);
@@ -310,11 +402,17 @@ class PeerProfileAvatars {
     this.tabs.classList.toggle('hide', this.tabs.childElementCount <= 1);
   }
 
-  public processItem = (photoId: string) => {
+  public processItem = (photoId: string | Message.messageService) => {
     const avatar = document.createElement('div');
     avatar.classList.add(PeerProfileAvatars.BASE_CLASS + '-avatar');
 
-    const photo = appPhotosManager.getPhoto(photoId);
+    let photo: Photo.photo;
+    if(photoId) {
+      photo = typeof(photoId) === 'string' ? 
+        appPhotosManager.getPhoto(photoId) : 
+        (photoId.action as MessageAction.messageActionChannelEditPhoto).photo as Photo.photo;
+    }
+
     const img = new Image();
     img.classList.add(PeerProfileAvatars.BASE_CLASS + '-avatar-image');
     img.draggable = false;
@@ -356,6 +454,10 @@ class PeerProfile {
 
   private peerId = 0;
   private threadId: number;
+
+  constructor(public scrollable: Scrollable) {
+
+  }
 
   public init() {
     this.init = null;
@@ -419,11 +521,17 @@ class PeerProfile {
     });
 
     this.notifications = new Row({
-      checkboxField: new CheckboxField({text: 'Notifications'})
+      checkboxField: new CheckboxField({toggle: true}),
+      titleLangKey: 'Notifications',
+      icon: 'unmute'
     });
     
     this.section.content.append(this.phone.container, this.username.container, this.bio.container, this.notifications.container);
-    this.element.append(this.section.container);
+
+    const delimiter = document.createElement('div');
+    delimiter.classList.add('gradient-delimiter');
+
+    this.element.append(this.section.container, delimiter);
 
     this.notifications.checkboxField.input.addEventListener('change', (e) => {
       if(!e.isTrusted) {
@@ -502,7 +610,7 @@ class PeerProfile {
 
       if(photo) {
         const oldAvatars = this.avatars;
-        this.avatars = new PeerProfileAvatars();
+        this.avatars = new PeerProfileAvatars(this.scrollable);
         this.avatars.setPeer(this.peerId);
         this.avatars.info.append(this.name, this.subtitle);
   
@@ -511,9 +619,13 @@ class PeerProfile {
         if(oldAvatars) oldAvatars.container.replaceWith(this.avatars.container);
         else this.element.prepend(this.avatars.container);
 
+        this.scrollable.container.classList.add('parallax');
+
         return;
       }
     }
+
+    this.scrollable.container.classList.remove('parallax');
 
     if(this.avatars) {
       this.avatars.container.remove();
@@ -699,7 +811,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
 
     // * body
 
-    this.profile = new PeerProfile();
+    this.profile = new PeerProfile(this.scrollable);
     this.profile.init();
     
     this.scrollable.append(this.profile.element);
@@ -712,6 +824,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
       const top = rect.top;
       const isSharedMedia = top <= HEADER_HEIGHT;
       animatedCloseIcon.classList.toggle('state-back', isSharedMedia);
+      this.searchSuper.container.classList.toggle('is-full-viewport', isSharedMedia);
       transition(+isSharedMedia);
 
       if(!isSharedMedia) {

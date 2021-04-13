@@ -179,10 +179,12 @@ export default class ChatSelection {
       checkboxField.label.classList.add('bubble-select-checkbox');
 
       // * if it is a render of new message
-      const mid = +bubble.dataset.mid;
-      if(this.selectedMids.has(mid) && (!isGrouped || this.isGroupedMidsSelected(mid))) {
-        checkboxField.input.checked = true;
-        bubble.classList.add('is-selected');
+      if(this.isSelecting) { // ! avoid breaking animation on start
+        const mid = +bubble.dataset.mid;
+        if(this.selectedMids.has(mid) && (!isGrouped || this.isGroupedMidsSelected(mid))) {
+          checkboxField.input.checked = true;
+          bubble.classList.add('is-selected');
+        }
       }
 
       if(bubble.classList.contains('document-container')) {

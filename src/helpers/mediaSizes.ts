@@ -37,15 +37,15 @@ class MediaSizes extends EventListenerBase<{
   private sizes: {[k in 'desktop' | 'handhelds']: Sizes} = {
     handhelds: {
       regular: {
-        width: 293,
-        height: 293
+        width: 270,
+        height: 270
       },
       webpage: {
-        width: 293,
-        height: 213
+        width: 270,
+        height: 200
       },
       album: {
-        width: 293,
+        width: 270,
         height: 0
       },
       esgSticker: {
@@ -55,15 +55,15 @@ class MediaSizes extends EventListenerBase<{
     },
     desktop: {
       regular: {
-        width: 480,
-        height: 480
+        width: 400,
+        height: 320
       },
       webpage: {
-        width: 480,
-        height: 400
+        width: 400,
+        height: 320
       },
       album: {
-        width: 451,
+        width: 420,
         height: 0
       },
       esgSticker: {

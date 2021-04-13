@@ -833,7 +833,7 @@ $chat-helper-size: 39px;
 		.btn-menu {
 			padding: 8px 0;
 			right: -11px;
-			bottom: calc(100% + 16px);
+			bottom: calc(100% + 1.25rem);
 			
 			> div {
 				padding: 0 38px 0 16px;
@@ -980,7 +980,7 @@ $chat-helper-size: 39px;
 	// 	}
 	// }
 
-	&.is-chat-input-hidden.is-selecting:not(.backwards) {
+	.chat.type-chat &.is-chat-input-hidden.is-selecting:not(.backwards) {
 		--translateY: -78px;
 
 		@include respond-to(handhelds) {
@@ -1130,7 +1130,7 @@ $chat-helper-size: 39px;
 		}
 	}
 
-	.bubbles.is-chat-input-hidden & {
+	.chat.type-chat .bubbles.is-chat-input-hidden & {
 		margin-bottom: 1rem; // .25rem is eaten by the last bubble's margin-bottom
 	}
 
