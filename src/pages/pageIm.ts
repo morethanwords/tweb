@@ -49,11 +49,6 @@ let onFirstMount = () => {
         alert('global.WebAssembly:' + typeof(WebAssembly)); */
     
         //(Array.from(document.getElementsByClassName('rp')) as HTMLElement[]).forEach(el => ripple(el));
-    
-        const misc = await import("../components/buttonMenuToggle");
-        Array.from(document.getElementsByClassName('btn-menu-toggle')).forEach((el) => {
-          misc.ButtonMenuToggleHandler(el as HTMLElement);
-        });
       });
     });
   });

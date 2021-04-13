@@ -17,7 +17,7 @@ import PasswordMonkey from '../components/monkeys/password';
 import RichTextProcessor from '../lib/richtextprocessor';
 import I18n from '../lib/langPack';
 import LoginPage from './loginPage';
-import { replaceContent } from '../helpers/dom';
+import { htmlToSpan, replaceContent } from '../helpers/dom';
 
 const TEST = false;
 let passwordInput: HTMLInputElement;
@@ -56,7 +56,7 @@ let onFirstMount = (): Promise<any> => {
       state = _state;
 
       if(state.hint) {
-        replaceContent(passwordInputField.label, RichTextProcessor.wrapEmojiText(state.hint));
+        replaceContent(passwordInputField.label, htmlToSpan(RichTextProcessor.wrapEmojiText(state.hint)));
       } else {
         passwordInputField.setLabel();
       }

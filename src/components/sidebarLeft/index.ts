@@ -37,6 +37,7 @@ import findUpTag from "../../helpers/dom/findUpTag";
 import PeerTitle from "../peerTitle";
 import { replaceContent } from "../../helpers/dom";
 import App from "../../config/app";
+import ButtonMenuToggle from "../buttonMenuToggle";
 
 export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
 
@@ -84,18 +85,22 @@ export class AppSidebarLeft extends SidebarSlider {
       new AppContactsTab(this).open();
     };
 
-    this.toolsBtn = this.sidebarEl.querySelector('.sidebar-tools-button') as HTMLButtonElement;
+    //this.toolsBtn = this.sidebarEl.querySelector('.sidebar-tools-button') as HTMLButtonElement;
     this.backBtn = this.sidebarEl.querySelector('.sidebar-back-button') as HTMLButtonElement;
 
-    const btnArchive: ButtonMenuItemOptions = {
+    const btnArchive: ButtonMenuItemOptions & {verify?: () => boolean} = {
       icon: 'archive',
       text: 'ArchivedChats',
       onClick: () => {
         new AppArchivedTab(this).open();
+      },
+      verify: () => {
+        const folder = appMessagesManager.dialogsStorage.getFolder(1);
+        return !!folder.length;
       }
     };
 
-    const btnMenu = ButtonMenu([{
+    const menuButtons: (ButtonMenuItemOptions & {verify?: () => boolean})[] = [{
       icon: 'savedmessages',
       text: 'SavedMessages',
       onClick: () => {
@@ -153,7 +158,21 @@ export class AppSidebarLeft extends SidebarSlider {
           a.remove();
         }, 0);
       }
-    }]);
+    }];
+
+    this.toolsBtn = ButtonMenuToggle({}, 'bottom-right', menuButtons, (e) => {
+      menuButtons.forEach(button => {
+        if(button.verify) {
+          button.element.classList.toggle('hide', !button.verify());
+        }
+      });
+    });
+    this.toolsBtn.classList.remove('tgico-more');
+    this.toolsBtn.classList.add('sidebar-tools-button', 'is-visible');
+
+    this.backBtn.parentElement.insertBefore(this.toolsBtn, this.backBtn);
+
+    const btnMenu = this.toolsBtn.querySelector('.btn-menu') as HTMLElement;
 
     const btnMenuFooter = document.createElement('div');
     btnMenuFooter.classList.add('btn-menu-footer');
@@ -164,13 +183,7 @@ export class AppSidebarLeft extends SidebarSlider {
     btnMenu.classList.add('has-footer');
     btnMenu.append(btnMenuFooter);
 
-    btnMenu.classList.add('bottom-right');
-
-    this.toolsBtn.append(btnMenu);
-
-    this.newBtnMenu = this.sidebarEl.querySelector('#new-menu');
-
-    const _newBtnMenu = ButtonMenu([{
+    this.newBtnMenu = ButtonMenuToggle({}, 'top-left', [{
       icon: 'newchannel',
       text: 'NewChannel',
       onClick: () => {
@@ -185,8 +198,9 @@ export class AppSidebarLeft extends SidebarSlider {
       text: 'NewPrivateChat',
       onClick: onContactsClick
     }]);
-    _newBtnMenu.classList.add('top-left');
-    this.newBtnMenu.append(_newBtnMenu);
+    this.newBtnMenu.className = 'btn-circle rp btn-corner tgico-newchat_filled btn-menu-toggle';
+    this.newBtnMenu.id = 'new-menu';
+    sidebarHeader.nextElementSibling.append(this.newBtnMenu);
 
     this.inputSearch.input.addEventListener('focus', () => this.initSearch(), {once: true});
 

@@ -49,7 +49,12 @@ export default class SidebarSlider {
   }
 
   public onCloseBtnClick = () => {
-    appNavigationController.back(this.navigationType);
+    const item = appNavigationController.findItemByType(this.navigationType);
+    if(item) {
+      appNavigationController.back(this.navigationType);
+    } else if(this.historyTabIds.length) {
+      this.closeTab(this.historyTabIds[this.historyTabIds.length - 1]);
+    }
     // this.closeTab();
   };
 
@@ -118,7 +123,7 @@ export default class SidebarSlider {
       }
 
       this.removeTabFromHistory(tab);
-      appNavigationController.removeByType(this.navigationType, true);
+      //appNavigationController.removeByType(this.navigationType, true);
     }
   }
 
