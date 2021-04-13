@@ -249,12 +249,20 @@ export class AppImManager {
       const key = chat.peerId + (chat.threadId ? '_' + chat.threadId : '');
 
       const chatPositions = sessionStorage.getFromCache('chatPositions');
-      chatPositions[key] = {
-        mids: getObjectKeysAndSort(chat.bubbles.bubbles, 'desc'),
-        top
-      } as ChatSavedPosition;
+      if(!(chat.bubbles.scrollable.getDistanceToEnd() <= 16 && chat.bubbles.scrollable.loadedAll.bottom)) {
+        const position = {
+          mids: getObjectKeysAndSort(chat.bubbles.bubbles, 'desc'),
+          top
+        };
 
-      this.log('saved chat position:', chatPositions[key]);
+        chatPositions[key] = position;
+
+        this.log('saved chat position:', position);
+      } else {
+        delete chatPositions[key];
+
+        this.log('deleted chat position');
+      }
 
       sessionStorage.set({chatPositions}, true);
     //}

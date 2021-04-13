@@ -1546,13 +1546,13 @@ export class AppMediaViewerAvatar extends AppMediaViewerBase<'', 'delete', AppMe
     return this.loadMediaPromiseDown = promise;
   };
 
-  public async openMedia(photoId: string, target?: HTMLElement, fromRight = 0) {
+  public async openMedia(photoId: string, target?: HTMLElement, fromRight = 0, prevTargets?: AppMediaViewerAvatarTargetType[], nextTargets?: AppMediaViewerAvatarTargetType[]) {
     if(this.setMoverPromise) return this.setMoverPromise;
 
     const photo = appPhotosManager.getPhoto(photoId);
 
     this.currentPhotoId = photo.id;
   
-    return super._openMedia(photo, photo.date, this.peerId, fromRight, target, false);
+    return super._openMedia(photo, photo.date, this.peerId, fromRight, target, false, prevTargets, nextTargets);
   }
 }
