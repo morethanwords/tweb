@@ -36,6 +36,7 @@ import findUpClassName from "../../helpers/dom/findUpClassName";
 import findUpTag from "../../helpers/dom/findUpTag";
 import PeerTitle from "../peerTitle";
 import { replaceContent } from "../../helpers/dom";
+import App from "../../config/app";
 
 export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
 
@@ -135,11 +136,33 @@ export class AppSidebarLeft extends SidebarSlider {
       })
     }, {
       icon: 'help',
-      text: 'SettingsHelp',
+      text: 'TelegramFeatures',
       onClick: () => {
         appImManager.openUsername('TelegramTips');
       }
+    }, {
+      icon: 'help',
+      text: 'ReportBug',
+      onClick: () => {
+        const a = document.createElement('a');
+        a.target = '_blank';
+        a.href = 'https://bugs.telegram.org/?tag_ids=40&sort=time';
+        document.body.append(a);
+        a.click();
+        setTimeout(() => {
+          a.remove();
+        }, 0);
+      }
     }]);
+
+    const btnMenuFooter = document.createElement('div');
+    btnMenuFooter.classList.add('btn-menu-footer');
+    const t = document.createElement('span');
+    t.classList.add('btn-menu-footer-text');
+    t.innerHTML = 'Telegram WebK alpha ' + App.version;
+    btnMenuFooter.append(t); 
+    btnMenu.classList.add('has-footer');
+    btnMenu.append(btnMenuFooter);
 
     btnMenu.classList.add('bottom-right');
 

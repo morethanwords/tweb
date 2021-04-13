@@ -90,6 +90,7 @@ const lang = {
   "MediaViewer.Context.Download": "Download",
   "Profile": "Profile",
   "Saved": "Saved",
+  "ReportBug": "Report Bug",
 
   // * android
   "ActionCreateChannel": "Channel created",
@@ -390,6 +391,7 @@ const lang = {
     "other_value": "%1$d stickers"
   },
   "HidAccount": "The account was hidden by the user",
+  "TelegramFeatures": "Telegram Features",
 
   // * macos
   "AccountSettings.Filters": "Chat Folders",

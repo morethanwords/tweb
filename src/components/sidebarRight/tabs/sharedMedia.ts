@@ -224,7 +224,8 @@ class PeerProfileAvatars {
       const x = e.pageX;
 
       const clickX = x - rect.left;
-      if(clickX > (rect.width * SWITCH_ZONE) && clickX < (rect.width - rect.width * SWITCH_ZONE)) {
+      if((!this.listLoader.previous.length && !this.listLoader.next.length) 
+        || (clickX > (rect.width * SWITCH_ZONE) && clickX < (rect.width - rect.width * SWITCH_ZONE))) {
         const peerId = this.peerId;
 
         const targets: {element: HTMLElement, item: string | Message.messageService}[] = [];
