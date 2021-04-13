@@ -1587,8 +1587,14 @@ export default class ChatBubbles {
       this.chat.dispatchEvent('setPeer', lastMsgId, !isJump);
 
       // warning
-      if(!lastMsgId || this.bubbles[topMessage] || lastMsgId === topMessage) {
+      if((!lastMsgId && !savedPosition) || this.bubbles[topMessage] || lastMsgId === topMessage) {
         this.scrollable.loadedAll.bottom = true;
+      }
+
+      if(savedPosition) {
+        Promise.all([setPeerPromise, getHeavyAnimationPromise()]).then(() => {
+          this.scrollable.checkForTriggers();
+        });
       }
 
       this.log('scrolledAllDown:', this.scrollable.loadedAll.bottom);
