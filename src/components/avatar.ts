@@ -11,6 +11,7 @@ import { attachClickEvent, cancelEvent } from "../helpers/dom";
 import AppMediaViewer, { AppMediaViewerAvatar } from "./appMediaViewer";
 import { Message, Photo } from "../layer";
 import appPeersManager from "../lib/appManagers/appPeersManager";
+import appPhotosManager from "../lib/appManagers/appPhotosManager";
 //import type { LazyLoadQueueIntersector } from "./lazyLoadQueue";
 
 const onAvatarUpdate = (peerId: number) => {
@@ -25,7 +26,7 @@ rootScope.on('avatar_update', onAvatarUpdate);
 rootScope.on('peer_title_edit', onAvatarUpdate);
 
 export async function openAvatarViewer(target: HTMLElement, peerId: number, middleware: () => boolean, message?: any, prevTargets?: {element: HTMLElement, item: string | Message.messageService}[], nextTargets?: typeof prevTargets) {
-  const photo = await appProfileManager.getFullPhoto(peerId);
+  let photo = await appProfileManager.getFullPhoto(peerId);
   if(!middleware() || !photo) {
     return;
   }
@@ -84,7 +85,16 @@ export async function openAvatarViewer(target: HTMLElement, peerId: number, midd
   }
 
   if(photo) {
-    new AppMediaViewerAvatar(peerId).openMedia(photo.id, getTarget());
+    if(typeof(message) === 'string') {
+      photo = appPhotosManager.getPhoto(message);
+    }
+    
+    const f = (arr: typeof prevTargets) => arr.map(el => ({
+      element: el.element,
+      photoId: el.item as string
+    }));
+
+    new AppMediaViewerAvatar(peerId).openMedia(photo.id, getTarget(), undefined, prevTargets ? f(prevTargets) : undefined, nextTargets ? f(nextTargets) : undefined);
   }
 }
 

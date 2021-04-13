@@ -1090,8 +1090,8 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     }
   }
 
-  public loadSidebarMedia(single: boolean) {
-    this.searchSuper.load(single);
+  public loadSidebarMedia(single: boolean, justLoad = false) {
+    this.searchSuper.load(single, justLoad);
   }
 
   onOpenAfterTimeout() {
