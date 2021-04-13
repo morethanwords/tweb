@@ -256,24 +256,28 @@
     }
   }
 
-  .sidebar-tools-button .btn-menu {
-    width: 300px;
-
-    .archived-count {
-      justify-self: flex-end;
-      margin-left: .625rem;
-
-      @include respond-to(handhelds) {
-        font-weight: 600;
+  .sidebar-tools-button {
+    width: 100%;
+    
+    .btn-menu {
+      width: 300px;
+  
+      .archived-count {
+        justify-self: flex-end;
+        margin-left: .625rem;
+  
+        @include respond-to(handhelds) {
+          font-weight: 600;
+        }
       }
-    }
-
-    .btn-menu-item {
-      padding-right: 1rem;
-    }
-
-    .archived-count:empty {
-      display: none;
+  
+      .btn-menu-item {
+        padding-right: 1rem;
+      }
+  
+      .archived-count:empty {
+        display: none;
+      }
     }
   }
 
