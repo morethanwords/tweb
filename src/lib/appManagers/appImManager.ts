@@ -261,6 +261,10 @@ export class AppImManager {
   }
 
   public getChatSavedPosition(chat: Chat): ChatSavedPosition {
+    if(!(['chat', 'discussion'] as ChatType[]).includes(chat.type) || !chat.peerId) {
+      return;
+    }
+    
     const key = chat.peerId + (chat.threadId ? '_' + chat.threadId : '');
     return sessionStorage.getFromCache('chatPositions')[key];
   }
