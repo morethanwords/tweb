@@ -1112,8 +1112,8 @@ export default class AppSearchSuper {
 
         this.container.classList.toggle('hide', !firstMediaTab);
         this.container.parentElement.classList.toggle('search-empty', !firstMediaTab);
-        this.selectTab(this.mediaTabs.indexOf(firstMediaTab), false);
         if(firstMediaTab) {
+          this.selectTab(this.mediaTabs.indexOf(firstMediaTab), false);
           firstMediaTab.menuTab.classList.add('active');
         }
       }
