@@ -288,7 +288,7 @@ export default class ChatInput {
     }
 
     this.attachMenuButtons = [{
-      icon: 'photo',
+      icon: 'image',
       text: 'Chat.Input.Attach.PhotoOrVideo',
       onClick: () => {
         this.fileInput.value = '';
@@ -344,12 +344,12 @@ export default class ChatInput {
     this.recordRippleEl = document.createElement('div');
     this.recordRippleEl.classList.add('record-ripple');
 
-    this.btnSend = ButtonIcon('none btn-circle z-depth-1 btn-send');
+    this.btnSend = ButtonIcon('none btn-circle z-depth-1 btn-send animated-button-icon');
     this.btnSend.insertAdjacentHTML('afterbegin', `
     <span class="tgico tgico-send"></span>
     <span class="tgico tgico-schedule"></span>
     <span class="tgico tgico-check"></span>
-    <span class="tgico tgico-microphone2"></span>
+    <span class="tgico tgico-microphone"></span>
     `);
 
     this.btnSendContainer.append(this.recordRippleEl, this.btnSend);

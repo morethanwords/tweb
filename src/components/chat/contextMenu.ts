@@ -239,7 +239,7 @@ export default class ChatContextMenu {
       onClick: this.onUnpinClick,
       verify: () => this.message.pFlags.pinned && this.appPeersManager.canPinMessage(this.peerId),
     }, {
-      icon: 'revote',
+      icon: 'checkretract',
       text: 'Chat.Poll.Unvote',
       onClick: this.onRetractVote,
       verify: () => {

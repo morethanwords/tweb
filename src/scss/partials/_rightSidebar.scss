@@ -20,7 +20,7 @@
 
   @include respond-to(not-handhelds) {
     width: var(--right-column-width);
-    transition: transform var(--layer-transition);
+    transition: transform var(--transition-standard-out);
     position: absolute;
     right: 0;
     z-index: 3;
@@ -35,6 +35,7 @@
     } */
   
     body.is-right-column-shown:not(.is-left-column-shown) & {
+      transition: transform var(--transition-standard-in);
       transform: translate3d(0, 0, 0);
     }
 
@@ -66,7 +67,7 @@
     flex: 0 0 auto;
 
     .sidebar-close-button.tgico:before {
-      content: $tgico-arrow_back;
+      content: $tgico-left;
 
       @include respond-to(not-handhelds) {
         content: $tgico-close;

@@ -23,25 +23,20 @@ $chat-helper-size: 39px;
 	max-width: 100%;
 	padding-top: .25rem;
 	flex-direction: column;
-	flex: 0 0 auto; /* Forces side columns to stay same width */
+	flex: 0 0 auto;
 	position: relative;
-	//overflow: hidden;
-	transition: transform var(--layer-transition);
+	transition: transform var(--transition-standard-out);
 	transform: translateY(var(--translateY));
 
 	body.animation-level-0 & {
 		transition: none;
 	}
 
-	//display: none !important;
-
 	/* // * for no ESG top
 	flex: 1 1 auto;
 	height: calc(100% - 56px); */
 
 	@include respond-to(esg-top) {
-		/* flex: 0 0 auto;
-		height: auto; */
 		max-width: var(--messages-container-width) !important;
 	}
 
@@ -55,15 +50,16 @@ $chat-helper-size: 39px;
 
 	@include respond-to(medium-screens) {
 		width: calc(100% - var(--right-column-width)) !important;
-		//transition: transform var(--layer-transition);
 
 		body.is-right-column-shown & {
+			transition: transform var(--transition-standard-in);
 			transform: translate3d(calc(var(--right-column-width) / -2), var(--translateY), 0) !important;
 		}
 	}
 
 	&.is-hidden {
 		--translateY: 100%;
+		transition: transform var(--transition-standard-in);
 		transform: translate3d(0, var(--translateY), 0) !important;
 		position: absolute !important;
 		bottom: 0;
@@ -227,20 +223,6 @@ $chat-helper-size: 39px;
 		color: var(--secondary-text-color);
 		z-index: 3;
 
-		> .tgico {
-			position: absolute;
-			height: 24px;
-			
-			body:not(.animation-level-0) & {
-				animation: hide-icon .4s forwards ease-in-out;
-			}
-
-			@include animation-level(0) {
-				visibility: hidden;
-				animation: none !important;
-			}
-		}
-
 		.tgico-send {
 			color: var(--primary-color) !important;
 		}
@@ -267,7 +249,7 @@ $chat-helper-size: 39px;
 		}
 
 		&.send .tgico-send, 
-		&.record .tgico-microphone2,
+		&.record .tgico-microphone,
 		&.edit .tgico-check,
 		&.schedule .tgico-schedule {
 			animation: grow-icon .4s forwards ease-in-out !important;
@@ -600,10 +582,11 @@ $chat-helper-size: 39px;
 			background-color: inherit;
 
 			@include animation-level(2) {
-				transition: opacity var(--layer-transition);
+				transition: opacity var(--transition-standard-out);
 				opacity: 0;
-
+				
 				&.is-visible:not(.backwards) {
+					transition: opacity var(--transition-standard-in);
 					opacity: 1;
 				}
 			}
@@ -614,11 +597,12 @@ $chat-helper-size: 39px;
 					margin: -16.5rem 0 -20rem 0;
 					transform: scale(1);
 					transform-origin: left center;
-					transition: transform var(--layer-transition), opacity var(--layer-transition);
+					transition: transform var(--transition-standard-out), opacity var(--transition-standard-out) !important;
 				}
 
 				body.animation-level-2.is-right-column-shown & {
 					transform: scale(.666666667);
+					transition: transform var(--transition-standard-in), opacity var(--transition-standard-in) !important;
 				}
 			}
 		}
@@ -955,7 +939,7 @@ $chat-helper-size: 39px;
 	position: relative;
 
 	transform: translateY(var(--translateY));
-	transition: transform var(--layer-transition);
+	transition: transform var(--transition-standard-out);
 
 	body.animation-level-0 & {
 		transition: none;
@@ -981,6 +965,7 @@ $chat-helper-size: 39px;
 	// }
 
 	.chat.type-chat &.is-chat-input-hidden.is-selecting:not(.backwards) {
+		transition: transform var(--transition-standard-in);
 		--translateY: -78px;
 
 		@include respond-to(handhelds) {
@@ -988,6 +973,7 @@ $chat-helper-size: 39px;
 		}
 
 		.bubbles-inner {
+			transition: transform var(--transition-standard-in);
 			transform: translateY(calc(var(--translateY) * -1));
 			//margin-top: $chat-helper-size;
 			//transition: none;
@@ -1005,14 +991,13 @@ $chat-helper-size: 39px;
 		> .scrollable {
 			height: auto;
 			display: block;
-			/* margin-bottom: 0;
-			transition: margin-bottom var(--layer-transition) */
 		}
 	//}
 
 	// ! WARNING, НЕЛЬЗЯ СТАВИТЬ ТРАНСФОРМ КРОМЕ TRANSLATEZ(0) НА БЛОК С OVERFLOW, ОН БУДЕТ ПРЫГАТЬ ВВЕРХ ПРИ ВКЛЮЧЕННОМ ПРАВИЛЕ И ЭТО НЕ ИСПРАВИТЬ JS'ОМ!
 	@include respond-to(medium-screens) {
 		body.is-right-column-shown & {
+			transition: transform var(--transition-standard-in);
 			transform: translate3d(calc(var(--right-column-width) / -2), var(--translateY), 0);
 		}
 	}
@@ -1082,7 +1067,7 @@ $chat-helper-size: 39px;
 
 	//padding-top: 10000px;
 
-	transition: transform var(--layer-transition);
+	transition: transform var(--transition-standard-out);
 	transform: translateY(0);
 	/* transition: margin-top var(--layer-transition);
 	transition-delay: .2s; */
@@ -1144,8 +1129,8 @@ $chat-helper-size: 39px;
 		opacity: 0.99999 !important; // 0.99999 сделано для сафари, т.к. без этого будет прыжок при скролле в самом низу или верху
 
 		html.is-safari & {
+			transition: transform var(--transition-standard-in);
 			transform: translateY(calc(var(--translateY) * -1));
-			//transition: transform var(--layer-transition); 
 		}
 	}
 }

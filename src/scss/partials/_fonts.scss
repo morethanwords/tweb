@@ -9,9 +9,9 @@
 @font-face {
   font-family: "#{$tgico-font-family}";
   src:
-    url('#{$tgico-font-path}/#{$tgico-font-family}.ttf?xc1ll') format('truetype'),
-    url('#{$tgico-font-path}/#{$tgico-font-family}.woff?xc1ll') format('woff'),
-    url('#{$tgico-font-path}/#{$tgico-font-family}.svg?xc1ll#tgico') format('svg');
+    url('#{$tgico-font-path}/#{$tgico-font-family}.ttf?cbcfst') format('truetype'),
+    url('#{$tgico-font-path}/#{$tgico-font-family}.woff?cbcfst') format('woff'),
+    url('#{$tgico-font-path}/#{$tgico-font-family}.svg?cbcfst#tgico') format('svg');
   font-weight: normal;
   font-style: normal;
   font-display: block;
@@ -85,11 +85,6 @@
 .tgico-archive {
   &:before {
     content: $tgico-archive; 
-  }
-}
-.tgico-arrow_back {
-  &:before {
-    content: $tgico-arrow_back; 
   }
 }
 .tgico-arrow_down {
@@ -255,6 +250,11 @@
 .tgico-delete_filled {
   &:before {
     content: $tgico-delete_filled; 
+  }
+}
+.tgico-deletedaccount {
+  &:before {
+    content: $tgico-deletedaccount; 
   }
 }
 .tgico-deleteleft {
@@ -482,11 +482,6 @@
     content: $tgico-microphone; 
   }
 }
-.tgico-microphone2 {
-  &:before {
-    content: $tgico-microphone2; 
-  }
-}
 .tgico-minus {
   &:before {
     content: $tgico-minus; 
@@ -547,16 +542,6 @@
     content: $tgico-nosound; 
   }
 }
-.tgico-notificationsoff {
-  &:before {
-    content: $tgico-notificationsoff; 
-  }
-}
-.tgico-notificationson {
-  &:before {
-    content: $tgico-notificationson; 
-  }
-}
 .tgico-passwordoff {
   &:before {
     content: $tgico-passwordoff; 
@@ -575,11 +560,6 @@
 .tgico-phone {
   &:before {
     content: $tgico-phone; 
-  }
-}
-.tgico-photo {
-  &:before {
-    content: $tgico-photo; 
   }
 }
 .tgico-pin {
@@ -650,11 +630,6 @@
 .tgico-reply {
   &:before {
     content: $tgico-reply; 
-  }
-}
-.tgico-revote {
-  &:before {
-    content: $tgico-revote; 
   }
 }
 .tgico-saved {
@@ -795,11 +770,6 @@
 .tgico-username {
   &:before {
     content: $tgico-username; 
-  }
-}
-.tgico-write {
-  &:before {
-    content: $tgico-write; 
   }
 }
 .tgico-zoomin {

@@ -157,10 +157,11 @@
     padding-right: inherit; */
 
 		@include respond-to(medium-screens) {
-			transition: transform var(--layer-transition);
+			transition: transform var(--transition-standard-out);
 	
 			body.is-right-column-shown & {
 				transform: translate3d(calc(var(--right-column-width) * -1), 0, 0);
+				transition: transform var(--transition-standard-in);
 			}
 
 			body.animation-level-0 & {

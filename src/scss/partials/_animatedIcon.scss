@@ -95,3 +95,20 @@
     }
   }
 }
+
+.animated-button-icon {
+  > .tgico {
+    position: absolute;
+    height: 24px;
+    line-height: 24px;
+    
+    body:not(.animation-level-0) & {
+      animation: hide-icon .4s forwards ease-in-out;
+    }
+
+    @include animation-level(0) {
+      visibility: hidden;
+      animation: none !important;
+    }
+  }
+}

@@ -2912,6 +2912,7 @@ export default class ChatBubbles {
 
         const setBubbles: HTMLElement[] = [];
 
+        this.chatInner.classList.add('zoom-fading');
         const delay = isAdditionRender ? 10 : 40;
         const offsetIndex = isAdditionRender ? 0 : 1;
         const animateAsLadder = (mids: number[], offsetIndex = 0) => {
@@ -2979,6 +2980,8 @@ export default class ChatBubbles {
               setBubbles.forEach(contentWrapper => {
                 contentWrapper.style.transitionDelay = '';
               });
+
+              this.chatInner.classList.remove('zoom-fading');
             });
 
             // ! в хроме, каким-то образом из-за zoom-fade класса начинает прыгать скролл при подгрузке сообщений вверх, 

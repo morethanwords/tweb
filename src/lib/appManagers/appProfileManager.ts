@@ -557,7 +557,7 @@ export class AppProfileManager {
       div.innerHTML = '';
       div.dataset.color = '';
       div.classList.add('tgico-saved');
-      div.classList.remove('tgico-avatar_deletedaccount');
+      div.classList.remove('tgico-deletedaccount');
       return;
     }
 
@@ -566,7 +566,7 @@ export class AppProfileManager {
       if(user && user.pFlags && user.pFlags.deleted) {
         div.innerHTML = '';
         div.dataset.color = appPeersManager.getPeerColorById(peerId);
-        div.classList.add('tgico-avatar_deletedaccount');
+        div.classList.add('tgico-deletedaccount');
         div.classList.remove('tgico-saved');
         return;
       }
@@ -579,7 +579,7 @@ export class AppProfileManager {
       }
       
       div.innerHTML = '';
-      div.classList.remove('tgico-saved', 'tgico-avatar_deletedaccount');
+      div.classList.remove('tgico-saved', 'tgico-deletedaccount');
       div.dataset.color = color;
 
       let abbr: string;

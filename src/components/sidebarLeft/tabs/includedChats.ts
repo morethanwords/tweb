@@ -17,6 +17,7 @@ import AppEditFolderTab from "./editFolder";
 import { i18n, LangPackKey, _i18n, join } from "../../../lib/langPack";
 import appMessagesManager from "../../../lib/appManagers/appMessagesManager";
 import RichTextProcessor from "../../../lib/richtextprocessor";
+import { SettingSection } from "..";
 
 export default class AppIncludedChatsTab extends SliderSuperTab {
   private editFolderTab: AppEditFolderTab;
@@ -167,12 +168,13 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
     const filter = this.filter;
 
     const fragment = document.createDocumentFragment();
-    const dd = document.createElement('div');
-    dd.classList.add('sidebar-left-h2');
-    _i18n(dd, 'FilterChatTypes');
-    
-    const categories = document.createElement('div');
-    categories.classList.add('folder-categories');
+
+    const categoriesSection = new SettingSection({
+      noDelimiter: true,
+      name: 'FilterChatTypes'
+    });
+
+    categoriesSection.container.classList.add('folder-categories');
 
     let details: {[flag: string]: {ico: string, text: LangPackKey}};
     if(this.type === 'excluded') {
@@ -198,16 +200,13 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
       button.append(this.checkbox());
       f.append(button);
     }
-    categories.append(f);
+    categoriesSection.content.append(f);
 
-    const hr = document.createElement('hr');
-    hr.style.margin = '7px 0 9px';
+    const chatsSection = new SettingSection({
+      name: 'FilterChats'
+    });
 
-    const d = document.createElement('div');
-    d.classList.add('sidebar-left-h2');
-    _i18n(d, 'FilterChats');
-
-    fragment.append(dd, categories, hr, d);
+    fragment.append(categoriesSection.container, chatsSection.container);
 
     /////////////////
 
@@ -231,14 +230,16 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
       return div;
     };
 
-    this.selector.list.parentElement.insertBefore(fragment, this.selector.list);
+    const parent = this.selector.list.parentElement;
+    chatsSection.content.append(this.selector.list);
+    parent.append(fragment);
 
     this.selector.addInitial(selectedPeers);
 
     for(const flag in filter.pFlags) {
       // @ts-ignore
       if(details.hasOwnProperty(flag) && !!filter.pFlags[flag]) {
-        (categories.querySelector(`[data-peer-id="${flag}"]`) as HTMLElement).click();
+        (categoriesSection.content.querySelector(`[data-peer-id="${flag}"]`) as HTMLElement).click();
       }
     }
   }

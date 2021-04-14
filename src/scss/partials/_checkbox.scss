@@ -95,7 +95,7 @@
 
   .checkbox-caption {
     position: relative;
-    padding-left: 3.3125rem;
+    padding-left: 3.375rem;
     cursor: pointer;
     display: inline-block;
     min-height: 24px;
@@ -329,14 +329,14 @@
     position: relative;
     display: flex;
     align-items: center;
-    transition: background-color .2s;
+    transition: background-color .1s;
     margin: 0 var(--offset);
 
     &:before {
       width: 1.25rem;
       height: 1.25rem;
       border: 2px solid var(--secondary-color);
-      transition: border-color .2s, transform .2s;
+      transition: border-color .1s, transform .1s;
       background-color: var(--surface-color);
       content: " ";
       transform: translateX(calc(var(--offset) * -1));

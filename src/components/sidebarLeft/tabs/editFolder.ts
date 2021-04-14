@@ -20,6 +20,7 @@ import { ButtonMenuItemOptions } from "../../buttonMenu";
 import Button from "../../button";
 import AppIncludedChatsTab from "./includedChats";
 import { i18n, i18n_, LangPackKey } from "../../../lib/langPack";
+import { SettingSection } from "..";
 
 const MAX_FOLDER_NAME_LENGTH = 12;
 
@@ -31,8 +32,8 @@ export default class AppEditFolderTab extends SliderSuperTab {
   private menuBtn: HTMLElement;
   private nameInputField: InputField;
 
-  private include_peers: HTMLElement;
-  private exclude_peers: HTMLElement;
+  private include_peers: SettingSection;
+  private exclude_peers: SettingSection;
   private flags: {[k in 'contacts' | 'non_contacts' | 'groups' | 'broadcasts' | 'bots' | 'exclude_muted' | 'exclude_archived' | 'exclude_read']: HTMLElement} = {} as any;
 
   private animation: RLottiePlayer;
@@ -81,14 +82,14 @@ export default class AppEditFolderTab extends SliderSuperTab {
     inputWrapper.append(this.nameInputField.container);
 
     const generateList = (className: string, h2Text: LangPackKey, buttons: {icon: string, name?: string, withRipple?: true, text: LangPackKey}[], to: any) => {
-      const container = document.createElement('div');
-      container.classList.add('folder-list', className);
+      const section = new SettingSection({
+        name: h2Text,
+        noDelimiter: true
+      });
 
-      const h2 = document.createElement('div');
-      h2.classList.add('sidebar-left-h2');
-      i18n_({element: h2, key: h2Text});
+      section.container.classList.add('folder-list', className);
 
-      const categories = document.createElement('div');
+      const categories = section.generateContentElement();
       categories.classList.add('folder-categories');
 
       buttons.forEach(o => {
@@ -105,9 +106,7 @@ export default class AppEditFolderTab extends SliderSuperTab {
         categories.append(button);
       });
 
-      container.append(h2, categories);
-
-      return container;
+      return section;
     };
 
     this.include_peers = generateList('folder-list-included', 'FilterInclude', [{
@@ -154,16 +153,16 @@ export default class AppEditFolderTab extends SliderSuperTab {
       name: 'exclude_read'
     }], this.flags);
 
-    this.scrollable.append(this.stickerContainer, this.caption, inputWrapper, this.include_peers, this.exclude_peers);
+    this.scrollable.append(this.stickerContainer, this.caption, inputWrapper, this.include_peers.container, this.exclude_peers.container);
 
-    const includedFlagsContainer = this.include_peers.querySelector('.folder-categories');
-    const excludedFlagsContainer = this.exclude_peers.querySelector('.folder-categories');
+    const includedFlagsContainer = this.include_peers.container.querySelector('.folder-categories');
+    const excludedFlagsContainer = this.exclude_peers.container.querySelector('.folder-categories');
 
-    includedFlagsContainer.firstElementChild.addEventListener('click', () => {
+    includedFlagsContainer.querySelector('.btn').addEventListener('click', () => {
       new AppIncludedChatsTab(this.slider).open(this.filter, 'included', this);
     });
 
-    excludedFlagsContainer.firstElementChild.addEventListener('click', () => {
+    excludedFlagsContainer.querySelector('.btn').addEventListener('click', () => {
       new AppIncludedChatsTab(this.slider).open(this.filter, 'excluded', this);
     });
 
@@ -264,7 +263,7 @@ export default class AppEditFolderTab extends SliderSuperTab {
     }
 
     (['include_peers', 'exclude_peers'] as ['include_peers', 'exclude_peers']).forEach(key => {
-      const container = this[key];
+      const section = this[key];
       const ul = appDialogsManager.createChatList();
 
       const peers = filter[key].slice();
@@ -291,20 +290,17 @@ export default class AppEditFolderTab extends SliderSuperTab {
         }
       };
       
-      container.append(ul);
+      section.generateContentElement().append(ul);
 
       let showMore: HTMLElement;
       if(peers.length) {
-        showMore = document.createElement('div');
-        showMore.classList.add('show-more', 'rp-overflow');
+        const content = section.generateContentElement();
+        showMore = Button('folder-category-button btn btn-primary btn-transparent', {icon: 'down'});
+        showMore.classList.add('load-more', 'rp-overflow');
         showMore.addEventListener('click', () => renderMore(20));
+        showMore.append(i18n('FilterShowMoreChats', [peers.length]));
 
-        ripple(showMore);
-        const down = document.createElement('div');
-        down.classList.add('tgico-down');
-        showMore.append(down, i18n('FilterShowMoreChats', [peers.length]));
-
-        container.append(showMore);
+        content.append(showMore);
       }
 
       renderMore(4);
@@ -321,7 +317,7 @@ export default class AppEditFolderTab extends SliderSuperTab {
 
   setFilter(filter: DialogFilter, firstTime: boolean) {
     // cleanup
-    Array.from(this.container.querySelectorAll('ul, .show-more')).forEach(el => el.remove());
+    Array.from(this.container.querySelectorAll('ul, .load-more')).forEach(el => el.remove());
 
     if(firstTime) {
       this.originalFilter = filter;
