@@ -249,7 +249,7 @@ export class AppImManager {
       const key = chat.peerId + (chat.threadId ? '_' + chat.threadId : '');
 
       const chatPositions = sessionStorage.getFromCache('chatPositions');
-      if(!(chat.bubbles.scrollable.getDistanceToEnd() <= 16 && chat.bubbles.scrollable.loadedAll.bottom)) {
+      if(!(chat.bubbles.scrollable.getDistanceToEnd() <= 16 && chat.bubbles.scrollable.loadedAll.bottom) && Object.keys(chat.bubbles.bubbles).length) {
         const position = {
           mids: getObjectKeysAndSort(chat.bubbles.bubbles, 'desc'),
           top
