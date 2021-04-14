@@ -196,6 +196,14 @@
         flex: 1 0 auto !important;
       }
     }
+
+    .search-super {
+      .preloader {
+        height: 100%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+      }
+    }
   }
 
   #chatlist-container {
