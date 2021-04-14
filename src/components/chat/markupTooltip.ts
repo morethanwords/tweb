@@ -69,7 +69,7 @@ export default class MarkupTooltip {
       }
     });
 
-    this.linkBackButton = ButtonIcon('arrow_back', {noRipple: true});
+    this.linkBackButton = ButtonIcon('left', {noRipple: true});
     this.linkInput = document.createElement('input');
     _i18n(this.linkInput, 'MarkupTooltip.LinkPlaceholder', undefined, 'placeholder');
     this.linkInput.classList.add('input-clear');

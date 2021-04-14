@@ -350,8 +350,10 @@
     }
 
     .btn-corner {
-      &.menu-open:before {
-        content: $tgico-close;
+      &:not(.menu-open) .tgico-newchat_filled, 
+      &.menu-open .tgico-close {
+        animation: grow-icon .4s forwards ease-in-out !important;
+        visibility: visible !important;
       }
 
       @include respond-to(handhelds) {
@@ -486,6 +488,12 @@
   }
 }
 
+.language-container {
+  .sidebar-left-section {
+    padding-bottom: .5rem;
+  }
+}
+
 .new-group-container {
   .search-group {
     margin-top: .5rem;
@@ -493,8 +501,16 @@
 }
 
 .edit-folder-container {
-  .folder-category-button:nth-child(n+2) {
-    pointer-events: none;
+  .chatlist {
+    padding: 0;
+  }
+
+  .folder-categories {
+    .folder-category-button {
+      &:nth-child(n+2) {
+        pointer-events: none;
+      }
+    }
   }
 }
 
@@ -574,20 +590,14 @@
   }
 }
 
-.edit-folder-container {
-  .sidebar-left-h2 {
-    padding: 7px 24px 15px 24px;
-
-    @include respond-to(handhelds) {
-      padding: 7px 16px 15px 16px;
-    }
-  }
-}
-
 .chat-folders-container {
   .sidebar-left-section {
     &:not(:last-child) {
       padding-bottom: 0;
+    }
+
+    &:last-child {
+      padding-bottom: .5rem;
     }
 
     /* &-name {
@@ -643,28 +653,27 @@
     }
   }
 
-  .sidebar-left-h2 {
-    padding: 21px 24px 8px;
-
-    @include respond-to(handhelds) {
-      width: 100%;
-      padding: 21px 16px 8px;
-    }
+  .input-wrapper {
+    margin-bottom: .125rem !important;
   }
 
-  .input-wrapper {
-    margin-bottom: 10px !important;
+  .sidebar-left-section {
+    padding-bottom: 0rem;
+
+    &:last-child {
+      padding-bottom: .5rem;
+    }
   }
 }
 
 .folder-list {
   li {
-    padding: 9px 11px;
+    padding: 9px 12px;
     height: 50px;
   }
 
   .user-caption {
-    padding: 3px 28px 6px;
+    padding: 3px 28px 6px 27px;
   }  
 
   p span {
@@ -673,32 +682,14 @@
 }
 
 .folder-categories {
-  width: 100%;
-
   .checkbox-field {
     position: absolute;
-    right: 1.625rem !important;
-
-    @include respond-to(handhelds) {
-      right: 1rem !important;
-    }
+    right: 1.125rem !important;
   }
 }
 
 .folder-category-button {
-  display: flex;
-  padding: 0 1.5rem;
-  overflow: hidden;
   height: 50px;
-  border-radius: 0;
-
-  @include respond-to(handhelds) {
-    padding: 0 1.125rem;
-  }
-
-  &:before {
-    color: #797d82;
-  }
 }
 
 .popup-forward, .included-chatlist-container {
@@ -723,16 +714,24 @@
 }
 
 .included-chatlist-container {
-  .sidebar-left-h2 {
-    padding: 6px 24px 8px 24px;
+  .sidebar-left-section {
+    padding-bottom: 0;
 
-    @include respond-to(handhelds) {
-      padding: 6px 16px 8px 16px;
+    &:first-child {
+      padding-top: 0;
+    }
+    
+    &:last-child {
+      padding-bottom: .5rem;
+    }
+
+    .chatlist {
+      padding: 0;
     }
   }
 
   .selector {
-    ul {
+    .chatlist {
       .checkbox {
         margin-top: 10px;
       }
@@ -741,10 +740,6 @@
         padding-left: 26px;
       }
     }
-  }
-
-  .folder-category-button {
-    cursor: pointer;
   }
 }
 
@@ -875,7 +870,7 @@
       display: flex;
       align-items: center;
       height: 3.5rem;
-      padding: 0 1.1875rem;
+      padding: 0 1.125rem;
     }
 
     &-disabled {

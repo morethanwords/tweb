@@ -672,15 +672,18 @@ $bubble-margin: .25rem;
       }
 
       &.animating {
-        transition: border-radius var(--layer-transition);
+        transition: border-radius var(--transition-standard-out);
 
         .album-item-media {
-          transition: transform var(--layer-transition), border-radius var(--layer-transition);
+          transition: transform var(--transition-standard-out), border-radius var(--transition-standard-out);
         }
       }
 
       &:not(.backwards) {
+        transition: border-radius var(--transition-standard-in);
+        
         .album-item-media {
+          transition: transform var(--transition-standard-in), border-radius var(--transition-standard-in);
           transform: scale(.883333);
         }
 
@@ -1566,11 +1569,15 @@ $bubble-margin: .25rem;
   opacity: 1;
   
   @include animation-level(2) {
-    transition: transform var(--layer-transition), opacity var(--layer-transition);
+    transition: transform var(--transition-standard-out), opacity var(--transition-standard-out);
+  }
+
+  .bubbles-inner.zoom-fading & {
+    transition: transform var(--transition-standard-in), opacity var(--transition-standard-in);
+    //transition: transform 10s ease-in-out, opacity 10s ease-in-out;
   }
 
   &.zoom-fade /* .bubble-content */ {
-    //transform: scale(.8) translateZ(0);
     transform: scale3d(.8, .8, 1) translateX(0);
     //transform: scale(.8) translateX(0);
     opacity: 0;
@@ -1594,7 +1601,7 @@ $bubble-margin: .25rem;
     .bubbles.is-selecting & {
       transform: scale3d(1, 1, 1);
       transform-origin: bottom;
-      transition: transform var(--layer-transition);
+      transition: transform var(--transition-standard-out);
 
       body.animation-level-0 & {
         transition: none;
@@ -1603,6 +1610,7 @@ $bubble-margin: .25rem;
 
     .bubbles.is-selecting:not(.backwards) & {
       transform: scale3d(.76, .76, 1);
+      transition: transform var(--transition-standard-in);
     }
 
     // @include respond-to(handhelds) {
@@ -1789,22 +1797,23 @@ $bubble-margin: .25rem;
     }
 
     &-wrapper {
-      @include respond-to(not-handhelds) {
-        transform: translateX(calc((var(--chat-input-size) + #{$btn-send-margin}) * -1));
+      @include respond-to(medium-screens) {
+        transform: scale(1) translateX(calc((var(--chat-input-size) + #{$btn-send-margin}) * -1));
 
-        @include respond-to(no-floating-left-sidebar) {
+        &.zoom-fade {
+          transform: scale3d(.8, .8, 1) translateX(calc((var(--chat-input-size) + #{$btn-send-margin}) * -1));
+        }
+
+        //@include respond-to(no-floating-left-sidebar) {
           body.is-right-column-shown & {
-            transform: translateX(0);
+            transition: transform var(--transition-standard-in), opacity var(--transition-standard-in);
+            transform: scale(1) translateX(0);
   
             &.zoom-fade {
               transform: scale3d(.8, .8, 1) translateX(0);
             }
           }
-        }
-  
-        &.zoom-fade {
-          transform: scale3d(.8, .8, 1) translateX(calc((var(--chat-input-size) + #{$btn-send-margin}) * -1));
-        }
+        //}
       }
     }
   }

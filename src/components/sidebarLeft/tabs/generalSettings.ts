@@ -74,7 +74,7 @@ export default class AppGeneralSettingsTab extends SliderSuperTab {
         appStateManager.setByKey('settings.messagesTextSize', value);
       };
 
-      const chatBackgroundButton = Button('btn-primary btn-transparent', {icon: 'photo', text: 'ChatBackground'});
+      const chatBackgroundButton = Button('btn-primary btn-transparent', {icon: 'image', text: 'ChatBackground'});
 
       attachClickEvent(chatBackgroundButton, () => {
         new AppBackgroundTab(this.slider).open();

@@ -39,7 +39,7 @@ export default class ChatSearch {
     this.element.classList.add('sidebar-header', 'chat-search', 'chatlist-container');
 
     this.backBtn = document.createElement('button');
-    this.backBtn.classList.add('btn-icon', 'tgico-arrow_back', 'sidebar-close-button');
+    this.backBtn.classList.add('btn-icon', 'tgico-left', 'sidebar-close-button');
     ripple(this.backBtn);
     
     this.backBtn.addEventListener('click', () => {

@@ -69,11 +69,11 @@ avatar-element {
     font-size: calc(21px / var(--multiplier)) !important; // ! IMPORTANT IS TEMPORARY
   }
 
-  &.tgico-savedmessages:before {
+  /* &.tgico-savedmessages:before {
     font-size: calc(25px / var(--multiplier));
-  }
+  } */
 
-  &.tgico-avatar_deletedaccount:before {
+  &.tgico-deletedaccount:before {
     font-size: calc(54px / var(--multiplier));
   }
 
