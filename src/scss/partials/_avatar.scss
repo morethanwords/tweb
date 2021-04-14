@@ -65,6 +65,10 @@ avatar-element {
     font-size: calc(36px / var(--multiplier));
   }
 
+  &.tgico-saved:before {
+    font-size: calc(21px / var(--multiplier)) !important; // ! IMPORTANT IS TEMPORARY
+  }
+
   &.tgico-savedmessages:before {
     font-size: calc(25px / var(--multiplier));
   }

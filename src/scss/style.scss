@@ -1128,3 +1128,16 @@ middle-ellipsis-element {
     background: linear-gradient(180deg, rgba(0, 0, 0, .06) 0%, rgba(0, 0, 0, 0) 20%, rgba(0, 0, 0, 0) 94%, rgba(0, 0, 0, .06) 100%);
   }
 }
+
+// ! TEMPORARY
+.tgico-reply:before, 
+.tgico-attach:before,
+.tgico-saved:before,
+.tgico-phone:before,
+.tgico-admin:before,
+.tgico-message:before,
+.tgico-fontsize:before,
+.tgico-forward:before {
+  font-size: 20px !important;
+  padding: 0 2px;
+}

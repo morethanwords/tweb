@@ -101,7 +101,7 @@ export class AppSidebarLeft extends SidebarSlider {
     };
 
     const menuButtons: (ButtonMenuItemOptions & {verify?: () => boolean})[] = [{
-      icon: 'savedmessages',
+      icon: 'saved',
       text: 'SavedMessages',
       onClick: () => {
         setTimeout(() => { // menu doesn't close if no timeout (lol)
@@ -119,7 +119,7 @@ export class AppSidebarLeft extends SidebarSlider {
         new AppSettingsTab(this).open();
       }
     }, {
-      icon: 'colorize',
+      icon: 'darkmode',
       text: 'DarkMode',
       onClick: () => {
         
@@ -129,7 +129,7 @@ export class AppSidebarLeft extends SidebarSlider {
         stateKey: 'settings.nightTheme',
       })
     }, {
-      icon: 'lamp',
+      icon: 'animations',
       text: 'Animations',
       onClick: () => {
         
@@ -146,7 +146,7 @@ export class AppSidebarLeft extends SidebarSlider {
         appImManager.openUsername('TelegramTips');
       }
     }, {
-      icon: 'help',
+      icon: 'bug',
       text: 'ReportBug',
       onClick: () => {
         const a = document.createElement('a');
