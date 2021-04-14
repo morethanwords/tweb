@@ -181,6 +181,8 @@ export default class ChatBubbles {
       }
     });
 
+    //this.listenerSetter.add(rootScope, '')
+
     this.listenerSetter.add(rootScope, 'dialog_flush', (e) => {
       let peerId: number = e.peerId;
       if(this.peerId === peerId) {
@@ -434,7 +436,7 @@ export default class ChatBubbles {
       const msgIdsByPeer = e;
 
       if(!(this.peerId in msgIdsByPeer)) return;
-      const msgIds = (msgIdsByPeer[this.peerId] as number[]).slice().sort((a, b) => b - a);
+      const msgIds = Array.from(msgIdsByPeer[this.peerId] as number[]).slice().sort((a, b) => b - a);
       this.renderNewMessagesByIds(msgIds);
     });
     

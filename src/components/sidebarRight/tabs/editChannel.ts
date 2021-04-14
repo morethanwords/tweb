@@ -95,7 +95,7 @@ export default class AppEditChannelTab extends SliderSuperTab {
         }, {listenerSetter: this.listenerSetter});
       }
 
-      if(appChatsManager.hasRights(-this.peerId, 'change_type')) {
+      /* if(appChatsManager.hasRights(-this.peerId, 'change_type')) {
         const channelTypeRow = new Row({
           titleLangKey: 'ChannelType',
           subtitleLangKey: 'TypePrivate',
@@ -133,12 +133,12 @@ export default class AppEditChannelTab extends SliderSuperTab {
         });
 
         section.content.append(signMessagesCheckboxField.label);
-      }
+      } */
 
       this.scrollable.append(section.container);
     }
 
-    {
+    /* {
       const section = new SettingSection({
 
       });
@@ -154,7 +154,7 @@ export default class AppEditChannelTab extends SliderSuperTab {
       section.content.append(subscribersRow.container);
 
       this.scrollable.append(section.container);
-    }
+    } */
 
     if(appChatsManager.hasRights(-this.peerId, 'delete_chat')) {
       const section = new SettingSection({

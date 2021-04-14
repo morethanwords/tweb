@@ -18,7 +18,7 @@ export default class AppPrivacyProfilePhotoTab extends SliderSuperTabEventable {
     new PrivacySection({
       tab: this,
       title: 'PrivacyProfilePhotoTitle',
-      inputKey: 'inputPrivacyKeyChatInvite',
+      inputKey: 'inputPrivacyKeyProfilePhoto',
       captions: [caption, caption, caption],
       exceptionTexts: ['PrivacySettingsController.NeverShare', 'PrivacySettingsController.AlwaysShare'],
       appendTo: this.scrollable,

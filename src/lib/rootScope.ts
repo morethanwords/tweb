@@ -112,7 +112,7 @@ export type BroadcastEvents = {
   'language_change': void,
 };
 
-class RootScope extends EventListenerBase<any> {
+export class RootScope extends EventListenerBase<any> {
   private _overlayIsActive: boolean = false;
   public myId = 0;
   public idle = {
@@ -169,3 +169,11 @@ class RootScope extends EventListenerBase<any> {
 const rootScope = new RootScope();
 MOUNT_CLASS_TO.rootScope = rootScope;
 export default rootScope;
+
+rootScope.addEventListener('album_edit', (e) => {
+  
+});
+
+rootScope.addEventListener<'album_edit'>('album_edit', (e) => {
+  
+});

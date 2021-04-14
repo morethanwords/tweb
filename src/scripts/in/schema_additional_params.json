@@ -214,4 +214,17 @@
     {"name": "local", "type": "boolean"},
     {"name": "appVersion", "type": "string"}
   ]
+}, {
+  "predicate": "updateNewDiscussionMessage",
+  "params": [
+    {"name": "message", "type": "Message"}
+  ],
+  "type": "Update"
+}, {
+  "predicate": "updateDeleteDiscussionMessages",
+  "params": [
+    {"name": "messages", "type": "number[]"},
+    {"name": "channel_id", "type": "number"}
+  ],
+  "type": "Update"
 }]

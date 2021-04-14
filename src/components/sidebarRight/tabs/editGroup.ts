@@ -132,14 +132,14 @@ export default class AppEditGroupTab extends SliderSuperTab {
         });
       }
 
-      const administratorsRow = new Row({
+      /* const administratorsRow = new Row({
         titleLangKey: 'PeerInfo.Administrators',
         subtitle: '' + ((chatFull as ChatFull.channelFull).admins_count || 1),
         icon: 'admin',
         clickable: true
       });
 
-      section.content.append(administratorsRow.container);
+      section.content.append(administratorsRow.container); */
 
       this.scrollable.append(section.container);
 
