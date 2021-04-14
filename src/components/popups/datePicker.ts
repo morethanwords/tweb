@@ -5,7 +5,6 @@
  */
 
 import PopupElement, { PopupOptions } from ".";
-import { getFullDate } from "../../helpers/date";
 import mediaSizes from "../../helpers/mediaSizes";
 import I18n, { i18n, LangPackKey } from "../../lib/langPack";
 import InputField from "../inputField";

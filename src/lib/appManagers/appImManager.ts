@@ -715,13 +715,19 @@ export class AppImManager {
         this.createNewChat();
         this.chats.splice(0, 1); */
         const spliced = this.chats.splice(1, this.chats.length - 1);
-        const ret = this.setPeer(peerId, lastMsgId);
-        this.spliceChats(0, false, false, spliced);
+        if(this.chat.peerId === peerId) {
+          this.spliceChats(0, true, true, spliced);
+          return;
+        } else {
+          const ret = this.setPeer(peerId, lastMsgId);
+          this.spliceChats(0, false, false, spliced);
+          return ret;
+        }
       // } else {
       //   this.spliceChats(1, false, animate);
       // }
 
-      return ret;
+      //return ret;
     }
 
     // * don't reset peer if returning
