@@ -301,7 +301,8 @@
     .preloader {
       padding: 0;
       position: absolute !important;
-      height: 100%;
+      top: 100px;
+      transform: translate(-50%);
 
       > svg {
         height: 50px;

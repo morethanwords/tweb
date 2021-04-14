@@ -451,7 +451,7 @@ export default class ChatTopbar {
       else titleEl = i18n('PinnedMessagesCount', [count]);
 
       if(count === undefined) {
-        this.appMessagesManager.getSearchCounters(this.peerId, [{_: 'inputMessagesFilterPinned'}]).then(result => {
+        this.appMessagesManager.getSearchCounters(this.peerId, [{_: 'inputMessagesFilterPinned'}], false).then(result => {
           const count = result[0].count;
           this.setTitle(count);
 
@@ -490,7 +490,14 @@ export default class ChatTopbar {
           this.appMessagesManager.getHistory(this.peerId, 0, 1, 0, this.chat.threadId),
           Promise.resolve()
         ]).then(() => {
-          this.setTitle(this.appMessagesManager.getHistoryStorage(this.peerId, this.chat.threadId).count);
+          const count = this.appMessagesManager.getHistoryStorage(this.peerId, this.chat.threadId).count;
+          if(count === null) {
+            setTimeout(() => {
+              this.setTitle();
+            }, 30);
+          } else {
+            this.setTitle(count);
+          }
         });
       }
     } else if(this.chat.type === 'chat') {

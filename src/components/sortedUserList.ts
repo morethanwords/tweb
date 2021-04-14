@@ -23,7 +23,6 @@ export default class SortedUserList {
 
   constructor() {
     this.list = appDialogsManager.createChatList();
-    appDialogsManager.setListClickListener(this.list, undefined, undefined, true, true);
 
     this.users = new Map();
     this.sorted = [];

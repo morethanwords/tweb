@@ -98,7 +98,8 @@
     padding-left: 3.3125rem;
     cursor: pointer;
     display: inline-block;
-    height: 24px;
+    min-height: 24px;
+    margin-top: 1px;
     line-height: 26px;
     user-select: none;
     transition: .2s opacity;

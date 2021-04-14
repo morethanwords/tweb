@@ -893,6 +893,14 @@
 
 .general-settings-container {
   user-select: none;
+
+  .sidebar-left-section {
+    padding-bottom: 0;
+  }
+
+  .sidebar-left-section:last-child {
+    padding-bottom: .5rem;
+  }
 }
 
 .two-step-verification {

@@ -35,6 +35,10 @@ import { getMiddleware } from "../helpers/middleware";
 import appProfileManager from "../lib/appManagers/appProfileManager";
 import { ChannelParticipant, ChatFull, ChatParticipant, ChatParticipants } from "../layer";
 import SortedUserList from "./sortedUserList";
+import findUpTag from "../helpers/dom/findUpTag";
+import appSidebarRight from "./sidebarRight";
+import mediaSizes from "../helpers/mediaSizes";
+import appImManager from "../lib/appManagers/appImManager";
 
 //const testScroll = false;
 
@@ -88,6 +92,7 @@ export default class AppSearchSuper {
   private loadPromises: Partial<{[type in SearchSuperType]: Promise<void>}> = {};
   private loaded: Partial<{[type in SearchSuperType]: boolean}> = {};
   private loadedChats = false;
+  private firstLoad = true;
 
   private log = logger('SEARCH-SUPER');
   public selectTab: ReturnType<typeof horizontalMenu>;
@@ -855,6 +860,22 @@ export default class AppSearchSuper {
       
       if(!this.membersList) {
         this.membersList = new SortedUserList();
+        this.membersList.list.addEventListener('click', (e) => {
+          const li = findUpTag(e.target, 'LI');
+          if(!li) {
+            return;
+          }
+
+          const peerId = +li.dataset.peerId;
+          let promise: Promise<any> = Promise.resolve();
+          if(mediaSizes.isMobile) {
+            promise = appSidebarRight.toggleSidebar(false);
+          }
+          
+          promise.then(() => {
+            appImManager.setInnerPeer(peerId);
+          });
+        });
         mediaTab.contentTab.append(this.membersList.list);
         this.afterPerforming(1, mediaTab.contentTab);
       }
@@ -1039,7 +1060,7 @@ export default class AppSearchSuper {
     });
   }
   
-  public load(single = false, justLoad = false) {
+  public async load(single = false, justLoad = false) {
     // if(testScroll/*  || 1 === 1 */) {
     //   return;
     // }
@@ -1048,6 +1069,57 @@ export default class AppSearchSuper {
     
     const peerId = this.searchContext.peerId;
     this.log('load', single, peerId, this.loadPromises);
+    const middleware = this.middleware.get();
+
+    if(this.firstLoad) {
+      if(this.hideEmptyTabs) {
+        const mediaTabs = this.mediaTabs.filter(mediaTab => mediaTab.inputFilter !== 'inputMessagesFilterEmpty')
+        const filters = mediaTabs.map(mediaTab => ({_: mediaTab.inputFilter}));
+
+        const counters = await appMessagesManager.getSearchCounters(peerId, filters);
+        if(!middleware()) {
+          return;
+        }
+
+        if(this.loadMutex) {
+          await this.loadMutex;
+
+          if(!middleware()) {
+            return;
+          }
+        }
+
+        let firstMediaTab: SearchSuperMediaTab;
+        mediaTabs.forEach(mediaTab => {
+          const counter = counters.find(c => c.filter._ === mediaTab.inputFilter);
+
+          mediaTab.menuTab.classList.toggle('hide', !counter.count);
+          mediaTab.menuTab.classList.remove('active');
+          //mediaTab.contentTab.classList.toggle('hide', !counter.count);
+
+          if(counter.count && firstMediaTab === undefined) {
+            firstMediaTab = mediaTab;
+          }
+        });
+
+        const membersTab = this.mediaTabsMap.get('members');
+        const canViewMembers = this.canViewMembers();
+        membersTab.menuTab.classList.toggle('hide', !canViewMembers);
+
+        if(canViewMembers) {
+          firstMediaTab = membersTab;
+        }
+
+        this.container.classList.toggle('hide', !firstMediaTab);
+        this.container.parentElement.classList.toggle('search-empty', !firstMediaTab);
+        this.selectTab(this.mediaTabs.indexOf(firstMediaTab), false);
+        if(firstMediaTab) {
+          firstMediaTab.menuTab.classList.add('active');
+        }
+      }
+
+      this.firstLoad = false;
+    }
     
     let toLoad = single ? [this.mediaTab] : this.mediaTabs.filter(t => t !== this.mediaTab);
     toLoad = toLoad.filter(mediaTab => {
@@ -1060,12 +1132,11 @@ export default class AppSearchSuper {
     }
 
     const loadCount = justLoad ? 50 : Math.round((appPhotosManager.windowH / 130 | 0) * 3 * 1.25); // that's good for all types
-    const middleware = this.middleware.get();
 
     const promises: Promise<any>[] = toLoad.map(mediaTab => {
       return this.loadType(mediaTab, justLoad, loadCount, middleware)
     });
-    
+
     return Promise.all(promises).catch(err => {
       this.log.error('Load error all promises:', err);
     });
@@ -1118,6 +1189,7 @@ export default class AppSearchSuper {
     this.loaded = {};
     this.loadedChats = false;
     this.nextRates = {};
+    this.firstLoad = true;
 
     this.lazyLoadQueue.clear();
 
@@ -1126,11 +1198,11 @@ export default class AppSearchSuper {
     });
 
     // * must go to first tab (это костыль)
-    const membersTab = this.mediaTabsMap.get('members');
+    /* const membersTab = this.mediaTabsMap.get('members');
     if(membersTab) {
       const tab = this.canViewMembers() ? membersTab : this.mediaTabs[this.mediaTabs.indexOf(membersTab) + 1];
       this.mediaTab = tab;
-    }
+    } */
 
     this.middleware.clean();
     this.cleanScrollPositions();
@@ -1154,9 +1226,11 @@ export default class AppSearchSuper {
     this.mediaTabs.forEach((tab) => {
       tab.contentTab.innerHTML = '';
 
-      /* if(this.hideEmptyTabs) {
-        tab.menuTab.classList.add('hide');
-      } */
+      if(this.hideEmptyTabs) {
+        //tab.menuTab.classList.add('hide');
+        this.container.classList.add('hide');
+        this.container.parentElement.classList.add('search-empty');
+      }
 
       if(tab.type === 'chats') {
         return;
@@ -1177,7 +1251,7 @@ export default class AppSearchSuper {
       }
     });
 
-    if(goFirst) {
+    /* if(goFirst) {
       const membersTab = this.mediaTabsMap.get('members');
       if(membersTab) {
         let idx = this.canViewMembers() ? 0 : 1;
@@ -1187,7 +1261,7 @@ export default class AppSearchSuper {
       } else {
         this.selectTab(0, false);
       }
-    }
+    } */
 
     this.monthContainers = {};
     this.searchGroupMedia.clear();

@@ -408,7 +408,7 @@ export class AppImManager {
       const msgIdsByPeer = e;
 
       for(const peerId in msgIdsByPeer) {
-        appSidebarRight.sharedMediaTab.renderNewMessages(+peerId, msgIdsByPeer[peerId]);
+        appSidebarRight.sharedMediaTab.renderNewMessages(+peerId, Array.from(msgIdsByPeer[peerId]));
       }
     });
     

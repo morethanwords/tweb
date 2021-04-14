@@ -185,14 +185,16 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
         tab.open();
       };
 
-      const removedUsersRow = new Row({
+      section.content.append(addExceptionRow.container);
+
+      /* const removedUsersRow = new Row({
         titleLangKey: 'ChannelBlockedUsers',
         subtitleLangKey: 'NoBlockedUsers',
         icon: 'deleteuser',
         clickable: true
       });
 
-      section.content.append(addExceptionRow.container, removedUsersRow.container);
+      section.content.append(removedUsersRow.container); */
 
       const c = section.generateContentElement();
       c.classList.add('chatlist-container');
