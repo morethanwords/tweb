@@ -37,6 +37,7 @@ import { onVideoLoad } from '../helpers/files';
 import { animateSingle } from '../helpers/animation';
 import renderImageFromUrl from '../helpers/dom/renderImageFromUrl';
 import sequentialDom from '../helpers/sequentialDom';
+import { fastRaf } from '../helpers/schedulers';
 
 const MAX_VIDEO_AUTOPLAY_SIZE = 50 * 1024 * 1024; // 50 MB
 
@@ -730,7 +731,9 @@ export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withT
         sequentialDom.mutateElement(container, () => {
           container.append(image);
 
-          resolve();
+          fastRaf(() => {
+            resolve();
+          });
   
           if(needFadeIn) {
             image.addEventListener('animationend', () => {
