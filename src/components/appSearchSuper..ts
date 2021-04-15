@@ -291,9 +291,9 @@ export default class AppSearchSuper {
     // Jolly Cobra's // Workaround for scrollable content flickering during animation.
     const container = this.scrollable.container;
     if(container.style.overflowY !== 'hidden') {
-      const scrollBarWidth = container.offsetWidth - container.clientWidth;
+      // const scrollBarWidth = container.offsetWidth - container.clientWidth;
       container.style.overflowY = 'hidden';
-      container.style.paddingRight = `${scrollBarWidth}px`;
+      // container.style.paddingRight = `${scrollBarWidth}px`;
       this.container.classList.add('sliding');
     }
   };
@@ -313,7 +313,7 @@ export default class AppSearchSuper {
       container.style.display = '';
     }
 
-    container.style.paddingRight = '0';
+    // container.style.paddingRight = '0';
     this.container.classList.remove('sliding');
   };
 
@@ -478,7 +478,8 @@ export default class AppSearchSuper {
               boxHeight: 0,
               lazyLoadQueue: this.lazyLoadQueue,
               middleware,
-              withoutPreloader: true
+              withoutPreloader: true,
+              noBlur: true
             });
           }
 
@@ -586,7 +587,8 @@ export default class AppSearchSuper {
               lazyLoadQueue: this.lazyLoadQueue,
               middleware,
               size: appPhotosManager.choosePhotoSize(webpage.photo, 60, 60, false),
-              loadPromises: promises
+              loadPromises: promises,
+              noBlur: true
             });
           } else {
             previewDiv.classList.add('empty');

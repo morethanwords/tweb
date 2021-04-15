@@ -15,7 +15,7 @@ import type { AppPeersManager } from "../../lib/appManagers/appPeersManager";
 import type sessionStorage from '../../lib/sessionStorage';
 import type Chat from "./chat";
 import { CHAT_ANIMATION_GROUP } from "../../lib/appManagers/appImManager";
-import { cancelEvent, whichChild, getElementByPoint, attachClickEvent, positionElementByIndex, reflowScrollableElement } from "../../helpers/dom";
+import { cancelEvent, whichChild, attachClickEvent, positionElementByIndex, reflowScrollableElement, replaceContent } from "../../helpers/dom";
 import { getObjectKeysAndSort } from "../../helpers/object";
 import { isTouchSupported } from "../../helpers/touchSupport";
 import { logger } from "../../lib/logger";
@@ -58,6 +58,7 @@ import { forEachReverse } from "../../helpers/array";
 import findUpClassName from "../../helpers/dom/findUpClassName";
 import findUpTag from "../../helpers/dom/findUpTag";
 import { toast } from "../toast";
+import { getElementByPoint } from "../../helpers/dom/getElementByPoint";
 
 const USE_MEDIA_TAILS = false;
 const IGNORE_ACTIONS: Message.messageService['action']['_'][] = [/* 'messageActionHistoryClear' */];
@@ -71,7 +72,6 @@ export default class ChatBubbles {
   bubblesContainer: HTMLDivElement;
   chatInner: HTMLDivElement;
   scrollable: Scrollable;
-  scroll: HTMLElement;
 
   private getHistoryTopPromise: Promise<boolean>;
   private getHistoryBottomPromise: Promise<boolean>;
@@ -140,9 +140,9 @@ export default class ChatBubbles {
     this.chatInner = document.createElement('div');
     this.chatInner.classList.add('bubbles-inner');
 
-    this.bubblesContainer.append(this.chatInner);
-
     this.setScroll();
+
+    this.bubblesContainer.append(this.scrollable.container);
 
     // * constructor end
 
@@ -1067,9 +1067,11 @@ export default class ChatBubbles {
   };
 
   public setScroll() {
-    this.scrollable = new Scrollable(this.bubblesContainer/* .firstElementChild */ as HTMLElement, 'IM', /* 10300 */300);
+    this.scrollable = new Scrollable(null, 'IM', /* 10300 */300);
     this.scrollable.loadedAll.top = false;
     this.scrollable.loadedAll.bottom = false;
+
+    this.scrollable.container.append(this.chatInner);
 
     /* const getScrollOffset = () => {
       //return Math.round(Math.max(300, appPhotosManager.windowH / 1.5));
@@ -1081,17 +1083,14 @@ export default class ChatBubbles {
     });
 
     this.scrollable = new Scrollable(this.bubblesContainer, 'y', 'IM', this.chatInner, getScrollOffset()); */
-    this.scroll = this.scrollable.container;
 
     this.scrollable.onAdditionalScroll = this.onScroll;
     this.scrollable.onScrolledTop = () => this.loadMoreHistory(true);
     this.scrollable.onScrolledBottom = () => this.loadMoreHistory(false);
     //this.scrollable.attachSentinels(undefined, 300);
 
-    this.bubblesContainer.classList.add('scrolled-down');
-
     if(isTouchSupported) {
-      this.scroll.addEventListener('touchmove', () => {
+      this.scrollable.container.addEventListener('touchmove', () => {
         if(this.isScrollingTimeout) {
           clearTimeout(this.isScrollingTimeout);
         } else if(!this.chatInner.classList.contains('is-scrolling')) {
@@ -1099,7 +1098,7 @@ export default class ChatBubbles {
         }
       }, {passive: true});
 
-      this.scroll.addEventListener('touchend', () => {
+      this.scrollable.container.addEventListener('touchend', () => {
         if(!this.chatInner.classList.contains('is-scrolling')) {
           return;
         }
@@ -1447,7 +1446,7 @@ export default class ChatBubbles {
           this.chat.dispatchEvent('setPeer', lastMsgId, false);
         } else if(topMessage && !isJump) {
           //this.log('will scroll down', this.scroll.scrollTop, this.scroll.scrollHeight);
-          this.scroll.scrollTop = this.scroll.scrollHeight;
+          this.scrollable.scrollTop = this.scrollable.scrollHeight;
           this.chat.dispatchEvent('setPeer', lastMsgId, true);
         }
         
@@ -1493,9 +1492,8 @@ export default class ChatBubbles {
 
     const oldChatInner = this.chatInner;
     this.cleanup();
-    this.chatInner = document.createElement('div');
-    this.chatInner.className = oldChatInner.className;
-    this.chatInner.classList.add('disable-hover', 'is-scrolling');
+    this.chatInner = oldChatInner.cloneNode() as HTMLDivElement;
+    this.chatInner.classList.remove('disable-hover', 'is-scrolling');
 
     this.lazyLoadQueue.lock();
 
@@ -1516,7 +1514,7 @@ export default class ChatBubbles {
     // clear 
     if(!cached) {
       if(!samePeer) {
-        this.scrollable.container.innerHTML = '';
+        this.scrollable.container.textContent = '';
         //oldChatInner.remove();
         this.chat.finishPeerChange(isTarget, isJump, lastMsgId);
         this.preloader.attach(this.bubblesContainer);
@@ -1529,9 +1527,6 @@ export default class ChatBubbles {
     const setPeerPromise = promise.then(() => {
       ////this.log('setPeer removing preloader');
 
-      this.scrollable.container.innerHTML = '';
-      //oldChatInner.remove();
-
       if(cached) {
         if(!samePeer) {
           this.chat.finishPeerChange(isTarget, isJump, lastMsgId); // * костыль
@@ -1540,11 +1535,14 @@ export default class ChatBubbles {
         this.preloader.detach();
       }
 
-      this.scrollable.container.append(this.chatInner);
+      replaceContent(this.scrollable.container, this.chatInner);
+
       animationIntersector.unlockGroup(CHAT_ANIMATION_GROUP);
       animationIntersector.checkAnimations(false, CHAT_ANIMATION_GROUP/* , true */);
 
-      this.lazyLoadQueue.unlock();
+      fastRaf(() => {
+        this.lazyLoadQueue.unlock();
+      });
 
       //if(dialog && lastMsgID && lastMsgID !== topMessage && (this.bubbles[lastMsgID] || this.firstUnreadBubble)) {
       if(savedPosition) {
@@ -1564,7 +1562,7 @@ export default class ChatBubbles {
         const fromUp = maxBubbleId > 0 && (maxBubbleId < lastMsgId || lastMsgId < 0);
         const followingUnread = readMaxId === lastMsgId && !isTarget;
         if(!fromUp && samePeer) {
-          this.scrollable.scrollTop = this.scrollable.scrollHeight;
+          this.scrollable.scrollTop = 99999;
         } else if(fromUp/*  && (samePeer || forwardingUnread) */) {
           this.scrollable.scrollTop = 0;
         }
@@ -1583,7 +1581,7 @@ export default class ChatBubbles {
           }
         }
       } else {
-        this.scrollable.scrollTop = this.scrollable.scrollHeight;
+        this.scrollable.scrollTop = 99999;
       }
 
       this.chat.dispatchEvent('setPeer', lastMsgId, !isJump);
@@ -1613,8 +1611,11 @@ export default class ChatBubbles {
         }
       }
 
-      this.chatInner.classList.remove('disable-hover', 'is-scrolling'); // warning, performance!
+      //this.chatInner.classList.remove('disable-hover', 'is-scrolling'); // warning, performance!
 
+      /* if(!document.body.classList.contains(RIGHT_COLUMN_ACTIVE_CLASSNAME)) {
+        return new Promise<void>((resolve) => fastRaf(resolve));
+      } */
       //console.timeEnd('appImManager setPeer');
     }).catch(err => {
       this.log.error('getHistory promise error:', err);
@@ -2729,9 +2730,9 @@ export default class ChatBubbles {
     const peerId = this.peerId;
 
     //console.time('appImManager call getHistory');
-    const pageCount = this.appPhotosManager.windowH / 38/*  * 1.25 */ | 0;
+    const pageCount = Math.min(30, this.appPhotosManager.windowH / 38/*  * 1.25 */ | 0);
     //const loadCount = Object.keys(this.bubbles).length > 0 ? 50 : pageCount;
-    const realLoadCount = Object.keys(this.bubbles).length > 0 || additionMsgId ? Math.max(40, pageCount) : pageCount;//const realLoadCount = 50;
+    const realLoadCount = Object.keys(this.bubbles).length > 0/*  || additionMsgId */ ? Math.max(40, pageCount) : pageCount;//const realLoadCount = 50;
     //const realLoadCount = pageCount;//const realLoadCount = 50;
     let loadCount = realLoadCount;
     

@@ -46,8 +46,11 @@ function processBlur(dataUri: string, radius: number, iterations: number) {
   });
 }
 
+const blurPromises: {[dataUri: string]: Promise<string>} = {};
+
 export default function blur(dataUri: string, radius: number = RADIUS, iterations: number = ITERATIONS) {
-  return new Promise<string>((resolve) => {
+  if(blurPromises[dataUri]) return blurPromises[dataUri];
+  return blurPromises[dataUri] = new Promise<string>((resolve) => {
     //return resolve(dataUri);
     pushHeavyTask({
       items: [[dataUri, radius, iterations]],

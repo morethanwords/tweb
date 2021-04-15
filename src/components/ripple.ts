@@ -5,6 +5,7 @@
  */
 
 import findUpClassName from "../helpers/dom/findUpClassName";
+import sequentialDom from "../helpers/sequentialDom";
 import {isTouchSupported} from "../helpers/touchSupport";
 import rootScope from "../lib/rootScope";
 
@@ -44,22 +45,22 @@ export function ripple(elem: HTMLElement, callback: (id: number) => Promise<bool
       //const duration = isSquare || mediaSizes.isMobile ? 200 : 700;
       //return;
       let elapsedTime = Date.now() - startTime;
+      const cb = () => {
+        //console.log('ripple elapsedTime total pre-remove:', Date.now() - startTime);
+        sequentialDom.mutate(() => {
+          elem.remove();
+        });
+        
+        if(onEnd) onEnd(clickId);
+      };
       if(elapsedTime < duration) {
         let delay = Math.max(duration - elapsedTime, duration / 2);
         setTimeout(() => elem.classList.add('hiding'), Math.max(delay - duration / 2, 0));
 
-        setTimeout(() => {
-          //console.log('ripple elapsedTime total pre-remove:', Date.now() - startTime);
-          elem.remove();
-          if(onEnd) onEnd(clickId);
-        }, delay);
+        setTimeout(cb, delay);
       } else {
         elem.classList.add('hiding');
-        setTimeout(() => {
-          //console.log('ripple elapsedTime total pre-remove:', Date.now() - startTime);
-          elem.remove();
-          if(onEnd) onEnd(clickId);
-        }, duration / 2);
+        setTimeout(cb, duration / 2);
       }
 
       if(!isTouchSupported) {

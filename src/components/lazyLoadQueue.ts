@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { debounce } from "../helpers/schedulers";
+import { throttle } from "../helpers/schedulers";
 import { logger, LogLevels } from "../lib/logger";
 import VisibilityIntersector, { OnVisibilityChange } from "./visibilityIntersector";
 import { findAndSpliceAll } from "../helpers/array";
@@ -33,7 +33,7 @@ export class LazyLoadQueueBase {
   protected processQueue: () => void;
 
   constructor(protected parallelLimit = PARALLEL_LIMIT) {
-    this.processQueue = debounce(() => this._processQueue(), 20, false, true);
+    this.processQueue = throttle(() => this._processQueue(), 20, false);
   }
 
   public clear() {
@@ -117,6 +117,8 @@ export class LazyLoadQueueBase {
   protected _processQueue(item?: LazyLoadElementBase) {
     if(!this.queue.length || this.lockPromise || (this.parallelLimit > 0 && this.inProcess.size >= this.parallelLimit)) return;
 
+    //console.log('_processQueue start');
+    let added = 0;
     do {
       if(item) {
         this.queue.findAndSplice(i => i === item);
@@ -131,7 +133,9 @@ export class LazyLoadQueueBase {
       }
 
       item = null;
+      ++added;
     } while(this.inProcess.size < this.parallelLimit && this.queue.length);
+    //console.log('_processQueue end, added', added, this.queue.length);
   }
 
   public push(el: LazyLoadElementBase) {

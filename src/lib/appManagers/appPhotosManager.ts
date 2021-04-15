@@ -133,7 +133,7 @@ export class AppPhotosManager {
   
   public getUserPhotos(userId: number, maxId: string = '0', limit: number = 20) {
     const inputUser = appUsersManager.getUserInput(userId);
-    return apiManager.invokeApi('photos.getUserPhotos', {
+    return apiManager.invokeApiCacheable('photos.getUserPhotos', {
       user_id: inputUser,
       offset: 0,
       limit,
@@ -204,13 +204,13 @@ export class AppPhotosManager {
     return thumb.url ?? (defineNotNumerableProperties(thumb, ['url']), thumb.url = this.getPreviewURLFromBytes(thumb.bytes, isSticker));
   }
   
-  public getImageFromStrippedThumb(thumb: PhotoSize.photoCachedSize | PhotoSize.photoStrippedSize) {
+  public getImageFromStrippedThumb(thumb: PhotoSize.photoCachedSize | PhotoSize.photoStrippedSize, useBlur: boolean) {
     const url = this.getPreviewURLFromThumb(thumb, false);
 
     const image = new Image();
     image.classList.add('thumbnail');
 
-    const loadPromise = blur(url).then(url => {
+    const loadPromise = (useBlur ? blur(url) : Promise.resolve(url)).then(url => {
       return new Promise<any>((resolve) => {
         renderImageFromUrl(image, url, resolve);
       });
@@ -252,7 +252,7 @@ export class AppPhotosManager {
     return photoSize;
   }
 
-  public getStrippedThumbIfNeeded(photo: MyPhoto | MyDocument): ReturnType<AppPhotosManager['getImageFromStrippedThumb']> {
+  public getStrippedThumbIfNeeded(photo: MyPhoto | MyDocument, useBlur: boolean): ReturnType<AppPhotosManager['getImageFromStrippedThumb']> {
     if(!photo.downloaded || (photo as MyDocument).type === 'video' || (photo as MyDocument).type === 'gif') {
       if(photo._ === 'document') {
         const cacheContext = this.getCacheContext(photo); 
@@ -264,7 +264,7 @@ export class AppPhotosManager {
       const sizes = (photo as MyPhoto).sizes || (photo as MyDocument).thumbs;
       const thumb = sizes?.length ? sizes.find(size => size._ === 'photoStrippedSize') : null;
       if(thumb && ('bytes' in thumb)) {
-        return appPhotosManager.getImageFromStrippedThumb(thumb as any);
+        return appPhotosManager.getImageFromStrippedThumb(thumb as any, useBlur);
       }
     }
 

@@ -37,7 +37,7 @@ export function debounce<F extends AnyToVoidFunction>(
   };
 }
 
-/* export function throttle<F extends AnyToVoidFunction>(
+export function throttle<F extends AnyToVoidFunction>(
   fn: F,
   ms: number,
   shouldRunFirst = true,
@@ -70,7 +70,7 @@ export function debounce<F extends AnyToVoidFunction>(
       }, ms);
     }
   };
-} */
+}
 
 /* export function throttleWithRaf<F extends AnyToVoidFunction>(fn: F) {
   return throttleWith(fastRaf, fn);
@@ -131,7 +131,7 @@ export function fastRaf(callback: NoneToVoidFunction) {
 }
 
 export function doubleRaf() {
-  return new Promise((resolve) => {
+  return new Promise<void>((resolve) => {
     fastRaf(() => {
       fastRaf(resolve);
     });

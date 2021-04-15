@@ -21,7 +21,7 @@ import SetTransition from "./singleTransition";
 import findUpClassName from "../helpers/dom/findUpClassName";
 
 let lineTotalLength = 0;
-const tailLength = 9;
+//const tailLength = 9;
 const times = 10;
 const fullTime = 340;
 const oneTime = fullTime / times;
@@ -163,8 +163,9 @@ export default class PollElement extends HTMLElement {
   private votersCountDiv: HTMLDivElement;
 
   private maxOffset = -46.5;
-  private maxLength: number;
-  private maxLengths: number[];
+  //private maxLength: number;
+  //private maxLengths: number[];
+  private maxPercents: number[];
 
   public isClosed = false;
   private isQuiz = false;
@@ -393,19 +394,15 @@ export default class PollElement extends HTMLElement {
       footerDiv.append(this.sendVoteBtn);
     }
 
-    const width = this.getBoundingClientRect().width;
-    this.maxLength = width + tailLength + this.maxOffset + -13.7; // 13 - position left
+    //const width = this.getBoundingClientRect().width;
+    //this.maxLength = width + tailLength + this.maxOffset + -13.7; // 13 - position left
 
     if(poll.chosenIndexes.length || this.isClosed) {
-      this.performResults(results, poll.chosenIndexes);
+      this.performResults(results, poll.chosenIndexes, false);
     } else if(!this.isClosed) {
       this.setVotersCount(results);
       attachClickEvent(this, this.clickHandler);
     }
-  }
-
-  connectedCallback() {
-    this.render();
   }
 
   initQuizHint(results: PollResults) {
@@ -486,7 +483,11 @@ export default class PollElement extends HTMLElement {
     });
   }
 
-  performResults(results: PollResults, chosenIndexes: number[]) {
+  performResults(results: PollResults, chosenIndexes: number[], animate = true) {
+    if(!rootScope.settings.animationsEnabled) {
+      animate = false;
+    }
+
     if(this.isQuiz && (results.results?.length || this.isClosed)) {
       this.answerDivs.forEach((el, idx) => {
         el.classList.toggle('is-correct', !!results.results[idx].pFlags.correct);
@@ -533,9 +534,13 @@ export default class PollElement extends HTMLElement {
     if(this.chosenIndexes.length || this.isRetracted || this.isClosed) {
       const percents = results.results.map(v => results.total_voters ? v.voters / results.total_voters * 100 : 0);
 
-      SetTransition(this, '', !this.isRetracted, 340);
+      this.classList.toggle('no-transition', !animate);
+      if(animate) {
+        SetTransition(this, '', !this.isRetracted, 340);
+      }
+
       fastRaf(() => {
-        this.setResults(this.isRetracted ? this.percents : percents, this.chosenIndexes);
+        this.setResults(this.isRetracted ? this.percents : percents, this.chosenIndexes, animate);
         this.percents = percents;
         this.isRetracted = false;
       });
@@ -576,7 +581,7 @@ export default class PollElement extends HTMLElement {
     }
   }
 
-  setResults(percents: number[], chosenIndexes: number[]) {
+  setResults(percents: number[], chosenIndexes: number[], animate: boolean) {
     this.svgLines.forEach(svg => svg.style.display = '');
 
     this.answerDivs.forEach((el, idx) => {
@@ -584,7 +589,8 @@ export default class PollElement extends HTMLElement {
     });
 
     const maxValue = Math.max(...percents);
-    this.maxLengths = percents.map(p => p / maxValue * this.maxLength);
+    //this.maxLengths = percents.map(p => p / maxValue * this.maxLength);
+    this.maxPercents = percents.map(p => p / maxValue);
 
     // line
     if(this.isRetracted) {
@@ -592,42 +598,70 @@ export default class PollElement extends HTMLElement {
         this.setLineProgress(idx, -1);
       });
     } else {
-      this.svgLines.forEach((svg, idx) => {
-        void svg.getBoundingClientRect(); // reflow
-        this.setLineProgress(idx, 1);
-      });
+      const cb = () => {
+        this.svgLines.forEach((svg, idx) => {
+          //void svg.getBoundingClientRect(); // reflow
+          this.setLineProgress(idx, 1);
+        });
+      };
+      
+      animate ? fastRaf(cb) : cb();
     }
 
     percents = percents.slice();
     roundPercents(percents);
+    let getPercentValue: (percents: number, index: number) => number;
+    const iterate = (i: number) => {
+      percents.forEach((percents, idx) => {
+        const value = getPercentValue(percents, i);
+        this.numberDivs[idx].innerText = value + '%';
+      });
+    };
     // numbers
     if(this.isRetracted) {
-      for(let i = (times - 1), k = 0; i >= 0; --i, ++k) {
-        setTimeout(() => {
-          percents.forEach((percents, idx) => {
-            const value = Math.round(percents / times * i);
-            this.numberDivs[idx].innerText = value + '%';
-          });
-        }, oneTime * k);
+      getPercentValue = (percents, index) => Math.round(percents / times * index);
+
+      if(animate) {
+        for(let i = (times - 1), k = 0; i >= 0; --i, ++k) {
+          setTimeout(() => {
+            iterate(i);
+          }, oneTime * k);
+        }
+      } else {
+        iterate(0);
       }
     } else {
-      for(let i = 0; i < times; ++i) {
-        setTimeout(() => {
-          percents.forEach((percents, idx) => {
-            const value = Math.round(percents / times * (i + 1));
-            this.numberDivs[idx].innerText = value + '%';
-          });
-        }, oneTime * i);
+      getPercentValue = (percents, index) => Math.round(percents / times * (index + 1));
+
+      if(animate) {
+        for(let i = 0; i < times; ++i) {
+          setTimeout(() => {
+            iterate(i);
+          }, oneTime * i);
+        }
+      } else {
+        iterate(times - 1);
       }
     }
 
     if(this.isRetracted) {
-      this.classList.add('is-retracting');
+      if(animate) {
+        this.classList.add('is-retracting');
+      }
+
       this.classList.remove('is-voted');
-      setTimeout(() => {
-        this.classList.remove('is-retracting');
+      const cb = () => {
         this.svgLines.forEach(svg => svg.style.display = 'none');
-      }, fullTime);
+      };
+
+      if(animate) {
+        setTimeout(() => {
+          this.classList.remove('is-retracting');
+          cb();
+        }, fullTime);
+      } else {
+        cb();
+      }
     } else {
       this.classList.add('is-voted');
     }
@@ -647,15 +681,16 @@ export default class PollElement extends HTMLElement {
     replaceContent(this.votersCountDiv, i18n(key, args));
   }
 
-  setLineProgress(index: number, percents: number) {
+  setLineProgress(index: number, multiplier: number) {
     const svg = this.svgLines[index];
 
-    if(percents === -1) {
+    if(multiplier === -1) {
       svg.style.strokeDasharray = '';
       svg.style.strokeDashoffset = '';
     } else {
-      svg.style.strokeDasharray = (percents * this.maxLengths[index]) + ', 485.9';
-      svg.style.strokeDashoffset = '' + percents * this.maxOffset;
+      //svg.style.strokeDasharray = (percents * this.maxLengths[index]) + ', 485.9';
+      svg.style.strokeDasharray = (multiplier * this.maxPercents[index] * 100) + '%, 485.9';
+      svg.style.strokeDashoffset = '' + multiplier * this.maxOffset;
     }
   }
 

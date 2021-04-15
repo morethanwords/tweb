@@ -11,7 +11,9 @@
 
 import { MOUNT_CLASS_TO } from "../../config/debug";
 import { tsNow } from "../../helpers/date";
+import { replaceContent } from "../../helpers/dom";
 import renderImageFromUrl from "../../helpers/dom/renderImageFromUrl";
+import sequentialDom from "../../helpers/sequentialDom";
 import { ChannelParticipantsFilter, ChannelsChannelParticipants, ChatFull, ChatParticipants, ChatPhoto, ExportedChatInvite, InputChannel, InputFile, InputFileLocation, PhotoSize, UserFull, UserProfilePhoto } from "../../layer";
 //import apiManager from '../mtproto/apiManager';
 import apiManager from '../mtproto/mtprotoworker';
@@ -504,8 +506,7 @@ export class AppProfileManager {
     if(!needFadeIn) {
       // смотри в misc.ts: renderImageFromUrl
       callback = () => {
-        div.innerHTML = '';
-        div.append(img);
+        replaceContent(div, img);
         div.dataset.color = '';
       };
     } else {
@@ -515,15 +516,16 @@ export class AppProfileManager {
       }
 
       callback = () => {
-        div.innerHTML = '';
-        div.append(img);
+        replaceContent(div, img);
 
         setTimeout(() => {
           if(div.childElementCount) {
             div.dataset.color = '';
 
             if(animate) {
-              img.classList.remove('fade-in');
+              sequentialDom.mutateElement(img, () => {
+                img.classList.remove('fade-in');
+              });
             }
           }
         }, animate ? 200 : 0);
@@ -554,7 +556,7 @@ export class AppProfileManager {
 
     //console.log('loadDialogPhoto location:', location, inputPeer);
     if(peerId === myId && isDialog) {
-      div.innerHTML = '';
+      div.innerText = '';
       div.dataset.color = '';
       div.classList.add('tgico-saved');
       div.classList.remove('tgico-deletedaccount');
@@ -564,7 +566,7 @@ export class AppProfileManager {
     if(peerId > 0) {
       const user = appUsersManager.getUser(peerId);
       if(user && user.pFlags && user.pFlags.deleted) {
-        div.innerHTML = '';
+        div.innerText = '';
         div.dataset.color = appPeersManager.getPeerColorById(peerId);
         div.classList.add('tgico-deletedaccount');
         div.classList.remove('tgico-saved');
@@ -578,7 +580,7 @@ export class AppProfileManager {
         color = appPeersManager.getPeerColorById(peerId);
       }
       
-      div.innerHTML = '';
+      div.innerText = '';
       div.classList.remove('tgico-saved', 'tgico-deletedaccount');
       div.dataset.color = color;
 

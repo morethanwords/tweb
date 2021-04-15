@@ -2017,11 +2017,13 @@ $bubble-margin: .25rem;
 
       &-answer-selected {
         background-color: var(--message-out-primary-color);
+        color: var(--message-out-background-color);
       }
 
       html.no-touch &-answer:hover {
         .animation-ring {
-          background-color: rgba(79, 174, 78, .08);
+          background-color: var(--message-out-primary-color);
+          opacity: .08;
         }
       }
 

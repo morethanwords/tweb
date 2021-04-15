@@ -55,10 +55,9 @@ poll-element {
       color: var(--primary-color);
       cursor: pointer;
       transform: scale(1);
-      transition: transform .2s ease;
-
-      body.animation-level-0 & {
-        transition: none;
+      
+      @include animation-level(2) {
+        transition: transform .2s ease;
       }
 
       // @include respond-to(handhelds) {
@@ -100,7 +99,6 @@ poll-element {
         font-weight: 500;
         margin-top: 7px;
         font-size: 14px;
-        transition: .34s opacity;
         margin-left: -9px;
         text-align: right;
         width: 40px;
@@ -117,10 +115,7 @@ poll-element {
         width: 16px;
         font-weight: bold;
         font-size: .75rem;
-        opacity: 0;
-        animation: fade-in-opacity .1s ease forwards;
-        animation-direction: reverse;
-        animation-delay: .24s;
+        opacity: 1;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -148,14 +143,16 @@ poll-element {
 
       &:not(.is-correct):not(.is-chosen) {
         .poll-answer-selected {
-          display: none;
+          opacity: 0;
         }
       }
 
       // Multiple answers
       &.is-chosing {
-        .poll-answer-selected {
-          opacity: 1;
+        .circle-hover {
+          .poll-answer-selected {
+            opacity: 1;
+          }
         }
 
         & ~ .poll-footer {
@@ -238,11 +235,11 @@ poll-element {
     &-answer {
       &.is-chosen:not(.is-correct) {
         use {
-          stroke: #DF3F40;
+          stroke: var(--danger-color);
         }
 
         .poll-answer-selected {
-          background: #DF3F40;
+          background: var(--danger-color);
           //line-height: 16px;
 
           &:before {
@@ -278,7 +275,6 @@ poll-element {
     left: -1px;
     top: -1px;
     transform: scale(1);
-    transition: .1s transform;
 
     .poll-answer-selected {
       display: flex!important;
@@ -300,10 +296,13 @@ poll-element {
     border-radius: 50%;
     height: 34px;
     width: 34px;
-    transition: transform .12s;
-    background-color: #f4f4f4;
+    background-color: var(--light-secondary-text-color);
     transform: scale(.1);
     visibility: hidden;
+
+    @include animation-level(2) {
+      transition: transform .12s ease;
+    }
   }
 
   .progress-ring {
@@ -315,12 +314,11 @@ poll-element {
     &__circle {
       transform-origin: center;
       transform: rotate(-90deg);
-      transition: stroke-dashoffset .15s;
       stroke-dasharray: 56.5487, 56.5487;
       stroke-dashoffset: 0;
       stroke-opacity: 1;
       stroke-width: 2;
-      stroke: var(--border-color);
+      stroke: var(--poll-circle-color);
       fill: transparent;
     }
   }
@@ -332,10 +330,6 @@ poll-element {
 
     .poll-answer-percents {
       opacity: 1;
-    }
-
-    .poll-answer-selected {
-      animation-direction: normal;
     }
   }
 
@@ -352,6 +346,29 @@ poll-element {
   &.animating {
     .poll-line {
       transition: stroke-dashoffset .34s linear, stroke-dasharray .34s linear;
+    }
+
+    .poll-answer-selected {
+      transition-delay: .24s;
+      transition: opacity .1s ease forwards;
+    }
+
+    &.is-retracting {
+      .poll-answer-selected {
+        transition-delay: 0s;
+      }
+    }
+
+    .poll-answer-percents {
+      transition: .34s opacity;
+    }
+
+    .progress-ring__circle {
+      transition: stroke-dashoffset .15s;
+    }
+
+    .circle-hover {
+      transition: .1s transform;
     }
   }
 }
