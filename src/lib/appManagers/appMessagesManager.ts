@@ -3472,7 +3472,7 @@ export class AppMessagesManager {
       });
     }
 
-    const canCache = (['inputMessagesFilterChatPhotos', 'inputMessagesFilterPinned'] as MyInputMessagesFilter[]).includes(inputFilter._);
+    const canCache = false && (['inputMessagesFilterChatPhotos', 'inputMessagesFilterPinned'] as MyInputMessagesFilter[]).includes(inputFilter._);
     const method = (canCache ? apiManager.invokeApiCacheable : apiManager.invokeApi).bind(apiManager);
 
     let apiPromise: Promise<any>;
