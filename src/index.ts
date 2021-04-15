@@ -58,9 +58,16 @@ console.timeEnd('get storage1'); */
     // @ts-ignore
     const w = window.visualViewport || window; // * handle iOS keyboard
     let setViewportVH = false;
+    let lastVH: number;
     const setVH = () => {
       // @ts-ignore
       const vh = (setViewportVH && !rootScope.default.overlayIsActive ? w.height || w.innerHeight : window.innerHeight) * 0.01;
+      if(lastVH === vh) {
+        return;
+      }
+
+      lastVH = vh;
+
       //const vh = document.documentElement.scrollHeight * 0.01;
       document.documentElement.style.setProperty('--vh', `${vh}px`);
 

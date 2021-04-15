@@ -108,6 +108,7 @@ export class ScrollableBase {
     forceDuration?: number,
     axis?: 'x' | 'y'
   ) {
+    //return Promise.resolve();
     return fastSmoothScroll(this.container, element, position, margin, maxDistance, forceDirection, forceDuration, axis);
   }
 }

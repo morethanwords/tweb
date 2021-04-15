@@ -42,8 +42,8 @@ $chat-padding-handhelds: .5rem;
   --hover-alpha: #{$hover-alpha};
 
   --transition-standard-easing: cubic-bezier(.4, .0, .2, 1);
-  --transition-standard-in-time: .25s;
-  --transition-standard-out-time: .2s;
+  --transition-standard-in-time: .3s;
+  --transition-standard-out-time: .25s;
   --transition-standard-in: var(--transition-standard-in-time) var(--transition-standard-easing);
   --transition-standard-out: var(--transition-standard-out-time) var(--transition-standard-easing);
   
@@ -149,6 +149,7 @@ $chat-padding-handhelds: .5rem;
   --badge-text-color: #fff;
   --link-color: #00488f;
   --ripple-color: rgba(0, 0, 0, .08);
+  --poll-circle-color: var(--border-color);
 
   --message-background-color: var(--surface-color);
   --message-checkbox-color: #61c642;
@@ -192,6 +193,7 @@ html.night {
   --badge-text-color: #fff;
   --link-color: var(--primary-color);
   --ripple-color: rgba(255, 255, 255, .08);
+  --poll-circle-color: #fff;
 
   --message-background-color: var(--surface-color);
   --message-checkbox-color: var(--primary-color);

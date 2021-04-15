@@ -67,6 +67,7 @@ export type HistoryStorage = {
   readPromise?: Promise<void>,
   readMaxId?: number,
   readOutboxMaxId?: number,
+  triedToReadMaxId?: number,
 
   maxOutId?: number,
   reply_markup?: any
@@ -3433,7 +3434,7 @@ export class AppMessagesManager {
               if((message.totalEntities as MessageEntity[]).find(e => goodEntities.includes(e._)) || RichTextProcessor.matchUrl(message.message)) {
                 found = true;
               }
-            } else if(neededContents['avatar'] && message.action && ['messageActionChannelEditPhoto', 'messageActionChatEditPhoto'].includes(message.action._)) {
+            } else if(neededContents['avatar'] && message.action && ['messageActionChannelEditPhoto', 'messageActionChatEditPhoto', 'messageActionChannelEditVideo', 'messageActionChatEditVideo'].includes(message.action._)) {
               found = true;
             }/*  else if(neededFlags.find(flag => message.pFlags[flag])) {
               found = true;
@@ -3471,9 +3472,12 @@ export class AppMessagesManager {
       });
     }
 
+    const canCache = (['inputMessagesFilterChatPhotos', 'inputMessagesFilterPinned'] as MyInputMessagesFilter[]).includes(inputFilter._);
+    const method = (canCache ? apiManager.invokeApiCacheable : apiManager.invokeApi).bind(apiManager);
+
     let apiPromise: Promise<any>;
     if(peerId && !nextRate && folderId === undefined/*  || !query */) {
-      apiPromise = apiManager.invokeApi('messages.search', {
+      apiPromise = method('messages.search', {
         peer: appPeersManager.getInputPeerById(peerId),
         q: query || '',
         filter: inputFilter as any as MessagesFilter,
@@ -3502,7 +3506,7 @@ export class AppMessagesManager {
         offsetPeerId = this.getMessagePeer(offsetMessage);
       }
 
-      apiPromise = apiManager.invokeApi('messages.searchGlobal', {
+      apiPromise = method('messages.searchGlobal', {
         q: query,
         filter: inputFilter as any as MessagesFilter,
         min_date: minDate,
@@ -3721,7 +3725,7 @@ export class AppMessagesManager {
   }
 
   public readHistory(peerId: number, maxId = 0, threadId?: number, force = false) {
-    // return Promise.resolve();
+    //return Promise.resolve();
     // console.trace('start read')
     this.log('readHistory:', peerId, maxId, threadId);
     if(!this.getReadMaxIdIfUnread(peerId, threadId) && !force) {
@@ -3729,8 +3733,11 @@ export class AppMessagesManager {
       return Promise.resolve();
     }
 
-    const isChannel = appPeersManager.isChannel(peerId);
     const historyStorage = this.getHistoryStorage(peerId, threadId);
+
+    if(historyStorage.triedToReadMaxId >= maxId) {
+      return Promise.resolve();
+    }
 
     let apiPromise: Promise<any>;
     if(threadId) {
@@ -3751,7 +3758,7 @@ export class AppMessagesManager {
           read_max_id: maxId
         } as Update.updateReadChannelDiscussionInbox
       });
-    } else if(isChannel) {
+    } else if(appPeersManager.isChannel(peerId)) {
       if(!historyStorage.readPromise) {
         apiPromise = apiManager.invokeApi('channels.readHistory', {
           channel: appChatsManager.getChannelInput(-peerId),
@@ -3810,6 +3817,8 @@ export class AppMessagesManager {
     if(historyStorage.readPromise) {
       return historyStorage.readPromise;
     }
+
+    historyStorage.triedToReadMaxId = maxId;
 
     apiPromise.finally(() => {
       delete historyStorage.readPromise;

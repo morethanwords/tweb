@@ -579,7 +579,7 @@ function wrapMediaWithTail(photo: MyPhoto | MyDocument, message: {mid: number, m
   
   const foreignObject = document.createElementNS("http://www.w3.org/2000/svg", 'foreignObject');
 
-  const gotThumb = appPhotosManager.getStrippedThumbIfNeeded(photo);
+  const gotThumb = appPhotosManager.getStrippedThumbIfNeeded(photo, true);
   if(gotThumb) {
     foreignObject.append(gotThumb.image);
   }
@@ -632,7 +632,7 @@ function wrapMediaWithTail(photo: MyPhoto | MyDocument, message: {mid: number, m
   return img;
 }
 
-export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withTail, isOut, lazyLoadQueue, middleware, size, withoutPreloader, loadPromises, noAutoDownload}: {
+export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withTail, isOut, lazyLoadQueue, middleware, size, withoutPreloader, loadPromises, noAutoDownload, noBlur}: {
   photo: MyPhoto | MyDocument, 
   message: any, 
   container: HTMLElement, 
@@ -646,6 +646,7 @@ export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withT
   withoutPreloader?: boolean,
   loadPromises?: Promise<any>[],
   noAutoDownload?: boolean,
+  noBlur?: boolean,
 }) {
   if(!((photo as MyPhoto).sizes || (photo as MyDocument).thumbs)) {
     if(boxWidth && boxHeight && photo._ === 'document') {
@@ -680,7 +681,7 @@ export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withT
       size = appPhotosManager.setAttachmentSize(photo, container, boxWidth, boxHeight, undefined, message && message.message);
     }
 
-    const gotThumb = appPhotosManager.getStrippedThumbIfNeeded(photo);
+    const gotThumb = appPhotosManager.getStrippedThumbIfNeeded(photo, !noBlur);
     if(gotThumb) {
       loadThumbPromise = gotThumb.loadPromise;
       thumbImage = gotThumb.image;
@@ -1307,6 +1308,6 @@ export function wrapPoll(message: any) {
   elem.setAttribute('peer-id', '' + message.peerId);
   elem.setAttribute('poll-id', message.media.poll.id);
   elem.setAttribute('message-id', '' + message.mid);
-  //elem.render();
+  elem.render();
   return elem;
 }

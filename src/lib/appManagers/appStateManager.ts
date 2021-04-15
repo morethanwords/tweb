@@ -170,9 +170,9 @@ export class AppStateManager extends EventListenerBase<{
 
         const time = Date.now();
         if(state) {
-          if(state.version !== STATE_VERSION) {
+          /* if(state.version !== STATE_VERSION) {
             state = copy(STATE_INIT);
-          } else if((state.stateCreatedTime + REFRESH_EVERY) < time/*  || true *//*  && false */) {
+          } else  */if((state.stateCreatedTime + REFRESH_EVERY) < time/*  || true *//*  && false */) {
             if(DEBUG) {
               this.log('will refresh state', state.stateCreatedTime, time);
             }

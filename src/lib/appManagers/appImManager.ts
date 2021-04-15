@@ -24,7 +24,7 @@ import appPhotosManager from './appPhotosManager';
 import appProfileManager from './appProfileManager';
 import appStickersManager from './appStickersManager';
 import appWebPagesManager from './appWebPagesManager';
-import { blurActiveElement, cancelEvent, disableTransition, getFilesFromEvent, placeCaretAtEnd, whichChild } from '../../helpers/dom';
+import { blurActiveElement, cancelEvent, disableTransition, placeCaretAtEnd, whichChild } from '../../helpers/dom';
 import PopupNewMedia from '../../components/popups/newMedia';
 import MarkupTooltip from '../../components/chat/markupTooltip';
 import { isTouchSupported } from '../../helpers/touchSupport';
@@ -47,6 +47,7 @@ import { i18n } from '../langPack';
 import { SendMessageAction } from '../../layer';
 import { highlightningColor } from '../../helpers/color';
 import { getObjectKeysAndSort } from '../../helpers/object';
+import { getFilesFromEvent } from '../../helpers/files';
 
 //console.log('appImManager included33!');
 

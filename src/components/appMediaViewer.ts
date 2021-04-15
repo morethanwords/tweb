@@ -959,7 +959,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
         img = new Image();
         img.src = cacheContext.url;
       } else {
-        const gotThumb = appPhotosManager.getStrippedThumbIfNeeded(media);
+        const gotThumb = appPhotosManager.getStrippedThumbIfNeeded(media, true);
         if(gotThumb) {
           thumbPromise = gotThumb.loadPromise;
           img = gotThumb.image;
