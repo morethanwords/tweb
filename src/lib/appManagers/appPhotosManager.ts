@@ -138,7 +138,7 @@ export class AppPhotosManager {
       offset: 0,
       limit,
       max_id: maxId
-    }).then((photosResult) => {
+    }, {cacheSeconds: 60}).then((photosResult) => {
       appUsersManager.saveApiUsers(photosResult.users);
       const photoIds: string[] = photosResult.photos.map((photo, idx) => {
         photosResult.photos[idx] = this.savePhoto(photo, {type: 'profilePhoto', peerId: userId});
