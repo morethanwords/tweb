@@ -6,10 +6,10 @@ const postcssPresetEnv = require('postcss-preset-env');
 const ServiceWorkerWebpackPlugin = require('serviceworker-webpack-plugin');
 const fs = require('fs');
 
-const allowedIPs = ['194.58.97.147', '195.66.140.39', '127.0.0.1', '176.100.8.254'];
+const allowedIPs = ['127.0.0.1'];
 const devMode = process.env.NODE_ENV !== 'production';
 const useLocal = true;
-const useLocalNotLocal = true;
+const useLocalNotLocal = false;
 
 if(devMode) {
   console.log('DEVMODE IS ON!');
@@ -25,6 +25,9 @@ const opts = {
   "ifdef-verbose": devMode,    // add this for verbose output
   "ifdef-triple-slash": true   // add this to use double slash comment instead of default triple slash
 };
+
+const domain = 'yourdomain.com';
+const localIp = '192.168.93.209';
 
 module.exports = {
   module: {
@@ -104,12 +107,11 @@ module.exports = {
       cert: fs.readFileSync(__dirname + '/certs/server-cert.pem', 'utf8')
     },
     allowedHosts: useLocal ? undefined : [
-      'tweb.enko.club'
+      domain
     ],
-    host: useLocalNotLocal ? '192.168.93.209' : (useLocal ? undefined : '0.0.0.0'),
-    public: useLocal ? undefined : 'tweb.enko.club',
-    //host: '192.168.0.105', // '0.0.0.0'
-    //host: 'tweb.enko.club', // '0.0.0.0'
+    host: useLocalNotLocal ? localIp : (useLocal ? undefined : '0.0.0.0'),
+    public: useLocal ? undefined : domain,
+    //host: domain, // '0.0.0.0'
     port: useLocal ? undefined : 443,
     overlay: true,
     before: useLocal ? undefined : function(app, server, compiler) {
@@ -133,7 +135,7 @@ module.exports = {
         }
       });
     },
-    sockHost: useLocal ? undefined : 'tweb.enko.club',
+    sockHost: useLocal ? undefined : domain,
   },
 
   plugins: [
