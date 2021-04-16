@@ -9,7 +9,7 @@
   overflow: unset;
 
   @include respond-to(only-small-screens) {
-    box-shadow: 0 0.25rem 0.5rem 0.1rem hsla(0, 0%, 44.7%, .25);
+    box-shadow: 0 0.25rem 0.5rem 0.1rem rgba(0, 0, 0, .2);
   }
 
   @include respond-to(handhelds) {

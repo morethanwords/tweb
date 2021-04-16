@@ -45,7 +45,7 @@ import appNotificationsManager from './appNotificationsManager';
 import AppPrivateSearchTab from '../../components/sidebarRight/tabs/search';
 import { i18n } from '../langPack';
 import { SendMessageAction } from '../../layer';
-import { highlightningColor } from '../../helpers/color';
+import { highlightningColor, hslaStringToRgbString } from '../../helpers/color';
 import { getObjectKeysAndSort } from '../../helpers/object';
 import { getFilesFromEvent } from '../../helpers/files';
 
@@ -79,6 +79,7 @@ export class AppImManager {
   private chatsSelectTabDebounced: () => void;
   
   public markupTooltip: MarkupTooltip;
+  private themeColorElem: Element;
 
   get myId() {
     return rootScope.myId;
@@ -278,18 +279,38 @@ export class AppImManager {
     return sessionStorage.getFromCache('chatPositions')[key];
   }
 
-  private setSettings = () => {
-    document.documentElement.style.setProperty('--messages-text-size', rootScope.settings.messagesTextSize + 'px');
-
+  public applyBackgroundColor() {
+    let hsla: string;
     if(rootScope.settings.nightTheme) {
-      document.documentElement.style.setProperty('--message-highlightning-color', highlightningColor(new Uint8ClampedArray([15, 15, 15, 1])));
+      hsla = highlightningColor(new Uint8ClampedArray([15, 15, 15, 1]));
+      document.documentElement.style.setProperty('--message-highlightning-color', hsla);
     } else {
       if(rootScope.settings.background.highlightningColor) {
-        document.documentElement.style.setProperty('--message-highlightning-color', rootScope.settings.background.highlightningColor);
+        hsla = rootScope.settings.background.highlightningColor;
+        document.documentElement.style.setProperty('--message-highlightning-color', hsla);
       } else {
         document.documentElement.style.removeProperty('--message-highlightning-color');
       }
     }
+
+    let themeColor = '#ffffff';
+    if(hsla) {
+      themeColor = hslaStringToRgbString(hsla);
+    }
+
+    if(this.themeColorElem === undefined) {
+      this.themeColorElem = document.head.querySelector('[name="theme-color"]') as Element || null;
+    }
+
+    if(this.themeColorElem) {
+      this.themeColorElem.setAttribute('content', themeColor);
+    }
+  }
+
+  private setSettings = () => {
+    document.documentElement.style.setProperty('--messages-text-size', rootScope.settings.messagesTextSize + 'px');
+
+    this.applyBackgroundColor();
     
     document.documentElement.classList.toggle('night', rootScope.settings.nightTheme);
     

@@ -594,7 +594,7 @@ $chat-helper-size: 39px;
 			@include respond-to(medium-screens) {
 				@include animation-level(2) {
 					// !WARNING, МАГИЧЕСКОЕ ЧИСЛО
-					margin: -16.5rem 0 -20rem 0;
+					margin: -18.5rem 0 -22rem 0;
 					transform: scale(1);
 					transform-origin: left center;
 					transition: transform var(--transition-standard-out), opacity var(--transition-standard-out) !important;

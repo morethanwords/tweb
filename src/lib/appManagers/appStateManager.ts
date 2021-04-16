@@ -118,7 +118,8 @@ export const STATE_INIT: State = {
     background: {
       type: 'image',
       blur: false,
-      slug: 'ByxGo2lrMFAIAAAAmkJxZabh8eM', // * new blurred camomile
+      slug: 'ByxGo2lrMFAIAAAAmkJxZabh8eM', // * new blurred camomile,
+      highlightningColor: 'hsla(85.5319, 36.9171%, 40.402%, 0.4)'
     },
     notifications: {
       sound: false

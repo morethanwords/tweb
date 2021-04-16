@@ -18,7 +18,6 @@ import appImManager from "../../../lib/appManagers/appImManager";
 import appStateManager from "../../../lib/appManagers/appStateManager";
 import apiManager from "../../../lib/mtproto/mtprotoworker";
 import rootScope from "../../../lib/rootScope";
-import Button from "../../button";
 import CheckboxField from "../../checkboxField";
 import ProgressivePreloader from "../../preloader";
 import { SliderSuperTab } from "../../slider";
@@ -92,7 +91,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
             rootScope.settings.background.slug = slug;
             rootScope.settings.background.type = 'image';
             rootScope.settings.background.highlightningColor = hsla;
-            document.documentElement.style.setProperty('--message-highlightning-color', rootScope.settings.background.highlightningColor);
+            appImManager.applyBackgroundColor();
             appStateManager.pushToState('settings', rootScope.settings);
 
             saveToCache(slug, url);
