@@ -227,9 +227,12 @@ export class AppDialogsManager {
   private lastActiveElements: Set<HTMLElement> = new Set();
 
   constructor() {
+    const archivedChatList = this.createChatList();
     this.chatLists = {
-      1: this.createChatList()
+      1: archivedChatList
     };
+
+    this.setListClickListener(archivedChatList, null, true);
 
     this.chatsPreloader = putPreloader(null, true);
 
