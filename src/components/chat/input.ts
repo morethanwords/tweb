@@ -158,7 +158,7 @@ export default class ChatInput {
 
     this.goDownBtn = Button('bubbles-go-down btn-corner btn-circle z-depth-1 hide', {icon: 'arrow_down'});
     this.goDownUnreadBadge = document.createElement('span');
-    this.goDownUnreadBadge.classList.add('badge', 'badge-24', 'badge-green');
+    this.goDownUnreadBadge.classList.add('badge', 'badge-24', 'badge-primary');
     this.goDownBtn.append(this.goDownUnreadBadge);
     this.inputContainer.append(this.goDownBtn);
 

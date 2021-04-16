@@ -695,9 +695,11 @@ export class AppImManager {
         searchTab.close();
       }
   
-      appSidebarRight.sharedMediaTab.setPeer(this.chat.peerId, this.chat.threadId);
-      appSidebarRight.sharedMediaTab.loadSidebarMedia(true);
-      appSidebarRight.sharedMediaTab.fillProfileElements();
+      const isSet = appSidebarRight.sharedMediaTab.setPeer(this.chat.peerId, this.chat.threadId);
+      if(isSet) {
+        appSidebarRight.sharedMediaTab.loadSidebarMedia(true);
+        appSidebarRight.sharedMediaTab.fillProfileElements();
+      }
       
       /* setTimeout(() => {
         appSidebarRight.sharedMediaTab.loadSidebarMedia(false);
@@ -837,9 +839,7 @@ export class AppImManager {
     if(!peerId) return '';
 
     if(peerId < 0) { // not human
-      const chat = appPeersManager.getPeer(peerId);
-
-      const chatInfo = await appProfileManager.getChatFull(chat.id) as any;
+      const chatInfo = await appProfileManager.getChatFull(-peerId) as any;
       this.chat.log('chatInfo res:', chatInfo);
 
       const participants_count = chatInfo.participants_count || (chatInfo.participants && chatInfo.participants.participants && chatInfo.participants.participants.length) || 1;

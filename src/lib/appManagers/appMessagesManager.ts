@@ -1401,7 +1401,7 @@ export class AppMessagesManager {
       this.saveMessages([message], {storage, isOutgoing: true});
       setTimeout(() => {
         this.setDialogTopMessage(message);
-        rootScope.broadcast('history_append', {peerId, messageId, my: true});
+        rootScope.broadcast('history_append', {storage, peerId, mid: messageId});
       }, 0);
     }
 

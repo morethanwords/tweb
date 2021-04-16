@@ -31,7 +31,7 @@ type Country = _Country & {
 };
 
 //import _countries from '../countries_pretty.json';
-let btnNext: HTMLButtonElement = null;
+let btnNext: HTMLButtonElement = null, btnQr: HTMLButtonElement;
 
 let onFirstMount = () => {
   if(Modes.test) {
@@ -362,7 +362,7 @@ let onFirstMount = () => {
 
   attachClickEvent(btnNext, onSubmit);
 
-  const btnQr = Button('btn-primary btn-secondary btn-primary-transparent primary', {text: 'Login.QR.Login'});
+  btnQr = Button('btn-primary btn-secondary btn-primary-transparent primary', {text: 'Login.QR.Login'});
 
   let qrMounted = false;
   btnQr.addEventListener('click', () => {
@@ -492,6 +492,10 @@ const page = new Page('page-sign', true, onFirstMount, () => {
     replaceContent(btnNext, i18n('Login.Next'));
     ripple(btnNext, undefined, undefined, true);
     btnNext.removeAttribute('disabled');
+  }
+
+  if(btnQr) {
+    btnQr.removeAttribute('disabled');
   }
 
   appStateManager.pushToState('authState', {_: 'authStateSignIn'});

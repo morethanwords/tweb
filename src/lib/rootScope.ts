@@ -44,7 +44,7 @@ export type BroadcastEvents = {
   'dialogs_multiupdate': {[peerId: string]: Dialog},
   'dialogs_archived_unread': {count: number},
   
-  'history_append': {peerId: number, messageId: number, my?: boolean},
+  'history_append': {storage: MessagesStorage, peerId: number, mid: number},
   'history_update': {storage: MessagesStorage, peerId: number, mid: number},
   'history_reply_markup': {peerId: number},
   'history_multiappend': AppMessagesManager['newMessagesToHandle'],

@@ -237,7 +237,7 @@ export class AppNotificationsManager {
             const ctx = canvas.getContext('2d');
             ctx.beginPath();
             ctx.arc(canvas.width / 2, canvas.height / 2, canvas.width / 2, 0, 2 * Math.PI, false);
-            ctx.fillStyle = '#5b8af1';
+            ctx.fillStyle = '#3390ec';
             ctx.fill();
 
             let fontSize = 24;

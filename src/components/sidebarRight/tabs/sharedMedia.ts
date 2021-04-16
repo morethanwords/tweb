@@ -335,7 +335,7 @@ class PeerProfileAvatars {
         } else {
           const promises: [Promise<ChatFull>, ReturnType<AppMessagesManager['getSearch']>] = [] as any;
           if(!listLoader.current) {
-            promises.push(appProfileManager.getChatFull(peerId));
+            promises.push(appProfileManager.getChatFull(-peerId));
           }
           
           promises.push(appMessagesManager.getSearch({
@@ -767,6 +767,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
   private searchSuper: AppSearchSuper;
 
   private profile: PeerProfile;
+  peerChanged: boolean;
 
   constructor(slider: SidebarSlider) {
     super(slider, false);
@@ -1054,10 +1055,11 @@ export default class AppSharedMediaTab extends SliderSuperTab {
   }
 
   public setPeer(peerId: number, threadId = 0) {
-    if(this.peerId === peerId && this.threadId === peerId) return;
+    if(this.peerId === peerId && this.threadId === threadId) return false;
 
     this.peerId = peerId;
     this.threadId = threadId;
+    this.peerChanged = true;
 
     if(this.init) {
       this.init();
@@ -1071,9 +1073,17 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     });
 
     this.profile.setPeer(peerId, threadId);
+    
+    return true;
   }
 
   public fillProfileElements() {
+    if(!this.peerChanged) {
+      return;
+    }
+
+    this.peerChanged = false;
+
     this.cleanupHTML();
 
     this.profile.fillProfileElements();
