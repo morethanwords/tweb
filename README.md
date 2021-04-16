@@ -12,3 +12,7 @@ Based on Webogram, patched and improved.
 * [opus-recorder](https://github.com/chris-rudmin/opus-recorder) ([BSD License](https://github.com/chris-rudmin/opus-recorder/blob/master/LICENSE.md))
 * [libwebp.js](https://libwebpjs.appspot.com/)
 * fastBlur
+
+## Troubleshooting
+
+If you find an issue with this app, let Telegram know using the [Suggestions Platform](https://bugs.telegram.org/c/4002).
