@@ -196,6 +196,12 @@ class InputField {
     this.input = input;
   }
 
+  public select() {
+    if((this.input as HTMLInputElement).value) { // * avoid selecting whole empty field on iOS devices
+      (this.input as HTMLInputElement).select(); // * select text
+    }
+  }
+
   public setLabel() {
     this.label.textContent = '';
     if(this.options.labelText) {

@@ -22,11 +22,19 @@ export default class PasswordInputField extends InputField {
     input.type = 'password';
     input.setAttribute('required', '');
     input.autocomplete = 'off';
-    input.readOnly = true;
+    /* input.readOnly = true;
 
     input.addEventListener('focus', () => {
       input.removeAttribute('readonly');
-    }, {once: true});
+    }, {once: true}); */
+
+    // * https://stackoverflow.com/a/35949954/6758968
+    const stealthy = document.createElement('input');
+    stealthy.classList.add('stealthy');
+    stealthy.tabIndex = -1;
+    stealthy.type = 'password';
+    input.parentElement.prepend(stealthy);
+    input.parentElement.insertBefore(stealthy.cloneNode(), input.nextSibling);
 
     const toggleVisible = this.toggleVisible = document.createElement('span');
     toggleVisible.classList.add('toggle-visible', 'tgico');

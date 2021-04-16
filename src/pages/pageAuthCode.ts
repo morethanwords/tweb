@@ -89,9 +89,11 @@ let onFirstMount = (): Promise<any> => {
           break; */
       }
     }).catch(async(err) => {
+      let good = false;
       switch(err.type) {
         case 'SESSION_PASSWORD_NEEDED':
           //console.warn('pageAuthCode: SESSION_PASSWORD_NEEDED');
+          good = true;
           err.handled = true;
           await pagePassword.mount();
           break;
@@ -107,6 +109,10 @@ let onFirstMount = (): Promise<any> => {
         default:
           codeInputField.label.innerText = err.type;
           break;
+      }
+
+      if(!good) {
+        codeInputField.select();
       }
 
       codeInput.removeAttribute('disabled');
