@@ -17,7 +17,7 @@ import PasswordMonkey from '../components/monkeys/password';
 import RichTextProcessor from '../lib/richtextprocessor';
 import I18n from '../lib/langPack';
 import LoginPage from './loginPage';
-import { htmlToSpan, replaceContent } from '../helpers/dom';
+import { attachClickEvent, cancelEvent, htmlToSpan, replaceContent, toggleDisability } from '../helpers/dom';
 
 const TEST = false;
 let passwordInput: HTMLInputElement;
@@ -65,17 +65,21 @@ let onFirstMount = (): Promise<any> => {
 
   let state: AccountPassword;
   
-  btnNext.addEventListener('click', function(this, e) {
+  const onSubmit = (e?: Event) => {
+    if(e) {
+      cancelEvent(e);
+    }
+
     if(!passwordInput.value.length) {
       passwordInput.classList.add('error');
       return;
     }
 
-    this.setAttribute('disabled', 'true');
+    const toggle = toggleDisability([passwordInput, btnNext], true);
     let value = passwordInput.value;
 
     btnNextI18n.update({key: 'PleaseWait'});
-    const preloader = putPreloader(this);
+    const preloader = putPreloader(btnNext);
 
     passwordManager.check(value, state).then((response) => {
       //console.log('passwordManager response:', response);
@@ -93,7 +97,7 @@ let onFirstMount = (): Promise<any> => {
           break;
       }
     }).catch((err: any) => {
-      btnNext.removeAttribute('disabled');
+      toggle();
       passwordInputField.input.classList.add('error');
       
       switch(err.type) {
@@ -108,14 +112,16 @@ let onFirstMount = (): Promise<any> => {
   
       getState();
     });
-  });
+  };
+  
+  attachClickEvent(btnNext, onSubmit);
 
   passwordInput.addEventListener('keypress', function(this, e) {
     this.classList.remove('error');
     btnNextI18n.update({key: 'Login.Next'});
 
     if(e.key === 'Enter') {
-      return btnNext.click();
+      return onSubmit();
     }
   });
 
