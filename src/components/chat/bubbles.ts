@@ -423,12 +423,14 @@ export default class ChatBubbles {
   public constructPeerHelpers() {
     // will call when message is sent (only 1)
     this.listenerSetter.add(rootScope, 'history_append', (e) => {
-      let details = e;
+      const {peerId, storage, mid} = e;
+
+      if(peerId !== this.peerId || storage !== this.chat.getMessagesStorage()) return;
 
       if(!this.scrollable.loadedAll.bottom) {
         this.chat.setMessageId();
       } else {
-        this.renderNewMessagesByIds([details.messageId], true);
+        this.renderNewMessagesByIds([mid], true);
       }
     });
 
@@ -1180,6 +1182,11 @@ export default class ChatBubbles {
     }
 
     mids = mids.filter(mid => !this.bubbles[mid]);
+    // ! should scroll even without new messages
+    /* if(!mids.length) {
+      return;
+    } */
+
     const promise = this.performHistoryResult(mids, false, true);
     if(scrolledDown) {
       promise.then(() => {
@@ -1540,9 +1547,9 @@ export default class ChatBubbles {
       animationIntersector.unlockGroup(CHAT_ANIMATION_GROUP);
       animationIntersector.checkAnimations(false, CHAT_ANIMATION_GROUP/* , true */);
 
-      fastRaf(() => {
+      //fastRaf(() => {
         this.lazyLoadQueue.unlock();
-      });
+      //});
 
       //if(dialog && lastMsgID && lastMsgID !== topMessage && (this.bubbles[lastMsgID] || this.firstUnreadBubble)) {
       if(savedPosition) {

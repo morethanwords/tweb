@@ -2094,9 +2094,9 @@ $bubble-margin: .25rem;
   width: 100%;
 
   &-row {
-    margin-top: 5px;
+    margin-top: .3125rem;
     overflow: hidden;
-    height: 40px;
+    min-height: 2.5rem;
     display: flex;
 
     &:last-child {
@@ -2106,44 +2106,61 @@ $bubble-margin: .25rem;
   }
 
   &-button {
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    padding: .5625rem 0;
     border-radius: 6px;
-    //background-color: rgba(0, 0, 0, .23);
-    background: var(--message-highlightning-color);
     z-index: 2;
-    font-size: 14px;
+    font-size: .875rem;
     user-select: none;
     text-align: center;
-    color: white !important;
+    color: #fff !important;
     outline: none;
     border: none;
     width: 100%;
     cursor: pointer;
     position: relative;
-    transition: background-color .35s ease;
     overflow: hidden;
+    //line-height: var(--line-height);
+    background: var(--message-highlightning-color);
+
+    &:before {
+      content: " ";
+      display: block;
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      border-radius: inherit;
+      opacity: 0;
+      z-index: -1;
+      background-color: #fff;
+
+      @include animation-level(2) {
+        transition: opacity .35s ease;
+      }
+    }
 
     @include hover() {
-      background-color: rgba(0, 0, 0, .06);
+      &:before {
+        opacity: var(--hover-alpha);
+      }
     }
 
     & + & {
-      margin-left: 5px;
+      margin-left: .3125rem;
     }
 
     &.is-link:before {
       content: $tgico-arrow-next;
       position: absolute;
-      right: 2px;
-      top: 2px;
+      right: .125rem;
+      top: .125rem;
       display: block;
       transform: rotate(-45deg);
     }
 
-    /* img.emoji {
-      vertical-align: middle !important;
-    } */
+    img.emoji {
+      margin: 0 .125rem;
+    }
   }
 }

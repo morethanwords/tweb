@@ -364,17 +364,15 @@
 
         position: fixed !important;
         z-index: 1;
+      }
 
-        &:not(.is-hidden) {
-          transform: translateZ(0);
-        }
+      html:not(.no-touch) & {
+        transform: translateZ(0);
       }
     }
 
-    @include respond-to(not-handhelds) {
-      html.no-touch &:hover .btn-corner:not(.is-hidden) {
-        transform: translateZ(0);
-      }
+    html.no-touch &:hover .btn-corner:not(.is-hidden) {
+      transform: translateZ(0);
     }
   }
 
