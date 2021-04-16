@@ -40,7 +40,7 @@ export default class CheckboxField {
     }
 
     if(options.disabled) {
-      label.classList.add('checkbox-disabled');
+      this.toggleDisability(true);
     }
 
     const input = this.input = document.createElement('input');
@@ -110,6 +110,7 @@ export default class CheckboxField {
     if(options.withRipple) {
       label.classList.add('checkbox-ripple', 'hover-effect');
       ripple(label, undefined, undefined, true);
+      //label.prepend(input);
     } else if(options.withHover) {
       label.classList.add('hover-effect');
     }
@@ -128,5 +129,10 @@ export default class CheckboxField {
 
   public setValueSilently(checked: boolean) {
     this.input.checked = checked;
+  }
+
+  public toggleDisability(disable: boolean) {
+    this.label.classList.toggle('checkbox-disabled', disable);
+    return () => this.toggleDisability(!disable);
   }
 }

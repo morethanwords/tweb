@@ -262,9 +262,9 @@
     }
   }
   
-  &:checked + .checkbox-box {
+  /* &:checked + .checkbox-box {
     
-  }
+  } */
 
   &:disabled + .checkbox-box, &:disabled ~ .checkbox-caption {
     cursor: default;

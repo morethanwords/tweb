@@ -11,7 +11,7 @@ import Button from '../components/button';
 import InputField from '../components/inputField';
 import { putPreloader } from '../components/misc';
 import PopupAvatar from '../components/popups/avatar';
-import { replaceContent } from '../helpers/dom';
+import { blurActiveElement, replaceContent } from '../helpers/dom';
 import appStateManager from '../lib/appManagers/appStateManager';
 import I18n, { i18n } from '../lib/langPack';
 //import apiManager from '../lib/mtproto/apiManager';
@@ -157,6 +157,11 @@ const onFirstMount = () => import('../lib/appManagers/appProfileManager').then(i
           break;
       }
     });
+  });
+
+  blurActiveElement();
+  return new Promise((resolve) => {
+    window.requestAnimationFrame(resolve);
   });
 });
 

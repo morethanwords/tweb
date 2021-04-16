@@ -122,10 +122,10 @@
       //padding: 0 calc(1rem - 1px);
     }
     
-    &:disabled {
+    /* &:disabled {
       background-color: #fff;
       color: #000;
-    }
+    } */
     
     &.error {
       border-color: var(--danger-color);

@@ -10,7 +10,7 @@ import Countries, { Country as _Country } from "../countries";
 import appStateManager from "../lib/appManagers/appStateManager";
 import apiManager from "../lib/mtproto/mtprotoworker";
 import { RichTextProcessor } from '../lib/richtextprocessor';
-import { attachClickEvent, cancelEvent, replaceContent } from "../helpers/dom";
+import { attachClickEvent, cancelEvent, replaceContent, toggleDisability } from "../helpers/dom";
 import Page from "./page";
 import InputField from "../components/inputField";
 import CheckboxField from "../components/checkboxField";
@@ -296,7 +296,7 @@ let onFirstMount = () => {
   telEl.addEventListener('keypress', function(this: typeof telEl, e) {
     //console.log('keypress', this.value);
     if(!btnNext.style.visibility &&/* this.value.length >= 9 && */ e.key === 'Enter') {
-      return btnNext.click();
+      return onSubmit();
     } else if(/\D/.test(e.key) && !(e.metaKey || e.ctrlKey) && !(e.key === '+' && e.shiftKey/*  && !this.value */)) {
       e.preventDefault();
       return false;
@@ -317,12 +317,15 @@ let onFirstMount = () => {
   btnNext = Button('btn-primary btn-color-primary', {text: 'Login.Next'});
   btnNext.style.visibility = 'hidden';
 
-  btnNext.addEventListener('click', function(this: HTMLElement, e) {
-    this.setAttribute('disabled', 'true');
+  const onSubmit = (e?: Event) => {
+    if(e) {
+      cancelEvent(e);
+    }
 
-    replaceContent(this, i18n('PleaseWait'));
-    putPreloader(this);
-    //this.innerHTML = 'PLEASE WAIT...';
+    const toggle = toggleDisability([/* telEl, countryInput,  */btnNext, btnQr], true);
+
+    replaceContent(btnNext, i18n('PleaseWait'));
+    putPreloader(btnNext);
 
     //return;
 
@@ -340,22 +343,24 @@ let onFirstMount = () => {
 
       import('./pageAuthCode').then(m => m.default.mount(Object.assign(code, {phone_number: phone_number})));
     }).catch(err => {
-      this.removeAttribute('disabled');
+      toggle();
 
       switch(err.type) {
         case 'PHONE_NUMBER_INVALID':
           telInputField.setError();
           replaceContent(telInputField.label, i18n('Login.PhoneLabelInvalid'));
           telEl.classList.add('error');
-          replaceContent(this, i18n('Login.Next'));
+          replaceContent(btnNext, i18n('Login.Next'));
           break;
         default:
           console.error('auth.sendCode error:', err);
-          this.innerText = err.type;
+          btnNext.innerText = err.type;
           break;
       }
     });
-  });
+  };
+
+  attachClickEvent(btnNext, onSubmit);
 
   const btnQr = Button('btn-primary btn-secondary btn-primary-transparent primary', {text: 'Login.QR.Login'});
 
