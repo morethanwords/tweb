@@ -153,6 +153,10 @@ class InputField {
 
     if(placeholder) {
       _i18n(input, placeholder, undefined, 'placeholder');
+
+      if(this.inputFake) {
+        _i18n(this.inputFake, placeholder, undefined, 'placeholder');
+      }
     }
 
     if(label) {

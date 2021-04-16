@@ -22,6 +22,11 @@ export default class PasswordInputField extends InputField {
     input.type = 'password';
     input.setAttribute('required', '');
     input.autocomplete = 'off';
+    input.readOnly = true;
+
+    input.addEventListener('focus', () => {
+      input.removeAttribute('readonly');
+    }, {once: true});
 
     const toggleVisible = this.toggleVisible = document.createElement('span');
     toggleVisible.classList.add('toggle-visible', 'tgico');

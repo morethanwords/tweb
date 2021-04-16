@@ -914,9 +914,14 @@ export default class AppSearchSuper {
           return;
         }
 
-        console.log('anymore', chatFull);
+        //console.log('anymore', chatFull);
         this.loaded[mediaTab.inputFilter] = true;
-        return renderParticipants((chatFull.participants as ChatParticipants.chatParticipants).participants);
+        const participants = chatFull.participants;
+        if(participants._ === 'chatParticipantsForbidden') {
+          return;
+        }
+        
+        return renderParticipants(participants.participants);
       });
     }
 

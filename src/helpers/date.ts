@@ -48,7 +48,6 @@ export function formatDateAccordingToTodayNew(time: Date) {
   const options: Intl.DateTimeFormatOptions = {};
   if((now - timestamp) < ONE_DAY && today.getDate() === time.getDate()) { // if the same day
     options.hour = options.minute = '2-digit';
-    options.hour12 = false;
   } else if(today.getFullYear() !== time.getFullYear()) { // different year
     options.year = options.day = 'numeric';
     options.month = '2-digit';

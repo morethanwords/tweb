@@ -248,8 +248,7 @@ export default class PopupDatePicker extends PopupElement {
 
       const timeOptions: Intl.DateTimeFormatOptions = {
         minute: '2-digit',
-        hour: '2-digit',
-        hour12: false
+        hour: '2-digit'
       };
       
       const sendDate = new Date(this.selectedDate.getTime());
