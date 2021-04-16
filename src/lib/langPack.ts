@@ -352,7 +352,9 @@ namespace I18n {
 			safeAssign(this, options);
 	
 			//var options = { month: 'long', day: 'numeric' };
-			const dateTimeFormat = new Intl.DateTimeFormat(lastRequestedLangCode, this.options);
+			
+			// * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/Locale/hourCycle#adding_an_hour_cycle_via_the_locale_string
+			const dateTimeFormat = new Intl.DateTimeFormat(lastRequestedLangCode + '-u-hc-h23', this.options);
 			
 			(this.element as any)[this.property] = capitalizeFirstLetter(dateTimeFormat.format(this.date));
 		}
