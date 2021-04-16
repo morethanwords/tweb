@@ -8,11 +8,11 @@ import Modes from "./modes";
 
 export const DEBUG = process.env.NODE_ENV !== 'production' || Modes.debug;
 const ctx: any = typeof(window) !== 'undefined' ? window : self;
-export const MOUNT_CLASS_TO: any = DEBUG/*  && false */ ? ctx : {};
+export const MOUNT_CLASS_TO: any = DEBUG || true/*  && false */ ? ctx : {};
 export default DEBUG;
 
 //let m = DEBUG;
-if(!DEBUG/*  || true */) {
+/* if(!DEBUG) {
   ctx.sandpitTurtle = () => {
     //if(!m) {
       for(let i in MOUNT_CLASS_TO) {
@@ -23,7 +23,7 @@ if(!DEBUG/*  || true */) {
   
     //DEBUG = !DEBUG;
   };
-}
+} */
 
 /* export const superDebug = (object: any, key: string) => {
   var d = object[key];
