@@ -1,4 +1,4 @@
-# Telegram Web
+# Telegram Web K
 
 Based on Webogram, patched and improved.
 
