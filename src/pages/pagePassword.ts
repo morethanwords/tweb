@@ -100,6 +100,7 @@ let onFirstMount = (): Promise<any> => {
         default:
           //btnNext.innerText = err.type;
           btnNextI18n.update({key: 'PASSWORD_HASH_INVALID'});
+          passwordInput.select();
           break;
       }
 
