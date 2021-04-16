@@ -25,9 +25,7 @@ export default class AppArchivedTab extends SliderSuperTab {
     this.scrollable.onScrolledBottom = appDialogsManager.onChatsScroll;
     ///this.scroll.attachSentinels();
 
-    appDialogsManager.setListClickListener(chatList, null, true);
-
-    window.addEventListener('resize', () => {
+    this.listenerSetter.add(window, 'resize', () => {
       setTimeout(appDialogsManager.scroll.checkForTriggers, 0);
     });
   }

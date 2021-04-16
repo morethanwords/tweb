@@ -59,6 +59,7 @@ import findUpClassName from "../../helpers/dom/findUpClassName";
 import findUpTag from "../../helpers/dom/findUpTag";
 import { toast } from "../toast";
 import { getElementByPoint } from "../../helpers/dom/getElementByPoint";
+import { getMiddleware } from "../../helpers/middleware";
 
 const USE_MEDIA_TAILS = false;
 const IGNORE_ACTIONS: Message.messageService['action']['_'][] = [/* 'messageActionHistoryClear' */];
@@ -115,7 +116,7 @@ export default class ChatBubbles {
 
   public lazyLoadQueue: LazyLoadQueue;
 
-  private cleanupObj = {cleaned: false};
+  private middleware = getMiddleware();
 
   private log: ReturnType<typeof logger>;
 
@@ -1374,7 +1375,7 @@ export default class ChatBubbles {
 
     // clear messages
     if(bubblesToo) {
-      this.scrollable.container.innerHTML = '';
+      this.scrollable.container.textContent = '';
     }
 
     this.firstUnreadBubble = null;
@@ -1396,8 +1397,7 @@ export default class ChatBubbles {
 
     this.loadedTopTimes = this.loadedBottomTimes = 0;
 
-    this.cleanupObj.cleaned = true;
-    this.cleanupObj = {cleaned: false};
+    this.middleware.clean();
 
     ////console.timeEnd('appImManager cleanup');
   }
@@ -1497,10 +1497,9 @@ export default class ChatBubbles {
       this.isFirstLoad = true;
     }
 
-    const oldChatInner = this.chatInner;
     this.cleanup();
-    this.chatInner = oldChatInner.cloneNode() as HTMLDivElement;
-    this.chatInner.classList.remove('disable-hover', 'is-scrolling');
+    this.chatInner = document.createElement('div');
+    this.chatInner.classList.add('bubbles-inner');
 
     this.lazyLoadQueue.lock();
 
@@ -1758,12 +1757,8 @@ export default class ChatBubbles {
     this.bubbleGroups.addBubble(bubble, message, reverse);
   }
 
-  // * will change .cleaned in cleanup() and new instance will be created
   public getMiddleware() {
-    const cleanupObj = this.cleanupObj;
-    return () => {
-      return !cleanupObj.cleaned;
-    };
+    return this.middleware.get();
   }
   
   // reverse means top
