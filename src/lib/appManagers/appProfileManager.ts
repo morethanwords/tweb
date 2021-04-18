@@ -37,7 +37,7 @@ export class AppProfileManager {
 
   private savedAvatarURLs: {
     [peerId: number]: {
-      [size in PeerPhotoSize]?: string | Promise<any>
+      [size in PeerPhotoSize]?: string | Promise<string>
     }
   } = {};
 
@@ -455,11 +455,11 @@ export class AppProfileManager {
     }
   }
 
-  public putAvatar(div: HTMLElement, peerId: number, photo: UserProfilePhoto.userProfilePhoto | ChatPhoto.chatPhoto, size: PeerPhotoSize, img = new Image()) {
+  public loadAvatar(peerId: number, photo: UserProfilePhoto.userProfilePhoto | ChatPhoto.chatPhoto, size: PeerPhotoSize) {
     const inputPeer = appPeersManager.getInputPeerById(peerId);
 
-    let needFadeIn = true;
-    let getAvatarPromise: Promise<any>;
+    let cached = false;
+    let getAvatarPromise: Promise<string>;
     let saved = this.savedAvatarURLs[peerId];
     if(!saved || !saved[size]) {
       if(!saved) {
@@ -489,7 +489,7 @@ export class AppProfileManager {
 
       const promise = appDownloadManager.download(downloadOptions);
       getAvatarPromise = saved[size] = promise.then(blob => {
-        saved[size] = URL.createObjectURL(blob);
+        return saved[size] = URL.createObjectURL(blob);
 
         /* if(str) {
           console.log(str, Date.now() / 1000, Date.now() - time);
@@ -498,12 +498,18 @@ export class AppProfileManager {
     } else if(typeof(saved[size]) !== 'string') {
       getAvatarPromise = saved[size] as Promise<any>;
     } else {
-      getAvatarPromise = Promise.resolve();
-      needFadeIn = false;
+      getAvatarPromise = Promise.resolve(saved[size]);
+      cached = true;
     }
 
+    return {cached, loadPromise: getAvatarPromise};
+  }
+
+  public putAvatar(div: HTMLElement, peerId: number, photo: UserProfilePhoto.userProfilePhoto | ChatPhoto.chatPhoto, size: PeerPhotoSize, img = new Image()) {
+    const {cached, loadPromise} = this.loadAvatar(peerId, photo, size);
+
     let callback: () => void;
-    if(!needFadeIn) {
+    if(cached) {
       // смотри в misc.ts: renderImageFromUrl
       callback = () => {
         replaceContent(div, img);
@@ -532,16 +538,16 @@ export class AppProfileManager {
       };
     }
 
-    const loadPromise = getAvatarPromise.then(() => {
+    const renderPromise = loadPromise.then((url) => {
       return new Promise<void>((resolve) => {
-        renderImageFromUrl(img, saved[size] as string, () => {
+        renderImageFromUrl(img, url, () => {
           callback();
           resolve();
         }/* , false */);
       });
     });
 
-    return {cached: !needFadeIn, loadPromise};
+    return {cached, loadPromise: renderPromise};
   }
 
   // peerId === peerId || title

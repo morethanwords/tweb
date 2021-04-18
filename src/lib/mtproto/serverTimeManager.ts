@@ -9,6 +9,7 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
+import { MOUNT_CLASS_TO } from '../../config/debug';
 import { tsNow } from '../../helpers/date';
 import sessionStorage from '../sessionStorage';
 
@@ -37,4 +38,6 @@ export class ServerTimeManager {
   }
 }
 
-export default new ServerTimeManager();
+const serverTimeManager = new ServerTimeManager();
+MOUNT_CLASS_TO && (MOUNT_CLASS_TO.serverTimeManager = serverTimeManager);
+export default serverTimeManager;

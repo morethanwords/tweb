@@ -74,6 +74,7 @@ export type MTMessage = InvokeApiOptions & MTMessageOptions & {
 };
 
 const CONNECTION_TIMEOUT = 5000;
+let invokeAfterMsgConstructor: number;
 
 export default class MTPNetworker {
   private authKeyUint8: Uint8Array;
@@ -320,15 +321,21 @@ export default class MTPNetworker {
     }
   
     if(options.afterMessageId) {
-      const invokeAfterMsg = Schema.API.methods.find(m => m.method === 'invokeAfterMsg');
-      if(!invokeAfterMsg) throw new Error('no invokeAfterMsg!');
-
-      if(this.debug) {
-        this.log('Api call options.afterMessageId!');
+      if(invokeAfterMsgConstructor === undefined) {
+        const m = Schema.API.methods.find(m => m.method === 'invokeAfterMsg');
+        invokeAfterMsgConstructor = m ? +m.id >>> 0 : 0;
       }
-
-      serializer.storeInt(+invokeAfterMsg.id >>> 0, 'invokeAfterMsg');
-      serializer.storeLong(options.afterMessageId, 'msg_id');
+      
+      if(invokeAfterMsgConstructor) {
+        //if(this.debug) {
+          //this.log('Api call options.afterMessageId!');
+        //}
+    
+        serializer.storeInt(invokeAfterMsgConstructor, 'invokeAfterMsg');
+        serializer.storeLong(options.afterMessageId, 'msg_id');
+      } else {
+        this.log.error('no invokeAfterMsg!');
+      }
     }
   
     options.resultType = serializer.storeMethod(method, params);

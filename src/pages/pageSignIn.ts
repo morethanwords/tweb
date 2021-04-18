@@ -25,6 +25,8 @@ import { LangPackString } from "../layer";
 import lottieLoader from "../lib/lottieLoader";
 import { ripple } from "../components/ripple";
 import findUpTag from "../helpers/dom/findUpTag";
+import findUpClassName from "../helpers/dom/findUpClassName";
+import { randomLong } from "../helpers/random";
 
 type Country = _Country & {
   li?: HTMLLIElement[]
@@ -56,14 +58,14 @@ let onFirstMount = () => {
 
   const countryInputField = new InputField({
     label: 'Login.CountrySelectorLabel',
-    name: 'countryCode',
+    name: randomLong(),
     plainText: true
   });
 
   countryInputField.container.classList.add('input-select');
 
   const countryInput = countryInputField.input as HTMLInputElement;
-  countryInput.autocomplete = 'rrRandomRR';
+  countryInput.autocomplete = randomLong();
 
   const selectWrapper = document.createElement('div');
   selectWrapper.classList.add('select-wrapper', 'z-depth-3', 'hide');
@@ -77,38 +79,25 @@ let onFirstMount = () => {
 
   const scroll = new Scrollable(selectWrapper);
 
-  let initedSelect = false;
-
   let initSelect = () => {
     initSelect = null;
 
     countries.forEach((c) => {
-      initedSelect = true;
+      const emoji = c.emoji;
 
-      /* let unified = unifiedCountryCodeEmoji(c.code);
-      let emoji = unified.split('-').reduce((prev, curr) => prev + String.fromCodePoint(parseInt(curr, 16)), ''); */
-      //let emoji = countryCodeEmoji(c.code);
-      let emoji = c.emoji;
-
-      let liArr: Array<HTMLLIElement> = [];
+      const liArr: Array<HTMLLIElement> = [];
       c.phoneCode.split(' and ').forEach((phoneCode: string) => {
-        let li = document.createElement('li');
-        var spanEmoji = document.createElement('span');
-        /* spanEmoji.innerHTML = countryCodeEmoji(c.code); */
-        //spanEmoji.classList.add('emoji-outer', 'emoji-sizer');
-        //spanEmoji.innerHTML = `<span class="emoji-inner" style="background: url(${sheetUrl}${sheetNo}.png);background-position:${xPos}% ${yPos}%;background-size:${sizeX}% ${sizeY}%" data-codepoints="${unified}"></span>`;
-        
-        
+        const li = document.createElement('li');
+        const spanEmoji = document.createElement('span');
 
-        let kek = RichTextProcessor.wrapRichText(emoji);
-        //console.log(c.name, emoji, kek, spanEmoji.innerHTML);
+        const kek = RichTextProcessor.wrapRichText(emoji);
 
         li.appendChild(spanEmoji);
         spanEmoji.outerHTML = kek;
   
         li.append(c.name);
 
-        var span = document.createElement('span');
+        const span = document.createElement('span');
         span.classList.add('phone-code');
         span.innerText = '+' + phoneCode;
         li.appendChild(span);
@@ -120,22 +109,31 @@ let onFirstMount = () => {
       c.li = liArr;
     });
     
-    selectList.addEventListener('mousedown', function(e) {
+    selectList.addEventListener('mousedown', (e) => {
+      if(e.button !== 0) { // other buttons but left shall not pass
+        return;
+      }
+      
       let target = e.target as HTMLElement;
       if(target.tagName !== 'LI') target = findUpTag(target, 'LI');
       
-      let countryName = target.childNodes[1].textContent;//target.innerText.split('\n').shift();
-      let phoneCode = target.querySelector<HTMLElement>('.phone-code').innerText;
-
-      countryInput.value = countryName;
-      lastCountrySelected = countries.find(c => c.name === countryName);
-      
-      telEl.value = lastValue = phoneCode;
-      setTimeout(() => telEl.focus(), 0);
+      selectCountryByTarget(target);
       //console.log('clicked', e, countryName, phoneCode);
     });
 
     countryInputField.container.appendChild(selectWrapper);
+  };
+
+  const selectCountryByTarget = (target: HTMLElement) => {
+    const countryName = target.childNodes[1].textContent;//target.innerText.split('\n').shift();
+    const phoneCode = target.querySelector<HTMLElement>('.phone-code').innerText;
+
+    countryInput.value = countryName;
+    lastCountrySelected = countries.find(c => c.name === countryName);
+    
+    telEl.value = lastValue = phoneCode;
+    hidePicker();
+    setTimeout(() => telEl.focus(), 0);
   };
   
   initSelect();
@@ -152,6 +150,7 @@ let onFirstMount = () => {
     }
 
     clearTimeout(hideTimeout);
+    hideTimeout = undefined;
 
     selectWrapper.classList.remove('hide');
     void selectWrapper.offsetWidth; // reflow
@@ -171,9 +170,9 @@ let onFirstMount = () => {
 
   let mouseDownHandlerAttached = false;
   const onMouseDown = (e: MouseEvent) => {
-    /* if(findUpClassName(e.target, 'input-select')) {
+    if(findUpClassName(e.target, 'input-select')) {
       return;
-    } */
+    }
     if(e.target === countryInput) {
       return;
     }
@@ -184,9 +183,11 @@ let onFirstMount = () => {
   };
 
   const hidePicker = () => {
+    if(hideTimeout !== undefined) return;
     selectWrapper.classList.remove('active');
     hideTimeout = window.setTimeout(() => {
       selectWrapper.classList.add('hide');
+      hideTimeout = undefined;
     }, 200);
   };
   /* false && countryInput.addEventListener('blur', function(this: typeof countryInput, e) {
@@ -221,6 +222,8 @@ let onFirstMount = () => {
       countries.forEach((c) => {
         c.li.forEach(li => li.style.display = '');
       });
+    } else if(matches.length === 1 && e.key === 'Enter') {
+      selectCountryByTarget(matches[0].li[0]);
     }
   });
 

@@ -209,37 +209,44 @@ export default class StickersTab implements EmoticonsTab {
     //console.log('got stickerSet', stickerSet, li);
     
     if(stickerSet.set.thumbs?.length) {
-      const downloadOptions = appStickersManager.getStickerSetThumbDownloadOptions(stickerSet.set);
-      const promise = appDownloadManager.download(downloadOptions);
+      EmoticonsDropdown.lazyLoadQueue.push({
+        div: button,
+        load: () => {
+          const downloadOptions = appStickersManager.getStickerSetThumbDownloadOptions(stickerSet.set);
+          const promise = appDownloadManager.download(downloadOptions);
 
-      if(stickerSet.set.pFlags.animated) {
-        promise
-        .then(readBlobAsText)
-        //.then(JSON.parse)
-        .then(json => {
-          lottieLoader.loadAnimationWorker({
-            container: button,
-            loop: true,
-            autoplay: false,
-            animationData: json,
-            width: 32,
-            height: 32,
-            needUpscale: true
-          }, EMOTICONSSTICKERGROUP);
-        });
-      } else {
-        const image = new Image();
-        promise.then(blob => {
-          renderImageFromUrl(image, URL.createObjectURL(blob), () => {
-            button.append(image);
-          });
-        });
-      }
+          if(stickerSet.set.pFlags.animated) {
+            return promise
+            .then(readBlobAsText)
+            //.then(JSON.parse)
+            .then(json => {
+              lottieLoader.loadAnimationWorker({
+                container: button,
+                loop: true,
+                autoplay: false,
+                animationData: json,
+                width: 32,
+                height: 32,
+                needUpscale: true
+              }, EMOTICONSSTICKERGROUP);
+            });
+          } else {
+            const image = new Image();
+    
+            return promise.then(blob => {
+              renderImageFromUrl(image, URL.createObjectURL(blob), () => {
+                button.append(image);
+              });
+            });
+          }
+        }
+      });
     } else if(stickerSet.documents[0]._ !== 'documentEmpty') { // as thumb will be used first sticker
       wrapSticker({
         doc: stickerSet.documents[0],
         div: button as any, 
-        group: EMOTICONSSTICKERGROUP
+        group: EMOTICONSSTICKERGROUP,
+        lazyLoadQueue: EmoticonsDropdown.lazyLoadQueue
       }); // kostil
     }
   }

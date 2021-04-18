@@ -8,7 +8,7 @@ import { isTouchSupported } from "../../helpers/touchSupport";
 import appChatsManager from "../../lib/appManagers/appChatsManager";
 import appImManager from "../../lib/appManagers/appImManager";
 import rootScope from "../../lib/rootScope";
-import { blurActiveElement, whichChild } from "../../helpers/dom";
+import { attachClickEvent, blurActiveElement, whichChild } from "../../helpers/dom";
 import animationIntersector from "../animationIntersector";
 import { horizontalMenu } from "../horizontalMenu";
 import LazyLoadQueue, { LazyLoadQueueIntersector } from "../lazyLoadQueue";
@@ -24,6 +24,7 @@ import AppGifsTab from "../sidebarRight/tabs/gifs";
 import AppStickersTab from "../sidebarRight/tabs/stickers";
 import findUpClassName from "../../helpers/dom/findUpClassName";
 import findUpTag from "../../helpers/dom/findUpTag";
+import ListenerSetter from "../../helpers/listenerSetter";
 
 export const EMOTICONSSTICKERGROUP = 'emoticons-dropdown';
 
@@ -32,7 +33,9 @@ export interface EmoticonsTab {
   onCloseAfterTimeout?: () => void
 }
 
-const test = false;
+const KEEP_OPEN = false;
+const TOGGLE_TIMEOUT = 200;
+const ANIMATION_DURATION = 200;
 
 export class EmoticonsDropdown {
   public static lazyLoadQueue = new LazyLoadQueue();
@@ -72,36 +75,36 @@ export class EmoticonsDropdown {
     this.element = document.getElementById('emoji-dropdown') as HTMLDivElement;
   }
 
-  public attachButtonListener(button: HTMLElement) {
+  public attachButtonListener(button: HTMLElement, listenerSetter: ListenerSetter) {
     let firstTime = true;
     if(isTouchSupported) {
-      button.addEventListener('click', () => {
+      attachClickEvent(button, () => {
         if(firstTime) {
           firstTime = false;
           this.toggle(true);
         } else {
           this.toggle();
         }
-      });
+      }, {listenerSetter});
     } else {
-      button.onmouseover = (e) => {
+      listenerSetter.add(button, 'mouseover', (e) => {
         //console.log('onmouseover button');
+        if(firstTime) {
+          listenerSetter.add(button, 'mouseout', this.onMouseOut);
+          firstTime = false;
+        }
+
         clearTimeout(this.displayTimeout);
-        //this.displayTimeout = setTimeout(() => {
-          if(firstTime) {
-            button.onmouseout = this.onMouseOut;
-
-            firstTime = false;
-          }
-
+        this.displayTimeout = window.setTimeout(() => {
           this.toggle(true);
-        //}, 0/* 200 */);
-      };
+        }, TOGGLE_TIMEOUT);
+      });
     }
   }
 
   private onMouseOut = (e: MouseEvent) => {
-    if(test) return;
+    if(KEEP_OPEN) return;
+    clearTimeout(this.displayTimeout);
     if(!this.element.classList.contains('active')) return;
 
     const toElement = (e as any).toElement as Element;
@@ -109,10 +112,9 @@ export class EmoticonsDropdown {
       return;
     }
 
-    clearTimeout(this.displayTimeout);
     this.displayTimeout = window.setTimeout(() => {
       this.toggle(false);
-    }, 200);
+    }, TOGGLE_TIMEOUT);
   };
 
   private init() {
@@ -265,7 +267,7 @@ export class EmoticonsDropdown {
         this.container.classList.remove('disable-hover');
 
         this.events.onOpenAfter.forEach(cb => cb());
-      }, isTouchSupported ? 0 : 200);
+      }, isTouchSupported ? 0 : ANIMATION_DURATION);
 
       // ! can't use together with resizeObserver
       /* if(isTouchSupported) {
@@ -302,7 +304,7 @@ export class EmoticonsDropdown {
         this.container.classList.remove('disable-hover');
 
         this.events.onCloseAfter.forEach(cb => cb());
-      }, isTouchSupported ? 0 : 200);
+      }, isTouchSupported ? 0 : ANIMATION_DURATION);
 
       /* if(isTouchSupported) {
         const scrollHeight = this.container.scrollHeight;

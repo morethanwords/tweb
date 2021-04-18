@@ -206,6 +206,8 @@ export default class Chat extends EventListenerBase<{
     if(!samePeer) {
       rootScope.broadcast('peer_changing', this);
       this.peerId = peerId;
+    } else if(this.setPeerPromise) {
+      return;
     }
 
     //console.time('appImManager setPeer');

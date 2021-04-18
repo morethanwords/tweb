@@ -250,8 +250,8 @@ export class ScrollableX extends ScrollableBase {
 
     if(!isTouchSupported) {
       const scrollHorizontally = (e: any) => {
-        if(!e.deltaX) {
-          this.container!.scrollLeft += e.deltaY / 4;
+        if(!e.deltaX && this.container.scrollWidth > this.container.clientWidth) {
+          this.container.scrollLeft += e.deltaY / 4;
           cancelEvent(e);
         }
       };

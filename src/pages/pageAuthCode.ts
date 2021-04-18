@@ -17,6 +17,7 @@ import TrackingMonkey from '../components/monkeys/tracking';
 import CodeInputField from '../components/codeInputField';
 import { replaceContent } from '../helpers/dom';
 import { i18n, LangPackKey } from '../lib/langPack';
+import { randomLong } from '../helpers/random';
 
 let authCode: AuthSentCode.authSentCode = null;
 
@@ -29,7 +30,7 @@ let onFirstMount = (): Promise<any> => {
 
   const codeInputField = new CodeInputField({
     label: 'Code',
-    name: 'code',
+    name: randomLong(),
     length: CODELENGTH,
     onFill: (code) => {
       submitCode('' + code);

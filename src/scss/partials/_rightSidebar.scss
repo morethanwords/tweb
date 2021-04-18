@@ -173,6 +173,7 @@
       justify-content: center;
       font-size: 1rem;
       line-height: var(--line-height);
+      border-radius: 0;
     }
   
     .menu-horizontal-div i {
@@ -287,6 +288,10 @@
 
       > div:first-child {
         transform: translateY(0);
+
+        // * fix saving scroll on tab switching, when FROM tab has height < 100vh, and another is scrolled less than the FROM tab's height
+        // * adding 1 extra pixel for scroll
+        min-height: calc(100vh - 111px);
       }
     }
 

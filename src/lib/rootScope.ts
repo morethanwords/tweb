@@ -51,7 +51,7 @@ export type BroadcastEvents = {
   'history_delete': {peerId: number, msgs: {[mid: number]: true}},
   'history_forbidden': number,
   'history_reload': number,
-  'history_focus': number,
+  'history_focus': {peerId: number, mid?: number},
   //'history_request': void,
   
   'message_edit': {storage: MessagesStorage, peerId: number, mid: number},

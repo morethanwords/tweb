@@ -11,6 +11,7 @@
 
 .input-field {
   --height: 54px;
+  --border-radius: #{$border-radius-medium};
   position: relative;
 
   @include respond-to(handhelds) {
@@ -62,27 +63,39 @@
       transition: .2s transform, .2s padding, .1s opacity, font-weight 0s .1s;
     }
   }
+
+  &-border {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    border: 2px solid var(--primary-color);
+    opacity: 0;
+    border-radius: var(--border-radius);
+    pointer-events: none;
+
+    @include animation-level(2) {
+      transition: opacity .2s;
+    }
+  }
   
   &-input {
-    --padding: 1.0625rem;
+    --padding: 1rem;
     --padding-horizontal: 1rem;
     --border-width: 1px;
-    --border-width-top: 2px;
     border: var(--border-width) solid var(--input-search-border-color);
-    border-radius: $border-radius-medium;
+    border-radius: var(--border-radius);
     background-color: transparent;
     //padding: 0 1rem;
-    padding: calc(var(--padding) - var(--border-width-top)) calc(var(--padding-horizontal) - var(--border-width));
+    padding: calc(var(--padding) - var(--border-width));
     box-sizing: border-box;
     width: 100%;
     min-height: var(--height);
     transition: 0s border-color;
     position: relative;
     z-index: 1;
-    line-height: 1.3125;
-    //line-height: calc(54px - var(--border-width));
-    /* overflow: hidden;
-    white-space: nowrap; */
+    line-height: var(--line-height);
 
     @include respond-to(handhelds) {
       --padding: .9375rem;
@@ -116,8 +129,6 @@
     } */
     
     &:focus {
-      --border-width: 2px;
-      --border-width-top: 3px;
       border-color: var(--primary-color);
       //padding: 0 calc(1rem - 1px);
     }
@@ -133,6 +144,10 @@
       & ~ label {
         color: var(--danger-color) !important;
       }
+
+      & ~ .input-field-border {
+        border-color: var(--danger-color) !important;
+      }
     }
 
     &.valid {
@@ -140,6 +155,10 @@
       
       & ~ label {
         color: #26962F !important;
+      }
+
+      & ~ .input-field-border {
+        border-color: #26962F !important;
       }
     }
 
@@ -158,11 +177,15 @@
       font-weight: 500;
     }
 
-    // * valid for plain text, empty for contenteditable
+    &:focus ~ .input-field-border {
+      opacity: 1;
+    }
+
+    /* // * valid for plain text, empty for contenteditable
     &:valid ~ label, 
     &:not(:empty):focus ~ label {
       transition-delay: 0s, 0s, 0s, 0s;
-    }
+    } */
     
     &:focus ~ label, 
     &:valid ~ label, 
@@ -252,6 +275,7 @@ input:focus, button:focus {
   margin-left: .4375rem;
   margin-right: .4375rem;
   overflow: hidden;
+  --border-radius: 22px;
 
   @include respond-to(handhelds) {
     margin-left: 1rem;
@@ -265,7 +289,6 @@ input:focus, button:focus {
     min-height: var(--height) !important;
     max-height: var(--height) !important;
     //line-height: calc(var(--height) + 2px - var(--border-width) * 2);
-    border-radius: 22px;
     border-color: var(--input-search-border-color);
     line-height: var(--height);
     
@@ -281,7 +304,6 @@ input:focus, button:focus {
     }
 
     &:focus {
-      --border-width: 2px;
       background-color: transparent;
       border-color: var(--primary-color);
 

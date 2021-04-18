@@ -359,6 +359,10 @@
       //overflow: visible!important;
       opacity: .3;
 
+      @include hover() {
+        opacity: 1;
+      }
+
       &.active, .audio.is-unread:not(.is-out) & {
         opacity: 1;
       }

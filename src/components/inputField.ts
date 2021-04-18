@@ -159,6 +159,12 @@ class InputField {
       }
     }
 
+    if(label || placeholder) {
+      const border = document.createElement('div');
+      border.classList.add('input-field-border');
+      this.container.append(border);
+    }
+
     if(label) {
       this.label = document.createElement('label');
       this.setLabel();

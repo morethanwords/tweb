@@ -2953,7 +2953,11 @@ export class AppMessagesManager {
     }
   }
 
-  public canMessageBeEdited(message: any, kind: 'text' | 'poll') {
+  private canMessageBeEdited(message: any, kind: 'text' | 'poll') {
+    if(message.pFlags.is_outgoing) {
+      return false;
+    }
+
     const goodMedias = [
       'messageMediaPhoto',
       'messageMediaDocument',
@@ -2992,7 +2996,7 @@ export class AppMessagesManager {
       return true;
     }
 
-    if((message.date < tsNow(true) - (2 * 86400) && message.media?._ !== 'messageMediaPoll') || !message.pFlags.out) {
+    if((message.date < (tsNow(true) - (2 * 86400)) && message.media?._ !== 'messageMediaPoll') || !message.pFlags.out) {
       return false;
     }
 
@@ -3005,7 +3009,7 @@ export class AppMessagesManager {
       || message.fromId === rootScope.myId 
       || appChatsManager.getChat(message.peerId)._ === 'chat' 
       || appChatsManager.hasRights(message.peerId, 'delete_messages')
-    );
+    ) && !message.pFlags.is_outgoing;
   }
 
   public applyConversations(dialogsResult: MessagesPeerDialogs.messagesPeerDialogs) {
@@ -4919,60 +4923,31 @@ export class AppMessagesManager {
     peerTypeNotifySettings: PeerNotifySettings
   }> = {}) {
     const peerId = this.getMessagePeer(message);
-    let peerString: string;
     const notification: NotifyOptions = {};
-    var notificationMessage: string,
-      notificationPhoto: any;
+    const peerString = appPeersManager.getPeerString(peerId);
+    let notificationMessage: string;
 
-    const _ = (str: string) => str;
-
-    const localSettings = appNotificationsManager.getLocalSettings();
     if(options.peerTypeNotifySettings.show_previews) {
       if(message._ === 'message' && message.fwd_from && options.fwdCount) {
-        notificationMessage = 'Forwarded ' + options.fwdCount + ' messages';//fwdMessagesPluralize(options.fwd_count);
+        notificationMessage = I18n.format('Notifications.Forwarded', true, [options.fwdCount]);
       } else {
         notificationMessage = this.wrapMessageForReply(message, undefined, undefined, true);
       }
     } else {
-      notificationMessage = 'New notification';
+      notificationMessage = I18n.format('Notifications.New', true);
     }
 
-    if(peerId > 0) {
-      const fromUser = appUsersManager.getUser(message.fromId);
-      const fromPhoto = appUsersManager.getUserPhoto(message.fromId);
-
-      notification.title = (fromUser.first_name || '') +
-        (fromUser.first_name && fromUser.last_name ? ' ' : '') +
-        (fromUser.last_name || '');
-      if(!notification.title) {
-        notification.title = fromUser.phone || _('conversation_unknown_user_raw');
-      }
-
-      notificationPhoto = fromPhoto;
-
-      peerString = appUsersManager.getUserString(peerId);
-    } else {
-      notification.title = appChatsManager.getChat(-peerId).title || _('conversation_unknown_chat_raw');
-
-      if(message.fromId) {
-        var fromUser = appUsersManager.getUser(message.fromId);
-        notification.title = (fromUser.first_name || fromUser.last_name || _('conversation_unknown_user_raw')) +
+    notification.title = appPeersManager.getPeerTitle(peerId, true);
+    if(peerId < 0 && message.fromId !== message.peerId) {
+      notification.title = appPeersManager.getPeerTitle(message.fromId, true) +
         ' @ ' +
         notification.title;
-      }
-
-      notificationPhoto = appChatsManager.getChatPhoto(-peerId);
-
-      peerString = appChatsManager.getChatString(-peerId);
     }
 
     notification.title = RichTextProcessor.wrapPlainText(notification.title);
 
     notification.onclick = () => {
-      /* rootScope.broadcast('history_focus', {
-        peerString: peerString,
-        messageID: message.flags & 16 ? message.mid : 0
-      }); */
+      rootScope.broadcast('history_focus', {peerId, mid: message.mid});
     };
 
     notification.message = notificationMessage;
@@ -4980,16 +4955,17 @@ export class AppMessagesManager {
     notification.tag = peerString;
     notification.silent = true;//message.pFlags.silent || false;
 
-    /* if(notificationPhoto.location && !notificationPhoto.location.empty) {
-      apiManager.downloadSmallFile(notificationPhoto.location, notificationPhoto.size).then(function (blob) {
-        if (message.pFlags.unread) {
-          notification.image = blob
-          NotificationsManager.notify(notification)
+    const peerPhoto = appPeersManager.getPeerPhoto(peerId);
+    if(peerPhoto) {
+      appProfileManager.loadAvatar(peerId, peerPhoto, 'photo_small').loadPromise.then(url => {
+        if(message.pFlags.unread) {
+          notification.image = url;
+          appNotificationsManager.notify(notification);
         }
-      })
-    } else { */
+      });
+    } else {
       appNotificationsManager.notify(notification);
-    //}
+    }
   }
 
   public getScheduledMessagesStorage(peerId: number) {
