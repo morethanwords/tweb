@@ -217,9 +217,10 @@ function wrapVoiceMessage(audioEl: AudioElement) {
       e.preventDefault();
       if(!audio.paused) {
         audio.pause();
-        scrub(e);
-        mousedown = true;
       }
+      
+      scrub(e);
+      mousedown = true;
     });
     progress.addEventListener('mouseup', (e) => {
       if (mousemove && mousedown) {
@@ -437,7 +438,7 @@ export default class AudioElement extends HTMLElement {
 
       const getDownloadPromise = () => appDocsManager.downloadDoc(doc);
 
-      if(isVoice) {
+      if(isRealVoice) {
         if(!preloader) {
           preloader = new ProgressivePreloader({
             cancelable: true

@@ -46,10 +46,10 @@ import Scrollable from "../../scrollable";
 import { isTouchSupported } from "../../../helpers/touchSupport";
 
 let setText = (text: string, row: Row) => {
-  fastRaf(() => {
+  //fastRaf(() => {
     row.title.innerHTML = text;
     row.container.style.display = '';
-  });
+  //});
 };
 
 type ListLoaderResult<T> = {count: number, items: any[]};

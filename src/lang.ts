@@ -91,6 +91,15 @@ const lang = {
   "Profile": "Profile",
   "Saved": "Saved",
   "ReportBug": "Report Bug",
+  "Notifications.Count": {
+    "one_value": "%d notification",
+    "other_value": "%d notifications",
+  },
+  "Notifications.Forwarded": {
+    "one_value": "Forwarded %d message",
+    "other_value": "Forwarded %d messages"
+  },
+  "Notifications.New": "New notification",
 
   // * android
   "ActionCreateChannel": "Channel created",

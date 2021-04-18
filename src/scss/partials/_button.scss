@@ -112,7 +112,7 @@
   &.active {
     visibility: visible;
     opacity: 1;
-    transform: scale(1);
+    transform: scale3d(1, 1, 1); // * scale3d (NOT scale) will fix jumping text
   }
 
   &:not(.active) {
@@ -178,7 +178,7 @@
     @include hover-background-effect();
 
     &.danger {
-      @include hover-background-effect(red);
+      @include hover-background-effect(danger);
     }
 
     &:before {

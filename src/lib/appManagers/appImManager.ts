@@ -169,8 +169,9 @@ export class AppImManager {
       }
     });
 
-    rootScope.on('history_focus', (peerId) => {
-      this.setInnerPeer(peerId);
+    rootScope.on('history_focus', (e) => {
+      const {peerId, mid} = e;
+      this.setInnerPeer(peerId, mid);
     });
 
     rootScope.on('peer_changing', (chat) => {

@@ -12,7 +12,7 @@ import { fastRaf } from "../helpers/schedulers";
 import { FocusDirection } from "../helpers/fastSmoothScroll";
 import findUpAsChild from "../helpers/dom/findUpAsChild";
 
-export function horizontalMenu(tabs: HTMLElement, content: HTMLElement, onClick?: (id: number, tabContent: HTMLDivElement) => void, onTransitionEnd?: () => void, transitionTime = 250, scrollableX?: ScrollableX) {
+export function horizontalMenu(tabs: HTMLElement, content: HTMLElement, onClick?: (id: number, tabContent: HTMLDivElement, animate: boolean) => void | boolean, onTransitionEnd?: () => void, transitionTime = 250, scrollableX?: ScrollableX) {
   const selectTab = TransitionSlider(content, tabs || content.dataset.animation === 'tabs' ? 'tabs' : 'navigation', transitionTime, onTransitionEnd);
 
   if(tabs) {
@@ -29,7 +29,12 @@ export function horizontalMenu(tabs: HTMLElement, content: HTMLElement, onClick?
     const selectTarget = (target: HTMLElement, id: number, animate = true) => {
       const tabContent = content.children[id] as HTMLDivElement;
 
-      if(onClick) onClick(id, tabContent);
+      if(onClick) {
+        const canChange = onClick(id, tabContent, animate);
+        if(canChange !== undefined && !canChange) {
+          return;
+        }
+      }
 
       if(scrollableX) {
         scrollableX.scrollIntoViewNew(target.parentElement.children[id] as HTMLElement, 'center', undefined, undefined, animate ? undefined : FocusDirection.Static, transitionTime, 'x');

@@ -477,7 +477,7 @@ export class AppChatsManager {
       apiUpdatesManager.processUpdateMessage(updates);
 
       const channelId = updates.chats[0].id;
-      rootScope.broadcast('history_focus', -channelId);
+      rootScope.broadcast('history_focus', {peerId: -channelId});
 
       return channelId;
     });
@@ -503,7 +503,7 @@ export class AppChatsManager {
       apiUpdatesManager.processUpdateMessage(updates);
 
       const chatId = (updates as any as Updates.updates).chats[0].id;
-      rootScope.broadcast('history_focus', -chatId);
+      rootScope.broadcast('history_focus', {peerId: -chatId});
 
       return chatId;
     });

@@ -43,7 +43,7 @@ export default class InputSearch {
     this.input.addEventListener('input', this.onInput);
     this.clearBtn.addEventListener('click', this.onClearClick);
 
-    this.container.append(this.input, searchIcon, this.clearBtn);
+    this.container.append(searchIcon, this.clearBtn);
   }
   
   onInput = () => {

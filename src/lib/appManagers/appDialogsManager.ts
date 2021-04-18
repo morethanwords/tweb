@@ -233,6 +233,7 @@ export class AppDialogsManager {
     };
 
     this.setListClickListener(archivedChatList, null, true);
+    //this.setListClickListener(archivedChatList, null, true); // * to test peer changing
 
     this.chatsPreloader = putPreloader(null, true);
 

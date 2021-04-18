@@ -70,10 +70,10 @@ export default class AppSearchSuper {
   public tabs: {[t in SearchSuperType]: HTMLDivElement} = {} as any;
 
   public mediaTab: SearchSuperMediaTab;
-  public tabSelected: HTMLElement;
 
   public container: HTMLElement;
   public nav: HTMLElement;
+  private navScrollableContainer: HTMLDivElement;
   private tabsContainer: HTMLElement;
   private tabsMenu: HTMLElement;
   private prevTabId = -1;
@@ -112,6 +112,8 @@ export default class AppSearchSuper {
 
   private membersList: SortedUserList;
 
+  private skipScroll: boolean;
+
   // * arguments
   public mediaTabs: SearchSuperMediaTab[];
   public scrollable: Scrollable;
@@ -128,7 +130,7 @@ export default class AppSearchSuper {
     this.container = document.createElement('div');
     this.container.classList.add('search-super');
 
-    const navScrollableContainer = document.createElement('div');
+    const navScrollableContainer = this.navScrollableContainer = document.createElement('div');
     navScrollableContainer.classList.add('search-super-tabs-scrollable', 'menu-horizontal-scrollable', 'sticky');
 
     const navScrollable = new ScrollableX(navScrollableContainer);
@@ -185,48 +187,67 @@ export default class AppSearchSuper {
     this.searchGroupMedia = new SearchGroup('', 'messages', true);
 
     this.scrollable.onScrolledBottom = () => {
-      if(this.tabSelected && this.tabSelected.childElementCount/* && false */) {
+      if(this.mediaTab.contentTab && this.mediaTab.contentTab.childElementCount/* && false */) {
         //this.log('onScrolledBottom will load media');
         this.load(true);
       }
     };
     //this.scroll.attachSentinels(undefined, 400);
 
-    this.selectTab = horizontalMenu(this.tabsMenu, this.tabsContainer, (id, tabContent) => {
-      if(this.prevTabId === id) return;
-
-      if(this.prevTabId !== -1) {
-        this.onTransitionStart();
+    this.selectTab = horizontalMenu(this.tabsMenu, this.tabsContainer, (id, tabContent, animate) => {
+      if(this.prevTabId === id && !this.skipScroll) {
+        this.scrollable.scrollIntoViewNew(this.container, 'start');
+        return;
       }
       
-      this.mediaTab.scroll = {scrollTop: this.scrollable.scrollTop, scrollHeight: this.scrollable.scrollHeight};
-
       const newMediaTab = this.mediaTabs[id];
-      this.tabSelected = tabContent.firstElementChild as HTMLDivElement;
-
-      if(newMediaTab.scroll === undefined) {
-        const rect = this.container.getBoundingClientRect();
-        const rect2 = this.container.parentElement.getBoundingClientRect();
-        const diff = rect.y - rect2.y;
-
-        if(this.scrollable.scrollTop > diff) {
-          newMediaTab.scroll = {scrollTop: diff, scrollHeight: 0};
-        }
+      if(this.onChangeTab) {
+        this.onChangeTab(newMediaTab);
       }
-
-      if(newMediaTab.scroll) {
-        const diff = this.mediaTab.scroll.scrollTop - newMediaTab.scroll.scrollTop;
-        //console.log('what you gonna do', this.goingHard, diff);
-
-        if(diff/*  && diff < 0 */) {
-          this.tabSelected.style.transform = `translateY(${diff}px)`;
-        }
-      }
-
+      
+      const fromMediaTab = this.mediaTab;
       this.mediaTab = newMediaTab;
 
-      if(this.onChangeTab) {
-        this.onChangeTab(this.mediaTab);
+      if(this.prevTabId !== -1 && animate) {
+        this.onTransitionStart();
+      }
+
+      if(this.skipScroll) {
+        this.skipScroll = false;
+      } else {
+        const offsetTop = this.container.offsetTop;
+        let scrollTop = this.scrollable.scrollTop;
+        if(scrollTop < offsetTop) {
+          this.scrollable.scrollIntoViewNew(this.container, 'start');
+          scrollTop = offsetTop;
+        }
+        
+        fromMediaTab.scroll = {scrollTop: scrollTop, scrollHeight: this.scrollable.scrollHeight};
+  
+        if(newMediaTab.scroll === undefined) {
+          const rect = this.container.getBoundingClientRect();
+          const rect2 = this.container.parentElement.getBoundingClientRect();
+          const diff = rect.y - rect2.y;
+  
+          if(scrollTop > diff) {
+            newMediaTab.scroll = {scrollTop: diff, scrollHeight: 0};
+          }
+        }
+  
+        if(newMediaTab.scroll) {
+          const diff = fromMediaTab.scroll.scrollTop - newMediaTab.scroll.scrollTop;
+          //console.log('what you gonna do', this.goingHard, diff);
+  
+          //this.scrollable.scrollTop = scrollTop;
+          if(diff/*  && diff < 0 */) {
+            /* if(diff > -(fromMediaTab.contentTab.scrollHeight + this.nav.scrollHeight)) {
+              fromMediaTab.contentTab.style.transform = `translateY(${diff}px)`;
+              this.scrollable.scrollTop = scrollTop - diff;
+            } else { */
+              newMediaTab.contentTab.style.transform = `translateY(${diff}px)`;
+            //}
+          }
+        }
       }
       
       /* if(this.prevTabId !== -1 && nav.offsetTop) {
@@ -236,7 +257,7 @@ export default class AppSearchSuper {
       /* this.log('setVirtualContainer', id, this.sharedMediaSelected, this.sharedMediaSelected.childElementCount);
       this.scroll.setVirtualContainer(this.sharedMediaSelected); */
 
-      if(this.prevTabId !== -1 && !this.tabSelected.childElementCount) { // quick brown fix
+      if(this.prevTabId !== -1 && !newMediaTab.contentTab.childElementCount) { // quick brown fix
         //this.contentContainer.classList.remove('loaded');
         this.load(true);
       }
@@ -247,7 +268,7 @@ export default class AppSearchSuper {
       
       //console.log('what y', this.tabSelected.style.transform);
       if(this.mediaTab.scroll !== undefined) {
-        this.tabSelected.style.transform = '';
+        this.mediaTab.contentTab.style.transform = '';
         this.scrollable.scrollTop = this.mediaTab.scroll.scrollTop;
       }
 
@@ -1097,6 +1118,7 @@ export default class AppSearchSuper {
         }
 
         let firstMediaTab: SearchSuperMediaTab;
+        let count = 0;
         mediaTabs.forEach(mediaTab => {
           const counter = counters.find(c => c.filter._ === mediaTab.inputFilter);
 
@@ -1107,6 +1129,8 @@ export default class AppSearchSuper {
           if(counter.count && firstMediaTab === undefined) {
             firstMediaTab = mediaTab;
           }
+
+          if(counter.count) ++count;
         });
 
         const membersTab = this.mediaTabsMap.get('members');
@@ -1120,8 +1144,11 @@ export default class AppSearchSuper {
         this.container.classList.toggle('hide', !firstMediaTab);
         this.container.parentElement.classList.toggle('search-empty', !firstMediaTab);
         if(firstMediaTab) {
+          this.skipScroll = true;
           this.selectTab(this.mediaTabs.indexOf(firstMediaTab), false);
           firstMediaTab.menuTab.classList.add('active');
+
+          this.navScrollableContainer.classList.toggle('hide', count <= 1);
         }
       }
 

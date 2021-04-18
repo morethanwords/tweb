@@ -1041,12 +1041,6 @@ $chat-helper-size: 39px;
 			}
 		//}
 	}
-	
-	.preloader-container {
-		.preloader-circular {
-			background-color: rgba(0, 0, 0, .3);
-		}
-	}
 
 	.search-group.search-group-messages {
 		padding: 0.25rem 0 .5rem;
@@ -1139,7 +1133,7 @@ $chat-helper-size: 39px;
 	position: absolute;
 	background-color: var(--surface-color);
 	border-radius: 50%;
-	color: $placeholder-color;
+	color: var(--secondary-text-color);
 	font-size: 1.5rem;
 	display: flex;
 	align-items: center;
@@ -1171,6 +1165,10 @@ $chat-helper-size: 39px;
 		position: absolute;
     top: -.25rem;
 		right: -.25rem;
+
+		&.badge-primary {
+			background-color: var(--chatlist-status-color);
+		}
 		
 		@include respond-to(handhelds) {
 			top: -.75rem;

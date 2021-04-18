@@ -45,11 +45,16 @@
 
     .btn-icon {
       position: absolute;
-      right: .5rem;
-      top: .5rem;
+      right: .4375rem;
+      top: .4375rem;
       z-index: 1;
       opacity: 1;
       transition: opacity .2s ease;
+
+      @include respond-to(handhelds) {
+        right: .3125rem;
+        top: .3125rem;
+      }
     }
     /* &:last-child:not(:nth-child(10)) {
       .btn-icon {
@@ -65,7 +70,7 @@
   }
 
   .poll-create-questions {
-    padding: 0px 1.25rem 2.03125rem;
+    padding: 0px 1.25rem 1.5rem;
 
     .input-field-input {
       padding-right: 3.25rem;

@@ -42,9 +42,9 @@ Source maps are included in production build for your convenience.
 Should be applied like that: http://localhost:8080/?test=1
 
 
-### Troubleshooting
+### Troubleshooting & Suggesting
 
-If you find an issue with this app, let Telegram know using the [Suggestions Platform](https://bugs.telegram.org/c/4002).
+If you find an issue with this app or wish something to be added, let Telegram know using the [Suggestions Platform](https://bugs.telegram.org/c/4002).
 
 ### Licensing
 

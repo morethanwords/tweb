@@ -168,6 +168,7 @@ export default class ChatBubbles {
         const message = this.chat.getMessage(mid);
         
         if(+bubble.dataset.timestamp >= (message.date + serverTimeManager.serverTimeOffset - 1)) {
+          this.bubbleGroups.addBubble(bubble, message, false);
           return;
         }
 
@@ -1025,6 +1026,7 @@ export default class ChatBubbles {
           
       // if scroll down after search
       if(history.indexOf(historyStorage.maxId) !== -1) {
+        this.scrollable.loadedAll.bottom = true;
         return;
       }
 
@@ -1414,6 +1416,10 @@ export default class ChatBubbles {
 
     const samePeer = this.peerId === peerId;
 
+    /* if(samePeer && this.chat.setPeerPromise) {
+      return {cached: true, promise: this.chat.setPeerPromise};
+    } */
+
     const historyStorage = this.appMessagesManager.getHistoryStorage(peerId, this.chat.threadId);
     let topMessage = this.chat.type === 'pinned' ? this.appMessagesManager.pinnedMessages[peerId].maxId : historyStorage.maxId ?? 0;
     const isTarget = lastMsgId !== undefined;
@@ -1497,9 +1503,15 @@ export default class ChatBubbles {
       this.isFirstLoad = true;
     }
 
+    const oldChatInner = this.chatInner;
     this.cleanup();
     this.chatInner = document.createElement('div');
-    this.chatInner.classList.add('bubbles-inner');
+    if(samePeer) {
+      this.chatInner.className = oldChatInner.className;
+      this.chatInner.classList.remove('disable-hover', 'is-scrolling');
+    } else {
+      this.chatInner.classList.add('bubbles-inner');
+    }
 
     this.lazyLoadQueue.lock();
 
@@ -1589,6 +1601,8 @@ export default class ChatBubbles {
       } else {
         this.scrollable.scrollTop = 99999;
       }
+
+      this.onScroll();
 
       this.chat.dispatchEvent('setPeer', lastMsgId, !isJump);
 
@@ -1718,7 +1732,7 @@ export default class ChatBubbles {
 
   public setBubblePosition(bubble: HTMLElement, message: any, reverse: boolean) {
     const dateMessage = this.getDateContainerByMessage(message, reverse);
-    if(this.chat.type === 'scheduled' || this.chat.type === 'pinned') {
+    if(this.chat.type === 'scheduled' || this.chat.type === 'pinned' || true) {
       const offset = this.stickyIntersector ? 2 : 1;
       let children = Array.from(dateMessage.container.children).slice(offset) as HTMLElement[];
       let i = 0, foundMidOnSameTimestamp = 0;

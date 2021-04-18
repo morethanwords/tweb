@@ -157,9 +157,6 @@ export default class ChatInput {
     this.chatInput.append(this.inputContainer);
 
     this.goDownBtn = Button('bubbles-go-down btn-corner btn-circle z-depth-1 hide', {icon: 'arrow_down'});
-    this.goDownUnreadBadge = document.createElement('span');
-    this.goDownUnreadBadge.classList.add('badge', 'badge-24', 'badge-primary');
-    this.goDownBtn.append(this.goDownUnreadBadge);
     this.inputContainer.append(this.goDownBtn);
 
     attachClickEvent(this.goDownBtn, (e) => {
@@ -257,6 +254,10 @@ export default class ChatInput {
     this.inputMessageContainer.classList.add('input-message-container');
 
     if(this.chat.type === 'chat') {
+      this.goDownUnreadBadge = document.createElement('span');
+      this.goDownUnreadBadge.classList.add('badge', 'badge-24', 'badge-primary');
+      this.goDownBtn.append(this.goDownUnreadBadge);
+
       this.btnScheduled = ButtonIcon('scheduled', {noRipple: true});
       this.btnScheduled.classList.add('btn-scheduled', 'hide');
 
@@ -376,7 +377,7 @@ export default class ChatInput {
 
     this.inputContainer.append(this.btnCancelRecord, this.btnSendContainer);
 
-    emoticonsDropdown.attachButtonListener(this.btnToggleEmoticons);
+    emoticonsDropdown.attachButtonListener(this.btnToggleEmoticons, this.listenerSetter);
     emoticonsDropdown.events.onOpen.push(this.onEmoticonsOpen);
     emoticonsDropdown.events.onClose.push(this.onEmoticonsClose);
 

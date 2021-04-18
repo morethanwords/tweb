@@ -17,6 +17,7 @@ import { copy, deepEqual } from "../../helpers/object";
 import { convertInputKeyToKey } from "../../helpers/string";
 import { isMobile } from "../../helpers/userAgent";
 import { InputNotifyPeer, InputPeerNotifySettings, NotifyPeer, PeerNotifySettings, Update } from "../../layer";
+import I18n from "../langPack";
 import apiManager from "../mtproto/mtprotoworker";
 import rootScope from "../rootScope";
 import sessionStorage from "../sessionStorage";
@@ -55,10 +56,9 @@ export class AppNotificationsManager {
     notifyChats: null as ImSadAboutIt,
     notifyBroadcasts: null as ImSadAboutIt
   };
-  private exceptions: {[peerId: string]: PeerNotifySettings} = {};
+  //private exceptions: {[peerId: string]: PeerNotifySettings} = {};
   private notifyContactsSignUp: Promise<boolean>;
   private faviconEl: HTMLLinkElement = document.head.querySelector('link[rel="icon"]');
-  private langNotificationsPluralize = 'notifications';//_.pluralize('page_title_pluralize_notifications');
 
   private titleBackup = document.title;
   private titleChanged = false;
@@ -221,7 +221,7 @@ export class AppNotificationsManager {
           resetTitle();
         } else {
           this.titleChanged = true;
-          document.title = this.notificationsCount + ' ' + this.langNotificationsPluralize;
+          document.title = I18n.format('Notifications.Count', true, [this.notificationsCount]);
           //this.setFavicon('assets/img/favicon_unread.ico');
 
           // fetch('assets/img/favicon.ico')
@@ -499,8 +499,8 @@ export class AppNotificationsManager {
         data.image = FileManager.getUrl(data.image, 'image/jpeg')
       }
     }
-    else if (!data.image) */ {
-      data.image = 'assets/img/logo.svg';
+    else */ if(!data.image) {
+      data.image = 'assets/img/logo_filled_rounded.png';
     }
     // console.log('notify image', data.image)
 
