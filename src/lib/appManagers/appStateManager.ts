@@ -137,6 +137,7 @@ export const STATE_INIT: State = {
       background: {
         type: 'color',
         blur: false,
+        color: '#0f0f0f',
         highlightningColor: 'hsla(0, 0%, 3.82353%, 0.4)'
       }
     }],
@@ -213,18 +214,18 @@ export class AppStateManager extends EventListenerBase<{
           state.chats = chats;
         }
 
-        validateInitObject(STATE_INIT, state);
-
         if(!state.settings.hasOwnProperty('themes') && state.settings.background) {
-          const theme = state.settings.themes.find(t => t.name === STATE_INIT.settings.theme);
+          const theme = STATE_INIT.settings.themes.find(t => t.name === STATE_INIT.settings.theme);
           if(theme) {
-            theme.background = state.settings.background;
+            theme.background = copy(state.settings.background);
           }
         }
 
         if(!state.settings.hasOwnProperty('theme') && state.settings.hasOwnProperty('nightTheme')) {
           state.settings.theme = state.settings.nightTheme ? 'night' : 'day';
         }
+
+        validateInitObject(STATE_INIT, state);
 
         this.state = state;
         this.state.version = STATE_VERSION;

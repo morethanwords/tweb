@@ -86,6 +86,12 @@ export default class Chat extends EventListenerBase<{
     const item = document.createElement('div');
     item.classList.add('chat-background-item');
 
+    const theme = rootScope.settings.themes.find(t => t.name === rootScope.settings.theme);
+    if(theme.background.type === 'color') {
+      item.style.backgroundColor = theme.background.color;
+      item.style.backgroundImage = 'none';
+    }
+
     return new Promise<void>((resolve) => {
       const cb = () => {
         const prev = this.backgroundEl.children[this.backgroundEl.childElementCount - 1] as HTMLElement;

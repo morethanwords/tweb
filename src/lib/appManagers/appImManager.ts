@@ -222,20 +222,23 @@ export class AppImManager {
 
   public setCurrentBackground(broadcastEvent = false) {
     const theme = rootScope.settings.themes.find(t => t.name === rootScope.settings.theme);
-    const defaultTheme = AppStateManager.STATE_INIT.settings.themes.find(t => t.name === theme.name);
 
-    const isDefaultBackground = theme.background.blur === defaultTheme.background.blur && 
-      theme.background.slug === defaultTheme.background.slug;
-    if(!isDefaultBackground) {
-      return this.getBackground(theme.background.slug).then((url) => {
-        return this.setBackground(url, broadcastEvent);
-      }, () => { // * if NO_ENTRY_FOUND
-        theme.background = copy(defaultTheme.background); // * reset background
-        return this.setBackground('', true);
-      });
-    } else {
-      return this.setBackground('', broadcastEvent);
+    if(theme.background.slug) {
+      const defaultTheme = AppStateManager.STATE_INIT.settings.themes.find(t => t.name === theme.name);
+      const isDefaultBackground = theme.background.blur === defaultTheme.background.blur && 
+        theme.background.slug === defaultTheme.background.slug;
+
+      if(!isDefaultBackground) {
+        return this.getBackground(theme.background.slug).then((url) => {
+          return this.setBackground(url, broadcastEvent);
+        }, () => { // * if NO_ENTRY_FOUND
+          theme.background = copy(defaultTheme.background); // * reset background
+          return this.setBackground('', true);
+        });
+      }
     }
+    
+    return this.setBackground('', broadcastEvent);
   }
 
   private getBackground(slug: string) {

@@ -199,7 +199,8 @@ html.night {
   --message-checkbox-border-color: #fff;
   --message-secondary-color: var(--secondary-color);
 
-  @include splitColor(message-out-background-color, #ae582d, true, true);
+  //@include splitColor(message-out-background-color, #ae582d, true, true);
+  @include splitColor(message-out-background-color, #878afd, true, true);
   --message-out-link-color: #fff;
   --message-out-primary-color: #fff;
   --message-out-audio-play-button-color: var(--message-out-background-color);
@@ -1161,4 +1162,12 @@ middle-ellipsis-element {
   position: absolute;
   top: 0;
   z-index: -1;
+}
+
+.verified-check {
+  fill: #fff;
+}
+
+.verified-background {
+  fill: #33a8e5;
 }
