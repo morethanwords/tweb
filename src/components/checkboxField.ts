@@ -16,6 +16,7 @@ export type CheckboxFieldOptions = {
   round?: boolean, 
   toggle?: boolean,
   stateKey?: string,
+  stateValues?: any[],
   disabled?: boolean,
   checked?: boolean,
   restriction?: boolean,
@@ -55,10 +56,25 @@ export default class CheckboxField {
 
     if(options.stateKey) {
       appStateManager.getState().then(state => {
-        this.checked = getDeepProperty(state, options.stateKey);
+        const stateValue = getDeepProperty(state, options.stateKey);
+        let checked: boolean;
+        if(options.stateValues) {
+          checked = options.stateValues.indexOf(stateValue) === 1;
+        } else {
+          checked = stateValue;
+        }
+
+        this.setValueSilently(checked);
 
         input.addEventListener('change', () => {
-          appStateManager.setByKey(options.stateKey, input.checked);
+          let value: any;
+          if(options.stateValues) {
+            value = options.stateValues[input.checked ? 1 : 0];
+          } else {
+            value = input.checked;
+          }
+
+          appStateManager.setByKey(options.stateKey, value);
         });
       });
     }

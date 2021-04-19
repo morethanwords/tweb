@@ -13,7 +13,7 @@ import { MessageEntity } from "../layer";
 import RichTextProcessor from "../lib/richtextprocessor";
 import ListenerSetter from "./listenerSetter";
 import { isTouchSupported } from "./touchSupport";
-import { isApple, isMobileSafari } from "./userAgent";
+import { isApple, isMobile, isMobileSafari } from "./userAgent";
 import rootScope from "../lib/rootScope";
 import { MOUNT_CLASS_TO } from "../config/debug";
 import { doubleRaf } from "./schedulers";
@@ -598,7 +598,7 @@ export const handleScrollSideEvent = (elem: HTMLElement, side: 'top' | 'bottom',
 } */
 
 export function isSendShortcutPressed(e: KeyboardEvent) {
-  if(e.key === 'Enter' && !isTouchSupported) {
+  if(e.key === 'Enter' && !isMobile) {
     /* if(e.ctrlKey || e.metaKey) {
       this.messageInput.innerHTML += '<br>';
       placeCaretAtEnd(this.message)

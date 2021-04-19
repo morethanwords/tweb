@@ -558,9 +558,9 @@ $chat-helper-size: 39px;
 
 		html.night & {
 			background-color: var(--border-color);
-			.chat-background-item {
+			/* .chat-background-item {
 				display: none;
-			}
+			} */
 		}
 
 		&.no-transition:before {
@@ -781,7 +781,7 @@ $chat-helper-size: 39px;
 
 	@include respond-to(handhelds) {
 		--padding-vertical: .5px;
-		--padding-horizontal: .5rem;
+		--padding-horizontal: #{$chat-padding-handhelds};
 	}
 
 	@media only screen and (max-width: 420px) { 
@@ -790,7 +790,7 @@ $chat-helper-size: 39px;
 	
 	@include respond-to(esg-bottom) {
 		--padding-vertical: .5px;
-		--padding-horizontal: .5rem;
+		--padding-horizontal: #{$chat-padding-handhelds};
 	}
 	
 	.bubble-tail {
@@ -1166,7 +1166,7 @@ $chat-helper-size: 39px;
     top: -.25rem;
 		right: -.25rem;
 
-		&.badge-primary {
+		&.badge-primary:not(.badge-gray) {
 			background-color: var(--chatlist-status-color);
 		}
 		

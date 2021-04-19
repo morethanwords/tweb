@@ -45,8 +45,8 @@ import appNotificationsManager from './appNotificationsManager';
 import AppPrivateSearchTab from '../../components/sidebarRight/tabs/search';
 import { i18n } from '../langPack';
 import { SendMessageAction } from '../../layer';
-import { highlightningColor, hslaStringToRgbString } from '../../helpers/color';
-import { getObjectKeysAndSort } from '../../helpers/object';
+import { hslaStringToRgbString } from '../../helpers/color';
+import { copy, getObjectKeysAndSort } from '../../helpers/object';
 import { getFilesFromEvent } from '../../helpers/files';
 
 //console.log('appImManager included33!');
@@ -80,6 +80,7 @@ export class AppImManager {
   
   public markupTooltip: MarkupTooltip;
   private themeColorElem: Element;
+  private backgroundPromises: {[slug: string]: Promise<string>} = {};
 
   get myId() {
     return rootScope.myId;
@@ -148,18 +149,7 @@ export class AppImManager {
       animationIntersector.checkAnimations(false);
     });
 
-    const isDefaultBackground = rootScope.settings.background.blur === AppStateManager.STATE_INIT.settings.background.blur && 
-      rootScope.settings.background.slug === AppStateManager.STATE_INIT.settings.background.slug;
-    if(!isDefaultBackground) {
-      appDownloadManager.cacheStorage.getFile('backgrounds/' + rootScope.settings.background.slug).then(blob => {
-        this.setBackground(URL.createObjectURL(blob), false);
-      }, () => { // * if NO_ENTRY_FOUND
-        this.setBackground('');
-        appStateManager.setByKey('settings.background', AppStateManager.STATE_INIT.settings.background); // * reset background
-      });
-    } else {
-      this.setBackground('');
-    }
+    this.applyCurrentTheme();
 
     // * fix simultaneous opened both sidebars, can happen when floating sidebar is opened with left sidebar
     mediaSizes.addEventListener('changeScreen', (from, to) => {
@@ -230,6 +220,31 @@ export class AppImManager {
     });
   }
 
+  public setCurrentBackground(broadcastEvent = false) {
+    const theme = rootScope.settings.themes.find(t => t.name === rootScope.settings.theme);
+    const defaultTheme = AppStateManager.STATE_INIT.settings.themes.find(t => t.name === theme.name);
+
+    const isDefaultBackground = theme.background.blur === defaultTheme.background.blur && 
+      theme.background.slug === defaultTheme.background.slug;
+    if(!isDefaultBackground) {
+      return this.getBackground(theme.background.slug).then((url) => {
+        return this.setBackground(url, broadcastEvent);
+      }, () => { // * if NO_ENTRY_FOUND
+        theme.background = copy(defaultTheme.background); // * reset background
+        return this.setBackground('', true);
+      });
+    } else {
+      return this.setBackground('', broadcastEvent);
+    }
+  }
+
+  private getBackground(slug: string) {
+    if(this.backgroundPromises[slug]) return this.backgroundPromises[slug];
+    return this.backgroundPromises[slug] = appDownloadManager.cacheStorage.getFile('backgrounds/' + slug).then(blob => {
+      return URL.createObjectURL(blob);
+    });
+  }
+
   public setBackground(url: string, broadcastEvent = true): Promise<void> {
     const promises = this.chats.map(chat => chat.setBackground(url));
     return promises[promises.length - 1].then(() => {
@@ -280,18 +295,14 @@ export class AppImManager {
     return sessionStorage.getFromCache('chatPositions')[key];
   }
 
-  public applyBackgroundColor() {
+  public applyHighlightningColor() {
     let hsla: string;
-    if(rootScope.settings.nightTheme) {
-      hsla = highlightningColor(new Uint8ClampedArray([15, 15, 15, 1]));
+    const theme = rootScope.settings.themes.find(t => t.name === rootScope.settings.theme);
+    if(theme.background.highlightningColor) {
+      hsla = theme.background.highlightningColor;
       document.documentElement.style.setProperty('--message-highlightning-color', hsla);
     } else {
-      if(rootScope.settings.background.highlightningColor) {
-        hsla = rootScope.settings.background.highlightningColor;
-        document.documentElement.style.setProperty('--message-highlightning-color', hsla);
-      } else {
-        document.documentElement.style.removeProperty('--message-highlightning-color');
-      }
+      document.documentElement.style.removeProperty('--message-highlightning-color');
     }
 
     let themeColor = '#ffffff';
@@ -308,12 +319,20 @@ export class AppImManager {
     }
   }
 
+  public applyCurrentTheme(slug?: string, backgroundUrl?: string) {
+    this.applyHighlightningColor();
+
+    document.documentElement.classList.toggle('night', rootScope.settings.theme === 'night');
+
+    if(backgroundUrl) {
+      this.backgroundPromises[slug] = Promise.resolve(backgroundUrl);
+    }
+    
+    return this.setCurrentBackground(!!slug);
+  }
+
   private setSettings = () => {
     document.documentElement.style.setProperty('--messages-text-size', rootScope.settings.messagesTextSize + 'px');
-
-    this.applyBackgroundColor();
-    
-    document.documentElement.classList.toggle('night', rootScope.settings.nightTheme);
     
     document.body.classList.toggle('animation-level-0', !rootScope.settings.animationsEnabled);
     document.body.classList.toggle('animation-level-1', false);

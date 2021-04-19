@@ -93,7 +93,7 @@ const lang = {
   "ReportBug": "Report Bug",
   "Notifications.Count": {
     "one_value": "%d notification",
-    "other_value": "%d notifications",
+    "other_value": "%d notifications"
   },
   "Notifications.Forwarded": {
     "one_value": "Forwarded %d message",
