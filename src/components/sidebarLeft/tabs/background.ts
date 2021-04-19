@@ -34,15 +34,19 @@ export default class AppBackgroundTab extends SliderSuperTab {
       //const uploadButton = Button('btn-primary btn-transparent', {icon: 'cameraadd', text: 'ChatBackground.UploadWallpaper', disabled: true});
       //const colorButton = Button('btn-primary btn-transparent', {icon: 'colorize', text: 'ChatBackground.SetColor', disabled: true});
 
+      const theme = rootScope.settings.themes.find(t => t.name === rootScope.settings.theme);
       const blurCheckboxField = new CheckboxField({
         text: 'ChatBackground.Blur', 
         name: 'blur', 
-        stateKey: 'settings.background.blur',
+        checked: theme.background.blur,
         withRipple: true
       });
       blurCheckboxField.input.addEventListener('change', () => {
         const active = grid.querySelector('.active') as HTMLElement;
         if(!active) return;
+
+        theme.background.blur = blurCheckboxField.input.checked;
+        appStateManager.pushToState('settings', rootScope.settings);
 
         // * wait for animation end
         setTimeout(() => {
@@ -75,35 +79,38 @@ export default class AppBackgroundTab extends SliderSuperTab {
 
       download.then(() => {
         if(!middleware()) {
+          deferred.resolve();
           return;
         }
 
+        const background = rootScope.settings.themes.find(t => t.name === rootScope.settings.theme).background;
         const onReady = (url: string) => {
           //const perf = performance.now();
           averageColor(url).then(pixel => {
             if(!middleware()) {
+              deferred.resolve();
               return;
             }
             
             const hsla = highlightningColor(pixel);
             //console.log(doc, hsla, performance.now() - perf);
 
-            rootScope.settings.background.slug = slug;
-            rootScope.settings.background.type = 'image';
-            rootScope.settings.background.highlightningColor = hsla;
-            appImManager.applyBackgroundColor();
+            background.slug = slug;
+            background.type = 'image';
+            background.highlightningColor = hsla;
             appStateManager.pushToState('settings', rootScope.settings);
 
             saveToCache(slug, url);
-            appImManager.setBackground(url).then(deferred.resolve);
+            appImManager.applyCurrentTheme(slug, url).then(deferred.resolve);
           });
         };
 
-        if(rootScope.settings.background.blur) {
+        if(background.blur) {
           setTimeout(() => {
             blur(doc.url, 12, 4)
             .then(url => {
               if(!middleware()) {
+                deferred.resolve();
                 return;
               }
 
@@ -120,7 +127,8 @@ export default class AppBackgroundTab extends SliderSuperTab {
 
     const setActive = () => {
       const active = grid.querySelector('.active');
-      const target = rootScope.settings.background.type === 'image' ? grid.querySelector(`.grid-item[data-slug="${rootScope.settings.background.slug}"]`) : null;
+      const background = rootScope.settings.themes.find(t => t.name === rootScope.settings.theme).background;
+      const target = background.type === 'image' ? grid.querySelector(`.grid-item[data-slug="${background.slug}"]`) : null;
       if(active === target) {
         return;
       }
@@ -137,6 +145,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
     rootScope.on('background_change', setActive);
 
     apiManager.invokeApiHashable('account.getWallPapers').then((accountWallpapers) => {
+      const background = rootScope.settings.themes.find(t => t.name === rootScope.settings.theme).background;
       const wallpapers = (accountWallpapers as AccountWallPapers.accountWallPapers).wallpapers as WallPaper.wallPaper[];
       wallpapers.forEach((wallpaper) => {
         if(wallpaper.pFlags.pattern || (wallpaper.document as MyDocument).mime_type.indexOf('application/') === 0) {
@@ -164,7 +173,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
         container.dataset.docId = wallpaper.document.id;
         container.dataset.slug = wallpaper.slug;
 
-        if(rootScope.settings.background.type === 'image' && rootScope.settings.background.slug === wallpaper.slug) {
+        if(background.type === 'image' && background.slug === wallpaper.slug) {
           container.classList.add('active');
         }
 
@@ -189,7 +198,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
 
         const load = () => {
           const promise = setBackgroundDocument(slug, doc);
-          if(!doc.url || rootScope.settings.background.blur) {
+          if(!doc.url || background.blur) {
             preloader.attach(target, true, promise);
           }
         };

@@ -170,10 +170,10 @@ const rootScope = new RootScope();
 MOUNT_CLASS_TO.rootScope = rootScope;
 export default rootScope;
 
-rootScope.addEventListener('album_edit', (e) => {
+/* rootScope.addEventListener('album_edit', (e) => {
   
 });
 
 rootScope.addEventListener<'album_edit'>('album_edit', (e) => {
   
-});
+}); */

@@ -139,7 +139,7 @@ console.timeEnd('get storage1'); */
     });
 
     if(userAgent.isApple) {
-      if(userAgent.isSafari) {
+      if(userAgent.isSafari && userAgent.isMobile) {
         document.documentElement.classList.add('is-safari');
 
         if(touchSupport.isTouchSupported) {

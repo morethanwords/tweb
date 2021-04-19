@@ -24,6 +24,19 @@ import DEBUG, { MOUNT_CLASS_TO } from '../../config/debug';
 const REFRESH_EVERY = 24 * 60 * 60 * 1000; // 1 day
 const STATE_VERSION = App.version;
 
+type Background = {
+  type: 'color' | 'image' | 'default',
+  blur: boolean,
+  highlightningColor?: string,
+  color?: string,
+  slug?: string,
+};
+
+type Theme = {
+  name: 'day' | 'night',
+  background: Background
+};
+
 export type State = Partial<{
   dialogs: Dialog[],
   allDialogsLoaded: DialogsStorage['allDialogsLoaded'],
@@ -63,17 +76,13 @@ export type State = Partial<{
       suggest: boolean,
       loop: boolean
     },
-    background: {
-      type: 'color' | 'image' | 'default',
-      blur: boolean,
-      highlightningColor?: string,
-      color?: string,
-      slug?: string,
-    },
+    background?: Background, // ! DEPRECATED
+    themes: Theme[],
+    theme: Theme['name'],
     notifications: {
       sound: boolean
     },
-    nightTheme: boolean,
+    nightTheme?: boolean, // ! DEPRECATED
   },
   drafts: AppDraftsManager['drafts']
 }>;
@@ -115,16 +124,26 @@ export const STATE_INIT: State = {
       suggest: true,
       loop: true
     },
-    background: {
-      type: 'image',
-      blur: false,
-      slug: 'ByxGo2lrMFAIAAAAmkJxZabh8eM', // * new blurred camomile,
-      highlightningColor: 'hsla(85.5319, 36.9171%, 40.402%, 0.4)'
-    },
+    themes: [{
+      name: 'day',
+      background: {
+        type: 'image',
+        blur: false,
+        slug: 'ByxGo2lrMFAIAAAAmkJxZabh8eM', // * new blurred camomile,
+        highlightningColor: 'hsla(85.5319, 36.9171%, 40.402%, 0.4)'
+      }
+    }, {
+      name: 'night',
+      background: {
+        type: 'color',
+        blur: false,
+        highlightningColor: 'hsla(0, 0%, 3.82353%, 0.4)'
+      }
+    }],
+    theme: 'day',
     notifications: {
       sound: false
-    },
-    nightTheme: false
+    }
   },
   drafts: {}
 };
@@ -170,33 +189,42 @@ export class AppStateManager extends EventListenerBase<{
         });
 
         const time = Date.now();
-        if(state) {
-          /* if(state.version !== STATE_VERSION) {
-            state = copy(STATE_INIT);
-          } else  */if((state.stateCreatedTime + REFRESH_EVERY) < time/*  || true *//*  && false */) {
-            if(DEBUG) {
-              this.log('will refresh state', state.stateCreatedTime, time);
-            }
-            
-            REFRESH_KEYS.forEach(key => {
-              // @ts-ignore
-              state[key] = copy(STATE_INIT[key]);
-            });
-
-            const users: typeof state['users'] = {}, chats: typeof state['chats'] = {};
-            if(state.recentSearch?.length) {
-              state.recentSearch.forEach(peerId => {
-                if(peerId < 0) chats[peerId] = state.chats[peerId];
-                else users[peerId] = state.users[peerId];
-              });
-            }
-
-            state.users = users;
-            state.chats = chats;
+        /* if(state.version !== STATE_VERSION) {
+          state = copy(STATE_INIT);
+        } else  */if((state.stateCreatedTime + REFRESH_EVERY) < time/*  || true *//*  && false */) {
+          if(DEBUG) {
+            this.log('will refresh state', state.stateCreatedTime, time);
           }
+          
+          REFRESH_KEYS.forEach(key => {
+            // @ts-ignore
+            state[key] = copy(STATE_INIT[key]);
+          });
+
+          const users: typeof state['users'] = {}, chats: typeof state['chats'] = {};
+          if(state.recentSearch?.length) {
+            state.recentSearch.forEach(peerId => {
+              if(peerId < 0) chats[peerId] = state.chats[peerId];
+              else users[peerId] = state.users[peerId];
+            });
+          }
+
+          state.users = users;
+          state.chats = chats;
         }
 
         validateInitObject(STATE_INIT, state);
+
+        if(!state.settings.hasOwnProperty('themes') && state.settings.background) {
+          const theme = state.settings.themes.find(t => t.name === STATE_INIT.settings.theme);
+          if(theme) {
+            theme.background = state.settings.background;
+          }
+        }
+
+        if(!state.settings.hasOwnProperty('theme') && state.settings.hasOwnProperty('nightTheme')) {
+          state.settings.theme = state.settings.nightTheme ? 'night' : 'day';
+        }
 
         this.state = state;
         this.state.version = STATE_VERSION;

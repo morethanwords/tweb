@@ -8,7 +8,7 @@
 import { formatNumber } from "../../helpers/number";
 import appImManager from "../../lib/appManagers/appImManager";
 import appPeersManager from "../../lib/appManagers/appPeersManager";
-import appStateManager from "../../lib/appManagers/appStateManager";
+import appStateManager, { State } from "../../lib/appManagers/appStateManager";
 import appUsersManager from "../../lib/appManagers/appUsersManager";
 import rootScope from "../../lib/rootScope";
 import { SearchGroup } from "../appSearch";
@@ -100,6 +100,16 @@ export class AppSidebarLeft extends SidebarSlider {
       }
     };
 
+    const themeCheckboxField = new CheckboxField({
+      toggle: true,
+      checked: rootScope.settings.theme === 'night'
+    });
+    themeCheckboxField.input.addEventListener('change', () => {
+      rootScope.settings.theme = themeCheckboxField.input.checked ? 'night' : 'day';
+      appStateManager.pushToState('settings', rootScope.settings);
+      appImManager.applyCurrentTheme();
+    });
+
     const menuButtons: (ButtonMenuItemOptions & {verify?: () => boolean})[] = [{
       icon: 'saved',
       text: 'SavedMessages',
@@ -124,10 +134,7 @@ export class AppSidebarLeft extends SidebarSlider {
       onClick: () => {
         
       },
-      checkboxField: new CheckboxField({
-        toggle: true,
-        stateKey: 'settings.nightTheme',
-      })
+      checkboxField: themeCheckboxField
     }, {
       icon: 'animations',
       text: 'Animations',

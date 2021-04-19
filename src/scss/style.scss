@@ -24,7 +24,7 @@ $messages-container-width: 728px;
 $chat-input-size: 3.375rem;
 $chat-input-handhelds-size: 2.875rem;
 $chat-padding: .8125rem;
-$chat-padding-handhelds: .5rem;
+$chat-padding-handhelds: .25rem;
 
 @function hover-color($color) {
   @return rgba($color, $hover-alpha);
