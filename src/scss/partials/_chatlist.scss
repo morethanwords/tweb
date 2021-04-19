@@ -197,7 +197,39 @@ ul.chatlist {
 
     @include respond-to(not-handhelds) {
       &.active {
-        background: var(--light-secondary-text-color);
+        //background: var(--light-secondary-text-color);
+        background: var(--primary-color) !important;
+
+        .user-caption,
+        .tgico-chatspinned:before,
+        //.user-title:after,
+        .user-title,
+        b,
+        .message-status {
+          color: #fff;
+        }
+
+        .user-title:after {
+          color: rgba(255, 255, 255, .7);
+        }
+
+        .verified-background {
+          fill: #fff !important;
+        }
+
+        .verified-check {
+          fill: var(--primary-color) !important;
+        }
+
+        .dialog-avatar.is-online:after {
+          background-color: #fff;
+          border-color: var(--primary-color);
+        }
+
+        .badge.unread {
+          background-color: #fff !important;
+          color: var(--primary-color);
+        }
       }
     }
   }
@@ -218,6 +250,10 @@ ul.chatlist {
       &-badge {
         &:not(:empty), &.tgico-pinnedchat {
           margin-left: .5rem;
+        }
+
+        &.unread {
+          transition: none;
         }
       }
     }
@@ -259,8 +295,6 @@ ul.chatlist {
 
     .verified-icon {
       flex: 0 0 auto;
-      content: " ";
-      background: url(assets/img/icon-verified.svg);
       width: 20px;
       height: 20px;
       margin-left: .125rem;

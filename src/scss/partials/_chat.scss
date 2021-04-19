@@ -780,7 +780,7 @@ $chat-helper-size: 39px;
 	}
 
 	@include respond-to(handhelds) {
-		--padding-vertical: .5px;
+		--padding-vertical: 1px;
 		--padding-horizontal: #{$chat-padding-handhelds};
 	}
 
@@ -789,7 +789,7 @@ $chat-helper-size: 39px;
 	}
 	
 	@include respond-to(esg-bottom) {
-		--padding-vertical: .5px;
+		--padding-vertical: 1px;
 		--padding-horizontal: #{$chat-padding-handhelds};
 	}
 	
