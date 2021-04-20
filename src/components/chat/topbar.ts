@@ -10,7 +10,7 @@ import type { AppMessagesManager } from "../../lib/appManagers/appMessagesManage
 import type { AppPeersManager } from "../../lib/appManagers/appPeersManager";
 import type { AppSidebarRight } from "../sidebarRight";
 import type Chat from "./chat";
-import { cancelEvent, attachClickEvent, blurActiveElement } from "../../helpers/dom";
+import { cancelEvent, attachClickEvent, blurActiveElement, replaceContent } from "../../helpers/dom";
 import mediaSizes, { ScreenSize } from "../../helpers/mediaSizes";
 import { isSafari } from "../../helpers/userAgent";
 import rootScope from "../../lib/rootScope";
@@ -562,17 +562,6 @@ export default class ChatTopbar {
     if(!this.subtitle) return;
 
     const peerId = this.peerId;
-    if(needClear) {
-      this.subtitle.innerHTML = '';
-    }
-
-    this.chat.appImManager.getPeerStatus(this.peerId).then((subtitle) => {
-      if(peerId !== this.peerId) {
-        return;
-      }
-
-      this.subtitle.textContent = '';
-      this.subtitle.append(subtitle);
-    });
+    this.chat.appImManager.setPeerStatus(this.peerId, this.subtitle, needClear, false, () => peerId === this.peerId);
   };
 }

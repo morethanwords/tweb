@@ -36,7 +36,7 @@ export default class ChatContextMenu {
   public message: any;
 
   constructor(private attachTo: HTMLElement, private chat: Chat, private appMessagesManager: AppMessagesManager, private appChatsManager: AppChatsManager, private appPeersManager: AppPeersManager, private appPollsManager: AppPollsManager) {
-    const onContextMenu = (e: MouseEvent | Touch) => {
+    const onContextMenu = (e: MouseEvent | Touch | TouchEvent) => {
       if(this.init) {
         this.init();
         this.init = null;
@@ -52,11 +52,11 @@ export default class ChatContextMenu {
       // ! context menu click by date bubble (there is no pointer-events)
       if(!bubble) return;
 
-      if(e instanceof MouseEvent) e.preventDefault();
+      if(e instanceof MouseEvent || e.hasOwnProperty('preventDefault')) (e as any).preventDefault();
       if(this.element.classList.contains('active')) {
         return false;
       }
-      if(e instanceof MouseEvent) e.cancelBubble = true;
+      if(e instanceof MouseEvent || e.hasOwnProperty('cancelBubble')) (e as any).cancelBubble = true;
 
       let mid = +bubble.dataset.mid;
       if(!mid) return;
@@ -107,14 +107,14 @@ export default class ChatContextMenu {
       const side: 'left' | 'right' = bubble.classList.contains('is-in') ? 'left' : 'right';
       //bubble.parentElement.append(this.element);
       //appImManager.log('contextmenu', e, bubble, side);
-      positionMenu(e, this.element, side);
+      positionMenu((e as TouchEvent).touches ? (e as TouchEvent).touches[0] : e as MouseEvent, this.element, side);
       openBtnMenu(this.element, () => {
         this.peerId = this.mid = 0;
         this.target = null;
       });
     };
 
-    if(isTouchSupported) {
+    if(isTouchSupported/*  && false */) {
       attachClickEvent(attachTo, (e) => {
         if(chat.selection.isSelecting) {
           return;

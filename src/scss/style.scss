@@ -24,11 +24,20 @@ $messages-container-width: 728px;
 $chat-input-size: 3.375rem;
 $chat-input-handhelds-size: 2.875rem;
 $chat-padding: .8125rem;
-$chat-padding-handhelds: .25rem;
+$chat-padding-handhelds: .5rem;
+$chat-input-inner-padding: .5rem;
+$chat-input-inner-padding-handhelds: .25rem;
 
 @function hover-color($color) {
   @return rgba($color, $hover-alpha);
 }
+
+/* @mixin safari-overflow() {
+  html.is-safari & {
+    -webkit-mask-image: -webkit-radial-gradient(circle, white 100%, black 100%);
+    @content;
+  }
+} */
 
 @import "mixins/hover";
 @import "mixins/respondTo";
@@ -90,6 +99,7 @@ $chat-padding-handhelds: .25rem;
 
     --chat-input-size: #{$chat-input-handhelds-size};
     --chat-input-padding: #{$chat-padding-handhelds};
+    --chat-input-inner-padding: #{$chat-input-inner-padding-handhelds};
   }
 
   @include respond-to(not-handhelds) {
@@ -97,10 +107,12 @@ $chat-padding-handhelds: .25rem;
 
     --chat-input-size: #{$chat-input-size};
     --chat-input-padding: #{$chat-padding};
+    --chat-input-inner-padding: #{$chat-input-inner-padding};
   }
 
   @include respond-to(esg-bottom) {
     --chat-input-size: #{$chat-input-handhelds-size};
+    --chat-input-inner-padding: #{$chat-input-inner-padding-handhelds};
   }
 
   @include respond-to(only-medium-screens) {

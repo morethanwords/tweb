@@ -7,7 +7,6 @@
 import appChatsManager, { ChatRights } from "../lib/appManagers/appChatsManager";
 import appDialogsManager from "../lib/appManagers/appDialogsManager";
 import appMessagesManager, { Dialog } from "../lib/appManagers/appMessagesManager";
-import appPeersManager from "../lib/appManagers/appPeersManager";
 import appPhotosManager from "../lib/appManagers/appPhotosManager";
 import appUsersManager from "../lib/appManagers/appUsersManager";
 import rootScope from "../lib/rootScope";
@@ -167,7 +166,7 @@ export default class AppSelectPeers {
         return;
       }
 
-      target.classList.toggle('active');
+      //target.classList.toggle('active');
       if(this.selected.has(key)) {
         this.remove(key);
       } else {
@@ -436,7 +435,7 @@ export default class AppSelectPeers {
         const checkboxField = new CheckboxField();
 
         if(selected) {
-          dom.listEl.classList.add('active');
+          //dom.listEl.classList.add('active');
           checkboxField.input.checked = true;
         }
 

@@ -16,7 +16,7 @@ import { isSafari } from "../../helpers/userAgent";
 import { logger, LogLevels } from "../logger";
 import { RichTextProcessor } from "../richtextprocessor";
 import rootScope from "../rootScope";
-import { positionElementByIndex } from "../../helpers/dom";
+import { positionElementByIndex, replaceContent } from "../../helpers/dom";
 import appImManager from "./appImManager";
 import appMessagesManager, { Dialog } from "./appMessagesManager";
 import {MyDialogFilter as DialogFilter} from "../storages/filters";
@@ -36,6 +36,7 @@ import { InputNotifyPeer } from "../../layer";
 import PeerTitle from "../../components/peerTitle";
 import { i18n } from "../langPack";
 import findUpTag from "../../helpers/dom/findUpTag";
+import appChatsManager from "./appChatsManager";
 
 export type DialogDom = {
   avatarEl: AvatarElement,
@@ -465,7 +466,7 @@ export class AppDialogsManager {
       if(!dialog) return;
 
       if(typings.length) {
-        this.setTyping(dialog, appUsersManager.getUser(typings[0]));
+        this.setTyping(dialog);
       } else {
         this.unsetTyping(dialog);
       }
@@ -1379,26 +1380,20 @@ export class AppDialogsManager {
     return {dom, dialog};
   }
 
-  public setTyping(dialog: Dialog, user: User) {
+  public setTyping(dialog: Dialog) {
     const dom = this.getDialogDom(dialog.peerId);
     if(!dom) {
       return;
     }
 
-    let str = '';
-    if(dialog.peerId < 0) {
-      let s = user.rFirstName || user.username;
-      if(!s) return;
-      str = s + ' ';
-    } 
-
-    const senderBold = document.createElement('i');
-    str += 'typing...';
-    senderBold.innerHTML = str;
-
-    dom.lastMessageSpan.innerHTML = '';
-    dom.lastMessageSpan.append(senderBold);
-    dom.lastMessageSpan.classList.add('user-typing');
+    let typingElement = dom.lastMessageSpan.querySelector('.peer-typing-container') as HTMLElement;
+    if(typingElement) {
+      appImManager.getPeerTyping(dialog.peerId, typingElement);
+    } else {
+      typingElement = appImManager.getPeerTyping(dialog.peerId);
+      replaceContent(dom.lastMessageSpan, typingElement);
+      dom.lastMessageSpan.classList.add('user-typing');
+    }
   }
 
   public unsetTyping(dialog: Dialog) {

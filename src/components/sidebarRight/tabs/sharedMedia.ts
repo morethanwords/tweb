@@ -579,18 +579,7 @@ class PeerProfile {
     if(!this.peerId) return;
 
     const peerId = this.peerId;
-    if(needClear) {
-      this.subtitle.innerHTML = '‎'; // ! HERE U CAN FIND WHITESPACE
-    }
-
-    appImManager.getPeerStatus(this.peerId).then((subtitle) => {
-      if(peerId !== this.peerId) {
-        return;
-      }
-
-      this.subtitle.textContent = '';
-      this.subtitle.append(subtitle || '');
-    });
+    appImManager.setPeerStatus(this.peerId, this.subtitle, needClear, true, () => peerId === this.peerId);
   };
 
   public cleanupHTML() {

@@ -24,7 +24,7 @@ import appPhotosManager from './appPhotosManager';
 import appProfileManager from './appProfileManager';
 import appStickersManager from './appStickersManager';
 import appWebPagesManager from './appWebPagesManager';
-import { blurActiveElement, cancelEvent, disableTransition, placeCaretAtEnd, whichChild } from '../../helpers/dom';
+import { blurActiveElement, cancelEvent, disableTransition, placeCaretAtEnd, replaceContent, whichChild } from '../../helpers/dom';
 import PopupNewMedia from '../../components/popups/newMedia';
 import MarkupTooltip from '../../components/chat/markupTooltip';
 import { isTouchSupported } from '../../helpers/touchSupport';
@@ -43,11 +43,12 @@ import { MOUNT_CLASS_TO } from '../../config/debug';
 import appNavigationController from '../../components/appNavigationController';
 import appNotificationsManager from './appNotificationsManager';
 import AppPrivateSearchTab from '../../components/sidebarRight/tabs/search';
-import { i18n } from '../langPack';
+import { i18n, LangPackKey } from '../langPack';
 import { SendMessageAction } from '../../layer';
 import { hslaStringToRgbString } from '../../helpers/color';
 import { copy, getObjectKeysAndSort } from '../../helpers/object';
 import { getFilesFromEvent } from '../../helpers/files';
+import PeerTitle from '../../components/peerTitle';
 
 //console.log('appImManager included33!');
 
@@ -295,7 +296,8 @@ export class AppImManager {
     }
     
     const key = chat.peerId + (chat.threadId ? '_' + chat.threadId : '');
-    return sessionStorage.getFromCache('chatPositions')[key];
+    const cache = sessionStorage.getFromCache('chatPositions');
+    return cache && cache[key];
   }
 
   public applyHighlightningColor() {
@@ -840,9 +842,10 @@ export class AppImManager {
   private getTypingElement(action: SendMessageAction) {
     const el = document.createElement('span');
     el.classList.add('peer-typing');
+    el.dataset.action = action._;
     switch(action._) {
-      //case 'sendMessageTypingAction': {
-      default: {
+      case 'sendMessageTypingAction': {
+      //default: {
         const c = 'peer-typing-text';
         el.classList.add(c);
         for(let i = 0; i < 3; ++i) {
@@ -852,9 +855,134 @@ export class AppImManager {
         }
         break;
       }
+
+      case 'sendMessageUploadAudioAction':
+      case 'sendMessageUploadDocumentAction':
+      case 'sendMessageUploadRoundAction':
+      case 'sendMessageUploadVideoAction':
+      case 'sendMessageUploadPhotoAction': {
+        const c = 'peer-typing-upload';
+        el.classList.add(c);
+        /* const trail = document.createElement('span');
+        trail.className = c + '-trail';
+        el.append(trail); */
+        break;
+      }
+
+      case 'sendMessageRecordAudioAction':
+      case 'sendMessageRecordRoundAction':
+      case 'sendMessageRecordVideoAction': {
+        const c = 'peer-typing-record';
+        el.classList.add(c);
+        break;
+      }
     }
 
     return el;
+  }
+
+  public getPeerTyping(peerId: number, container?: HTMLElement) {
+    if(!appUsersManager.isBot(peerId)) {
+      const typings = appChatsManager.typingsInPeer[peerId];
+      if(!typings || !typings.length) {
+        return;
+      }
+
+      const typing = typings[0];
+
+      const langPackKeys: {
+        [peerType in 'private' | 'chat' | 'multi']?: Partial<{[action in SendMessageAction['_']]: LangPackKey}>
+      } = {
+        private: {
+          'sendMessageTypingAction': 'Peer.Activity.User.TypingText',
+          'sendMessageUploadAudioAction': 'Peer.Activity.User.SendingFile',
+          'sendMessageUploadDocumentAction': 'Peer.Activity.User.SendingFile',
+          'sendMessageUploadPhotoAction': 'Peer.Activity.User.SendingPhoto',
+          'sendMessageUploadVideoAction': 'Peer.Activity.User.SendingVideo',
+          'sendMessageUploadRoundAction': 'Peer.Activity.User.SendingVideo',
+          'sendMessageRecordVideoAction': 'Peer.Activity.User.RecordingVideo',
+          'sendMessageRecordAudioAction': 'Peer.Activity.User.RecordingAudio',
+          'sendMessageRecordRoundAction': 'Peer.Activity.User.RecordingVideo',
+          'sendMessageGamePlayAction': 'Peer.Activity.User.PlayingGame'
+        },
+        chat: {
+          'sendMessageTypingAction': 'Peer.Activity.Chat.TypingText',
+          'sendMessageUploadAudioAction': 'Peer.Activity.Chat.SendingFile',
+          'sendMessageUploadDocumentAction': 'Peer.Activity.Chat.SendingFile',
+          'sendMessageUploadPhotoAction': 'Peer.Activity.Chat.SendingPhoto',
+          'sendMessageUploadVideoAction': 'Peer.Activity.Chat.SendingVideo',
+          'sendMessageUploadRoundAction': 'Peer.Activity.Chat.SendingVideo',
+          'sendMessageRecordVideoAction': 'Peer.Activity.Chat.RecordingVideo',
+          'sendMessageRecordAudioAction': 'Peer.Activity.Chat.RecordingAudio',
+          'sendMessageRecordRoundAction': 'Peer.Activity.Chat.RecordingVideo',
+          'sendMessageGamePlayAction': 'Peer.Activity.Chat.PlayingGame'
+        },
+        multi: {
+          'sendMessageTypingAction': 'Peer.Activity.Chat.Multi.TypingText1',
+          'sendMessageUploadAudioAction': 'Peer.Activity.Chat.Multi.SendingFile1',
+          'sendMessageUploadDocumentAction': 'Peer.Activity.Chat.Multi.SendingFile1',
+          'sendMessageUploadPhotoAction': 'Peer.Activity.Chat.Multi.SendingPhoto1',
+          'sendMessageUploadVideoAction': 'Peer.Activity.Chat.Multi.SendingVideo1',
+          'sendMessageUploadRoundAction': 'Peer.Activity.Chat.Multi.SendingVideo1',
+          'sendMessageRecordVideoAction': 'Peer.Activity.Chat.Multi.RecordingVideo1',
+          'sendMessageRecordAudioAction': 'Peer.Activity.Chat.Multi.RecordingAudio1',
+          'sendMessageRecordRoundAction': 'Peer.Activity.Chat.Multi.RecordingVideo1',
+          'sendMessageGamePlayAction': 'Peer.Activity.Chat.Multi.PlayingGame1'
+        }
+      };
+
+      const mapa = peerId > 0 ? langPackKeys.private : (typings.length > 1 ? langPackKeys.multi : langPackKeys.chat);
+      let action = typing.action;
+
+      if(typings.length > 1) {
+        const s: any = {};
+        typings.forEach(typing => {
+          const type = typing.action._;
+          if(s[type] === undefined) s[type] = 0;
+          ++s[type];
+        });
+
+        if(Object.keys(s).length > 1) {
+          action = {
+            _: 'sendMessageTypingAction'
+          };
+        }
+      }
+
+      const langPackKey = mapa[action._];
+      if(!langPackKey) {
+        return;
+      }
+
+      if(!container) {
+        container = document.createElement('span');
+        container.classList.add('online', 'peer-typing-container');
+      }
+
+      let typingElement = container.firstElementChild as HTMLElement;
+      if(!typingElement) {
+        typingElement = this.getTypingElement(action);
+        container.prepend(typingElement);
+      } else {
+        if(typingElement.dataset.action !== action._) {
+          typingElement.replaceWith(this.getTypingElement(action));
+        }
+      }
+
+      let args: any[];
+      if(peerId < 0) {
+        args = [
+          new PeerTitle({peerId: typing.userId, onlyFirstName: true}).element,
+          typings.length - 1
+        ];
+      }
+      const descriptionElement = i18n(langPackKey, args);
+      descriptionElement.classList.add('peer-typing-description');
+
+      if(container.childElementCount > 1) container.lastElementChild.replaceWith(descriptionElement);
+      else container.append(descriptionElement);
+      return container;
+    }
   }
 
   public async getPeerStatus(peerId: number) {
@@ -862,6 +990,11 @@ export class AppImManager {
     if(!peerId) return '';
 
     if(peerId < 0) { // not human
+      let span = this.getPeerTyping(peerId);
+      if(span) {
+        return span;
+      }
+
       const chatInfo = await appProfileManager.getChatFull(-peerId) as any;
       this.chat.log('chatInfo res:', chatInfo);
 
@@ -886,16 +1019,14 @@ export class AppImManager {
         subtitle = appUsersManager.getUserStatusString(user.id);
 
         if(!appUsersManager.isBot(peerId)) {
-          const typings = appChatsManager.typingsInPeer[peerId];
-          if(typings && typings.length) {
-            const span = document.createElement('span');
-            span.classList.add('online');
-            span.append(this.getTypingElement(typings[0].action), i18n('Peer.Activity.User.TypingText'));
-            return span;
-          } else if(user.status?._ === 'userStatusOnline') {
-            const span = document.createElement('span');
+          let span = this.getPeerTyping(peerId);
+          if(!span && user.status?._ === 'userStatusOnline') {
+            span = document.createElement('span');
             span.classList.add('online');
             span.append(subtitle);
+          }
+
+          if(span) {
             return span;
           }
         }
@@ -903,6 +1034,26 @@ export class AppImManager {
         return subtitle;
       }
     }
+  }
+
+  public setPeerStatus(peerId: number, element: HTMLElement, needClear: boolean, useWhitespace: boolean, middleware: () => boolean) {
+    if(needClear) {
+      element.innerHTML = useWhitespace ? '‎' : ''; // ! HERE U CAN FIND WHITESPACE
+    }
+
+    // * good good good
+    const typingContainer = element.querySelector('.peer-typing-container') as HTMLElement;
+    if(typingContainer && this.getPeerTyping(peerId, typingContainer)) {
+      return;
+    }
+
+    this.getPeerStatus(peerId).then((subtitle) => {
+      if(!middleware()) {
+        return;
+      }
+
+      replaceContent(element, subtitle || (useWhitespace ? '‎' : ''));
+    });
   }
 }
 

@@ -5,16 +5,34 @@
  */
 
 .peer-typing {
-  display: inline-block;
+  //display: flex;
   margin-right: 4px;
+  
+  &-container {
+    --color: var(--primary-color);
+    color: var(--color);
+    //display: inline-block;
+    //display: flex;
+    //align-items: center;
+  }
+
+  /* &-description {
+    @include text-overflow();
+  } */
+
+  &:not(.peer-typing-text) {
+    display: inline-block;
+    vertical-align: middle;
+    transform: translateY(-1px);
+  }
 
   &-text {
     &-dot {
       width: 6px;
       height: 6px;
       border-radius: 50%;
-      background-color: var(--primary-color);
-      margin: 0 1px;
+      background-color: var(--color);
+      margin: 0 .5px;
       display: inline-block;
       vertical-align: middle;
       animation-duration: .6s;
@@ -29,6 +47,49 @@
 
     &-dot:last-child {
       animation-name: dotLast;
+    }
+  }
+
+  &-upload {
+    width: 13px;
+    height: 5px;
+    overflow: hidden;
+    position: relative;
+    border-radius: 2px;
+    margin-right: .375rem;
+    
+    &:before, &:after {
+      display: block;
+      content: " ";
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      background-color: var(--color);
+      border-radius: inherit;
+    }
+
+    &:before {
+      opacity: .3;
+    }
+
+    &:after {
+      animation: upload 1s ease-in-out infinite;
+    }
+  }
+
+  &-record {
+    margin-right: .375rem;
+
+    &:before {
+      content: " ";
+      display: block;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background-color: var(--color);
+      animation: recordBlink 1.25s infinite;
     }
   }
 }
@@ -109,5 +170,15 @@ $opacity-min: $opacity-max - ($opacity-step * 2);
   100% {
     transform: scale($scale-max);
     opacity: $opacity-max;
+  }
+}
+
+@keyframes upload {
+  0% {
+    transform: translateX(-13px);
+  }
+
+  100% {
+    transform: translate(13px);
   }
 }

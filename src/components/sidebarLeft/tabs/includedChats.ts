@@ -138,7 +138,7 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
 
       const selected = this.selector.selected.has(peerId);
       dom.containerEl.append(this.checkbox(selected));
-      if(selected) dom.listEl.classList.add('active');
+      //if(selected) dom.listEl.classList.add('active');
 
       const foundInFilters: HTMLElement[] = [];
       this.dialogsByFilters.forEach((dialogs, filter) => {

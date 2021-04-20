@@ -156,15 +156,6 @@ ul.chatlist {
       }
     }
 
-    span {
-      //display: inline-block;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      //margin: .1rem 0;
-      line-height: 27px;
-    }
-
     p {
       margin: 0;
       display: flex;
@@ -204,9 +195,12 @@ ul.chatlist {
         .tgico-chatspinned:before,
         //.user-title:after,
         .user-title,
-        b,
         .message-status {
           color: #fff;
+        }
+
+        b {
+          color: #fff !important;
         }
 
         .user-title:after {
@@ -230,7 +224,31 @@ ul.chatlist {
           background-color: #fff !important;
           color: var(--primary-color);
         }
+
+        .peer-typing-container {
+          --color: #fff;
+        }
       }
+    }
+  }
+
+  /* .user-title,
+  .dialog-title-details,
+  .user-last-message */li span {
+    //display: inline-block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    //margin: .1rem 0;
+    line-height: 27px;
+  }
+
+  .peer-typing-container {
+    --color: var(--secondary-text-color);
+
+    .peer-typing-text {
+      display: inline-flex;
+      transform: translateY(-2px);
     }
   }
 
