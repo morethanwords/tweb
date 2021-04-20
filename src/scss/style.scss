@@ -176,7 +176,7 @@ html.night {
   --input-search-background-color: #181818;
   --input-search-border-color: #2f2f2f;
 
-  @include splitColor(primary-color, #878afd, true, true);
+  @include splitColor(primary-color, #8774E1, true, true);
   --primary-text-color: #fff;
 
   --secondary-color: #707579;
@@ -200,7 +200,7 @@ html.night {
   --message-secondary-color: var(--secondary-color);
 
   //@include splitColor(message-out-background-color, #ae582d, true, true);
-  @include splitColor(message-out-background-color, #878afd, true, true);
+  @include splitColor(message-out-background-color, #8774E1, true, true);
   --message-out-link-color: #fff;
   --message-out-primary-color: #fff;
   --message-out-audio-play-button-color: var(--message-out-background-color);
