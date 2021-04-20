@@ -840,7 +840,7 @@ export default class MTPNetworker {
 
       //if(!value || value <= currentTime) {
         const message = this.sentMessages[messageId];
-        if(message) {
+        if(message && message.body) {
           /* if(message.fileUpload) {
             this.log('performScheduledRequest message:', message, message.body.length, (message.body as Uint8Array).byteLength, (message.body as Uint8Array).buffer.byteLength);
           } */
@@ -851,7 +851,7 @@ export default class MTPNetworker {
             this.log.warn('lengthOverflow', message, messages);
             lengthOverflow = true;
 
-            if(outMessage) { // if it is a first message
+            if(outMessage) { // if it's not a first message
               break;
             }
           }
@@ -1363,7 +1363,7 @@ export default class MTPNetworker {
   public processMessageAck(messageId: string) {
     const sentMessage = this.sentMessages[messageId];
     if(sentMessage && !sentMessage.acked) {
-      delete sentMessage.body;
+      //delete sentMessage.body;
       sentMessage.acked = true;
     }
   }
@@ -1595,7 +1595,7 @@ export default class MTPNetworker {
                 this.log.debug('Rpc response', message.result, sentMessage);
               } */
 
-              sentMessage.deferred.resolve(message.result);
+              deferred.resolve(message.result);
             }
 
             if(sentMessage.isAPI && !this.connectionInited) {
