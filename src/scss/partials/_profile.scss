@@ -82,8 +82,8 @@
         margin: 0;
       }
 
-      .peer-typing-text-dot {
-        background-color: #fff;
+      .peer-typing-container {
+        --color: #fff;
       }
 
       .profile-name {
@@ -162,6 +162,12 @@
       padding-bottom: .5rem;
       //margin-bottom: .75rem;
       //box-shadow: 0px 1px 5px -1px rgba(0, 0, 0, .16);
+
+      .profile-subtitle {
+        .peer-typing-container {
+          justify-content: center;
+        }
+      }
     }
 
     /* .search-super {

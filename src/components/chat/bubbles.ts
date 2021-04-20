@@ -394,6 +394,14 @@ export default class ChatBubbles {
       });
     }
 
+    this.listenerSetter.add(this.bubblesContainer, 'dblclick', (e) => {
+      const bubble = (e.target as HTMLElement).classList.contains('bubble') ? e.target as HTMLElement : null;
+      if(bubble) {
+        const mid = +bubble.dataset.mid
+        this.chat.input.initMessageReply(mid);
+      }
+    });
+
     /* if(false)  */this.stickyIntersector = new StickyIntersector(this.scrollable.container, (stuck, target) => {
       for(const timestamp in this.dateMessages) {
         const dateMessage = this.dateMessages[timestamp];

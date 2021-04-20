@@ -71,53 +71,74 @@ export class AppChatsManager {
         }
 
         case 'updateUserTyping':
-        case 'updateChatUserTyping': {
+        case 'updateChatUserTyping':
+        case 'updateChannelUserTyping': {
           const fromId = (update as Update.updateUserTyping).user_id || appPeersManager.getPeerId((update as Update.updateChatUserTyping).from_id);
           if(rootScope.myId === fromId) {
-            return;
+            break;
           }
           
-          const peerId = update._ === 'updateUserTyping' ? fromId : -update.chat_id;
+          const peerId = update._ === 'updateUserTyping' ? 
+            fromId : 
+            -((update as Update.updateChatUserTyping).chat_id || (update as Update.updateChannelUserTyping).channel_id);
           const typings = this.typingsInPeer[peerId] ?? (this.typingsInPeer[peerId] = []);
           let typing = typings.find(t => t.userId === fromId);
-          if(!typing) {
-            typing = {
-              userId: fromId
-            };
 
-            typings.push(typing);
-          }
-
-          //console.log('updateChatUserTyping', update, typings);
-          
-          typing.action = update.action;
-          
-          if(!appUsersManager.hasUser(fromId)) {
-            if(update._ === 'updateChatUserTyping') {
-              if(update.chat_id && appChatsManager.hasChat(update.chat_id) && !appChatsManager.isChannel(update.chat_id)) {
-                appProfileManager.getChatFull(update.chat_id);
-              }
-            }
-            
-            //return;
-          }
-          
-          appUsersManager.forceUserOnline(fromId);
-
-          if(typing.timeout !== undefined) clearTimeout(typing.timeout);
-
-          typing.timeout = window.setTimeout(() => {
+          const cancelAction = () => {
             delete typing.timeout;
-            typings.findAndSplice(t => t.userId === fromId);
+            //typings.findAndSplice(t => t === typing);
+            const idx = typings.indexOf(typing);
+            if(idx !== -1) {
+              typings.splice(idx, 1);
+            }
  
             rootScope.broadcast('peer_typings', {peerId, typings});
 
             if(!typings.length) {
               delete this.typingsInPeer[peerId];
             }
-          }, 6000);
+          };
 
-          rootScope.broadcast('peer_typings', {peerId, typings});
+          if(typing && typing.timeout !== undefined) {
+            clearTimeout(typing.timeout);
+          }
+
+          if(update.action._ === 'sendMessageCancelAction') {
+            if(!typing) {
+              break;
+            }
+
+            cancelAction();
+            break;
+          } else {
+            if(!typing) {
+              typing = {
+                userId: fromId
+              };
+  
+              typings.push(typing);
+            }
+  
+            //console.log('updateChatUserTyping', update, typings);
+            
+            typing.action = update.action;
+            
+            if(!appUsersManager.hasUser(fromId)) {
+              if(update._ === 'updateChatUserTyping') {
+                if(update.chat_id && appChatsManager.hasChat(update.chat_id) && !appChatsManager.isChannel(update.chat_id)) {
+                  appProfileManager.getChatFull(update.chat_id);
+                }
+              }
+              
+              //return;
+            }
+            
+            appUsersManager.forceUserOnline(fromId);
+  
+            typing.timeout = window.setTimeout(cancelAction, 6000);
+            rootScope.broadcast('peer_typings', {peerId, typings});
+          }
+
           break;
         }
       }

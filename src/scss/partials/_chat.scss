@@ -70,7 +70,7 @@ $chat-helper-size: 39px;
 	}
 
 	.chat-input-container {
-		--padding-horizontal: #{$chat-padding-handhelds};
+		--padding-horizontal: var(--chat-input-padding);
 		display: flex;
 		align-items: flex-end;
 		justify-content: space-between;
@@ -81,10 +81,6 @@ $chat-helper-size: 39px;
 		flex: 0 0 auto;
 		position: relative;
 		padding-bottom: var(--bottom);
-
-		@include respond-to(not-handhelds) {
-			--padding-horizontal: #{$chat-padding};
-		}
 
 		.btn-circle {
 			width: var(--chat-input-size);
@@ -611,7 +607,7 @@ $chat-helper-size: 39px;
 
 .chat-input-wrapper {
 	--padding-vertical: .3125rem;
-	--padding-horizontal: .5rem;
+	--padding-horizontal: var(--chat-input-inner-padding);
 	--padding: var(--padding-vertical) var(--padding-horizontal);
 	display: flex;
 	align-items: center;
@@ -781,7 +777,6 @@ $chat-helper-size: 39px;
 
 	@include respond-to(handhelds) {
 		--padding-vertical: 1px;
-		--padding-horizontal: #{$chat-padding-handhelds};
 	}
 
 	@media only screen and (max-width: 420px) { 
@@ -790,7 +785,6 @@ $chat-helper-size: 39px;
 	
 	@include respond-to(esg-bottom) {
 		--padding-vertical: 1px;
-		--padding-horizontal: #{$chat-padding-handhelds};
 	}
 	
 	.bubble-tail {

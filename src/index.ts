@@ -139,10 +139,10 @@ console.timeEnd('get storage1'); */
     });
 
     if(userAgent.isApple) {
-      if(userAgent.isSafari && userAgent.isMobile) {
+      if(userAgent.isSafari) {
         document.documentElement.classList.add('is-safari');
 
-        if(touchSupport.isTouchSupported) {
+        if(userAgent.isMobile && touchSupport.isTouchSupported) {
           let key: 'clientY' | 'pageY' = 'clientY';
           let startY = 0;
           const o = {capture: true, passive: false};

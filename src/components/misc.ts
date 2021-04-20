@@ -10,7 +10,7 @@ import { cancelEvent, CLICK_EVENT_NAME } from "../helpers/dom";
 import ListenerSetter from "../helpers/listenerSetter";
 import mediaSizes from "../helpers/mediaSizes";
 import { isTouchSupported } from "../helpers/touchSupport";
-import { isApple, isMobileSafari } from "../helpers/userAgent";
+import { isApple, isMobileSafari, isSafari } from "../helpers/userAgent";
 import appNavigationController from "./appNavigationController";
 
 export function putPreloader(elem: Element, returnDiv = false): HTMLElement {
@@ -341,6 +341,12 @@ export function attachContextMenuListener(element: HTMLElement, callback: (e: To
         }
       }, .4e3);
     });
+
+    /* if(!isSafari) {
+      add('contextmenu', (e: any) => {
+        cancelEvent(e);
+      }, {passive: false, capture: true});
+    } */
   } else {
     add('contextmenu', isTouchSupported ? (e: any) => {
       callback(e);

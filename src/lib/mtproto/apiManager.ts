@@ -301,7 +301,8 @@ export class ApiManager {
       
       deferred.reject(error);
 
-      if(error.code === 401 && error.type === 'SESSION_REVOKED') {
+      if((error.code === 401 && error.type === 'SESSION_REVOKED') || 
+        (error.code === 406 && error.type === 'AUTH_KEY_DUPLICATED')) {
         this.logOut();
       }
 
