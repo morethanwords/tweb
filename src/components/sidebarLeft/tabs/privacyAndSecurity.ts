@@ -5,7 +5,7 @@
  */
 
 import { SliderSuperTab } from "../../slider";
-import { generateSection, SettingSection } from "..";
+import { SettingSection } from "..";
 import Row from "../../row";
 import { AccountPassword, Authorization, InputPrivacyKey } from "../../../layer";
 import appPrivacyManager, { PrivacyType } from "../../../lib/appManagers/appPrivacyManager";
@@ -26,6 +26,7 @@ import appUsersManager from "../../../lib/appManagers/appUsersManager";
 import rootScope from "../../../lib/rootScope";
 import { convertKeyToInputKey } from "../../../helpers/string";
 import { i18n, LangPackKey, _i18n } from "../../../lib/langPack";
+import { replaceContent } from "../../../helpers/dom";
 
 export default class AppPrivacyAndSecurityTab extends SliderSuperTab {
   private activeSessionsRow: Row;
@@ -34,8 +35,6 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTab {
   protected init() {
     this.container.classList.add('privacy-container');
     this.setTitle('PrivacySettings');
-
-    const section = generateSection.bind(null, this.scrollable);
 
     const SUBTITLE: LangPackKey = 'Loading';
 
@@ -98,14 +97,11 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTab {
       section.content.append(blockedUsersRow.container, twoFactorRow.container, activeSessionsRow.container);
       this.scrollable.append(section.container);
 
-      let blockedCount: number;
       const setBlockedCount = (count: number) => {
-        blockedCount = count;
-
         if(count) {
-          _i18n(blockedUsersRow.subtitle, 'PrivacySettingsController.UserCount', [count]);
+          replaceContent(blockedUsersRow.subtitle, i18n('PrivacySettingsController.UserCount', [count]));
         } else {
-          _i18n(blockedUsersRow.subtitle, 'BlockedEmpty');
+          replaceContent(blockedUsersRow.subtitle, i18n('BlockedEmpty', [count]));
         }
       };
 
@@ -130,7 +126,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTab {
 
       passwordManager.getState().then(state => {
         passwordState = state;
-        _i18n(twoFactorRow.subtitle, state.pFlags.has_password ? 'PrivacyAndSecurity.Item.On' : 'PrivacyAndSecurity.Item.Off');
+        replaceContent(twoFactorRow.subtitle, i18n(state.pFlags.has_password ? 'PrivacyAndSecurity.Item.On' : 'PrivacyAndSecurity.Item.Off'));
         twoFactorRow.freezed = false;
         
         //console.log('password state', state);
@@ -140,9 +136,9 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTab {
     }
 
     {
-      const container = section('PrivacyTitle');
+      const section = new SettingSection({name: 'PrivacyTitle'});
 
-      container.classList.add('privacy-navigation-container');
+      section.content.classList.add('privacy-navigation-container');
 
       const rowsByKeys: Partial<{
         [key in InputPrivacyKey['_']]: Row
@@ -152,7 +148,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTab {
         titleLangKey: 'PrivacyPhoneTitle',
         subtitleLangKey: SUBTITLE,
         clickable: () => {
-          new AppPrivacyPhoneNumberTab(this.slider).open()
+          new AppPrivacyPhoneNumberTab(this.slider).open();
         }
       });
 
@@ -160,7 +156,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTab {
         titleLangKey: 'LastSeenTitle',
         subtitleLangKey: SUBTITLE,
         clickable: () => {
-          new AppPrivacyLastSeenTab(this.slider).open()
+          new AppPrivacyLastSeenTab(this.slider).open();
         }
       });
 
@@ -217,6 +213,9 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTab {
         });
       };
 
+      section.content.append(numberVisibilityRow.container, lastSeenTimeRow.container, photoVisibilityRow.container, callRow.container, linkAccountRow.container, groupChatsAddRow.container);
+      this.scrollable.append(section.container);
+
       for(const key in rowsByKeys) {
         updatePrivacyRow(key as keyof typeof rowsByKeys);
       }
@@ -224,8 +223,6 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTab {
       rootScope.on('privacy_update', (update) => {
         updatePrivacyRow(convertKeyToInputKey(update.key._) as any);
       });
-
-      container.append(numberVisibilityRow.container, lastSeenTimeRow.container, photoVisibilityRow.container, callRow.container, linkAccountRow.container, groupChatsAddRow.container);
     }
   }
 

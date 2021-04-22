@@ -8,31 +8,49 @@ import { generateSection } from "..";
 import { averageColor } from "../../../helpers/averageColor";
 import blur from "../../../helpers/blur";
 import { deferredPromise } from "../../../helpers/cancellablePromise";
-import { highlightningColor } from "../../../helpers/color";
 import { attachClickEvent } from "../../../helpers/dom";
 import findUpClassName from "../../../helpers/dom/findUpClassName";
+import highlightningColor from "../../../helpers/highlightningColor";
+import { copy } from "../../../helpers/object";
 import { AccountWallPapers, WallPaper } from "../../../layer";
 import appDocsManager, { MyDocument } from "../../../lib/appManagers/appDocsManager";
 import appDownloadManager from "../../../lib/appManagers/appDownloadManager";
 import appImManager from "../../../lib/appManagers/appImManager";
-import appStateManager from "../../../lib/appManagers/appStateManager";
+import appStateManager, { STATE_INIT } from "../../../lib/appManagers/appStateManager";
 import apiManager from "../../../lib/mtproto/mtprotoworker";
 import rootScope from "../../../lib/rootScope";
+import Button from "../../button";
 import CheckboxField from "../../checkboxField";
 import ProgressivePreloader from "../../preloader";
 import { SliderSuperTab } from "../../slider";
 import { wrapPhoto } from "../../wrappers";
+import AppBackgroundColorTab from "./backgroundColor";
 
 export default class AppBackgroundTab extends SliderSuperTab {
   init() {
-    this.container.classList.add('background-container');
+    this.container.classList.add('background-container', 'background-image-container');
     this.setTitle('ChatBackground');
 
     {
       const container = generateSection(this.scrollable);
 
       //const uploadButton = Button('btn-primary btn-transparent', {icon: 'cameraadd', text: 'ChatBackground.UploadWallpaper', disabled: true});
-      //const colorButton = Button('btn-primary btn-transparent', {icon: 'colorize', text: 'ChatBackground.SetColor', disabled: true});
+      const colorButton = Button('btn-primary btn-transparent', {icon: 'colorize', text: 'SetColor'});
+      const resetButton = Button('btn-primary btn-transparent', {icon: 'favourites', text: 'Appearance.Reset'});
+
+      attachClickEvent(colorButton, () => {
+        new AppBackgroundColorTab(this.slider).open();
+      }, {listenerSetter: this.listenerSetter});
+
+      attachClickEvent(resetButton, () => {
+        const defaultTheme = STATE_INIT.settings.themes.find(t => t.name === theme.name);
+        if(defaultTheme) {
+          ++tempId;
+          theme.background = copy(defaultTheme.background);
+          appStateManager.pushToState('settings', rootScope.settings);
+          appImManager.applyCurrentTheme(undefined, undefined, true);
+        }
+      }, {listenerSetter: this.listenerSetter});
 
       const theme = rootScope.settings.themes.find(t => t.name === rootScope.settings.theme);
       const blurCheckboxField = new CheckboxField({
@@ -41,7 +59,8 @@ export default class AppBackgroundTab extends SliderSuperTab {
         checked: theme.background.blur,
         withRipple: true
       });
-      blurCheckboxField.input.addEventListener('change', () => {
+
+      this.listenerSetter.add(blurCheckboxField.input, 'change', () => {
         const active = grid.querySelector('.active') as HTMLElement;
         if(!active) return;
 
@@ -54,7 +73,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
         }, 100);
       });
 
-      container.append(/* uploadButton, colorButton,  */blurCheckboxField.label);
+      container.append(/* uploadButton,  */colorButton, resetButton, blurCheckboxField.label);
     }
 
     const grid = document.createElement('div');
@@ -92,7 +111,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
               return;
             }
             
-            const hsla = highlightningColor(pixel);
+            const hsla = highlightningColor(Array.from(pixel) as any);
             //console.log(doc, hsla, performance.now() - perf);
 
             background.slug = slug;
@@ -208,15 +227,16 @@ export default class AppBackgroundTab extends SliderSuperTab {
         attachClickEvent(target, (e) => {
           if(preloader.preloader.parentElement) {
             preloader.onClick(e);
+            preloader.detach();
           } else {
             load();
           }
-        });
+        }, {listenerSetter: this.listenerSetter});
 
         load();
 
         //console.log(doc);
-      });
+      }, {listenerSetter: this.listenerSetter});
 
       //console.log(accountWallpapers);
     });

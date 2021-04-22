@@ -1,6 +1,8 @@
 const lang = {
   "Animations": "Animations",
   "AttachAlbum": "Album",
+  "Appearance.Color.Hex": "HEX",
+  "Appearance.Color.RGB": "RGB",
   "BlockModal.Search.Placeholder": "Block user...",
   "DarkMode": "Dark Mode",
   "FilterIncludeExcludeInfo": "Choose chats and types of chats that will\nappear and never appear in this folder.",
@@ -43,7 +45,6 @@ const lang = {
   "General.SendShortcut.NewLine.Enter": "New line by Enter",
   "General.AutoplayMedia": "Auto-Play Media",
   "ChatBackground.UploadWallpaper": "Upload Wallpaper",
-  "ChatBackground.SetColor": "Set a Color",
   "ChatBackground.Blur": "Blur Wallpaper Image",
   "Notifications.Sound": "Notification Sound",
   "Notifications.MessagePreview": "Message preview",
@@ -401,12 +402,14 @@ const lang = {
   },
   "HidAccount": "The account was hidden by the user",
   "TelegramFeatures": "Telegram Features",
+  "SetColor": "Set a color",
 
   // * macos
   "AccountSettings.Filters": "Chat Folders",
   "AccountSettings.Notifications": "Notifications and Sounds",
   "AccountSettings.PrivacyAndSecurity": "Privacy and Security",
   "AccountSettings.Language": "Language",
+  "Appearance.Reset": "Reset to Defaults",
   "Bio.Description": "Any details such as age, occupation or city.\nExample: 23 y.o. designer from San Francisco",
   "Channel.UsernameAboutChannel": "People can share this link with others and can find your channel using Telegram search.",
   "Channel.UsernameAboutGroup": "People can share this link with others and find your group using Telegram search.",

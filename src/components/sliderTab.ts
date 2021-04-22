@@ -75,15 +75,15 @@ export default class SliderSuperTab implements SliderTab {
 
   public async open(...args: any[]) {
     if(this.init) {
-      const result = this.init();
-      this.init = null;
+      try {
+        const result = this.init();
+        this.init = null;
 
-      if(result instanceof Promise) {
-        try {
+        if(result instanceof Promise) {
           await result;
-        } catch(err) {
-          console.error('open tab error', err);
         }
+      } catch(err) {
+        console.error('open tab error', err);
       }
     }
 
