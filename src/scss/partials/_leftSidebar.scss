@@ -1108,7 +1108,7 @@
 
 .background-container {
   .grid {
-    padding: 0 .5rem;
+    padding: 0 .5rem .5rem;
 
     &-item {
       &:after {
@@ -1139,5 +1139,11 @@
         transform: scale(1);
       }
     }
+  }
+}
+
+.background-image-container {
+  .sidebar-left-section {
+    padding-bottom: .5rem;
   }
 }

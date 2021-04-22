@@ -4,10 +4,22 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-export function rgbToHsl(r: number, g: number, b: number) {
+export type ColorHsla = {
+  h: number,
+  s: number,
+  l: number,
+  a: number
+};
+
+export type ColorRgba = [number, number, number, number];
+
+/**
+ * @returns h [0, 360], s [0, 100], l [0, 100], a [0, 1]
+ */
+export function rgbaToHsla(r: number, g: number, b: number, a: number = 1): ColorHsla {
   r /= 255, g /= 255, b /= 255;
-  let max = Math.max(r, g, b),
-      min = Math.min(r, g, b);
+  const max = Math.max(r, g, b),
+        min = Math.min(r, g, b);
   let h, s, l = (max + min) / 2;
 
   if(max === min) {
@@ -29,18 +41,19 @@ export function rgbToHsl(r: number, g: number, b: number) {
     h /= 6;
   }
 
-  return ({
-    h: h,
-    s: s,
-    l: l,
-  });
+  return {
+    h: h * 360,
+    s: s * 100,
+    l: l * 100,
+    a
+  };
 }
 
 // * https://stackoverflow.com/a/9493060/6758968
 /**
  * Converts an HSL color value to RGB. Conversion formula
  * adapted from http://en.wikipedia.org/wiki/HSL_color_space.
- * Assumes h, s, and l are contained in the set [0, 1] and
+ * Assumes h in [0, 360], s, and l are contained in the set [0, 1], a in [0, 1] and
  * returns r, g, and b in the set [0, 255].
  *
  * @param   {number}  h       The hue
@@ -48,7 +61,8 @@ export function rgbToHsl(r: number, g: number, b: number) {
  * @param   {number}  l       The lightness
  * @return  {Array}           The RGB representation
  */
-export function hslToRgba(h: number, s: number, l: number, a: number) {
+export function hslaToRgba(h: number, s: number, l: number, a: number): ColorRgba {
+  h /= 360, s /= 100, l /= 100;
   let r: number, g: number, b: number;
 
   if(s === 0) {
@@ -78,31 +92,50 @@ export function hslaStringToRgba(hsla: string) {
   const alpha = +splitted.pop();
   const arr = splitted.map((val) => {
     if(val.endsWith('%')) {
-      return +val.slice(0, -1) / 100;
+      return +val.slice(0, -1);
     }
     
-    return +val / 360;
+    return +val;
   });
 
-  return hslToRgba(arr[0], arr[1], arr[2], alpha);
+  return hslaToRgba(arr[0], arr[1], arr[2], alpha);
 }
 
-export function hslaStringToRgbaString(hsla: string) {
-  return '#' + hslaStringToRgba(hsla).map(v => ('0' + v.toString(16)).slice(-2)).join('');
-}
+export function hexaToRgba(hexa: string) {
+  const arr: ColorRgba = [] as any;
+  const offset = 1;
+  if(hexa.length === (3 + offset)) {
+    for(let i = offset; i < hexa.length; ++i) {
+      arr.push(parseInt(hexa[i] + hexa[i], 16));
+    }
+  } else if(hexa.length === (4 + offset)) {
+    for(let i = offset; i < (hexa.length - 1); ++i) {
+      arr.push(parseInt(hexa[i] + hexa[i], 16));
+    }
 
-export function hslaStringToRgbString(hsla: string) {
-  return hslaStringToRgbaString(hsla).slice(0, -2);
-}
-
-// * https://github.com/TelegramMessenger/Telegram-iOS/blob/3d062fff78cc6b287c74e6171f855a3500c0156d/submodules/TelegramPresentationData/Sources/PresentationData.swift#L453
-export function highlightningColor(pixel: Uint8ClampedArray) {
-  let {h, s, l} = rgbToHsl(pixel[0], pixel[1], pixel[2]);
-  if(s > 0.0) {
-    s = Math.min(1.0, s + 0.05 + 0.1 * (1.0 - s));
+    arr.push(parseInt(hexa[hexa.length - 1], 16));
+  } else {
+    for(let i = offset; i < hexa.length; i += 2) {
+      arr.push(parseInt(hexa.slice(i, i + 2), 16));
+    }
   }
-  l = Math.max(0.0, l * 0.65);
-  
-  const hsla = `hsla(${h * 360}, ${s * 100}%, ${l * 100}%, .4)`;
-  return hsla;
+
+  return arr;
+}
+
+export function hexaToHsla(hexa: string) {
+  const rgba = hexaToRgba(hexa);
+  return rgbaToHsla(rgba[0], rgba[1], rgba[2], rgba[3]);
+}
+
+export function rgbaToHexa(rgba: ColorRgba) {
+  return '#' + rgba.map(v => ('0' + v.toString(16)).slice(-2)).join('');
+}
+
+export function hslaStringToHexa(hsla: string) {
+  return rgbaToHexa(hslaStringToRgba(hsla));
+}
+
+export function hslaStringToHex(hsla: string) {
+  return hslaStringToHexa(hsla).slice(0, -2);
 }

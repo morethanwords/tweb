@@ -83,10 +83,22 @@ export default class Chat extends EventListenerBase<{
   }
 
   public setBackground(url: string): Promise<void> {
-    const item = document.createElement('div');
-    item.classList.add('chat-background-item');
-
     const theme = rootScope.settings.themes.find(t => t.name === rootScope.settings.theme);
+
+    let item: HTMLElement;
+    if(theme.background.type === 'color' && document.documentElement.style.cursor === 'grabbing') {
+      const _item = this.backgroundEl.lastElementChild as HTMLElement;
+      if(_item && _item.dataset.type === theme.background.type) {
+        item = _item;
+      }
+    }
+    
+    if(!item) {
+      item = document.createElement('div');
+      item.classList.add('chat-background-item');
+      item.dataset.type = theme.background.type;
+    }
+
     if(theme.background.type === 'color') {
       item.style.backgroundColor = theme.background.color;
       item.style.backgroundImage = 'none';
@@ -94,7 +106,13 @@ export default class Chat extends EventListenerBase<{
 
     return new Promise<void>((resolve) => {
       const cb = () => {
-        const prev = this.backgroundEl.children[this.backgroundEl.childElementCount - 1] as HTMLElement;
+        const prev = this.backgroundEl.lastElementChild as HTMLElement;
+
+        if(prev === item) {
+          resolve();
+          return;
+        }
+
         this.backgroundEl.append(item);
 
         // * одного недостаточно, при обновлении страницы все равно фон появляется неплавно

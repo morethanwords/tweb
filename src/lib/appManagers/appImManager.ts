@@ -45,7 +45,7 @@ import appNotificationsManager from './appNotificationsManager';
 import AppPrivateSearchTab from '../../components/sidebarRight/tabs/search';
 import { i18n, LangPackKey } from '../langPack';
 import { SendMessageAction } from '../../layer';
-import { hslaStringToRgbString } from '../../helpers/color';
+import { hslaStringToHex } from '../../helpers/color';
 import { copy, getObjectKeysAndSort } from '../../helpers/object';
 import { getFilesFromEvent } from '../../helpers/files';
 import PeerTitle from '../../components/peerTitle';
@@ -224,7 +224,7 @@ export class AppImManager {
   public setCurrentBackground(broadcastEvent = false) {
     const theme = rootScope.settings.themes.find(t => t.name === rootScope.settings.theme);
 
-    if(theme.background.slug) {
+    if(theme.background.type === 'image' || (theme.background.type === 'default' && theme.background.slug)) {
       const defaultTheme = AppStateManager.STATE_INIT.settings.themes.find(t => t.name === theme.name);
       const isDefaultBackground = theme.background.blur === defaultTheme.background.blur && 
         theme.background.slug === defaultTheme.background.slug;
@@ -312,7 +312,7 @@ export class AppImManager {
 
     let themeColor = '#ffffff';
     if(hsla) {
-      themeColor = hslaStringToRgbString(hsla);
+      themeColor = hslaStringToHex(hsla);
     }
 
     if(this.themeColorElem === undefined) {
@@ -324,7 +324,7 @@ export class AppImManager {
     }
   }
 
-  public applyCurrentTheme(slug?: string, backgroundUrl?: string) {
+  public applyCurrentTheme(slug?: string, backgroundUrl?: string, broadcastEvent?: boolean) {
     this.applyHighlightningColor();
 
     document.documentElement.classList.toggle('night', rootScope.settings.theme === 'night');
@@ -333,7 +333,7 @@ export class AppImManager {
       this.backgroundPromises[slug] = Promise.resolve(backgroundUrl);
     }
     
-    return this.setCurrentBackground(!!slug);
+    return this.setCurrentBackground(broadcastEvent === undefined ? !!slug : broadcastEvent);
   }
 
   private setSettings = () => {
