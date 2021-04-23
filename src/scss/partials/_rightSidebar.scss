@@ -110,7 +110,7 @@
       max-height: calc((var(--vh, 1vh) * 100) - 100% - 56px);
     }
   } */
-  .scrollable {
+  .scrollable:not(.no-parallax) {
     perspective: 0px;
     perspective-origin: left top;
 

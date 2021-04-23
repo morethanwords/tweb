@@ -44,6 +44,7 @@ import PopupPickUser from "../../popups/pickUser";
 import PopupPeer from "../../popups/peer";
 import Scrollable from "../../scrollable";
 import { isTouchSupported } from "../../../helpers/touchSupport";
+import { isFirefox } from "../../../helpers/userAgent";
 
 let setText = (text: string, row: Row) => {
   //fastRaf(() => {
@@ -51,6 +52,8 @@ let setText = (text: string, row: Row) => {
     row.container.style.display = '';
   //});
 };
+
+const PARALLAX_SUPPORTED = !isFirefox;
 
 type ListLoaderResult<T> = {count: number, items: any[]};
 class ListLoader<T> {
@@ -164,14 +167,16 @@ class ListLoader<T> {
 }
 
 class PeerProfileAvatars {
-  public static BASE_CLASS = 'profile-avatars';
+  private static BASE_CLASS = 'profile-avatars';
+  private static SCALE = PARALLAX_SUPPORTED ? 2 : 1;
+  private static TRANSLATE_TEMPLATE = PARALLAX_SUPPORTED ? `translate3d({x}, 0, -1px) scale(${PeerProfileAvatars.SCALE})` : 'translate({x}, 0)';
   public container: HTMLElement;
   public avatars: HTMLElement;
   public gradient: HTMLElement;
   public info: HTMLElement;
-  public tabs: HTMLDivElement;
-  public listLoader: ListLoader<string | Message.messageService>;
-  public peerId: number;
+  private tabs: HTMLDivElement;
+  private listLoader: ListLoader<string | Message.messageService>;
+  private peerId: number;
 
   constructor(public scrollable: Scrollable) {
     this.container = document.createElement('div');
@@ -266,11 +271,11 @@ class PeerProfileAvatars {
       element: this.avatars, 
       onSwipe: (xDiff, yDiff) => {
         lastDiffX = xDiff;
-        let lastX = x + xDiff * -2;
+        let lastX = x + xDiff * -PeerProfileAvatars.SCALE;
         if(lastX > 0) lastX = 0;
         else if(lastX < minX) lastX = minX;
 
-        this.avatars.style.transform = `translate3d(${lastX}px, 0, -1px) scale(2)`;
+        this.avatars.style.transform = PeerProfileAvatars.TRANSLATE_TEMPLATE.replace('{x}', lastX + 'px');
         //console.log(xDiff, yDiff);
         return false;
       }, 
@@ -294,13 +299,13 @@ class PeerProfileAvatars {
         x = -width * lastIndex; */
         x = rect.left - this.container.getBoundingClientRect().left;
         
-        this.avatars.style.transform = `translate3d(${x}px, 0, -1px) scale(2)`;
+        this.avatars.style.transform = PeerProfileAvatars.TRANSLATE_TEMPLATE.replace('{x}', x + 'px');
 
         this.avatars.classList.add('no-transition');
         void this.avatars.offsetLeft; // reflow
       },
       onReset: () => {
-        const addIndex = Math.ceil(Math.abs(lastDiffX) / (width / 2)) * (lastDiffX >= 0 ? 1 : -1);
+        const addIndex = Math.ceil(Math.abs(lastDiffX) / (width / PeerProfileAvatars.SCALE)) * (lastDiffX >= 0 ? 1 : -1);
         cancelNextClick();
         
         //console.log(addIndex);
@@ -372,7 +377,8 @@ class PeerProfileAvatars {
       onJump: (item, older) => {
         const id = this.listLoader.index;
         //const nextId = Math.max(0, id);
-        this.avatars.style.transform = `translate3d(-${200 * id}%, 0, -1px) scale(2)`;
+        const x = 100 * PeerProfileAvatars.SCALE * id;
+        this.avatars.style.transform = PeerProfileAvatars.TRANSLATE_TEMPLATE.replace('{x}', `-${x}%`);
 
         const activeTab = this.tabs.querySelector('.active');
         if(activeTab) activeTab.classList.remove('active');
@@ -457,7 +463,9 @@ class PeerProfile {
   private threadId: number;
 
   constructor(public scrollable: Scrollable) {
-
+    if(!PARALLAX_SUPPORTED) {
+      this.scrollable.container.classList.add('no-parallax');
+    }
   }
 
   public init() {
@@ -609,13 +617,17 @@ class PeerProfile {
         if(oldAvatars) oldAvatars.container.replaceWith(this.avatars.container);
         else this.element.prepend(this.avatars.container);
 
-        this.scrollable.container.classList.add('parallax');
+        if(PARALLAX_SUPPORTED) {
+          this.scrollable.container.classList.add('parallax');
+        }
 
         return;
       }
     }
 
-    this.scrollable.container.classList.remove('parallax');
+    if(PARALLAX_SUPPORTED) {
+      this.scrollable.container.classList.remove('parallax');
+    }
 
     if(this.avatars) {
       this.avatars.container.remove();

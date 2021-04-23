@@ -25,6 +25,7 @@ export const isAppleMobile = (/iPad|iPhone|iPod/.test(navigator.platform) ||
   !ctx.MSStream;
 
 export const isSafari = !!('safari' in ctx) || !!(userAgent && (/\b(iPad|iPhone|iPod)\b/.test(userAgent) || (!!userAgent.match('Safari') && !userAgent.match('Chrome'))))/*  || true */;
+export const isFirefox = navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
 
 export const isMobileSafari = isSafari && isAppleMobile;
 

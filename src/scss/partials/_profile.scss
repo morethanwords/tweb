@@ -33,6 +33,10 @@
       transition: transform .2s ease-in-out;
       position: absolute;
 
+      .scrollable.no-parallax & {
+        transform: translate(0, 0);
+      }
+
       &:before {
         content: " ";
         top: 0;

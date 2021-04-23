@@ -366,14 +366,14 @@
 }
 
 .btn-circle {
+  --size: 54px;
   border-radius: 50%;
-  height: 54px;
-  width: 54px;
-  line-height: 54px;
+  height: var(--size);
+  width: var(--size) !important;
+  line-height: var(--size);
   
   @include respond-to(handhelds) {
-    height: 46px;
-    width: 46px;
+    --size: 46px;
   }
   
   path {

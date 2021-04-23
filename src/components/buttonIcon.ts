@@ -6,7 +6,7 @@
 
 import Button from "./button";
 
-const ButtonIcon = (className: string, options: Partial<{noRipple: true, onlyMobile: true}> = {}) => {
+const ButtonIcon = (className: string, options: Partial<{noRipple: true, onlyMobile: true, asDiv: boolean}> = {}) => {
   const button = Button('btn-icon', {icon: className, ...options});
   return button;
 };
