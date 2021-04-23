@@ -9,9 +9,9 @@
 @font-face {
   font-family: "#{$tgico-font-family}";
   src:
-    url('#{$tgico-font-path}/#{$tgico-font-family}.ttf?cbcfst') format('truetype'),
-    url('#{$tgico-font-path}/#{$tgico-font-family}.woff?cbcfst') format('woff'),
-    url('#{$tgico-font-path}/#{$tgico-font-family}.svg?cbcfst#tgico') format('svg');
+    url('#{$tgico-font-path}/#{$tgico-font-family}_1.ttf?4vj0au') format('truetype'),
+    url('#{$tgico-font-path}/#{$tgico-font-family}_1.woff?4vj0au') format('woff'),
+    url('#{$tgico-font-path}/#{$tgico-font-family}_1.svg?4vj0au#tgico') format('svg');
   font-weight: normal;
   font-style: normal;
   font-display: block;
@@ -442,6 +442,11 @@
     content: $tgico-lock; 
   }
 }
+.tgico-lockoff {
+  &:before {
+    content: $tgico-lockoff; 
+  }
+}
 .tgico-loginlogodesktop {
   &:before {
     content: $tgico-loginlogodesktop; 
@@ -735,11 +740,6 @@
 .tgico-underline {
   &:before {
     content: $tgico-underline; 
-  }
-}
-.tgico-unlock {
-  &:before {
-    content: $tgico-unlock; 
   }
 }
 .tgico-unmute {

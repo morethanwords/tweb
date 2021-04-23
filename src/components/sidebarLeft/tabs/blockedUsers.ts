@@ -83,7 +83,7 @@ export default class AppBlockedUsersTab extends SliderSuperTab {
     };
 
     const element = this.menuElement = ButtonMenu([{
-      icon: 'unlock',
+      icon: 'lockoff',
       text: 'Unblock',
       onClick: onUnblock,
       options: {listenerSetter: this.listenerSetter}
