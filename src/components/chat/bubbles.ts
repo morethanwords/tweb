@@ -168,7 +168,7 @@ export default class ChatBubbles {
         const message = this.chat.getMessage(mid);
         
         if(+bubble.dataset.timestamp >= (message.date + serverTimeManager.serverTimeOffset - 1)) {
-          this.bubbleGroups.addBubble(bubble, message, false);
+          //this.bubbleGroups.addBubble(bubble, message, false); // ! TEMP COMMENTED
           return;
         }
 
@@ -1740,7 +1740,7 @@ export default class ChatBubbles {
 
   public setBubblePosition(bubble: HTMLElement, message: any, reverse: boolean) {
     const dateMessage = this.getDateContainerByMessage(message, reverse);
-    if(this.chat.type === 'scheduled' || this.chat.type === 'pinned' || true) {
+    if(this.chat.type === 'scheduled' || this.chat.type === 'pinned'/*  || true */) { // ! TEMP COMMENTED
       const offset = this.stickyIntersector ? 2 : 1;
       let children = Array.from(dateMessage.container.children).slice(offset) as HTMLElement[];
       let i = 0, foundMidOnSameTimestamp = 0;
