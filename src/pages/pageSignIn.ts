@@ -27,6 +27,8 @@ import { ripple } from "../components/ripple";
 import findUpTag from "../helpers/dom/findUpTag";
 import findUpClassName from "../helpers/dom/findUpClassName";
 import { randomLong } from "../helpers/random";
+import AppStorage from "../lib/storage";
+import CacheStorageController from "../lib/cacheStorage";
 
 type Country = _Country & {
   li?: HTMLLIElement[]
@@ -315,7 +317,19 @@ let onFirstMount = () => {
     name: 'keepSession',
     withRipple: true
   });
-  signedCheckboxField.input.checked = true;
+
+  signedCheckboxField.input.addEventListener('change', () => {
+    const keepSigned = signedCheckboxField.checked;
+    appStateManager.pushToState('keepSigned', keepSigned);
+    
+    AppStorage.toggleStorage(keepSigned);
+    CacheStorageController.toggleStorage(keepSigned);
+    apiManager.toggleStorage(keepSigned);
+  });
+
+  appStateManager.getState().then(state => {
+    signedCheckboxField.checked = state.keepSigned;
+  });
 
   btnNext = Button('btn-primary btn-color-primary', {text: 'Login.Next'});
   btnNext.style.visibility = 'hidden';

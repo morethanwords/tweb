@@ -84,6 +84,7 @@ export type State = Partial<{
     },
     nightTheme?: boolean, // ! DEPRECATED
   },
+  keepSigned: boolean,
   drafts: AppDraftsManager['drafts']
 }>;
 
@@ -146,6 +147,7 @@ export const STATE_INIT: State = {
       sound: false
     }
   },
+  keepSigned: true,
   drafts: {}
 };
 
