@@ -13,6 +13,7 @@ import ButtonMenu, { ButtonMenuItemOptions } from "./buttonMenu";
 import PopupDeleteDialog from "./popups/deleteDialog";
 import { i18n } from "../lib/langPack";
 import findUpTag from "../helpers/dom/findUpTag";
+import appNotificationsManager from "../lib/appManagers/appNotificationsManager";
 
 export default class DialogsContextMenu {
   private element: HTMLElement;
@@ -60,16 +61,14 @@ export default class DialogsContextMenu {
       text: 'ChatList.Context.Mute',
       onClick: this.onMuteClick,
       verify: () => {
-        const isMuted = this.dialog.notify_settings && this.dialog.notify_settings.mute_until > (Date.now() / 1000 | 0);
-        return !isMuted && this.selectedId !== rootScope.myId; 
+        return this.selectedId !== rootScope.myId && !appNotificationsManager.isPeerLocalMuted(this.dialog.peerId); 
       }
     }, {
       icon: 'unmute',
       text: 'ChatList.Context.Unmute',
       onClick: this.onMuteClick,
       verify: () => {
-        const isMuted = this.dialog.notify_settings && this.dialog.notify_settings.mute_until > (Date.now() / 1000 | 0);
-        return isMuted && this.selectedId !== rootScope.myId; 
+        return this.selectedId !== rootScope.myId && appNotificationsManager.isPeerLocalMuted(this.dialog.peerId); 
       }
     }, {
       icon: 'archive',
