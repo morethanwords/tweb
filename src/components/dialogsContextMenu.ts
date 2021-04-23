@@ -66,7 +66,7 @@ export default class DialogsContextMenu {
     }, {
       icon: 'unmute',
       text: 'ChatList.Context.Unmute',
-      onClick: this.onMuteClick,
+      onClick: this.onUnmuteClick,
       verify: () => {
         return this.selectedId !== rootScope.myId && appNotificationsManager.isPeerLocalMuted(this.dialog.peerId); 
       }
@@ -103,9 +103,13 @@ export default class DialogsContextMenu {
   private onPinClick = () => {
     appMessagesManager.toggleDialogPin(this.selectedId, this.filterId);
   };
+
+  private onUnmuteClick = () => {
+    appMessagesManager.mutePeer(this.selectedId, false);
+  };
   
   private onMuteClick = () => {
-    appMessagesManager.mutePeer(this.selectedId);
+    appMessagesManager.mutePeer(this.selectedId, true);
   };
 
   private onUnreadClick = () => {

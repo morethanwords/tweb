@@ -3905,11 +3905,11 @@ export class AppMessagesManager {
       const notifyPeerToHandle = this.notificationsToHandle[peerId];
 
       Promise.all([
-        appNotificationsManager.getPeerMuted(peerId),
+        appNotificationsManager.getNotifyPeerTypeSettings(),
         appNotificationsManager.getNotifySettings(appPeersManager.getInputNotifyPeerById(peerId, true))
-      ]).then(([muted, peerTypeNotifySettings]) => {
+      ]).then(([_, peerTypeNotifySettings]) => {
         const topMessage = notifyPeerToHandle.topMessage;
-        if(muted || !topMessage.pFlags.unread) {
+        if(appNotificationsManager.isPeerLocalMuted(peerId, true) || !topMessage.pFlags.unread) {
           return;
         }
 
@@ -4787,20 +4787,20 @@ export class AppMessagesManager {
     return pendingMessage;
   }
 
-  public mutePeer(peerId: number) {
+  public mutePeer(peerId: number, mute?: boolean) {
     const settings: InputPeerNotifySettings = {
       _: 'inputPeerNotifySettings'
     };
 
-    const dialog = appMessagesManager.getDialogByPeerId(peerId)[0];
-    let muted = true;
-    if(dialog && dialog.notify_settings) {
-      muted = dialog.notify_settings.mute_until > (Date.now() / 1000 | 0);
+    if(mute === undefined) {
+      mute = false;
+      const dialog = appMessagesManager.getDialogByPeerId(peerId)[0];
+      if(dialog && dialog.notify_settings) {
+        mute = (dialog.notify_settings.mute_until || 0) <= (Date.now() / 1000 | 0);
+      }
     }
     
-    if(!muted) {
-      settings.mute_until = 2147483647;
-    }
+    settings.mute_until = mute ? 0xFFFFFFFF : 0;
 
     return appNotificationsManager.updateNotifySettings({
       _: 'inputNotifyPeer',

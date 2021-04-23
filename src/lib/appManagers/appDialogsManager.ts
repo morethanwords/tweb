@@ -498,10 +498,7 @@ export class AppDialogsManager {
     //selectTab(0);
     (this.folders.menu.firstElementChild as HTMLElement).click();
     appStateManager.getState().then((state) => {
-      (['inputNotifyBroadcasts', 'inputNotifyUsers', 'inputNotifyChats'] as Exclude<InputNotifyPeer['_'], 'inputNotifyPeer'>[])
-      .forEach((inputKey) => {
-        appNotificationsManager.getNotifySettings({_: inputKey});
-      });
+      appNotificationsManager.getNotifyPeerTypeSettings();
       
       const getFiltersPromise = appMessagesManager.filtersStorage.getDialogFilters();
       getFiltersPromise.then((filters) => {

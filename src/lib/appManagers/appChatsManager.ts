@@ -74,7 +74,7 @@ export class AppChatsManager {
         case 'updateChatUserTyping':
         case 'updateChannelUserTyping': {
           const fromId = (update as Update.updateUserTyping).user_id || appPeersManager.getPeerId((update as Update.updateChatUserTyping).from_id);
-          if(rootScope.myId === fromId) {
+          if(rootScope.myId === fromId || update.action._ === 'speakingInGroupCallAction') {
             break;
           }
           
