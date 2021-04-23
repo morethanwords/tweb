@@ -1139,6 +1139,16 @@
         transform: scale(1);
       }
     }
+
+    .media-photo {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .preloader-container {
+      z-index: 1;
+    }
   }
 }
 

@@ -24,7 +24,7 @@ import DEBUG, { MOUNT_CLASS_TO } from '../../config/debug';
 const REFRESH_EVERY = 24 * 60 * 60 * 1000; // 1 day
 const STATE_VERSION = App.version;
 
-type Background = {
+export type Background = {
   type: 'color' | 'image' | 'default',
   blur: boolean,
   highlightningColor?: string,
@@ -32,7 +32,7 @@ type Background = {
   slug?: string,
 };
 
-type Theme = {
+export type Theme = {
   name: 'day' | 'night',
   background: Background
 };
