@@ -3898,7 +3898,7 @@ export class AppMessagesManager {
     for(const _peerId in this.notificationsToHandle) {
       const peerId = +_peerId;
 
-      if(rootScope.peerId === peerId) {
+      if(rootScope.peerId === peerId && !rootScope.idle.isIDLE) {
         continue;
       }
 
