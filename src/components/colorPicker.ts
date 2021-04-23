@@ -1,8 +1,8 @@
 import { ColorHsla, hexaToHsla, hslaToRgba, rgbaToHexa as rgbaToHexa, rgbaToHsla } from "../helpers/color";
+import attachGrabListeners from "../helpers/dom/attachGrabListeners";
 import { clamp } from "../helpers/number";
 import InputField, { InputState } from "./inputField";
 
-type EventPosition = {x: number, y: number, isTouch?: boolean};
 export type ColorPickerColor = { 
   hsl: string; 
   rgb: string; 
@@ -133,56 +133,6 @@ export default class ColorPicker {
     this.attachHueListeners();
   }
 
-  private attachGrabListeners(element: SVGSVGElement, onStart: (position: EventPosition) => void, onMove: (position: EventPosition) => void, onEnd: (position: EventPosition) => void) {
-    // * Mouse
-    const onMouseMove = (event: MouseEvent) => {
-      onMove({x: event.pageX, y: event.pageY});
-    };
-
-    const onMouseDown = (event: MouseEvent) => {
-      if(event.button !== 0) {
-        element.addEventListener('mousedown', onMouseDown, {once: true});
-        return;
-      }
-
-      this.onGrabStart();
-      onStart({x: event.pageX, y: event.pageY});
-      onMouseMove(event);
-
-      document.addEventListener('mousemove', onMouseMove);
-      document.addEventListener('mouseup', () => {
-        document.removeEventListener('mousemove', onMouseMove);
-        element.addEventListener('mousedown', onMouseDown, {once: true});
-        this.onGrabEnd();
-        onEnd && onEnd({x: event.pageX, y: event.pageY});
-      }, {once: true});
-    };
-
-    element.addEventListener('mousedown', onMouseDown, {once: true});
-
-    // * Touch
-    const onTouchMove = (event: TouchEvent) => {
-      event.preventDefault();
-      onMove({x: event.touches[0].clientX, y: event.touches[0].clientY, isTouch: true});
-    };
-
-    const onTouchStart = (event: TouchEvent) => {
-      this.onGrabStart();
-      onStart({x: event.touches[0].clientX, y: event.touches[0].clientY, isTouch: true});
-      onTouchMove(event);
-
-      document.addEventListener('touchmove', onTouchMove, {passive: false});
-      document.addEventListener('touchend', (event) => {
-        document.removeEventListener('touchmove', onTouchMove);
-        element.addEventListener('touchstart', onTouchStart, {passive: true, once: true});
-        this.onGrabEnd();
-        onEnd && onEnd({x: event.touches[0].clientX, y: event.touches[0].clientY, isTouch: true});
-      }, {passive: true, once: true});
-    };
-
-    element.addEventListener('touchstart', onTouchStart, {passive: true, once: true});
-  }
-
   private onGrabStart = () => {
     document.documentElement.style.cursor = this.elements.boxDragger.style.cursor = 'grabbing';
   };
@@ -192,21 +142,27 @@ export default class ColorPicker {
   };
 
   private attachBoxListeners() {
-    this.attachGrabListeners(this.elements.box, () => {
+    attachGrabListeners(this.elements.box as any, () => {
+      this.onGrabStart();
       this.boxRect = this.elements.box.getBoundingClientRect();
       //this.boxDraggerRect = this.elements.boxDragger.getBoundingClientRect();
     }, (pos) => {
       this.saturationHandler(pos.x, pos.y);
-    }, null);
+    }, () => {
+      this.onGrabEnd();
+    });
   }
 
   private attachHueListeners() {
-    this.attachGrabListeners(this.elements.hue, () => {
+    attachGrabListeners(this.elements.hue as any, () => {
+      this.onGrabStart();
       this.hueRect = this.elements.hue.getBoundingClientRect();
       //this.hueDraggerRect = this.elements.hueDragger.getBoundingClientRect();
     }, (pos) => {
       this.hueHandler(pos.x);
-    }, null);
+    }, () => {
+      this.onGrabEnd();
+    });
   }
 
   public setColor(color: ColorHsla | string, updateHexInput = true, updateRgbInput = true) {

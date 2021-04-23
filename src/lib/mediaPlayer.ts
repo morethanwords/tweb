@@ -11,8 +11,6 @@ import { isTouchSupported } from "../helpers/touchSupport";
 import RangeSelector from "../components/rangeSelector";
 import { onVideoLoad } from "../helpers/files";
 
-type SUPEREVENT = MouseEvent | TouchEvent;
-
 export class MediaProgressLine extends RangeSelector {
   private filledLoad: HTMLDivElement;
   
@@ -36,7 +34,7 @@ export class MediaProgressLine extends RangeSelector {
     this.setSeekMax();
     this.setListeners();
     this.setHandlers({
-      onMouseDown: (e: SUPEREVENT) => {
+      onMouseDown: () => {
         //super.onMouseDown(e);
     
         //Таймер для того, чтобы стопать видео, если зажал мышку и не отпустил клик
@@ -50,7 +48,7 @@ export class MediaProgressLine extends RangeSelector {
         }, 150);
       },
 
-      onMouseUp: (e: SUPEREVENT) => {
+      onMouseUp: () => {
         //super.onMouseUp(e);
     
         if(this.stopAndScrubTimeout) {
