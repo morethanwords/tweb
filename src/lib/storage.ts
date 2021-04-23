@@ -52,9 +52,9 @@ export default class AppStorage<Storage extends Record<string, any>/* Storage ex
       }
 
       return this.cache[key] = value;
-    } else {
+    }/*  else {
       throw 'something went wrong';
-    }
+    } */
   }
 
   public async set(obj: Partial<Storage>, onlyLocal = false) {
