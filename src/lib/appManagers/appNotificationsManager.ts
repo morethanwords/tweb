@@ -82,6 +82,8 @@ export class AppNotificationsManager {
 
   private notifySoundEl: HTMLElement;
 
+  private getNotifyPeerTypePromise: Promise<any>;
+
   constructor() {
     // @ts-ignore
     navigator.vibrate = navigator.vibrate || navigator.mozVibrate || navigator.webkitVibrate;
@@ -320,6 +322,17 @@ export class AppNotificationsManager {
       this.savePeerSettings(key, settings);
       return settings;
     });
+  }
+
+  public getNotifyPeerTypeSettings() {
+    if(this.getNotifyPeerTypePromise) return this.getNotifyPeerTypePromise;
+
+    const promises = (['inputNotifyBroadcasts', 'inputNotifyUsers', 'inputNotifyChats'] as Exclude<InputNotifyPeer['_'], 'inputNotifyPeer'>[])
+    .map((inputKey) => {
+      return this.getNotifySettings({_: inputKey});
+    });
+
+    return this.getNotifyPeerTypePromise = Promise.all(promises);
   }
 
   public updateNotifySettings(peer: InputNotifyPeer, settings: InputPeerNotifySettings) {

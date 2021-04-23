@@ -1,4 +1,4 @@
-import { ColorHsla, hexaToHsla, hslaToRgba, rgbaToHexa as rgbaToHexa, rgbaToHsla } from "../helpers/color";
+import { ColorHsla, ColorRgba, hexaToHsla, hslaToRgba, rgbaToHexa as rgbaToHexa, rgbaToHsla } from "../helpers/color";
 import attachGrabListeners from "../helpers/dom/attachGrabListeners";
 import { clamp } from "../helpers/number";
 import InputField, { InputState } from "./inputField";
@@ -10,7 +10,7 @@ export type ColorPickerColor = {
   hsla: string; 
   rgba: string; 
   hexa: string; 
-  rgbaArray: import("f:/tweb/src/helpers/color").ColorRgba; 
+  rgbaArray: ColorRgba; 
 };
 
 export default class ColorPicker {
