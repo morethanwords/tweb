@@ -494,6 +494,8 @@ const lang = {
   "ChatList.Filter.MutedChats": "Muted",
   "ChatList.Filter.ReadChats": "Read",
   "ChatList.Filter.Archive": "Archived",
+  "ChatList.Filter.Include.LimitReached": "Sorry, you can only add up to 100 individual chats. Try using chat types.",
+  "ChatList.Filter.Exclude.LimitReached": "Sorry, you can only add up to 100 individual chats. Try using chat types.",
   "Channel.ChannelNameHolder": "Channel Name",
   "Channel.DescriptionHolderDescrpiton": "You can provide an optional description for your channel.",
   "CreateGroup.NameHolder": "Group Name",

@@ -14,10 +14,11 @@ import ButtonIcon from "../../buttonIcon";
 import CheckboxField from "../../checkboxField";
 import Button from "../../button";
 import AppEditFolderTab from "./editFolder";
-import { i18n, LangPackKey, _i18n, join } from "../../../lib/langPack";
+import I18n, { i18n, LangPackKey, _i18n, join } from "../../../lib/langPack";
 import appMessagesManager from "../../../lib/appManagers/appMessagesManager";
 import RichTextProcessor from "../../../lib/richtextprocessor";
 import { SettingSection } from "..";
+import { toast } from "../../toast";
 
 export default class AppIncludedChatsTab extends SliderSuperTab {
   private editFolderTab: AppEditFolderTab;
@@ -221,8 +222,22 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
     });
     this.selector.selected = new Set(selectedPeers);
 
+    let addedInitial = false;
     const _add = this.selector.add.bind(this.selector);
     this.selector.add = (peerId, title, scroll) => {
+      if(this.selector.selected.size >= 100 && addedInitial && !details[peerId]) {
+        const el: HTMLInputElement = this.selector.list.querySelector(`[data-peer-id="${peerId}"] [type="checkbox"]`);
+        if(el) {
+          setTimeout(() => {
+            el.checked = false;
+          }, 0);
+        }
+
+        const str = I18n.format(this.type === 'excluded' ? 'ChatList.Filter.Exclude.LimitReached': 'ChatList.Filter.Include.LimitReached', true);
+        toast(str);
+        return;
+      }
+
       const div = _add(peerId, details[peerId] ? i18n(details[peerId].text) : undefined, scroll);
       if(details[peerId]) {
         div.querySelector('avatar-element').classList.add('tgico-' + details[peerId].ico);
@@ -235,6 +250,7 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
     parent.append(fragment);
 
     this.selector.addInitial(selectedPeers);
+    addedInitial = true;
 
     for(const flag in filter.pFlags) {
       // @ts-ignore
