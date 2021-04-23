@@ -117,7 +117,7 @@ export default class ChatTopbar {
         });
 
         // delete button
-        this.menuButtons[this.menuButtons.length - 1].element.firstChild.nodeValue = this.appPeersManager.getDeleteButtonText(this.peerId);
+        this.menuButtons[this.menuButtons.length - 1].element.lastChild.replaceWith(i18n(this.appPeersManager.getDeleteButtonText(this.peerId)));
       });
     }
 

@@ -207,7 +207,7 @@ export class AppMessagesManager {
 
   constructor() {
     this.dialogsStorage = new DialogsStorage(this, appChatsManager, appPeersManager, serverTimeManager);
-    this.filtersStorage = new FiltersStorage(appPeersManager, appUsersManager, /* apiManager, */ rootScope);
+    this.filtersStorage = new FiltersStorage(this, appPeersManager, appUsersManager, appNotificationsManager, /* apiManager, */ rootScope);
 
     rootScope.on('apiUpdate', (e) => {
       this.handleUpdate(e);

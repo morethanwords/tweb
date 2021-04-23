@@ -11,7 +11,8 @@ import type { AppPeersManager } from "../appManagers/appPeersManager";
 import type { AppUsersManager } from "../appManagers/appUsersManager";
 //import type { ApiManagerProxy } from "../mtproto/mtprotoworker";
 import type _rootScope from "../rootScope";
-import type {Dialog} from '../appManagers/appMessagesManager';
+import type {AppMessagesManager, Dialog} from '../appManagers/appMessagesManager';
+import type {AppNotificationsManager} from "../appManagers/appNotificationsManager";
 import apiManager from "../mtproto/mtprotoworker";
 import { forEachReverse } from "../../helpers/array";
 
@@ -29,7 +30,12 @@ export default class FiltersStorage {
   public filters: {[filterId: string]: MyDialogFilter} = {};
   public orderIndex = START_ORDER_INDEX;
 
-  constructor(private appPeersManager: AppPeersManager, private appUsersManager: AppUsersManager, /* private apiManager: ApiManagerProxy, */ private rootScope: typeof _rootScope) {
+  constructor(private appMessagesManager: AppMessagesManager,
+    private appPeersManager: AppPeersManager, 
+    private appUsersManager: AppUsersManager, 
+    private appNotificationsManager: AppNotificationsManager, 
+    /* private apiManager: ApiManagerProxy, */ 
+    private rootScope: typeof _rootScope) {
     rootScope.on('apiUpdate', (e) => {
       this.handleUpdate(e);
     });
@@ -116,7 +122,7 @@ export default class FiltersStorage {
 
     // exclude_muted
     if(pFlags.exclude_muted) {
-      const isMuted = (dialog.notify_settings?.mute_until * 1000) > Date.now();
+      const isMuted = this.appNotificationsManager.isPeerLocalMuted(dialog.peerId);
       if(isMuted) {
         return false;
       }
