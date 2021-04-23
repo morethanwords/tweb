@@ -120,9 +120,14 @@ export class RootScope extends EventListenerBase<any> {
   };
   public connectionStatus: {[name: string]: ConnectionStatusChange} = {};
   public settings: State['settings'];
+  public peerId = 0;
 
   constructor() {
     super();
+
+    this.on('peer_changed', (peerId) => {
+      this.peerId = peerId;
+    });
 
     this.on('user_auth', (e) => {
       this.myId = e;
