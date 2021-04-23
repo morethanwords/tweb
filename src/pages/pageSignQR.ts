@@ -161,9 +161,14 @@ let onFirstMount = async() => {
           break;
         default:
           console.error('pageSignQR: default error:', err);
+          stop = true;
           break;
       }
+
+      return true;
     }
+
+    return false;
   };
 
   await iterate(false);

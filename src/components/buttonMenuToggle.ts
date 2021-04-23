@@ -10,7 +10,8 @@ import ButtonIcon from "./buttonIcon";
 import ButtonMenu, { ButtonMenuItemOptions } from "./buttonMenu";
 import { closeBtnMenu, openBtnMenu } from "./misc";
 
-const ButtonMenuToggle = (options: Partial<{noRipple: true, onlyMobile: true, listenerSetter: ListenerSetter}> = {}, direction: 'bottom-left' | 'bottom-right' | 'top-left' | 'top-right', buttons: ButtonMenuItemOptions[], onOpen?: (e: Event) => void) => {
+const ButtonMenuToggle = (options: Partial<{noRipple: true, onlyMobile: true, listenerSetter: ListenerSetter, asDiv: boolean}> = {}, direction: 'bottom-left' | 'bottom-right' | 'top-left' | 'top-right', buttons: ButtonMenuItemOptions[], onOpen?: (e: Event) => void) => {
+  options.asDiv = true;
   const button = ButtonIcon('more btn-menu-toggle', options);
 
   const btnMenu = ButtonMenu(buttons, options.listenerSetter);

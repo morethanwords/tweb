@@ -357,8 +357,7 @@
       }
 
       @include respond-to(handhelds) {
-        width: 54px;
-        height: 54px;
+        --size: 54px;
         bottom: 14px;
         right: 14px;
 

@@ -57,6 +57,7 @@
     //animation-timing-function: ease-out;
     transition: .35s opacity, .35s background-color;
     //overflow: hidden;
+    pointer-events: none;
 
     .btn-menu &, .c-ripple.is-square & {
       animation-name: ripple-effect-handhelds;

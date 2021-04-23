@@ -118,10 +118,12 @@
   // }
   
   > div {
-    height: 100%;
-    max-height: 100%;
-    width: 100%;
-    max-width: 100%;
+    // * can't define these rules because of old firefox, though they don't work
+    //height: 100%;
+    //max-height: 100%;
+    //width: 100%;
+    //max-width: 100%;
+    
     display: none;
     flex-direction: column;
     position: relative;
