@@ -49,6 +49,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
           theme.background = copy(defaultTheme.background);
           appStateManager.pushToState('settings', rootScope.settings);
           appImManager.applyCurrentTheme(undefined, undefined, true);
+          blurCheckboxField.setValueSilently(theme.background.blur);
         }
       }, {listenerSetter: this.listenerSetter});
 
@@ -61,11 +62,11 @@ export default class AppBackgroundTab extends SliderSuperTab {
       });
 
       this.listenerSetter.add(blurCheckboxField.input, 'change', () => {
-        const active = grid.querySelector('.active') as HTMLElement;
-        if(!active) return;
-
         theme.background.blur = blurCheckboxField.input.checked;
         appStateManager.pushToState('settings', rootScope.settings);
+
+        const active = grid.querySelector('.active') as HTMLElement;
+        if(!active) return;
 
         // * wait for animation end
         setTimeout(() => {
