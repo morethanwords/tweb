@@ -7,6 +7,7 @@
 .ckin {
   &__player {
     letter-spacing: 0.02em;
+    user-select: none;
 
     &.ckin__fullscreen {
       position: fixed;
