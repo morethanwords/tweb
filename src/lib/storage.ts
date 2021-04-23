@@ -13,6 +13,7 @@ import { DatabaseStore, DatabaseStoreName } from "../config/database";
 import IDBStorage, { IDBOptions } from "./idb";
 
 export default class AppStorage<Storage extends Record<string, any>/* Storage extends {[name: string]: any} *//* Storage extends Record<string, any> */> {
+  public static STORAGES: AppStorage<any>[] = [];
   private storage: IDBStorage;//new CacheStorageController('session');
 
   //private cache: Partial<{[key: string]: Storage[typeof key]}> = {};
@@ -21,6 +22,8 @@ export default class AppStorage<Storage extends Record<string, any>/* Storage ex
 
   constructor(storageOptions: Omit<IDBOptions, 'storeName' | 'stores'> & {stores?: DatabaseStore[], storeName: DatabaseStoreName}) {
     this.storage = new IDBStorage(storageOptions);
+
+    AppStorage.STORAGES.push(this);
   }
 
   public getCache() {
@@ -45,7 +48,7 @@ export default class AppStorage<Storage extends Record<string, any>/* Storage ex
         //console.log('[AS]: get result:', key, value);
         //value = JSON.parse(value);
       } catch(e) {
-        if(e !== 'NO_ENTRY_FOUND') {
+        if(!['NO_ENTRY_FOUND', 'STORAGE_OFFLINE'].includes(e)) {
           this.useStorage = false;
           console.error('[AS]: get error:', e, key, value);
         }
@@ -116,5 +119,17 @@ export default class AppStorage<Storage extends Record<string, any>/* Storage ex
 
   public clear() {
     return this.storage.deleteAll();
+  }
+
+  public static toggleStorage(enabled: boolean) {
+    return Promise.all(this.STORAGES.map(storage => {
+      storage.useStorage = enabled;
+      
+      if(!enabled) {
+        return storage.clear();
+      } else {
+        return storage.set(storage.cache);
+      }
+    }));
   }
 }

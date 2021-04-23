@@ -36,6 +36,7 @@ export type IDBOptions = {
 };
 
 export default class IDBStorage {
+  //public static STORAGES: IDBStorage[] = [];
   public openDbPromise: Promise<IDBDatabase>;
   public storageIsAvailable = true;
 
@@ -51,6 +52,8 @@ export default class IDBStorage {
     safeAssign(this, options);
 
     this.openDatabase(true);
+
+    //IDBStorage.STORAGES.push(this);
   }
 
   public isAvailable() {

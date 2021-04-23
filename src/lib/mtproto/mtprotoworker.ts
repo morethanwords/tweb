@@ -478,6 +478,10 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
   public uploadFile(options: {file: Blob | File, fileName: string}) {
     return this.performTaskWorker('uploadFile', options);
   }
+
+  public toggleStorage(enabled: boolean) {
+    return this.performTaskWorker('toggleStorage', enabled);
+  }
 }
 
 const apiManagerProxy = new ApiManagerProxy();

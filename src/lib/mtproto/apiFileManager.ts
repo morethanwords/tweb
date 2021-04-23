@@ -363,6 +363,10 @@ export class ApiFileManager {
         for(let i = 0, length = Math.min(maxRequests, delayed.length); i < length; ++i) {
           superpuper();
         }
+      }).catch((err) => {
+        if(!['STORAGE_OFFLINE'].includes(err)) {
+          this.log.error('saveFile error:', err);
+        }
       });
     });
 

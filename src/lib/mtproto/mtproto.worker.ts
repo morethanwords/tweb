@@ -15,6 +15,8 @@ import type { ServiceWorkerTask, ServiceWorkerTaskResponse } from './mtproto.ser
 import { ctx } from '../../helpers/userAgent';
 import { socketsProxied } from './dcConfigurator';
 import { notifyAll } from '../../helpers/context';
+import AppStorage from '../storage';
+import CacheStorageController from '../cacheStorage';
 
 let webpSupported = false;
 export const isWebpSupported = () => {
@@ -119,6 +121,13 @@ const onMessage = async(e: any) => {
           notifyAll({taskId, result: null});
         });
         
+        break;
+      }
+
+      case 'toggleStorage': {
+        const enabled = task.args[0];
+        AppStorage.toggleStorage(enabled);
+        CacheStorageController.toggleStorage(enabled);
         break;
       }
   

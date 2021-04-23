@@ -74,6 +74,7 @@
     opacity: 0;
     border-radius: var(--border-radius);
     pointer-events: none;
+    z-index: 1;
 
     @include animation-level(2) {
       transition: opacity .2s;
@@ -86,7 +87,7 @@
     --border-width: 1px;
     border: var(--border-width) solid var(--input-search-border-color);
     border-radius: var(--border-radius);
-    background-color: transparent;
+    background-color: var(--surface-color);
     //padding: 0 1rem;
     padding: calc(var(--padding) - var(--border-width));
     box-sizing: border-box;
@@ -96,6 +97,27 @@
     position: relative;
     z-index: 1;
     line-height: var(--line-height);
+
+    /* &:-internal-autofill-selected {
+      -webkit-box-shadow: 0 0 0px 1000px var(--surface-color) inset;
+    } */
+
+    &:-webkit-autofill,
+    &:-webkit-autofill:hover,
+    &:-webkit-autofill:focus,
+    &:-webkit-autofill:active {
+      //transition: background-color 5000s ease-in-out 0s;
+      -webkit-box-shadow: 0 0 0px 1000px var(--surface-color) inset;
+    }
+
+    &:-webkit-autofill::first-line,
+    &:-webkit-autofill,
+    &:-webkit-autofill:hover,
+    &:-webkit-autofill:focus,
+    &:-webkit-autofill:active {
+      font-family: "Roboto", -apple-system, apple color emoji, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif !important;
+      font-size: 1rem !important;
+    }
 
     @include respond-to(handhelds) {
       --padding: .9375rem;

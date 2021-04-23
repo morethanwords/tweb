@@ -11,8 +11,11 @@ import FileManager from './filemanager';
 //import { logger } from './polyfill';
 
 export default class CacheStorageController {
+  public static STORAGES: CacheStorageController[] = [];
   //public dbName = 'cachedFiles';
   public openDbPromise: Promise<Cache>;
+
+  public useStorage = true;
 
   //private log: ReturnType<typeof logger> = logger('CS');
 
@@ -22,6 +25,7 @@ export default class CacheStorageController {
     }
     
     this.openDatabase();
+    CacheStorageController.STORAGES.push(this);
   }
 
   public openDatabase(): Promise<Cache> {
@@ -33,8 +37,8 @@ export default class CacheStorageController {
   }
 
   public delete(entryName: string) {
-    return this.timeoutOperation(async(cache) => {
-      const deleted = await cache.delete('/' + entryName);
+    return this.timeoutOperation((cache) => {
+      return cache.delete('/' + entryName);
     });
   }
 
@@ -43,12 +47,16 @@ export default class CacheStorageController {
   }
 
   public save(entryName: string, response: Response) {
+    if(!this.useStorage) return Promise.reject('STORAGE_OFFLINE');
+
     return this.timeoutOperation((cache) => {
       return cache.put('/' + entryName, response);
     });
   }
 
   public saveFile(fileName: string, blob: Blob | Uint8Array) {
+    if(!this.useStorage) return Promise.reject('STORAGE_OFFLINE');
+
     //return Promise.resolve(blobConstruct([blob]));
     if(!(blob instanceof Blob)) {
       blob = blobConstruct(blob) as Blob;
@@ -64,6 +72,8 @@ export default class CacheStorageController {
   } */
 
   public getFile(fileName: string, method: 'blob' | 'json' | 'text' = 'blob'): Promise<any> {
+    if(!this.useStorage) return Promise.reject('STORAGE_OFFLINE');
+
     /* if(method === 'blob') {
       return Promise.reject();
     } */
@@ -119,6 +129,16 @@ export default class CacheStorageController {
     });
 
     return Promise.resolve(fakeWriter);
+  }
+
+  public static toggleStorage(enabled: boolean) {
+    return Promise.all(this.STORAGES.map(storage => {
+      storage.useStorage = enabled;
+      
+      if(!enabled) {
+        return storage.deleteAll();
+      }
+    }));
   }
 }
 
