@@ -15,7 +15,7 @@ import type { AppPeersManager } from "../../lib/appManagers/appPeersManager";
 import type sessionStorage from '../../lib/sessionStorage';
 import type Chat from "./chat";
 import { CHAT_ANIMATION_GROUP } from "../../lib/appManagers/appImManager";
-import { cancelEvent, whichChild, attachClickEvent, positionElementByIndex, reflowScrollableElement, replaceContent } from "../../helpers/dom";
+import { cancelEvent, whichChild, attachClickEvent, positionElementByIndex, reflowScrollableElement, replaceContent, htmlToDocumentFragment } from "../../helpers/dom";
 import { getObjectKeysAndSort } from "../../helpers/object";
 import { isTouchSupported } from "../../helpers/touchSupport";
 import { logger } from "../../lib/logger";
@@ -1989,13 +1989,16 @@ export default class ChatBubbles {
           
           switch(button._) {
             case 'keyboardButtonUrl': {
-              const from = this.appUsersManager.getUser(message.fromId);
-              const unsafe = !(from && from.pFlags && from.pFlags.verified);
-              const url = RichTextProcessor.wrapUrl(button.url, unsafe);
-              buttonEl = document.createElement('a');
-              buttonEl.href = url;
-              buttonEl.rel = 'noopener noreferrer';
-              buttonEl.target = '_blank';
+              const r = RichTextProcessor.wrapRichText(' ', {
+                entities: [{
+                  _: 'messageEntityTextUrl',
+                  length: 1,
+                  offset: 0,
+                  url: button.url
+                }]
+              });
+
+              buttonEl = htmlToDocumentFragment(r).firstElementChild as HTMLAnchorElement;
               buttonEl.classList.add('is-link', 'tgico');
 
               break;
@@ -2006,7 +2009,7 @@ export default class ChatBubbles {
               break;
             }
           }
-
+          
           buttonEl.classList.add('reply-markup-button', 'rp');
           buttonEl.innerHTML = text;
 
@@ -2019,11 +2022,12 @@ export default class ChatBubbles {
       });
 
       attachClickEvent(containerDiv, (e) => {
-        cancelEvent(e);
         let target = e.target as HTMLElement;
-
+        
         if(!target.classList.contains('reply-markup-button')) target = findUpClassName(target, 'reply-markup-button');
-        if(!target) return;
+        if(!target || target.classList.contains('is-link')) return;
+
+        cancelEvent(e);
 
         const column = whichChild(target);
         const row = rows[whichChild(target.parentElement)];
