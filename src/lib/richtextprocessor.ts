@@ -384,7 +384,8 @@ namespace RichTextProcessor {
       }
     };
 
-    for(const entity of entities) {
+    for(let i = 0, length = entities.length; i < length; ++i) {
+      const entity = entities[i];
       switch(entity._) {
         case 'messageEntityBold': {
           if(!options.noTextFormat) {
@@ -506,9 +507,18 @@ namespace RichTextProcessor {
 
             let inner: string;
             let url: string;
+            let masked = false;
             if(entity._ === 'messageEntityTextUrl') {
               url = (entity as MessageEntity.messageEntityTextUrl).url;
               url = wrapUrl(url, true);
+
+              const nextEntity = entities[i + 1];
+              if(nextEntity?._ === 'messageEntityUrl' && 
+                nextEntity.length === entity.length && 
+                nextEntity.offset === entity.offset) {
+                i++;
+                masked = true;
+              }
             } else {
               url = wrapUrl(entityText, false);
               //inner = encodeEntities(replaceUrlEncodings(entityText));
@@ -516,7 +526,7 @@ namespace RichTextProcessor {
 
             const currentContext = url[0] === '#';
 
-            insertPart(entity, `<a class="anchor-url" href="${encodeEntities(url)}"${currentContext ? '' : ' target="_blank" rel="noopener noreferrer"'}>`, '</a>');
+            insertPart(entity, `<a class="anchor-url" href="${encodeEntities(url)}"${currentContext ? '' : ' target="_blank" rel="noopener noreferrer"'}${masked ? 'onclick="showMaskedAlert(this)"' : ''}>`, '</a>');
           }
 
           break;

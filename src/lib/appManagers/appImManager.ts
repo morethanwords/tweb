@@ -49,6 +49,7 @@ import { hslaStringToHex } from '../../helpers/color';
 import { copy, getObjectKeysAndSort } from '../../helpers/object';
 import { getFilesFromEvent } from '../../helpers/files';
 import PeerTitle from '../../components/peerTitle';
+import PopupPeer from '../../components/popups/peer';
 
 //console.log('appImManager included33!');
 
@@ -172,6 +173,30 @@ export class AppImManager {
     sessionStorage.get('chatPositions').then((c) => {
       sessionStorage.setToCache('chatPositions', c || {});
     });
+
+    (window as any).showMaskedAlert = (element: HTMLAnchorElement, e: Event) => {
+      cancelEvent(null);
+
+      const href = element.href;
+
+      const a = element.cloneNode(true) as HTMLAnchorElement;
+      a.innerText = href;
+      a.removeAttribute('onclick');
+
+      new PopupPeer('popup-masked-url', {
+        titleLangKey: 'OpenUrlTitle',
+        descriptionLangKey: 'OpenUrlAlert2',
+        descriptionLangArgs: [a],
+        buttons: [{
+          langKey: 'Open',
+          callback: () => {
+            a.click();
+          },
+        }]
+      }).show();
+
+      return false;
+    };
   }
 
   private onHashChange = () => {
