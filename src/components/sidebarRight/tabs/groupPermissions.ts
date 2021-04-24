@@ -255,32 +255,30 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
         //dom.lastMessageSpan.innerHTML = 'Can Add Users and Pin Messages';
       };
 
-      this.listenerSetter.add(rootScope, 'apiUpdate', (update: Update) => {
-        if(update._ === 'updateChannelParticipant') {
-          const needAdd = update.new_participant?._ === 'channelParticipantBanned' && !update.new_participant.banned_rights.pFlags.view_messages;
-          const li = list.querySelector(`[data-peer-id="${update.user_id}"]`);
-          if(needAdd) {
-            if(!li) {
-              add(update.new_participant as ChannelParticipant.channelParticipantBanned, false);
-            } else {
-              setSubtitle(li, update.new_participant as ChannelParticipant.channelParticipantBanned);
-            }
-
-            if(update.prev_participant?._ !== 'channelParticipantBanned') {
-              ++exceptionsCount;
-            }
+      this.listenerSetter.add(rootScope, 'updateChannelParticipant', (update: Update.updateChannelParticipant) => {
+        const needAdd = update.new_participant?._ === 'channelParticipantBanned' && !update.new_participant.banned_rights.pFlags.view_messages;
+        const li = list.querySelector(`[data-peer-id="${update.user_id}"]`);
+        if(needAdd) {
+          if(!li) {
+            add(update.new_participant as ChannelParticipant.channelParticipantBanned, false);
           } else {
-            if(li) {
-              li.remove();
-            }
-
-            if(update.prev_participant?._ === 'channelParticipantBanned') {
-              --exceptionsCount;
-            }
+            setSubtitle(li, update.new_participant as ChannelParticipant.channelParticipantBanned);
           }
 
-          setLength();
+          if(update.prev_participant?._ !== 'channelParticipantBanned') {
+            ++exceptionsCount;
+          }
+        } else {
+          if(li) {
+            li.remove();
+          }
+
+          if(update.prev_participant?._ === 'channelParticipantBanned') {
+            --exceptionsCount;
+          }
         }
+
+        setLength();
       });
 
       const setLength = () => {
