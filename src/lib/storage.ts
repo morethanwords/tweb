@@ -13,7 +13,7 @@ import { DatabaseStore, DatabaseStoreName } from "../config/database";
 import IDBStorage, { IDBOptions } from "./idb";
 
 export default class AppStorage<Storage extends Record<string, any>/* Storage extends {[name: string]: any} *//* Storage extends Record<string, any> */> {
-  public static STORAGES: AppStorage<any>[] = [];
+  private static STORAGES: AppStorage<any>[] = [];
   private storage: IDBStorage;//new CacheStorageController('session');
 
   //private cache: Partial<{[key: string]: Storage[typeof key]}> = {};

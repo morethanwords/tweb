@@ -13,7 +13,7 @@ import { formatPhoneNumber } from "../../components/misc";
 import { MOUNT_CLASS_TO } from "../../config/debug";
 import { tsNow } from "../../helpers/date";
 import { safeReplaceObject, isObject } from "../../helpers/object";
-import { InputUser, Update, User as MTUser, UserProfilePhoto, UserStatus } from "../../layer";
+import { InputUser, Update, User as MTUser, UserStatus } from "../../layer";
 import I18n, { i18n, LangPackKey } from "../langPack";
 //import apiManager from '../mtproto/apiManager';
 import apiManager from '../mtproto/mtprotoworker';
@@ -22,6 +22,7 @@ import serverTimeManager from "../mtproto/serverTimeManager";
 import { RichTextProcessor } from "../richtextprocessor";
 import rootScope from "../rootScope";
 import searchIndexManager from "../searchIndexManager";
+//import AppStorage from "../storage";
 import apiUpdatesManager from "./apiUpdatesManager";
 import appChatsManager from "./appChatsManager";
 import appPeersManager from "./appPeersManager";
@@ -32,12 +33,15 @@ import appStateManager from "./appStateManager";
 export type User = MTUser.user;
 
 export class AppUsersManager {
+  /* private storage = new AppStorage<Record<number, User>>({
+    storeName: 'users'
+  }); */
+  
   private users: {[userId: number]: User} = {};
   private usernames: {[username: string]: number} = {};
-  //public userAccess: {[userId: number]: string} = {};
   private contactsIndex = searchIndexManager.createIndex();
   private contactsFillPromise: Promise<Set<number>>;
-  public contactsList: Set<number> = new Set();
+  private contactsList: Set<number> = new Set();
   private updatedContactsList = false;
   
   private getTopPeersPromise: Promise<number[]>;
@@ -47,72 +51,62 @@ export class AppUsersManager {
 
     rootScope.on('state_synchronized', this.updateUsersStatuses);
 
-    rootScope.on('apiUpdate', (e) => {
-      const update = e as Update;
-      //console.log('on apiUpdate', update);
-      switch(update._) {
-        case 'updateUserStatus': {
-          const userId = update.user_id;
-          const user = this.users[userId];
-          if(user) {
-            user.status = update.status;
-            if(user.status) {
-              if('expires' in user.status) {
-                user.status.expires -= serverTimeManager.serverTimeOffset;
-              }
-
-              if('was_online' in user.status) {
-                user.status.was_online -= serverTimeManager.serverTimeOffset;
-              }
+    rootScope.addMultipleEventsListeners({
+      updateUserStatus: (update) => {
+        const userId = update.user_id;
+        const user = this.users[userId];
+        if(user) {
+          user.status = update.status;
+          if(user.status) {
+            if('expires' in user.status) {
+              user.status.expires -= serverTimeManager.serverTimeOffset;
             }
 
-            user.sortStatus = this.getUserStatusForSort(user.status);
-            rootScope.broadcast('user_update', userId);
-          } //////else console.warn('No user by id:', userId);
-
-          break;
-        }
-  
-        case 'updateUserPhoto': {
-          const userId = update.user_id;
-          const user = this.users[userId];
-          if(user) {
-            this.forceUserOnline(userId);
-
-            if(update.photo._ === 'userProfilePhotoEmpty') {
-              delete user.photo;
-            } else {
-              user.photo = safeReplaceObject(user.photo, update.photo);
+            if('was_online' in user.status) {
+              user.status.was_online -= serverTimeManager.serverTimeOffset;
             }
-
-            rootScope.broadcast('user_update', userId);
-            rootScope.broadcast('avatar_update', userId);
-          } else console.warn('No user by id:', userId);
-
-          break;
-        }
-
-        case 'updateUserName': {
-          const userId = update.user_id;
-          const user = this.users[userId];
-          if(user) {
-            this.forceUserOnline(userId);
-            
-            this.saveApiUser(Object.assign({}, user, {
-              first_name: update.first_name,
-              last_name: update.last_name,
-              username: update.username
-            }));
           }
 
-          break;
-        }
+          user.sortStatus = this.getUserStatusForSort(user.status);
+          rootScope.broadcast('user_update', userId);
+        } //////else console.warn('No user by id:', userId);
+      },
 
-        /* case 'updateContactLink':
-          this.onContactUpdated(update.user_id, update.my_link._ === 'contactLinkContact');
-          break; */
+      updateUserPhoto: (update) => {
+        const userId = update.user_id;
+        const user = this.users[userId];
+        if(user) {
+          this.forceUserOnline(userId);
+
+          if(update.photo._ === 'userProfilePhotoEmpty') {
+            delete user.photo;
+          } else {
+            user.photo = safeReplaceObject(user.photo, update.photo);
+          }
+
+          rootScope.broadcast('user_update', userId);
+          rootScope.broadcast('avatar_update', userId);
+        } else console.warn('No user by id:', userId);
+      },
+
+      updateUserName: (update) => {
+        const userId = update.user_id;
+        const user = this.users[userId];
+        if(user) {
+          this.forceUserOnline(userId);
+          
+          this.saveApiUser(Object.assign({}, user, {
+            first_name: update.first_name,
+            last_name: update.last_name,
+            username: update.username
+          }));
+        }
       }
     });
+
+    /* case 'updateContactLink':
+    this.onContactUpdated(update.user_id, update.my_link._ === 'contactLinkContact');
+    break; */
 
     rootScope.on('language_change', (e) => {
       const userId = this.getSelf().id;
@@ -350,18 +344,13 @@ export class AppUsersManager {
       }
 
       safeReplaceObject(oldUser, user);
+      rootScope.broadcast('user_update', userId);
     }
-
-    rootScope.broadcast('user_update', userId);
 
     if(changedTitle) {
       rootScope.broadcast('peer_title_edit', user.id);
     }
   }
-
-  /* public saveUserAccess(id: number, accessHash: string) {
-    this.userAccess[id] = accessHash;
-  } */
 
   public getUserStatusForSort(status: User['status'] | number) {
     if(typeof(status) === 'number') {
@@ -401,7 +390,7 @@ export class AppUsersManager {
       return id;
     }
 
-    return this.users[id] || {id: id, pFlags: {deleted: true}, access_hash: ''/* this.userAccess[id] */} as User;
+    return this.users[id] || {id: id, pFlags: {deleted: true}, access_hash: ''} as User;
   }
 
   public getSelf() {
@@ -755,7 +744,7 @@ export class AppUsersManager {
   }
 
   public onContactUpdated(userId: number, isContact: boolean) {
-    const curIsContact = this.contactsList.has(userId);
+    const curIsContact = this.isContact(userId);
     if(isContact !== curIsContact) {
       if(isContact) {
         this.contactsList.add(userId)

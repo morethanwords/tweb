@@ -12,7 +12,7 @@
 import { MOUNT_CLASS_TO } from "../../config/debug";
 import { numberThousandSplitter } from "../../helpers/number";
 import { isObject, safeReplaceObject, copy, deepEqual } from "../../helpers/object";
-import { ChannelParticipant, Chat, ChatAdminRights, ChatBannedRights, ChatFull, ChatParticipant, ChatParticipants, ChatPhoto, InputChannel, InputChatPhoto, InputFile, InputPeer, SendMessageAction, Update, Updates } from "../../layer";
+import { ChannelParticipant, Chat, ChatAdminRights, ChatBannedRights, ChatFull, ChatParticipants, InputChannel, InputChatPhoto, InputFile, InputPeer, SendMessageAction, Update, Updates } from "../../layer";
 import { i18n, LangPackKey } from "../langPack";
 import apiManagerProxy from "../mtproto/mtprotoworker";
 import apiManager from '../mtproto/mtprotoworker';
@@ -42,112 +42,105 @@ export class AppChatsManager {
   public typingsInPeer: {[peerId: number]: UserTyping[]} = {};
 
   constructor() {
-    rootScope.on('apiUpdate', (update) => {
-      // console.log('on apiUpdate', update)
-      switch(update._) {
-        case 'updateChannel': {
-          const channelId = update.channel_id;
-          //console.log('updateChannel:', update);
-          rootScope.broadcast('channel_settings', {channelId});
-          break;
+    rootScope.addMultipleEventsListeners({
+      updateChannel: (update) => {
+        const channelId = update.channel_id;
+        //console.log('updateChannel:', update);
+        rootScope.broadcast('channel_settings', {channelId});
+      },
+
+      updateChannelParticipant: (update) => {
+        apiManagerProxy.clearCache('channels.getParticipants', (params) => {
+          return (params.channel as InputChannel.inputChannel).channel_id === update.channel_id;
+        });
+      },
+
+      updateChatDefaultBannedRights: (update) => {
+        const chatId = -appPeersManager.getPeerId(update.peer);
+        const chat: Chat = this.getChat(chatId);
+        if(chat._ !== 'chatEmpty') {
+          (chat as Chat.chat).default_banned_rights = update.default_banned_rights;
+          rootScope.broadcast('chat_update', chatId);
         }
+      },
 
-        case 'updateChannelParticipant': {
-          apiManagerProxy.clearCache('channels.getParticipants', (params) => {
-            return (params.channel as InputChannel.inputChannel).channel_id === update.channel_id;
-          });
-          break;
-        }
-
-        case 'updateChatDefaultBannedRights': {
-          const chatId = -appPeersManager.getPeerId(update.peer);
-          const chat: Chat = this.getChat(chatId);
-          if(chat._ !== 'chatEmpty') {
-            (chat as Chat.chat).default_banned_rights = update.default_banned_rights;
-            rootScope.broadcast('chat_update', chatId);
-          }
-
-          break;
-        }
-
-        case 'updateUserTyping':
-        case 'updateChatUserTyping':
-        case 'updateChannelUserTyping': {
-          const fromId = (update as Update.updateUserTyping).user_id || appPeersManager.getPeerId((update as Update.updateChatUserTyping).from_id);
-          if(rootScope.myId === fromId || update.action._ === 'speakingInGroupCallAction') {
-            break;
-          }
-          
-          const peerId = update._ === 'updateUserTyping' ? 
-            fromId : 
-            -((update as Update.updateChatUserTyping).chat_id || (update as Update.updateChannelUserTyping).channel_id);
-          const typings = this.typingsInPeer[peerId] ?? (this.typingsInPeer[peerId] = []);
-          let typing = typings.find(t => t.userId === fromId);
-
-          const cancelAction = () => {
-            delete typing.timeout;
-            //typings.findAndSplice(t => t === typing);
-            const idx = typings.indexOf(typing);
-            if(idx !== -1) {
-              typings.splice(idx, 1);
-            }
- 
-            rootScope.broadcast('peer_typings', {peerId, typings});
-
-            if(!typings.length) {
-              delete this.typingsInPeer[peerId];
-            }
-          };
-
-          if(typing && typing.timeout !== undefined) {
-            clearTimeout(typing.timeout);
-          }
-
-          if(update.action._ === 'sendMessageCancelAction') {
-            if(!typing) {
-              break;
-            }
-
-            cancelAction();
-            break;
-          } else {
-            if(!typing) {
-              typing = {
-                userId: fromId
-              };
-  
-              typings.push(typing);
-            }
-  
-            //console.log('updateChatUserTyping', update, typings);
-            
-            typing.action = update.action;
-            
-            if(!appUsersManager.hasUser(fromId)) {
-              if(update._ === 'updateChatUserTyping') {
-                if(update.chat_id && appChatsManager.hasChat(update.chat_id) && !appChatsManager.isChannel(update.chat_id)) {
-                  appProfileManager.getChatFull(update.chat_id);
-                }
-              }
-              
-              //return;
-            }
-            
-            appUsersManager.forceUserOnline(fromId);
-  
-            typing.timeout = window.setTimeout(cancelAction, 6000);
-            rootScope.broadcast('peer_typings', {peerId, typings});
-          }
-
-          break;
-        }
-      }
+      updateUserTyping: this.onUpdateUserTyping,
+      updateChatUserTyping: this.onUpdateUserTyping,
+      updateChannelUserTyping: this.onUpdateUserTyping
     });
 
     appStateManager.getState().then((state) => {
       this.chats = state.chats;
     });
   }
+
+  private onUpdateUserTyping = (update: Update.updateUserTyping | Update.updateChatUserTyping | Update.updateChannelUserTyping) => {
+    const fromId = (update as Update.updateUserTyping).user_id || appPeersManager.getPeerId((update as Update.updateChatUserTyping).from_id);
+    if(rootScope.myId === fromId || update.action._ === 'speakingInGroupCallAction') {
+      return;
+    }
+    
+    const peerId = update._ === 'updateUserTyping' ? 
+      fromId : 
+      -((update as Update.updateChatUserTyping).chat_id || (update as Update.updateChannelUserTyping).channel_id);
+    const typings = this.typingsInPeer[peerId] ?? (this.typingsInPeer[peerId] = []);
+    let typing = typings.find(t => t.userId === fromId);
+
+    const cancelAction = () => {
+      delete typing.timeout;
+      //typings.findAndSplice(t => t === typing);
+      const idx = typings.indexOf(typing);
+      if(idx !== -1) {
+        typings.splice(idx, 1);
+      }
+
+      rootScope.broadcast('peer_typings', {peerId, typings});
+
+      if(!typings.length) {
+        delete this.typingsInPeer[peerId];
+      }
+    };
+
+    if(typing && typing.timeout !== undefined) {
+      clearTimeout(typing.timeout);
+    }
+
+    if(update.action._ === 'sendMessageCancelAction') {
+      if(!typing) {
+        return;
+      }
+
+      cancelAction();
+      return;
+    } else {
+      if(!typing) {
+        typing = {
+          userId: fromId
+        };
+
+        typings.push(typing);
+      }
+
+      //console.log('updateChatUserTyping', update, typings);
+      
+      typing.action = update.action;
+      
+      if(!appUsersManager.hasUser(fromId)) {
+        if(update._ === 'updateChatUserTyping') {
+          if(update.chat_id && appChatsManager.hasChat(update.chat_id) && !appChatsManager.isChannel(update.chat_id)) {
+            appProfileManager.getChatFull(update.chat_id);
+          }
+        }
+        
+        //return;
+      }
+      
+      appUsersManager.forceUserOnline(fromId);
+
+      typing.timeout = window.setTimeout(cancelAction, 6000);
+      rootScope.broadcast('peer_typings', {peerId, typings});
+    }
+  };
 
   public saveApiChats(apiChats: any[]) {
     apiChats.forEach(chat => this.saveApiChat(chat));

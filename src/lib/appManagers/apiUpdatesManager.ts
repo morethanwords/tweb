@@ -12,6 +12,7 @@
 //import apiManager from '../mtproto/apiManager';
 import DEBUG, { MOUNT_CLASS_TO } from '../../config/debug';
 import { copy } from '../../helpers/object';
+import { Update } from '../../layer';
 import { logger, LogLevels } from '../logger';
 import apiManager from '../mtproto/mtprotoworker';
 import rootScope from '../rootScope';
@@ -53,7 +54,7 @@ export class ApiUpdatesManager {
   private log = logger('UPDATES', LogLevels.error | LogLevels.log | LogLevels.warn | LogLevels.debug);
   private debug = DEBUG;
 
-  public popPendingSeqUpdate() {
+  private popPendingSeqUpdate() {
     const state = this.updatesState;
     const nextSeq = state.seq + 1;
     const pendingUpdatesData = state.pendingSeqUpdates[nextSeq];
@@ -87,7 +88,7 @@ export class ApiUpdatesManager {
     return true;
   }
 
-  public popPendingPtsUpdate(channelId: number) {
+  private popPendingPtsUpdate(channelId: number) {
     const curState = channelId ? this.getChannelState(channelId) : this.updatesState;
     if(!curState.pendingPtsUpdates.length) {
       return false;
@@ -119,6 +120,8 @@ export class ApiUpdatesManager {
     curState.pts = goodPts;
     for(let i = 0; i <= goodIndex; ++i) {
       const update = curState.pendingPtsUpdates[i];
+
+      // @ts-ignore
       this.saveUpdate(update);
     }
     curState.pendingPtsUpdates.splice(0, goodIndex + 1);
@@ -208,7 +211,7 @@ export class ApiUpdatesManager {
     }
   };
   
-  public getDifference(first = false): Promise<void> {
+  private getDifference(first = false): Promise<void> {
     // this.trace('Get full diff')
     const updatesState = this.updatesState;
     let wasSyncing = updatesState.syncLoading;
@@ -298,7 +301,7 @@ export class ApiUpdatesManager {
     return promise;
   }
 
-  public getChannelDifference(channelId: number): Promise<void> {
+  private getChannelDifference(channelId: number): Promise<void> {
     const channelState = this.getChannelState(channelId);
     const wasSyncing = channelState.syncLoading;
     if(!wasSyncing) {
@@ -328,6 +331,8 @@ export class ApiUpdatesManager {
       if(differenceResult._ === 'updates.channelDifferenceTooLong') {
         this.debug && this.log('channel diff too long', differenceResult);
         delete this.channelStates[channelId];
+
+        // @ts-ignore
         this.saveUpdate({_: 'updateChannelReload', channel_id: channelId});
         return;
       }
@@ -399,7 +404,7 @@ export class ApiUpdatesManager {
     return false;
   }
   
-  public getChannelState(channelId: number, pts?: number) {
+  private getChannelState(channelId: number, pts?: number) {
     if(this.channelStates[channelId] === undefined) {
       this.addChannelState(channelId, pts);
     }
@@ -407,7 +412,7 @@ export class ApiUpdatesManager {
     return this.channelStates[channelId];
   }
 
-  public processUpdate(update: any, options: Partial<{
+  private processUpdate(update: any, options: Partial<{
     date: number,
     seq: number,
     seqStart: number/* ,
@@ -570,8 +575,8 @@ export class ApiUpdatesManager {
     }
   }
 
-  public saveUpdate(update: any) {
-    rootScope.broadcast('apiUpdate', update);
+  public saveUpdate(update: Update) {
+    rootScope.dispatchEvent(update._, update as any);
   }
   
   public attach() {

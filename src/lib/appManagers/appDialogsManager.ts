@@ -22,7 +22,7 @@ import appMessagesManager, { Dialog } from "./appMessagesManager";
 import {MyDialogFilter as DialogFilter} from "../storages/filters";
 import appPeersManager from './appPeersManager';
 import appStateManager from "./appStateManager";
-import appUsersManager, { User } from "./appUsersManager";
+import appUsersManager from "./appUsersManager";
 import Button from "../../components/button";
 import SetTransition from "../../components/singleTransition";
 import sessionStorage from '../sessionStorage';
@@ -32,11 +32,9 @@ import ProgressivePreloader from "../../components/preloader";
 import App from "../../config/app";
 import DEBUG, { MOUNT_CLASS_TO } from "../../config/debug";
 import appNotificationsManager from "./appNotificationsManager";
-import { InputNotifyPeer } from "../../layer";
 import PeerTitle from "../../components/peerTitle";
 import { i18n } from "../langPack";
 import findUpTag from "../../helpers/dom/findUpTag";
-import appChatsManager from "./appChatsManager";
 
 export type DialogDom = {
   avatarEl: AvatarElement,
@@ -301,19 +299,14 @@ export class AppDialogsManager {
       (window as any).addElement = add;
     } */
 
-    rootScope.on('user_update', (e) => {
-      const userId = e;
-      const user = appUsersManager.getUser(userId);
-      const dialog = appMessagesManager.getDialogByPeerId(user.id)[0];
+    rootScope.on('user_update', (userId) => {
       //console.log('updating user:', user, dialog);
-
-      if(dialog && !appUsersManager.isBot(dialog.peerId) && dialog.peerId !== rootScope.myId) {
+      
+      const dom = this.getDialogDom(userId);
+      if(dom && !appUsersManager.isBot(userId) && userId !== rootScope.myId) {
+        const user = appUsersManager.getUser(userId);
         const online = user.status?._ === 'userStatusOnline';
-        const dom = this.getDialogDom(dialog.peerId);
-
-        if(dom) {
-          dom.avatarEl.classList.toggle('is-online', online);
-        }
+        dom.avatarEl.classList.toggle('is-online', online);
       }
     });
 

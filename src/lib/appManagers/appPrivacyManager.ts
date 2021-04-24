@@ -25,15 +25,11 @@ export class AppPrivacyManager {
   }> = {};
 
   constructor() {
-    rootScope.on('apiUpdate', (e) => {
-      const update = e as Update;
-
-      switch(update._) {
-        case 'updatePrivacy':
-          const key = update.key._;
-          this.privacy[key] = update.rules;
-          rootScope.broadcast('privacy_update', update);
-          break;
+    rootScope.addMultipleEventsListeners({
+      updatePrivacy: (update) => {
+        const key = update.key._;
+        this.privacy[key] = update.rules;
+        rootScope.broadcast('privacy_update', update);
       }
     });
   }

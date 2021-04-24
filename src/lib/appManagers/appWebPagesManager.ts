@@ -26,13 +26,9 @@ export class AppWebPagesManager {
   } = {};
   
   constructor() {
-    rootScope.on('apiUpdate', (e) => {
-      const update = e;
-
-      switch(update._) {
-        case 'updateWebPage':
-          this.saveWebPage(update.webpage);
-          break;
+    rootScope.addMultipleEventsListeners({
+      updateWebPage: (update) => {
+        this.saveWebPage(update.webpage);
       }
     });
   }

@@ -11,15 +11,15 @@ import FileManager from './filemanager';
 //import { logger } from './polyfill';
 
 export default class CacheStorageController {
-  public static STORAGES: CacheStorageController[] = [];
+  private static STORAGES: CacheStorageController[] = [];
   //public dbName = 'cachedFiles';
-  public openDbPromise: Promise<Cache>;
+  private openDbPromise: Promise<Cache>;
 
-  public useStorage = true;
+  private useStorage = true;
 
   //private log: ReturnType<typeof logger> = logger('CS');
 
-  constructor(public dbName: string) {
+  constructor(private dbName: string) {
     if(Modes.test) {
       this.dbName += '_test';
     }
@@ -28,7 +28,7 @@ export default class CacheStorageController {
     CacheStorageController.STORAGES.push(this);
   }
 
-  public openDatabase(): Promise<Cache> {
+  private openDatabase(): Promise<Cache> {
     if(this.openDbPromise) {
       return this.openDbPromise;
     }
