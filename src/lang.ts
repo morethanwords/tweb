@@ -403,6 +403,9 @@ const lang = {
   "HidAccount": "The account was hidden by the user",
   "TelegramFeatures": "Telegram Features",
   "SetColor": "Set a color",
+  "Open": "Open",
+  "OpenUrlTitle": "Open Link",
+  "OpenUrlAlert2": "Do you want to open %1$s?",
 
   // * macos
   "AccountSettings.Filters": "Chat Folders",
