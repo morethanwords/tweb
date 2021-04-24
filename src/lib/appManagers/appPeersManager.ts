@@ -37,14 +37,9 @@ const DialogColorsMap = [0, 7, 4, 1, 6, 3, 5];
 export type PeerType = 'channel' | 'chat' | 'megagroup' | 'group' | 'saved';
 export class AppPeersManager {
   constructor() {
-    rootScope.on('apiUpdate', (e) => {
-      const update = e as Update;
-      //console.log('on apiUpdate', update);
-      switch(update._) {
-        case 'updatePeerBlocked': {
-          rootScope.broadcast('peer_block', {peerId: this.getPeerId(update.peer_id), blocked: update.blocked});
-          break;
-        }
+    rootScope.addMultipleEventsListeners({
+      updatePeerBlocked: (update) => {
+        rootScope.broadcast('peer_block', {peerId: this.getPeerId(update.peer_id), blocked: update.blocked});
       }
     });
   }

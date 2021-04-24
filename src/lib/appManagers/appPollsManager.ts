@@ -83,31 +83,19 @@ export class AppPollsManager {
   private log = logger('POLLS', LogLevels.error);
 
   constructor() {
-    rootScope.on('apiUpdate', (e) => {
-      const update = e;
-      
-      this.handleUpdate(update);
-    });
-  }
-  
-  public handleUpdate(update: any) {
-    switch(update._) {
-      case 'updateMessagePoll': { // when someone voted, we too
+    rootScope.addMultipleEventsListeners({
+      updateMessagePoll: (update) => {
         this.log('updateMessagePoll:', update);
 
         let poll: Poll = update.poll || this.polls[update.poll_id];
         if(!poll) {
-          break;
+          return;
         }
 
-        poll = this.savePoll(poll, update.results);
-        rootScope.broadcast('poll_update', {poll, results: update.results});
-        break;
+        poll = this.savePoll(poll, update.results as any);
+        rootScope.broadcast('poll_update', {poll, results: update.results as any});
       }
-
-      default:
-        break;
-    }
+    });
   }
 
   public savePoll(poll: Poll, results: PollResults) {

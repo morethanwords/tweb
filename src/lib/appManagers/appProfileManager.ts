@@ -42,67 +42,59 @@ export class AppProfileManager {
   } = {};
 
   constructor() {
-    rootScope.on('apiUpdate', (update) => {
-      switch(update._) {
-        case 'updateChatParticipants': {
-          const participants = update.participants;
-          if(participants._ === 'chatParticipants') {
-            const chatId = participants.chat_id;
-            const chatFull = this.chatsFull[chatId] as ChatFull.chatFull;
-            if(chatFull !== undefined) {
-              chatFull.participants = participants;
-              rootScope.broadcast('chat_full_update', chatId);
-            }
-          }
-          
-          break;
-        }
-  
-        case 'updateChatParticipantAdd': {
-          const chatFull = this.chatsFull[update.chat_id] as ChatFull.chatFull;
+    rootScope.addMultipleEventsListeners({
+      updateChatParticipants: (update) => {
+        const participants = update.participants;
+        if(participants._ === 'chatParticipants') {
+          const chatId = participants.chat_id;
+          const chatFull = this.chatsFull[chatId] as ChatFull.chatFull;
           if(chatFull !== undefined) {
-            const _participants = chatFull.participants as ChatParticipants.chatParticipants;
-            const participants = _participants.participants || [];
-            for(let i = 0, length = participants.length; i < length; i++) {
-              if(participants[i].user_id === update.user_id) {
-                return;
-              }
-            }
-
-            participants.push({
-              _: 'chatParticipant',
-              user_id: update.user_id,
-              inviter_id: update.inviter_id,
-              date: tsNow(true)
-            });
-
-            _participants.version = update.version;
-            rootScope.broadcast('chat_full_update', update.chat_id);
+            chatFull.participants = participants;
+            rootScope.broadcast('chat_full_update', chatId);
           }
-
-          break;
         }
-  
-        case 'updateChatParticipantDelete': {
-          const chatFull = this.chatsFull[update.chat_id] as ChatFull.chatFull;
-          if(chatFull !== undefined) {
-            const _participants = chatFull.participants as ChatParticipants.chatParticipants;
-            const participants = _participants.participants || [];
-            for(let i = 0, length = participants.length; i < length; i++) {
-              if(participants[i].user_id === update.user_id) {
-                participants.splice(i, 1);
-                _participants.version = update.version;
-                rootScope.broadcast('chat_full_update', update.chat_id);
-                return;
-              }
+      },
+
+      updateChatParticipantAdd: (update) => {
+        const chatFull = this.chatsFull[update.chat_id] as ChatFull.chatFull;
+        if(chatFull !== undefined) {
+          const _participants = chatFull.participants as ChatParticipants.chatParticipants;
+          const participants = _participants.participants || [];
+          for(let i = 0, length = participants.length; i < length; i++) {
+            if(participants[i].user_id === update.user_id) {
+              return;
             }
           }
 
-          break;
+          participants.push({
+            _: 'chatParticipant',
+            user_id: update.user_id,
+            inviter_id: update.inviter_id,
+            date: tsNow(true)
+          });
+
+          _participants.version = update.version;
+          rootScope.broadcast('chat_full_update', update.chat_id);
+        }
+      },
+
+      updateChatParticipantDelete: (update) => {
+        const chatFull = this.chatsFull[update.chat_id] as ChatFull.chatFull;
+        if(chatFull !== undefined) {
+          const _participants = chatFull.participants as ChatParticipants.chatParticipants;
+          const participants = _participants.participants || [];
+          for(let i = 0, length = participants.length; i < length; i++) {
+            if(participants[i].user_id === update.user_id) {
+              participants.splice(i, 1);
+              _participants.version = update.version;
+              rootScope.broadcast('chat_full_update', update.chat_id);
+              return;
+            }
+          }
         }
       }
     });
-  
+
     rootScope.on('chat_update', (chatId) => {
       const fullChat = this.chatsFull[chatId];
       const chat = appChatsManager.getChat(chatId);

@@ -13,6 +13,7 @@ import type { AppUsersManager } from "../appManagers/appUsersManager";
 import type _rootScope from "../rootScope";
 import type {AppMessagesManager, Dialog} from '../appManagers/appMessagesManager';
 import type {AppNotificationsManager} from "../appManagers/appNotificationsManager";
+import type { ApiUpdatesManager } from "../appManagers/apiUpdatesManager";
 import apiManager from "../mtproto/mtprotoworker";
 import { forEachReverse } from "../../helpers/array";
 
@@ -34,30 +35,14 @@ export default class FiltersStorage {
     private appPeersManager: AppPeersManager, 
     private appUsersManager: AppUsersManager, 
     private appNotificationsManager: AppNotificationsManager, 
+    private apiUpdatesManager: ApiUpdatesManager, 
     /* private apiManager: ApiManagerProxy, */ 
     private rootScope: typeof _rootScope) {
-    rootScope.on('apiUpdate', (e) => {
-      this.handleUpdate(e);
-    });
-  }
 
-  public handleUpdate(update: Update) {
-    switch(update._) {
-      case 'updateDialogFilter': {
-        //console.log('updateDialogFilter', update);
+    rootScope.addMultipleEventsListeners({
+      updateDialogFilter: this.onUpdateDialogFilter,
 
-        if(update.filter) {
-          this.saveDialogFilter(update.filter as any);
-        } else if(this.filters[update.id]) { // Папка удалена
-          //this.getDialogFilters(true);
-          this.rootScope.broadcast('filter_delete', this.filters[update.id]);
-          delete this.filters[update.id];
-        }
-
-        break;
-      }
-
-      case 'updateDialogFilters': {
+      updateDialogFilters: (update) => {
         //console.warn('updateDialogFilters', update);
 
         const oldFilters = copy(this.filters);
@@ -66,32 +51,40 @@ export default class FiltersStorage {
           for(const _filterId in oldFilters) {
             const filterId = +_filterId;
             if(!filters.find(filter => filter.id === filterId)) { // * deleted
-              this.handleUpdate({_: 'updateDialogFilter', id: filterId});
+              this.onUpdateDialogFilter({_: 'updateDialogFilter', id: filterId});
             }
           }
 
-          this.handleUpdate({_: 'updateDialogFilterOrder', order: filters.map(filter => filter.id)});
+          this.onUpdateDialogFilterOrder({_: 'updateDialogFilterOrder', order: filters.map(filter => filter.id)});
         });
+      },
 
-        break;
-      }
-
-      case 'updateDialogFilterOrder': {
-        //console.log('updateDialogFilterOrder', update);
-
-        this.orderIndex = START_ORDER_INDEX;
-        update.order.forEach((filterId, idx) => {
-          const filter = this.filters[filterId];
-          delete filter.orderIndex;
-          this.setOrderIndex(filter);
-        });
-
-        this.rootScope.broadcast('filter_order', update.order);
-        
-        break;
-      }
-    }
+      updateDialogFilterOrder: this.onUpdateDialogFilterOrder
+    });
   }
+
+  private onUpdateDialogFilter = (update: Update.updateDialogFilter) => {
+    if(update.filter) {
+      this.saveDialogFilter(update.filter as any);
+    } else if(this.filters[update.id]) { // Папка удалена
+      //this.getDialogFilters(true);
+      this.rootScope.broadcast('filter_delete', this.filters[update.id]);
+      delete this.filters[update.id];
+    }
+  };
+
+  private onUpdateDialogFilterOrder = (update: Update.updateDialogFilterOrder) => {
+    //console.log('updateDialogFilterOrder', update);
+
+    this.orderIndex = START_ORDER_INDEX;
+    update.order.forEach((filterId, idx) => {
+      const filter = this.filters[filterId];
+      delete filter.orderIndex;
+      this.setOrderIndex(filter);
+    });
+
+    this.rootScope.broadcast('filter_order', update.order);
+  };
 
   public testDialogForFilter(dialog: Dialog, filter: MyDialogFilter) {
     // exclude_peers
@@ -146,12 +139,12 @@ export default class FiltersStorage {
       }
       
       // non_contacts
-      if(pFlags.non_contacts && !this.appUsersManager.contactsList.has(peerId)) {
+      if(pFlags.non_contacts && !this.appUsersManager.isContact(peerId)) {
         return true;
       }
 
       // contacts
-      if(pFlags.contacts && this.appUsersManager.contactsList.has(peerId)) {
+      if(pFlags.contacts && this.appUsersManager.isContact(peerId)) {
         return true;
       }
     }
@@ -194,7 +187,7 @@ export default class FiltersStorage {
 
         rootScope.$broadcast('filter_update', filter); */
 
-        this.handleUpdate({
+        this.onUpdateDialogFilter({
           _: 'updateDialogFilter',
           id: filter.id,
           filter: remove ? undefined : filter as any

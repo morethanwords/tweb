@@ -7,7 +7,7 @@
 import { IDBStore } from "../lib/idb";
 import Modes from "./modes";
 
-export type DatabaseStoreName = 'session' | 'stickerSets';
+export type DatabaseStoreName = 'session' | 'stickerSets' | 'users' | 'chats' | 'messages' | 'dialogs';
 export type DatabaseStore = Omit<IDBStore, 'name'> & {name: DatabaseStoreName};
 const Database = {
   name: 'tweb' + (Modes.test ? '_test' : ''),

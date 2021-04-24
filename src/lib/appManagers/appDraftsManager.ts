@@ -38,13 +38,11 @@ export class AppDraftsManager {
       });
     });
 
-    rootScope.on('apiUpdate', (update) => {
-      if(update._ !== 'updateDraftMessage') {
-        return
+    rootScope.addMultipleEventsListeners({
+      updateDraftMessage: (update) => {
+        const peerID = appPeersManager.getPeerId(update.peer);
+        this.saveDraft(peerID, (update as any).threadId, update.draft, {notify: true});
       }
-
-      const peerID = appPeersManager.getPeerId(update.peer);
-      this.saveDraft(peerID, (update as any).threadId, update.draft, {notify: true});
     });
   }
 

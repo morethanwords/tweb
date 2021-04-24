@@ -26,17 +26,12 @@ export class AppStickersManager {
   constructor() {
     this.getStickerSet({id: 'emoji', access_hash: ''}, {overwrite: true});
 
-    rootScope.on('apiUpdate', (e) => {
-      const update = e;
-      
-      switch(update._) {
-        case 'updateNewStickerSet': {
-          this.saveStickerSet(update.stickerset, update.stickerset.set.id);
-          rootScope.broadcast('stickers_installed', update.stickerset.set);
-          break;
-        }
+    rootScope.addMultipleEventsListeners({
+      updateNewStickerSet: (update) => {
+        this.saveStickerSet(update.stickerset, update.stickerset.set.id);
+        rootScope.broadcast('stickers_installed', update.stickerset.set);
       }
-    });
+    })
   }
 
   public saveStickers(docs: Document[]) {

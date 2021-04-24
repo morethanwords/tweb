@@ -13,7 +13,7 @@ import { fontFamily } from "../../components/middleEllipsis";
 import { MOUNT_CLASS_TO } from "../../config/debug";
 import { CancellablePromise, deferredPromise } from "../../helpers/cancellablePromise";
 import { tsNow } from "../../helpers/date";
-import { copy, deepEqual } from "../../helpers/object";
+import { deepEqual } from "../../helpers/object";
 import { convertInputKeyToKey } from "../../helpers/string";
 import { isMobile } from "../../helpers/userAgent";
 import { InputNotifyPeer, InputPeerNotifySettings, NotifyPeer, PeerNotifySettings, Update } from "../../layer";
@@ -114,14 +114,10 @@ export class AppNotificationsManager {
       this.toggleToggler();
     });
 
-    rootScope.on('apiUpdate', (update) => {
-      // console.log('on apiUpdate', update)
-      switch(update._) {
-        case 'updateNotifySettings': {
-          this.savePeerSettings(update.peer._ === 'notifyPeer' ? appPeersManager.getPeerId(update.peer.peer) : update.peer._, update.notify_settings);
-          rootScope.broadcast('notify_settings', update);
-          break;
-        }
+    rootScope.addMultipleEventsListeners({
+      updateNotifySettings: (update) => {
+        this.savePeerSettings(update.peer._ === 'notifyPeer' ? appPeersManager.getPeerId(update.peer.peer) : update.peer._, update.notify_settings);
+        rootScope.broadcast('notify_settings', update);
       }
     });
 

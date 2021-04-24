@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type { Message, StickerSet, Update, NotifyPeer, PeerNotifySettings } from "../layer";
+import type { Message, StickerSet, Update, NotifyPeer, PeerNotifySettings, ConstructorDeclMap } from "../layer";
 import type { MyDocument } from "./appManagers/appDocsManager";
 import type { AppMessagesManager, Dialog, MessagesStorage } from "./appManagers/appMessagesManager";
 import type { Poll, PollResults } from "./appManagers/appPollsManager";
@@ -86,7 +86,6 @@ export type BroadcastEvents = {
   'channel_settings': {channelId: number},
   'webpage_updated': {id: string, msgs: number[]},
 
-  'apiUpdate': Update,
   'download_progress': any,
   'connection_status_change': ConnectionStatusChange,
   'settings_updated': {key: string, value: any},
@@ -112,7 +111,11 @@ export type BroadcastEvents = {
   'language_change': void,
 };
 
-export class RootScope extends EventListenerBase<any> {
+export class RootScope extends EventListenerBase<{
+  [name in Update['_']]: (update: ConstructorDeclMap[name]) => void
+} & {
+  [name in keyof BroadcastEvents]: (e: BroadcastEvents[name]) => void
+}> {
   private _overlayIsActive: boolean = false;
   public myId = 0;
   public idle = {

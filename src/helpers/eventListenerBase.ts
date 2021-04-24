@@ -86,6 +86,14 @@ export default class EventListenerBase<Listeners extends {[name: string]: Functi
     //e.add(this, name, {callback, once});
   }
 
+  public addMultipleEventsListeners(obj: {
+    [name in keyof Listeners]?: Listeners[name]
+  }) {
+    for(const i in obj) {
+      this.addEventListener(i, obj[i]);
+    }
+  }
+
   public removeEventListener(name: keyof Listeners, callback: Listeners[typeof name]) {
     if(this.listeners[name]) {
       this.listeners[name].findAndSplice(l => l.callback === callback);
