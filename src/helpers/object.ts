@@ -72,7 +72,7 @@ export function safeReplaceObject(wasObject: any, newObject: any) {
   }
 
   for(var key in wasObject) {
-    if(!newObject.hasOwnProperty(key) && key.charAt(0) !== '$') {
+    if(!newObject.hasOwnProperty(key)) {
       delete wasObject[key];
     }
   }

@@ -10,6 +10,7 @@
  */
 
 import { DatabaseStore, DatabaseStoreName } from "../config/database";
+import { throttle } from "../helpers/schedulers";
 import IDBStorage, { IDBOptions } from "./idb";
 
 export default class AppStorage<Storage extends Record<string, any>/* Storage extends {[name: string]: any} *//* Storage extends Record<string, any> */> {
@@ -19,11 +20,29 @@ export default class AppStorage<Storage extends Record<string, any>/* Storage ex
   //private cache: Partial<{[key: string]: Storage[typeof key]}> = {};
   private cache: Partial<Storage> = {};
   private useStorage = true;
+  private updateKeys: Set<keyof Storage> = new Set();
+  private saveThrottled: () => void;
 
   constructor(storageOptions: Omit<IDBOptions, 'storeName' | 'stores'> & {stores?: DatabaseStore[], storeName: DatabaseStoreName}) {
     this.storage = new IDBStorage(storageOptions);
 
     AppStorage.STORAGES.push(this);
+
+    this.saveThrottled = throttle(async() => {
+      const keys = Array.from(this.updateKeys.values()) as string[];
+      this.updateKeys.clear();
+
+      try {
+        //console.log('setItem: will set', key/* , value */);
+        //await this.cacheStorage.delete(key); // * try to prevent memory leak in Chrome leading to 'Unexpected internal error.'
+        //await this.storage.save(key, new Response(value, {headers: {'Content-Type': 'application/json'}}));
+        await this.storage.save(keys, keys.map(key => this.cache[key]));
+        //console.log('setItem: have set', key/* , value */);
+      } catch(e) {
+        //this.useCS = false;
+        console.error('[AS]: set error:', e, keys/* , value */);
+      }
+    }, 50, false);
   }
 
   public getCache() {
@@ -83,16 +102,8 @@ export default class AppStorage<Storage extends Record<string, any>/* Storage ex
         console.log('LocalStorage set: stringify time by own stringify:', performance.now() - perf); */
 
         if(this.useStorage && !onlyLocal) {
-          try {
-            //console.log('setItem: will set', key/* , value */);
-            //await this.cacheStorage.delete(key); // * try to prevent memory leak in Chrome leading to 'Unexpected internal error.'
-            //await this.storage.save(key, new Response(value, {headers: {'Content-Type': 'application/json'}}));
-            await this.storage.save(key, value);
-            //console.log('setItem: have set', key/* , value */);
-          } catch(e) {
-            //this.useCS = false;
-            console.error('[AS]: set error:', e, key/* , value */);
-          }
+          this.updateKeys.add(key);
+          this.saveThrottled();
         }
       }
     }
@@ -126,6 +137,7 @@ export default class AppStorage<Storage extends Record<string, any>/* Storage ex
       storage.useStorage = enabled;
       
       if(!enabled) {
+        storage.updateKeys.clear();
         return storage.clear();
       } else {
         return storage.set(storage.cache);

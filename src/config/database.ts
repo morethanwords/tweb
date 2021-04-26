@@ -11,11 +11,19 @@ export type DatabaseStoreName = 'session' | 'stickerSets' | 'users' | 'chats' | 
 export type DatabaseStore = Omit<IDBStore, 'name'> & {name: DatabaseStoreName};
 const Database = {
   name: 'tweb' + (Modes.test ? '_test' : ''),
-  version: 5,
+  version: 7,
   stores: [{
     name: 'session'
   }, {
     name: 'stickerSets'
+  }, {
+    name: 'users'
+  }, {
+    name: 'chats'
+  }, {
+    name: 'dialogs'
+  }, {
+    name: 'messages'
   }] as DatabaseStore[],
 };
 

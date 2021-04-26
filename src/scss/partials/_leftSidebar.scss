@@ -365,14 +365,17 @@
         z-index: 1;
       }
 
-      html:not(.no-touch) & {
+      /* html:not(.no-touch) & {
+        transform: translateZ(0);
+      } */
+      &:not(.is-hidden) {
         transform: translateZ(0);
       }
     }
 
-    html.no-touch &:hover .btn-corner:not(.is-hidden) {
+    /* html.no-touch &:hover .btn-corner:not(.is-hidden) {
       transform: translateZ(0);
-    }
+    } */
   }
 
   .connection-status {

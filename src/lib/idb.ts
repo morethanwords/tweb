@@ -225,7 +225,7 @@ export default class IDBStorage {
     });
   }
 
-  public save(entryName: string, value: any) {
+  public save(entryName: string | string[], value: any | any[]) {
     return this.openDatabase().then((db) => {
       //this.log('save:', entryName, value);
 
@@ -240,44 +240,52 @@ export default class IDBStorage {
         }
       };
 
-      try {
-        const transaction = db.transaction([this.storeName], 'readwrite');
-        transaction.onerror = (e) => {
-          handleError(transaction.error);
-        };
-        /* transaction.oncomplete = (e) => {
-          this.log('save: transaction complete:', entryName);
-        }; */
-
-        /* transaction.addEventListener('abort', (e) => {
-          //handleError();
-          this.log.error('IndexedDB: save transaction abort!', transaction.error);
-        }); */
-
-        const objectStore = transaction.objectStore(this.storeName);
-        var request = objectStore.put(value, entryName);
-      } catch(error) {
-        handleError(error);
-        return Promise.reject(error);
-        
-        /* this.storageIsAvailable = false;
-        throw error; */
-      }
-
       return new Promise<void>((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          this.log.error('save: request not finished', entryName, request);
-        }, 10000);
-
-        request.onsuccess = (event) => {
-          resolve();
-          clearTimeout(timeout);
-        };
+        try {
+          const transaction = db.transaction([this.storeName], 'readwrite');
   
-        request.onerror = (error) => {
+          transaction.onerror = (e) => {
+            handleError(transaction.error);
+            reject(transaction.error);
+            clearTimeout(timeout);
+          };
+  
+          transaction.oncomplete = (e) => {
+            //this.log('save: transaction complete:', entryName);
+            resolve();
+            clearTimeout(timeout);
+          };
+
+          const timeout = setTimeout(() => {
+            this.log.error('save: transaction not finished', entryName, transaction);
+          }, 10000);
+  
+          /* transaction.addEventListener('abort', (e) => {
+            //handleError();
+            this.log.error('IndexedDB: save transaction abort!', transaction.error);
+          }); */
+  
+          const objectStore = transaction.objectStore(this.storeName);
+
+          if(!Array.isArray(entryName)) {
+            entryName = [].concat(entryName);
+            value = [].concat(value);
+          }
+
+          for(let i = 0, length = entryName.length; i < length; ++i) {
+            const request = objectStore.put(value[i], entryName[i]);
+            request.onerror = (error) => {
+              reject(transaction.error);
+              clearTimeout(timeout);
+            };
+          }
+        } catch(error) {
+          handleError(error);
           reject(error);
-          clearTimeout(timeout);
-        };
+          
+          /* this.storageIsAvailable = false;
+          throw error; */
+        }
       });
     });
   }
@@ -376,6 +384,51 @@ export default class IDBStorage {
       return new Promise((resolve, reject) => {
         const timeout = setTimeout(() => {
           this.log.error('get request not finished!', entryName, request);
+          reject();
+        }, 3000);
+
+        request.onsuccess = function(event) {
+          const result = request.result;
+          if(result === undefined) {
+            reject('NO_ENTRY_FOUND');
+          } /* else if(typeof result === 'string' &&
+            result.substr(0, 5) === 'data:') {
+            resolve(dataUrlToBlob(result));
+          }  */else {
+            resolve(result);
+          }
+
+          clearTimeout(timeout);
+        }
+  
+        request.onerror = () => {
+          clearTimeout(timeout);
+          reject();
+        };
+      });
+    });
+  }
+
+  public getAll<T>(): Promise<T[]> {
+    return this.openDatabase().then((db) => {
+      //this.log('getAll pre:', fileName);
+
+      try {
+        const transaction = db.transaction([this.storeName], 'readonly');
+        /* transaction.onabort = (e) => {
+          this.log.error('getAll transaction onabort?', e);
+        }; */
+        const objectStore = transaction.objectStore(this.storeName);
+        var request = objectStore.getAll();
+        
+        //this.log.log('IDB getAll:', fileName, request);
+      } catch(err) {
+        this.log.error('getAll error:', err, request, request.error);
+      }
+
+      return new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          this.log.error('getAll request not finished!', request);
           reject();
         }, 3000);
 

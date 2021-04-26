@@ -154,21 +154,10 @@ export class AppProfileManager {
       id: appUsersManager.getUserInput(id)
     }).then((userFull) => {
       const user = userFull.user as User;
-      /* if(override && isObject(override) && override.phone_number) {
-        user.phone = override.phone_number;
-        if(override.first_name || override.last_name) {
-          user.first_name = override.first_name;
-          user.last_name = override.last_name;
-        }
-
-        appUsersManager.saveApiUser(user);
-      } else { */
-        appUsersManager.saveApiUser(user, true);
-      //}
+      appUsersManager.saveApiUser(user, true);
 
       if(userFull.profile_photo) {
         userFull.profile_photo = appPhotosManager.savePhoto(userFull.profile_photo, {type: 'profilePhoto', peerId: id});
-        /* appPhotosManager.savePhoto(userFull.profile_photo, {user_id: id}); */
       }
 
       if(userFull.about !== undefined) {
@@ -253,7 +242,7 @@ export class AppProfileManager {
     return this.fullPromises[peerId] = apiManager.invokeApi('messages.getFullChat', {
       chat_id: id
     }).then((result) => {
-      appChatsManager.saveApiChats(result.chats);
+      appChatsManager.saveApiChats(result.chats, true);
       appUsersManager.saveApiUsers(result.users);
       const fullChat = result.full_chat as ChatFull.chatFull;
       if(fullChat && fullChat.chat_photo && fullChat.chat_photo.id) {
@@ -362,7 +351,7 @@ export class AppProfileManager {
     return this.fullPromises[peerId] = apiManager.invokeApi('channels.getFullChannel', {
       channel: appChatsManager.getChannelInput(id)
     }).then((result) => {
-      appChatsManager.saveApiChats(result.chats);
+      appChatsManager.saveApiChats(result.chats, true);
       appUsersManager.saveApiUsers(result.users);
       const fullChannel = result.full_chat as ChatFull.channelFull;
       if(fullChannel && fullChannel.chat_photo.id) {

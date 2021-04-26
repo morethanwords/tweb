@@ -47,6 +47,8 @@ export class AppUsersManager {
   private getTopPeersPromise: Promise<number[]>;
 
   constructor() {
+    //this.users = this.storage.getCache();
+
     setInterval(this.updateUsersStatuses, 60000);
 
     rootScope.on('state_synchronized', this.updateUsersStatuses);
@@ -67,7 +69,7 @@ export class AppUsersManager {
             }
           }
 
-          user.sortStatus = this.getUserStatusForSort(user.status);
+          //user.sortStatus = this.getUserStatusForSort(user.status);
           rootScope.broadcast('user_update', userId);
         } //////else console.warn('No user by id:', userId);
       },
@@ -99,7 +101,7 @@ export class AppUsersManager {
             first_name: update.first_name,
             last_name: update.last_name,
             username: update.username
-          }));
+          }), true);
         }
       }
     });
@@ -271,42 +273,28 @@ export class AppUsersManager {
     apiUsers.forEach((user) => this.saveApiUser(user));
   }
 
-  public saveApiUser(_user: MTUser, noReplace?: boolean) {
-    if(_user._ === 'userEmpty') return;
-
-    const user = _user;
-    if(noReplace && isObject(this.users[user.id]) && this.users[user.id].first_name) {
-      return;
-    }
+  public saveApiUser(user: MTUser, override?: boolean) {
+    if(user._ === 'userEmpty') return;
 
     const userId = user.id;
+    const oldUser = this.users[userId];
+
+    if(oldUser && !override) {
+      return;
+    }
 
     if(user.pFlags === undefined) {
       user.pFlags = {};
     }
 
-    if(user.pFlags.min) {
-      if(this.users[userId] !== undefined) {
-        return;
-      }
+    if(user.pFlags.min && oldUser !== undefined) {
+      return;
     }
 
     // * exclude from state
     // defineNotNumerableProperties(user, ['initials', 'num', 'rFirstName', 'rFullName', 'rPhone', 'sortName', 'sortStatus']);
 
-    if(user.phone) {
-      user.rPhone = '+' + formatPhoneNumber(user.phone).formatted;
-    }
-
     const fullName = user.first_name + ' ' + (user.last_name || '');
-    if(user.first_name) {
-      user.rFirstName = RichTextProcessor.wrapRichText(user.first_name, {noLinks: true, noLinebreaks: true});
-      user.rFullName = user.last_name ? RichTextProcessor.wrapRichText(fullName, {noLinks: true, noLinebreaks: true}) : user.rFirstName;
-    } else {
-      user.rFirstName = RichTextProcessor.wrapRichText(user.last_name, {noLinks: true, noLinebreaks: true}) || user.rPhone || 'user_first_name_deleted';
-      user.rFullName = RichTextProcessor.wrapRichText(user.last_name, {noLinks: true, noLinebreaks: true}) || user.rPhone || 'user_name_deleted';
-    }
-
     if(user.username) {
       const searchUsername = searchIndexManager.cleanUsername(user.username);
       this.usernames[searchUsername] = userId;
@@ -318,22 +306,17 @@ export class AppUsersManager {
 
     if(user.status) {
       if((user.status as UserStatus.userStatusOnline).expires) {
-        (user.status as UserStatus.userStatusOnline).expires -= serverTimeManager.serverTimeOffset
+        (user.status as UserStatus.userStatusOnline).expires -= serverTimeManager.serverTimeOffset;
       }
 
       if((user.status as UserStatus.userStatusOffline).was_online) {
-        (user.status as UserStatus.userStatusOffline).was_online -= serverTimeManager.serverTimeOffset
+        (user.status as UserStatus.userStatusOffline).was_online -= serverTimeManager.serverTimeOffset;
       }
     }
 
-    if(user.pFlags.bot) {
-      user.sortStatus = -1;
-    } else {
-      user.sortStatus = this.getUserStatusForSort(user.status);
-    }
+    //user.sortStatus = user.pFlags.bot ? -1 : this.getUserStatusForSort(user.status);
 
     let changedTitle = false;
-    const oldUser = this.users[userId];
     if(oldUser === undefined) {
       this.users[userId] = user;
     } else {
@@ -347,9 +330,19 @@ export class AppUsersManager {
       rootScope.broadcast('user_update', userId);
     }
 
+    //console.log('we never give this up');
+
+    /* this.storage.set({
+      [userId]: user
+    }); */
+
     if(changedTitle) {
       rootScope.broadcast('peer_title_edit', user.id);
     }
+  }
+
+  public formatUserPhone(phone: string) {
+    return '+' + formatPhoneNumber(phone).formatted;
   }
 
   public getUserStatusForSort(status: User['status'] | number) {
@@ -579,7 +572,7 @@ export class AppUsersManager {
         expires: timestamp + onlineTimeFor
       };
       
-      user.sortStatus = this.getUserStatusForSort(user.status);
+      //user.sortStatus = this.getUserStatusForSort(user.status);
       rootScope.broadcast('user_update', id);
     }
   }
@@ -781,7 +774,7 @@ export class AppUsersManager {
       };
 
       user.status = status;
-      user.sortStatus = this.getUserStatusForSort(user.status);
+      //user.sortStatus = this.getUserStatusForSort(user.status);
       rootScope.broadcast('user_update', userId);
     }
   }

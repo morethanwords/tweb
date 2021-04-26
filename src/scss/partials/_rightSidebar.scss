@@ -150,17 +150,17 @@
   }
 
   &.can-add-members {
-    @include respond-to(handhelds) {
+    //@include respond-to(handhelds) {
       .btn-corner:not(.is-hidden) {
         transform: translateZ(0);
       }
-    }
+    //}
 
-    @include hover() {
+    /* @include hover() {
       .btn-corner:not(.is-hidden) {
         transform: translateZ(0);
       }
-    }
+    } */
   }
 
   .search-super {
