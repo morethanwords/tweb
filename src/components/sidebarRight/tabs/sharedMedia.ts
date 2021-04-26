@@ -670,7 +670,7 @@ class PeerProfile {
 
       let user = appUsersManager.getUser(peerId);
       if(user.phone && peerId !== rootScope.myId) {
-        setText(user.rPhone, this.phone);
+        setText(appUsersManager.formatUserPhone(user.phone), this.phone);
       }
     }/*  else {
       //membersLi.style.display = appPeersManager.isBroadcast(peerId) ? 'none' : '';
@@ -824,7 +824,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
       const rect = this.searchSuper.nav.getBoundingClientRect(); 
       if(!rect.width) return;
 
-      const top = rect.top;
+      const top = rect.top - 1;
       const isSharedMedia = top <= HEADER_HEIGHT;
       animatedCloseIcon.classList.toggle('state-back', isSharedMedia);
       this.searchSuper.container.classList.toggle('is-full-viewport', isSharedMedia);

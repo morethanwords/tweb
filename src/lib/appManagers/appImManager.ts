@@ -908,7 +908,7 @@ export class AppImManager {
 
   public getPeerTyping(peerId: number, container?: HTMLElement) {
     if(!appUsersManager.isBot(peerId)) {
-      const typings = appChatsManager.typingsInPeer[peerId];
+      const typings = appChatsManager.getPeerTypings(peerId);
       if(!typings || !typings.length) {
         return;
       }

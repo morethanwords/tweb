@@ -50,16 +50,16 @@ export function throttle<F extends AnyToVoidFunction>(
     isPending = true;
     args = _args;
 
-    if (!interval) {
-      if (shouldRunFirst) {
+    if(!interval) {
+      if(shouldRunFirst) {
         isPending = false;
         // @ts-ignore
         fn(...args);
       }
 
-      interval = window.setInterval(() => {
+      interval = setInterval(() => {
         if (!isPending) {
-          window.clearInterval(interval!);
+          clearInterval(interval!);
           interval = null;
           return;
         }
@@ -67,7 +67,7 @@ export function throttle<F extends AnyToVoidFunction>(
         isPending = false;
         // @ts-ignore
         fn(...args);
-      }, ms);
+      }, ms) as any;
     }
   };
 }

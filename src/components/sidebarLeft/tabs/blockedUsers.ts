@@ -64,7 +64,7 @@ export default class AppBlockedUsersTab extends SliderSuperTab {
       if(user.pFlags.bot) {
         dom.lastMessageSpan.append('@' + user.username);
       } else {
-        if(user.rPhone) dom.lastMessageSpan.innerHTML = user.rPhone;
+        if(user.phone) dom.lastMessageSpan.innerHTML = appUsersManager.formatUserPhone(user.phone);
         else dom.lastMessageSpan.append(user.username ? '@' + user.username : appUsersManager.getUserStatusString(peerId));
       }
 

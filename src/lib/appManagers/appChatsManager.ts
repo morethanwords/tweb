@@ -18,6 +18,7 @@ import apiManagerProxy from "../mtproto/mtprotoworker";
 import apiManager from '../mtproto/mtprotoworker';
 import { RichTextProcessor } from "../richtextprocessor";
 import rootScope from "../rootScope";
+//import AppStorage from "../storage";
 import apiUpdatesManager from "./apiUpdatesManager";
 import appMessagesManager from "./appMessagesManager";
 import appPeersManager from "./appPeersManager";
@@ -32,14 +33,18 @@ export type ChatRights = keyof ChatBannedRights['pFlags'] | keyof ChatAdminRight
 export type UserTyping = Partial<{userId: number, action: SendMessageAction, timeout: number}>;
 
 export class AppChatsManager {
-  public chats: {[id: number]: Chat.channel | Chat.chat | any} = {};
-  //public usernames: any = {};
-  //public channelAccess: any = {};
-  //public megagroups: {[id: number]: true} = {};
+  /* private storage = new AppStorage<Record<number, Chat>>({
+    storeName: 'chats'
+  }); */
+  
+  private chats: {[id: number]: Chat.channel | Chat.chat | any} = {};
+  //private usernames: any = {};
+  //private channelAccess: any = {};
+  //private megagroups: {[id: number]: true} = {};
 
-  public megagroupOnlines: {[id: number]: {timestamp: number, onlines: number}} = {};
+  private megagroupOnlines: {[id: number]: {timestamp: number, onlines: number}} = {};
 
-  public typingsInPeer: {[peerId: number]: UserTyping[]} = {};
+  private typingsInPeer: {[peerId: number]: UserTyping[]} = {};
 
   constructor() {
     rootScope.addMultipleEventsListeners({
@@ -57,9 +62,9 @@ export class AppChatsManager {
 
       updateChatDefaultBannedRights: (update) => {
         const chatId = -appPeersManager.getPeerId(update.peer);
-        const chat: Chat = this.getChat(chatId);
-        if(chat._ !== 'chatEmpty') {
-          (chat as Chat.chat).default_banned_rights = update.default_banned_rights;
+        const chat: Chat.chat = this.chats[chatId];
+        if(chat) {
+          chat.default_banned_rights = update.default_banned_rights;
           rootScope.broadcast('chat_update', chatId);
         }
       },
@@ -142,30 +147,39 @@ export class AppChatsManager {
     }
   };
 
-  public saveApiChats(apiChats: any[]) {
-    apiChats.forEach(chat => this.saveApiChat(chat));
+  public getPeerTypings(peerId: number) {
+    return this.typingsInPeer[peerId];
   }
 
-  public saveApiChat(chat: any) {
+  public saveApiChats(apiChats: any[], override?: boolean) {
+    apiChats.forEach(chat => this.saveApiChat(chat, override));
+  }
+
+  public saveApiChat(chat: any, override?: boolean) {
+    /* if(chat._ !== 'chat' && chat._ !== 'channel') {
+      return;
+    } */
+    
     // * exclude from state
     // defineNotNumerableProperties(chat, ['rTitle', 'initials']);
-    
-    //chat.rTitle = chat.title || 'chat_title_deleted';
-    chat.rTitle = RichTextProcessor.wrapRichText(chat.title, {noLinks: true, noLinebreaks: true}) || 'chat_title_deleted';
 
     const oldChat = this.chats[chat.id];
 
-    chat.initials = RichTextProcessor.getAbbreviation(chat.title);
+    /* if(oldChat && !override) {
+      return;
+    } */
 
     if(chat.pFlags === undefined) {
       chat.pFlags = {};
     }
 
-    if(chat.pFlags.min) {
-      if(oldChat !== undefined) {
-        return;
-      }
+    if(chat.pFlags.min && oldChat !== undefined) {
+      return;
     }
+
+    chat.initials = RichTextProcessor.getAbbreviation(chat.title);
+
+    //console.log('im the weatherman', chat.id);
 
     if(chat._ === 'channel' &&
         chat.participants_count === undefined &&
@@ -204,6 +218,10 @@ export class AppChatsManager {
     if(changedTitle) {
       rootScope.broadcast('peer_title_edit', -chat.id);
     }
+
+    /* this.storage.set({
+      [chat.id]: chat
+    }); */
   }
 
   public getChat(id: number) {
@@ -335,10 +353,7 @@ export class AppChatsManager {
   public isChannel(id: number) {
     if(id < 0) id = -id;
     const chat = this.chats[id];
-    if(chat && (chat._ === 'channel' || chat._ === 'channelForbidden')/*  || this.channelAccess[id] */) {
-      return true;
-    }
-    return false;
+    return chat && (chat._ === 'channel' || chat._ === 'channelForbidden')/*  || this.channelAccess[id] */;
   }
 
   public isMegagroup(id: number) {
@@ -347,10 +362,7 @@ export class AppChatsManager {
     } */
 
     const chat = this.chats[id];
-    if(chat && chat._ === 'channel' && chat.pFlags.megagroup) {
-      return true;
-    }
-    return false;
+    return chat && chat._ === 'channel' && chat.pFlags.megagroup;
   }
 
   public isBroadcast(id: number) {
@@ -430,7 +442,7 @@ export class AppChatsManager {
     return i18n(key, [numberThousandSplitter(count)]);
   }
 
-  public wrapForFull(id: number, fullChat: any) {
+  /* public wrapForFull(id: number, fullChat: any) {
     const chatFull = copy(fullChat);
     const chat = this.getChat(id);
 
@@ -480,7 +492,7 @@ export class AppChatsManager {
     }
 
     return participants;
-  }
+  } */
 
   public createChannel(title: string, about: string): Promise<number> {
     return apiManager.invokeApi('channels.createChannel', {

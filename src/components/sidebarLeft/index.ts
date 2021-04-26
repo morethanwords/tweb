@@ -478,12 +478,13 @@ export class AppSidebarLeft extends SidebarSlider {
     this.searchGroups.people.container.append(peopleContainer);
     let peopleScrollable = new ScrollableX(peopleContainer);
 
+    let first = true;
     let hideNewBtnMenuTimeout: number;
     //const transition = Transition.bind(null, searchContainer.parentElement, 150);
     const transition = TransitionSlider(searchContainer.parentElement, 'zoom-fade', 150, (id) => {
       if(hideNewBtnMenuTimeout) clearTimeout(hideNewBtnMenuTimeout);
 
-      if(id === 0) {
+      if(id === 0 && !first) {
         searchSuper.selectTab(0, false);
         this.inputSearch.onClearClick();
         hideNewBtnMenuTimeout = window.setTimeout(() => {
@@ -491,6 +492,8 @@ export class AppSidebarLeft extends SidebarSlider {
           this.newBtnMenu.classList.remove('is-hidden');
         }, 150);
       }
+
+      first = false;
     });
 
     transition(0);

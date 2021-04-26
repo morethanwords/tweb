@@ -2331,7 +2331,8 @@ export class AppMessagesManager {
   public saveMessages(messages: any[], options: Partial<{
     storage: MessagesStorage,
     isScheduled: true,
-    isOutgoing: true
+    isOutgoing: true,
+    //isNew: boolean, // * new - from update
   }> = {}) {
     //let groups: Set<string>;
     messages.forEach((message) => {
@@ -2503,6 +2504,12 @@ export class AppMessagesManager {
             break;
 
           case 'messageActionChatEditTitle':
+            /* if(options.isNew) {
+              const chat = appChatsManager.getChat(-peerId);
+              chat.title = message.action.title;
+              appChatsManager.saveApiChat(chat, true);
+            } */
+            
             if(isBroadcast) {
               message.action._ = 'messageActionChannelEditTitle';
             }

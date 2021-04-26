@@ -153,6 +153,6 @@ export default class AppSettingsTab extends SliderSuperTab {
     this.avatarElem.setAttribute('peer', '' + user.id);
 
     this.nameDiv.append(new PeerTitle({peerId: user.id}).element);
-    this.phoneDiv.innerHTML = user.rPhone || '';
+    this.phoneDiv.innerHTML = user.phone ? appUsersManager.formatUserPhone(user.phone) : '';
   }
 }
