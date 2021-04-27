@@ -16,7 +16,7 @@ import timeManager from "./timeManager";
 
 import CryptoWorker from "../crypto/cryptoworker";
 
-import { logger, LogLevels } from "../logger";
+import { logger, LogTypes } from "../logger";
 import { bytesCmp, bytesToHex, bytesFromHex, bytesXor } from "../../helpers/bytes";
 import DEBUG from "../../config/debug";
 import { cmp, int2bigInt, one, pow, str2bigInt, sub } from "../../vendor/leemon";
@@ -74,7 +74,7 @@ export class Authorizer {
   private log: ReturnType<typeof logger>;
   
   constructor() {
-    this.log = logger(`AUTHORIZER`, LogLevels.error | LogLevels.log);
+    this.log = logger(`AUTHORIZER`, LogTypes.Error | LogTypes.Log);
   }
   
   public mtpSendPlainRequest(dcId: number, requestArray: Uint8Array) {

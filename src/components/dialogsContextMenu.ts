@@ -94,7 +94,7 @@ export default class DialogsContextMenu {
   }
 
   private onArchiveClick = () => {
-    let dialog = appMessagesManager.getDialogByPeerId(this.selectedId)[0];
+    let dialog = appMessagesManager.getDialogOnly(this.selectedId);
     if(dialog) {
       appMessagesManager.editPeerFolders([dialog.peerId], +!dialog.folder_id);
     }
@@ -113,7 +113,7 @@ export default class DialogsContextMenu {
   };
 
   private onUnreadClick = () => {
-    const dialog = appMessagesManager.getDialogByPeerId(this.selectedId)[0];
+    const dialog = appMessagesManager.getDialogOnly(this.selectedId);
     if(!dialog) return;
 
     if(dialog.unread_count) {
@@ -151,7 +151,7 @@ export default class DialogsContextMenu {
     this.filterId = appDialogsManager.filterId;
 
     this.selectedId = +li.dataset.peerId;
-    this.dialog = appMessagesManager.getDialogByPeerId(this.selectedId)[0];
+    this.dialog = appMessagesManager.getDialogOnly(this.selectedId);
 
     this.buttons.forEach(button => {
       const good = button.verify();

@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { logger, LogLevels } from '../../logger';
+import { logger, LogTypes } from '../../logger';
 import Modes from '../../../config/modes';
 import EventListenerBase from '../../../helpers/eventListenerBase';
 import { MTConnection } from './transport';
@@ -21,9 +21,9 @@ export default class Socket extends EventListenerBase<{
   constructor(protected dcId: number, protected url: string, logSuffix: string) {
     super();
 
-    let logLevel = LogLevels.error | LogLevels.log;
-    if(this.debug) logLevel |= LogLevels.debug;
-    this.log = logger(`WS-${dcId}` + logSuffix, logLevel);
+    let logTypes = LogTypes.Error | LogTypes.Log;
+    if(this.debug) logTypes |= LogTypes.Debug;
+    this.log = logger(`WS-${dcId}` + logSuffix, logTypes);
     this.log('constructor');
     this.connect();
 

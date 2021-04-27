@@ -16,7 +16,7 @@ import sessionStorage from '../sessionStorage';
 import Schema from './schema';
 import timeManager from './timeManager';
 import NetworkerFactory from './networkerFactory';
-import { logger, LogLevels } from '../logger';
+import { logger, LogTypes } from '../logger';
 import { InvokeApiOptions } from '../../types';
 import { longToBytes } from '../crypto/crypto_utils';
 import MTTransport from './transports/transport';
@@ -141,7 +141,7 @@ export default class MTPNetworker {
     const suffix = this.isFileUpload ? '-U' : this.isFileDownload ? '-D' : '';
     this.name = 'NET-' + dcId + suffix;
     //this.log = logger(this.name, this.upload && this.dcId === 2 ? LogLevels.debug | LogLevels.warn | LogLevels.log | LogLevels.error : LogLevels.error);
-    this.log = logger(this.name, LogLevels.log | LogLevels.error | LogLevels.debug | LogLevels.warn);
+    this.log = logger(this.name, /* LogTypes.Log | LogTypes.Debug |  */LogTypes.Error | LogTypes.Warn);
     this.log('constructor'/* , this.authKey, this.authKeyID, this.serverSalt */);
 
     // Test resend after bad_server_salt

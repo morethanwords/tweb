@@ -9,7 +9,7 @@ import animationIntersector from '../../components/animationIntersector';
 import appSidebarLeft, { LEFT_COLUMN_ACTIVE_CLASSNAME } from "../../components/sidebarLeft";
 import appSidebarRight, { RIGHT_COLUMN_ACTIVE_CLASSNAME } from '../../components/sidebarRight';
 import mediaSizes, { ScreenSize } from '../../helpers/mediaSizes';
-import { logger, LogLevels } from "../logger";
+import { logger, LogTypes } from "../logger";
 import apiManager from '../mtproto/mtprotoworker';
 import rootScope from '../rootScope';
 import apiUpdatesManager from './apiUpdatesManager';
@@ -95,7 +95,7 @@ export class AppImManager {
   constructor() {
     apiUpdatesManager.attach();
 
-    this.log = logger('IM', LogLevels.log | LogLevels.warn | LogLevels.debug | LogLevels.error);
+    this.log = logger('IM', LogTypes.Log | LogTypes.Warn | LogTypes.Debug | LogTypes.Error);
 
     this.selectTab(0);
     

@@ -229,7 +229,7 @@ export default class ChatTopbar {
       onClick: () => {
         new PopupDeleteDialog(this.peerId);
       },
-      verify: () => this.chat.type === 'chat' && !!this.appMessagesManager.getDialogByPeerId(this.peerId)[0]
+      verify: () => this.chat.type === 'chat' && !!this.appMessagesManager.getDialogOnly(this.peerId)
     }];
 
     this.btnSearch = ButtonIcon('search');

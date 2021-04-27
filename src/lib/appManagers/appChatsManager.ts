@@ -18,7 +18,7 @@ import apiManagerProxy from "../mtproto/mtprotoworker";
 import apiManager from '../mtproto/mtprotoworker';
 import { RichTextProcessor } from "../richtextprocessor";
 import rootScope from "../rootScope";
-//import AppStorage from "../storage";
+import AppStorage from "../storage";
 import apiUpdatesManager from "./apiUpdatesManager";
 import appMessagesManager from "./appMessagesManager";
 import appPeersManager from "./appPeersManager";
@@ -33,9 +33,9 @@ export type ChatRights = keyof ChatBannedRights['pFlags'] | keyof ChatAdminRight
 export type UserTyping = Partial<{userId: number, action: SendMessageAction, timeout: number}>;
 
 export class AppChatsManager {
-  /* private storage = new AppStorage<Record<number, Chat>>({
+  private storage = new AppStorage<Record<number, Chat>>({
     storeName: 'chats'
-  }); */
+  });
   
   private chats: {[id: number]: Chat.channel | Chat.chat | any} = {};
   //private usernames: any = {};
@@ -76,6 +76,24 @@ export class AppChatsManager {
 
     appStateManager.getState().then((state) => {
       this.chats = state.chats;
+
+      appStateManager.addEventListener('peerNeeded', (peerId: number) => {
+        if(peerId > 0 || this.storage.getFromCache(-peerId)) {
+          return;
+        }
+
+        this.storage.set({
+          [-peerId]: this.getChat(-peerId)
+        });
+      });
+
+      appStateManager.addEventListener('peerUnneeded', (peerId: number) => {
+        if(peerId > 0 || !this.storage.getFromCache(-peerId)) {
+          return;
+        }
+
+        this.storage.delete(-peerId);
+      });
     });
   }
 
@@ -179,8 +197,6 @@ export class AppChatsManager {
 
     chat.initials = RichTextProcessor.getAbbreviation(chat.title);
 
-    //console.log('im the weatherman', chat.id);
-
     if(chat._ === 'channel' &&
         chat.participants_count === undefined &&
         oldChat !== undefined &&
@@ -219,9 +235,11 @@ export class AppChatsManager {
       rootScope.broadcast('peer_title_edit', -chat.id);
     }
 
-    /* this.storage.set({
-      [chat.id]: chat
-    }); */
+    if(appStateManager.isPeerNeeded(-chat.id)) {
+      this.storage.set({
+        [chat.id]: chat
+      });
+    }
   }
 
   public getChat(id: number) {

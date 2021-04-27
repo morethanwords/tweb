@@ -157,7 +157,9 @@ const REFRESH_KEYS = ['dialogs', 'allDialogsLoaded', 'messages', 'contactsList',
   'updates', 'maxSeenMsgId', 'filters', 'topPeers'] as any as Array<keyof State>;
 
 export class AppStateManager extends EventListenerBase<{
-  save: (state: State) => Promise<void>
+  save: (state: State) => Promise<void>,
+  peerNeeded: (peerId: number) => void,
+  peerUnneeded: (peerId: number) => void,
 }> {
   public static STATE_INIT = STATE_INIT;
   public loaded: Promise<State>;
@@ -166,6 +168,9 @@ export class AppStateManager extends EventListenerBase<{
   private state: State;
   private savePromise: Promise<void>;
   private tempId = 0;
+
+  private neededPeers: Map<number, Set<string>> = new Map();
+  private singlePeerMap: Map<string, number> = new Map();
 
   constructor() {
     super();
@@ -266,7 +271,7 @@ export class AppStateManager extends EventListenerBase<{
   public saveState() {
     if(this.state === undefined || this.savePromise) return;
 
-    //return;
+    return;
 
     const tempId = this.tempId;
     this.savePromise = getHeavyAnimationPromise().then(() => {
@@ -295,10 +300,18 @@ export class AppStateManager extends EventListenerBase<{
   public setByKey(key: string, value: any) {
     setDeepProperty(this.state, key, value);
     rootScope.broadcast('settings_updated', {key, value});
+
+    const first = key.split('.')[0];
+    // @ts-ignore
+    this.pushToState(first, this.state[first]);
   }
 
   public pushToState<T extends keyof State>(key: T, value: State[T]) {
     this.state[key] = value;
+
+    sessionStorage.set({
+      [key]: value
+    });
   }
 
   public setPeer(peerId: number, peer: any) {
@@ -307,7 +320,45 @@ export class AppStateManager extends EventListenerBase<{
     container[peerId] = peer;
   }
 
-  public resetState() {
+  public requestPeer(peerId: number, type: string, limit?: number) {
+    let set = this.neededPeers.get(peerId);
+    if(set && set.has(type)) {
+      return;
+    }
+
+    if(!set) {
+      set = new Set();
+      this.neededPeers.set(peerId, set);
+    }
+
+    set.add(type);
+    this.dispatchEvent('peerNeeded', peerId);
+
+    if(limit !== undefined) {
+      this.keepPeerSingle(peerId, type);
+    }
+  }
+
+  public isPeerNeeded(peerId: number) {
+    return this.neededPeers.has(peerId);
+  }
+
+  public keepPeerSingle(peerId: number, type: string) {
+    const existsPeerId = this.singlePeerMap.get(type);
+    if(existsPeerId && existsPeerId !== peerId) {
+      const set = this.neededPeers.get(existsPeerId);
+      set.delete(type);
+
+      if(!set.size) {
+        this.neededPeers.delete(existsPeerId);
+        this.dispatchEvent('peerUnneeded', existsPeerId);
+      }
+    }
+
+    this.singlePeerMap.set(type, peerId);
+  }
+
+  /* public resetState() {
     for(let i in this.state) {
       // @ts-ignore
       this.state[i] = false;
@@ -315,7 +366,7 @@ export class AppStateManager extends EventListenerBase<{
     sessionStorage.set(this.state).then(() => {
       location.reload();
     });
-  }
+  } */
 }
 
 //console.trace('appStateManager include');

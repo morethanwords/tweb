@@ -5,7 +5,7 @@
  */
 
 import Modes from "../../../config/modes";
-import { logger, LogLevels } from "../../logger";
+import { logger, LogTypes } from "../../logger";
 import MTPNetworker from "../networker";
 import Obfuscation from "./obfuscation";
 import MTTransport, { MTConnection, MTConnectionConstructable } from "./transport";
@@ -33,9 +33,9 @@ export default class TcpObfuscated implements MTTransport {
   //private debugPayloads: MTPNetworker['debugRequests'] = [];
 
   constructor(private Connection: MTConnectionConstructable, private dcId: number, private url: string, private logSuffix: string, public retryTimeout: number) {
-    let logLevel = LogLevels.error | LogLevels.log;
-    if(this.debug) logLevel |= LogLevels.debug;
-    this.log = logger(`TCP-${dcId}` + logSuffix, logLevel);
+    let logTypes = LogTypes.Error | LogTypes.Log;
+    if(this.debug) logTypes |= LogTypes.Debug;
+    this.log = logger(`TCP-${dcId}` + logSuffix, logTypes);
     this.log('constructor');
     
     this.connect();

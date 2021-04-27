@@ -508,12 +508,7 @@ export namespace User {
 		bot_inline_placeholder?: string,
 		lang_code?: string,
 		initials?: string,
-		rFirstName?: string,
-		rFullName?: string,
-		rPhone?: string,
-		sortName?: string,
-		sortStatus?: number,
-		num?: number
+		sortName?: string
 	};
 }
 
@@ -1225,7 +1220,8 @@ export namespace Dialog {
 		draft?: DraftMessage,
 		folder_id?: number,
 		index?: number,
-		peerId?: number
+		peerId?: number,
+		topMessage?: any
 	};
 
 	export type dialogFolder = {

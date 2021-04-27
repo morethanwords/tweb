@@ -6,7 +6,7 @@
 
 import { MOUNT_CLASS_TO } from "../config/debug";
 import { isSafari } from "../helpers/userAgent";
-import { logger, LogLevels } from "./logger";
+import { logger, LogTypes } from "./logger";
 
 type Result = {
   bytes: Uint8Array, 
@@ -28,7 +28,7 @@ export class OpusDecodeController {
   private tasks: Array<Task> = [];
   private keepAlive = false;
   private isPlaySupportedResult: boolean;
-  private log = logger('OPUS', LogLevels.error);
+  private log = logger('OPUS', LogTypes.Error);
 
   public isPlaySupported() {
     if(this.isPlaySupportedResult !== undefined) return this.isPlaySupportedResult;

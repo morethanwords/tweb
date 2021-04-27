@@ -7,7 +7,7 @@
 import { MOUNT_CLASS_TO } from "../../config/debug";
 import { copy } from "../../helpers/object";
 import { InputMedia, MessageEntity } from "../../layer";
-import { logger, LogLevels } from "../logger";
+import { logger, LogTypes } from "../logger";
 import apiManager from "../mtproto/mtprotoworker";
 import { RichTextProcessor } from "../richtextprocessor";
 import rootScope from "../rootScope";
@@ -80,7 +80,7 @@ export class AppPollsManager {
   public polls: {[id: string]: Poll} = {};
   public results: {[id: string]: PollResults} = {};
 
-  private log = logger('POLLS', LogLevels.error);
+  private log = logger('POLLS', LogTypes.Error);
 
   constructor() {
     rootScope.addMultipleEventsListeners({

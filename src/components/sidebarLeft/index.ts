@@ -466,7 +466,7 @@ export class AppSidebarLeft extends SidebarSlider {
   
           appStateManager.pushToState('recentSearch', recentSearch);
           for(const peerId of recentSearch) {
-            appStateManager.setPeer(peerId, appPeersManager.getPeer(peerId));
+            appStateManager.requestPeer(peerId, 'recentSearch');
           }
         }
       });

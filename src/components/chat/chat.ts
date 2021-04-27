@@ -22,7 +22,7 @@ import type { AppDraftsManager } from "../../lib/appManagers/appDraftsManager";
 import type { ServerTimeManager } from "../../lib/mtproto/serverTimeManager";
 import type sessionStorage from '../../lib/sessionStorage';
 import EventListenerBase from "../../helpers/eventListenerBase";
-import { logger, LogLevels } from "../../lib/logger";
+import { logger, LogTypes } from "../../lib/logger";
 import rootScope from "../../lib/rootScope";
 import appSidebarRight from "../sidebarRight";
 import ChatBubbles from "./bubbles";
@@ -75,7 +75,7 @@ export default class Chat extends EventListenerBase<{
 
     // * constructor end
 
-    this.log = logger('CHAT', LogLevels.log | LogLevels.warn | LogLevels.debug | LogLevels.error);
+    this.log = logger('CHAT', LogTypes.Log | LogTypes.Warn | LogTypes.Debug | LogTypes.Error);
     //this.log.error('Chat construction');
 
     this.container.append(this.backgroundEl);

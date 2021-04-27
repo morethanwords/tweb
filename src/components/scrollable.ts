@@ -5,7 +5,7 @@
  */
 
 import { isTouchSupported } from "../helpers/touchSupport";
-import { logger, LogLevels } from "../lib/logger";
+import { logger, LogTypes } from "../lib/logger";
 import fastSmoothScroll, { FocusDirection } from "../helpers/fastSmoothScroll";
 import useHeavyAnimationCheck from "../hooks/useHeavyAnimationCheck";
 import { cancelEvent } from "../helpers/dom";
@@ -64,7 +64,7 @@ export class ScrollableBase {
   constructor(public el: HTMLElement, logPrefix = '', public container: HTMLElement = document.createElement('div')) {
     this.container.classList.add('scrollable');
 
-    this.log = logger('SCROLL' + (logPrefix ? '-' + logPrefix : ''), LogLevels.error);
+    this.log = logger('SCROLL' + (logPrefix ? '-' + logPrefix : ''), LogTypes.Error);
 
     if(el) {
       Array.from(el.children).forEach(c => this.container.append(c));

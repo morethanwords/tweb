@@ -409,7 +409,7 @@ export class AppNotificationsManager {
 
   public isMuted(peerNotifySettings: PeerNotifySettings) {
     return peerNotifySettings._ === 'peerNotifySettings' &&
-      (peerNotifySettings.mute_until * 1000) > tsNow();
+      ((peerNotifySettings.mute_until * 1000) > tsNow() || peerNotifySettings.silent);
   }
 
   public getPeerMuted(peerId: number) {
@@ -488,7 +488,8 @@ export class AppNotificationsManager {
   };
 
   public notify(data: NotifyOptions) {
-    console.log('notify', data, rootScope.idle.isIDLE, this.notificationsUiSupport, this.stopped);
+    //console.log('notify', data, rootScope.idle.isIDLE, this.notificationsUiSupport, this.stopped);
+    
     if(this.stopped) {
       return;
     }
@@ -566,7 +567,8 @@ export class AppNotificationsManager {
           tag: data.tag || '',
           silent: data.silent || false
         });
-        console.log('notify constructed notification');
+
+        //console.log('notify constructed notification');
       } catch(e) {
         this.notificationsUiSupport = false;
         //WebPushApiManager.setLocalNotificationsDisabled();
