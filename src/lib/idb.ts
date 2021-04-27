@@ -36,20 +36,22 @@ export type IDBOptions = {
 };
 
 export default class IDBStorage {
-  //public static STORAGES: IDBStorage[] = [];
-  public openDbPromise: Promise<IDBDatabase>;
-  public storageIsAvailable = true;
+  //private static STORAGES: IDBStorage[] = [];
+  private openDbPromise: Promise<IDBDatabase>;
+  private storageIsAvailable = true;
 
-  private log: ReturnType<typeof logger> = logger('IDB');
+  private log: ReturnType<typeof logger>;
   
-  public name: string = Database.name;
-  public version: number = Database.version;
-  public stores: IDBStore[] = Database.stores;
+  private name: string = Database.name;
+  private version: number = Database.version;
+  private stores: IDBStore[] = Database.stores;
 
-  public storeName: string;
+  private storeName: string;
 
   constructor(options: IDBOptions) {
     safeAssign(this, options);
+
+    this.log = logger('IDB-' + this.storeName);
 
     this.openDatabase(true);
 
@@ -161,35 +163,44 @@ export default class IDBStorage {
     });
   }
 
-  public delete(entryName: string): Promise<void> {
+  public delete(entryName: string | string[]): Promise<void> {
     //return Promise.resolve();
     return this.openDatabase().then((db) => {
-      try {
-        //this.log('delete: `' + entryName + '`');
-        var objectStore = db.transaction([this.storeName], 'readwrite')
-          .objectStore(this.storeName);
-
-        var request = objectStore.delete(entryName);
-      } catch(error) {
-        return Promise.reject(error);
-      }
-
       return new Promise((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          this.log.error('delete: request not finished!', entryName, request);
-          resolve();
-        }, 3000);
+        try {
+          //this.log('delete: `' + entryName + '`');
+          const transaction = db.transaction([this.storeName], 'readwrite');
+          const objectStore = transaction.objectStore(this.storeName);
 
-        request.onsuccess = (event) => {
-          //this.log('delete: deleted file', event);
-          resolve();
-          clearTimeout(timeout);
-        };
-  
-        request.onerror = (error) => {
+          transaction.onerror = (e) => {
+            reject(transaction.error);
+            clearTimeout(timeout);
+          };
+
+          transaction.oncomplete = (e) => {
+            this.log('delete: transaction complete', entryName);
+            resolve();
+            clearTimeout(timeout);
+          };
+
+          const timeout = setTimeout(() => {
+            this.log.error('delete: transaction not finished', entryName, transaction);
+          }, 10000);
+
+          if(!Array.isArray(entryName)) {
+            entryName = [].concat(entryName);
+          }
+
+          for(let i = 0, length = entryName.length; i < length; ++i) {
+            const request = objectStore.delete(entryName[i]);
+            request.onerror = (error) => {
+              reject(transaction.error);
+              clearTimeout(timeout);
+            };
+          }
+        } catch(error) {
           reject(error);
-          clearTimeout(timeout);
-        };
+        }
       });
     });
   }
@@ -251,7 +262,7 @@ export default class IDBStorage {
           };
   
           transaction.oncomplete = (e) => {
-            //this.log('save: transaction complete:', entryName);
+            this.log('save: transaction complete:', entryName);
             resolve();
             clearTimeout(timeout);
           };

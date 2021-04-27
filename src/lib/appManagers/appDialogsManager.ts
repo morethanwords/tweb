@@ -13,7 +13,7 @@ import { ripple } from "../../components/ripple";
 import Scrollable, { ScrollableX, SliceSides } from "../../components/scrollable";
 import { formatDateAccordingToTodayNew } from "../../helpers/date";
 import { isSafari } from "../../helpers/userAgent";
-import { logger, LogLevels } from "../logger";
+import { logger, LogTypes } from "../logger";
 import { RichTextProcessor } from "../richtextprocessor";
 import rootScope from "../rootScope";
 import { positionElementByIndex, replaceContent } from "../../helpers/dom";
@@ -194,7 +194,7 @@ export class AppDialogsManager {
   public scroll: Scrollable = null;
   public _scroll: Scrollable = null;
   
-  private log = logger('DIALOGS', LogLevels.log | LogLevels.error | LogLevels.warn | LogLevels.debug);
+  private log = logger('DIALOGS', LogTypes.Log | LogTypes.Error | LogTypes.Warn | LogTypes.Debug);
 
   public contextMenu = new DialogsContextMenu();
 
@@ -321,7 +321,7 @@ export class AppDialogsManager {
 
     rootScope.on('dialog_flush', (e) => {
       const peerId: number = e.peerId;
-      const dialog = appMessagesManager.getDialogByPeerId(peerId)[0];
+      const dialog = appMessagesManager.getDialogOnly(peerId);
       if(dialog) {
         this.setLastMessage(dialog);
         this.validateForFilter();
@@ -356,7 +356,7 @@ export class AppDialogsManager {
     rootScope.on('dialog_unread', (e) => {
       const info = e;
 
-      const dialog = appMessagesManager.getDialogByPeerId(info.peerId)[0];
+      const dialog = appMessagesManager.getDialogOnly(info.peerId);
       if(dialog) {
         this.setUnreadMessages(dialog);
         this.validateForFilter();
@@ -369,7 +369,7 @@ export class AppDialogsManager {
     });
 
     rootScope.on('dialog_draft', (e) => {
-      const dialog = appMessagesManager.getDialogByPeerId(e.peerId)[0];
+      const dialog = appMessagesManager.getDialogOnly(e.peerId);
       if(dialog) {
         this.updateDialog(dialog);
       }
@@ -455,7 +455,7 @@ export class AppDialogsManager {
     rootScope.on('peer_typings', (e) => {
       const {peerId, typings} = e;
 
-      const dialog = appMessagesManager.getDialogByPeerId(peerId)[0];
+      const dialog = appMessagesManager.getDialogOnly(peerId);
       if(!dialog) return;
 
       if(typings.length) {
@@ -1209,7 +1209,7 @@ export class AppDialogsManager {
     let dialog: Dialog;
     
     if(typeof(_dialog) === 'number') {
-      let originalDialog = appMessagesManager.getDialogByPeerId(_dialog)[0];
+      let originalDialog = appMessagesManager.getDialogOnly(_dialog);
       if(!originalDialog) {
         originalDialog = {
           peerId: _dialog,

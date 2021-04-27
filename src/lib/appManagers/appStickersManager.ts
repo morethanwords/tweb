@@ -187,7 +187,7 @@ export class AppStickersManager {
       if(res) {
         delete set.installed_date;
         rootScope.broadcast('stickers_deleted', set);
-        this.storage.remove(set.id, true);
+        this.storage.delete(set.id, true);
         return true;
       }
     } else {

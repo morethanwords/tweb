@@ -5,7 +5,7 @@
  */
 
 import { throttle } from "../helpers/schedulers";
-import { logger, LogLevels } from "../lib/logger";
+import { logger, LogTypes } from "../lib/logger";
 import VisibilityIntersector, { OnVisibilityChange } from "./visibilityIntersector";
 import { findAndSpliceAll } from "../helpers/array";
 
@@ -29,7 +29,7 @@ export class LazyLoadQueueBase {
   protected lockPromise: Promise<void> = null;
   protected unlockResolve: () => void = null;
 
-  protected log = logger('LL', LogLevels.error);
+  protected log = logger('LL', LogTypes.Error);
   protected processQueue: () => void;
 
   constructor(protected parallelLimit = PARALLEL_LIMIT) {

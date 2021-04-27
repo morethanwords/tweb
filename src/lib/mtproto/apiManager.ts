@@ -352,8 +352,8 @@ export class ApiManager {
         
         if(error.code === 401 && this.baseDcId === dcId) {
           if(error.type !== 'SESSION_PASSWORD_NEEDED') {
-            sessionStorage.remove('dc')
-            sessionStorage.remove('user_auth'); // ! возможно тут вообще не нужно это делать, но нужно проверить случай с USER_DEACTIVATED (https://core.telegram.org/api/errors)
+            sessionStorage.delete('dc')
+            sessionStorage.delete('user_auth'); // ! возможно тут вообще не нужно это делать, но нужно проверить случай с USER_DEACTIVATED (https://core.telegram.org/api/errors)
             //this.telegramMeNotify(false);
           }
           

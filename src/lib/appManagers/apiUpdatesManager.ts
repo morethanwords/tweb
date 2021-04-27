@@ -13,7 +13,7 @@
 import DEBUG, { MOUNT_CLASS_TO } from '../../config/debug';
 import { copy } from '../../helpers/object';
 import { Update } from '../../layer';
-import { logger, LogLevels } from '../logger';
+import { logger, LogTypes } from '../logger';
 import apiManager from '../mtproto/mtprotoworker';
 import rootScope from '../rootScope';
 //import networkerFactory from '../mtproto/networkerFactory';
@@ -51,7 +51,7 @@ export class ApiUpdatesManager {
   public channelStates: {[channelId: number]: UpdatesState} = {};
   private attached = false;
 
-  private log = logger('UPDATES', LogLevels.error | LogLevels.log | LogLevels.warn | LogLevels.debug);
+  private log = logger('UPDATES', LogTypes.Error | LogTypes.Warn/*  | LogTypes.Log | LogTypes.Debug */);
   private debug = DEBUG;
 
   private popPendingSeqUpdate() {

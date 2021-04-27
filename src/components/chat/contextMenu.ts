@@ -186,7 +186,7 @@ export default class ChatContextMenu {
       icon: 'reply',
       text: 'Reply',
       onClick: this.onReplyClick,
-      verify: () => (this.peerId > 0 || this.appChatsManager.hasRights(-this.peerId, 'send_messages')) && 
+      verify: () => this.appMessagesManager.canWriteToPeer(this.peerId) && 
         !this.message.pFlags.is_outgoing && 
         !!this.chat.input.messageInput && 
         this.chat.type !== 'scheduled'/* ,

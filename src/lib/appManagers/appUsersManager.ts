@@ -22,7 +22,7 @@ import serverTimeManager from "../mtproto/serverTimeManager";
 import { RichTextProcessor } from "../richtextprocessor";
 import rootScope from "../rootScope";
 import searchIndexManager from "../searchIndexManager";
-//import AppStorage from "../storage";
+import AppStorage from "../storage";
 import apiUpdatesManager from "./apiUpdatesManager";
 import appChatsManager from "./appChatsManager";
 import appPeersManager from "./appPeersManager";
@@ -33,9 +33,9 @@ import appStateManager from "./appStateManager";
 export type User = MTUser.user;
 
 export class AppUsersManager {
-  /* private storage = new AppStorage<Record<number, User>>({
+  private storage = new AppStorage<Record<number, User>>({
     storeName: 'users'
-  }); */
+  });
   
   private users: {[userId: number]: User} = {};
   private usernames: {[username: string]: number} = {};
@@ -47,8 +47,6 @@ export class AppUsersManager {
   private getTopPeersPromise: Promise<number[]>;
 
   constructor() {
-    //this.users = this.storage.getCache();
-
     setInterval(this.updateUsersStatuses, 60000);
 
     rootScope.on('state_synchronized', this.updateUsersStatuses);
@@ -132,10 +130,28 @@ export class AppUsersManager {
       appStateManager.addEventListener('save', async() => {
         const contactsList = [...this.contactsList];
         for(const userId of contactsList) {
-          appStateManager.setPeer(userId, this.getUser(userId));
+          appStateManager.requestPeer(userId, 'contacts');
         }
   
         appStateManager.pushToState('contactsList', contactsList);
+      });
+
+      appStateManager.addEventListener('peerNeeded', (peerId: number) => {
+        if(peerId < 0 || this.storage.getFromCache(peerId)) {
+          return;
+        }
+
+        this.storage.set({
+          [peerId]: this.getUser(peerId)
+        });
+      });
+
+      appStateManager.addEventListener('peerUnneeded', (peerId: number) => {
+        if(peerId < 0 || !this.storage.getFromCache(peerId)) {
+          return;
+        }
+
+        this.storage.delete(peerId);
       });
     });
   }
@@ -330,14 +346,14 @@ export class AppUsersManager {
       rootScope.broadcast('user_update', userId);
     }
 
-    //console.log('we never give this up');
-
-    /* this.storage.set({
-      [userId]: user
-    }); */
-
     if(changedTitle) {
       rootScope.broadcast('peer_title_edit', user.id);
+    }
+
+    if(appStateManager.isPeerNeeded(userId)) {
+      this.storage.set({
+        [userId]: user
+      });
     }
   }
 
@@ -670,7 +686,7 @@ export class AppUsersManager {
           if(result.categories.length) {
             peerIds = result.categories[0].peers.map((topPeer) => {
               const peerId = appPeersManager.getPeerId(topPeer.peer);
-              appStateManager.setPeer(peerId, this.getUser(peerId));
+              appStateManager.requestPeer(peerId, 'topPeer');
               return peerId;
             });
           }

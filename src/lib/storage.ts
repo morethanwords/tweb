@@ -20,7 +20,7 @@ export default class AppStorage<Storage extends Record<string, any>/* Storage ex
   //private cache: Partial<{[key: string]: Storage[typeof key]}> = {};
   private cache: Partial<Storage> = {};
   private useStorage = true;
-  private updateKeys: Set<keyof Storage> = new Set();
+  private keysToSet: Set<keyof Storage> = new Set();
   private saveThrottled: () => void;
 
   constructor(storageOptions: Omit<IDBOptions, 'storeName' | 'stores'> & {stores?: DatabaseStore[], storeName: DatabaseStoreName}) {
@@ -29,8 +29,12 @@ export default class AppStorage<Storage extends Record<string, any>/* Storage ex
     AppStorage.STORAGES.push(this);
 
     this.saveThrottled = throttle(async() => {
-      const keys = Array.from(this.updateKeys.values()) as string[];
-      this.updateKeys.clear();
+      if(!this.keysToSet.size) {
+        return;
+      }
+
+      const keys = Array.from(this.keysToSet.values()) as string[];
+      this.keysToSet.clear();
 
       try {
         //console.log('setItem: will set', key/* , value */);
@@ -102,23 +106,28 @@ export default class AppStorage<Storage extends Record<string, any>/* Storage ex
         console.log('LocalStorage set: stringify time by own stringify:', performance.now() - perf); */
 
         if(this.useStorage && !onlyLocal) {
-          this.updateKeys.add(key);
+          this.keysToSet.add(key);
           this.saveThrottled();
         }
       }
     }
   }
 
-  public async remove(key: keyof Storage, saveLocal = false) {
+  public async delete(key: keyof Storage, saveLocal = false) {
     /* if(!this.cache.hasOwnProperty(key)) {
       return;
     } */
+
+    // ! it is needed here
+    key = '' + key;
 
     if(!saveLocal) {
       delete this.cache[key];
     }
     
     if(this.useStorage) {
+      this.keysToSet.delete(key);
+      
       try {
         await this.storage.delete(key as string);
       } catch(e) {
@@ -137,7 +146,7 @@ export default class AppStorage<Storage extends Record<string, any>/* Storage ex
       storage.useStorage = enabled;
       
       if(!enabled) {
-        storage.updateKeys.clear();
+        storage.keysToSet.clear();
         return storage.clear();
       } else {
         return storage.set(storage.cache);

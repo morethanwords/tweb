@@ -19,7 +19,7 @@ import { FileLocation, InputFile, InputFileLocation, UploadFile } from "../../la
 import CacheStorageController from "../cacheStorage";
 import cryptoWorker from "../crypto/cryptoworker";
 import FileManager from "../filemanager";
-import { logger, LogLevels } from "../logger";
+import { logger, LogTypes } from "../logger";
 import apiManager from "./apiManager";
 import { isWebpSupported } from "./mtproto.worker";
 
@@ -71,7 +71,7 @@ export class ApiFileManager {
 
   public webpConvertPromises: {[fileName: string]: CancellablePromise<Uint8Array>} = {};
 
-  private log: ReturnType<typeof logger> = logger('AFM', LogLevels.error | LogLevels.log);
+  private log: ReturnType<typeof logger> = logger('AFM', LogTypes.Error | LogTypes.Log);
   private tempId = 0;
   private queueId = 0;
   private debug = Modes.debug;

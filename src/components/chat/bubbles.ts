@@ -395,6 +395,10 @@ export default class ChatBubbles {
     }
 
     this.listenerSetter.add(this.bubblesContainer, 'dblclick', (e) => {
+      if(this.chat.selection.isSelecting || !this.appMessagesManager.canWriteToPeer(this.peerId)) {
+        return;
+      }
+      
       const bubble = (e.target as HTMLElement).classList.contains('bubble') ? e.target as HTMLElement : null;
       if(bubble) {
         const mid = +bubble.dataset.mid
@@ -1633,7 +1637,7 @@ export default class ChatBubbles {
       }
 
       if(this.chat.type === 'chat') {
-        const dialog = this.appMessagesManager.getDialogByPeerId(peerId)[0];
+        const dialog = this.appMessagesManager.getDialogOnly(peerId);
         if(dialog?.pFlags.unread_mark) {
           this.appMessagesManager.markDialogUnread(peerId, true);
         }

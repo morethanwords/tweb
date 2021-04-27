@@ -52,7 +52,8 @@
   "predicate": "dialog",
   "params": [
     {"name": "index", "type": "number"},
-    {"name": "peerId", "type": "number"}
+    {"name": "peerId", "type": "number"},
+    {"name": "topMessage", "type": "any"}
   ]
 }, {
   "predicate": "dialogFolder",
@@ -121,12 +122,7 @@
   "predicate": "user",
   "params": [
     {"name": "initials", "type": "string"},
-    {"name": "rFirstName", "type": "string"},
-    {"name": "rFullName", "type": "string"},
-    {"name": "rPhone", "type": "string"},
-    {"name": "sortName", "type": "string"},
-    {"name": "sortStatus", "type": "number"},
-    {"name": "num", "type": "number"}
+    {"name": "sortName", "type": "string"}
   ]
 }, {
   "predicate": "auth.sentCode",

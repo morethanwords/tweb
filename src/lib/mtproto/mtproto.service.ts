@@ -8,14 +8,14 @@
 import './mtproto.worker';
 /// #endif
 import { isSafari } from '../../helpers/userAgent';
-import { logger, LogLevels } from '../logger';
+import { logger, LogTypes } from '../logger';
 import type { DownloadOptions } from './apiFileManager';
 import type { WorkerTaskTemplate } from '../../types';
 import { notifySomeone } from '../../helpers/context';
 import type { InputFileLocation, FileLocation, UploadFile } from '../../layer';
 import { CancellablePromise, deferredPromise } from '../../helpers/cancellablePromise';
 
-const log = logger('SW', LogLevels.error | LogLevels.debug | LogLevels.log | LogLevels.warn);
+const log = logger('SW', LogTypes.Error | LogTypes.Debug | LogTypes.Log | LogTypes.Warn);
 const ctx = self as any as ServiceWorkerGlobalScope;
 
 const deferredPromises: {[taskId: number]: CancellablePromise<any>} = {};

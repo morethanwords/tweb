@@ -12,7 +12,7 @@ import mediaSizes from "../helpers/mediaSizes";
 import { clamp } from '../helpers/number';
 import { pause } from '../helpers/schedulers';
 import { isAndroid, isApple, isAppleMobile, isSafari } from "../helpers/userAgent";
-import { logger, LogLevels } from "./logger";
+import { logger, LogTypes } from "./logger";
 import apiManager from "./mtproto/mtprotoworker";
 
 let convert = (value: number) => {
@@ -563,7 +563,7 @@ class LottieLoader {
   private workers: QueryableWorker[] = [];
   private curWorkerNum = 0;
 
-  private log = logger('LOTTIE', LogLevels.error);
+  private log = logger('LOTTIE', LogTypes.Error);
 
   public getAnimation(element: HTMLElement) {
     for(const i in this.players) {

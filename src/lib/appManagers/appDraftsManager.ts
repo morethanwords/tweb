@@ -62,7 +62,7 @@ export class AppDraftsManager {
         }
 
         const peerId = +key;
-        const dialog = appMessagesManager.getDialogByPeerId(peerId)[0];
+        const dialog = appMessagesManager.getDialogOnly(peerId);
         if(!dialog) {
           appMessagesManager.reloadConversation(peerId);
           /* const dialog = appMessagesManager.generateDialog(peerId);
