@@ -74,8 +74,21 @@ export class AppChatsManager {
       updateChannelUserTyping: this.onUpdateUserTyping
     });
 
-    appStateManager.getState().then((state) => {
-      this.chats = state.chats;
+    let storageChats: Chat[];
+    const getStorageChatsPromise = this.storage.getAll().then(chats => {
+      storageChats = chats as any;
+    });
+
+    appStateManager.addLoadPromise(getStorageChatsPromise).then((state) => {
+      if(storageChats.length) {
+        this.chats = {};
+        for(let i = 0, length = storageChats.length; i < length; ++i) {
+          const user = storageChats[i];
+          this.chats[user.id] = user;
+        }
+      } else if(state.chats) {
+        this.chats = state.chats;
+      }
 
       appStateManager.addEventListener('peerNeeded', (peerId: number) => {
         if(peerId > 0 || this.storage.getFromCache(-peerId)) {

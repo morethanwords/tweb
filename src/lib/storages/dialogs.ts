@@ -35,7 +35,7 @@ export default class DialogsStorage {
   private dialogs: {[peerId: string]: Dialog} = {};
   public byFolders: {[folderId: number]: Dialog[]} = {};
 
-  public allDialogsLoaded: {[folder_id: number]: boolean};
+  private allDialogsLoaded: {[folder_id: number]: boolean};
   private dialogsOffsetDate: {[folder_id: number]: number};
   private pinnedOrders: {[folder_id: number]: number[]};
   private dialogsNum: number;
@@ -84,6 +84,40 @@ export default class DialogsStorage {
 
       updatePinnedDialogs: this.onUpdatePinnedDialogs,
     });
+
+    let storageDialogs: Dialog[];
+    const getStorageDialogsPromise = this.storage.getAll().then(dialogs => {
+      storageDialogs = dialogs as any;
+
+      forEachReverse(storageDialogs, dialog => {
+        dialog.top_message = this.appMessagesManager.getServerMessageId(dialog.top_message); // * fix outgoing message to avoid copying dialog
+
+        this.saveDialog(dialog);
+
+        if(dialog.topMessage) {
+          this.appMessagesManager.saveMessages([dialog.topMessage]);
+        }
+
+        // ! WARNING, убрать это когда нужно будет делать чтобы pending сообщения сохранялись
+        const message = this.appMessagesManager.getMessageByPeer(dialog.peerId, dialog.top_message);
+        if(message.deleted) {
+          this.appMessagesManager.reloadConversation(dialog.peerId);
+        }
+      });
+    });
+
+    appStateManager.addLoadPromise(getStorageDialogsPromise).then((state) => {
+      this.allDialogsLoaded = state.allDialogsLoaded || {};
+    });
+  }
+
+  public isDialogsLoaded(folderId: number) {
+    return !!this.allDialogsLoaded[folderId];
+  }
+
+  public setDialogsLoaded(folderId: number, loaded: boolean) {
+    this.allDialogsLoaded[folderId] = loaded;
+    this.appStateManager.pushToState('allDialogsLoaded', this.allDialogsLoaded);
   }
 
   public reset() {
@@ -512,11 +546,12 @@ export default class DialogsStorage {
       }
     }
 
-    if(query || this.allDialogsLoaded[realFolderId] || curDialogStorage.length >= offset + limit) {
+    const loadedAll = this.isDialogsLoaded(realFolderId);
+    if(query || loadedAll || curDialogStorage.length >= offset + limit) {
       return Promise.resolve({
         dialogs: curDialogStorage.slice(offset, offset + limit),
-        count: this.allDialogsLoaded[realFolderId] ? curDialogStorage.length : null,
-        isEnd: this.allDialogsLoaded[realFolderId] && (offset + limit) >= curDialogStorage.length
+        count: loadedAll ? curDialogStorage.length : null,
+        isEnd: loadedAll && (offset + limit) >= curDialogStorage.length
       });
     }
 
@@ -537,7 +572,7 @@ export default class DialogsStorage {
       return {
         dialogs: curDialogStorage.slice(offset, offset + limit),
         count: messagesDialogs._ === 'messages.dialogs' ? messagesDialogs.dialogs.length : messagesDialogs.count,
-        isEnd: this.allDialogsLoaded[realFolderId] && (offset + limit) >= curDialogStorage.length
+        isEnd: this.isDialogsLoaded(realFolderId) && (offset + limit) >= curDialogStorage.length
       };
     });
   }

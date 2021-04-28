@@ -83,6 +83,10 @@ export default class AppStorage<Storage extends Record<string, any>/* Storage ex
     } */
   }
 
+  public getAll() {
+    return this.storage.getAll();
+  }
+
   public async set(obj: Partial<Storage>, onlyLocal = false) {
     //console.log('storageSetValue', obj, callback, arguments);
 

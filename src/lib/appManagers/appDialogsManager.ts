@@ -507,10 +507,11 @@ export class AppDialogsManager {
 
       return this.loadDialogs();
     }).then(() => {
-      const allDialogsLoaded = appMessagesManager.dialogsStorage.allDialogsLoaded;
-      const wasLoaded = allDialogsLoaded[0] || allDialogsLoaded[1];
-      const a: Promise<any> = allDialogsLoaded[0] ? Promise.resolve() : appMessagesManager.getConversationsAll('', 0);
-      const b: Promise<any> = allDialogsLoaded[1] ? Promise.resolve() : appMessagesManager.getConversationsAll('', 1);
+      const isLoadedMain = appMessagesManager.dialogsStorage.isDialogsLoaded(0);
+      const isLoadedArchive = appMessagesManager.dialogsStorage.isDialogsLoaded(1);
+      const wasLoaded = isLoadedMain || isLoadedArchive;
+      const a: Promise<any> = isLoadedMain ? Promise.resolve() : appMessagesManager.getConversationsAll('', 0);
+      const b: Promise<any> = isLoadedArchive ? Promise.resolve() : appMessagesManager.getConversationsAll('', 1);
       a.finally(() => {
         b.then(() => {
           this.accumulateArchivedUnread();

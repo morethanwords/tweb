@@ -194,7 +194,7 @@ export class AppMessagesManager {
 
   constructor() {
     this.dialogsStorage = new DialogsStorage(this, appChatsManager, appPeersManager, appUsersManager, appDraftsManager, appNotificationsManager, appStateManager, apiUpdatesManager, serverTimeManager);
-    this.filtersStorage = new FiltersStorage(this, appPeersManager, appUsersManager, appNotificationsManager, apiUpdatesManager, /* apiManager, */ rootScope);
+    this.filtersStorage = new FiltersStorage(this, appPeersManager, appUsersManager, appNotificationsManager, appStateManager, apiUpdatesManager, /* apiManager, */ rootScope);
 
     rootScope.addMultipleEventsListeners({
       updateMessageID: this.onUpdateMessageId,
@@ -303,110 +303,10 @@ export class AppMessagesManager {
       if(state.maxSeenMsgId) {
         this.maxSeenId = state.maxSeenMsgId;
       }
-
-      const messages = state.messages;
-      if(messages) {
-        /* let tempId = this.tempId;
-
-        for(let message of messages) {
-          if(message.id < tempId) {
-            tempId = message.id;
-          }
-        }
-
-        if(tempId !== this.tempId) {
-          this.log('Set tempId to:', tempId);
-          this.tempId = tempId;
-        } */
-
-        this.saveMessages(messages);
-      }
-
-      if(!state.dialogs || !Object.keys(state.dialogs).length) {
-        state.allDialogsLoaded = {};
-      }
-      
-      if(state.allDialogsLoaded) {
-        this.dialogsStorage.allDialogsLoaded = state.allDialogsLoaded;
-      }
-
-      if(state.filters) {
-        for(const filterId in state.filters) {
-          this.filtersStorage.saveDialogFilter(state.filters[filterId], false);
-        }
-      }
-
-      if(state.dialogs) {
-        forEachReverse(state.dialogs, dialog => {
-          dialog.top_message = this.getServerMessageId(dialog.top_message); // * fix outgoing message to avoid copying dialog
-
-          this.dialogsStorage.saveDialog(dialog);
-
-          // ! WARNING, убрать это когда нужно будет делать чтобы pending сообщения сохранялись
-          const message = this.getMessageByPeer(dialog.peerId, dialog.top_message);
-          if(message.deleted) {
-            this.reloadConversation(dialog.peerId);
-          }
-        });
-      }
-
-      appStateManager.addEventListener('save', this.saveState);
     });
 
     appNotificationsManager.start();
   }
-
-  private saveState = () => {
-    const messages: any[] = [];
-    const dialogs: Dialog[] = [];
-    const items: any[] = [];
-    
-    const processDialog = (dialog: MTDialog.dialog) => {
-      const historyStorage = this.getHistoryStorage(dialog.peerId);
-      const history = [].concat(historyStorage.history.slice);
-      for(const mid of history) {
-        const message = this.getMessageByPeer(dialog.peerId, mid);
-        if(!message.pFlags.is_outgoing) {
-          messages.push(message);
-    
-          if(message.fromId !== dialog.peerId) {
-            appStateManager.requestPeer(message.fromId, 'topMessage_' + dialog.peerId, 1);
-          }
-
-          break;
-        }
-      }
-  
-      if(dialog.peerId < 0 && dialog.pts) {
-        const newPts = apiUpdatesManager.channelStates[-dialog.peerId].pts;
-        dialog.pts = newPts;
-      }
-  
-      dialogs.push(dialog);
-  
-      appStateManager.requestPeer(dialog.peerId, 'dialog');
-    };
-
-    for(const folderId in this.dialogsStorage.byFolders) {
-      const folder = this.dialogsStorage.getFolder(+folderId);
-      
-      for(let dialog of folder) {
-        items.push([dialog]);
-      }
-    }
-
-    return pushHeavyTask({
-      items, 
-      process: processDialog, 
-      context: this
-    }).then(() => {
-      appStateManager.pushToState('dialogs', dialogs);
-      appStateManager.pushToState('messages', messages);
-      appStateManager.pushToState('filters', this.filtersStorage.filters);
-      appStateManager.pushToState('allDialogsLoaded', this.dialogsStorage.allDialogsLoaded);
-      appStateManager.pushToState('maxSeenMsgId', this.maxSeenId);
-    });
-  };
 
   public getInputEntities(entities: MessageEntity[]) {
     var sendEntites = copy(entities);
@@ -1807,7 +1707,7 @@ export class AppMessagesManager {
       if(!dialogsResult.dialogs.length ||
         !count ||
         dialogs.length >= count) {
-        this.dialogsStorage.allDialogsLoaded[folderId] = true;
+        this.dialogsStorage.setDialogsLoaded(folderId, true);
       }
 
       if(hasPrepend) {
@@ -4498,6 +4398,7 @@ export class AppMessagesManager {
     }
 
     this.maxSeenId = maxId;
+    appStateManager.pushToState('maxSeenMsgId', maxId);
 
     apiManager.invokeApi('messages.receivedMessages', {
       max_id: this.getServerMessageId(maxId)

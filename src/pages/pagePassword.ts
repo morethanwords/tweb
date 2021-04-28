@@ -140,7 +140,6 @@ const page = new Page('page-password', true, onFirstMount, null, () => {
   //}
 
   appStateManager.pushToState('authState', {_: 'authStatePassword'});
-  appStateManager.saveState();
 });
 
 export default page;

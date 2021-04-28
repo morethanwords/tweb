@@ -113,8 +113,21 @@ export class AppUsersManager {
       searchIndexManager.indexObject(userId, this.getUserSearchText(userId), this.contactsIndex);
     });
 
-    appStateManager.getState().then((state) => {
-      this.users = state.users;
+    let storageUsers: User[];
+    const getStorageUsersPromise = this.storage.getAll().then(users => {
+      storageUsers = users as any;
+    });
+
+    appStateManager.addLoadPromise(getStorageUsersPromise).then((state) => {
+      if(storageUsers.length) {
+        this.users = {};
+        for(let i = 0, length = storageUsers.length; i < length; ++i) {
+          const user = storageUsers[i];
+          this.users[user.id] = user;
+        }
+      } else if(state.users) {
+        this.users = state.users;
+      }
 
       const contactsList = state.contactsList;
       if(contactsList && Array.isArray(contactsList)) {
@@ -122,19 +135,10 @@ export class AppUsersManager {
           this.pushContact(userId);
         });
 
-        if(this.contactsList.size) {
+        if(contactsList.length) {
           this.contactsFillPromise = Promise.resolve(this.contactsList);
         }
       }
-
-      appStateManager.addEventListener('save', async() => {
-        const contactsList = [...this.contactsList];
-        for(const userId of contactsList) {
-          appStateManager.requestPeer(userId, 'contacts');
-        }
-  
-        appStateManager.pushToState('contactsList', contactsList);
-      });
 
       appStateManager.addEventListener('peerNeeded', (peerId: number) => {
         if(peerId < 0 || this.storage.getFromCache(peerId)) {
@@ -156,6 +160,11 @@ export class AppUsersManager {
     });
   }
 
+  private onContactsModified() {
+    const contactsList = [...this.contactsList];
+    appStateManager.pushToState('contactsList', contactsList);
+  }
+
   public fillContacts() {
     if(this.contactsFillPromise && this.updatedContactsList) {
       return this.contactsFillPromise;
@@ -170,6 +179,8 @@ export class AppUsersManager {
         result.contacts.forEach((contact) => {
           this.pushContact(contact.user_id);
         });
+
+        this.onContactsModified();
       }
 
       this.contactsFillPromise = promise;
@@ -201,6 +212,7 @@ export class AppUsersManager {
   public pushContact(userId: number) {
     this.contactsList.add(userId);
     searchIndexManager.indexObject(userId, this.getUserSearchText(userId), this.contactsIndex);
+    appStateManager.requestPeer(userId, 'contacts');
   }
 
   public getUserSearchText(id: number) {
@@ -756,11 +768,12 @@ export class AppUsersManager {
     const curIsContact = this.isContact(userId);
     if(isContact !== curIsContact) {
       if(isContact) {
-        this.contactsList.add(userId)
-        searchIndexManager.indexObject(userId, this.getUserSearchText(userId), this.contactsIndex);
+        this.pushContact(userId);
       } else {
         this.contactsList.delete(userId);
       }
+
+      this.onContactsModified();
 
       rootScope.broadcast('contacts_update', userId);
     }

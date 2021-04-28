@@ -162,12 +162,12 @@ export class AppStateManager extends EventListenerBase<{
   peerUnneeded: (peerId: number) => void,
 }> {
   public static STATE_INIT = STATE_INIT;
-  public loaded: Promise<State>;
+  private loaded: Promise<State>;
+  private loadPromises: Promise<any>[] = [];
+  private loadAllPromise: Promise<any>;
   private log = logger('STATE'/* , LogLevels.error */);
 
   private state: State;
-  private savePromise: Promise<void>;
-  private tempId = 0;
 
   private neededPeers: Map<number, Set<string>> = new Map();
   private singlePeerMap: Map<string, number> = new Map();
@@ -177,10 +177,10 @@ export class AppStateManager extends EventListenerBase<{
     this.loadSavedState();
   }
 
-  public loadSavedState() {
-    if(this.loaded) return this.loaded;
+  public loadSavedState(): Promise<State> {
+    if(this.loadAllPromise) return this.loadAllPromise;
     //console.time('load state');
-    return this.loaded = new Promise((resolve) => {
+    this.loaded = new Promise((resolve) => {
       Promise.all(ALL_KEYS.concat('user_auth' as any).map(key => sessionStorage.get(key))).then((arr) => {
         let state: State = {};
 
@@ -255,46 +255,24 @@ export class AppStateManager extends EventListenerBase<{
         
         //console.timeEnd('load state');
         resolve(this.state);
-      }).catch(resolve).finally(() => {
-        setInterval(() => {
-          this.tempId++;
-          this.saveState();
-        }, 10000);
-      });
+      }).catch(resolve);
     });
+
+    return this.addLoadPromise(this.loaded);
+  }
+
+  public addLoadPromise(promise: Promise<any>) {
+    if(!this.loaded) {
+      return this.loadSavedState();
+    }
+
+    this.loadPromises.push(promise);
+    return this.loadAllPromise = Promise.all(this.loadPromises)
+    .then(() => this.state, () => this.state);
   }
 
   public getState() {
     return this.state === undefined ? this.loadSavedState() : Promise.resolve(this.state);
-  }
-
-  public saveState() {
-    if(this.state === undefined || this.savePromise) return;
-
-    return;
-
-    const tempId = this.tempId;
-    this.savePromise = getHeavyAnimationPromise().then(() => {
-      return Promise.all(this.dispatchEvent('save', this.state))
-      .then(() => getHeavyAnimationPromise())
-      .then(() => sessionStorage.set(this.state))
-      .then(() => {
-        this.savePromise = null;
-  
-        if(this.tempId !== tempId) {
-          this.saveState();
-        }
-      });
-    });
-    //let perf = performance.now();
-    
-    //this.log('saveState: event time:', performance.now() - perf);
-
-    //const pinnedOrders = appMessagesManager.dialogsStorage.pinnedOrders;
-
-    //perf = performance.now();
-    
-    //this.log('saveState: storage set time:', performance.now() - perf);
   }
 
   public setByKey(key: string, value: any) {
