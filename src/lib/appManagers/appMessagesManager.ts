@@ -3786,7 +3786,8 @@ export class AppMessagesManager {
         dialog.pFlags.unread_mark = true;
       }
 
-      rootScope.broadcast('dialogs_multiupdate', {peerId: dialog});
+      rootScope.broadcast('dialogs_multiupdate', {[peerId]: dialog});
+      this.dialogsStorage.setDialogToState(dialog);
     }
   };
 
@@ -3825,6 +3826,7 @@ export class AppMessagesManager {
         const updatedDialogs: {[peerId: number]: Dialog} = {};
         updatedDialogs[peerId] = dialog;
         rootScope.broadcast('dialogs_multiupdate', updatedDialogs);
+        this.dialogsStorage.setDialogToState(dialog);
       }
     }
   };
@@ -3892,7 +3894,7 @@ export class AppMessagesManager {
           foundAffected = true;
         }
 
-        if(!message.pFlags.out && !threadId && stillUnreadCount === undefined) {
+        if(!message.pFlags.out && !threadId && foundDialog && stillUnreadCount === undefined) {
           newUnreadCount = --foundDialog.unread_count;
         }
         
@@ -3914,8 +3916,9 @@ export class AppMessagesManager {
           foundDialog.unread_count = newUnreadCount;
         }
       }
-
+      
       rootScope.broadcast('dialog_unread', {peerId});
+      this.dialogsStorage.setDialogToState(foundDialog);
     }
 
     if(foundAffected) {
@@ -3941,6 +3944,7 @@ export class AppMessagesManager {
       const message = this.getMessageByPeer(peerId, mid);
       if(!message.deleted) {
         delete message.pFlags.media_unread;
+        this.setDialogToStateIfMessageIsTop(message);
       }
     }
 
@@ -4177,6 +4181,7 @@ export class AppMessagesManager {
       if(dialog) {
         dialog.notify_settings = notify_settings;
         rootScope.broadcast('dialog_notify_settings', dialog);
+        this.dialogsStorage.setDialogToState(dialog);
       }
     }
   };
@@ -4216,6 +4221,13 @@ export class AppMessagesManager {
       rootScope.broadcast('scheduled_delete', {peerId, mids});
     }
   };
+
+  private setDialogToStateIfMessageIsTop(message: any) {
+    const dialog = this.getDialogOnly(message.peerId);
+    if(dialog && dialog.top_message === message.mid) {
+      this.dialogsStorage.setDialogToState(dialog);
+    }
+  }
 
   private updateMessageRepliesIfNeeded(threadMessage: MyMessage) {
     try { // * на всякий случай, скорее всего это не понадобится

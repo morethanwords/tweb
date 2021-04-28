@@ -7,8 +7,7 @@
 
 import { formatNumber } from "../../helpers/number";
 import appImManager from "../../lib/appManagers/appImManager";
-import appPeersManager from "../../lib/appManagers/appPeersManager";
-import appStateManager, { State } from "../../lib/appManagers/appStateManager";
+import appStateManager from "../../lib/appManagers/appStateManager";
 import appUsersManager from "../../lib/appManagers/appUsersManager";
 import rootScope from "../../lib/rootScope";
 import { SearchGroup } from "../appSearch";
@@ -28,7 +27,7 @@ import AppContactsTab from "./tabs/contacts";
 import AppArchivedTab from "./tabs/archivedTab";
 import AppAddMembersTab from "./tabs/addMembers";
 import { i18n_, LangPackKey } from "../../lib/langPack";
-import ButtonMenu, { ButtonMenuItemOptions } from "../buttonMenu";
+import { ButtonMenuItemOptions } from "../buttonMenu";
 import CheckboxField from "../checkboxField";
 import { isMobileSafari } from "../../helpers/userAgent";
 import appNavigationController from "../appNavigationController";
@@ -228,6 +227,13 @@ export class AppSidebarLeft extends SidebarSlider {
     });
 
     appUsersManager.getTopPeers();
+
+    appStateManager.getState().then(state => {
+      const recentSearch = state.recentSearch || [];
+      for(let i = 0, length = recentSearch.length; i < length; ++i) {
+        appStateManager.requestPeer(recentSearch[i], 'recentSearch');
+      }
+    });
   }
 
   private initSearch() {
