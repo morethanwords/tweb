@@ -6,6 +6,7 @@
 
 import type { ChatSavedPosition } from './appManagers/appImManager';
 import type { State } from './appManagers/appStateManager';
+import type { AppDraftsManager } from './appManagers/appDraftsManager';
 import { MOUNT_CLASS_TO } from '../config/debug';
 import { LangPackDifference } from '../layer';
 import AppStorage from './storage';
@@ -24,7 +25,8 @@ const sessionStorage = new AppStorage<{
   chatPositions: {
     [peerId_threadId: string]: ChatSavedPosition
   },
-  langPack: LangPackDifference
+  langPack: LangPackDifference,
+  drafts: AppDraftsManager['drafts']
 } & State>({
   storeName: 'session'
 });

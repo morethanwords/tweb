@@ -42,11 +42,7 @@ export default class FiltersStorage {
     private rootScope: typeof _rootScope) {
 
     this.appStateManager.getState().then((state) => {
-      if(state.filters) {
-        for(const filterId in state.filters) {
-          this.saveDialogFilter(state.filters[filterId], false);
-        }
-      }
+      this.filters = state.filters;
     });
 
     rootScope.addMultipleEventsListeners({

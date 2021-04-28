@@ -500,13 +500,15 @@ export class AppDialogsManager {
         }
       });
 
-      if(state.dialogs?.length) {
+      if(appStateManager.storagesResults.dialogs.length) {
         appDraftsManager.getAllDrafts();
         appDraftsManager.addMissedDialogs();
       }
 
       return this.loadDialogs();
     }).then(() => {
+      return;
+      
       const isLoadedMain = appMessagesManager.dialogsStorage.isDialogsLoaded(0);
       const isLoadedArchive = appMessagesManager.dialogsStorage.isDialogsLoaded(1);
       const wasLoaded = isLoadedMain || isLoadedArchive;

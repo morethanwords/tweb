@@ -23,14 +23,11 @@ import apiManager from "../mtproto/mtprotoworker";
 import searchIndexManager from "../searchIndexManager";
 import { forEachReverse, insertInDescendSortedArray } from "../../helpers/array";
 import rootScope from "../rootScope";
-import AppStorage from "../storage";
 import { safeReplaceObject } from "../../helpers/object";
 import { AppStateManager } from "../appManagers/appStateManager";
 
 export default class DialogsStorage {
-  private storage = new AppStorage<Record<number, Dialog>>({
-    storeName: 'dialogs'
-  });
+  private storage: AppStateManager['storages']['dialogs'];
   
   private dialogs: {[peerId: string]: Dialog} = {};
   public byFolders: {[folderId: number]: Dialog[]} = {};
@@ -64,7 +61,7 @@ export default class DialogsStorage {
     private apiUpdatesManager: ApiUpdatesManager,
     private serverTimeManager: ServerTimeManager
   ) {
-    this.dialogs = this.storage.getCache();
+    this.storage = this.appStateManager.storages.dialogs;
 
     this.reset();
 
@@ -85,28 +82,33 @@ export default class DialogsStorage {
       updatePinnedDialogs: this.onUpdatePinnedDialogs,
     });
 
-    let storageDialogs: Dialog[];
-    const getStorageDialogsPromise = this.storage.getAll().then(dialogs => {
-      storageDialogs = dialogs as any;
+    appStateManager.getState().then((state) => {
+      this.pinnedOrders = state.pinnedOrders || {};
+      if(!this.pinnedOrders[0]) this.pinnedOrders[0] = [];
+      if(!this.pinnedOrders[1]) this.pinnedOrders[1] = [];
+      
+      const dialogs = appStateManager.storagesResults.dialogs;
+      if(dialogs.length) {
+        for(let i = 0, length = dialogs.length; i < length; ++i) {
+          const dialog = dialogs[i];
+          if(dialog) {
+            dialog.top_message = this.appMessagesManager.getServerMessageId(dialog.top_message); // * fix outgoing message to avoid copying dialog
 
-      forEachReverse(storageDialogs, dialog => {
-        dialog.top_message = this.appMessagesManager.getServerMessageId(dialog.top_message); // * fix outgoing message to avoid copying dialog
+            if(dialog.topMessage) {
+              this.appMessagesManager.saveMessages([dialog.topMessage]);
+            }
+  
+            this.saveDialog(dialog);
 
-        this.saveDialog(dialog);
-
-        if(dialog.topMessage) {
-          this.appMessagesManager.saveMessages([dialog.topMessage]);
+            // ! WARNING, убрать это когда нужно будет делать чтобы pending сообщения сохранялись
+            const message = this.appMessagesManager.getMessageByPeer(dialog.peerId, dialog.top_message);
+            if(message.deleted) {
+              this.appMessagesManager.reloadConversation(dialog.peerId);
+            }
+          }
         }
+      }
 
-        // ! WARNING, убрать это когда нужно будет делать чтобы pending сообщения сохранялись
-        const message = this.appMessagesManager.getMessageByPeer(dialog.peerId, dialog.top_message);
-        if(message.deleted) {
-          this.appMessagesManager.reloadConversation(dialog.peerId);
-        }
-      });
-    });
-
-    appStateManager.addLoadPromise(getStorageDialogsPromise).then((state) => {
       this.allDialogsLoaded = state.allDialogsLoaded || {};
     });
   }
@@ -247,7 +249,11 @@ export default class DialogsStorage {
     const order = this.pinnedOrders[dialog.folder_id];
 
     const foundIndex = order.indexOf(dialog.peerId);
-    const pinnedIndex = foundIndex === -1 ? order.push(dialog.peerId) - 1 : foundIndex;
+    let pinnedIndex = foundIndex;
+    if(foundIndex === -1) {
+      pinnedIndex = order.push(dialog.peerId) - 1;
+      this.appStateManager.pushToState('pinnedOrders', this.pinnedOrders);
+    }
 
     return this.generateDialogPinnedDateByIndex(pinnedIndex);
   }
@@ -270,6 +276,38 @@ export default class DialogsStorage {
     return dialog;
   }
 
+  public setDialogToState(dialog: Dialog) {
+    const historyStorage = this.appMessagesManager.getHistoryStorage(dialog.peerId);
+    const history = [].concat(historyStorage.history.slice);
+    let incomingMessage: any;
+    for(let i = 0, length = history.length; i < length; ++i) {
+      const mid = history[i];
+      const message = this.appMessagesManager.getMessageByPeer(dialog.peerId, mid);
+      if(!message.pFlags.is_outgoing) {
+        incomingMessage = message;
+  
+        if(message.fromId !== dialog.peerId) {
+          this.appStateManager.requestPeer(message.fromId, 'topMessage_' + dialog.peerId, 1);
+        }
+
+        break;
+      }
+    }
+
+    dialog.topMessage = incomingMessage;
+
+    if(dialog.peerId < 0 && dialog.pts) {
+      const newPts = this.apiUpdatesManager.channelStates[-dialog.peerId].pts;
+      dialog.pts = newPts;
+    }
+
+    this.storage.set({
+      [dialog.peerId]: dialog
+    });
+
+    this.appStateManager.requestPeer(dialog.peerId, 'dialog');
+  }
+
   public pushDialog(dialog: Dialog, offsetDate?: number) {
     const dialogs = this.getFolder(dialog.folder_id);
     const pos = dialogs.findIndex(d => d.peerId === dialog.peerId);
@@ -280,34 +318,7 @@ export default class DialogsStorage {
     //if(!this.dialogs[dialog.peerId]) {
       this.dialogs[dialog.peerId] = dialog;
 
-      const historyStorage = this.appMessagesManager.getHistoryStorage(dialog.peerId);
-      const history = [].concat(historyStorage.history.slice);
-      let incomingMessage: any;
-      for(const mid of history) {
-        const message = this.appMessagesManager.getMessageByPeer(dialog.peerId, mid);
-        if(!message.pFlags.is_outgoing) {
-          incomingMessage = message;
-    
-          if(message.fromId !== dialog.peerId) {
-            this.appStateManager.requestPeer(message.fromId, 'topMessage_' + dialog.peerId, 1);
-          }
-
-          break;
-        }
-      }
-
-      dialog.topMessage = incomingMessage;
-  
-      if(dialog.peerId < 0 && dialog.pts) {
-        const newPts = this.apiUpdatesManager.channelStates[-dialog.peerId].pts;
-        dialog.pts = newPts;
-      }
-
-      this.storage.set({
-        [dialog.peerId]: dialog
-      });
-
-      this.appStateManager.requestPeer(dialog.peerId, 'dialog');
+      this.setDialogToState(dialog);
     //}
 
     if(offsetDate &&
@@ -591,6 +602,7 @@ export default class DialogsStorage {
         if(dialog.pFlags?.pinned) {
           delete dialog.pFlags.pinned;
           this.pinnedOrders[folder_id].findAndSplice(p => p === dialog.peerId);
+          this.appStateManager.pushToState('pinnedOrders', this.pinnedOrders);
         }
 
         dialog.folder_id = folder_id;
@@ -622,6 +634,7 @@ export default class DialogsStorage {
       if(!update.pFlags.pinned) {
         delete dialog.pFlags.pinned;
         this.pinnedOrders[folderId].findAndSplice(p => p === dialog.peerId);
+        this.appStateManager.pushToState('pinnedOrders', this.pinnedOrders);
       } else { // means set
         dialog.pFlags.pinned = true;
       }

@@ -10,6 +10,7 @@
  */
 
 import { DatabaseStore, DatabaseStoreName } from "../config/database";
+import { CancellablePromise, deferredPromise } from "../helpers/cancellablePromise";
 import { throttle } from "../helpers/schedulers";
 import IDBStorage, { IDBOptions } from "./idb";
 
@@ -20,8 +21,13 @@ export default class AppStorage<Storage extends Record<string, any>/* Storage ex
   //private cache: Partial<{[key: string]: Storage[typeof key]}> = {};
   private cache: Partial<Storage> = {};
   private useStorage = true;
+
+  private getPromises: Map<keyof Storage, CancellablePromise<Storage[keyof Storage]>> = new Map();
+  private getThrottled: () => void;
+
   private keysToSet: Set<keyof Storage> = new Set();
   private saveThrottled: () => void;
+  private saveResolve: () => void;
 
   constructor(storageOptions: Omit<IDBOptions, 'storeName' | 'stores'> & {stores?: DatabaseStore[], storeName: DatabaseStoreName}) {
     this.storage = new IDBStorage(storageOptions);
@@ -29,24 +35,57 @@ export default class AppStorage<Storage extends Record<string, any>/* Storage ex
     AppStorage.STORAGES.push(this);
 
     this.saveThrottled = throttle(async() => {
-      if(!this.keysToSet.size) {
-        return;
+      if(this.keysToSet.size) {
+        const keys = Array.from(this.keysToSet.values()) as string[];
+        this.keysToSet.clear();
+
+        try {
+          //console.log('setItem: will set', key/* , value */);
+          //await this.cacheStorage.delete(key); // * try to prevent memory leak in Chrome leading to 'Unexpected internal error.'
+          //await this.storage.save(key, new Response(value, {headers: {'Content-Type': 'application/json'}}));
+          await this.storage.save(keys, keys.map(key => this.cache[key]));
+          //console.log('setItem: have set', key/* , value */);
+        } catch(e) {
+          //this.useCS = false;
+          console.error('[AS]: set error:', e, keys/* , value */);
+        }
       }
 
-      const keys = Array.from(this.keysToSet.values()) as string[];
-      this.keysToSet.clear();
-
-      try {
-        //console.log('setItem: will set', key/* , value */);
-        //await this.cacheStorage.delete(key); // * try to prevent memory leak in Chrome leading to 'Unexpected internal error.'
-        //await this.storage.save(key, new Response(value, {headers: {'Content-Type': 'application/json'}}));
-        await this.storage.save(keys, keys.map(key => this.cache[key]));
-        //console.log('setItem: have set', key/* , value */);
-      } catch(e) {
-        //this.useCS = false;
-        console.error('[AS]: set error:', e, keys/* , value */);
+      if(this.saveResolve) {
+        this.saveResolve();
+        this.saveResolve = undefined;
       }
-    }, 50, false);
+    }, 16, false);
+
+    this.getThrottled = throttle(async() => {
+      const keys = Array.from(this.getPromises.keys());
+
+      this.storage.get(keys as string[]).then(values => {
+        for(let i = 0, length = keys.length; i < length; ++i) {
+          const key = keys[i];
+          const deferred = this.getPromises.get(key);
+          if(deferred) {
+            // @ts-ignore
+            deferred.resolve(this.cache[key] = values[i]);
+            this.getPromises.delete(key);
+          }
+        }
+      }, (error) => {
+        if(!['NO_ENTRY_FOUND', 'STORAGE_OFFLINE'].includes(error)) {
+          this.useStorage = false;
+          console.error('[AS]: get error:', error, keys);
+        }
+
+        for(let i = 0, length = keys.length; i < length; ++i) {
+          const key = keys[i];
+          const deferred = this.getPromises.get(key);
+          if(deferred) {
+            deferred.reject(error);
+            this.getPromises.delete(key);
+          }
+        }
+      });
+    }, 16, false);
   }
 
   public getCache() {
@@ -65,19 +104,15 @@ export default class AppStorage<Storage extends Record<string, any>/* Storage ex
     if(this.cache.hasOwnProperty(key)) {
       return this.getFromCache(key);
     } else if(this.useStorage) {
-      let value: any;
-      try {
-        value = await this.storage.get(key as string);
-        //console.log('[AS]: get result:', key, value);
-        //value = JSON.parse(value);
-      } catch(e) {
-        if(!['NO_ENTRY_FOUND', 'STORAGE_OFFLINE'].includes(e)) {
-          this.useStorage = false;
-          console.error('[AS]: get error:', e, key, value);
-        }
-      }
+      const r = this.getPromises.get(key);
+      if(r) return r;
 
-      return this.cache[key] = value;
+      const p = deferredPromise<Storage[typeof key]>();
+      this.getPromises.set(key, p);
+
+      this.getThrottled();
+
+      return p;
     }/*  else {
       throw 'something went wrong';
     } */
@@ -87,7 +122,7 @@ export default class AppStorage<Storage extends Record<string, any>/* Storage ex
     return this.storage.getAll();
   }
 
-  public async set(obj: Partial<Storage>, onlyLocal = false) {
+  public set(obj: Partial<Storage>, onlyLocal = false) {
     //console.log('storageSetValue', obj, callback, arguments);
 
     for(const key in obj) {
@@ -115,6 +150,10 @@ export default class AppStorage<Storage extends Record<string, any>/* Storage ex
         }
       }
     }
+
+    return new Promise<void>((resolve) => {
+      this.saveResolve = resolve;
+    });
   }
 
   public async delete(key: keyof Storage, saveLocal = false) {
@@ -151,6 +190,8 @@ export default class AppStorage<Storage extends Record<string, any>/* Storage ex
       
       if(!enabled) {
         storage.keysToSet.clear();
+        storage.getPromises.forEach((deferred) => deferred.resolve());
+        storage.getPromises.clear();
         return storage.clear();
       } else {
         return storage.set(storage.cache);

@@ -312,6 +312,8 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
   }
 
   private releasePending() {
+    //return;
+
     if(this.postMessage) {
       this.debug && this.log.debug('releasing tasks, length:', this.pending.length);
       this.pending.forEach(pending => {
