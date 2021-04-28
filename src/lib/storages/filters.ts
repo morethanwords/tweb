@@ -16,6 +16,7 @@ import type {AppNotificationsManager} from "../appManagers/appNotificationsManag
 import type { ApiUpdatesManager } from "../appManagers/apiUpdatesManager";
 import apiManager from "../mtproto/mtprotoworker";
 import { forEachReverse } from "../../helpers/array";
+import { AppStateManager } from "../appManagers/appStateManager";
 
 export type MyDialogFilter = Modify<DialogFilter, {
   pinned_peers: number[],
@@ -29,15 +30,24 @@ const START_ORDER_INDEX = 1;
 
 export default class FiltersStorage {
   public filters: {[filterId: string]: MyDialogFilter} = {};
-  public orderIndex = START_ORDER_INDEX;
+  private orderIndex = START_ORDER_INDEX;
 
   constructor(private appMessagesManager: AppMessagesManager,
     private appPeersManager: AppPeersManager, 
     private appUsersManager: AppUsersManager, 
     private appNotificationsManager: AppNotificationsManager, 
+    private appStateManager: AppStateManager,
     private apiUpdatesManager: ApiUpdatesManager, 
     /* private apiManager: ApiManagerProxy, */ 
     private rootScope: typeof _rootScope) {
+
+    this.appStateManager.getState().then((state) => {
+      if(state.filters) {
+        for(const filterId in state.filters) {
+          this.saveDialogFilter(state.filters[filterId], false);
+        }
+      }
+    });
 
     rootScope.addMultipleEventsListeners({
       updateDialogFilter: this.onUpdateDialogFilter,
@@ -71,6 +81,8 @@ export default class FiltersStorage {
       this.rootScope.broadcast('filter_delete', this.filters[update.id]);
       delete this.filters[update.id];
     }
+
+    this.appStateManager.pushToState('filters', this.filters);
   };
 
   private onUpdateDialogFilterOrder = (update: Update.updateDialogFilterOrder) => {
@@ -84,6 +96,8 @@ export default class FiltersStorage {
     });
 
     this.rootScope.broadcast('filter_order', update.order);
+
+    this.appStateManager.pushToState('filters', this.filters);
   };
 
   public testDialogForFilter(dialog: Dialog, filter: MyDialogFilter) {
@@ -264,5 +278,7 @@ export default class FiltersStorage {
     } else {
       filter.orderIndex = this.orderIndex++;
     }
+
+    this.appStateManager.pushToState('filters', this.filters);
   }
 }

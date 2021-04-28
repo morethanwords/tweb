@@ -169,7 +169,6 @@ const page = new Page('page-signUp', true, onFirstMount, (_authCode: typeof auth
   authCode = _authCode;
 
   appStateManager.pushToState('authState', {_: 'authStateSignUp', authCode: _authCode});
-  appStateManager.saveState();
 });
 
 export default page;

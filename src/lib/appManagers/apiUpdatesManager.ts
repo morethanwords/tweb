@@ -54,6 +54,23 @@ export class ApiUpdatesManager {
   private log = logger('UPDATES', LogTypes.Error | LogTypes.Warn/*  | LogTypes.Log | LogTypes.Debug */);
   private debug = DEBUG;
 
+  private setProxy() {
+    const self = this;
+    this.updatesState = new Proxy(this.updatesState, {
+      set: function(target: ApiUpdatesManager['updatesState'], key: keyof ApiUpdatesManager['updatesState'], value: ApiUpdatesManager['updatesState'][typeof key]) {
+        // @ts-ignore
+        target[key] = value;
+        const us = self.updatesState;
+        appStateManager.pushToState('updates', {
+          seq: us.seq,
+          pts: us.pts,
+          date: us.date
+        });
+        return true;
+      }
+    });
+  }
+
   private popPendingSeqUpdate() {
     const state = this.updatesState;
     const nextSeq = state.seq + 1;
@@ -633,15 +650,7 @@ export class ApiUpdatesManager {
       apiManager.setUpdatesProcessor(this.processUpdateMessage);
 
       this.updatesState.syncLoading.then(() => {
-        // * false for test purposes
-        /* false &&  */appStateManager.addEventListener('save', async() => {
-          const us = this.updatesState;
-          appStateManager.pushToState('updates', {
-            seq: us.seq,
-            pts: us.pts,
-            date: us.date
-          });
-        });
+        this.setProxy();
       });
     });
   }

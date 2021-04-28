@@ -32,10 +32,6 @@ export class AppDraftsManager {
   constructor() {
     appStateManager.getState().then(state => {
       this.drafts = state.drafts;
-
-      appStateManager.addEventListener('save', async() => {
-        appStateManager.pushToState('drafts', this.drafts);
-      });
     });
 
     rootScope.addMultipleEventsListeners({
@@ -99,6 +95,8 @@ export class AppDraftsManager {
     } else {
       delete this.drafts[key];
     }
+
+    appStateManager.pushToState('drafts', this.drafts);
 
     if(options.notify) {
       // console.warn(dT(), 'save draft', peerId, apiDraft, options)

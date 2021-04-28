@@ -516,7 +516,6 @@ const page = new Page('page-sign', true, onFirstMount, () => {
   }
 
   appStateManager.pushToState('authState', {_: 'authStateSignIn'});
-  appStateManager.saveState();
 });
 
 export default page;

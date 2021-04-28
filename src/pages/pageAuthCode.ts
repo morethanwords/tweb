@@ -165,7 +165,6 @@ const page = new Page('page-authCode', true, onFirstMount, (_authCode: typeof au
   replaceContent(sentTypeElement, i18n(key, args));
 
   appStateManager.pushToState('authState', {_: 'authStateAuthCode', sentCode: _authCode});
-  appStateManager.saveState();
 }, () => {
   codeInput.focus();
 });
