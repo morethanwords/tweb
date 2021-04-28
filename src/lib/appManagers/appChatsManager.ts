@@ -18,7 +18,6 @@ import apiManagerProxy from "../mtproto/mtprotoworker";
 import apiManager from '../mtproto/mtprotoworker';
 import { RichTextProcessor } from "../richtextprocessor";
 import rootScope from "../rootScope";
-import AppStorage from "../storage";
 import apiUpdatesManager from "./apiUpdatesManager";
 import appMessagesManager from "./appMessagesManager";
 import appPeersManager from "./appPeersManager";
@@ -33,9 +32,7 @@ export type ChatRights = keyof ChatBannedRights['pFlags'] | keyof ChatAdminRight
 export type UserTyping = Partial<{userId: number, action: SendMessageAction, timeout: number}>;
 
 export class AppChatsManager {
-  private storage = new AppStorage<Record<number, Chat>>({
-    storeName: 'chats'
-  });
+  private storage = appStateManager.storages.chats;
   
   private chats: {[id: number]: Chat.channel | Chat.chat | any} = {};
   //private usernames: any = {};
@@ -74,20 +71,16 @@ export class AppChatsManager {
       updateChannelUserTyping: this.onUpdateUserTyping
     });
 
-    let storageChats: Chat[];
-    const getStorageChatsPromise = this.storage.getAll().then(chats => {
-      storageChats = chats as any;
-    });
-
-    appStateManager.addLoadPromise(getStorageChatsPromise).then((state) => {
-      if(storageChats.length) {
+    appStateManager.getState().then((state) => {
+      const chats = appStateManager.storagesResults.chats;
+      if(chats.length) {
         this.chats = {};
-        for(let i = 0, length = storageChats.length; i < length; ++i) {
-          const user = storageChats[i];
-          this.chats[user.id] = user;
+        for(let i = 0, length = chats.length; i < length; ++i) {
+          const chat = chats[i];
+          if(chat) {
+            this.chats[chat.id] = chat;
+          }
         }
-      } else if(state.chats) {
-        this.chats = state.chats;
       }
 
       appStateManager.addEventListener('peerNeeded', (peerId: number) => {

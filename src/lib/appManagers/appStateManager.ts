@@ -6,7 +6,7 @@
 
 import type { Dialog } from './appMessagesManager';
 import type { UserAuth } from '../mtproto/mtproto_config';
-import type { AppUsersManager } from './appUsersManager';
+import type { AppUsersManager, User } from './appUsersManager';
 import type { AppChatsManager } from './appChatsManager';
 import type { AuthState } from '../../types';
 import type FiltersStorage from '../storages/filters';
@@ -17,9 +17,10 @@ import rootScope from '../rootScope';
 import sessionStorage from '../sessionStorage';
 import { logger } from '../logger';
 import { copy, setDeepProperty, validateInitObject } from '../../helpers/object';
-import { getHeavyAnimationPromise } from '../../hooks/useHeavyAnimationCheck';
 import App from '../../config/app';
 import DEBUG, { MOUNT_CLASS_TO } from '../../config/debug';
+import AppStorage from '../storage';
+import { Chat } from '../../layer';
 
 const REFRESH_EVERY = 24 * 60 * 60 * 1000; // 1 day
 const STATE_VERSION = App.version;
@@ -37,12 +38,9 @@ export type Theme = {
   background: Background
 };
 
-export type State = Partial<{
-  dialogs: Dialog[],
+export type State = {
   allDialogsLoaded: DialogsStorage['allDialogsLoaded'],
-  chats: {[peerId: string]: ReturnType<AppChatsManager['getChat']>},
-  users: {[peerId: string]: ReturnType<AppUsersManager['getUser']>},
-  messages: any[],
+  pinnedOrders: DialogsStorage['pinnedOrders'],
   contactsList: number[],
   updates: Partial<{
     seq: number,
@@ -84,16 +82,12 @@ export type State = Partial<{
     },
     nightTheme?: boolean, // ! DEPRECATED
   },
-  keepSigned: boolean,
-  drafts: AppDraftsManager['drafts']
-}>;
+  keepSigned: boolean
+};
 
 export const STATE_INIT: State = {
-  dialogs: [],
   allDialogsLoaded: {},
-  chats: {},
-  users: {},
-  messages: [],
+  pinnedOrders: {},
   contactsList: [],
   updates: {},
   filters: {},
@@ -147,14 +141,13 @@ export const STATE_INIT: State = {
       sound: false
     }
   },
-  keepSigned: true,
-  drafts: {}
+  keepSigned: true
 };
 
 const ALL_KEYS = Object.keys(STATE_INIT) as any as Array<keyof State>;
 
 const REFRESH_KEYS = ['dialogs', 'allDialogsLoaded', 'messages', 'contactsList', 'stateCreatedTime',
-  'updates', 'maxSeenMsgId', 'filters', 'topPeers'] as any as Array<keyof State>;
+  'updates', 'maxSeenMsgId', 'filters', 'topPeers', 'pinnedOrders'] as any as Array<keyof State>;
 
 export class AppStateManager extends EventListenerBase<{
   save: (state: State) => Promise<void>,
@@ -163,8 +156,6 @@ export class AppStateManager extends EventListenerBase<{
 }> {
   public static STATE_INIT = STATE_INIT;
   private loaded: Promise<State>;
-  private loadPromises: Promise<any>[] = [];
-  private loadAllPromise: Promise<any>;
   private log = logger('STATE'/* , LogLevels.error */);
 
   private state: State;
@@ -172,73 +163,147 @@ export class AppStateManager extends EventListenerBase<{
   private neededPeers: Map<number, Set<string>> = new Map();
   private singlePeerMap: Map<string, number> = new Map();
 
+  public storages = {
+    users: new AppStorage<Record<number, User>>({
+      storeName: 'users'
+    }),
+
+    chats: new AppStorage<Record<number, Chat>>({
+      storeName: 'chats'
+    }),
+
+    dialogs: new AppStorage<Record<number, Dialog>>({
+      storeName: 'dialogs'
+    })
+  };
+
+  public storagesResults: {[key in keyof AppStateManager['storages']]: any[]} = {} as any;
+
   constructor() {
     super();
     this.loadSavedState();
   }
 
   public loadSavedState(): Promise<State> {
-    if(this.loadAllPromise) return this.loadAllPromise;
-    //console.time('load state');
+    if(this.loaded) return this.loaded;
+    console.time('load state');
     this.loaded = new Promise((resolve) => {
-      Promise.all(ALL_KEYS.concat('user_auth' as any).map(key => sessionStorage.get(key))).then((arr) => {
-        let state: State = {};
+      const storagesKeys = Object.keys(this.storages) as Array<keyof AppStateManager['storages']>;
+      const storagesPromises = storagesKeys.map(key => this.storages[key].getAll());
+
+      const promises = ALL_KEYS
+      .concat('user_auth' as any)
+      .map(key => sessionStorage.get(key))
+      .concat(storagesPromises);
+
+      Promise.all(promises).then((arr) => {
+        /* const self = this;
+        const skipHandleKeys = new Set(['isProxy', 'filters', 'drafts']);
+        const getHandler = (path?: string) => {
+          return {
+            get(target: any, key: any) {
+              if(key === 'isProxy') {
+                return true;
+              }
+
+              const prop = target[key];
+
+              if(prop !== undefined && !skipHandleKeys.has(key) && !prop.isProxy && typeof(prop) === 'object') {
+                target[key] = new Proxy(prop, getHandler(path || key));
+                return target[key];
+              }
+              
+              return prop;
+            },
+            set(target: any, key: any, value: any) {
+              console.log('Setting', target, `.${key} to equal`, value, path);
+          
+              target[key] = value;
+
+              // @ts-ignore
+              self.pushToState(path || key, path ? self.state[path] : value, false);
+
+              return true;
+            }
+          };
+        }; */
+
+        let state: State = this.state = {} as any;
 
         // ! then can't store false values
-        ALL_KEYS.forEach((key, idx) => {
-          const value = arr[idx];
+        for(let i = 0, length = ALL_KEYS.length; i < length; ++i) {
+          const key = ALL_KEYS[i];
+          const value = arr[i];
           if(value !== undefined) {
             // @ts-ignore
             state[key] = value;
           } else {
-            // @ts-ignore
-            state[key] = copy(STATE_INIT[key]);
+            this.pushToState(key, copy(STATE_INIT[key]));
           }
-        });
+        }
+
+        arr.splice(0, ALL_KEYS.length);
+
+        // * Read auth
+        const auth: UserAuth = arr.shift() as any;
+        if(auth) {
+          // ! Warning ! DON'T delete this
+          state.authState = {_: 'authStateSignedIn'};
+          rootScope.broadcast('user_auth', typeof(auth) !== 'number' ? (auth as any).id : auth); // * support old version
+        }
+
+        // * Read storages
+        for(let i = 0, length = storagesKeys.length; i < length; ++i) {
+          this.storagesResults[storagesKeys[i]] = arr[i];
+        }
+
+        arr.splice(0, storagesKeys.length);
 
         const time = Date.now();
-        /* if(state.version !== STATE_VERSION) {
-          state = copy(STATE_INIT);
-        } else  */if((state.stateCreatedTime + REFRESH_EVERY) < time/*  || true *//*  && false */) {
+        if((state.stateCreatedTime + REFRESH_EVERY) < time) {
           if(DEBUG) {
             this.log('will refresh state', state.stateCreatedTime, time);
           }
           
           REFRESH_KEYS.forEach(key => {
+            this.pushToState(key, copy(STATE_INIT[key]));
+
             // @ts-ignore
-            state[key] = copy(STATE_INIT[key]);
+            const s = this.storagesResults[key];
+            if(s && s.length) {
+              s.length = 0;
+            }
           });
-
-          const users: typeof state['users'] = {}, chats: typeof state['chats'] = {};
-          if(state.recentSearch?.length) {
-            state.recentSearch.forEach(peerId => {
-              if(peerId < 0) chats[peerId] = state.chats[peerId];
-              else users[peerId] = state.users[peerId];
-            });
-          }
-
-          state.users = users;
-          state.chats = chats;
         }
+        
+        //state = this.state = new Proxy(state, getHandler());
 
+        // * support old version
         if(!state.settings.hasOwnProperty('themes') && state.settings.background) {
           const theme = STATE_INIT.settings.themes.find(t => t.name === STATE_INIT.settings.theme);
           if(theme) {
-            theme.background = copy(state.settings.background);
+            state.settings.themes.find(t => t.name === theme.name).background = copy(state.settings.background);
+            this.pushToState('settings', state.settings);
           }
         }
 
+        // * support old version
         if(!state.settings.hasOwnProperty('theme') && state.settings.hasOwnProperty('nightTheme')) {
           state.settings.theme = state.settings.nightTheme ? 'night' : 'day';
+          this.pushToState('settings', state.settings);
         }
 
-        validateInitObject(STATE_INIT, state);
+        validateInitObject(STATE_INIT, state, (missingKey) => {
+          // @ts-ignore
+          this.pushToState(missingKey, state[missingKey]);
+        });
 
-        this.state = state;
-        this.state.version = STATE_VERSION;
+        if(state.version !== STATE_VERSION) {
+          this.pushToState('version', STATE_VERSION);
+        }
 
         // ! probably there is better place for it
-        rootScope.settings = this.state.settings;
+        rootScope.settings = state.settings;
 
         if(DEBUG) {
           this.log('state res', state, copy(state));
@@ -246,29 +311,12 @@ export class AppStateManager extends EventListenerBase<{
         
         //return resolve();
 
-        const auth: UserAuth = arr[arr.length - 1] as any;
-        if(auth) {
-          // ! Warning ! DON'T delete this
-          this.state.authState = {_: 'authStateSignedIn'};
-          rootScope.broadcast('user_auth', typeof(auth) !== 'number' ? (auth as any).id : auth); // * support old version
-        }
-        
-        //console.timeEnd('load state');
-        resolve(this.state);
+        console.timeEnd('load state');
+        resolve(state);
       }).catch(resolve);
     });
 
-    return this.addLoadPromise(this.loaded);
-  }
-
-  public addLoadPromise(promise: Promise<any>) {
-    if(!this.loaded) {
-      return this.loadSavedState();
-    }
-
-    this.loadPromises.push(promise);
-    return this.loadAllPromise = Promise.all(this.loadPromises)
-    .then(() => this.state, () => this.state);
+    return this.loaded;
   }
 
   public getState() {
@@ -284,18 +332,14 @@ export class AppStateManager extends EventListenerBase<{
     this.pushToState(first, this.state[first]);
   }
 
-  public pushToState<T extends keyof State>(key: T, value: State[T]) {
-    this.state[key] = value;
+  public pushToState<T extends keyof State>(key: T, value: State[T], direct = true) {
+    if(direct) {
+      this.state[key] = value;
+    }
 
     sessionStorage.set({
       [key]: value
     });
-  }
-
-  public setPeer(peerId: number, peer: any) {
-    const container = peerId > 0 ? this.state.users : this.state.chats;
-    if(container.hasOwnProperty(peerId)) return;
-    container[peerId] = peer;
   }
 
   public requestPeer(peerId: number, type: string, limit?: number) {

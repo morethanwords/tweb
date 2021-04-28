@@ -22,7 +22,6 @@ import serverTimeManager from "../mtproto/serverTimeManager";
 import { RichTextProcessor } from "../richtextprocessor";
 import rootScope from "../rootScope";
 import searchIndexManager from "../searchIndexManager";
-import AppStorage from "../storage";
 import apiUpdatesManager from "./apiUpdatesManager";
 import appChatsManager from "./appChatsManager";
 import appPeersManager from "./appPeersManager";
@@ -33,9 +32,7 @@ import appStateManager from "./appStateManager";
 export type User = MTUser.user;
 
 export class AppUsersManager {
-  private storage = new AppStorage<Record<number, User>>({
-    storeName: 'users'
-  });
+  private storage = appStateManager.storages.users;
   
   private users: {[userId: number]: User} = {};
   private usernames: {[username: string]: number} = {};
@@ -113,20 +110,16 @@ export class AppUsersManager {
       searchIndexManager.indexObject(userId, this.getUserSearchText(userId), this.contactsIndex);
     });
 
-    let storageUsers: User[];
-    const getStorageUsersPromise = this.storage.getAll().then(users => {
-      storageUsers = users as any;
-    });
-
-    appStateManager.addLoadPromise(getStorageUsersPromise).then((state) => {
-      if(storageUsers.length) {
+    appStateManager.getState().then((state) => {
+      const users = appStateManager.storagesResults.users;
+      if(users.length) {
         this.users = {};
-        for(let i = 0, length = storageUsers.length; i < length; ++i) {
-          const user = storageUsers[i];
-          this.users[user.id] = user;
+        for(let i = 0, length = users.length; i < length; ++i) {
+          const user = users[i];
+          if(user) {
+            this.users[user.id] = user;
+          }
         }
-      } else if(state.users) {
-        this.users = state.users;
       }
 
       const contactsList = state.contactsList;

@@ -132,12 +132,13 @@ export function setDeepProperty(object: any, key: string, value: any) {
   getDeepProperty(object, splitted.slice(0, -1).join('.'))[splitted.pop()] = value;
 }
 
-export function validateInitObject(initObject: any, currentObject: any) {
-  for(const i in initObject) {
-    if(typeof(currentObject[i]) !== typeof(initObject[i])) {
-      currentObject[i] = copy(initObject[i]);
-    } else if(isObject(initObject[i])) {
-      validateInitObject(initObject[i], currentObject[i]);
+export function validateInitObject(initObject: any, currentObject: any, onReplace?: (key: string) => void, previousKey?: string) {
+  for(const key in initObject) {
+    if(typeof(currentObject[key]) !== typeof(initObject[key])) {
+      currentObject[key] = copy(initObject[key]);
+      onReplace && onReplace(previousKey || key);
+    } else if(isObject(initObject[key])) {
+      validateInitObject(initObject[key], currentObject[key], onReplace, previousKey || key);
     }
   }
 }

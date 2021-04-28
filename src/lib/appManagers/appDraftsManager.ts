@@ -19,9 +19,9 @@ import { MessageEntity, DraftMessage, MessagesSaveDraft } from "../../layer";
 import apiManager from "../mtproto/mtprotoworker";
 import { tsNow } from "../../helpers/date";
 import { deepEqual } from "../../helpers/object";
-import appStateManager from "./appStateManager";
 import { isObject } from "../mtproto/bin_utils";
 import { MOUNT_CLASS_TO } from "../../config/debug";
+import sessionStorage from "../sessionStorage";
 
 export type MyDraftMessage = DraftMessage.draftMessage;
 
@@ -30,8 +30,8 @@ export class AppDraftsManager {
   private getAllDraftPromise: Promise<void> = null;
 
   constructor() {
-    appStateManager.getState().then(state => {
-      this.drafts = state.drafts;
+    sessionStorage.get('drafts').then(drafts => {
+      this.drafts = drafts || {};
     });
 
     rootScope.addMultipleEventsListeners({
@@ -96,7 +96,9 @@ export class AppDraftsManager {
       delete this.drafts[key];
     }
 
-    appStateManager.pushToState('drafts', this.drafts);
+    sessionStorage.set({
+      drafts: this.drafts
+    });
 
     if(options.notify) {
       // console.warn(dT(), 'save draft', peerId, apiDraft, options)
