@@ -6,12 +6,10 @@
 
 import type { Dialog } from './appMessagesManager';
 import type { UserAuth } from '../mtproto/mtproto_config';
-import type { AppUsersManager, User } from './appUsersManager';
-import type { AppChatsManager } from './appChatsManager';
+import type { User } from './appUsersManager';
 import type { AuthState } from '../../types';
 import type FiltersStorage from '../storages/filters';
 import type DialogsStorage from '../storages/dialogs';
-import type { AppDraftsManager } from './appDraftsManager';
 import EventListenerBase from '../../helpers/eventListenerBase';
 import rootScope from '../rootScope';
 import sessionStorage from '../sessionStorage';

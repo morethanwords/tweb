@@ -35,6 +35,8 @@ export type IDBOptions = {
   version?: number
 };
 
+const DEBUG = false;
+
 export default class IDBStorage {
   //private static STORAGES: IDBStorage[] = [];
   private openDbPromise: Promise<IDBDatabase>;
@@ -171,11 +173,11 @@ export default class IDBStorage {
 
     return this.getObjectStore('readwrite', (objectStore) => {
       return (entryName as string[]).map((entryName) => objectStore.delete(entryName));
-    }, 'delete: ' + entryName.join(', '));
+    }, DEBUG ? 'delete: ' + entryName.join(', ') : '');
   }
 
   public deleteAll() {
-    return this.getObjectStore('readwrite', (objectStore) => objectStore.clear(), 'deleteAll');
+    return this.getObjectStore('readwrite', (objectStore) => objectStore.clear(), DEBUG ? 'deleteAll' : '');
   }
 
   public save(entryName: string | string[], value: any | any[]) {
@@ -197,7 +199,7 @@ export default class IDBStorage {
     
     return this.getObjectStore('readwrite', (objectStore) => {
       return (entryName as string[]).map((entryName, idx) => objectStore.put(value[idx], entryName));
-    }, 'save: ' + entryName.join(', '));
+    }, DEBUG ? 'save: ' + entryName.join(', ') : '');
   }
 
   public saveFile(fileName: string, blob: Blob | Uint8Array) {
@@ -284,13 +286,16 @@ export default class IDBStorage {
 
     return this.getObjectStore<T>('readonly', (objectStore) => {
       return (entryName as string[]).map((entryName) => objectStore.get(entryName));
-    }, 'get: ' + entryName.join(', '));
+    }, DEBUG ? 'get: ' + entryName.join(', ') : '');
   }
 
-  private getObjectStore<T>(mode: IDBTransactionMode, objectStore: (objectStore: IDBObjectStore) => IDBRequest | IDBRequest[], log: string) {
-    const perf = performance.now();
+  private getObjectStore<T>(mode: IDBTransactionMode, objectStore: (objectStore: IDBObjectStore) => IDBRequest | IDBRequest[], log?: string) {
+    let perf: number;
 
-    this.log(log + ': start');
+    if(log) {
+      perf = performance.now();
+      this.log(log + ': start');
+    }
 
     return this.openDatabase().then((db) => {
       return new Promise<T>((resolve, reject) => {
@@ -304,7 +309,9 @@ export default class IDBStorage {
         transaction.oncomplete = (e) => {
           clearTimeout(timeout);
 
-          this.log(log + ': end', performance.now() - perf);
+          if(log) {
+            this.log(log + ': end', performance.now() - perf);
+          }
 
           const results = r.map(r => r.result);
           resolve(isArray ? results : results[0]);
@@ -349,7 +356,7 @@ export default class IDBStorage {
   }
 
   public getAll<T>(): Promise<T[]> {
-    return this.getObjectStore<T[]>('readonly', (objectStore) => objectStore.getAll(), 'getAll');
+    return this.getObjectStore<T[]>('readonly', (objectStore) => objectStore.getAll(), DEBUG ? 'getAll' : '');
   }
 
   /* public getAllKeys(): Promise<Array<string>> {

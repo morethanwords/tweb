@@ -507,7 +507,7 @@ export class AppDialogsManager {
 
       return this.loadDialogs();
     }).then(() => {
-      return;
+      //return;
       
       const isLoadedMain = appMessagesManager.dialogsStorage.isDialogsLoaded(0);
       const isLoadedArchive = appMessagesManager.dialogsStorage.isDialogsLoaded(1);

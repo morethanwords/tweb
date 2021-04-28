@@ -355,9 +355,13 @@ export class AppUsersManager {
       rootScope.broadcast('peer_title_edit', user.id);
     }
 
-    if(appStateManager.isPeerNeeded(userId)) {
+    this.setUserToStateIfNeeded(user);
+  }
+
+  public setUserToStateIfNeeded(user: User) {
+    if(appStateManager.isPeerNeeded(user.id)) {
       this.storage.set({
-        [userId]: user
+        [user.id]: user
       });
     }
   }
@@ -561,6 +565,8 @@ export class AppUsersManager {
 
         user.status = {_: 'userStatusOffline', was_online: user.status.expires};
         rootScope.broadcast('user_update', user.id);
+
+        this.setUserToStateIfNeeded(user);
       }
     }
   };
@@ -595,6 +601,8 @@ export class AppUsersManager {
       
       //user.sortStatus = this.getUserStatusForSort(user.status);
       rootScope.broadcast('user_update', id);
+
+      this.setUserToStateIfNeeded(user);
     }
   }
 
