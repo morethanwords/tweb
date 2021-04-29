@@ -2394,7 +2394,7 @@ export class AppMessagesManager {
       if(message.message && message.message.length && !message.totalEntities) {
         const myEntities = RichTextProcessor.parseEntities(message.message);
         const apiEntities = message.entities || [];
-        message.totalEntities = RichTextProcessor.mergeEntities(apiEntities, myEntities); // ! only in this order, otherwise bold and emoji formatting won't work
+        message.totalEntities = RichTextProcessor.mergeEntities(apiEntities.slice(), myEntities); // ! only in this order, otherwise bold and emoji formatting won't work
       }
 
       storage[mid] = message;

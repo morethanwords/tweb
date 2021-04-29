@@ -161,9 +161,9 @@ export class ApiUpdatesManager {
     }
   }
 
-  public processUpdateMessage = (updateMessage: any/* , options: Partial<{
-    ignoreSyncLoading: boolean
-  }> = {} */) => {
+  public processUpdateMessage = (updateMessage: any, options: Partial<{
+    override: boolean
+  }> = {}) => {
     // return forceGetDifference()
     const processOpts = {
       date: updateMessage.date,
@@ -215,8 +215,8 @@ export class ApiUpdatesManager {
   
       case 'updatesCombined':
       case 'updates':
-        appUsersManager.saveApiUsers(updateMessage.users);
-        appChatsManager.saveApiChats(updateMessage.chats);
+        appUsersManager.saveApiUsers(updateMessage.users, options.override);
+        appChatsManager.saveApiChats(updateMessage.chats, options.override);
   
         updateMessage.updates.forEach((update: any) => {
           this.processUpdate(update, processOpts);
@@ -593,6 +593,7 @@ export class ApiUpdatesManager {
   }
 
   public saveUpdate(update: Update) {
+    this.log('saveUpdate', update);
     rootScope.dispatchEvent(update._, update as any);
   }
   

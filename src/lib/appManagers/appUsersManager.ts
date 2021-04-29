@@ -66,6 +66,7 @@ export class AppUsersManager {
 
           //user.sortStatus = this.getUserStatusForSort(user.status);
           rootScope.broadcast('user_update', userId);
+          this.setUserToStateIfNeeded(user);
         } //////else console.warn('No user by id:', userId);
       },
 
@@ -80,6 +81,8 @@ export class AppUsersManager {
           } else {
             user.photo = safeReplaceObject(user.photo, update.photo);
           }
+
+          this.setUserToStateIfNeeded(user);
 
           rootScope.broadcast('user_update', userId);
           rootScope.broadcast('avatar_update', userId);
@@ -290,8 +293,8 @@ export class AppUsersManager {
     return !!searchIndexManager.search(query, index)[user.id];
   }
 
-  public saveApiUsers(apiUsers: any[]) {
-    apiUsers.forEach((user) => this.saveApiUser(user));
+  public saveApiUsers(apiUsers: any[], override?: boolean) {
+    apiUsers.forEach((user) => this.saveApiUser(user, override));
   }
 
   public saveApiUser(user: MTUser, override?: boolean) {
@@ -765,7 +768,7 @@ export class AppUsersManager {
     });
   }
 
-  public onContactUpdated(userId: number, isContact: boolean) {
+  private onContactUpdated(userId: number, isContact: boolean) {
     const curIsContact = this.isContact(userId);
     if(isContact !== curIsContact) {
       if(isContact) {
@@ -817,7 +820,7 @@ export class AppUsersManager {
       phone,
       add_phone_privacy_exception: showPhone
     }).then((updates) => {
-      apiUpdatesManager.processUpdateMessage(updates);
+      apiUpdatesManager.processUpdateMessage(updates, {override: true});
 
       this.onContactUpdated(userId, true);
     });
@@ -827,7 +830,7 @@ export class AppUsersManager {
     return apiManager.invokeApi('contacts.deleteContacts', {
       id: userIds.map(userId => this.getUserInput(userId))
     }).then((updates) => {
-      apiUpdatesManager.processUpdateMessage(updates);
+      apiUpdatesManager.processUpdateMessage(updates, {override: true});
 
       userIds.forEach(userId => {
         this.onContactUpdated(userId, false);
