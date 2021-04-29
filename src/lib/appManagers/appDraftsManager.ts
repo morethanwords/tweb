@@ -169,7 +169,7 @@ export class AppDraftsManager {
 
     const myEntities = RichTextProcessor.parseEntities(draft.message);
     const apiEntities = draft.entities || [];
-    const totalEntities = RichTextProcessor.mergeEntities(apiEntities, myEntities); // ! only in this order, otherwise bold and emoji formatting won't work
+    const totalEntities = RichTextProcessor.mergeEntities(apiEntities.slice(), myEntities); // ! only in this order, otherwise bold and emoji formatting won't work
 
     draft.rMessage = RichTextProcessor.wrapDraftText(draft.message, {entities: totalEntities});
     //draft.rReply = appMessagesManager.getRichReplyText(draft);

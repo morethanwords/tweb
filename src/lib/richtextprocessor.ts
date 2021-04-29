@@ -232,6 +232,9 @@ namespace RichTextProcessor {
     } */
 
     const entities: MessageEntity[] = [];
+    let pushedEntity = false;
+    const pushEntity = (entity: MessageEntity) => !findSameEntity(currentEntities, entity) ? (entities.push(entity), pushedEntity = true) : pushedEntity = false;
+
     let raw = text;
     let match;
     let newText: any = [];
@@ -239,64 +242,82 @@ namespace RichTextProcessor {
     while(match = raw.match(markdownRegExp)) {
       const matchIndex = rawOffset + match.index;
       newText.push(raw.substr(0, match.index));
-      let text = (match[3] || match[8] || match[11] || match[14]);
+      let text = (match[3] || match[8] || match[11] || match[13]);
       rawOffset -= text.length;
       //text = text.replace(/^\s+|\s+$/g, '');
       rawOffset += text.length;
 
+      let entity: MessageEntity;
+      pushedEntity = false;
       if(text.match(/^`*$/)) {
         newText.push(match[0]);
       } else if(match[3]) { // pre
-        if(match[5] === '\n') {
-          match[5] = '';
-          rawOffset -= 1;
-        }
-
-        newText.push(match[1] + text + match[5]);
-        entities.push({
+        entity = {
           _: 'messageEntityPre',
           language: '',
           offset: matchIndex + match[1].length,
           length: text.length
-        });
+        };
 
-        rawOffset -= match[2].length + match[4].length;
+        if(pushEntity(entity)) {
+          if(match[5] === '\n') {
+            match[5] = '';
+            rawOffset -= 1;
+          }
+  
+          newText.push(match[1] + text + match[5]);
+          
+          rawOffset -= match[2].length + match[4].length;
+        }
       } else if(match[7]) { // code|italic|bold
         const isSOH = match[6] === '\x01';
-        if(!isSOH) {
-          newText.push(match[6] + text + match[9]);
-        } else {
-          newText.push(text);
-        }
 
-        entities.push({
+        entity = {
           _: markdownEntities[match[7]],
           //offset: matchIndex + match[6].length,
           offset: matchIndex + (isSOH ? 0 : match[6].length),
           length: text.length
-        });
+        };
 
-        rawOffset -= match[7].length * 2 + (isSOH ? 2 : 0);
+        if(pushEntity(entity)) {
+          if(!isSOH) {
+            newText.push(match[6] + text + match[9]);
+          } else {
+            newText.push(text);
+          }
+  
+          rawOffset -= match[7].length * 2 + (isSOH ? 2 : 0);
+        }
       } else if(match[11]) { // custom mention
-        newText.push(text)
-        entities.push({
+        entity = {
           _: 'messageEntityMentionName',
           user_id: +match[10],
           offset: matchIndex,
           length: text.length
-        });
-
-        rawOffset -= match[0].length - text.length;
+        };
+        
+        if(pushEntity(entity)) {
+          newText.push(text);
+          
+          rawOffset -= match[0].length - text.length;
+        }
       } else if(match[12]) { // text url
-        newText.push(text);
-        entities.push({
+        entity = {
           _: 'messageEntityTextUrl',
-          url: match[13],
+          url: match[14],
           offset: matchIndex,
           length: text.length
-        });
+        };
+        
+        if(pushEntity(entity)) {
+          newText.push(text);
 
-        rawOffset -= match[12].length - text.length;
+          rawOffset -= match[12].length - text.length;
+        }
+      }
+
+      if(!pushedEntity) {
+        newText.push(match[0]);
       }
 
       raw = raw.substr(match.index + match[0].length);
@@ -320,9 +341,19 @@ namespace RichTextProcessor {
     return newText;
   }
 
+  export function findSameEntity(currentEntities: MessageEntity[], newEntity: MessageEntity) {
+    return currentEntities.find(currentEntity => {
+      return newEntity._ === currentEntity._ && 
+        newEntity.offset >= currentEntity.offset && 
+        (newEntity.length + newEntity.offset) <= (currentEntity.length + currentEntity.offset);
+    });
+  }
+
   export function mergeEntities(currentEntities: MessageEntity[], newEntities: MessageEntity[]) {
-    currentEntities = currentEntities.slice();
-    const filtered = newEntities.filter(e => !currentEntities.find(_e => e._ === _e._ && e.offset === _e.offset && e.length === _e.length));
+    const filtered = newEntities.filter(e => {
+      return !findSameEntity(currentEntities, e);
+    });
+
     currentEntities.push(...filtered);
     currentEntities.sort((a, b) => a.offset - b.offset);
     return currentEntities;
