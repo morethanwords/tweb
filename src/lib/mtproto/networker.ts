@@ -986,7 +986,7 @@ export default class MTPNetworker {
     };
   }
 
-  public getDecryptedMessage(msgKey: Uint8Array | number[], encryptedData: Uint8Array | number[]): Promise<ArrayBuffer> {
+  public getDecryptedMessage(msgKey: Uint8Array, encryptedData: Uint8Array): Promise<ArrayBuffer> {
     // this.log('get decrypted start')
     return this.getAesKeyIv(msgKey, false).then((keyIv) => {
       // this.log('after msg key iv')

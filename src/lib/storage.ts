@@ -27,7 +27,7 @@ export default class AppStorage<Storage extends Record<string, any>/* Storage ex
 
   private keysToSet: Set<keyof Storage> = new Set();
   private saveThrottled: () => void;
-  private saveResolve: () => void;
+  private saveDeferred = deferredPromise<void>();
 
   constructor(storageOptions: Omit<IDBOptions, 'storeName' | 'stores'> & {stores?: DatabaseStore[], storeName: DatabaseStoreName}) {
     this.storage = new IDBStorage(storageOptions);
@@ -35,6 +35,9 @@ export default class AppStorage<Storage extends Record<string, any>/* Storage ex
     AppStorage.STORAGES.push(this);
 
     this.saveThrottled = throttle(async() => {
+      const deferred = this.saveDeferred;
+      this.saveDeferred = deferredPromise<void>();
+
       if(this.keysToSet.size) {
         const keys = Array.from(this.keysToSet.values()) as string[];
         this.keysToSet.clear();
@@ -51,10 +54,7 @@ export default class AppStorage<Storage extends Record<string, any>/* Storage ex
         }
       }
 
-      if(this.saveResolve) {
-        this.saveResolve();
-        this.saveResolve = undefined;
-      }
+      deferred.resolve();
     }, 16, false);
 
     this.getThrottled = throttle(async() => {
@@ -151,9 +151,7 @@ export default class AppStorage<Storage extends Record<string, any>/* Storage ex
       }
     }
 
-    return new Promise<void>((resolve) => {
-      this.saveResolve = resolve;
-    });
+    return this.saveDeferred;
   }
 
   public async delete(key: keyof Storage, saveLocal = false) {

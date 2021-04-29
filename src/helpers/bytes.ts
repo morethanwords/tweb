@@ -112,9 +112,11 @@ export function convertToArrayBuffer(bytes: any | ArrayBuffer | Uint8Array) {
   return bytesToArrayBuffer(bytes);
 }
 
-export function convertToUint8Array(bytes: Uint8Array | number[]): Uint8Array {
+export function convertToUint8Array(bytes: Uint8Array | ArrayBuffer | number[] | string): Uint8Array {
   if((bytes as Uint8Array).buffer !== undefined) {
     return bytes as Uint8Array;
+  } else if(typeof(bytes) === 'string') {
+    return new TextEncoder().encode(bytes);
   }
 
   return new Uint8Array(bytes);

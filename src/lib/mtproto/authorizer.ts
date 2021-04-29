@@ -527,7 +527,7 @@ export class Authorizer {
     }
     
     //var authKeyHash = sha1BytesSync(authKey),
-    let authKeyHash = await CryptoWorker.sha1Hash(authKey),
+    let authKeyHash = await CryptoWorker.sha1Hash(new Uint8Array(authKey)),
     authKeyAux = authKeyHash.slice(0, 8),
     authKeyId = authKeyHash.slice(-8);
     
