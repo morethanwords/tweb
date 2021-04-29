@@ -1,15 +1,15 @@
 import { convertToArrayBuffer } from "../../helpers/bytes";
 import type { InputCheckPasswordSRP } from "../../layer";
-import type { aesEncryptSync } from "./crypto_utils";
+import { aesEncryptSync, aesDecryptSync, sha256HashSync, sha1HashSync, bytesModPow } from "./crypto_utils";
 
 export default abstract class CryptoWorkerMethods {
   abstract performTaskWorker<T>(task: string, ...args: any[]): Promise<T>;
 
-  public sha1Hash(bytes: number[] | ArrayBuffer | Uint8Array): Promise<Uint8Array> {
+  public sha1Hash(bytes: Parameters<typeof sha1HashSync>[0]): Promise<Uint8Array> {
     return this.performTaskWorker<Uint8Array>('sha1-hash', bytes);
   }
 
-  public sha256Hash(bytes: any) {
+  public sha256Hash(bytes: Parameters<typeof sha256HashSync>[0]) {
     return this.performTaskWorker<number[]>('sha256-hash', bytes);
   }
 
@@ -17,12 +17,16 @@ export default abstract class CryptoWorkerMethods {
     return this.performTaskWorker<ArrayBuffer>('pbkdf2', buffer, salt, iterations);
   }
 
-  public aesEncrypt(bytes: any, keyBytes: any, ivBytes: any) {
+  public aesEncrypt(bytes: Parameters<typeof aesEncryptSync>[0], 
+    keyBytes: Parameters<typeof aesEncryptSync>[1], 
+    ivBytes: Parameters<typeof aesEncryptSync>[2]) {
     return this.performTaskWorker<ReturnType<typeof aesEncryptSync>>('aes-encrypt', convertToArrayBuffer(bytes), 
       convertToArrayBuffer(keyBytes), convertToArrayBuffer(ivBytes));
   }
 
-  public aesDecrypt(encryptedBytes: any, keyBytes: any, ivBytes: any): Promise<ArrayBuffer> {
+  public aesDecrypt(encryptedBytes: Parameters<typeof aesDecryptSync>[0], 
+    keyBytes: Parameters<typeof aesDecryptSync>[1], 
+    ivBytes: Parameters<typeof aesDecryptSync>[2]): Promise<ArrayBuffer> {
     return this.performTaskWorker<ArrayBuffer>('aes-decrypt', 
       encryptedBytes, keyBytes, ivBytes)
       .then(bytes => convertToArrayBuffer(bytes));
@@ -36,8 +40,8 @@ export default abstract class CryptoWorkerMethods {
     return this.performTaskWorker<[number[], number[], number]>('factorize', [...bytes]);
   }
 
-  public modPow(x: any, y: any, m: any) {
-    return this.performTaskWorker<number[]>('mod-pow', x, y, m);
+  public modPow(x: Parameters<typeof bytesModPow>[0], y: Parameters<typeof bytesModPow>[1], m: Parameters<typeof bytesModPow>[2]) {
+    return this.performTaskWorker<ReturnType<typeof bytesModPow>>('mod-pow', x, y, m);
   }
 
   public gzipUncompress<T>(bytes: ArrayBuffer, toString?: boolean) {

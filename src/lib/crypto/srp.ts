@@ -12,10 +12,8 @@ const log = logger('SRP', LogTypes.Error);
 //MOUNT_CLASS_TO && Object.assign(MOUNT_CLASS_TO, {str2bigInt, bigInt2str, int2bigInt});
 
 export async function makePasswordHash(password: string, client_salt: Uint8Array, server_salt: Uint8Array): Promise<number[]> {
-  let clientSaltString = '';
-  for(let i = 0; i < client_salt.length; i++) clientSaltString += String.fromCharCode(client_salt[i]);
-  
-  let buffer: any = await CryptoWorker.sha256Hash(clientSaltString + password + clientSaltString);
+  // ! look into crypto_methods.test.ts
+  let buffer: any = await CryptoWorker.sha256Hash(bufferConcats(client_salt, new TextEncoder().encode(password), client_salt));
   //log('encoded 1', bytesToHex(new Uint8Array(buffer)));
 
   buffer = bufferConcats(server_salt, buffer, server_salt);
@@ -71,7 +69,7 @@ export async function computeSRP(password: string, state: AccountPassword, isNew
   //log('computed pw_hash:', pw_hash, x, bytesToHex(new Uint8Array(pw_hash)));
 
   const padArray = function(arr: any[], len: number, fill = 0) {
-    return Array(len).fill(fill).concat(arr).slice(-len);
+    return new Uint8Array(Array(len).fill(fill).concat(arr).slice(-len));
   };
 
   const pForHash = padArray(bytesFromHex(bigInt2str(p, 16)), 256);

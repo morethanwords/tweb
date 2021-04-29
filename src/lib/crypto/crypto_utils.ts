@@ -9,8 +9,8 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import sha1 from '@cryptography/sha1';
-import sha256 from '@cryptography/sha256';
+//import sha1 from '@cryptography/sha1';
+//import sha256 from '@cryptography/sha256';
 import {IGE} from '@cryptography/aes';
 
 // @ts-ignore
@@ -21,8 +21,10 @@ import {str2bigInt, bpe, equalsInt, greater,
   divide_, one, bigInt2str, powMod, bigInt2bytes} from '../../vendor/leemon';//from 'leemon';
 
 import { addPadding } from '../mtproto/bin_utils';
-import { bytesToWordss, bytesFromWordss, bytesToHex, bytesFromHex } from '../../helpers/bytes';
+import { bytesToWordss, bytesFromWordss, bytesToHex, bytesFromHex, convertToUint8Array } from '../../helpers/bytes';
 import { nextRandomInt } from '../../helpers/random';
+
+const subtle = typeof(window) !== 'undefined' && 'crypto' in window ? window.crypto.subtle : self.crypto.subtle;
 
 export function longToBytes(sLong: string): Array<number> {
   /* let perf = performance.now();
@@ -45,8 +47,11 @@ export function longToBytes(sLong: string): Array<number> {
   return bytes;
 }
 
-export function sha1HashSync(bytes: number[] | ArrayBuffer | Uint8Array) {
-  //console.trace(dT(), 'SHA-1 hash start', bytes);
+export function sha1HashSync(bytes: Uint8Array | ArrayBuffer | string) {
+  return subtle.digest('SHA-1', convertToUint8Array(bytes)).then(b => {
+    return new Uint8Array(b);
+  });
+  /* //console.trace(dT(), 'SHA-1 hash start', bytes);
 
   const hashBytes: number[] = [];
 
@@ -58,18 +63,27 @@ export function sha1HashSync(bytes: number[] | ArrayBuffer | Uint8Array) {
 
   //console.log(dT(), 'SHA-1 hash finish', hashBytes, bytesToHex(hashBytes));
 
-  return new Uint8Array(hashBytes);
+  return new Uint8Array(hashBytes); */
 }
 
 export function sha256HashSync(bytes: Uint8Array | ArrayBuffer | string) {
-  //console.log(dT(), 'SHA-256 hash start');
+  return subtle.digest('SHA-256', convertToUint8Array(bytes)).then(b => {
+    //console.log('legacy', performance.now() - perfS);
+    return new Uint8Array(b);
+  });
+  /* //console.log('SHA-256 hash start');
 
-  let words = typeof(bytes) === 'string' ? bytes : bytesToWordss(bytes);
+  let perfS = performance.now();
+  
+
+  let perfD = performance.now();
+  let words = typeof(bytes) === 'string' ? bytes : bytesToWordss(bytes as any);
   let hash = sha256(words);
+  console.log('darutkin', performance.now() - perfD);
 
-  //console.log(dT(), 'SHA-256 hash finish', hash);
+  //console.log('SHA-256 hash finish', hash, sha256(words, 'hex'));
 
-  return bytesFromWordss(hash);
+  return bytesFromWordss(hash); */
 }
 
 export function aesEncryptSync(bytes: ArrayBuffer, keyBytes: ArrayBuffer, ivBytes: ArrayBuffer) {
@@ -114,7 +128,6 @@ export function rsaEncrypt(publicKey: {modulus: string, exponent: string}, bytes
 }
 
 export async function hash_pbkdf2(/* hasher: 'string',  */buffer: any, salt: any, iterations: number) {
-  let subtle = typeof(window) !== 'undefined' && 'crypto' in window ? window.crypto.subtle : self.crypto.subtle;
   // @ts-ignore
   let importKey = await subtle.importKey(
     "raw", //only "raw" is allowed
@@ -252,7 +265,7 @@ export function pqPrimeLeemon(what: any) {
   return [bigInt2bytes(P), bigInt2bytes(Q), it];
 }
 
-export function bytesModPow(x: any, y: any, m: any) {
+export function bytesModPow(x: number[] | Uint8Array, y: number[] | Uint8Array, m: number[] | Uint8Array) {
   try {
     var xBigInt = str2bigInt(bytesToHex(x), 16);
     var yBigInt = str2bigInt(bytesToHex(y), 16);

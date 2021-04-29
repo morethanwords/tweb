@@ -1,4 +1,4 @@
-const config2 = {
+/* const config2 = {
   "presets": [
     "@babel/preset-typescript",
 
@@ -38,4 +38,12 @@ const config3 = {
   ]
 };
 
-module.exports = config2;
+module.exports = config2; */
+
+module.exports = {
+  presets: [
+    ['@babel/preset-env', {targets: {node: 'current'}}],
+    '@babel/preset-typescript',
+  ]/* ,
+  plugins: ["@babel/plugin-syntax-dynamic-import"] */
+};
