@@ -101,12 +101,16 @@ export class AppSidebarLeft extends SidebarSlider {
 
     const themeCheckboxField = new CheckboxField({
       toggle: true,
-      checked: rootScope.settings.theme === 'night'
+      checked: rootScope.getTheme().name === 'night'
     });
     themeCheckboxField.input.addEventListener('change', () => {
       rootScope.settings.theme = themeCheckboxField.input.checked ? 'night' : 'day';
       appStateManager.pushToState('settings', rootScope.settings);
       appImManager.applyCurrentTheme();
+    });
+
+    rootScope.on('theme_change', () => {
+      themeCheckboxField.setValueSilently(rootScope.getTheme().name === 'night');
     });
 
     const menuButtons: (ButtonMenuItemOptions & {verify?: () => boolean})[] = [{

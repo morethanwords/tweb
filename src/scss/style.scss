@@ -219,6 +219,14 @@ html.night {
   // * Night theme end
 }
 
+@media (prefers-color-scheme: dark) {
+
+}
+
+@media (prefers-color-scheme: light) {
+
+}
+
 @import "partials/ico";
 @import "partials/input";
 @import "partials/button";
@@ -671,7 +679,7 @@ hr {
   top: calc(100% + .5rem);
   left: 0;
   overflow: hidden;
-  background-color: #fff;
+  background-color: var(--surface-color);
   z-index: 3;
   border-radius: $border-radius-medium;
   display: flex;

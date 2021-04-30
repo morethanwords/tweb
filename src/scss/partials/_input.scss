@@ -117,6 +117,7 @@
     &:-webkit-autofill:active {
       font-family: "Roboto", -apple-system, apple color emoji, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif !important;
       font-size: 1rem !important;
+      color: var(--primary-text-color) !important;
     }
 
     @include respond-to(handhelds) {
@@ -428,7 +429,7 @@ input:focus, button:focus {
     }
     
     @include hover() {
-      color: #000;
+      color: var(--primary-text-color);
     }
   }
 }

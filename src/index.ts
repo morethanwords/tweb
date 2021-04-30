@@ -257,6 +257,8 @@ console.timeEnd('get storage1'); */
     //console.log('got auth:', auth);
     //console.timeEnd('get storage');
 
+    rootScope.default.setThemeListener();
+
     if(langPack.appVersion !== App.langPackVersion) {
       I18n.default.getLangPack(langPack.lang_code);
     }
@@ -285,6 +287,9 @@ console.timeEnd('get storage1'); */
         switch(authState._) {
           case 'authStateSignIn': 
             (await import('./pages/pageSignIn')).default.mount();
+            break;
+          case 'authStateSignQr': 
+            (await import('./pages/pageSignQR')).default.mount();
             break;
           case 'authStateAuthCode':
             (await import('./pages/pageAuthCode')).default.mount(authState.sentCode);

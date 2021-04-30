@@ -83,7 +83,7 @@ export default class Chat extends EventListenerBase<{
   }
 
   public setBackground(url: string): Promise<void> {
-    const theme = rootScope.settings.themes.find(t => t.name === rootScope.settings.theme);
+    const theme = rootScope.getTheme();
 
     let item: HTMLElement;
     if(theme.background.type === 'color' && document.documentElement.style.cursor === 'grabbing') {

@@ -32,7 +32,7 @@ export type Background = {
 };
 
 export type Theme = {
-  name: 'day' | 'night',
+  name: 'day' | 'night' | 'system',
   background: Background
 };
 
@@ -96,7 +96,7 @@ export const STATE_INIT: State = {
   recentSearch: [],
   version: STATE_VERSION,
   authState: {
-    _: 'authStateSignIn'
+    _: 'authStateSignQr'
   },
   hiddenPinnedMessages: {},
   settings: {
@@ -134,7 +134,7 @@ export const STATE_INIT: State = {
         highlightningColor: 'hsla(0, 0%, 3.82353%, 0.4)'
       }
     }],
-    theme: 'day',
+    theme: 'system',
     notifications: {
       sound: false
     }

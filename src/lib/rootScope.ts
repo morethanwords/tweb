@@ -13,7 +13,7 @@ import type { ConnectionStatusChange } from "../types";
 import type { UserTyping } from "./appManagers/appChatsManager";
 import type Chat from "../components/chat/chat";
 import type { UserAuth } from "./mtproto/mtproto_config";
-import type { State } from "./appManagers/appStateManager";
+import type { State, Theme } from "./appManagers/appStateManager";
 import type { MyDraftMessage } from "./appManagers/appDraftsManager";
 import EventListenerBase from "../helpers/eventListenerBase";
 import { MOUNT_CLASS_TO } from "../config/debug";
@@ -109,6 +109,8 @@ export type BroadcastEvents = {
   'notify_peer_type_settings': {key: Exclude<NotifyPeer['_'], 'notifyPeer'>, settings: PeerNotifySettings},
 
   'language_change': void,
+  
+  'theme_change': void,
 };
 
 export class RootScope extends EventListenerBase<{
@@ -124,6 +126,7 @@ export class RootScope extends EventListenerBase<{
   public connectionStatus: {[name: string]: ConnectionStatusChange} = {};
   public settings: State['settings'];
   public peerId = 0;
+  public systemTheme: Theme['name'];
 
   constructor() {
     super();
@@ -142,6 +145,27 @@ export class RootScope extends EventListenerBase<{
     });
   }
 
+  public setThemeListener() {
+    const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const checkDarkMode = () => {
+      //const theme = this.getTheme();
+      this.systemTheme = darkModeMediaQuery.matches ? 'night' : 'day';
+      //const newTheme = this.getTheme();
+
+      if(this.myId) {
+        this.broadcast('theme_change');
+      } else {
+        this.setTheme();
+      }
+    };
+    darkModeMediaQuery.addEventListener('change', checkDarkMode);
+    checkDarkMode();
+  }
+
+  public setTheme() {
+    document.documentElement.classList.toggle('night', this.getTheme().name === 'night');
+  }
+
   get overlayIsActive() {
     return this._overlayIsActive;
   }
@@ -149,6 +173,10 @@ export class RootScope extends EventListenerBase<{
   set overlayIsActive(value: boolean) {
     this._overlayIsActive = value;
     this.broadcast('overlay_toggle', value);
+  }
+
+  public getTheme(name: Theme['name'] = this.settings.theme === 'system' ? this.systemTheme : this.settings.theme) {
+    return this.settings.themes.find(t => t.name === name);
   }
 
   public broadcast = <T extends keyof BroadcastEvents>(name: T, detail?: BroadcastEvents[T]) => {
