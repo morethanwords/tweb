@@ -277,18 +277,19 @@ export class AppStateManager extends EventListenerBase<{
         //state = this.state = new Proxy(state, getHandler());
 
         // * support old version
-        if(!state.settings.hasOwnProperty('themes') && state.settings.background) {
-          const theme = STATE_INIT.settings.themes.find(t => t.name === STATE_INIT.settings.theme);
-          if(theme) {
-            state.settings.themes.find(t => t.name === theme.name).background = copy(state.settings.background);
-            this.pushToState('settings', state.settings);
-          }
-        }
-
-        // * support old version
         if(!state.settings.hasOwnProperty('theme') && state.settings.hasOwnProperty('nightTheme')) {
           state.settings.theme = state.settings.nightTheme ? 'night' : 'day';
           this.pushToState('settings', state.settings);
+        }
+
+        // * support old version
+        if(!state.settings.hasOwnProperty('themes') && state.settings.background) {
+          state.settings.themes = copy(STATE_INIT.settings.themes);
+          const theme = state.settings.themes.find(t => t.name === state.settings.theme);
+          if(theme) {
+            theme.background = state.settings.background;
+            this.pushToState('settings', state.settings);
+          }
         }
 
         validateInitObject(STATE_INIT, state, (missingKey) => {

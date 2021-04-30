@@ -6,9 +6,6 @@
 
 import apiManager from '../lib/mtproto/mtprotoworker';
 import Page from './page';
-import pageIm from './pageIm';
-import pagePassword from './pagePassword';
-import pageSignIn from './pageSignIn';
 import serverTimeManager from '../lib/mtproto/serverTimeManager';
 import { AuthAuthorization, AuthLoginToken } from '../layer';
 import { bytesCmp, bytesToBase64 } from '../helpers/bytes';
@@ -48,7 +45,7 @@ let onFirstMount = async() => {
   container.append(h4, helpList, inputWrapper);
 
   btnBack.addEventListener('click', () => {
-    pageSignIn.mount();
+    import('./pageSignIn').then(m => m.default.mount());
     stop = true;
   });
   
@@ -89,7 +86,7 @@ let onFirstMount = async() => {
       if(loginToken._ === 'auth.loginTokenSuccess') {
         const authorization = loginToken.authorization as any as AuthAuthorization.authAuthorization;
         apiManager.setUserAuth(authorization.user.id);
-        pageIm.mount();
+        import('./pageIm').then(m => m.default.mount());
         return true;
       }
 
@@ -201,7 +198,7 @@ let onFirstMount = async() => {
         case 'SESSION_PASSWORD_NEEDED':
           console.warn('pageSignQR: SESSION_PASSWORD_NEEDED');
           err.handled = true;
-          pagePassword.mount();
+          import('./pagePassword').then(m => m.default.mount());
           stop = true;
           cachedPromise = null;
           break;
