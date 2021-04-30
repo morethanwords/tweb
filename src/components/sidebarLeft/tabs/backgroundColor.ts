@@ -5,7 +5,7 @@ import findUpClassName from "../../../helpers/dom/findUpClassName";
 import highlightningColor from "../../../helpers/highlightningColor";
 import { throttle } from "../../../helpers/schedulers";
 import appImManager from "../../../lib/appManagers/appImManager";
-import appStateManager from "../../../lib/appManagers/appStateManager";
+import appStateManager, { Theme } from "../../../lib/appManagers/appStateManager";
 import rootScope from "../../../lib/rootScope";
 import ColorPicker, { ColorPickerColor } from "../../colorPicker";
 import { SliderSuperTab } from "../../slider";
@@ -14,10 +14,13 @@ export default class AppBackgroundColorTab extends SliderSuperTab {
   private colorPicker: ColorPicker;
   private grid: HTMLElement;
   private applyColor: (hex: string, updateColorPicker?: boolean) => void;
+  private theme: Theme;
 
   init() {
     this.container.classList.add('background-container', 'background-color-container');
     this.setTitle('SetColor');
+
+    this.theme = rootScope.getTheme();
 
     const section = new SettingSection({});
     this.colorPicker = new ColorPicker();
@@ -79,7 +82,7 @@ export default class AppBackgroundColorTab extends SliderSuperTab {
 
   private setActive() {
     const active = this.grid.querySelector('.active');
-    const background = rootScope.settings.themes.find(t => t.name === rootScope.settings.theme).background;
+    const background = this.theme.background;
     const target = background.type === 'color' ? this.grid.querySelector(`.grid-item[data-color="${background.color}"]`) : null;
     if(active === target) {
       return;
@@ -99,7 +102,7 @@ export default class AppBackgroundColorTab extends SliderSuperTab {
       this.colorPicker.setColor(hex);
     } else {
       const rgba = hexaToRgba(hex);
-      const background = rootScope.settings.themes.find(t => t.name === rootScope.settings.theme).background;
+      const background = this.theme.background;
       const hsla = highlightningColor(rgba);
     
       background.color = hex.toLowerCase();
@@ -118,7 +121,7 @@ export default class AppBackgroundColorTab extends SliderSuperTab {
 
   onOpen() {
     setTimeout(() => {
-      const background = rootScope.settings.themes.find(t => t.name === rootScope.settings.theme).background;
+      const background = this.theme.background;
 
       // * set active if type is color
       if(background.type === 'color') {

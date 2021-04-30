@@ -4222,7 +4222,7 @@ export class AppMessagesManager {
     }
   };
 
-  private setDialogToStateIfMessageIsTop(message: any) {
+  public setDialogToStateIfMessageIsTop(message: any) {
     const dialog = this.getDialogOnly(message.peerId);
     if(dialog && dialog.top_message === message.mid) {
       this.dialogsStorage.setDialogToState(dialog);

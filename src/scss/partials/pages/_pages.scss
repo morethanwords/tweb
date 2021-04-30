@@ -5,8 +5,9 @@
  */
 
 #auth-pages {
-  max-width: 720px; // 360 + 360 / 2
+  max-width: 100%;
   overflow: hidden;
+  background: var(--surface-color);
 
   .btn-primary {
     text-transform: uppercase;
@@ -42,6 +43,8 @@
     display: flex;
     flex-direction: column;
     position: relative;
+    max-width: 720px; // 360 + 360 / 2
+    margin: 0 auto;
 
     .auth-placeholder {
       flex: 1;
@@ -73,7 +76,7 @@
         top: 0;
         right: 0;
         bottom: 0;
-        background: #fff;
+        background: var(--surface-color);
         z-index: 1;
       }
   
@@ -167,14 +170,29 @@
 }
 
 .page-signQR {
+  overflow: unset !important;
+
   .auth-image {
     width: 240px !important;
     height: 240px !important;
-    overflow: hidden;
+    //overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    .preloader {
+      transform: none;
+      left: unset;
+      top: unset;
+    }
 
     .qr-canvas {
       width: 100%;
       height: 100%;
+
+      & + .qr-canvas {
+        display: none;
+      }
     }
   }
 

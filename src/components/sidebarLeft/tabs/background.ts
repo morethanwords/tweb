@@ -42,7 +42,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
     this.container.classList.add('background-container', 'background-image-container');
     this.setTitle('ChatBackground');
 
-    this.theme = rootScope.settings.themes.find(t => t.name === rootScope.settings.theme);
+    this.theme = rootScope.getTheme();
 
     {
       const container = generateSection(this.scrollable);
@@ -347,7 +347,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
 
   private setActive = () => {
     const active = this.grid.querySelector('.active');
-    const background = rootScope.settings.themes.find(t => t.name === rootScope.settings.theme).background;
+    const background = this.theme.background;
     const target = background.type === 'image' ? this.grid.querySelector(`.grid-item[data-slug="${background.slug}"]`) : null;
     if(active === target) {
       return;

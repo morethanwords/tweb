@@ -1,4 +1,3 @@
-//import apiManager from '../lib/mtproto/apiManager';
 /*
  * https://github.com/morethanwords/tweb
  * Copyright (C) 2019-2021 Eduard Kuzmenko
@@ -17,10 +16,15 @@ import { pause } from '../helpers/schedulers';
 import App from '../config/app';
 import Button from '../components/button';
 import { _i18n, i18n, LangPackKey } from '../lib/langPack';
+import appStateManager from '../lib/appManagers/appStateManager';
+import rootScope from '../lib/rootScope';
+import { putPreloader } from '../components/misc';
 
 let onFirstMount = async() => {
   const pageElement = page.pageEl;
   const imageDiv = pageElement.querySelector('.auth-image') as HTMLDivElement;
+
+  let preloader = putPreloader(imageDiv, true);
 
   const inputWrapper = document.createElement('div');
   inputWrapper.classList.add('input-wrapper');
@@ -54,10 +58,10 @@ let onFirstMount = async() => {
   const QRCodeStyling = results[0].default;
 
   let stop = false;
-  document.addEventListener('user_auth', () => {
+  rootScope.addEventListener('user_auth', () => {
     stop = true;
     cachedPromise = null;
-  }, {once: true});
+  }, true);
   
   let options: {dcId?: number, ignoreErrors: true} = {ignoreErrors: true};
   let prevToken: Uint8Array | number[];
@@ -99,20 +103,46 @@ let onFirstMount = async() => {
         let encoded = bytesToBase64(loginToken.token);
         let url = "tg://login?token=" + encoded.replace(/\+/g, "-").replace(/\//g, "_").replace(/\=+$/, "");
 
+        const style = window.getComputedStyle(document.documentElement);
+        const surfaceColor = style.getPropertyValue('--surface-color').trim();
+        const textColor = style.getPropertyValue('--primary-text-color').trim();
+        const primaryColor = style.getPropertyValue('--primary-color').trim();
+
+        const logoUrl = await fetch('assets/img/logo_padded.svg')
+        .then(res => res.text())
+        .then(text => {
+          text = text.replace(/(fill:).+?(;)/, `$1${primaryColor}$2`);
+          const blob = new Blob([text], {type: 'image/svg+xml;charset=utf-8'});
+
+          // * because iOS Safari doesn't want to eat objectURL
+          return new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              resolve(e.target.result as string);
+            };
+            reader.readAsDataURL(blob);
+          });
+          //return URL.createObjectURL(blob);
+        });
+
         const qrCode = new QRCodeStyling({
           width: 240 * window.devicePixelRatio,
           height: 240 * window.devicePixelRatio,
           data: url,
-          image: "assets/img/logo_padded.svg",
+          image: logoUrl,
           dotsOptions: {
-            color: "#000000",
-            type: "rounded"
+            color: textColor,
+            type: 'rounded'
+          },
+          cornersSquareOptions: {
+            type: 'extra-rounded'
           },
           imageOptions: {
-            imageSize: .75
+            imageSize: 1,
+            margin: 0
           },
           backgroundOptions: {
-            color: "#ffffff"
+            color: surfaceColor
           },
           qrOptions: {
             errorCorrectionLevel: "L"
@@ -138,9 +168,25 @@ let onFirstMount = async() => {
 
         // * это костыль, но библиотека не предоставляет никаких событий
         await promise.then(() => {
-          Array.from(imageDiv.children).slice(0, -1).forEach(el => {
-            el.remove();
-          });
+          if(preloader) {
+            preloader.style.animation = 'hide-icon .4s forwards';
+
+            const c = imageDiv.children[1] as HTMLElement;
+            c.style.display = 'none';
+            c.style.animation = 'grow-icon .4s forwards';
+            setTimeout(() => {
+              c.style.display = '';
+            }, 150);
+
+            setTimeout(() => {
+              c.style.animation = '';
+            }, 500);
+            preloader = undefined;
+          } else {
+            Array.from(imageDiv.children).slice(0, -1).forEach(el => {
+              el.remove();
+            });
+          }
         });
       }
 
@@ -171,7 +217,7 @@ let onFirstMount = async() => {
     return false;
   };
 
-  await iterate(false);
+  //await iterate(false);
 
   return async() => {
     stop = false;
@@ -198,6 +244,8 @@ const page = new Page('page-signQR', true, () => {
   cachedPromise.then(func => {
     func();
   });
+
+  appStateManager.pushToState('authState', {_: 'authStateSignQr'});
 });
 
 export default page;

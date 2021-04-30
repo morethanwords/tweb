@@ -42,10 +42,14 @@ export type AnyFunction = (...args: any) => any;
 export type AnyToVoidFunction = (...args: any) => void;
 export type NoneToVoidFunction = () => void;
 
-export type AuthState = AuthState.signIn | AuthState.authCode | AuthState.password | AuthState.signUp | AuthState.signedIn;
+export type AuthState = AuthState.signIn | AuthState.signQr | AuthState.authCode | AuthState.password | AuthState.signUp | AuthState.signedIn;
 export namespace AuthState {
   export type signIn = {
     _: 'authStateSignIn'
+  };
+
+  export type signQr = {
+    _: 'authStateSignQr'
   };
 
   export type authCode = {

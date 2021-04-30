@@ -38,7 +38,7 @@ import appDraftsManager from './appDraftsManager';
 import serverTimeManager from '../mtproto/serverTimeManager';
 import sessionStorage from '../sessionStorage';
 import appDownloadManager from './appDownloadManager';
-import appStateManager, { AppStateManager } from './appStateManager';
+import { AppStateManager } from './appStateManager';
 import { MOUNT_CLASS_TO } from '../../config/debug';
 import appNavigationController from '../../components/appNavigationController';
 import appNotificationsManager from './appNotificationsManager';
@@ -170,6 +170,10 @@ export class AppImManager {
       this.saveChatPosition(chat);
     });
 
+    rootScope.on('theme_change', () => {
+      this.applyCurrentTheme();
+    });
+
     sessionStorage.get('chatPositions').then((c) => {
       sessionStorage.setToCache('chatPositions', c || {});
     });
@@ -247,7 +251,7 @@ export class AppImManager {
   }
 
   public setCurrentBackground(broadcastEvent = false) {
-    const theme = rootScope.settings.themes.find(t => t.name === rootScope.settings.theme);
+    const theme = rootScope.getTheme();
 
     if(theme.background.type === 'image' || (theme.background.type === 'default' && theme.background.slug)) {
       const defaultTheme = AppStateManager.STATE_INIT.settings.themes.find(t => t.name === theme.name);
@@ -327,7 +331,7 @@ export class AppImManager {
 
   public applyHighlightningColor() {
     let hsla: string;
-    const theme = rootScope.settings.themes.find(t => t.name === rootScope.settings.theme);
+    const theme = rootScope.getTheme();
     if(theme.background.highlightningColor) {
       hsla = theme.background.highlightningColor;
       document.documentElement.style.setProperty('--message-highlightning-color', hsla);
@@ -352,7 +356,7 @@ export class AppImManager {
   public applyCurrentTheme(slug?: string, backgroundUrl?: string, broadcastEvent?: boolean) {
     this.applyHighlightningColor();
 
-    document.documentElement.classList.toggle('night', rootScope.settings.theme === 'night');
+    rootScope.setTheme();
 
     if(backgroundUrl) {
       this.backgroundPromises[slug] = Promise.resolve(backgroundUrl);
