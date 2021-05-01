@@ -429,8 +429,9 @@ export class AppImManager {
   private init() {
     document.addEventListener('paste', this.onDocumentPaste, true);
     
+    const IGNORE_KEYS = new Set(['PageUp', 'PageDown', 'Meta', 'Control']);
     const onKeyDown = (e: KeyboardEvent) => {
-      if(rootScope.overlayIsActive) return;
+      if(rootScope.overlayIsActive || IGNORE_KEYS.has(e.key)) return;
       
       const target = e.target as HTMLElement;
       
@@ -440,9 +441,7 @@ export class AppImManager {
 
       const chat = this.chat;
 
-      if(e.key === 'Meta' || e.key === 'Control') {
-        return;
-      } else if(e.code === "KeyC" && (e.ctrlKey || e.metaKey) && target.tagName !== 'INPUT') {
+      if(e.code === 'KeyC' && (e.ctrlKey || e.metaKey) && target.tagName !== 'INPUT') {
         return;
       } else if(e.code === 'ArrowUp') {
         if(!chat.input.editMsgId && chat.input.isInputEmpty()) {
@@ -469,10 +468,18 @@ export class AppImManager {
               cancelEvent(e); // * prevent from scrolling
             }
           }
+        } else {
+          return;
         }
+      } else if(e.code === 'ArrowDown') {
+        return;
       }
       
-      if(chat.input.messageInput && e.target !== chat.input.messageInput && target.tagName !== 'INPUT' && !target.hasAttribute('contenteditable') && !isTouchSupported) {
+      if(chat.input.messageInput && 
+        e.target !== chat.input.messageInput && 
+        target.tagName !== 'INPUT' && 
+        !target.hasAttribute('contenteditable') && 
+        !isTouchSupported) {
         chat.input.messageInput.focus();
         placeCaretAtEnd(chat.input.messageInput);
       }
