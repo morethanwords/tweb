@@ -24,7 +24,10 @@ export default class PopupDeleteDialog {
     }; */
 
     const callbackLeave = (checked: PopupPeerButtonCallbackCheckboxes) => {
-      const promise = appChatsManager.leave(-peerId);
+      const promise = appChatsManager.leave(-peerId).then(() => {
+        return appMessagesManager.flushHistory(-peerId);
+      });
+      
       onSelect && onSelect(promise);
     };
 
@@ -37,7 +40,7 @@ export default class PopupDeleteDialog {
         if(checked[checkboxes[0].text]) {
           promise = appChatsManager.delete(-peerId);
         } else {
-          promise = appChatsManager.leave(-peerId);
+          return callbackLeave(checked);
         }
       }
       

@@ -248,6 +248,11 @@ console.timeEnd('get storage1'); */
     //import('./vendor/dateFormat');
 
     const langPromise = I18n.default.getCacheLangPack();
+
+    function loadFonts(): Promise<void> {
+      // @ts-ignore
+      return 'fonts' in document ? Promise.all(['400 1rem Roboto', '500 1rem Roboto'].map(font => document.fonts.load(font))) : Promise.resolve();
+    }
   
     const [state, langPack] = await Promise.all([
       appStateManager.default.getState(), 
@@ -263,6 +268,16 @@ console.timeEnd('get storage1'); */
       I18n.default.getLangPack(langPack.lang_code);
     }
 
+    function fadeInWhenFontsReady(elem: HTMLElement, promise: Promise<void>) {
+      elem.style.opacity = '0';
+
+      promise.then(() => {
+        window.requestAnimationFrame(() => {
+          elem.style.opacity = '';
+        });
+      });
+    }
+
     console.log('got state, time:', performance.now() - perf);
 
     const authState = state.authState;
@@ -271,10 +286,13 @@ console.timeEnd('get storage1'); */
 
       const el = document.getElementById('auth-pages');
       if(el) {
-        const scrollable = el.querySelector('.scrollable');
+        const scrollable = el.querySelector('.scrollable') as HTMLElement;
         if((!touchSupport.isTouchSupported || isMobileSafari)) {
           scrollable.classList.add('no-scrollbar');
         }
+
+        // @ts-ignore
+        fadeInWhenFontsReady(scrollable, 'fonts' in document ? document.fonts.ready : Promise.resolve());
 
         const placeholder = document.createElement('div');
         placeholder.classList.add('auth-placeholder');
@@ -348,6 +366,7 @@ console.timeEnd('get storage1'); */
       }, 500); */
     } else {
       console.log('Will mount IM page:', Date.now() / 1000);
+      fadeInWhenFontsReady(document.getElementById('main-columns'), loadFonts());
       (await import('./pages/pageIm')).default.mount();
       //getNearestDc();
     }

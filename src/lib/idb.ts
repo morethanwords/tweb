@@ -38,8 +38,9 @@ export type IDBOptions = {
 const DEBUG = false;
 
 export default class IDBStorage {
-  //private static STORAGES: IDBStorage[] = [];
+  private static STORAGES: IDBStorage[] = [];
   private openDbPromise: Promise<IDBDatabase>;
+  private db: IDBDatabase;
   private storageIsAvailable = true;
 
   private log: ReturnType<typeof logger>;
@@ -57,7 +58,33 @@ export default class IDBStorage {
 
     this.openDatabase(true);
 
-    //IDBStorage.STORAGES.push(this);
+    IDBStorage.STORAGES.push(this);
+  }
+
+  public static closeDatabases() {
+    this.STORAGES.forEach(storage => {
+      const db = storage.db;
+      if(db) {
+        db.onclose = () => {};
+        db.close();
+      }
+    });
+  }
+
+  public static deleteDatabase() {
+    this.closeDatabases();
+
+    return new Promise<void>((resolve, reject) => {
+      const deleteRequest = indexedDB.deleteDatabase(Database.name);
+
+      deleteRequest.onerror = () => {
+        reject();
+      };
+
+      deleteRequest.onsuccess = () => {
+        resolve();
+      };
+    });
   }
 
   public isAvailable() {
@@ -134,7 +161,7 @@ export default class IDBStorage {
           this.log.error('onversionchange, lol?');
         };
 
-        resolve(db);
+        resolve(this.db = db);
       };
   
       request.onerror = (event) => {
