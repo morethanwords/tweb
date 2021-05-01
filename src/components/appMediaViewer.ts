@@ -41,6 +41,7 @@ import findUpClassName from "../helpers/dom/findUpClassName";
 import renderImageFromUrl from "../helpers/dom/renderImageFromUrl";
 import findUpAsChild from "../helpers/dom/findUpAsChild";
 import getVisibleRect from "../helpers/dom/getVisibleRect";
+import appDownloadManager from "../lib/appManagers/appDownloadManager";
 
 // TODO: масштабирование картинок (не SVG) при ресайзе, и правильный возврат на исходную позицию
 // TODO: картинки "обрезаются" если возвращаются или появляются с места, где есть их перекрытие (топбар, поле ввода)
@@ -952,8 +953,9 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     const maxWidth = mediaSizes.isMobile ? this.pageEl.scrollWidth : this.pageEl.scrollWidth - 16;
     const maxHeight = appPhotosManager.windowH - 100;
     let thumbPromise: Promise<any> = Promise.resolve();
+    const size = appPhotosManager.setAttachmentSize(media, container, maxWidth, maxHeight, mediaSizes.isMobile ? false : true);
     if(useContainerAsTarget) {
-      const cacheContext = appPhotosManager.getCacheContext(media);
+      const cacheContext = appDownloadManager.getCacheContext(media, size.type);
       let img: HTMLImageElement;
       if(cacheContext.downloaded) {
         img = new Image();
@@ -971,7 +973,6 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
         container.append(img);
       }
     }
-    const size = appPhotosManager.setAttachmentSize(media, container, maxWidth, maxHeight, mediaSizes.isMobile ? false : true);
 
     // need after setAttachmentSize
     /* if(useContainerAsTarget) {
@@ -1091,11 +1092,12 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
         
         //if(!video.src || media.url !== video.src) {
           const load = () => {
+            const cacheContext = appDownloadManager.getCacheContext(media);
             const promise = media.supportsStreaming ? Promise.resolve() : appDocsManager.downloadDoc(media);
             
             if(!media.supportsStreaming) {
               onAnimationEnd.then(() => {
-                if(!media.url) {
+                if(!cacheContext.url) {
                   preloader.attach(mover, true, promise);
                 }
               });
@@ -1107,7 +1109,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
                 return;
               }
   
-              const url = media.url;
+              const url = cacheContext.url;
               if(target instanceof SVGSVGElement/*  && (video.parentElement || !isSafari) */) { // if video exists
                 //if(!video.parentElement) {
                   div.firstElementChild.lastElementChild.append(video);
@@ -1136,10 +1138,11 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
         //return;
         
         const load = () => {
+          const cacheContext = appDownloadManager.getCacheContext(media, size.type);
           const cancellablePromise = appPhotosManager.preloadPhoto(media.id, size);
   
           onAnimationEnd.then(() => {
-            if(!media.url) {
+            if(!cacheContext.url) {
               this.preloader.attachPromise(cancellablePromise);
               //this.preloader.attach(mover, true, cancellablePromise);
             }
@@ -1153,7 +1156,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
             
             ///////this.log('indochina', blob);
     
-            const url = media.url;
+            const url = cacheContext.url;
             if(target instanceof SVGSVGElement) {
               this.updateMediaSource(target, url, 'img');
               this.updateMediaSource(mover, url, 'img');

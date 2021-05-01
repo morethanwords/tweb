@@ -110,7 +110,6 @@ export default class AppBackgroundTab extends SliderSuperTab {
         location: {} as any,
         size: file.size,
         type: 'full',
-        url: URL.createObjectURL(file)
       } as PhotoSize.photoSize;
       let document: MyDocument = {
         _: 'document',
@@ -121,9 +120,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
         id,
         mime_type: file.type,
         size: file.size,
-        downloaded: true,
         date: Date.now() / 1000,
-        url: thumb.url,
         pFlags: {},
         thumbs: [thumb],
         file_name: file.name
@@ -131,9 +128,9 @@ export default class AppBackgroundTab extends SliderSuperTab {
 
       document = appDocsManager.saveDoc(document);
 
-      const docThumb = appPhotosManager.getDocumentCachedThumb(document.id);
-      docThumb.downloaded = thumb.size;
-      docThumb.url = thumb.url;
+      const cacheContext = appDownloadManager.getCacheContext(document);
+      cacheContext.downloaded = file.size;
+      cacheContext.url = URL.createObjectURL(file);
 
       let wallpaper: WallPaper.wallPaper = {
         _: 'wallPaper',
@@ -159,8 +156,8 @@ export default class AppBackgroundTab extends SliderSuperTab {
           }
         }).then(_wallpaper => {
           const newDoc = (_wallpaper as WallPaper.wallPaper).document as MyDocument;
-          newDoc.downloaded = document.downloaded;
-          newDoc.url = document.url;
+          const newCacheContext = appDownloadManager.getCacheContext(newDoc);
+          Object.assign(newCacheContext, cacheContext);
 
           wallpaper = _wallpaper as WallPaper.wallPaper;
           wallpaper.document = appDocsManager.saveDoc(wallpaper.document);
@@ -260,7 +257,8 @@ export default class AppBackgroundTab extends SliderSuperTab {
 
     const load = () => {
       const promise = this.setBackgroundDocument(slug, doc);
-      if(!doc.url || this.theme.background.blur) {
+      const cacheContext = appDownloadManager.getCacheContext(doc);
+      if(!cacheContext.url || this.theme.background.blur) {
         preloader.attach(target, true, promise);
       }
     };
@@ -325,9 +323,10 @@ export default class AppBackgroundTab extends SliderSuperTab {
         });
       };
 
+      const cacheContext = appDownloadManager.getCacheContext(doc);
       if(background.blur) {
         setTimeout(() => {
-          blur(doc.url, 12, 4)
+          blur(cacheContext.url, 12, 4)
           .then(url => {
             if(!middleware()) {
               deferred.resolve();
@@ -338,7 +337,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
           });
         }, 200);
       } else {
-        onReady(doc.url);
+        onReady(cacheContext.url);
       }
     });
 

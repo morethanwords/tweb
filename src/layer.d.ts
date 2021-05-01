@@ -1266,9 +1266,7 @@ export namespace Photo {
 		date: number,
 		sizes: Array<PhotoSize>,
 		video_sizes?: Array<VideoSize>,
-		dc_id: number,
-		downloaded?: boolean | number,
-		url?: string
+		dc_id: number
 	};
 }
 
@@ -1289,8 +1287,7 @@ export namespace PhotoSize {
 		location: FileLocation,
 		w: number,
 		h: number,
-		size: number,
-		url?: string
+		size: number
 	};
 
 	export type photoCachedSize = {
@@ -1299,15 +1296,13 @@ export namespace PhotoSize {
 		location: FileLocation,
 		w: number,
 		h: number,
-		bytes: Uint8Array,
-		url?: string
+		bytes: Uint8Array
 	};
 
 	export type photoStrippedSize = {
 		_: 'photoStrippedSize',
 		type: string,
-		bytes: Uint8Array,
-		url?: string
+		bytes: Uint8Array
 	};
 
 	export type photoSizeProgressive = {
@@ -1317,7 +1312,6 @@ export namespace PhotoSize {
 		w: number,
 		h: number,
 		sizes: Array<number>,
-		url?: string,
 		size?: number
 	};
 
@@ -3106,8 +3100,6 @@ export namespace Document {
 		file_name?: string,
 		file?: File,
 		duration?: number,
-		downloaded?: boolean,
-		url?: string,
 		audioTitle?: string,
 		audioPerformer?: string,
 		sticker?: number,

@@ -37,8 +37,12 @@ export class AppDocsManager {
   public onServiceWorkerFail = () => {
     for(const id in this.docs) {
       const doc = this.docs[id];
-      delete doc.supportsStreaming;
-      delete doc.url;
+
+      if(doc.supportsStreaming) {
+        delete doc.supportsStreaming;
+        const cacheContext = appDownloadManager.getCacheContext(doc);
+        delete cacheContext.url;
+      }
     }
   };
 
@@ -81,8 +85,7 @@ export class AppDocsManager {
     // 'file', 'duration', 'downloaded', 'url', 'audioTitle', 
     // 'audioPerformer', 'sticker', 'stickerEmoji', 'stickerEmojiRaw', 
     // 'stickerSetInput', 'stickerThumbConverted', 'animated', 'supportsStreaming']);
-    defineNotNumerableProperties(doc, ['downloaded', 'url']);
-    
+
     doc.attributes.forEach(attribute => {
       switch(attribute._) {
         case 'documentAttributeFilename':
@@ -175,8 +178,9 @@ export class AppDocsManager {
       if((doc.type === 'gif' && doc.size > 8e6) || doc.type === 'audio' || doc.type === 'video') {
         doc.supportsStreaming = true;
         
-        if(!doc.url) {
-          doc.url = this.getFileURL(doc);
+        const cacheContext = appDownloadManager.getCacheContext(doc);
+        if(!cacheContext.url) {
+          cacheContext.url = this.getFileURL(doc);
         }
       }
     }
@@ -189,7 +193,7 @@ export class AppDocsManager {
       doc.file_name = '';
     }
 
-    if(doc.mime_type === 'application/x-tgsticker' && doc.file_name === "AnimatedSticker.tgs") {
+    if(doc.mime_type === 'application/x-tgsticker' && doc.file_name === 'AnimatedSticker.tgs') {
       doc.type = 'sticker';
       doc.animated = true;
       doc.sticker = 2;
@@ -268,12 +272,11 @@ export class AppDocsManager {
   public getThumbURL(doc: MyDocument, thumb: PhotoSize.photoSize | PhotoSize.photoCachedSize | PhotoSize.photoStrippedSize) {
     let promise: Promise<any> = Promise.resolve();
 
-    if(!thumb.url) {
+    const cacheContext = appDownloadManager.getCacheContext(doc, thumb.type);
+    if(!cacheContext.url) {
       if('bytes' in thumb) {
         promise = blur(appPhotosManager.getPreviewURLFromBytes(thumb.bytes, !!doc.sticker)).then(url => {
-          defineNotNumerableProperties(thumb, ['url']); // * exclude from state
-          const cacheContext = appPhotosManager.getCacheContext(doc);
-          cacheContext.url = thumb.url = url;
+          cacheContext.url = url;
         }) as any;
       } else {
         //return this.getFileURL(doc, false, thumb);
@@ -281,7 +284,7 @@ export class AppDocsManager {
       }
     }
 
-    return {thumb, promise};
+    return {thumb, cacheContext, promise};
   }
 
   public getThumb(doc: MyDocument, tryNotToUseBytes = true) {
@@ -305,10 +308,11 @@ export class AppDocsManager {
     const downloadOptions = this.getFileDownloadOptions(doc, undefined, queueId, onlyCache);
     download = appDownloadManager.download(downloadOptions);
 
+    const cacheContext = appDownloadManager.getCacheContext(doc);
     const originalPromise = download;
     originalPromise.then((blob) => {
-      doc.url = URL.createObjectURL(blob);
-      doc.downloaded = true;
+      cacheContext.url = URL.createObjectURL(blob);
+      cacheContext.downloaded = blob.size;
     }, () => {});
     
     if(doc.type === 'voice' && !opusDecodeController.isPlaySupported()) {
@@ -320,10 +324,10 @@ export class AppDocsManager {
             const uint8 = new Uint8Array(e.target.result as ArrayBuffer);
             //console.log('sending uint8 to decoder:', uint8);
             opusDecodeController.decode(uint8).then(result => {
-              doc.url = result.url;
+              cacheContext.url = result.url;
               resolve();
             }, (err) => {
-              delete doc.downloaded;
+              delete cacheContext.downloaded;
               reject(err);
             });
           };
@@ -403,7 +407,8 @@ export class AppDocsManager {
     return appDownloadManager.downloadToDisc(options, doc.file_name); */
     const promise = this.downloadDoc(doc, queueId);
     promise.then(() => {
-      appDownloadManager.createDownloadAnchor(doc.url, doc.file_name);
+      const cacheContext = appDownloadManager.getCacheContext(doc);
+      appDownloadManager.createDownloadAnchor(cacheContext.url, doc.file_name);
     });
     return promise;
   }
