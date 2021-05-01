@@ -196,4 +196,8 @@ export default class AppStorage<Storage extends Record<string, any>/* Storage ex
       }
     }));
   }
+
+  public deleteDatabase() {
+    return IDBStorage.deleteDatabase();
+  }
 }

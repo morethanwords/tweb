@@ -305,8 +305,8 @@ export class AppMessagesManager {
   }
 
   public construct() {
-    this.dialogsStorage = new DialogsStorage(this, appChatsManager, appPeersManager, appUsersManager, appDraftsManager, appNotificationsManager, appStateManager, apiUpdatesManager, serverTimeManager);
     this.filtersStorage = new FiltersStorage(this, appPeersManager, appUsersManager, appNotificationsManager, appStateManager, apiUpdatesManager, /* apiManager, */ rootScope);
+    this.dialogsStorage = new DialogsStorage(this, appChatsManager, appPeersManager, appUsersManager, appDraftsManager, appNotificationsManager, appStateManager, apiUpdatesManager, serverTimeManager);
   }
 
   public getInputEntities(entities: MessageEntity[]) {
@@ -2362,7 +2362,6 @@ export class AppMessagesManager {
             break;
 
           case 'messageActionPhoneCall':
-            delete message.fromId;
             message.action.type = 
               (message.pFlags.out ? 'out_' : 'in_') +
               (

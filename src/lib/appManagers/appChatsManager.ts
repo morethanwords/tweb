@@ -19,7 +19,6 @@ import apiManager from '../mtproto/mtprotoworker';
 import { RichTextProcessor } from "../richtextprocessor";
 import rootScope from "../rootScope";
 import apiUpdatesManager from "./apiUpdatesManager";
-import appMessagesManager from "./appMessagesManager";
 import appPeersManager from "./appPeersManager";
 import appProfileManager from "./appProfileManager";
 import appStateManager from "./appStateManager";
@@ -637,12 +636,8 @@ export class AppChatsManager {
     }).then(this.onChatUpdated.bind(this, id));
   }
 
-  public leaveChat(id: number, flushHistory = true) {
-    let promise: Promise<any> = this.deleteChatUser(id, appUsersManager.getSelf().id)
-    if(flushHistory) promise = promise.then(() => {
-      return appMessagesManager.flushHistory(-id);
-    });
-    return promise;;
+  public leaveChat(id: number) {
+    return this.deleteChatUser(id, appUsersManager.getSelf().id);
   }
 
   public leave(id: number) {

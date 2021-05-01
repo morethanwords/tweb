@@ -213,7 +213,7 @@ export class AppDialogsManager {
       title: HTMLElement
     }
   } = {};
-  private showFiltersTimeout: number;
+  private showFiltersPromise: Promise<void>;
   private allUnreadCount: HTMLElement;
 
   private accumulateArchivedTimeout: number;
@@ -491,15 +491,21 @@ export class AppDialogsManager {
     //selectTab(0);
     (this.folders.menu.firstElementChild as HTMLElement).click();
     appMessagesManager.construct();
-    appStateManager.getState().then((state) => {
+    appStateManager.getState().then(async(state) => {
       appNotificationsManager.getNotifyPeerTypeSettings();
       
-      const getFiltersPromise = appMessagesManager.filtersStorage.getDialogFilters();
-      getFiltersPromise.then((filters) => {
+      const renderFiltersPromise = appMessagesManager.filtersStorage.getDialogFilters().then((filters) => {
         for(const filter of filters) {
           this.addFilter(filter);
         }
       });
+
+      if(state.filters && Object.keys(state.filters).length) {
+        await renderFiltersPromise;
+        if(this.showFiltersPromise) {
+          await this.showFiltersPromise;
+        }
+      }
 
       if(appStateManager.storagesResults.dialogs.length) {
         appDraftsManager.getAllDrafts();
@@ -706,12 +712,15 @@ export class AppDialogsManager {
       title: titleSpan
     };
 
-    if(!this.showFiltersTimeout && Object.keys(this.filtersRendered).length > 1) {
-      this.showFiltersTimeout = window.setTimeout(() => {
-        this.showFiltersTimeout = 0;
-        this.folders.menuScrollContainer.classList.remove('hide');
-        this.setFiltersUnreadCount();
-      }, 0);
+    if(!this.showFiltersPromise && Object.keys(this.filtersRendered).length > 1) {
+      this.showFiltersPromise = new Promise<void>((resolve) => {
+        window.setTimeout(() => {
+          this.showFiltersPromise = undefined;
+          this.folders.menuScrollContainer.classList.remove('hide');
+          this.setFiltersUnreadCount();
+          resolve();
+        }, 0);
+      });
     }
   }
 

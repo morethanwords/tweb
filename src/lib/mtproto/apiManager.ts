@@ -26,6 +26,7 @@ import { bytesFromHex, bytesToHex } from '../../helpers/bytes';
 import { ctx, isSafari } from '../../helpers/userAgent';
 import App from '../../config/app';
 import { MOUNT_CLASS_TO } from '../../config/debug';
+import IDBStorage from '../idb';
 
 /// #if !MTPROTO_WORKER
 import rootScope from '../rootScope';
@@ -149,10 +150,8 @@ export class ApiManager {
       
       this.baseDcId = 0;
       //this.telegramMeNotify(false);
-      const promise = sessionStorage.clear();
-      promise.finally(() => {
-        self.postMessage({type: 'reload'});
-      });
+      IDBStorage.closeDatabases();
+      self.postMessage({type: 'clear'});
     };
 
     setTimeout(clear, 1e3);
