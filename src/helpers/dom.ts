@@ -598,7 +598,7 @@ export const handleScrollSideEvent = (elem: HTMLElement, side: 'top' | 'bottom',
 } */
 
 export function isSendShortcutPressed(e: KeyboardEvent) {
-  if(e.key === 'Enter' && !isMobile) {
+  if(e.key === 'Enter' && !isMobile && !e.isComposing) {
     /* if(e.ctrlKey || e.metaKey) {
       this.messageInput.innerHTML += '<br>';
       placeCaretAtEnd(this.message)
