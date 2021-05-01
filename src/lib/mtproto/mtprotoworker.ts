@@ -19,6 +19,7 @@ import { UserAuth } from './mtproto_config';
 import type { MTMessage } from './networker';
 import DEBUG, { MOUNT_CLASS_TO } from '../../config/debug';
 import Socket from './transports/websocket';
+import IDBStorage from '../idb';
 
 type Task = {
   taskId: number,
@@ -87,8 +88,11 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
 
     this.registerServiceWorker();
 
-    this.addTaskListener('reload', () => {
-      location.reload();
+    this.addTaskListener('clear', () => {
+      const promise = IDBStorage.deleteDatabase();
+      promise.finally(() => {
+        location.reload();
+      });
     });
 
     this.addTaskListener('connectionStatusChange', (task: any) => {
