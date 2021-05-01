@@ -747,6 +747,21 @@ export default class ChatInput {
         this.sendMessage();
       } else if(e.ctrlKey || e.metaKey) {
         this.handleMarkdownShortcut(e);
+      } else if((e.key === 'PageUp' || e.key === 'PageDown') && !e.shiftKey) { // * fix pushing page to left (Chrome Windows)
+        e.preventDefault();
+
+        if(e.key === 'PageUp') {
+          const range = document.createRange();
+          const sel = window.getSelection();
+          
+          range.setStart(this.messageInput.childNodes[0] || this.messageInput, 0);
+          range.collapse(true);
+          
+          sel.removeAllRanges();
+          sel.addRange(range);
+        } else {
+          placeCaretAtEnd(this.messageInput);
+        }
       }
     });
 
