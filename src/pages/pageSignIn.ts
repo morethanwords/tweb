@@ -20,8 +20,7 @@ import fastSmoothScroll from "../helpers/fastSmoothScroll";
 import { isTouchSupported } from "../helpers/touchSupport";
 import App from "../config/app";
 import Modes from "../config/modes";
-import I18n, { _i18n, i18n, LangPackKey } from "../lib/langPack";
-import { LangPackString } from "../layer";
+import { _i18n, i18n } from "../lib/langPack";
 import lottieLoader from "../lib/lottieLoader";
 import { ripple } from "../components/ripple";
 import findUpTag from "../helpers/dom/findUpTag";
@@ -29,6 +28,8 @@ import findUpClassName from "../helpers/dom/findUpClassName";
 import { randomLong } from "../helpers/random";
 import AppStorage from "../lib/storage";
 import CacheStorageController from "../lib/cacheStorage";
+import pageSignQR from "./pageSignQR";
+import getLanguageChangeButton from "../components/languageChangeButton";
 
 type Country = _Country & {
   li?: HTMLLIElement[]
@@ -383,7 +384,8 @@ let onFirstMount = () => {
 
   let qrMounted = false;
   btnQr.addEventListener('click', () => {
-    const promise = import('./pageSignQR');
+    pageSignQR.mount();
+    /* const promise = import('./pageSignQR');
     btnQr.disabled = true;
 
     let preloaderDiv: HTMLElement;
@@ -401,7 +403,7 @@ let onFirstMount = () => {
           preloaderDiv.remove();
         }
       }, 200);
-    });
+    }); */
   });
 
   inputWrapper.append(countryInputField.container, telInputField.container, signedCheckboxField.label, btnNext, btnQr);
@@ -461,45 +463,7 @@ let onFirstMount = () => {
     }, 0);
   }
 
-  apiManager.invokeApi('help.getConfig').then(config => {
-    if(config.suggested_lang_code !== I18n.lastRequestedLangCode) {
-      //I18n.loadLangPack(config.suggested_lang_code);
-
-      Promise.all([
-        I18n.getStrings(config.suggested_lang_code, ['Login.ContinueOnLanguage']),
-        I18n.getCacheLangPack()
-      ]).then(res => {
-        const backup: LangPackString[] = [];
-        res[0].forEach(string => {
-          const backupString = I18n.strings.get(string.key as LangPackKey);
-          if(!backupString) {
-            return;
-          }
-          
-          backup.push(backupString);
-          I18n.strings.set(string.key as LangPackKey, string);
-        });
-
-        const btnChangeLanguage = Button('btn-primary btn-secondary btn-primary-transparent primary', {text: 'Login.ContinueOnLanguage'});
-        inputWrapper.append(btnChangeLanguage);
-
-        backup.forEach(string => {
-          I18n.strings.set(string.key as LangPackKey, string);
-        });
-        
-        attachClickEvent(btnChangeLanguage, (e) => {
-          cancelEvent(e);
-
-          btnChangeLanguage.disabled = true;
-          putPreloader(btnChangeLanguage);
-
-          I18n.getLangPack(config.suggested_lang_code).then(() => {
-            btnChangeLanguage.remove();
-          });
-        });
-      });
-    }
-  });
+  getLanguageChangeButton(inputWrapper);
 
   tryAgain();
 };

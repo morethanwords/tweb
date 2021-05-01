@@ -17,7 +17,7 @@ import { createPosterForVideo } from "../../helpers/files";
 import { copy, defineNotNumerableProperties, getObjectKeysAndSort } from "../../helpers/object";
 import { randomLong } from "../../helpers/random";
 import { splitStringByLength, limitSymbols, escapeRegExp } from "../../helpers/string";
-import { Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MessagesPeerDialogs, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo } from "../../layer";
+import { Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo } from "../../layer";
 import { InvokeApiOptions } from "../../types";
 import I18n, { i18n, join, langPack, LangPackKey, _i18n } from "../langPack";
 import { logger, LogTypes } from "../logger";
@@ -42,7 +42,6 @@ import appStateManager from "./appStateManager";
 import appUsersManager from "./appUsersManager";
 import appWebPagesManager from "./appWebPagesManager";
 import appDraftsManager from "./appDraftsManager";
-import pushHeavyTask from "../../helpers/heavyQueue";
 import { getFileNameByLocation } from "../../helpers/fileName";
 import appProfileManager from "./appProfileManager";
 import DEBUG, { MOUNT_CLASS_TO } from "../../config/debug";
@@ -193,9 +192,6 @@ export class AppMessagesManager {
   private groupedTempId = 0;
 
   constructor() {
-    this.dialogsStorage = new DialogsStorage(this, appChatsManager, appPeersManager, appUsersManager, appDraftsManager, appNotificationsManager, appStateManager, apiUpdatesManager, serverTimeManager);
-    this.filtersStorage = new FiltersStorage(this, appPeersManager, appUsersManager, appNotificationsManager, appStateManager, apiUpdatesManager, /* apiManager, */ rootScope);
-
     rootScope.addMultipleEventsListeners({
       updateMessageID: this.onUpdateMessageId,
 
@@ -298,7 +294,7 @@ export class AppMessagesManager {
         this.reloadConversation(peerId);
       }
     });
-
+    
     appStateManager.getState().then(state => {
       if(state.maxSeenMsgId) {
         this.maxSeenId = state.maxSeenMsgId;
@@ -306,6 +302,11 @@ export class AppMessagesManager {
     });
 
     appNotificationsManager.start();
+  }
+
+  public construct() {
+    this.dialogsStorage = new DialogsStorage(this, appChatsManager, appPeersManager, appUsersManager, appDraftsManager, appNotificationsManager, appStateManager, apiUpdatesManager, serverTimeManager);
+    this.filtersStorage = new FiltersStorage(this, appPeersManager, appUsersManager, appNotificationsManager, appStateManager, apiUpdatesManager, /* apiManager, */ rootScope);
   }
 
   public getInputEntities(entities: MessageEntity[]) {

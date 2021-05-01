@@ -14,12 +14,9 @@ import { logger } from '../logger';
 import rootScope from '../rootScope';
 import webpWorkerController from '../webp/webpWorkerController';
 import type { DownloadOptions } from './apiFileManager';
-import { ApiError } from './apiManager';
-import type { ServiceWorkerTask, ServiceWorkerTaskResponse } from './mtproto.service';
+import type { ServiceWorkerTask } from './mtproto.service';
 import { UserAuth } from './mtproto_config';
 import type { MTMessage } from './networker';
-import referenceDatabase from './referenceDatabase';
-import appDocsManager from '../appManagers/appDocsManager';
 import DEBUG, { MOUNT_CLASS_TO } from '../../config/debug';
 import Socket from './transports/websocket';
 
@@ -80,136 +77,29 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
 
   private sockets: Map<number, Socket> = new Map();
 
+  private taskListeners: {[taskType: string]: (task: any) => void} = {};
+
+  public onServiceWorkerFail: () => void;
+
   constructor() {
     super();
     this.log('constructor');
 
     this.registerServiceWorker();
 
-    /// #if !MTPROTO_SW
-    this.registerWorker();
-    /// #endif
-  }
-
-  public isServiceWorkerOnline() {
-    return this.isSWRegistered;
-  }
-
-  private registerServiceWorker() {
-    if(!('serviceWorker' in navigator)) return;
-    
-    const worker = navigator.serviceWorker;
-    worker.register('./sw.js', {scope: './'}).then(registration => {
-      this.log('SW registered', registration);
-      this.isSWRegistered = true;
-
-      const sw = registration.installing || registration.waiting || registration.active;
-      sw.addEventListener('statechange', (e) => {
-        this.log('SW statechange', e);
-      });
-
-      /// #if MTPROTO_SW
-      const controller = worker.controller || registration.installing || registration.waiting || registration.active;
-      this.onWorkerFirstMessage(controller);
-      /// #endif
-    }, (err) => {
-      this.isSWRegistered = false;
-      this.log.error('SW registration failed!', err);
-      appDocsManager.onServiceWorkerFail();
-    });
-
-    worker.addEventListener('controllerchange', () => {
-      this.log.warn('controllerchange');
-      this.releasePending();
-
-      worker.controller.addEventListener('error', (e) => {
-        this.log.error('controller error:', e);
-      });
-    });
-
-    /// #if MTPROTO_SW
-    worker.addEventListener('message', this.onWorkerMessage);
-    /// #else
-    worker.addEventListener('message', (e) => {
-      const task: ServiceWorkerTask = e.data;
-      if(!isObject(task)) {
-        return;
-      }
-      
-      this.postMessage(task);
-    });
-    /// #endif
-
-    worker.addEventListener('messageerror', (e) => {
-      this.log.error('SW messageerror:', e);
-    });
-  }
-
-  private onWorkerFirstMessage(worker: any) {
-    if(!this.worker) {
-      this.worker = worker;
-      this.log('set webWorker');
-
-      this.postMessage = this.worker.postMessage.bind(this.worker);
-
-      const isWebpSupported = webpWorkerController.isWebpSupported();
-      this.log('WebP supported:', isWebpSupported);
-      this.postMessage({type: 'webpSupport', payload: isWebpSupported});
-
-      this.releasePending();
-    }
-  }
-
-  private onWorkerMessage = (e: MessageEvent) => {
-    //this.log('got message from worker:', e.data);
-
-    const task = e.data;
-
-    if(!isObject(task)) {
-      return;
-    }
-
-    if(task.update) {
-      if(this.updatesProcessor) {
-        this.updatesProcessor(task.update);
-      }
-    } else if(task.progress) {
-      rootScope.broadcast('download_progress', task.progress);
-    } else if(task.type === 'reload') {
+    this.addTaskListener('reload', () => {
       location.reload();
-    } else if(task.type === 'connectionStatusChange') {
+    });
+
+    this.addTaskListener('connectionStatusChange', (task: any) => {
       rootScope.broadcast('connection_status_change', task.payload);
-    } else if(task.type === 'convertWebp') {
+    });
+
+    this.addTaskListener('convertWebp', (task) => {
       webpWorkerController.postMessage(task);
-    } else if((task as ServiceWorkerTaskResponse).type === 'requestFilePart') {
-      const _task = task as ServiceWorkerTaskResponse;
-      
-      if(_task.error) {
-        const onError = (error: ApiError) => {
-          if(error?.type === 'FILE_REFERENCE_EXPIRED') {
-            // @ts-ignore
-            const bytes = _task.originalPayload[1].file_reference;
-            referenceDatabase.refreshReference(bytes).then(() => {
-              // @ts-ignore
-              _task.originalPayload[1].file_reference = referenceDatabase.getReferenceByLink(bytes);
-              const newTask: ServiceWorkerTask = {
-                type: _task.type,
-                id: _task.id,
-                payload: _task.originalPayload
-              };
+    });
 
-              this.postMessage(newTask);
-            }).catch(onError);
-          } else {
-            navigator.serviceWorker.controller.postMessage(task);
-          }
-        };
-
-        onError(_task.error);
-      } else {
-        navigator.serviceWorker.controller.postMessage(task);
-      }
-    } else if(task.type === 'socketProxy') {
+    this.addTaskListener('socketProxy', (task) => {
       const socketTask = task.payload;
       const id = socketTask.id;
       //console.log('socketProxy', socketTask, id);
@@ -263,6 +153,110 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
         socket.addEventListener('message', onMessage);
         this.sockets.set(id, socket);
       }
+    });
+
+    /// #if !MTPROTO_SW
+    this.registerWorker();
+    /// #endif
+  }
+
+  public isServiceWorkerOnline() {
+    return this.isSWRegistered;
+  }
+
+  private registerServiceWorker() {
+    if(!('serviceWorker' in navigator)) return;
+    
+    const worker = navigator.serviceWorker;
+    worker.register('./sw.js', {scope: './'}).then(registration => {
+      this.log('SW registered', registration);
+      this.isSWRegistered = true;
+
+      const sw = registration.installing || registration.waiting || registration.active;
+      sw.addEventListener('statechange', (e) => {
+        this.log('SW statechange', e);
+      });
+
+      /// #if MTPROTO_SW
+      const controller = worker.controller || registration.installing || registration.waiting || registration.active;
+      this.onWorkerFirstMessage(controller);
+      /// #endif
+    }, (err) => {
+      this.isSWRegistered = false;
+      this.log.error('SW registration failed!', err);
+
+      if(this.onServiceWorkerFail) {
+        this.onServiceWorkerFail();
+      }
+    });
+
+    worker.addEventListener('controllerchange', () => {
+      this.log.warn('controllerchange');
+      this.releasePending();
+
+      worker.controller.addEventListener('error', (e) => {
+        this.log.error('controller error:', e);
+      });
+    });
+
+    /// #if MTPROTO_SW
+    worker.addEventListener('message', this.onWorkerMessage);
+    /// #else
+    worker.addEventListener('message', (e) => {
+      const task: ServiceWorkerTask = e.data;
+      if(!isObject(task)) {
+        return;
+      }
+      
+      this.postMessage(task);
+    });
+    /// #endif
+
+    worker.addEventListener('messageerror', (e) => {
+      this.log.error('SW messageerror:', e);
+    });
+  }
+
+  private onWorkerFirstMessage(worker: any) {
+    if(!this.worker) {
+      this.worker = worker;
+      this.log('set webWorker');
+
+      this.postMessage = this.worker.postMessage.bind(this.worker);
+
+      const isWebpSupported = webpWorkerController.isWebpSupported();
+      this.log('WebP supported:', isWebpSupported);
+      this.postMessage({type: 'webpSupport', payload: isWebpSupported});
+
+      this.releasePending();
+    }
+  }
+
+  public addTaskListener(name: keyof ApiManagerProxy['taskListeners'], callback: ApiManagerProxy['taskListeners'][typeof name]) {
+    this.taskListeners[name] = callback;
+  }
+
+  private onWorkerMessage = (e: MessageEvent) => {
+    //this.log('got message from worker:', e.data);
+
+    const task = e.data;
+
+    if(!isObject(task)) {
+      return;
+    }
+
+    const callback = this.taskListeners[task.type];
+    if(callback) {
+      callback(task);
+      return;
+    }
+
+    if(task.update) {
+      if(this.updatesProcessor) {
+        this.updatesProcessor(task.update);
+      }
+    } else if(task.progress) {
+      rootScope.broadcast('download_progress', task.progress);
     } else if(task.hasOwnProperty('result') || task.hasOwnProperty('error')) {
       this.finalizeTask(task.taskId, task.result, task.error);
     }

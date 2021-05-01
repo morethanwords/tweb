@@ -17,16 +17,16 @@ import { logger, LogTypes } from "../logger";
 import { RichTextProcessor } from "../richtextprocessor";
 import rootScope from "../rootScope";
 import { positionElementByIndex, replaceContent } from "../../helpers/dom";
+import apiUpdatesManager from "./apiUpdatesManager";
+import appPeersManager from './appPeersManager';
 import appImManager from "./appImManager";
 import appMessagesManager, { Dialog } from "./appMessagesManager";
 import {MyDialogFilter as DialogFilter} from "../storages/filters";
-import appPeersManager from './appPeersManager';
 import appStateManager from "./appStateManager";
 import appUsersManager from "./appUsersManager";
 import Button from "../../components/button";
 import SetTransition from "../../components/singleTransition";
 import sessionStorage from '../sessionStorage';
-import apiUpdatesManager from "./apiUpdatesManager";
 import appDraftsManager, { MyDraftMessage } from "./appDraftsManager";
 import ProgressivePreloader from "../../components/preloader";
 import App from "../../config/app";
@@ -490,6 +490,7 @@ export class AppDialogsManager {
 
     //selectTab(0);
     (this.folders.menu.firstElementChild as HTMLElement).click();
+    appMessagesManager.construct();
     appStateManager.getState().then((state) => {
       appNotificationsManager.getNotifyPeerTypeSettings();
       
