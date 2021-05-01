@@ -30,13 +30,17 @@ export class AppDocsManager {
   private docs: {[docId: string]: MyDocument} = {};
   private savingLottiePreview: {[docId: string]: true} = {};
 
-  public onServiceWorkerFail() {
+  constructor() {
+    apiManager.onServiceWorkerFail = this.onServiceWorkerFail;
+  }
+
+  public onServiceWorkerFail = () => {
     for(const id in this.docs) {
       const doc = this.docs[id];
       delete doc.supportsStreaming;
       delete doc.url;
     }
-  }
+  };
 
   public saveDoc(doc: Document, context?: ReferenceContext): MyDocument {
     if(doc._ === 'documentEmpty') {

@@ -16,6 +16,7 @@ import { _i18n, i18n, LangPackKey } from '../lib/langPack';
 import appStateManager from '../lib/appManagers/appStateManager';
 import rootScope from '../lib/rootScope';
 import { putPreloader } from '../components/misc';
+import getLanguageChangeButton from '../components/languageChangeButton';
 
 let onFirstMount = async() => {
   const pageElement = page.pageEl;
@@ -28,6 +29,8 @@ let onFirstMount = async() => {
 
   const btnBack = Button('btn-primary btn-secondary btn-primary-transparent primary', {text: 'Login.QR.Cancel'});
   inputWrapper.append(btnBack);
+
+  getLanguageChangeButton(inputWrapper);
 
   const container = imageDiv.parentElement;
 
