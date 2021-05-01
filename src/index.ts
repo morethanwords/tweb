@@ -268,6 +268,9 @@ console.timeEnd('get storage1'); */
       I18n.default.getLangPack(langPack.lang_code);
     }
 
+    /**
+     * won't fire if font is loaded too fast
+     */
     function fadeInWhenFontsReady(elem: HTMLElement, promise: Promise<void>) {
       elem.style.opacity = '0';
 
@@ -302,27 +305,33 @@ console.timeEnd('get storage1'); */
         scrollable.append(placeholder.cloneNode());
       }
 
+      let pagePromise: Promise<void>;
       //langPromise.then(async() => {
         switch(authState._) {
           case 'authStateSignIn': 
-            (await import('./pages/pageSignIn')).default.mount();
+            pagePromise = (await import('./pages/pageSignIn')).default.mount();
             break;
           case 'authStateSignQr': 
-            (await import('./pages/pageSignQR')).default.mount();
+            pagePromise = (await import('./pages/pageSignQR')).default.mount();
             break;
           case 'authStateAuthCode':
-            (await import('./pages/pageAuthCode')).default.mount(authState.sentCode);
+            pagePromise = (await import('./pages/pageAuthCode')).default.mount(authState.sentCode);
             break;
           case 'authStatePassword':
-            (await import('./pages/pagePassword')).default.mount();
+            pagePromise = (await import('./pages/pagePassword')).default.mount();
             break;
           case 'authStateSignUp':
-            (await import('./pages/pageSignUp')).default.mount(authState.authCode);
+            pagePromise = (await import('./pages/pageSignUp')).default.mount(authState.authCode);
             break;
         }
       //});
 
       if(scrollable) {
+        // wait for text appear
+        if(pagePromise) {
+          await pagePromise;
+        }
+
         // @ts-ignore
         const promise = 'fonts' in document ? document.fonts.ready : Promise.resolve();
         fadeInWhenFontsReady(scrollable, promise);
