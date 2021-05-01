@@ -285,14 +285,15 @@ console.timeEnd('get storage1'); */
       console.log('Will mount auth page:', authState._, Date.now() / 1000);
 
       const el = document.getElementById('auth-pages');
+      let scrollable: HTMLElement;
       if(el) {
-        const scrollable = el.querySelector('.scrollable') as HTMLElement;
+        scrollable = el.querySelector('.scrollable') as HTMLElement;
         if((!touchSupport.isTouchSupported || isMobileSafari)) {
           scrollable.classList.add('no-scrollbar');
         }
 
-        // @ts-ignore
-        fadeInWhenFontsReady(scrollable, 'fonts' in document ? document.fonts.ready : Promise.resolve());
+        // * don't remove this line
+        scrollable.style.opacity = '0';
 
         const placeholder = document.createElement('div');
         placeholder.classList.add('auth-placeholder');
@@ -320,6 +321,12 @@ console.timeEnd('get storage1'); */
             break;
         }
       //});
+
+      if(scrollable) {
+        // @ts-ignore
+        const promise = 'fonts' in document ? document.fonts.ready : Promise.resolve();
+        fadeInWhenFontsReady(scrollable, promise);
+      }
 
       /* computeCheck(password, {
         current_algo: {
