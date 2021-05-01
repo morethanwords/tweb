@@ -38,6 +38,7 @@ import { animateSingle } from '../helpers/animation';
 import renderImageFromUrl from '../helpers/dom/renderImageFromUrl';
 import sequentialDom from '../helpers/sequentialDom';
 import { fastRaf } from '../helpers/schedulers';
+import appDownloadManager from '../lib/appManagers/appDownloadManager';
 
 const MAX_VIDEO_AUTOPLAY_SIZE = 50 * 1024 * 1024; // 50 MB
 
@@ -271,7 +272,7 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
     const gotThumb = appDocsManager.getThumb(doc, false);
     if(gotThumb) {
       gotThumb.promise.then(() => {
-        video.poster = gotThumb.thumb.url;
+        video.poster = gotThumb.cacheContext.url;
       });
     }
   }
@@ -280,12 +281,14 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
     container.append(video);
   }
 
+  const cacheContext = appDownloadManager.getCacheContext(doc);
+
   let preloader: ProgressivePreloader;
   if(message?.media?.preloader) { // means upload
     preloader = message.media.preloader as ProgressivePreloader;
     preloader.attach(container, false);
     noAutoDownload = undefined;
-  } else if(!doc.downloaded && !doc.supportsStreaming) {
+  } else if(!cacheContext.downloaded && !doc.supportsStreaming) {
     preloader = new ProgressivePreloader({
       attachMethod: 'prepend'
     });
@@ -305,13 +308,13 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
 
     let loadPromise: Promise<any> = Promise.resolve();
     if(preloader) {
-      if(!doc.downloaded && !doc.supportsStreaming) {
+      if(!cacheContext.downloaded && !doc.supportsStreaming) {
         const promise = loadPromise = appDocsManager.downloadDoc(doc, lazyLoadQueue?.queueId, noAutoDownload);
         preloader.attach(container, false, promise);
       } else if(doc.supportsStreaming) {
         if(noAutoDownload) {
           loadPromise = Promise.reject();
-        } else if(!doc.downloaded) { // * check for uploading video
+        } else if(!cacheContext.downloaded) { // * check for uploading video
           preloader.attach(container, false, null);
           video.addEventListener(isSafari ? 'timeupdate' : 'canplay', () => {
             preloader.detach();
@@ -361,7 +364,7 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
       //video.play();
       video.autoplay = true;
 
-      renderImageFromUrl(video, doc.url);
+      renderImageFromUrl(video, cacheContext.url);
     }, () => {});
 
     return {download: loadPromise, render: deferred};
@@ -462,12 +465,13 @@ export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showS
   const icoDiv = document.createElement('div');
   icoDiv.classList.add('document-ico');
 
-  if(doc.thumbs?.length || (message.pFlags.is_outgoing && doc.url && doc.type === 'photo')) {
+  const cacheContext = appDownloadManager.getCacheContext(doc);
+  if(doc.thumbs?.length || (message.pFlags.is_outgoing && cacheContext.url && doc.type === 'photo')) {
     docDiv.classList.add('document-with-thumb');
 
     let imgs: HTMLImageElement[] = [];
     if(message.pFlags.is_outgoing) {
-      icoDiv.innerHTML = `<img src="${doc.url}">`;
+      icoDiv.innerHTML = `<img src="${cacheContext.url}">`;
       imgs.push(icoDiv.firstElementChild as HTMLImageElement);
     } else {
       const wrapped = wrapPhoto({
@@ -507,7 +511,7 @@ export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showS
   }
   
   docDiv.innerHTML = `
-  ${doc.downloaded && !uploading ? '' : `<div class="document-download"></div>`}
+  ${cacheContext.downloaded && !uploading ? '' : `<div class="document-download"></div>`}
   <div class="document-name"><middle-ellipsis-element data-font-weight="${fontWeight}">${fileName}</middle-ellipsis-element>${titleAdditionHTML}</div>
   <div class="document-size">${size}</div>
   `;
@@ -546,7 +550,7 @@ export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showS
     return {download};
   };
 
-  if(!(doc.downloaded && !uploading)) {
+  if(!(cacheContext.downloaded && !uploading)) {
     downloadDiv = docDiv.querySelector('.document-download');
     preloader = message.media.preloader as ProgressivePreloader;
 
@@ -695,7 +699,7 @@ export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withT
   
   //console.log('wrapPhoto downloaded:', photo, photo.downloaded, container);
   
-  const cacheContext = appPhotosManager.getCacheContext(photo);
+  const cacheContext = appDownloadManager.getCacheContext(photo, size?.type/* photo._ === 'photo' ? size?.type : undefined */);
 
   const needFadeIn = (thumbImage || !cacheContext.downloaded) && rootScope.settings.animationsEnabled;
   if(needFadeIn) {
@@ -727,7 +731,7 @@ export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withT
     if(middleware && !middleware()) return Promise.resolve();
 
     return new Promise((resolve) => {
-      renderImageFromUrl(image, cacheContext.url || photo.url, () => {
+      renderImageFromUrl(image, cacheContext.url, () => {
         sequentialDom.mutateElement(container, () => {
           container.append(image);
 
@@ -840,8 +844,10 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
   
   //console.log('wrap sticker', doc, div, onlyThumb);
 
+  const cacheContext = appDownloadManager.getCacheContext(doc);
+
   const toneIndex = emoji ? getEmojiToneIndex(emoji) : -1;
-  const downloaded = doc.downloaded && !needFadeIn;
+  const downloaded = cacheContext.downloaded && !needFadeIn;
   
   let loadThumbPromise = deferredPromise<void>();
   let haveThumbCached = false;
@@ -881,8 +887,8 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
       if(thumb && thumb._ !== 'photoPathSize' && toneIndex <= 0) {
         thumbImage = new Image();
 
-        if((webpWorkerController.isWebpSupported() || doc.pFlags.stickerThumbConverted || thumb.url)/*  && false */) {
-          renderImageFromUrl(thumbImage, appPhotosManager.getPreviewURLFromThumb(thumb as PhotoSize.photoStrippedSize, true), afterRender);
+        if((webpWorkerController.isWebpSupported() || doc.pFlags.stickerThumbConverted || cacheContext.url)/*  && false */) {
+          renderImageFromUrl(thumbImage, appPhotosManager.getPreviewURLFromThumb(doc, thumb as PhotoSize.photoStrippedSize, true), afterRender);
           haveThumbCached = true;
         } else {
           webpWorkerController.convert(doc.id, (thumb as PhotoSize.photoStrippedSize).bytes as Uint8Array).then(bytes => {
@@ -892,7 +898,7 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
             if(middleware && !middleware()) return;
   
             if(!div.childElementCount) {
-              renderImageFromUrl(thumbImage, appPhotosManager.getPreviewURLFromThumb(thumb as PhotoSize.photoStrippedSize, true), afterRender);
+              renderImageFromUrl(thumbImage, appPhotosManager.getPreviewURLFromThumb(doc, thumb as PhotoSize.photoStrippedSize, true), afterRender);
             }
           }).catch(() => {});
         }
@@ -905,10 +911,10 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
 
         const r = () => {
           if(div.childElementCount || (middleware && !middleware())) return;
-          renderImageFromUrl(thumbImage, (thumb as PhotoSize.photoStrippedSize).url, afterRender);
+          renderImageFromUrl(thumbImage, cacheContext.url, afterRender);
         };
   
-        if((thumb as PhotoSize.photoStrippedSize).url) {
+        if(cacheContext.url) {
           r();
           return Promise.resolve();
         } else {
@@ -1038,7 +1044,7 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
         const r = () => {
           if(middleware && !middleware()) return resolve();
   
-          renderImageFromUrl(image, doc.url, () => {
+          renderImageFromUrl(image, cacheContext.url, () => {
             sequentialDom.mutateElement(div, () => {
               div.append(image);
               if(thumbImage) {
@@ -1059,7 +1065,7 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
           });
         };
   
-        if(doc.url) r();
+        if(cacheContext.url) r();
         else {
           appDocsManager.downloadDoc(doc, /* undefined,  */lazyLoadQueue?.queueId).then(r, resolve);
         }

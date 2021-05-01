@@ -9,6 +9,7 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
+import type { DownloadOptions } from "../mtproto/apiFileManager";
 import { bytesFromHex } from "../../helpers/bytes";
 import { CancellablePromise } from "../../helpers/cancellablePromise";
 import { getFileNameByLocation } from "../../helpers/fileName";
@@ -30,23 +31,16 @@ export type MyPhoto = Photo.photo;
 // TIMES = 2 DUE TO SIDEBAR AND CHAT
 //let TEST_FILE_REFERENCE = "5440692274120994569", TEST_FILE_REFERENCE_TIMES = 2;
 
-type DocumentCacheThumb = {
-  downloaded: number, 
-  url: string
-};
-
 export class AppPhotosManager {
   private photos: {
     [id: string]: MyPhoto
   } = {};
-  private documentThumbsCache: {
-    [docId: string]: DocumentCacheThumb
-  } = {};
+
   public windowW = 0;
   public windowH = 0;
   
-  public static jf = new Uint8Array(bytesFromHex('ffd8ffe000104a46494600010100000100010000ffdb004300281c1e231e19282321232d2b28303c64413c37373c7b585d4964918099968f808c8aa0b4e6c3a0aadaad8a8cc8ffcbdaeef5ffffff9bc1fffffffaffe6fdfff8ffdb0043012b2d2d3c353c76414176f8a58ca5f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8ffc00011080000000003012200021101031101ffc4001f0000010501010101010100000000000000000102030405060708090a0bffc400b5100002010303020403050504040000017d01020300041105122131410613516107227114328191a1082342b1c11552d1f02433627282090a161718191a25262728292a3435363738393a434445464748494a535455565758595a636465666768696a737475767778797a838485868788898a92939495969798999aa2a3a4a5a6a7a8a9aab2b3b4b5b6b7b8b9bac2c3c4c5c6c7c8c9cad2d3d4d5d6d7d8d9dae1e2e3e4e5e6e7e8e9eaf1f2f3f4f5f6f7f8f9faffc4001f0100030101010101010101010000000000000102030405060708090a0bffc400b51100020102040403040705040400010277000102031104052131061241510761711322328108144291a1b1c109233352f0156272d10a162434e125f11718191a262728292a35363738393a434445464748494a535455565758595a636465666768696a737475767778797a82838485868788898a92939495969798999aa2a3a4a5a6a7a8a9aab2b3b4b5b6b7b8b9bac2c3c4c5c6c7c8c9cad2d3d4d5d6d7d8d9dae2e3e4e5e6e7e8e9eaf2f3f4f5f6f7f8f9faffda000c03010002110311003f00'));
-  public static Df = bytesFromHex('ffd9');
+  private static jpegHeader = bytesFromHex('ffd8ffe000104a46494600010100000100010000ffdb004300281c1e231e19282321232d2b28303c64413c37373c7b585d4964918099968f808c8aa0b4e6c3a0aadaad8a8cc8ffcbdaeef5ffffff9bc1fffffffaffe6fdfff8ffdb0043012b2d2d3c353c76414176f8a58ca5f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8f8ffc00011080000000003012200021101031101ffc4001f0000010501010101010100000000000000000102030405060708090a0bffc400b5100002010303020403050504040000017d01020300041105122131410613516107227114328191a1082342b1c11552d1f02433627282090a161718191a25262728292a3435363738393a434445464748494a535455565758595a636465666768696a737475767778797a838485868788898a92939495969798999aa2a3a4a5a6a7a8a9aab2b3b4b5b6b7b8b9bac2c3c4c5c6c7c8c9cad2d3d4d5d6d7d8d9dae1e2e3e4e5e6e7e8e9eaf1f2f3f4f5f6f7f8f9faffc4001f0100030101010101010101010000000000000102030405060708090a0bffc400b51100020102040403040705040400010277000102031104052131061241510761711322328108144291a1b1c109233352f0156272d10a162434e125f11718191a262728292a35363738393a434445464748494a535455565758595a636465666768696a737475767778797a82838485868788898a92939495969798999aa2a3a4a5a6a7a8a9aab2b3b4b5b6b7b8b9bac2c3c4c5c6c7c8c9cad2d3d4d5d6d7d8d9dae2e3e4e5e6e7e8e9eaf2f3f4f5f6f7f8f9faffda000c03010002110311003f00');
+  private static jpegTail = bytesFromHex('ffd9');
   
   constructor() {
     // @ts-ignore
@@ -155,7 +149,7 @@ export class AppPhotosManager {
   public getPreviewURLFromBytes(bytes: Uint8Array | number[], isSticker = false) {
     let arr: Uint8Array;
     if(!isSticker) {
-      arr = AppPhotosManager.jf.concat(bytes.slice(3), AppPhotosManager.Df);
+      arr = new Uint8Array(AppPhotosManager.jpegHeader.concat(Array.from(bytes.slice(3)), AppPhotosManager.jpegTail));
       arr[164] = bytes[1];
       arr[166] = bytes[2];
     } else {
@@ -200,12 +194,13 @@ export class AppPhotosManager {
     return path;
   }
 
-  public getPreviewURLFromThumb(thumb: PhotoSize.photoCachedSize | PhotoSize.photoStrippedSize, isSticker = false) {
-    return thumb.url ?? (defineNotNumerableProperties(thumb, ['url']), thumb.url = this.getPreviewURLFromBytes(thumb.bytes, isSticker));
+  public getPreviewURLFromThumb(photo: MyPhoto | MyDocument, thumb: PhotoSize.photoCachedSize | PhotoSize.photoStrippedSize, isSticker = false) {
+    const cacheContext = appDownloadManager.getCacheContext(photo, thumb.type);
+    return cacheContext.url || (cacheContext.url = this.getPreviewURLFromBytes(thumb.bytes, isSticker));
   }
   
-  public getImageFromStrippedThumb(thumb: PhotoSize.photoCachedSize | PhotoSize.photoStrippedSize, useBlur: boolean) {
-    const url = this.getPreviewURLFromThumb(thumb, false);
+  public getImageFromStrippedThumb(photo: MyPhoto | MyDocument, thumb: PhotoSize.photoCachedSize | PhotoSize.photoStrippedSize, useBlur: boolean) {
+    const url = this.getPreviewURLFromThumb(photo, thumb, false);
 
     const image = new Image();
     image.classList.add('thumbnail');
@@ -253,26 +248,24 @@ export class AppPhotosManager {
   }
 
   public getStrippedThumbIfNeeded(photo: MyPhoto | MyDocument, useBlur: boolean): ReturnType<AppPhotosManager['getImageFromStrippedThumb']> {
-    if(!photo.downloaded || (photo as MyDocument).type === 'video' || (photo as MyDocument).type === 'gif') {
-      if(photo._ === 'document') {
-        const cacheContext = this.getCacheContext(photo); 
-        if(cacheContext.downloaded) {
-          return null;
-        } 
+    const cacheContext = appDownloadManager.getCacheContext(photo);
+    if(!cacheContext.downloaded || (photo as MyDocument).type === 'video' || (photo as MyDocument).type === 'gif') {
+      if(photo._ === 'document' && cacheContext.downloaded) {
+        return null;
       }
 
       const sizes = (photo as MyPhoto).sizes || (photo as MyDocument).thumbs;
       const thumb = sizes?.length ? sizes.find(size => size._ === 'photoStrippedSize') : null;
       if(thumb && ('bytes' in thumb)) {
-        return appPhotosManager.getImageFromStrippedThumb(thumb as any, useBlur);
+        return appPhotosManager.getImageFromStrippedThumb(photo, thumb as any, useBlur);
       }
     }
 
     return null;
   }
   
-  public getPhotoDownloadOptions(photo: MyPhoto | MyDocument, photoSize: PhotoSize, queueId?: number, onlyCache?: boolean) {
-    const isMyDocument = photo._ === 'document';
+  public getPhotoDownloadOptions(photo: MyPhoto | MyDocument, photoSize: PhotoSize, queueId?: number, onlyCache?: boolean): DownloadOptions {
+    const isDocument = photo._ === 'document';
 
     if(!photoSize || photoSize._ === 'photoSizeEmpty') {
       //console.error('no photoSize by photo:', photo);
@@ -282,14 +275,20 @@ export class AppPhotosManager {
     // maybe it's a thumb
     const isPhoto = (photoSize._ === 'photoSize' || photoSize._ === 'photoSizeProgressive') && photo.access_hash && photo.file_reference;
     const location: InputFileLocation.inputPhotoFileLocation | InputFileLocation.inputDocumentFileLocation | FileLocation = isPhoto ? {
-      _: isMyDocument ? 'inputDocumentFileLocation' : 'inputPhotoFileLocation',
+      _: isDocument ? 'inputDocumentFileLocation' : 'inputPhotoFileLocation',
       id: photo.id,
       access_hash: photo.access_hash,
       file_reference: photo.file_reference,
       thumb_size: photoSize.type
     } : (photoSize as PhotoSize.photoSize).location;
 
-    return {dcId: photo.dc_id, location, size: isPhoto ? (photoSize as PhotoSize.photoSize).size : undefined, queueId, onlyCache};
+    return {
+      dcId: photo.dc_id, 
+      location, 
+      size: isPhoto ? (photoSize as PhotoSize.photoSize).size : undefined, 
+      queueId, 
+      onlyCache
+    };
   }
 
   /* public getPhotoURL(photo: MTPhoto | MTMyDocument, photoSize: MTPhotoSize) {
@@ -298,7 +297,7 @@ export class AppPhotosManager {
     return {url: getFileURL('photo', downloadOptions), location: downloadOptions.location};
   } */
 
-  public isDownloaded(media: any) {
+  /* public isDownloaded(media: any) {
     const isPhoto = media._ === 'photo';
     const photo = isPhoto ? this.getPhoto(media.id) : null;
     let isDownloaded: boolean;
@@ -310,9 +309,9 @@ export class AppPhotosManager {
     }
 
     return isDownloaded;
-  }
+  } */
   
-  public preloadPhoto(photoId: any, photoSize?: PhotoSize, queueId?: number, onlyCache?: boolean): CancellablePromise<Blob> {
+  public preloadPhoto(photoId: MyPhoto | MyDocument | string, photoSize?: PhotoSize, queueId?: number, onlyCache?: boolean): CancellablePromise<Blob> {
     const photo = this.getPhoto(photoId);
 
     // @ts-ignore
@@ -327,13 +326,12 @@ export class AppPhotosManager {
       photoSize = this.choosePhotoSize(photo, fullWidth, fullHeight);
     }
 
-    const cacheContext = this.getCacheContext(photo);
+    const cacheContext = appDownloadManager.getCacheContext(photo, photoSize.type);
     if(cacheContext.downloaded >= ('size' in photoSize ? photoSize.size : 0) && cacheContext.url) {
       return Promise.resolve() as any;
     }
     
     const downloadOptions = this.getPhotoDownloadOptions(photo, photoSize, queueId, onlyCache);
-
     const fileName = getFileNameByLocation(downloadOptions.location);
 
     let download = appDownloadManager.getDownload(fileName);
@@ -343,35 +341,22 @@ export class AppPhotosManager {
 
     download = appDownloadManager.download(downloadOptions);
     download.then(blob => {
-      const url = URL.createObjectURL(blob);
       if(!cacheContext.downloaded || cacheContext.downloaded < blob.size) {
-        defineNotNumerableProperties(cacheContext, ['downloaded', 'url']);
-
+        const url = URL.createObjectURL(blob);
         cacheContext.downloaded = blob.size;
         cacheContext.url = url;
 
         //console.log('wrote photo:', photo, photoSize, cacheContext, blob);
       }
 
-      defineNotNumerableProperties(photoSize, ['url']);
-      (photoSize as any).url = url;
-
       return blob;
     }).catch(() => {});
 
     return download;
   }
-
-  public getCacheContext(photo: any): DocumentCacheThumb {
-    return photo._ === 'document' ? this.getDocumentCachedThumb(photo.id) : photo;
-  }
-
-  public getDocumentCachedThumb(docId: string) {
-    return this.documentThumbsCache[docId] ?? (this.documentThumbsCache[docId] = {downloaded: 0, url: ''});
-  }
   
-  public getPhoto(photoId: any): MyPhoto {
-    return isObject(photoId) ? photoId : this.photos[photoId];
+  public getPhoto(photoId: any/* MyPhoto | string */): MyPhoto {
+    return isObject(photoId) ? photoId as MyPhoto : this.photos[photoId as any as string];
   }
 
   public getInput(photo: MyPhoto): InputMedia.inputMediaPhoto {
@@ -393,21 +378,9 @@ export class AppPhotosManager {
       return;
     }
 
-    const location: InputFileLocation.inputDocumentFileLocation | InputFileLocation.inputPhotoFileLocation = {
-      _: photo._ === 'document' ? 'inputDocumentFileLocation' : 'inputPhotoFileLocation',
-      id: photo.id,
-      access_hash: photo.access_hash,
-      file_reference: photo.file_reference,
-      thumb_size: fullPhotoSize.type
-    };
-
-    appDownloadManager.downloadToDisc({
-      dcId: photo.dc_id, 
-      location, 
-      size: fullPhotoSize.size, 
-      fileName: 'photo' + photo.id + '.jpg',
-      queueId
-    }, 'photo' + photo.id + '.jpg');
+    const downloadOptions = this.getPhotoDownloadOptions(photo, fullPhotoSize, queueId);
+    downloadOptions.fileName = 'photo' + photo.id + '.jpg';
+    appDownloadManager.downloadToDisc(downloadOptions, downloadOptions.fileName);
   }
 }
 

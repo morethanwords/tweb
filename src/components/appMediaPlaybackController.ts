@@ -10,6 +10,7 @@ import appDocsManager, {MyDocument} from "../lib/appManagers/appDocsManager";
 import { CancellablePromise, deferredPromise } from "../helpers/cancellablePromise";
 import { isSafari } from "../helpers/userAgent";
 import { MOUNT_CLASS_TO } from "../config/debug";
+import appDownloadManager from "../lib/appManagers/appDownloadManager";
 
 // TODO: если удалить сообщение, и при этом аудио будет играть - оно не остановится, и можно будет по нему перейти вникуда
 
@@ -125,7 +126,8 @@ class AppMediaPlaybackController {
           this.handleSafariStreamable(media);
         }
   
-        media.src = doc.url;
+        const cacheContext = appDownloadManager.getCacheContext(doc);
+        media.src = cacheContext.url;
       });
     }, onError);
     

@@ -628,26 +628,28 @@ export class AppMessagesManager {
       apiFileName = 'photo.' + fileType.split('/')[1];
       actionName = 'sendMessageUploadPhotoAction';
 
+      const photoSize = {
+        _: 'photoSize',
+        w: options.width,
+        h: options.height,
+        type: 'full',
+        location: null,
+        size: file.size
+      } as PhotoSize.photoSize;
+
       photo = {
         _: 'photo',
         id: '' + message.id,
-        sizes: [{
-          _: 'photoSize',
-          w: options.width,
-          h: options.height,
-          type: 'full',
-          location: null,
-          size: file.size
-        }],
+        sizes: [photoSize],
         w: options.width,
         h: options.height
       } as any;
 
-      defineNotNumerableProperties(photo, ['downloaded', 'url']);
-      photo.downloaded = file.size;
-      photo.url = options.objectURL || '';
+      const cacheContext = appDownloadManager.getCacheContext(photo, photoSize.type);
+      cacheContext.downloaded = file.size;
+      cacheContext.url = options.objectURL || '';
       
-      appPhotosManager.savePhoto(photo);
+      photo = appPhotosManager.savePhoto(photo);
     } else if(fileType.indexOf('video/') === 0) {
       attachType = 'video';
       apiFileName = 'video.mp4';
@@ -686,11 +688,11 @@ export class AppMessagesManager {
         size: file.size
       } as any;
 
-      defineNotNumerableProperties(document, ['downloaded', 'url']);
-      // @ts-ignore
-      document.downloaded = file.size;
-      document.url = options.objectURL || '';
+      const cacheContext = appDownloadManager.getCacheContext(document);
+      cacheContext.downloaded = file.size;
+      cacheContext.url = options.objectURL || '';
 
+      let thumb: PhotoSize.photoSize;
       if(isPhoto) {
         attributes.push({
           _: 'documentAttributeImageSize',
@@ -698,32 +700,33 @@ export class AppMessagesManager {
           h: options.height
         });
 
-        thumbs.push({
+        thumb = {
           _: 'photoSize',
           w: options.width,
           h: options.height,
           type: 'full',
           location: null,
-          size: file.size,
-          url: options.objectURL
-        });
+          size: file.size
+        };
       } else if(attachType === 'video') {
         if(options.thumbURL) {
-          thumbs.push({
+          thumb = {
             _: 'photoSize',
             w: options.width,
             h: options.height,
             type: 'full',
             location: null,
-            size: options.thumbBlob.size,
-            url: options.thumbURL
-          });
-        }
+            size: options.thumbBlob.size
+          };
 
-        const thumb = thumbs[0] as PhotoSize.photoSize;
-        const docThumb = appPhotosManager.getDocumentCachedThumb(document.id);
-        docThumb.downloaded = thumb.size;
-        docThumb.url = thumb.url;
+          const thumbCacheContext = appDownloadManager.getCacheContext(document, thumb.type);
+          thumbCacheContext.downloaded = thumb.size;
+          thumbCacheContext.url = options.thumbURL;
+        }
+      }
+
+      if(thumb) {
+        thumbs.push(thumb);
       }
 
       /* if(thumbs.length) {
@@ -733,7 +736,7 @@ export class AppMessagesManager {
         docThumb.url = thumb.url;
       } */
       
-      appDocsManager.saveDoc(document);
+      document = appDocsManager.saveDoc(document);
     }
 
     this.log('sendFile', attachType, apiFileName, file.type, options);
@@ -4367,29 +4370,27 @@ export class AppMessagesManager {
         const photo = appPhotosManager.getPhoto('' + tempId);
         if(/* photo._ !== 'photoEmpty' */photo) {
           const newPhoto = message.media.photo as MyPhoto;
-          // костыль
-          defineNotNumerableProperties(newPhoto, ['downloaded', 'url']);
-          newPhoto.downloaded = photo.downloaded;
-          newPhoto.url = photo.url;
+          const cacheContext = appDownloadManager.getCacheContext(newPhoto);
+          const oldCacheContext = appDownloadManager.getCacheContext(photo, 'full');
+          Object.assign(cacheContext, oldCacheContext);
 
           const photoSize = newPhoto.sizes[newPhoto.sizes.length - 1] as PhotoSize.photoSize;
-          defineNotNumerableProperties(photoSize, ['url']);
-          photoSize.url = photo.url;
 
           const downloadOptions = appPhotosManager.getPhotoDownloadOptions(newPhoto, photoSize);
           const fileName = getFileNameByLocation(downloadOptions.location);
-          appDownloadManager.fakeDownload(fileName, photo.url);
+          appDownloadManager.fakeDownload(fileName, oldCacheContext.url);
         }
       } else if(message.media.document) {
         const doc = appDocsManager.getDoc('' + tempId);
         if(doc) {
           if(/* doc._ !== 'documentEmpty' &&  */doc.type && doc.type !== 'sticker') {
             const newDoc = message.media.document;
-            newDoc.downloaded = doc.downloaded;
-            newDoc.url = doc.url;
+            const cacheContext = appDownloadManager.getCacheContext(newDoc);
+            const oldCacheContext = appDownloadManager.getCacheContext(doc);
+            Object.assign(cacheContext, oldCacheContext);
 
             const fileName = appDocsManager.getInputFileName(newDoc);
-            appDownloadManager.fakeDownload(fileName, doc.url);
+            appDownloadManager.fakeDownload(fileName, oldCacheContext.url);
           }
         }
       } else if(message.media.poll) {

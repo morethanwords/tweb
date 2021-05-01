@@ -8,8 +8,6 @@
     {"name": "file_name", "type": "string"},
     {"name": "file", "type": "File"},
     {"name": "duration", "type": "number"},
-    {"name": "downloaded", "type": "boolean"},
-    {"name": "url", "type": "string"},
     {"name": "audioTitle", "type": "string"},
     {"name": "audioPerformer", "type": "string"},
     {"name": "sticker", "type": "number"},
@@ -22,30 +20,8 @@
     {"name": "supportsStreaming", "type": "boolean"}
   ]
 }, {
-  "predicate": "photo",
-  "params": [
-    {"name": "downloaded", "type": "boolean | number"},
-    {"name": "url", "type": "string"}
-  ]
-}, {
-  "predicate": "photoSize",
-  "params": [
-    {"name": "url", "type": "string"}
-  ]
-}, {
-  "predicate": "photoCachedSize",
-  "params": [
-    {"name": "url", "type": "string"}
-  ]
-}, {
-  "predicate": "photoStrippedSize",
-  "params": [
-    {"name": "url", "type": "string"}
-  ]
-}, {
   "predicate": "photoSizeProgressive",
   "params": [
-    {"name": "url", "type": "string"},
     {"name": "size", "type": "number"}
   ]
 }, {
