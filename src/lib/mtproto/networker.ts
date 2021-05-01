@@ -141,7 +141,7 @@ export default class MTPNetworker {
     const suffix = this.isFileUpload ? '-U' : this.isFileDownload ? '-D' : '';
     this.name = 'NET-' + dcId + suffix;
     //this.log = logger(this.name, this.upload && this.dcId === 2 ? LogLevels.debug | LogLevels.warn | LogLevels.log | LogLevels.error : LogLevels.error);
-    this.log = logger(this.name, /* LogTypes.Log | LogTypes.Debug |  */LogTypes.Error | LogTypes.Warn);
+    this.log = logger(this.name, LogTypes.Log | /* LogTypes.Debug |  */LogTypes.Error | LogTypes.Warn);
     this.log('constructor'/* , this.authKey, this.authKeyID, this.serverSalt */);
 
     // Test resend after bad_server_salt
@@ -596,7 +596,7 @@ export default class MTPNetworker {
       // this.log('parse for', message)
       this.parseResponse(result).then((response) => {
         if(Modes.debug) {
-          this.log('Server response', response);
+          this.log.debug('Server response', response);
         }
   
         this.processMessage(response.response, response.messageId, response.sessionId);
@@ -735,7 +735,7 @@ export default class MTPNetworker {
     }
   
     if(this.debug) {
-      this.log('pushResend:', messageId, sentMessage, this.pendingMessages, delay);
+      this.log.debug('pushResend:', messageId, sentMessage, this.pendingMessages, delay);
     }
   
     this.scheduleRequest(delay);
@@ -1089,7 +1089,7 @@ export default class MTPNetworker {
 
   public sendEncryptedRequest(message: MTMessage) {
     return this.getEncryptedOutput(message).then(requestData => {
-      this.debug && this.log('sendEncryptedRequest: launching message into space:', message, [message.msg_id].concat(message.inner || []));
+      this.debug && this.log.debug('sendEncryptedRequest: launching message into space:', message, [message.msg_id].concat(message.inner || []));
 
       const promise: Promise<Uint8Array> = this.transport.send(requestData) as any;
       /// #if !MTPROTO_HTTP && !MTPROTO_HTTP_UPLOAD
@@ -1325,7 +1325,7 @@ export default class MTPNetworker {
   
   public reqResendMessage(msgId: string) {
     if(this.debug) {
-      this.log('Req resend', msgId);
+      this.log.debug('Req resend', msgId);
     }
 
     this.pendingResends.push(msgId);
