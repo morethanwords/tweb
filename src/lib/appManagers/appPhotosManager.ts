@@ -15,7 +15,7 @@ import { CancellablePromise } from "../../helpers/cancellablePromise";
 import { getFileNameByLocation } from "../../helpers/fileName";
 import { safeReplaceArrayInObject, defineNotNumerableProperties, isObject } from "../../helpers/object";
 import { isSafari } from "../../helpers/userAgent";
-import { FileLocation, InputFileLocation, InputMedia, Photo, PhotoSize, PhotosPhotos } from "../../layer";
+import { InputFileLocation, InputMedia, Photo, PhotoSize, PhotosPhotos } from "../../layer";
 import apiManager from "../mtproto/mtprotoworker";
 import referenceDatabase, { ReferenceContext } from "../mtproto/referenceDatabase";
 import { calcImageInBox } from "../../helpers/dom";
@@ -274,13 +274,13 @@ export class AppPhotosManager {
     
     // maybe it's a thumb
     const isPhoto = (photoSize._ === 'photoSize' || photoSize._ === 'photoSizeProgressive') && photo.access_hash && photo.file_reference;
-    const location: InputFileLocation.inputPhotoFileLocation | InputFileLocation.inputDocumentFileLocation | FileLocation = isPhoto ? {
+    const location: InputFileLocation.inputPhotoFileLocation | InputFileLocation.inputDocumentFileLocation = {
       _: isDocument ? 'inputDocumentFileLocation' : 'inputPhotoFileLocation',
       id: photo.id,
       access_hash: photo.access_hash,
       file_reference: photo.file_reference,
       thumb_size: photoSize.type
-    } : (photoSize as PhotoSize.photoSize).location;
+    };
 
     return {
       dcId: photo.dc_id, 

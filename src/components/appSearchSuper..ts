@@ -908,12 +908,17 @@ export default class AppSearchSuper {
       }
 
       participants.forEach(participant => {
-        const user = appUsersManager.getUser(participant.user_id);
+        const peerId = appChatsManager.getParticipantPeerId(participant);
+        if(peerId < 0) {
+          return;
+        }
+
+        const user = appUsersManager.getUser(peerId);
         if(user.pFlags.deleted) {
           return;
         }
 
-        this.membersList.add(participant.user_id);
+        this.membersList.add(peerId);
       });
     };
 
@@ -1164,6 +1169,10 @@ export default class AppSearchSuper {
       const inputFilter = mediaTab.inputFilter;
       return !this.loaded[inputFilter] || (this.historyStorage[inputFilter] && this.usedFromHistory[inputFilter] < this.historyStorage[inputFilter].length);
     });
+
+    if(peerId > 0) {
+      toLoad.findAndSplice(mediaTab => mediaTab.type === 'members');
+    }
 
     if(!toLoad.length) {
       return;
