@@ -35,6 +35,7 @@ import appNotificationsManager from "./appNotificationsManager";
 import PeerTitle from "../../components/peerTitle";
 import { i18n } from "../langPack";
 import findUpTag from "../../helpers/dom/findUpTag";
+import { LazyLoadQueueIntersector } from "../../components/lazyLoadQueue";
 
 export type DialogDom = {
   avatarEl: AvatarElement,
@@ -1213,12 +1214,13 @@ export class AppDialogsManager {
     meAsSaved?: boolean,
     append?: boolean,
     avatarSize?: number,
-    autonomous?: boolean
+    autonomous?: boolean,
+    lazyLoadQueue?: LazyLoadQueueIntersector,
   }) {
-    return this.addDialog(options.dialog, options.container, options.drawStatus, options.rippleEnabled, options.onlyFirstName, options.meAsSaved, options.append, options.avatarSize, options.autonomous);
+    return this.addDialog(options.dialog, options.container, options.drawStatus, options.rippleEnabled, options.onlyFirstName, options.meAsSaved, options.append, options.avatarSize, options.autonomous, options.lazyLoadQueue);
   }
 
-  public addDialog(_dialog: Dialog | number, container?: HTMLUListElement | Scrollable | false, drawStatus = true, rippleEnabled = true, onlyFirstName = false, meAsSaved = true, append = true, avatarSize = 54, autonomous = !!container) {
+  public addDialog(_dialog: Dialog | number, container?: HTMLUListElement | Scrollable | false, drawStatus = true, rippleEnabled = true, onlyFirstName = false, meAsSaved = true, append = true, avatarSize = 54, autonomous = !!container, lazyLoadQueue?: LazyLoadQueueIntersector) {
     let dialog: Dialog;
     
     if(typeof(_dialog) === 'number') {
@@ -1248,6 +1250,7 @@ export class AppDialogsManager {
     }
 
     const avatarEl = new AvatarElement();
+    avatarEl.lazyLoadQueue = lazyLoadQueue;
     avatarEl.setAttribute('dialog', meAsSaved ? '1' : '0');
     avatarEl.setAttribute('peer', '' + peerId);
     avatarEl.classList.add('dialog-avatar', 'avatar-' + avatarSize);

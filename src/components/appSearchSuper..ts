@@ -883,6 +883,7 @@ export default class AppSearchSuper {
       
       if(!this.membersList) {
         this.membersList = new SortedUserList();
+        this.membersList.lazyLoadQueue = this.lazyLoadQueue;
         this.membersList.list.addEventListener('click', (e) => {
           const li = findUpTag(e.target, 'LI');
           if(!li) {

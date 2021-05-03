@@ -4,6 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import type { LazyLoadQueueIntersector } from "../lazyLoadQueue";
 import { formatNumber } from "../../helpers/number";
 import { Message } from "../../layer";
 import appMessagesManager from "../../lib/appManagers/appMessagesManager";
@@ -26,6 +27,7 @@ export default class RepliesElement extends HTMLElement {
   public message: Message.message;
   public type: 'footer' | 'beside';
   public loadPromises: Promise<any>[];
+  public lazyLoadQueue: LazyLoadQueueIntersector;
   
   private updated = false;
 
@@ -69,6 +71,7 @@ export default class RepliesElement extends HTMLElement {
             avatarElem = new AvatarElement();
             avatarElem.setAttribute('dialog', '0');
             avatarElem.classList.add('avatar-30');
+            avatarElem.lazyLoadQueue = this.lazyLoadQueue;
             
             if(this.loadPromises) {
               avatarElem.loadPromises = this.loadPromises;

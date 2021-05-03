@@ -2560,7 +2560,8 @@ export default class ChatBubbles {
         bubbleContainer,
         message: messageWithReplies,
         messageDiv,
-        loadPromises
+        loadPromises,
+        lazyLoadQueue: this.lazyLoadQueue
       });
 
       if(isFooter) {
