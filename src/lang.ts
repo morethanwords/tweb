@@ -406,6 +406,8 @@ const lang = {
   "Open": "Open",
   "OpenUrlTitle": "Open Link",
   "OpenUrlAlert2": "Do you want to open %1$s?",
+  "FilterNoChatsToDisplay": "Folder is empty",
+  "FilterNoChatsToDisplayInfo": "No chats currently belong to this folder.",
 
   // * macos
   "AccountSettings.Filters": "Chat Folders",

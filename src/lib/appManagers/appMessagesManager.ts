@@ -1540,7 +1540,7 @@ export class AppMessagesManager {
   }
 
   public async refreshConversations() {
-    const limit = 100, outDialogs: Dialog[] = [];
+    const limit = 200, outDialogs: Dialog[] = [];
     for(let folderId = 0; folderId < 2; ++folderId) {
       let offsetDate = 0;
       for(;;) {
@@ -1575,7 +1575,7 @@ export class AppMessagesManager {
   }
 
   public async getConversationsAll(query = '', folderId = 0) {
-    const limit = 100, outDialogs: Dialog[] = [];
+    const limit = 200, outDialogs: Dialog[] = [];
     for(; folderId < 2; ++folderId) {
       let offsetIndex = 0;
       for(;;) {

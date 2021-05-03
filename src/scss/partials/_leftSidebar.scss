@@ -606,21 +606,6 @@
     } */
   }
 
-  .btn-primary {
-    width: auto;
-    height: 40px;
-    align-items: center;
-    margin: 15px auto 1rem;
-    border-radius: 30px;
-    padding: 0 24px 0 12px;
-    display: flex;
-  }
-
-  .tgico-add:before {
-    font-size: 24px;
-    margin-right: 6px;
-  }
-
   .row {
     .btn-primary {
       height: 30px;
@@ -1157,5 +1142,40 @@
 .background-image-container {
   .sidebar-left-section {
     padding-bottom: .5rem;
+  }
+}
+
+.empty-folder {
+  top: 40%;
+  transform: translateY(-50%);
+  text-align: center;
+  line-height: var(--line-height);
+  user-select: none;
+  
+  .media-sticker-wrapper {
+    width: 128px;
+    height: 128px;
+    margin: 0 auto 1.9375rem;
+    position: relative;
+  }
+
+  &-header {
+    font-size: 1.25rem;
+    font-weight: 500;
+  }
+
+  &-subtitle {
+    color: var(--secondary-text-color);
+    font-size: .875rem;
+    margin-top: .3125rem;
+  }
+
+  .btn-control {
+    margin-top: 1.75rem;
+    padding: 0 1.0625rem 0 .8125rem;
+
+    &:before {
+      margin-right: .625rem;
+    }
   }
 }
