@@ -12,7 +12,7 @@
 import { MOUNT_CLASS_TO } from "../../config/debug";
 import { numberThousandSplitter } from "../../helpers/number";
 import { isObject, safeReplaceObject, copy, deepEqual } from "../../helpers/object";
-import { ChannelParticipant, Chat, ChatAdminRights, ChatBannedRights, ChatFull, ChatParticipants, InputChannel, InputChatPhoto, InputFile, InputPeer, SendMessageAction, Update, Updates } from "../../layer";
+import { ChannelParticipant, Chat, ChatAdminRights, ChatBannedRights, ChatFull, ChatParticipant, ChatParticipants, InputChannel, InputChatPhoto, InputFile, InputPeer, SendMessageAction, Update, Updates } from "../../layer";
 import { i18n, LangPackKey } from "../langPack";
 import apiManagerProxy from "../mtproto/mtprotoworker";
 import apiManager from '../mtproto/mtprotoworker';
@@ -742,11 +742,18 @@ export class AppChatsManager {
     });
   }
 
+  public getParticipantPeerId(participant: ChannelParticipant | ChatParticipant) {
+    const peerId = (participant as ChannelParticipant.channelParticipantBanned).peer ? 
+      appPeersManager.getPeerId((participant as ChannelParticipant.channelParticipantBanned).peer) : 
+      (participant as ChatParticipant.chatParticipant).user_id;
+    return peerId;
+  }
+
   public editBanned(id: number, participant: number | ChannelParticipant, banned_rights: ChatBannedRights) {
-    const userId = typeof(participant) === 'number' ? participant : participant.user_id;
+    const peerId = typeof(participant) === 'number' ? participant : this.getParticipantPeerId(participant);
     return apiManager.invokeApi('channels.editBanned', {
       channel: this.getChannelInput(id),
-      user_id: appUsersManager.getUserInput(userId),
+      participant: appPeersManager.getInputPeerById(peerId),
       banned_rights
     }).then((updates) => {
       this.onChatUpdated(id, updates);
@@ -759,15 +766,16 @@ export class AppChatsManager {
             _: 'updateChannelParticipant',
             channel_id: id,
             date: timestamp,
-            //qts: 0,
-            user_id: userId,
+            actor_id: undefined,
+            qts: undefined,
+            user_id: peerId,
             prev_participant: participant,
             new_participant: Object.keys(banned_rights.pFlags).length ? {
               _: 'channelParticipantBanned',
               date: timestamp,
               banned_rights,
               kicked_by: appUsersManager.getSelf().id,
-              user_id: userId,
+              peer: appPeersManager.getOutputPeer(peerId),
               pFlags: {}
             } : undefined
           } as Update.updateChannelParticipant

@@ -353,9 +353,11 @@ export default class AppSelectPeers {
       return;
     }
     
-    const userIds = participants.participants.map(participant => participant.user_id);
-    userIds.findAndSplice(u => u === rootScope.myId);
-    this.renderResultsFunc(userIds);
+    const peerIds = participants.participants.map(participant => {
+      return appChatsManager.getParticipantPeerId(participant);
+    });
+    peerIds.findAndSplice(u => u === rootScope.myId);
+    this.renderResultsFunc(peerIds);
 
     if(this.list.childElementCount >= participants.count || participants.participants.length < pageCount) {
       this.loadedWhat.channelParticipants = true;

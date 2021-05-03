@@ -705,7 +705,6 @@ export class AppMessagesManager {
           w: options.width,
           h: options.height,
           type: 'full',
-          location: null,
           size: file.size
         };
       } else if(attachType === 'video') {
@@ -715,7 +714,6 @@ export class AppMessagesManager {
             w: options.width,
             h: options.height,
             type: 'full',
-            location: null,
             size: options.thumbBlob.size
           };
 
