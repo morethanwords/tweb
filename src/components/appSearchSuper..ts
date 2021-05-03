@@ -477,6 +477,7 @@ export default class AppSearchSuper {
           //this.log(message, photo);
 
           let wrapped: ReturnType<typeof wrapPhoto>;
+          const size = appPhotosManager.choosePhotoSize(media, 200, 200);
           if(media._ !== 'photo') {
             wrapped = wrapVideo({
               doc: media,
@@ -488,7 +489,8 @@ export default class AppSearchSuper {
               middleware,
               onlyPreview: true,
               withoutPreloader: true,
-              noPlayButton: true
+              noPlayButton: true,
+              size
             }).thumb;
           } else {
             wrapped = wrapPhoto({
@@ -500,7 +502,8 @@ export default class AppSearchSuper {
               lazyLoadQueue: this.lazyLoadQueue,
               middleware,
               withoutPreloader: true,
-              noBlur: true
+              noBlur: true,
+              size
             });
           }
 

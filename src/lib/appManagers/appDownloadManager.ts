@@ -270,9 +270,9 @@ export class AppDownloadManager {
     return download;
   }
 
-  public getCacheContext(media: MyPhoto | MyDocument, thumbSize: string = ''): ThumbCache {
+  public getCacheContext(media: MyPhoto | MyDocument, thumbSize: string = 'full'): ThumbCache {
     if(media._ === 'photo' && thumbSize !== 'i') {
-      thumbSize = '';
+      thumbSize = 'full';
     }
 
     const cache = this.thumbsCache[media._][media.id] ?? (this.thumbsCache[media._][media.id] = {});
