@@ -24,7 +24,7 @@
     position: absolute;
     right: 0;
     z-index: 3;
-    transform: translate3d(calc(var(--right-column-width) + 1px), 0, 0);
+    transform: translate3d(calc(var(--right-column-width)), 0, 0);
   
     .sidebar-content {
       min-width: var(--right-column-width);
@@ -43,7 +43,7 @@
 			transition: none;
 		}
 
-    &:before {
+    /* &:before {
       position: absolute;
       content: " ";
       display: block;
@@ -52,7 +52,11 @@
       background-color: var(--border-color);
       left: -1px;
       top: 0;
-    }
+    } */
+  }
+
+  @include respond-to(medium-screens) {
+    border-left: 1px solid var(--border-color);
   }
 
   /* @include respond-to(medium-screens) {
