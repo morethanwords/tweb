@@ -114,7 +114,22 @@
 }, {
   "predicate": "chat",
   "params": [
-    {"name": "rTitle", "type": "string"}
+    {"name": "initials", "type": "string"}
+  ]
+}, {
+  "predicate": "chatForbidden",
+  "params": [
+    {"name": "initials", "type": "string"}
+  ]
+}, {
+  "predicate": "channel",
+  "params": [
+    {"name": "initials", "type": "string"}
+  ]
+}, {
+  "predicate": "channelForbidden",
+  "params": [
+    {"name": "initials", "type": "string"}
   ]
 }, {
   "predicate": "messageActionChatLeave",

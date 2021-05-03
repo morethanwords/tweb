@@ -600,13 +600,14 @@ export namespace Chat {
 		migrated_to?: InputChannel,
 		admin_rights?: ChatAdminRights,
 		default_banned_rights?: ChatBannedRights,
-		rTitle?: string
+		initials?: string
 	};
 
 	export type chatForbidden = {
 		_: 'chatForbidden',
 		id: number,
-		title: string
+		title: string,
+		initials?: string
 	};
 
 	export type channel = {
@@ -641,7 +642,8 @@ export namespace Chat {
 		admin_rights?: ChatAdminRights,
 		banned_rights?: ChatBannedRights,
 		default_banned_rights?: ChatBannedRights,
-		participants_count?: number
+		participants_count?: number,
+		initials?: string
 	};
 
 	export type channelForbidden = {
@@ -654,7 +656,8 @@ export namespace Chat {
 		id: number,
 		access_hash: string,
 		title: string,
-		until_date?: number
+		until_date?: number,
+		initials?: string
 	};
 }
 
