@@ -20,6 +20,7 @@ import { UsernameInputField } from "../../usernameInputField";
 import { SliderSuperTabEventable } from "../../sliderTab";
 import I18n from "../../../lib/langPack";
 import PopupPeer from "../../popups/peer";
+import ButtonCorner from "../../buttonCorner";
 
 export default class AppGroupTypeTab extends SliderSuperTabEventable {
   public peerId: number;
@@ -134,7 +135,7 @@ export default class AppGroupTypeTab extends SliderSuperTabEventable {
     inputWrapper.append(linkInputField.container)
     publicSection.content.append(inputWrapper);
 
-    const applyBtn = Button('btn-circle btn-corner tgico-check is-visible');
+    const applyBtn = ButtonCorner({icon: 'check', className: 'is-visible'});
     this.content.append(applyBtn);
 
     attachClickEvent(applyBtn, () => {

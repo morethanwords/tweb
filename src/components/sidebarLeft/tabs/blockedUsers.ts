@@ -11,10 +11,10 @@ import { attachClickEvent } from "../../../helpers/dom";
 import ButtonMenu from "../../buttonMenu";
 import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
 import appUsersManager from "../../../lib/appManagers/appUsersManager";
-import Button from "../../button";
 import PopupPickUser from "../../popups/pickUser";
 import rootScope from "../../../lib/rootScope";
 import findUpTag from "../../../helpers/dom/findUpTag";
+import ButtonCorner from "../../buttonCorner";
 
 export default class AppBlockedUsersTab extends SliderSuperTab {
   public peerIds: number[];
@@ -32,7 +32,7 @@ export default class AppBlockedUsersTab extends SliderSuperTab {
       this.scrollable.append(section.container);
     }
 
-    const btnAdd = Button('btn-circle btn-corner tgico-add is-visible');
+    const btnAdd = ButtonCorner({icon: 'add', className: 'is-visible'});
     this.content.append(btnAdd);
 
     attachClickEvent(btnAdd, (e) => {

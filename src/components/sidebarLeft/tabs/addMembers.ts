@@ -7,8 +7,8 @@
 import { SliderSuperTab } from "../../slider";
 import AppSelectPeers from "../../appSelectPeers";
 import { putPreloader } from "../../misc";
-import Button from "../../button";
 import { LangPackKey, _i18n } from "../../../lib/langPack";
+import ButtonCorner from "../../buttonCorner";
 
 export default class AppAddMembersTab extends SliderSuperTab {
   private nextBtn: HTMLButtonElement;
@@ -18,7 +18,7 @@ export default class AppAddMembersTab extends SliderSuperTab {
   private skippable: boolean;
 
   protected init() {
-    this.nextBtn = Button('btn-corner btn-circle', {icon: 'arrow_next'});
+    this.nextBtn = ButtonCorner({icon: 'arrow_next'});
     this.content.append(this.nextBtn);
     
     this.nextBtn.addEventListener('click', () => {

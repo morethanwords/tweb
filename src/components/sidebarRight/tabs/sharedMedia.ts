@@ -46,6 +46,7 @@ import Scrollable from "../../scrollable";
 import { isTouchSupported } from "../../../helpers/touchSupport";
 import { isFirefox } from "../../../helpers/userAgent";
 import appDownloadManager from "../../../lib/appManagers/appDownloadManager";
+import ButtonCorner from "../../buttonCorner";
 
 let setText = (text: string, row: Row) => {
   //fastRaf(() => {
@@ -912,7 +913,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
 
     this.profile.element.append(this.searchSuper.container);
 
-    const btnAddMembers = Button('btn-corner btn-circle', {icon: 'addmember_filled'});
+    const btnAddMembers = ButtonCorner({icon: 'addmember_filled'});
     this.content.append(btnAddMembers);
 
     btnAddMembers.addEventListener('click', () => {
