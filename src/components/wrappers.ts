@@ -39,6 +39,7 @@ import renderImageFromUrl from '../helpers/dom/renderImageFromUrl';
 import sequentialDom from '../helpers/sequentialDom';
 import { fastRaf } from '../helpers/schedulers';
 import appDownloadManager from '../lib/appManagers/appDownloadManager';
+import appStickersManager from '../lib/appManagers/appStickersManager';
 
 const MAX_VIDEO_AUTOPLAY_SIZE = 50 * 1024 * 1024; // 50 MB
 
@@ -1095,6 +1096,35 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
   }
 
   return loadPromise;
+}
+
+export function wrapLocalSticker({emoji, width, height}: {
+  doc?: MyDocument,
+  url?: string,
+  emoji?: string,
+  width: number,
+  height: number,
+}) {
+  const container = document.createElement('div');
+
+  const doc = appStickersManager.getAnimatedEmojiSticker(emoji);
+  if(doc) {
+    wrapSticker({
+      doc,
+      div: container,
+      loop: false,
+      play: true,
+      width,
+      height,
+      emoji
+    }).then(() => {
+      // this.animation = player;
+    });
+  } else {
+    container.classList.add('media-sticker-wrapper');
+  }
+
+  return {container};
 }
 
 export function wrapReply(title: string, subtitle: string, message?: any) {

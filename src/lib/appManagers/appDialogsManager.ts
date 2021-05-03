@@ -16,7 +16,7 @@ import { isSafari } from "../../helpers/userAgent";
 import { logger, LogTypes } from "../logger";
 import { RichTextProcessor } from "../richtextprocessor";
 import rootScope from "../rootScope";
-import { positionElementByIndex, replaceContent } from "../../helpers/dom";
+import { attachClickEvent, positionElementByIndex, replaceContent } from "../../helpers/dom";
 import apiUpdatesManager from "./apiUpdatesManager";
 import appPeersManager from './appPeersManager';
 import appImManager from "./appImManager";
@@ -33,9 +33,13 @@ import App from "../../config/app";
 import DEBUG, { MOUNT_CLASS_TO } from "../../config/debug";
 import appNotificationsManager from "./appNotificationsManager";
 import PeerTitle from "../../components/peerTitle";
-import { i18n } from "../langPack";
+import { i18n, _i18n } from "../langPack";
 import findUpTag from "../../helpers/dom/findUpTag";
 import { LazyLoadQueueIntersector } from "../../components/lazyLoadQueue";
+import lottieLoader from "../lottieLoader";
+import { wrapLocalSticker } from "../../components/wrappers";
+import AppEditFolderTab from "../../components/sidebarLeft/tabs/editFolder";
+import appSidebarLeft from "../../components/sidebarLeft";
 
 export type DialogDom = {
   avatarEl: AvatarElement,
@@ -343,14 +347,9 @@ export class AppDialogsManager {
     });
 
     rootScope.on('dialog_drop', (e) => {
-      const {peerId, dialog} = e;
+      const {peerId} = e;
 
-      const dom = this.getDialogDom(peerId);
-      if(dom) {
-        dom.listEl.remove();
-        delete this.doms[peerId];
-      }
-
+      this.deleteDialog(peerId);
       this.setFiltersUnreadCount();
     });
 
@@ -537,6 +536,8 @@ export class AppDialogsManager {
 
     new ConnectionStatusComponent(this.chatsContainer);
     this.chatsContainer.append(bottomPart);
+
+    lottieLoader.loadLottieWorkers();
   }
 
   private getOffset(side: 'top' | 'bottom'): {index: number, pos: number} {
@@ -565,6 +566,20 @@ export class AppDialogsManager {
     return (!topOffset.index || index <= topOffset.index) && (!bottomOffset.index || index >= bottomOffset.index);
   }
 
+  private deleteDialog(peerId: number) {
+    const dom = this.getDialogDom(peerId);
+    if(dom) {
+      dom.listEl.remove();
+      delete this.doms[peerId];
+
+      this.onListLengthChange();
+
+      return true;
+    }
+
+    return false;
+  }
+
   private updateDialog(dialog: Dialog) {
     if(!dialog) {
       return;
@@ -576,17 +591,13 @@ export class AppDialogsManager {
         if(ret) {
           const idx = appMessagesManager.getDialogByPeerId(dialog.peerId)[1];
           positionElementByIndex(ret.dom.listEl, this.chatList, idx);
+          this.onListLengthChange();
         } else {
           return;
         }
       }
     } else {
-      const dom = this.getDialogDom(dialog.peerId);
-      if(dom) {
-        dom.listEl.remove();
-        delete this.doms[dialog.peerId];
-      }
-
+      this.deleteDialog(dialog.peerId);
       return;
     }
 
@@ -668,9 +679,7 @@ export class AppDialogsManager {
 
       // если больше не подходит по фильтру, удаляем
       if(folder.findIndex((dialog) => dialog.peerId === peerId) === -1) {
-        const listEl = this.doms[peerId].listEl;
-        listEl.remove();
-        delete this.doms[peerId];
+        this.deleteDialog(peerId);
       }
     }
   }
@@ -806,6 +815,8 @@ export class AppDialogsManager {
             });
           });
         }
+
+        this.onListLengthChange();
   
         this.log.debug('getDialogs ' + loadCount + ' dialogs by offset:', offsetIndex, result, this.chatList.childElementCount);
   
@@ -824,6 +835,48 @@ export class AppDialogsManager {
       this.loadDialogsPromise = undefined;
     });
   }
+
+  private onListLengthChange = () => {
+    const emptyFolder = this.chatList.parentElement.querySelector('.empty-folder');
+    if(this.scroll.loadedAll.bottom && !this.chatList.childElementCount) {
+      if(emptyFolder) {
+        return;
+      }
+
+      const BASE_CLASS = 'empty-folder';
+      const div = document.createElement('div');
+      div.classList.add(BASE_CLASS);
+      
+      div.append(wrapLocalSticker({
+        emoji: '📂',
+        width: 128,
+        height: 128
+      }).container);
+
+      const header = document.createElement('div');
+      header.classList.add(BASE_CLASS + '-header');
+      _i18n(header, 'FilterNoChatsToDisplay');
+
+      const subtitle = document.createElement('div');
+      subtitle.classList.add(BASE_CLASS + '-subtitle');
+      _i18n(subtitle, 'FilterNoChatsToDisplayInfo');
+
+      const button = Button('btn-primary btn-color-primary btn-control tgico', {
+        text: 'FilterHeaderEdit',
+        icon: 'settings'
+      });
+
+      attachClickEvent(button, () => {
+        new AppEditFolderTab(appSidebarLeft).open(appMessagesManager.filtersStorage.filters[this.filterId]);
+      });
+
+      div.append(header, subtitle, button);
+
+      this.chatList.parentElement.append(div);
+    } else if(emptyFolder) {
+      emptyFolder.remove();
+    }
+  };
 
   public onChatsRegularScroll = () => {
     if(this.sliceTimeout) clearTimeout(this.sliceTimeout);
@@ -900,9 +953,8 @@ export class AppDialogsManager {
       sliced.push(...sliceFromEnd);
 
       sliced.forEach(el => {
-        el.remove();
         const peerId = +el.dataset.peerId;
-        delete this.doms[peerId];
+        this.deleteDialog(peerId);
       });
 
       //this.log('[slicer] elements', firstElement, lastElement, rect, sliced, sliceFromStart.length, sliceFromEnd.length);
@@ -1024,8 +1076,7 @@ export class AppDialogsManager {
   
         const needIndex = index - offset;
         if(needIndex > currentOrder.length) {
-          dom.listEl.remove();
-          delete this.doms[dialog.peerId];
+          this.deleteDialog(dialog.peerId);
           return;
         }
 
