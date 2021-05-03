@@ -4,6 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import type { LazyLoadQueueIntersector } from "./lazyLoadQueue";
 import appDialogsManager, { DialogDom } from "../lib/appManagers/appDialogsManager";
 import { isInDOM, positionElementByIndex, replaceContent } from "../helpers/dom";
 import { getHeavyAnimationPromise } from "../hooks/useHeavyAnimationCheck";
@@ -20,6 +21,7 @@ export default class SortedUserList {
   public list: HTMLUListElement;
   public users: Map<number, SortedUser>;
   public sorted: Array<SortedUser>;
+  public lazyLoadQueue: LazyLoadQueueIntersector;
 
   constructor() {
     this.list = appDialogsManager.createChatList();
@@ -75,7 +77,8 @@ export default class SortedUserList {
       avatarSize: 48,
       autonomous: true,
       meAsSaved: false,
-      rippleEnabled: false
+      rippleEnabled: false,
+      lazyLoadQueue: this.lazyLoadQueue
     });
 
     const sortedUser: SortedUser = {
