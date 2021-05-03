@@ -42,7 +42,7 @@ import appDownloadManager from '../lib/appManagers/appDownloadManager';
 
 const MAX_VIDEO_AUTOPLAY_SIZE = 50 * 1024 * 1024; // 50 MB
 
-export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTail, isOut, middleware, lazyLoadQueue, noInfo, group, onlyPreview, withoutPreloader, loadPromises, noPlayButton, noAutoDownload}: {
+export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTail, isOut, middleware, lazyLoadQueue, noInfo, group, onlyPreview, withoutPreloader, loadPromises, noPlayButton, noAutoDownload, size}: {
   doc: MyDocument, 
   container?: HTMLElement, 
   message?: any, 
@@ -59,6 +59,7 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
   withoutPreloader?: boolean,
   loadPromises?: Promise<any>[],
   noAutoDownload?: boolean,
+  size?: PhotoSize
 }) {
   const isAlbumItem = !(boxWidth && boxHeight);
   const canAutoplay = (doc.type !== 'video' || (doc.size <= MAX_VIDEO_AUTOPLAY_SIZE && !isAlbumItem)) 
@@ -115,7 +116,8 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
       middleware,
       withoutPreloader,
       loadPromises,
-      noAutoDownload
+      noAutoDownload,
+      size
     });
 
     res.thumb = photoRes;
@@ -252,7 +254,8 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
       middleware,
       withoutPreloader: true,
       loadPromises,
-      noAutoDownload
+      noAutoDownload,
+      size
     });
 
     res.thumb = photoRes;
@@ -654,7 +657,7 @@ export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withT
   noBlur?: boolean,
 }) {
   if(!((photo as MyPhoto).sizes || (photo as MyDocument).thumbs)) {
-    if(boxWidth && boxHeight && photo._ === 'document') {
+    if(boxWidth && boxHeight && !size && photo._ === 'document') {
       size = appPhotosManager.setAttachmentSize(photo, container, boxWidth, boxHeight, undefined, message && message.message);
     }
 
@@ -671,8 +674,10 @@ export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withT
     };
   }
 
-  if(boxWidth === undefined) boxWidth = mediaSizes.active.regular.width;
-  if(boxHeight === undefined) boxHeight = mediaSizes.active.regular.height;
+  if(!size) {
+    if(boxWidth === undefined) boxWidth = mediaSizes.active.regular.width;
+    if(boxHeight === undefined) boxHeight = mediaSizes.active.regular.height;
+  }
 
   let loadThumbPromise: Promise<any>;
   let thumbImage: HTMLImageElement;
@@ -682,7 +687,7 @@ export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withT
   } else {
     image = new Image();
 
-    if(boxWidth && boxHeight) { // !album
+    if(boxWidth && boxHeight && !size) { // !album
       size = appPhotosManager.setAttachmentSize(photo, container, boxWidth, boxHeight, undefined, message && message.message);
     }
 
@@ -731,6 +736,11 @@ export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withT
     if(middleware && !middleware()) return Promise.resolve();
 
     return new Promise((resolve) => {
+      /* if(photo._ === 'document') {
+        console.error('wrapPhoto: will render document', photo, size, cacheContext);
+        return resolve();
+      } */
+
       renderImageFromUrl(image, cacheContext.url, () => {
         sequentialDom.mutateElement(container, () => {
           container.append(image);
