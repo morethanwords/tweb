@@ -217,9 +217,8 @@ export default class AppBackgroundTab extends SliderSuperTab {
       photo: wallpaper.document,
       message: null,
       container: media,
-      boxWidth: 0,
-      boxHeight: 0,
-      withoutPreloader: true
+      withoutPreloader: true,
+      size: appPhotosManager.choosePhotoSize(wallpaper.document, 200, 200)
     });
 
     container.dataset.docId = wallpaper.document.id;
