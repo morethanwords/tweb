@@ -13,6 +13,7 @@ import { SliderSuperTab } from "../../slider";
 import AvatarEdit from "../../avatarEdit";
 import AppAddMembersTab from "./addMembers";
 import { _i18n } from "../../../lib/langPack";
+import ButtonCorner from "../../buttonCorner";
 
 export default class AppNewChannelTab extends SliderSuperTab {
   private uploadAvatar: () => Promise<InputFile> = null;
@@ -58,7 +59,7 @@ export default class AppNewChannelTab extends SliderSuperTab {
     caption.classList.add('caption');
     _i18n(caption, 'Channel.DescriptionHolderDescrpiton');
 
-    this.nextBtn = Button('btn-corner btn-circle', {icon: 'arrow_next'});
+    this.nextBtn = ButtonCorner({icon: 'arrow_next'});
 
     this.nextBtn.addEventListener('click', () => {
       const title = this.channelNameInputField.value;

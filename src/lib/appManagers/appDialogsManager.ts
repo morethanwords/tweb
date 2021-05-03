@@ -281,7 +281,7 @@ export class AppDialogsManager {
     this.addFilter({
       id: this.filterId,
       title: '',
-      titleEl: i18n('ChatList.Filter.All'),
+      titleEl: i18n('ChatList.Filter.AllChats'),
       orderIndex: 0
     });
 
