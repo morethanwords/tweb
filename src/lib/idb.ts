@@ -35,7 +35,7 @@ export type IDBOptions = {
   version?: number
 };
 
-const DEBUG = true;
+const DEBUG = false;
 
 export default class IDBStorage {
   private static STORAGES: IDBStorage[] = [];

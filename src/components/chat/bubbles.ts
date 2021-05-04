@@ -1618,17 +1618,33 @@ export default class ChatBubbles {
 
       this.chat.dispatchEvent('setPeer', lastMsgId, !isJump);
 
-      // warning
-      if((!lastMsgId && !savedPosition) || this.bubbles[topMessage] || lastMsgId === topMessage) {
-        this.scrollable.loadedAll.bottom = true;
-      }
-
-      if(savedPosition) {
+      const isFetchIntervalNeeded = () => peerId < 0 && !this.appChatsManager.isInChat(peerId);
+      const needFetchInterval = isFetchIntervalNeeded();
+      const needFetchNew = savedPosition || needFetchInterval;
+      if(!needFetchNew) {
+        // warning
+        if(!lastMsgId || this.bubbles[topMessage] || lastMsgId === topMessage) {
+          this.scrollable.loadedAll.bottom = true;
+        }
+      } else {
         Promise.all([setPeerPromise, getHeavyAnimationPromise()]).then(() => {
           this.scrollable.checkForTriggers();
+
+          if(needFetchInterval) {
+            const middleware = this.getMiddleware();
+            const interval = window.setInterval(() => {
+              if(!middleware() || !isFetchIntervalNeeded()) {
+                clearInterval(interval);
+                return;
+              }
+
+              this.scrollable.loadedAll.bottom = false;
+              this.loadMoreHistory(false);
+            }, 30e3);
+          }
         });
       }
-
+      
       this.log('scrolledAllDown:', this.scrollable.loadedAll.bottom);
 
       //if(!this.unreaded.length && dialog) { // lol
