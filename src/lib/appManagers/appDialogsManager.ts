@@ -837,6 +837,8 @@ export class AppDialogsManager {
   }
 
   private onListLengthChange = () => {
+    return;
+    
     const emptyFolder = this.chatList.parentElement.querySelector('.empty-folder');
     if(this.scroll.loadedAll.bottom && !this.chatList.childElementCount) {
       if(emptyFolder) {
