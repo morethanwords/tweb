@@ -3652,14 +3652,7 @@ export class AppMessagesManager {
     if(!dialog && !isLocalThreadUpdate) {
       let good = true;
       if(peerId < 0) {
-        const chat = appChatsManager.getChat(-peerId);
-        if(chat._ === 'channelForbidden' 
-          || chat._ === 'chatForbidden' 
-          || (chat as Chat.chat).pFlags.left 
-          || (chat as Chat.chat).pFlags.kicked 
-          || (chat as Chat.chat).pFlags.deactivated) {
-          good = false;
-        }
+        good = appChatsManager.isInChat(-peerId);
       }
 
       if(good) {
@@ -4034,7 +4027,7 @@ export class AppMessagesManager {
     const peerId = -channelId;
     const channel = appChatsManager.getChat(channelId);
 
-    const needDialog = channel._ === 'channel' && (!channel.pFlags.left && !channel.pFlags.kicked);
+    const needDialog = channel._ === 'channel' && appChatsManager.isInChat(channelId);
     const dialog = this.getDialogOnly(peerId);
 
     const canViewHistory = channel._ === 'channel' && (channel.username || !channel.pFlags.left && !channel.pFlags.kicked);

@@ -393,6 +393,21 @@ export class AppChatsManager {
     return this.isChannel(id) && !this.isMegagroup(id);
   }
 
+  public isInChat(id: number) {
+    let good = true;
+    const chat: Chat = this.getChat(id);
+    if(chat._ === 'channelForbidden' 
+      || chat._ === 'chatForbidden' 
+      || chat._ === 'chatEmpty' 
+      || (chat as Chat.chat).pFlags.left 
+      || (chat as Chat.chat).pFlags.kicked 
+      || (chat as Chat.chat).pFlags.deactivated) {
+      good = false;
+    }
+
+    return good;
+  }
+
   public getChannelInput(id: number): InputChannel {
     if(id < 0) id = -id;
     const chat: Chat = this.getChat(id);
