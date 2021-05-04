@@ -14,7 +14,7 @@ import { tsNow } from "../../helpers/date";
 import { replaceContent } from "../../helpers/dom";
 import renderImageFromUrl from "../../helpers/dom/renderImageFromUrl";
 import sequentialDom from "../../helpers/sequentialDom";
-import { ChannelParticipantsFilter, ChannelsChannelParticipants, Chat, ChatFull, ChatParticipants, ChatPhoto, ExportedChatInvite, InputChannel, InputFile, InputFileLocation, PhotoSize, UserFull, UserProfilePhoto } from "../../layer";
+import { ChannelParticipantsFilter, ChannelsChannelParticipants, Chat, ChatFull, ChatParticipants, ChatPhoto, ExportedChatInvite, InputChannel, InputFile, InputFileLocation, PhotoSize, Update, UserFull, UserProfilePhoto } from "../../layer";
 //import apiManager from '../mtproto/apiManager';
 import apiManager from '../mtproto/mtprotoworker';
 import { RichTextProcessor } from "../richtextprocessor";
@@ -376,7 +376,7 @@ export class AppProfileManager {
             updates: [{
               _: 'updateChannel',
               channel_id: id
-            }],
+            } as Update.updateChannel],
             chats: [channel],
             users: []
           });
@@ -426,7 +426,7 @@ export class AppProfileManager {
           date: tsNow(true),
           photo: appUsersManager.getUser(myId).photo,
           previous: true
-        }
+        } as Update.updateUserPhoto
       });
     });
   }
@@ -520,6 +520,10 @@ export class AppProfileManager {
     }
 
     const renderPromise = loadPromise.then((url) => {
+      /* if(photo.stripped_thumb) {
+        url = appPhotosManager.getPreviewURLFromBytes(photo.stripped_thumb);
+      } */
+
       return new Promise<void>((resolve) => {
         renderImageFromUrl(img, url, () => {
           callback();
@@ -537,7 +541,7 @@ export class AppProfileManager {
 
     const size: PeerPhotoSize = 'photo_small';
     const avatarAvailable = !!photo;
-    const avatarRendered = !!div.firstElementChild;
+    const avatarRendered = div.firstElementChild && !(div.firstElementChild as HTMLElement).classList.contains('emoji');
     
     const myId = rootScope.myId;
 
@@ -573,7 +577,8 @@ export class AppProfileManager {
 
       let abbr: string;
       if(!title) {
-        abbr = appPeersManager.getPeer(peerId).initials ?? '';
+        const peer = appPeersManager.getPeer(peerId);
+        abbr = peer.initials ?? '';
       } else {
         abbr = RichTextProcessor.getAbbreviation(title);
       }
