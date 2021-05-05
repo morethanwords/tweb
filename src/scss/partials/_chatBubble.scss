@@ -1625,6 +1625,7 @@ $bubble-margin: .25rem;
 
   .bubble-content {
     background-color: transparent;
+    border-radius: .875rem;
   }
   
   .service-msg {
@@ -1632,9 +1633,9 @@ $bubble-margin: .25rem;
     //background-color: rgba(0, 0, 0, .24);
     background-color: var(--message-highlightning-color);
     font-size: .9375rem;
-    padding: .28125rem .5rem;
-    line-height: 1.3125;
-    border-radius: .75rem;
+    padding: .28125rem .625rem;
+    line-height: var(--line-height);
+    border-radius: inherit;
     user-select: none;
     display: flex;
     align-items: center;

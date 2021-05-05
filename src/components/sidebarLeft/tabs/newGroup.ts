@@ -15,6 +15,7 @@ import InputField from "../../inputField";
 import { SliderSuperTab } from "../../slider";
 import AvatarEdit from "../../avatarEdit";
 import { i18n } from "../../../lib/langPack";
+import ButtonCorner from "../../buttonCorner";
 
 export default class AppNewGroupTab extends SliderSuperTab {
   private searchGroup = new SearchGroup(' ', 'contacts', true, 'new-group-members disable-hover', false);
@@ -47,7 +48,7 @@ export default class AppNewGroupTab extends SliderSuperTab {
       this.nextBtn.classList.toggle('is-visible', !!value.length && !this.groupNameInputField.input.classList.contains('error'));
     });
 
-    this.nextBtn = Button('btn-corner btn-circle', {icon: 'arrow_next'});
+    this.nextBtn = ButtonCorner({icon: 'arrow_next'});
 
     this.nextBtn.addEventListener('click', () => {
       const title = this.groupNameInputField.value;

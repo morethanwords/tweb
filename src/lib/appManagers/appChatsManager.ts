@@ -12,7 +12,7 @@
 import { MOUNT_CLASS_TO } from "../../config/debug";
 import { numberThousandSplitter } from "../../helpers/number";
 import { isObject, safeReplaceObject, copy, deepEqual } from "../../helpers/object";
-import { ChannelParticipant, Chat, ChatAdminRights, ChatBannedRights, ChatFull, ChatParticipants, InputChannel, InputChatPhoto, InputFile, InputPeer, SendMessageAction, Update, Updates } from "../../layer";
+import { ChannelParticipant, Chat, ChatAdminRights, ChatBannedRights, ChatFull, ChatParticipant, ChatParticipants, ChatPhoto, InputChannel, InputChatPhoto, InputFile, InputPeer, SendMessageAction, Update, Updates } from "../../layer";
 import { i18n, LangPackKey } from "../langPack";
 import apiManagerProxy from "../mtproto/mtprotoworker";
 import apiManager from '../mtproto/mtprotoworker';
@@ -178,7 +178,8 @@ export class AppChatsManager {
     apiChats.forEach(chat => this.saveApiChat(chat, override));
   }
 
-  public saveApiChat(chat: any, override?: boolean) {
+  public saveApiChat(chat: Chat, override?: boolean) {
+    if(chat._ === 'chatEmpty') return;
     /* if(chat._ !== 'chat' && chat._ !== 'channel') {
       return;
     } */
@@ -186,17 +187,17 @@ export class AppChatsManager {
     // * exclude from state
     // defineNotNumerableProperties(chat, ['rTitle', 'initials']);
 
-    const oldChat = this.chats[chat.id];
+    const oldChat: Exclude<Chat, Chat.chatEmpty> = this.chats[chat.id];
 
     /* if(oldChat && !override) {
       return;
     } */
 
-    if(chat.pFlags === undefined) {
-      chat.pFlags = {};
+    if((chat as Chat.chat).pFlags === undefined) {
+      (chat as Chat.chat).pFlags = {};
     }
 
-    if(chat.pFlags.min && oldChat !== undefined) {
+    if((chat as Chat.channel).pFlags.min && oldChat !== undefined) {
       return;
     }
 
@@ -205,8 +206,8 @@ export class AppChatsManager {
     if(chat._ === 'channel' &&
         chat.participants_count === undefined &&
         oldChat !== undefined &&
-        oldChat.participants_count) {
-      chat.participants_count = oldChat.participants_count;
+        (oldChat as Chat.channel).participants_count) {
+      chat.participants_count = (oldChat as Chat.channel).participants_count;
     }
 
     /* if(chat.username) {
@@ -218,9 +219,9 @@ export class AppChatsManager {
     if(oldChat === undefined) {
       this.chats[chat.id] = chat;
     } else {
-      const oldPhoto = oldChat.photo?.photo_small;
-      const newPhoto = chat.photo?.photo_small;
-      if(JSON.stringify(oldPhoto) !== JSON.stringify(newPhoto)) {
+      const oldPhotoId = ((oldChat as Chat.chat).photo as ChatPhoto.chatPhoto)?.photo_id;
+      const newPhotoId = ((chat as Chat.chat).photo as ChatPhoto.chatPhoto)?.photo_id;
+      if(oldPhotoId !== newPhotoId) {
         changedPhoto = true;
       }
 
@@ -390,6 +391,21 @@ export class AppChatsManager {
 
   public isBroadcast(id: number) {
     return this.isChannel(id) && !this.isMegagroup(id);
+  }
+
+  public isInChat(id: number) {
+    let good = true;
+    const chat: Chat = this.getChat(id);
+    if(chat._ === 'channelForbidden' 
+      || chat._ === 'chatForbidden' 
+      || chat._ === 'chatEmpty' 
+      || (chat as Chat.chat).pFlags.left 
+      || (chat as Chat.chat).pFlags.kicked 
+      || (chat as Chat.chat).pFlags.deactivated) {
+      good = false;
+    }
+
+    return good;
   }
 
   public getChannelInput(id: number): InputChannel {
@@ -742,11 +758,18 @@ export class AppChatsManager {
     });
   }
 
+  public getParticipantPeerId(participant: ChannelParticipant | ChatParticipant) {
+    const peerId = (participant as ChannelParticipant.channelParticipantBanned).peer ? 
+      appPeersManager.getPeerId((participant as ChannelParticipant.channelParticipantBanned).peer) : 
+      (participant as ChatParticipant.chatParticipant).user_id;
+    return peerId;
+  }
+
   public editBanned(id: number, participant: number | ChannelParticipant, banned_rights: ChatBannedRights) {
-    const userId = typeof(participant) === 'number' ? participant : participant.user_id;
+    const peerId = typeof(participant) === 'number' ? participant : this.getParticipantPeerId(participant);
     return apiManager.invokeApi('channels.editBanned', {
       channel: this.getChannelInput(id),
-      user_id: appUsersManager.getUserInput(userId),
+      participant: appPeersManager.getInputPeerById(peerId),
       banned_rights
     }).then((updates) => {
       this.onChatUpdated(id, updates);
@@ -759,15 +782,16 @@ export class AppChatsManager {
             _: 'updateChannelParticipant',
             channel_id: id,
             date: timestamp,
-            //qts: 0,
-            user_id: userId,
+            actor_id: undefined,
+            qts: undefined,
+            user_id: peerId,
             prev_participant: participant,
             new_participant: Object.keys(banned_rights.pFlags).length ? {
               _: 'channelParticipantBanned',
               date: timestamp,
               banned_rights,
               kicked_by: appUsersManager.getSelf().id,
-              user_id: userId,
+              peer: appPeersManager.getOutputPeer(peerId),
               pFlags: {}
             } : undefined
           } as Update.updateChannelParticipant

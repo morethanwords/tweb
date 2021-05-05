@@ -14,6 +14,8 @@ import { CancellablePromise, deferredPromise } from "../helpers/cancellablePromi
 import { throttle } from "../helpers/schedulers";
 import IDBStorage, { IDBOptions } from "./idb";
 
+function noop() {}
+
 export default class AppStorage<Storage extends Record<string, any>/* Storage extends {[name: string]: any} *//* Storage extends Record<string, any> */> {
   private static STORAGES: AppStorage<any>[] = [];
   private storage: IDBStorage;//new CacheStorageController('session');
@@ -55,6 +57,10 @@ export default class AppStorage<Storage extends Record<string, any>/* Storage ex
       }
 
       deferred.resolve();
+
+      if(this.keysToSet.size) {
+        this.saveThrottled();
+      }
     }, 16, false);
 
     this.getThrottled = throttle(async() => {
@@ -73,19 +79,28 @@ export default class AppStorage<Storage extends Record<string, any>/* Storage ex
       }, (error) => {
         if(!['NO_ENTRY_FOUND', 'STORAGE_OFFLINE'].includes(error)) {
           this.useStorage = false;
-          console.error('[AS]: get error:', error, keys);
+          console.error('[AS]: get error:', error, keys, storageOptions.storeName);
         }
 
         for(let i = 0, length = keys.length; i < length; ++i) {
           const key = keys[i];
           const deferred = this.getPromises.get(key);
           if(deferred) {
-            deferred.reject(error);
+            //deferred.reject(error);
+            deferred.resolve();
             this.getPromises.delete(key);
           }
         }
+      }).finally(() => {
+        if(this.getPromises.size) {
+          this.getThrottled();
+        }
       });
     }, 16, false);
+  }
+
+  public isAvailable() {
+    return this.useStorage;
   }
 
   public getCache() {
@@ -119,7 +134,7 @@ export default class AppStorage<Storage extends Record<string, any>/* Storage ex
   }
 
   public getAll() {
-    return this.storage.getAll();
+    return this.storage.getAll().catch(() => []);
   }
 
   public set(obj: Partial<Storage>, onlyLocal = false) {
@@ -151,7 +166,7 @@ export default class AppStorage<Storage extends Record<string, any>/* Storage ex
       }
     }
 
-    return this.saveDeferred;
+    return this.useStorage ? this.saveDeferred : Promise.resolve();
   }
 
   public async delete(key: keyof Storage, saveLocal = false) {
@@ -179,7 +194,7 @@ export default class AppStorage<Storage extends Record<string, any>/* Storage ex
   }
 
   public clear() {
-    return this.storage.deleteAll();
+    return this.storage.deleteAll().catch(noop);
   }
 
   public static toggleStorage(enabled: boolean) {
@@ -194,10 +209,10 @@ export default class AppStorage<Storage extends Record<string, any>/* Storage ex
       } else {
         return storage.set(storage.cache);
       }
-    }));
+    })).catch(noop);
   }
 
   public deleteDatabase() {
-    return IDBStorage.deleteDatabase();
+    return IDBStorage.deleteDatabase().catch(noop);
   }
 }

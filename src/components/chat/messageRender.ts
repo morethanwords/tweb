@@ -7,6 +7,7 @@
 import { getFullDate } from "../../helpers/date";
 import { formatNumber } from "../../helpers/number";
 import RichTextProcessor from "../../lib/richtextprocessor";
+import { LazyLoadQueueIntersector } from "../lazyLoadQueue";
 import { wrapReply } from "../wrappers";
 import Chat from "./chat";
 import RepliesElement from "./replies";
@@ -65,18 +66,20 @@ export namespace MessageRender {
     return timeSpan;
   };
 
-  export const renderReplies = ({bubble, bubbleContainer, message, messageDiv, loadPromises}: {
+  export const renderReplies = ({bubble, bubbleContainer, message, messageDiv, loadPromises, lazyLoadQueue}: {
     bubble: HTMLElement,
     bubbleContainer: HTMLElement,
     message: any,
     messageDiv: HTMLElement,
-    loadPromises?: Promise<any>[]
+    loadPromises?: Promise<any>[],
+    lazyLoadQueue?: LazyLoadQueueIntersector
   }) => {
     const isFooter = !bubble.classList.contains('sticker') && !bubble.classList.contains('emoji-big') && !bubble.classList.contains('round');
     const repliesFooter = new RepliesElement();
     repliesFooter.message = message;
     repliesFooter.type = isFooter ? 'footer' : 'beside';
     repliesFooter.loadPromises = loadPromises;
+    repliesFooter.lazyLoadQueue = lazyLoadQueue;
     repliesFooter.init();
     bubbleContainer.prepend(repliesFooter);
     return isFooter;

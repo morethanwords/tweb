@@ -132,11 +132,10 @@ export class AppStickersManager {
     const input: InputFileLocation.inputStickerSetThumb = {
       _: 'inputStickerSetThumb',
       stickerset: this.getStickerSetInput(stickerSet),
-      volume_id: thumb.location.volume_id,
-      local_id: thumb.location.local_id
+      thumb_version: stickerSet.thumb_version
     };
 
-    return {dcId, location: input, size: thumb.size, mimeType: isAnimated ? "application/x-tgsticker" : 'image/webp'};
+    return {dcId, location: input, size: thumb.size, mimeType: isAnimated ? 'application/x-tgsticker' : 'image/webp'};
   }
 
   /* public getStickerSetThumbURL(stickerSet: MTStickerSet) {

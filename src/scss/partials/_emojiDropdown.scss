@@ -44,13 +44,7 @@
 		width: calc(100% + 1rem);
 		margin-left: -.5rem;
 	} */
-	
-	> .menu-horizontal-div {
-		//font-weight: 500;
-		margin-top: 2px;
-		border: none;
-	}
-	
+
 	.emoji-container {
 		width: 100%;
 		max-width: 100%;
@@ -60,6 +54,9 @@
 
 	.emoji-tabs {
 		justify-content: center;
+		//font-weight: 500;
+		border: none;
+		border-top: 1px solid var(--border-color);
 
 		&-search {
 			position: absolute;
@@ -150,10 +147,8 @@
 	.emoji-padding, .stickers-padding {
 		.menu-horizontal-div {
 			height: 48px;
-			border-bottom: none;
 			padding: 2px;
 			width: 100%;
-			box-shadow: 0px 1px 5px -1px rgba(0, 0, 0, 0.21);
 			z-index: 4;
 			background-color: var(--surface-color);
 
@@ -270,7 +265,6 @@
 	.menu-horizontal-div {
 		width: 100%;
 		height: 48px;
-		box-shadow: 0px -2px 5px -1px rgba(0, 0, 0, .21);
 
 		.menu-horizontal-div-item {
 			font-size: 1.5rem;
@@ -288,12 +282,10 @@
 		&.active {
 			.scrollable {
 				padding: 0;
-				box-shadow: 0px 1px 5px -1px rgba(0, 0, 0, .21);
+				//box-shadow: 0px 1px 5px -1px rgba(0, 0, 0, .21);
 			}
 
 			.menu-horizontal-div {
-				box-shadow: none;
-
 				.menu-horizontal-div-item {
 					height: 48px;
 					width: 48px;

@@ -6,6 +6,7 @@
 
 import renderImageFromUrl from "../../helpers/dom/renderImageFromUrl";
 import { limitSymbols } from "../../helpers/string";
+import appDownloadManager from "../../lib/appManagers/appDownloadManager";
 import appImManager, { CHAT_ANIMATION_GROUP } from "../../lib/appManagers/appImManager";
 import appMessagesManager from "../../lib/appManagers/appMessagesManager";
 import appPhotosManager from "../../lib/appManagers/appPhotosManager";
@@ -70,22 +71,22 @@ export function wrapReplyDivAndCaption(options: {
 
         const photo = media.photo || media.document;
 
-        const cacheContext = appPhotosManager.getCacheContext(photo);
+        const size = appPhotosManager.choosePhotoSize(photo, boxSize, boxSize/* mediaSizes.active.regular.width, mediaSizes.active.regular.height */);
+        const cacheContext = appDownloadManager.getCacheContext(photo, size.type);
 
         if(!cacheContext.downloaded) {
           const sizes = photo.sizes || photo.thumbs;
           if(sizes && sizes[0].bytes) {
             setMedia = true;
-            renderImageFromUrl(mediaEl, appPhotosManager.getPreviewURLFromThumb(sizes[0]));
+            renderImageFromUrl(mediaEl, appPhotosManager.getPreviewURLFromThumb(photo, sizes[0]));
           }
         }
 
-        const size = appPhotosManager.choosePhotoSize(photo, boxSize, boxSize/* mediaSizes.active.regular.width, mediaSizes.active.regular.height */);
         if(size._ !== 'photoSizeEmpty') {
           setMedia = true;
           appPhotosManager.preloadPhoto(photo, size)
           .then(() => {
-            renderImageFromUrl(mediaEl, photo._ === 'photo' ? photo.url : appPhotosManager.getDocumentCachedThumb(photo.id).url);
+            renderImageFromUrl(mediaEl, cacheContext.url);
           });
         }
       }
