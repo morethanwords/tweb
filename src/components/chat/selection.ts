@@ -359,7 +359,7 @@ export default class ChatSelection {
 
         if(this.chat.type === 'scheduled') {
           this.selectionSendNowBtn = Button('btn-primary btn-transparent btn-short text-bold selection-container-send', {icon: 'send2'});
-          this.selectionSendNowBtn.append(i18n('Chat.Context.Scheduled.SendNow'));
+          this.selectionSendNowBtn.append(i18n('MessageScheduleSend'));
           this.listenerSetter.add(this.selectionSendNowBtn, 'click', () => {
             new PopupSendNow(this.bubbles.peerId, [...this.selectedMids], () => {
               this.cancelSelection();

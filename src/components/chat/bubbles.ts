@@ -15,7 +15,7 @@ import type { AppPeersManager } from "../../lib/appManagers/appPeersManager";
 import type sessionStorage from '../../lib/sessionStorage';
 import type Chat from "./chat";
 import { CHAT_ANIMATION_GROUP } from "../../lib/appManagers/appImManager";
-import { cancelEvent, whichChild, attachClickEvent, positionElementByIndex, reflowScrollableElement, replaceContent, htmlToDocumentFragment } from "../../helpers/dom";
+import { cancelEvent, whichChild, attachClickEvent, positionElementByIndex, reflowScrollableElement, replaceContent, htmlToDocumentFragment, setInnerHTML } from "../../helpers/dom";
 import { getObjectKeysAndSort } from "../../helpers/object";
 import { isTouchSupported } from "../../helpers/touchSupport";
 import { logger } from "../../lib/logger";
@@ -1618,7 +1618,7 @@ export default class ChatBubbles {
 
       this.chat.dispatchEvent('setPeer', lastMsgId, !isJump);
 
-      const isFetchIntervalNeeded = () => peerId < 0 && !this.appChatsManager.isInChat(peerId);
+      const isFetchIntervalNeeded = () => peerId < 0 && !this.appChatsManager.isInChat(peerId) && false;
       const needFetchInterval = isFetchIntervalNeeded();
       const needFetchNew = savedPosition || needFetchInterval;
       if(!needFetchNew) {
@@ -1975,7 +1975,7 @@ export default class ChatBubbles {
         bubble.classList.add('is-message-empty', 'emoji-big');
         canHaveTail = false;
       } else {
-        messageDiv.innerHTML = richText;
+        setInnerHTML(messageDiv, richText);
       }
       
       /* if(strLength === emojiStrLength) {
@@ -1983,7 +1983,7 @@ export default class ChatBubbles {
         messageDiv.classList.add('message-empty');
       } */
     } else {
-      messageDiv.innerHTML = richText;
+      setInnerHTML(messageDiv, richText);
     }
     
     const timeSpan = MessageRender.setTime(this.chat, message, bubble, bubbleContainer, messageDiv);
@@ -2219,21 +2219,21 @@ export default class ChatBubbles {
             nameEl.classList.add('name');
             nameEl.setAttribute('target', '_blank');
             nameEl.href = webpage.url || '#';
-            nameEl.innerHTML = RichTextProcessor.wrapEmojiText(webpage.site_name);
+            setInnerHTML(nameEl, RichTextProcessor.wrapEmojiText(webpage.site_name));
             quoteTextDiv.append(nameEl);
           }
 
           if(webpage.rTitle) {
             let titleDiv = document.createElement('div');
             titleDiv.classList.add('title');
-            titleDiv.innerHTML = webpage.rTitle;
+            setInnerHTML(titleDiv, webpage.rTitle);
             quoteTextDiv.append(titleDiv);
           }
 
           if(webpage.rDescription) {
             let textDiv = document.createElement('div');
             textDiv.classList.add('text');
-            textDiv.innerHTML = webpage.rDescription;
+            setInnerHTML(textDiv, webpage.rDescription);
             quoteTextDiv.append(textDiv);
           }
 

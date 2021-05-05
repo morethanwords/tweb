@@ -43,6 +43,7 @@ export default class PeerTitle {
   constructor(options: PeerTitleOptions) {
     this.element = document.createElement('span');
     this.element.classList.add('peer-title');
+    this.element.setAttribute('dir', 'auto');
     
     this.update(options);
     weakMap.set(this.element, this);
