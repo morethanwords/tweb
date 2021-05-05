@@ -22,34 +22,37 @@ import I18n from "../../../lib/langPack";
 import PopupPeer from "../../popups/peer";
 import ButtonCorner from "../../buttonCorner";
 
-export default class AppGroupTypeTab extends SliderSuperTabEventable {
-  public peerId: number;
+export default class AppChatTypeTab extends SliderSuperTabEventable {
+  public chatId: number;
   public chatFull: ChatFull;
 
   protected init() {
     this.container.classList.add('edit-peer-container', 'group-type-container');
-    this.setTitle('GroupType');
+
+    const isBroadcast = appChatsManager.isBroadcast(this.chatId);
+
+    this.setTitle(isBroadcast ? 'ChannelType' : 'GroupType');
 
     const section = new SettingSection({
-      name: 'GroupType'
+      name: isBroadcast ? 'ChannelType' : 'GroupType'
     });
 
     const random = randomLong();
     const privateRow = new Row({
       radioField: new RadioField({
-        langKey: 'MegaPrivate', 
+        langKey: isBroadcast ? 'ChannelPrivate' : 'MegaPrivate', 
         name: random, 
         value: 'private'
       }),
-      subtitleLangKey: 'MegaPrivateInfo'
+      subtitleLangKey: isBroadcast ? 'ChannelPrivateInfo' : 'MegaPrivateInfo'
     });
     const publicRow = new Row({
       radioField: new RadioField({
-        langKey: 'MegaPublic', 
+        langKey: isBroadcast ? 'ChannelPublic' : 'MegaPublic', 
         name: random, 
         value: 'public'
       }),
-      subtitleLangKey: 'MegaPublicInfo'
+      subtitleLangKey: isBroadcast ? 'ChannelPublicInfo' : 'MegaPublicInfo'
     });
     const form = RadioFormFromRows([privateRow, publicRow], (value) => {
       const a = [privateSection, publicSection];
@@ -61,7 +64,7 @@ export default class AppGroupTypeTab extends SliderSuperTabEventable {
       onChange();
     });
 
-    const chat: Chat = appChatsManager.getChat(-this.peerId);
+    const chat: Chat = appChatsManager.getChat(this.chatId);
 
     section.content.append(form);
 
@@ -70,7 +73,7 @@ export default class AppGroupTypeTab extends SliderSuperTabEventable {
     //let revoked = false;
     const linkRow = new Row({
       title: (this.chatFull.exported_invite as ExportedChatInvite.chatInviteExported).link,
-      subtitleLangKey: 'MegaPrivateLinkHelp',
+      subtitleLangKey: isBroadcast ? 'ChannelPrivateLinkHelp' : 'MegaPrivateLinkHelp',
       clickable: () => {
         copyTextToClipboard((this.chatFull.exported_invite as ExportedChatInvite.chatInviteExported).link);
         toast(I18n.format('LinkCopied', true));
@@ -86,7 +89,7 @@ export default class AppGroupTypeTab extends SliderSuperTabEventable {
           callback: () => {
             const toggle = toggleDisability([btnRevoke], true);
             
-            appProfileManager.getChatInviteLink(-this.peerId, true).then(link => {
+            appProfileManager.getChatInviteLink(this.chatId, true).then(link => {
               toggle();
               linkRow.title.innerHTML = link;
               //revoked = true;
@@ -102,7 +105,7 @@ export default class AppGroupTypeTab extends SliderSuperTabEventable {
     privateSection.content.append(linkRow.container, btnRevoke);
 
     const publicSection = new SettingSection({
-      caption: 'Channel.UsernameAboutGroup',
+      caption: isBroadcast ? 'Channel.UsernameAboutChannel' : 'Channel.UsernameAboutGroup',
       noDelimiter: true
     });
 
@@ -126,7 +129,7 @@ export default class AppGroupTypeTab extends SliderSuperTabEventable {
       invalidText: 'Link.Invalid',
       takenText: 'Link.Taken',
       onChange: onChange,
-      peerId: this.peerId,
+      peerId: -this.chatId,
       head: placeholder
     });
 
@@ -141,7 +144,7 @@ export default class AppGroupTypeTab extends SliderSuperTabEventable {
     attachClickEvent(applyBtn, () => {
       /* const unsetLoader =  */setButtonLoader(applyBtn);
       const username = publicRow.radioField.checked ? linkInputField.getValue() : '';
-      appChatsManager.migrateChat(-this.peerId).then(channelId => {
+      appChatsManager.migrateChat(this.chatId).then(channelId => {
         return appChatsManager.updateUsername(channelId, username);
       }).then(() => {
         //unsetLoader();
