@@ -20,6 +20,7 @@ export default class AppAddMembersTab extends SliderSuperTab {
   protected init() {
     this.nextBtn = ButtonCorner({icon: 'arrow_next'});
     this.content.append(this.nextBtn);
+    this.scrollable.container.remove();
     
     this.nextBtn.addEventListener('click', () => {
       const peerIds = this.selector.getSelected();

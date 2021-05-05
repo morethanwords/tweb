@@ -40,6 +40,7 @@ export default class Row {
 
     this.subtitle = document.createElement('div');
     this.subtitle.classList.add('row-subtitle');
+    this.subtitle.setAttribute('dir', 'auto');
     if(options.subtitle) {
       this.subtitle.innerHTML = options.subtitle;
     } else if(options.subtitleLangKey) {
@@ -89,6 +90,7 @@ export default class Row {
 
       this.title = document.createElement('div');
       this.title.classList.add('row-title');
+      this.title.setAttribute('dir', 'auto');
       if(options.title) {
         this.title.innerHTML = options.title;
       } else {

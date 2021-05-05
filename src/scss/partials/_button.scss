@@ -384,7 +384,7 @@
   --size: 54px;
   border-radius: 50%;
   height: var(--size);
-  width: var(--size) !important;
+  width: var(--size);
   line-height: var(--size);
   
   @include respond-to(handhelds) {
