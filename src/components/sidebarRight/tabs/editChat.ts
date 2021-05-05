@@ -13,15 +13,17 @@ import Button from "../../button";
 import appChatsManager, { ChatRights } from "../../../lib/appManagers/appChatsManager";
 import appProfileManager from "../../../lib/appManagers/appProfileManager";
 import { attachClickEvent, toggleDisability } from "../../../helpers/dom";
-import { ChatFull } from "../../../layer";
-import AppGroupTypeTab from "./groupType";
+import { Chat } from "../../../layer";
+import AppChatTypeTab from "./chatType";
 import rootScope from "../../../lib/rootScope";
 import AppGroupPermissionsTab from "./groupPermissions";
-import { i18n } from "../../../lib/langPack";
+import { i18n, LangPackKey } from "../../../lib/langPack";
 import PopupDeleteDialog from "../../popups/deleteDialog";
+import { addCancelButton } from "../../popups";
+import PopupPeer from "../../popups/peer";
 
-export default class AppEditGroupTab extends SliderSuperTab {
-  private groupNameInputField: InputField;
+export default class AppEditChatTab extends SliderSuperTab {
+  private chatNameInputField: InputField;
   private descriptionInputField: InputField;
   private editPeer: EditPeer;
   public chatId: number;
@@ -33,8 +35,12 @@ export default class AppEditGroupTab extends SliderSuperTab {
 
     this.container.classList.add('edit-peer-container', 'edit-group-container');
     this.setTitle('Edit');
-
+    
     const chatFull = await appProfileManager.getChatFull(this.chatId, true);
+
+    const chat: Chat.chat | Chat.channel = appChatsManager.getChat(this.chatId);
+    const isBroadcast = appChatsManager.isBroadcast(this.chatId);
+    const isChannel = appChatsManager.isChannel(this.chatId);
 
     {
       const section = new SettingSection({noDelimiter: true});
@@ -43,26 +49,23 @@ export default class AppEditGroupTab extends SliderSuperTab {
       const inputWrapper = document.createElement('div');
       inputWrapper.classList.add('input-wrapper');
   
-      this.groupNameInputField = new InputField({
-        label: 'CreateGroup.NameHolder',
-        name: 'group-name',
+      this.chatNameInputField = new InputField({
+        label: isBroadcast ? 'Channel.ChannelNameHolder' : 'CreateGroup.NameHolder',
+        name: 'chat-name',
         maxLength: 255
       });
       this.descriptionInputField = new InputField({
         label: 'DescriptionPlaceholder',
-        name: 'group-description',
+        name: 'chat-description',
         maxLength: 255
       });
-
-      const chat = appChatsManager.getChat(this.chatId);
       
-      this.groupNameInputField.setOriginalValue(chat.title);
-
+      this.chatNameInputField.setOriginalValue(chat.title);
       this.descriptionInputField.setOriginalValue(chatFull.about);
 
-      inputWrapper.append(this.groupNameInputField.container, this.descriptionInputField.container);
+      inputWrapper.append(this.chatNameInputField.container, this.descriptionInputField.container);
       
-      inputFields.push(this.groupNameInputField, this.descriptionInputField);
+      inputFields.push(this.chatNameInputField, this.descriptionInputField);
 
       this.editPeer = new EditPeer({
         peerId: -this.chatId,
@@ -74,29 +77,37 @@ export default class AppEditGroupTab extends SliderSuperTab {
       section.content.append(this.editPeer.avatarEdit.container, inputWrapper);
 
       if(appChatsManager.hasRights(this.chatId, 'change_type')) {
-        const groupTypeRow = new Row({
-          titleLangKey: 'GroupType',
+        const chatTypeRow = new Row({
+          titleLangKey: isBroadcast ? 'ChannelType' : 'GroupType',
           clickable: () => {
-            const tab = new AppGroupTypeTab(this.slider);
-            tab.peerId = -this.chatId;
+            const tab = new AppChatTypeTab(this.slider);
+            tab.chatId = this.chatId;
             tab.chatFull = chatFull;
             tab.open();
 
-            this.listenerSetter.add(tab.eventListener, 'destroy', setGroupTypeSubtitle);
+            this.listenerSetter.add(tab.eventListener, 'destroy', setChatTypeSubtitle);
           },
           icon: 'lock'
         });
 
-        const setGroupTypeSubtitle = () => {
-          groupTypeRow.subtitle.textContent = '';
-          groupTypeRow.subtitle.append(i18n(chat.username ? 'TypePublicGroup' : 'TypePrivateGroup'));
+        const setChatTypeSubtitle = () => {
+          chatTypeRow.subtitle.textContent = '';
+
+          let key: LangPackKey;
+          if(isBroadcast) {
+            key = (chat as Chat.channel).username ? 'TypePublic' : 'TypePrivate';
+          } else {
+            key = (chat as Chat.channel).username ? 'TypePublicGroup' : 'TypePrivateGroup';
+          }
+
+          chatTypeRow.subtitle.append(i18n(key));
         };
 
-        setGroupTypeSubtitle();
-        section.content.append(groupTypeRow.container);
+        setChatTypeSubtitle();
+        section.content.append(chatTypeRow.container);
       }
 
-      if(appChatsManager.hasRights(this.chatId, 'change_permissions')) {
+      if(appChatsManager.hasRights(this.chatId, 'change_permissions') && !isBroadcast) {
         const flags = [
           'send_messages',
           'send_media',
@@ -149,8 +160,8 @@ export default class AppEditGroupTab extends SliderSuperTab {
         let promises: Promise<any>[] = [];
 
         const id = this.chatId;
-        if(this.groupNameInputField.isValid()) {
-          promises.push(appChatsManager.editTitle(id, this.groupNameInputField.value));
+        if(this.chatNameInputField.isValid()) {
+          promises.push(appChatsManager.editTitle(id, this.chatNameInputField.value));
         }
 
         if(this.descriptionInputField.isValid()) {
@@ -168,6 +179,36 @@ export default class AppEditGroupTab extends SliderSuperTab {
           this.close();
         });
       }, {listenerSetter: this.listenerSetter});
+
+      /*
+      if(appChatsManager.hasRights(-this.peerId, 'change_info')) {
+        const discussionRow = new Row({
+          titleLangKey: 'PeerInfo.Discussion',
+          subtitleLangKey: 'PeerInfo.Discussion.Add',
+          clickable: true,
+          icon: 'message'
+        });
+
+        section.content.append(discussionRow.container);
+      }
+
+      const administratorsRow = new Row({
+        titleLangKey: 'PeerInfo.Administrators',
+        subtitle: '' + chatFull.admins_count,
+        icon: 'admin',
+        clickable: true
+      });
+
+      section.content.append(administratorsRow.container);
+
+      if(appChatsManager.hasRights(-this.peerId, 'change_info')) {
+        const signMessagesCheckboxField = new CheckboxField({
+          text: 'PeerInfo.SignMessages',
+          checked: false
+        });
+
+        section.content.append(signMessagesCheckboxField.label);
+      } */
     }
 
     /* {
@@ -176,11 +217,12 @@ export default class AppEditGroupTab extends SliderSuperTab {
       });
 
       const membersRow = new Row({
-        titleLangKey: 'GroupMembers',
-        subtitle: '2 500',
+        titleLangKey: isBroadcast ? 'PeerInfo.Subscribers' : 'GroupMembers',
         icon: 'newgroup',
         clickable: true
       });
+
+      membersRow.subtitle.append(i18n('Subscribers', [numberThousandSplitter(335356)]));
 
       section.content.append(membersRow.container);
 
@@ -203,17 +245,45 @@ export default class AppEditGroupTab extends SliderSuperTab {
     if(appChatsManager.hasRights(this.chatId, 'delete_chat')) {
       const section = new SettingSection({});
 
-      const btnDelete = Button('btn-primary btn-transparent danger', {icon: 'delete', text: 'DeleteMega'});
+      const btnDelete = Button('btn-primary btn-transparent danger', {icon: 'delete', text: isBroadcast ? 'PeerInfo.DeleteChannel' : 'DeleteMega'});
 
       attachClickEvent(btnDelete, () => {
-        new PopupDeleteDialog(-this.chatId, undefined, (promise) => {
-          const toggle = toggleDisability([btnDelete], true);
-          promise.then(() => {
-            this.close();
-          }, () => {
-            toggle();
+        if(isBroadcast) {
+          new PopupPeer('popup-delete-channel', {
+            peerId: -this.chatId,
+            titleLangKey: 'ChannelDeleteMenu',
+            descriptionLangKey: 'AreYouSureDeleteAndExitChannel',
+            buttons: addCancelButton([{
+              langKey: 'ChannelDeleteMenu',
+              callback: () => {
+                const toggle = toggleDisability([btnDelete], true);
+  
+              },
+              isDanger: true
+            }, {
+              langKey: 'DeleteChannelForAll',
+              callback: () => {
+                const toggle = toggleDisability([btnDelete], true);
+  
+                appChatsManager.deleteChannel(this.chatId).then(() => {
+                  this.close();
+                }, () => {
+                  toggle();
+                });
+              },
+              isDanger: true
+            }])
+          }).show();
+        } else {
+          new PopupDeleteDialog(-this.chatId, undefined, (promise) => {
+            const toggle = toggleDisability([btnDelete], true);
+            promise.then(() => {
+              this.close();
+            }, () => {
+              toggle();
+            });
           });
-        });
+        }
       }, {listenerSetter: this.listenerSetter});
 
       section.content.append(btnDelete);
@@ -221,13 +291,15 @@ export default class AppEditGroupTab extends SliderSuperTab {
       this.scrollable.append(section.container);
     }
 
-    // ! this one will fire earlier than tab's closeAfterTimeout (destroy) event and listeners will be erased, so destroy won't fire
-    this.listenerSetter.add(rootScope, 'dialog_migrate', ({migrateFrom, migrateTo}) => {
-      if(-this.chatId === migrateFrom) {
-        this.chatId = -migrateTo;
-        this._init();
-      }
-    });
+    if(!isChannel) {
+      // ! this one will fire earlier than tab's closeAfterTimeout (destroy) event and listeners will be erased, so destroy won't fire
+      this.listenerSetter.add(rootScope, 'dialog_migrate', ({migrateFrom, migrateTo}) => {
+        if(-this.chatId === migrateFrom) {
+          this.chatId = -migrateTo;
+          this._init();
+        }
+      });
+    }
   }
 
   protected init() {
