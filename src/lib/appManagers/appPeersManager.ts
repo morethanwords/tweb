@@ -9,10 +9,10 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
+import type { ChatPhoto, DialogPeer, InputDialogPeer, InputNotifyPeer, InputPeer, Peer, Update, UserProfilePhoto } from "../../layer";
+import type { LangPackKey } from "../langPack";
 import { MOUNT_CLASS_TO } from "../../config/debug";
 import { isObject } from "../../helpers/object";
-import { ChatPhoto, DialogPeer, InputDialogPeer, InputNotifyPeer, InputPeer, Peer, Update, UserProfilePhoto } from "../../layer";
-import { LangPackKey } from "../langPack";
 import { RichTextProcessor } from "../richtextprocessor";
 import rootScope from "../rootScope";
 import appChatsManager from "./appChatsManager";

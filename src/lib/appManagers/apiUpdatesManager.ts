@@ -596,7 +596,7 @@ export class ApiUpdatesManager {
   }
 
   public saveUpdate(update: Update) {
-    this.debug && this.log('saveUpdate', update);
+    //this.debug && this.log('saveUpdate', update);
     rootScope.dispatchEvent(update._, update as any);
   }
   

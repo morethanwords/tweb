@@ -117,14 +117,14 @@
       flex: 1 1 auto;
       border-radius: 4px;
       margin: 0 .125rem;
-      background-color: var(--secondary-color);
-      opacity: .3;
+      background-color: #fff;
+      opacity: .2;
       transition: opacity .2s ease-in-out;
       //min-width: 1.6875rem;
       height: inherit;
 
       &.active {
-        opacity: 1;
+        opacity: .6;
       }
     }
   }

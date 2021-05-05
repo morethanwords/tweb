@@ -110,7 +110,7 @@ export default class IDBStorage {
       var request = indexedDB.open(this.name, this.version);
 
       if(!request) {
-        throw new Error();
+        return Promise.reject();
       }
     } catch(error) {
       this.log.error('error opening db', error.message)

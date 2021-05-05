@@ -199,9 +199,9 @@ export default class GifsMasonry {
     if(willBeAPoster) {
       img = new Image();
 
-      if(!gotThumb.thumb.url) {
+      if(!gotThumb.cacheContext.url) {
         gotThumb.promise.then(() => {
-          img.src = gotThumb.thumb.url;
+          img.src = gotThumb.cacheContext.url;
         });
       }
     }
@@ -213,6 +213,6 @@ export default class GifsMasonry {
       }
     };
 
-    (gotThumb?.thumb?.url ? renderImageFromUrl(img, gotThumb.thumb.url, afterRender) : afterRender());
+    (gotThumb?.cacheContext?.url ? renderImageFromUrl(img, gotThumb.cacheContext.url, afterRender) : afterRender());
   }
 }

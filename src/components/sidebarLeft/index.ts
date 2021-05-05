@@ -208,7 +208,7 @@ export class AppSidebarLeft extends SidebarSlider {
       text: 'NewPrivateChat',
       onClick: onContactsClick
     }]);
-    this.newBtnMenu.className = 'btn-circle rp btn-corner btn-menu-toggle animated-button-icon';
+    this.newBtnMenu.className = 'btn-circle rp btn-corner z-depth-1 btn-menu-toggle animated-button-icon';
     this.newBtnMenu.insertAdjacentHTML('afterbegin', `
     <span class="tgico tgico-newchat_filled"></span>
     <span class="tgico tgico-close"></span>

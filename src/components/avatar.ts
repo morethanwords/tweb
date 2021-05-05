@@ -9,10 +9,10 @@ import appProfileManager from "../lib/appManagers/appProfileManager";
 import rootScope from "../lib/rootScope";
 import { attachClickEvent, cancelEvent } from "../helpers/dom";
 import AppMediaViewer, { AppMediaViewerAvatar } from "./appMediaViewer";
-import { Message, Photo } from "../layer";
+import { Message } from "../layer";
 import appPeersManager from "../lib/appManagers/appPeersManager";
 import appPhotosManager from "../lib/appManagers/appPhotosManager";
-//import type { LazyLoadQueueIntersector } from "./lazyLoadQueue";
+import type { LazyLoadQueueIntersector } from "./lazyLoadQueue";
 
 const onAvatarUpdate = (peerId: number) => {
   appProfileManager.removeFromAvatarsCache(peerId);
@@ -98,24 +98,22 @@ export async function openAvatarViewer(target: HTMLElement, peerId: number, midd
   }
 }
 
+const believeMe: Map<number, Set<AvatarElement>> = new Map();
+const seen: Set<number> = new Set();
+
 export default class AvatarElement extends HTMLElement {
   private peerId: number;
   private isDialog = false;
-  public peerTitle: string;
+  private peerTitle: string;
   public loadPromises: Promise<any>[];
-  //public lazyLoadQueue: LazyLoadQueueIntersector;
-  //private addedToQueue = false;
-
-  constructor() {
-    super();
-    // элемент создан
-  }
+  public lazyLoadQueue: LazyLoadQueueIntersector;
+  private addedToQueue = false;
 
   connectedCallback() {
     // браузер вызывает этот метод при добавлении элемента в документ
     // (может вызываться много раз, если элемент многократно добавляется/удаляется)
 
-    this.isDialog = !!this.getAttribute('dialog');
+    this.isDialog = this.getAttribute('dialog') === '1';
     if(this.getAttribute('clickable') === '') {
       this.setAttribute('clickable', 'set');
       let loading = false;
@@ -131,13 +129,21 @@ export default class AvatarElement extends HTMLElement {
     }
   }
 
-  /* disconnectedCallback() {
+  disconnectedCallback() {
     // браузер вызывает этот метод при удалении элемента из документа
     // (может вызываться много раз, если элемент многократно добавляется/удаляется)
+    const set = believeMe.get(this.peerId);
+    if(set && set.has(this)) {
+      set.delete(this);
+      if(!set.size) {
+        believeMe.delete(this.peerId);
+      }
+    }
+
     if(this.lazyLoadQueue) {
       this.lazyLoadQueue.unobserve(this);
     }
-  } */
+  }
 
   static get observedAttributes(): string[] {
     return ['peer', 'dialog', 'peer-title'/* массив имён атрибутов для отслеживания их изменений */];
@@ -152,36 +158,88 @@ export default class AvatarElement extends HTMLElement {
       }
       
       this.peerId = appPeersManager.getPeerMigratedTo(+newValue) || +newValue;
+
+      const wasPeerId = +oldValue;
+      if(wasPeerId) {
+        const set = believeMe.get(wasPeerId);
+        if(set) {
+          set.delete(this);
+          if(!set.size) {
+            believeMe.delete(wasPeerId);
+          }
+        }
+      }
+
       this.update();
     } else if(name === 'peer-title') {
       this.peerTitle = newValue;
     } else if(name === 'dialog') {
-      this.isDialog = !!+newValue;
+      this.isDialog = newValue === '1';
     }
   }
 
   public update() {
-    /* if(this.lazyLoadQueue) {
-      if(this.addedToQueue) return;
-      this.lazyLoadQueue.push({
-        div: this, 
-        load: () => {
-          return appProfileManager.putPhoto(this, this.peerId, this.isDialog, this.peerTitle).finally(() => {
-            this.addedToQueue = false;
-          });
+    if(this.lazyLoadQueue) {
+      if(!seen.has(this.peerId)) {
+        if(this.addedToQueue) return;
+        this.addedToQueue = true;
+        
+        let set = believeMe.get(this.peerId);
+        if(!set) {
+          set = new Set();
+          believeMe.set(this.peerId, set);
         }
-      });
-      this.addedToQueue = true;
-    } else { */
-      const res = appProfileManager.putPhoto(this, this.peerId, this.isDialog, this.peerTitle);
-      if(this.loadPromises && res && res.cached) {
-        this.loadPromises.push(res.loadPromise);
-        res.loadPromise.finally(() => {
-          this.loadPromises = undefined;
+  
+        set.add(this);
+
+        this.lazyLoadQueue.push({
+          div: this, 
+          load: () => {
+            seen.add(this.peerId);
+            return this.update();
+          }
         });
+
+        return;
+      } else if(this.addedToQueue) {
+        this.lazyLoadQueue.unobserve(this);
       }
-    //}
+    } 
+    
+    seen.add(this.peerId);
+    
+    const res = appProfileManager.putPhoto(this, this.peerId, this.isDialog, this.peerTitle);
+    const promise = res ? res.loadPromise : Promise.resolve();
+    if(this.loadPromises) {
+      if(res && res.cached) {
+        this.loadPromises.push(promise);
+      }
+
+      promise.finally(() => {
+        this.loadPromises = undefined;
+      });
+    }
+
+    if(this.addedToQueue) {
+      promise.finally(() => {
+        this.addedToQueue = false;
+      });
+    }
+
+    const set = believeMe.get(this.peerId);
+    if(set) {
+      set.delete(this);
+      const arr = Array.from(set);
+      believeMe.delete(this.peerId);
+      
+
+      for(let i = 0, length = arr.length; i < length; ++i) {
+        arr[i].update();
+      }
+    }
+
+    return promise;
   }
 }
 
-customElements.define("avatar-element", AvatarElement);
+customElements.define('avatar-element', AvatarElement);

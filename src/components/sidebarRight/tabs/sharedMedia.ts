@@ -45,6 +45,8 @@ import PopupPeer from "../../popups/peer";
 import Scrollable from "../../scrollable";
 import { isTouchSupported } from "../../../helpers/touchSupport";
 import { isFirefox } from "../../../helpers/userAgent";
+import appDownloadManager from "../../../lib/appManagers/appDownloadManager";
+import ButtonCorner from "../../buttonCorner";
 
 let setText = (text: string, row: Row) => {
   //fastRaf(() => {
@@ -425,8 +427,10 @@ class PeerProfileAvatars {
     img.draggable = false;
 
     if(photo) {
-      appPhotosManager.preloadPhoto(photo, appPhotosManager.choosePhotoSize(photo, 420, 420, false)).then(() => {
-        renderImageFromUrl(img, photo.url, () => {
+      const size = appPhotosManager.choosePhotoSize(photo, 420, 420, false);
+      appPhotosManager.preloadPhoto(photo, size).then(() => {
+        const cacheContext = appDownloadManager.getCacheContext(photo, size.type);
+        renderImageFromUrl(img, cacheContext.url, () => {
           avatar.append(img);
         });
       });
@@ -909,7 +913,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
 
     this.profile.element.append(this.searchSuper.container);
 
-    const btnAddMembers = Button('btn-corner btn-circle', {icon: 'addmember_filled'});
+    const btnAddMembers = ButtonCorner({icon: 'addmember_filled'});
     this.content.append(btnAddMembers);
 
     btnAddMembers.addEventListener('click', () => {

@@ -406,6 +406,8 @@ const lang = {
   "Open": "Open",
   "OpenUrlTitle": "Open Link",
   "OpenUrlAlert2": "Do you want to open %1$s?",
+  "FilterNoChatsToDisplay": "Folder is empty",
+  "FilterNoChatsToDisplayInfo": "No chats currently belong to this folder.",
 
   // * macos
   "AccountSettings.Filters": "Chat Folders",
@@ -488,7 +490,8 @@ const lang = {
   "ChatList.Filter.List.Title": "Chat Folders",
   "ChatList.Filter.Include.AddChat": "Add Chats",
   "ChatList.Filter.Exclude.AddChat": "Add Chats",
-  "ChatList.Filter.All": "All",
+  //"ChatList.Filter.All": "All",
+  "ChatList.Filter.AllChats": "All Chats",
   "ChatList.Filter.Contacts": "Contacts",
   "ChatList.Filter.NonContacts": "Non-Contacts",
   "ChatList.Filter.Groups": "Groups",
@@ -650,6 +653,8 @@ const lang = {
   "Schedule.SendToday": "Send today at %@",
   "Schedule.SendDate": "Send on %@ at %@",
   //"Schedule.SendWhenOnline": "Send When Online",
+  "Stickers.Recent": "Recent",
+  //"Stickers.Favorite": "Favorite",
   "TwoStepAuth.SetPasswordHelp": "You can set a password that will be required when you log in on a new device in addition to the code you get in the SMS.",
   "TwoStepAuth.GenericHelp": "You have enabled Two-Step verification.\nYou'll need the password you set up here to log in to your Telegram account.",
   "TwoStepAuth.ChangePassword": "Change Password",
