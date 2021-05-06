@@ -130,6 +130,8 @@ export default class ChatBubbles {
   public isFirstLoad = true;
   private needReflowScroll: boolean;
 
+  private fetchNewPromise: Promise<void>;
+
   constructor(private chat: Chat, private appMessagesManager: AppMessagesManager, private appStickersManager: AppStickersManager, private appUsersManager: AppUsersManager, private appInlineBotsManager: AppInlineBotsManager, private appPhotosManager: AppPhotosManager, private appDocsManager: AppDocsManager, private appPeersManager: AppPeersManager, private appChatsManager: AppChatsManager, private storage: typeof sessionStorage) {
     //this.chat.log.error('Bubbles construction');
     
@@ -1399,6 +1401,7 @@ export default class ChatBubbles {
     this.messagesQueuePromise = null;
 
     this.getHistoryTopPromise = this.getHistoryBottomPromise = undefined;
+    this.fetchNewPromise = undefined;
 
     if(this.stickyIntersector) {
       this.stickyIntersector.disconnect();
@@ -1618,8 +1621,7 @@ export default class ChatBubbles {
 
       this.chat.dispatchEvent('setPeer', lastMsgId, !isJump);
 
-      const isFetchIntervalNeeded = () => peerId < 0 && !this.appChatsManager.isInChat(peerId) && false;
-      const needFetchInterval = isFetchIntervalNeeded();
+      const needFetchInterval = this.appMessagesManager.isFetchIntervalNeeded(peerId);
       const needFetchNew = savedPosition || needFetchInterval;
       if(!needFetchNew) {
         // warning
@@ -1627,20 +1629,44 @@ export default class ChatBubbles {
           this.scrollable.loadedAll.bottom = true;
         }
       } else {
+        const middleware = this.getMiddleware();
         Promise.all([setPeerPromise, getHeavyAnimationPromise()]).then(() => {
+          if(!middleware()) {
+            return;
+          }
+
           this.scrollable.checkForTriggers();
 
           if(needFetchInterval) {
-            const middleware = this.getMiddleware();
-            const interval = window.setInterval(() => {
-              if(!middleware() || !isFetchIntervalNeeded()) {
-                clearInterval(interval);
-                return;
-              }
+            const f = () => {
+              this.fetchNewPromise = new Promise<void>((resolve) => {
+                if(!middleware() || !this.appMessagesManager.isFetchIntervalNeeded(peerId)) {
+                  resolve();
+                  return;
+                }
+  
+                this.appMessagesManager.getNewHistory(peerId, this.chat.threadId).then((historyStorage) => {
+                  if(!middleware()) {
+                    resolve();
+                    return;
+                  }
+  
+                  const slice = historyStorage.history.slice;
+                  const isBottomEnd = slice.isEnd(SliceEnd.Bottom);
+                  if(this.scrollable.loadedAll.bottom !== isBottomEnd) {
+                    this.scrollable.loadedAll.bottom = isBottomEnd;
+                    this.onScroll();
+                  }
 
-              this.scrollable.loadedAll.bottom = false;
-              this.loadMoreHistory(false);
-            }, 30e3);
+                  setTimeout(f, 30e3);
+                  resolve();
+                });
+              }).finally(() => {
+                this.fetchNewPromise = undefined;
+              });
+            };
+            
+            f();
           }
         });
       }
@@ -2626,8 +2652,14 @@ export default class ChatBubbles {
     } */
 
     const historyStorage = this.appMessagesManager.getHistoryStorage(this.peerId, this.chat.threadId);
-    if(history.includes(historyStorage.maxId)) {
+    const firstSlice = historyStorage.history.first;
+    const lastSlice = historyStorage.history.last;
+    if(firstSlice.isEnd(SliceEnd.Bottom) && history.includes(firstSlice[0])) {
       this.scrollable.loadedAll.bottom = true;
+    }
+    
+    if(lastSlice.isEnd(SliceEnd.Top) && history.includes(lastSlice[lastSlice.length - 1])) {
+      this.scrollable.loadedAll.top = true;
     }
 
     //console.time('appImManager render history');
@@ -2818,8 +2850,9 @@ export default class ChatBubbles {
         additionMsgIds = [additionMsgId];
       } else {
         const historyStorage = this.appMessagesManager.getHistoryStorage(peerId, this.chat.threadId);
-        if(historyStorage.history.length < loadCount && !historyStorage.history.slice.isEnd(SliceEnd.Both)) {
-          additionMsgIds = historyStorage.history.slice.slice();
+        const slice = historyStorage.history.slice;
+        if(slice.length < loadCount && !slice.isEnd(SliceEnd.Both)) {
+          additionMsgIds = slice.slice();
 
           // * filter last album, because we don't know is it the last item
           for(let i = additionMsgIds.length - 1; i >= 0; --i) {
