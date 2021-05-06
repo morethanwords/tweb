@@ -3695,8 +3695,20 @@ export class AppMessagesManager {
       return false;
     }
 
-    const slice = historyStorage.history.insertSlice([message.mid]);
-    slice.setEnd(SliceEnd.Bottom);
+    // * catch situation with disconnect. if message's id is lower than we already have (in bottom end slice), will sort it
+    const firstSlice = historyStorage.history.first;
+    if(firstSlice.isEnd(SliceEnd.Bottom)) {
+      let i = 0;
+      for(const length = firstSlice.length; i < length; ++i) {
+        if(message.mid > firstSlice[i]) {
+          break;
+        }
+      }
+
+      firstSlice.splice(i, 0, message.mid);
+    } else {
+      historyStorage.history.unshift(message.mid);
+    }
 
     if(historyStorage.count !== null) {
       historyStorage.count++;
