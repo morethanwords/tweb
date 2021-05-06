@@ -13,7 +13,7 @@ import type { DownloadOptions } from "../mtproto/apiFileManager";
 import { bytesFromHex } from "../../helpers/bytes";
 import { CancellablePromise } from "../../helpers/cancellablePromise";
 import { getFileNameByLocation } from "../../helpers/fileName";
-import { safeReplaceArrayInObject, defineNotNumerableProperties, isObject } from "../../helpers/object";
+import { safeReplaceArrayInObject, isObject } from "../../helpers/object";
 import { isSafari } from "../../helpers/userAgent";
 import { InputFileLocation, InputMedia, Photo, PhotoSize, PhotosPhotos } from "../../layer";
 import apiManager from "../mtproto/mtprotoworker";
