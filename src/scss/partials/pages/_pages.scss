@@ -263,3 +263,8 @@
     margin-top: 1.1875rem; // * verified with mockup
   }
 }
+
+#auth-pages > .scrollable, #main-columns {
+  opacity: 1;
+  transition: opacity var(--transition-standard-in);
+}

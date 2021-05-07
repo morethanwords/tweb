@@ -177,6 +177,8 @@ export class AppStateManager extends EventListenerBase<{
 
   public storagesResults: {[key in keyof AppStateManager['storages']]: any[]} = {} as any;
 
+  public storage = sessionStorage;
+
   constructor() {
     super();
     this.loadSavedState();

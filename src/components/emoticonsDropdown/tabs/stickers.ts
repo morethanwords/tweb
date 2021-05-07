@@ -12,6 +12,7 @@ import { MessagesAllStickers, StickerSet } from "../../../layer";
 import appDocsManager, { MyDocument } from "../../../lib/appManagers/appDocsManager";
 import appDownloadManager from "../../../lib/appManagers/appDownloadManager";
 import appStickersManager from "../../../lib/appManagers/appStickersManager";
+import { i18n } from "../../../lib/langPack";
 import lottieLoader from "../../../lib/lottieLoader";
 import { RichTextProcessor } from "../../../lib/richtextprocessor";
 import rootScope from "../../../lib/rootScope";
@@ -143,7 +144,7 @@ export default class StickersTab implements EmoticonsTab {
 
   private superStickerRenderer: SuperStickerRenderer;
 
-  categoryPush(categoryDiv: HTMLElement, categoryTitle: string, promise: Promise<MyDocument[]>, prepend?: boolean) {
+  categoryPush(categoryDiv: HTMLElement, categoryTitle: string = '', promise: Promise<MyDocument[]>, prepend?: boolean) {
     //if((docs.length % 5) !== 0) categoryDiv.classList.add('not-full');
 
     const itemsDiv = document.createElement('div');
@@ -151,7 +152,10 @@ export default class StickersTab implements EmoticonsTab {
 
     const titleDiv = document.createElement('div');
     titleDiv.classList.add('category-title');
-    titleDiv.innerHTML = categoryTitle;
+
+    if(categoryTitle) {
+      titleDiv.innerHTML = categoryTitle;
+    }
 
     categoryDiv.append(titleDiv, itemsDiv);
 
@@ -180,6 +184,8 @@ export default class StickersTab implements EmoticonsTab {
         this.queueCategoryPush.length = 0;
       }
     });
+
+    return {titleDiv};
   }
 
   async renderStickerSet(set: StickerSet.stickerSet, prepend = false) {
@@ -324,7 +330,8 @@ export default class StickersTab implements EmoticonsTab {
         };
 
         preloader.remove();
-        this.categoryPush(this.recentDiv, 'Recent', Promise.resolve(this.recentStickers), true);
+        const {titleDiv} = this.categoryPush(this.recentDiv, '', Promise.resolve(this.recentStickers), true);
+        titleDiv.append(i18n('Stickers.Recent'));
       }),
 
       appStickersManager.getAllStickers().then((res) => {

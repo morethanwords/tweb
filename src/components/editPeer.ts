@@ -9,8 +9,8 @@ import AvatarEdit from "./avatarEdit";
 import AvatarElement from "./avatar";
 import InputField from "./inputField";
 import ListenerSetter from "../helpers/listenerSetter";
-import Button from "./button";
 import { safeAssign } from "../helpers/object";
+import ButtonCorner from "./buttonCorner";
 
 export default class EditPeer {
   public nextBtn: HTMLButtonElement;
@@ -32,7 +32,7 @@ export default class EditPeer {
   }) {
     safeAssign(this, options);
 
-    this.nextBtn = Button('btn-circle btn-corner tgico-check');
+    this.nextBtn = ButtonCorner({icon: 'check'});
 
     this.avatarElem = document.createElement('avatar-element') as AvatarElement;
     this.avatarElem.classList.add('avatar-placeholder', 'avatar-120');

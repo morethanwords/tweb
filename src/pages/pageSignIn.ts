@@ -329,7 +329,12 @@ let onFirstMount = () => {
   });
 
   appStateManager.getState().then(state => {
-    signedCheckboxField.checked = state.keepSigned;
+    if(!appStateManager.storage.isAvailable()) {
+      signedCheckboxField.checked = false;
+      signedCheckboxField.label.classList.add('checkbox-disabled');
+    } else {
+      signedCheckboxField.checked = state.keepSigned;
+    }
   });
 
   btnNext = Button('btn-primary btn-color-primary', {text: 'Login.Next'});

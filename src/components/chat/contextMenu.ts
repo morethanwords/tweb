@@ -158,7 +158,7 @@ export default class ChatContextMenu {
   private init() {
     this.buttons = [{
       icon: 'send2',
-      text: 'Chat.Context.Scheduled.SendNow',
+      text: 'MessageScheduleSend',
       onClick: this.onSendScheduledClick,
       verify: () => this.chat.type === 'scheduled' && !this.message.pFlags.is_outgoing
     }, {
@@ -170,7 +170,7 @@ export default class ChatContextMenu {
       withSelection: true
     }, {
       icon: 'schedule',
-      text: 'Chat.Context.Scheduled.Reschedule',
+      text: 'MessageScheduleEditTime',
       onClick: () => {
         this.chat.input.scheduleSending(() => {
           this.appMessagesManager.editMessage(this.message, this.message.message, {

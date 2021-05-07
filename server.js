@@ -25,7 +25,7 @@ const server = useHttp ? http : https;
 let options = {};
 if(!useHttp) {
   options.key = fs.readFileSync(__dirname + '/certs/server-key.pem');
-  options.cert = s.readFileSync(__dirname + '/certs/server-cert.pem');
+  options.cert = fs.readFileSync(__dirname + '/certs/server-cert.pem');
 }
 
 server.createServer(options, app).listen(port, () => {

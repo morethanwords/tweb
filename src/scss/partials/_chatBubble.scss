@@ -995,6 +995,7 @@ $bubble-margin: .25rem;
     position: relative !important;
     height: 0px !important;
     visibility: hidden !important;
+    float: none;
 
     .inner {
       visibility: hidden !important;
@@ -1250,6 +1251,8 @@ $bubble-margin: .25rem;
     /* display: inline-flex;
     align-items: center; */
     height: 12px;
+    direction: ltr;
+    float: right; // * rtl fix
 
     i {
       font-size: 1.15rem;
@@ -1282,6 +1285,10 @@ $bubble-margin: .25rem;
     .tgico-pinnedchat {
       margin-right: .125rem;
     }
+  }
+
+  &.webpage .time {
+    float: none;
   }
 
   .video-time {
@@ -1625,6 +1632,7 @@ $bubble-margin: .25rem;
 
   .bubble-content {
     background-color: transparent;
+    border-radius: .875rem;
   }
   
   .service-msg {
@@ -1632,9 +1640,9 @@ $bubble-margin: .25rem;
     //background-color: rgba(0, 0, 0, .24);
     background-color: var(--message-highlightning-color);
     font-size: .9375rem;
-    padding: .28125rem .5rem;
-    line-height: 1.3125;
-    border-radius: .75rem;
+    padding: .28125rem .625rem;
+    line-height: var(--line-height);
+    border-radius: inherit;
     user-select: none;
     display: flex;
     align-items: center;
@@ -1892,7 +1900,7 @@ $bubble-margin: .25rem;
     margin-left: -4px;
 
     .inner {
-      color: var(--message-out-primary-color);
+      color: var(--message-out-status-color);
       bottom: 4px;
     }
 
@@ -1901,7 +1909,12 @@ $bubble-margin: .25rem;
       //vertical-align: middle;
       margin-left: 1px;
       line-height: 16px; // of message
+      color: var(--message-out-primary-color);
     }
+  }
+
+  &.is-message-empty .time .inner {
+    color: var(--message-out-primary-color);
   }
 
   /* &.is-message-empty .time:after {
@@ -1953,7 +1966,7 @@ $bubble-margin: .25rem;
     }
 
     &-time, &-subtitle {
-      color: var(--message-out-primary-color);
+      color: var(--message-out-status-color);
     }
 
     &-toggle, &-download {
@@ -2001,8 +2014,8 @@ $bubble-margin: .25rem;
     }
   }
 
-  .audio-subtitle, .contact-number, .document-size {
-    color: var(--message-out-primary-color);
+  .contact-number, .document-size {
+    color: var(--message-out-status-color);
   }
 
   poll-element {

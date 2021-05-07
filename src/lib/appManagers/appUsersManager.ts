@@ -431,7 +431,7 @@ export class AppUsersManager {
         break;
       default: {
         if(this.isBot(userId)) {
-          key = 'Presence.bot';
+          key = 'Bot';
           break;
         }
 
@@ -442,23 +442,23 @@ export class AppUsersManager {
         }
 
         if(user.pFlags.support) {
-          key = 'Presence.Support';
+          key = 'SupportStatus';
           break;
         }
 
         switch(user.status?._) {
           case 'userStatusRecently': {
-            key = 'Peer.Status.recently';
+            key = 'Lately';
             break;
           }
     
           case 'userStatusLastWeek': {
-            key = 'Peer.Status.lastWeek';
+            key = 'WithinAWeek';
             break;
           }
     
           case 'userStatusLastMonth': {
-            key = 'Peer.Status.lastMonth';
+            key = 'WithinAMonth';
             break;
           }
           
@@ -487,12 +487,12 @@ export class AppUsersManager {
           }
     
           case 'userStatusOnline': {
-            key = 'Peer.Status.online';
+            key = 'Online';
             break;
           }
     
           default: {
-            key = 'Peer.Status.longTimeAgo';
+            key = 'ALongTimeAgo';
             break;
           }
         }

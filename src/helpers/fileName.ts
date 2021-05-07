@@ -4,10 +4,10 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type { InputFileLocation, FileLocation } from "../layer";
+import type { InputFileLocation, InputStickerSet } from "../layer";
 import type { DownloadOptions } from "../lib/mtproto/apiFileManager";
 
-export function getFileNameByLocation(location: InputFileLocation | FileLocation, options?: Partial<{
+export function getFileNameByLocation(location: InputFileLocation, options?: Partial<{
   fileName: string
 }>) {
   const fileName = '';//(options?.fileName || '').split('.');
@@ -20,9 +20,17 @@ export function getFileNameByLocation(location: InputFileLocation | FileLocation
       return (fileName[0] ? fileName[0] + '_' : '') + location.id + thumbPart + (ext ? '.' + ext : ext);
     }
 
-    case 'fileLocationToBeDeprecated':
     case 'inputPeerPhotoFileLocation':
-    case 'inputStickerSetThumb':
+      return ['peerPhoto', location.photo_id, location.pFlags.big ? 'big' : 'small'].join('_');
+    
+    case 'inputStickerSetThumb': {
+      const id = (location.stickerset as InputStickerSet.inputStickerSetID).id || 
+        (location.stickerset as InputStickerSet.inputStickerSetShortName).short_name || 
+        (location.stickerset as InputStickerSet.inputStickerSetDice).emoticon || 
+        location.stickerset._;
+      return ['stickerSetThumb', id, location.thumb_version].join('_');
+    }
+
     case 'inputFileLocation': {
       return location.volume_id + '_' + location.local_id + (ext ? '.' + ext : ext);
     }

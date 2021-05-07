@@ -23,9 +23,11 @@ export default class DivAndCaption<T> {
 
     this.title = document.createElement('div');
     this.title.classList.add(className + '-title');
+    this.title.setAttribute('dir', 'auto');
 
     this.subtitle = document.createElement('div');
     this.subtitle.classList.add(className + '-subtitle');
+    this.subtitle.setAttribute('dir', 'auto');
 
     this.content.append(this.title, this.subtitle);
     this.container.append(this.border, this.content);

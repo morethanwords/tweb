@@ -14,7 +14,7 @@ import { tsNow } from "../../helpers/date";
 import { replaceContent } from "../../helpers/dom";
 import renderImageFromUrl from "../../helpers/dom/renderImageFromUrl";
 import sequentialDom from "../../helpers/sequentialDom";
-import { ChannelParticipantsFilter, ChannelsChannelParticipants, ChatFull, ChatParticipants, ChatPhoto, ExportedChatInvite, InputChannel, InputFile, InputFileLocation, PhotoSize, UserFull, UserProfilePhoto } from "../../layer";
+import { ChannelParticipantsFilter, ChannelsChannelParticipants, Chat, ChatFull, ChatParticipants, ChatPhoto, ExportedChatInvite, InputChannel, InputFile, InputFileLocation, PhotoSize, Update, UserFull, UserProfilePhoto } from "../../layer";
 //import apiManager from '../mtproto/apiManager';
 import apiManager from '../mtproto/mtprotoworker';
 import { RichTextProcessor } from "../richtextprocessor";
@@ -97,10 +97,11 @@ export class AppProfileManager {
 
     rootScope.on('chat_update', (chatId) => {
       const fullChat = this.chatsFull[chatId];
-      const chat = appChatsManager.getChat(chatId);
+      const chat: Chat.chat = appChatsManager.getChat(chatId);
       if(!chat.photo || !fullChat) {
         return;
       }
+
       const emptyPhoto = chat.photo._ === 'chatPhotoEmpty';
       //////console.log('chat_update:', fullChat);
       if(fullChat.chat_photo && emptyPhoto !== (fullChat.chat_photo._ === 'photoEmpty')) {
@@ -112,9 +113,9 @@ export class AppProfileManager {
         return;
       }
 
-      const smallUserpic = chat.photo.photo_small;
-      const smallPhotoSize = fullChat.chat_photo ? appPhotosManager.choosePhotoSize(fullChat.chat_photo as MyPhoto, 0, 0) : undefined;
-      if(!smallPhotoSize || JSON.stringify(smallUserpic) !== JSON.stringify((smallPhotoSize as PhotoSize.photoSize).location)) {
+      const photoId = (chat.photo as ChatPhoto.chatPhoto).photo_id;
+      const chatFullPhotoId = fullChat.chat_photo?.id;
+      if(chatFullPhotoId !== photoId) {
         delete this.chatsFull[chatId];
         rootScope.broadcast('chat_full_update', chatId);
       }
@@ -328,10 +329,10 @@ export class AppProfileManager {
     } */
   }
 
-  public getChannelParticipant(id: number, userId: number) {
+  public getChannelParticipant(id: number, peerId: number) {
     return apiManager.invokeApiSingle('channels.getParticipant', {
       channel: appChatsManager.getChannelInput(id),
-      user_id: appUsersManager.getUserInput(userId)
+      participant: appPeersManager.getInputPeerById(peerId),
     }).then(channelParticipant => {
       appUsersManager.saveApiUsers(channelParticipant.users);
       return channelParticipant.participant;
@@ -375,7 +376,7 @@ export class AppProfileManager {
             updates: [{
               _: 'updateChannel',
               channel_id: id
-            }],
+            } as Update.updateChannel],
             chats: [channel],
             users: []
           });
@@ -425,7 +426,7 @@ export class AppProfileManager {
           date: tsNow(true),
           photo: appUsersManager.getUser(myId).photo,
           previous: true
-        }
+        } as Update.updateUserPhoto
       });
     });
   }
@@ -452,8 +453,7 @@ export class AppProfileManager {
         _: 'inputPeerPhotoFileLocation', 
         pFlags: {},
         peer: inputPeer, 
-        volume_id: photo[size].volume_id, 
-        local_id: photo[size].local_id
+        photo_id: photo.photo_id
       };
 
       if(size === 'photo_big') {
@@ -520,6 +520,10 @@ export class AppProfileManager {
     }
 
     const renderPromise = loadPromise.then((url) => {
+      /* if(photo.stripped_thumb) {
+        url = appPhotosManager.getPreviewURLFromBytes(photo.stripped_thumb);
+      } */
+
       return new Promise<void>((resolve) => {
         renderImageFromUrl(img, url, () => {
           callback();
@@ -536,8 +540,8 @@ export class AppProfileManager {
     const photo = appPeersManager.getPeerPhoto(peerId);
 
     const size: PeerPhotoSize = 'photo_small';
-    const avatarAvailable = photo && photo[size];
-    const avatarRendered = !!div.firstElementChild;
+    const avatarAvailable = !!photo;
+    const avatarRendered = div.firstElementChild && !(div.firstElementChild as HTMLElement).classList.contains('emoji');
     
     const myId = rootScope.myId;
 
@@ -573,7 +577,8 @@ export class AppProfileManager {
 
       let abbr: string;
       if(!title) {
-        abbr = appPeersManager.getPeer(peerId).initials ?? '';
+        const peer = appPeersManager.getPeer(peerId);
+        abbr = peer.initials ?? '';
       } else {
         abbr = RichTextProcessor.getAbbreviation(title);
       }

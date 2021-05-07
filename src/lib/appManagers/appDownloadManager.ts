@@ -4,15 +4,18 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import type { DownloadOptions } from "../mtproto/apiFileManager";
+import type { ApiError } from "../mtproto/apiManager";
+import type { MyDocument } from "./appDocsManager";
+import type { MyPhoto } from "./appPhotosManager";
 import rootScope from "../rootScope";
 import apiManager from "../mtproto/mtprotoworker";
 import { deferredPromise, CancellablePromise } from "../../helpers/cancellablePromise";
-import type { DownloadOptions } from "../mtproto/apiFileManager";
 import { InputFile } from "../../layer";
 import referenceDatabase, {ReferenceBytes} from "../mtproto/referenceDatabase";
-import type { ApiError } from "../mtproto/apiManager";
 import { getFileNameByLocation } from "../../helpers/fileName";
 import CacheStorageController from "../cacheStorage";
+import { MOUNT_CLASS_TO } from "../../config/debug";
 
 export type ResponseMethodBlob = 'blob';
 export type ResponseMethodJson = 'json';
@@ -28,6 +31,17 @@ export type Download = DownloadBlob/*  | DownloadJson */;
 export type Progress = {done: number, fileName: string, total: number, offset: number};
 export type ProgressCallback = (details: Progress) => void;
 
+export type ThumbCache = {
+  downloaded: number, 
+  url: string
+};
+
+export type ThumbsCache = {
+  [id: string]: {
+    [size: string]: ThumbCache
+  }
+};
+
 export class AppDownloadManager {
   public cacheStorage = new CacheStorageController('cachedFiles');
   private downloads: {[fileName: string]: Download} = {};
@@ -35,6 +49,14 @@ export class AppDownloadManager {
   private progressCallbacks: {[fileName: string]: Array<ProgressCallback>} = {};
 
   private uploadId = 0;
+
+  private thumbsCache: {
+    photo: ThumbsCache,
+    document: ThumbsCache
+  } = {
+    photo: {},
+    document: {}
+  };
 
   constructor() {
     rootScope.on('download_progress', (e) => {
@@ -247,6 +269,17 @@ export class AppDownloadManager {
   
     return download;
   }
+
+  public getCacheContext(media: MyPhoto | MyDocument, thumbSize: string = 'full'): ThumbCache {
+    if(media._ === 'photo' && thumbSize !== 'i') {
+      thumbSize = 'full';
+    }
+
+    const cache = this.thumbsCache[media._][media.id] ?? (this.thumbsCache[media._][media.id] = {});
+    return cache[thumbSize] ?? (cache[thumbSize] = {downloaded: 0, url: ''});
+  }
 }
 
-export default new AppDownloadManager();
+const appDownloadManager = new AppDownloadManager();
+MOUNT_CLASS_TO && (MOUNT_CLASS_TO.appDownloadManager = appDownloadManager);
+export default appDownloadManager;

@@ -47,6 +47,7 @@ import { isMobile } from '../../helpers/userAgent';
 import { i18n } from '../../lib/langPack';
 import { generateTail } from './bubbles';
 import findUpClassName from '../../helpers/dom/findUpClassName';
+import ButtonCorner from '../buttonCorner';
 
 const RECORD_MIN_TIME = 500;
 const POSTING_MEDIA_NOT_ALLOWED = 'Posting media content isn\'t allowed in this group.';
@@ -156,7 +157,7 @@ export default class ChatInput {
     this.inputContainer.append(this.rowsWrapper, fakeRowsWrapper, fakeSelectionWrapper);
     this.chatInput.append(this.inputContainer);
 
-    this.goDownBtn = Button('bubbles-go-down btn-corner btn-circle z-depth-1 hide', {icon: 'arrow_down'});
+    this.goDownBtn = ButtonCorner({icon: 'arrow_down', className: 'bubbles-go-down hide'});
     this.inputContainer.append(this.goDownBtn);
 
     attachClickEvent(this.goDownBtn, (e) => {
@@ -747,6 +748,21 @@ export default class ChatInput {
         this.sendMessage();
       } else if(e.ctrlKey || e.metaKey) {
         this.handleMarkdownShortcut(e);
+      } else if((e.key === 'PageUp' || e.key === 'PageDown') && !e.shiftKey) { // * fix pushing page to left (Chrome Windows)
+        e.preventDefault();
+
+        if(e.key === 'PageUp') {
+          const range = document.createRange();
+          const sel = window.getSelection();
+          
+          range.setStart(this.messageInput.childNodes[0] || this.messageInput, 0);
+          range.collapse(true);
+          
+          sel.removeAllRanges();
+          sel.addRange(range);
+        } else {
+          placeCaretAtEnd(this.messageInput);
+        }
       }
     });
 

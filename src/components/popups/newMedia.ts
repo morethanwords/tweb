@@ -16,6 +16,7 @@ import SendContextMenu from "../chat/sendContextMenu";
 import { createPosterFromVideo, onVideoLoad } from "../../helpers/files";
 import { MyDocument } from "../../lib/appManagers/appDocsManager";
 import I18n, { i18n, LangPackKey } from "../../lib/langPack";
+import appDownloadManager from "../../lib/appManagers/appDownloadManager";
 
 type SendFileParams = Partial<{
   file: File,
@@ -288,6 +289,18 @@ export default class PopupNewMedia extends PopupElement {
             params.objectURL = URL.createObjectURL(file);
           }
 
+          const doc = {
+            _: 'document',
+            file: file,
+            file_name: file.name || '',
+            size: file.size,
+            type: isPhoto ? 'photo' : 'doc'
+          } as MyDocument;
+
+          const cacheContext = appDownloadManager.getCacheContext(doc);
+          cacheContext.url = params.objectURL;
+          cacheContext.downloaded = file.size;
+
           const docDiv = wrapDocument({
             message: {
               _: 'message',
@@ -298,15 +311,7 @@ export default class PopupNewMedia extends PopupElement {
               peerId: 0,
               media: {
                 _: 'messageMediaDocument',
-                document: {
-                  _: 'document',
-                  file: file,
-                  file_name: file.name || '',
-                  size: file.size,
-                  type: isPhoto ? 'photo' : 'doc',
-                  url: params.objectURL,
-                  downloaded: true
-                } as MyDocument
+                document: doc
               }
             } as any
           });

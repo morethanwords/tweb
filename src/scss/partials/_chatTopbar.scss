@@ -12,7 +12,6 @@
 	z-index: 1;
 	min-height: 3.5rem;
 	max-height: 3.5rem;
-	border-left: 1px solid var(--border-color);
 
 	&.is-pinned-floating {
 		&.is-pinned-audio-shown, &.is-pinned-message-shown:not(.hide-pinned) {
@@ -55,10 +54,6 @@
 				padding-left: .1875rem;
 			}
 		}
-	}
-
-	@include respond-to(handhelds) {
-		border-left: none;
 	}
 
 	.sidebar-close-button {

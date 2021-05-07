@@ -300,6 +300,21 @@
   }
 }
 
+.btn-control {
+  width: auto;
+  height: 40px;
+  align-items: center;
+  margin: 15px auto 1rem;
+  border-radius: 20px;
+  padding: 0 24px 0 12px;
+  display: flex;
+
+  &.tgico:before {
+    font-size: 1.5rem;
+    margin-right: .375rem;
+  }
+}
+
 // ! example: multiselect input, button in pinned messages chat, settings, chat background tab
 .btn-transparent {
   color: var(--primary-text-color);
@@ -369,7 +384,7 @@
   --size: 54px;
   border-radius: 50%;
   height: var(--size);
-  width: var(--size) !important;
+  width: var(--size);
   line-height: var(--size);
   
   @include respond-to(handhelds) {

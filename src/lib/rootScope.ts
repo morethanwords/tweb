@@ -163,7 +163,13 @@ export class RootScope extends EventListenerBase<{
   }
 
   public setTheme() {
-    document.documentElement.classList.toggle('night', this.getTheme().name === 'night');
+    const isNight = this.getTheme().name === 'night';
+    const colorScheme = document.head.querySelector('[name="color-scheme"]');
+    if(colorScheme) {
+      colorScheme.setAttribute('content', isNight ? 'dark' : 'light');
+    }
+
+    document.documentElement.classList.toggle('night', isNight);
   }
 
   get overlayIsActive() {
