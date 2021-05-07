@@ -5,3 +5,7 @@ declare module 'worker-loader!*' {
 
   export default WebpackWorker;
 }
+
+declare const electronHelpers: {
+  openExternal(url): void;
+} | undefined;
