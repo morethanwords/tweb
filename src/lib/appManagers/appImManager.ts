@@ -50,6 +50,7 @@ import { copy, getObjectKeysAndSort } from '../../helpers/object';
 import { getFilesFromEvent } from '../../helpers/files';
 import PeerTitle from '../../components/peerTitle';
 import PopupPeer from '../../components/popups/peer';
+import { SliceEnd } from '../../helpers/slicedArray';
 
 //console.log('appImManager included33!');
 
@@ -429,8 +430,9 @@ export class AppImManager {
   private init() {
     document.addEventListener('paste', this.onDocumentPaste, true);
     
+    const IGNORE_KEYS = new Set(['PageUp', 'PageDown', 'Meta', 'Control']);
     const onKeyDown = (e: KeyboardEvent) => {
-      if(rootScope.overlayIsActive) return;
+      if(rootScope.overlayIsActive || IGNORE_KEYS.has(e.key)) return;
       
       const target = e.target as HTMLElement;
       
@@ -440,16 +442,15 @@ export class AppImManager {
 
       const chat = this.chat;
 
-      if(e.key === 'Meta' || e.key === 'Control') {
-        return;
-      } else if(e.code === "KeyC" && (e.ctrlKey || e.metaKey) && target.tagName !== 'INPUT') {
+      if(e.code === 'KeyC' && (e.ctrlKey || e.metaKey) && target.tagName !== 'INPUT') {
         return;
       } else if(e.code === 'ArrowUp') {
         if(!chat.input.editMsgId && chat.input.isInputEmpty()) {
-          const history = appMessagesManager.getHistoryStorage(chat.peerId, chat.threadId);
-          if(history.history.length) {
+          const historyStorage = appMessagesManager.getHistoryStorage(chat.peerId, chat.threadId);
+          const slice = historyStorage.history.slice;
+          if(slice.isEnd(SliceEnd.Bottom) && slice.length) {
             let goodMid: number;
-            for(const mid of history.history.slice) {
+            for(const mid of slice) {
               const message = chat.getMessage(mid);
               const good = this.myId === chat.peerId ? message.fromId === this.myId : message.pFlags.out;
 
@@ -469,10 +470,18 @@ export class AppImManager {
               cancelEvent(e); // * prevent from scrolling
             }
           }
+        } else {
+          return;
         }
+      } else if(e.code === 'ArrowDown') {
+        return;
       }
       
-      if(chat.input.messageInput && e.target !== chat.input.messageInput && target.tagName !== 'INPUT' && !target.hasAttribute('contenteditable') && !isTouchSupported) {
+      if(chat.input.messageInput && 
+        e.target !== chat.input.messageInput && 
+        target.tagName !== 'INPUT' && 
+        !target.hasAttribute('contenteditable') && 
+        !isTouchSupported) {
         chat.input.messageInput.focus();
         placeCaretAtEnd(chat.input.messageInput);
       }

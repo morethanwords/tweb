@@ -170,6 +170,7 @@ $chat-input-inner-padding-handhelds: .25rem;
   @include splitColor(message-out-background-color, #eeffde, true, true);
   --message-out-link-color: var(--link-color);
   --message-out-primary-color: #4fae4e;
+  --message-out-status-color: var(--message-out-primary-color);
   --message-out-audio-play-button-color: #fff;
 
   // * Day theme end
@@ -215,6 +216,7 @@ html.night {
   @include splitColor(message-out-background-color, #8774E1, true, true);
   --message-out-link-color: #fff;
   --message-out-primary-color: #fff;
+  --message-out-status-color: rgba(255, 255, 255, .6);
   --message-out-audio-play-button-color: var(--message-out-background-color);
   // * Night theme end
 }

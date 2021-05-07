@@ -12,7 +12,7 @@ import { logger, LogTypes } from '../logger';
 import type { DownloadOptions } from './apiFileManager';
 import type { WorkerTaskTemplate } from '../../types';
 import { notifySomeone } from '../../helpers/context';
-import type { InputFileLocation, FileLocation, UploadFile } from '../../layer';
+import type { InputFileLocation, UploadFile } from '../../layer';
 import { CancellablePromise, deferredPromise } from '../../helpers/cancellablePromise';
 
 const log = logger('SW', LogTypes.Error | LogTypes.Debug | LogTypes.Log | LogTypes.Warn);
@@ -39,7 +39,7 @@ let taskId = 0;
 
 export interface ServiceWorkerTask extends WorkerTaskTemplate {
   type: 'requestFilePart',
-  payload: [number, InputFileLocation | FileLocation, number, number]
+  payload: [number, InputFileLocation, number, number]
 };
 
 export interface ServiceWorkerTaskResponse extends WorkerTaskTemplate {

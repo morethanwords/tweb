@@ -13,6 +13,12 @@ const set = (elem: HTMLElement | HTMLImageElement | SVGImageElement | HTMLVideoE
 
 // проблема функции в том, что она не подходит для ссылок, пригодна только для blob'ов, потому что обычным ссылкам нужен 'load' каждый раз.
 export default function renderImageFromUrl(elem: HTMLElement | HTMLImageElement | SVGImageElement | HTMLVideoElement, url: string, callback?: (err?: Event) => void, useCache = true): boolean {
+  if(!url) {
+    console.error('renderImageFromUrl: no url?', elem, url);
+    //callback && callback();
+    return false;
+  }
+
   if(((loadedURLs[url]/*  && false */) && useCache) || elem instanceof HTMLVideoElement) {
     if(elem) {
       set(elem, url);

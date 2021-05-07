@@ -25,6 +25,7 @@ import { forEachReverse, insertInDescendSortedArray } from "../../helpers/array"
 import rootScope from "../rootScope";
 import { safeReplaceObject } from "../../helpers/object";
 import { AppStateManager } from "../appManagers/appStateManager";
+import { SliceEnd } from "../../helpers/slicedArray";
 
 export default class DialogsStorage {
   private storage: AppStateManager['storages']['dialogs'];
@@ -490,13 +491,17 @@ export default class DialogsStorage {
     }
 
     const historyStorage = this.appMessagesManager.getHistoryStorage(peerId);
+    const slice = historyStorage.history.slice;
     /* if(historyStorage === undefined) { // warning
       historyStorage.history.push(mid);
       if(this.mergeReplyKeyboard(historyStorage, message)) {
         rootScope.broadcast('history_reply_markup', {peerId});
       }
-    } else  */if(!historyStorage.history.slice.length) {
+    } else  */if(!slice.length) {
       historyStorage.history.unshift(mid);
+    } else if(!slice.isEnd(SliceEnd.Bottom)) { // * this will probably never happen, however, if it does, then it will fix slice with top_message
+      const slice = historyStorage.history.insertSlice([mid]);
+      slice.setEnd(SliceEnd.Bottom);
     }
 
     historyStorage.maxId = mid;

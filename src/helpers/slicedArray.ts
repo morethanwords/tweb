@@ -4,6 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import { MOUNT_CLASS_TO } from "../config/debug";
+
 /**
  * Descend sorted storage
  */
@@ -14,15 +16,19 @@ export enum SliceEnd {
   None = 0,
   Top = 1,
   Bottom = 2,
-  Both = 4
+  Both = SliceEnd.Top | SliceEnd.Bottom
 };
 
 export interface Slice extends Array<ItemType> {
-  slicedArray: SlicedArray;
+  //slicedArray: SlicedArray;
   end: SliceEnd;
 
   isEnd: (side: SliceEnd) => boolean;
   setEnd: (side: SliceEnd) => void;
+  unsetEnd: (side: SliceEnd) => void;
+
+  slice: (from?: number, to?: number) => Slice;
+  splice: (start: number, deleteCount: number, ...items: ItemType[]) => Slice;
 }
 
 export interface SliceConstructor {
@@ -35,51 +41,84 @@ export default class SlicedArray {
   private sliceConstructor: SliceConstructor;
   
   constructor() {
-    const self = this;
-    this.sliceConstructor = class Slice extends Array<ItemType> implements Slice {
-      slicedArray: SlicedArray;
-      end: SliceEnd = SliceEnd.None;
-
-      constructor(...items: ItemType[]) {
-        super(...items);
-        this.slicedArray = self;
-      }
-
-      isEnd(side: SliceEnd) {
-        if(this.end & side) {
-          return true;
-        }
-
-        if(side === SliceEnd.Top) {
-          const slice = self.last;
-          return slice.end & side ? this.includes(slice[slice.length - 1]) || !slice.length : false;
-        } else if(side === SliceEnd.Bottom) {
-          const slice = self.first;
-          return slice.end & side ? this.includes(slice[0]) || !slice.length : false;
-        }/*  else if(side === SliceEnd.Both) {
-
-        } */
-
-        return false;
-      }
-
-      setEnd(side: SliceEnd) {
-        this.end |= side;
-
-        if(side !== SliceEnd.Both && this.end & SliceEnd.Top && this.end & SliceEnd.Bottom) {
-          this.end |= SliceEnd.Both;
-        }
-      }
-    }
+    // @ts-ignore
+    this.sliceConstructor = SlicedArray.getSliceConstructor(this);
 
     const first = this.constructSlice();
-    first.setEnd(SliceEnd.Bottom);
+    //first.setEnd(SliceEnd.Bottom);
     this.slices = [first];
+  }
+
+  private static getSliceConstructor(slicedArray: SlicedArray) {
+    return class Slice extends Array<ItemType> implements Slice {
+      //slicedArray: SlicedArray;
+      end: SliceEnd = SliceEnd.None;
+  
+      /* constructor(...items: ItemType[]) {
+        super(...items);
+        //this.slicedArray = slicedArray;
+      } */
+  
+      isEnd(side: SliceEnd): boolean {
+        if((this.end & side) === side) {
+          return true;
+        }/*  else if(!this.slicedArray) {
+          return false;
+        } */
+  
+        let isEnd = false;
+        if(side === SliceEnd.Top) {
+          const slice = slicedArray.last;
+          isEnd = slice.end & side ? this.includes(slice[slice.length - 1])/*  || !slice.length */ : false;
+        } else if(side === SliceEnd.Bottom) {
+          const slice = slicedArray.first;
+          isEnd = slice.end & side ? this.includes(slice[0])/*  || !slice.length */ : false;
+        } else if(side === SliceEnd.Both) {
+          return this.isEnd(SliceEnd.Top) && this.isEnd(SliceEnd.Bottom);
+        }
+
+        if(isEnd) {
+          this.setEnd(side);
+        }
+  
+        return isEnd;
+      }
+  
+      setEnd(side: SliceEnd) {
+        this.end |= side;
+      }
+
+      unsetEnd(side: SliceEnd) {
+        this.end ^= side;
+      }
+
+      splice(start: number, deleteCount: number, ...items: ItemType[]) {
+        const ret = super.splice(start, deleteCount, ...items);
+
+        if(!this.length) {
+          const slices = slicedArray.slices as number[][];
+          const idx = slices.indexOf(this);
+          if(idx !== -1) {
+            if(slices.length === 1) { // left empty slice without ends
+              this.unsetEnd(SliceEnd.Both);
+            } else { // delete this slice
+              slices.splice(idx, 1);
+            }
+          }
+        }
+
+        return ret;
+      }
+    }
   }
 
   public constructSlice(...items: ItemType[]) {
     //const slice = new Slice(this, ...items);
-    const slice = new this.sliceConstructor(...items);
+    // can't pass items directly to constructor because first argument is length
+    const slice = new this.sliceConstructor(items.length);
+    for(let i = 0, length = items.length; i < length; ++i) {
+      slice[i] = items[i];
+    }
     return slice;
     
     // ! code below will slow execution in 15 times
@@ -128,7 +167,7 @@ export default class SlicedArray {
     */
   }
 
-  public insertSlice(slice: ItemType[]) {
+  public insertSlice(slice: ItemType[], flatten = true) {
     if(!slice.length) {
       return;
     }
@@ -136,15 +175,15 @@ export default class SlicedArray {
     const first = this.slices[0];
     if(!first.length) {
       first.push(...slice);
-      return;
+      return first;
     }
 
     const lowerBound = slice[slice.length - 1];
     const upperBound = slice[0];
 
-    let foundSlice: Slice, lowerIndex = -1, upperIndex = -1;
-    for(let i = 0; i < this.slices.length; ++i) {
-      foundSlice = this.slices[i];
+    let foundSlice: Slice, lowerIndex = -1, upperIndex = -1, foundSliceIndex = 0;
+    for(; foundSliceIndex < this.slices.length; ++foundSliceIndex) {
+      foundSlice = this.slices[foundSliceIndex];
       lowerIndex = foundSlice.indexOf(lowerBound);
       upperIndex = foundSlice.indexOf(upperBound);
       
@@ -173,29 +212,38 @@ export default class SlicedArray {
       }
 
       this.slices.splice(insertIndex, 0, this.constructSlice(...slice));
+      foundSliceIndex = insertIndex;
     }
 
-    this.flatten();
+    if(flatten) {
+      return this.flatten(foundSliceIndex);
+    }
   }
 
-  private flatten() {
-    if(this.slices.length < 2) {
-      return;
-    }
+  private flatten(foundSliceIndex: number) {
+    if(this.slices.length >= 2) {
+      for(let i = 0, length = this.slices.length; i < (length - 1); ++i) {
+        const prevSlice = this.slices[i];
+        const nextSlice = this.slices[i + 1];
+  
+        const upperIndex = prevSlice.indexOf(nextSlice[0]);
+        if(upperIndex !== -1) {
+          prevSlice.setEnd(nextSlice.end);
+          this.slices.splice(i + 1, 1);
 
-    for(let i = 0, length = this.slices.length; i < (length - 1); ++i) {
-      const prevSlice = this.slices[i];
-      const nextSlice = this.slices[i + 1];
+          if(i < foundSliceIndex) {
+            --foundSliceIndex;
+          }
 
-      const upperIndex = prevSlice.indexOf(nextSlice[0]);
-      if(upperIndex !== -1) {
-        prevSlice.setEnd(nextSlice.end);
-        this.slices.splice(i + 1, 1);
-        length--;
-
-        this.insertSlice(nextSlice);
+          --length; // respect array bounds
+          --i;      // repeat from the same place
+  
+          this.insertSlice(nextSlice, false);
+        }
       }
     }
+
+    return this.slices[foundSliceIndex];
   }
 
   // * 
@@ -217,7 +265,7 @@ export default class SlicedArray {
   }
 
   public findSlice(item: ItemType) {
-    for(let i = 0; i < this.slices.length; ++i) {
+    for(let i = 0, length = this.slices.length; i < length; ++i) {
       const slice = this.slices[i];
       const index = slice.indexOf(item);
       if(index !== -1) {
@@ -295,6 +343,8 @@ export default class SlicedArray {
     const topWasMeantToLoad = add_offset < 0 ? limit + add_offset : limit;
     const bottomWasMeantToLoad = Math.abs(add_offset);
 
+    // can use 'slice' here to check because if it's end, then 'sliced' is out of 'slice'
+    // useful when there is only 1 message in chat on its reopening
     const topFulfilled = (slice.length - sliceOffset) >= topWasMeantToLoad || (slice.isEnd(SliceEnd.Top) ? (sliced.setEnd(SliceEnd.Top), true) : false);
     const bottomFulfilled = (sliceOffset - bottomWasMeantToLoad) >= 0 || (slice.isEnd(SliceEnd.Bottom) ? (sliced.setEnd(SliceEnd.Bottom), true) : false);
 
@@ -308,19 +358,40 @@ export default class SlicedArray {
   }
 
   public unshift(...items: ItemType[]) {
-    this.first.unshift(...items);
+    let slice = this.first;
+    if(!slice.length) {
+      slice.setEnd(SliceEnd.Bottom);
+    } else if(!slice.isEnd(SliceEnd.Bottom)) {
+      slice = this.constructSlice();
+      slice.setEnd(SliceEnd.Bottom);
+      this.slices.unshift(slice);
+    }
+
+    slice.unshift(...items);
   }
 
   public push(...items: ItemType[]) {
-    this.last.push(...items);
+    let slice = this.last;
+    if(!slice.length) {
+      slice.setEnd(SliceEnd.Top);
+    } else if(!slice.isEnd(SliceEnd.Top)) {
+      slice = this.constructSlice();
+      slice.setEnd(SliceEnd.Top);
+      this.slices.push(slice);
+    }
+
+    slice.push(...items);
   }
 
   public delete(item: ItemType) {
     const found = this.findSlice(item);
     if(found) {
       found.slice.splice(found.index, 1);
+      return true;
     }
+
+    return false;
   }
 }
 
-(window as any).slicedArray = new SlicedArray();
+MOUNT_CLASS_TO && (MOUNT_CLASS_TO.SlicedArray = SlicedArray);

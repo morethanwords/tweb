@@ -9,7 +9,7 @@ const fs = require('fs');
 const allowedIPs = ['127.0.0.1'];
 const devMode = process.env.NODE_ENV !== 'production';
 const useLocal = true;
-const useLocalNotLocal = false;
+const useLocalNotLocal = true;
 
 if(devMode) {
   console.log('DEVMODE IS ON!');

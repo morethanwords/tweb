@@ -248,6 +248,11 @@ console.timeEnd('get storage1'); */
     //import('./vendor/dateFormat');
 
     const langPromise = I18n.default.getCacheLangPack();
+
+    function loadFonts(): Promise<void> {
+      // @ts-ignore
+      return 'fonts' in document ? Promise.all(['400 1rem Roboto', '500 1rem Roboto'].map(font => document.fonts.load(font))) : Promise.resolve();
+    }
   
     const [state, langPack] = await Promise.all([
       appStateManager.default.getState(), 
@@ -263,6 +268,19 @@ console.timeEnd('get storage1'); */
       I18n.default.getLangPack(langPack.lang_code);
     }
 
+    /**
+     * won't fire if font is loaded too fast
+     */
+    function fadeInWhenFontsReady(elem: HTMLElement, promise: Promise<void>) {
+      elem.style.opacity = '0';
+
+      promise.then(() => {
+        window.requestAnimationFrame(() => {
+          elem.style.opacity = '';
+        });
+      });
+    }
+
     console.log('got state, time:', performance.now() - perf);
 
     const authState = state.authState;
@@ -270,11 +288,15 @@ console.timeEnd('get storage1'); */
       console.log('Will mount auth page:', authState._, Date.now() / 1000);
 
       const el = document.getElementById('auth-pages');
+      let scrollable: HTMLElement;
       if(el) {
-        const scrollable = el.querySelector('.scrollable');
+        scrollable = el.querySelector('.scrollable') as HTMLElement;
         if((!touchSupport.isTouchSupported || isMobileSafari)) {
           scrollable.classList.add('no-scrollbar');
         }
+
+        // * don't remove this line
+        scrollable.style.opacity = '0';
 
         const placeholder = document.createElement('div');
         placeholder.classList.add('auth-placeholder');
@@ -283,25 +305,37 @@ console.timeEnd('get storage1'); */
         scrollable.append(placeholder.cloneNode());
       }
 
+      let pagePromise: Promise<void>;
       //langPromise.then(async() => {
         switch(authState._) {
           case 'authStateSignIn': 
-            (await import('./pages/pageSignIn')).default.mount();
+            pagePromise = (await import('./pages/pageSignIn')).default.mount();
             break;
           case 'authStateSignQr': 
-            (await import('./pages/pageSignQR')).default.mount();
+            pagePromise = (await import('./pages/pageSignQR')).default.mount();
             break;
           case 'authStateAuthCode':
-            (await import('./pages/pageAuthCode')).default.mount(authState.sentCode);
+            pagePromise = (await import('./pages/pageAuthCode')).default.mount(authState.sentCode);
             break;
           case 'authStatePassword':
-            (await import('./pages/pagePassword')).default.mount();
+            pagePromise = (await import('./pages/pagePassword')).default.mount();
             break;
           case 'authStateSignUp':
-            (await import('./pages/pageSignUp')).default.mount(authState.authCode);
+            pagePromise = (await import('./pages/pageSignUp')).default.mount(authState.authCode);
             break;
         }
       //});
+
+      if(scrollable) {
+        // wait for text appear
+        if(pagePromise) {
+          await pagePromise;
+        }
+
+        // @ts-ignore
+        const promise = 'fonts' in document ? document.fonts.ready : Promise.resolve();
+        fadeInWhenFontsReady(scrollable, promise);
+      }
 
       /* computeCheck(password, {
         current_algo: {
@@ -348,6 +382,7 @@ console.timeEnd('get storage1'); */
       }, 500); */
     } else {
       console.log('Will mount IM page:', Date.now() / 1000);
+      fadeInWhenFontsReady(document.getElementById('main-columns'), loadFonts());
       (await import('./pages/pageIm')).default.mount();
       //getNearestDc();
     }

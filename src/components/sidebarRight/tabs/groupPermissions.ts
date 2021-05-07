@@ -11,6 +11,7 @@ import ScrollableLoader from "../../../helpers/listLoader";
 import { ChannelParticipant, Chat, ChatBannedRights, Update } from "../../../layer";
 import appChatsManager, { ChatRights } from "../../../lib/appManagers/appChatsManager";
 import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
+import appPeersManager from "../../../lib/appManagers/appPeersManager";
 import appProfileManager from "../../../lib/appManagers/appProfileManager";
 import I18n, { i18n, join, LangPackKey } from "../../../lib/langPack";
 import rootScope from "../../../lib/rootScope";
@@ -241,7 +242,7 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
 
       const add = (participant: ChannelParticipant.channelParticipantBanned, append: boolean) => {
         const {dom} = appDialogsManager.addDialogNew({
-          dialog: participant.user_id,
+          dialog: appPeersManager.getPeerId(participant.peer),
           container: list,
           drawStatus: false,
           rippleEnabled: true,

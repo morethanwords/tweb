@@ -19,9 +19,8 @@ import { attachClickEvent, replaceContent, cancelEvent } from "../../../helpers/
 import appSidebarRight from "..";
 import { TransitionSlider } from "../../transition";
 import appNotificationsManager from "../../../lib/appManagers/appNotificationsManager";
-import AppEditGroupTab from "./editGroup";
+import AppEditChatTab from "./editChat";
 import PeerTitle from "../../peerTitle";
-import AppEditChannelTab from "./editChannel";
 import AppEditContactTab from "./editContact";
 import appChatsManager, { Channel } from "../../../lib/appManagers/appChatsManager";
 import { Chat, Message, MessageAction, ChatFull, Photo } from "../../../layer";
@@ -45,6 +44,8 @@ import PopupPeer from "../../popups/peer";
 import Scrollable from "../../scrollable";
 import { isTouchSupported } from "../../../helpers/touchSupport";
 import { isFirefox } from "../../../helpers/userAgent";
+import appDownloadManager from "../../../lib/appManagers/appDownloadManager";
+import ButtonCorner from "../../buttonCorner";
 
 let setText = (text: string, row: Row) => {
   //fastRaf(() => {
@@ -425,8 +426,10 @@ class PeerProfileAvatars {
     img.draggable = false;
 
     if(photo) {
-      appPhotosManager.preloadPhoto(photo, appPhotosManager.choosePhotoSize(photo, 420, 420, false)).then(() => {
-        renderImageFromUrl(img, photo.url, () => {
+      const size = appPhotosManager.choosePhotoSize(photo, 420, 420, false);
+      appPhotosManager.preloadPhoto(photo, size).then(() => {
+        const cacheContext = appDownloadManager.getCacheContext(photo, size.type);
+        renderImageFromUrl(img, cacheContext.url, () => {
           avatar.append(img);
         });
       });
@@ -850,17 +853,15 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     });
 
     attachClickEvent(this.editBtn, (e) => {
-      let tab: AppEditGroupTab | AppEditChannelTab | AppEditContactTab;
-      if(appPeersManager.isAnyGroup(this.peerId)) {
-        tab = new AppEditGroupTab(appSidebarRight);
-      } else if(this.peerId > 0) {
-        tab = new AppEditContactTab(appSidebarRight);
+      let tab: AppEditChatTab | AppEditContactTab;
+      if(this.peerId < 0) {
+        tab = new AppEditChatTab(appSidebarRight);
       } else {
-        tab = new AppEditChannelTab(appSidebarRight);
+        tab = new AppEditContactTab(appSidebarRight);
       }
 
       if(tab) {
-        if(tab instanceof AppEditGroupTab) {
+        if(tab instanceof AppEditChatTab) {
           tab.chatId = -this.peerId;
         } else {
           tab.peerId = this.peerId;
@@ -909,7 +910,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
 
     this.profile.element.append(this.searchSuper.container);
 
-    const btnAddMembers = Button('btn-corner btn-circle', {icon: 'addmember_filled'});
+    const btnAddMembers = ButtonCorner({icon: 'addmember_filled'});
     this.content.append(btnAddMembers);
 
     btnAddMembers.addEventListener('click', () => {

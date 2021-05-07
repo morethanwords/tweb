@@ -477,6 +477,7 @@ export default class AppSearchSuper {
           //this.log(message, photo);
 
           let wrapped: ReturnType<typeof wrapPhoto>;
+          const size = appPhotosManager.choosePhotoSize(media, 200, 200);
           if(media._ !== 'photo') {
             wrapped = wrapVideo({
               doc: media,
@@ -488,7 +489,8 @@ export default class AppSearchSuper {
               middleware,
               onlyPreview: true,
               withoutPreloader: true,
-              noPlayButton: true
+              noPlayButton: true,
+              size
             }).thumb;
           } else {
             wrapped = wrapPhoto({
@@ -500,7 +502,8 @@ export default class AppSearchSuper {
               lazyLoadQueue: this.lazyLoadQueue,
               middleware,
               withoutPreloader: true,
-              noBlur: true
+              noBlur: true,
+              size
             });
           }
 
@@ -883,6 +886,7 @@ export default class AppSearchSuper {
       
       if(!this.membersList) {
         this.membersList = new SortedUserList();
+        this.membersList.lazyLoadQueue = this.lazyLoadQueue;
         this.membersList.list.addEventListener('click', (e) => {
           const li = findUpTag(e.target, 'LI');
           if(!li) {
@@ -904,12 +908,17 @@ export default class AppSearchSuper {
       }
 
       participants.forEach(participant => {
-        const user = appUsersManager.getUser(participant.user_id);
+        const peerId = appChatsManager.getParticipantPeerId(participant);
+        if(peerId < 0) {
+          return;
+        }
+
+        const user = appUsersManager.getUser(peerId);
         if(user.pFlags.deleted) {
           return;
         }
 
-        this.membersList.add(participant.user_id);
+        this.membersList.add(peerId);
       });
     };
 
@@ -1160,6 +1169,10 @@ export default class AppSearchSuper {
       const inputFilter = mediaTab.inputFilter;
       return !this.loaded[inputFilter] || (this.historyStorage[inputFilter] && this.usedFromHistory[inputFilter] < this.historyStorage[inputFilter].length);
     });
+
+    if(peerId > 0) {
+      toLoad.findAndSplice(mediaTab => mediaTab.type === 'members');
+    }
 
     if(!toLoad.length) {
       return;

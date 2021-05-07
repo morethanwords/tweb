@@ -11,7 +11,7 @@ import pushHeavyTask from './heavyQueue';
 const RADIUS = 2;
 const ITERATIONS = 2;
 
-const DEBUG = _DEBUG && false;
+const DEBUG = _DEBUG && true;
 
 function processBlur(dataUri: string, radius: number, iterations: number) {
   return new Promise<string>((resolve) => {
@@ -49,6 +49,11 @@ function processBlur(dataUri: string, radius: number, iterations: number) {
 const blurPromises: {[dataUri: string]: Promise<string>} = {};
 
 export default function blur(dataUri: string, radius: number = RADIUS, iterations: number = ITERATIONS) {
+  if(!dataUri) {
+    console.error('no dataUri for blur', dataUri);
+    return Promise.resolve(dataUri);
+  }
+  
   if(blurPromises[dataUri]) return blurPromises[dataUri];
   return blurPromises[dataUri] = new Promise<string>((resolve) => {
     //return resolve(dataUri);
