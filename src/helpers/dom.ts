@@ -694,3 +694,8 @@ export function replaceContent(elem: HTMLElement, node: string | Node) {
     elem.append(node);
   }
 }
+
+export function setInnerHTML(elem: HTMLElement, html: string) {
+  elem.setAttribute('dir', 'auto');
+  elem.innerHTML = html;
+}

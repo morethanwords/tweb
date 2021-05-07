@@ -42,7 +42,8 @@ let init = () => {
   init = null;
 };
 
-const checkAndSetRTL = (input: HTMLElement) => {
+// ! it doesn't respect symbols other than strongs
+/* const checkAndSetRTL = (input: HTMLElement) => {
   //const isEmpty = isInputEmpty(input);
   //console.log('input', isEmpty);
 
@@ -56,7 +57,7 @@ const checkAndSetRTL = (input: HTMLElement) => {
   //console.log('RTL', direction, char);
 
   input.style.direction = direction;
-};
+}; */
 
 export enum InputState {
   Neutral = 0,
@@ -112,7 +113,7 @@ class InputField {
 
       input = this.container.firstElementChild as HTMLElement;
       const observer = new MutationObserver(() => {
-        checkAndSetRTL(input);
+        //checkAndSetRTL(input);
 
         if(processInput) {
           processInput();
@@ -148,8 +149,10 @@ class InputField {
       `;
 
       input = this.container.firstElementChild as HTMLElement;
-      input.addEventListener('input', () => checkAndSetRTL(input));
+      //input.addEventListener('input', () => checkAndSetRTL(input));
     }
+
+    input.setAttribute('dir', 'auto');
 
     if(placeholder) {
       _i18n(input, placeholder, undefined, 'placeholder');

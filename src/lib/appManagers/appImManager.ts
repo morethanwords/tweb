@@ -50,6 +50,7 @@ import { copy, getObjectKeysAndSort } from '../../helpers/object';
 import { getFilesFromEvent } from '../../helpers/files';
 import PeerTitle from '../../components/peerTitle';
 import PopupPeer from '../../components/popups/peer';
+import { SliceEnd } from '../../helpers/slicedArray';
 
 //console.log('appImManager included33!');
 
@@ -445,10 +446,11 @@ export class AppImManager {
         return;
       } else if(e.code === 'ArrowUp') {
         if(!chat.input.editMsgId && chat.input.isInputEmpty()) {
-          const history = appMessagesManager.getHistoryStorage(chat.peerId, chat.threadId);
-          if(history.history.length) {
+          const historyStorage = appMessagesManager.getHistoryStorage(chat.peerId, chat.threadId);
+          const slice = historyStorage.history.slice;
+          if(slice.isEnd(SliceEnd.Bottom) && slice.length) {
             let goodMid: number;
-            for(const mid of history.history.slice) {
+            for(const mid of slice) {
               const message = chat.getMessage(mid);
               const good = this.myId === chat.peerId ? message.fromId === this.myId : message.pFlags.out;
 

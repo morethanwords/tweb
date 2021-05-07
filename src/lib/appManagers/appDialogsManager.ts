@@ -1357,6 +1357,7 @@ export class AppDialogsManager {
     
     const span = document.createElement('span');
     span.classList.add('user-last-message');
+    span.setAttribute('dir', 'auto');
 
     //captionDiv.append(titleSpan);
     //captionDiv.append(span);
