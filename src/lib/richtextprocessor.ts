@@ -557,7 +557,14 @@ namespace RichTextProcessor {
 
             const currentContext = url[0] === '#';
 
-            insertPart(entity, `<a class="anchor-url" href="${encodeEntities(url)}"${currentContext ? '' : ' target="_blank" rel="noopener noreferrer"'}${masked ? 'onclick="showMaskedAlert(this)"' : ''}>`, '</a>');
+            const href = (currentContext || typeof electronHelpers === 'undefined') 
+              ? encodeEntities(url)
+              : `javascript:electronHelpers.openExternal('${encodeEntities(url)}');`;
+
+            const target = (currentContext || typeof electronHelpers !== 'undefined')
+              ? '' : ' target="_blank" rel="noopener noreferrer"';
+
+            insertPart(entity, `<a class="anchor-url" href="${href}"${target}${masked ? 'onclick="showMaskedAlert(this)"' : ''}>`, '</a>');
           }
 
           break;
