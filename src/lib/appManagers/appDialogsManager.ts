@@ -16,7 +16,6 @@ import { isSafari } from "../../helpers/userAgent";
 import { logger, LogTypes } from "../logger";
 import { RichTextProcessor } from "../richtextprocessor";
 import rootScope from "../rootScope";
-import { attachClickEvent, positionElementByIndex, replaceContent } from "../../helpers/dom";
 import apiUpdatesManager from "./apiUpdatesManager";
 import appPeersManager from './appPeersManager';
 import appImManager from "./appImManager";
@@ -40,6 +39,9 @@ import lottieLoader from "../lottieLoader";
 import { wrapLocalSticker } from "../../components/wrappers";
 import AppEditFolderTab from "../../components/sidebarLeft/tabs/editFolder";
 import appSidebarLeft from "../../components/sidebarLeft";
+import { attachClickEvent } from "../../helpers/dom/clickEvent";
+import positionElementByIndex from "../../helpers/dom/positionElementByIndex";
+import replaceContent from "../../helpers/dom/replaceContent";
 
 export type DialogDom = {
   avatarEl: AvatarElement,

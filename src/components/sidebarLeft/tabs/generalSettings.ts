@@ -14,9 +14,9 @@ import appStateManager from "../../../lib/appManagers/appStateManager";
 import rootScope from "../../../lib/rootScope";
 import { isApple } from "../../../helpers/userAgent";
 import Row from "../../row";
-import { attachClickEvent } from "../../../helpers/dom";
 import AppBackgroundTab from "./background";
 import { LangPackKey, _i18n } from "../../../lib/langPack";
+import { attachClickEvent } from "../../../helpers/dom/clickEvent";
 
 export class RangeSettingSelector {
   public container: HTMLDivElement;

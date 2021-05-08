@@ -18,13 +18,13 @@ import { isSafari } from "../../helpers/userAgent";
 import { InputFileLocation, InputMedia, Photo, PhotoSize, PhotosPhotos } from "../../layer";
 import apiManager from "../mtproto/mtprotoworker";
 import referenceDatabase, { ReferenceContext } from "../mtproto/referenceDatabase";
-import { calcImageInBox } from "../../helpers/dom";
 import { MyDocument } from "./appDocsManager";
 import appDownloadManager from "./appDownloadManager";
 import appUsersManager from "./appUsersManager";
 import blur from "../../helpers/blur";
 import { MOUNT_CLASS_TO } from "../../config/debug";
 import renderImageFromUrl from "../../helpers/dom/renderImageFromUrl";
+import calcImageInBox from "../../helpers/calcImageInBox";
 
 export type MyPhoto = Photo.photo;
 

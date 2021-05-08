@@ -5,7 +5,7 @@
  */
 
 import type { AppImManager } from "../../lib/appManagers/appImManager";
-import type { AppMessagesManager, HistoryResult, MyMessage } from "../../lib/appManagers/appMessagesManager";
+import type { AppMessagesManager, HistoryResult, HistoryStorage, MyMessage } from "../../lib/appManagers/appMessagesManager";
 import type { AppStickersManager } from "../../lib/appManagers/appStickersManager";
 import type { AppUsersManager } from "../../lib/appManagers/appUsersManager";
 import type { AppInlineBotsManager } from "../../lib/appManagers/appInlineBotsManager";
@@ -15,7 +15,6 @@ import type { AppPeersManager } from "../../lib/appManagers/appPeersManager";
 import type sessionStorage from '../../lib/sessionStorage';
 import type Chat from "./chat";
 import { CHAT_ANIMATION_GROUP } from "../../lib/appManagers/appImManager";
-import { cancelEvent, whichChild, attachClickEvent, positionElementByIndex, reflowScrollableElement, replaceContent, htmlToDocumentFragment, setInnerHTML } from "../../helpers/dom";
 import { getObjectKeysAndSort } from "../../helpers/object";
 import { isTouchSupported } from "../../helpers/touchSupport";
 import { logger } from "../../lib/logger";
@@ -60,6 +59,14 @@ import findUpTag from "../../helpers/dom/findUpTag";
 import { toast } from "../toast";
 import { getElementByPoint } from "../../helpers/dom/getElementByPoint";
 import { getMiddleware } from "../../helpers/middleware";
+import { cancelEvent } from "../../helpers/dom/cancelEvent";
+import { attachClickEvent } from "../../helpers/dom/clickEvent";
+import htmlToDocumentFragment from "../../helpers/dom/htmlToDocumentFragment";
+import positionElementByIndex from "../../helpers/dom/positionElementByIndex";
+import reflowScrollableElement from "../../helpers/dom/reflowScrollableElement";
+import replaceContent from "../../helpers/dom/replaceContent";
+import setInnerHTML from "../../helpers/dom/setInnerHTML";
+import whichChild from "../../helpers/dom/whichChild";
 
 const USE_MEDIA_TAILS = false;
 const IGNORE_ACTIONS: Message.messageService['action']['_'][] = [/* 'messageActionHistoryClear' */];
@@ -97,7 +104,9 @@ export default class ChatBubbles {
   private stickyIntersector: StickyIntersector;
 
   private unreadedObserver: IntersectionObserver;
-  private unreaded: number[] = [];
+  private unreaded: Map<HTMLElement, number> = new Map();
+  private unreadedSeen: Set<number> = new Set();
+  private readPromise: Promise<void>;
 
   public bubbleGroups: BubbleGroups;
 
@@ -131,6 +140,7 @@ export default class ChatBubbles {
   private needReflowScroll: boolean;
 
   private fetchNewPromise: Promise<void>;
+  private historyStorage: HistoryStorage;
 
   constructor(private chat: Chat, private appMessagesManager: AppMessagesManager, private appStickersManager: AppStickersManager, private appUsersManager: AppUsersManager, private appInlineBotsManager: AppInlineBotsManager, private appPhotosManager: AppPhotosManager, private appDocsManager: AppDocsManager, private appPeersManager: AppPeersManager, private appChatsManager: AppChatsManager, private storage: typeof sessionStorage) {
     //this.chat.log.error('Bubbles construction');
@@ -492,48 +502,13 @@ export default class ChatBubbles {
     });
 
     this.unreadedObserver = new IntersectionObserver((entries) => {
-      if(this.chat.appImManager.offline) { // ! but you can scroll the page without triggering 'focus', need something now
-        return;
-      }
-
-      const readed: number[] = [];
-    
       entries.forEach(entry => {
         if(entry.isIntersecting) {
           const target = entry.target as HTMLElement;
-          const mid = +target.dataset.mid;
-          readed.push(mid);
-          this.unreadedObserver.unobserve(target);
+          const mid = this.unreaded.get(target as HTMLElement);
+          this.onUnreadedInViewport(target, mid);
         }
       });
-
-      if(readed.length) {
-        let maxId = Math.max(...readed);
-
-        if(this.scrollable.loadedAll.bottom) {
-          const bubblesMaxId = Math.max(...Object.keys(this.bubbles).map(i => +i));
-          if(maxId >= bubblesMaxId) {
-            maxId = this.appMessagesManager.getHistoryStorage(this.peerId, this.chat.threadId).maxId || maxId;
-          }
-        }
-
-        let length = readed.length;
-        for(let i = this.unreaded.length - 1; i >= 0; --i) {
-          if(this.unreaded[i] <= maxId) {
-            length++;
-            this.unreaded.splice(i, 1);
-          }
-        }
-
-        if(DEBUG) {
-          this.log('will readHistory by ids:', maxId, length);
-        }
-        
-        /* false && */ this.appMessagesManager.readHistory(this.peerId, maxId, this.chat.threadId).catch((err: any) => {
-          this.log.error('readHistory err:', err);
-          this.appMessagesManager.readHistory(this.peerId, maxId, this.chat.threadId);
-        });
-      }
     });
 
     if('ResizeObserver' in window) {
@@ -633,6 +608,55 @@ export default class ChatBubbles {
       const resizeObserver = new ResizeObserver(processEntries);
       resizeObserver.observe(this.bubblesContainer);
     }
+  }
+
+  private onUnreadedInViewport(target: HTMLElement, mid: number) {
+    this.unreadedSeen.add(mid);
+    this.unreadedObserver.unobserve(target);
+    this.unreaded.delete(target);
+    this.readUnreaded();
+  }
+
+  private readUnreaded() {
+    if(this.readPromise) return;
+
+    const middleware = this.getMiddleware();
+    this.readPromise = rootScope.idle.focusPromise.then(() => {
+      if(!middleware()) return;
+      let maxId = Math.max(...Array.from(this.unreadedSeen));
+
+      // ? if message with maxId is not rendered ?
+      if(this.scrollable.loadedAll.bottom) {
+        const bubblesMaxId = Math.max(...Object.keys(this.bubbles).map(i => +i));
+        if(maxId >= bubblesMaxId) {
+          maxId = Math.max(this.appMessagesManager.getHistoryStorage(this.peerId, this.chat.threadId).maxId || 0, maxId);
+        }
+      }
+
+      this.unreaded.forEach((mid, target) => {
+        if(mid <= maxId) {
+          this.onUnreadedInViewport(target, mid);
+        }
+      });
+
+      this.unreadedSeen.clear();
+
+      if(DEBUG) {
+        this.log('will readHistory by maxId:', maxId);
+      }
+      
+      return this.appMessagesManager.readHistory(this.peerId, maxId, this.chat.threadId).catch((err: any) => {
+        this.log.error('readHistory err:', err);
+        this.appMessagesManager.readHistory(this.peerId, maxId, this.chat.threadId);
+      }).finally(() => {
+        if(!middleware()) return;
+        this.readPromise = undefined;
+
+        if(this.unreadedSeen.size) {
+          this.readUnreaded();
+        }
+      });
+    });
   }
 
   public constructPinnedHelpers() {
@@ -1170,6 +1194,7 @@ export default class ChatBubbles {
       this.bubbleGroups.removeBubble(bubble);
       if(this.unreadedObserver) {
         this.unreadedObserver.unobserve(bubble);
+        this.unreaded.delete(bubble);
       }
       //this.unreaded.findAndSplice(mid => mid === id);
       bubble.remove();
@@ -1409,7 +1434,9 @@ export default class ChatBubbles {
     
     if(this.unreadedObserver) {
       this.unreadedObserver.disconnect();
-      this.unreaded.length = 0;
+      this.unreaded.clear();
+      this.unreadedSeen.clear();
+      this.readPromise = undefined;
     }
 
     this.loadedTopTimes = this.loadedBottomTimes = 0;
@@ -1435,8 +1462,8 @@ export default class ChatBubbles {
       return {cached: true, promise: this.chat.setPeerPromise};
     } */
 
-    const historyStorage = this.appMessagesManager.getHistoryStorage(peerId, this.chat.threadId);
-    let topMessage = this.chat.type === 'pinned' ? this.appMessagesManager.pinnedMessages[peerId].maxId : historyStorage.maxId ?? 0;
+    this.historyStorage = this.appMessagesManager.getHistoryStorage(peerId, this.chat.threadId);
+    let topMessage = this.chat.type === 'pinned' ? this.appMessagesManager.pinnedMessages[peerId].maxId : this.historyStorage.maxId ?? 0;
     const isTarget = lastMsgId !== undefined;
 
     // * this one will fix topMessage for null message in history (e.g. channel comments with only 1 comment and it is a topMessage)
@@ -1491,7 +1518,7 @@ export default class ChatBubbles {
     }
 
     if(DEBUG) {
-      this.log('setPeer peerId:', this.peerId, historyStorage, lastMsgId, topMessage);
+      this.log('setPeer peerId:', this.peerId, this.historyStorage, lastMsgId, topMessage);
     }
 
     // add last message, bc in getHistory will load < max_id
@@ -1666,7 +1693,11 @@ export default class ChatBubbles {
               });
             };
             
-            f();
+            if(samePeer) {
+              setTimeout(f, 30e3);
+            } else {
+              f();
+            }
           }
         });
       }
@@ -1674,7 +1705,7 @@ export default class ChatBubbles {
       this.log('scrolledAllDown:', this.scrollable.loadedAll.bottom);
 
       //if(!this.unreaded.length && dialog) { // lol
-      if(this.scrollable.loadedAll.bottom && topMessage) { // lol
+      if(this.scrollable.loadedAll.bottom && topMessage && !this.unreaded.size) { // lol
         this.onScrolledAllDown();
       }
 
@@ -1874,13 +1905,12 @@ export default class ChatBubbles {
       contentWrapper.appendChild(bubbleContainer);
       bubble.appendChild(contentWrapper);
 
-      if(!our && !message.pFlags.out) {
+      if(!our && !message.pFlags.out && this.unreadedObserver) {
         //this.log('not our message', message, message.pFlags.unread);
-        if(message.pFlags.unread && this.unreadedObserver) {
+        const isUnread = message.pFlags.unread || (this.historyStorage.readMaxId !== undefined && this.historyStorage.readMaxId < message.mid);
+        if(isUnread) {
           this.unreadedObserver.observe(bubble); 
-          if(!this.unreaded.indexOf(message.mid)) {
-            this.unreaded.push(message.mid);
-          }
+          this.unreaded.set(bubble, message.mid);
         }
       }
     } else {

@@ -24,7 +24,6 @@ import appPhotosManager from './appPhotosManager';
 import appProfileManager from './appProfileManager';
 import appStickersManager from './appStickersManager';
 import appWebPagesManager from './appWebPagesManager';
-import { blurActiveElement, cancelEvent, disableTransition, placeCaretAtEnd, replaceContent, whichChild } from '../../helpers/dom';
 import PopupNewMedia from '../../components/popups/newMedia';
 import MarkupTooltip from '../../components/chat/markupTooltip';
 import { isTouchSupported } from '../../helpers/touchSupport';
@@ -51,6 +50,12 @@ import { getFilesFromEvent } from '../../helpers/files';
 import PeerTitle from '../../components/peerTitle';
 import PopupPeer from '../../components/popups/peer';
 import { SliceEnd } from '../../helpers/slicedArray';
+import blurActiveElement from '../../helpers/dom/blurActiveElement';
+import { cancelEvent } from '../../helpers/dom/cancelEvent';
+import disableTransition from '../../helpers/dom/disableTransition';
+import placeCaretAtEnd from '../../helpers/dom/placeCaretAtEnd';
+import replaceContent from '../../helpers/dom/replaceContent';
+import whichChild from '../../helpers/dom/whichChild';
 
 //console.log('appImManager included33!');
 

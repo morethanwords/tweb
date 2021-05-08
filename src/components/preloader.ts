@@ -4,11 +4,13 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { isInDOM, cancelEvent, attachClickEvent } from "../helpers/dom";
 import { CancellablePromise } from "../helpers/cancellablePromise";
 import SetTransition from "./singleTransition";
 import { fastRaf } from "../helpers/schedulers";
 import { safeAssign } from "../helpers/object";
+import { cancelEvent } from "../helpers/dom/cancelEvent";
+import { attachClickEvent } from "../helpers/dom/clickEvent";
+import isInDOM from "../helpers/dom/isInDOM";
 
 const TRANSITION_TIME = 200;
 

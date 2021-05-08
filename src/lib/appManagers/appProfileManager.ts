@@ -11,8 +11,8 @@
 
 import { MOUNT_CLASS_TO } from "../../config/debug";
 import { tsNow } from "../../helpers/date";
-import { replaceContent } from "../../helpers/dom";
 import renderImageFromUrl from "../../helpers/dom/renderImageFromUrl";
+import replaceContent from "../../helpers/dom/replaceContent";
 import sequentialDom from "../../helpers/sequentialDom";
 import { ChannelParticipantsFilter, ChannelsChannelParticipants, Chat, ChatFull, ChatParticipants, ChatPhoto, ExportedChatInvite, InputChannel, InputFile, InputFileLocation, PhotoSize, Update, UserFull, UserProfilePhoto } from "../../layer";
 //import apiManager from '../mtproto/apiManager';

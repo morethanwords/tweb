@@ -4,7 +4,6 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { calcImageInBox } from "../helpers/dom";
 import appDocsManager, {MyDocument} from "../lib/appManagers/appDocsManager";
 import { wrapVideo } from "./wrappers";
 import { LazyLoadQueueRepeat2 } from "./lazyLoadQueue";
@@ -12,6 +11,7 @@ import animationIntersector from "./animationIntersector";
 import Scrollable from "./scrollable";
 import { CancellablePromise, deferredPromise } from "../helpers/cancellablePromise";
 import renderImageFromUrl from "../helpers/dom/renderImageFromUrl";
+import calcImageInBox from "../helpers/calcImageInBox";
 
 const width = 400;
 const maxSingleWidth = width - 100;

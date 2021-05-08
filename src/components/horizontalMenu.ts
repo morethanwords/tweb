@@ -4,13 +4,13 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { whichChild } from "../helpers/dom";
 import { TransitionSlider } from "./transition";
 import { ScrollableX } from "./scrollable";
 import rootScope from "../lib/rootScope";
 import { fastRaf } from "../helpers/schedulers";
 import { FocusDirection } from "../helpers/fastSmoothScroll";
 import findUpAsChild from "../helpers/dom/findUpAsChild";
+import whichChild from "../helpers/dom/whichChild";
 
 export function horizontalMenu(tabs: HTMLElement, content: HTMLElement, onClick?: (id: number, tabContent: HTMLDivElement, animate: boolean) => void | boolean, onTransitionEnd?: () => void, transitionTime = 250, scrollableX?: ScrollableX) {
   const selectTab = TransitionSlider(content, tabs || content.dataset.animation === 'tabs' ? 'tabs' : 'navigation', transitionTime, onTransitionEnd);

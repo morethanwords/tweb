@@ -1,6 +1,5 @@
 import { SettingSection } from "..";
 import { hexaToRgba } from "../../../helpers/color";
-import { attachClickEvent } from "../../../helpers/dom";
 import findUpClassName from "../../../helpers/dom/findUpClassName";
 import highlightningColor from "../../../helpers/highlightningColor";
 import { throttle } from "../../../helpers/schedulers";
@@ -143,3 +142,7 @@ export default class AppBackgroundColorTab extends SliderSuperTab {
     return super.onCloseAfterTimeout();
   }
 }
+function attachClickEvent(grid: HTMLDivElement, arg1: (e: any) => void, arg2: { listenerSetter: import("../../../helpers/listenerSetter").default; }) {
+  throw new Error("Function not implemented.");
+}
+

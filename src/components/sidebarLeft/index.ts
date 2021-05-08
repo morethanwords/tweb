@@ -34,7 +34,6 @@ import appNavigationController from "../appNavigationController";
 import findUpClassName from "../../helpers/dom/findUpClassName";
 import findUpTag from "../../helpers/dom/findUpTag";
 import PeerTitle from "../peerTitle";
-import { replaceContent } from "../../helpers/dom";
 import App from "../../config/app";
 import ButtonMenuToggle from "../buttonMenuToggle";
 
@@ -607,3 +606,7 @@ export const generateSection = (appendTo: Scrollable, name?: LangPackKey, captio
 const appSidebarLeft = new AppSidebarLeft();
 MOUNT_CLASS_TO.appSidebarLeft = appSidebarLeft;
 export default appSidebarLeft;
+function replaceContent(div: HTMLDivElement, title: HTMLElement) {
+  throw new Error("Function not implemented.");
+}
+

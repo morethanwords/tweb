@@ -10,7 +10,6 @@ import appMessagesManager, { Dialog } from "../lib/appManagers/appMessagesManage
 import appPhotosManager from "../lib/appManagers/appPhotosManager";
 import appUsersManager from "../lib/appManagers/appUsersManager";
 import rootScope from "../lib/rootScope";
-import { cancelEvent, replaceContent } from "../helpers/dom";
 import Scrollable from "./scrollable";
 import { FocusDirection } from "../helpers/fastSmoothScroll";
 import CheckboxField from "./checkboxField";
@@ -20,6 +19,8 @@ import { i18n, LangPackKey, _i18n } from "../lib/langPack";
 import findUpAttribute from "../helpers/dom/findUpAttribute";
 import findUpClassName from "../helpers/dom/findUpClassName";
 import PeerTitle from "./peerTitle";
+import { cancelEvent } from "../helpers/dom/cancelEvent";
+import replaceContent from "../helpers/dom/replaceContent";
 
 type PeerType = 'contacts' | 'dialogs' | 'channelParticipants';
 

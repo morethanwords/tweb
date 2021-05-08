@@ -1,4 +1,11 @@
-import { attachClickEvent, cancelEvent } from "../helpers/dom";
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
+import { cancelEvent } from "../helpers/dom/cancelEvent";
+import { attachClickEvent } from "../helpers/dom/clickEvent";
 import { Config, LangPackDifference, LangPackString } from "../layer";
 import I18n, { LangPackKey } from "../lib/langPack";
 import apiManager from "../lib/mtproto/mtprotoworker";

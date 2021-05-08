@@ -4,16 +4,14 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { attachClickEvent, toggleDisability } from "../../../helpers/dom";
+import { attachClickEvent } from "../../../helpers/dom/clickEvent";
+import toggleDisability from "../../../helpers/dom/toggleDisability";
 import { deepEqual } from "../../../helpers/object";
 import { ChannelParticipant } from "../../../layer";
 import appChatsManager from "../../../lib/appManagers/appChatsManager";
 import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
-import appPeersManager from "../../../lib/appManagers/appPeersManager";
 import appUsersManager from "../../../lib/appManagers/appUsersManager";
 import Button from "../../button";
-import { addCancelButton } from "../../popups";
-import PopupPeer from "../../popups/peer";
 import { SettingSection } from "../../sidebarLeft";
 import { SliderSuperTabEventable } from "../../sliderTab";
 import { ChatPermissions } from "./groupPermissions";

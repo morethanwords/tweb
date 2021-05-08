@@ -5,7 +5,6 @@
  */
 
 import { copyTextToClipboard } from "../../../helpers/clipboard";
-import { attachClickEvent, toggleDisability } from "../../../helpers/dom";
 import { randomLong } from "../../../helpers/random";
 import { Chat, ChatFull, ExportedChatInvite } from "../../../layer";
 import appChatsManager from "../../../lib/appManagers/appChatsManager";
@@ -21,6 +20,8 @@ import { SliderSuperTabEventable } from "../../sliderTab";
 import I18n from "../../../lib/langPack";
 import PopupPeer from "../../popups/peer";
 import ButtonCorner from "../../buttonCorner";
+import { attachClickEvent } from "../../../helpers/dom/clickEvent";
+import toggleDisability from "../../../helpers/dom/toggleDisability";
 
 export default class AppChatTypeTab extends SliderSuperTabEventable {
   public chatId: number;

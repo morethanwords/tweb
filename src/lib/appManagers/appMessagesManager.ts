@@ -49,7 +49,8 @@ import SlicedArray, { Slice, SliceEnd } from "../../helpers/slicedArray";
 import appNotificationsManager, { NotifyOptions } from "./appNotificationsManager";
 import PeerTitle from "../../components/peerTitle";
 import { forEachReverse } from "../../helpers/array";
-import { htmlToDocumentFragment, htmlToSpan } from "../../helpers/dom";
+import htmlToDocumentFragment from "../../helpers/dom/htmlToDocumentFragment";
+import htmlToSpan from "../../helpers/dom/htmlToSpan";
 
 //console.trace('include');
 // TODO: если удалить сообщение в непрогруженном диалоге, то при обновлении, из-за стейта, последнего сообщения в чатлисте не будет
@@ -1604,8 +1605,8 @@ export class AppMessagesManager {
       return !message.pFlags.out && readMaxId < historyStorage.maxId ? readMaxId : 0;
     } else {
       const message = this.getMessageByPeer(peerId, historyStorage.maxId);
-      const maxId = peerId > 0 ? Math.max(historyStorage.readMaxId, historyStorage.readOutboxMaxId) : historyStorage.readMaxId;
-      return !message.pFlags.out && maxId < historyStorage.maxId ? maxId : 0;
+      const readMaxId = peerId > 0 ? Math.max(historyStorage.readMaxId, historyStorage.readOutboxMaxId) : historyStorage.readMaxId;
+      return !message.pFlags.out && readMaxId < historyStorage.maxId ? readMaxId : 0;
     }
   }
 
@@ -3417,7 +3418,7 @@ export class AppMessagesManager {
 
   // TODO: cancel notification by peer when this function is being called
   public readHistory(peerId: number, maxId = 0, threadId?: number, force = false) {
-    return Promise.resolve();
+    // return Promise.resolve();
     // console.trace('start read')
     this.log('readHistory:', peerId, maxId, threadId);
     if(!this.getReadMaxIdIfUnread(peerId, threadId) && !force) {

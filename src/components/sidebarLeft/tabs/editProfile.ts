@@ -8,10 +8,10 @@ import appProfileManager from "../../../lib/appManagers/appProfileManager";
 import appUsersManager from "../../../lib/appManagers/appUsersManager";
 import InputField from "../../inputField";
 import { SliderSuperTab } from "../../slider";
-import { attachClickEvent } from "../../../helpers/dom";
 import EditPeer from "../../editPeer";
 import { UsernameInputField } from "../../usernameInputField";
 import { i18n, i18n_ } from "../../../lib/langPack";
+import { attachClickEvent } from "../../../helpers/dom/clickEvent";
 
 // TODO: аватарка не поменяется в этой вкладке после изменения почему-то (если поставить в другом клиенте, и потом тут проверить, для этого ещё вышел в чатлист)
 

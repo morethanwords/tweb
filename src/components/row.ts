@@ -10,7 +10,7 @@ import { ripple } from "./ripple";
 import { SliderSuperTab } from "./slider";
 import RadioForm from "./radioForm";
 import { i18n, LangPackKey } from "../lib/langPack";
-import { replaceContent } from "../helpers/dom";
+import replaceContent from "../helpers/dom/replaceContent";
 
 export default class Row {
   public container: HTMLElement;

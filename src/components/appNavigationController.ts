@@ -6,9 +6,10 @@
 
 import { MOUNT_CLASS_TO } from "../config/debug";
 import { isMobileSafari } from "../helpers/userAgent";
-import { blurActiveElement, cancelEvent } from "../helpers/dom";
 import { logger } from "../lib/logger";
 import { doubleRaf } from "../helpers/schedulers";
+import blurActiveElement from "../helpers/dom/blurActiveElement";
+import { cancelEvent } from "../helpers/dom/cancelEvent";
 
 export type NavigationItem = {
   type: 'left' | 'right' | 'im' | 'chat' | 'popup' | 'media' | 'menu' | 'esg' | 'multiselect' | 'input-helper' | 'markup' | 'global-search',

@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { cancelEvent } from "../helpers/dom";
+import { cancelEvent } from "../helpers/dom/cancelEvent";
 import InputField, { InputFieldOptions } from "./inputField";
 
 export default class PasswordInputField extends InputField {

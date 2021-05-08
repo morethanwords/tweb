@@ -10,8 +10,8 @@ import appUsersManager from "../../../lib/appManagers/appUsersManager";
 import appPhotosManager from "../../../lib/appManagers/appPhotosManager";
 import rootScope from "../../../lib/rootScope";
 import InputSearch from "../../inputSearch";
-import { canFocus } from "../../../helpers/dom";
 import { isMobile } from "../../../helpers/userAgent";
+import { canFocus } from "../../../helpers/dom/canFocus";
 
 // TODO: поиск по людям глобальный, если не нашло в контактах никого
 

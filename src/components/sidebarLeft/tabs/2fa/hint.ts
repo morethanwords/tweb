@@ -12,9 +12,10 @@ import { SliderSuperTab } from "../../../slider";
 import { wrapSticker } from "../../../wrappers";
 import InputField from "../../../inputField";
 import AppTwoStepVerificationEmailTab from "./email";
-import { attachClickEvent, cancelEvent } from "../../../../helpers/dom";
 import { toast } from "../../../toast";
 import I18n from "../../../../lib/langPack";
+import { cancelEvent } from "../../../../helpers/dom/cancelEvent";
+import { attachClickEvent } from "../../../../helpers/dom/clickEvent";
 
 export default class AppTwoStepVerificationHintTab extends SliderSuperTab {
   public inputField: InputField;

@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { getRichValue, isInputEmpty } from "../helpers/dom";
+import getRichValue from "../helpers/dom/getRichValue";
+import isInputEmpty from "../helpers/dom/isInputEmpty";
 import { debounce } from "../helpers/schedulers";
-import { checkRTL } from "../helpers/string";
 import { i18n, LangPackKey, _i18n } from "../lib/langPack";
 import RichTextProcessor from "../lib/richtextprocessor";
 

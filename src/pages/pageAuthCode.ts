@@ -15,9 +15,9 @@ import pageSignIn from './pageSignIn';
 import pageSignUp from './pageSignUp';
 import TrackingMonkey from '../components/monkeys/tracking';
 import CodeInputField from '../components/codeInputField';
-import { replaceContent } from '../helpers/dom';
 import { i18n, LangPackKey } from '../lib/langPack';
 import { randomLong } from '../helpers/random';
+import replaceContent from '../helpers/dom/replaceContent';
 
 let authCode: AuthSentCode.authSentCode = null;
 

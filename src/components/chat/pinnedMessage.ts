@@ -12,13 +12,15 @@ import PinnedContainer from "./pinnedContainer";
 import PinnedMessageBorder from "./pinnedMessageBorder";
 import ReplyContainer, { wrapReplyDivAndCaption } from "./replyContainer";
 import rootScope from "../../lib/rootScope";
-import { attachClickEvent, cancelEvent, handleScrollSideEvent } from "../../helpers/dom";
 import Chat from "./chat";
 import ListenerSetter from "../../helpers/listenerSetter";
 import ButtonIcon from "../buttonIcon";
 import { debounce } from "../../helpers/schedulers";
 import { getHeavyAnimationPromise } from "../../hooks/useHeavyAnimationCheck";
 import { i18n } from "../../lib/langPack";
+import { cancelEvent } from "../../helpers/dom/cancelEvent";
+import { attachClickEvent } from "../../helpers/dom/clickEvent";
+import handleScrollSideEvent from "../../helpers/dom/handleScrollSideEvent";
 
 class AnimatedSuper {
   static DURATION = 200;

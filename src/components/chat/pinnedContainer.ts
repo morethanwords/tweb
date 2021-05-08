@@ -7,10 +7,11 @@
 import type Chat from "./chat";
 import type ChatTopbar from "./topbar";
 import mediaSizes from "../../helpers/mediaSizes";
-import { attachClickEvent, cancelEvent } from "../../helpers/dom";
 import DivAndCaption from "../divAndCaption";
 import { ripple } from "../ripple";
 import ListenerSetter from "../../helpers/listenerSetter";
+import { cancelEvent } from "../../helpers/dom/cancelEvent";
+import { attachClickEvent } from "../../helpers/dom/clickEvent";
 
 //const classNames: string[] = [];
 const classNames: string[] = ['is-pinned-message-shown', 'is-pinned-audio-shown'];

@@ -4,10 +4,10 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { whichChild } from "../helpers/dom";
 import rootScope from "../lib/rootScope";
 import { CancellablePromise, deferredPromise } from "../helpers/cancellablePromise";
 import { dispatchHeavyAnimationEvent } from "../hooks/useHeavyAnimationCheck";
+import whichChild from "../helpers/dom/whichChild";
 
 function slideNavigation(tabContent: HTMLElement, prevTabContent: HTMLElement, toRight: boolean) {
   const width = prevTabContent.getBoundingClientRect().width;

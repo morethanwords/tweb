@@ -5,6 +5,7 @@
  */
 
 import App from './config/app';
+import blurActiveElement from './helpers/dom/blurActiveElement';
 import findUpClassName from './helpers/dom/findUpClassName';
 import fixSafariStickyInput from './helpers/dom/fixSafariStickyInput';
 import { isMobileSafari } from './helpers/userAgent';
@@ -64,6 +65,8 @@ console.timeEnd('get storage1'); */
       const vh = (setViewportVH && !rootScope.default.overlayIsActive ? w.height || w.innerHeight : window.innerHeight) * 0.01;
       if(lastVH === vh) {
         return;
+      } else if(lastVH < vh) {
+        blurActiveElement(); // (Android) fix blur when keyboard is being closed
       }
 
       lastVH = vh;

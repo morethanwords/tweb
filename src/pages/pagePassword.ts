@@ -17,7 +17,11 @@ import PasswordMonkey from '../components/monkeys/password';
 import RichTextProcessor from '../lib/richtextprocessor';
 import I18n from '../lib/langPack';
 import LoginPage from './loginPage';
-import { attachClickEvent, cancelEvent, htmlToSpan, replaceContent, toggleDisability } from '../helpers/dom';
+import { cancelEvent } from '../helpers/dom/cancelEvent';
+import { attachClickEvent } from '../helpers/dom/clickEvent';
+import htmlToSpan from '../helpers/dom/htmlToSpan';
+import replaceContent from '../helpers/dom/replaceContent';
+import toggleDisability from '../helpers/dom/toggleDisability';
 
 const TEST = false;
 let passwordInput: HTMLInputElement;

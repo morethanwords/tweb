@@ -5,11 +5,10 @@
  */
 
 import { formatDateAccordingToToday, months } from "../helpers/date";
-import { positionElementByIndex } from "../helpers/dom";
 import { copy, getObjectKeysAndSort, safeAssign } from "../helpers/object";
 import { escapeRegExp, limitSymbols } from "../helpers/string";
 import appChatsManager from "../lib/appManagers/appChatsManager";
-import appDialogsManager, { DialogDom } from "../lib/appManagers/appDialogsManager";
+import appDialogsManager from "../lib/appManagers/appDialogsManager";
 import appMessagesManager, { MyInputMessagesFilter, MyMessage } from "../lib/appManagers/appMessagesManager";
 import appPeersManager from "../lib/appManagers/appPeersManager";
 import appPhotosManager from "../lib/appManagers/appPhotosManager";
@@ -39,6 +38,7 @@ import findUpTag from "../helpers/dom/findUpTag";
 import appSidebarRight from "./sidebarRight";
 import mediaSizes from "../helpers/mediaSizes";
 import appImManager from "../lib/appManagers/appImManager";
+import positionElementByIndex from "../helpers/dom/positionElementByIndex";
 
 //const testScroll = false;
 

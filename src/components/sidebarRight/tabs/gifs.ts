@@ -11,11 +11,11 @@ import appSidebarRight from "..";
 import appUsersManager from "../../../lib/appManagers/appUsersManager";
 import appInlineBotsManager, { AppInlineBotsManager } from "../../../lib/appManagers/appInlineBotsManager";
 import GifsMasonry from "../../gifsMasonry";
-import { attachClickEvent } from "../../../helpers/dom";
 import appImManager from "../../../lib/appManagers/appImManager";
 import type { MyDocument } from "../../../lib/appManagers/appDocsManager";
 import mediaSizes from "../../../helpers/mediaSizes";
 import findUpClassName from "../../../helpers/dom/findUpClassName";
+import { attachClickEvent } from "../../../helpers/dom/clickEvent";
 
 const ANIMATIONGROUP = 'GIFS-SEARCH';
 

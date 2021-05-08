@@ -1,7 +1,7 @@
 import { fastRaf } from "./schedulers";
 import { CancellablePromise, deferredPromise } from "./cancellablePromise";
-import { isInDOM } from "./dom";
 import { MOUNT_CLASS_TO } from "../config/debug";
+import isInDOM from "./dom/isInDOM";
 
 class SequentialDom {
   private promises: Partial<{

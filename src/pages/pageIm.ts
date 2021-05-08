@@ -6,7 +6,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { blurActiveElement } from "../helpers/dom";
+import blurActiveElement from "../helpers/dom/blurActiveElement";
 import appStateManager from "../lib/appManagers/appStateManager";
 import I18n from "../lib/langPack";
 import Page from "./page";

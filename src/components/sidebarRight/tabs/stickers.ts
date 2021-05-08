@@ -7,7 +7,6 @@
 import { SliderSuperTab } from "../../slider";
 import InputSearch from "../../inputSearch";
 import LazyLoadQueue from "../../lazyLoadQueue";
-import { attachClickEvent } from "../../../helpers/dom";
 import appImManager from "../../../lib/appManagers/appImManager";
 import appStickersManager from "../../../lib/appManagers/appStickersManager";
 import PopupStickers from "../../popups/stickers";
@@ -19,6 +18,7 @@ import { StickerSet, StickerSetCovered } from "../../../layer";
 import { forEachReverse } from "../../../helpers/array";
 import { i18n } from "../../../lib/langPack";
 import findUpClassName from "../../../helpers/dom/findUpClassName";
+import { attachClickEvent } from "../../../helpers/dom/clickEvent";
 
 export default class AppStickersTab extends SliderSuperTab {
   private inputSearch: InputSearch;
