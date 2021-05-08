@@ -1599,8 +1599,8 @@ export class AppMessagesManager {
     const historyStorage = this.getHistoryStorage(peerId, threadId);
     if(threadId) {
       const chatHistoryStorage = this.getHistoryStorage(peerId);
-      const readMaxId = Math.max(chatHistoryStorage.readMaxId, historyStorage.readMaxId);
-      const message = this.getMessageByPeer(peerId, historyStorage.maxId);
+      const readMaxId = Math.max(chatHistoryStorage.readMaxId ?? 0, historyStorage.readMaxId);
+      const message = this.getMessageByPeer(peerId, historyStorage.maxId); // usually message is missing, so pFlags.out won't be there anyway
       return !message.pFlags.out && readMaxId < historyStorage.maxId ? readMaxId : 0;
     } else {
       const message = this.getMessageByPeer(peerId, historyStorage.maxId);
@@ -3286,7 +3286,7 @@ export class AppMessagesManager {
       
       const historyStorage = this.getHistoryStorage(message.peerId, message.mid);
       result.max_id = historyStorage.maxId = this.generateMessageId(result.max_id) || 0;
-      result.read_inbox_max_id = historyStorage.readMaxId = this.generateMessageId(result.read_inbox_max_id) || 0;
+      result.read_inbox_max_id = historyStorage.readMaxId = this.generateMessageId(result.read_inbox_max_id ?? message.mid);
       result.read_outbox_max_id = historyStorage.readOutboxMaxId = this.generateMessageId(result.read_outbox_max_id) || 0;
 
       this.threadsToReplies[threadKey] = peerId + '_' + mid;
@@ -3417,7 +3417,7 @@ export class AppMessagesManager {
 
   // TODO: cancel notification by peer when this function is being called
   public readHistory(peerId: number, maxId = 0, threadId?: number, force = false) {
-    //return Promise.resolve();
+    return Promise.resolve();
     // console.trace('start read')
     this.log('readHistory:', peerId, maxId, threadId);
     if(!this.getReadMaxIdIfUnread(peerId, threadId) && !force) {
