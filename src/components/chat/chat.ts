@@ -197,6 +197,10 @@ export default class Chat extends EventListenerBase<{
     });
   }
 
+  public beforeDestroy() {
+    this.bubbles.cleanup();
+  }
+
   public destroy() {
     //const perf = performance.now();
 

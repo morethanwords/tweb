@@ -773,6 +773,10 @@ export class AppImManager {
         appSidebarRight.sharedMediaTab.loadSidebarMedia(false);
       }); */
     }
+
+    spliced.forEach(chat => {
+      chat.beforeDestroy();
+    });
     
     setTimeout(() => {
       //chat.setPeer(0);

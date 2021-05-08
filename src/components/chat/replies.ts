@@ -116,11 +116,13 @@ export default class RepliesElement extends HTMLElement {
 
       if(replies) {
         const historyStorage = appMessagesManager.getHistoryStorage(-replies.channel_id);
-        let isUnread: boolean;
-        if(replies.read_max_id !== undefined && replies.max_id !== undefined) {
-          isUnread = replies.read_max_id < replies.max_id;
-        } else {
-          isUnread = !historyStorage.readMaxId || historyStorage.readMaxId < (replies.max_id || 0);
+        let isUnread = false;
+        if(replies.replies) {
+          if(replies.read_max_id !== undefined && replies.max_id !== undefined) {
+            isUnread = replies.read_max_id < replies.max_id;
+          } else {
+            isUnread = !historyStorage.readMaxId || historyStorage.readMaxId < (replies.max_id || 0);
+          }
         }
         this.classList.toggle('is-unread', isUnread);
       }

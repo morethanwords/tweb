@@ -2684,11 +2684,11 @@ export default class ChatBubbles {
     const historyStorage = this.appMessagesManager.getHistoryStorage(this.peerId, this.chat.threadId);
     const firstSlice = historyStorage.history.first;
     const lastSlice = historyStorage.history.last;
-    if(firstSlice.isEnd(SliceEnd.Bottom) && history.includes(firstSlice[0])) {
+    if(firstSlice.isEnd(SliceEnd.Bottom) && (!firstSlice.length || history.includes(firstSlice[0]))) {
       this.scrollable.loadedAll.bottom = true;
     }
     
-    if(lastSlice.isEnd(SliceEnd.Top) && history.includes(lastSlice[lastSlice.length - 1])) {
+    if(lastSlice.isEnd(SliceEnd.Top) && (!lastSlice.length || history.includes(lastSlice[lastSlice.length - 1]))) {
       this.scrollable.loadedAll.top = true;
     }
 
