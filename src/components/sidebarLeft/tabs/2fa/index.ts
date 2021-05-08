@@ -5,7 +5,7 @@
  */
 
 import { SettingSection } from "../..";
-import { attachClickEvent } from "../../../../helpers/dom";
+import { attachClickEvent } from "../../../../helpers/dom/clickEvent";
 import { AccountPassword } from "../../../../layer";
 import appStickersManager from "../../../../lib/appManagers/appStickersManager";
 import { _i18n } from "../../../../lib/langPack";

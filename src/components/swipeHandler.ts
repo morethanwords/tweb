@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { cancelEvent } from "../helpers/dom";
+import { cancelEvent } from "../helpers/dom/cancelEvent";
 import { safeAssign } from "../helpers/object";
 import { isTouchSupported } from "../helpers/touchSupport";
 

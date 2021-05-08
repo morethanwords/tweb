@@ -17,7 +17,6 @@ import { logger } from "../lib/logger";
 import VideoPlayer from "../lib/mediaPlayer";
 import { RichTextProcessor } from "../lib/richtextprocessor";
 import rootScope from "../lib/rootScope";
-import { cancelEvent, fillPropertyValue, generatePathData } from "../helpers/dom";
 import animationIntersector from "./animationIntersector";
 import appMediaPlaybackController from "./appMediaPlaybackController";
 import AvatarElement from "./avatar";
@@ -42,6 +41,9 @@ import renderImageFromUrl from "../helpers/dom/renderImageFromUrl";
 import findUpAsChild from "../helpers/dom/findUpAsChild";
 import getVisibleRect from "../helpers/dom/getVisibleRect";
 import appDownloadManager from "../lib/appManagers/appDownloadManager";
+import { cancelEvent } from "../helpers/dom/cancelEvent";
+import fillPropertyValue from "../helpers/fillPropertyValue";
+import generatePathData from "../helpers/generatePathData";
 
 // TODO: масштабирование картинок (не SVG) при ресайзе, и правильный возврат на исходную позицию
 // TODO: картинки "обрезаются" если возвращаются или появляются с места, где есть их перекрытие (топбар, поле ввода)

@@ -7,7 +7,6 @@
 import { SliderSuperTab } from "../../slider";
 import { SettingSection } from "..";
 import { attachContextMenuListener, openBtnMenu, positionMenu } from "../../misc";
-import { attachClickEvent } from "../../../helpers/dom";
 import ButtonMenu from "../../buttonMenu";
 import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
 import appUsersManager from "../../../lib/appManagers/appUsersManager";
@@ -157,3 +156,7 @@ export default class AppBlockedUsersTab extends SliderSuperTab {
     return super.onCloseAfterTimeout();
   }
 }
+function attachClickEvent(btnAdd: HTMLButtonElement, arg1: (e: any) => void, arg2: { listenerSetter: import("../../../helpers/listenerSetter").default; }) {
+  throw new Error("Function not implemented.");
+}
+

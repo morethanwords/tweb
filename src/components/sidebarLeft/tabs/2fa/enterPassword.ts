@@ -6,7 +6,10 @@
 
 import AppTwoStepVerificationTab from ".";
 import { SettingSection } from "../..";
-import { attachClickEvent, cancelEvent, canFocus, replaceContent } from "../../../../helpers/dom";
+import { cancelEvent } from "../../../../helpers/dom/cancelEvent";
+import { canFocus } from "../../../../helpers/dom/canFocus";
+import { attachClickEvent } from "../../../../helpers/dom/clickEvent";
+import replaceContent from "../../../../helpers/dom/replaceContent";
 import { AccountPassword } from "../../../../layer";
 import I18n, { i18n } from "../../../../lib/langPack";
 import passwordManager from "../../../../lib/mtproto/passwordManager";

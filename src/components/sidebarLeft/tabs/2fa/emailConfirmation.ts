@@ -10,13 +10,16 @@ import appStickersManager from "../../../../lib/appManagers/appStickersManager";
 import Button from "../../../button";
 import { SliderSuperTab } from "../../../slider";
 import { wrapSticker } from "../../../wrappers";
-import { attachClickEvent, canFocus, replaceContent, toggleDisability } from "../../../../helpers/dom";
 import passwordManager from "../../../../lib/mtproto/passwordManager";
 import AppTwoStepVerificationSetTab from "./passwordSet";
 import CodeInputField from "../../../codeInputField";
 import AppTwoStepVerificationEmailTab from "./email";
 import { putPreloader } from "../../../misc";
 import { i18n, _i18n } from "../../../../lib/langPack";
+import { canFocus } from "../../../../helpers/dom/canFocus";
+import { attachClickEvent } from "../../../../helpers/dom/clickEvent";
+import replaceContent from "../../../../helpers/dom/replaceContent";
+import toggleDisability from "../../../../helpers/dom/toggleDisability";
 
 export default class AppTwoStepVerificationEmailConfirmationTab extends SliderSuperTab {
   public codeInputField: CodeInputField;

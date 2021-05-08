@@ -10,7 +10,6 @@ import Countries, { Country as _Country } from "../countries";
 import appStateManager from "../lib/appManagers/appStateManager";
 import apiManager from "../lib/mtproto/mtprotoworker";
 import { RichTextProcessor } from '../lib/richtextprocessor';
-import { attachClickEvent, cancelEvent, replaceContent, toggleDisability } from "../helpers/dom";
 import Page from "./page";
 import InputField from "../components/inputField";
 import CheckboxField from "../components/checkboxField";
@@ -30,6 +29,10 @@ import AppStorage from "../lib/storage";
 import CacheStorageController from "../lib/cacheStorage";
 import pageSignQR from "./pageSignQR";
 import getLanguageChangeButton from "../components/languageChangeButton";
+import { cancelEvent } from "../helpers/dom/cancelEvent";
+import { attachClickEvent } from "../helpers/dom/clickEvent";
+import replaceContent from "../helpers/dom/replaceContent";
+import toggleDisability from "../helpers/dom/toggleDisability";
 
 type Country = _Country & {
   li?: HTMLLIElement[]

@@ -8,7 +8,6 @@ import { isTouchSupported } from "../../helpers/touchSupport";
 import appChatsManager from "../../lib/appManagers/appChatsManager";
 import appImManager from "../../lib/appManagers/appImManager";
 import rootScope from "../../lib/rootScope";
-import { attachClickEvent, blurActiveElement, whichChild } from "../../helpers/dom";
 import animationIntersector from "../animationIntersector";
 import { horizontalMenu } from "../horizontalMenu";
 import LazyLoadQueue, { LazyLoadQueueIntersector } from "../lazyLoadQueue";
@@ -25,6 +24,9 @@ import AppStickersTab from "../sidebarRight/tabs/stickers";
 import findUpClassName from "../../helpers/dom/findUpClassName";
 import findUpTag from "../../helpers/dom/findUpTag";
 import ListenerSetter from "../../helpers/listenerSetter";
+import blurActiveElement from "../../helpers/dom/blurActiveElement";
+import { attachClickEvent } from "../../helpers/dom/clickEvent";
+import whichChild from "../../helpers/dom/whichChild";
 
 export const EMOTICONSSTICKERGROUP = 'emoticons-dropdown';
 

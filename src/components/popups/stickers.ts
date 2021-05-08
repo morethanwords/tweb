@@ -12,13 +12,13 @@ import { wrapSticker } from "../wrappers";
 import LazyLoadQueue from "../lazyLoadQueue";
 import { putPreloader } from "../misc";
 import animationIntersector from "../animationIntersector";
-import { toggleDisability } from "../../helpers/dom";
 import appImManager from "../../lib/appManagers/appImManager";
 import { StickerSet } from "../../layer";
 import mediaSizes from "../../helpers/mediaSizes";
 import { i18n } from "../../lib/langPack";
 import Button from "../button";
 import findUpClassName from "../../helpers/dom/findUpClassName";
+import toggleDisability from "../../helpers/dom/toggleDisability";
 
 const ANIMATION_GROUP = 'STICKERS-POPUP';
 

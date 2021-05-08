@@ -15,7 +15,6 @@ import AppSearchSuper, { SearchSuperType } from "../../appSearchSuper.";
 import AvatarElement, { openAvatarViewer } from "../../avatar";
 import SidebarSlider, { SliderSuperTab } from "../../slider";
 import CheckboxField from "../../checkboxField";
-import { attachClickEvent, replaceContent, cancelEvent } from "../../../helpers/dom";
 import appSidebarRight from "..";
 import { TransitionSlider } from "../../transition";
 import appNotificationsManager from "../../../lib/appManagers/appNotificationsManager";
@@ -46,6 +45,9 @@ import { isTouchSupported } from "../../../helpers/touchSupport";
 import { isFirefox } from "../../../helpers/userAgent";
 import appDownloadManager from "../../../lib/appManagers/appDownloadManager";
 import ButtonCorner from "../../buttonCorner";
+import { cancelEvent } from "../../../helpers/dom/cancelEvent";
+import { attachClickEvent } from "../../../helpers/dom/clickEvent";
+import replaceContent from "../../../helpers/dom/replaceContent";
 
 let setText = (text: string, row: Row) => {
   //fastRaf(() => {

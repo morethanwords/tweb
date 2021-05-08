@@ -7,8 +7,8 @@
 import { MOUNT_CLASS_TO } from "../config/debug";
 import appPeersManager from "../lib/appManagers/appPeersManager";
 import rootScope from "../lib/rootScope";
-import { replaceContent } from "../helpers/dom";
 import { i18n } from "../lib/langPack";
+import replaceContent from "../helpers/dom/replaceContent";
 
 export type PeerTitleOptions = {
   peerId: number,

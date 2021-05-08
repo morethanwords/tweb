@@ -4,12 +4,12 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { cancelEvent } from "../helpers/dom";
 import appMediaPlaybackController from "../components/appMediaPlaybackController";
 import { isAppleMobile } from "../helpers/userAgent";
 import { isTouchSupported } from "../helpers/touchSupport";
 import RangeSelector from "../components/rangeSelector";
 import { onVideoLoad } from "../helpers/files";
+import { cancelEvent } from "../helpers/dom/cancelEvent";
 
 export class MediaProgressLine extends RangeSelector {
   private filledLoad: HTMLDivElement;

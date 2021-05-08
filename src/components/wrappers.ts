@@ -17,7 +17,6 @@ import appDocsManager, { MyDocument } from "../lib/appManagers/appDocsManager";
 import appMessagesManager from '../lib/appManagers/appMessagesManager';
 import appPhotosManager, { MyPhoto } from '../lib/appManagers/appPhotosManager';
 import LottieLoader from '../lib/lottieLoader';
-import { attachClickEvent, cancelEvent, isInDOM } from "../helpers/dom";
 import webpWorkerController from '../lib/webp/webpWorkerController';
 import animationIntersector from './animationIntersector';
 import appMediaPlaybackController from './appMediaPlaybackController';
@@ -40,6 +39,9 @@ import sequentialDom from '../helpers/sequentialDom';
 import { fastRaf } from '../helpers/schedulers';
 import appDownloadManager from '../lib/appManagers/appDownloadManager';
 import appStickersManager from '../lib/appManagers/appStickersManager';
+import { cancelEvent } from '../helpers/dom/cancelEvent';
+import { attachClickEvent } from '../helpers/dom/clickEvent';
+import isInDOM from '../helpers/dom/isInDOM';
 
 const MAX_VIDEO_AUTOPLAY_SIZE = 50 * 1024 * 1024; // 50 MB
 

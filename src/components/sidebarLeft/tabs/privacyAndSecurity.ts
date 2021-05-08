@@ -26,7 +26,7 @@ import appUsersManager from "../../../lib/appManagers/appUsersManager";
 import rootScope from "../../../lib/rootScope";
 import { convertKeyToInputKey } from "../../../helpers/string";
 import { i18n, LangPackKey, _i18n } from "../../../lib/langPack";
-import { replaceContent } from "../../../helpers/dom";
+import replaceContent from "../../../helpers/dom/replaceContent";
 
 export default class AppPrivacyAndSecurityTab extends SliderSuperTab {
   private activeSessionsRow: Row;

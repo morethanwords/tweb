@@ -4,7 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { AttachClickOptions, cancelEvent, CLICK_EVENT_NAME } from "../helpers/dom";
+import { cancelEvent } from "../helpers/dom/cancelEvent";
+import { AttachClickOptions, CLICK_EVENT_NAME } from "../helpers/dom/clickEvent";
 import ListenerSetter from "../helpers/listenerSetter";
 import ButtonIcon from "./buttonIcon";
 import ButtonMenu, { ButtonMenuItemOptions } from "./buttonMenu";

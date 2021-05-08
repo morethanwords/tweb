@@ -10,7 +10,7 @@ import { dispatchHeavyAnimationEvent } from '../hooks/useHeavyAnimationCheck';
 import { fastRaf } from './schedulers';
 import { animateSingle, cancelAnimationByKey } from './animation';
 import rootScope from '../lib/rootScope';
-import { isInDOM } from './dom';
+import isInDOM from './dom/isInDOM';
 
 const MAX_DISTANCE = 1500;
 const MIN_JS_DURATION = 250;

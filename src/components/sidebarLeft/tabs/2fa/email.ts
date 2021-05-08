@@ -11,13 +11,15 @@ import Button from "../../../button";
 import { SliderSuperTab } from "../../../slider";
 import { wrapSticker } from "../../../wrappers";
 import InputField from "../../../inputField";
-import { attachClickEvent, cancelEvent, canFocus } from "../../../../helpers/dom";
 import { putPreloader } from "../../../misc";
 import passwordManager from "../../../../lib/mtproto/passwordManager";
 import AppTwoStepVerificationSetTab from "./passwordSet";
 import AppTwoStepVerificationEmailConfirmationTab from "./emailConfirmation";
 import RichTextProcessor from "../../../../lib/richtextprocessor";
 import PopupPeer from "../../../popups/peer";
+import { cancelEvent } from "../../../../helpers/dom/cancelEvent";
+import { canFocus } from "../../../../helpers/dom/canFocus";
+import { attachClickEvent } from "../../../../helpers/dom/clickEvent";
 
 export default class AppTwoStepVerificationEmailTab extends SliderSuperTab {
   public inputField: InputField;

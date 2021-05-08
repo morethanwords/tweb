@@ -5,7 +5,6 @@
  */
 
 import type Chat from "../chat/chat";
-import { calcImageInBox, placeCaretAtEnd, isSendShortcutPressed } from "../../helpers/dom";
 import InputField from "../inputField";
 import PopupElement from ".";
 import Scrollable from "../scrollable";
@@ -17,6 +16,9 @@ import { createPosterFromVideo, onVideoLoad } from "../../helpers/files";
 import { MyDocument } from "../../lib/appManagers/appDocsManager";
 import I18n, { i18n, LangPackKey } from "../../lib/langPack";
 import appDownloadManager from "../../lib/appManagers/appDownloadManager";
+import calcImageInBox from "../../helpers/calcImageInBox";
+import isSendShortcutPressed from "../../helpers/dom/isSendShortcutPressed";
+import placeCaretAtEnd from "../../helpers/dom/placeCaretAtEnd";
 
 type SendFileParams = Partial<{
   file: File,

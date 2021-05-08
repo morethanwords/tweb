@@ -11,7 +11,6 @@ import Button from '../components/button';
 import InputField from '../components/inputField';
 import { putPreloader } from '../components/misc';
 import PopupAvatar from '../components/popups/avatar';
-import { blurActiveElement, replaceContent } from '../helpers/dom';
 import appStateManager from '../lib/appManagers/appStateManager';
 import I18n, { i18n } from '../lib/langPack';
 //import apiManager from '../lib/mtproto/apiManager';
@@ -20,6 +19,8 @@ import RichTextProcessor from '../lib/richtextprocessor';
 import LoginPage from './loginPage';
 import Page from './page';
 import pageIm from './pageIm';
+import blurActiveElement from '../helpers/dom/blurActiveElement';
+import replaceContent from '../helpers/dom/replaceContent';
 
 let authCode: AuthState.signUp['authCode'] = null;
 

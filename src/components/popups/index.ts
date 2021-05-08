@@ -5,12 +5,12 @@
  */
 
 import rootScope from "../../lib/rootScope";
-import { blurActiveElement } from "../../helpers/dom";
 import { ripple } from "../ripple";
 import animationIntersector from "../animationIntersector";
 import appNavigationController, { NavigationItem } from "../appNavigationController";
 import { i18n, LangPackKey } from "../../lib/langPack";
 import findUpClassName from "../../helpers/dom/findUpClassName";
+import blurActiveElement from "../../helpers/dom/blurActiveElement";
 
 export type PopupButton = {
   text?: string,

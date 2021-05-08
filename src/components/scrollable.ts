@@ -8,7 +8,7 @@ import { isTouchSupported } from "../helpers/touchSupport";
 import { logger, LogTypes } from "../lib/logger";
 import fastSmoothScroll, { FocusDirection } from "../helpers/fastSmoothScroll";
 import useHeavyAnimationCheck from "../hooks/useHeavyAnimationCheck";
-import { cancelEvent } from "../helpers/dom";
+import { cancelEvent } from "../helpers/dom/cancelEvent";
 /*
 var el = $0;
 var height = 0;

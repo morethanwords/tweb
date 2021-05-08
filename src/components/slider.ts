@@ -4,12 +4,12 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { attachClickEvent } from "../helpers/dom";
 import { horizontalMenu } from "./horizontalMenu";
 import { TransitionSlider } from "./transition";
 import appNavigationController, { NavigationItem } from "./appNavigationController";
 import SliderSuperTab, { SliderSuperTabConstructable, SliderTab } from "./sliderTab";
 import { safeAssign } from "../helpers/object";
+import { attachClickEvent } from "../helpers/dom/clickEvent";
 
 const TRANSITION_TIME = 250;
 

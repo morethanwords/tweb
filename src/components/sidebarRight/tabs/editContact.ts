@@ -11,7 +11,6 @@ import { SettingSection } from "../../sidebarLeft";
 import Row from "../../row";
 import CheckboxField from "../../checkboxField";
 import Button from "../../button";
-import { attachClickEvent, toggleDisability } from "../../../helpers/dom";
 import appUsersManager from "../../../lib/appManagers/appUsersManager";
 import appNotificationsManager from "../../../lib/appManagers/appNotificationsManager";
 import PeerTitle from "../../peerTitle";
@@ -21,6 +20,8 @@ import appPeersManager from "../../../lib/appManagers/appPeersManager";
 import PopupPeer from "../../popups/peer";
 import { addCancelButton } from "../../popups";
 import { i18n } from "../../../lib/langPack";
+import { attachClickEvent } from "../../../helpers/dom/clickEvent";
+import toggleDisability from "../../../helpers/dom/toggleDisability";
 
 export default class AppEditContactTab extends SliderSuperTab {
   private nameInputField: InputField;

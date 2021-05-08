@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { generatePathData } from "../../helpers/dom";
+import generatePathData from "../../helpers/generatePathData";
 import { i18n, LangPackKey } from "../../lib/langPack";
 
 export default class ChatDragAndDrop {

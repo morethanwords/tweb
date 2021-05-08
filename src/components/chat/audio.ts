@@ -9,12 +9,13 @@ import type { AppPeersManager } from "../../lib/appManagers/appPeersManager";
 import type ChatTopbar from "./topbar";
 import { RichTextProcessor } from "../../lib/richtextprocessor";
 import rootScope from "../../lib/rootScope";
-import { attachClickEvent, cancelEvent } from "../../helpers/dom";
 import appMediaPlaybackController from "../appMediaPlaybackController";
 import DivAndCaption from "../divAndCaption";
 import { formatDate } from "../wrappers";
 import PinnedContainer from "./pinnedContainer";
 import Chat from "./chat";
+import { cancelEvent } from "../../helpers/dom/cancelEvent";
+import { attachClickEvent } from "../../helpers/dom/clickEvent";
 
 export default class ChatAudio extends PinnedContainer {
   private toggleEl: HTMLElement;

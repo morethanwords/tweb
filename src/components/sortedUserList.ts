@@ -6,10 +6,12 @@
 
 import type { LazyLoadQueueIntersector } from "./lazyLoadQueue";
 import appDialogsManager, { DialogDom } from "../lib/appManagers/appDialogsManager";
-import { isInDOM, positionElementByIndex, replaceContent } from "../helpers/dom";
 import { getHeavyAnimationPromise } from "../hooks/useHeavyAnimationCheck";
 import appUsersManager from "../lib/appManagers/appUsersManager";
 import { insertInDescendSortedArray } from "../helpers/array";
+import isInDOM from "../helpers/dom/isInDOM";
+import positionElementByIndex from "../helpers/dom/positionElementByIndex";
+import replaceContent from "../helpers/dom/replaceContent";
 
 type SortedUser = {
   peerId: number, 

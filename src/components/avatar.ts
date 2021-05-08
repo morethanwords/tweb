@@ -7,12 +7,13 @@
 import appMessagesManager from "../lib/appManagers/appMessagesManager";
 import appProfileManager from "../lib/appManagers/appProfileManager";
 import rootScope from "../lib/rootScope";
-import { attachClickEvent, cancelEvent } from "../helpers/dom";
 import AppMediaViewer, { AppMediaViewerAvatar } from "./appMediaViewer";
 import { Message } from "../layer";
 import appPeersManager from "../lib/appManagers/appPeersManager";
 import appPhotosManager from "../lib/appManagers/appPhotosManager";
 import type { LazyLoadQueueIntersector } from "./lazyLoadQueue";
+import { attachClickEvent } from "../helpers/dom/clickEvent";
+import { cancelEvent } from "../helpers/dom/cancelEvent";
 
 const onAvatarUpdate = (peerId: number) => {
   appProfileManager.removeFromAvatarsCache(peerId);

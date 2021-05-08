@@ -10,7 +10,6 @@ import type { AppPeersManager } from "../../lib/appManagers/appPeersManager";
 import type { AppPollsManager, Poll } from "../../lib/appManagers/appPollsManager";
 import type Chat from "./chat";
 import { isTouchSupported } from "../../helpers/touchSupport";
-import { attachClickEvent, cancelEvent, cancelSelection, isSelectionEmpty } from "../../helpers/dom";
 import ButtonMenu, { ButtonMenuItemOptions } from "../buttonMenu";
 import { attachContextMenuListener, openBtnMenu, positionMenu } from "../misc";
 import PopupDeleteMessages from "../popups/deleteMessages";
@@ -21,6 +20,10 @@ import PopupSendNow from "../popups/sendNow";
 import { toast } from "../toast";
 import I18n, { LangPackKey } from "../../lib/langPack";
 import findUpClassName from "../../helpers/dom/findUpClassName";
+import { cancelEvent } from "../../helpers/dom/cancelEvent";
+import cancelSelection from "../../helpers/dom/cancelSelection";
+import { attachClickEvent } from "../../helpers/dom/clickEvent";
+import isSelectionEmpty from "../../helpers/dom/isSelectionEmpty";
 
 export default class ChatContextMenu {
   private buttons: (ButtonMenuItemOptions & {verify: () => boolean, notDirect?: () => boolean, withSelection?: true})[];

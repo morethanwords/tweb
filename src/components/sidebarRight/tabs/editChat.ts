@@ -12,7 +12,6 @@ import Row from "../../row";
 import Button from "../../button";
 import appChatsManager, { ChatRights } from "../../../lib/appManagers/appChatsManager";
 import appProfileManager from "../../../lib/appManagers/appProfileManager";
-import { attachClickEvent, toggleDisability } from "../../../helpers/dom";
 import { Chat } from "../../../layer";
 import AppChatTypeTab from "./chatType";
 import rootScope from "../../../lib/rootScope";
@@ -21,6 +20,8 @@ import { i18n, LangPackKey } from "../../../lib/langPack";
 import PopupDeleteDialog from "../../popups/deleteDialog";
 import { addCancelButton } from "../../popups";
 import PopupPeer from "../../popups/peer";
+import { attachClickEvent } from "../../../helpers/dom/clickEvent";
+import toggleDisability from "../../../helpers/dom/toggleDisability";
 
 export default class AppEditChatTab extends SliderSuperTab {
   private chatNameInputField: InputField;

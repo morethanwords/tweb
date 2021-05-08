@@ -8,7 +8,6 @@ import { deepEqual, copy } from "../../../helpers/object";
 import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
 import { MyDialogFilter as DialogFilter } from "../../../lib/storages/filters";
 import lottieLoader, { RLottiePlayer } from "../../../lib/lottieLoader";
-import { ripple } from "../../ripple";
 import { SliderSuperTab } from "../../slider";
 import { toast } from "../../toast";
 import appMessagesManager from "../../../lib/appManagers/appMessagesManager";

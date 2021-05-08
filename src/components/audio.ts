@@ -16,9 +16,10 @@ import { isSafari } from "../helpers/userAgent";
 import appMessagesManager from "../lib/appManagers/appMessagesManager";
 import rootScope from "../lib/rootScope";
 import './middleEllipsis';
-import { attachClickEvent, cancelEvent, detachClickEvent } from "../helpers/dom";
 import { SearchSuperContext } from "./appSearchSuper.";
 import { formatDateAccordingToToday } from "../helpers/date";
+import { cancelEvent } from "../helpers/dom/cancelEvent";
+import { attachClickEvent, detachClickEvent } from "../helpers/dom/clickEvent";
 
 rootScope.on('messages_media_read', e => {
   const {mids, peerId} = e;

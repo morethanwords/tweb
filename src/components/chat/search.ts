@@ -5,13 +5,14 @@
  */
 
 import type ChatTopbar from "./topbar";
-import { cancelEvent, whichChild } from "../../helpers/dom";
 import AppSearch, { SearchGroup } from "../appSearch";
 import PopupDatePicker from "../popups/datePicker";
 import { ripple } from "../ripple";
 import InputSearch from "../inputSearch";
 import type Chat from "./chat";
 import findUpTag from "../../helpers/dom/findUpTag";
+import { cancelEvent } from "../../helpers/dom/cancelEvent";
+import whichChild from "../../helpers/dom/whichChild";
 
 export default class ChatSearch {
   private element: HTMLElement;

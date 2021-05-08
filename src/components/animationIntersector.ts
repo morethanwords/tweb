@@ -4,11 +4,11 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { isInDOM } from "../helpers/dom";
 import { RLottiePlayer } from "../lib/lottieLoader";
 import rootScope from "../lib/rootScope";
 import { isSafari } from "../helpers/userAgent";
 import { MOUNT_CLASS_TO } from "../config/debug";
+import isInDOM from "../helpers/dom/isInDOM";
 
 export interface AnimationItem {
   el: HTMLElement,

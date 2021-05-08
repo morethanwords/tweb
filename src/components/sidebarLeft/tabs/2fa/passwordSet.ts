@@ -5,7 +5,7 @@
  */
 
 import { SettingSection } from "../..";
-import { attachClickEvent } from "../../../../helpers/dom";
+import { attachClickEvent } from "../../../../helpers/dom/clickEvent";
 import appStickersManager from "../../../../lib/appManagers/appStickersManager";
 import Button from "../../../button";
 import { SliderSuperTab } from "../../../slider";

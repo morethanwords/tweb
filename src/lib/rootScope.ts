@@ -121,7 +121,9 @@ export class RootScope extends EventListenerBase<{
   private _overlayIsActive: boolean = false;
   public myId = 0;
   public idle = {
-    isIDLE: true
+    isIDLE: true,
+    focusPromise: Promise.resolve(),
+    focusResolve: () => {}
   };
   public connectionStatus: {[name: string]: ConnectionStatusChange} = {};
   public settings: State['settings'];
@@ -142,6 +144,16 @@ export class RootScope extends EventListenerBase<{
     this.on('connection_status_change', (e) => {
       const status = e;
       this.connectionStatus[e.name] = status;
+    });
+
+    this.on('idle', (isIDLE) => {
+      if(isIDLE) {
+        this.idle.focusPromise = new Promise((resolve) => {
+          this.idle.focusResolve = resolve;
+        });
+      } else {
+        this.idle.focusResolve();
+      }
     });
   }
 

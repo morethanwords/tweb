@@ -8,7 +8,7 @@ import { generateSection } from "..";
 import { averageColor } from "../../../helpers/averageColor";
 import blur from "../../../helpers/blur";
 import { deferredPromise } from "../../../helpers/cancellablePromise";
-import { attachClickEvent } from "../../../helpers/dom";
+import { attachClickEvent } from "../../../helpers/dom/clickEvent";
 import findUpClassName from "../../../helpers/dom/findUpClassName";
 import { requestFile } from "../../../helpers/files";
 import highlightningColor from "../../../helpers/highlightningColor";

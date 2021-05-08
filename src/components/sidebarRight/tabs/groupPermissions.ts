@@ -4,8 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { attachClickEvent, replaceContent } from "../../../helpers/dom";
+import { attachClickEvent } from "../../../helpers/dom/clickEvent";
 import findUpTag from "../../../helpers/dom/findUpTag";
+import replaceContent from "../../../helpers/dom/replaceContent";
 import ListenerSetter from "../../../helpers/listenerSetter";
 import ScrollableLoader from "../../../helpers/listLoader";
 import { ChannelParticipant, Chat, ChatBannedRights, Update } from "../../../layer";

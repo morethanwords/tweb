@@ -7,7 +7,6 @@
 import { SliderSuperTab } from "../../slider";
 import lottieLoader, { RLottiePlayer } from "../../../lib/lottieLoader";
 import { RichTextProcessor } from "../../../lib/richtextprocessor";
-import { attachClickEvent, cancelEvent, positionElementByIndex } from "../../../helpers/dom";
 import { toast } from "../../toast";
 import type { MyDialogFilter } from "../../../lib/storages/filters";
 import type { DialogFilterSuggested, DialogFilter } from "../../../layer";
@@ -22,6 +21,9 @@ import AppEditFolderTab from "./editFolder";
 import Row from "../../row";
 import { SettingSection } from "..";
 import { i18n, i18n_, LangPackKey, join } from "../../../lib/langPack";
+import { cancelEvent } from "../../../helpers/dom/cancelEvent";
+import { attachClickEvent } from "../../../helpers/dom/clickEvent";
+import positionElementByIndex from "../../../helpers/dom/positionElementByIndex";
 
 export default class AppChatFoldersTab extends SliderSuperTab {
   private createFolderBtn: HTMLElement;
