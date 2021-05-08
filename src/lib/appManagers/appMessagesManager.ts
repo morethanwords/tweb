@@ -4654,16 +4654,14 @@ export class AppMessagesManager {
         mids.splice(i, 0, offset_id);
       }
       
-      const slice = historyStorage.history.insertSlice(mids);
-      if(slice) {
-        if(isTopEnd) {
-          slice.setEnd(SliceEnd.Top);
-        }
+      const slice = historyStorage.history.insertSlice(mids) || historyStorage.history.slice;
+      if(isTopEnd) {
+        slice.setEnd(SliceEnd.Top);
+      }
   
-        if(isBottomEnd) {
-          slice.setEnd(SliceEnd.Bottom);
-          historyStorage.maxId = slice[0]; // ! WARNING
-        }
+      if(isBottomEnd) {
+        slice.setEnd(SliceEnd.Bottom);
+        historyStorage.maxId = slice[0]; // ! WARNING
       }
       
       /* const isBackLimit = offset < 0 && -offset !== fullLimit;
