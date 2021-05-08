@@ -1440,9 +1440,9 @@ export default class ChatBubbles {
     const isTarget = lastMsgId !== undefined;
 
     // * this one will fix topMessage for null message in history (e.g. channel comments with only 1 comment and it is a topMessage)
-    if(this.chat.type !== 'pinned' && topMessage && !historyStorage.history.slice.includes(topMessage)) {
+    /* if(this.chat.type !== 'pinned' && topMessage && !historyStorage.history.slice.includes(topMessage)) {
       topMessage = 0;
-    }
+    } */
 
     let readMaxId = 0, savedPosition: ReturnType<AppImManager['getChatSavedPosition']>;
     if(!isTarget) {
@@ -1653,7 +1653,7 @@ export default class ChatBubbles {
   
                   const slice = historyStorage.history.slice;
                   const isBottomEnd = slice.isEnd(SliceEnd.Bottom);
-                  if(this.scrollable.loadedAll.bottom !== isBottomEnd) {
+                  if(this.scrollable.loadedAll.bottom && this.scrollable.loadedAll.bottom !== isBottomEnd) {
                     this.scrollable.loadedAll.bottom = isBottomEnd;
                     this.onScroll();
                   }
@@ -2622,19 +2622,19 @@ export default class ChatBubbles {
 
   public performHistoryResult(history: number[], reverse: boolean, isBackLimit: boolean, additionMsgId?: number) {
     // commented bot getProfile in getHistory!
-    if(!history/* .filter((id: number) => id > 0) */.length) {
-      if(!isBackLimit) {
-        this.scrollable.loadedAll.top = true;
+    // if(!history/* .filter((id: number) => id > 0) */.length) {
+    //   if(!isBackLimit) {
+    //     this.scrollable.loadedAll.top = true;
 
-        /* if(this.chat.type === 'discussion') {
-          const serviceStartMessageId = this.appMessagesManager.threadsServiceMessagesIdsStorage[this.peerId + '_' + this.chat.threadId];
-          if(serviceStartMessageId) history.push(serviceStartMessageId);
-          history.push(this.chat.threadId);
-        } */
-      } else {
-        this.scrollable.loadedAll.bottom = true;
-      }
-    }
+    //     /* if(this.chat.type === 'discussion') {
+    //       const serviceStartMessageId = this.appMessagesManager.threadsServiceMessagesIdsStorage[this.peerId + '_' + this.chat.threadId];
+    //       if(serviceStartMessageId) history.push(serviceStartMessageId);
+    //       history.push(this.chat.threadId);
+    //     } */
+    //   } else {
+    //     this.scrollable.loadedAll.bottom = true;
+    //   }
+    // }
 
     history = history.slice(); // need
 

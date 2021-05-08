@@ -1216,6 +1216,10 @@ $bubble-margin: .25rem;
         white-space: nowrap;
         height: 18px;
 
+        &:after {
+          color: #fff;
+        }
+
         .inner {
           display: none;
         }
