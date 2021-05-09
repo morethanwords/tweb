@@ -214,4 +214,9 @@
     {"name": "channel_id", "type": "number"}
   ],
   "type": "Update"
+}, {
+  "predicate": "messages.stickerSet",
+  "params": [
+    {"name": "refreshTime", "type": "number"}
+  ]
 }]

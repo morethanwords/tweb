@@ -3852,7 +3852,8 @@ export namespace MessagesStickerSet {
 		_: 'messages.stickerSet',
 		set: StickerSet,
 		packs: Array<StickerPack>,
-		documents: Array<Document>
+		documents: Array<Document>,
+		refreshTime?: number
 	};
 }
 
