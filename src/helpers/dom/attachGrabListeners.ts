@@ -1,3 +1,9 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
 export type GrabEvent = {x: number, y: number, isTouch?: boolean};
 
 export default function attachGrabListeners(element: HTMLElement, onStart: (position: GrabEvent) => void, onMove: (position: GrabEvent) => void, onEnd: (position: GrabEvent) => void) {
@@ -35,7 +41,7 @@ export default function attachGrabListeners(element: HTMLElement, onStart: (posi
 
   const onTouchEnd = (event: TouchEvent) => {
     document.removeEventListener('touchmove', onTouchMove);
-    element.addEventListener('touchstart', onTouchStart, {passive: true, once: true});
+    element.addEventListener('touchstart', onTouchStart, {passive: false, once: true});
     onEnd && onEnd({x: event.touches[0].clientX, y: event.touches[0].clientY, isTouch: true});
   };
 
@@ -44,10 +50,10 @@ export default function attachGrabListeners(element: HTMLElement, onStart: (posi
     onTouchMove(event);
 
     document.addEventListener('touchmove', onTouchMove, {passive: false});
-    document.addEventListener('touchend', onTouchEnd, {passive: true, once: true});
+    document.addEventListener('touchend', onTouchEnd, {passive: false, once: true});
   };
 
-  element.addEventListener('touchstart', onTouchStart, {passive: true, once: true});
+  element.addEventListener('touchstart', onTouchStart, {passive: false, once: true});
 
   return () => {
     element.removeEventListener('mousedown', onMouseDown);

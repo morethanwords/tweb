@@ -809,7 +809,7 @@
     @include respond-to(handhelds) {
       padding-bottom: .5rem;
     } */
-
+    user-select: none;
     padding: .5rem 0 1rem;
 
     @include respond-to(handhelds) {

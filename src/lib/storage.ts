@@ -31,6 +31,10 @@ export default class AppStorage<Storage extends Record<string, any>/* Storage ex
   private saveThrottled: () => void;
   private saveDeferred = deferredPromise<void>();
 
+  private keysToDelete: Set<keyof Storage> = new Set();
+  private deleteThrottled: () => void;
+  private deleteDeferred = deferredPromise<void>();
+
   constructor(storageOptions: Omit<IDBOptions, 'storeName' | 'stores'> & {stores?: DatabaseStore[], storeName: DatabaseStoreName}) {
     this.storage = new IDBStorage(storageOptions);
 
@@ -40,9 +44,10 @@ export default class AppStorage<Storage extends Record<string, any>/* Storage ex
       const deferred = this.saveDeferred;
       this.saveDeferred = deferredPromise<void>();
 
-      if(this.keysToSet.size) {
-        const keys = Array.from(this.keysToSet.values()) as string[];
-        this.keysToSet.clear();
+      const set = this.keysToSet;
+      if(set.size) {
+        const keys = Array.from(set.values()) as string[];
+        set.clear();
 
         try {
           //console.log('setItem: will set', key/* , value */);
@@ -58,8 +63,31 @@ export default class AppStorage<Storage extends Record<string, any>/* Storage ex
 
       deferred.resolve();
 
-      if(this.keysToSet.size) {
+      if(set.size) {
         this.saveThrottled();
+      }
+    }, 16, false);
+
+    this.deleteThrottled = throttle(async() => {
+      const deferred = this.deleteDeferred;
+      this.deleteDeferred = deferredPromise<void>();
+
+      const set = this.keysToDelete;
+      if(set.size) {
+        const keys = Array.from(set.values()) as string[];
+        set.clear();
+
+        try {
+          await this.storage.delete(keys);
+        } catch(e) {
+          console.error('[AS]: delete error:', e, keys);
+        }
+      }
+
+      deferred.resolve();
+
+      if(set.size) {
+        this.deleteThrottled();
       }
     }, 16, false);
 
@@ -161,6 +189,7 @@ export default class AppStorage<Storage extends Record<string, any>/* Storage ex
 
         if(this.useStorage && !onlyLocal) {
           this.keysToSet.add(key);
+          this.keysToDelete.delete(key);
           this.saveThrottled();
         }
       }
@@ -169,7 +198,7 @@ export default class AppStorage<Storage extends Record<string, any>/* Storage ex
     return this.useStorage ? this.saveDeferred : Promise.resolve();
   }
 
-  public async delete(key: keyof Storage, saveLocal = false) {
+  public delete(key: keyof Storage, saveLocal = false) {
     /* if(!this.cache.hasOwnProperty(key)) {
       return;
     } */
@@ -183,14 +212,11 @@ export default class AppStorage<Storage extends Record<string, any>/* Storage ex
     
     if(this.useStorage) {
       this.keysToSet.delete(key);
-      
-      try {
-        await this.storage.delete(key as string);
-      } catch(e) {
-        this.useStorage = false;
-        console.error('[AS]: remove error:', e);
-      }
+      this.keysToDelete.add(key);
+      this.deleteThrottled();
     }
+
+    return this.useStorage ? this.deleteDeferred : Promise.resolve();
   }
 
   public clear() {
@@ -203,6 +229,7 @@ export default class AppStorage<Storage extends Record<string, any>/* Storage ex
       
       if(!enabled) {
         storage.keysToSet.clear();
+        storage.keysToDelete.clear();
         storage.getPromises.forEach((deferred) => deferred.resolve());
         storage.getPromises.clear();
         return storage.clear();

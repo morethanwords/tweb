@@ -9,7 +9,6 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import { tsNow } from "../../helpers/date";
 import type { Chat, DialogPeer, Message, MessagesPeerDialogs, Update } from "../../layer";
 import type { AppChatsManager } from "../appManagers/appChatsManager";
 import type { AppMessagesManager, Dialog, MyMessage } from "../appManagers/appMessagesManager";
@@ -19,6 +18,7 @@ import type { AppDraftsManager } from "../appManagers/appDraftsManager";
 import type { AppNotificationsManager } from "../appManagers/appNotificationsManager";
 import type { ApiUpdatesManager } from "../appManagers/apiUpdatesManager";
 import type { ServerTimeManager } from "../mtproto/serverTimeManager";
+import { tsNow } from "../../helpers/date";
 import apiManager from "../mtproto/mtprotoworker";
 import searchIndexManager from "../searchIndexManager";
 import { forEachReverse, insertInDescendSortedArray } from "../../helpers/array";
@@ -306,7 +306,7 @@ export default class DialogsStorage {
       [dialog.peerId]: dialog
     });
 
-    this.appStateManager.requestPeer(dialog.peerId, 'dialog');
+    this.appStateManager.requestPeer(dialog.peerId, 'dialog_' + dialog.peerId, 1);
   }
 
   public pushDialog(dialog: Dialog, offsetDate?: number) {
@@ -341,6 +341,11 @@ export default class DialogsStorage {
       this.byFolders[foundDialog[0].folder_id].splice(foundDialog[1], 1);
       delete this.dialogs[peerId];
       searchIndexManager.indexObject(peerId, '', this.dialogsIndex);
+
+      // clear from state
+      this.appStateManager.keepPeerSingle(0, 'topMessage_' + peerId);
+      this.appStateManager.keepPeerSingle(0, 'dialog_' + peerId);
+      this.storage.delete(peerId);
     }
 
     return foundDialog;
