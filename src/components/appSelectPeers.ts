@@ -478,7 +478,7 @@ export default class AppSelectPeers {
     div.dataset.key = '' + peerId;
     if(typeof(peerId) === 'number') {
       if(title === undefined) {
-        title = new PeerTitle({peerId, onlyFirstName: true}).element;
+        title = new PeerTitle({peerId, onlyFirstName: true, dialog: true}).element;
       }
 
       avatarEl.setAttribute('peer', '' + peerId);
