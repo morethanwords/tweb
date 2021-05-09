@@ -13,7 +13,7 @@ import AppStorage from '../storage';
 import { MOUNT_CLASS_TO } from '../../config/debug';
 import { forEachReverse } from '../../helpers/array';
 
-// TODO: если пак будет сохранён и потом обновлён, то недостающие стикеры не подгрузит
+const CACHE_TIME = 3600e3;
 
 export class AppStickersManager {
   private storage = new AppStorage<Record<string, MessagesStickerSet>>({
@@ -53,10 +53,10 @@ export class AppStickersManager {
       return this.getStickerSetPromises[set.id];
     }
 
-    return this.getStickerSetPromises[set.id] = new Promise(async(resolve, reject) => {
+    return this.getStickerSetPromises[set.id] = new Promise(async(resolve) => {
       if(!params.overwrite) {
         const cachedSet = await this.storage.get(set.id);
-        if(cachedSet && cachedSet.documents?.length) {
+        if(cachedSet && cachedSet.documents?.length && (Date.now() - cachedSet.refreshTime) < CACHE_TIME) {
           this.saveStickers(cachedSet.documents);
           resolve(cachedSet);
           delete this.getStickerSetPromises[set.id];
@@ -120,6 +120,7 @@ export class AppStickersManager {
     
     //console.log('stickers wrote', this.stickerSets);
     const needSave = stickerSet.set.installed_date || id === 'emoji';
+    stickerSet.refreshTime = Date.now();
     this.storage.set({[id]: stickerSet}, !needSave);
   }
 
