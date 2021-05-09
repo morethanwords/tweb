@@ -292,6 +292,7 @@ ul.chatlist {
 
   .dialog-avatar, .user-caption {
     pointer-events: none;
+    position: relative; // for z-index
   }
 
   .user-title {
