@@ -6,15 +6,15 @@
 
 .popup {
   position: fixed!important;
-  left: 0;
   top: 0;
-  height: 100%;
+  right: 0;
+  bottom: 0;
+  left: 0;
   max-width: none;
-  width: 100%;
   z-index: 3;
   background-color: rgba(0, 0, 0, .3);
   margin: 0;
-  padding: 0;
+  padding: 2.5rem;
   box-shadow: none;
   opacity: 0;
   visibility: hidden;

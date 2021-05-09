@@ -638,7 +638,7 @@ $chat-helper-size: 39px;
 	top: 0;
 	transform: translateX(-50%);
 	width: 28.75rem;
-	max-width: calc(100% - (var(--padding-horizontal) * 2));
+	max-width: calc(100% - (var(--chat-input-padding) * 2));
 }
 
 .selection-wrapper {
@@ -805,12 +805,11 @@ $chat-helper-size: 39px;
 	.attach-file {
 		&.menu-open {
 			color: var(--primary-color);
-			background-color: hover-color(var(--primary-color)) !important;
+			background-color: var(--light-primary-color) !important;
 		}
 
 		.btn-menu {
-			padding: 8px 0;
-			right: -11px;
+			right: calc(var(--padding-horizontal) * -1 - .125rem);
 			bottom: calc(100% + 1.25rem);
 			
 			> div {

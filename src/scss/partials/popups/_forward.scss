@@ -21,6 +21,10 @@
       flex: 0 0 auto;
       margin-bottom: 3px;
       padding: 0 1rem;
+
+      @include respond-to(handhelds) {
+        padding-left: .9375rem;
+      }
     }
 
     &-title {
@@ -41,7 +45,11 @@
       font-size: 1.25rem;
       padding: .5rem 1.5rem;
       width: 100%;
-      line-height: 1.3125;
+      line-height: var(--line-height);
+
+      @include respond-to(handhelds) {
+        padding-left: 1rem;
+      }
     }
 
     .chatlist {
