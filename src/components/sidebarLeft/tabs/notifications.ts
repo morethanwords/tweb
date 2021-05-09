@@ -7,13 +7,14 @@
 import { SettingSection } from "..";
 import Row from "../../row";
 import CheckboxField from "../../checkboxField";
-import { InputNotifyPeer, PeerNotifySettings, Update } from "../../../layer";
+import { InputNotifyPeer, Update } from "../../../layer";
 import appNotificationsManager from "../../../lib/appManagers/appNotificationsManager";
 import { SliderSuperTabEventable } from "../../sliderTab";
 import { copy } from "../../../helpers/object";
 import rootScope from "../../../lib/rootScope";
 import { convertKeyToInputKey } from "../../../helpers/string";
 import { LangPackKey } from "../../../lib/langPack";
+import appStateManager from "../../../lib/appManagers/appStateManager";
 
 type InputNotifyKey = Exclude<InputNotifyPeer['_'], 'inputNotifyPeer'>;
 
@@ -68,7 +69,7 @@ export default class AppNotificationsTab extends SliderSuperTabEventable {
 
           const inputSettings: any = copy(notifySettings);
           inputSettings._ = 'inputPeerNotifySettings';
-          inputSettings.mute_until = mute ? 2147483647 : 0;
+          inputSettings.mute_until = mute ? 0x7FFFFFFF : 0;
           inputSettings.show_previews = showPreviews;
 
           appNotificationsManager.updateNotifySettings(inputNotifyPeer, inputSettings);
@@ -114,7 +115,11 @@ export default class AppNotificationsTab extends SliderSuperTabEventable {
       
       const soundRow = new Row({
         checkboxField: new CheckboxField({text: 'Notifications.Sound', checked: true, stateKey: 'settings.notifications.sound'}),
-        subtitleLangKey: 'Checkbox.Enabled',
+        subtitleLangKey: 'Loading',
+      });
+
+      appStateManager.getState().then(state => {
+        soundRow.checkboxField.checked = state.settings.notifications.sound;
       });
 
       section.content.append(contactsSignUpRow.container, soundRow.container);
