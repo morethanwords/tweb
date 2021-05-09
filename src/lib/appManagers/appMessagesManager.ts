@@ -192,6 +192,8 @@ export class AppMessagesManager {
 
   private groupedTempId = 0;
 
+  private typings: {[peerId: string]: {type: SendMessageAction['_'], timeout?: number}} = {};
+
   constructor() {
     rootScope.addMultipleEventsListeners({
       updateMessageID: this.onUpdateMessageId,
@@ -596,7 +598,7 @@ export class AppMessagesManager {
 
     let photo: MyPhoto, document: MyDocument;
 
-    let actionName = '';
+    let actionName: SendMessageAction['_'];
     if(isDocument) { // maybe it's a sticker or gif
       attachType = 'document';
       apiFileName = '';
@@ -762,7 +764,7 @@ export class AppMessagesManager {
 
           sentDeferred.reject(err);
           this.cancelPendingMessage(message.random_id);
-          this.setTyping(peerId, 'sendMessageCancelAction');
+          this.setTyping(peerId, {_: 'sendMessageCancelAction'});
 
           if(uploadPromise?.cancel) {
             uploadPromise.cancel();
@@ -885,7 +887,9 @@ export class AppMessagesManager {
             } */
 
             const percents = Math.max(1, Math.floor(100 * progress.done / progress.total));
-            this.setTyping(peerId, {_: actionName, progress: percents | 0});
+            if(actionName) {
+              this.setTyping(peerId, {_: actionName, progress: percents | 0});
+            }
             sentDeferred.notifyAll(progress);
           });
 
@@ -913,7 +917,7 @@ export class AppMessagesManager {
 
     if(!options.isGroupedItem) {
       sentDeferred.then(inputMedia => {
-        this.setTyping(peerId, 'sendMessageCancelAction');
+        this.setTyping(peerId, {_: 'sendMessageCancelAction'});
 
         return apiManager.invokeApi('messages.sendMedia', {
           background: options.background,
@@ -1031,7 +1035,7 @@ export class AppMessagesManager {
 
     const inputPeer = appPeersManager.getInputPeerById(peerId);
     const invoke = (multiMedia: any[]) => {
-      this.setTyping(peerId, 'sendMessageCancelAction');
+      this.setTyping(peerId, {_: 'sendMessageCancelAction'});
 
       this.sendSmthLazyLoadQueue.push({
         load: () => {
@@ -4845,14 +4849,35 @@ export class AppMessagesManager {
     }
   }
 
-  public setTyping(peerId: number, _action: any): Promise<boolean> {
-    if(!rootScope.myId || !peerId || !this.canWriteToPeer(peerId) || peerId === rootScope.myId) return Promise.resolve(false);
-    
-    const action: SendMessageAction = typeof(_action) === 'string' ? {_: _action} : _action;
+  public setTyping(peerId: number, action: SendMessageAction): Promise<boolean> {
+    let typing = this.typings[peerId];
+    if(!rootScope.myId || 
+      !peerId || 
+      !this.canWriteToPeer(peerId) || 
+      peerId === rootScope.myId ||
+      typing?.type === action._
+    ) {
+      return Promise.resolve(false);
+    }
+
+    if(typing?.timeout) {
+      clearTimeout(typing.timeout);
+    }
+
+    typing = this.typings[peerId] = {
+      type: action._
+    };
+
     return apiManager.invokeApi('messages.setTyping', {
       peer: appPeersManager.getInputPeerById(peerId),
       action
-    }) as Promise<boolean>;
+    }).finally(() => {
+      if(typing === this.typings[peerId]) {
+        typing.timeout = window.setTimeout(() => {
+          delete this.typings[peerId];
+        }, 6000);
+      }
+    });
   }
 
   private handleDeletedMessages(peerId: number, storage: MessagesStorage, messages: number[]) {

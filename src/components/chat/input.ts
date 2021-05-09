@@ -1102,13 +1102,13 @@ export default class ChatInput {
 
     if(this.isInputEmpty()) {
       if(this.lastTimeType) {
-        this.appMessagesManager.setTyping(this.chat.peerId, 'sendMessageCancelAction');
+        this.appMessagesManager.setTyping(this.chat.peerId, {_: 'sendMessageCancelAction'});
       }
     } else {
       const time = Date.now();
       if(time - this.lastTimeType >= 6000) {
         this.lastTimeType = time;
-        this.appMessagesManager.setTyping(this.chat.peerId, 'sendMessageTypingAction');
+        this.appMessagesManager.setTyping(this.chat.peerId, {_: 'sendMessageTypingAction'});
       }
     }
 
