@@ -221,14 +221,6 @@ html.night {
   // * Night theme end
 }
 
-@media (prefers-color-scheme: dark) {
-
-}
-
-@media (prefers-color-scheme: light) {
-
-}
-
 @import "partials/ico";
 @import "partials/input";
 @import "partials/button";
@@ -396,6 +388,12 @@ html, body {
     width: 100%;
     height: 100%;
   } */
+}
+
+@supports(padding: unquote('max(0px)')) {
+  html {
+    padding: 0 unquote('min(16px, env(safe-area-inset-right))') 0 unquote('min(16px, env(safe-area-inset-left))');
+  }
 }
 
 html {

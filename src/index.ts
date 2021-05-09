@@ -183,9 +183,13 @@ console.timeEnd('get storage1'); */
             //if(e.target === document.documentElement || e.target === document.body) e.preventDefault();
           };
 
+          // let isOpened = false;
           document.addEventListener('focusin', (e) => {
             if(!setViewportVH) return;
             //console.log('focusin');
+
+            // isOpened = true;
+            // document.body.classList.add('is-keyboard-opened');
 
             fixSafariStickyInput(e.target as HTMLElement);
 
@@ -200,6 +204,11 @@ console.timeEnd('get storage1'); */
 
           document.addEventListener('focusout', () => {
             document.removeEventListener('touchmove', onTouchMove, o);
+            
+            // if(isOpened) {
+            //   isOpened = false;
+            //   document.body.classList.remove('is-keyboard-opened');
+            // }
           });
           
           document.addEventListener('visibilitychange', () => {
