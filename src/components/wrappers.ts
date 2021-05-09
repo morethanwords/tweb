@@ -37,7 +37,7 @@ import { animateSingle } from '../helpers/animation';
 import renderImageFromUrl from '../helpers/dom/renderImageFromUrl';
 import sequentialDom from '../helpers/sequentialDom';
 import { fastRaf } from '../helpers/schedulers';
-import appDownloadManager from '../lib/appManagers/appDownloadManager';
+import appDownloadManager, { DownloadBlob } from '../lib/appManagers/appDownloadManager';
 import appStickersManager from '../lib/appManagers/appStickersManager';
 import { cancelEvent } from '../helpers/dom/cancelEvent';
 import { attachClickEvent } from '../helpers/dom/clickEvent';
@@ -546,7 +546,16 @@ export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showS
 
   const load = () => {
     const doc = appDocsManager.getDoc(docDiv.dataset.docId);
-    const download = appDocsManager.saveDocFile(doc, appImManager.chat.bubbles ? appImManager.chat.bubbles.lazyLoadQueue.queueId : 0);
+    let download: DownloadBlob;
+    if(doc.type === 'pdf') {
+      download = appDocsManager.downloadDoc(doc, appImManager.chat.bubbles ? appImManager.chat.bubbles.lazyLoadQueue.queueId : 0);
+      download.then(() => {
+        const cacheContext = appDownloadManager.getCacheContext(doc);
+        window.open(cacheContext.url);
+      });
+    } else {
+      download = appDocsManager.saveDocFile(doc, appImManager.chat.bubbles ? appImManager.chat.bubbles.lazyLoadQueue.queueId : 0);
+    }
 
     if(downloadDiv) {
       download.then(onLoad);

@@ -36,6 +36,7 @@ export function blobConstruct(blobParts: any, mimeType: string = ''): Blob {
   return blob;
 }
 
+// https://www.iana.org/assignments/media-types/media-types.xhtml
 export function blobSafeMimeType(mimeType: string) {
   if([
     'image/jpeg',
@@ -49,7 +50,8 @@ export function blobSafeMimeType(mimeType: string) {
     'audio/ogg',
     'audio/mpeg',
     'audio/mp4',
-    'application/json'
+    'application/json',
+    'application/pdf'
   ].indexOf(mimeType) === -1) {
     return 'application/octet-stream';
   }

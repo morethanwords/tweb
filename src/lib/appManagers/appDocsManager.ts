@@ -21,6 +21,7 @@ import appPhotosManager from './appPhotosManager';
 import blur from '../../helpers/blur';
 import apiManager from '../mtproto/mtprotoworker';
 import { MOUNT_CLASS_TO } from '../../config/debug';
+import { getFullDate } from '../../helpers/date';
 
 export type MyDocument = Document.document;
 
@@ -96,8 +97,7 @@ export class AppDocsManager {
           doc.duration = attribute.duration;
           doc.audioTitle = attribute.title;
           doc.audioPerformer = attribute.performer;
-          doc.type = attribute.pFlags.voice && doc.mime_type === "audio/ogg" ? 'voice' : 'audio';
-
+          doc.type = attribute.pFlags.voice && doc.mime_type === 'audio/ogg' ? 'voice' : 'audio';
           /* if(apiDoc.type === 'audio') {
             apiDoc.supportsStreaming = true;
           } */
@@ -174,6 +174,15 @@ export class AppDocsManager {
       }
     }
 
+    if(doc.mime_type === 'application/pdf') {
+      doc.type = 'pdf';
+    }
+
+    if(doc.type === 'voice' || doc.type === 'round') {
+      // browser will identify extension
+      doc.file_name = doc.type + '_' + getFullDate(new Date(doc.date * 1000), {monthAsNumber: true, leadingZero: true}).replace(/[:\.]/g, '-').replace(', ', '_');
+    }
+
     if(apiManager.isServiceWorkerOnline()) {
       if((doc.type === 'gif' && doc.size > 8e6) || doc.type === 'audio' || doc.type === 'video') {
         doc.supportsStreaming = true;
@@ -247,7 +256,7 @@ export class AppDocsManager {
       dcId: doc.dc_id, 
       location: inputFileLocation, 
       size: thumb ? thumb.size : doc.size, 
-      mimeType: mimeType,
+      mimeType,
       fileName: doc.file_name,
       queueId,
       onlyCache

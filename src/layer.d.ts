@@ -3101,7 +3101,7 @@ export namespace Document {
 		video_thumbs?: Array<VideoSize>,
 		dc_id: number,
 		attributes: Array<DocumentAttribute>,
-		type?: 'gif' | 'sticker' | 'audio' | 'voice' | 'video' | 'round' | 'photo',
+		type?: 'gif' | 'sticker' | 'audio' | 'voice' | 'video' | 'round' | 'photo' | 'pdf',
 		h?: number,
 		w?: number,
 		file_name?: string,
