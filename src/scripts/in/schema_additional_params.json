@@ -2,7 +2,7 @@
   "predicate": "document",
   "params": [
     {"name": "thumbs", "type": "Array<PhotoSize.photoSize | PhotoSize.photoCachedSize | PhotoSize.photoStrippedSize | PhotoSize.photoPathSize>"},
-    {"name": "type", "type": "'gif' | 'sticker' | 'audio' | 'voice' | 'video' | 'round' | 'photo'"},
+    {"name": "type", "type": "'gif' | 'sticker' | 'audio' | 'voice' | 'video' | 'round' | 'photo' | 'pdf'"},
     {"name": "h", "type": "number"},
     {"name": "w", "type": "number"},
     {"name": "file_name", "type": "string"},

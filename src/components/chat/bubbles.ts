@@ -10,7 +10,7 @@ import type { AppStickersManager } from "../../lib/appManagers/appStickersManage
 import type { AppUsersManager } from "../../lib/appManagers/appUsersManager";
 import type { AppInlineBotsManager } from "../../lib/appManagers/appInlineBotsManager";
 import type { AppPhotosManager } from "../../lib/appManagers/appPhotosManager";
-import type { AppDocsManager } from "../../lib/appManagers/appDocsManager";
+import type { AppDocsManager, MyDocument } from "../../lib/appManagers/appDocsManager";
 import type { AppPeersManager } from "../../lib/appManagers/appPeersManager";
 import type sessionStorage from '../../lib/sessionStorage';
 import type Chat from "./chat";
@@ -2427,7 +2427,7 @@ export default class ChatBubbles {
             lastContainer && lastContainer.append(timeSpan.cloneNode(true));
 
             bubble.classList.remove('is-message-empty');
-            messageDiv.classList.add((doc.type !== 'photo' ? doc.type || 'document' : 'document') + '-message');
+            messageDiv.classList.add((!(['photo', 'pdf'] as MyDocument['type'][]).includes(doc.type) ? doc.type || 'document' : 'document') + '-message');
             processingWebPage = true;
             
             break;

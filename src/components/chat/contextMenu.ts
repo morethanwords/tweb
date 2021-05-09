@@ -24,6 +24,7 @@ import { cancelEvent } from "../../helpers/dom/cancelEvent";
 import cancelSelection from "../../helpers/dom/cancelSelection";
 import { attachClickEvent } from "../../helpers/dom/clickEvent";
 import isSelectionEmpty from "../../helpers/dom/isSelectionEmpty";
+import appDocsManager, { MyDocument } from "../../lib/appManagers/appDocsManager";
 
 export default class ChatContextMenu {
   private buttons: (ButtonMenuItemOptions & {verify: () => boolean, notDirect?: () => boolean, withSelection?: true})[];
@@ -241,6 +242,16 @@ export default class ChatContextMenu {
       text: 'Message.Context.Unpin',
       onClick: this.onUnpinClick,
       verify: () => this.message.pFlags.pinned && this.appPeersManager.canPinMessage(this.peerId),
+    }, {
+      icon: 'download',
+      text: 'MediaViewer.Context.Download',
+      onClick: () => {
+        appDocsManager.saveDocFile(this.message.media.document);
+      },
+      verify: () => {
+        const doc: MyDocument = this.message.media?.document;
+        return doc && doc.type && !(['gif', 'photo', 'video', 'sticker'] as MyDocument['type'][]).includes(doc.type);
+      }
     }, {
       icon: 'checkretract',
       text: 'Chat.Poll.Unvote',
