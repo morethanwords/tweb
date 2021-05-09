@@ -14,6 +14,7 @@ import PopupPickUser from "../../popups/pickUser";
 import rootScope from "../../../lib/rootScope";
 import findUpTag from "../../../helpers/dom/findUpTag";
 import ButtonCorner from "../../buttonCorner";
+import { attachClickEvent } from "../../../helpers/dom/clickEvent";
 
 export default class AppBlockedUsersTab extends SliderSuperTab {
   public peerIds: number[];
@@ -156,7 +157,3 @@ export default class AppBlockedUsersTab extends SliderSuperTab {
     return super.onCloseAfterTimeout();
   }
 }
-function attachClickEvent(btnAdd: HTMLButtonElement, arg1: (e: any) => void, arg2: { listenerSetter: import("../../../helpers/listenerSetter").default; }) {
-  throw new Error("Function not implemented.");
-}
-

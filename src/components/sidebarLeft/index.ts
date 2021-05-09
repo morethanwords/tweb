@@ -1,4 +1,3 @@
-//import { logger } from "../polyfill";
 /*
  * https://github.com/morethanwords/tweb
  * Copyright (C) 2019-2021 Eduard Kuzmenko
@@ -36,6 +35,7 @@ import findUpTag from "../../helpers/dom/findUpTag";
 import PeerTitle from "../peerTitle";
 import App from "../../config/app";
 import ButtonMenuToggle from "../buttonMenuToggle";
+import replaceContent from "../../helpers/dom/replaceContent";
 
 export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
 
@@ -606,7 +606,3 @@ export const generateSection = (appendTo: Scrollable, name?: LangPackKey, captio
 const appSidebarLeft = new AppSidebarLeft();
 MOUNT_CLASS_TO.appSidebarLeft = appSidebarLeft;
 export default appSidebarLeft;
-function replaceContent(div: HTMLDivElement, title: HTMLElement) {
-  throw new Error("Function not implemented.");
-}
-

@@ -908,7 +908,7 @@ export class AppDialogsManager {
 
       const offsetTop = this.folders.container.offsetTop;
       const firstY = rectContainer.y + offsetTop;
-      const lastY = rectContainer.y;
+      const lastY = rectContainer.y - 8; // 8px - .chatlist padding-bottom
       
       const firstElement = findUpTag(document.elementFromPoint(Math.ceil(rectTarget.x), Math.ceil(firstY + 1)), firstElementChild.tagName) as HTMLElement;
       const lastElement = findUpTag(document.elementFromPoint(Math.ceil(rectTarget.x), Math.floor(lastY + rectContainer.height - 1)), firstElementChild.tagName) as HTMLElement;
