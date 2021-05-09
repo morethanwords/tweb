@@ -155,7 +155,7 @@ export class AppPollsManager {
       poll,
       correct_answers: correctAnswers,
       solution,
-      solution_entities: solutionEntities?.length ? solutionEntities : undefined
+      solution_entities: solution ? solutionEntities : undefined
     };
   }
 
