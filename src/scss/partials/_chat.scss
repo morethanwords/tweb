@@ -17,7 +17,9 @@ $chat-helper-size: 39px;
 
 .chat-input {
 	--translateY: 0;
-	--bottom: #{$chat-padding-handhelds};
+	--padding-bottom: #{$chat-padding-handhelds};
+	//--bottom: clamp(var(--padding-bottom), env(safe-area-inset-bottom), 1.3125rem);
+	--bottom: var(--padding-bottom);
 	display: flex;
 	width: 100%;
 	max-width: 100%;
@@ -27,6 +29,10 @@ $chat-helper-size: 39px;
 	position: relative;
 	transition: transform var(--transition-standard-out);
 	transform: translateY(var(--translateY));
+
+	/* body.is-keyboard-opened & {
+		--bottom: var(--padding-bottom);
+	} */
 
 	body.animation-level-0 & {
 		transition: none;
@@ -41,11 +47,11 @@ $chat-helper-size: 39px;
 	}
 
 	@include respond-to(not-handhelds) {
-		--bottom: 20px;
+		--padding-bottom: 1.25rem;
 	}
 
 	@include respond-to(esg-bottom) {
-		--bottom: #{$chat-padding-handhelds};
+		--padding-bottom: #{$chat-padding-handhelds};
 	}
 
 	@include respond-to(medium-screens) {
