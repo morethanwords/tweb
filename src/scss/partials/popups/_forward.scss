@@ -48,7 +48,7 @@
       line-height: var(--line-height);
 
       @include respond-to(handhelds) {
-        padding-left: 1rem;
+        padding-left: 1.0625rem;
       }
     }
 
