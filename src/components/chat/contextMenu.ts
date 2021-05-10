@@ -249,6 +249,10 @@ export default class ChatContextMenu {
         appDocsManager.saveDocFile(this.message.media.document);
       },
       verify: () => {
+        if(this.message.pFlags.is_outgoing) {
+          return false;
+        }
+        
         const doc: MyDocument = this.message.media?.document;
         return doc && doc.type && !(['gif', 'photo', 'video', 'sticker'] as MyDocument['type'][]).includes(doc.type);
       }
