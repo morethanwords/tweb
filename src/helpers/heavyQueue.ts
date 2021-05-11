@@ -17,13 +17,13 @@ type HeavyQueue<T> = {
 const heavyQueue: HeavyQueue<any>[] = [];
 let processingQueue = false;
 
-export default function pushHeavyTask<T>(queue: HeavyQueue<T>) {
+export default function addHeavyTask<T>(queue: HeavyQueue<T>, method: 'push' | 'unshift' = 'push') {
   if(!queue.items.length) {
     return Promise.resolve([]);
   }
   
   queue.promise = deferredPromise<T[]>();
-  heavyQueue.push(queue);
+  heavyQueue[method](queue);
   processHeavyQueue();
 
   return queue.promise;

@@ -45,7 +45,7 @@ import AudioElement from "../audio";
 import { Message, MessageEntity,  MessageReplyHeader } from "../../layer";
 import { REPLIES_PEER_ID } from "../../lib/mtproto/mtproto_config";
 import { FocusDirection } from "../../helpers/fastSmoothScroll";
-import useHeavyAnimationCheck, { getHeavyAnimationPromise, dispatchHeavyAnimationEvent } from "../../hooks/useHeavyAnimationCheck";
+import useHeavyAnimationCheck, { getHeavyAnimationPromise, dispatchHeavyAnimationEvent, interruptHeavyAnimation } from "../../hooks/useHeavyAnimationCheck";
 import { fastRaf } from "../../helpers/schedulers";
 import { deferredPromise } from "../../helpers/cancellablePromise";
 import RepliesElement from "./replies";
@@ -67,6 +67,7 @@ import reflowScrollableElement from "../../helpers/dom/reflowScrollableElement";
 import replaceContent from "../../helpers/dom/replaceContent";
 import setInnerHTML from "../../helpers/dom/setInnerHTML";
 import whichChild from "../../helpers/dom/whichChild";
+import { cancelAnimationByKey } from "../../helpers/animation";
 
 const USE_MEDIA_TAILS = false;
 const IGNORE_ACTIONS: Message.messageService['action']['_'][] = [/* 'messageActionHistoryClear' */];
@@ -1402,6 +1403,12 @@ export default class ChatBubbles {
     ////console.time('appImManager cleanup');
     this.scrollable.loadedAll.top = false;
     this.scrollable.loadedAll.bottom = false;
+
+    // cancel scroll
+    cancelAnimationByKey(this.scrollable.container);
+
+    // do not wait ending of previous scale animation
+    interruptHeavyAnimation();
 
     if(TEST_SCROLL !== undefined) {
       TEST_SCROLL = TEST_SCROLL_TIMES;
