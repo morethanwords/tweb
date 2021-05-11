@@ -19,6 +19,7 @@ import App from '../../config/app';
 import DEBUG, { MOUNT_CLASS_TO } from '../../config/debug';
 import AppStorage from '../storage';
 import { Chat } from '../../layer';
+import { isMobile } from '../../helpers/userAgent';
 
 const REFRESH_EVERY = 24 * 60 * 60 * 1000; // 1 day
 const STATE_VERSION = App.version;
@@ -96,7 +97,7 @@ export const STATE_INIT: State = {
   recentSearch: [],
   version: STATE_VERSION,
   authState: {
-    _: 'authStateSignQr'
+    _: isMobile ? 'authStateSignIn' : 'authStateSignQr'
   },
   hiddenPinnedMessages: {},
   settings: {
