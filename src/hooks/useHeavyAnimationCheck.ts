@@ -6,7 +6,6 @@
 
 // * Jolly Cobra's useHeavyAnimationCheck.ts, patched
 
-//import { useEffect } from '../lib/teact/teact';
 import { AnyToVoidFunction } from '../types';
 import ListenerSetter from '../helpers/listenerSetter';
 import { CancellablePromise, deferredPromise } from '../helpers/cancellablePromise';
@@ -18,12 +17,14 @@ const ANIMATION_START_EVENT = 'event-heavy-animation-start';
 const ANIMATION_END_EVENT = 'event-heavy-animation-end';
 
 let isAnimating = false;
-let heavyAnimationPromise: CancellablePromise<void> = Promise.resolve();
+let heavyAnimationPromise: CancellablePromise<void> = deferredPromise<void>();
 let promisesInQueue = 0;
+
+heavyAnimationPromise.resolve();
 
 const log = console.log.bind(console.log, '[HEAVY-ANIMATION]:');
 
-export const dispatchHeavyAnimationEvent = (promise: Promise<any>, timeout?: number) => {
+export function dispatchHeavyAnimationEvent(promise: Promise<any>, timeout?: number) {
   if(!isAnimating) {
     heavyAnimationPromise = deferredPromise<void>();
     rootScope.broadcast(ANIMATION_START_EVENT);
@@ -40,29 +41,48 @@ export const dispatchHeavyAnimationEvent = (promise: Promise<any>, timeout?: num
   ].filter(Boolean);
 
   const perf = performance.now();
+  const _heavyAnimationPromise = heavyAnimationPromise;
   Promise.race(promises).then(() => {
+    if(heavyAnimationPromise !== _heavyAnimationPromise || heavyAnimationPromise.isFulfilled) { // interrupted
+      return;
+    }
+
     --promisesInQueue;
     DEBUG && log('promise end, length:', promisesInQueue, performance.now() - perf);
-    if(!promisesInQueue) {
-      isAnimating = false;
-      promisesInQueue = 0;
-      rootScope.broadcast(ANIMATION_END_EVENT);
-      heavyAnimationPromise.resolve();
-
-      DEBUG && log('end');
+    if(promisesInQueue <= 0) {
+      onHeavyAnimationEnd();
     }
   });
 
   return heavyAnimationPromise;
-};
+}
 
-export const getHeavyAnimationPromise = () => heavyAnimationPromise;
+function onHeavyAnimationEnd() {
+  if(heavyAnimationPromise.isFulfilled) {
+    return;
+  }
 
-export default (
+  isAnimating = false;
+  promisesInQueue = 0;
+  rootScope.broadcast(ANIMATION_END_EVENT);
+  heavyAnimationPromise.resolve();
+
+  DEBUG && log('end');
+}
+
+export function interruptHeavyAnimation() {
+  onHeavyAnimationEnd();
+}
+
+export function getHeavyAnimationPromise() {
+  return heavyAnimationPromise;
+}
+
+export default function(
   handleAnimationStart: AnyToVoidFunction,
   handleAnimationEnd: AnyToVoidFunction,
   listenerSetter?: ListenerSetter
-) => {
+) {
   //useEffect(() => {
     if(isAnimating) {
       handleAnimationStart();
@@ -78,4 +98,4 @@ export default (
       remove(ANIMATION_START_EVENT, handleAnimationStart);
     };
   //}, [handleAnimationEnd, handleAnimationStart]);
-};
+}
