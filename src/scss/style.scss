@@ -390,6 +390,12 @@ html, body {
   } */
 }
 
+html.is-ios {
+  //&, body {
+    position: fixed; // fix iOS fullscreen scroll
+  //}
+}
+
 @supports(padding: unquote('max(0px)')) {
   html {
     padding: 0 unquote('min(16px, env(safe-area-inset-right))') 0 unquote('min(16px, env(safe-area-inset-left))');
