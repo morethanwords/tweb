@@ -18,6 +18,8 @@ import rootScope from '../lib/rootScope';
 import { putPreloader } from '../components/misc';
 import getLanguageChangeButton from '../components/languageChangeButton';
 
+const FETCH_INTERVAL = 3;
+
 let onFirstMount = async() => {
   const pageElement = page.pageEl;
   const imageDiv = pageElement.querySelector('.auth-image') as HTMLDivElement;
@@ -194,7 +196,7 @@ let onFirstMount = async() => {
         let timestamp = Date.now() / 1000;
         let diff = loginToken.expires - timestamp - serverTimeManager.serverTimeOffset;
   
-        await pause(diff > 5 ? 5e3 : 1e3 * diff | 0);
+        await pause(diff > FETCH_INTERVAL ? 1e3 * FETCH_INTERVAL : 1e3 * diff | 0);
       }
     } catch(err) {
       switch(err.type) {
