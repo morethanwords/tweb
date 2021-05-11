@@ -953,7 +953,8 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
 
     //const maxWidth = appPhotosManager.windowW - 16;
     const maxWidth = mediaSizes.isMobile ? this.pageEl.scrollWidth : this.pageEl.scrollWidth - 16;
-    const maxHeight = mediaSizes.isMobile ? appPhotosManager.windowH : appPhotosManager.windowH - 100;
+    // TODO: const maxHeight = mediaSizes.isMobile ? appPhotosManager.windowH : appPhotosManager.windowH - 100;
+    const maxHeight = appPhotosManager.windowH - 100;
     let thumbPromise: Promise<any> = Promise.resolve();
     const size = appPhotosManager.setAttachmentSize(media, container, maxWidth, maxHeight, mediaSizes.isMobile ? false : true);
     if(useContainerAsTarget) {
