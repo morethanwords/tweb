@@ -184,7 +184,7 @@ export default class AppSearchSuper {
 
     // * construct end
 
-    this.searchGroupMedia = new SearchGroup('', 'messages', true);
+    this.searchGroupMedia = new SearchGroup(false, 'messages', true);
 
     this.scrollable.onScrolledBottom = () => {
       if(this.mediaTab.contentTab && this.mediaTab.contentTab.childElementCount/* && false */) {

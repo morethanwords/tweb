@@ -37,6 +37,12 @@ const lang = {
     "other_value": "%d Messages"
   },
   "Chat.Selection.LimitToast": "Max selection count reached.",
+  "Chat.Search.MessagesFound": {
+    "one_value": "%d message found",
+    "other_value": "%d messages found",
+  },
+  "Chat.Search.NoMessagesFound": "No messages found",
+  "Chat.Search.PrivateSearch": "Private Search",
   //"Saved": "Saved",
   "General.Keyboard": "Keyboard",
   "General.SendShortcut.Enter": "Send by Enter",
@@ -78,6 +84,9 @@ const lang = {
   "Link.Available": "Link is available",
   "Link.Taken": "Link is already taken",
   "Link.Invalid": "Link is invalid",
+  "Search.Chats": "Chats",
+  "Search.Global": "Global Search",
+  "Search.Messages": "Messages",
   "StickersTab.SearchPlaceholder": "Search Stickers",
   "ForwardedFrom": "Forwarded from %s",
   "Popup.Avatar.Title": "Drag to Reposition",
@@ -418,6 +427,9 @@ const lang = {
   "MessageScheduleSend": "Send Now",
   "MessageScheduleEditTime": "Reschedule",
   "YouLeft": "You left this group",
+  "Recent": "Recent",
+  "Of": "%1$d of %2$d",
+  "NoResult": "No results",
 
   // * macos
   "AccountSettings.Filters": "Chat Folders",

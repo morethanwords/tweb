@@ -243,7 +243,7 @@ export default class ChatTopbar {
           tab = new AppPrivateSearchTab(this.appSidebarRight);
         }
 
-        tab.open(this.peerId, this.chat.threadId);
+        tab.open(this.peerId, this.chat.threadId, this.chat.bubbles.onDatePick);
       }
     }, {listenerSetter: this.listenerSetter});
   }

@@ -36,6 +36,10 @@
     .btn-icon + .btn-icon {
       margin-left: .5rem;
     }
+
+    &-right {
+      flex: 0 0 auto;
+    }
   }
 
   &-close-button {
