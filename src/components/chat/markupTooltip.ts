@@ -345,7 +345,7 @@ export default class MarkupTooltip {
 
     this.show();
 
-    //!isTouchSupported && document.addEventListener('mouseup', this.onMouseUp);
+    /* !isTouchSupported && document.addEventListener('mouseup', this.onMouseUp); */
   };
 
   public setMouseUpEvent() {

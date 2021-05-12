@@ -4,10 +4,10 @@ const path = require('path');
 const merge = require('webpack-merge');
 const common = require('./webpack.common.js');
 
-const CompressionPlugin = require("compression-webpack-plugin");
+//const CompressionPlugin = require("compression-webpack-plugin");
 const WebpackOnBuildPlugin = require('on-build-webpack');
-const TerserJSPlugin = require('terser-webpack-plugin');
-const OptimizeCSSAssetsPlugin = require('optimize-css-assets-webpack-plugin');
+//const TerserJSPlugin = require('terser-webpack-plugin');
+//const OptimizeCSSAssetsPlugin = require('optimize-css-assets-webpack-plugin');
 const fs = require('fs');
 
 const buildDir = __dirname + '/public/';
@@ -41,13 +41,13 @@ module.exports = merge(common, {
   },
 
   plugins: [
-    new CompressionPlugin({
+    /* new CompressionPlugin({
       filename: '[path].gz[query]',
       algorithm: 'gzip',
       test: /\.(js|css|html|svg)$/,
       threshold: 10240,
       minRatio: 0.8,
-    }),
+    }), */
     /* new CompressionPlugin({
       filename: '[path].br[query]',
       algorithm: 'brotliCompress',
@@ -70,13 +70,12 @@ module.exports = merge(common, {
             || file.includes('.webmanifest') 
             || file.includes('.wasm')
             || file.includes('rlottie')
-            || file.includes('pako')
             || file.includes('Worker.min.js')
             || file.includes('recorder.min.js')
             || file.includes('.hbs')) return;
 
           let p = path.resolve(buildDir + file);
-          if(!newlyCreatedAssets[file] && ['.gz', '.js'].find(ext => file.endsWith(ext)) !== undefined) {
+          if(!newlyCreatedAssets[file] && ['.gz', '.js', '.ts', '.map', '.css', '.txt'].find(ext => file.endsWith(ext)) !== undefined) {
 
             //console.log('to unlink 2:', file);
             

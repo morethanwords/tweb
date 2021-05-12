@@ -194,7 +194,9 @@ export class ApiManager {
     }
     
     const networkers = cache[dcId];
-    if(networkers.length >= /* 1 */(connectionType === 'client' || transportType === 'https' ? 1 : (connectionType === 'download' ? 3 : 3))) {
+    // @ts-ignore
+    const maxNetworkers = connectionType === 'client' || transportType === 'https' ? 1 : (connectionType === 'download' ? 3 : 3);
+    if(networkers.length >= maxNetworkers) {
       let i = networkers.length - 1, found = false;
       for(; i >= 0; --i) {
         if(networkers[i].isOnline) {

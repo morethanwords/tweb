@@ -94,11 +94,12 @@ export default class MTPNetworker {
   private pendingResends: Array<string> = [];
   private connectionInited = false;
 
+  private nextReqTimeout: number;
+  private nextReq: number = 0;
+  
   /// #if MTPROTO_HTTP || MTPROTO_HTTP_UPLOAD
   //private longPollInt: number;
   private longPollPending = 0;
-  private nextReqTimeout: number;
-  private nextReq: number = 0;
   private checkConnectionTimeout: number;
   private checkConnectionPeriod = 0;
   private sleepAfter = 0;
