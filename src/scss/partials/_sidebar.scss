@@ -11,13 +11,13 @@
     align-items: center;
     justify-content: space-between;
     padding: 0 1rem;
-    min-height: 56px;
+    min-height: 3.5rem;
     flex: 0 0 auto;
     user-select: none;
     cursor: default;
 
     @include respond-to(handhelds) {
-      padding: 7.5px 8px;
+      padding: 0 .5rem;
     }
 
     /* //position: sticky !important;
@@ -28,8 +28,8 @@
     &__title {
       flex: 1;
       font-weight: 500;
-      padding-left: 24px;
-      font-size: 20px;
+      padding-left: 1.5rem;
+      font-size: 1.25rem;
       color: var(--primary-text-color);
     }
 
@@ -40,8 +40,8 @@
 
   &-close-button {
     overflow: inherit !important;
-    width: 40px;
-    height: 40px;
+    width: 2.5rem;
+    height: 2.5rem;
   }
 
   &-content {

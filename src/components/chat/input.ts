@@ -692,31 +692,7 @@ export default class ChatInput {
     }
 
     if(this.messageInput) {
-      const canWrite = this.appMessagesManager.canWriteToPeer(peerId);
-      this.chatInput.classList.add('no-transition');
-      this.chatInput.classList.toggle('is-hidden', !canWrite);
-      void this.chatInput.offsetLeft; // reflow
-      this.chatInput.classList.remove('no-transition');
-
-      const visible = this.attachMenuButtons.filter(button => {
-        const good = button.verify(peerId);
-        button.element.classList.toggle('hide', !good);
-        return good;
-      });
-  
-      if(!canWrite) {
-        this.messageInput.removeAttribute('contenteditable');
-      } else {
-        this.messageInput.setAttribute('contenteditable', 'true');
-        this.setDraft(undefined, false);
-
-        if(!this.messageInput.innerHTML) {
-          this.messageInputField.onFakeInput();
-        }
-      }
-      
-      this.attachMenu.toggleAttribute('disabled', !visible.length);
-      this.updateSendBtn();
+      this.updateMessageInput();
     } else if(this.pinnedControlBtn) {
       if(this.appPeersManager.canPinMessage(this.chat.peerId)) {
         this.pinnedControlBtn.append(i18n('Chat.Input.UnpinAll'));
@@ -726,6 +702,34 @@ export default class ChatInput {
         this.fakePinnedControlBtn.append(i18n('Chat.Pinned.DontShow'));
       }
     }
+  }
+
+  public updateMessageInput() {
+    const canWrite = this.appMessagesManager.canWriteToPeer(this.chat.peerId, this.chat.threadId);
+    this.chatInput.classList.add('no-transition');
+    this.chatInput.classList.toggle('is-hidden', !canWrite);
+    void this.chatInput.offsetLeft; // reflow
+    this.chatInput.classList.remove('no-transition');
+
+    const visible = this.attachMenuButtons.filter(button => {
+      const good = button.verify(this.chat.peerId);
+      button.element.classList.toggle('hide', !good);
+      return good;
+    });
+
+    if(!canWrite) {
+      this.messageInput.removeAttribute('contenteditable');
+    } else {
+      this.messageInput.setAttribute('contenteditable', 'true');
+      this.setDraft(undefined, false);
+
+      if(!this.messageInput.innerHTML) {
+        this.messageInputField.onFakeInput();
+      }
+    }
+    
+    this.attachMenu.toggleAttribute('disabled', !visible.length);
+    this.updateSendBtn();
   }
 
   private attachMessageInputField() {

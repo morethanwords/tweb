@@ -44,11 +44,11 @@ export class AppChatsManager {
 
   constructor() {
     rootScope.addMultipleEventsListeners({
-      updateChannel: (update) => {
+      /* updateChannel: (update) => {
         const channelId = update.channel_id;
         //console.log('updateChannel:', update);
         rootScope.broadcast('channel_settings', {channelId});
-      },
+      }, */
 
       updateChannelParticipant: (update) => {
         apiManagerProxy.clearCache('channels.getParticipants', (params) => {
@@ -268,7 +268,7 @@ export class AppChatsManager {
     return rights;
   }
 
-  public hasRights(id: number, action: ChatRights, rights?: ChatAdminRights | ChatBannedRights) {
+  public hasRights(id: number, action: ChatRights, rights?: ChatAdminRights | ChatBannedRights, isThread?: boolean) {
     const chat: Chat = this.getChat(id);
     if(chat._ === 'chatEmpty') return false;
 
@@ -285,14 +285,16 @@ export class AppChatsManager {
 
     if(!rights) {
       rights = chat.admin_rights || (chat as Chat.channel).banned_rights || chat.default_banned_rights;
-    }
-    
-    if(!rights) {
-      return false;
+
+      if(!rights) {
+        return false;
+      }
     }
 
     let myFlags: Partial<{[flag in keyof ChatBannedRights['pFlags'] | keyof ChatAdminRights['pFlags']]: true}> = {};
-    if(rights) myFlags = rights.pFlags as any;
+    if(rights) {
+      myFlags = rights.pFlags as any;
+    }
 
     switch(action) {
       case 'embed_links':
@@ -303,12 +305,16 @@ export class AppChatsManager {
       case 'send_messages':
       case 'send_polls':
       case 'send_stickers': {
+        if(!isThread && chat.pFlags.left) {
+          return false;
+        }
+
         if(rights._ === 'chatBannedRights' && myFlags[action]) {
           return false;
         }
 
         if(chat._ === 'channel') {
-          if((!chat.pFlags.megagroup && !myFlags.post_messages)) {
+          if(!chat.pFlags.megagroup && !myFlags.post_messages) {
             return false;
           }
         }
@@ -375,7 +381,6 @@ export class AppChatsManager {
   } */
 
   public isChannel(id: number) {
-    if(id < 0) id = -id;
     const chat = this.chats[id];
     return chat && (chat._ === 'channel' || chat._ === 'channelForbidden')/*  || this.channelAccess[id] */;
   }
@@ -409,7 +414,6 @@ export class AppChatsManager {
   }
 
   public getChannelInput(id: number): InputChannel {
-    if(id < 0) id = -id;
     const chat: Chat = this.getChat(id);
     if(chat._ === 'chatEmpty' || !(chat as Chat.channel).access_hash) {
       return {

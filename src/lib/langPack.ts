@@ -28,6 +28,7 @@ export const langPack: {[actionType: string]: LangPackKey} = {
   "messageActionChatAddUser": "ActionAddUser",
   "messageActionChatAddUsers": "ActionAddUser",
 	"messageActionChatLeave": "ActionLeftUser",
+	"messageActionChatLeaveYou": "YouLeft",
 	"messageActionChatDeleteUser": "ActionKickUser",
 	"messageActionChatJoinedByLink": "ActionInviteUser",
   "messageActionPinMessage": "ActionPinnedNoText",

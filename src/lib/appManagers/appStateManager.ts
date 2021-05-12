@@ -369,7 +369,7 @@ export class AppStateManager extends EventListenerBase<{
 
   public keepPeerSingle(peerId: number, type: string) {
     const existsPeerId = this.singlePeerMap.get(type);
-    if(existsPeerId && existsPeerId !== peerId) {
+    if(existsPeerId && existsPeerId !== peerId && this.neededPeers.has(existsPeerId)) {
       const set = this.neededPeers.get(existsPeerId);
       set.delete(type);
 

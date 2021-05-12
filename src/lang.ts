@@ -417,6 +417,7 @@ const lang = {
   "Online": "online",
   "MessageScheduleSend": "Send Now",
   "MessageScheduleEditTime": "Reschedule",
+  "YouLeft": "You left this group",
 
   // * macos
   "AccountSettings.Filters": "Chat Folders",
