@@ -8,13 +8,15 @@ import appDialogsManager from "../lib/appManagers/appDialogsManager";
 import Scrollable from "./scrollable";
 import appMessagesManager from "../lib/appManagers/appMessagesManager";
 import InputSearch from "./inputSearch";
+import replaceContent from "../helpers/dom/replaceContent";
+import { i18n, LangPackKey } from "../lib/langPack";
 
 export class SearchGroup {
   container: HTMLDivElement;
   nameEl: HTMLDivElement;
   list: HTMLUListElement;
 
-  constructor(public name: string, public type: string, private clearable = true, className?: string, clickable = true, public autonomous = true, public onFound?: () => void) {
+  constructor(public name: LangPackKey | boolean, public type: string, private clearable = true, className?: string, clickable = true, public autonomous = true, public onFound?: () => void) {
     this.list = appDialogsManager.createChatList();
     this.container = document.createElement('div');
     if(className) this.container.className = className;
@@ -22,7 +24,9 @@ export class SearchGroup {
     if(name) {
       this.nameEl = document.createElement('div');
       this.nameEl.classList.add('search-group__name');
-      this.nameEl.innerText = name;
+      if(typeof(name) === 'string') {
+        this.nameEl.append(i18n(name));
+      }
       this.container.append(this.nameEl);
     }
     
@@ -128,15 +132,9 @@ export default class AppSearch {
     this.searchPromise = null;
   }
 
-  public beginSearch(peerId?: number, threadId?: number) {
-    if(peerId) {
-      this.peerId = peerId;
-    }
-
-    if(threadId) {
-      this.threadId = threadId;
-    }
-    
+  public beginSearch(peerId = 0, threadId = 0) {
+    this.peerId = peerId;
+    this.threadId = threadId;
     this.searchInput.input.focus();
   }
 
@@ -181,12 +179,19 @@ export default class AppSearch {
       const searchGroup = this.searchGroups.messages;
 
       history.forEach((message) => {
+        const peerId = this.peerId ? message.fromId : message.peerId;
         const {dialog, dom} = appDialogsManager.addDialogNew({
-          dialog: message.peerId, 
+          dialog: peerId, 
           container: this.scrollable/* searchGroup.list */, 
           drawStatus: false,
-          avatarSize: 54
+          avatarSize: 54,
+          meAsSaved: false
         });
+
+        if(message.peerId !== peerId) {
+          dom.listEl.dataset.peerId = '' + message.peerId;
+        }
+
         appDialogsManager.setLastMessage(dialog, message, dom, query);
       });
 
@@ -201,6 +206,11 @@ export default class AppSearch {
       
       if(this.foundCount === -1) {
         this.foundCount = count;
+
+        if(searchGroup.nameEl) {
+          replaceContent(searchGroup.nameEl, i18n(count ? 'Chat.Search.MessagesFound' : 'Chat.Search.NoMessagesFound', [count]));
+        }
+        
         this.onSearch && this.onSearch(this.foundCount);
       }
     }).catch(err => {

@@ -251,10 +251,10 @@ export class AppSidebarLeft extends SidebarSlider {
     };
 
     this.searchGroups = {
-      contacts: new SearchGroup('Chats', 'contacts', undefined, undefined, undefined, undefined, close),
-      globalContacts: new SearchGroup('Global Search', 'contacts', undefined, undefined, undefined, undefined, close),
-      messages: new SearchGroup('Messages', 'messages'),
-      people: new SearchGroup('', 'contacts', true, 'search-group-people', true, false, close),
+      contacts: new SearchGroup('Search.Chats', 'contacts', undefined, undefined, undefined, undefined, close),
+      globalContacts: new SearchGroup('Search.Global', 'contacts', undefined, undefined, undefined, undefined, close),
+      messages: new SearchGroup('Search.Messages', 'messages'),
+      people: new SearchGroup(false, 'contacts', true, 'search-group-people', true, false, close),
       recent: new SearchGroup('Recent', 'contacts', true, 'search-group-recent', true, true, close)
     };
 

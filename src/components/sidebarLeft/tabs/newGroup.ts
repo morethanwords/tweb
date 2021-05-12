@@ -10,7 +10,6 @@ import appChatsManager from "../../../lib/appManagers/appChatsManager";
 import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
 import appUsersManager from "../../../lib/appManagers/appUsersManager";
 import { SearchGroup } from "../../appSearch";
-import Button from "../../button";
 import InputField from "../../inputField";
 import { SliderSuperTab } from "../../slider";
 import AvatarEdit from "../../avatarEdit";
@@ -18,7 +17,7 @@ import { i18n } from "../../../lib/langPack";
 import ButtonCorner from "../../buttonCorner";
 
 export default class AppNewGroupTab extends SliderSuperTab {
-  private searchGroup = new SearchGroup(' ', 'contacts', true, 'new-group-members disable-hover', false);
+  private searchGroup = new SearchGroup(true, 'contacts', true, 'new-group-members disable-hover', false);
   private avatarEdit: AvatarEdit;
   private uploadAvatar: () => Promise<InputFile> = null;
   private userIds: number[];

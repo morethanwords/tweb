@@ -13,6 +13,8 @@ import type Chat from "./chat";
 import findUpTag from "../../helpers/dom/findUpTag";
 import { cancelEvent } from "../../helpers/dom/cancelEvent";
 import whichChild from "../../helpers/dom/whichChild";
+import replaceContent from "../../helpers/dom/replaceContent";
+import { i18n } from "../../lib/langPack";
 
 export default class ChatSearch {
   private element: HTMLElement;
@@ -63,7 +65,7 @@ export default class ChatSearch {
     this.results = document.createElement('div');
     this.results.classList.add('chat-search-results', 'chatlist-container');
 
-    this.searchGroup = new SearchGroup('', 'messages', undefined, '', false);
+    this.searchGroup = new SearchGroup(false, 'messages', undefined, '', false);
     this.searchGroup.list.addEventListener('click', this.onResultsClick);
 
     this.appSearch = new AppSearch(this.results, this.inputSearch, {
@@ -72,7 +74,7 @@ export default class ChatSearch {
       this.foundCount = count;
 
       if(!this.foundCount) {
-        this.foundCountEl.innerText = this.inputSearch.value ? 'No results' : '';
+        this.foundCountEl.replaceWith(this.inputSearch.value ? i18n('NoResult') : '');
         this.results.classList.remove('active');
         this.chat.bubbles.bubblesContainer.classList.remove('search-results-active');
         this.upBtn.setAttribute('disabled', 'true');
@@ -159,7 +161,7 @@ export default class ChatSearch {
     const res = this.chat.setPeer(peerId, lastMsgId);
     this.setPeerPromise = ((res instanceof Promise ? res : Promise.resolve(res)) as Promise<any>).then(() => {
       this.selectedIndex = index;
-      this.foundCountEl.innerText = `${index + 1} of ${this.foundCount}`;
+      replaceContent(this.foundCountEl, i18n('Of', [index + 1, this.foundCount]));
 
       const renderedCount = this.searchGroup.list.childElementCount;
       if(this.selectedIndex >= (renderedCount - 6)) {
