@@ -9,7 +9,7 @@ const fs = require('fs');
 const allowedIPs = ['127.0.0.1'];
 const devMode = process.env.NODE_ENV !== 'production';
 const useLocal = true;
-const useLocalNotLocal = true;
+const useLocalNotLocal = false;
 
 if(devMode) {
   console.log('DEVMODE IS ON!');
@@ -22,8 +22,9 @@ const opts = {
   MTPROTO_HTTP_UPLOAD: false,
   DEBUG: devMode,
   version: 3,
-  "ifdef-verbose": devMode,    // add this for verbose output
-  "ifdef-triple-slash": true   // add this to use double slash comment instead of default triple slash
+  'ifdef-verbose': devMode,         // add this for verbose output
+  'ifdef-triple-slash': true,       // add this to use double slash comment instead of default triple slash
+  'ifdef-fill-with-blanks': true    // add this to remove code with blank spaces instead of "//" comments
 };
 
 const domain = 'yourdomain.com';
@@ -66,7 +67,7 @@ module.exports = {
         use: [
           //{ loader: 'babel-loader', options: require('./babel.config') },
           'ts-loader', 
-          { loader: "ifdef-loader", options: opts }
+          { loader: 'ifdef-loader', options: opts }
         ],
         exclude: /node_modules/,
       },
@@ -91,10 +92,10 @@ module.exports = {
   //devtool: 'inline-source-map',
 
   output: {
-    globalObject: "this",
+    globalObject: 'this',
     path: path.resolve(__dirname, 'public'),
-    filename: "[name].[chunkhash].bundle.js",
-    chunkFilename: "[name].[chunkhash].chunk.js"
+    filename: '[name].[chunkhash].bundle.js',
+    chunkFilename: '[name].[chunkhash].chunk.js'
   },
 
   devServer: {
@@ -162,7 +163,7 @@ module.exports = {
         minifyCSS: true,
         minifyURLs: true
       },
-      chunks: "all",
+      chunks: 'all',
       excludeChunks: []
     }),
     
