@@ -189,7 +189,7 @@ export default class ChatBubbles {
         //this.log('history_update', this.bubbles[mid], mid, message);
 
         if(this.scrollingToNewBubble) {
-          this.scrollToNewLastBubble();
+          this.scrollToBubbleEnd();
         }
 
         //this.renderMessage(message, false, false, bubble);
@@ -280,6 +280,7 @@ export default class ChatBubbles {
         if(message.media?.webpage && !bubble.querySelector('.web')) {
           getHeavyAnimationPromise().then(() => {
             this.renderMessage(message, true, false, bubble, false);
+            this.scrollToBubbleIfLast(bubble);
           });
           /* const mounted = this.getMountedBubble(mid);
           if(!mounted) return;
@@ -332,6 +333,7 @@ export default class ChatBubbles {
 
         const updatePosition = this.chat.type === 'scheduled';
         this.renderMessage(mounted.message, true, false, mounted.bubble, updatePosition);
+        this.scrollToBubbleIfLast(mounted.bubble);
 
         if(updatePosition) {
           (this.messagesQueuePromise || Promise.resolve()).then(() => {
@@ -1249,7 +1251,7 @@ export default class ChatBubbles {
         //this.log('renderNewMessagesByIDs: messagesQueuePromise after', this.scrollable.isScrolledDown);
         //this.scrollable.scrollTo(this.scrollable.scrollHeight, 'top', true, true, 5000);
         //const bubble = this.bubbles[Math.max(...mids)];
-        this.scrollToNewLastBubble();
+        this.scrollToBubbleEnd();
 
         //this.scrollable.scrollIntoViewNew(this.chatInner, 'end');
 
@@ -1281,9 +1283,7 @@ export default class ChatBubbles {
     return this.scrollable.scrollIntoViewNew(element, position, 4, undefined, forceDirection, forceDuration);
   }
 
-  public scrollToNewLastBubble() {
-    const bubble = this.chatInner.lastElementChild.lastElementChild as HTMLElement;
-
+  public scrollToBubbleEnd(bubble = this.chatInner.lastElementChild.lastElementChild as HTMLElement) {
     /* if(DEBUG) {
       this.log('scrollToNewLastBubble: will scroll into view:', bubble);
     } */
@@ -1293,6 +1293,13 @@ export default class ChatBubbles {
       this.scrollToBubble(bubble, 'end').then(() => {
         this.scrollingToNewBubble = null;
       });
+    }
+  }
+
+  public scrollToBubbleIfLast(bubble: HTMLElement) {
+    if(bubble.parentElement.lastElementChild === bubble && 
+      bubble.parentElement.parentElement.lastElementChild === bubble.parentElement) {
+      this.scrollToBubbleEnd(bubble);
     }
   }
 
