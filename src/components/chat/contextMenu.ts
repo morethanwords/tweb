@@ -35,9 +35,9 @@ export default class ChatContextMenu {
   private isTargetAGroupedItem: boolean;
   private isTextSelected: boolean;
   private isAnchorTarget: boolean;
-  public peerId: number;
-  public mid: number;
-  public message: any;
+  private peerId: number;
+  private mid: number;
+  private message: any;
 
   constructor(private attachTo: HTMLElement, private chat: Chat, private appMessagesManager: AppMessagesManager, private appChatsManager: AppChatsManager, private appPeersManager: AppPeersManager, private appPollsManager: AppPollsManager) {
     const onContextMenu = (e: MouseEvent | Touch | TouchEvent) => {
@@ -190,7 +190,7 @@ export default class ChatContextMenu {
       icon: 'reply',
       text: 'Reply',
       onClick: this.onReplyClick,
-      verify: () => this.appMessagesManager.canWriteToPeer(this.peerId) && 
+      verify: () => this.appMessagesManager.canWriteToPeer(this.peerId, this.chat.threadId) && 
         !this.message.pFlags.is_outgoing && 
         !!this.chat.input.messageInput && 
         this.chat.type !== 'scheduled'/* ,

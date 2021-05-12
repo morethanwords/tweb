@@ -14,7 +14,7 @@
   z-index: 3;
   background-color: rgba(0, 0, 0, .3);
   margin: 0;
-  padding: 2.5rem;
+  padding: 1.875rem;
   box-shadow: none;
   opacity: 0;
   visibility: hidden;
@@ -70,21 +70,9 @@
   }
 
   &-close {
-    cursor: pointer;
-    color: var(--secondary-text-color);
     z-index: 3;
-    text-align: center;
     justify-self: center;
-    line-height: 1;
-    //transition: color .2s;
-
-    body.animation-level-0 & {
-      transition: none;
-    }
-    
-    /* @include hover() {
-      color: #000;
-    } */
+    flex: 0 0 auto;
   }
 
   &-header {

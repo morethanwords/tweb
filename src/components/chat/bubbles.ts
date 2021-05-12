@@ -42,7 +42,7 @@ import { AppChatsManager } from "../../lib/appManagers/appChatsManager";
 import ListenerSetter from "../../helpers/listenerSetter";
 import PollElement from "../poll";
 import AudioElement from "../audio";
-import { Message, MessageEntity,  MessageReplyHeader } from "../../layer";
+import { Message, MessageEntity,  MessageReplyHeader, Update } from "../../layer";
 import { REPLIES_PEER_ID } from "../../lib/mtproto/mtproto_config";
 import { FocusDirection } from "../../helpers/fastSmoothScroll";
 import useHeavyAnimationCheck, { getHeavyAnimationPromise, dispatchHeavyAnimationEvent, interruptHeavyAnimation } from "../../hooks/useHeavyAnimationCheck";
@@ -408,7 +408,7 @@ export default class ChatBubbles {
     }
 
     this.listenerSetter.add(this.bubblesContainer, 'dblclick', (e) => {
-      if(this.chat.selection.isSelecting || !this.appMessagesManager.canWriteToPeer(this.peerId)) {
+      if(this.chat.selection.isSelecting || !this.appMessagesManager.canWriteToPeer(this.peerId, this.chat.threadId)) {
         return;
       }
       
@@ -499,6 +499,19 @@ export default class ChatBubbles {
     this.listenerSetter.add(rootScope, 'dialog_notify_settings', (dialog) => {
       if(this.peerId === dialog.peerId) {
         this.chat.input.setUnreadCount();
+      }
+    });
+
+    this.listenerSetter.add(rootScope, 'chat_update', (e) => {
+      const chatId: number = e;
+      if(this.peerId === -chatId) {
+        const hadRights = this.chatInner.classList.contains('has-rights');
+        const hasRights = this.appMessagesManager.canWriteToPeer(this.peerId, this.chat.threadId);
+
+        if(hadRights !== hasRights) {
+          this.finishPeerChange();
+          this.chat.input.updateMessageInput();
+        }
       }
     });
 
@@ -1748,7 +1761,7 @@ export default class ChatBubbles {
   public finishPeerChange() {
     const peerId = this.peerId;
     const isChannel = this.appPeersManager.isChannel(peerId);
-    const canWrite = this.appMessagesManager.canWriteToPeer(peerId);
+    const canWrite = this.appMessagesManager.canWriteToPeer(peerId, this.chat.threadId);
     
     this.chatInner.classList.toggle('has-rights', canWrite);
     this.bubblesContainer.classList.toggle('is-chat-input-hidden', !canWrite);

@@ -183,7 +183,7 @@ export class AppMessagesManager {
   }} = {};
 
   private reloadConversationsPromise: Promise<void>;
-  private reloadConversationsPeers: number[] = [];
+  private reloadConversationsPeers: Set<number> = new Set();
 
   public log = logger('MESSAGES', LogTypes.Error | LogTypes.Debug | LogTypes.Log | LogTypes.Warn);
 
@@ -1883,8 +1883,8 @@ export class AppMessagesManager {
 
   public reloadConversation(peerId: number | number[]) {
     [].concat(peerId).forEach(peerId => {
-      if(!this.reloadConversationsPeers.includes(peerId)) {
-        this.reloadConversationsPeers.push(peerId);
+      if(!this.reloadConversationsPeers.has(peerId)) {
+        this.reloadConversationsPeers.add(peerId);
         //this.log('will reloadConversation', peerId);
       }
     });
@@ -1892,8 +1892,8 @@ export class AppMessagesManager {
     if(this.reloadConversationsPromise) return this.reloadConversationsPromise;
     return this.reloadConversationsPromise = new Promise((resolve, reject) => {
       setTimeout(() => {
-        const peers = this.reloadConversationsPeers.map(peerId => appPeersManager.getInputDialogPeerById(peerId));
-        this.reloadConversationsPeers.length = 0;
+        const peers = Array.from(this.reloadConversationsPeers).map(peerId => appPeersManager.getInputDialogPeerById(peerId));
+        this.reloadConversationsPeers.clear();
 
         apiManager.invokeApi('messages.getPeerDialogs', {peers}).then((result) => {
           this.dialogsStorage.applyDialogs(result);
@@ -1947,7 +1947,7 @@ export class AppMessagesManager {
             _: 'updateChannelAvailableMessages',
             channel_id: channelId,
             available_min_id: maxId
-          }
+          } as Update.updateChannelAvailableMessages
         });
 
         return true;
@@ -2297,6 +2297,7 @@ export class AppMessagesManager {
       if(message.action) {
         let migrateFrom: number;
         let migrateTo: number;
+        const suffix = message.fromId === appUsersManager.getSelf().id ? 'You' : '';
         switch(message.action._) {
           //case 'messageActionChannelEditPhoto':
           case 'messageActionChatEditPhoto':
@@ -2332,7 +2333,6 @@ export class AppMessagesManager {
             if(message.action.users.length === 1) {
               message.action.user_id = message.action.users[0];
               if(message.fromId === message.action.user_id) {
-                let suffix = message.fromId === appUsersManager.getSelf().id ? 'You' : '';
                 if(isChannel) {
                   message.action._ = 'messageActionChatJoined' + suffix;
                 } else {
@@ -2346,7 +2346,7 @@ export class AppMessagesManager {
 
           case 'messageActionChatDeleteUser':
             if(message.fromId === message.action.user_id) {
-              message.action._ = 'messageActionChatLeave';
+              message.action._ = 'messageActionChatLeave' + suffix;
             }
             break;
 
@@ -4029,19 +4029,19 @@ export class AppMessagesManager {
   private onUpdateChannel = (update: Update.updateChannel) => {
     const channelId: number = update.channel_id;
     const peerId = -channelId;
-    const channel = appChatsManager.getChat(channelId);
+    const channel: Chat.channel = appChatsManager.getChat(channelId);
 
-    const needDialog = channel._ === 'channel' && appChatsManager.isInChat(channelId);
-    const dialog = this.getDialogOnly(peerId);
-
-    const canViewHistory = channel._ === 'channel' && (channel.username || !channel.pFlags.left && !channel.pFlags.kicked);
+    const needDialog = appChatsManager.isInChat(channelId);
+    
+    const canViewHistory = !!channel.username || !channel.pFlags.left;
     const hasHistory = this.historiesStorage[peerId] !== undefined;
-
+    
     if(canViewHistory !== hasHistory) {
       delete this.historiesStorage[peerId];
       rootScope.broadcast('history_forbidden', peerId);
     }
-
+    
+    const dialog = this.getDialogOnly(peerId);
     if(!!dialog !== needDialog) {
       if(needDialog) {
         this.reloadConversation(-channelId);
@@ -4299,10 +4299,10 @@ export class AppMessagesManager {
     }, settings);
   }
 
-  public canWriteToPeer(peerId: number) {
+  public canWriteToPeer(peerId: number, threadId?: number) {
     if(peerId < 0) {
       const isChannel = appPeersManager.isChannel(peerId);
-      const hasRights = isChannel && appChatsManager.hasRights(-peerId, 'send_messages'); 
+      const hasRights = isChannel && appChatsManager.hasRights(-peerId, 'send_messages', undefined, !!threadId); 
       return !isChannel || hasRights;
     } else {
       return appUsersManager.canSendToUser(peerId);

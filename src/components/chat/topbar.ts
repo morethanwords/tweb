@@ -289,9 +289,9 @@ export default class ChatTopbar {
     }, {listenerSetter: this.listenerSetter});
 
     this.listenerSetter.add(rootScope, 'chat_update', (e) => {
-      const peerId: number = e;
-      if(this.peerId === -peerId) {
-        const chat = this.appChatsManager.getChat(peerId) as Channel/*  | Chat */;
+      const chatId: number = e;
+      if(this.peerId === -chatId) {
+        const chat = this.appChatsManager.getChat(chatId) as Channel/*  | Chat */;
         
         this.btnJoin.classList.toggle('hide', !(chat as Channel)?.pFlags?.left);
         this.setUtilsWidth();

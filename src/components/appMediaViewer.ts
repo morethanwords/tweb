@@ -133,7 +133,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     buttonsDiv.classList.add(MEDIA_VIEWER_CLASSNAME + '-buttons');
 
     topButtons.concat(['download', 'close']).forEach(name => {
-      const button = ButtonIcon(name);
+      const button = ButtonIcon(name, {noRipple: name === 'close' || undefined});
       this.buttons[name] = button;
       buttonsDiv.append(button);
     });

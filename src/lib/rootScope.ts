@@ -83,7 +83,7 @@ export type BroadcastEvents = {
   'chat_full_update': number,
   'poll_update': {poll: Poll, results: PollResults},
   'chat_update': number,
-  'channel_settings': {channelId: number},
+  //'channel_settings': {channelId: number},
   'webpage_updated': {id: string, msgs: number[]},
 
   'download_progress': any,
