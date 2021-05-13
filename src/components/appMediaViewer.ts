@@ -1230,7 +1230,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
   public searchContext: SearchSuperContext;
 
   constructor() {
-    super(['delete', 'forward']);
+    super([/* 'delete',  */'forward']);
 
     /* const stub = document.createElement('div');
     stub.classList.add(MEDIA_VIEWER_CLASSNAME + '-stub');
@@ -1252,11 +1252,11 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
       icon: 'download',
       text: 'MediaViewer.Context.Download',
       onClick: this.onDownloadClick
-    }, {
+    }/* , {
       icon: 'delete danger btn-disabled',
       text: 'Delete',
       onClick: () => {}
-    }]);
+    } */]);
 
     // * constructing html end
     
@@ -1481,7 +1481,7 @@ export class AppMediaViewerAvatar extends AppMediaViewerBase<'', 'delete', AppMe
   public peerId: number;
 
   constructor(peerId: number) {
-    super(['delete']);
+    super([/* 'delete' */]);
 
     this.peerId = peerId;
 
@@ -1489,11 +1489,11 @@ export class AppMediaViewerAvatar extends AppMediaViewerBase<'', 'delete', AppMe
       icon: 'download',
       text: 'MediaViewer.Context.Download',
       onClick: this.onDownloadClick
-    }, {
+    }/* , {
       icon: 'delete danger btn-disabled',
       text: 'Delete',
       onClick: () => {}
-    }]);
+    } */]);
 
     // * constructing html end
     
