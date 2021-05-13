@@ -484,7 +484,8 @@ $chat-helper-size: 39px;
 		}
 
 		body.is-left-column-shown & {
-			transform: translate3d(26.5rem, 0, 0);
+			//transform: translate3d(26.5rem, 0, 0);
+			transform: translate3d(26.5625rem, 0, 0); // + 1px to show left border
 
 			.sidebar-close-button {
 				transform: rotate(180deg);

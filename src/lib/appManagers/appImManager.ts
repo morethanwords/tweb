@@ -486,7 +486,10 @@ export class AppImManager {
         e.target !== chat.input.messageInput && 
         target.tagName !== 'INPUT' && 
         !target.hasAttribute('contenteditable') && 
-        !isTouchSupported) {
+        !isTouchSupported && 
+        (!mediaSizes.isMobile || this.tabId === 1) && 
+        !this.chat.selection.isSelecting && 
+        !this.chat.input.recording) {
         chat.input.messageInput.focus();
         placeCaretAtEnd(chat.input.messageInput);
       }
@@ -689,6 +692,7 @@ export class AppImManager {
     }
 
     this.tabId = id;
+    blurActiveElement();
     if(mediaSizes.isMobile && prevTabId === 2 && id < 2) {
       document.body.classList.remove(RIGHT_COLUMN_ACTIVE_CLASSNAME);
     }

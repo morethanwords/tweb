@@ -289,7 +289,7 @@ export default class ChatSelection {
       }
     } */
 
-    blurActiveElement(); // * for mobile keyboards
+    blurActiveElement();
 
     let transform = '', borderRadius = '';
     const forwards = !!this.selectedMids.size || forceSelection;
