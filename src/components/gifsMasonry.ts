@@ -163,7 +163,7 @@ export default class GifsMasonry {
     }
 
     const willUseWidth = Math.min(maxSingleWidth, width, gifWidth);
-    const {w, h} = calcImageInBox(gifWidth, gifHeight, willUseWidth, height);
+    const size = calcImageInBox(gifWidth, gifHeight, willUseWidth, height);
 
     /* wastedWidth += w;
 
@@ -180,7 +180,7 @@ export default class GifsMasonry {
 
     const div = document.createElement('div');
     div.classList.add('gif', 'fade-in-transition');
-    div.style.width = w + 'px';
+    div.style.width = size.width + 'px';
     div.style.opacity = '0';
     //div.style.height = h + 'px';
     div.dataset.docId = doc.id;

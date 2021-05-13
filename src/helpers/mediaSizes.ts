@@ -5,14 +5,36 @@
  */
 
 import { MOUNT_CLASS_TO } from "../config/debug";
+import calcImageInBox from "./calcImageInBox";
 import EventListenerBase from "./eventListenerBase";
 
-type Size = Partial<{width: number, height: number}>;
-type Sizes = {
-  regular: Size,
-  webpage: Size,
-  album: Size,
-  esgSticker: Size
+export class MediaSize {
+  constructor(public width = 0, public height = width) {
+
+  }
+
+  public aspect(boxSize: MediaSize, fitted: boolean) {
+    return calcImageInBox(this.width, this.height, boxSize.width, boxSize.height, fitted);
+  }
+
+  public aspectFitted(boxSize: MediaSize) {
+    return this.aspect(boxSize, true);
+  }
+
+  public aspectCovered(boxSize: MediaSize) {
+    return this.aspect(boxSize, false);
+  }
+}
+
+export function makeMediaSize(width?: number, height?: number): MediaSize {
+  return new MediaSize(width, height);
+}
+
+type MediaTypeSizes = {
+  regular: MediaSize,
+  webpage: MediaSize,
+  album: MediaSize,
+  esgSticker: MediaSize
 };
 
 export enum ScreenSize {
@@ -34,47 +56,23 @@ class MediaSizes extends EventListenerBase<{
     {key: ScreenSize.large, value: LARGE_SIZE}
   ];
 
-  private sizes: {[k in 'desktop' | 'handhelds']: Sizes} = {
+  private sizes: {[k in 'desktop' | 'handhelds']: MediaTypeSizes} = {
     handhelds: {
-      regular: {
-        width: 270,
-        height: 270
-      },
-      webpage: {
-        width: 270,
-        height: 200
-      },
-      album: {
-        width: 270,
-        height: 0
-      },
-      esgSticker: {
-        width: 68,
-        height: 68
-      }
+      regular: makeMediaSize(270, 270),
+      webpage: makeMediaSize(270, 200),
+      album: makeMediaSize(270, 0),
+      esgSticker: makeMediaSize(68, 68)
     },
     desktop: {
-      regular: {
-        width: 400,
-        height: 320
-      },
-      webpage: {
-        width: 400,
-        height: 320
-      },
-      album: {
-        width: 420,
-        height: 0
-      },
-      esgSticker: {
-        width: 80,
-        height: 80
-      }
+      regular: makeMediaSize(400, 320),
+      webpage: makeMediaSize(400, 320),
+      album: makeMediaSize(420, 0),
+      esgSticker: makeMediaSize(80, 80)
     }
   };
 
   public isMobile = false;
-  public active: Sizes;
+  public active: MediaTypeSizes;
   public activeScreen: ScreenSize;
   public rAF: number;
 

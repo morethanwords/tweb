@@ -430,9 +430,9 @@ export default class PopupNewMedia extends PopupElement {
           for(let i = 0; i < results.length; ++i) {
             const params = willAttach.sendFileDetails[i];
             const div = results[i];
-            const {w, h} = calcImageInBox(params.width, params.height, 380, 320);
-            div.style.width = w + 'px';
-            div.style.height = h + 'px';
+            const size = calcImageInBox(params.width, params.height, 380, 320);
+            div.style.width = size.width + 'px';
+            div.style.height = size.height + 'px';
             this.mediaContainer.append(div);
           }
         }

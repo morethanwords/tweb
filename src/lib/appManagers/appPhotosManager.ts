@@ -25,6 +25,7 @@ import blur from "../../helpers/blur";
 import { MOUNT_CLASS_TO } from "../../config/debug";
 import renderImageFromUrl from "../../helpers/dom/renderImageFromUrl";
 import calcImageInBox from "../../helpers/calcImageInBox";
+import { makeMediaSize, MediaSize } from "../../helpers/mediaSizes";
 
 export type MyPhoto = Photo.photo;
 
@@ -86,10 +87,10 @@ export class AppPhotosManager {
     return this.photos[photo.id] = photo;
   }
   
-  public choosePhotoSize(photo: MyPhoto | MyDocument, width = 0, height = 0, useBytes = false) {
+  public choosePhotoSize(photo: MyPhoto | MyDocument, boxWidth = 0, boxHeight = 0, useBytes = false) {
     if(window.devicePixelRatio > 1) {
-      width *= 2;
-      height *= 2;
+      boxWidth *= 2;
+      boxHeight *= 2;
     }
     
     /*
@@ -106,13 +107,14 @@ export class AppPhotosManager {
     let bestPhotoSize: PhotoSize = {_: 'photoSizeEmpty', type: ''};
     const sizes = ((photo as MyPhoto).sizes || (photo as MyDocument).thumbs) as PhotoSize[];
     if(sizes?.length) {
-      for(const photoSize of sizes) {
+      for(let i = 0, length = sizes.length; i < length; ++i) {
+        const photoSize = sizes[i];
         if(!('w' in photoSize) && !('h' in photoSize)) continue;
   
         bestPhotoSize = photoSize;
   
-        const {w, h} = calcImageInBox(photoSize.w, photoSize.h, width, height);
-        if(w >= width || h >= height) {
+        const size = calcImageInBox(photoSize.w, photoSize.h, boxWidth, boxHeight);
+        if(size.width >= boxWidth || size.height >= boxHeight) {
           break;
         }
       }
@@ -218,31 +220,30 @@ export class AppPhotosManager {
     const photoSize = this.choosePhotoSize(photo, boxWidth, boxHeight);
     //console.log('setAttachmentSize', photo, photo.sizes[0].bytes, div);
     
-    let width: number;
-    let height: number;
+    let size: MediaSize;
     if(photo._ === 'document') {
-      width = photo.w || 512;
-      height = photo.h || 512;
+      size = makeMediaSize(photo.w || 512, photo.h || 512);
     } else {
-      width = 'w' in photoSize ? photoSize.w : 100;
-      height = 'h' in photoSize ? photoSize.h : 100;
+      size = makeMediaSize('w' in photoSize ? photoSize.w : 100, 'h' in photoSize ? photoSize.h : 100);
     }
-    
-    let {w, h} = calcImageInBox(width, height, boxWidth, boxHeight, noZoom);
 
-    /* if(hasText) {
-      w = Math.max(boxWidth, w);
-    } */
+    const boxSize = makeMediaSize(boxWidth, boxHeight);
 
-    if(element instanceof SVGForeignObjectElement) {
-      element.setAttributeNS(null, 'width', '' + w);
-      element.setAttributeNS(null, 'height', '' + h);
+    size = size.aspect(boxSize, noZoom);
 
-      //console.log('set dimensions to svg element:', element, w, h);
-    } else {
-      element.style.width = w + 'px';
-      element.style.height = h + 'px';
-    }
+    // /* if(hasText) {
+    //   w = Math.max(boxWidth, w);
+    // } */
+
+    // if(element instanceof SVGForeignObjectElement) {
+    //   element.setAttributeNS(null, 'width', '' + w);
+    //   element.setAttributeNS(null, 'height', '' + h);
+
+    //   //console.log('set dimensions to svg element:', element, w, h);
+    // } else {
+      element.style.width = size.width + 'px';
+      element.style.height = size.height + 'px';
+    // }
     
     return photoSize;
   }
