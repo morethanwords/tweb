@@ -27,7 +27,6 @@ import LazyLoadQueue from './lazyLoadQueue';
 import PollElement from './poll';
 import ProgressivePreloader from './preloader';
 import './middleEllipsis';
-import { nextRandomInt } from '../helpers/random';
 import RichTextProcessor from '../lib/richtextprocessor';
 import appImManager from '../lib/appManagers/appImManager';
 import { SearchSuperContext } from './appSearchSuper.';
@@ -593,7 +592,7 @@ export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showS
   return docDiv;
 }
 
-function wrapMediaWithTail(photo: MyPhoto | MyDocument, message: {mid: number, message: string}, container: HTMLElement, boxWidth: number, boxHeight: number, isOut: boolean) {
+/* function wrapMediaWithTail(photo: MyPhoto | MyDocument, message: {mid: number, message: string}, container: HTMLElement, boxWidth: number, boxHeight: number, isOut: boolean) {
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   svg.classList.add('bubble__media-container', isOut ? 'is-out' : 'is-in');
   
@@ -650,7 +649,7 @@ function wrapMediaWithTail(photo: MyPhoto | MyDocument, message: {mid: number, m
   }
 
   return img;
-}
+} */
 
 export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withTail, isOut, lazyLoadQueue, middleware, size, withoutPreloader, loadPromises, noAutoDownload, noBlur}: {
   photo: MyPhoto | MyDocument, 
@@ -694,9 +693,9 @@ export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withT
   let loadThumbPromise: Promise<any>;
   let thumbImage: HTMLImageElement;
   let image: HTMLImageElement;
-  if(withTail) {
-    image = wrapMediaWithTail(photo, message, container, boxWidth, boxHeight, isOut);
-  } else {
+  // if(withTail) {
+  //   image = wrapMediaWithTail(photo, message, container, boxWidth, boxHeight, isOut);
+  // } else {
     image = new Image();
 
     if(boxWidth && boxHeight && !size) { // !album
@@ -710,7 +709,7 @@ export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withT
       thumbImage.classList.add('media-photo');
       container.append(thumbImage);
     }
-  }
+  // }
 
   image.classList.add('media-photo');
   
