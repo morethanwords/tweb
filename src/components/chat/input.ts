@@ -101,7 +101,7 @@ export default class ChatInput {
   public sendSilent: true;
 
   private recorder: any;
-  private recording = false;
+  public recording = false;
   private recordCanceled = false;
   private recordTimeEl: HTMLElement;
   private recordRippleEl: HTMLElement;
