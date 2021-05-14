@@ -216,7 +216,7 @@ export class AppPhotosManager {
     return {image, loadPromise};
   }
   
-  public setAttachmentSize(photo: MyPhoto | MyDocument, element: HTMLElement | SVGForeignObjectElement, boxWidth: number, boxHeight: number, noZoom = true, hasText?: boolean) {
+  public setAttachmentSize(photo: MyPhoto | MyDocument, element: HTMLElement | SVGForeignObjectElement, boxWidth: number, boxHeight: number, noZoom = true, message?: any) {
     const photoSize = this.choosePhotoSize(photo, boxWidth, boxHeight);
     //console.log('setAttachmentSize', photo, photo.sizes[0].bytes, div);
     
@@ -227,13 +227,29 @@ export class AppPhotosManager {
       size = makeMediaSize('w' in photoSize ? photoSize.w : 100, 'h' in photoSize ? photoSize.h : 100);
     }
 
-    const boxSize = makeMediaSize(boxWidth, boxHeight);
+    let boxSize = makeMediaSize(boxWidth, boxHeight);
 
-    size = size.aspect(boxSize, noZoom);
+    boxSize = size = size.aspect(boxSize, noZoom);
 
-    // /* if(hasText) {
-    //   w = Math.max(boxWidth, w);
-    // } */
+    let isFit = true;
+
+    if(photo._ === 'photo' || ['video', 'gif'].includes(photo.type)) {
+      if(boxSize.width < 200 && boxSize.height < 200) { // make at least one side this big
+        boxSize = size = size.aspectCovered(makeMediaSize(200, 200));
+      }
+  
+      if(message && (message.message || message.media.webpage || message.replies)) { // make sure that bubble block is human-readable
+        if(boxSize.width < 320) {
+          boxSize = makeMediaSize(320, boxSize.height);
+          isFit = false;
+        }
+      }
+  
+      if(isFit && boxSize.width < 120) { // if image is too narrow
+        boxSize = makeMediaSize(120, boxSize.height);
+        isFit = false;
+      }
+    }
 
     // if(element instanceof SVGForeignObjectElement) {
     //   element.setAttributeNS(null, 'width', '' + w);
@@ -241,16 +257,16 @@ export class AppPhotosManager {
 
     //   //console.log('set dimensions to svg element:', element, w, h);
     // } else {
-      element.style.width = size.width + 'px';
-      element.style.height = size.height + 'px';
+      element.style.width = boxSize.width + 'px';
+      element.style.height = boxSize.height + 'px';
     // }
     
-    return photoSize;
+    return {photoSize, size, isFit};
   }
 
-  public getStrippedThumbIfNeeded(photo: MyPhoto | MyDocument, useBlur: boolean): ReturnType<AppPhotosManager['getImageFromStrippedThumb']> {
+  public getStrippedThumbIfNeeded(photo: MyPhoto | MyDocument, useBlur: boolean, ignoreCache = false): ReturnType<AppPhotosManager['getImageFromStrippedThumb']> {
     const cacheContext = appDownloadManager.getCacheContext(photo);
-    if(!cacheContext.downloaded || (photo as MyDocument).type === 'video' || (photo as MyDocument).type === 'gif') {
+    if(!cacheContext.downloaded || (['video', 'gif'] as MyDocument['type'][]).includes((photo as MyDocument).type) || ignoreCache) {
       if(photo._ === 'document' && cacheContext.downloaded) {
         return null;
       }

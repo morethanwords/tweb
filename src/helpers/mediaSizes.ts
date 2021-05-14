@@ -34,7 +34,10 @@ type MediaTypeSizes = {
   regular: MediaSize,
   webpage: MediaSize,
   album: MediaSize,
-  esgSticker: MediaSize
+  esgSticker: MediaSize,
+  animatedSticker: MediaSize,
+  staticSticker: MediaSize,
+  emojiSticker: MediaSize
 };
 
 export enum ScreenSize {
@@ -61,13 +64,19 @@ class MediaSizes extends EventListenerBase<{
       regular: makeMediaSize(270, 270),
       webpage: makeMediaSize(270, 200),
       album: makeMediaSize(270, 0),
-      esgSticker: makeMediaSize(68, 68)
+      esgSticker: makeMediaSize(68, 68),
+      animatedSticker: makeMediaSize(160, 160),
+      staticSticker: makeMediaSize(160, 160),
+      emojiSticker: makeMediaSize(112, 112)
     },
     desktop: {
       regular: makeMediaSize(400, 320),
       webpage: makeMediaSize(400, 320),
       album: makeMediaSize(420, 0),
-      esgSticker: makeMediaSize(80, 80)
+      esgSticker: makeMediaSize(80, 80),
+      animatedSticker: makeMediaSize(200, 200),
+      staticSticker: makeMediaSize(200, 200),
+      emojiSticker: makeMediaSize(112, 112)
     }
   };
 

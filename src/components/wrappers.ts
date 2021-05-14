@@ -283,7 +283,7 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
   }
 
   if(!video.parentElement && container) {
-    container.append(video);
+    (photoRes?.aspecter || container).append(video);
   }
 
   const cacheContext = appDownloadManager.getCacheContext(doc);
@@ -669,7 +669,7 @@ export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withT
 }) {
   if(!((photo as MyPhoto).sizes || (photo as MyDocument).thumbs)) {
     if(boxWidth && boxHeight && !size && photo._ === 'document') {
-      size = appPhotosManager.setAttachmentSize(photo, container, boxWidth, boxHeight, undefined, message && message.message);
+      appPhotosManager.setAttachmentSize(photo, container, boxWidth, boxHeight, undefined, message);
     }
 
     return {
@@ -681,7 +681,8 @@ export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withT
         thumb: null,
         full: null
       },
-      preloader: null
+      preloader: null,
+      aspecter: null
     };
   }
 
@@ -690,7 +691,11 @@ export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withT
     if(boxHeight === undefined) boxHeight = mediaSizes.active.regular.height;
   }
 
-  let loadThumbPromise: Promise<any>;
+  container.classList.add('media-container');
+  let aspecter = container;
+
+  let isFit = true;
+  let loadThumbPromise: Promise<any> = Promise.resolve();
   let thumbImage: HTMLImageElement;
   let image: HTMLImageElement;
   // if(withTail) {
@@ -699,15 +704,35 @@ export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withT
     image = new Image();
 
     if(boxWidth && boxHeight && !size) { // !album
-      size = appPhotosManager.setAttachmentSize(photo, container, boxWidth, boxHeight, undefined, message && message.message);
+      const set = appPhotosManager.setAttachmentSize(photo, container, boxWidth, boxHeight, undefined, message);
+      size = set.photoSize;
+      isFit = set.isFit;
+
+      if(!isFit) {
+        aspecter = document.createElement('div');
+        aspecter.classList.add('media-container-aspecter');
+        aspecter.style.width = set.size.width + 'px';
+        aspecter.style.height = set.size.height + 'px';
+
+        const gotThumb = appPhotosManager.getStrippedThumbIfNeeded(photo, !noBlur, true);
+        if(gotThumb) {
+          loadThumbPromise = gotThumb.loadPromise;
+          const thumbImage = gotThumb.image; // local scope
+          thumbImage.classList.add('media-photo');
+          container.append(thumbImage);
+        }
+
+        container.classList.add('media-container-fitted');
+        container.append(aspecter);
+      }
     }
 
     const gotThumb = appPhotosManager.getStrippedThumbIfNeeded(photo, !noBlur);
     if(gotThumb) {
-      loadThumbPromise = gotThumb.loadPromise;
+      loadThumbPromise = Promise.all([loadThumbPromise, gotThumb.loadPromise]);
       thumbImage = gotThumb.image;
       thumbImage.classList.add('media-photo');
-      container.append(thumbImage);
+      aspecter.append(thumbImage);
     }
   // }
 
@@ -754,7 +779,7 @@ export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withT
 
       renderImageFromUrl(image, cacheContext.url, () => {
         sequentialDom.mutateElement(container, () => {
-          container.append(image);
+          aspecter.append(image);
 
           fastRaf(() => {
             resolve();
@@ -820,7 +845,8 @@ export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withT
       thumb: thumbImage,
       full: image
     },
-    preloader
+    preloader,
+    aspecter
   };
 }
 

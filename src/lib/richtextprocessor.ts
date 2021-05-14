@@ -54,17 +54,19 @@ const alphaCharsRegExp = 'a-z' +
 const alphaNumericRegExp = '0-9\_' + alphaCharsRegExp;
 const domainAddChars = '\u00b7';
 // Based on Regular Expression for URL validation by Diego Perini
-const urlRegExp = '((?:https?|ftp)://|mailto:)?' +
+const urlAlphanumericRegExpPart = '[' + alphaCharsRegExp + '0-9]';
+const urlProtocolRegExpPart = '((?:https?|ftp)://|mailto:)?';
+const urlRegExp = urlProtocolRegExpPart +
   // user:pass authentication
-  '(?:\\S{1,64}(?::\\S{0,64})?@)?' +
+  '(?:' + urlAlphanumericRegExpPart + '{1,64}(?::' + urlAlphanumericRegExpPart + '{0,64})?@)?' +
   '(?:' +
   // sindresorhus/ip-regexp
   '(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])(?:\\.(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])){3}' +
   '|' +
   // host name
-  '[' + alphaCharsRegExp + '0-9][' + alphaCharsRegExp + domainAddChars + '0-9\-]{0,64}' +
+  urlAlphanumericRegExpPart + '[' + alphaCharsRegExp + domainAddChars + '0-9\-]{0,64}' +
   // domain name
-  '(?:\\.[' + alphaCharsRegExp + '0-9][' + alphaCharsRegExp + domainAddChars + '0-9\-]{0,64}){0,10}' +
+  '(?:\\.' + urlAlphanumericRegExpPart + '[' + alphaCharsRegExp + domainAddChars + '0-9\-]{0,64}){0,10}' +
   // TLD identifier
   '(?:\\.(xn--[0-9a-z]{2,16}|[' + alphaCharsRegExp + ']{2,24}))' +
   ')' +
@@ -72,9 +74,11 @@ const urlRegExp = '((?:https?|ftp)://|mailto:)?' +
   '(?::\\d{2,5})?' +
   // resource path
   '(?:/(?:\\S{0,255}[^\\s.;,(\\[\\]{}<>"\'])?)?';
+const urlProtocolRegExp = new RegExp('^' + urlProtocolRegExpPart.slice(0, -1), 'i');
+const urlAnyProtocolRegExp = /^((?:.+?):\/\/|mailto:)/;
 const usernameRegExp = '[a-zA-Z\\d_]{5,32}';
 const botCommandRegExp = '\\/([a-zA-Z\\d_]{1,32})(?:@(' + usernameRegExp + '))?(\\b|$)';
-const fullRegExp = new RegExp('(^| )(@)(' + usernameRegExp + ')|(' + urlRegExp + ')|(\\n)|(' + emojiRegExp + ')|(^|[\\s\\(\\]])(#[' + alphaNumericRegExp + ']{2,64})|(^|\\s)' + botCommandRegExp, 'i')
+const fullRegExp = new RegExp('(^| )(@)(' + usernameRegExp + ')|(' + urlRegExp + ')|(\\n)|(' + emojiRegExp + ')|(^|[\\s\\(\\]])(#[' + alphaNumericRegExp + ']{2,64})|(^|\\s)' + botCommandRegExp, 'i');
 const emailRegExp = /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
 //const markdownTestRegExp = /[`_*@~]/;
 const markdownRegExp = /(^|\s|\n)(````?)([\s\S]+?)(````?)([\s\n\.,:?!;]|$)|(^|\s|\x01)(`|~~|\*\*|__|_-_)([^\n]+?)\7([\x01\s\.,:?!;]|$)|@(\d+)\s*\((.+?)\)|(\[(.+?)\]\((.+?)\))/m;
@@ -91,7 +95,7 @@ const siteMentions: {[siteName: string]: string} = {
   Instagram: 'https://instagram.com/{1}/',
   GitHub: 'https://github.com/{1}'
 };
-const markdownEntities: {[markdown: string]: any} = {
+const markdownEntities: {[markdown: string]: MessageEntity['_']} = {
   '`': 'messageEntityCode',
   '``': 'messageEntityPre',
   '**': 'messageEntityBold',
@@ -99,6 +103,11 @@ const markdownEntities: {[markdown: string]: any} = {
   '~~': 'messageEntityStrike',
   '_-_': 'messageEntityUnderline'
 };
+
+const passConflictingEntities: Set<MessageEntity['_']> = new Set();
+for(let i in markdownEntities) {
+  passConflictingEntities.add(markdownEntities[i]);
+}
 
 namespace RichTextProcessor {
   export const emojiSupported = navigator.userAgent.search(/OS X|iPhone|iPad|iOS/i) !== -1/*  && false *//*  || true */;
@@ -120,11 +129,11 @@ namespace RichTextProcessor {
   }
 
   export function parseEntities(text: string) {
-    var match;
-    var raw = text, url;
+    let match: any;
+    let raw = text;
     const entities: MessageEntity[] = [];
     let matchIndex;
-    var rawOffset = 0;
+    let rawOffset = 0;
     // var start = tsNow()
     while((match = raw.match(fullRegExp))) {
       matchIndex = rawOffset + match.index;
@@ -145,19 +154,19 @@ namespace RichTextProcessor {
             length: match[4].length
           });
         } else {
-          var url: any = false;
-          var protocol = match[5];
-          var tld = match[6];
-          var excluded = '';
+          let url: string;
+          let protocol = match[5];
+          const tld = match[6];
+          // let excluded = '';
           if(tld) { // URL
             if(!protocol && (tld.substr(0, 4) === 'xn--' || Config.TLD.indexOf(tld.toLowerCase()) !== -1)) {
               protocol = 'http://';
             }
   
             if(protocol) {
-              var balanced = checkBrackets(match[4]);
-              if (balanced.length !== match[4].length) {
-                excluded = match[4].substring(balanced.length);
+              const balanced = checkBrackets(match[4]);
+              if(balanced.length !== match[4].length) {
+                // excluded = match[4].substring(balanced.length);
                 match[4] = balanced;
               }
   
@@ -167,7 +176,7 @@ namespace RichTextProcessor {
             url = (match[5] ? '' : 'http://') + match[4];
           }
   
-          if (url) {
+          if(url) {
             entities.push({
               _: 'messageEntityUrl',
               offset: matchIndex,
@@ -183,7 +192,7 @@ namespace RichTextProcessor {
         });
       } else if(match[8]) { // Emoji
         //console.log('hit', match[8]);
-        let emojiCoords = getEmojiSpritesheetCoords(match[8]);
+        const emojiCoords = getEmojiSpritesheetCoords(match[8]);
         if(emojiCoords) {
           entities.push({
             _: 'messageEntityEmoji',
@@ -233,7 +242,7 @@ namespace RichTextProcessor {
 
     const entities: MessageEntity[] = [];
     let pushedEntity = false;
-    const pushEntity = (entity: MessageEntity) => !findSameEntity(currentEntities, entity) ? (entities.push(entity), pushedEntity = true) : pushedEntity = false;
+    const pushEntity = (entity: MessageEntity) => !findConflictingEntity(currentEntities, entity) ? (entities.push(entity), pushedEntity = true) : pushedEntity = false;
 
     let raw = text;
     let match;
@@ -273,7 +282,7 @@ namespace RichTextProcessor {
         const isSOH = match[6] === '\x01';
 
         entity = {
-          _: markdownEntities[match[7]],
+          _: markdownEntities[match[7]] as (MessageEntity.messageEntityBold | MessageEntity.messageEntityCode | MessageEntity.messageEntityItalic)['_'],
           //offset: matchIndex + match[6].length,
           offset: matchIndex + (isSOH ? 0 : match[6].length),
           length: text.length
@@ -341,17 +350,25 @@ namespace RichTextProcessor {
     return newText;
   }
 
-  export function findSameEntity(currentEntities: MessageEntity[], newEntity: MessageEntity) {
+  export function findConflictingEntity(currentEntities: MessageEntity[], newEntity: MessageEntity) {
     return currentEntities.find(currentEntity => {
-      return newEntity._ === currentEntity._ && 
-        newEntity.offset >= currentEntity.offset && 
+      const isConflictingTypes = newEntity._ === currentEntity._ || 
+        (!passConflictingEntities.has(newEntity._) && !passConflictingEntities.has(currentEntity._));
+
+      if(!isConflictingTypes) {
+        return false;
+      }
+
+      const isConflictingOffset = newEntity.offset >= currentEntity.offset && 
         (newEntity.length + newEntity.offset) <= (currentEntity.length + currentEntity.offset);
+
+      return isConflictingOffset;
     });
   }
 
   export function mergeEntities(currentEntities: MessageEntity[], newEntities: MessageEntity[]) {
     const filtered = newEntities.filter(e => {
-      return !findSameEntity(currentEntities, e);
+      return !findConflictingEntity(currentEntities, e);
     });
 
     currentEntities.push(...filtered);
@@ -536,7 +553,7 @@ namespace RichTextProcessor {
           if(!(options.noLinks && !passEntities[entity._])) {
             const entityText = text.substr(entity.offset, entity.length);
 
-            let inner: string;
+            // let inner: string;
             let url: string;
             let masked = false;
             if(entity._ === 'messageEntityTextUrl') {
@@ -548,6 +565,9 @@ namespace RichTextProcessor {
                 nextEntity.length === entity.length && 
                 nextEntity.offset === entity.offset) {
                 i++;
+              }
+
+              if(url !== entityText) {
                 masked = true;
               }
             } else {
@@ -721,7 +741,7 @@ namespace RichTextProcessor {
   }
 
   export function wrapUrl(url: string, unsafe?: number | boolean): string {
-    if(!url.match(/^https?:\/\//i)) {
+    if(!matchUrlProtocol(url)) {
       url = 'https://' + url;
     }
   
@@ -729,7 +749,7 @@ namespace RichTextProcessor {
     let telescoPeMatch;
     /* if(unsafe === 2) {
       url = 'tg://unsafe_url?url=' + encodeURIComponent(url);
-    } else  */if((tgMeMatch = url.match(/^https?:\/\/t(?:elegram)?\.me\/(.+)/))) {
+    } else  */if((tgMeMatch = url.match(/^(?:https?:\/\/)?t(?:elegram)?\.me\/(.+)/))) {
       const fullPath = tgMeMatch[1];
       const path = fullPath.split('/');
       switch(path[0]) {
@@ -771,13 +791,17 @@ namespace RichTextProcessor {
 
           break;
       }
-    } else if((telescoPeMatch = url.match(/^https?:\/\/telesco\.pe\/([^/?]+)\/(\d+)/))) {
+    } else if((telescoPeMatch = url.match(/^(?:https?:\/\/)?telesco\.pe\/([^/?]+)\/(\d+)/))) {
       url = 'tg://resolve?domain=' + telescoPeMatch[1] + '&post=' + telescoPeMatch[2];
     }/*  else if(unsafe) {
       url = 'tg://unsafe_url?url=' + encodeURIComponent(url);
     } */
   
     return url;
+  }
+
+  export function matchUrlProtocol(text: string) {
+    return !text ? null : text.match(urlAnyProtocolRegExp);
   }
   
   export function matchUrl(text: string) {

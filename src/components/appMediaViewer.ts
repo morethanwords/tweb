@@ -956,7 +956,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     // TODO: const maxHeight = mediaSizes.isMobile ? appPhotosManager.windowH : appPhotosManager.windowH - 100;
     const maxHeight = appPhotosManager.windowH - 100;
     let thumbPromise: Promise<any> = Promise.resolve();
-    const size = appPhotosManager.setAttachmentSize(media, container, maxWidth, maxHeight, mediaSizes.isMobile ? false : true);
+    const size = appPhotosManager.setAttachmentSize(media, container, maxWidth, maxHeight, mediaSizes.isMobile ? false : true).photoSize;
     if(useContainerAsTarget) {
       const cacheContext = appDownloadManager.getCacheContext(media, size.type);
       let img: HTMLImageElement;

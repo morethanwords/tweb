@@ -859,9 +859,11 @@ export default class ChatBubbles {
           str += '.attachment video, .attachment img';
         }
 
+        const hasAspecter = !!this.bubbles[id].querySelector('.media-container-aspecter');
         let elements = this.bubbles[id].querySelectorAll(str) as NodeListOf<HTMLElement>;
         const parents: Set<HTMLElement> = new Set();
         Array.from(elements).forEach((element: HTMLElement) => {
+          if(hasAspecter && !findUpClassName(element, 'media-container-aspecter')) return;
           let albumItem = findUpClassName(element, 'album-item');
           const parent = albumItem || element.parentElement;
           if(parents.has(parent)) return;
@@ -2330,6 +2332,7 @@ export default class ChatBubbles {
             if(size.w === size.h && quoteTextDiv.childElementCount) {
               bubble.classList.add('is-square-photo');
               isSquare = true;
+              this.appPhotosManager.setAttachmentSize(webpage.photo, preview, 80, 80, false);
             } else if(size.h > size.w) {
               bubble.classList.add('is-vertical-photo');
             }
@@ -2338,8 +2341,8 @@ export default class ChatBubbles {
               photo: webpage.photo, 
               message, 
               container: preview, 
-              boxWidth: mediaSizes.active.webpage.width, 
-              boxHeight: mediaSizes.active.webpage.height, 
+              boxWidth: isSquare ? 0 : mediaSizes.active.webpage.width, 
+              boxHeight: isSquare ? 0 : mediaSizes.active.webpage.height, 
               isOut, 
               lazyLoadQueue: this.lazyLoadQueue, 
               middleware: this.getMiddleware(),
@@ -2372,8 +2375,9 @@ export default class ChatBubbles {
               bubble.classList.add('sticker-animated');
             }
             
-            let size = bubble.classList.contains('emoji-big') ? 140 : 200;
-            this.appPhotosManager.setAttachmentSize(doc, attachmentDiv, size, size);
+            const sizes = mediaSizes.active;
+            const size = bubble.classList.contains('emoji-big') ? sizes.emojiSticker : (doc.animated ? sizes.animatedSticker : sizes.staticSticker);
+            this.appPhotosManager.setAttachmentSize(doc, attachmentDiv, size.width, size.height);
             //let preloader = new ProgressivePreloader(attachmentDiv, false);
             bubbleContainer.style.height = attachmentDiv.style.height;
             bubbleContainer.style.width = attachmentDiv.style.width;
