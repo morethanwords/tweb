@@ -238,7 +238,12 @@ export class AppPhotosManager {
         boxSize = size = size.aspectCovered(makeMediaSize(200, 200));
       }
   
-      if(message && (message.message || message.media.webpage || message.replies)) { // make sure that bubble block is human-readable
+      if(message && 
+        (message.message || 
+          message.media.webpage || 
+          (message.replies && message.replies.pFlags.comments && message.replies.channel_id !== 777)
+        )
+      ) { // make sure that bubble block is human-readable
         if(boxSize.width < 320) {
           boxSize = makeMediaSize(320, boxSize.height);
           isFit = false;

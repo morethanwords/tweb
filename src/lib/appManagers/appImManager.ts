@@ -190,6 +190,7 @@ export class AppImManager {
       const href = element.href;
 
       const a = element.cloneNode(true) as HTMLAnchorElement;
+      a.className = 'anchor-url';
       a.innerText = href;
       a.removeAttribute('onclick');
 
