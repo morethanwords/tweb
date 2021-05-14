@@ -51,6 +51,7 @@ import PeerTitle from "../../components/peerTitle";
 import { forEachReverse } from "../../helpers/array";
 import htmlToDocumentFragment from "../../helpers/dom/htmlToDocumentFragment";
 import htmlToSpan from "../../helpers/dom/htmlToSpan";
+import { REPLIES_PEER_ID } from "../mtproto/mtproto_config";
 
 //console.trace('include');
 // TODO: если удалить сообщение в непрогруженном диалоге, то при обновлении, из-за стейта, последнего сообщения в чатлисте не будет
@@ -4508,6 +4509,17 @@ export class AppMessagesManager {
     }).then(updates => {
       apiUpdatesManager.processUpdateMessage(updates);
     });
+  }
+
+  public getMessageWithReplies(message: Message.message) {
+    if(message.peerId !== REPLIES_PEER_ID) {
+      message = this.filterMessages(message, message => !!(message as Message.message).replies)[0] as any;
+      if(!(message && message.replies && message.replies.pFlags.comments && message.replies.channel_id !== 777)) {
+        return;
+      }
+    }
+
+    return message;
   }
 
   public isFetchIntervalNeeded(peerId: number) {

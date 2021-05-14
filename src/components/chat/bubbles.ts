@@ -2160,15 +2160,8 @@ export default class ChatBubbles {
       bubble.classList.add(status);
     }
 
-    let messageWithReplies: Message.message;
-    let withReplies: boolean;
-    if(this.peerId === REPLIES_PEER_ID) {
-      messageWithReplies = message;
-      withReplies = true;
-    } else {
-      messageWithReplies = this.appMessagesManager.filterMessages(message, message => !!(message as Message.message).replies)[0] as any;
-      withReplies = messageWithReplies && messageWithReplies.replies && messageWithReplies.replies.pFlags.comments && messageWithReplies.replies.channel_id !== 777;
-    }
+    const messageWithReplies = this.appMessagesManager.getMessageWithReplies(message);
+    const withReplies = !!messageWithReplies;
 
     if(withReplies) {
       bubble.classList.add('with-replies');
