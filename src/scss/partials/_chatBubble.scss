@@ -604,6 +604,21 @@ $bubble-margin: .25rem;
     }
   }
 
+  .media-container {
+    &-aspecter {
+      position: relative;
+      margin: 0 auto;
+    }
+
+    &-fitted {
+      background-color: transparent !important;
+
+      .thumbnail {
+        opacity: .8;
+      }
+    }
+  }
+
   .preloader-container {
     z-index: 2;
   }
@@ -798,11 +813,11 @@ $bubble-margin: .25rem;
     }
   }
 
-  &.is-vertical-photo {
+  /* &.is-vertical-photo {
     .bubble-content {
       width: fit-content;
     }
-  }
+  } */
 
   .reply {
     padding: 4px;

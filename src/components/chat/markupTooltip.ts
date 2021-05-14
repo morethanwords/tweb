@@ -170,7 +170,11 @@ export default class MarkupTooltip {
   private applyLink(e: Event) {
     cancelEvent(e);
     this.resetSelection();
-    this.appImManager.chat.input.applyMarkdown('link', this.linkInput.value);
+    let url = this.linkInput.value;
+    if(url && !RichTextProcessor.matchUrlProtocol(url)) {
+      url = 'https://' + url;
+    }
+    this.appImManager.chat.input.applyMarkdown('link', url);
     setTimeout(() => {
       this.hide();
     }, 0);
