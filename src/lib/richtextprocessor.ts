@@ -104,7 +104,10 @@ const markdownEntities: {[markdown: string]: MessageEntity['_']} = {
   '_-_': 'messageEntityUnderline'
 };
 
-const passConflictingEntities: Set<MessageEntity['_']> = new Set();
+const passConflictingEntities: Set<MessageEntity['_']> = new Set([
+  'messageEntityEmoji',
+  'messageEntityLinebreak'
+]);
 for(let i in markdownEntities) {
   passConflictingEntities.add(markdownEntities[i]);
 }
