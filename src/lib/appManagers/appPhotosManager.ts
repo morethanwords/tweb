@@ -19,7 +19,7 @@ import { InputFileLocation, InputMedia, Photo, PhotoSize, PhotosPhotos } from ".
 import apiManager from "../mtproto/mtprotoworker";
 import referenceDatabase, { ReferenceContext } from "../mtproto/referenceDatabase";
 import { MyDocument } from "./appDocsManager";
-import appDownloadManager from "./appDownloadManager";
+import appDownloadManager, { ThumbCache } from "./appDownloadManager";
 import appUsersManager from "./appUsersManager";
 import blur from "../../helpers/blur";
 import { MOUNT_CLASS_TO } from "../../config/debug";
@@ -269,10 +269,9 @@ export class AppPhotosManager {
     return {photoSize, size, isFit};
   }
 
-  public getStrippedThumbIfNeeded(photo: MyPhoto | MyDocument, useBlur: boolean, ignoreCache = false): ReturnType<AppPhotosManager['getImageFromStrippedThumb']> {
-    const cacheContext = appDownloadManager.getCacheContext(photo);
+  public getStrippedThumbIfNeeded(photo: MyPhoto | MyDocument, cacheContext: ThumbCache, useBlur: boolean, ignoreCache = false): ReturnType<AppPhotosManager['getImageFromStrippedThumb']> {
     if(!cacheContext.downloaded || (['video', 'gif'] as MyDocument['type'][]).includes((photo as MyDocument).type) || ignoreCache) {
-      if(photo._ === 'document' && cacheContext.downloaded) {
+      if(photo._ === 'document' && cacheContext.downloaded && !ignoreCache) {
         return null;
       }
 
