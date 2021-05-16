@@ -148,6 +148,8 @@ export class AppPollsManager {
       }
 
       solution = RichTextProcessor.parseMarkdown(solution, solutionEntities);
+    } else {
+      solution = undefined; // can be string here
     }
 
     return {

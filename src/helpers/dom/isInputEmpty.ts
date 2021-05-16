@@ -11,7 +11,7 @@ export default function isInputEmpty(element: HTMLElement) {
     /* const value = element.innerText;
 
     return !value.trim() && !serializeNodes(Array.from(element.childNodes)).trim(); */
-    return !getRichValue(element).trim();
+    return !getRichValue(element, false).value.trim();
   } else {
     return !(element as HTMLInputElement).value.trim();
   }

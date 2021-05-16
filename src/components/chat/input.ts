@@ -51,10 +51,13 @@ import blurActiveElement from '../../helpers/dom/blurActiveElement';
 import { cancelEvent } from '../../helpers/dom/cancelEvent';
 import cancelSelection from '../../helpers/dom/cancelSelection';
 import { attachClickEvent } from '../../helpers/dom/clickEvent';
-import getRichValue, { MarkdownType, markdownTags } from '../../helpers/dom/getRichValue';
+import getRichValue from '../../helpers/dom/getRichValue';
 import isInputEmpty from '../../helpers/dom/isInputEmpty';
 import isSendShortcutPressed from '../../helpers/dom/isSendShortcutPressed';
 import placeCaretAtEnd from '../../helpers/dom/placeCaretAtEnd';
+import { MarkdownType, markdownTags } from '../../helpers/dom/getRichElementValue';
+import getRichValueWithCaret from '../../helpers/dom/getRichValueWithCaret';
+import searchIndexManager from '../../lib/searchIndexManager';
 
 const RECORD_MIN_TIME = 500;
 const POSTING_MEDIA_NOT_ALLOWED = 'Posting media content isn\'t allowed in this group.';
@@ -62,6 +65,7 @@ const POSTING_MEDIA_NOT_ALLOWED = 'Posting media content isn\'t allowed in this 
 type ChatInputHelperType = 'edit' | 'webpage' | 'forward' | 'reply';
 
 export default class ChatInput {
+  public static AUTO_COMPLETE_REG_EXP = /(\s|^)(:|@|\/)([\S]*)$/;
   public pageEl = document.getElementById('page-chats') as HTMLDivElement;
   public messageInput: HTMLElement;
   public messageInputField: InputField;
@@ -136,6 +140,8 @@ export default class ChatInput {
 
   public fakeRowsWrapper: HTMLDivElement;
   private fakePinnedControlBtn: HTMLElement;
+
+  public previousQuery: string;
 
   constructor(private chat: Chat, private appMessagesManager: AppMessagesManager, private appDocsManager: AppDocsManager, private appChatsManager: AppChatsManager, private appPeersManager: AppPeersManager, private appWebPagesManager: AppWebPagesManager, private appImManager: AppImManager, private appDraftsManager: AppDraftsManager, private serverTimeManager: ServerTimeManager, private appNotificationsManager: AppNotificationsManager) {
     this.listenerSetter = new ListenerSetter();
@@ -595,15 +601,14 @@ export default class ChatInput {
   public saveDraft() {
     if(!this.chat.peerId || this.editMsgId || this.chat.type === 'scheduled') return;
     
-    const entities: MessageEntity[] = [];
-    const str = getRichValue(this.messageInputField.input, entities);
+    const {value, entities} = getRichValue(this.messageInputField.input);
 
     let draft: DraftMessage.draftMessage;
-    if(str.length || this.replyToMsgId) {
+    if(value.length || this.replyToMsgId) {
       draft = {
         _: 'draftMessage',
         date: tsNow(true) + this.serverTimeManager.serverTimeOffset,
-        message: str,
+        message: value,
         entities: entities.length ? entities : undefined,
         pFlags: {
           no_webpage: this.noWebPage
@@ -1021,35 +1026,27 @@ export default class ChatInput {
 
     //console.log('messageInput input', this.messageInput.innerText);
     //const value = this.messageInput.innerText;
-    const markdownEntities: MessageEntity[] = [];
-    const richValue = getRichValue(this.messageInputField.input, markdownEntities);
+    const {value: richValue, entities: markdownEntities, caretPos} = getRichValueWithCaret(this.messageInputField.input);
       
     //const entities = RichTextProcessor.parseEntities(value);
     const value = RichTextProcessor.parseMarkdown(richValue, markdownEntities);
     const entities = RichTextProcessor.mergeEntities(markdownEntities, RichTextProcessor.parseEntities(value));
 
-    //this.chat.log('messageInput entities', richValue, value, markdownEntities);
+    this.chat.log('messageInput entities', richValue, value, markdownEntities, caretPos);
 
     if(this.stickersHelper && 
       rootScope.settings.stickers.suggest && 
       (this.chat.peerId > 0 || this.appChatsManager.hasRights(this.chat.peerId, 'send_stickers'))) {
       let emoticon = '';
-      if(entities.length && entities[0]._ === 'messageEntityEmoji') {
-        const entity = entities[0];
-        if(entity.length === richValue.length && !entity.offset) {
-          emoticon = richValue;
-        }
+      const entity = entities[0];
+      if(entity?._ === 'messageEntityEmoji' && entity.length === richValue.length && !entity.offset) {
+        emoticon = richValue;
       }
 
       this.stickersHelper.checkEmoticon(emoticon);
     }
 
-    if(!richValue.trim()) {
-      this.appImManager.markupTooltip.hide();
-    }
-
-    const html = this.messageInput.innerHTML;
-    if(this.canRedoFromHTML && html !== this.canRedoFromHTML && !this.lockRedo) {
+    if(this.canRedoFromHTML && !this.lockRedo && this.messageInput.innerHTML !== this.canRedoFromHTML) {
       this.canRedoFromHTML = '';
       this.undoHistory.length = 0;
     }
@@ -1104,10 +1101,12 @@ export default class ChatInput {
       }
     }
 
-    if(this.isInputEmpty()) {
+    if(!richValue.trim()) {
       if(this.lastTimeType) {
         this.appMessagesManager.setTyping(this.chat.peerId, {_: 'sendMessageCancelAction'});
       }
+
+      this.appImManager.markupTooltip.hide();
     } else {
       const time = Date.now();
       if(time - this.lastTimeType >= 6000) {
@@ -1346,17 +1345,16 @@ export default class ChatInput {
       return;
     }
 
-    const entities: MessageEntity[] = [];
-    const str = getRichValue(this.messageInputField.input, entities);
+    const {value, entities} = getRichValue(this.messageInputField.input);
 
     //return;
     if(this.editMsgId) {
-      this.appMessagesManager.editMessage(this.chat.getMessage(this.editMsgId), str, {
+      this.appMessagesManager.editMessage(this.chat.getMessage(this.editMsgId), value, {
         entities,
         noWebPage: this.noWebPage
       });
     } else {
-      this.appMessagesManager.sendText(this.chat.peerId, str, {
+      this.appMessagesManager.sendText(this.chat.peerId, value, {
         entities,
         replyToMsgId: this.replyToMsgId,
         threadId: this.chat.threadId,

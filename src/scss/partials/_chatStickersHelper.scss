@@ -5,47 +5,22 @@
  */
 
 .stickers-helper {
-	position: absolute !important;
-	bottom: calc(100% + 10px);
-	overflow: hidden;
-	padding: 0 !important;
-  border-radius: 10px !important;
-
 	> .scrollable {
 		position: relative;
-		max-height: 220px;
+		max-height: 13.75rem;
   	min-height: var(--esg-sticker-size);
-	  padding: 7px;
+	  padding: .4375rem;
 	}
 
 	&-stickers {
 		display: flex;
     flex-wrap: wrap;
+		border-radius: var(--border-radius);
 	}
 
-	&-sticker {
-		position: relative;
-		width: var(--esg-sticker-size);
-		height: var(--esg-sticker-size);
-		margin: 5px;
-
-		img {
-			width: 100%;
-			height: 100%;
-		}
-	}
-
-	&:not(.is-visible) {
-		display: none;
-	}
-
-	@include animation-level(2) {
-		&.is-visible {
-			animation: fade-out-opacity .2s ease-in-out forwards;
-
-			&:not(.backwards) {
-				animation: fade-in-opacity .2s ease-in-out forwards;
-			}
+	.super-sticker:not(.active) {
+		@include hover() {
+			background: none;
 		}
 	}
 }

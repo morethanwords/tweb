@@ -1,0 +1,28 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
+.autocomplete-helper {
+  --border-radius: #{$border-radius-medium};
+  position: absolute !important;
+	bottom: calc(100% + .625rem);
+	overflow: hidden;
+	padding: 0 !important;
+  border-radius: var(--border-radius) !important;
+
+  &:not(.is-visible) {
+		display: none;
+	}
+
+	@include animation-level(2) {
+		&.is-visible {
+			animation: fade-out-opacity .2s ease-in-out forwards;
+
+			&:not(.backwards) {
+				animation: fade-in-opacity .2s ease-in-out forwards;
+			}
+		}
+	}
+}
