@@ -1122,6 +1122,99 @@ export default class ChatInput {
     this.updateSendBtn();
   };
 
+  private checkAutocomplete(value: string, markdownEntities: MessageEntity[], entities: MessageEntity[]) {
+    const matches = value.match(ChatInput.AUTO_COMPLETE_REG_EXP);
+    if(matches) {
+      if(this.previousQuery == matches[0]) {
+        return
+      }
+      this.previousQuery = matches[0]
+      var query = searchIndexManager.cleanSearchText(matches[3])
+
+      /* if (matches[2] == '@') { // mentions
+        if (this.mentions && this.mentions.index) {
+          if (query.length) {
+            var foundObject = SearchIndexManager.search(query, this.mentions.index)
+            var foundUsers = []
+            var user
+            for (var i = 0, length = this.mentions.users.length; i < length; i++) {
+              user = this.mentions.users[i]
+              if (foundObject[user.id]) {
+                foundUsers.push(user)
+              }
+            }
+          } else {
+            var foundUsers = this.mentions.users
+          }
+          if (foundUsers.length) {
+            this.showMentionSuggestions(foundUsers)
+          } else {
+            this.hideSuggestions()
+          }
+        } else {
+          this.hideSuggestions()
+        }
+      } else if (!matches[1] && matches[2] == '/') { // commands
+        if (this.commands && this.commands.index) {
+          if (query.length) {
+            var foundObject = SearchIndexManager.search(query, this.commands.index)
+            var foundCommands = []
+            var command
+            for (var i = 0, length = this.commands.list.length; i < length; i++) {
+              command = this.commands.list[i]
+              if (foundObject[command.value]) {
+                foundCommands.push(command)
+              }
+            }
+          } else {
+            var foundCommands = this.commands.list
+          }
+          if (foundCommands.length) {
+            this.showCommandsSuggestions(foundCommands)
+          } else {
+            this.hideSuggestions()
+          }
+        } else {
+          this.hideSuggestions()
+        }
+      } else  *//* if(matches[2] === ':') { // emoji
+        if(value.match(/^\s*:(.+):\s*$/)) {
+          return;
+        }
+        
+        EmojiHelper.getPopularEmoji((function (popular) {
+          if (query.length) {
+            var found = EmojiHelper.searchEmojis(query)
+            if (found.length) {
+              var popularFound = [],
+                code
+              var pos
+              for (var i = 0, len = popular.length; i < len; i++) {
+                code = popular[i].code
+                pos = found.indexOf(code)
+                if (pos >= 0) {
+                  popularFound.push(code)
+                  found.splice(pos, 1)
+                  if (!found.length) {
+                    break
+                  }
+                }
+              }
+              this.showEmojiSuggestions(popularFound.concat(found))
+            } else {
+              this.hideSuggestions()
+            }
+          } else {
+            this.showEmojiSuggestions(popular)
+          }
+        }).bind(this))
+      }
+    } else {
+      delete this.previousQuery
+      this.hideSuggestions() */
+    }
+  }
+
   private onBtnSendClick = (e: Event) => {
     cancelEvent(e);
 
