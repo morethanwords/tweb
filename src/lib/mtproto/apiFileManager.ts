@@ -45,17 +45,17 @@ type MyUploadFile = UploadFile.uploadFile;
 const MAX_FILE_SAVE_SIZE = 20e6;
 
 export class ApiFileManager {
-  public cacheStorage = new CacheStorageController('cachedFiles');
+  private cacheStorage = new CacheStorageController('cachedFiles');
 
-  public cachedDownloadPromises: {
+  private cachedDownloadPromises: {
     [fileName: string]: CancellablePromise<Blob>
   } = {};
 
-  public uploadPromises: {
-    [fileName: string]: CancellablePromise<InputFile>
+  private uploadPromises: {
+    [fileName: string]: Set<CancellablePromise<InputFile>>
   } = {};
 
-  public downloadPulls: {
+  private downloadPulls: {
     [dcId: string]: Array<{
       id: number,
       queueId: number,
@@ -67,7 +67,7 @@ export class ApiFileManager {
       activeDelta: number
     }>
   } = {};
-  public downloadActives: {[dcId: string]: number} = {};
+  private downloadActives: {[dcId: string]: number} = {};
 
   public webpConvertPromises: {[fileName: string]: CancellablePromise<Uint8Array>} = {};
 
@@ -76,9 +76,9 @@ export class ApiFileManager {
   private queueId = 0;
   private debug = Modes.debug;
 
-  public downloadRequest(dcId: 'upload', id: number, cb: () => Promise<void>, activeDelta: number, queueId?: number): Promise<void>;
-  public downloadRequest(dcId: number, id: number, cb: () => Promise<MyUploadFile>, activeDelta: number, queueId?: number): Promise<MyUploadFile>;
-  public downloadRequest(dcId: number | string, id: number, cb: () => Promise<MyUploadFile | void>, activeDelta: number, queueId: number = 0) {
+  private downloadRequest(dcId: 'upload', id: number, cb: () => Promise<void>, activeDelta: number, queueId?: number): Promise<void>;
+  private downloadRequest(dcId: number, id: number, cb: () => Promise<MyUploadFile>, activeDelta: number, queueId?: number): Promise<MyUploadFile>;
+  private downloadRequest(dcId: number | string, id: number, cb: () => Promise<MyUploadFile | void>, activeDelta: number, queueId: number = 0) {
     if(this.downloadPulls[dcId] === undefined) {
       this.downloadPulls[dcId] = [];
       this.downloadActives[dcId] = 0;
@@ -97,7 +97,7 @@ export class ApiFileManager {
     return promise;
   }
 
-  public downloadCheck(dcId: string | number) {
+  private downloadCheck(dcId: string | number) {
     const downloadPull = this.downloadPulls[dcId];
     const downloadLimit = dcId === 'upload' ? 24 : 24;
     //const downloadLimit = Infinity;
@@ -136,18 +136,23 @@ export class ApiFileManager {
     this.queueId = queueId;
   }
 
-  public getFileStorage() {
+  private getFileStorage() {
     return this.cacheStorage;
   }
 
   public cancelDownload(fileName: string) {
-    const promise = this.cachedDownloadPromises[fileName] || this.uploadPromises[fileName];
-    if(promise && !promise.isRejected && !promise.isFulfilled) {
-      promise.cancel();
-      return true;
+    const promises = (this.cachedDownloadPromises[fileName] ? [this.cachedDownloadPromises[fileName]] : []) || 
+      (this.uploadPromises[fileName] ? Array.from(this.uploadPromises[fileName]) : []);
+    let canceled = false;
+    for(let i = 0, length = promises.length; i < length; ++i) {
+      const promise = promises[i];
+      if(promise && !promise.isRejected && !promise.isFulfilled) {
+        promise.cancel();
+        canceled = true;
+      }
     }
 
-    return false;
+    return canceled;
   }
 
   public requestFilePart(dcId: number, location: InputFileLocation, offset: number, limit: number, id = 0, queueId = 0, checkCancel?: () => void) {
@@ -184,13 +189,13 @@ export class ApiFileManager {
     return bytes * 1024;
   }
 
-  uncompressTGS = (bytes: Uint8Array, fileName: string) => {
+  private uncompressTGS = (bytes: Uint8Array, fileName: string) => {
     //this.log('uncompressTGS', bytes, bytes.slice().buffer);
     // slice нужен потому что в uint8array - 5053 length, в arraybuffer - 5084
     return cryptoWorker.gzipUncompress<string>(bytes.slice().buffer, true);
   };
 
-  convertWebp = (bytes: Uint8Array, fileName: string) => {
+  private convertWebp = (bytes: Uint8Array, fileName: string) => {
     const convertPromise = deferredPromise<Uint8Array>();
 
     const task = {type: 'convertWebp', payload: {fileName, bytes}};
@@ -203,8 +208,8 @@ export class ApiFileManager {
       return Promise.reject({type: 'BROWSER_BLOB_NOT_SUPPORTED'});
     }
 
-    let size = options.size ?? 0;
-    let {dcId, location} = options;
+    const size = options.size ?? 0;
+    const {dcId, location} = options;
 
     let process: ApiFileManager['uncompressTGS'] | ApiFileManager['convertWebp'];
 
@@ -393,10 +398,14 @@ export class ApiFileManager {
 
     this.cachedDownloadPromises[fileName] = deferred;
 
+    deferred.finally(() => {
+      delete this.cachedDownloadPromises[fileName];
+    });
+
     return deferred;
   }
 
-  public deleteFile(fileName: string) {
+  private deleteFile(fileName: string) {
     //this.log('will delete file:', fileName);
     delete this.cachedDownloadPromises[fileName];
     return this.getFileStorage().delete(fileName);
@@ -581,10 +590,15 @@ export class ApiFileManager {
     };
 
     deferred.finally(() => {
-      delete this.uploadPromises[fileName];
+      set.delete(deferred);
+      if(!set.size) {
+        delete this.uploadPromises[fileName];
+      }
     });
 
-    return this.uploadPromises[fileName] = deferred;
+    const set = this.uploadPromises[fileName] ?? (this.uploadPromises[fileName] = new Set());
+    set.add(deferred);
+    return deferred;
   }
 }
 
