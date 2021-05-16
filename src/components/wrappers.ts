@@ -36,7 +36,7 @@ import { animateSingle } from '../helpers/animation';
 import renderImageFromUrl from '../helpers/dom/renderImageFromUrl';
 import sequentialDom from '../helpers/sequentialDom';
 import { fastRaf } from '../helpers/schedulers';
-import appDownloadManager, { DownloadBlob } from '../lib/appManagers/appDownloadManager';
+import appDownloadManager, { DownloadBlob, ThumbCache } from '../lib/appManagers/appDownloadManager';
 import appStickersManager from '../lib/appManagers/appStickersManager';
 import { cancelEvent } from '../helpers/dom/cancelEvent';
 import { attachClickEvent } from '../helpers/dom/clickEvent';
@@ -698,6 +698,7 @@ export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withT
   let loadThumbPromise: Promise<any> = Promise.resolve();
   let thumbImage: HTMLImageElement;
   let image: HTMLImageElement;
+  let cacheContext: ThumbCache;
   // if(withTail) {
   //   image = wrapMediaWithTail(photo, message, container, boxWidth, boxHeight, isOut);
   // } else {
@@ -707,6 +708,7 @@ export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withT
       const set = appPhotosManager.setAttachmentSize(photo, container, boxWidth, boxHeight, undefined, message);
       size = set.photoSize;
       isFit = set.isFit;
+      cacheContext = appDownloadManager.getCacheContext(photo, size.type);
 
       if(!isFit) {
         aspecter = document.createElement('div');
@@ -714,7 +716,7 @@ export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withT
         aspecter.style.width = set.size.width + 'px';
         aspecter.style.height = set.size.height + 'px';
 
-        const gotThumb = appPhotosManager.getStrippedThumbIfNeeded(photo, !noBlur, true);
+        const gotThumb = appPhotosManager.getStrippedThumbIfNeeded(photo, cacheContext, !noBlur, true);
         if(gotThumb) {
           loadThumbPromise = gotThumb.loadPromise;
           const thumbImage = gotThumb.image; // local scope
@@ -725,9 +727,15 @@ export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withT
         container.classList.add('media-container-fitted');
         container.append(aspecter);
       }
+    } else {
+      if(!size) {
+        size = appPhotosManager.choosePhotoSize(photo, boxWidth, boxHeight, true);
+      }
+      
+      cacheContext = appDownloadManager.getCacheContext(photo, size?.type);
     }
 
-    const gotThumb = appPhotosManager.getStrippedThumbIfNeeded(photo, !noBlur);
+    const gotThumb = appPhotosManager.getStrippedThumbIfNeeded(photo, cacheContext, !noBlur);
     if(gotThumb) {
       loadThumbPromise = Promise.all([loadThumbPromise, gotThumb.loadPromise]);
       thumbImage = gotThumb.image;
@@ -739,8 +747,6 @@ export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withT
   image.classList.add('media-photo');
   
   //console.log('wrapPhoto downloaded:', photo, photo.downloaded, container);
-  
-  const cacheContext = appDownloadManager.getCacheContext(photo, size?.type/* photo._ === 'photo' ? size?.type : undefined */);
 
   const needFadeIn = (thumbImage || !cacheContext.downloaded) && rootScope.settings.animationsEnabled;
   if(needFadeIn) {
