@@ -225,6 +225,7 @@ html.night {
 @import "partials/input";
 @import "partials/button";
 @import "partials/animatedIcon";
+@import "partials/autocompleteHelper";
 @import "partials/badge";
 @import "partials/checkbox";
 @import "partials/chatlist";
@@ -1204,4 +1205,11 @@ middle-ellipsis-element {
 
 .verified-background {
   fill: #33a8e5;
+}
+
+.navigable-list {
+  .active {
+    background-color: var(--light-secondary-text-color);
+    border-radius: inherit;
+  }
 }

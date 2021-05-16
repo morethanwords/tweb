@@ -9,31 +9,44 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import { MOUNT_CLASS_TO } from "../../config/debug";
 import { MessageEntity } from "../../layer";
 import RichTextProcessor from "../../lib/richtextprocessor";
 import getRichElementValue from "./getRichElementValue";
 
-export default function getRichValue(field: HTMLElement, withEntities = true) {
+export default function getRichValueWithCaret(field: HTMLElement, withEntities = true) {
   const lines: string[] = [];
   const line: string[] = [];
 
+  const sel = window.getSelection();
+  var selNode
+  var selOffset
+  if(sel && sel.rangeCount) {
+    const range = sel.getRangeAt(0);
+    if(range.startContainer &&
+      range.startContainer == range.endContainer &&
+      range.startOffset == range.endOffset) {
+      selNode = range.startContainer;
+      selOffset = range.startOffset;
+    }
+  }
+
   const entities: MessageEntity[] = withEntities ? [] : undefined;
-  getRichElementValue(field, lines, line, undefined, undefined, entities);
+  getRichElementValue(field, lines, line, selNode, selOffset, entities);
+
   if(line.length) {
     lines.push(line.join(''));
   }
 
   let value = lines.join('\n');
+  const caretPos = value.indexOf('\x01');
+  if(caretPos != -1) {
+    value = value.substr(0, caretPos) + value.substr(caretPos + 1);
+  }
   value = value.replace(/\u00A0/g, ' ');
 
   if(entities) {
     RichTextProcessor.combineSameEntities(entities);
   }
 
-  //console.log('getRichValue:', value, entities);
-
-  return {value, entities};
+  return {value, entities, caretPos};
 }
-
-MOUNT_CLASS_TO.getRichValue = getRichValue;

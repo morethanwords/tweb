@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import findUpClassName from "../../helpers/dom/findUpClassName";
+import attachListNavigation from "../../helpers/dom/attachlistNavigation";
 import { MyDocument } from "../../lib/appManagers/appDocsManager";
 import { CHAT_ANIMATION_GROUP } from "../../lib/appManagers/appImManager";
 import appStickersManager from "../../lib/appManagers/appStickersManager";
@@ -12,21 +12,36 @@ import { EmoticonsDropdown } from "../emoticonsDropdown";
 import { SuperStickerRenderer } from "../emoticonsDropdown/tabs/stickers";
 import LazyLoadQueue from "../lazyLoadQueue";
 import Scrollable from "../scrollable";
-import SetTransition from "../singleTransition";
+import AutocompleteHelper from "./autocompleteHelper";
 
-export default class StickersHelper {
-  private container: HTMLElement;
+export default class StickersHelper extends AutocompleteHelper {
   private stickersContainer: HTMLElement;
   private scrollable: Scrollable;
   private superStickerRenderer: SuperStickerRenderer;
   private lazyLoadQueue: LazyLoadQueue;
   private lastEmoticon = '';
 
-  constructor(private appendTo: HTMLElement) {
-    this.container = document.createElement('div');
-    this.container.classList.add('stickers-helper', 'z-depth-1');
+  constructor(appendTo: HTMLElement) {
+    super(appendTo);
 
-    this.appendTo.append(this.container);
+    this.container.classList.add('stickers-helper');
+
+    this.addEventListener('visible', () => {
+      const list = this.stickersContainer;
+      const {detach} = attachListNavigation({
+        list, 
+        type: 'xy',
+        onSelect: (target) => {
+          EmoticonsDropdown.onMediaClick({target}, true);
+        },
+        once: true
+      });
+
+      this.addEventListener('hidden', () => {
+        list.innerHTML = '';
+        detach();
+      }, true);
+    });
   }
 
   public checkEmoticon(emoticon: string) {
@@ -34,11 +49,7 @@ export default class StickersHelper {
 
     if(this.lastEmoticon && !emoticon) {
       if(this.container) {
-        SetTransition(this.container, 'is-visible', false, 200, () => {
-          if(this.stickersContainer) {
-            this.stickersContainer.innerHTML = '';
-          }
-        });
+        this.toggle(true);
       }
     }
 
@@ -84,21 +95,13 @@ export default class StickersHelper {
         this.stickersContainer.replaceWith(container);
         this.stickersContainer = container;
 
-        SetTransition(this.container, 'is-visible', !!stickers.length, 200);
+        this.toggle(!stickers.length);
         this.scrollable.scrollTop = 0;
       });
     });
   }
 
   private init() {
-    this.container.addEventListener('click', (e) => {
-      if(!findUpClassName(e.target, 'super-sticker')) {
-        return;
-      }
-
-      EmoticonsDropdown.onMediaClick(e, true);
-    });
-
     this.stickersContainer = document.createElement('div');
     this.stickersContainer.classList.add('stickers-helper-stickers', 'super-stickers');
 

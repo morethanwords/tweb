@@ -394,7 +394,7 @@ export class EmoticonsDropdown {
     return stickyIntersector;
   };
 
-  public static onMediaClick = (e: MouseEvent, clearDraft = false) => {
+  public static onMediaClick = (e: {target: EventTarget | Element}, clearDraft = false) => {
     let target = e.target as HTMLElement;
     target = findUpTag(target, 'DIV');
 
@@ -406,9 +406,11 @@ export class EmoticonsDropdown {
     if(appImManager.chat.input.sendMessageWithDocument(fileId, undefined, clearDraft)) {
       /* dropdown.classList.remove('active');
       toggleEl.classList.remove('active'); */
-      emoticonsDropdown.forceClose = true;
-      emoticonsDropdown.container.classList.add('disable-hover');
-      emoticonsDropdown.toggle(false);
+      if(emoticonsDropdown.container) {
+        emoticonsDropdown.forceClose = true;
+        emoticonsDropdown.container.classList.add('disable-hover');
+        emoticonsDropdown.toggle(false);
+      }
     } else {
       console.warn('got no doc by id:', fileId);
     }

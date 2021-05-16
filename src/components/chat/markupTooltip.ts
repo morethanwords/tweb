@@ -14,9 +14,9 @@ import appNavigationController from "../appNavigationController";
 import { _i18n } from "../../lib/langPack";
 import { cancelEvent } from "../../helpers/dom/cancelEvent";
 import { attachClickEvent } from "../../helpers/dom/clickEvent";
-import { MarkdownType, markdownTags } from "../../helpers/dom/getRichValue";
 import getSelectedNodes from "../../helpers/dom/getSelectedNodes";
 import isSelectionEmpty from "../../helpers/dom/isSelectionEmpty";
+import { MarkdownType, markdownTags } from "../../helpers/dom/getRichElementValue";
 //import { logger } from "../../lib/logger";
 
 export default class MarkupTooltip {

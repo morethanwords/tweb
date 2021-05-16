@@ -185,7 +185,7 @@ export default class PopupCreatePoll extends PopupElement {
   private getFilledAnswers() {
     const answers = Array.from(this.questions.children).map((el, idx) => {
       const input = el.querySelector('.input-field-input') as HTMLElement;
-      return input instanceof HTMLInputElement ? input.value : getRichValue(input);
+      return input instanceof HTMLInputElement ? input.value : getRichValue(input, false).value;
     }).filter(v => !!v.trim());
 
     return answers;
@@ -219,9 +219,8 @@ export default class PopupCreatePoll extends PopupElement {
       return false;
     }
 
-    const quizSolutionEntities: MessageEntity[] = [];
-    const quizSolution = getRichValue(this.quizSolutionField.input, quizSolutionEntities) || undefined;
-    if(quizSolution?.length > MAX_LENGTH_SOLUTION) {
+    const {value: quizSolution} = getRichValue(this.quizSolutionField.input, false);
+    if(quizSolution.length > MAX_LENGTH_SOLUTION) {
       return false;
     }
 
@@ -238,8 +237,7 @@ export default class PopupCreatePoll extends PopupElement {
 
     const answers = this.getFilledAnswers();
 
-    const quizSolutionEntities: MessageEntity[] = [];
-    const quizSolution = getRichValue(this.quizSolutionField.input, quizSolutionEntities) || undefined;
+    const {value: quizSolution, entities: quizSolutionEntities} = getRichValue(this.quizSolutionField.input);
 
     if(this.chat.type === 'scheduled' && !force) {
       this.chat.input.scheduleSending(() => {

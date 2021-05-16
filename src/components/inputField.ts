@@ -182,7 +182,7 @@ class InputField {
       processInput = () => {
         const wasError = input.classList.contains('error');
         // * https://stackoverflow.com/a/54369605 #2 to count emoji as 1 symbol
-        const inputLength = plainText ? (input as HTMLInputElement).value.length : [...getRichValue(input)].length;
+        const inputLength = plainText ? (input as HTMLInputElement).value.length : [...getRichValue(input, false).value].length;
         const diff = maxLength - inputLength;
         const isError = diff < 0;
         input.classList.toggle('error', isError);
@@ -232,7 +232,7 @@ class InputField {
   }
 
   get value() {
-    return this.options.plainText ? (this.input as HTMLInputElement).value : getRichValue(this.input);
+    return this.options.plainText ? (this.input as HTMLInputElement).value : getRichValue(this.input, false).value;
     //return getRichValue(this.input);
   }
 
