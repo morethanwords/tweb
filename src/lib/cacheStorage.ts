@@ -62,7 +62,13 @@ export default class CacheStorageController {
       blob = blobConstruct(blob) as Blob;
     }
 
-    return this.save(fileName, new Response(blob)).then(() => {
+    const response = new Response(blob, {
+      headers: {
+        'Content-Length': '' + blob.size
+      }
+    });
+    
+    return this.save(fileName, response).then(() => {
       return blob as Blob;
     });
   }
