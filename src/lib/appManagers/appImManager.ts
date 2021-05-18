@@ -56,6 +56,7 @@ import disableTransition from '../../helpers/dom/disableTransition';
 import placeCaretAtEnd from '../../helpers/dom/placeCaretAtEnd';
 import replaceContent from '../../helpers/dom/replaceContent';
 import whichChild from '../../helpers/dom/whichChild';
+import appEmojiManager from './appEmojiManager';
 
 //console.log('appImManager included33!');
 
@@ -726,7 +727,25 @@ export class AppImManager {
   }
 
   private createNewChat() {
-    const chat = new Chat(this, appChatsManager, appDocsManager, appInlineBotsManager, appMessagesManager, appPeersManager, appPhotosManager, appProfileManager, appStickersManager, appUsersManager, appWebPagesManager, appPollsManager, apiManager, appDraftsManager, serverTimeManager, sessionStorage, appNotificationsManager);
+    const chat = new Chat(this, 
+      appChatsManager, 
+      appDocsManager, 
+      appInlineBotsManager, 
+      appMessagesManager, 
+      appPeersManager, 
+      appPhotosManager, 
+      appProfileManager, 
+      appStickersManager, 
+      appUsersManager, 
+      appWebPagesManager, 
+      appPollsManager, 
+      apiManager, 
+      appDraftsManager, 
+      serverTimeManager, 
+      sessionStorage, 
+      appNotificationsManager, 
+      appEmojiManager
+    );
 
     if(this.chats.length) {
       chat.backgroundEl.append(this.chat.backgroundEl.lastElementChild.cloneNode(true));

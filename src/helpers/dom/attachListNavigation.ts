@@ -27,7 +27,7 @@ export default function attachListNavigation({list, type, onSelect, once}: {
     return target || list.querySelector('.' + ACTIVE_CLASS_NAME) || list.firstElementChild;
   };
 
-  const setCurrentTarget = (_target: Element) => {
+  const setCurrentTarget = (_target: Element, scrollTo: boolean) => {
     if(target === _target) {
       return;
     }
@@ -41,7 +41,7 @@ export default function attachListNavigation({list, type, onSelect, once}: {
     target = _target;
     target.classList.add(ACTIVE_CLASS_NAME);
 
-    if(hadTarget && scrollable) {
+    if(hadTarget && scrollable && scrollTo) {
       fastSmoothScroll(scrollable, target as HTMLElement, 'center', undefined, undefined, undefined, 100, type === 'x' ? 'x' : 'y');
     }
   };
@@ -97,7 +97,7 @@ export default function attachListNavigation({list, type, onSelect, once}: {
     if(list.childElementCount > 1) {
       let currentTarget = getCurrentTarget();
       currentTarget = handleArrowKey(currentTarget, e.key as any);
-      setCurrentTarget(currentTarget);
+      setCurrentTarget(currentTarget, true);
     }
 
     return false;
@@ -112,7 +112,7 @@ export default function attachListNavigation({list, type, onSelect, once}: {
       return;
     }
 
-    setCurrentTarget(target);
+    setCurrentTarget(target, false);
   };
 
   const onClick = (e: Event) => {
@@ -123,7 +123,7 @@ export default function attachListNavigation({list, type, onSelect, once}: {
       return;
     }
 
-    setCurrentTarget(target);
+    setCurrentTarget(target, false);
     fireSelect(getCurrentTarget());
   };
 
@@ -142,7 +142,7 @@ export default function attachListNavigation({list, type, onSelect, once}: {
   };
 
   const resetTarget = () => {
-    setCurrentTarget(list.firstElementChild);
+    setCurrentTarget(list.firstElementChild, false);
   };
 
   resetTarget();

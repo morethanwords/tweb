@@ -20,7 +20,7 @@ import type { ApiUpdatesManager } from "../appManagers/apiUpdatesManager";
 import type { ServerTimeManager } from "../mtproto/serverTimeManager";
 import { tsNow } from "../../helpers/date";
 import apiManager from "../mtproto/mtprotoworker";
-import searchIndexManager from "../searchIndexManager";
+import SearchIndex from "../searchIndex";
 import { forEachReverse, insertInDescendSortedArray } from "../../helpers/array";
 import rootScope from "../rootScope";
 import { safeReplaceObject } from "../../helpers/object";
@@ -38,7 +38,7 @@ export default class DialogsStorage {
   private pinnedOrders: {[folder_id: number]: number[]};
   private dialogsNum: number;
 
-  private dialogsIndex = searchIndexManager.createIndex();
+  private dialogsIndex = new SearchIndex<number>();
 
   private cachedResults: {
     query: string,
@@ -71,7 +71,7 @@ export default class DialogsStorage {
       const dialog = this.getDialogOnly(peerId);
       if(dialog) {
         const peerText = appPeersManager.getPeerSearchText(peerId);
-        searchIndexManager.indexObject(peerId, peerText, this.dialogsIndex);
+        this.dialogsIndex.indexObject(peerId, peerText);
       }
     });
 
@@ -340,7 +340,7 @@ export default class DialogsStorage {
     if(foundDialog[0]) {
       this.byFolders[foundDialog[0].folder_id].splice(foundDialog[1], 1);
       delete this.dialogs[peerId];
-      searchIndexManager.indexObject(peerId, '', this.dialogsIndex);
+      this.dialogsIndex.indexObject(peerId, '');
 
       // clear from state
       this.appStateManager.keepPeerSingle(0, 'topMessage_' + peerId);
@@ -435,7 +435,7 @@ export default class DialogsStorage {
     }
 
     const peerText = this.appPeersManager.getPeerSearchText(peerId);
-    searchIndexManager.indexObject(peerId, peerText, this.dialogsIndex);
+    this.dialogsIndex.indexObject(peerId, peerText);
 
     let mid: number, message;
     if(dialog.top_message) {
@@ -537,13 +537,13 @@ export default class DialogsStorage {
         this.cachedResults.query = query;
         this.cachedResults.folderId = folderId;
 
-        const results = searchIndexManager.search(query, this.dialogsIndex);
+        const results = this.dialogsIndex.search(query);
 
         this.cachedResults.dialogs = [];
 
         for(const peerId in this.dialogs) {
           const dialog = this.dialogs[peerId];
-          if(results[dialog.peerId] && dialog.folder_id === folderId) {
+          if(results.has(dialog.peerId) && dialog.folder_id === folderId) {
             this.cachedResults.dialogs.push(dialog);
           }
         }

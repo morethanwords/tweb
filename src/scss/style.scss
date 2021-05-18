@@ -235,6 +235,7 @@ html.night {
 @import "partials/chatPinned";
 @import "partials/chatMarkupTooltip";
 @import "partials/chatStickersHelper";
+@import "partials/chatEmojiHelper";
 @import "partials/chatSearch";
 @import "partials/chatDrop";
 @import "partials/crop";
@@ -1211,5 +1212,64 @@ middle-ellipsis-element {
   .active {
     background-color: var(--light-secondary-text-color);
     border-radius: inherit;
+  }
+}
+
+.super-emojis {
+  // ! No chrome 56 support
+  display: grid;
+  grid-column-gap: 2.44px;
+  grid-template-columns: repeat(auto-fill, 42px);
+  justify-content: space-between;
+
+  font-size: 2.25rem;
+  line-height: 2.25rem;
+
+  .super-emoji {
+    display: inline-block;
+    margin: 0 1.44px; // ! magic number
+    padding: 4px 4px;
+    line-height: inherit;
+    border-radius: 8px;
+    cursor: pointer;
+    user-select: none;
+    
+    width: 42px;
+    height: 42px;
+
+    html:not(.emoji-supported) & {
+      position: relative;
+    }
+
+    .emoji-placeholder {
+      position: absolute;
+      left: 7px;
+      top: 7px;
+      width: 1.75rem;
+      height: 1.75rem;
+      border-radius: 50%;
+      background-color: var(--light-secondary-text-color);
+
+      @include animation-level(2) {
+        opacity: 0;
+        transition: opacity .2s ease-in-out;
+      }
+    }
+
+    @include animation-level(2) {
+      img {
+        opacity: 1;
+        transition: opacity .2s ease-in-out;
+      }
+    }
+    
+    .emoji {
+      width: 100%;
+      height: 100%;
+      vertical-align: unset;
+      margin: 0;
+    }
+    
+    @include hover-background-effect();
   }
 }

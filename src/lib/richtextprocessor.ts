@@ -238,7 +238,7 @@ namespace RichTextProcessor {
     })
   } */
 
-  export function parseMarkdown(text: string, currentEntities: MessageEntity[], noTrim?: any): string {
+  export function parseMarkdown(text: string, currentEntities: MessageEntity[], noTrim?: boolean): string {
     /* if(!markdownTestRegExp.test(text)) {
       return noTrim ? text : text.trim();
     } */

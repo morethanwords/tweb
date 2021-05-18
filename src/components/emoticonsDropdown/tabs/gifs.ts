@@ -12,7 +12,7 @@ import apiManager from "../../../lib/mtproto/mtprotoworker";
 import appDocsManager, {MyDocument} from "../../../lib/appManagers/appDocsManager";
 
 export default class GifsTab implements EmoticonsTab {
-  public content: HTMLElement;
+  private content: HTMLElement;
 
   init() {
     this.content = document.getElementById('content-gifs');

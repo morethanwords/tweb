@@ -7,6 +7,7 @@
 import type { ChatSavedPosition } from './appManagers/appImManager';
 import type { State } from './appManagers/appStateManager';
 import type { AppDraftsManager } from './appManagers/appDraftsManager';
+import type { AppInstance } from './mtproto/singleInstance';
 import { MOUNT_CLASS_TO } from '../config/debug';
 import { LangPackDifference } from '../layer';
 import AppStorage from './storage';
@@ -21,6 +22,7 @@ const sessionStorage = new AppStorage<{
   dc5_auth_key: any,
   max_seen_msg: number,
   server_time_offset: number,
+  xt_instance: AppInstance,
 
   chatPositions: {
     [peerId_threadId: string]: ChatSavedPosition

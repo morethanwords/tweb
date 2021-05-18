@@ -17,7 +17,6 @@ import appUsersManager from "../lib/appManagers/appUsersManager";
 import { logger } from "../lib/logger";
 import RichTextProcessor from "../lib/richtextprocessor";
 import rootScope from "../lib/rootScope";
-import searchIndexManager from "../lib/searchIndexManager";
 import AppMediaViewer from "./appMediaViewer";
 import { SearchGroup, SearchGroupType } from "./appSearch";
 import { horizontalMenu } from "./horizontalMenu";
@@ -39,6 +38,7 @@ import appSidebarRight from "./sidebarRight";
 import mediaSizes from "../helpers/mediaSizes";
 import appImManager from "../lib/appManagers/appImManager";
 import positionElementByIndex from "../helpers/dom/positionElementByIndex";
+import cleanSearchText from "../helpers/cleanSearchText";
 
 //const testScroll = false;
 
@@ -738,7 +738,7 @@ export default class AppSearchSuper {
           });
   
           if(showMembersCount && (peer.participants_count || peer.participants)) {
-            const regExp = new RegExp(`(${escapeRegExp(query)}|${escapeRegExp(searchIndexManager.cleanSearchText(query))})`, 'gi');
+            const regExp = new RegExp(`(${escapeRegExp(query)}|${escapeRegExp(cleanSearchText(query))})`, 'gi');
             dom.titleSpan.innerHTML = dom.titleSpan.innerHTML.replace(regExp, '<i>$1</i>');
             dom.lastMessageSpan.append(appChatsManager.getChatMembersString(-peerId));
           } else if(peerId === rootScope.myId) {

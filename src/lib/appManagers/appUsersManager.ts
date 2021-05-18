@@ -11,6 +11,8 @@
 
 import { formatPhoneNumber } from "../../components/misc";
 import { MOUNT_CLASS_TO } from "../../config/debug";
+import cleanSearchText from "../../helpers/cleanSearchText";
+import cleanUsername from "../../helpers/cleanUsername";
 import { tsNow } from "../../helpers/date";
 import { safeReplaceObject, isObject } from "../../helpers/object";
 import { InputUser, Update, User as MTUser, UserStatus } from "../../layer";
@@ -21,7 +23,7 @@ import { REPLIES_PEER_ID } from "../mtproto/mtproto_config";
 import serverTimeManager from "../mtproto/serverTimeManager";
 import { RichTextProcessor } from "../richtextprocessor";
 import rootScope from "../rootScope";
-import searchIndexManager from "../searchIndexManager";
+import SearchIndex from "../searchIndex";
 import apiUpdatesManager from "./apiUpdatesManager";
 import appChatsManager from "./appChatsManager";
 import appPeersManager from "./appPeersManager";
@@ -36,7 +38,7 @@ export class AppUsersManager {
   
   private users: {[userId: number]: User} = {};
   private usernames: {[username: string]: number} = {};
-  private contactsIndex = searchIndexManager.createIndex();
+  private contactsIndex = new SearchIndex<number>();
   private contactsFillPromise: Promise<Set<number>>;
   private contactsList: Set<number> = new Set();
   private updatedContactsList = false;
@@ -110,7 +112,7 @@ export class AppUsersManager {
 
     rootScope.on('language_change', (e) => {
       const userId = this.getSelf().id;
-      searchIndexManager.indexObject(userId, this.getUserSearchText(userId), this.contactsIndex);
+      this.contactsIndex.indexObject(userId, this.getUserSearchText(userId));
     });
 
     appStateManager.getState().then((state) => {
@@ -207,7 +209,7 @@ export class AppUsersManager {
 
   public pushContact(userId: number) {
     this.contactsList.add(userId);
-    searchIndexManager.indexObject(userId, this.getUserSearchText(userId), this.contactsIndex);
+    this.contactsIndex.indexObject(userId, this.getUserSearchText(userId));
     appStateManager.requestPeer(userId, 'contacts');
   }
 
@@ -233,8 +235,8 @@ export class AppUsersManager {
     return this.fillContacts().then(_contactsList => {
       let contactsList = [..._contactsList];
       if(query) {
-        const results = searchIndexManager.search(query, this.contactsIndex);
-        const filteredContactsList = [...contactsList].filter(id => !!results[id]);
+        const results = this.contactsIndex.search(query);
+        const filteredContactsList = [...contactsList].filter(id => results.has(id));
 
         contactsList = filteredContactsList;
       }
@@ -288,9 +290,9 @@ export class AppUsersManager {
 
   public testSelfSearch(query: string) {
     const user = this.getSelf();
-    const index = searchIndexManager.createIndex();
-    searchIndexManager.indexObject(user.id, this.getUserSearchText(user.id), index);
-    return !!searchIndexManager.search(query, index)[user.id];
+    const index = new SearchIndex();
+    index.indexObject(user.id, this.getUserSearchText(user.id));
+    return index.search(query).has(user.id);
   }
 
   public saveApiUsers(apiUsers: any[], override?: boolean) {
@@ -320,11 +322,11 @@ export class AppUsersManager {
 
     const fullName = user.first_name + ' ' + (user.last_name || '');
     if(user.username) {
-      const searchUsername = searchIndexManager.cleanUsername(user.username);
+      const searchUsername = cleanUsername(user.username);
       this.usernames[searchUsername] = userId;
     }
 
-    user.sortName = user.pFlags.deleted ? '' : searchIndexManager.cleanSearchText(fullName, false);
+    user.sortName = user.pFlags.deleted ? '' : cleanSearchText(fullName, false);
 
     user.initials = RichTextProcessor.getAbbreviation(fullName);
 
