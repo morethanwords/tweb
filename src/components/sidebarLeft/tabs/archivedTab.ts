@@ -8,10 +8,8 @@ import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
 import { SliderSuperTab } from "../../slider";
 
 export default class AppArchivedTab extends SliderSuperTab {
-  public static filterId = 1;
-  public loadedAll: boolean;
-  public loadDialogsPromise: Promise<any>;
-  public wasFilterId: number;
+  private static filterId = 1;
+  private wasFilterId: number;
 
   init() {
     this.container.id = 'chats-archived-container';
@@ -22,6 +20,7 @@ export default class AppArchivedTab extends SliderSuperTab {
     this.scrollable.append(chatList);
     this.scrollable.container.addEventListener('scroll', appDialogsManager.onChatsRegularScroll);
     this.scrollable.setVirtualContainer(chatList);
+    this.scrollable.onScrolledTop = appDialogsManager.onChatsScrollTop;
     this.scrollable.onScrolledBottom = appDialogsManager.onChatsScroll;
     ///this.scroll.attachSentinels();
 
