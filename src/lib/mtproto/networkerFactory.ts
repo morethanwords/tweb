@@ -16,6 +16,7 @@ import MTTransport from "./transports/transport";
 export class NetworkerFactory {
   public updatesProcessor: (obj: any) => void = null;
   public onConnectionStatusChange: (info: ConnectionStatusChange) => void = null;
+  public akStopped = false;
 
   public setUpdatesProcessor(callback: (obj: any) => void) {
     this.updatesProcessor = callback;
@@ -24,6 +25,17 @@ export class NetworkerFactory {
   public getNetworker(dcId: number, authKey: number[], authKeyID: Uint8Array, serverSalt: number[], transport: MTTransport, options: InvokeApiOptions) {
     //console.log('NetworkerFactory: creating new instance of MTPNetworker:', dcId, options);
     return new MTPNetworker(dcId, authKey, authKeyID, serverSalt, transport, options);
+  }
+
+  public startAll() {
+    if(this.akStopped) {
+      this.akStopped = false;
+      this.updatesProcessor && this.updatesProcessor({_: 'new_session_created'});
+    }
+  }
+
+  public stopAll() {
+    this.akStopped = true;
   }
 }
 

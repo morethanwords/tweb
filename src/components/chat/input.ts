@@ -12,6 +12,7 @@ import type { AppPeersManager } from '../../lib/appManagers/appPeersManager';
 import type { AppWebPagesManager } from "../../lib/appManagers/appWebPagesManager";
 import type { AppImManager } from '../../lib/appManagers/appImManager';
 import type { AppDraftsManager, MyDraftMessage } from '../../lib/appManagers/appDraftsManager';
+import type { AppEmojiManager } from '../../lib/appManagers/appEmojiManager';
 import type { ServerTimeManager } from '../../lib/mtproto/serverTimeManager';
 import type Chat from './chat';
 import Recorder from '../../../public/recorder.min';
@@ -57,50 +58,52 @@ import isSendShortcutPressed from '../../helpers/dom/isSendShortcutPressed';
 import placeCaretAtEnd from '../../helpers/dom/placeCaretAtEnd';
 import { MarkdownType, markdownTags } from '../../helpers/dom/getRichElementValue';
 import getRichValueWithCaret from '../../helpers/dom/getRichValueWithCaret';
-import searchIndexManager from '../../lib/searchIndexManager';
+import cleanSearchText from '../../helpers/cleanSearchText';
+import EmojiHelper from './emojiHelper';
 
 const RECORD_MIN_TIME = 500;
 const POSTING_MEDIA_NOT_ALLOWED = 'Posting media content isn\'t allowed in this group.';
 
 type ChatInputHelperType = 'edit' | 'webpage' | 'forward' | 'reply';
 
+let selId = 0;
+
 export default class ChatInput {
-  public static AUTO_COMPLETE_REG_EXP = /(\s|^)(:|@|\/)([\S]*)$/;
-  public pageEl = document.getElementById('page-chats') as HTMLDivElement;
+  public static AUTO_COMPLETE_REG_EXP = /(\s|^)((?::|.)(?!.*:).*|(?:(?:@|\/)(?:[\S]*)))$/;
   public messageInput: HTMLElement;
   public messageInputField: InputField;
-  public fileInput: HTMLInputElement;
-  public inputMessageContainer: HTMLDivElement;
-  public btnSend = document.getElementById('btn-send') as HTMLButtonElement;
-  public btnCancelRecord: HTMLButtonElement;
-  public lastUrl = '';
-  public lastTimeType = 0;
+  private fileInput: HTMLInputElement;
+  private inputMessageContainer: HTMLDivElement;
+  private btnSend: HTMLButtonElement;
+  private btnCancelRecord: HTMLButtonElement;
+  private lastUrl = '';
+  private lastTimeType = 0;
 
   public chatInput: HTMLElement;
-  public inputContainer: HTMLElement;
+  private inputContainer: HTMLElement;
   public rowsWrapper: HTMLDivElement;
   private newMessageWrapper: HTMLDivElement;
   private btnToggleEmoticons: HTMLButtonElement;
-  public btnSendContainer: HTMLDivElement;
+  private btnSendContainer: HTMLDivElement;
 
-  public attachMenu: HTMLButtonElement;
+  private attachMenu: HTMLButtonElement;
   private attachMenuButtons: (ButtonMenuItemOptions & {verify: (peerId: number) => boolean})[];
 
-  public sendMenu: SendMenu;
+  private sendMenu: SendMenu;
 
-  public replyElements: {
+  private replyElements: {
     container?: HTMLElement,
     cancelBtn?: HTMLButtonElement,
     titleEl?: HTMLElement,
     subtitleEl?: HTMLElement
   } = {};
 
-  public willSendWebPage: any = null;
-  public forwardingMids: number[] = [];
-  public forwardingFromPeerId: number = 0;
+  private willSendWebPage: any = null;
+  private forwardingMids: number[] = [];
+  private forwardingFromPeerId: number = 0;
   public replyToMsgId: number;
   public editMsgId: number;
-  public noWebPage: true;
+  private noWebPage: true;
   public scheduleDate: number;
   public sendSilent: true;
 
@@ -127,23 +130,35 @@ export default class ChatInput {
   readonly executedHistory: string[] = [];
   private canUndoFromHTML = '';
 
-  public stickersHelper: StickersHelper;
-  public listenerSetter: ListenerSetter;
+  private emojiHelper: EmojiHelper;
+  private stickersHelper: StickersHelper;
+  private listenerSetter: ListenerSetter;
 
-  public pinnedControlBtn: HTMLButtonElement;
+  private pinnedControlBtn: HTMLButtonElement;
 
-  public goDownBtn: HTMLButtonElement;
-  public goDownUnreadBadge: HTMLElement;
-  public btnScheduled: HTMLButtonElement;
+  private goDownBtn: HTMLButtonElement;
+  private goDownUnreadBadge: HTMLElement;
+  private btnScheduled: HTMLButtonElement;
 
-  public saveDraftDebounced: () => void;
+  private saveDraftDebounced: () => void;
 
-  public fakeRowsWrapper: HTMLDivElement;
+  private fakeRowsWrapper: HTMLDivElement;
   private fakePinnedControlBtn: HTMLElement;
 
-  public previousQuery: string;
+  private previousQuery: string;
 
-  constructor(private chat: Chat, private appMessagesManager: AppMessagesManager, private appDocsManager: AppDocsManager, private appChatsManager: AppChatsManager, private appPeersManager: AppPeersManager, private appWebPagesManager: AppWebPagesManager, private appImManager: AppImManager, private appDraftsManager: AppDraftsManager, private serverTimeManager: ServerTimeManager, private appNotificationsManager: AppNotificationsManager) {
+  constructor(private chat: Chat, 
+    private appMessagesManager: AppMessagesManager, 
+    private appDocsManager: AppDocsManager, 
+    private appChatsManager: AppChatsManager, 
+    private appPeersManager: AppPeersManager, 
+    private appWebPagesManager: AppWebPagesManager, 
+    private appImManager: AppImManager, 
+    private appDraftsManager: AppDraftsManager, 
+    private serverTimeManager: ServerTimeManager, 
+    private appNotificationsManager: AppNotificationsManager,
+    private appEmojiManager: AppEmojiManager
+  ) {
     this.listenerSetter = new ListenerSetter();
   }
 
@@ -348,6 +363,7 @@ export default class ChatInput {
     this.newMessageWrapper.append(...[this.btnToggleEmoticons, this.inputMessageContainer, this.btnScheduled, this.attachMenu, this.recordTimeEl, this.fileInput].filter(Boolean));
 
     this.rowsWrapper.append(this.replyElements.container);
+    this.emojiHelper = new EmojiHelper(this.rowsWrapper, this);
     this.stickersHelper = new StickersHelper(this.rowsWrapper);
     this.rowsWrapper.append(this.newMessageWrapper);
 
@@ -818,6 +834,9 @@ export default class ChatInput {
       }
     }); */
     this.listenerSetter.add(this.messageInput, 'input', this.onMessageInput);
+    this.listenerSetter.add(this.messageInput, 'keyup', () => {
+      this.checkAutocomplete();
+    });
 
     if(this.chat.type === 'chat' || this.chat.type === 'discussion') {
       this.listenerSetter.add(this.messageInput, 'focusin', () => {
@@ -1029,10 +1048,10 @@ export default class ChatInput {
     const {value: richValue, entities: markdownEntities, caretPos} = getRichValueWithCaret(this.messageInputField.input);
       
     //const entities = RichTextProcessor.parseEntities(value);
-    const value = RichTextProcessor.parseMarkdown(richValue, markdownEntities);
+    const value = RichTextProcessor.parseMarkdown(richValue, markdownEntities, true);
     const entities = RichTextProcessor.mergeEntities(markdownEntities, RichTextProcessor.parseEntities(value));
 
-    this.chat.log('messageInput entities', richValue, value, markdownEntities, caretPos);
+    //this.chat.log('messageInput entities', richValue, value, markdownEntities, caretPos);
 
     if(this.stickersHelper && 
       rootScope.settings.stickers.suggest && 
@@ -1119,99 +1138,132 @@ export default class ChatInput {
       this.saveDraftDebounced();
     }
 
+    this.checkAutocomplete(richValue, caretPos);
+
     this.updateSendBtn();
   };
 
-  private checkAutocomplete(value: string, markdownEntities: MessageEntity[], entities: MessageEntity[]) {
-    const matches = value.match(ChatInput.AUTO_COMPLETE_REG_EXP);
-    if(matches) {
-      if(this.previousQuery == matches[0]) {
-        return
-      }
-      this.previousQuery = matches[0]
-      var query = searchIndexManager.cleanSearchText(matches[3])
+  public onEmojiSelected = (emoji: string, autocomplete: boolean) => {
+    if(autocomplete) {
+      const {value: fullValue, caretPos} = getRichValueWithCaret(this.messageInput);
+      const pos = caretPos >= 0 ? caretPos : fullValue.length;
+      const suffix = fullValue.substr(pos);
+      const prefix = fullValue.substr(0, pos);
+      const matches = prefix.match(ChatInput.AUTO_COMPLETE_REG_EXP);
+      console.log(matches);
 
-      /* if (matches[2] == '@') { // mentions
-        if (this.mentions && this.mentions.index) {
-          if (query.length) {
-            var foundObject = SearchIndexManager.search(query, this.mentions.index)
-            var foundUsers = []
-            var user
-            for (var i = 0, length = this.mentions.users.length; i < length; i++) {
-              user = this.mentions.users[i]
-              if (foundObject[user.id]) {
-                foundUsers.push(user)
-              }
-            }
-          } else {
-            var foundUsers = this.mentions.users
-          }
-          if (foundUsers.length) {
-            this.showMentionSuggestions(foundUsers)
-          } else {
-            this.hideSuggestions()
-          }
-        } else {
-          this.hideSuggestions()
-        }
-      } else if (!matches[1] && matches[2] == '/') { // commands
-        if (this.commands && this.commands.index) {
-          if (query.length) {
-            var foundObject = SearchIndexManager.search(query, this.commands.index)
-            var foundCommands = []
-            var command
-            for (var i = 0, length = this.commands.list.length; i < length; i++) {
-              command = this.commands.list[i]
-              if (foundObject[command.value]) {
-                foundCommands.push(command)
-              }
-            }
-          } else {
-            var foundCommands = this.commands.list
-          }
-          if (foundCommands.length) {
-            this.showCommandsSuggestions(foundCommands)
-          } else {
-            this.hideSuggestions()
-          }
-        } else {
-          this.hideSuggestions()
-        }
-      } else  *//* if(matches[2] === ':') { // emoji
-        if(value.match(/^\s*:(.+):\s*$/)) {
-          return;
-        }
-        
-        EmojiHelper.getPopularEmoji((function (popular) {
-          if (query.length) {
-            var found = EmojiHelper.searchEmojis(query)
-            if (found.length) {
-              var popularFound = [],
-                code
-              var pos
-              for (var i = 0, len = popular.length; i < len; i++) {
-                code = popular[i].code
-                pos = found.indexOf(code)
-                if (pos >= 0) {
-                  popularFound.push(code)
-                  found.splice(pos, 1)
-                  if (!found.length) {
-                    break
-                  }
-                }
-              }
-              this.showEmojiSuggestions(popularFound.concat(found))
-            } else {
-              this.hideSuggestions()
-            }
-          } else {
-            this.showEmojiSuggestions(popular)
-          }
-        }).bind(this))
+      const idx = matches.index + matches[1].length;
+
+      //const str = 
+
+      /* var newValuePrefix
+      if(matches && matches[0]) {
+        newValuePrefix = prefix.substr(0, matches.index) + ':' + emoji[1] + ':'
+      } else {
+        newValuePrefix = prefix + ':' + emoji[1] + ':'
       }
-    } else {
-      delete this.previousQuery
-      this.hideSuggestions() */
+
+      if(suffix.length) {
+        const html = this.getRichHtml(newValuePrefix) + '&nbsp;<span id="composer_sel' + ++selId + '"></span>' + this.getRichHtml(suffix)
+        this.richTextareaEl.html(html)
+        setRichFocus(textarea, $('#composer_sel' + this.selId)[0])
+      } else {
+        const html = this.getRichHtml(newValuePrefix) + '&nbsp;'
+        this.richTextareaEl.html(html)
+        setRichFocus(textarea)
+      } */
+    }
+  };
+
+  private checkAutocomplete(value?: string, caretPos?: number) {
+    return;
+    
+    if(value === undefined) {
+      const r = getRichValueWithCaret(this.messageInputField.input, false);
+      value = r.value;
+      caretPos = r.caretPos;
+    }
+
+    if(caretPos === -1) {
+      caretPos = value.length;
+    }
+    value = value.substr(0, caretPos);
+
+    const matches = value.match(ChatInput.AUTO_COMPLETE_REG_EXP);
+    if(!matches) {
+      delete this.previousQuery;
+      //this.hideSuggestions();
+      this.emojiHelper.toggle(true);
+      return;
+    }
+
+    if(this.previousQuery === matches[0]) {
+      return;
+    }
+    
+    this.previousQuery = matches[0];
+    //let query = cleanSearchText(matches[2]);
+    //const firstChar = matches[2][0];
+
+    //console.log('autocomplete matches', matches);
+
+    /*if (matches[2] == '@') { // mentions
+      if (this.mentions && this.mentions.index) {
+        if (query.length) {
+          var foundObject = SearchIndexManager.search(query, this.mentions.index)
+          var foundUsers = []
+          var user
+          for (var i = 0, length = this.mentions.users.length; i < length; i++) {
+            user = this.mentions.users[i]
+            if (foundObject[user.id]) {
+              foundUsers.push(user)
+            }
+          }
+        } else {
+          var foundUsers = this.mentions.users
+        }
+        if (foundUsers.length) {
+          this.showMentionSuggestions(foundUsers)
+        } else {
+          this.hideSuggestions()
+        }
+      } else {
+        this.hideSuggestions()
+      }
+    } else if (!matches[1] && matches[2] == '/') { // commands
+      if (this.commands && this.commands.index) {
+        if (query.length) {
+          var foundObject = SearchIndexManager.search(query, this.commands.index)
+          var foundCommands = []
+          var command
+          for (var i = 0, length = this.commands.list.length; i < length; i++) {
+            command = this.commands.list[i]
+            if (foundObject[command.value]) {
+              foundCommands.push(command)
+            }
+          }
+        } else {
+          var foundCommands = this.commands.list
+        }
+        if (foundCommands.length) {
+          this.showCommandsSuggestions(foundCommands)
+        } else {
+          this.hideSuggestions()
+        }
+      } else {
+        this.hideSuggestions()
+      }
+    } else  *//* if(firstChar === ':') */ { // emoji
+      if(value.match(/^\s*:(.+):\s*$/)) {
+        this.emojiHelper.toggle(true);
+        return;
+      }
+      
+      this.appEmojiManager.getBothEmojiKeywords().then(() => {
+        const emojis = this.appEmojiManager.searchEmojis(matches[2]);
+        this.emojiHelper.renderEmojis(emojis);
+        //console.log(emojis);
+      });
     }
   }
 

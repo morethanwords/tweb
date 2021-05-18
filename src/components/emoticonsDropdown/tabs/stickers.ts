@@ -24,8 +24,8 @@ import StickyIntersector from "../../stickyIntersector";
 import { wrapSticker } from "../../wrappers";
 
 export class SuperStickerRenderer {
-  lazyLoadQueue: LazyLoadQueueRepeat;
-  animatedDivs: Set<HTMLDivElement> = new Set();
+  public lazyLoadQueue: LazyLoadQueueRepeat;
+  private animatedDivs: Set<HTMLDivElement> = new Set();
 
   constructor(private regularLazyLoadQueue: LazyLoadQueue, private group: string) {
     this.lazyLoadQueue = new LazyLoadQueueRepeat(undefined, (target, visible) => {
@@ -35,7 +35,7 @@ export class SuperStickerRenderer {
     });
   }
 
-  renderSticker(doc: MyDocument, div?: HTMLDivElement, loadPromises?: Promise<any>[]) {
+  public renderSticker(doc: MyDocument, div?: HTMLDivElement, loadPromises?: Promise<any>[]) {
     if(!div) {
       div = document.createElement('div');
       div.classList.add('grid-item', 'super-sticker');
@@ -63,7 +63,7 @@ export class SuperStickerRenderer {
     return div;
   }
 
-  checkAnimationContainer = (div: HTMLElement, visible: boolean) => {
+  private checkAnimationContainer = (div: HTMLElement, visible: boolean) => {
     //console.error('checkAnimationContainer', div, visible);
     const players = animationIntersector.getAnimations(div);
     players.forEach(player => {
@@ -75,7 +75,7 @@ export class SuperStickerRenderer {
     });
   };
 
-  processVisibleDiv = (div: HTMLElement) => {
+  private processVisibleDiv = (div: HTMLElement) => {
     const docId = div.dataset.docId;
     const doc = appDocsManager.getDoc(docId);
     
@@ -107,7 +107,7 @@ export class SuperStickerRenderer {
     return promise;
   };
 
-  processInvisibleDiv = (div: HTMLElement) => {
+  public processInvisibleDiv = (div: HTMLElement) => {
     const docId = div.dataset.docId;
     const doc = appDocsManager.getDoc(docId);
 
@@ -121,7 +121,7 @@ export class SuperStickerRenderer {
 }
 
 export default class StickersTab implements EmoticonsTab {
-  public content: HTMLElement;
+  private content: HTMLElement;
   private stickersDiv: HTMLElement;
 
   private stickerSets: {[id: string]: {

@@ -122,6 +122,7 @@ export class RootScope extends EventListenerBase<{
   public myId = 0;
   public idle = {
     isIDLE: true,
+    deactivated: false,
     focusPromise: Promise.resolve(),
     focusResolve: () => {}
   };
@@ -158,20 +159,30 @@ export class RootScope extends EventListenerBase<{
   }
 
   public setThemeListener() {
-    const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const checkDarkMode = () => {
-      //const theme = this.getTheme();
-      this.systemTheme = darkModeMediaQuery.matches ? 'night' : 'day';
-      //const newTheme = this.getTheme();
+    try {
+      const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      const checkDarkMode = () => {
+        //const theme = this.getTheme();
+        this.systemTheme = darkModeMediaQuery.matches ? 'night' : 'day';
+        //const newTheme = this.getTheme();
 
-      if(this.myId) {
-        this.broadcast('theme_change');
-      } else {
-        this.setTheme();
+        if(this.myId) {
+          this.broadcast('theme_change');
+        } else {
+          this.setTheme();
+        }
+      };
+
+      if('addEventListener' in darkModeMediaQuery) {
+        darkModeMediaQuery.addEventListener('change', checkDarkMode);
+      } else if('addListener' in darkModeMediaQuery) {
+        (darkModeMediaQuery as any).addListener(checkDarkMode);
       }
-    };
-    darkModeMediaQuery.addEventListener('change', checkDarkMode);
-    checkDarkMode();
+
+      checkDarkMode();
+    } catch(err) {
+
+    }
   }
 
   public setTheme() {

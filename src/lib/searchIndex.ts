@@ -9,65 +9,26 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import Config from './config';
+import cleanSearchText from '../helpers/cleanSearchText';
 
-export type SearchIndex = {
-  fullTexts: {
-    [peerId: string]: string
-  }/* ,
-  shortIndexes: {
-    [shortStr: string]: number[]
-  } */
-};
+export default class SearchIndex<SearchWhat> {
+  private fullTexts: Map<SearchWhat, string> = new Map();
 
-class SearchIndexManager {
-  public static badCharsRe = /[`~!@#$%^&*()\-_=+\[\]\\|{}'";:\/?.>,<]+/g;
-  public static trimRe = /^\s+|\s$/g;
-
-  public createIndex(): SearchIndex {
-    return {
-      fullTexts: {}/* ,
-      shortIndexes: {} */
-    };
-  }
-
-  public cleanSearchText(text: string, latinize = true) {
-    const hasTag = text.charAt(0) === '%';
-    text = text.replace(SearchIndexManager['badCharsRe'], '').replace(SearchIndexManager['trimRe'], '');
-    if(latinize) {
-      text = text.replace(/[^A-Za-z0-9]/g, (ch) => {
-        const latinizeCh = Config.LatinizeMap[ch];
-        return latinizeCh !== undefined ? latinizeCh : ch;
-      });
-    }
-    
-    text = text.toLowerCase();
-    if(hasTag) {
-      text = '%' + text;
-    }
-
-    return text;
-  }
-
-  public cleanUsername(username: string) {
-    return username && username.toLowerCase() || '';
-  }
-
-  public indexObject(id: number, searchText: string, searchIndex: SearchIndex) {
+  public indexObject(id: SearchWhat, searchText: string) {
     /* if(searchIndex.fullTexts.hasOwnProperty(id)) {
       return false;
     } */
 
     if(searchText.trim()) {
-      searchText = this.cleanSearchText(searchText);
+      searchText = cleanSearchText(searchText);
     }
 
     if(!searchText) {
-      delete searchIndex.fullTexts[id];
+      this.fullTexts.delete(id);
       return false;
     }
 
-    searchIndex.fullTexts[id] = searchText;
+    this.fullTexts.set(id, searchText);
     
     /* const shortIndexes = searchIndex.shortIndexes;
     searchText.split(' ').forEach((searchWord) => {
@@ -84,17 +45,15 @@ class SearchIndexManager {
     }); */
   }
 
-  public search(query: string, searchIndex: SearchIndex) {
-    const fullTexts = searchIndex.fullTexts;
+  public search(query: string) {
+    const fullTexts = this.fullTexts;
     //const shortIndexes = searchIndex.shortIndexes;
 
-    query = this.cleanSearchText(query);
+    query = cleanSearchText(query);
 
-    const newFoundObjs: {[peerId: string]: true} = {};
+    const newFoundObjs: Array<{fullText: string, what: SearchWhat}> = [];
     const queryWords = query.split(' ');
-    for(const peerId in fullTexts) {
-      const fullText = fullTexts[peerId];
-
+    fullTexts.forEach((fullText, what) => {
       let found = true;
       for(const word of queryWords) { // * verify that all words are found
         const idx = fullText.indexOf(word);
@@ -105,10 +64,12 @@ class SearchIndexManager {
       }
 
       if(found) {
-        newFoundObjs[peerId] = true;
+        newFoundObjs.push({fullText, what});
       }
-    }
-    
+    });
+
+    //newFoundObjs.sort((a, b) => a.fullText.localeCompare(b.fullText));
+    const newFoundObjs2: Set<SearchWhat> = new Set(newFoundObjs.map(o => o.what));
 
     /* const queryWords = query.split(' ');
     let foundArr: number[];
@@ -139,8 +100,6 @@ class SearchIndexManager {
       }
     } */
 
-    return newFoundObjs;
+    return newFoundObjs2;
   }
 }
-
-export default new SearchIndexManager();
