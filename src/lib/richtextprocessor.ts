@@ -12,7 +12,7 @@
 import Config from './config';
 
 import emojiRegExp from '../vendor/emoji/regex';
-import { encodeEmoji } from '../vendor/emoji';
+import { encodeEmoji, toCodePoints } from '../vendor/emoji';
 import { MessageEntity } from '../layer';
 import { encodeEntities } from '../helpers/string';
 import { isSafari } from '../helpers/userAgent';
@@ -839,6 +839,21 @@ namespace RichTextProcessor {
 
   export function isUsernameValid(username: string) {
     return ((username.length >= 5 && username.length <= 32) || !username.length) && /^[a-zA-Z0-9_]*$/.test(username);
+  }
+
+  export function getEmojiEntityFromEmoji(emoji: string): MessageEntity.messageEntityEmoji {
+    return {
+      _: 'messageEntityEmoji',
+      offset: 0,
+      length: emoji.length,
+      unicode: toCodePoints(emoji).join('-').replace(/-?fe0f/g, '')
+    };
+  }
+
+  export function wrapSingleEmoji(emoji: string) {
+    return wrapRichText(emoji, {
+      entities: [getEmojiEntityFromEmoji(emoji)]
+    });
   }
 }
 

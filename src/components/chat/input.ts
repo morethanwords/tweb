@@ -60,7 +60,6 @@ import { MarkdownType, markdownTags } from '../../helpers/dom/getRichElementValu
 import getRichValueWithCaret from '../../helpers/dom/getRichValueWithCaret';
 import EmojiHelper from './emojiHelper';
 import setRichFocus from '../../helpers/dom/setRichFocus';
-import { toCodePoints } from '../../vendor/emoji';
 
 const RECORD_MIN_TIME = 500;
 const POSTING_MEDIA_NOT_ALLOWED = 'Posting media content isn\'t allowed in this group.';
@@ -1162,12 +1161,7 @@ export default class ChatInput {
       const hadEntities = RichTextProcessor.parseEntities(fullValue);
       RichTextProcessor.mergeEntities(entities, hadEntities);
 
-      const emojiEntity: MessageEntity.messageEntityEmoji = {
-        _: 'messageEntityEmoji',
-        offset: 0,
-        length: emoji.length,
-        unicode: toCodePoints(emoji).join('-')
-      };
+      const emojiEntity = RichTextProcessor.getEmojiEntityFromEmoji(emoji);
       const addEntities: MessageEntity[] = [emojiEntity];
       emojiEntity.offset = matchIndex;
       addEntities.push({
