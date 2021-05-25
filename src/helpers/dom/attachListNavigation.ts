@@ -155,6 +155,7 @@ export default function attachListNavigation({list, type, onSelect, once, waitFo
         onKeyDown = _onKeyDown;
         document.addEventListener(HANDLE_EVENT, onKeyDown, {capture: true, passive: false});
 
+        waitForKey = undefined;
         resetTarget();
       }
     };

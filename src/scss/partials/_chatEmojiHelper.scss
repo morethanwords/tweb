@@ -7,8 +7,14 @@
   }
 
   .super-emojis {
-    display: block;
+    display: flex;
     white-space: nowrap;
+    align-items: center;
+    justify-content: flex-start;
+  }
+
+  .super-emoji {
+    flex: 0 0 auto;
   }
 
   .super-emoji:not(.active) {

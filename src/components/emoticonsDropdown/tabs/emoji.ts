@@ -13,7 +13,6 @@ import Config from "../../../lib/config";
 import { i18n, LangPackKey } from "../../../lib/langPack";
 import { RichTextProcessor } from "../../../lib/richtextprocessor";
 import rootScope from "../../../lib/rootScope";
-import { toCodePoints } from "../../../vendor/emoji";
 import { putPreloader } from "../../misc";
 import Scrollable from "../../scrollable";
 import StickyIntersector from "../../stickyIntersector";
@@ -29,14 +28,7 @@ export function appendEmoji(emoji: string, container: HTMLElement, prepend = fal
 
   let kek: string;
   if(unify) {
-    kek = RichTextProcessor.wrapRichText(emoji, {
-      entities: [{
-        _: 'messageEntityEmoji',
-        offset: 0,
-        length: emoji.length,
-        unicode: toCodePoints(emoji).join('-')
-      }]
-    });
+    kek = RichTextProcessor.wrapSingleEmoji(emoji);
   } else {
     kek = RichTextProcessor.wrapEmojiText(emoji);
   }
