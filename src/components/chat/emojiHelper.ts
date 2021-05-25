@@ -29,7 +29,7 @@ export default class EmojiHelper extends AutocompleteHelper {
     });
   }
 
-  public renderEmojis(emojis: string[]) {
+  public renderEmojis(emojis: string[], waitForKey: boolean) {
     if(this.init) {
       if(!emojis.length) {
         return;
@@ -46,6 +46,7 @@ export default class EmojiHelper extends AutocompleteHelper {
       });
     }
 
+    this.waitForKey = waitForKey ? 'ArrowUp' : undefined;
     this.toggle(!emojis.length);
   }
 }

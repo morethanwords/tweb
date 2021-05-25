@@ -30,7 +30,7 @@ import appUsersManager, { User } from "./appUsersManager";
 type PeerPhotoSize = 'photo_small' | 'photo_big';
 
 export class AppProfileManager {
-  private botInfos: any = {};
+  //private botInfos: any = {};
   private usersFull: {[id: string]: UserFull.userFull} = {};
   public chatsFull: {[id: string]: ChatFull} = {};
   private fullPromises: {[peerId: string]: Promise<ChatFull.chatFull | ChatFull.channelFull | UserFull>} = {};
@@ -122,7 +122,7 @@ export class AppProfileManager {
     });
   }
 
-  public saveBotInfo(botInfo: any) {
+  /* public saveBotInfo(botInfo: any) {
     const botId = botInfo && botInfo.user_id;
     if(!botId) {
       return null;
@@ -140,7 +140,7 @@ export class AppProfileManager {
       description: botInfo.description,
       commands: commands
     };
-  }
+  } */
 
   public getProfile(id: number, override?: true): Promise<UserFull> {
     if(this.usersFull[id] && !override) {
@@ -167,9 +167,9 @@ export class AppProfileManager {
 
       appNotificationsManager.savePeerSettings(id, userFull.notify_settings);
 
-      if(userFull.bot_info) {
+      /* if(userFull.bot_info) {
         userFull.bot_info = this.saveBotInfo(userFull.bot_info) as any;
-      }
+      } */
 
       //appMessagesManager.savePinnedMessage(id, userFull.pinned_msg_id);
 

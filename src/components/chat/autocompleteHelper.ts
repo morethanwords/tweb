@@ -21,9 +21,9 @@ export default class AutocompleteHelper extends EventListenerBase<{
   protected resetTarget: () => void;
 
   constructor(appendTo: HTMLElement, 
-    private listType: 'xy' | 'x' | 'y', 
-    private onSelect: (target: Element) => boolean | void,
-    private waitForKey?: string
+    protected listType: 'xy' | 'x' | 'y', 
+    protected onSelect: (target: Element) => boolean | void,
+    protected waitForKey?: string
   ) {
     super(false);
 
