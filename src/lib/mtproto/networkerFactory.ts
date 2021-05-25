@@ -14,6 +14,7 @@ import { ConnectionStatusChange, InvokeApiOptions } from "../../types";
 import MTTransport from "./transports/transport";
 
 export class NetworkerFactory {
+  private networkers: MTPNetworker[] = [];
   public updatesProcessor: (obj: any) => void = null;
   public onConnectionStatusChange: (info: ConnectionStatusChange) => void = null;
   public akStopped = false;
@@ -24,13 +25,21 @@ export class NetworkerFactory {
 
   public getNetworker(dcId: number, authKey: number[], authKeyID: Uint8Array, serverSalt: number[], transport: MTTransport, options: InvokeApiOptions) {
     //console.log('NetworkerFactory: creating new instance of MTPNetworker:', dcId, options);
-    return new MTPNetworker(dcId, authKey, authKeyID, serverSalt, transport, options);
+    const networker = new MTPNetworker(dcId, authKey, authKeyID, serverSalt, transport, options);
+    this.networkers.push(networker);
+    return networker;
   }
 
   public startAll() {
     if(this.akStopped) {
+      const stoppedNetworkers = this.networkers.filter(networker => networker.isStopped());
+
       this.akStopped = false;
       this.updatesProcessor && this.updatesProcessor({_: 'new_session_created'});
+      
+      for(const networker of stoppedNetworkers) {
+        networker.scheduleRequest();
+      }
     }
   }
 

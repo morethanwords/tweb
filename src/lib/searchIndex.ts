@@ -14,12 +14,16 @@ import cleanSearchText from '../helpers/cleanSearchText';
 export default class SearchIndex<SearchWhat> {
   private fullTexts: Map<SearchWhat, string> = new Map();
 
+  constructor(private cleanText = true, private latinize = true) {
+
+  }
+
   public indexObject(id: SearchWhat, searchText: string) {
     /* if(searchIndex.fullTexts.hasOwnProperty(id)) {
       return false;
     } */
 
-    if(searchText.trim()) {
+    if(searchText.trim() && this.cleanText) {
       searchText = cleanSearchText(searchText);
     }
 
@@ -49,7 +53,9 @@ export default class SearchIndex<SearchWhat> {
     const fullTexts = this.fullTexts;
     //const shortIndexes = searchIndex.shortIndexes;
 
-    query = cleanSearchText(query);
+    if(this.cleanText) {
+      query = cleanSearchText(query, this.latinize);
+    }
 
     const newFoundObjs: Array<{fullText: string, what: SearchWhat}> = [];
     const queryWords = query.split(' ');

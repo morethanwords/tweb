@@ -20,6 +20,7 @@ import type { MTMessage } from './networker';
 import DEBUG, { MOUNT_CLASS_TO } from '../../config/debug';
 import Socket from './transports/websocket';
 import IDBStorage from '../idb';
+import singleInstance from './singleInstance';
 
 type Task = {
   taskId: number,
@@ -85,6 +86,8 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
   constructor() {
     super();
     this.log('constructor');
+
+    singleInstance.start();
 
     this.registerServiceWorker();
 
@@ -481,6 +484,14 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
 
   public toggleStorage(enabled: boolean) {
     return this.performTaskWorker('toggleStorage', enabled);
+  }
+
+  public stopAll() {
+    return this.performTaskWorker('stopAll');
+  }
+
+  public startAll() {
+    return this.performTaskWorker('startAll');
   }
 }
 

@@ -130,6 +130,13 @@ const onMessage = async(e: any) => {
         CacheStorageController.toggleStorage(enabled);
         break;
       }
+
+      case 'startAll':
+      case 'stopAll': {
+        // @ts-ignore
+        networkerFactory[task.task].apply(networkerFactory);
+        break;
+      }
   
       default: {
         try {

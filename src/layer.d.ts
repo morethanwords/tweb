@@ -4025,7 +4025,7 @@ export namespace ReplyMarkup {
 /**
  * @link https://core.telegram.org/type/MessageEntity
  */
-export type MessageEntity = MessageEntity.messageEntityUnknown | MessageEntity.messageEntityMention | MessageEntity.messageEntityHashtag | MessageEntity.messageEntityBotCommand | MessageEntity.messageEntityUrl | MessageEntity.messageEntityEmail | MessageEntity.messageEntityBold | MessageEntity.messageEntityItalic | MessageEntity.messageEntityCode | MessageEntity.messageEntityPre | MessageEntity.messageEntityTextUrl | MessageEntity.messageEntityMentionName | MessageEntity.inputMessageEntityMentionName | MessageEntity.messageEntityPhone | MessageEntity.messageEntityCashtag | MessageEntity.messageEntityUnderline | MessageEntity.messageEntityStrike | MessageEntity.messageEntityBlockquote | MessageEntity.messageEntityBankCard | MessageEntity.messageEntityEmoji | MessageEntity.messageEntityHighlight | MessageEntity.messageEntityLinebreak;
+export type MessageEntity = MessageEntity.messageEntityUnknown | MessageEntity.messageEntityMention | MessageEntity.messageEntityHashtag | MessageEntity.messageEntityBotCommand | MessageEntity.messageEntityUrl | MessageEntity.messageEntityEmail | MessageEntity.messageEntityBold | MessageEntity.messageEntityItalic | MessageEntity.messageEntityCode | MessageEntity.messageEntityPre | MessageEntity.messageEntityTextUrl | MessageEntity.messageEntityMentionName | MessageEntity.inputMessageEntityMentionName | MessageEntity.messageEntityPhone | MessageEntity.messageEntityCashtag | MessageEntity.messageEntityUnderline | MessageEntity.messageEntityStrike | MessageEntity.messageEntityBlockquote | MessageEntity.messageEntityBankCard | MessageEntity.messageEntityEmoji | MessageEntity.messageEntityHighlight | MessageEntity.messageEntityLinebreak | MessageEntity.messageEntityCaret;
 
 export namespace MessageEntity {
   export type messageEntityUnknown = {
@@ -4161,6 +4161,12 @@ export namespace MessageEntity {
 
 	export type messageEntityLinebreak = {
 		_: 'messageEntityLinebreak',
+		offset?: number,
+		length?: number
+	};
+
+	export type messageEntityCaret = {
+		_: 'messageEntityCaret',
 		offset?: number,
 		length?: number
 	};
@@ -9649,6 +9655,7 @@ export interface ConstructorDeclMap {
 	'messageEntityEmoji': MessageEntity.messageEntityEmoji,
 	'messageEntityHighlight': MessageEntity.messageEntityHighlight,
 	'messageEntityLinebreak': MessageEntity.messageEntityLinebreak,
+	'messageEntityCaret': MessageEntity.messageEntityCaret,
 	'messageActionChatLeave': MessageAction.messageActionChatLeave,
 	'messageActionChannelDeletePhoto': MessageAction.messageActionChannelDeletePhoto,
 	'messageActionChannelEditTitle': MessageAction.messageActionChannelEditTitle,

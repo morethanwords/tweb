@@ -12,10 +12,12 @@ import blurActiveElement from "../helpers/dom/blurActiveElement";
 import { cancelEvent } from "../helpers/dom/cancelEvent";
 
 export type NavigationItem = {
-  type: 'left' | 'right' | 'im' | 'chat' | 'popup' | 'media' | 'menu' | 'esg' | 'multiselect' | 'input-helper' | 'markup' | 'global-search',
+  type: 'left' | 'right' | 'im' | 'chat' | 'popup' | 'media' | 'menu' | 
+    'esg' | 'multiselect' | 'input-helper' | 'autocomplete-helper' | 'markup' | 'global-search',
   onPop: (canAnimate: boolean) => boolean | void,
   onEscape?: () => boolean,
   noHistory?: boolean,
+  noBlurOnPop?: boolean,
 };
 
 export class AppNavigationController {
@@ -61,9 +63,9 @@ export class AppNavigationController {
       if(!item) return;
       if(e.key === 'Escape' && (item.onEscape ? item.onEscape() : true)) {
         cancelEvent(e);
-        this.back();
+        this.back(item.type);
       }
-    }, {capture: true});
+    }, {capture: true, passive: false});
 
     if(isMobileSafari) {
       const options = {passive: true};
@@ -117,7 +119,7 @@ export class AppNavigationController {
     this.debug && this.log('popstate, navigation:', item, this.navigations);
     if(good === false) {
       this.pushItem(item);
-    } else {
+    } else if(!item.noBlurOnPop) {
       blurActiveElement(); // no better place for it
     }
 

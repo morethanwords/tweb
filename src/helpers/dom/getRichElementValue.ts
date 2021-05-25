@@ -45,42 +45,42 @@ export const markdownTags: {[type in MarkdownType]: MarkdownTag} = {
 
 export default function getRichElementValue(node: HTMLElement, lines: string[], line: string[], selNode?: Node, selOffset?: number, entities?: MessageEntity[], offset = {offset: 0}) {
   if(node.nodeType === 3) { // TEXT
-    if(selNode === node) {
-      const value = node.nodeValue;
-      line.push(value.substr(0, selOffset) + '\x01' + value.substr(selOffset));
-    } else {
-      const nodeValue = node.nodeValue;
-      line.push(nodeValue);
+    const nodeValue = node.nodeValue;
 
-      if(entities && nodeValue.trim()) {
-        if(node.parentNode) {
-          const parentElement = node.parentElement;
-          
-          for(const type in markdownTags) {
-            const tag = markdownTags[type as MarkdownType];
-            const closest = parentElement.closest(tag.match + ', [contenteditable]');
-            if(closest && closest.getAttribute('contenteditable') === null) {
-              if(tag.entityName === 'messageEntityTextUrl') {
-                entities.push({
-                  _: tag.entityName as any,
-                  url: (parentElement as HTMLAnchorElement).href,
-                  offset: offset.offset,
-                  length: nodeValue.length
-                });
-              } else {
-                entities.push({
-                  _: tag.entityName as any,
-                  offset: offset.offset,
-                  length: nodeValue.length
-                });
-              }
+    if(selNode === node) {
+      line.push(nodeValue.substr(0, selOffset) + '\x01' + nodeValue.substr(selOffset));
+    } else {
+      line.push(nodeValue);
+    }
+
+    if(entities && nodeValue.trim()) {
+      if(node.parentNode) {
+        const parentElement = node.parentElement;
+        
+        for(const type in markdownTags) {
+          const tag = markdownTags[type as MarkdownType];
+          const closest = parentElement.closest(tag.match + ', [contenteditable]');
+          if(closest && closest.getAttribute('contenteditable') === null) {
+            if(tag.entityName === 'messageEntityTextUrl') {
+              entities.push({
+                _: tag.entityName as any,
+                url: (parentElement as HTMLAnchorElement).href,
+                offset: offset.offset,
+                length: nodeValue.length
+              });
+            } else {
+              entities.push({
+                _: tag.entityName as any,
+                offset: offset.offset,
+                length: nodeValue.length
+              });
             }
           }
         }
       }
-
-      offset.offset += nodeValue.length;
     }
+
+    offset.offset += nodeValue.length;
 
     return;
   }

@@ -340,7 +340,7 @@ export default class ChatContextMenu {
 
   private onCopyClick = () => {
     if(isSelectionEmpty()) {
-      const mids = this.chat.selection.isSelecting ? [...this.chat.selection.selectedMids] : [this.mid];
+      const mids = this.chat.selection.isSelecting ? [...this.chat.selection.selectedMids].sort((a, b) => a - b) : [this.mid];
       const str = mids.reduce((acc, mid) => {
         const message = this.chat.getMessage(mid);
         return acc + (message?.message ? message.message + '\n' : '');

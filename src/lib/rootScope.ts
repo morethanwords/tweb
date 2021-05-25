@@ -111,6 +111,8 @@ export type BroadcastEvents = {
   'language_change': void,
   
   'theme_change': void,
+
+  'instance_deactivated': void
 };
 
 export class RootScope extends EventListenerBase<{

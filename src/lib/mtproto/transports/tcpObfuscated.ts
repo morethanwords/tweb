@@ -28,11 +28,16 @@ export default class TcpObfuscated implements MTTransport {
   private log: ReturnType<typeof logger>;
   public connected = false;
   private lastCloseTime: number;
-  public connection: MTConnection;
+  private connection: MTConnection;
 
   //private debugPayloads: MTPNetworker['debugRequests'] = [];
 
-  constructor(private Connection: MTConnectionConstructable, private dcId: number, private url: string, private logSuffix: string, public retryTimeout: number) {
+  constructor(private Connection: MTConnectionConstructable, 
+    private dcId: number, 
+    private url: string, 
+    private logSuffix: string, 
+    private retryTimeout: number
+  ) {
     let logTypes = LogTypes.Error | LogTypes.Log;
     if(this.debug) logTypes |= LogTypes.Debug;
     this.log = logger(`TCP-${dcId}` + logSuffix, logTypes);
@@ -115,7 +120,7 @@ export default class TcpObfuscated implements MTTransport {
     const needTimeout = !isNaN(diff) && diff < this.retryTimeout ? this.retryTimeout - diff : 0;
     
     if(this.networker) {
-      this.networker.setConnectionStatus(false);
+      this.networker.setConnectionStatus(false, needTimeout);
       this.pending.length = 0;
     }
     

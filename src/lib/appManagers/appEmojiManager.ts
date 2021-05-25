@@ -1,3 +1,9 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
 import App from "../../config/app";
 import { MOUNT_CLASS_TO } from "../../config/debug";
 import { validateInitObject } from "../../helpers/object";
@@ -6,6 +12,7 @@ import { isObject } from "../mtproto/bin_utils";
 import apiManager from "../mtproto/mtprotoworker";
 import SearchIndex from "../searchIndex";
 import sessionStorage from "../sessionStorage";
+import appStateManager from "./appStateManager";
 
 type EmojiLangPack = {
   keywords: {
@@ -21,7 +28,10 @@ const EMOJI_LANG_PACK: EmojiLangPack = {
   langCode: App.langPackCode
 };
 
+const RECENT_MAX_LENGTH = 36;
+
 export class AppEmojiManager {
+  private static POPULAR_EMOJI = ["😂", "😘", "❤️", "😍", "😊", "😁", "👍", "☺️", "😔", "😄", "😭", "💋", "😒", "😳", "😜", "🙈", "😉", "😃", "😢", "😝", "😱", "😡", "😏", "😞", "😅", "😚", "🙊", "😌", "😀", "😋", "😆", "👌", "😐", "😕"];
   private keywordLangPacks: {
     [langCode: string]: EmojiLangPack
   } = {};
@@ -30,6 +40,9 @@ export class AppEmojiManager {
   private indexedLangPacks: {[langCode: string]: boolean} = {};
 
   private getKeywordsPromises: {[langCode: string]: Promise<EmojiLangPack>} = {};
+
+  private recent: string[];
+  private getRecentEmojisPromise: Promise<AppEmojiManager['recent']>;
 
   /* public getPopularEmoji() {
     return sessionStorage.get('emojis_popular').then(popEmojis => {
@@ -134,7 +147,7 @@ export class AppEmojiManager {
   }
 
   public getBothEmojiKeywords() {
-    const promises: ReturnType<AppEmojiManager['getEmojiKeywords']>[] = [
+    const promises: Promise<any>[] = [
       this.getEmojiKeywords()
     ];
 
@@ -142,12 +155,16 @@ export class AppEmojiManager {
       promises.push(this.getEmojiKeywords(I18n.lastRequestedLangCode));
     }
 
+    if(!this.recent) {
+      promises.push(this.getRecentEmojis());
+    }
+
     return Promise.all(promises);
   }
 
   public indexEmojis() {
     if(!this.index) {
-      this.index = new SearchIndex();
+      this.index = new SearchIndex(false, false);
     }
 
     for(const langCode in this.keywordLangPacks) {
@@ -169,14 +186,47 @@ export class AppEmojiManager {
 
   public searchEmojis(q: string) {
     this.indexEmojis();
+
+    q = q.toLowerCase().replace(/_/g, ' ');
     
     //const perf = performance.now();
-    const set = this.index.search(q);
-    const flattened = Array.from(set).reduce((acc, v) => acc.concat(v), []);
-    const emojis = Array.from(new Set(flattened));
+    let emojis: Array<string>;
+    if(q.trim()) {
+      const set = this.index.search(q);
+      emojis = Array.from(set).reduce((acc, v) => acc.concat(v), []);
+    } else {
+      emojis = this.recent.concat(AppEmojiManager.POPULAR_EMOJI).slice(0, RECENT_MAX_LENGTH);
+    }
+
+    emojis = Array.from(new Set(emojis));
     //console.log('searchEmojis', q, 'time', performance.now() - perf);
 
+    /* for(let i = 0, length = emojis.length; i < length; ++i) {
+      if(emojis[i].includes(zeroWidthJoiner) && !emojis[i].includes('\ufe0f')) {
+        emojis[i] += '\ufe0f';
+      }
+    } */
+
     return emojis;
+  }
+
+  public getRecentEmojis() {
+    if(this.getRecentEmojisPromise) return this.getRecentEmojisPromise;
+    return this.getRecentEmojisPromise = appStateManager.getState().then(state => {
+      return this.recent = Array.isArray(state.recentEmoji) ? state.recentEmoji : [];
+    });
+  }
+
+  public pushRecentEmoji(emoji: string) {
+    this.getRecentEmojis().then(recent => {
+      recent.findAndSplice(e => e === emoji);
+      recent.unshift(emoji);
+      if(recent.length > RECENT_MAX_LENGTH) {
+        recent.length = RECENT_MAX_LENGTH;
+      }
+
+      appStateManager.pushToState('recentEmoji', recent);
+    });
   }
 }
 

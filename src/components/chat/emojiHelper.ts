@@ -1,41 +1,24 @@
 import type ChatInput from "./input";
-import attachListNavigation from "../../helpers/dom/attachlistNavigation";
 import { appendEmoji, getEmojiFromElement } from "../emoticonsDropdown/tabs/emoji";
 import { ScrollableX } from "../scrollable";
 import AutocompleteHelper from "./autocompleteHelper";
 
 export default class EmojiHelper extends AutocompleteHelper {
-  private emojisContainer: HTMLDivElement;
   private scrollable: ScrollableX;
 
   constructor(appendTo: HTMLElement, private chatInput: ChatInput) {
-    super(appendTo);
+    super(appendTo, 'x', (target) => {
+      this.chatInput.onEmojiSelected(getEmojiFromElement(target as any), true);
+    });
 
     this.container.classList.add('emoji-helper');
-
-    this.addEventListener('visible', () => {
-      const list = this.emojisContainer;
-      const {detach} = attachListNavigation({
-        list, 
-        type: 'x',
-        onSelect: (target) => {
-          this.chatInput.onEmojiSelected(getEmojiFromElement(target as any), true);
-        },
-        once: true
-      });
-
-      this.addEventListener('hidden', () => {
-        list.innerHTML = '';
-        detach();
-      }, true);
-    });
   }
 
   private init() {
-    this.emojisContainer = document.createElement('div');
-    this.emojisContainer.classList.add('emoji-helper-emojis', 'super-emojis');
+    this.list = document.createElement('div');
+    this.list.classList.add('emoji-helper-emojis', 'super-emojis');
 
-    this.container.append(this.emojisContainer);
+    this.container.append(this.list);
 
     this.scrollable = new ScrollableX(this.container);
   }
@@ -47,10 +30,14 @@ export default class EmojiHelper extends AutocompleteHelper {
     }
 
     if(emojis.length) {
-      this.emojisContainer.innerHTML = '';
+      this.list.innerHTML = '';
       emojis.forEach(emoji => {
-        appendEmoji(emoji, this.emojisContainer);
+        appendEmoji(emoji, this.list, false, true);
       });
+    }
+
+    if(!this.hidden) {
+      this.scrollable.container.scrollLeft = 0;
     }
 
     this.toggle(!emojis.length);

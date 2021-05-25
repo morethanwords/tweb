@@ -81,5 +81,6 @@ export type ConnectionStatusChange = {
   name: string,
   isFileNetworker: boolean,
   isFileDownload: boolean,
-  isFileUpload: boolean
+  isFileUpload: boolean,
+  timeout?: number
 };

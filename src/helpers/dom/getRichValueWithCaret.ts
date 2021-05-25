@@ -18,8 +18,8 @@ export default function getRichValueWithCaret(field: HTMLElement, withEntities =
   const line: string[] = [];
 
   const sel = window.getSelection();
-  var selNode
-  var selOffset
+  let selNode: Node;
+  let selOffset: number;
   if(sel && sel.rangeCount) {
     const range = sel.getRangeAt(0);
     if(range.startContainer &&

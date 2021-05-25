@@ -22,6 +22,7 @@ import { Chat } from '../../layer';
 import { isMobile } from '../../helpers/userAgent';
 
 const REFRESH_EVERY = 24 * 60 * 60 * 1000; // 1 day
+const REFRESH_EVERY_WEEK = 24 * 60 * 60 * 1000 * 7; // 7 days
 const STATE_VERSION = App.version;
 
 export type Background = {
@@ -145,8 +146,10 @@ export const STATE_INIT: State = {
 
 const ALL_KEYS = Object.keys(STATE_INIT) as any as Array<keyof State>;
 
-const REFRESH_KEYS = ['dialogs', 'allDialogsLoaded', 'messages', 'contactsList', 'stateCreatedTime',
-  'updates', 'maxSeenMsgId', 'filters', 'topPeers', 'pinnedOrders'] as any as Array<keyof State>;
+const REFRESH_KEYS = ['contactsList', 'stateCreatedTime',
+  'maxSeenMsgId', 'filters', 'topPeers'] as any as Array<keyof State>;
+
+const REFRESH_KEYS_WEEK = ['dialogs', 'allDialogsLoaded', 'updates', 'pinnedOrders'] as any as Array<keyof State>;
 
 export class AppStateManager extends EventListenerBase<{
   save: (state: State) => Promise<void>,
@@ -265,16 +268,28 @@ export class AppStateManager extends EventListenerBase<{
           if(DEBUG) {
             this.log('will refresh state', state.stateCreatedTime, time);
           }
-          
-          REFRESH_KEYS.forEach(key => {
-            this.pushToState(key, copy(STATE_INIT[key]));
 
-            // @ts-ignore
-            const s = this.storagesResults[key];
-            if(s && s.length) {
-              s.length = 0;
+          const r = (keys: typeof REFRESH_KEYS) => {
+            keys.forEach(key => {
+              this.pushToState(key, copy(STATE_INIT[key]));
+  
+              // @ts-ignore
+              const s = this.storagesResults[key];
+              if(s && s.length) {
+                s.length = 0;
+              }
+            });
+          };
+          
+          r(REFRESH_KEYS);
+
+          if((state.stateCreatedTime + REFRESH_EVERY_WEEK) < time) {
+            if(DEBUG) {
+              this.log('will refresh updates');
             }
-          });
+
+            r(REFRESH_KEYS_WEEK);
+          }
         }
         
         //state = this.state = new Proxy(state, getHandler());

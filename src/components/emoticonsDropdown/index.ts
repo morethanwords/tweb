@@ -43,9 +43,9 @@ export class EmoticonsDropdown {
   public static lazyLoadQueue = new LazyLoadQueue();
   private element: HTMLElement;
 
-  public emojiTab: EmojiTab;
+  private emojiTab: EmojiTab;
   public stickersTab: StickersTab;
-  public gifsTab: GifsTab;
+  private gifsTab: GifsTab;
 
   private container: HTMLElement;
   private tabsEl: HTMLElement;
@@ -53,8 +53,8 @@ export class EmoticonsDropdown {
 
   private tabs: {[id: number]: EmoticonsTab};
 
-  public searchButton: HTMLElement;
-  public deleteBtn: HTMLElement;
+  private searchButton: HTMLElement;
+  private deleteBtn: HTMLElement;
   
   private displayTimeout: number;
 
@@ -72,6 +72,8 @@ export class EmoticonsDropdown {
 
   private selectTab: ReturnType<typeof horizontalMenu>;
   private forceClose = false;
+
+  private savedRange: Range;
 
   constructor() {
     this.element = document.getElementById('emoji-dropdown') as HTMLDivElement;
@@ -206,7 +208,7 @@ export class EmoticonsDropdown {
     this.deleteBtn.classList.toggle('hide', this.tabId !== 0);
   };
 
-  public checkRights = () => {
+  private checkRights = () => {
     const peerId = appImManager.chat.peerId;
     const children = this.tabsEl.children;
     const tabsElements = Array.from(children) as HTMLElement[];
@@ -250,6 +252,11 @@ export class EmoticonsDropdown {
     
     if((this.element.style.display && enable === undefined) || enable) {
       this.events.onOpen.forEach(cb => cb());
+
+      const sel = document.getSelection();
+      if(!sel.isCollapsed) {
+        this.savedRange = sel.getRangeAt(0);
+      }
 
       EmoticonsDropdown.lazyLoadQueue.lock();
       //EmoticonsDropdown.lazyLoadQueue.unlock();
@@ -306,6 +313,8 @@ export class EmoticonsDropdown {
         this.container.classList.remove('disable-hover');
 
         this.events.onCloseAfter.forEach(cb => cb());
+
+        this.savedRange = undefined;
       }, isTouchSupported ? 0 : ANIMATION_DURATION);
 
       /* if(isTouchSupported) {
@@ -434,6 +443,10 @@ export class EmoticonsDropdown {
     this.events.onOpenAfter.push(() => {
       lazyLoadQueue.unlockAndRefresh();
     });
+  }
+
+  public getSavedRange() {
+    return this.savedRange;
   }
 }
 

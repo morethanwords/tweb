@@ -43,6 +43,11 @@ const lang = {
   },
   "Chat.Search.NoMessagesFound": "No messages found",
   "Chat.Search.PrivateSearch": "Private Search",
+  "ConnectionStatus.ReconnectIn": "Reconnect in %ds, %s",
+  "ConnectionStatus.Reconnect": "reconnect",
+  "ConnectionStatus.Waiting": "Waiting for network...",
+  "Deactivated.Title": "Too many tabs...",
+  "Deactivated.Subtitle": "Telegram supports only one active tab with the app.\nClick anywhere to continue using this tab.",
   //"Saved": "Saved",
   "General.Keyboard": "Keyboard",
   "General.SendShortcut.Enter": "Send by Enter",
@@ -430,6 +435,7 @@ const lang = {
   "Recent": "Recent",
   "Of": "%1$d of %2$d",
   "NoResult": "No results",
+  "Updating": "Updating...",
 
   // * macos
   "AccountSettings.Filters": "Chat Folders",

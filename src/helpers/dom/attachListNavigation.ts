@@ -14,11 +14,12 @@ type ArrowKey = 'ArrowUp' | 'ArrowDown' | 'ArrowLeft' | 'ArrowRight';
 const HANDLE_EVENT = 'keydown';
 const ACTIVE_CLASS_NAME = 'active';
 
-export default function attachListNavigation({list, type, onSelect, once}: {
+export default function attachListNavigation({list, type, onSelect, once, waitForKey}: {
   list: HTMLElement, 
   type: 'xy' | 'x' | 'y',
   onSelect: (target: Element) => void | boolean,
   once: boolean,
+  waitForKey?: string
 }) {
   const keyNames: Set<ArrowKey> = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
 
@@ -82,7 +83,7 @@ export default function attachListNavigation({list, type, onSelect, once}: {
     handleArrowKey = (currentTarget, key) => getNextTargetX(currentTarget, key === 'ArrowRight' || key === 'ArrowDown');
   }
 
-  const onKeyDown = (e: KeyboardEvent) => {
+  let onKeyDown = (e: KeyboardEvent) => {
     if(!keyNames.has(e.key as any)) {
       if(e.key === 'Enter') {
         cancelEvent(e);
@@ -99,8 +100,6 @@ export default function attachListNavigation({list, type, onSelect, once}: {
       currentTarget = handleArrowKey(currentTarget, e.key as any);
       setCurrentTarget(currentTarget, true);
     }
-
-    return false;
   };
 
   const scrollable = findUpClassName(list, 'scrollable');
@@ -142,10 +141,26 @@ export default function attachListNavigation({list, type, onSelect, once}: {
   };
 
   const resetTarget = () => {
+    if(waitForKey) return;
     setCurrentTarget(list.firstElementChild, false);
   };
 
-  resetTarget();
+  if(waitForKey) {
+    const _onKeyDown = onKeyDown;
+    onKeyDown = (e) => {
+      if(e.key === waitForKey) {
+        cancelEvent(e);
+
+        document.removeEventListener(HANDLE_EVENT, onKeyDown, {capture: true});
+        onKeyDown = _onKeyDown;
+        document.addEventListener(HANDLE_EVENT, onKeyDown, {capture: true, passive: false});
+
+        resetTarget();
+      }
+    };
+  } else {
+    resetTarget();
+  }
 
   // const input = document.activeElement as HTMLElement;
   // input.addEventListener(HANDLE_EVENT, onKeyDown, {capture: true, passive: false});

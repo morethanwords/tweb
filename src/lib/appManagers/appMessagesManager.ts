@@ -1654,6 +1654,11 @@ export class AppMessagesManager {
         telegramMeWebService.setAuthorized(true);
       } */
 
+      // can reset here pinned order
+      if(!offsetId && !offsetDate && !offsetPeerId) {
+        this.dialogsStorage.resetPinnedOrder(folderId);
+      }
+
       appUsersManager.saveApiUsers(dialogsResult.users);
       appChatsManager.saveApiChats(dialogsResult.chats);
       this.saveMessages(dialogsResult.messages);
@@ -1665,6 +1670,12 @@ export class AppMessagesManager {
         //const d = Object.assign({}, dialog);
         // ! нужно передавать folderId, так как по папке !== 0 нет свойства folder_id
         this.dialogsStorage.saveDialog(dialog, dialog.folder_id ?? folderId);
+
+        if(!maxSeenIdIncremented &&
+          !appPeersManager.isChannel(appPeersManager.getPeerId(dialog.peer))) {
+          this.incrementMaxSeenId(dialog.top_message);
+          maxSeenIdIncremented = true;
+        }
 
         if(dialog.peerId === undefined) {
           return;
@@ -1690,12 +1701,6 @@ export class AppMessagesManager {
             this.log.error('lun bot', folderId);
           } */
         }
-
-        if(!maxSeenIdIncremented &&
-            !appPeersManager.isChannel(appPeersManager.getPeerId(dialog.peer))) {
-          this.incrementMaxSeenId(dialog.top_message);
-          maxSeenIdIncremented = true;
-        }
       });
 
       if(Object.keys(noIdsDialogs).length) {
@@ -1712,8 +1717,8 @@ export class AppMessagesManager {
 
       const count = (dialogsResult as MessagesDialogs.messagesDialogsSlice).count;
 
-      if(!dialogsResult.dialogs.length ||
-        !count ||
+      if(limit > dialogsResult.dialogs.length || 
+        !count || 
         dialogs.length >= count) {
         this.dialogsStorage.setDialogsLoaded(folderId, true);
       }
@@ -4540,7 +4545,8 @@ export class AppMessagesManager {
     delete historyStorage.maxId;
     slice.unsetEnd(SliceEnd.Bottom);
 
-    let historyResult = this.getHistory(peerId, slice[0], 0, 50, threadId);
+    // if there is no id - then request by first id because cannot request by id 0 with backLimit
+    let historyResult = this.getHistory(peerId, slice[0] ?? 1, 0, 50, threadId);
     if(historyResult instanceof Promise) {
       historyResult = await historyResult;
     }

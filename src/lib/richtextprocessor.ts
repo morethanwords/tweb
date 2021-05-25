@@ -106,7 +106,8 @@ const markdownEntities: {[markdown: string]: MessageEntity['_']} = {
 
 const passConflictingEntities: Set<MessageEntity['_']> = new Set([
   'messageEntityEmoji',
-  'messageEntityLinebreak'
+  'messageEntityLinebreak',
+  'messageEntityCaret'
 ]);
 for(let i in markdownEntities) {
   passConflictingEntities.add(markdownEntities[i]);
@@ -116,19 +117,20 @@ namespace RichTextProcessor {
   export const emojiSupported = navigator.userAgent.search(/OS X|iPhone|iPad|iOS/i) !== -1/*  && false *//*  || true */;
 
   export function getEmojiSpritesheetCoords(emojiCode: string) {
-    let unified = encodeEmoji(emojiCode)/* .replace(/(-fe0f|fe0f)/g, '') */;
+    let unified = encodeEmoji(emojiCode);
   
     if(unified === '1f441-200d-1f5e8') {
-      unified = '1f441-fe0f-200d-1f5e8-fe0f';
+      //unified = '1f441-fe0f-200d-1f5e8-fe0f';
+      unified = '1f441-fe0f-200d-1f5e8';
     }
   
-    if(!emojiData.hasOwnProperty(unified)/*  && !emojiData.hasOwnProperty(unified.replace(/(-fe0f|fe0f)/g, '')) */) {
+    if(!emojiData.hasOwnProperty(unified) && !emojiData.hasOwnProperty(unified.replace(/-?fe0f$/, ''))/*  && !emojiData.hasOwnProperty(unified.replace(/(-fe0f|fe0f)/g, '')) */) {
     //if(!emojiData.hasOwnProperty(emojiCode) && !emojiData.hasOwnProperty(emojiCode.replace(/[\ufe0f\u200d]/g, ''))) {
       //console.error('lol', unified);
       return null;
     }
   
-    return unified.replace(/(-fe0f|fe0f)/g, '');
+    return unified.replace(/-?fe0f/g, '');
   }
 
   export function parseEntities(text: string) {
@@ -138,6 +140,7 @@ namespace RichTextProcessor {
     let matchIndex;
     let rawOffset = 0;
     // var start = tsNow()
+    fullRegExp.lastIndex = 0;
     while((match = raw.match(fullRegExp))) {
       matchIndex = rawOffset + match.index;
   
@@ -540,6 +543,11 @@ namespace RichTextProcessor {
 
           break;
         }
+        
+        case 'messageEntityCaret': {
+          insertPart(entity, '<span class="composer-sel"></span>');
+          break;
+        }
 
         /* case 'messageEntityLinebreak': {
           if(options.noLinebreaks) {
@@ -587,7 +595,7 @@ namespace RichTextProcessor {
             const target = (currentContext || typeof electronHelpers !== 'undefined')
               ? '' : ' target="_blank" rel="noopener noreferrer"';
 
-            insertPart(entity, `<a class="anchor-url" href="${href}"${target}${masked ? 'onclick="showMaskedAlert(this)"' : ''}>`, '</a>');
+            insertPart(entity, `<a class="anchor-url" href="${href}"${target}${masked && !currentContext ? 'onclick="showMaskedAlert(this)"' : ''}>`, '</a>');
           }
 
           break;
@@ -714,6 +722,7 @@ namespace RichTextProcessor {
     var raw = text;
     var text: any = [],
       emojiTitle;
+    fullRegExp.lastIndex = 0;
     while((match = raw.match(fullRegExp))) {
       text.push(raw.substr(0, match.index))
       if(match[8]) {

@@ -95,6 +95,13 @@
   ],
   "type": "MessageEntity"
 }, {
+  "predicate": "messageEntityCaret",
+  "params": [
+    {"name": "offset", "type": "number"},
+    {"name": "length", "type": "number"}
+  ],
+  "type": "MessageEntity"
+}, {
   "predicate": "user",
   "params": [
     {"name": "initials", "type": "string"},

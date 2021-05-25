@@ -67,7 +67,7 @@ export type ApiError = Partial<{
 } */
 
 export class ApiManager {
-  public cachedNetworkers: {
+  private cachedNetworkers: {
     [transportType in TransportType]: {
       [connectionType in ConnectionType]: {
         [dcId: number]: MTPNetworker[]
@@ -75,9 +75,9 @@ export class ApiManager {
     }
   } = {} as any;
   
-  public cachedExportPromise: {[x: number]: Promise<unknown>} = {};
+  private cachedExportPromise: {[x: number]: Promise<unknown>} = {};
   private gettingNetworkers: {[dcIdAndType: string]: Promise<MTPNetworker>} = {};
-  public baseDcId = 0;
+  private baseDcId = 0;
   
   //public telegramMeNotified = false;
 
@@ -288,7 +288,9 @@ export class ApiManager {
   
       const startTime = Date.now();
       const interval = ctx.setInterval(() => {
-        this.log.error('Request is still processing:', method, params, options, 'time:', (Date.now() - startTime) / 1000);
+        if(!cachedNetworker || !cachedNetworker.isStopped()) {
+          this.log.error('Request is still processing:', method, params, options, 'time:', (Date.now() - startTime) / 1000);
+        }
         //this.cachedUploadNetworkers[2].requestMessageStatus();
       }, 5e3);
     }
