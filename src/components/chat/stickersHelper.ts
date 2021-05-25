@@ -25,6 +25,12 @@ export default class StickersHelper extends AutocompleteHelper {
     }, 'ArrowUp');
 
     this.container.classList.add('stickers-helper');
+
+    this.addEventListener('visible', () => {
+      setTimeout(() => { // it is not rendered yet
+        this.scrollable.container.scrollTop = 0;
+      }, 0);
+    });
   }
 
   public checkEmoticon(emoticon: string) {
@@ -75,10 +81,6 @@ export default class StickersHelper extends AutocompleteHelper {
       }
 
       ready.then(() => {
-        if(!this.hidden) {
-          this.scrollable.container.scrollTop = 0;
-        }
-
         this.list.replaceWith(container);
         this.list = container;
 

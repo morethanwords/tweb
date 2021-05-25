@@ -21,10 +21,20 @@ export default class EmojiHelper extends AutocompleteHelper {
     this.container.append(this.list);
 
     this.scrollable = new ScrollableX(this.container);
+
+    this.addEventListener('visible', () => {
+      setTimeout(() => { // it is not rendered yet
+        this.scrollable.container.scrollLeft = 0;
+      }, 0);
+    });
   }
 
   public renderEmojis(emojis: string[]) {
     if(this.init) {
+      if(!emojis.length) {
+        return;
+      }
+
       this.init();
       this.init = null;
     }
@@ -34,10 +44,6 @@ export default class EmojiHelper extends AutocompleteHelper {
       emojis.forEach(emoji => {
         appendEmoji(emoji, this.list, false, true);
       });
-    }
-
-    if(!this.hidden) {
-      this.scrollable.container.scrollLeft = 0;
     }
 
     this.toggle(!emojis.length);
