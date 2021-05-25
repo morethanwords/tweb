@@ -109,21 +109,21 @@ export type MessagesStorage = {
 export type MyMessageActionType = Message.messageService['action']['_'];
 
 export class AppMessagesManager {
-  public static MESSAGE_ID_INCREMENT = 0x10000;
-  public static MESSAGE_ID_OFFSET = 0xFFFFFFFF;
+  private static MESSAGE_ID_INCREMENT = 0x10000;
+  private static MESSAGE_ID_OFFSET = 0xFFFFFFFF;
 
-  public messagesStorageByPeerId: {[peerId: string]: MessagesStorage} = {};
+  private messagesStorageByPeerId: {[peerId: string]: MessagesStorage} = {};
   public groupedMessagesStorage: {[groupId: string]: MessagesStorage} = {}; // will be used for albums
-  public scheduledMessagesStorage: {[peerId: string]: MessagesStorage} = {};
-  public historiesStorage: {
+  private scheduledMessagesStorage: {[peerId: string]: MessagesStorage} = {};
+  private historiesStorage: {
     [peerId: string]: HistoryStorage
   } = {};
-  public threadsStorage: {
+  private threadsStorage: {
     [peerId: string]: {
       [threadId: string]: HistoryStorage
     }
   } = {};
-  public searchesStorage: {
+  private searchesStorage: {
     [peerId: string]: Partial<{
       [inputFilter in MyInputMessagesFilter]: {
         count?: number,
@@ -134,11 +134,11 @@ export class AppMessagesManager {
   public pinnedMessages: {[peerId: string]: PinnedStorage} = {};
 
   public threadsServiceMessagesIdsStorage: {[peerId_threadId: string]: number} = {};
-  public threadsToReplies: {
+  private threadsToReplies: {
     [peerId_threadId: string]: string;
   } = {};
 
-  public pendingByRandomId: {
+  private pendingByRandomId: {
     [randomId: string]: {
       peerId: number,
       tempId: number,
@@ -146,12 +146,11 @@ export class AppMessagesManager {
       storage: MessagesStorage
     }
   } = {};
-  public pendingByMessageId: {[mid: string]: string} = {};
-  public pendingAfterMsgs: any = {};
+  private pendingByMessageId: {[mid: string]: string} = {};
+  private pendingAfterMsgs: any = {};
   public pendingTopMsgs: {[peerId: string]: number} = {};
-  public sendFilePromise: CancellablePromise<void> = Promise.resolve();
-  public tempNum = 0;
-  public tempFinalizeCallbacks: {
+  private tempNum = 0;
+  private tempFinalizeCallbacks: {
     [tempId: string]: {
       [callbackName: string]: Partial<{
         deferred: CancellablePromise<void>, 
@@ -160,20 +159,20 @@ export class AppMessagesManager {
     }
   } = {};
   
-  public sendSmthLazyLoadQueue = new LazyLoadQueueBase(1);
+  private sendSmthLazyLoadQueue = new LazyLoadQueueBase(1);
 
-  public needSingleMessages: {[peerId: string]: number[]} = {};
+  private needSingleMessages: {[peerId: string]: number[]} = {};
   private fetchSingleMessagesPromise: Promise<void> = null;
 
-  public maxSeenId = 0;
+  private maxSeenId = 0;
 
   public migratedFromTo: {[peerId: number]: number} = {};
   public migratedToFrom: {[peerId: number]: number} = {};
 
-  public newMessagesHandleTimeout = 0;
-  public newMessagesToHandle: {[peerId: string]: Set<number>} = {};
-  public newDialogsHandlePromise: Promise<any>;
-  public newDialogsToHandle: {[peerId: string]: Dialog} = {};
+  private newMessagesHandleTimeout = 0;
+  private newMessagesToHandle: {[peerId: string]: Set<number>} = {};
+  private newDialogsHandlePromise: Promise<any>;
+  private newDialogsToHandle: {[peerId: string]: Dialog} = {};
   public newUpdatesAfterReloadToHandle: {[peerId: string]: Set<Update>} = {};
 
   private notificationsHandlePromise = 0;
@@ -4371,7 +4370,8 @@ export class AppMessagesManager {
         const photo = appPhotosManager.getPhoto('' + tempId);
         if(/* photo._ !== 'photoEmpty' */photo) {
           const newPhoto = message.media.photo as MyPhoto;
-          const cacheContext = appDownloadManager.getCacheContext(newPhoto);
+          const newPhotoSize = newPhoto.sizes[newPhoto.sizes.length - 1];
+          const cacheContext = appDownloadManager.getCacheContext(newPhoto, newPhotoSize.type);
           const oldCacheContext = appDownloadManager.getCacheContext(photo, 'full');
           Object.assign(cacheContext, oldCacheContext);
 

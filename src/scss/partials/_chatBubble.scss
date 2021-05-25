@@ -608,6 +608,7 @@ $bubble-margin: .25rem;
     &-aspecter {
       position: relative;
       margin: 0 auto;
+      z-index: 1;
     }
 
     &-fitted {

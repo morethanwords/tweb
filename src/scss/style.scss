@@ -582,6 +582,16 @@ input:-webkit-autofill:active {
   }
 }
 
+@keyframes thumbnail-fade-in-opacity {
+  0% {
+    opacity: 0;
+  }
+
+  to {
+    opacity: .8;
+  }
+}
+
 @keyframes fade-in-opacity {
   0% {
     opacity: 0;
@@ -1139,6 +1149,14 @@ middle-ellipsis-element {
   
     &.fade-out {
       animation: fade-out-opacity .2s ease-in-out forwards;
+    }
+  }
+}
+
+.media-photo.thumbnail {
+  @include animation-level(2) {
+    &.fade-in {
+      animation: thumbnail-fade-in-opacity .2s ease-in-out forwards;
     }
   }
 }
