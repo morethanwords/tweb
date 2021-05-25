@@ -236,6 +236,7 @@ html.night {
 @import "partials/chatMarkupTooltip";
 @import "partials/chatStickersHelper";
 @import "partials/chatEmojiHelper";
+@import "partials/chatCommandsHelper";
 @import "partials/chatSearch";
 @import "partials/chatDrop";
 @import "partials/crop";
@@ -1266,23 +1267,24 @@ middle-ellipsis-element {
   // ! No chrome 56 support
   display: grid;
   grid-column-gap: 2.44px;
-  grid-template-columns: repeat(auto-fill, 42px);
+  grid-template-columns: repeat(auto-fill, 2.625rem);
   justify-content: space-between;
 
-  font-size: 2.25rem;
-  line-height: 2.25rem;
+  font-size: 2.125rem;
+  line-height: 2.125rem;
 
   .super-emoji {
     display: inline-block;
-    margin: 0 1.44px; // ! magic number
-    padding: 4px 4px;
+    margin: 0 .0625rem;
+    padding: .25rem;
     line-height: inherit;
-    border-radius: 8px;
+    border-radius: $border-radius;
     cursor: pointer;
     user-select: none;
+    vertical-align: middle;
     
-    width: 42px;
-    height: 42px;
+    width: 2.625rem;
+    height: 2.625rem;
 
     html:not(.emoji-supported) & {
       position: relative;

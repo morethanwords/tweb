@@ -29,7 +29,7 @@ import PopupNewMedia from '../popups/newMedia';
 import { toast } from "../toast";
 import { wrapReply } from "../wrappers";
 import InputField from '../inputField';
-import { MessageEntity, DraftMessage } from '../../layer';
+import { MessageEntity, DraftMessage, BotInfo, BotCommand } from '../../layer';
 import StickersHelper from './stickersHelper';
 import ButtonIcon from '../buttonIcon';
 import DivAndCaption from '../divAndCaption';
@@ -60,6 +60,8 @@ import { MarkdownType, markdownTags } from '../../helpers/dom/getRichElementValu
 import getRichValueWithCaret from '../../helpers/dom/getRichValueWithCaret';
 import EmojiHelper from './emojiHelper';
 import setRichFocus from '../../helpers/dom/setRichFocus';
+import SearchIndex from '../../lib/searchIndex';
+import CommandsHelper from './commandsHelper';
 
 const RECORD_MIN_TIME = 500;
 const POSTING_MEDIA_NOT_ALLOWED = 'Posting media content isn\'t allowed in this group.';
@@ -130,6 +132,7 @@ export default class ChatInput {
   readonly executedHistory: string[] = [];
   private canUndoFromHTML = '';
 
+  private commandsHelper: CommandsHelper;
   private emojiHelper: EmojiHelper;
   private stickersHelper: StickersHelper;
   private listenerSetter: ListenerSetter;
@@ -363,6 +366,7 @@ export default class ChatInput {
     this.newMessageWrapper.append(...[this.btnToggleEmoticons, this.inputMessageContainer, this.btnScheduled, this.attachMenu, this.recordTimeEl, this.fileInput].filter(Boolean));
 
     this.rowsWrapper.append(this.replyElements.container);
+    this.commandsHelper = new CommandsHelper(this.rowsWrapper);
     this.emojiHelper = new EmojiHelper(this.rowsWrapper, this);
     this.stickersHelper = new StickersHelper(this.rowsWrapper);
     this.rowsWrapper.append(this.newMessageWrapper);
@@ -1267,30 +1271,27 @@ export default class ChatInput {
       } else {
         this.hideSuggestions()
       }
-    } else if (!matches[1] && matches[2] == '/') { // commands
-      if (this.commands && this.commands.index) {
-        if (query.length) {
-          var foundObject = SearchIndexManager.search(query, this.commands.index)
-          var foundCommands = []
-          var command
-          for (var i = 0, length = this.commands.list.length; i < length; i++) {
-            command = this.commands.list[i]
-            if (foundObject[command.value]) {
-              foundCommands.push(command)
-            }
-          }
-        } else {
-          var foundCommands = this.commands.list
-        }
-        if (foundCommands.length) {
-          this.showCommandsSuggestions(foundCommands)
-        } else {
-          this.hideSuggestions()
-        }
-      } else {
-        this.hideSuggestions()
+    } else */ /* if(!matches[1] && matches[2][0] === '/') { // commands
+      if(this.chat.peerId > 0) {
+        this.chat.appProfileManager.getProfileByPeerId(this.chat.peerId).then(full => {
+          const botInfos: BotInfo.botInfo[] = [].concat(full.bot_info);
+          const index = new SearchIndex<string>(false, false);
+          
+          const commands: Map<string, {userId: number, command: BotCommand}> = new Map();
+          botInfos.forEach(botInfo => {
+            botInfo.commands.forEach(botCommand => {
+              commands.set(botCommand.command, {userId: botInfo.user_id, command: botCommand});
+              index.indexObject(botCommand.command, '/' + botCommand.command);
+            });
+          });
+
+          const found = index.search(matches[2]);
+          const filtered = Array.from(found).map(command => commands.get(command));
+          this.commandsHelper.renderCommands(filtered);
+          console.log('found commands', found, filtered);
+        });
       }
-    } else  *//* if(firstChar === ':') */ { // emoji
+    } else */ { // emoji
       if(value.match(/^\s*:(.+):\s*$/)) {
         this.emojiHelper.toggle(true);
         return;
@@ -1299,7 +1300,7 @@ export default class ChatInput {
       this.appEmojiManager.getBothEmojiKeywords().then(() => {
         const q = matches[2].replace(/^:/, '');
         const emojis = this.appEmojiManager.searchEmojis(q);
-        this.emojiHelper.renderEmojis(emojis);
+        this.emojiHelper.renderEmojis(emojis, matches[2][0] !== ':');
         //console.log(emojis);
       });
     }

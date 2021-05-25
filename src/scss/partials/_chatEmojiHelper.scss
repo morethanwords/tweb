@@ -1,21 +1,29 @@
 .emoji-helper {
   height: 50px;
-  padding: .25rem !important;
+  padding: .25rem 0 !important;
 
   > .scrollable {
     position: relative;
   }
 
   .super-emojis {
-    display: flex;
+    display: block;
     white-space: nowrap;
+    /* display: flex;
     align-items: center;
-    justify-content: flex-start;
+    justify-content: flex-start; */
+    
+    &:before, &:after {
+      display: inline-block;
+      content: " ";
+      //flex: 0 0 auto;
+      width: .1875rem;
+    }
   }
 
-  .super-emoji {
+  /* .super-emoji {
     flex: 0 0 auto;
-  }
+  } */
 
   .super-emoji:not(.active) {
     @include hover() {

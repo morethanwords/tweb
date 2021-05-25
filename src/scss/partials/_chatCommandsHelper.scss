@@ -1,0 +1,33 @@
+.commands-helper {
+  left: 0;
+  //width: 320px !important;
+
+  .scrollable {
+    position: relative;
+    max-height: 232px;
+  }
+
+  &-commands {
+    padding: .5rem 0;
+  }
+
+  &-command {
+    height: 3.125rem;
+    display: flex;
+    padding: 0 .75rem;
+    align-items: center;
+    cursor: pointer;
+
+    @include hover();
+
+    &-name {
+      margin-left: .875rem;
+      font-weight: 500;
+    }
+
+    &-description {
+      margin-left: .5625rem;
+      color: var(--secondary-text-color);
+    }
+  }
+}
