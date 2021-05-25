@@ -651,7 +651,7 @@ export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showS
   return img;
 } */
 
-export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withTail, isOut, lazyLoadQueue, middleware, size, withoutPreloader, loadPromises, noAutoDownload, noBlur}: {
+export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withTail, isOut, lazyLoadQueue, middleware, size, withoutPreloader, loadPromises, noAutoDownload, noBlur, noThumb, noFadeIn}: {
   photo: MyPhoto | MyDocument, 
   message: any, 
   container: HTMLElement, 
@@ -666,6 +666,8 @@ export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withT
   loadPromises?: Promise<any>[],
   noAutoDownload?: boolean,
   noBlur?: boolean,
+  noThumb?: boolean,
+  noFadeIn?: boolean,
 }) {
   if(!((photo as MyPhoto).sizes || (photo as MyDocument).thumbs)) {
     if(boxWidth && boxHeight && !size && photo._ === 'document') {
@@ -722,6 +724,28 @@ export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withT
           const thumbImage = gotThumb.image; // local scope
           thumbImage.classList.add('media-photo');
           container.append(thumbImage);
+        } else {
+          const res = wrapPhoto({
+            container,
+            message,
+            photo,
+            boxWidth: 0,
+            boxHeight: 0,
+            size,
+            lazyLoadQueue,
+            isOut,
+            loadPromises,
+            middleware,
+            withoutPreloader,
+            withTail,
+            noAutoDownload,
+            noBlur,
+            noThumb: true,
+            //noFadeIn: true
+          });
+          const thumbImage = res.images.full;
+          thumbImage.classList.add('media-photo', 'thumbnail');
+          //container.append(thumbImage);
         }
 
         container.classList.add('media-container-fitted');
@@ -735,12 +759,14 @@ export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withT
       cacheContext = appDownloadManager.getCacheContext(photo, size?.type);
     }
 
-    const gotThumb = appPhotosManager.getStrippedThumbIfNeeded(photo, cacheContext, !noBlur);
-    if(gotThumb) {
-      loadThumbPromise = Promise.all([loadThumbPromise, gotThumb.loadPromise]);
-      thumbImage = gotThumb.image;
-      thumbImage.classList.add('media-photo');
-      aspecter.append(thumbImage);
+    if(!noThumb) {
+      const gotThumb = appPhotosManager.getStrippedThumbIfNeeded(photo, cacheContext, !noBlur);
+      if(gotThumb) {
+        loadThumbPromise = Promise.all([loadThumbPromise, gotThumb.loadPromise]);
+        thumbImage = gotThumb.image;
+        thumbImage.classList.add('media-photo');
+        aspecter.append(thumbImage);
+      }
     }
   // }
 
@@ -748,7 +774,7 @@ export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withT
   
   //console.log('wrapPhoto downloaded:', photo, photo.downloaded, container);
 
-  const needFadeIn = (thumbImage || !cacheContext.downloaded) && rootScope.settings.animationsEnabled;
+  const needFadeIn = (thumbImage || !cacheContext.downloaded) && rootScope.settings.animationsEnabled && !noFadeIn;
   if(needFadeIn) {
     image.classList.add('fade-in');
   }

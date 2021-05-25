@@ -279,7 +279,7 @@ export class AppPhotosManager {
       const sizes = (photo as MyPhoto).sizes || (photo as MyDocument).thumbs;
       const thumb = sizes?.length ? sizes.find(size => size._ === 'photoStrippedSize') : null;
       if(thumb && ('bytes' in thumb)) {
-        return appPhotosManager.getImageFromStrippedThumb(photo, thumb as any, useBlur);
+        return this.getImageFromStrippedThumb(photo, thumb as any, useBlur);
       }
     }
 
@@ -407,5 +407,5 @@ export class AppPhotosManager {
 }
 
 const appPhotosManager = new AppPhotosManager();
-MOUNT_CLASS_TO.appPhotosManager = appPhotosManager;
+MOUNT_CLASS_TO && (MOUNT_CLASS_TO.appPhotosManager = appPhotosManager);
 export default appPhotosManager;
