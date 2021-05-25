@@ -12,6 +12,10 @@ let countries = require('fs').readFileSync('./in/countries.dat').toString();
 
 //console.log(emoji, countries);
 
+const path = process.argv[2];
+const writePathTo = (/* path ||  */__dirname + '/out/');
+console.log('Writing to:', writePathTo);
+
 let formatted = emoji.filter(e => e.has_img_apple);
 
 function encodeEmoji(emojiText) {
@@ -150,6 +154,7 @@ if(false) {
 
     emoji = encodeEmoji(emoji);
     //emoji = emoji.replace(/(-fe0f|fe0f)/g, '');
+    emoji = emoji.replace(/-?fe0f$/, '');
     
     let c = categories[category] === undefined ? 9 : categories[category];
     //obj[emoji] = '' + c + sort_order;
@@ -159,7 +164,7 @@ if(false) {
 
   console.log(obj);
   
-  require('fs').writeFileSync('./out/emoji.json', JSON.stringify(obj));
+  require('fs').writeFileSync(writePathTo + 'emoji.json', JSON.stringify(obj));
 }
 
 /* {
@@ -209,5 +214,5 @@ if(false) {
     //console.log(item);
   });
   
-  require('fs').writeFileSync('./out/countries.json', JSON.stringify(arr));
+  require('fs').writeFileSync(writePathTo + 'countries.json', JSON.stringify(arr));
 }

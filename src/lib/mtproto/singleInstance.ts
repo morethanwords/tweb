@@ -3,6 +3,7 @@ import { nextRandomInt } from "../../helpers/random";
 import { logger } from "../logger";
 import rootScope from "../rootScope";
 import sessionStorage from "../sessionStorage";
+import apiManager from "./mtprotoworker";
 
 export type AppInstance = {
   id: number,
@@ -10,23 +11,28 @@ export type AppInstance = {
   time: number
 };
 
+const CHECK_INSTANCE_INTERVAL = 5000; 
+const DEACTIVATE_TIMEOUT = 30000;
+const MULTIPLE_TABS_THRESHOLD = 20000;
+
 export class SingleInstance {
-  private instanceID = nextRandomInt(0xFFFFFFFF);
-  private started = false;
-  private masterInstance = false;
-  private deactivateTimeout: number = 0;
-  private deactivated = false;
-  private initial = false;
-  private log = logger('SI');
+  private instanceID: number;
+  private started: boolean;
+  private masterInstance: boolean;
+  private deactivateTimeout: number;
+  private deactivated: boolean;
+  private initial: boolean;
+  private log = logger('INSTANCE');
 
   public start() {
     if(!this.started/*  && !Config.Navigator.mobile && !Config.Modes.packed */) {
-      this.started = true
+      this.started = true;
 
+      this.reset();
       //IdleManager.start();
 
       rootScope.addEventListener('idle', this.checkInstance);
-      setInterval(this.checkInstance, 5000);
+      setInterval(this.checkInstance, CHECK_INSTANCE_INTERVAL);
       this.checkInstance();
 
       try {
@@ -35,12 +41,21 @@ export class SingleInstance {
     }
   }
 
-  public clearInstance() {
+  public reset() {
+    this.instanceID = nextRandomInt(0xFFFFFFFF);
+    this.masterInstance = false;
+    if(this.deactivateTimeout) clearTimeout(this.deactivateTimeout);
+    this.deactivateTimeout = 0;
+    this.deactivated = false;
+    this.initial = false;
+  }
+
+  public clearInstance = () => {
     if(this.masterInstance && !this.deactivated) {
       this.log.warn('clear master instance');
       sessionStorage.delete('xt_instance');
     }
-  }
+  };
 
   public deactivateInstance = () => {
     if(this.masterInstance || this.deactivated) {
@@ -56,30 +71,31 @@ export class SingleInstance {
     //document.title = _('inactive_tab_title_raw')
 
     rootScope.idle.deactivated = true;
+    rootScope.dispatchEvent('instance_deactivated');
   };
 
-  public checkInstance = () => {
+  public checkInstance = (idle = rootScope.idle && rootScope.idle.isIDLE) => {
     if(this.deactivated) {
       return false;
     }
     
     const time = Date.now();
-    const idle = rootScope.idle && rootScope.idle.isIDLE;
     const newInstance: AppInstance = {
       id: this.instanceID, 
       idle, 
       time
     };
 
-    sessionStorage.get('xt_instance').then((curInstance: AppInstance) => {
-      // console.log(dT(), 'check instance', newInstance, curInstance)
+    sessionStorage.get('xt_instance', false).then((curInstance: AppInstance) => {
+      // this.log('check instance', newInstance, curInstance)
       if(!idle ||
           !curInstance ||
-          curInstance.id == this.instanceID ||
-          curInstance.time < time - 20000) {
+          curInstance.id === this.instanceID ||
+          curInstance.time < (time - MULTIPLE_TABS_THRESHOLD)) {
         sessionStorage.set({xt_instance: newInstance});
+
         if(!this.masterInstance) {
-          //MtpNetworkerFactory.startAll();
+          apiManager.startAll();
           if(!this.initial) {
             this.initial = true;
           } else {
@@ -95,10 +111,10 @@ export class SingleInstance {
         }
       } else {
         if(this.masterInstance) {
-          //MtpNetworkerFactory.stopAll();
+          apiManager.stopAll();
           this.log.warn('now idle instance', newInstance);
           if(!this.deactivateTimeout) {
-            this.deactivateTimeout = window.setTimeout(this.deactivateInstance, 30000);
+            this.deactivateTimeout = window.setTimeout(this.deactivateInstance, DEACTIVATE_TIMEOUT);
           }
 
           this.masterInstance = false;

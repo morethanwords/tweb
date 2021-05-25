@@ -824,9 +824,12 @@ $bubble-margin: .25rem;
     margin: 0 4px 6px 4px;
     cursor: pointer;
     border-radius: 4px;
+    min-width: 10rem;
 
     &-content {
-      max-width: 300px;
+      //max-width: 300px;
+      position: absolute;
+      max-width: calc(100% - 24px);
     }
   }
 

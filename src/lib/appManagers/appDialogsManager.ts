@@ -32,7 +32,7 @@ import App from "../../config/app";
 import DEBUG, { MOUNT_CLASS_TO } from "../../config/debug";
 import appNotificationsManager from "./appNotificationsManager";
 import PeerTitle from "../../components/peerTitle";
-import { i18n, _i18n } from "../langPack";
+import { i18n, LangPackKey, _i18n } from "../langPack";
 import findUpTag from "../../helpers/dom/findUpTag";
 import { LazyLoadQueueIntersector } from "../../components/lazyLoadQueue";
 import lottieLoader from "../lottieLoader";
@@ -67,8 +67,9 @@ class ConnectionStatusComponent {
   private statusEl: HTMLElement;
   private statusPreloader: ProgressivePreloader;
 
-  private currentText = '';
+  private currentLangPackKey = '';
 
+  private connectingTimeout: number;
   private connecting = false;
   private updating = false;
 
@@ -151,23 +152,29 @@ class ConnectionStatusComponent {
       }
 
       this.connecting = !online;
+      this.connectingTimeout = status && status.timeout;
       DEBUG && this.log('connecting', this.connecting);
       this.setState();
     });
   };
 
-  private setStatusText = (text: string) => {
-    if(this.currentText === text) return;
-    this.statusEl.innerText = this.currentText = text;
+  private setStatusText = (langPackKey: LangPackKey) => {
+    if(this.currentLangPackKey === langPackKey) return;
+    this.currentLangPackKey = langPackKey;
+    replaceContent(this.statusEl, i18n(langPackKey));
     this.statusPreloader.attach(this.statusEl);
   };
 
   private setState = () => {
     const timeout = ConnectionStatusComponent.CHANGE_STATE_DELAY;
     if(this.connecting) {
-      this.setStatusText('Waiting for network...');
+      // if(this.connectingTimeout) {
+      //   this.setStatusText('ConnectionStatus.Reconnect');
+      // } else {
+        this.setStatusText('ConnectionStatus.Waiting');
+      // }
     } else if(this.updating) {
-      this.setStatusText('Updating...');
+      this.setStatusText('Updating');
     }
 
     DEBUG && this.log('setState', this.connecting || this.updating);
@@ -908,7 +915,7 @@ export class AppDialogsManager {
 
       const offsetTop = this.folders.container.offsetTop;
       const firstY = rectContainer.y + offsetTop;
-      const lastY = rectContainer.y - 8; // 8px - .chatlist padding-bottom
+      const lastY = rectContainer.y/*  - 8 */; // 8px - .chatlist padding-bottom
       
       const firstElement = findUpTag(document.elementFromPoint(Math.ceil(rectTarget.x), Math.ceil(firstY + 1)), firstElementChild.tagName) as HTMLElement;
       const lastElement = findUpTag(document.elementFromPoint(Math.ceil(rectTarget.x), Math.floor(lastY + rectContainer.height - 1)), firstElementChild.tagName) as HTMLElement;

@@ -58,8 +58,9 @@ import isSendShortcutPressed from '../../helpers/dom/isSendShortcutPressed';
 import placeCaretAtEnd from '../../helpers/dom/placeCaretAtEnd';
 import { MarkdownType, markdownTags } from '../../helpers/dom/getRichElementValue';
 import getRichValueWithCaret from '../../helpers/dom/getRichValueWithCaret';
-import cleanSearchText from '../../helpers/cleanSearchText';
 import EmojiHelper from './emojiHelper';
+import setRichFocus from '../../helpers/dom/setRichFocus';
+import { toCodePoints } from '../../vendor/emoji';
 
 const RECORD_MIN_TIME = 500;
 const POSTING_MEDIA_NOT_ALLOWED = 'Posting media content isn\'t allowed in this group.';
@@ -974,6 +975,7 @@ export default class ChatInput {
   }
 
   private handleMarkdownShortcut = (e: KeyboardEvent) => {
+    // console.log('handleMarkdownShortcut', e);
     const formatKeys: {[key: string]: MarkdownType} = {
       'B': 'bold',
       'I': 'italic',
@@ -1145,14 +1147,55 @@ export default class ChatInput {
 
   public onEmojiSelected = (emoji: string, autocomplete: boolean) => {
     if(autocomplete) {
-      const {value: fullValue, caretPos} = getRichValueWithCaret(this.messageInput);
+      const {value: fullValue, caretPos, entities} = getRichValueWithCaret(this.messageInput);
       const pos = caretPos >= 0 ? caretPos : fullValue.length;
-      const suffix = fullValue.substr(pos);
       const prefix = fullValue.substr(0, pos);
-      const matches = prefix.match(ChatInput.AUTO_COMPLETE_REG_EXP);
-      console.log(matches);
+      const suffix = fullValue.substr(pos);
 
-      const idx = matches.index + matches[1].length;
+      const matches = prefix.match(ChatInput.AUTO_COMPLETE_REG_EXP);
+
+      const matchIndex = matches.index + (matches[0].length - matches[2].length);
+      const newPrefix = prefix.slice(0, matchIndex);
+      const newValue = newPrefix + emoji + suffix;
+
+      // merge emojis
+      const hadEntities = RichTextProcessor.parseEntities(fullValue);
+      RichTextProcessor.mergeEntities(entities, hadEntities);
+
+      const emojiEntity: MessageEntity.messageEntityEmoji = {
+        _: 'messageEntityEmoji',
+        offset: 0,
+        length: emoji.length,
+        unicode: toCodePoints(emoji).join('-')
+      };
+      const addEntities: MessageEntity[] = [emojiEntity];
+      emojiEntity.offset = matchIndex;
+      addEntities.push({
+        _: 'messageEntityCaret',
+        length: 0,
+        offset: emojiEntity.offset + emojiEntity.length
+      });
+      
+      // add offset to entities next to emoji
+      const diff = emojiEntity.length - matches[2].length;
+      entities.forEach(entity => {
+        if(entity.offset >= emojiEntity.offset) {
+          entity.offset += diff;
+        }
+      });
+
+      RichTextProcessor.mergeEntities(entities, addEntities);
+
+      //const saveExecuted = this.prepareDocumentExecute();
+      this.messageInputField.value = RichTextProcessor.wrapDraftText(newValue, {entities});
+
+      const caret = this.messageInput.querySelector('.composer-sel');
+      setRichFocus(this.messageInput, caret);
+      caret.remove();
+
+      //saveExecuted();
+
+      //document.execCommand('insertHTML', true, RichTextProcessor.wrapEmojiText(emoji));
 
       //const str = 
 
@@ -1176,8 +1219,8 @@ export default class ChatInput {
   };
 
   private checkAutocomplete(value?: string, caretPos?: number) {
-    return;
-    
+    //return;
+
     if(value === undefined) {
       const r = getRichValueWithCaret(this.messageInputField.input, false);
       value = r.value;
@@ -1260,7 +1303,8 @@ export default class ChatInput {
       }
       
       this.appEmojiManager.getBothEmojiKeywords().then(() => {
-        const emojis = this.appEmojiManager.searchEmojis(matches[2]);
+        const q = matches[2].replace(/^:/, '');
+        const emojis = this.appEmojiManager.searchEmojis(q);
         this.emojiHelper.renderEmojis(emojis);
         //console.log(emojis);
       });

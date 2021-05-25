@@ -1,0 +1,22 @@
+.popup-instance-deactivated {
+  background-color: rgba(0, 0, 0, .6);
+  
+  .instance-deactivated-container {
+    margin: auto;
+    text-align: center;
+    pointer-events: none;
+  }
+
+  .header {
+    font-size: 2rem;
+    color: #fff;
+    //line-height: var(--line-height);
+  }
+
+  .subtitle {
+    color: #fff;
+    opacity: .6;
+    font-size: 1.5rem;
+    line-height: var(--line-height);
+  }
+}

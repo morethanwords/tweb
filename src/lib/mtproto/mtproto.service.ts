@@ -52,7 +52,7 @@ const onFetch = (event: FetchEvent): void => {
   try {
     const [, url, scope, params] = /http[:s]+\/\/.*?(\/(.*?)(?:$|\/(.*)$))/.exec(event.request.url) || [];
 
-    log.debug('[fetch]:', event);
+    //log.debug('[fetch]:', event);
   
     switch(scope) {
       case 'stream': {
@@ -71,7 +71,7 @@ const onFetch = (event: FetchEvent): void => {
           offset = info.size - (info.size % limitPart);
         } */
   
-        log.debug('[stream]', url, offset, end);
+        //log.debug('[stream]', url, offset, end);
   
         event.respondWith(Promise.race([
           timeout(45 * 1000),
@@ -86,7 +86,7 @@ const onFetch = (event: FetchEvent): void => {
             const limit = end && end < limitPart ? alignLimit(end - offset + 1) : limitPart;
             const alignedOffset = alignOffset(offset, limit);
   
-            log.debug('[stream] requestFilePart:', /* info.dcId, info.location, */ alignedOffset, limit);
+            //log.debug('[stream] requestFilePart:', /* info.dcId, info.location, */ alignedOffset, limit);
 
             const task: ServiceWorkerTask = {
               type: 'requestFilePart',
@@ -99,7 +99,7 @@ const onFetch = (event: FetchEvent): void => {
             deferred.then(result => {
               let ab = result.bytes as Uint8Array;
               
-              log.debug('[stream] requestFilePart result:', result);
+              //log.debug('[stream] requestFilePart result:', result);
   
               const headers: Record<string, string> = {
                 'Accept-Ranges': 'bytes',

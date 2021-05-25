@@ -143,8 +143,8 @@ export default class AppStorage<Storage extends Record<string, any>/* Storage ex
     return this.cache[key] = value;
   }
 
-  public async get(key: keyof Storage): Promise<Storage[typeof key]> {
-    if(this.cache.hasOwnProperty(key)) {
+  public async get(key: keyof Storage, useCache = true): Promise<Storage[typeof key]> {
+    if(this.cache.hasOwnProperty(key) && useCache) {
       return this.getFromCache(key);
     } else if(this.useStorage) {
       const r = this.getPromises.get(key);

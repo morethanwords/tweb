@@ -57,6 +57,8 @@ import placeCaretAtEnd from '../../helpers/dom/placeCaretAtEnd';
 import replaceContent from '../../helpers/dom/replaceContent';
 import whichChild from '../../helpers/dom/whichChild';
 import appEmojiManager from './appEmojiManager';
+import PopupElement from '../../components/popups';
+import singleInstance from '../mtproto/singleInstance';
 
 //console.log('appImManager included33!');
 
@@ -179,6 +181,38 @@ export class AppImManager {
 
     rootScope.on('theme_change', () => {
       this.applyCurrentTheme();
+    });
+
+    rootScope.on('instance_deactivated', () => {
+      const popup = new PopupElement('popup-instance-deactivated', undefined, {overlayClosable: true});
+      const c = document.createElement('div');
+      c.classList.add('instance-deactivated-container');
+      (popup as any).container.replaceWith(c);
+
+      const header = document.createElement('div');
+      header.classList.add('header');
+      header.append(i18n('Deactivated.Title'));
+
+      const subtitle = document.createElement('div');
+      subtitle.classList.add('subtitle');
+      subtitle.append(i18n('Deactivated.Subtitle'));
+
+      c.append(header, subtitle);
+
+      document.body.classList.add('deactivated');
+
+      (popup as any).onClose = () => {
+        document.body.classList.add('deactivated-backwards');
+
+        singleInstance.reset();
+        singleInstance.checkInstance(false);
+
+        setTimeout(() => {
+          document.body.classList.remove('deactivated', 'deactivated-backwards');
+        }, 333);
+      };
+
+      popup.show();
     });
 
     sessionStorage.get('chatPositions').then((c) => {
@@ -723,7 +757,7 @@ export class AppImManager {
     if(!this.myId) return Promise.resolve();
     
     appUsersManager.setUserStatus(this.myId, this.offline);
-    return apiManager.invokeApi('account.updateStatus', {offline: this.offline});
+    return apiManager.invokeApiSingle('account.updateStatus', {offline: this.offline});
   }
 
   private createNewChat() {

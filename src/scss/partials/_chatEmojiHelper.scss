@@ -12,8 +12,12 @@
   }
 
   .super-emoji:not(.active) {
-		@include hover() {
-			background: none;
-		}
-	}
+    @include hover() {
+      background: none;
+    }
+  }
+
+  .super-emoji.active {
+    background-color: var(--primary-color) !important;
+  }
 }

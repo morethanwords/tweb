@@ -4,7 +4,6 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import attachListNavigation from "../../helpers/dom/attachlistNavigation";
 import { MyDocument } from "../../lib/appManagers/appDocsManager";
 import { CHAT_ANIMATION_GROUP } from "../../lib/appManagers/appImManager";
 import appStickersManager from "../../lib/appManagers/appStickersManager";
@@ -15,33 +14,17 @@ import Scrollable from "../scrollable";
 import AutocompleteHelper from "./autocompleteHelper";
 
 export default class StickersHelper extends AutocompleteHelper {
-  private stickersContainer: HTMLElement;
   private scrollable: Scrollable;
   private superStickerRenderer: SuperStickerRenderer;
   private lazyLoadQueue: LazyLoadQueue;
   private lastEmoticon = '';
 
   constructor(appendTo: HTMLElement) {
-    super(appendTo);
+    super(appendTo, 'xy', (target) => {
+      EmoticonsDropdown.onMediaClick({target}, true);
+    }, 'ArrowUp');
 
     this.container.classList.add('stickers-helper');
-
-    this.addEventListener('visible', () => {
-      const list = this.stickersContainer;
-      const {detach} = attachListNavigation({
-        list, 
-        type: 'xy',
-        onSelect: (target) => {
-          EmoticonsDropdown.onMediaClick({target}, true);
-        },
-        once: true
-      });
-
-      this.addEventListener('hidden', () => {
-        list.innerHTML = '';
-        detach();
-      }, true);
-    });
   }
 
   public checkEmoticon(emoticon: string) {
@@ -73,7 +56,7 @@ export default class StickersHelper extends AutocompleteHelper {
         this.init = null;
       }
 
-      const container = this.stickersContainer.cloneNode() as HTMLElement;
+      const container = this.list.cloneNode() as HTMLElement;
 
       let ready: Promise<void>;
 
@@ -92,8 +75,12 @@ export default class StickersHelper extends AutocompleteHelper {
       }
 
       ready.then(() => {
-        this.stickersContainer.replaceWith(container);
-        this.stickersContainer = container;
+        if(!this.hidden) {
+          this.scrollable.container.scrollTop = 0;
+        }
+
+        this.list.replaceWith(container);
+        this.list = container;
 
         this.toggle(!stickers.length);
         this.scrollable.scrollTop = 0;
@@ -102,10 +89,10 @@ export default class StickersHelper extends AutocompleteHelper {
   }
 
   private init() {
-    this.stickersContainer = document.createElement('div');
-    this.stickersContainer.classList.add('stickers-helper-stickers', 'super-stickers');
+    this.list = document.createElement('div');
+    this.list.classList.add('stickers-helper-stickers', 'super-stickers');
 
-    this.container.append(this.stickersContainer);
+    this.container.append(this.list);
 
     this.scrollable = new Scrollable(this.container);
     this.lazyLoadQueue = new LazyLoadQueue();

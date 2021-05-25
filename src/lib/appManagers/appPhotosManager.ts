@@ -240,6 +240,7 @@ export class AppPhotosManager {
   
       if(message && 
         (message.message || 
+          message.reply_to_mid || 
           message.media.webpage || 
           (message.replies && message.replies.pFlags.comments && message.replies.channel_id !== 777)
         )

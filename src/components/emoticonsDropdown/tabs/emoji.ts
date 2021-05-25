@@ -4,21 +4,22 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { EmoticonsDropdown, EmoticonsTab } from "..";
+import emoticonsDropdown, { EmoticonsDropdown, EmoticonsTab } from "..";
 import findUpClassName from "../../../helpers/dom/findUpClassName";
-import { fastRaf } from "../../../helpers/schedulers";
+import { fastRaf, pause } from "../../../helpers/schedulers";
+import appEmojiManager from "../../../lib/appManagers/appEmojiManager";
 import appImManager from "../../../lib/appManagers/appImManager";
-import appStateManager from "../../../lib/appManagers/appStateManager";
 import Config from "../../../lib/config";
 import { i18n, LangPackKey } from "../../../lib/langPack";
 import { RichTextProcessor } from "../../../lib/richtextprocessor";
 import rootScope from "../../../lib/rootScope";
+import { toCodePoints } from "../../../vendor/emoji";
 import { putPreloader } from "../../misc";
 import Scrollable from "../../scrollable";
 import StickyIntersector from "../../stickyIntersector";
 
 const loadedURLs: Set<string> = new Set();
-export function appendEmoji(emoji: string, container: HTMLElement, prepend = false/* , unified = false */) {
+export function appendEmoji(emoji: string, container: HTMLElement, prepend = false, unify = false) {
   //const emoji = details.unified;
   //const emoji = (details.unified as string).split('-')
   //.reduce((prev, curr) => prev + String.fromCodePoint(parseInt(curr, 16)), '');
@@ -27,18 +28,18 @@ export function appendEmoji(emoji: string, container: HTMLElement, prepend = fal
   spanEmoji.classList.add('super-emoji');
 
   let kek: string;
-  /* if(unified) {
-    kek = RichTextProcessor.wrapRichText('_', {
+  if(unify) {
+    kek = RichTextProcessor.wrapRichText(emoji, {
       entities: [{
         _: 'messageEntityEmoji',
         offset: 0,
-        length: emoji.split('-').length,
-        unicode: emoji
+        length: emoji.length,
+        unicode: toCodePoints(emoji).join('-')
       }]
     });
-  } else { */
+  } else {
     kek = RichTextProcessor.wrapEmojiText(emoji);
-  //}
+  }
 
   /* if(!kek.includes('emoji')) {
     console.log(emoji, kek, spanEmoji, emoji.length, new TextEncoder().encode(emoji), emojiUnicode(emoji));
@@ -104,7 +105,6 @@ export function getEmojiFromElement(element: HTMLElement) {
 export default class EmojiTab implements EmoticonsTab {
   private content: HTMLElement;
 
-  private recent: string[] = [];
   private recentItemsDiv: HTMLElement;
 
   private scroll: Scrollable;
@@ -170,12 +170,27 @@ export default class EmojiTab implements EmoticonsTab {
 
       div.append(titleDiv, itemsDiv);
 
-      emojis.forEach(emoji => {
+      emojis.forEach(unified => {
         /* if(emojiUnicode(emoji) === '1f481-200d-2642') {
           console.log('append emoji', emoji, emojiUnicode(emoji));
         } */
 
-        emoji = emoji.split('-').reduce((prev, curr) => prev + String.fromCodePoint(parseInt(curr, 16)), '');
+        let emoji = unified.split('-').reduce((prev, curr) => prev + String.fromCodePoint(parseInt(curr, 16)), '');
+        //if(emoji.includes('🕵')) {
+          //console.log('toCodePoints', toCodePoints(emoji));
+          //emoji = emoji.replace(/(\u200d[\u2640\u2642\u2695])(?!\ufe0f)/, '\ufe0f$1');
+          // const zwjIndex = emoji.indexOf('\u200d');
+          // if(zwjIndex !== -1 && !emoji.includes('\ufe0f')) {
+          //   /* if(zwjIndex !== (emoji.length - 1)) {
+          //     emoji = emoji.replace(/(\u200d)/g, '\ufe0f$1');
+          //   } */
+
+          //   emoji += '\ufe0f';
+          //   //emoji += '\ufe0f';
+          // }
+
+          //debugger;
+        //}
 
         appendEmoji(emoji/* .replace(/[\ufe0f\u2640\u2642\u2695]/g, '') */, itemsDiv, false/* , false */);
 
@@ -197,22 +212,17 @@ export default class EmojiTab implements EmoticonsTab {
     const preloader = putPreloader(this.content, true);
 
     Promise.all([
-      new Promise((resolve) => setTimeout(resolve, 200)),
-
-      appStateManager.getState().then(state => {
-        if(Array.isArray(state.recentEmoji)) {
-          this.recent = state.recentEmoji;
-        }
-      })
-    ]).then(() => {
+      pause(200),
+      appEmojiManager.getRecentEmojis()
+    ]).then(([_, recent]) => {
       preloader.remove();
 
       this.recentItemsDiv = divs['Emoji.Recent'].querySelector('.super-emojis');
-      for(const emoji of this.recent) {
+      for(const emoji of recent) {
         appendEmoji(emoji, this.recentItemsDiv);
       }
 
-      this.recentItemsDiv.parentElement.classList.toggle('hide', !this.recent.length);
+      this.recentItemsDiv.parentElement.classList.toggle('hide', !this.recentItemsDiv.childElementCount);
 
       categories.unshift('Emoji.Recent');
       categories.map(category => {
@@ -246,10 +256,20 @@ export default class EmojiTab implements EmoticonsTab {
       target = target.firstChild as HTMLElement;
     } else if(target.tagName === 'DIV') return;
 
-    //console.log('contentEmoji div', target);
-    appImManager.chat.input.messageInput.innerHTML += RichTextProcessor.emojiSupported ? 
+    // set selection range
+    const savedRange = emoticonsDropdown.getSavedRange();
+    if(savedRange) {
+      const sel = document.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(savedRange);
+    }
+
+    const html = RichTextProcessor.emojiSupported ? 
       (target.nodeType === 3 ? target.nodeValue : target.innerHTML) : 
       target.outerHTML;
+
+    // insert emoji in input
+    document.execCommand('insertHTML', true, html);
 
     // Recent
     const emoji = getEmojiFromElement(target);
@@ -259,18 +279,11 @@ export default class EmojiTab implements EmoticonsTab {
         el.remove();
       }
     });
-    //const scrollHeight = this.recentItemsDiv.scrollHeight;
+    
     appendEmoji(emoji, this.recentItemsDiv, true);
 
-    this.recent.findAndSplice(e => e === emoji);
-    this.recent.unshift(emoji);
-    if(this.recent.length > 36) {
-      this.recent.length = 36;
-    }
-
-    this.recentItemsDiv.parentElement.classList.toggle('hide', !this.recent.length);
-
-    appStateManager.pushToState('recentEmoji', this.recent);
+    appEmojiManager.pushRecentEmoji(emoji);
+    this.recentItemsDiv.parentElement.classList.remove('hide');
 
     // Append to input
     const event = new Event('input', {bubbles: true, cancelable: true});

@@ -270,6 +270,7 @@ html.night {
 @import "partials/popups/datePicker";
 @import "partials/popups/createPoll";
 @import "partials/popups/forward"; 
+@import "partials/popups/instanceDeactivated";
 
 @import "partials/pages/pages";
 @import "partials/pages/authCode";
@@ -417,6 +418,34 @@ body {
   //touch-action: pan-x pan-y;
   background-color: var(--body-background-color);
   color: var(--primary-text-color);
+}
+
+body.deactivated {
+  animation: grayscale-in var(--transition-standard-in) forwards;
+}
+
+body.deactivated-backwards {
+  animation: grayscale-out var(--transition-standard-out) forwards;
+}
+
+@keyframes grayscale-in {
+  0% {
+    filter: grayscale(0);
+  }
+
+  100% {
+    filter: grayscale(1);
+  }
+}
+
+@keyframes grayscale-out {
+  0% {
+    filter: grayscale(1);
+  }
+
+  100% {
+    filter: grayscale(0);
+  }
 }
 
 /* body {
