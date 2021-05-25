@@ -49,7 +49,7 @@ export default class PopupNewMedia extends PopupElement {
     sendFileDetails: [],
     group: false
   };
-  inputField: InputField;
+  private inputField: InputField;
 
   constructor(private chat: Chat, files: File[], willAttachType: PopupNewMedia['willAttach']['type']) {
     super('popup-send-photo popup-new-media', null, {closable: true, withConfirm: 'Modal.Send'});
@@ -126,11 +126,11 @@ export default class PopupNewMedia extends PopupElement {
 
   private onKeyDown = (e: KeyboardEvent) => {
     const target = e.target as HTMLElement;
-    if(target.tagName === 'INPUT' || target.hasAttribute('contenteditable')) {
-      return;
-    }
-    
     if(target !== this.input) {
+      if(target.tagName === 'INPUT' || target.hasAttribute('contenteditable')) {
+        return;
+      }
+
       this.input.focus();
       placeCaretAtEnd(this.input);
     }
