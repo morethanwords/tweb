@@ -15,7 +15,7 @@ export default class CommandsHelper extends AutocompleteHelper {
     this.container.classList.add('commands-helper');
   }
 
-  private init() {
+  protected init() {
     this.list = document.createElement('div');
     this.list.classList.add('commands-helper-commands');
 
@@ -30,7 +30,7 @@ export default class CommandsHelper extends AutocompleteHelper {
     });
   }
 
-  public renderCommands(commands: {userId: number, command: BotCommand}[]) {
+  public render(commands: {userId: number, command: BotCommand}[]) {
     if(this.init) {
       if(!commands.length) {
         return;

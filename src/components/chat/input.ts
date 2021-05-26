@@ -62,6 +62,7 @@ import EmojiHelper from './emojiHelper';
 import setRichFocus from '../../helpers/dom/setRichFocus';
 import SearchIndex from '../../lib/searchIndex';
 import CommandsHelper from './commandsHelper';
+import AutocompleteHelperController from './autocompleteHelperController';
 
 const RECORD_MIN_TIME = 500;
 const POSTING_MEDIA_NOT_ALLOWED = 'Posting media content isn\'t allowed in this group.';
@@ -132,6 +133,7 @@ export default class ChatInput {
   readonly executedHistory: string[] = [];
   private canUndoFromHTML = '';
 
+  private autocompleteHelperController: AutocompleteHelperController;
   private commandsHelper: CommandsHelper;
   private emojiHelper: EmojiHelper;
   private stickersHelper: StickersHelper;
@@ -366,9 +368,12 @@ export default class ChatInput {
     this.newMessageWrapper.append(...[this.btnToggleEmoticons, this.inputMessageContainer, this.btnScheduled, this.attachMenu, this.recordTimeEl, this.fileInput].filter(Boolean));
 
     this.rowsWrapper.append(this.replyElements.container);
-    this.commandsHelper = new CommandsHelper(this.rowsWrapper);
-    this.emojiHelper = new EmojiHelper(this.rowsWrapper, this);
-    this.stickersHelper = new StickersHelper(this.rowsWrapper);
+    this.autocompleteHelperController = new AutocompleteHelperController();
+    this.autocompleteHelperController.addHelpers([
+      this.commandsHelper = new CommandsHelper(this.rowsWrapper),
+      this.emojiHelper = new EmojiHelper(this.rowsWrapper, this),
+      this.stickersHelper = new StickersHelper(this.rowsWrapper)
+    ]);
     this.rowsWrapper.append(this.newMessageWrapper);
 
     this.btnCancelRecord = ButtonIcon('delete danger btn-circle z-depth-1 btn-record-cancel');
@@ -1271,7 +1276,7 @@ export default class ChatInput {
       } else {
         this.hideSuggestions()
       }
-    } else */ /* if(!matches[1] && matches[2][0] === '/') { // commands
+    } else */ if(!matches[1] && matches[2][0] === '/') { // commands
       if(this.chat.peerId > 0) {
         this.chat.appProfileManager.getProfileByPeerId(this.chat.peerId).then(full => {
           const botInfos: BotInfo.botInfo[] = [].concat(full.bot_info);
@@ -1287,11 +1292,11 @@ export default class ChatInput {
 
           const found = index.search(matches[2]);
           const filtered = Array.from(found).map(command => commands.get(command));
-          this.commandsHelper.renderCommands(filtered);
+          this.commandsHelper.render(filtered);
           console.log('found commands', found, filtered);
         });
       }
-    } else */ { // emoji
+    } else { // emoji
       if(value.match(/^\s*:(.+):\s*$/)) {
         this.emojiHelper.toggle(true);
         return;
@@ -1300,7 +1305,7 @@ export default class ChatInput {
       this.appEmojiManager.getBothEmojiKeywords().then(() => {
         const q = matches[2].replace(/^:/, '');
         const emojis = this.appEmojiManager.searchEmojis(q);
-        this.emojiHelper.renderEmojis(emojis, matches[2][0] !== ':');
+        this.emojiHelper.render(emojis, matches[2][0] !== ':');
         //console.log(emojis);
       });
     }
