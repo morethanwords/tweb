@@ -14,7 +14,7 @@ export default class EmojiHelper extends AutocompleteHelper {
     this.container.classList.add('emoji-helper');
   }
 
-  private init() {
+  protected init() {
     this.list = document.createElement('div');
     this.list.classList.add('emoji-helper-emojis', 'super-emojis');
 
@@ -29,7 +29,7 @@ export default class EmojiHelper extends AutocompleteHelper {
     });
   }
 
-  public renderEmojis(emojis: string[], waitForKey: boolean) {
+  public render(emojis: string[], waitForKey: boolean) {
     if(this.init) {
       if(!emojis.length) {
         return;

@@ -90,7 +90,7 @@ export default class StickersHelper extends AutocompleteHelper {
     });
   }
 
-  private init() {
+  protected init() {
     this.list = document.createElement('div');
     this.list.classList.add('stickers-helper-stickers', 'super-stickers');
 

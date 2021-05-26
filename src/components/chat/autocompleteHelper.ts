@@ -19,6 +19,7 @@ export default class AutocompleteHelper extends EventListenerBase<{
   protected container: HTMLElement;
   protected list: HTMLElement;
   protected resetTarget: () => void;
+  protected init?(): void;
 
   constructor(appendTo: HTMLElement, 
     protected listType: 'xy' | 'x' | 'y', 
@@ -73,6 +74,10 @@ export default class AutocompleteHelper extends EventListenerBase<{
   }
 
   public toggle(hide?: boolean) {
+    if(this.init) {
+      return;
+    }
+    
     hide = hide === undefined ? this.container.classList.contains('is-visible') && !this.container.classList.contains('backwards') : hide;
 
     if(this.hidden === hide) {
