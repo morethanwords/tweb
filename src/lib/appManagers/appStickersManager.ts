@@ -24,14 +24,14 @@ export class AppStickersManager {
   private getStickersByEmoticonsPromises: {[emoticon: string]: Promise<Document[]>} = {};
   
   constructor() {
-    this.getStickerSet({id: 'emoji', access_hash: ''}, {overwrite: true});
+    this.getStickerSet({id: 'emoji', access_hash: ''});
 
     rootScope.addMultipleEventsListeners({
       updateNewStickerSet: (update) => {
         this.saveStickerSet(update.stickerset, update.stickerset.set.id);
         rootScope.broadcast('stickers_installed', update.stickerset.set);
       }
-    })
+    });
   }
 
   public saveStickers(docs: Document[]) {

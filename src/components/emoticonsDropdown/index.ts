@@ -27,6 +27,7 @@ import ListenerSetter from "../../helpers/listenerSetter";
 import blurActiveElement from "../../helpers/dom/blurActiveElement";
 import { attachClickEvent } from "../../helpers/dom/clickEvent";
 import whichChild from "../../helpers/dom/whichChild";
+import { cancelEvent } from "../../helpers/dom/cancelEvent";
 
 export const EMOTICONSSTICKERGROUP = 'emoticons-dropdown';
 
@@ -158,7 +159,7 @@ export class EmoticonsDropdown {
     });
 
     this.deleteBtn = this.element.querySelector('.emoji-tabs-delete');
-    this.deleteBtn.addEventListener('click', () => {
+    this.deleteBtn.addEventListener('click', (e) => {
       const input = appImManager.chat.input.messageInput;
       if((input.lastChild as any)?.tagName) {
         input.lastElementChild.remove();
@@ -173,6 +174,8 @@ export class EmoticonsDropdown {
       const event = new Event('input', {bubbles: true, cancelable: true});
       appImManager.chat.input.messageInput.dispatchEvent(event);
       //appSidebarRight.stickersTab.init();
+
+      cancelEvent(e);
     });
 
     (this.tabsEl.children[1] as HTMLLIElement).click(); // set emoji tab
@@ -254,7 +257,7 @@ export class EmoticonsDropdown {
       this.events.onOpen.forEach(cb => cb());
 
       const sel = document.getSelection();
-      if(!sel.isCollapsed) {
+      if(sel.rangeCount) {
         this.savedRange = sel.getRangeAt(0);
       }
 

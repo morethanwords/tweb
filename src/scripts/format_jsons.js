@@ -153,8 +153,8 @@ if(false) {
     .reduce((prev, curr) => prev + String.fromCodePoint(parseInt(curr, 16)), '');
 
     emoji = encodeEmoji(emoji);
-    //emoji = emoji.replace(/(-fe0f|fe0f)/g, '');
-    emoji = emoji.replace(/-?fe0f$/, '');
+    emoji = emoji.replace(/-?fe0f/g, '');
+    //emoji = emoji.replace(/-?fe0f$/, '');
     
     let c = categories[category] === undefined ? 9 : categories[category];
     //obj[emoji] = '' + c + sort_order;
