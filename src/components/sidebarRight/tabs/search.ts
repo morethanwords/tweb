@@ -42,12 +42,14 @@ export default class AppPrivateSearchTab extends SliderSuperTab {
     });
   }
 
-  open(peerId: number, threadId?: number, onDatePick?: AppPrivateSearchTab['onDatePick']) {
+  open(peerId: number, threadId?: number, onDatePick?: AppPrivateSearchTab['onDatePick'], query?: string) {
     const ret = super.open();
     if(this.init) {
       this.init();
       this.init = null;
     }
+
+    query && (this.inputSearch.inputField.value = query);
 
     if(this.peerId !== 0) {
       this.appSearch.beginSearch(this.peerId, this.threadId);
@@ -64,7 +66,7 @@ export default class AppPrivateSearchTab extends SliderSuperTab {
         new PopupDatePicker(new Date(), this.onDatePick).show();
       });
     }
-    
+
     appSidebarRight.toggleSidebar(true);
     return ret;
   }

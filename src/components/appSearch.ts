@@ -72,7 +72,7 @@ export default class AppSearch {
 
   private query = '';
 
-  public listsContainer: HTMLDivElement = null;
+  private listsContainer: HTMLDivElement = null;
 
   private peerId = 0; // 0 - means global
   private threadId = 0;

@@ -12,17 +12,23 @@ import { SuperStickerRenderer } from "../emoticonsDropdown/tabs/stickers";
 import LazyLoadQueue from "../lazyLoadQueue";
 import Scrollable from "../scrollable";
 import AutocompleteHelper from "./autocompleteHelper";
+import AutocompleteHelperController from "./autocompleteHelperController";
 
 export default class StickersHelper extends AutocompleteHelper {
   private scrollable: Scrollable;
   private superStickerRenderer: SuperStickerRenderer;
   private lazyLoadQueue: LazyLoadQueue;
-  private lastEmoticon = '';
 
-  constructor(appendTo: HTMLElement) {
-    super(appendTo, 'xy', (target) => {
-      EmoticonsDropdown.onMediaClick({target}, true);
-    }, 'ArrowUp');
+  constructor(appendTo: HTMLElement, controller: AutocompleteHelperController) {
+    super({
+      appendTo, 
+      controller,
+      listType: 'xy', 
+      onSelect: (target) => {
+        EmoticonsDropdown.onMediaClick({target}, true);
+      }, 
+      waitForKey: 'ArrowUp'
+    });
 
     this.container.classList.add('stickers-helper');
 
@@ -34,26 +40,15 @@ export default class StickersHelper extends AutocompleteHelper {
   }
 
   public checkEmoticon(emoticon: string) {
-    if(this.lastEmoticon === emoticon) return;
+    const middleware = this.controller.getMiddleware();
 
-    if(this.lastEmoticon && !emoticon) {
-      if(this.container) {
-        this.toggle(true);
-      }
-    }
-
-    this.lastEmoticon = emoticon;
     if(this.lazyLoadQueue) {
       this.lazyLoadQueue.clear();
-    }
-    
-    if(!emoticon) {
-      return;
     }
 
     appStickersManager.getStickersByEmoticon(emoticon)
     .then((stickers) => {
-      if(this.lastEmoticon !== emoticon) {
+      if(!middleware()) {
         return;
       }
 

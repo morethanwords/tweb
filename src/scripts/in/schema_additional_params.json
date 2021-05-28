@@ -102,6 +102,11 @@
   ],
   "type": "MessageEntity"
 }, {
+  "predicate": "messageEntityBotCommand",
+  "params": [
+    {"name": "unsafe", "type": "boolean"}
+  ]
+}, {
   "predicate": "user",
   "params": [
     {"name": "initials", "type": "string"},

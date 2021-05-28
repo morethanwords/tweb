@@ -352,6 +352,10 @@ export class AppUsersManager {
         changedTitle = true;
       }
 
+      /* if(user.pFlags.bot && user.bot_info_version !== oldUser.bot_info_version) {
+        
+      } */
+
       safeReplaceObject(oldUser, user);
       rootScope.broadcast('user_update', userId);
     }

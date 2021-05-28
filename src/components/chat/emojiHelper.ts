@@ -2,13 +2,19 @@ import type ChatInput from "./input";
 import { appendEmoji, getEmojiFromElement } from "../emoticonsDropdown/tabs/emoji";
 import { ScrollableX } from "../scrollable";
 import AutocompleteHelper from "./autocompleteHelper";
+import AutocompleteHelperController from "./autocompleteHelperController";
 
 export default class EmojiHelper extends AutocompleteHelper {
   private scrollable: ScrollableX;
 
-  constructor(appendTo: HTMLElement, private chatInput: ChatInput) {
-    super(appendTo, 'x', (target) => {
-      this.chatInput.onEmojiSelected(getEmojiFromElement(target as any), true);
+  constructor(appendTo: HTMLElement, controller: AutocompleteHelperController, private chatInput: ChatInput) {
+    super({
+      appendTo,
+      controller, 
+      listType: 'x', 
+      onSelect: (target) => {
+        this.chatInput.onEmojiSelected(getEmojiFromElement(target as any), true);
+      }
     });
 
     this.container.classList.add('emoji-helper');

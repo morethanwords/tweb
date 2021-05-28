@@ -1,15 +1,24 @@
+import type ChatInput from "./input";
 import { BotCommand } from "../../layer";
 import RichTextProcessor from "../../lib/richtextprocessor";
 import AvatarElement from "../avatar";
 import Scrollable from "../scrollable";
 import AutocompleteHelper from "./autocompleteHelper";
+import AutocompleteHelperController from "./autocompleteHelperController";
 
 export default class CommandsHelper extends AutocompleteHelper {
   private scrollable: Scrollable;
 
-  constructor(appendTo: HTMLElement) {
-    super(appendTo, 'y', (target) => {
-      
+  constructor(appendTo: HTMLElement, controller: AutocompleteHelperController, private chatInput: ChatInput) {
+    super({
+      appendTo, 
+      controller,
+      listType: 'y', 
+      onSelect: (target) => {
+        const command = target.querySelector('.commands-helper-command-name').innerHTML;
+        chatInput.messageInput.innerHTML = command;
+        chatInput.sendMessage();
+      }
     });
 
     this.container.classList.add('commands-helper');

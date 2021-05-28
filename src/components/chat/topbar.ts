@@ -19,14 +19,12 @@ import ButtonIcon from "../buttonIcon";
 import ButtonMenuToggle from "../buttonMenuToggle";
 import ChatAudio from "./audio";
 import ChatPinnedMessage from "./pinnedMessage";
-import ChatSearch from "./search";
 import { ButtonMenuItemOptions } from "../buttonMenu";
 import ListenerSetter from "../../helpers/listenerSetter";
 import appStateManager from "../../lib/appManagers/appStateManager";
 import PopupDeleteDialog from "../popups/deleteDialog";
 import appNavigationController from "../appNavigationController";
 import { LEFT_COLUMN_ACTIVE_CLASSNAME } from "../sidebarLeft";
-import AppPrivateSearchTab from "../sidebarRight/tabs/search";
 import PeerTitle from "../peerTitle";
 import { i18n } from "../../lib/langPack";
 import findUpClassName from "../../helpers/dom/findUpClassName";
@@ -35,30 +33,30 @@ import { cancelEvent } from "../../helpers/dom/cancelEvent";
 import { attachClickEvent } from "../../helpers/dom/clickEvent";
 
 export default class ChatTopbar {
-  container: HTMLDivElement;
-  btnBack: HTMLButtonElement;
-  chatInfo: HTMLDivElement;
-  avatarElement: AvatarElement;
-  title: HTMLDivElement;
-  subtitle: HTMLDivElement;
-  chatUtils: HTMLDivElement;
-  btnJoin: HTMLButtonElement;
-  btnPinned: HTMLButtonElement;
-  btnMute: HTMLButtonElement;
-  btnSearch: HTMLButtonElement;
-  btnMore: HTMLButtonElement;
+  public container: HTMLDivElement;
+  private btnBack: HTMLButtonElement;
+  private chatInfo: HTMLDivElement;
+  private avatarElement: AvatarElement;
+  private title: HTMLDivElement;
+  private subtitle: HTMLDivElement;
+  private chatUtils: HTMLDivElement;
+  private btnJoin: HTMLButtonElement;
+  private btnPinned: HTMLButtonElement;
+  private btnMute: HTMLButtonElement;
+  private btnSearch: HTMLButtonElement;
+  private btnMore: HTMLButtonElement;
   
-  public chatAudio: ChatAudio;
+  private chatAudio: ChatAudio;
   public pinnedMessage: ChatPinnedMessage;
 
   private setUtilsRAF: number;
   public peerId: number;
-  public wasPeerId: number;
+  private wasPeerId: number;
   private setPeerStatusInterval: number;
 
   public listenerSetter: ListenerSetter;
 
-  public menuButtons: (ButtonMenuItemOptions & {verify: () => boolean})[] = [];
+  private menuButtons: (ButtonMenuItemOptions & {verify: () => boolean})[] = [];
 
   constructor(private chat: Chat, private appSidebarRight: AppSidebarRight, private appMessagesManager: AppMessagesManager, private appPeersManager: AppPeersManager, private appChatsManager: AppChatsManager, private appNotificationsManager: AppNotificationsManager) {
     this.listenerSetter = new ListenerSetter();
@@ -189,7 +187,7 @@ export default class ChatTopbar {
       icon: 'search',
       text: 'Search',
       onClick: () => {
-        new ChatSearch(this, this.chat);
+        this.chat.initSearch()
       },
       verify: () => mediaSizes.isMobile
     }, /* {
@@ -237,14 +235,7 @@ export default class ChatTopbar {
     this.btnSearch = ButtonIcon('search');
     attachClickEvent(this.btnSearch, (e) => {
       cancelEvent(e);
-      if(this.peerId) {
-        let tab = this.appSidebarRight.getTab(AppPrivateSearchTab);
-        if(!tab) {
-          tab = new AppPrivateSearchTab(this.appSidebarRight);
-        }
-
-        tab.open(this.peerId, this.chat.threadId, this.chat.bubbles.onDatePick);
-      }
+      this.chat.initSearch();
     }, {listenerSetter: this.listenerSetter});
   }
 
