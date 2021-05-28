@@ -426,7 +426,7 @@ export class AppMessagesManager {
     let entities = options.entities || [];
     if(!options.viaBotId) {
       text = RichTextProcessor.parseMarkdown(text, entities);
-      entities = RichTextProcessor.mergeEntities(entities, RichTextProcessor.parseEntities(text));
+      //entities = RichTextProcessor.mergeEntities(entities, RichTextProcessor.parseEntities(text));
     }
 
     let sendEntites = this.getInputEntities(entities);
