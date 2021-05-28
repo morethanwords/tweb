@@ -117,20 +117,21 @@ namespace RichTextProcessor {
   export const emojiSupported = navigator.userAgent.search(/OS X|iPhone|iPad|iOS/i) !== -1/*  && false *//*  || true */;
 
   export function getEmojiSpritesheetCoords(emojiCode: string) {
-    let unified = encodeEmoji(emojiCode);
+    let unified = encodeEmoji(emojiCode).replace(/-?fe0f/g, '');
   
-    if(unified === '1f441-200d-1f5e8') {
+    /* if(unified === '1f441-200d-1f5e8') {
       //unified = '1f441-fe0f-200d-1f5e8-fe0f';
       unified = '1f441-fe0f-200d-1f5e8';
-    }
+    } */
   
-    if(!emojiData.hasOwnProperty(unified) && !emojiData.hasOwnProperty(unified.replace(/-?fe0f$/, ''))/*  && !emojiData.hasOwnProperty(unified.replace(/(-fe0f|fe0f)/g, '')) */) {
-    //if(!emojiData.hasOwnProperty(emojiCode) && !emojiData.hasOwnProperty(emojiCode.replace(/[\ufe0f\u200d]/g, ''))) {
+    if(!emojiData.hasOwnProperty(unified) 
+      // && !emojiData.hasOwnProperty(unified.replace(/-?fe0f$/, ''))
+    ) {
       //console.error('lol', unified);
       return null;
     }
   
-    return unified.replace(/-?fe0f/g, '');
+    return unified;
   }
 
   export function parseEntities(text: string) {
@@ -530,12 +531,13 @@ namespace RichTextProcessor {
         }
 
         case 'messageEntityEmoji': {
-          if(!(options.wrappingDraft && emojiSupported)) { // * fix safari emoji
-            if(emojiSupported) { // ! contenteditable="false" нужен для поля ввода, иначе там будет меняться шрифт в Safari, или же рендерить смайлик напрямую, без контейнера
-              insertPart(entity, '<span class="emoji">', '</span>');
-            } else {
+          //if(!(options.wrappingDraft && emojiSupported)) { // * fix safari emoji
+          if(!emojiSupported) { // no wrapping needed
+            // if(emojiSupported) { // ! contenteditable="false" нужен для поля ввода, иначе там будет меняться шрифт в Safari, или же рендерить смайлик напрямую, без контейнера
+            //   insertPart(entity, '<span class="emoji">', '</span>');
+            // } else {
               insertPart(entity, `<img src="assets/img/emoji/${entity.unicode}.png" alt="`, `" class="emoji">`);
-            }
+            // }
           }
           /* if(!emojiSupported) {
             insertPart(entity, `<img src="assets/img/emoji/${entity.unicode}.png" alt="`, `" class="emoji">`);
@@ -663,6 +665,34 @@ namespace RichTextProcessor {
     }
 
     return out;
+  }
+
+  export function fixEmoji(text: string, entities?: MessageEntity[]) {
+    /* if(!emojiSupported) {
+      return text;
+    } */
+    // '$`\ufe0f'
+
+    text = text.replace(/[\u2640\u2642\u2764](?!\ufe0f)/g, (match, offset, string) => {
+      if(entities) {
+        const length = match.length;
+
+        offset += length;
+        entities.forEach(entity => {
+          const end = entity.offset + entity.length;
+          if(end === offset) { // current entity
+            entity.length += length;
+          } else if(end > offset) {
+            entity.offset += length;
+          }
+        });
+      }
+      
+      // console.log([match, offset, string]);
+      return match + '\ufe0f';
+    });
+
+    return text;
   }
 
   export function wrapDraftText(text: string, options: Partial<{

@@ -5,8 +5,10 @@
  */
 
 import emoticonsDropdown, { EmoticonsDropdown, EmoticonsTab } from "..";
+import { cancelEvent } from "../../../helpers/dom/cancelEvent";
 import findUpClassName from "../../../helpers/dom/findUpClassName";
 import { fastRaf, pause } from "../../../helpers/schedulers";
+import { isTouchSupported } from "../../../helpers/touchSupport";
 import appEmojiManager from "../../../lib/appManagers/appEmojiManager";
 import appImManager from "../../../lib/appManagers/appImManager";
 import Config from "../../../lib/config";
@@ -30,6 +32,7 @@ export function appendEmoji(emoji: string, container: HTMLElement, prepend = fal
   if(unify) {
     kek = RichTextProcessor.wrapSingleEmoji(emoji);
   } else {
+    emoji = RichTextProcessor.fixEmoji(emoji);
     kek = RichTextProcessor.wrapEmojiText(emoji);
   }
 
@@ -87,7 +90,7 @@ export function appendEmoji(emoji: string, container: HTMLElement, prepend = fal
 
 export function getEmojiFromElement(element: HTMLElement) {
   if(element.nodeType === 3) return element.nodeValue;
-  if(element.tagName === 'SPAN' && !element.classList.contains('emoji')) {
+  if(element.tagName === 'SPAN' && !element.classList.contains('emoji') && element.firstElementChild) {
     element = element.firstElementChild as HTMLElement;
   }
   
@@ -236,6 +239,7 @@ export default class EmojiTab implements EmoticonsTab {
   }
 
   onContentClick = (e: MouseEvent) => {
+    cancelEvent(e);
     let target = e.target as HTMLElement;
     //if(target.tagName !== 'SPAN') return;
 
@@ -249,9 +253,10 @@ export default class EmojiTab implements EmoticonsTab {
     } else if(target.tagName === 'DIV') return;
 
     // set selection range
-    const savedRange = emoticonsDropdown.getSavedRange();
+    const savedRange = isTouchSupported ? undefined : emoticonsDropdown.getSavedRange();
+    let sel: Selection;
     if(savedRange) {
-      const sel = document.getSelection();
+      sel = document.getSelection();
       sel.removeAllRanges();
       sel.addRange(savedRange);
     }
@@ -260,8 +265,17 @@ export default class EmojiTab implements EmoticonsTab {
       (target.nodeType === 3 ? target.nodeValue : target.innerHTML) : 
       target.outerHTML;
 
-    // insert emoji in input
-    document.execCommand('insertHTML', true, html);
+    if((document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.hasAttribute('contenteditable'))) || 
+      savedRange) {
+      document.execCommand('insertHTML', true, html);
+    } else {
+      appImManager.chat.input.messageInput.innerHTML += html;
+    }
+
+    /* if(sel && isTouchSupported) {
+      sel.removeRange(savedRange);
+      blurActiveElement();
+    } */
 
     // Recent
     const emoji = getEmojiFromElement(target);
