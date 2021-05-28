@@ -6,10 +6,12 @@
 
 import attachListNavigation from "../../helpers/dom/attachlistNavigation";
 import EventListenerBase from "../../helpers/eventListenerBase";
+import { safeAssign } from "../../helpers/object";
 import { isMobile } from "../../helpers/userAgent";
 import rootScope from "../../lib/rootScope";
 import appNavigationController, { NavigationItem } from "../appNavigationController";
 import SetTransition from "../singleTransition";
+import AutocompleteHelperController from "./autocompleteHelperController";
 
 export default class AutocompleteHelper extends EventListenerBase<{
   hidden: () => void,
@@ -21,19 +23,30 @@ export default class AutocompleteHelper extends EventListenerBase<{
   protected resetTarget: () => void;
   protected init?(): void;
 
-  constructor(appendTo: HTMLElement, 
-    protected listType: 'xy' | 'x' | 'y', 
-    protected onSelect: (target: Element) => boolean | void,
-    protected waitForKey?: string
-  ) {
+  protected controller: AutocompleteHelperController;
+  protected listType: 'xy' | 'x' | 'y';
+  protected onSelect: (target: Element) => boolean | void;
+  protected waitForKey?: string;
+
+  constructor(options: {
+    appendTo: HTMLElement,
+    controller: AutocompleteHelper['controller'],
+    listType: AutocompleteHelper['listType'],
+    onSelect: AutocompleteHelper['onSelect'],
+    waitForKey?: AutocompleteHelper['waitForKey']
+  }) {
     super(false);
 
+    safeAssign(this, options);
+    
     this.container = document.createElement('div');
     this.container.classList.add('autocomplete-helper', 'z-depth-1');
-
-    appendTo.append(this.container);
-
+    
+    options.appendTo.append(this.container);
+    
     this.attachNavigation();
+
+    this.controller.addHelper(this);
   }
 
   protected onVisible = () => {
@@ -89,7 +102,14 @@ export default class AutocompleteHelper extends EventListenerBase<{
     }
 
     this.hidden = hide;
-    !this.hidden && this.dispatchEvent('visible'); // fire it before so target will be set
+
+    if(!this.hidden) {
+      this.controller.hideOtherHelpers(this);
+      this.dispatchEvent('visible'); // fire it before so target will be set
+    } else {
+      this.controller.hideOtherHelpers();
+    }
+
     SetTransition(this.container, 'is-visible', !hide, rootScope.settings.animationsEnabled ? 200 : 0, () => {
       this.hidden && this.dispatchEvent('hidden');
     });

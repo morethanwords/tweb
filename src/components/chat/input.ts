@@ -63,6 +63,8 @@ import setRichFocus from '../../helpers/dom/setRichFocus';
 import SearchIndex from '../../lib/searchIndex';
 import CommandsHelper from './commandsHelper';
 import AutocompleteHelperController from './autocompleteHelperController';
+import AutocompleteHelper from './autocompleteHelper';
+import appUsersManager from '../../lib/appManagers/appUsersManager';
 
 const RECORD_MIN_TIME = 500;
 const POSTING_MEDIA_NOT_ALLOWED = 'Posting media content isn\'t allowed in this group.';
@@ -369,11 +371,9 @@ export default class ChatInput {
 
     this.rowsWrapper.append(this.replyElements.container);
     this.autocompleteHelperController = new AutocompleteHelperController();
-    this.autocompleteHelperController.addHelpers([
-      this.commandsHelper = new CommandsHelper(this.rowsWrapper),
-      this.emojiHelper = new EmojiHelper(this.rowsWrapper, this),
-      this.stickersHelper = new StickersHelper(this.rowsWrapper)
-    ]);
+    this.stickersHelper = new StickersHelper(this.rowsWrapper, this.autocompleteHelperController);
+    this.emojiHelper = new EmojiHelper(this.rowsWrapper, this.autocompleteHelperController, this);
+    this.commandsHelper = new CommandsHelper(this.rowsWrapper, this.autocompleteHelperController, this);
     this.rowsWrapper.append(this.newMessageWrapper);
 
     this.btnCancelRecord = ButtonIcon('delete danger btn-circle z-depth-1 btn-record-cancel');
@@ -433,11 +433,12 @@ export default class ChatInput {
 
     this.listenerSetter.add(rootScope, 'settings_updated', () => {
       if(this.stickersHelper) {
-        if(!rootScope.settings.stickers.suggest) {
+        this.checkAutocomplete();
+        /* if(!rootScope.settings.stickers.suggest) {
           this.stickersHelper.checkEmoticon('');
         } else {
           this.onMessageInput();
-        }
+        } */
       }
 
       if(this.messageInputField) {
@@ -1063,18 +1064,6 @@ export default class ChatInput {
 
     //this.chat.log('messageInput entities', richValue, value, markdownEntities, caretPos);
 
-    if(this.stickersHelper && 
-      rootScope.settings.stickers.suggest && 
-      (this.chat.peerId > 0 || this.appChatsManager.hasRights(this.chat.peerId, 'send_stickers'))) {
-      let emoticon = '';
-      const entity = entities[0];
-      if(entity?._ === 'messageEntityEmoji' && entity.length === richValue.length && !entity.offset) {
-        emoticon = richValue;
-      }
-
-      this.stickersHelper.checkEmoticon(emoticon);
-    }
-
     if(this.canRedoFromHTML && !this.lockRedo && this.messageInput.innerHTML !== this.canRedoFromHTML) {
       this.canRedoFromHTML = '';
       this.undoHistory.length = 0;
@@ -1148,7 +1137,7 @@ export default class ChatInput {
       this.saveDraftDebounced();
     }
 
-    this.checkAutocomplete(richValue, caretPos);
+    this.checkAutocomplete(richValue, caretPos, entities);
 
     this.updateSendBtn();
   };
@@ -1221,25 +1210,31 @@ export default class ChatInput {
     }
   };
 
-  private checkAutocomplete(value?: string, caretPos?: number) {
+  private checkAutocomplete(value?: string, caretPos?: number, entities?: MessageEntity[]) {
     //return;
 
     if(value === undefined) {
-      const r = getRichValueWithCaret(this.messageInputField.input, false);
+      const r = getRichValueWithCaret(this.messageInputField.input, true);
       value = r.value;
       caretPos = r.caretPos;
+      entities = r.entities;
     }
 
     if(caretPos === -1) {
       caretPos = value.length;
     }
+
+    if(entities === undefined) {
+      const _value = RichTextProcessor.parseMarkdown(value, entities, true);
+      entities = RichTextProcessor.mergeEntities(entities, RichTextProcessor.parseEntities(_value));
+    }
+
     value = value.substr(0, caretPos);
 
     const matches = value.match(ChatInput.AUTO_COMPLETE_REG_EXP);
     if(!matches) {
       delete this.previousQuery;
-      //this.hideSuggestions();
-      this.emojiHelper.toggle(true);
+      this.autocompleteHelperController.hideOtherHelpers();
       return;
     }
 
@@ -1248,6 +1243,17 @@ export default class ChatInput {
     }
     
     this.previousQuery = matches[0];
+
+    let foundHelper: AutocompleteHelper;
+    const entity = entities[0];
+
+    if(this.stickersHelper && 
+      rootScope.settings.stickers.suggest && 
+      (this.chat.peerId > 0 || this.appChatsManager.hasRights(this.chat.peerId, 'send_stickers')) &&
+      entity?._ === 'messageEntityEmoji' && entity.length === value.length && !entity.offset) {
+      foundHelper = this.stickersHelper;
+      this.stickersHelper.checkEmoticon(value);
+    } else 
     //let query = cleanSearchText(matches[2]);
     //const firstChar = matches[2][0];
 
@@ -1277,7 +1283,8 @@ export default class ChatInput {
         this.hideSuggestions()
       }
     } else */ if(!matches[1] && matches[2][0] === '/') { // commands
-      if(this.chat.peerId > 0) {
+      if(appUsersManager.isBot(this.chat.peerId)) {
+        foundHelper = this.commandsHelper;
         this.chat.appProfileManager.getProfileByPeerId(this.chat.peerId).then(full => {
           const botInfos: BotInfo.botInfo[] = [].concat(full.bot_info);
           const index = new SearchIndex<string>(false, false);
@@ -1293,22 +1300,22 @@ export default class ChatInput {
           const found = index.search(matches[2]);
           const filtered = Array.from(found).map(command => commands.get(command));
           this.commandsHelper.render(filtered);
-          console.log('found commands', found, filtered);
+          // console.log('found commands', found, filtered);
         });
       }
     } else { // emoji
-      if(value.match(/^\s*:(.+):\s*$/)) {
-        this.emojiHelper.toggle(true);
-        return;
+      if(!value.match(/^\s*:(.+):\s*$/)) {
+        foundHelper = this.emojiHelper;
+        this.appEmojiManager.getBothEmojiKeywords().then(() => {
+          const q = matches[2].replace(/^:/, '');
+          const emojis = this.appEmojiManager.searchEmojis(q);
+          this.emojiHelper.render(emojis, matches[2][0] !== ':');
+          //console.log(emojis);
+        });
       }
-      
-      this.appEmojiManager.getBothEmojiKeywords().then(() => {
-        const q = matches[2].replace(/^:/, '');
-        const emojis = this.appEmojiManager.searchEmojis(q);
-        this.emojiHelper.render(emojis, matches[2][0] !== ':');
-        //console.log(emojis);
-      });
     }
+
+    this.autocompleteHelperController.hideOtherHelpers(foundHelper);
   }
 
   private onBtnSendClick = (e: Event) => {

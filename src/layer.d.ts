@@ -4049,7 +4049,8 @@ export namespace MessageEntity {
 	export type messageEntityBotCommand = {
 		_: 'messageEntityBotCommand',
 		offset: number,
-		length: number
+		length: number,
+		unsafe?: boolean
 	};
 
 	export type messageEntityUrl = {

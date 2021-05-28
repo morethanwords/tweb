@@ -78,9 +78,9 @@ let TEST_SCROLL = TEST_SCROLL_TIMES;
 let queueId = 0;
 
 export default class ChatBubbles {
-  bubblesContainer: HTMLDivElement;
-  chatInner: HTMLDivElement;
-  scrollable: Scrollable;
+  public bubblesContainer: HTMLDivElement;
+  private chatInner: HTMLDivElement;
+  public scrollable: Scrollable;
 
   private getHistoryTopPromise: Promise<boolean>;
   private getHistoryBottomPromise: Promise<boolean>;
@@ -88,11 +88,11 @@ export default class ChatBubbles {
   public peerId = 0;
   //public messagesCount: number = -1;
 
-  public unreadOut = new Set<number>();
+  private unreadOut = new Set<number>();
   public needUpdate: {replyToPeerId: number, replyMid: number, mid: number}[] = []; // if need wrapSingleMessage
 
   public bubbles: {[mid: string]: HTMLDivElement} = {};
-  public dateMessages: {[timestamp: number]: { 
+  private dateMessages: {[timestamp: number]: { 
     div: HTMLDivElement, 
     firstTimestamp: number, 
     container: HTMLDivElement,
@@ -109,14 +109,14 @@ export default class ChatBubbles {
   private unreadedSeen: Set<number> = new Set();
   private readPromise: Promise<void>;
 
-  public bubbleGroups: BubbleGroups;
+  private bubbleGroups: BubbleGroups;
 
   private preloader: ProgressivePreloader = null;
   
   private loadedTopTimes = 0;
   private loadedBottomTimes = 0;
 
-  public messagesQueuePromise: Promise<void> = null;
+  private messagesQueuePromise: Promise<void> = null;
   private messagesQueue: {message: any, bubble: HTMLDivElement, reverse: boolean, promises: Promise<void>[]}[] = [];
   private messagesQueueOnRender: () => void = null;
   private messagesQueueOnRenderAdditional: () => void = null;
@@ -132,12 +132,12 @@ export default class ChatBubbles {
 
   public listenerSetter: ListenerSetter;
 
-  public replyFollowHistory: number[] = [];
+  private replyFollowHistory: number[] = [];
 
-  public isHeavyAnimationInProgress = false;
-  public scrollingToNewBubble: HTMLElement;
+  private isHeavyAnimationInProgress = false;
+  private scrollingToNewBubble: HTMLElement;
 
-  public isFirstLoad = true;
+  private isFirstLoad = true;
   private needReflowScroll: boolean;
 
   private fetchNewPromise: Promise<void>;

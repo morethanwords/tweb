@@ -243,12 +243,47 @@ export class AppImManager {
 
       return false;
     };
+
+    (window as any).execBotCommand = (element: HTMLAnchorElement, e: Event) => {
+      cancelEvent(null);
+
+      const href = element.href;
+      const params = this.parseUriParams(href);
+      if(!params) {
+        return;
+      }
+
+      const {command, bot} = params;
+
+      /* const promise = bot ? this.openUsername(bot).then(() => this.chat.peerId) : Promise.resolve(this.chat.peerId);
+      promise.then(peerId => {
+        appMessagesManager.sendText(peerId, '/' + command);
+      }); */
+
+      appMessagesManager.sendText(this.chat.peerId, '/' + command + (bot ? '@' + bot : ''));
+
+      //console.log(command, bot);
+
+      return false;
+    };
+
+    (window as any).searchByHashtag = (element: HTMLAnchorElement, e: Event) => {
+      cancelEvent(null);
+
+      const href = element.href;
+      const params = this.parseUriParams(href);
+      if(!params) {
+        return;
+      }
+
+      const {hashtag} = params;
+      this.chat.initSearch('#' + hashtag + ' ');
+
+      return false;
+    };
   }
 
-  private onHashChange = () => {
-    const hash = location.hash;
-    const splitted = hash.split('?');
-
+  private parseUriParams(uri: string, splitted = uri.split('?')) {
     if(!splitted[1]) {
       return;
     }
@@ -257,6 +292,15 @@ export class AppImManager {
     splitted[1].split('&').forEach(item => {
       params[item.split('=')[0]] = decodeURIComponent(item.split('=')[1]);
     });
+
+    return params;
+  }
+
+  private onHashChange = () => {
+    const hash = location.hash;
+    const splitted = hash.split('?');
+
+    const params = this.parseUriParams(hash, splitted);
 
     this.log('hashchange', hash, splitted[0], params);
 

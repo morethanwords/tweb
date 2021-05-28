@@ -37,6 +37,8 @@ import { fastRaf } from "../../helpers/schedulers";
 import AppPrivateSearchTab from "../sidebarRight/tabs/search";
 import type { State } from "../../lib/appManagers/appStateManager";
 import renderImageFromUrl from "../../helpers/dom/renderImageFromUrl";
+import mediaSizes from "../../helpers/mediaSizes";
+import ChatSearch from "./search";
 
 export type ChatType = 'chat' | 'pinned' | 'replies' | 'discussion' | 'scheduled';
 
@@ -370,5 +372,20 @@ export default class Chat extends EventListenerBase<{
 
   public isAnyGroup() {
     return this.peerId === rootScope.myId || this.peerId === REPLIES_PEER_ID || this.appPeersManager.isAnyGroup(this.peerId);
+  }
+
+  public initSearch(query?: string) {
+    if(!this.peerId) return;
+
+    if(mediaSizes.isMobile) {
+      new ChatSearch(this.topbar, this, query);
+    } else {
+      let tab = appSidebarRight.getTab(AppPrivateSearchTab);
+      if(!tab) {
+        tab = new AppPrivateSearchTab(appSidebarRight);
+      }
+
+      tab.open(this.peerId, this.threadId, this.bubbles.onDatePick, query);
+    }
   }
 }

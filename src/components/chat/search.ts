@@ -37,7 +37,7 @@ export default class ChatSearch {
   private selectedIndex = 0;
   private setPeerPromise: Promise<any>;
 
-  constructor(private topbar: ChatTopbar, private chat: Chat) {
+  constructor(private topbar: ChatTopbar, private chat: Chat, private query?: string) {
     this.element = document.createElement('div');
     this.element.classList.add('sidebar-header', 'chat-search', 'chatlist-container');
 
@@ -128,6 +128,8 @@ export default class ChatSearch {
     this.topbar.container.parentElement.append(this.element);
 
     this.inputSearch.input.focus();
+
+    query && (this.inputSearch.inputField.value = query);
   }
 
   onDateClick = (e: MouseEvent) => {

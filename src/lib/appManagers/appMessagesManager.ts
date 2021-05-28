@@ -426,6 +426,7 @@ export class AppMessagesManager {
     let entities = options.entities || [];
     if(!options.viaBotId) {
       text = RichTextProcessor.parseMarkdown(text, entities);
+      entities = RichTextProcessor.mergeEntities(entities, RichTextProcessor.parseEntities(text));
     }
 
     let sendEntites = this.getInputEntities(entities);
@@ -2549,6 +2550,7 @@ export class AppMessagesManager {
         let entities = RichTextProcessor.parseEntities(text.replace(/\n/g, ' '));
 
         if(highlightWord) {
+          highlightWord = highlightWord.trim();
           if(!entities) entities = [];
           let found = false;
           let match: any;

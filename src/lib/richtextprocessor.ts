@@ -214,11 +214,12 @@ namespace RichTextProcessor {
           offset: matchIndex + (match[10] ? match[10].length : 0),
           length: match[11].length
         });
-      } else if(match[12]) { // Bot command
+      } else if(match[13]) { // Bot command
         entities.push({
           _: 'messageEntityBotCommand',
           offset: matchIndex + (match[11] ? match[11].length : 0),
-          length: 1 + match[12].length + (match[13] ? 1 + match[13].length : 0)
+          length: 1 + match[13].length + (match[14] ? 1 + match[14].length : 0),
+          unsafe: true
         });
       }
   
@@ -417,7 +418,7 @@ namespace RichTextProcessor {
 
     contextHashtag?: string
   }> = {}) {
-    if(!text || !text.length) {
+    if(!text) {
       return '';
     }
 
@@ -512,7 +513,7 @@ namespace RichTextProcessor {
         }
 
         case 'messageEntityBotCommand': {
-          if(!(options.noLinks || options.noCommands || contextExternal)) {
+          if(!(options.noLinks || options.noCommands || contextExternal) && !entity.unsafe) {
             const entityText = text.substr(entity.offset, entity.length);
             let command = entityText.substr(1);
             let bot: string | boolean;
@@ -524,7 +525,7 @@ namespace RichTextProcessor {
               bot = options.fromBot;
             }
 
-            insertPart(entity, `<a href="${encodeEntities('tg://bot_command?command=' + encodeURIComponent(command) + (bot ? '&bot=' + encodeURIComponent(bot) : ''))}">`, `</a>`);
+            insertPart(entity, `<a href="${encodeEntities('tg://bot_command?command=' + encodeURIComponent(command) + (bot ? '&bot=' + encodeURIComponent(bot) : ''))}" onclick="execBotCommand(this)">`, `</a>`);
           }
 
           break;
@@ -617,7 +618,7 @@ namespace RichTextProcessor {
           if(contextUrl) {
             const entityText = text.substr(entity.offset, entity.length);
             const hashtag = entityText.substr(1);
-            insertPart(entity, `<a class="anchor-hashtag" href="${contextUrl.replace('{1}', encodeURIComponent(hashtag))}"${contextExternal ? ' target="_blank" rel="noopener noreferrer"' : ''}>`, '</a>');
+            insertPart(entity, `<a class="anchor-hashtag" href="${contextUrl.replace('{1}', encodeURIComponent(hashtag))}"${contextExternal ? ' target="_blank" rel="noopener noreferrer"' : ' onclick="searchByHashtag(this)"'}>`, '</a>');
           }
 
           break;
