@@ -35,6 +35,7 @@ export type Modify<T, R> = Omit<T, keyof R> & R;
 
 export type ArgumentTypes<F extends Function> = F extends (...args: infer A) => any ? A : never;
 export type SuperReturnType<F extends Function> = F extends (...args: any) => any ? ReturnType<F> : never;
+export declare function assumeType<T>(x: unknown): asserts x is T;
 
 export type AnyLiteral = Record<string, any>;
 export type AnyClass = new (...args: any[]) => any;

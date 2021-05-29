@@ -17,7 +17,7 @@ import { createPosterForVideo } from "../../helpers/files";
 import { copy, getObjectKeysAndSort } from "../../helpers/object";
 import { randomLong } from "../../helpers/random";
 import { splitStringByLength, limitSymbols, escapeRegExp } from "../../helpers/string";
-import { Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo } from "../../layer";
+import { Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates } from "../../layer";
 import { InvokeApiOptions } from "../../types";
 import I18n, { i18n, join, langPack, LangPackKey, _i18n } from "../langPack";
 import { logger, LogTypes } from "../logger";
@@ -488,14 +488,24 @@ export class AppMessagesManager {
         }, sentRequestOptions);
       }
 
+      /* function is<T>(value: any, condition: boolean): value is T {
+        return condition;
+      } */
+
       //this.log('sendText', message.mid);
-      apiPromise.then((updates: any) => {
+      apiPromise.then((updates: Updates) => {
         //this.log('sendText sent', message.mid);
+        //if(is<Updates.updateShortSentMessage>(updates, updates._ === 'updateShortSentMessage')) {
         if(updates._ === 'updateShortSentMessage') {
+          //assumeType<Updates.updateShortSentMessage>(updates);
           message.date = updates.date;
           message.id = updates.id;
           message.media = updates.media;
           message.entities = updates.entities;
+          this.wrapMessageEntities(message);
+          if(updates.pFlags.out) {
+            message.pFlags.out = true;
+          }
 
           // * override with new updates
           updates = {
@@ -513,9 +523,9 @@ export class AppMessagesManager {
               pts: updates.pts,
               pts_count: updates.pts_count
             }]
-          };
-        } else if(updates.updates) {
-          updates.updates.forEach((update: any) => {
+          } as any;
+        } else if((updates as Updates.updates).updates) {
+          (updates as Updates.updates).updates.forEach((update) => {
             if(update._ === 'updateDraftMessage') {
               update.local = true;
             }
@@ -2404,11 +2414,7 @@ export class AppMessagesManager {
       } */
 
       if(message.message && message.message.length && !message.totalEntities) {
-        const apiEntities = message.entities ? message.entities.slice() : [];
-        message.message = RichTextProcessor.fixEmoji(message.message, apiEntities);
-
-        const myEntities = RichTextProcessor.parseEntities(message.message);
-        message.totalEntities = RichTextProcessor.mergeEntities(apiEntities, myEntities); // ! only in this order, otherwise bold and emoji formatting won't work
+        this.wrapMessageEntities(message);  
       }
 
       storage[mid] = message;
@@ -2423,6 +2429,14 @@ export class AppMessagesManager {
         }
       }
     } */
+  }
+
+  private wrapMessageEntities(message: any) {
+    const apiEntities = message.entities ? message.entities.slice() : [];
+    message.message = RichTextProcessor.fixEmoji(message.message, apiEntities);
+
+    const myEntities = RichTextProcessor.parseEntities(message.message);
+    message.totalEntities = RichTextProcessor.mergeEntities(apiEntities, myEntities); // ! only in this order, otherwise bold and emoji formatting won't work
   }
 
   public wrapMessageForReply(message: any, text: string, usingMids: number[], plain: true, highlightWord?: string): string;
