@@ -226,6 +226,7 @@ html.night {
 @import "partials/button";
 @import "partials/animatedIcon";
 @import "partials/autocompleteHelper";
+@import "partials/autocompletePeerHelper";
 @import "partials/badge";
 @import "partials/checkbox";
 @import "partials/chatlist";
@@ -236,7 +237,6 @@ html.night {
 @import "partials/chatMarkupTooltip";
 @import "partials/chatStickersHelper";
 @import "partials/chatEmojiHelper";
-@import "partials/chatCommandsHelper";
 @import "partials/chatSearch";
 @import "partials/chatDrop";
 @import "partials/crop";

@@ -65,6 +65,7 @@ import CommandsHelper from './commandsHelper';
 import AutocompleteHelperController from './autocompleteHelperController';
 import AutocompleteHelper from './autocompleteHelper';
 import appUsersManager from '../../lib/appManagers/appUsersManager';
+import MentionsHelper from './mentionsHelper';
 
 const RECORD_MIN_TIME = 500;
 const POSTING_MEDIA_NOT_ALLOWED = 'Posting media content isn\'t allowed in this group.';
@@ -136,9 +137,10 @@ export default class ChatInput {
   private canUndoFromHTML = '';
 
   private autocompleteHelperController: AutocompleteHelperController;
-  private commandsHelper: CommandsHelper;
-  private emojiHelper: EmojiHelper;
   private stickersHelper: StickersHelper;
+  private emojiHelper: EmojiHelper;
+  private commandsHelper: CommandsHelper;
+  private mentionsHelper: MentionsHelper;
   private listenerSetter: ListenerSetter;
 
   private pinnedControlBtn: HTMLButtonElement;
@@ -374,6 +376,7 @@ export default class ChatInput {
     this.stickersHelper = new StickersHelper(this.rowsWrapper, this.autocompleteHelperController);
     this.emojiHelper = new EmojiHelper(this.rowsWrapper, this.autocompleteHelperController, this);
     this.commandsHelper = new CommandsHelper(this.rowsWrapper, this.autocompleteHelperController, this);
+    this.mentionsHelper = new MentionsHelper(this.rowsWrapper, this.autocompleteHelperController, this);
     this.rowsWrapper.append(this.newMessageWrapper);
 
     this.btnCancelRecord = ButtonIcon('delete danger btn-circle z-depth-1 btn-record-cancel');
@@ -1179,34 +1182,19 @@ export default class ChatInput {
       RichTextProcessor.mergeEntities(entities, addEntities);
 
       //const saveExecuted = this.prepareDocumentExecute();
-      this.messageInputField.value = RichTextProcessor.wrapDraftText(newValue, {entities});
+      // can't exec .value here because it will instantly check for autocomplete
+      this.messageInputField.setValueSilently(RichTextProcessor.wrapDraftText(newValue, {entities}), true);
 
       const caret = this.messageInput.querySelector('.composer-sel');
       setRichFocus(this.messageInput, caret);
       caret.remove();
 
+      // but it's needed to be checked only here
+      this.onMessageInput();
+
       //saveExecuted();
 
       //document.execCommand('insertHTML', true, RichTextProcessor.wrapEmojiText(emoji));
-
-      //const str = 
-
-      /* var newValuePrefix
-      if(matches && matches[0]) {
-        newValuePrefix = prefix.substr(0, matches.index) + ':' + emoji[1] + ':'
-      } else {
-        newValuePrefix = prefix + ':' + emoji[1] + ':'
-      }
-
-      if(suffix.length) {
-        const html = this.getRichHtml(newValuePrefix) + '&nbsp;<span id="composer_sel' + ++selId + '"></span>' + this.getRichHtml(suffix)
-        this.richTextareaEl.html(html)
-        setRichFocus(textarea, $('#composer_sel' + this.selId)[0])
-      } else {
-        const html = this.getRichHtml(newValuePrefix) + '&nbsp;'
-        this.richTextareaEl.html(html)
-        setRichFocus(textarea)
-      } */
     }
   };
 
@@ -1247,6 +1235,9 @@ export default class ChatInput {
     let foundHelper: AutocompleteHelper;
     const entity = entities[0];
 
+    const query = matches[2];
+    const firstChar = query[0];
+
     if(this.stickersHelper && 
       rootScope.settings.stickers.suggest && 
       (this.chat.peerId > 0 || this.appChatsManager.hasRights(this.chat.peerId, 'send_stickers')) &&
@@ -1254,50 +1245,45 @@ export default class ChatInput {
       foundHelper = this.stickersHelper;
       this.stickersHelper.checkEmoticon(value);
     } else 
-    //let query = cleanSearchText(matches[2]);
-    //const firstChar = matches[2][0];
+    //let query = cleanSearchText(query);
 
     //console.log('autocomplete matches', matches);
 
-    /*if (matches[2] == '@') { // mentions
-      if (this.mentions && this.mentions.index) {
-        if (query.length) {
-          var foundObject = SearchIndexManager.search(query, this.mentions.index)
-          var foundUsers = []
-          var user
-          for (var i = 0, length = this.mentions.users.length; i < length; i++) {
-            user = this.mentions.users[i]
-            if (foundObject[user.id]) {
-              foundUsers.push(user)
-            }
-          }
-        } else {
-          var foundUsers = this.mentions.users
-        }
-        if (foundUsers.length) {
-          this.showMentionSuggestions(foundUsers)
-        } else {
-          this.hideSuggestions()
-        }
-      } else {
-        this.hideSuggestions()
+    /* if(firstChar === '@') { // mentions
+      if(this.chat.peerId < 0) {
+        foundHelper = this.mentionsHelper;
+        this.chat.appProfileManager.getMentions(-this.chat.peerId, query).then(peerIds => {
+          this.mentionsHelper.render(peerIds.map(peerId => {
+            const user = this.chat.appUsersManager.getUser(peerId);
+            return {
+              peerId,
+              description: user.username ? '@' + user.username : undefined
+            };
+          }));
+        });
       }
-    } else */ if(!matches[1] && matches[2][0] === '/') { // commands
+    } else  */if(!matches[1] && firstChar === '/') { // commands
       if(appUsersManager.isBot(this.chat.peerId)) {
         foundHelper = this.commandsHelper;
         this.chat.appProfileManager.getProfileByPeerId(this.chat.peerId).then(full => {
           const botInfos: BotInfo.botInfo[] = [].concat(full.bot_info);
-          const index = new SearchIndex<string>(false, false);
+          const index = new SearchIndex<string>(true, false);
           
-          const commands: Map<string, {userId: number, command: BotCommand}> = new Map();
+          const commands: Map<string, {peerId: number, name: string, description: string}> = new Map();
           botInfos.forEach(botInfo => {
             botInfo.commands.forEach(botCommand => {
-              commands.set(botCommand.command, {userId: botInfo.user_id, command: botCommand});
-              index.indexObject(botCommand.command, '/' + botCommand.command);
+              const c = '/' + botCommand.command;
+              commands.set(botCommand.command, {
+                peerId: botInfo.user_id, 
+                name: c, 
+                description: botCommand.description
+              });
+
+              index.indexObject(botCommand.command, c);
             });
           });
 
-          const found = index.search(matches[2]);
+          const found = index.search(query);
           const filtered = Array.from(found).map(command => commands.get(command));
           this.commandsHelper.render(filtered);
           // console.log('found commands', found, filtered);
@@ -1307,9 +1293,9 @@ export default class ChatInput {
       if(!value.match(/^\s*:(.+):\s*$/)) {
         foundHelper = this.emojiHelper;
         this.appEmojiManager.getBothEmojiKeywords().then(() => {
-          const q = matches[2].replace(/^:/, '');
+          const q = query.replace(/^:/, '');
           const emojis = this.appEmojiManager.searchEmojis(q);
-          this.emojiHelper.render(emojis, matches[2][0] !== ':');
+          this.emojiHelper.render(emojis, firstChar !== ':');
           //console.log(emojis);
         });
       }

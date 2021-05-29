@@ -4,6 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import mediaSizes from "../../helpers/mediaSizes";
+import { clamp } from "../../helpers/number";
 import { MyDocument } from "../../lib/appManagers/appDocsManager";
 import { CHAT_ANIMATION_GROUP } from "../../lib/appManagers/appImManager";
 import appStickersManager from "../../lib/appManagers/appStickersManager";
@@ -18,6 +20,7 @@ export default class StickersHelper extends AutocompleteHelper {
   private scrollable: Scrollable;
   private superStickerRenderer: SuperStickerRenderer;
   private lazyLoadQueue: LazyLoadQueue;
+  private onChangeScreen: () => void;
 
   constructor(appendTo: HTMLElement, controller: AutocompleteHelperController) {
     super({
@@ -36,6 +39,13 @@ export default class StickersHelper extends AutocompleteHelper {
       setTimeout(() => { // it is not rendered yet
         this.scrollable.container.scrollTop = 0;
       }, 0);
+    });
+
+    this.addEventListener('hidden', () => {
+      if(this.onChangeScreen) {
+        mediaSizes.removeEventListener('changeScreen', this.onChangeScreen);
+        this.onChangeScreen = undefined;
+      }
     });
   }
 
@@ -78,6 +88,15 @@ export default class StickersHelper extends AutocompleteHelper {
       ready.then(() => {
         this.list.replaceWith(container);
         this.list = container;
+
+        if(!this.onChangeScreen) {
+          this.onChangeScreen = () => {
+            this.list.style.width = this.list.childElementCount * mediaSizes.active.esgSticker.width + 'px';
+          };
+          mediaSizes.addEventListener('changeScreen', this.onChangeScreen);
+        }
+
+        this.onChangeScreen();
 
         this.toggle(!stickers.length);
         this.scrollable.scrollTop = 0;

@@ -1,3 +1,9 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
 import type ChatInput from "./input";
 import { appendEmoji, getEmojiFromElement } from "../emoticonsDropdown/tabs/emoji";
 import { ScrollableX } from "../scrollable";
@@ -54,5 +60,9 @@ export default class EmojiHelper extends AutocompleteHelper {
 
     this.waitForKey = waitForKey ? 'ArrowUp' : undefined;
     this.toggle(!emojis.length);
+
+    /* window.requestAnimationFrame(() => {
+      this.container.style.width = (3 * 2) + (emojis.length * 44) + 'px';
+    }); */
   }
 }

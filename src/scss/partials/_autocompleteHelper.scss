@@ -11,6 +11,9 @@
 	overflow: hidden;
 	padding: 0 !important;
   border-radius: var(--border-radius) !important;
+	max-width: 100%;
+	left: 0;
+  width: auto !important;
 
   &:not(.is-visible) {
 		display: none;
@@ -21,7 +24,7 @@
 			animation: fade-out-opacity .2s ease-in-out forwards;
 
 			&:not(.backwards) {
-				animation: fade-in-opacity .2s ease-in-out forwards;
+				animation-name: fade-in-opacity;
 			}
 		}
 	}

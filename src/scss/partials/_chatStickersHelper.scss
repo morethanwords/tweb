@@ -13,8 +13,9 @@
 	}
 
 	&-stickers {
-		display: flex;
-    flex-wrap: wrap;
+		max-width: 100%;
+		/* display: flex !important;
+    flex-wrap: wrap; */
 		border-radius: var(--border-radius);
 	}
 
@@ -23,4 +24,10 @@
 			background: none;
 		}
 	}
+
+	/* .super-sticker {
+		width: var(--esg-sticker-size);
+		height: var(--esg-sticker-size);
+		padding: 0;
+	} */
 }

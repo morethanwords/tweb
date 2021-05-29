@@ -413,7 +413,7 @@ namespace RichTextProcessor {
     fromBot: boolean,
     noTextFormat: true,
     passEntities: Partial<{
-      [_ in MessageEntity['_']]: true
+      [_ in MessageEntity['_']]: boolean
     }>,
 
     contextHashtag?: string
@@ -513,7 +513,8 @@ namespace RichTextProcessor {
         }
 
         case 'messageEntityBotCommand': {
-          if(!(options.noLinks || options.noCommands || contextExternal) && !entity.unsafe) {
+          // if(!(options.noLinks || options.noCommands || contextExternal)/*  && !entity.unsafe */) {
+          if(!options.noLinks && passEntities[entity._]) {
             const entityText = text.substr(entity.offset, entity.length);
             let command = entityText.substr(1);
             let bot: string | boolean;
@@ -525,7 +526,7 @@ namespace RichTextProcessor {
               bot = options.fromBot;
             }
 
-            insertPart(entity, `<a href="${encodeEntities('tg://bot_command?command=' + encodeURIComponent(command) + (bot ? '&bot=' + encodeURIComponent(bot) : ''))}" onclick="execBotCommand(this)">`, `</a>`);
+            insertPart(entity, `<a href="${encodeEntities('tg://bot_command?command=' + encodeURIComponent(command) + (bot ? '&bot=' + encodeURIComponent(bot) : ''))}" ${contextExternal ? '' : 'onclick="execBotCommand(this)"'}>`, `</a>`);
           }
 
           break;

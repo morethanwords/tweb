@@ -24,7 +24,7 @@ export default class SearchIndex<SearchWhat> {
     } */
 
     if(searchText.trim() && this.cleanText) {
-      searchText = cleanSearchText(searchText);
+      searchText = cleanSearchText(searchText, this.latinize);
     }
 
     if(!searchText) {
@@ -59,9 +59,11 @@ export default class SearchIndex<SearchWhat> {
 
     const newFoundObjs: Array<{fullText: string, what: SearchWhat}> = [];
     const queryWords = query.split(' ');
+    const queryWordsLength = queryWords.length;
     fullTexts.forEach((fullText, what) => {
       let found = true;
-      for(const word of queryWords) { // * verify that all words are found
+      for(let i = 0; i < queryWordsLength; ++i) { // * verify that all words are found
+        const word = queryWords[i];
         const idx = fullText.indexOf(word);
         if(idx === -1 || (idx !== 0 && fullText[idx - 1] !== ' ')) { // * search only from word beginning
           found = false;

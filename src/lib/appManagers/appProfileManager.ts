@@ -19,6 +19,7 @@ import { ChannelParticipantsFilter, ChannelsChannelParticipants, Chat, ChatFull,
 import apiManager from '../mtproto/mtprotoworker';
 import { RichTextProcessor } from "../richtextprocessor";
 import rootScope from "../rootScope";
+import SearchIndex from "../searchIndex";
 import apiUpdatesManager from "./apiUpdatesManager";
 import appChatsManager from "./appChatsManager";
 import appDownloadManager from "./appDownloadManager";
@@ -385,6 +386,17 @@ export class AppProfileManager {
 
       return Promise.reject(error);
     }) as any;
+  }
+
+  public getMentions(chatId: number, query: string): Promise<number[]> {
+    return (this.getChatFull(chatId) as Promise<ChatFull.chatFull>).then(chatFull => {
+      const index = new SearchIndex<number>(true, true);
+      (chatFull.participants as ChatParticipants.chatParticipants).participants.forEach(participant => {
+        index.indexObject(participant.user_id, appUsersManager.getUserSearchText(participant.user_id));
+      });
+
+      return Array.from(index.search(query));
+    });
   }
 
   public invalidateChannelParticipants(id: number) {

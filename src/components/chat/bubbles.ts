@@ -143,6 +143,10 @@ export default class ChatBubbles {
   private fetchNewPromise: Promise<void>;
   private historyStorage: HistoryStorage;
 
+  private passEntities: Partial<{
+    [_ in MessageEntity['_']]: boolean
+  }> = {};
+
   constructor(private chat: Chat, private appMessagesManager: AppMessagesManager, private appStickersManager: AppStickersManager, private appUsersManager: AppUsersManager, private appInlineBotsManager: AppInlineBotsManager, private appPhotosManager: AppPhotosManager, private appDocsManager: AppDocsManager, private appPeersManager: AppPeersManager, private appChatsManager: AppChatsManager, private storage: typeof sessionStorage) {
     //this.chat.log.error('Bubbles construction');
     
@@ -1544,6 +1548,10 @@ export default class ChatBubbles {
 
       this.peerId = peerId;
       this.replyFollowHistory.length = 0;
+
+      this.passEntities = {
+        messageEntityBotCommand: this.appPeersManager.isAnyGroup(this.peerId) || this.appUsersManager.isBot(this.peerId)
+      };
     }
 
     if(DEBUG) {
@@ -2029,7 +2037,8 @@ export default class ChatBubbles {
       entities: totalEntities
     }); */
     let richText = RichTextProcessor.wrapRichText(messageMessage, {
-      entities: totalEntities
+      entities: totalEntities,
+      passEntities: this.passEntities
     });
 
     let canHaveTail = true;
