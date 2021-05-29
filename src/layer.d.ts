@@ -2192,7 +2192,8 @@ export namespace Update {
 	export type updateDraftMessage = {
 		_: 'updateDraftMessage',
 		peer: Peer,
-		draft: DraftMessage
+		draft: DraftMessage,
+		local?: boolean
 	};
 
 	export type updateReadFeaturedStickers = {

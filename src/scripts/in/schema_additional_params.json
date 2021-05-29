@@ -227,6 +227,11 @@
   ],
   "type": "Update"
 }, {
+  "predicate": "updateDraftMessage",
+  "params": [
+    {"name": "local", "type": "boolean"}
+  ]
+}, {
   "predicate": "messages.stickerSet",
   "params": [
     {"name": "refreshTime", "type": "number"}
