@@ -29,7 +29,7 @@ export function appendEmoji(emoji: string, container: HTMLElement, prepend = fal
   spanEmoji.classList.add('super-emoji');
 
   let kek: string;
-  if(unify) {
+  if(unify && !RichTextProcessor.emojiSupported) {
     kek = RichTextProcessor.wrapSingleEmoji(emoji);
   } else {
     emoji = RichTextProcessor.fixEmoji(emoji);
