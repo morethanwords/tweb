@@ -72,10 +72,8 @@ const POSTING_MEDIA_NOT_ALLOWED = 'Posting media content isn\'t allowed in this 
 
 type ChatInputHelperType = 'edit' | 'webpage' | 'forward' | 'reply';
 
-let selId = 0;
-
 export default class ChatInput {
-  public static AUTO_COMPLETE_REG_EXP = /(\s|^)((?::|.)(?!.*:).*|(?:(?:@|\/)(?:[\S]*)))$/;
+  private static AUTO_COMPLETE_REG_EXP = /(\s|^)((?::|.)(?!.*:).*|(?:(?:@|\/)(?:[\S]*)))$/;
   public messageInput: HTMLElement;
   public messageInputField: InputField;
   private fileInput: HTMLInputElement;
@@ -132,8 +130,8 @@ export default class ChatInput {
 
   private lockRedo = false;
   private canRedoFromHTML = '';
-  readonly undoHistory: string[] = [];
-  readonly executedHistory: string[] = [];
+  private readonly undoHistory: string[] = [];
+  private readonly executedHistory: string[] = [];
   private canUndoFromHTML = '';
 
   private autocompleteHelperController: AutocompleteHelperController;
@@ -435,7 +433,8 @@ export default class ChatInput {
     }, {passive: false, capture: true}); */
 
     this.listenerSetter.add(rootScope, 'settings_updated', () => {
-      if(this.stickersHelper) {
+      if(this.stickersHelper || this.emojiHelper) {
+        this.previousQuery = undefined;
         this.checkAutocomplete();
         /* if(!rootScope.settings.stickers.suggest) {
           this.stickersHelper.checkEmoticon('');
@@ -1221,7 +1220,7 @@ export default class ChatInput {
 
     const matches = value.match(ChatInput.AUTO_COMPLETE_REG_EXP);
     if(!matches) {
-      delete this.previousQuery;
+      this.previousQuery = undefined;
       this.autocompleteHelperController.hideOtherHelpers();
       return;
     }
@@ -1289,7 +1288,7 @@ export default class ChatInput {
           // console.log('found commands', found, filtered);
         });
       }
-    } else { // emoji
+    } else if(rootScope.settings.emoji.suggest) { // emoji
       if(!value.match(/^\s*:(.+):\s*$/)) {
         foundHelper = this.emojiHelper;
         this.appEmojiManager.getBothEmojiKeywords().then(() => {

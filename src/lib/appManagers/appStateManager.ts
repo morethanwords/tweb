@@ -74,6 +74,10 @@ export type State = {
       suggest: boolean,
       loop: boolean
     },
+    emoji: {
+      suggest: boolean,
+      big: boolean
+    },
     background?: Background, // ! DEPRECATED
     themes: Theme[],
     theme: Theme['name'],
@@ -118,6 +122,10 @@ export const STATE_INIT: State = {
     stickers: {
       suggest: true,
       loop: true
+    },
+    emoji: {
+      suggest: true,
+      big: true
     },
     themes: [{
       name: 'day',

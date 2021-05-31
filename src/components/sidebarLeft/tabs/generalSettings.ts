@@ -170,6 +170,25 @@ export default class AppGeneralSettingsTab extends SliderSuperTab {
 
       container.append(gifsCheckboxField.label, videosCheckboxField.label);
     }
+
+    {
+      const container = section('Emoji');
+
+      const suggestCheckboxField = new CheckboxField({
+        text: 'GeneralSettings.EmojiPrediction', 
+        name: 'suggest-emoji', 
+        stateKey: 'settings.emoji.suggest',
+        withRipple: true
+      });
+      const bigCheckboxField = new CheckboxField({
+        text: 'GeneralSettings.BigEmoji', 
+        name: 'emoji-big', 
+        stateKey: 'settings.emoji.big',
+        withRipple: true
+      });
+
+      container.append(suggestCheckboxField.label, bigCheckboxField.label);
+    }
     
     {
       const container = section('Telegram.InstalledStickerPacksController');

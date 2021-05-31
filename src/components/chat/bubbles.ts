@@ -2043,7 +2043,7 @@ export default class ChatBubbles {
 
     let canHaveTail = true;
     
-    if(totalEntities && !messageMedia) {
+    if(totalEntities && !messageMedia && rootScope.settings.emoji.big) {
       let emojiEntities = totalEntities.filter((e) => e._ === 'messageEntityEmoji');
       let strLength = messageMessage.length;
       let emojiStrLength = emojiEntities.reduce((acc: number, curr: any) => acc + curr.length, 0);
