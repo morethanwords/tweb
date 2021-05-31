@@ -7,6 +7,7 @@
 /// #if MTPROTO_SW
 import './mtproto.worker';
 /// #endif
+//import CacheStorageController from '../cacheStorage';
 import { isSafari } from '../../helpers/userAgent';
 import { logger, LogTypes } from '../logger';
 import type { DownloadOptions } from './apiFileManager';
@@ -19,6 +20,17 @@ const log = logger('SW', LogTypes.Error | LogTypes.Debug | LogTypes.Log | LogTyp
 const ctx = self as any as ServiceWorkerGlobalScope;
 
 const deferredPromises: {[taskId: number]: CancellablePromise<any>} = {};
+
+export interface ServiceWorkerTask extends WorkerTaskTemplate {
+  type: 'requestFilePart',
+  payload: [number, InputFileLocation, number, number]
+};
+
+export interface ServiceWorkerTaskResponse extends WorkerTaskTemplate {
+  type: 'requestFilePart',
+  payload?: UploadFile.uploadFile,
+  originalPayload?: ServiceWorkerTask['payload']
+};
 
 /// #if !MTPROTO_SW
 ctx.addEventListener('message', (e) => {
@@ -35,20 +47,32 @@ ctx.addEventListener('message', (e) => {
 });
 /// #endif
 
+//const cacheStorage = new CacheStorageController('cachedAssets');
 let taskId = 0;
 
-export interface ServiceWorkerTask extends WorkerTaskTemplate {
-  type: 'requestFilePart',
-  payload: [number, InputFileLocation, number, number]
-};
-
-export interface ServiceWorkerTaskResponse extends WorkerTaskTemplate {
-  type: 'requestFilePart',
-  payload?: UploadFile.uploadFile,
-  originalPayload?: ServiceWorkerTask['payload']
-};
+async function requestCache(event: FetchEvent) {
+  try {
+    const cache = await ctx.caches.open('cachedAssets');
+    const file = await cache.match(event.request);
+  
+    if(file) {
+      return file;
+    }
+  
+    const response = await fetch(event.request);
+    cache.put(event.request, response.clone());
+  
+    return response;
+  } catch(err) {
+    return fetch(event.request);
+  }
+}
 
 const onFetch = (event: FetchEvent): void => {
+  if(event.request.url.indexOf(location.origin + '/') === 0 && event.request.url.match(/\.(js|css|jpe?g|json|wasm|png|mp3|svg|tgs|ico|woff2?)$/)) {
+    return event.respondWith(requestCache(event));
+  }
+
   try {
     const [, url, scope, params] = /http[:s]+\/\/.*?(\/(.*?)(?:$|\/(.*)$))/.exec(event.request.url) || [];
 
@@ -160,6 +184,7 @@ ctx.addEventListener('activate', (event) => {
   /* if (!ctx.cache) initCache();
   if (!ctx.network) initNetwork(); */
 
+  event.waitUntil(ctx.caches.delete('cachedAssets'));
   event.waitUntil(ctx.clients.claim());
 });
 
