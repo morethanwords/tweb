@@ -436,6 +436,7 @@ const lang = {
   "Of": "%1$d of %2$d",
   "NoResult": "No results",
   "Updating": "Updating...",
+  "Emoji": "Emoji",
 
   // * macos
   "AccountSettings.Filters": "Chat Folders",
@@ -668,6 +669,8 @@ const lang = {
   "NewPoll.OptionsAddOption": "Add an Option",
   "NewPoll.MultipleChoice": "Multiple Answers",
   "NewPoll.Quiz": "Quiz Mode",
+  "GeneralSettings.BigEmoji": "Large Emoji",
+  "GeneralSettings.EmojiPrediction": "Suggest Emoji",
   "GroupPermission.Delete": "Delete Exception",
   "Schedule.SendToday": "Send today at %@",
   "Schedule.SendDate": "Send on %@ at %@",
