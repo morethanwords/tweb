@@ -18,7 +18,7 @@ import { CHAT_ANIMATION_GROUP } from "../../lib/appManagers/appImManager";
 import { getObjectKeysAndSort } from "../../helpers/object";
 import { isTouchSupported } from "../../helpers/touchSupport";
 import { logger } from "../../lib/logger";
-import rootScope from "../../lib/rootScope";
+import rootScope, { BroadcastEvents } from "../../lib/rootScope";
 import AppMediaViewer from "../appMediaViewer";
 import BubbleGroups from "./bubbleGroups";
 import PopupDatePicker from "../popups/datePicker";
@@ -517,6 +517,29 @@ export default class ChatBubbles {
         if(hadRights !== hasRights) {
           this.finishPeerChange();
           this.chat.input.updateMessageInput();
+        }
+      }
+    });
+
+    this.listenerSetter.add(rootScope, 'settings_updated', (e: BroadcastEvents['settings_updated']) => {
+      if(e.key === 'settings.emoji.big') {
+        const isScrolledDown = this.scrollable.isScrolledDown;
+        if(!isScrolledDown) {
+          this.setMessagesQueuePromise();
+        }
+        
+        for(const mid in this.bubbles) {
+          const bubble = this.bubbles[mid];
+          if(bubble.classList.contains('can-have-big-emoji')) {
+            const message = this.chat.getMessage(+mid);
+            this.renderMessage(message, undefined, false, bubble);
+          }
+        }
+
+        if(isScrolledDown) {
+          this.scrollable.scrollTop = 99999;
+        } else {
+          this.performHistoryResult([], true, false, undefined);
         }
       }
     });
@@ -1959,6 +1982,7 @@ export default class ChatBubbles {
       contentWrapper = bubble.lastElementChild as HTMLElement;
       bubbleContainer = contentWrapper.firstElementChild as HTMLDivElement;
       bubbleContainer.innerHTML = '';
+      bubbleContainer.style.cssText = '';
       contentWrapper.innerHTML = '';
       contentWrapper.appendChild(bubbleContainer);
       //bubbleContainer.style.marginBottom = '';
@@ -2043,40 +2067,46 @@ export default class ChatBubbles {
 
     let canHaveTail = true;
     
-    if(totalEntities && !messageMedia && rootScope.settings.emoji.big) {
+    let needToSetHTML = true;
+    if(totalEntities && !messageMedia) {
       let emojiEntities = totalEntities.filter((e) => e._ === 'messageEntityEmoji');
       let strLength = messageMessage.length;
       let emojiStrLength = emojiEntities.reduce((acc: number, curr: any) => acc + curr.length, 0);
       
       if(emojiStrLength === strLength && emojiEntities.length <= 3) {
-        let sticker = this.appStickersManager.getAnimatedEmojiSticker(messageMessage);
-        if(emojiEntities.length === 1 && !messageMedia && sticker) {
-          messageMedia = {
-            _: 'messageMediaDocument',
-            document: sticker
-          };
-        } else {
-          let attachmentDiv = document.createElement('div');
-          attachmentDiv.classList.add('attachment');
-          
-          attachmentDiv.innerHTML = richText;
-          
-          bubble.classList.add('emoji-' + emojiEntities.length + 'x');
-          
-          bubbleContainer.append(attachmentDiv);
-        }
+        if(rootScope.settings.emoji.big) {
+          let sticker = this.appStickersManager.getAnimatedEmojiSticker(messageMessage);
+          if(emojiEntities.length === 1 && !messageMedia && sticker) {
+            messageMedia = {
+              _: 'messageMediaDocument',
+              document: sticker
+            };
+          } else {
+            let attachmentDiv = document.createElement('div');
+            attachmentDiv.classList.add('attachment');
+            
+            attachmentDiv.innerHTML = richText;
+            
+            bubble.classList.add('emoji-' + emojiEntities.length + 'x');
+            
+            bubbleContainer.append(attachmentDiv);
+          }
 
-        bubble.classList.add('is-message-empty', 'emoji-big');
-        canHaveTail = false;
-      } else {
-        setInnerHTML(messageDiv, richText);
+          bubble.classList.add('is-message-empty', 'emoji-big');
+          canHaveTail = false;
+          needToSetHTML = false;
+        }
+        
+        bubble.classList.add('can-have-big-emoji');
       }
       
       /* if(strLength === emojiStrLength) {
         messageDiv.classList.add('emoji-only');
         messageDiv.classList.add('message-empty');
       } */
-    } else {
+    }
+
+    if(needToSetHTML) {
       setInnerHTML(messageDiv, richText);
     }
     
