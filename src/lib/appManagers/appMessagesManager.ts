@@ -313,11 +313,11 @@ export class AppMessagesManager {
   }
 
   public getInputEntities(entities: MessageEntity[]) {
-    var sendEntites = copy(entities);
-    sendEntites.forEach((entity: any) => {
+    const sendEntites = copy(entities);
+    sendEntites.forEach((entity) => {
       if(entity._ === 'messageEntityMentionName') {
-        entity._ = 'inputMessageEntityMentionName';
-        entity.user_id = appUsersManager.getUserInput(entity.user_id);
+        (entity as any as MessageEntity.inputMessageEntityMentionName)._ = 'inputMessageEntityMentionName';
+        (entity as any as MessageEntity.inputMessageEntityMentionName).user_id = appUsersManager.getUserInput(entity.user_id);
       }
     });
     return sendEntites;

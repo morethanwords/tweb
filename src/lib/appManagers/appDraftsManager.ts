@@ -206,7 +206,7 @@ export class AppDraftsManager {
       }
 
       if(entities?.length) {
-        params.entities = entities;
+        params.entities = appMessagesManager.getInputEntities(entities);
       }
 
       if(localDraft.pFlags.no_webpage) {

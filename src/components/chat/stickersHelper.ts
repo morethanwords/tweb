@@ -5,7 +5,6 @@
  */
 
 import mediaSizes from "../../helpers/mediaSizes";
-import { clamp } from "../../helpers/number";
 import { MyDocument } from "../../lib/appManagers/appDocsManager";
 import { CHAT_ANIMATION_GROUP } from "../../lib/appManagers/appImManager";
 import appStickersManager from "../../lib/appManagers/appStickersManager";

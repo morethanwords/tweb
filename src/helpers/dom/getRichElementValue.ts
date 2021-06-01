@@ -11,10 +11,10 @@
 
 import { MessageEntity } from "../../layer";
 
-export type MarkdownType = 'bold' | 'italic' | 'underline' | 'strikethrough' | 'monospace' | 'link';
+export type MarkdownType = 'bold' | 'italic' | 'underline' | 'strikethrough' | 'monospace' | 'link' | 'mentionName';
 export type MarkdownTag = {
   match: string,
-  entityName: 'messageEntityBold' | 'messageEntityUnderline' | 'messageEntityItalic' | 'messageEntityPre' | 'messageEntityStrike' | 'messageEntityTextUrl';
+  entityName: 'messageEntityBold' | 'messageEntityUnderline' | 'messageEntityItalic' | 'messageEntityPre' | 'messageEntityStrike' | 'messageEntityTextUrl' | 'messageEntityMentionName';
 };
 export const markdownTags: {[type in MarkdownType]: MarkdownTag} = {
   bold: {
@@ -38,8 +38,12 @@ export const markdownTags: {[type in MarkdownType]: MarkdownTag} = {
     entityName: 'messageEntityStrike'
   },
   link: {
-    match: 'A',
+    match: 'A:not(.follow)',
     entityName: 'messageEntityTextUrl'
+  },
+  mentionName: {
+    match: 'A.follow',
+    entityName: 'messageEntityMentionName'
   }
 };
 
@@ -63,10 +67,17 @@ export default function getRichElementValue(node: HTMLElement, lines: string[], 
           if(closest && closest.getAttribute('contenteditable') === null) {
             if(tag.entityName === 'messageEntityTextUrl') {
               entities.push({
-                _: tag.entityName as any,
+                _: tag.entityName,
                 url: (parentElement as HTMLAnchorElement).href,
                 offset: offset.offset,
                 length: nodeValue.length
+              });
+            } else if(tag.entityName === 'messageEntityMentionName') {
+              entities.push({
+                _: tag.entityName,
+                offset: offset.offset,
+                length: nodeValue.length,
+                user_id: +parentElement.dataset.follow
               });
             } else {
               entities.push({

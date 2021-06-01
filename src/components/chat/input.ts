@@ -73,7 +73,7 @@ const POSTING_MEDIA_NOT_ALLOWED = 'Posting media content isn\'t allowed in this 
 type ChatInputHelperType = 'edit' | 'webpage' | 'forward' | 'reply';
 
 export default class ChatInput {
-  private static AUTO_COMPLETE_REG_EXP = /(\s|^)((?::|.)(?!.*:).*|(?:(?:@|\/)(?:[\S]*)))$/;
+  private static AUTO_COMPLETE_REG_EXP = /(\s|^)((?::|.)(?!.*[:@]).*|(?:[@\/]\S*))$/;
   public messageInput: HTMLElement;
   public messageInputField: InputField;
   private fileInput: HTMLInputElement;
@@ -1144,56 +1144,65 @@ export default class ChatInput {
     this.updateSendBtn();
   };
 
+  public insertAtCaret(insertText: string, insertEntity?: MessageEntity) {
+    const {value: fullValue, caretPos, entities} = getRichValueWithCaret(this.messageInput);
+    const pos = caretPos >= 0 ? caretPos : fullValue.length;
+    const prefix = fullValue.substr(0, pos);
+    const suffix = fullValue.substr(pos);
+
+    const matches = prefix.match(ChatInput.AUTO_COMPLETE_REG_EXP);
+
+    const matchIndex = matches.index + (matches[0].length - matches[2].length);
+    const newPrefix = prefix.slice(0, matchIndex);
+    const newValue = newPrefix + insertText + suffix;
+
+    // merge emojis
+    const hadEntities = RichTextProcessor.parseEntities(fullValue);
+    RichTextProcessor.mergeEntities(entities, hadEntities);
+
+    // max for additional whitespace
+    const insertLength = insertEntity ? Math.max(insertEntity.length, insertText.length) : insertText.length;
+    const addEntities: MessageEntity[] = [];
+    if(insertEntity) {
+      addEntities.push(insertEntity);
+      insertEntity.offset = matchIndex;
+    }
+
+    addEntities.push({
+      _: 'messageEntityCaret',
+      length: 0,
+      offset: matchIndex + insertLength
+    });
+    
+    // add offset to entities next to emoji
+    const diff = insertLength - matches[2].length;
+    entities.forEach(entity => {
+      if(entity.offset >= matchIndex) {
+        entity.offset += diff;
+      }
+    });
+
+    RichTextProcessor.mergeEntities(entities, addEntities);
+
+    //const saveExecuted = this.prepareDocumentExecute();
+    // can't exec .value here because it will instantly check for autocomplete
+    this.messageInputField.setValueSilently(RichTextProcessor.wrapDraftText(newValue, {entities}), true);
+
+    const caret = this.messageInput.querySelector('.composer-sel');
+    setRichFocus(this.messageInput, caret);
+    caret.remove();
+
+    // but it's needed to be checked only here
+    this.onMessageInput();
+
+    //saveExecuted();
+
+    //document.execCommand('insertHTML', true, RichTextProcessor.wrapEmojiText(emoji));
+  }
+
   public onEmojiSelected = (emoji: string, autocomplete: boolean) => {
     if(autocomplete) {
-      const {value: fullValue, caretPos, entities} = getRichValueWithCaret(this.messageInput);
-      const pos = caretPos >= 0 ? caretPos : fullValue.length;
-      const prefix = fullValue.substr(0, pos);
-      const suffix = fullValue.substr(pos);
-
-      const matches = prefix.match(ChatInput.AUTO_COMPLETE_REG_EXP);
-
-      const matchIndex = matches.index + (matches[0].length - matches[2].length);
-      const newPrefix = prefix.slice(0, matchIndex);
-      const newValue = newPrefix + emoji + suffix;
-
-      // merge emojis
-      const hadEntities = RichTextProcessor.parseEntities(fullValue);
-      RichTextProcessor.mergeEntities(entities, hadEntities);
-
-      const emojiEntity = RichTextProcessor.getEmojiEntityFromEmoji(emoji);
-      const addEntities: MessageEntity[] = [emojiEntity];
-      emojiEntity.offset = matchIndex;
-      addEntities.push({
-        _: 'messageEntityCaret',
-        length: 0,
-        offset: emojiEntity.offset + emojiEntity.length
-      });
-      
-      // add offset to entities next to emoji
-      const diff = emojiEntity.length - matches[2].length;
-      entities.forEach(entity => {
-        if(entity.offset >= emojiEntity.offset) {
-          entity.offset += diff;
-        }
-      });
-
-      RichTextProcessor.mergeEntities(entities, addEntities);
-
-      //const saveExecuted = this.prepareDocumentExecute();
-      // can't exec .value here because it will instantly check for autocomplete
-      this.messageInputField.setValueSilently(RichTextProcessor.wrapDraftText(newValue, {entities}), true);
-
-      const caret = this.messageInput.querySelector('.composer-sel');
-      setRichFocus(this.messageInput, caret);
-      caret.remove();
-
-      // but it's needed to be checked only here
-      this.onMessageInput();
-
-      //saveExecuted();
-
-      //document.execCommand('insertHTML', true, RichTextProcessor.wrapEmojiText(emoji));
+      this.insertAtCaret(emoji, RichTextProcessor.getEmojiEntityFromEmoji(emoji));
     }
   };
 
@@ -1248,20 +1257,27 @@ export default class ChatInput {
 
     //console.log('autocomplete matches', matches);
 
-    /* if(firstChar === '@') { // mentions
-      if(this.chat.peerId < 0) {
+    if(firstChar === '@') { // mentions
+      const trimmed = query.trim(); // check that there is no whitespace
+      if(this.chat.peerId < 0 && query.length === trimmed.length) {
         foundHelper = this.mentionsHelper;
-        this.chat.appProfileManager.getMentions(-this.chat.peerId, query).then(peerIds => {
+        const topMsgId = this.chat.threadId ? this.appMessagesManager.getServerMessageId(this.chat.threadId) : undefined;
+        this.chat.appProfileManager.getMentions(-this.chat.peerId, trimmed, topMsgId).then(peerIds => {
+          const username = trimmed.slice(1).toLowerCase();
           this.mentionsHelper.render(peerIds.map(peerId => {
             const user = this.chat.appUsersManager.getUser(peerId);
+            if(user.username && user.username.toLowerCase() === username) { // hide full matched suggestion
+              return;
+            }
+
             return {
               peerId,
               description: user.username ? '@' + user.username : undefined
             };
-          }));
+          }).filter(Boolean));
         });
       }
-    } else  */if(!matches[1] && firstChar === '/') { // commands
+    } else if(!matches[1] && firstChar === '/') { // commands
       if(appUsersManager.isBot(this.chat.peerId)) {
         foundHelper = this.commandsHelper;
         this.chat.appProfileManager.getProfileByPeerId(this.chat.peerId).then(full => {
