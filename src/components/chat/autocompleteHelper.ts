@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import attachListNavigation from "../../helpers/dom/attachlistNavigation";
+import attachListNavigation from "../../helpers/dom/attachListNavigation";
 import EventListenerBase from "../../helpers/eventListenerBase";
 import { safeAssign } from "../../helpers/object";
 import { isMobile } from "../../helpers/userAgent";
