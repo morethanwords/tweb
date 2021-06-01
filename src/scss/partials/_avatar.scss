@@ -124,6 +124,10 @@ avatar-element {
     cursor: pointer;
   }
 
+  &.avatar-relative {
+    position: relative;
+  }
+
   /* &.avatar-54 {
     width: 54px;
     height: 54px;
@@ -197,4 +201,10 @@ avatar-element {
     --size: 16px;
     --multiplier: 3.375;
   }
+}
+
+.avatar-photo {
+  position: absolute;
+  top: 0;
+  left: 0;
 }

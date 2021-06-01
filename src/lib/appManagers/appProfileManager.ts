@@ -512,9 +512,10 @@ export class AppProfileManager {
     return {cached, loadPromise: getAvatarPromise};
   }
 
-  public putAvatar(div: HTMLElement, peerId: number, photo: UserProfilePhoto.userProfilePhoto | ChatPhoto.chatPhoto, size: PeerPhotoSize, img = new Image()) {
-    const {cached, loadPromise} = this.loadAvatar(peerId, photo, size);
+  public putAvatar(div: HTMLElement, peerId: number, photo: UserProfilePhoto.userProfilePhoto | ChatPhoto.chatPhoto, size: PeerPhotoSize, img = new Image(), onlyThumb = false) {
+    let {cached, loadPromise} = this.loadAvatar(peerId, photo, size);
 
+    let renderThumbPromise: Promise<void>;
     let callback: () => void;
     if(cached) {
       // смотри в misc.ts: renderImageFromUrl
@@ -528,41 +529,52 @@ export class AppProfileManager {
         img.classList.add('fade-in');
       }
 
+      let thumbImage: HTMLImageElement;
+      if(photo.stripped_thumb) {
+        thumbImage = new Image();
+        div.classList.add('avatar-relative');
+        thumbImage.classList.add('avatar-photo', 'avatar-photo-thumbnail');
+        img.classList.add('avatar-photo');
+        const url = appPhotosManager.getPreviewURLFromBytes(photo.stripped_thumb);
+        renderThumbPromise = renderImageFromUrl(thumbImage, url).then(() => {
+          replaceContent(div, thumbImage);
+        });
+      }
+
       callback = () => {
-        replaceContent(div, img);
+        if(photo.stripped_thumb) {
+          div.append(img);
+        } else {
+          replaceContent(div, img);
+        }
 
         setTimeout(() => {
           if(div.childElementCount) {
-            div.dataset.color = '';
-
-            if(animate) {
-              sequentialDom.mutateElement(img, () => {
+            sequentialDom.mutateElement(img, () => {
+              div.dataset.color = '';
+              
+              if(animate) {
                 img.classList.remove('fade-in');
-              });
-            }
+              }
+
+              if(thumbImage) {
+                thumbImage.remove();
+              }
+            });
           }
         }, animate ? 200 : 0);
       };
     }
 
-    const renderPromise = loadPromise.then((url) => {
-      /* if(photo.stripped_thumb) {
-        url = appPhotosManager.getPreviewURLFromBytes(photo.stripped_thumb);
-      } */
+    const renderPromise = loadPromise
+    .then((url) => renderImageFromUrl(img, url/* , false */))
+    .then(() => callback());
 
-      return new Promise<void>((resolve) => {
-        renderImageFromUrl(img, url, () => {
-          callback();
-          resolve();
-        }/* , false */);
-      });
-    });
-
-    return {cached, loadPromise: renderPromise};
+    return {cached, loadPromise: renderThumbPromise || renderPromise};
   }
 
   // peerId === peerId || title
-  public putPhoto(div: HTMLElement, peerId: number, isDialog = false, title = '') {
+  public putPhoto(div: HTMLElement, peerId: number, isDialog = false, title = '', onlyThumb = false) {
     const photo = appPeersManager.getPeerPhoto(peerId);
 
     const size: PeerPhotoSize = 'photo_small';
@@ -614,7 +626,7 @@ export class AppProfileManager {
     }
 
     if(avatarAvailable/*  && false */) {
-      return this.putAvatar(div, peerId, photo, size);
+      return this.putAvatar(div, peerId, photo, size, undefined, onlyThumb);
     }
   }
 }

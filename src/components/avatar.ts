@@ -179,6 +179,22 @@ export default class AvatarElement extends HTMLElement {
     }
   }
 
+  private r(onlyThumb = false) {
+    const res = appProfileManager.putPhoto(this, this.peerId, this.isDialog, this.peerTitle, onlyThumb);
+    const promise = res ? res.loadPromise : Promise.resolve();
+    if(this.loadPromises) {
+      if(res && res.cached) {
+        this.loadPromises.push(promise);
+      }
+
+      promise.finally(() => {
+        this.loadPromises = undefined;
+      });
+    }
+
+    return res;
+  }
+
   public update() {
     if(this.lazyLoadQueue) {
       if(!seen.has(this.peerId)) {
@@ -192,6 +208,8 @@ export default class AvatarElement extends HTMLElement {
         }
   
         set.add(this);
+
+        this.r(true);
 
         this.lazyLoadQueue.push({
           div: this, 
@@ -209,17 +227,8 @@ export default class AvatarElement extends HTMLElement {
     
     seen.add(this.peerId);
     
-    const res = appProfileManager.putPhoto(this, this.peerId, this.isDialog, this.peerTitle);
+    const res = this.r();
     const promise = res ? res.loadPromise : Promise.resolve();
-    if(this.loadPromises) {
-      if(res && res.cached) {
-        this.loadPromises.push(promise);
-      }
-
-      promise.finally(() => {
-        this.loadPromises = undefined;
-      });
-    }
 
     if(this.addedToQueue) {
       promise.finally(() => {
