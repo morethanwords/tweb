@@ -43,6 +43,13 @@ export default class FiltersStorage {
 
     this.appStateManager.getState().then((state) => {
       this.filters = state.filters;
+
+      for(const filterId in this.filters) {
+        const filter = this.filters[filterId];
+        if(filter.hasOwnProperty('orderIndex') && filter.orderIndex >= this.orderIndex) {
+          this.orderIndex = filter.orderIndex + 1;
+        }
+      }
     });
 
     rootScope.addMultipleEventsListeners({
