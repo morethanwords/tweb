@@ -62,7 +62,9 @@ export default class AppChatFoldersTab extends SliderSuperTab {
         if(k) {
           d.push(i18n(k));
         }
-      } else {
+      }
+      
+      if(!d.length) {
         const folder = appMessagesManager.dialogsStorage.getFolder(filter.id);
         let chats = 0, channels = 0, groups = 0;
         for(const dialog of folder) {
