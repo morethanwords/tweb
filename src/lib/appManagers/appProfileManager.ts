@@ -388,15 +388,29 @@ export class AppProfileManager {
     }) as any;
   }
 
-  public getMentions(chatId: number, query: string): Promise<number[]> {
-    return (this.getChatFull(chatId) as Promise<ChatFull.chatFull>).then(chatFull => {
+  public getMentions(chatId: number, query: string, threadId?: number): Promise<number[]> {
+    const processUserIds = (userIds: number[]) => {
       const index = new SearchIndex<number>(true, true);
-      (chatFull.participants as ChatParticipants.chatParticipants).participants.forEach(participant => {
-        index.indexObject(participant.user_id, appUsersManager.getUserSearchText(participant.user_id));
+      userIds.forEach(userId => {
+        index.indexObject(userId, appUsersManager.getUserSearchText(userId));
       });
 
       return Array.from(index.search(query));
-    });
+    };
+
+    if(appChatsManager.isChannel(chatId)) {
+      return this.getChannelParticipants(chatId, {
+        _: 'channelParticipantsMentions',
+        q: query,
+        top_msg_id: threadId
+      }, 50, 0).then(cP => {
+        return processUserIds(cP.participants.map(p => appChatsManager.getParticipantPeerId(p)));
+      });
+    } else {
+      return (this.getChatFull(chatId) as Promise<ChatFull.chatFull>).then(chatFull => {
+        return processUserIds((chatFull.participants as ChatParticipants.chatParticipants).participants.map(p => p.user_id));
+      });
+    }
   }
 
   public invalidateChannelParticipants(id: number) {

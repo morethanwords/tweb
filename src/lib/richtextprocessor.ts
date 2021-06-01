@@ -626,8 +626,8 @@ namespace RichTextProcessor {
         }
 
         case 'messageEntityMentionName': {
-          if(!options.noLinks) {
-            insertPart(entity, `<a href="#/im?p=u${encodeURIComponent(entity.user_id)}" class="follow" data-follow="${entity.user_id}">`, '</a>');
+          if(!(options.noLinks && !passEntities[entity._])) {
+            insertPart(entity, `<a href="#/im?p=${encodeURIComponent(entity.user_id)}" class="follow" data-follow="${entity.user_id}">`, '</a>');
           }
 
           break;
@@ -709,7 +709,8 @@ namespace RichTextProcessor {
       noLinks: true,
       wrappingDraft: true,
       passEntities: {
-        messageEntityTextUrl: true
+        messageEntityTextUrl: true,
+        messageEntityMentionName: true
       }
     });
   }

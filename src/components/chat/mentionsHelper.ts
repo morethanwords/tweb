@@ -5,9 +5,10 @@
  */
 
 import type ChatInput from "./input";
+import type { MessageEntity } from "../../layer";
 import AutocompleteHelperController from "./autocompleteHelperController";
 import AutocompletePeerHelper from "./autocompletePeerHelper";
-import placeCaretAtEnd from "../../helpers/dom/placeCaretAtEnd";
+import appUsersManager from "../../lib/appManagers/appUsersManager";
 
 export default class MentionsHelper extends AutocompletePeerHelper {
   constructor(appendTo: HTMLElement, controller: AutocompleteHelperController, private chatInput: ChatInput) {
@@ -15,9 +16,22 @@ export default class MentionsHelper extends AutocompletePeerHelper {
       controller,
       'mentions-helper',
       (target) => {
-        const innerHTML = target.querySelector(`.${AutocompletePeerHelper.BASE_CLASS_LIST_ELEMENT}-description`).innerHTML;
-        chatInput.messageInputField.value = innerHTML + ' ';
-        placeCaretAtEnd(chatInput.messageInput);
+        const user = appUsersManager.getUser(+(target as HTMLElement).dataset.peerId);
+        let str = '', entity: MessageEntity;
+        if(user.username) {
+          str = '@' + user.username;
+        } else {
+          str = user.first_name || user.last_name;
+          entity = {
+            _: 'messageEntityMentionName',
+            length: str.length,
+            offset: 0,
+            user_id: user.id
+          };
+        }
+
+        str += ' ';
+        chatInput.insertAtCaret(str, entity);
       }
     );
   }
