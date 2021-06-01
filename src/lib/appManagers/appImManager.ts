@@ -17,7 +17,7 @@ import appUsersManager from "./appUsersManager";
 import Chat, { ChatType } from '../../components/chat/chat';
 import appChatsManager from './appChatsManager';
 import appDocsManager from './appDocsManager';
-import appInlineBotsManager from './AppInlineBotsManager';
+import appInlineBotsManager from './appInlineBotsManager';
 import appMessagesManager from './appMessagesManager';
 import appPeersManager from './appPeersManager';
 import appPhotosManager from './appPhotosManager';
