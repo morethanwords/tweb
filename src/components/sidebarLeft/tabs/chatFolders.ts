@@ -32,10 +32,10 @@ export default class AppChatFoldersTab extends SliderSuperTab {
   private stickerContainer: HTMLElement;
   private animation: RLottiePlayer;
 
-  private filtersRendered: {[filterId: number]: HTMLElement} = {};
+  private filtersRendered: {[filterId: number]: Row} = {};
   private loadAnimationPromise: Promise<void>;
 
-  private renderFolder(dialogFilter: DialogFilterSuggested | DialogFilter | MyDialogFilter, container?: HTMLElement, div?: HTMLElement) {
+  private renderFolder(dialogFilter: DialogFilterSuggested | DialogFilter | MyDialogFilter, container?: HTMLElement, row?: Row) {
     let filter: DialogFilter | MyDialogFilter;
     let description = '';
     let d: HTMLElement[] = [];
@@ -58,7 +58,10 @@ export default class AppChatFoldersTab extends SliderSuperTab {
         else if(pFlags.groups) k = 'FilterAllGroups';
         else if(pFlags.broadcasts) k = 'FilterAllChannels';
         else if(pFlags.bots) k = 'FilterAllBots';
-        d.push(i18n(k));
+
+        if(k) {
+          d.push(i18n(k));
+        }
       } else {
         const folder = appMessagesManager.dialogsStorage.getFolder(filter.id);
         let chats = 0, channels = 0, groups = 0;
@@ -74,33 +77,38 @@ export default class AppChatFoldersTab extends SliderSuperTab {
       }
     }
 
-    if(!div) {
-      const row = new Row({
+    let div: HTMLElement;
+    if(!row) {
+      row = new Row({
         title: RichTextProcessor.wrapEmojiText(filter.title),
         subtitle: description,
         clickable: true
       });
 
       if(d.length) {
-        const arr = join(d);
-        arr.forEach(el => {
+        join(d).forEach(el => {
           row.subtitle.append(el);
         });
       }
   
-      div = row.container;
-
       if(dialogFilter._ === 'dialogFilter') {
         const filterId = filter.id;
         if(!this.filtersRendered.hasOwnProperty(filter.id)) {
-          attachClickEvent(div, () => {
+          attachClickEvent(row.container, () => {
             new AppEditFolderTab(this.slider).open(appMessagesManager.filtersStorage.filters[filterId]);
           }, {listenerSetter: this.listenerSetter});
         }
 
-        this.filtersRendered[filter.id] = div;
+        this.filtersRendered[filter.id] = row;
       }
+    } else {
+      row.subtitle.textContent = '';
+      join(d).forEach(el => {
+        row.subtitle.append(el);
+      });
     }
+
+    div = row.container;
 
     if((filter as MyDialogFilter).hasOwnProperty('orderIndex')) {
        // ! header will be at 0 index
@@ -183,8 +191,8 @@ export default class AppChatFoldersTab extends SliderSuperTab {
         } */
         this.getSuggestedFilters();
 
-        this.filtersRendered[filter.id].remove();
-        delete this.filtersRendered[filter.id]
+        this.filtersRendered[filter.id].container.remove();
+        delete this.filtersRendered[filter.id];
       }
 
       onFiltersContainerUpdate();
@@ -193,8 +201,8 @@ export default class AppChatFoldersTab extends SliderSuperTab {
     this.listenerSetter.add(rootScope, 'filter_order', (e: BroadcastEvents['filter_order']) => {
       const order = e;
       order.forEach((filterId, idx) => {
-        const div = this.filtersRendered[filterId];
-        positionElementByIndex(div, div.parentElement, idx + 1); // ! + 1 due to header 
+        const container = this.filtersRendered[filterId].container;
+        positionElementByIndex(container, container.parentElement, idx + 1); // ! + 1 due to header 
       });
     });
 
