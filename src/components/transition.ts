@@ -8,6 +8,8 @@ import rootScope from "../lib/rootScope";
 import { CancellablePromise, deferredPromise } from "../helpers/cancellablePromise";
 import { dispatchHeavyAnimationEvent } from "../hooks/useHeavyAnimationCheck";
 import whichChild from "../helpers/dom/whichChild";
+import findUpClassName from "../helpers/dom/findUpClassName";
+import { isSafari } from "../helpers/userAgent";
 
 function slideNavigation(tabContent: HTMLElement, prevTabContent: HTMLElement, toRight: boolean) {
   const width = prevTabContent.getBoundingClientRect().width;
@@ -29,6 +31,15 @@ function slideNavigation(tabContent: HTMLElement, prevTabContent: HTMLElement, t
 }
 
 function slideTabs(tabContent: HTMLElement, prevTabContent: HTMLElement, toRight: boolean) {
+  // Jolly Cobra's // Workaround for scrollable content flickering during animation.
+  const scrollableContainer = findUpClassName(tabContent, 'scrollable-y');
+  if(scrollableContainer && scrollableContainer.style.overflowY !== 'hidden') {
+    // const scrollBarWidth = scrollableContainer.offsetWidth - scrollableContainer.clientWidth;
+    scrollableContainer.style.overflowY = 'hidden';
+    // scrollableContainer.style.paddingRight = `${scrollBarWidth}px`;
+    // this.container.classList.add('sliding');
+  }
+
   //window.requestAnimationFrame(() => {
     const width = prevTabContent.getBoundingClientRect().width;
     /* tabContent.style.setProperty('--width', width + 'px');
@@ -49,6 +60,23 @@ function slideTabs(tabContent: HTMLElement, prevTabContent: HTMLElement, toRight
   
   return () => {
     prevTabContent.style.transform = '';
+
+    if(scrollableContainer) {
+      // Jolly Cobra's // Workaround for scrollable content flickering during animation.
+      if(isSafari) { // ! safari doesn't respect sticky header, so it flicks when overflow is changing
+        scrollableContainer.style.display = 'none';
+      }
+
+      scrollableContainer.style.overflowY = '';
+
+      if(isSafari) {
+        void scrollableContainer.offsetLeft; // reflow
+        scrollableContainer.style.display = '';
+      }
+
+      // scrollableContainer.style.paddingRight = '0';
+      // this.container.classList.remove('sliding');
+    }
   };
 }
 
