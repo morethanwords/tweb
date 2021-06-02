@@ -309,32 +309,10 @@ export default class AppSearchSuper {
   }
 
   private onTransitionStart = () => {
-    // Jolly Cobra's // Workaround for scrollable content flickering during animation.
-    const container = this.scrollable.container;
-    if(container.style.overflowY !== 'hidden') {
-      // const scrollBarWidth = container.offsetWidth - container.clientWidth;
-      container.style.overflowY = 'hidden';
-      // container.style.paddingRight = `${scrollBarWidth}px`;
-      this.container.classList.add('sliding');
-    }
+    this.container.classList.add('sliding');
   };
 
   private onTransitionEnd = () => {
-    // Jolly Cobra's // Workaround for scrollable content flickering during animation.
-    const container = this.scrollable.container;
-
-    if(isSafari) { // ! safari doesn't respect sticky header, so it flicks when overflow is changing
-      container.style.display = 'none';
-    }
-
-    container.style.overflowY = '';
-
-    if(isSafari) {
-      void container.offsetLeft; // reflow
-      container.style.display = '';
-    }
-
-    // container.style.paddingRight = '0';
     this.container.classList.remove('sliding');
   };
 

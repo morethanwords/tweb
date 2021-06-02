@@ -259,9 +259,9 @@ export class AppDialogsManager {
     bottomPart.append(this.folders.container);
 
     this.scroll = this._scroll = new Scrollable(bottomPart, 'CL', 500);
-    this.scroll.container.addEventListener('scroll', this.onChatsRegularScroll);
+    /* this.scroll.container.addEventListener('scroll', this.onChatsRegularScroll);
     this.scroll.onScrolledTop = this.onChatsScrollTop;
-    this.scroll.onScrolledBottom = this.onChatsScroll;
+    this.scroll.onScrolledBottom = this.onChatsScroll; */
     //this.scroll.attachSentinels();
 
     /* if(isTouchSupported && isSafari) {
@@ -715,9 +715,12 @@ export class AppDialogsManager {
     //containerToAppend.append(li);
 
     const ul = this.createChatList();
-    const div = document.createElement('div');
+    const scrollable = new Scrollable(null, 'CL', 500);
+    const div = scrollable.container;
     div.append(ul);
     div.dataset.filterId = '' + filter.id;
+    scrollable.onScrolledTop = this.onChatsScrollTop;
+    scrollable.onScrolledBottom = this.onChatsScroll;
     //this.folders.container.append(div);
     positionElementByIndex(div, this.folders.container, filter.orderIndex);
 
@@ -846,7 +849,7 @@ export class AppDialogsManager {
   }
 
   private onListLengthChange = () => {
-    return;
+    //return;
     
     const emptyFolder = this.chatList.parentElement.querySelector('.empty-folder');
     if(this.scroll.loadedAll.bottom && !this.chatList.childElementCount) {
