@@ -25,14 +25,11 @@ import appStateManager from "./appStateManager";
 import appUsersManager from "./appUsersManager";
 import Button from "../../components/button";
 import SetTransition from "../../components/singleTransition";
-import sessionStorage from '../sessionStorage';
 import appDraftsManager, { MyDraftMessage } from "./appDraftsManager";
-import ProgressivePreloader from "../../components/preloader";
-import App from "../../config/app";
 import DEBUG, { MOUNT_CLASS_TO } from "../../config/debug";
 import appNotificationsManager from "./appNotificationsManager";
 import PeerTitle from "../../components/peerTitle";
-import { i18n, LangPackKey, _i18n } from "../langPack";
+import { i18n, _i18n } from "../langPack";
 import findUpTag from "../../helpers/dom/findUpTag";
 import { LazyLoadQueueIntersector } from "../../components/lazyLoadQueue";
 import lottieLoader from "../lottieLoader";
@@ -42,6 +39,7 @@ import appSidebarLeft from "../../components/sidebarLeft";
 import { attachClickEvent } from "../../helpers/dom/clickEvent";
 import positionElementByIndex from "../../helpers/dom/positionElementByIndex";
 import replaceContent from "../../helpers/dom/replaceContent";
+import ConnectionStatusComponent from "../../components/connectionStatus";
 
 export type DialogDom = {
   avatarEl: AvatarElement,
@@ -59,141 +57,6 @@ export type DialogDom = {
 
 //const testScroll = false;
 //let testTopSlice = 1;
-
-class ConnectionStatusComponent {
-  public static CHANGE_STATE_DELAY = 1000;
-
-  private statusContainer: HTMLElement;
-  private statusEl: HTMLElement;
-  private statusPreloader: ProgressivePreloader;
-
-  private currentLangPackKey = '';
-
-  private connectingTimeout: number;
-  private connecting = false;
-  private updating = false;
-
-  private log: ReturnType<typeof logger>;
-
-  private setFirstConnectionTimeout: number;
-  private setStateTimeout: number;
-
-  constructor(chatsContainer: HTMLElement) {
-    this.log = logger('CS');
-  
-    this.statusContainer = document.createElement('div');
-    this.statusContainer.classList.add('connection-status');
-
-    this.statusEl = Button('btn-primary bg-warning connection-status-button', {noRipple: true});
-    this.statusPreloader = new ProgressivePreloader({cancelable: false});
-    this.statusPreloader.constructContainer({color: 'transparent', bold: true});
-    this.statusContainer.append(this.statusEl);
-
-    chatsContainer.prepend(this.statusContainer);
-
-    rootScope.on('connection_status_change', (e) => {
-      const status = e;
-      console.log(status);
-
-      this.setConnectionStatus();
-    });
-
-    rootScope.on('state_synchronizing', (e) => {
-      const channelId = e;
-      if(!channelId) {
-        this.updating = true;
-        DEBUG && this.log('updating', this.updating);
-        this.setState();
-      }
-    });
-
-    rootScope.on('state_synchronized', (e) => {
-      const channelId = e;
-      DEBUG && this.log('state_synchronized', channelId);
-      if(!channelId) {
-        this.updating = false;
-        DEBUG && this.log('updating', this.updating);
-        this.setState();
-      }
-    });
-
-    this.setFirstConnectionTimeout = window.setTimeout(this.setConnectionStatus, ConnectionStatusComponent.CHANGE_STATE_DELAY + 1e3);
-
-    /* let bool = true;
-    document.addEventListener('dblclick', () => {
-      rootScope.broadcast('connection_status_change', {
-        dcId: 2,
-        isFileDownload: false,
-        isFileNetworker: false,
-        isFileUpload: false,
-        name: "NET-2",
-        online: bool = !bool,
-        _: "networkerStatus"
-      });
-    }); */
-  }
-
-  private setConnectionStatus = () => {
-    sessionStorage.get('dc').then(baseDcId => {
-      if(!baseDcId) {
-        baseDcId = App.baseDcId;
-      }
-      
-      if(this.setFirstConnectionTimeout) {
-        clearTimeout(this.setFirstConnectionTimeout);
-        this.setFirstConnectionTimeout = 0;
-      }
-
-      const status = rootScope.connectionStatus['NET-' + baseDcId];
-      const online = status && status.online;
-
-      if(this.connecting && online) {
-        apiUpdatesManager.forceGetDifference();
-      }
-
-      this.connecting = !online;
-      this.connectingTimeout = status && status.timeout;
-      DEBUG && this.log('connecting', this.connecting);
-      this.setState();
-    });
-  };
-
-  private setStatusText = (langPackKey: LangPackKey) => {
-    if(this.currentLangPackKey === langPackKey) return;
-    this.currentLangPackKey = langPackKey;
-    replaceContent(this.statusEl, i18n(langPackKey));
-    this.statusPreloader.attach(this.statusEl);
-  };
-
-  private setState = () => {
-    const timeout = ConnectionStatusComponent.CHANGE_STATE_DELAY;
-    if(this.connecting) {
-      // if(this.connectingTimeout) {
-      //   this.setStatusText('ConnectionStatus.Reconnect');
-      // } else {
-        this.setStatusText('ConnectionStatus.Waiting');
-      // }
-    } else if(this.updating) {
-      this.setStatusText('Updating');
-    }
-
-    DEBUG && this.log('setState', this.connecting || this.updating);
-    window.requestAnimationFrame(() => {
-      if(this.setStateTimeout) clearTimeout(this.setStateTimeout);
-
-      const cb = () => {
-        SetTransition(this.statusContainer, 'is-shown', this.connecting || this.updating, 200);
-        this.setStateTimeout = 0;
-        DEBUG && this.log('setState: isShown:', this.connecting || this.updating);
-      };
-
-      this.setStateTimeout = window.setTimeout(cb, timeout);
-      //cb();
-      /* if(timeout) this.setStateTimeout = window.setTimeout(cb, timeout);
-      else cb(); */
-    });
-  };
-}
 
 export class AppDialogsManager {
   private chatList: HTMLUListElement;
@@ -422,6 +285,7 @@ export class AppDialogsManager {
       elements.menu.remove();
       
       delete this.chatLists[filter.id];
+      delete this.scrollables[filter.id];
       delete this.filtersRendered[filter.id];
 
       if(Object.keys(this.filtersRendered).length <= 1) {

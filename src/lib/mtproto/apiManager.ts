@@ -27,6 +27,7 @@ import { ctx, isSafari } from '../../helpers/userAgent';
 import App from '../../config/app';
 import { MOUNT_CLASS_TO } from '../../config/debug';
 import IDBStorage from '../idb';
+import CryptoWorker from "../crypto/cryptoworker";
 
 /// #if !MTPROTO_WORKER
 import rootScope from '../rootScope';
@@ -132,7 +133,6 @@ export class ApiManager {
     const prefix = 'dc';
     for(let dcId = 1; dcId <= 5; dcId++) {
       storageKeys.push(prefix + dcId + '_auth_key');
-      //storageKeys.push(prefix + dcId + '_auth_keyId');
     }
     
     // WebPushApiManager.forceUnsubscribe(); // WARNING
@@ -216,11 +216,10 @@ export class ApiManager {
     }
 
     const ak = 'dc' + dcId + '_auth_key';
-    const akId = 'dc' + dcId + '_auth_keyId';
     const ss = 'dc' + dcId + '_server_salt';
     
-    return this.gettingNetworkers[getKey] = Promise.all([ak, akId, ss].map(key => sessionStorage.get(key as any)))
-    .then(async([authKeyHex, authKeyIdHex, serverSaltHex]) => {
+    return this.gettingNetworkers[getKey] = Promise.all([ak, ss].map(key => sessionStorage.get(key as any)))
+    .then(async([authKeyHex, serverSaltHex]) => {
       const transport = dcConfigurator.chooseServer(dcId, connectionType, transportType, false);
       let networker: MTPNetworker;
       if(authKeyHex && authKeyHex.length === 512) {
@@ -229,7 +228,7 @@ export class ApiManager {
         }
         
         const authKey = bytesFromHex(authKeyHex);
-        const authKeyId = new Uint8Array(bytesFromHex(authKeyIdHex));
+        const authKeyId = (await CryptoWorker.sha1Hash(new Uint8Array(authKey))).slice(-8);
         const serverSalt = bytesFromHex(serverSaltHex);
         
         networker = networkerFactory.getNetworker(dcId, authKey, authKeyId, serverSalt, transport, options);
@@ -239,7 +238,6 @@ export class ApiManager {
   
           const storeObj = {
             [ak]: bytesToHex(auth.authKey),
-            [akId]: auth.authKeyId.hex,
             [ss]: bytesToHex(auth.serverSalt)
           };
           
