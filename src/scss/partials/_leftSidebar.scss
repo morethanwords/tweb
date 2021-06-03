@@ -489,6 +489,10 @@
 
 #search-container {
   display: flex;
+
+  .scrollable-y {
+    position: relative;
+  }
 }
 
 .new-channel-container, .new-group-container, .edit-profile-container {
