@@ -211,7 +211,7 @@ export class AppDialogsManager {
 
   private contextMenu = new DialogsContextMenu();
 
-  public chatLists: {[filterId: number]: HTMLUListElement};
+  public chatLists: {[filterId: number]: HTMLUListElement} = {};
   public scrollables: {[filterId: number]: Scrollable} = {};
   public filterId: number;
   private folders: {[k in 'menu' | 'container' | 'menuScrollContainer']: HTMLElement} = {
@@ -240,17 +240,6 @@ export class AppDialogsManager {
   private lastActiveElements: Set<HTMLElement> = new Set();
 
   constructor() {
-    const archivedChatList = this.createChatList();
-    this.chatLists = {
-      1: archivedChatList
-    };
-    this.scrollables = {
-      1: this.generateScrollable(this.chatLists[1], 1)
-    };
-
-    this.setListClickListener(archivedChatList, null, true);
-    //this.setListClickListener(archivedChatList, null, true); // * to test peer changing
-
     this.chatsPreloader = putPreloader(null, true);
 
     this.allUnreadCount = this.folders.menu.querySelector('.badge');
