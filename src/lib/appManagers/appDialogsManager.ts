@@ -196,23 +196,23 @@ class ConnectionStatusComponent {
 }
 
 export class AppDialogsManager {
-  public chatList: HTMLUListElement;
+  private chatList: HTMLUListElement;
 
-  public doms: {[peerId: number]: DialogDom} = {};
+  private doms: {[peerId: number]: DialogDom} = {};
 
-  public chatsContainer = document.getElementById('chatlist-container') as HTMLDivElement;
+  private chatsContainer = document.getElementById('chatlist-container') as HTMLDivElement;
   private chatsPreloader: HTMLElement;
 
-  public loadDialogsPromise: Promise<any>;
+  private loadDialogsPromise: Promise<any>;
 
-  public scroll: Scrollable = null;
-  public _scroll: Scrollable = null;
+  private scroll: Scrollable = null;
   
   private log = logger('DIALOGS', LogTypes.Log | LogTypes.Error | LogTypes.Warn | LogTypes.Debug);
 
-  public contextMenu = new DialogsContextMenu();
+  private contextMenu = new DialogsContextMenu();
 
   public chatLists: {[filterId: number]: HTMLUListElement};
+  public scrollables: {[filterId: number]: Scrollable} = {};
   public filterId: number;
   private folders: {[k in 'menu' | 'container' | 'menuScrollContainer']: HTMLElement} = {
     menu: document.getElementById('folders-tabs'),
@@ -244,6 +244,9 @@ export class AppDialogsManager {
     this.chatLists = {
       1: archivedChatList
     };
+    this.scrollables = {
+      1: this.generateScrollable(this.chatLists[1], 1)
+    };
 
     this.setListClickListener(archivedChatList, null, true);
     //this.setListClickListener(archivedChatList, null, true); // * to test peer changing
@@ -257,12 +260,6 @@ export class AppDialogsManager {
     const bottomPart = document.createElement('div');
     bottomPart.classList.add('connection-status-bottom');
     bottomPart.append(this.folders.container);
-
-    this.scroll = this._scroll = new Scrollable(bottomPart, 'CL', 500);
-    /* this.scroll.container.addEventListener('scroll', this.onChatsRegularScroll);
-    this.scroll.onScrolledTop = this.onChatsScrollTop;
-    this.scroll.onScrolledBottom = this.onChatsScroll; */
-    //this.scroll.attachSentinels();
 
     /* if(isTouchSupported && isSafari) {
       let allowUp: boolean, allowDown: boolean, slideBeginY: number;
@@ -295,7 +292,7 @@ export class AppDialogsManager {
     });
 
     this.chatList = this.chatLists[this.filterId];
-    this.scroll.setVirtualContainer(this.chatList);
+    this.scroll = this.scrollables[this.filterId];
 
     /* if(testScroll) {
       let i = 0;
@@ -486,7 +483,6 @@ export class AppDialogsManager {
       if(this.filterId === id) return;
 
       this.chatLists[id].innerHTML = '';
-      this.scroll.setVirtualContainer(this.chatLists[id]);
       this.filterId = id;
       this.onTabChange();
     }, () => {
@@ -631,8 +627,9 @@ export class AppDialogsManager {
     }
   }
 
-  onTabChange = () => {
+  public onTabChange = () => {
     this.doms = {};
+    this.scroll = this.scrollables[this.filterId];
     this.scroll.loadedAll.top = true;
     this.scroll.loadedAll.bottom = false;
     this.loadDialogsPromise = undefined;
@@ -693,6 +690,21 @@ export class AppDialogsManager {
     }
   }
 
+  public generateScrollable(list: HTMLUListElement, filterId: number) {
+    const scrollable = new Scrollable(null, 'CL', 500);
+    scrollable.container.addEventListener('scroll', this.onChatsRegularScroll);
+    scrollable.container.dataset.filterId = '' + filterId;
+    scrollable.container.append(list);
+    scrollable.onScrolledTop = this.onChatsScrollTop;
+    scrollable.onScrolledBottom = this.onChatsScroll;
+    scrollable.setVirtualContainer(list);
+
+    this.chatLists[filterId] = list;
+    this.scrollables[filterId] = scrollable;
+
+    return scrollable;
+  }
+
   private addFilter(filter: Pick<DialogFilter, 'title' | 'id' | 'orderIndex'> & Partial<{titleEl: HTMLElement}>) {
     if(this.filtersRendered[filter.id]) return;
 
@@ -715,16 +727,11 @@ export class AppDialogsManager {
     //containerToAppend.append(li);
 
     const ul = this.createChatList();
-    const scrollable = new Scrollable(null, 'CL', 500);
+    const scrollable = this.generateScrollable(ul, filter.id);
     const div = scrollable.container;
-    div.append(ul);
-    div.dataset.filterId = '' + filter.id;
-    scrollable.onScrolledTop = this.onChatsScrollTop;
-    scrollable.onScrolledBottom = this.onChatsScroll;
     //this.folders.container.append(div);
-    positionElementByIndex(div, this.folders.container, filter.orderIndex);
+    positionElementByIndex(scrollable.container, this.folders.container, filter.orderIndex);
 
-    this.chatLists[filter.id] = ul;
     this.setListClickListener(ul, null, true);
 
     this.filtersRendered[filter.id] = {
@@ -909,14 +916,18 @@ export class AppDialogsManager {
         observer.observe(el);
       }); */
 
-      //const scrollTopWas = this.scroll.scrollTop;
+      const scrollTopWas = this.scroll.scrollTop;
 
       const firstElementChild = this.chatList.firstElementChild;
       const rectContainer = this.scroll.container.getBoundingClientRect();
       const rectTarget = firstElementChild.getBoundingClientRect();
       const children = Array.from(this.scroll.splitUp.children) as HTMLElement[];
 
-      const offsetTop = this.folders.container.offsetTop;
+      // const padding = 8;
+      // const offsetTop = this.folders.container.offsetTop;
+      let offsetTop = this.scroll.splitUp.offsetTop;
+      if(offsetTop && scrollTopWas < offsetTop) offsetTop -= scrollTopWas;
+      // const offsetTop = scrollTopWas < padding ? padding - scrollTopWas : 0;
       const firstY = rectContainer.y + offsetTop;
       const lastY = rectContainer.y/*  - 8 */; // 8px - .chatlist padding-bottom
       
