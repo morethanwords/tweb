@@ -124,13 +124,17 @@
       //line-height: inherit !important;
     }
 
-    &:not(.hide) + .scrollable {
-      top: var(--menu-size);
+    &:not(.hide) + #folders-container {
       height: calc(100% - var(--menu-size));
+      position: relative;
 
-      #folders-container {
-        margin-top: .5rem;
+      .scrollable {
+        padding-top: .5rem;
       }
+
+      /* .chatlist {
+        top: .5rem;
+      } */
     }
   }
 
@@ -232,12 +236,9 @@
   }
 
   #folders-container {
-    min-height: 100%;
-
     > div {
       background-color: transparent;
       position: absolute;
-      top: .5rem;
     }
   }
 

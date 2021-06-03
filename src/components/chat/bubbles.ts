@@ -528,13 +528,15 @@ export default class ChatBubbles {
           this.setMessagesQueuePromise();
         }
         
-        for(const mid in this.bubbles) {
+        const mids = getObjectKeysAndSort(this.bubbles, 'desc');
+        mids.forEach(mid => {
           const bubble = this.bubbles[mid];
           if(bubble.classList.contains('can-have-big-emoji')) {
-            const message = this.chat.getMessage(+mid);
+            const message = this.chat.getMessage(mid);
             this.renderMessage(message, undefined, false, bubble);
+            // this.bubbleGroups.addBubble(bubble, message, false);
           }
-        }
+        });
 
         if(isScrolledDown) {
           this.scrollable.scrollTop = 99999;
