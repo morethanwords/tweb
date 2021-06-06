@@ -21,7 +21,7 @@ import type { ApiManagerProxy } from "../../lib/mtproto/mtprotoworker";
 import type { AppDraftsManager } from "../../lib/appManagers/appDraftsManager";
 import type { AppEmojiManager } from "../../lib/appManagers/appEmojiManager";
 import type { ServerTimeManager } from "../../lib/mtproto/serverTimeManager";
-import type sessionStorage from '../../lib/sessionStorage';
+import type stateStorage from '../../lib/stateStorage';
 import EventListenerBase from "../../helpers/eventListenerBase";
 import { logger, LogTypes } from "../../lib/logger";
 import rootScope from "../../lib/rootScope";
@@ -82,7 +82,7 @@ export default class Chat extends EventListenerBase<{
     public apiManager: ApiManagerProxy, 
     public appDraftsManager: AppDraftsManager, 
     public serverTimeManager: ServerTimeManager, 
-    public storage: typeof sessionStorage, 
+    public storage: typeof stateStorage, 
     public appNotificationsManager: AppNotificationsManager,
     public appEmojiManager: AppEmojiManager
   ) {
@@ -170,7 +170,7 @@ export default class Chat extends EventListenerBase<{
     this.initPeerId = peerId;
 
     this.topbar = new ChatTopbar(this, appSidebarRight, this.appMessagesManager, this.appPeersManager, this.appChatsManager, this.appNotificationsManager);
-    this.bubbles = new ChatBubbles(this, this.appMessagesManager, this.appStickersManager, this.appUsersManager, this.appInlineBotsManager, this.appPhotosManager, this.appDocsManager, this.appPeersManager, this.appChatsManager, this.storage);
+    this.bubbles = new ChatBubbles(this, this.appMessagesManager, this.appStickersManager, this.appUsersManager, this.appInlineBotsManager, this.appPhotosManager, this.appPeersManager);
     this.input = new ChatInput(this, this.appMessagesManager, this.appDocsManager, this.appChatsManager, this.appPeersManager, this.appWebPagesManager, this.appImManager, this.appDraftsManager, this.serverTimeManager, this.appNotificationsManager, this.appEmojiManager);
     this.selection = new ChatSelection(this, this.bubbles, this.input, this.appMessagesManager);
     this.contextMenu = new ChatContextMenu(this.bubbles.bubblesContainer, this, this.appMessagesManager, this.appChatsManager, this.appPeersManager, this.appPollsManager);

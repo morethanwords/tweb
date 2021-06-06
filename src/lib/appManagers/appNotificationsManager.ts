@@ -20,7 +20,7 @@ import { InputNotifyPeer, InputPeerNotifySettings, NotifyPeer, PeerNotifySetting
 import I18n from "../langPack";
 import apiManager from "../mtproto/mtprotoworker";
 import rootScope from "../rootScope";
-import sessionStorage from "../sessionStorage";
+import stateStorage from "../stateStorage";
 import apiUpdatesManager from "./apiUpdatesManager";
 import appPeersManager from "./appPeersManager";
 import appStateManager from "./appStateManager";
@@ -268,7 +268,7 @@ export class AppNotificationsManager {
   }
 
   public updateLocalSettings = () => {
-    Promise.all(['notify_nodesktop', 'notify_volume', 'notify_novibrate', 'notify_nopreview', 'notify_nopush'].map(k => sessionStorage.get(k as any)))
+    Promise.all(['notify_nodesktop', 'notify_volume', 'notify_novibrate', 'notify_nopreview', 'notify_nopush'].map(k => stateStorage.get(k as any)))
     .then((updSettings) => {
       this.settings.nodesktop = updSettings[0];
       this.settings.volume = updSettings[1] === undefined ? 0.5 : updSettings[1];

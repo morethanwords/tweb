@@ -11,7 +11,7 @@ import type lang from "../lang";
 import type langSign from "../langSign";
 import { LangPackDifference, LangPackString } from "../layer";
 import apiManager from "./mtproto/mtprotoworker";
-import sessionStorage from "./sessionStorage";
+import stateStorage from "./stateStorage";
 import App from "../config/app";
 import rootScope from "./rootScope";
 
@@ -62,7 +62,7 @@ namespace I18n {
 	export function getCacheLangPack(): Promise<LangPackDifference> {
 		if(cacheLangPackPromise) return cacheLangPackPromise;
 		return cacheLangPackPromise = Promise.all([
-			sessionStorage.get('langPack') as Promise<LangPackDifference>,
+			stateStorage.get('langPack') as Promise<LangPackDifference>,
 			polyfillPromise
 		]).then(([langPack]) => {
 			if(!langPack/*  || true */) {
@@ -177,7 +177,7 @@ namespace I18n {
 	export function saveLangPack(langPack: LangPackDifference) {
 		langPack.appVersion = App.langPackVersion;
 
-		return sessionStorage.set({langPack}).then(() => {
+		return stateStorage.set({langPack}).then(() => {
 			applyLangPack(langPack);
 			return langPack;
 		});

@@ -4,6 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-export type UserAuth = number;
+/**
+ * Legacy Webogram's format, don't change dcID to camelCase.
+ */
+export type UserAuth = {dcID: number, id: number};
 
 export const REPLIES_PEER_ID = 1271266957;

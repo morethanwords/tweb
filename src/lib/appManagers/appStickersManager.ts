@@ -12,13 +12,12 @@ import appDocsManager from './appDocsManager';
 import AppStorage from '../storage';
 import { MOUNT_CLASS_TO } from '../../config/debug';
 import { forEachReverse } from '../../helpers/array';
+import DATABASE_STATE from '../../config/databases/state';
 
 const CACHE_TIME = 3600e3;
 
 export class AppStickersManager {
-  private storage = new AppStorage<Record<string, MessagesStickerSet>>({
-    storeName: 'stickerSets'
-  });
+  private storage = new AppStorage<Record<string, MessagesStickerSet>, typeof DATABASE_STATE>(DATABASE_STATE, 'stickerSets');
 
   private getStickerSetPromises: {[setId: string]: Promise<MessagesStickerSet>} = {};
   private getStickersByEmoticonsPromises: {[emoticon: string]: Promise<Document[]>} = {};

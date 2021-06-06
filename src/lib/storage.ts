@@ -9,16 +9,35 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import { DatabaseStore, DatabaseStoreName } from "../config/database";
+import { Database } from "../config/databases";
+import DATABASE_SESSION from "../config/databases/session";
 import { CancellablePromise, deferredPromise } from "../helpers/cancellablePromise";
 import { throttle } from "../helpers/schedulers";
-import IDBStorage, { IDBOptions } from "./idb";
+import { WorkerTaskTemplate } from "../types";
+import IDBStorage from "./idb";
 
 function noop() {}
 
-export default class AppStorage<Storage extends Record<string, any>/* Storage extends {[name: string]: any} *//* Storage extends Record<string, any> */> {
-  private static STORAGES: AppStorage<any>[] = [];
-  private storage: IDBStorage;//new CacheStorageController('session');
+export interface LocalStorageProxySetTask extends WorkerTaskTemplate {
+  type: 'localStorageProxy',
+  payload: {
+    type: 'set',
+    keys: string[],
+    values: any[]
+  }
+};
+
+export interface LocalStorageProxyDeleteTask extends WorkerTaskTemplate {
+  type: 'localStorageProxy',
+  payload: {
+    type: 'delete',
+    keys: string[]
+  }
+};
+
+export default class AppStorage<Storage extends Record<string, any>, T extends Database<any>/* Storage extends {[name: string]: any} *//* Storage extends Record<string, any> */> {
+  private static STORAGES: AppStorage<any, Database<any>>[] = [];
+  private storage: IDBStorage<T>;//new CacheStorageController('session');
 
   //private cache: Partial<{[key: string]: Storage[typeof key]}> = {};
   private cache: Partial<Storage> = {};
@@ -35,8 +54,8 @@ export default class AppStorage<Storage extends Record<string, any>/* Storage ex
   private deleteThrottled: () => void;
   private deleteDeferred = deferredPromise<void>();
 
-  constructor(storageOptions: Omit<IDBOptions, 'storeName' | 'stores'> & {stores?: DatabaseStore[], storeName: DatabaseStoreName}) {
-    this.storage = new IDBStorage(storageOptions);
+  constructor(private db: T, storeName: typeof db['stores'][number]['name']) {
+    this.storage = new IDBStorage<T>(db, storeName);
 
     AppStorage.STORAGES.push(this);
 
@@ -53,7 +72,20 @@ export default class AppStorage<Storage extends Record<string, any>/* Storage ex
           //console.log('setItem: will set', key/* , value */);
           //await this.cacheStorage.delete(key); // * try to prevent memory leak in Chrome leading to 'Unexpected internal error.'
           //await this.storage.save(key, new Response(value, {headers: {'Content-Type': 'application/json'}}));
-          await this.storage.save(keys, keys.map(key => this.cache[key]));
+
+          const values = keys.map(key => this.cache[key]);
+          if(db === DATABASE_SESSION && !('localStorage' in self)) { // * support legacy Webogram's localStorage
+            self.postMessage({
+              type: 'localStorageProxy', 
+              payload: {
+                type: 'set',
+                keys,
+                values
+              }
+            } as LocalStorageProxySetTask);
+          }
+
+          await this.storage.save(keys, values);
           //console.log('setItem: have set', key/* , value */);
         } catch(e) {
           //this.useCS = false;
@@ -78,6 +110,16 @@ export default class AppStorage<Storage extends Record<string, any>/* Storage ex
         set.clear();
 
         try {
+          if(db === DATABASE_SESSION && !('localStorage' in self)) { // * support legacy Webogram's localStorage
+            self.postMessage({
+              type: 'localStorageProxy', 
+              payload: {
+                type: 'delete',
+                keys
+              }
+            } as LocalStorageProxyDeleteTask);
+          }
+
           await this.storage.delete(keys);
         } catch(e) {
           console.error('[AS]: delete error:', e, keys);
@@ -107,7 +149,7 @@ export default class AppStorage<Storage extends Record<string, any>/* Storage ex
       }, (error) => {
         if(!['NO_ENTRY_FOUND', 'STORAGE_OFFLINE'].includes(error)) {
           this.useStorage = false;
-          console.error('[AS]: get error:', error, keys, storageOptions.storeName);
+          console.error('[AS]: get error:', error, keys, storeName);
         }
 
         for(let i = 0, length = keys.length; i < length; ++i) {
@@ -135,7 +177,7 @@ export default class AppStorage<Storage extends Record<string, any>/* Storage ex
     return this.cache;
   }
 
-  public getFromCache(key: keyof Storage) {
+  public getFromCache<T extends keyof Storage>(key: T) {
     return this.cache[key];
   }
 
@@ -143,12 +185,12 @@ export default class AppStorage<Storage extends Record<string, any>/* Storage ex
     return this.cache[key] = value;
   }
 
-  public async get(key: keyof Storage, useCache = true): Promise<Storage[typeof key]> {
+  public async get<T extends keyof Storage>(key: T, useCache = true): Promise<Storage[T]> {
     if(this.cache.hasOwnProperty(key) && useCache) {
       return this.getFromCache(key);
     } else if(this.useStorage) {
       const r = this.getPromises.get(key);
-      if(r) return r;
+      if(r) return r as any;
 
       const p = deferredPromise<Storage[typeof key]>();
       this.getPromises.set(key, p);
@@ -232,8 +274,21 @@ export default class AppStorage<Storage extends Record<string, any>/* Storage ex
         storage.keysToDelete.clear();
         storage.getPromises.forEach((deferred) => deferred.resolve());
         storage.getPromises.clear();
+
+        if(storage.db === DATABASE_SESSION && 'localStorage' in self) { // * support legacy Webogram's localStorage
+          localStorage.clear();
+        }
+
         return storage.clear();
       } else {
+        if(storage.db === DATABASE_SESSION && 'localStorage' in self) { // * support legacy Webogram's localStorage
+          for(const i in storage.cache) {
+            if(storage.cache[i] !== undefined) {
+              localStorage.setItem(i, JSON.stringify(storage.cache[i]));
+            }
+          }
+        }
+
         return storage.set(storage.cache);
       }
     })).catch(noop);

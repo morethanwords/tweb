@@ -437,6 +437,7 @@ const lang = {
   "NoResult": "No results",
   "Updating": "Updating...",
   "Emoji": "Emoji",
+  "AddContactTitle": "Add Contact",
 
   // * macos
   "AccountSettings.Filters": "Chat Folders",
@@ -664,6 +665,7 @@ const lang = {
   "Message.Context.Select": "Select",
   "Message.Context.Pin": "Pin",
   "Message.Context.Unpin": "Unpin",
+  "MessageContext.CopyMessageLink1": "Copy Message Link",
   "NewPoll.Anonymous": "Anonymous Voting",
   "NewPoll.Explanation.Placeholder": "Add a Comment (Optional)",
   "NewPoll.OptionsAddOption": "Add an Option",

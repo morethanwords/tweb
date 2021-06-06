@@ -21,7 +21,7 @@ import { tsNow } from "../../helpers/date";
 import { deepEqual } from "../../helpers/object";
 import { isObject } from "../mtproto/bin_utils";
 import { MOUNT_CLASS_TO } from "../../config/debug";
-import sessionStorage from "../sessionStorage";
+import stateStorage from "../stateStorage";
 
 export type MyDraftMessage = DraftMessage.draftMessage;
 
@@ -30,7 +30,7 @@ export class AppDraftsManager {
   private getAllDraftPromise: Promise<void> = null;
 
   constructor() {
-    sessionStorage.get('drafts').then(drafts => {
+    stateStorage.get('drafts').then(drafts => {
       this.drafts = drafts || {};
     });
 
@@ -96,7 +96,7 @@ export class AppDraftsManager {
       delete this.drafts[key];
     }
 
-    sessionStorage.set({
+    stateStorage.set({
       drafts: this.drafts
     });
 

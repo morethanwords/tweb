@@ -9,8 +9,8 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
+import type { UserAuth } from './mtproto_config';
 import sessionStorage from '../sessionStorage';
-
 import MTPNetworker, { MTMessage } from './networker';
 import { isObject } from './bin_utils';
 import networkerFactory from './networkerFactory';
@@ -104,17 +104,39 @@ export class ApiManager {
       //telegramMeWebService.setAuthorized(this.telegramMeNotified);
     }
   } */
+
+  public async getBaseDcId() {
+    if(this.baseDcId) {
+      return this.baseDcId;
+    }
+
+    const baseDcId = await sessionStorage.get('dc');
+    if(!this.baseDcId) {
+      if(!baseDcId) {
+        this.setBaseDcId(App.baseDcId);
+      } else {
+        this.baseDcId = baseDcId;
+      }
+    }
+
+    return this.baseDcId;
+  }
   
   // mtpSetUserAuth
-  public setUserAuth(userId: number) {
+  public async setUserAuth(userAuth: UserAuth) {
+    if(!userAuth.dcID) {
+      const baseDcId = await this.getBaseDcId();
+      userAuth.dcID = baseDcId;
+    }
+
     sessionStorage.set({
-      user_auth: userId
+      user_auth: userAuth
     });
     
     //this.telegramMeNotify(true);
 
     /// #if !MTPROTO_WORKER
-    rootScope.broadcast('user_auth', userId);
+    rootScope.broadcast('user_auth', userAuth);
     /// #endif
   }
 
@@ -429,8 +451,8 @@ export class ApiManager {
     if(dcId = (options.dcId || this.baseDcId)) {
       this.getNetworker(dcId, options).then(performRequest, rejectPromise);
     } else {
-      sessionStorage.get('dc').then((baseDcId) => {
-        this.getNetworker(this.baseDcId = dcId = baseDcId || App.baseDcId, options).then(performRequest, rejectPromise);
+      this.getBaseDcId().then(baseDcId => {
+        this.getNetworker(dcId = baseDcId, options).then(performRequest, rejectPromise);
       });
     }
 

@@ -141,7 +141,7 @@ export class RootScope extends EventListenerBase<{
     });
 
     this.on('user_auth', (e) => {
-      this.myId = e;
+      this.myId = e.id;
     });
 
     this.on('connection_status_change', (e) => {

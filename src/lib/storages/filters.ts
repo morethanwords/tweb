@@ -126,7 +126,7 @@ export default class FiltersStorage {
     }
 
     // exclude_read
-    if(pFlags.exclude_read && !dialog.unread_count) {
+    if(pFlags.exclude_read && !dialog.unread_count && !dialog.pFlags.unread_mark) {
       return false;
     }
 
