@@ -9,7 +9,8 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import Database from '../config/database';
+import { Database } from '../config/databases';
+import Modes from '../config/modes';
 import { blobConstruct } from '../helpers/blob';
 import { safeAssign } from '../helpers/object';
 import { logger } from './logger';
@@ -37,26 +38,30 @@ export type IDBOptions = {
 
 const DEBUG = false;
 
-export default class IDBStorage {
-  private static STORAGES: IDBStorage[] = [];
+export default class IDBStorage<T extends Database<any>> {
+  private static STORAGES: IDBStorage<Database<any>>[] = [];
   private openDbPromise: Promise<IDBDatabase>;
   private db: IDBDatabase;
   private storageIsAvailable = true;
 
   private log: ReturnType<typeof logger>;
   
-  private name: string = Database.name;
-  private version: number = Database.version;
-  private stores: IDBStore[] = Database.stores;
-
+  private name: string;
+  private version: number;
+  private stores: IDBStore[];
   private storeName: string;
 
-  constructor(options: IDBOptions) {
-    safeAssign(this, options);
+  constructor(db: T, storeName: typeof db['stores'][0]['name']) {
+    safeAssign(this, db);
+    this.storeName = storeName;
 
     this.log = logger('IDB-' + this.storeName);
 
     this.openDatabase(true);
+
+    if(Modes.test) {
+      this.name += '_test';
+    }
 
     IDBStorage.STORAGES.push(this);
   }
@@ -74,17 +79,23 @@ export default class IDBStorage {
   public static deleteDatabase() {
     this.closeDatabases();
 
-    return new Promise<void>((resolve, reject) => {
-      const deleteRequest = indexedDB.deleteDatabase(Database.name);
-
-      deleteRequest.onerror = () => {
-        reject();
-      };
-
-      deleteRequest.onsuccess = () => {
-        resolve();
-      };
+    const storages = this.STORAGES;
+    const dbNames = Array.from(new Set(storages.map(storage => storage.name)));
+    const promises = dbNames.map(dbName => {
+      return new Promise<void>((resolve, reject) => {
+        const deleteRequest = indexedDB.deleteDatabase(dbName);
+  
+        deleteRequest.onerror = () => {
+          reject();
+        };
+  
+        deleteRequest.onsuccess = () => {
+          resolve();
+        };
+      });
     });
+
+    return Promise.all(promises);
   }
 
   public isAvailable() {

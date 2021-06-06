@@ -4,11 +4,12 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import type { LocalStorageProxyDeleteTask, LocalStorageProxySetTask } from '../storage';
+import type { InvokeApiOptions } from '../../types';
+import type { MethodDeclMap } from '../../layer';
 import MTProtoWorker from 'worker-loader!./mtproto.worker';
 //import './mtproto.worker';
 import { isObject } from '../../helpers/object';
-import type { MethodDeclMap } from '../../layer';
-import type { InvokeApiOptions } from '../../types';
 import CryptoWorkerMethods from '../crypto/crypto_methods';
 import { logger } from '../logger';
 import rootScope from '../rootScope';
@@ -93,6 +94,7 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
 
     this.addTaskListener('clear', () => {
       const promise = IDBStorage.deleteDatabase();
+      localStorage.clear(); // * clear legacy Webogram's localStorage
       promise.finally(() => {
         location.reload();
       });
@@ -159,6 +161,21 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
         socket.addEventListener('close', onClose);
         socket.addEventListener('message', onMessage);
         this.sockets.set(id, socket);
+      }
+    });
+
+    this.addTaskListener('localStorageProxy', (task: LocalStorageProxySetTask | LocalStorageProxyDeleteTask) => {
+      const storageTask = task.payload;
+      if(storageTask.type === 'set') {
+        for(let i = 0, length = storageTask.keys.length; i < length; ++i) {
+          if(storageTask.values[i] !== undefined) {
+            localStorage.setItem(storageTask.keys[i], JSON.stringify(storageTask.values[i]));
+          }
+        }
+      } else if(storageTask.type === 'delete') {
+        for(let i = 0, length = storageTask.keys.length; i < length; ++i) {
+          localStorage.removeItem(storageTask.keys[i]);
+        }
       }
     });
 
@@ -457,7 +474,11 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
     return this.performTaskWorker('setQueueId', queueId);
   }
 
-  public setUserAuth(userAuth: UserAuth) {
+  public setUserAuth(userAuth: UserAuth | number) {
+    if(typeof(userAuth) === 'number') {
+      userAuth = {dcID: 0, id: userAuth};
+    }
+    
     rootScope.broadcast('user_auth', userAuth);
     return this.performTaskWorker('setUserAuth', userAuth);
   }

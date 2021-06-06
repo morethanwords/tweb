@@ -12,7 +12,7 @@ import type FiltersStorage from '../storages/filters';
 import type DialogsStorage from '../storages/dialogs';
 import EventListenerBase from '../../helpers/eventListenerBase';
 import rootScope from '../rootScope';
-import sessionStorage from '../sessionStorage';
+import stateStorage from '../stateStorage';
 import { logger } from '../logger';
 import { copy, setDeepProperty, validateInitObject } from '../../helpers/object';
 import App from '../../config/app';
@@ -20,6 +20,8 @@ import DEBUG, { MOUNT_CLASS_TO } from '../../config/debug';
 import AppStorage from '../storage';
 import { Chat } from '../../layer';
 import { isMobile } from '../../helpers/userAgent';
+import DATABASE_STATE from '../../config/databases/state';
+import sessionStorage from '../sessionStorage';
 
 const REFRESH_EVERY = 24 * 60 * 60 * 1000; // 1 day
 const REFRESH_EVERY_WEEK = 24 * 60 * 60 * 1000 * 7; // 7 days
@@ -174,22 +176,14 @@ export class AppStateManager extends EventListenerBase<{
   private singlePeerMap: Map<string, number> = new Map();
 
   public storages = {
-    users: new AppStorage<Record<number, User>>({
-      storeName: 'users'
-    }),
-
-    chats: new AppStorage<Record<number, Chat>>({
-      storeName: 'chats'
-    }),
-
-    dialogs: new AppStorage<Record<number, Dialog>>({
-      storeName: 'dialogs'
-    })
+    users: new AppStorage<Record<number, User>, typeof DATABASE_STATE>(DATABASE_STATE, 'users'),
+    chats: new AppStorage<Record<number, Chat>, typeof DATABASE_STATE>(DATABASE_STATE, 'chats'),
+    dialogs: new AppStorage<Record<number, Dialog>, typeof DATABASE_STATE>(DATABASE_STATE, 'dialogs')
   };
 
   public storagesResults: {[key in keyof AppStateManager['storages']]: any[]} = {} as any;
 
-  public storage = sessionStorage;
+  public storage = stateStorage;
 
   constructor() {
     super();
@@ -201,11 +195,10 @@ export class AppStateManager extends EventListenerBase<{
     console.time('load state');
     this.loaded = new Promise((resolve) => {
       const storagesKeys = Object.keys(this.storages) as Array<keyof AppStateManager['storages']>;
-      const storagesPromises = storagesKeys.map(key => this.storages[key].getAll());
+      const storagesPromises: Promise<any>[] = storagesKeys.map(key => this.storages[key].getAll());
 
-      const promises = ALL_KEYS
-      .concat('user_auth' as any)
-      .map(key => sessionStorage.get(key))
+      const promises: Promise<any>[] = ALL_KEYS.map(key => stateStorage.get(key))
+      .concat(sessionStorage.get('user_auth'))
       .concat(storagesPromises);
 
       Promise.all(promises).then((arr) => {
@@ -257,16 +250,40 @@ export class AppStateManager extends EventListenerBase<{
         arr.splice(0, ALL_KEYS.length);
 
         // * Read auth
-        const auth: UserAuth = arr.shift() as any;
+        let auth = arr.shift() as UserAuth | number;
+        if(!auth) { // try to read Webogram's session from localStorage
+          try {
+            const keys = Object.keys(localStorage);
+            for(let i = 0; i < keys.length; ++i) {
+              const key = keys[i];
+              let value: any;
+              try {
+                value = localStorage.getItem(key);
+                value = JSON.parse(value);
+              } catch(err) {
+                //console.error(err);
+              }
+
+              sessionStorage.set({
+                [key as any]: value
+              });
+            }
+
+            auth = sessionStorage.getFromCache('user_auth');
+          } catch(err) {
+            this.log.error('localStorage import error', err);
+          }
+        }
+
         if(auth) {
           // ! Warning ! DON'T delete this
           state.authState = {_: 'authStateSignedIn'};
-          rootScope.broadcast('user_auth', typeof(auth) !== 'number' ? (auth as any).id : auth); // * support old version
+          rootScope.broadcast('user_auth', typeof(auth) === 'number' ? {dcID: 0, id: auth} : auth); // * support old version
         }
 
         // * Read storages
         for(let i = 0, length = storagesKeys.length; i < length; ++i) {
-          this.storagesResults[storagesKeys[i]] = arr[i];
+          this.storagesResults[storagesKeys[i]] = arr[i] as any;
         }
 
         arr.splice(0, storagesKeys.length);
@@ -362,7 +379,7 @@ export class AppStateManager extends EventListenerBase<{
       this.state[key] = value;
     }
 
-    sessionStorage.set({
+    this.storage.set({
       [key]: value
     });
   }

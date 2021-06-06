@@ -11,7 +11,7 @@ import I18n from "../langPack";
 import { isObject } from "../mtproto/bin_utils";
 import apiManager from "../mtproto/mtprotoworker";
 import SearchIndex from "../searchIndex";
-import sessionStorage from "../sessionStorage";
+import stateStorage from "../stateStorage";
 import appStateManager from "./appStateManager";
 
 type EmojiLangPack = {
@@ -45,7 +45,7 @@ export class AppEmojiManager {
   private getRecentEmojisPromise: Promise<AppEmojiManager['recent']>;
 
   /* public getPopularEmoji() {
-    return sessionStorage.get('emojis_popular').then(popEmojis => {
+    return stateStorage.get('emojis_popular').then(popEmojis => {
       var result = []
       if (popEmojis && popEmojis.length) {
         for (var i = 0, len = popEmojis.length; i < len; i++) {
@@ -55,7 +55,7 @@ export class AppEmojiManager {
         return
       }
 
-      return sessionStorage.get('emojis_recent').then(recentEmojis => {
+      return stateStorage.get('emojis_recent').then(recentEmojis => {
         recentEmojis = recentEmojis || popular || []
         var shortcut
         var code
@@ -111,7 +111,7 @@ export class AppEmojiManager {
     }
 
     const storageKey: any = 'emojiKeywords_' + langCode;
-    return this.getKeywordsPromises[langCode] = sessionStorage.get(storageKey).then((pack: EmojiLangPack) => {
+    return this.getKeywordsPromises[langCode] = stateStorage.get(storageKey).then((pack: EmojiLangPack) => {
       if(!isObject(pack)) {
         pack = {} as any;
       }
@@ -135,7 +135,7 @@ export class AppEmojiManager {
           packKeywords[keyword] = emoticons;
         }
 
-        sessionStorage.set({
+        stateStorage.set({
           [storageKey]: pack
         });
 

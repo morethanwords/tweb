@@ -225,7 +225,7 @@ export default class ChatContextMenu {
       withSelection: true
     }, {
       icon: 'link',
-      text: 'CopyLink',
+      text: 'MessageContext.CopyMessageLink1',
       onClick: this.onCopyLinkClick,
       verify: () => this.appPeersManager.isChannel(this.peerId) && !this.message.pFlags.is_outgoing
     }, {

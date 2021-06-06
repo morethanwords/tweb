@@ -26,7 +26,7 @@ export class TimeManager {
   private timeOffset = 0;
 
   constructor() {
-    sessionStorage.get('server_time_offset').then((to: any) => {
+    sessionStorage.get('server_time_offset').then((to) => {
       if(to) {
         this.timeOffset = to;
       }

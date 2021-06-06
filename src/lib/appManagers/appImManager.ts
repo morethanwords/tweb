@@ -35,7 +35,7 @@ import lottieLoader from '../lottieLoader';
 import useHeavyAnimationCheck, { dispatchHeavyAnimationEvent } from '../../hooks/useHeavyAnimationCheck';
 import appDraftsManager from './appDraftsManager';
 import serverTimeManager from '../mtproto/serverTimeManager';
-import sessionStorage from '../sessionStorage';
+import stateStorage from '../stateStorage';
 import appDownloadManager from './appDownloadManager';
 import { AppStateManager } from './appStateManager';
 import { MOUNT_CLASS_TO } from '../../config/debug';
@@ -215,8 +215,8 @@ export class AppImManager {
       popup.show();
     });
 
-    sessionStorage.get('chatPositions').then((c) => {
-      sessionStorage.setToCache('chatPositions', c || {});
+    stateStorage.get('chatPositions').then((c) => {
+      stateStorage.setToCache('chatPositions', c || {});
     });
 
     (window as any).showMaskedAlert = (element: HTMLAnchorElement, e: Event) => {
@@ -385,7 +385,7 @@ export class AppImManager {
 
       const key = chat.peerId + (chat.threadId ? '_' + chat.threadId : '');
 
-      const chatPositions = sessionStorage.getFromCache('chatPositions');
+      const chatPositions = stateStorage.getFromCache('chatPositions');
       if(!(chat.bubbles.scrollable.getDistanceToEnd() <= 16 && chat.bubbles.scrollable.loadedAll.bottom) && Object.keys(chat.bubbles.bubbles).length) {
         const position = {
           mids: getObjectKeysAndSort(chat.bubbles.bubbles, 'desc'),
@@ -401,7 +401,7 @@ export class AppImManager {
         this.log('deleted chat position');
       }
 
-      sessionStorage.set({chatPositions}, true);
+      stateStorage.set({chatPositions}, true);
     //}
   }
 
@@ -411,7 +411,7 @@ export class AppImManager {
     }
     
     const key = chat.peerId + (chat.threadId ? '_' + chat.threadId : '');
-    const cache = sessionStorage.getFromCache('chatPositions');
+    const cache = stateStorage.getFromCache('chatPositions');
     return cache && cache[key];
   }
 
@@ -820,7 +820,7 @@ export class AppImManager {
       apiManager, 
       appDraftsManager, 
       serverTimeManager, 
-      sessionStorage, 
+      stateStorage, 
       appNotificationsManager, 
       appEmojiManager
     );

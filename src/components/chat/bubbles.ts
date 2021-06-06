@@ -12,7 +12,7 @@ import type { AppInlineBotsManager } from "../../lib/appManagers/appInlineBotsMa
 import type { AppPhotosManager } from "../../lib/appManagers/appPhotosManager";
 import type { AppDocsManager, MyDocument } from "../../lib/appManagers/appDocsManager";
 import type { AppPeersManager } from "../../lib/appManagers/appPeersManager";
-import type sessionStorage from '../../lib/sessionStorage';
+import type stateStorage from '../../lib/stateStorage';
 import type Chat from "./chat";
 import { CHAT_ANIMATION_GROUP } from "../../lib/appManagers/appImManager";
 import { getObjectKeysAndSort } from "../../helpers/object";
@@ -147,7 +147,14 @@ export default class ChatBubbles {
     [_ in MessageEntity['_']]: boolean
   }> = {};
 
-  constructor(private chat: Chat, private appMessagesManager: AppMessagesManager, private appStickersManager: AppStickersManager, private appUsersManager: AppUsersManager, private appInlineBotsManager: AppInlineBotsManager, private appPhotosManager: AppPhotosManager, private appDocsManager: AppDocsManager, private appPeersManager: AppPeersManager, private appChatsManager: AppChatsManager, private storage: typeof sessionStorage) {
+  constructor(private chat: Chat, 
+    private appMessagesManager: AppMessagesManager, 
+    private appStickersManager: AppStickersManager, 
+    private appUsersManager: AppUsersManager, 
+    private appInlineBotsManager: AppInlineBotsManager, 
+    private appPhotosManager: AppPhotosManager, 
+    private appPeersManager: AppPeersManager
+  ) {
     //this.chat.log.error('Bubbles construction');
     
     this.listenerSetter = new ListenerSetter();
