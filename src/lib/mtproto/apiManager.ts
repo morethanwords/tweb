@@ -160,7 +160,7 @@ export class ApiManager {
     // WebPushApiManager.forceUnsubscribe(); // WARNING
     const storageResult = await Promise.all(storageKeys.map(key => sessionStorage.get(key as any)));
     
-    const logoutPromises = [];
+    const logoutPromises: Promise<any>[] = [];
     for(let i = 0; i < storageResult.length; i++) {
       if(storageResult[i]) {
         logoutPromises.push(this.invokeApi('auth.logOut', {}, {dcId: i + 1, ignoreErrors: true}));
