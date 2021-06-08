@@ -1322,3 +1322,20 @@ middle-ellipsis-element {
     @include hover-background-effect();
   }
 }
+
+.tgico-char {
+  &:before {
+    font-family: "Roboto" !important;
+    font-weight: 500;
+    width: 1.5rem;
+    text-align: center;
+  }
+
+  &.z:before {
+    content: "Z";
+  }
+
+  &.w:before {
+    content: "W";
+  }
+}
