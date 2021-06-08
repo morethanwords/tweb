@@ -52,7 +52,7 @@ export class AppSidebarLeft extends SidebarSlider {
   //private log = logger('SL');
 
   private searchGroups: {[k in 'contacts' | 'globalContacts' | 'messages' | 'people' | 'recent']: SearchGroup} = {} as any;
-  searchSuper: AppSearchSuper;
+  private searchSuper: AppSearchSuper;
 
   constructor() {
     super({
@@ -167,6 +167,20 @@ export class AppSidebarLeft extends SidebarSlider {
           a.remove();
         }, 0);
       }
+    }, {
+      icon: 'char z',
+      text: 'ChatList.Menu.SwitchTo.Z',
+      onClick: () => {
+        location.href = 'https://web.telegram.org/z/';
+      },
+      verify: () => location.hostname === 'web.telegram.org'
+    }, {
+      icon: 'char w',
+      text: 'ChatList.Menu.SwitchTo.Webogram',
+      onClick: () => {
+        location.href = 'https://web.telegram.org/';
+      },
+      verify: () => location.hostname === 'web.telegram.org'
     }];
 
     this.toolsBtn = ButtonMenuToggle({}, 'bottom-right', menuButtons, (e) => {

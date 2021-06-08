@@ -252,6 +252,27 @@ export class AppStateManager extends EventListenerBase<{
 
         // * Read auth
         let auth = arr.shift() as UserAuth | number;
+        let shiftedWebKAuth = arr.shift() as UserAuth | number;
+        if(!auth && shiftedWebKAuth) { // support old webk auth
+          auth = shiftedWebKAuth;
+          const keys: string[] = ['dc', 'server_time_offset', 'xt_instance'];
+          for(let i = 1; i <= 5; ++i) {
+            keys.push(`dc${i}_server_salt`);
+            keys.push(`dc${i}_auth_key`);
+          }
+
+          const values = await Promise.all(keys.map(key => stateStorage.get(key as any)));
+          keys.push('user_auth');
+          values.push(typeof(auth) === 'number' ? {dcID: values[0] || App.baseDcId, id: auth} : auth);
+
+          let obj: any = {};
+          keys.forEach((key, idx) => {
+            obj[key] = values[idx];
+          });
+
+          await sessionStorage.set(obj);
+        }
+        
         if(!auth) { // try to read Webogram's session from localStorage
           try {
             const keys = Object.keys(localStorage);
@@ -274,27 +295,6 @@ export class AppStateManager extends EventListenerBase<{
           } catch(err) {
             this.log.error('localStorage import error', err);
           }
-        }
-
-        let shiftedWebKAuth = arr.shift() as UserAuth | number;
-        if(!auth && shiftedWebKAuth) { // support old webk auth
-          auth = shiftedWebKAuth;
-          const keys: string[] = ['dc', 'server_time_offset', 'xt_instance'];
-          for(let i = 1; i <= 5; ++i) {
-            keys.push(`dc${i}_server_salt`);
-            keys.push(`dc${i}_auth_key`);
-          }
-
-          const values = await Promise.all(keys.map(key => stateStorage.get(key as any)));
-          keys.push('user_auth');
-          values.push(typeof(auth) === 'number' ? {dcID: values[0] || App.baseDcId, id: auth} : auth);
-
-          let obj: any = {};
-          keys.forEach((key, idx) => {
-            obj[key] = values[idx];
-          });
-
-          await sessionStorage.set(obj);
         }
 
         if(auth) {

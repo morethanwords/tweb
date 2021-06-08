@@ -24,7 +24,7 @@
 .tgico:after,
 [class*=" tgico-"]:before,
 [class*=" tgico-"]:after {
-  font-family: "#{$tgico-font-family}" !important;
+  font-family: "#{$tgico-font-family}";
   speak: never;
   font-style: normal;
   font-weight: normal;
