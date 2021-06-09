@@ -236,9 +236,13 @@
   }
 
   #folders-container {
-    > div {
+    .scrollable-y {
       background-color: transparent;
       position: absolute;
+      
+      &.active { // fix safari 14.0.2 scrollHeight
+        display: block;
+      }
     }
   }
 
