@@ -6,12 +6,17 @@
 
 import type ChatInput from "./input";
 import type { MessageEntity } from "../../layer";
+import type { AppProfileManager } from "../../lib/appManagers/appProfileManager";
+import type { AppUsersManager } from "../../lib/appManagers/appUsersManager";
 import AutocompleteHelperController from "./autocompleteHelperController";
 import AutocompletePeerHelper from "./autocompletePeerHelper";
-import appUsersManager from "../../lib/appManagers/appUsersManager";
 
 export default class MentionsHelper extends AutocompletePeerHelper {
-  constructor(appendTo: HTMLElement, controller: AutocompleteHelperController, private chatInput: ChatInput) {
+  constructor(appendTo: HTMLElement, 
+    controller: AutocompleteHelperController, 
+    chatInput: ChatInput, 
+    private appProfileManager: AppProfileManager,
+    private appUsersManager: AppUsersManager) {
     super(appendTo, 
       controller,
       'mentions-helper',
@@ -34,5 +39,27 @@ export default class MentionsHelper extends AutocompletePeerHelper {
         chatInput.insertAtCaret(str, entity);
       }
     );
+  }
+
+  public checkQuery(query: string, peerId: number, topMsgId: number) {
+    const trimmed = query.trim(); // check that there is no whitespace
+    if(peerId > 0 || query.length !== trimmed.length) return false;
+
+    this.appProfileManager.getMentions(-peerId, trimmed, topMsgId).then(peerIds => {
+      const username = trimmed.slice(1).toLowerCase();
+      this.render(peerIds.map(peerId => {
+        const user = this.appUsersManager.getUser(peerId);
+        if(user.username && user.username.toLowerCase() === username) { // hide full matched suggestion
+          return;
+        }
+
+        return {
+          peerId,
+          description: user.username ? '@' + user.username : undefined
+        };
+      }).filter(Boolean));
+    });
+
+    return true;
   }
 }

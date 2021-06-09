@@ -60,11 +60,9 @@ import { MarkdownType, markdownTags } from '../../helpers/dom/getRichElementValu
 import getRichValueWithCaret from '../../helpers/dom/getRichValueWithCaret';
 import EmojiHelper from './emojiHelper';
 import setRichFocus from '../../helpers/dom/setRichFocus';
-import SearchIndex from '../../lib/searchIndex';
 import CommandsHelper from './commandsHelper';
 import AutocompleteHelperController from './autocompleteHelperController';
 import AutocompleteHelper from './autocompleteHelper';
-import appUsersManager from '../../lib/appManagers/appUsersManager';
 import MentionsHelper from './mentionsHelper';
 
 const RECORD_MIN_TIME = 500;
@@ -372,9 +370,9 @@ export default class ChatInput {
     this.rowsWrapper.append(this.replyElements.container);
     this.autocompleteHelperController = new AutocompleteHelperController();
     this.stickersHelper = new StickersHelper(this.rowsWrapper, this.autocompleteHelperController);
-    this.emojiHelper = new EmojiHelper(this.rowsWrapper, this.autocompleteHelperController, this);
-    this.commandsHelper = new CommandsHelper(this.rowsWrapper, this.autocompleteHelperController, this);
-    this.mentionsHelper = new MentionsHelper(this.rowsWrapper, this.autocompleteHelperController, this);
+    this.emojiHelper = new EmojiHelper(this.rowsWrapper, this.autocompleteHelperController, this, this.appEmojiManager);
+    this.commandsHelper = new CommandsHelper(this.rowsWrapper, this.autocompleteHelperController, this, this.chat.appProfileManager, this.chat.appUsersManager);
+    this.mentionsHelper = new MentionsHelper(this.rowsWrapper, this.autocompleteHelperController, this, this.chat.appProfileManager, this.chat.appUsersManager);
     this.rowsWrapper.append(this.newMessageWrapper);
 
     this.btnCancelRecord = ButtonIcon('delete danger btn-circle z-depth-1 btn-record-cancel');
@@ -1258,61 +1256,18 @@ export default class ChatInput {
     //console.log('autocomplete matches', matches);
 
     if(firstChar === '@') { // mentions
-      const trimmed = query.trim(); // check that there is no whitespace
-      if(this.chat.peerId < 0 && query.length === trimmed.length) {
+      const topMsgId = this.chat.threadId ? this.appMessagesManager.getServerMessageId(this.chat.threadId) : undefined;
+      if(this.mentionsHelper.checkQuery(query, this.chat.peerId, topMsgId)) {
         foundHelper = this.mentionsHelper;
-        const topMsgId = this.chat.threadId ? this.appMessagesManager.getServerMessageId(this.chat.threadId) : undefined;
-        this.chat.appProfileManager.getMentions(-this.chat.peerId, trimmed, topMsgId).then(peerIds => {
-          const username = trimmed.slice(1).toLowerCase();
-          this.mentionsHelper.render(peerIds.map(peerId => {
-            const user = this.chat.appUsersManager.getUser(peerId);
-            if(user.username && user.username.toLowerCase() === username) { // hide full matched suggestion
-              return;
-            }
-
-            return {
-              peerId,
-              description: user.username ? '@' + user.username : undefined
-            };
-          }).filter(Boolean));
-        });
       }
     } else if(!matches[1] && firstChar === '/') { // commands
-      if(appUsersManager.isBot(this.chat.peerId)) {
+      if(this.commandsHelper.checkQuery(query, this.chat.peerId)) {
         foundHelper = this.commandsHelper;
-        this.chat.appProfileManager.getProfileByPeerId(this.chat.peerId).then(full => {
-          const botInfos: BotInfo.botInfo[] = [].concat(full.bot_info);
-          const index = new SearchIndex<string>(true, false);
-          
-          const commands: Map<string, {peerId: number, name: string, description: string}> = new Map();
-          botInfos.forEach(botInfo => {
-            botInfo.commands.forEach(botCommand => {
-              const c = '/' + botCommand.command;
-              commands.set(botCommand.command, {
-                peerId: botInfo.user_id, 
-                name: c, 
-                description: botCommand.description
-              });
-
-              index.indexObject(botCommand.command, c);
-            });
-          });
-
-          const found = index.search(query);
-          const filtered = Array.from(found).map(command => commands.get(command));
-          this.commandsHelper.render(filtered);
-          // console.log('found commands', found, filtered);
-        });
       }
     } else if(rootScope.settings.emoji.suggest) { // emoji
       if(!value.match(/^\s*:(.+):\s*$/)) {
         foundHelper = this.emojiHelper;
-        this.appEmojiManager.getBothEmojiKeywords().then(() => {
-          const q = query.replace(/^:/, '');
-          const emojis = this.appEmojiManager.searchEmojis(q);
-          this.emojiHelper.render(emojis, firstChar !== ':');
-          //console.log(emojis);
-        });
+        this.emojiHelper.checkQuery(query, firstChar);
       }
     }
 
