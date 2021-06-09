@@ -29,11 +29,15 @@ export default class AutocompleteHelperController {
     this.helpers.add(helper);
   }
 
-  public hideOtherHelpers(helper?: AutocompleteHelper) {
-    this.helpers.forEach(h => {
-      if(h !== helper) {
-        h.toggle(true);
+  public hideOtherHelpers(preserveHelper?: AutocompleteHelper) {
+    this.helpers.forEach(helper => {
+      if(helper !== preserveHelper) {
+        helper.toggle(true, true);
       }
     });
+
+    if(!preserveHelper) {
+      this.middleware.clean();
+    }
   }
 }

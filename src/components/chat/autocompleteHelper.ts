@@ -86,12 +86,14 @@ export default class AutocompleteHelper extends EventListenerBase<{
     this.addEventListener('visible', this.onVisible);
   }
 
-  public toggle(hide?: boolean) {
+  public toggle(hide?: boolean, fromController = false) {
     if(this.init) {
       return;
     }
     
-    hide = hide === undefined ? this.container.classList.contains('is-visible') && !this.container.classList.contains('backwards') : hide;
+    if(hide === undefined) {
+      hide = this.container.classList.contains('is-visible') && !this.container.classList.contains('backwards');
+    }
 
     if(this.hidden === hide) {
       if(!hide && this.resetTarget) {
@@ -103,10 +105,10 @@ export default class AutocompleteHelper extends EventListenerBase<{
 
     this.hidden = hide;
 
-    if(!this.hidden) {
+    if(!hide) {
       this.controller.hideOtherHelpers(this);
       this.dispatchEvent('visible'); // fire it before so target will be set
-    } else {
+    } else if(!fromController) {
       this.controller.hideOtherHelpers();
     }
 
