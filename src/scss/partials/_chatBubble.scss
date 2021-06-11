@@ -747,10 +747,11 @@ $bubble-margin: .25rem;
       font-weight: 500 !important;
     }
     
-    .name {
+    .webpage-name {
       letter-spacing: -.3px;
       display: block;
       font-size: calc(1rem - 1px);
+      font-weight: 500 !important;
       
       @include hover() {
         text-decoration: underline;
@@ -777,11 +778,11 @@ $bubble-margin: .25rem;
   
   .web, .reply {
     font-size: var(--messages-secondary-text-size);
-    
-    .name, .reply-title {
-      font-weight: 500 !important;
-      display: inline!important;
-    }
+  }
+
+  .reply-title {
+    font-weight: 500 !important;
+    display: inline !important;
   }
 
   &.is-square-photo {
@@ -1766,7 +1767,7 @@ $bubble-margin: .25rem;
     border-left: 2px var(--primary-color) solid;
   }
 
-  .quote .name, .reply-title/* , .reply i */ {
+  .quote .webpage-name, .reply-title/* , .reply i */ {
     color: var(--primary-color);
   }
   
@@ -1916,7 +1917,7 @@ $bubble-margin: .25rem;
     background-color: var(--message-out-primary-color);
   }
 
-  .quote .name, .reply-title, .reply i {
+  .quote .webpage-name, .reply-title, .reply i {
     color: var(--message-out-primary-color);
   }
   

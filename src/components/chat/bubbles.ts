@@ -2342,7 +2342,7 @@ export default class ChatBubbles {
 
           if(webpage.site_name) {
             let nameEl = document.createElement('a');
-            nameEl.classList.add('name');
+            nameEl.classList.add('webpage-name');
             nameEl.setAttribute('target', '_blank');
             nameEl.href = webpage.url || '#';
             setInnerHTML(nameEl, RichTextProcessor.wrapEmojiText(webpage.site_name));
