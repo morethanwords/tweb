@@ -1284,6 +1284,7 @@ $bubble-margin: .25rem;
 
     &-icon {
       margin-left: 2px;
+      pointer-events: none;
     }
 
     i.edited {

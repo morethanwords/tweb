@@ -107,7 +107,7 @@ export default class ChatTopbar {
     this.chatUtils = document.createElement('div');
     this.chatUtils.classList.add('chat-utils');
 
-    this.chatAudio = new ChatAudio(this, this.chat, this.appMessagesManager, this.appPeersManager);
+    this.chatAudio = new ChatAudio(this, this.chat, this.appMessagesManager);
 
     if(this.menuButtons.length) {
       this.btnMore = ButtonMenuToggle({listenerSetter: this.listenerSetter}, 'bottom-left', this.menuButtons, (e) => {

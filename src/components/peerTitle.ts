@@ -9,6 +9,7 @@ import appPeersManager from "../lib/appManagers/appPeersManager";
 import rootScope from "../lib/rootScope";
 import { i18n } from "../lib/langPack";
 import replaceContent from "../helpers/dom/replaceContent";
+import appUsersManager from "../lib/appManagers/appUsersManager";
 
 export type PeerTitleOptions = {
   peerId: number,
@@ -60,7 +61,11 @@ export default class PeerTitle {
     }
 
     if(this.peerId !== rootScope.myId || !this.dialog) {
-      this.element.innerHTML = appPeersManager.getPeerTitle(this.peerId, this.plainText, this.onlyFirstName);
+      if(this.peerId > 0 && appUsersManager.getUser(this.peerId).pFlags.deleted) {
+        replaceContent(this.element, i18n(this.onlyFirstName ? 'Deleted' : 'HiddenName'));
+      } else {
+        this.element.innerHTML = appPeersManager.getPeerTitle(this.peerId, this.plainText, this.onlyFirstName);
+      }
     } else {
       replaceContent(this.element, i18n(this.onlyFirstName ? 'Saved' : 'SavedMessages'));
     }

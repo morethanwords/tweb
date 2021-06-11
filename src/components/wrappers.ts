@@ -1195,7 +1195,7 @@ export function wrapLocalSticker({emoji, width, height}: {
   return {container};
 }
 
-export function wrapReply(title: string, subtitle: string, message?: any) {
+export function wrapReply(title: string | HTMLElement, subtitle: string | HTMLElement, message?: any) {
   const replyContainer = new ReplyContainer('reply');
   replyContainer.fill(title, subtitle, message);
   /////////console.log('wrapReply', title, subtitle, media);

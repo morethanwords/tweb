@@ -5,7 +5,6 @@
  */
 
 import type { AppMessagesManager } from "../../lib/appManagers/appMessagesManager";
-import type { AppPeersManager } from "../../lib/appManagers/appPeersManager";
 import type ChatTopbar from "./topbar";
 import { RichTextProcessor } from "../../lib/richtextprocessor";
 import rootScope from "../../lib/rootScope";
@@ -16,14 +15,16 @@ import PinnedContainer from "./pinnedContainer";
 import Chat from "./chat";
 import { cancelEvent } from "../../helpers/dom/cancelEvent";
 import { attachClickEvent } from "../../helpers/dom/clickEvent";
+import replaceContent from "../../helpers/dom/replaceContent";
+import PeerTitle from "../peerTitle";
 
 export default class ChatAudio extends PinnedContainer {
   private toggleEl: HTMLElement;
 
-  constructor(protected topbar: ChatTopbar, protected chat: Chat, protected appMessagesManager: AppMessagesManager, protected appPeersManager: AppPeersManager) {
-    super(topbar, chat, topbar.listenerSetter, 'audio', new DivAndCaption('pinned-audio', (title: string, subtitle: string) => {
-      this.divAndCaption.title.innerHTML = title;
-      this.divAndCaption.subtitle.innerHTML = subtitle;
+  constructor(protected topbar: ChatTopbar, protected chat: Chat, protected appMessagesManager: AppMessagesManager) {
+    super(topbar, chat, topbar.listenerSetter, 'audio', new DivAndCaption('pinned-audio', (title: string | HTMLElement, subtitle: string | HTMLElement) => {
+      replaceContent(this.divAndCaption.title, title);
+      replaceContent(this.divAndCaption.subtitle, subtitle);
     }), () => {
       if(this.toggleEl.classList.contains('flip-icon')) {
         appMediaPlaybackController.toggle();
@@ -44,10 +45,14 @@ export default class ChatAudio extends PinnedContainer {
     this.topbar.listenerSetter.add(rootScope, 'audio_play', (e) => {
       const {doc, mid, peerId} = e;
 
-      let title: string, subtitle: string;
+      let title: string | HTMLElement, subtitle: string;
       const message = appMessagesManager.getMessageByPeer(peerId, mid);
       if(doc.type === 'voice' || doc.type === 'round') {
-        title = appPeersManager.getPeerTitle(message.fromId, false, true);
+        title = new PeerTitle({
+          peerId: message.fromId,
+          onlyFirstName: true
+        }).element;
+
         //subtitle = 'Voice message';
         subtitle = formatDate(message.date, false, false);
       } else {

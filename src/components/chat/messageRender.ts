@@ -6,8 +6,10 @@
 
 import { getFullDate } from "../../helpers/date";
 import { formatNumber } from "../../helpers/number";
+import { i18n } from "../../lib/langPack";
 import RichTextProcessor from "../../lib/richtextprocessor";
 import { LazyLoadQueueIntersector } from "../lazyLoadQueue";
+import PeerTitle from "../peerTitle";
 import { wrapReply } from "../wrappers";
 import Chat from "./chat";
 import RepliesElement from "./replies";
@@ -110,7 +112,7 @@ export namespace MessageRender {
     const replyToPeerId = message.reply_to.reply_to_peer_id ? chat.appPeersManager.getPeerId(message.reply_to.reply_to_peer_id) : chat.peerId;
 
     let originalMessage = chat.appMessagesManager.getMessageByPeer(replyToPeerId, message.reply_to_mid);
-    let originalPeerTitle: string;
+    let originalPeerTitle: string | HTMLElement;
     
     /////////this.log('message to render reply', originalMessage, originalPeerTitle, bubble, message);
     
@@ -120,9 +122,14 @@ export namespace MessageRender {
       chat.appMessagesManager.wrapSingleMessage(replyToPeerId, message.reply_to_mid);
       chat.bubbles.needUpdate.push({replyToPeerId, replyMid: message.reply_to_mid, mid: message.mid});
       
-      originalPeerTitle = 'Loading...';
+      originalPeerTitle = i18n('Loading');
     } else {
-      originalPeerTitle = chat.appPeersManager.getPeerTitle(originalMessage.fromId || originalMessage.fwdFromId, true) || '';
+      originalPeerTitle = new PeerTitle({
+        peerId: originalMessage.fromId || originalMessage.fwdFromId,
+        dialog: false,
+        onlyFirstName: false,
+        plainText: false
+      }).element;
     }
 
     const wrapped = wrapReply(originalPeerTitle, originalMessage.message || '', originalMessage);
