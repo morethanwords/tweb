@@ -136,7 +136,7 @@ export class ApiManager {
     //this.telegramMeNotify(true);
 
     /// #if !MTPROTO_WORKER
-    rootScope.broadcast('user_auth', userAuth);
+    rootScope.dispatchEvent('user_auth', userAuth);
     /// #endif
   }
 

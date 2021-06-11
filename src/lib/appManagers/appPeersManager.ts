@@ -40,7 +40,7 @@ export class AppPeersManager {
   constructor() {
     rootScope.addMultipleEventsListeners({
       updatePeerBlocked: (update) => {
-        rootScope.broadcast('peer_block', {peerId: this.getPeerId(update.peer_id), blocked: update.blocked});
+        rootScope.dispatchEvent('peer_block', {peerId: this.getPeerId(update.peer_id), blocked: update.blocked});
       }
     });
   }

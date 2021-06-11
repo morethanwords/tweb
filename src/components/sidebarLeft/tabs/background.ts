@@ -82,7 +82,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
       container.append(uploadButton, colorButton, resetButton, blurCheckboxField.label);
     }
 
-    rootScope.on('background_change', this.setActive);
+    rootScope.addEventListener('background_change', this.setActive);
 
     apiManager.invokeApiHashable('account.getWallPapers').then((accountWallpapers) => {
       const wallpapers = (accountWallpapers as AccountWallPapers.accountWallPapers).wallpapers as WallPaper.wallPaper[];

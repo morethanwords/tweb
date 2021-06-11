@@ -206,7 +206,7 @@ namespace I18n {
 			strings.set(string.key as LangPackKey, string);
 		}
 
-		rootScope.broadcast('language_change');
+		rootScope.dispatchEvent('language_change');
 
 		const elements = Array.from(document.querySelectorAll(`.i18n`)) as HTMLElement[];
 		elements.forEach(element => {

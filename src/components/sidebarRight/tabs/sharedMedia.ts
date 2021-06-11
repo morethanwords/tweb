@@ -556,14 +556,14 @@ class PeerProfile {
       appMessagesManager.mutePeer(this.peerId);
     });
 
-    rootScope.on('dialog_notify_settings', (dialog) => {
+    rootScope.addEventListener('dialog_notify_settings', (dialog) => {
       if(this.peerId === dialog.peerId) {
         const muted = appNotificationsManager.isPeerLocalMuted(this.peerId, false);
         this.notifications.checkboxField.checked = !muted;
       }
     });
 
-    rootScope.on('peer_typings', (e) => {
+    rootScope.addEventListener('peer_typings', (e) => {
       const {peerId} = e;
 
       if(this.peerId === peerId) {
@@ -571,13 +571,13 @@ class PeerProfile {
       }
     });
 
-    rootScope.on('peer_bio_edit', (peerId) => {
+    rootScope.addEventListener('peer_bio_edit', (peerId) => {
       if(peerId === this.peerId) {
         this.setBio(true);
       }
     });
 
-    rootScope.on('user_update', (e) => {
+    rootScope.addEventListener('user_update', (e) => {
       const userId = e;
 
       if(this.peerId === userId) {

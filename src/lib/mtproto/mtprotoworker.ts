@@ -101,7 +101,7 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
     });
 
     this.addTaskListener('connectionStatusChange', (task: any) => {
-      rootScope.broadcast('connection_status_change', task.payload);
+      rootScope.dispatchEvent('connection_status_change', task.payload);
     });
 
     this.addTaskListener('convertWebp', (task) => {
@@ -280,7 +280,7 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
         this.updatesProcessor(task.update);
       }
     } else if(task.progress) {
-      rootScope.broadcast('download_progress', task.progress);
+      rootScope.dispatchEvent('download_progress', task.progress);
     } else if(task.hasOwnProperty('result') || task.hasOwnProperty('error')) {
       this.finalizeTask(task.taskId, task.result, task.error);
     }
@@ -479,7 +479,7 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
       userAuth = {dcID: 0, id: userAuth};
     }
     
-    rootScope.broadcast('user_auth', userAuth);
+    rootScope.dispatchEvent('user_auth', userAuth);
     return this.performTaskWorker('setUserAuth', userAuth);
   }
 

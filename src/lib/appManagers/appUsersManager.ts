@@ -48,7 +48,7 @@ export class AppUsersManager {
   constructor() {
     setInterval(this.updateUsersStatuses, 60000);
 
-    rootScope.on('state_synchronized', this.updateUsersStatuses);
+    rootScope.addEventListener('state_synchronized', this.updateUsersStatuses);
 
     rootScope.addMultipleEventsListeners({
       updateUserStatus: (update) => {
@@ -67,7 +67,7 @@ export class AppUsersManager {
           }
 
           //user.sortStatus = this.getUserStatusForSort(user.status);
-          rootScope.broadcast('user_update', userId);
+          rootScope.dispatchEvent('user_update', userId);
           this.setUserToStateIfNeeded(user);
         } //////else console.warn('No user by id:', userId);
       },
@@ -86,8 +86,8 @@ export class AppUsersManager {
 
           this.setUserToStateIfNeeded(user);
 
-          rootScope.broadcast('user_update', userId);
-          rootScope.broadcast('avatar_update', userId);
+          rootScope.dispatchEvent('user_update', userId);
+          rootScope.dispatchEvent('avatar_update', userId);
         } else console.warn('No user by id:', userId);
       },
 
@@ -110,7 +110,7 @@ export class AppUsersManager {
     this.onContactUpdated(update.user_id, update.my_link._ === 'contactLinkContact');
     break; */
 
-    rootScope.on('language_change', (e) => {
+    rootScope.addEventListener('language_change', (e) => {
       const userId = this.getSelf().id;
       this.contactsIndex.indexObject(userId, this.getUserSearchText(userId));
     });
@@ -357,11 +357,11 @@ export class AppUsersManager {
       } */
 
       safeReplaceObject(oldUser, user);
-      rootScope.broadcast('user_update', userId);
+      rootScope.dispatchEvent('user_update', userId);
     }
 
     if(changedTitle) {
-      rootScope.broadcast('peer_title_edit', user.id);
+      rootScope.dispatchEvent('peer_title_edit', user.id);
     }
 
     this.setUserToStateIfNeeded(user);
@@ -573,7 +573,7 @@ export class AppUsersManager {
         user.status.expires < timestampNow) {
 
         user.status = {_: 'userStatusOffline', was_online: user.status.expires};
-        rootScope.broadcast('user_update', user.id);
+        rootScope.dispatchEvent('user_update', user.id);
 
         this.setUserToStateIfNeeded(user);
       }
@@ -609,7 +609,7 @@ export class AppUsersManager {
       };
       
       //user.sortStatus = this.getUserStatusForSort(user.status);
-      rootScope.broadcast('user_update', id);
+      rootScope.dispatchEvent('user_update', id);
 
       this.setUserToStateIfNeeded(user);
     }
@@ -785,7 +785,7 @@ export class AppUsersManager {
 
       this.onContactsModified();
 
-      rootScope.broadcast('contacts_update', userId);
+      rootScope.dispatchEvent('contacts_update', userId);
     }
   }
 
@@ -814,7 +814,7 @@ export class AppUsersManager {
 
       user.status = status;
       //user.sortStatus = this.getUserStatusForSort(user.status);
-      rootScope.broadcast('user_update', userId);
+      rootScope.dispatchEvent('user_update', userId);
     }
   }
 

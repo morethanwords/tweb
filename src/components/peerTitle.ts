@@ -22,7 +22,7 @@ const weakMap: WeakMap<HTMLElement, PeerTitle> = new WeakMap();
 
 MOUNT_CLASS_TO.peerTitleWeakMap = weakMap;
 
-rootScope.on('peer_title_edit', (peerId) => {
+rootScope.addEventListener('peer_title_edit', (peerId) => {
   const elements = Array.from(document.querySelectorAll(`.peer-title[data-peer-id="${peerId}"]`)) as HTMLElement[];
   elements.forEach(element => {
     const peerTitle = weakMap.get(element);

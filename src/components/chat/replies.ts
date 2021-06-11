@@ -15,7 +15,7 @@ import AvatarElement from "../avatar";
 
 const TAG_NAME = 'replies-element';
 
-rootScope.on('replies_updated', (e) => {
+rootScope.addEventListener('replies_updated', (e) => {
   const message = e;
   (Array.from(document.querySelectorAll(TAG_NAME + `[data-post-key="${message.peerId}_${message.mid}"]`)) as RepliesElement[]).forEach(element => {
     element.message = message;

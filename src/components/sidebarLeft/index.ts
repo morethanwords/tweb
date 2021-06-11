@@ -108,7 +108,7 @@ export class AppSidebarLeft extends SidebarSlider {
       appImManager.applyCurrentTheme();
     });
 
-    rootScope.on('theme_change', () => {
+    rootScope.addEventListener('theme_change', () => {
       themeCheckboxField.setValueSilently(rootScope.getTheme().name === 'night');
     });
 
@@ -238,7 +238,7 @@ export class AppSidebarLeft extends SidebarSlider {
 
     btnArchive.element.append(this.archivedCount);
 
-    rootScope.on('dialogs_archived_unread', (e) => {
+    rootScope.addEventListener('dialogs_archived_unread', (e) => {
       this.archivedCount.innerText = '' + formatNumber(e.count, 1);
       this.archivedCount.classList.toggle('hide', !e.count);
     });

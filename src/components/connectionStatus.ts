@@ -47,14 +47,14 @@ export default class ConnectionStatusComponent {
 
     chatsContainer.prepend(this.statusContainer);
 
-    rootScope.on('connection_status_change', (e) => {
+    rootScope.addEventListener('connection_status_change', (e) => {
       const status = e;
       console.log(status);
 
       this.setConnectionStatus();
     });
 
-    rootScope.on('state_synchronizing', (e) => {
+    rootScope.addEventListener('state_synchronizing', (e) => {
       const channelId = e;
       if(!channelId) {
         this.updating = true;
@@ -63,7 +63,7 @@ export default class ConnectionStatusComponent {
       }
     });
 
-    rootScope.on('state_synchronized', (e) => {
+    rootScope.addEventListener('state_synchronized', (e) => {
       const channelId = e;
       DEBUG && this.log('state_synchronized', channelId);
       if(!channelId) {

@@ -29,7 +29,7 @@ export class AppPrivacyManager {
       updatePrivacy: (update) => {
         const key = update.key._;
         this.privacy[key] = update.rules;
-        rootScope.broadcast('privacy_update', update);
+        rootScope.dispatchEvent('privacy_update', update);
       }
     });
   }

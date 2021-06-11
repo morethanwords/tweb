@@ -21,7 +21,7 @@ import { formatDateAccordingToToday } from "../helpers/date";
 import { cancelEvent } from "../helpers/dom/cancelEvent";
 import { attachClickEvent, detachClickEvent } from "../helpers/dom/clickEvent";
 
-rootScope.on('messages_media_read', e => {
+rootScope.addEventListener('messages_media_read', e => {
   const {mids, peerId} = e;
 
   mids.forEach(mid => {

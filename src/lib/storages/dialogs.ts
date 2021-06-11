@@ -66,7 +66,7 @@ export default class DialogsStorage {
 
     this.reset();
 
-    rootScope.on('language_change', (e) => {
+    rootScope.addEventListener('language_change', (e) => {
       const peerId = appUsersManager.getSelf().id;
       const dialog = this.getDialogOnly(peerId);
       if(dialog) {
@@ -396,7 +396,7 @@ export default class DialogsStorage {
       } else {
         const dropped = this.dropDialog(peerId);
         if(dropped.length) {
-          rootScope.broadcast('dialog_drop', {peerId, dialog: dropped[0]});
+          rootScope.dispatchEvent('dialog_drop', {peerId, dialog: dropped[0]});
         }
       }
 
@@ -411,7 +411,7 @@ export default class DialogsStorage {
     });
 
     if(Object.keys(updatedDialogs).length) {
-      rootScope.broadcast('dialogs_multiupdate', updatedDialogs);
+      rootScope.dispatchEvent('dialogs_multiupdate', updatedDialogs);
     }
   }
 

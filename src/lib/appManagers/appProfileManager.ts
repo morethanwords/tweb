@@ -51,7 +51,7 @@ export class AppProfileManager {
           const chatFull = this.chatsFull[chatId] as ChatFull.chatFull;
           if(chatFull !== undefined) {
             chatFull.participants = participants;
-            rootScope.broadcast('chat_full_update', chatId);
+            rootScope.dispatchEvent('chat_full_update', chatId);
           }
         }
       },
@@ -75,7 +75,7 @@ export class AppProfileManager {
           });
 
           _participants.version = update.version;
-          rootScope.broadcast('chat_full_update', update.chat_id);
+          rootScope.dispatchEvent('chat_full_update', update.chat_id);
         }
       },
 
@@ -88,7 +88,7 @@ export class AppProfileManager {
             if(participants[i].user_id === update.user_id) {
               participants.splice(i, 1);
               _participants.version = update.version;
-              rootScope.broadcast('chat_full_update', update.chat_id);
+              rootScope.dispatchEvent('chat_full_update', update.chat_id);
               return;
             }
           }
@@ -96,7 +96,7 @@ export class AppProfileManager {
       }
     });
 
-    rootScope.on('chat_update', (chatId) => {
+    rootScope.addEventListener('chat_update', (chatId) => {
       const fullChat = this.chatsFull[chatId];
       const chat: Chat.chat = appChatsManager.getChat(chatId);
       if(!chat.photo || !fullChat) {
@@ -107,7 +107,7 @@ export class AppProfileManager {
       //////console.log('chat_update:', fullChat);
       if(fullChat.chat_photo && emptyPhoto !== (fullChat.chat_photo._ === 'photoEmpty')) {
         delete this.chatsFull[chatId];
-        rootScope.broadcast('chat_full_update', chatId);
+        rootScope.dispatchEvent('chat_full_update', chatId);
         return;
       }
       if(emptyPhoto) {
@@ -118,7 +118,7 @@ export class AppProfileManager {
       const chatFullPhotoId = fullChat.chat_photo?.id;
       if(chatFullPhotoId !== photoId) {
         delete this.chatsFull[chatId];
-        rootScope.broadcast('chat_full_update', chatId);
+        rootScope.dispatchEvent('chat_full_update', chatId);
       }
     });
   }
@@ -255,7 +255,7 @@ export class AppProfileManager {
       appNotificationsManager.savePeerSettings(peerId, fullChat.notify_settings);
       delete this.fullPromises[peerId];
       this.chatsFull[id] = fullChat;
-      rootScope.broadcast('chat_full_update', id);
+      rootScope.dispatchEvent('chat_full_update', id);
 
       return fullChat;
     }) as any;
@@ -364,7 +364,7 @@ export class AppProfileManager {
 
       delete this.fullPromises[peerId];
       this.chatsFull[id] = fullChannel;
-      rootScope.broadcast('chat_full_update', id);
+      rootScope.dispatchEvent('chat_full_update', id);
 
       return fullChannel;
     }, (error) => {
@@ -417,7 +417,7 @@ export class AppProfileManager {
     delete this.chatsFull[id];
     delete this.fullPromises[-id];
     apiManager.clearCache('channels.getParticipants', (params) => (params.channel as InputChannel.inputChannel).channel_id === id);
-    rootScope.broadcast('chat_full_update', id);
+    rootScope.dispatchEvent('chat_full_update', id);
   }
 
   public updateProfile(first_name: string, last_name: string, about: string) {

@@ -61,7 +61,7 @@ export class AppChatsManager {
         const chat: Chat.chat = this.chats[chatId];
         if(chat) {
           chat.default_banned_rights = update.default_banned_rights;
-          rootScope.broadcast('chat_update', chatId);
+          rootScope.dispatchEvent('chat_update', chatId);
         }
       },
 
@@ -122,7 +122,7 @@ export class AppChatsManager {
         typings.splice(idx, 1);
       }
 
-      rootScope.broadcast('peer_typings', {peerId, typings});
+      rootScope.dispatchEvent('peer_typings', {peerId, typings});
 
       if(!typings.length) {
         delete this.typingsInPeer[peerId];
@@ -166,7 +166,7 @@ export class AppChatsManager {
       appUsersManager.forceUserOnline(fromId);
 
       typing.timeout = window.setTimeout(cancelAction, 6000);
-      rootScope.broadcast('peer_typings', {peerId, typings});
+      rootScope.dispatchEvent('peer_typings', {peerId, typings});
     }
   };
 
@@ -230,15 +230,15 @@ export class AppChatsManager {
       }
 
       safeReplaceObject(oldChat, chat);
-      rootScope.broadcast('chat_update', chat.id);
+      rootScope.dispatchEvent('chat_update', chat.id);
     }
 
     if(changedPhoto) {
-      rootScope.broadcast('avatar_update', -chat.id);
+      rootScope.dispatchEvent('avatar_update', -chat.id);
     }
 
     if(changedTitle) {
-      rootScope.broadcast('peer_title_edit', -chat.id);
+      rootScope.dispatchEvent('peer_title_edit', -chat.id);
     }
 
     if(appStateManager.isPeerNeeded(-chat.id)) {
@@ -546,7 +546,7 @@ export class AppChatsManager {
       apiUpdatesManager.processUpdateMessage(updates);
 
       const channelId = updates.chats[0].id;
-      rootScope.broadcast('history_focus', {peerId: -channelId});
+      rootScope.dispatchEvent('history_focus', {peerId: -channelId});
 
       return channelId;
     });
@@ -572,7 +572,7 @@ export class AppChatsManager {
       apiUpdatesManager.processUpdateMessage(updates);
 
       const chatId = (updates as any as Updates.updates).chats[0].id;
-      rootScope.broadcast('history_focus', {peerId: -chatId});
+      rootScope.dispatchEvent('history_focus', {peerId: -chatId});
 
       return chatId;
     });
@@ -758,7 +758,7 @@ export class AppChatsManager {
       about
     }).then(bool => {
       //apiUpdatesManager.processUpdateMessage(updates);
-      rootScope.broadcast('peer_bio_edit', -id);
+      rootScope.dispatchEvent('peer_bio_edit', -id);
     });
   }
 

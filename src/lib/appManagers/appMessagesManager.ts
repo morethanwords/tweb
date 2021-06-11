@@ -242,7 +242,7 @@ export class AppMessagesManager {
     });
 
     // ! Invalidate notify settings, can optimize though
-    rootScope.on('notify_peer_type_settings', ({key, settings}) => {
+    rootScope.addEventListener('notify_peer_type_settings', ({key, settings}) => {
       this.getConversationsAll().then(dialogs => {
         let filterFunc: (dialog: Dialog) => boolean;
         if(key === 'notifyUsers') filterFunc = (dialog) => dialog.peerId > 0;
@@ -252,12 +252,12 @@ export class AppMessagesManager {
         dialogs
         .filter(filterFunc)
         .forEach(dialog => {
-          rootScope.broadcast('dialog_notify_settings', dialog);
+          rootScope.dispatchEvent('dialog_notify_settings', dialog);
         });
       });
     });
 
-    rootScope.on('webpage_updated', (e) => {
+    rootScope.addEventListener('webpage_updated', (e) => {
       const eventData = e;
       eventData.msgs.forEach((mid) => {
         const message = this.getMessageById(mid) as Message.message;
@@ -269,7 +269,7 @@ export class AppMessagesManager {
 
         const peerId = this.getMessagePeer(message);
         const storage = this.getMessagesStorage(peerId);
-        rootScope.broadcast('message_edit', {
+        rootScope.dispatchEvent('message_edit', {
           storage,
           peerId,
           mid
@@ -277,7 +277,7 @@ export class AppMessagesManager {
       });
     });
 
-    rootScope.on('draft_updated', (e) => {
+    rootScope.addEventListener('draft_updated', (e) => {
       const {peerId, threadId, draft} = e;
 
       if(threadId) return;
@@ -288,7 +288,7 @@ export class AppMessagesManager {
         this.dialogsStorage.generateIndexForDialog(dialog);
         this.dialogsStorage.pushDialog(dialog);
 
-        rootScope.broadcast('dialog_draft', {
+        rootScope.dispatchEvent('dialog_draft', {
           peerId,
           draft,
           index: dialog.index
@@ -454,7 +454,7 @@ export class AppMessagesManager {
       } else {
         delete message.error;
       }
-      rootScope.broadcast('messages_pending');
+      rootScope.dispatchEvent('messages_pending');
     };
 
     message.send = () => {
@@ -808,7 +808,7 @@ export class AppMessagesManager {
         delete message.error;
       }
 
-      rootScope.broadcast('messages_pending');
+      rootScope.dispatchEvent('messages_pending');
     };
 
     let uploaded = false,
@@ -1041,7 +1041,7 @@ export class AppMessagesManager {
         delete message.error;
       }
 
-      rootScope.broadcast('messages_pending');
+      rootScope.dispatchEvent('messages_pending');
     };
 
     const inputPeer = appPeersManager.getInputPeerById(peerId);
@@ -1227,7 +1227,7 @@ export class AppMessagesManager {
           delete historyMessage.error
         }
       } */
-      rootScope.broadcast('messages_pending');
+      rootScope.dispatchEvent('messages_pending');
     };
 
     message.send = () => {
@@ -1311,7 +1311,7 @@ export class AppMessagesManager {
       //if(!options.isGroupedItem) {
       this.saveMessages([message], {storage, isScheduled: true, isOutgoing: true});
       setTimeout(() => {
-        rootScope.broadcast('scheduled_new', {peerId, mid: messageId});
+        rootScope.dispatchEvent('scheduled_new', {peerId, mid: messageId});
       }, 0);
     } else {
       /* if(options.threadId && this.threadsStorage[peerId]) {
@@ -1332,7 +1332,7 @@ export class AppMessagesManager {
       this.saveMessages([message], {storage, isOutgoing: true});
       setTimeout(() => {
         this.setDialogTopMessage(message);
-        rootScope.broadcast('history_append', {storage, peerId, mid: messageId});
+        rootScope.dispatchEvent('history_append', {storage, peerId, mid: messageId});
       }, 0);
     }
 
@@ -1583,7 +1583,7 @@ export class AppMessagesManager {
     outDialogs.forEach(dialog => {
       obj[dialog.peerId] = dialog;
     });
-    rootScope.broadcast('dialogs_multiupdate', obj);
+    rootScope.dispatchEvent('dialogs_multiupdate', obj);
 
     return outDialogs;
   }
@@ -1716,10 +1716,10 @@ export class AppMessagesManager {
       if(Object.keys(noIdsDialogs).length) {
         //setTimeout(() => { // test bad situation
           this.reloadConversation(Object.keys(noIdsDialogs).map(id => +id)).then(() => {
-            rootScope.broadcast('dialogs_multiupdate', noIdsDialogs);
+            rootScope.dispatchEvent('dialogs_multiupdate', noIdsDialogs);
   
             for(let peerId in noIdsDialogs) {
-              rootScope.broadcast('dialog_unread', {peerId: +peerId});
+              rootScope.dispatchEvent('dialog_unread', {peerId: +peerId});
             }
           });
         //}, 10e3);
@@ -1736,7 +1736,7 @@ export class AppMessagesManager {
       if(hasPrepend) {
         this.scheduleHandleNewDialogs();
       } else {
-        rootScope.broadcast('dialogs_multiupdate', {});
+        rootScope.dispatchEvent('dialogs_multiupdate', {});
       }
 
       return dialogsResult;
@@ -1975,11 +1975,11 @@ export class AppMessagesManager {
       delete this.messagesStorageByPeerId[peerId];
 
       if(justClear) {
-        rootScope.broadcast('dialog_flush', {peerId});
+        rootScope.dispatchEvent('dialog_flush', {peerId});
       } else {
         this.dialogsStorage.dropDialog(peerId);
 
-        rootScope.broadcast('dialog_drop', {peerId});
+        rootScope.dispatchEvent('dialog_drop', {peerId});
       }
     });
   }
@@ -1991,7 +1991,7 @@ export class AppMessagesManager {
     ])
     .then(([state, pinned]) => {
       state.hiddenPinnedMessages[peerId] = pinned.maxId;
-      rootScope.broadcast('peer_pinned_hidden', {peerId, maxId: pinned.maxId});
+      rootScope.dispatchEvent('peer_pinned_hidden', {peerId, maxId: pinned.maxId});
     });
   }
 
@@ -2049,7 +2049,7 @@ export class AppMessagesManager {
           }
         }
 
-        rootScope.broadcast('peer_pinned_messages', {peerId, unpinAll: true});
+        rootScope.dispatchEvent('peer_pinned_messages', {peerId, unpinAll: true});
         delete this.pinnedMessages[peerId];
 
         return true;
@@ -2825,11 +2825,11 @@ export class AppMessagesManager {
           this.migratedToFrom[migrateTo] = migrateFrom;
 
         //setTimeout(() => {
-          rootScope.broadcast('dialog_migrate', {migrateFrom, migrateTo});
+          rootScope.dispatchEvent('dialog_migrate', {migrateFrom, migrateTo});
 
           const dropped = this.dialogsStorage.dropDialog(migrateFrom);
           if(dropped.length) {
-            rootScope.broadcast('dialog_drop', {peerId: migrateFrom, dialog: dropped[0]});
+            rootScope.dispatchEvent('dialog_drop', {peerId: migrateFrom, dialog: dropped[0]});
           }
         //}, 100);
       }
@@ -3338,7 +3338,7 @@ export class AppMessagesManager {
     clearTimeout(this.newMessagesHandleTimeout);
     this.newMessagesHandleTimeout = 0;
 
-    rootScope.broadcast('history_multiappend', this.newMessagesToHandle);
+    rootScope.dispatchEvent('history_multiappend', this.newMessagesToHandle);
     this.newMessagesToHandle = {};
   };
 
@@ -3364,7 +3364,7 @@ export class AppMessagesManager {
       this.incrementMaxSeenId(newMaxSeenId);
     }
 
-    rootScope.broadcast('dialogs_multiupdate', obj);
+    rootScope.dispatchEvent('dialogs_multiupdate', obj);
     this.newDialogsToHandle = {};
   };
 
@@ -3743,7 +3743,7 @@ export class AppMessagesManager {
     }
 
     if(this.mergeReplyKeyboard(historyStorage, message)) {
-      rootScope.broadcast('history_reply_markup', {peerId});
+      rootScope.dispatchEvent('history_reply_markup', {peerId});
     }
 
     if(message.fromId > 0 && !message.pFlags.out && message.from_id) {
@@ -3807,7 +3807,7 @@ export class AppMessagesManager {
         dialog.pFlags.unread_mark = true;
       }
 
-      rootScope.broadcast('dialogs_multiupdate', {[peerId]: dialog});
+      rootScope.dispatchEvent('dialogs_multiupdate', {[peerId]: dialog});
       this.dialogsStorage.setDialogToState(dialog);
     }
   };
@@ -3834,10 +3834,10 @@ export class AppMessagesManager {
     // @ts-ignore
     if(message.clear_history) { // that's will never happen
       if(isTopMessage) {
-        rootScope.broadcast('dialog_flush', {peerId});
+        rootScope.dispatchEvent('dialog_flush', {peerId});
       }
     } else {
-      rootScope.broadcast('message_edit', {
+      rootScope.dispatchEvent('message_edit', {
         storage,
         peerId,
         mid
@@ -3846,7 +3846,7 @@ export class AppMessagesManager {
       if(isTopMessage || (message as Message.message).grouped_id) {
         const updatedDialogs: {[peerId: number]: Dialog} = {};
         updatedDialogs[peerId] = dialog;
-        rootScope.broadcast('dialogs_multiupdate', updatedDialogs);
+        rootScope.dispatchEvent('dialogs_multiupdate', updatedDialogs);
         this.dialogsStorage.setDialogToState(dialog);
       }
     }
@@ -3938,12 +3938,12 @@ export class AppMessagesManager {
         }
       }
       
-      rootScope.broadcast('dialog_unread', {peerId});
+      rootScope.dispatchEvent('dialog_unread', {peerId});
       this.dialogsStorage.setDialogToState(foundDialog);
     }
 
     if(foundAffected) {
-      rootScope.broadcast('messages_read');
+      rootScope.dispatchEvent('messages_read');
     }
 
     if(!threadId && channelId) {
@@ -3951,7 +3951,7 @@ export class AppMessagesManager {
       for(const threadKey in this.threadsToReplies) {
         if(threadKey.indexOf(threadKeyPart) === 0) {
           const [peerId, mid] = this.threadsToReplies[threadKey].split('_').map(n => +n);
-          rootScope.broadcast('replies_updated', this.getMessageByPeer(peerId, mid));
+          rootScope.dispatchEvent('replies_updated', this.getMessageByPeer(peerId, mid));
         }
       }
     }
@@ -3969,7 +3969,7 @@ export class AppMessagesManager {
       }
     }
 
-    rootScope.broadcast('messages_media_read', {peerId, mids});
+    rootScope.dispatchEvent('messages_media_read', {peerId, mids});
   };
 
   private onUpdateChannelAvailableMessages = (update: Update.updateChannelAvailableMessages) => {
@@ -4033,14 +4033,14 @@ export class AppMessagesManager {
       }
     });
 
-    rootScope.broadcast('history_delete', {peerId, msgs: historyUpdated.msgs});
+    rootScope.dispatchEvent('history_delete', {peerId, msgs: historyUpdated.msgs});
 
     const foundDialog = this.getDialogOnly(peerId);
     if(foundDialog) {
       if(historyUpdated.unread) {
         foundDialog.unread_count -= historyUpdated.unread;
 
-        rootScope.broadcast('dialog_unread', {peerId});
+        rootScope.dispatchEvent('dialog_unread', {peerId});
       }
 
       if(historyUpdated.msgs[foundDialog.top_message]) {
@@ -4061,7 +4061,7 @@ export class AppMessagesManager {
     
     if(canViewHistory !== hasHistory) {
       delete this.historiesStorage[peerId];
-      rootScope.broadcast('history_forbidden', peerId);
+      rootScope.dispatchEvent('history_forbidden', peerId);
     }
     
     const dialog = this.getDialogOnly(peerId);
@@ -4071,7 +4071,7 @@ export class AppMessagesManager {
       } else {
         if(dialog) {
           this.dialogsStorage.dropDialog(peerId);
-          rootScope.broadcast('dialog_drop', {peerId, dialog});
+          rootScope.dispatchEvent('dialog_drop', {peerId, dialog});
         }
       }
     }
@@ -4086,7 +4086,7 @@ export class AppMessagesManager {
 
     delete this.historiesStorage[peerId];
     this.reloadConversation(-channelId).then(() => {
-      rootScope.broadcast('history_reload', peerId);
+      rootScope.dispatchEvent('history_reload', peerId);
     });
   };
   
@@ -4097,7 +4097,7 @@ export class AppMessagesManager {
     const message = this.getMessageByPeer(-update.channel_id, mid);
     if(!message.deleted && message.views && message.views < views) {
       message.views = views;
-      rootScope.broadcast('message_views', {mid, views});
+      rootScope.dispatchEvent('message_views', {mid, views});
     }
   };
 
@@ -4188,7 +4188,7 @@ export class AppMessagesManager {
       delete this.pinnedMessages[peerId];
       appStateManager.getState().then(state => {
         delete state.hiddenPinnedMessages[peerId];
-        rootScope.broadcast('peer_pinned_messages', {peerId, mids: messages, pinned: werePinned});
+        rootScope.dispatchEvent('peer_pinned_messages', {peerId, mids: messages, pinned: werePinned});
       });
     });
   };
@@ -4201,7 +4201,7 @@ export class AppMessagesManager {
       const dialog = this.getDialogOnly(peerId);
       if(dialog) {
         dialog.notify_settings = notify_settings;
-        rootScope.broadcast('dialog_notify_settings', dialog);
+        rootScope.dispatchEvent('dialog_notify_settings', dialog);
         this.dialogsStorage.setDialogToState(dialog);
       }
     }
@@ -4221,11 +4221,11 @@ export class AppMessagesManager {
 
       if(!oldMessage.deleted) {
         this.handleEditedMessage(oldMessage, newMessage);
-        rootScope.broadcast('message_edit', {storage, peerId, mid: message.mid});
+        rootScope.dispatchEvent('message_edit', {storage, peerId, mid: message.mid});
       } else {
         const pendingMessage = this.checkPendingMessage(message);
         if(!pendingMessage) {
-          rootScope.broadcast('scheduled_new', {peerId, mid: message.mid});
+          rootScope.dispatchEvent('scheduled_new', {peerId, mid: message.mid});
         }
       }
     }
@@ -4239,7 +4239,7 @@ export class AppMessagesManager {
       const mids = update.messages.map(id => this.generateMessageId(id));
       this.handleDeletedMessages(peerId, storage, mids);
 
-      rootScope.broadcast('scheduled_delete', {peerId, mids});
+      rootScope.dispatchEvent('scheduled_delete', {peerId, mids});
     }
   };
 
@@ -4281,7 +4281,7 @@ export class AppMessagesManager {
       const message = this.getMessageByPeer(peerId, mid);
 
       if(broadcastEventName) {
-        rootScope.broadcast(broadcastEventName, message);
+        rootScope.dispatchEvent(broadcastEventName, message);
       }
 
       return message;
@@ -4296,7 +4296,7 @@ export class AppMessagesManager {
     if(randomId) {
       const pendingData = this.pendingByRandomId[randomId];
       if(pendingMessage = this.finalizePendingMessage(randomId, message)) {
-        rootScope.broadcast('history_update', {storage: pendingData.storage, peerId: message.peerId, mid: message.mid});
+        rootScope.dispatchEvent('history_update', {storage: pendingData.storage, peerId: message.peerId, mid: message.mid});
       }
 
       delete this.pendingByMessageId[message.mid];
@@ -4355,7 +4355,7 @@ export class AppMessagesManager {
         delete message.random_id;
         delete message.send;
 
-        rootScope.broadcast('messages_pending');
+        rootScope.dispatchEvent('messages_pending');
       }
       
       delete this.pendingByRandomId[randomId];
@@ -4421,7 +4421,7 @@ export class AppMessagesManager {
     const tempMessage = this.getMessageFromStorage(storage, tempId);
     delete storage[tempId];
 
-    rootScope.broadcast('message_sent', {storage, tempId, tempMessage, mid});
+    rootScope.dispatchEvent('message_sent', {storage, tempId, tempMessage, mid});
   }
 
   public incrementMaxSeenId(maxId: number) {
@@ -4466,7 +4466,7 @@ export class AppMessagesManager {
     notification.title = RichTextProcessor.wrapPlainText(notification.title);
 
     notification.onclick = () => {
-      rootScope.broadcast('history_focus', {peerId, mid: message.mid});
+      rootScope.dispatchEvent('history_focus', {peerId, mid: message.mid});
     };
 
     notification.message = notificationMessage;
@@ -4675,7 +4675,7 @@ export class AppMessagesManager {
 
       const mids = messages.map((message) => {
         if(this.mergeReplyKeyboard(historyStorage, message)) {
-          rootScope.broadcast('history_reply_markup', {peerId});
+          rootScope.dispatchEvent('history_reply_markup', {peerId});
         }
 
         return (message as MyMessage).mid;
@@ -4860,7 +4860,7 @@ export class AppMessagesManager {
               this.saveMessages(getMessagesResult.messages);
             }
     
-            rootScope.broadcast('messages_downloaded', {peerId: +peerId, mids});
+            rootScope.dispatchEvent('messages_downloaded', {peerId: +peerId, mids});
           }));
         }
 
@@ -4875,7 +4875,7 @@ export class AppMessagesManager {
 
   public wrapSingleMessage(peerId: number, msgId: number, overwrite = false): Promise<void> {
     if(!this.getMessageByPeer(peerId, msgId).deleted && !overwrite) {
-      rootScope.broadcast('messages_downloaded', {peerId, mids: [msgId]});
+      rootScope.dispatchEvent('messages_downloaded', {peerId, mids: [msgId]});
       return Promise.resolve();
     } else if(!this.needSingleMessages[peerId] || this.needSingleMessages[peerId].indexOf(msgId) === -1) {
       (this.needSingleMessages[peerId] ?? (this.needSingleMessages[peerId] = [])).push(msgId);
@@ -4980,7 +4980,7 @@ export class AppMessagesManager {
 
     if(history.albums) {
       for(const groupId in history.albums) {
-        rootScope.broadcast('album_edit', {peerId, groupId, deletedMids: [...history.albums[groupId]]});
+        rootScope.dispatchEvent('album_edit', {peerId, groupId, deletedMids: [...history.albums[groupId]]});
         /* const mids = this.getMidsByAlbum(groupId);
         if(mids.length) {
           const mid = Math.max(...mids);

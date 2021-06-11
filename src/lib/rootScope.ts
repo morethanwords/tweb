@@ -75,8 +75,9 @@ export type BroadcastEvents = {
   'audio_play': {doc: MyDocument, mid: number, peerId: number},
   'audio_pause': void,
   
+  'state_cleared': void,
   'state_synchronized': number,
-  'state_synchronizing': number,
+  'state_synchronizing': number | void,
   
   'contacts_update': number,
   'avatar_update': number,
@@ -136,20 +137,20 @@ export class RootScope extends EventListenerBase<{
   constructor() {
     super();
 
-    this.on('peer_changed', (peerId) => {
+    this.addEventListener('peer_changed', (peerId) => {
       this.peerId = peerId;
     });
 
-    this.on('user_auth', (e) => {
+    this.addEventListener('user_auth', (e) => {
       this.myId = e.id;
     });
 
-    this.on('connection_status_change', (e) => {
+    this.addEventListener('connection_status_change', (e) => {
       const status = e;
       this.connectionStatus[e.name] = status;
     });
 
-    this.on('idle', (isIDLE) => {
+    this.addEventListener('idle', (isIDLE) => {
       if(isIDLE) {
         this.idle.focusPromise = new Promise((resolve) => {
           this.idle.focusResolve = resolve;
@@ -169,7 +170,7 @@ export class RootScope extends EventListenerBase<{
         //const newTheme = this.getTheme();
 
         if(this.myId) {
-          this.broadcast('theme_change');
+          this.dispatchEvent('theme_change');
         } else {
           this.setTheme();
         }
@@ -203,34 +204,12 @@ export class RootScope extends EventListenerBase<{
 
   set overlayIsActive(value: boolean) {
     this._overlayIsActive = value;
-    this.broadcast('overlay_toggle', value);
+    this.dispatchEvent('overlay_toggle', value);
   }
 
   public getTheme(name: Theme['name'] = this.settings.theme === 'system' ? this.systemTheme : this.settings.theme) {
     return this.settings.themes.find(t => t.name === name);
   }
-
-  public broadcast = <T extends keyof BroadcastEvents>(name: T, detail?: BroadcastEvents[T]) => {
-    /* //if(DEBUG) {
-      if(name !== 'user_update') {
-        console.debug('Broadcasting ' + name + ' event, with args:', detail);
-      }
-    //} */
-
-    this.dispatchEvent(name, detail);
-  };
-
-  public on = <T extends keyof BroadcastEvents>(name: T, callback: (e: BroadcastEvents[T]) => any, once?: true) => {
-    super.addEventListener(name, callback, once);
-  };
-
-  public addEventListener = this.on;
-
-  public off = <T extends keyof BroadcastEvents>(name: T, callback: (e: BroadcastEvents[T]) => any) => {
-    super.removeEventListener(name, callback);
-  };
-
-  public removeEventListener = this.off;
 }
 
 const rootScope = new RootScope();

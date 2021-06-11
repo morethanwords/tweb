@@ -104,7 +104,7 @@ export class AppWebPagesManager {
         msgs.push(+msgId);
       }
 
-      rootScope.broadcast('webpage_updated', {
+      rootScope.dispatchEvent('webpage_updated', {
         id: apiWebPage.id,
         msgs
       });

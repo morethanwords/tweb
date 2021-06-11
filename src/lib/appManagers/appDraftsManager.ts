@@ -102,7 +102,7 @@ export class AppDraftsManager {
 
     if(options.notify) {
       // console.warn(dT(), 'save draft', peerId, apiDraft, options)
-      rootScope.broadcast('draft_updated', {
+      rootScope.dispatchEvent('draft_updated', {
         peerId,
         threadId,
         draft

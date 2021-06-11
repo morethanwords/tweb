@@ -93,7 +93,7 @@ export class AppPollsManager {
         }
 
         poll = this.savePoll(poll, update.results as any);
-        rootScope.broadcast('poll_update', {poll, results: update.results as any});
+        rootScope.dispatchEvent('poll_update', {poll, results: update.results as any});
       }
     });
   }
