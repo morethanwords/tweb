@@ -50,7 +50,6 @@ const lang = {
   "ConnectionStatus.Waiting": "Waiting for network...",
   "Deactivated.Title": "Too many tabs...",
   "Deactivated.Subtitle": "Telegram supports only one active tab with the app.\nClick anywhere to continue using this tab.",
-  //"Saved": "Saved",
   "General.Keyboard": "Keyboard",
   "General.SendShortcut.Enter": "Send by Enter",
   "General.SendShortcut.CtrlEnter": "Send by %s + Enter",
@@ -107,6 +106,7 @@ const lang = {
   "MediaViewer.Context.Download": "Download",
   "Profile": "Profile",
   "Saved": "Saved",
+  "Deleted": "Deleted",
   "ReportBug": "Report Bug",
   "Notifications.Count": {
     "one_value": "%d notification",
@@ -440,6 +440,7 @@ const lang = {
   "Updating": "Updating...",
   "Emoji": "Emoji",
   "AddContactTitle": "Add Contact",
+  "HiddenName": "Deleted Account",
 
   // * macos
   "AccountSettings.Filters": "Chat Folders",

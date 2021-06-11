@@ -11,7 +11,6 @@ import { isMobileSafari, isSafari } from "../helpers/userAgent";
 import appDocsManager, { MyDocument } from "../lib/appManagers/appDocsManager";
 import appImManager from "../lib/appManagers/appImManager";
 import appMessagesManager from "../lib/appManagers/appMessagesManager";
-import appPeersManager from "../lib/appManagers/appPeersManager";
 import appPhotosManager from "../lib/appManagers/appPhotosManager";
 import { logger } from "../lib/logger";
 import VideoPlayer from "../lib/mediaPlayer";
@@ -44,6 +43,8 @@ import appDownloadManager from "../lib/appManagers/appDownloadManager";
 import { cancelEvent } from "../helpers/dom/cancelEvent";
 import fillPropertyValue from "../helpers/fillPropertyValue";
 import generatePathData from "../helpers/generatePathData";
+import replaceContent from "../helpers/dom/replaceContent";
+import PeerTitle from "./peerTitle";
 
 // TODO: масштабирование картинок (не SVG) при ресайзе, и правильный возврат на исходную позицию
 // TODO: картинки "обрезаются" если возвращаются или появляются с места, где есть их перекрытие (топбар, поле ввода)
@@ -851,8 +852,12 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
 
     this.author.date.innerText = dateStr + ' at ' + timeStr;
 
-    const name = appPeersManager.getPeerTitle(fromId);
-    this.author.nameEl.innerHTML = name;
+    replaceContent(this.author.nameEl, new PeerTitle({
+      peerId: fromId,
+      dialog: false,
+      onlyFirstName: false,
+      plainText: false
+    }).element);
 
     let oldAvatar = this.author.avatarEl;
     this.author.avatarEl = (this.author.avatarEl.cloneNode() as AvatarElement);

@@ -17,6 +17,7 @@ import { RichTextProcessor } from "../richtextprocessor";
 import rootScope from "../rootScope";
 import appChatsManager from "./appChatsManager";
 import appUsersManager from "./appUsersManager";
+import I18n from '../langPack';
 
 // https://github.com/eelcohn/Telegram-API/wiki/Calculating-color-for-a-Telegram-user-on-IRC
 /*
@@ -88,7 +89,7 @@ export class AppPeersManager {
       if(peer.first_name) title += peer.first_name;
       if(peer.last_name) title += ' ' + peer.last_name;
   
-      if(!title) title = peer.pFlags.deleted ? 'Deleted Account' : peer.username;
+      if(!title) title = peer.pFlags.deleted ? I18n.format('HiddenName', true) : peer.username;
       else title = title.trim();
     } else {
       title = peer.title;

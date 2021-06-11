@@ -1,3 +1,9 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
 import { fastRaf } from "./schedulers";
 import { CancellablePromise, deferredPromise } from "./cancellablePromise";
 import { MOUNT_CLASS_TO } from "../config/debug";
