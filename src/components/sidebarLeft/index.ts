@@ -173,14 +173,14 @@ export class AppSidebarLeft extends SidebarSlider {
       onClick: () => {
         location.href = 'https://web.telegram.org/z/';
       },
-      verify: () => location.hostname === 'web.telegram.org'
+      verify: () => App.isMainDomain
     }, {
       icon: 'char w',
       text: 'ChatList.Menu.SwitchTo.Webogram',
       onClick: () => {
         location.href = 'https://web.telegram.org/';
       },
-      verify: () => location.hostname === 'web.telegram.org'
+      verify: () => App.isMainDomain
     }];
 
     this.toolsBtn = ButtonMenuToggle({}, 'bottom-right', menuButtons, (e) => {
@@ -201,7 +201,7 @@ export class AppSidebarLeft extends SidebarSlider {
     btnMenuFooter.classList.add('btn-menu-footer');
     const t = document.createElement('span');
     t.classList.add('btn-menu-footer-text');
-    t.innerHTML = 'Telegram WebK alpha ' + App.version;
+    t.innerHTML = 'Telegram Web' + App.suffix + ' alpha ' + App.version;
     btnMenuFooter.append(t); 
     btnMenu.classList.add('has-footer');
     btnMenu.append(btnMenuFooter);

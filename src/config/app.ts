@@ -17,7 +17,14 @@ const App = {
   langPack: 'macos',
   langPackCode: 'en',
   domains: [] as string[],
-  baseDcId: 2
+  baseDcId: 2,
+  isMainDomain: location.hostname === 'web.telegram.org',
+  suffix: 'K'
 };
+
+if(App.isMainDomain) { // use Webogram credentials then
+  App.id = 2496;
+  App.hash = '8da85b0d5bfe62527e5b244c209159c3';
+}
 
 export default App;
