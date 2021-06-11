@@ -183,7 +183,7 @@ export class EmoticonsDropdown {
       this.tabs[0].init(); // onTransitionEnd не вызовется, т.к. это первая открытая вкладка
     }
 
-    rootScope.on('peer_changed', this.checkRights);
+    rootScope.addEventListener('peer_changed', this.checkRights);
     this.checkRights();
 
     if(!isTouchSupported) {

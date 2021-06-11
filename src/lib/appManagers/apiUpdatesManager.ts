@@ -247,6 +247,7 @@ export class ApiUpdatesManager {
 
     const promise = apiManager.invokeApi('updates.getDifference', {
       pts: updatesState.pts, 
+      // pts_total_limit: 1200,
       date: updatesState.date, 
       qts: -1
     }, {
@@ -263,7 +264,7 @@ export class ApiUpdatesManager {
 
       // ! SORRY I'M SORRY I'M SORRY
       if(first) {
-        rootScope.broadcast('state_synchronizing');
+        rootScope.dispatchEvent('state_synchronizing');
       }
 
       if(differenceResult._ !== 'updates.differenceTooLong') {
@@ -303,6 +304,8 @@ export class ApiUpdatesManager {
         updatesState.pts = differenceResult.pts;
         delete updatesState.seq;
         delete updatesState.date;
+        
+        rootScope.dispatchEvent('state_cleared');
       }
   
       // this.log('apply diff', updatesState.seq, updatesState.pts)
@@ -395,11 +398,11 @@ export class ApiUpdatesManager {
 
   private justAName(state: UpdatesState, promise: UpdatesState['syncLoading'], channelId?: number) {
     state.syncLoading = promise;
-    rootScope.broadcast('state_synchronizing', channelId);
+    rootScope.dispatchEvent('state_synchronizing', channelId);
 
     promise.then(() => {
       state.syncLoading = null;
-      rootScope.broadcast('state_synchronized', channelId);
+      rootScope.dispatchEvent('state_synchronized', channelId);
     }, () => {
       state.syncLoading = null;
     });
@@ -654,9 +657,9 @@ export class ApiUpdatesManager {
 
       apiManager.setUpdatesProcessor(this.processUpdateMessage);
 
-      this.updatesState.syncLoading.then(() => {
+      // this.updatesState.syncLoading.then(() => {
         this.setProxy();
-      });
+      // });
     });
   }
 }

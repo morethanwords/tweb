@@ -59,7 +59,7 @@ export class AppDownloadManager {
   };
 
   constructor() {
-    rootScope.on('download_progress', (e) => {
+    rootScope.addEventListener('download_progress', (e) => {
       const details = e as {done: number, fileName: string, total: number, offset: number};
       this.progress[details.fileName] = details;
 

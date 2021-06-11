@@ -81,7 +81,7 @@ export default class FiltersStorage {
       this.saveDialogFilter(update.filter as any);
     } else if(this.filters[update.id]) { // Папка удалена
       //this.getDialogFilters(true);
-      this.rootScope.broadcast('filter_delete', this.filters[update.id]);
+      this.rootScope.dispatchEvent('filter_delete', this.filters[update.id]);
       delete this.filters[update.id];
     }
 
@@ -98,7 +98,7 @@ export default class FiltersStorage {
       this.setOrderIndex(filter);
     });
 
-    this.rootScope.broadcast('filter_order', update.order);
+    this.rootScope.dispatchEvent('filter_order', update.order);
 
     this.appStateManager.pushToState('filters', this.filters);
   };
@@ -269,7 +269,7 @@ export default class FiltersStorage {
     this.setOrderIndex(filter);
 
     if(update) {
-      this.rootScope.broadcast('filter_update', filter);
+      this.rootScope.dispatchEvent('filter_update', filter);
     }
   }
 

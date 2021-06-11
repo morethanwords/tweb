@@ -300,7 +300,7 @@ export class AppStateManager extends EventListenerBase<{
         if(auth) {
           // ! Warning ! DON'T delete this
           state.authState = {_: 'authStateSignedIn'};
-          rootScope.broadcast('user_auth', typeof(auth) === 'number' ? {dcID: 0, id: auth} : auth); // * support old version
+          rootScope.dispatchEvent('user_auth', typeof(auth) === 'number' ? {dcID: 0, id: auth} : auth); // * support old version
         }
 
         // * Read storages
@@ -389,7 +389,7 @@ export class AppStateManager extends EventListenerBase<{
 
   public setByKey(key: string, value: any) {
     setDeepProperty(this.state, key, value);
-    rootScope.broadcast('settings_updated', {key, value});
+    rootScope.dispatchEvent('settings_updated', {key, value});
 
     const first = key.split('.')[0];
     // @ts-ignore

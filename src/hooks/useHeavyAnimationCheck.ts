@@ -27,7 +27,7 @@ const log = console.log.bind(console.log, '[HEAVY-ANIMATION]:');
 export function dispatchHeavyAnimationEvent(promise: Promise<any>, timeout?: number) {
   if(!isAnimating) {
     heavyAnimationPromise = deferredPromise<void>();
-    rootScope.broadcast(ANIMATION_START_EVENT);
+    rootScope.dispatchEvent(ANIMATION_START_EVENT);
     isAnimating = true;
     DEBUG && log('start');
   }
@@ -64,7 +64,7 @@ function onHeavyAnimationEnd() {
 
   isAnimating = false;
   promisesInQueue = 0;
-  rootScope.broadcast(ANIMATION_END_EVENT);
+  rootScope.dispatchEvent(ANIMATION_END_EVENT);
   heavyAnimationPromise.resolve();
 
   DEBUG && log('end');

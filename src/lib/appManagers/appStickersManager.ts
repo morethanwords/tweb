@@ -28,7 +28,7 @@ export class AppStickersManager {
     rootScope.addMultipleEventsListeners({
       updateNewStickerSet: (update) => {
         this.saveStickerSet(update.stickerset, update.stickerset.set.id);
-        rootScope.broadcast('stickers_installed', update.stickerset.set);
+        rootScope.dispatchEvent('stickers_installed', update.stickerset.set);
       }
     });
   }
@@ -185,7 +185,7 @@ export class AppStickersManager {
 
       if(res) {
         delete set.installed_date;
-        rootScope.broadcast('stickers_deleted', set);
+        rootScope.dispatchEvent('stickers_deleted', set);
         this.storage.delete(set.id, true);
         return true;
       }
@@ -197,7 +197,7 @@ export class AppStickersManager {
 
       if(res) {
         set.installed_date = Date.now() / 1000 | 0;
-        rootScope.broadcast('stickers_installed', set);
+        rootScope.dispatchEvent('stickers_installed', set);
         return true;
       }
     }

@@ -253,7 +253,7 @@ export default class Chat extends EventListenerBase<{
 
     const samePeer = this.peerId === peerId;
     if(!samePeer) {
-      rootScope.broadcast('peer_changing', this);
+      rootScope.dispatchEvent('peer_changing', this);
       this.peerId = peerId;
     } else if(this.setPeerPromise) {
       return;
@@ -267,7 +267,7 @@ export default class Chat extends EventListenerBase<{
       this.cleanup(true);
       this.topbar.setPeer(peerId);
       this.bubbles.setPeer(peerId);
-      rootScope.broadcast('peer_changed', peerId);
+      rootScope.dispatchEvent('peer_changed', peerId);
 
       return;
     }
@@ -353,7 +353,7 @@ export default class Chat extends EventListenerBase<{
 
     this.log.setPrefix('CHAT-' + peerId + '-' + this.type);
 
-    rootScope.broadcast('peer_changed', peerId);
+    rootScope.dispatchEvent('peer_changed', peerId);
     this.wasAlreadyUsed = true;
   }
 

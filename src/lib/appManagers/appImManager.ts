@@ -114,7 +114,7 @@ export class AppImManager {
       this.offline = rootScope.idle.isIDLE = true;
       this.updateStatus();
       clearInterval(this.updateStatusInterval);
-      rootScope.broadcast('idle', rootScope.idle.isIDLE);
+      rootScope.dispatchEvent('idle', rootScope.idle.isIDLE);
       
       window.addEventListener('focus', () => {
         this.offline = rootScope.idle.isIDLE = false;
@@ -124,7 +124,7 @@ export class AppImManager {
         // в обратном порядке
         animationIntersector.checkAnimations(false);
 
-        rootScope.broadcast('idle', rootScope.idle.isIDLE);
+        rootScope.dispatchEvent('idle', rootScope.idle.isIDLE);
       }, {once: true});
     });
 
@@ -134,7 +134,7 @@ export class AppImManager {
       this.updateStatus();
 
       this.offline = rootScope.idle.isIDLE = false;
-      rootScope.broadcast('idle', rootScope.idle.isIDLE);
+      rootScope.dispatchEvent('idle', rootScope.idle.isIDLE);
     }, {once: true, passive: true});
 
     this.chatsContainer = document.createElement('div');
@@ -150,7 +150,7 @@ export class AppImManager {
     //window.addEventListener('hashchange', this.onHashChange);
 
     this.setSettings();
-    rootScope.on('settings_updated', this.setSettings);
+    rootScope.addEventListener('settings_updated', this.setSettings);
 
     useHeavyAnimationCheck(() => {
       animationIntersector.setOnlyOnePlayableGroup('lock');
@@ -170,20 +170,20 @@ export class AppImManager {
       }
     });
 
-    rootScope.on('history_focus', (e) => {
+    rootScope.addEventListener('history_focus', (e) => {
       const {peerId, mid} = e;
       this.setInnerPeer(peerId, mid);
     });
 
-    rootScope.on('peer_changing', (chat) => {
+    rootScope.addEventListener('peer_changing', (chat) => {
       this.saveChatPosition(chat);
     });
 
-    rootScope.on('theme_change', () => {
+    rootScope.addEventListener('theme_change', () => {
       this.applyCurrentTheme();
     });
 
-    rootScope.on('instance_deactivated', () => {
+    rootScope.addEventListener('instance_deactivated', () => {
       const popup = new PopupElement('popup-instance-deactivated', undefined, {overlayClosable: true});
       const c = document.createElement('div');
       c.classList.add('instance-deactivated-container');
@@ -368,7 +368,7 @@ export class AppImManager {
     const promises = this.chats.map(chat => chat.setBackground(url));
     return promises[promises.length - 1].then(() => {
       if(broadcastEvent) {
-        rootScope.broadcast('background_change');
+        rootScope.dispatchEvent('background_change');
       }
     });
   }
@@ -789,7 +789,7 @@ export class AppImManager {
       }
     }
 
-    rootScope.broadcast('im_tab_change', id);
+    rootScope.dispatchEvent('im_tab_change', id);
 
     //this._selectTab(id, mediaSizes.isMobile);
     //document.body.classList.toggle(RIGHT_COLUMN_ACTIVE_CLASSNAME, id === 2);
@@ -836,7 +836,7 @@ export class AppImManager {
     if(fromIndex >= this.chats.length) return;
 
     if(this.chats.length > 1 && justReturn) {
-      rootScope.broadcast('peer_changing', this.chat);
+      rootScope.dispatchEvent('peer_changing', this.chat);
     }
 
     if(!spliced) {
@@ -858,7 +858,7 @@ export class AppImManager {
     this.chatsSelectTab(this.chat.container, animate);
 
     if(justReturn) {
-      rootScope.broadcast('peer_changed', this.chat.peerId);
+      rootScope.dispatchEvent('peer_changed', this.chat.peerId);
 
       const searchTab = appSidebarRight.getTab(AppPrivateSearchTab);
       if(searchTab) {

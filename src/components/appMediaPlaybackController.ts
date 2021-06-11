@@ -88,7 +88,7 @@ class AppMediaPlaybackController {
 
       // audio_pause не успеет сработать без таймаута
       setTimeout(() => {
-        rootScope.broadcast('audio_play', {peerId, doc, mid});
+        rootScope.dispatchEvent('audio_play', {peerId, doc, mid});
       }, 0);
     });
 
@@ -192,7 +192,7 @@ class AppMediaPlaybackController {
       return;
     } */
 
-    rootScope.broadcast('audio_pause');
+    rootScope.dispatchEvent('audio_pause');
   };
 
   onEnded = (e?: Event) => {

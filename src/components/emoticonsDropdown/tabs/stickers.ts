@@ -290,7 +290,7 @@ export default class StickersTab implements EmoticonsTab {
       }
     }); */
 
-    rootScope.on('stickers_installed', (e) => {
+    rootScope.addEventListener('stickers_installed', (e) => {
       const set: StickerSet.stickerSet = e;
       
       if(!this.stickerSets[set.id] && this.mounted) {
@@ -298,7 +298,7 @@ export default class StickersTab implements EmoticonsTab {
       }
     });
 
-    rootScope.on('stickers_deleted', (e) => {
+    rootScope.addEventListener('stickers_deleted', (e) => {
       const set: StickerSet.stickerSet = e;
       
       if(this.stickerSets[set.id] && this.mounted) {

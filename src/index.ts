@@ -128,7 +128,7 @@ console.timeEnd('get storage1'); */
     };
 
     let tabId: number;
-    rootScope.default.on('im_tab_change', (id) => {
+    rootScope.default.addEventListener('im_tab_change', (id) => {
       const wasTabId = tabId !== undefined;
       tabId = id;
 
@@ -137,7 +137,7 @@ console.timeEnd('get storage1'); */
       }
     });
     
-    rootScope.default.on('overlay_toggle', () => {
+    rootScope.default.addEventListener('overlay_toggle', () => {
       toggleResizeMode();
     });
 

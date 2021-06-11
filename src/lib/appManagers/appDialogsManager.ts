@@ -162,7 +162,7 @@ export class AppDialogsManager {
       (window as any).addElement = add;
     } */
 
-    rootScope.on('user_update', (userId) => {
+    rootScope.addEventListener('user_update', (userId) => {
       //console.log('updating user:', user, dialog);
       
       const dom = this.getDialogDom(userId);
@@ -182,7 +182,7 @@ export class AppDialogsManager {
       this.setFiltersUnreadCount();
     }); */
 
-    rootScope.on('dialog_flush', (e) => {
+    rootScope.addEventListener('dialog_flush', (e) => {
       const peerId: number = e.peerId;
       const dialog = appMessagesManager.getDialogOnly(peerId);
       if(dialog) {
@@ -192,7 +192,7 @@ export class AppDialogsManager {
       }
     });
 
-    rootScope.on('dialogs_multiupdate', (e) => {
+    rootScope.addEventListener('dialogs_multiupdate', (e) => {
       const dialogs = e;
 
       for(const id in dialogs) {
@@ -204,14 +204,14 @@ export class AppDialogsManager {
       this.setFiltersUnreadCount();
     });
 
-    rootScope.on('dialog_drop', (e) => {
+    rootScope.addEventListener('dialog_drop', (e) => {
       const {peerId} = e;
 
       this.deleteDialog(peerId);
       this.setFiltersUnreadCount();
     });
 
-    rootScope.on('dialog_unread', (e) => {
+    rootScope.addEventListener('dialog_unread', (e) => {
       const info = e;
 
       const dialog = appMessagesManager.getDialogOnly(info.peerId);
@@ -222,18 +222,18 @@ export class AppDialogsManager {
       }
     });
 
-    rootScope.on('dialog_notify_settings', (dialog) => {
+    rootScope.addEventListener('dialog_notify_settings', (dialog) => {
       this.setUnreadMessages(dialog); // возможно это не нужно, но нужно менять is-muted
     });
 
-    rootScope.on('dialog_draft', (e) => {
+    rootScope.addEventListener('dialog_draft', (e) => {
       const dialog = appMessagesManager.getDialogOnly(e.peerId);
       if(dialog) {
         this.updateDialog(dialog);
       }
     });
 
-    rootScope.on('peer_changed', (e) => {
+    rootScope.addEventListener('peer_changed', (e) => {
       const peerId = e;
 
       //const perf = performance.now();
@@ -252,7 +252,7 @@ export class AppDialogsManager {
       //this.log('peer_changed total time:', performance.now() - perf);
     });
 
-    rootScope.on('filter_update', (e) => {
+    rootScope.addEventListener('filter_update', (e) => {
       const filter: DialogFilter = e;
       if(!this.filtersRendered[filter.id]) {
         this.addFilter(filter);
@@ -272,7 +272,7 @@ export class AppDialogsManager {
       elements.title.innerHTML = RichTextProcessor.wrapEmojiText(filter.title);
     });
 
-    rootScope.on('filter_delete', (e) => {
+    rootScope.addEventListener('filter_delete', (e) => {
       const filter: DialogFilter = e;
       const elements = this.filtersRendered[filter.id];
       if(!elements) return;
@@ -293,7 +293,7 @@ export class AppDialogsManager {
       }
     });
 
-    rootScope.on('filter_order', (e) => {
+    rootScope.addEventListener('filter_order', (e) => {
       const order = e;
       
       const containerToAppend = this.folders.menu as HTMLElement;
@@ -311,7 +311,7 @@ export class AppDialogsManager {
       } */
     });
 
-    rootScope.on('peer_typings', (e) => {
+    rootScope.addEventListener('peer_typings', (e) => {
       const {peerId, typings} = e;
 
       const dialog = appMessagesManager.getDialogOnly(peerId);
@@ -1128,7 +1128,7 @@ export class AppDialogsManager {
       this.accumulateArchivedTimeout = 0;
       const dialogs = appMessagesManager.dialogsStorage.getFolder(1);
       const sum = dialogs.reduce((acc, dialog) => acc + dialog.unread_count, 0);
-      rootScope.broadcast('dialogs_archived_unread', {count: sum});
+      rootScope.dispatchEvent('dialogs_archived_unread', {count: sum});
     }, 0);
   }
 

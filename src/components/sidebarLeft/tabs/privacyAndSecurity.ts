@@ -220,7 +220,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTab {
         updatePrivacyRow(key as keyof typeof rowsByKeys);
       }
 
-      rootScope.on('privacy_update', (update) => {
+      rootScope.addEventListener('privacy_update', (update) => {
         updatePrivacyRow(convertKeyToInputKey(update.key._) as any);
       });
     }

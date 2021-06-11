@@ -60,14 +60,14 @@ export class AnimationIntersector {
       }
     });
 
-    rootScope.on('audio_play', ({doc}) => {
+    rootScope.addEventListener('audio_play', ({doc}) => {
       if(doc.type === 'round') {
         this.videosLocked = true;
         this.checkAnimations();
       }
     });
 
-    rootScope.on('audio_pause', () => {
+    rootScope.addEventListener('audio_pause', () => {
       if(this.videosLocked) {
         this.videosLocked = false;
         this.checkAnimations();

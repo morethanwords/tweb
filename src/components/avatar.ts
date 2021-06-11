@@ -23,8 +23,8 @@ const onAvatarUpdate = (peerId: number) => {
   });
 };
 
-rootScope.on('avatar_update', onAvatarUpdate);
-rootScope.on('peer_title_edit', onAvatarUpdate);
+rootScope.addEventListener('avatar_update', onAvatarUpdate);
+rootScope.addEventListener('peer_title_edit', onAvatarUpdate);
 
 export async function openAvatarViewer(target: HTMLElement, peerId: number, middleware: () => boolean, message?: any, prevTargets?: {element: HTMLElement, item: string | Message.messageService}[], nextTargets?: typeof prevTargets) {
   let photo = await appProfileManager.getFullPhoto(peerId);

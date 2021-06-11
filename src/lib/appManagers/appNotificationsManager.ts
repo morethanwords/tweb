@@ -102,7 +102,7 @@ export class AppNotificationsManager {
       }
     });*/
 
-    rootScope.on('idle', (newVal) => {
+    rootScope.addEventListener('idle', (newVal) => {
       if(this.stopped) {
         return;
       }
@@ -117,7 +117,7 @@ export class AppNotificationsManager {
     rootScope.addMultipleEventsListeners({
       updateNotifySettings: (update) => {
         this.savePeerSettings(update.peer._ === 'notifyPeer' ? appPeersManager.getPeerId(update.peer.peer) : update.peer._, update.notify_settings);
-        rootScope.broadcast('notify_settings', update);
+        rootScope.dispatchEvent('notify_settings', update);
       }
     });
 
@@ -401,7 +401,7 @@ export class AppNotificationsManager {
     (obj || this.peerSettings)[key] = settings;
 
     if(typeof(key) !== 'number') {
-      rootScope.broadcast('notify_peer_type_settings', {key, settings});
+      rootScope.dispatchEvent('notify_peer_type_settings', {key, settings});
     }
 
     //rootScope.broadcast('notify_settings', {peerId: peerId});
@@ -456,7 +456,7 @@ export class AppNotificationsManager {
 
   public start() {
     this.updateLocalSettings();
-    rootScope.on('settings_updated', this.updateLocalSettings);
+    rootScope.addEventListener('settings_updated', this.updateLocalSettings);
     //WebPushApiManager.start();
 
     if(!this.notificationsUiSupport) {

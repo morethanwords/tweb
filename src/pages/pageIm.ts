@@ -18,7 +18,7 @@ let onFirstMount = () => {
   /* appStateManager.saveState(); */
 
   import('../lib/rootScope').then(m => {
-    m.default.broadcast('im_mount');
+    m.default.dispatchEvent('im_mount');
   });
 
   if(!I18n.requestedServerLanguage) {

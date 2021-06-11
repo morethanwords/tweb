@@ -91,7 +91,7 @@ rootScope.on('poll_update', (e) => {
   }
 }); */
 
-rootScope.on('poll_update', (e) => {
+rootScope.addEventListener('poll_update', (e) => {
   const {poll, results} = e as {poll: Poll, results: PollResults};
 
   const pollElements = Array.from(document.querySelectorAll(`poll-element[poll-id="${poll.id}"]`)) as PollElement[];
@@ -102,7 +102,7 @@ rootScope.on('poll_update', (e) => {
   });
 });
 
-rootScope.on('peer_changed', () => {
+rootScope.addEventListener('peer_changed', () => {
   if(prevQuizHint) {
     hideQuizHint(prevQuizHint, prevQuizHintOnHide, prevQuizHintTimeout);
   }
