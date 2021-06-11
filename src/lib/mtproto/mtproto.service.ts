@@ -69,7 +69,7 @@ async function requestCache(event: FetchEvent) {
 }
 
 const onFetch = (event: FetchEvent): void => {
-  if(event.request.url.indexOf(location.origin + '/') === 0 && event.request.url.match(/\.(js|css|jpe?g|json|wasm|png|mp3|svg|tgs|ico|woff2?)$/)) {
+  if(event.request.url.indexOf(location.origin + '/') === 0 && event.request.url.match(/\.(js|css|jpe?g|json|wasm|png|mp3|svg|tgs|ico|woff2?|ttf|webmanifest?)(?:\?.*)?$/)) {
     return event.respondWith(requestCache(event));
   }
 

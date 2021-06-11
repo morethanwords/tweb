@@ -42,7 +42,7 @@ export default class AppActiveSessionsTab extends SliderSuperTab {
 
       const midtitle = document.createElement('div');
       midtitle.classList.add('row-midtitle');
-      midtitle.innerHTML = [auth.device_model, auth.system_version].join(', ');
+      midtitle.innerHTML = [auth.device_model, auth.system_version || auth.platform].filter(Boolean).join(', ');
 
       row.subtitle.parentElement.insertBefore(midtitle, row.subtitle);
 
