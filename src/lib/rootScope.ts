@@ -76,7 +76,7 @@ export type BroadcastEvents = {
   'audio_pause': void,
   
   'state_cleared': void,
-  'state_synchronized': number,
+  'state_synchronized': number | void,
   'state_synchronizing': number | void,
   
   'contacts_update': number,
