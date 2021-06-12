@@ -64,6 +64,16 @@ export function formatDateAccordingToTodayNew(time: Date) {
   }).element;
 }
 
+export function formatTime(date: Date) {
+  return new I18n.IntlDateElement({
+    date,
+    options: {
+      hour: '2-digit',
+      minute: '2-digit'
+    }
+  }).element;
+}
+
 MOUNT_CLASS_TO && (MOUNT_CLASS_TO.formatDateAccordingToTodayNew = formatDateAccordingToTodayNew);
 
 export const getFullDate = (date: Date, options: Partial<{

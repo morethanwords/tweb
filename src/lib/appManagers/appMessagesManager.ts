@@ -12,7 +12,7 @@
 import { LazyLoadQueueBase } from "../../components/lazyLoadQueue";
 import ProgressivePreloader from "../../components/preloader";
 import { CancellablePromise, deferredPromise } from "../../helpers/cancellablePromise";
-import { tsNow } from "../../helpers/date";
+import { formatTime, tsNow } from "../../helpers/date";
 import { createPosterForVideo } from "../../helpers/files";
 import { copy, getObjectKeysAndSort } from "../../helpers/object";
 import { randomLong } from "../../helpers/random";
@@ -52,6 +52,7 @@ import { forEachReverse } from "../../helpers/array";
 import htmlToDocumentFragment from "../../helpers/dom/htmlToDocumentFragment";
 import htmlToSpan from "../../helpers/dom/htmlToSpan";
 import { REPLIES_PEER_ID } from "../mtproto/mtproto_config";
+import formatCallDuration from "../../helpers/formatCallDuration";
 
 //console.trace('include');
 // TODO: если удалить сообщение в непрогруженном диалоге, то при обновлении, из-за стейта, последнего сообщения в чатлисте не будет
@@ -2311,69 +2312,88 @@ export class AppMessagesManager {
       }
 
       if(message.action) {
+        const action = message.action;
         let migrateFrom: number;
         let migrateTo: number;
         const suffix = message.fromId === appUsersManager.getSelf().id ? 'You' : '';
-        switch(message.action._) {
+        switch(action._) {
           //case 'messageActionChannelEditPhoto':
           case 'messageActionChatEditPhoto':
-            message.action.photo = appPhotosManager.savePhoto(message.action.photo, mediaContext);
-            if(message.action.photo.video_sizes) {
-              message.action._ = isBroadcast ? 'messageActionChannelEditVideo' : 'messageActionChatEditVideo';
+            action.photo = appPhotosManager.savePhoto(action.photo, mediaContext);
+            if(action.photo.video_sizes) {
+              action._ = isBroadcast ? 'messageActionChannelEditVideo' : 'messageActionChatEditVideo';
             } else {
               if(isBroadcast) { // ! messageActionChannelEditPhoto не существует в принципе, это используется для перевода.
-                message.action._ = 'messageActionChannelEditPhoto';
+                action._ = 'messageActionChannelEditPhoto';
               }
             }
             break;
+          
+          case 'messageActionGroupCall': {
+            //assumeType<MessageAction.messageActionGroupCall>(action);
+
+            let type: string;
+            if(action.duration === undefined) {
+              type = 'started';
+              if(message.peerId !== message.fromId) {
+                type += '_by' + suffix;
+              }
+            } else {
+              type = 'ended_by' + suffix;
+            }
+
+            action.type = type;
+
+            break;
+          }
 
           case 'messageActionChatEditTitle':
             /* if(options.isNew) {
               const chat = appChatsManager.getChat(-peerId);
-              chat.title = message.action.title;
+              chat.title = action.title;
               appChatsManager.saveApiChat(chat, true);
             } */
             
             if(isBroadcast) {
-              message.action._ = 'messageActionChannelEditTitle';
+              action._ = 'messageActionChannelEditTitle';
             }
             break;
 
           case 'messageActionChatDeletePhoto':
             if(isBroadcast) {
-              message.action._ = 'messageActionChannelDeletePhoto';
+              action._ = 'messageActionChannelDeletePhoto';
             }
             break;
 
           case 'messageActionChatAddUser':
-            if(message.action.users.length === 1) {
-              message.action.user_id = message.action.users[0];
-              if(message.fromId === message.action.user_id) {
+            if(action.users.length === 1) {
+              action.user_id = action.users[0];
+              if(message.fromId === action.user_id) {
                 if(isChannel) {
-                  message.action._ = 'messageActionChatJoined' + suffix;
+                  action._ = 'messageActionChatJoined' + suffix;
                 } else {
-                  message.action._ = 'messageActionChatReturn' + suffix;
+                  action._ = 'messageActionChatReturn' + suffix;
                 }
               }
-            } else if(message.action.users.length > 1) {
-              message.action._ = 'messageActionChatAddUsers';
+            } else if(action.users.length > 1) {
+              action._ = 'messageActionChatAddUsers';
             }
             break;
 
           case 'messageActionChatDeleteUser':
-            if(message.fromId === message.action.user_id) {
-              message.action._ = 'messageActionChatLeave' + suffix;
+            if(message.fromId === action.user_id) {
+              action._ = 'messageActionChatLeave' + suffix;
             }
             break;
 
           case 'messageActionChannelMigrateFrom':
-            migrateFrom = -message.action.chat_id;
+            migrateFrom = -action.chat_id;
             migrateTo = -channelId;
             break
 
           case 'messageActionChatMigrateTo':
             migrateFrom = -channelId;
-            migrateTo = -message.action.channel_id;
+            migrateTo = -action.channel_id;
             break;
 
           case 'messageActionHistoryClear':
@@ -2384,11 +2404,11 @@ export class AppMessagesManager {
             break;
 
           case 'messageActionPhoneCall':
-            message.action.type = 
+            action.type = 
               (message.pFlags.out ? 'out_' : 'in_') +
               (
-                message.action.reason._ === 'phoneCallDiscardReasonMissed' ||
-                message.action.reason._ === 'phoneCallDiscardReasonBusy'
+                action.reason._ === 'phoneCallDiscardReasonMissed' ||
+                action.reason._ === 'phoneCallDiscardReasonBusy'
                    ? 'missed'
                    : 'ok'
               );
@@ -2641,18 +2661,73 @@ export class AppMessagesManager {
       };
 
       switch(action._) {
-        case "messageActionPhoneCall": {
+        case 'messageActionPhoneCall': {
           _ += '.' + (action as any).type;
 
-          const duration = action.duration || 1;
-          const d: string[] = [];
-    
-          d.push(duration % 60 + ' s');
-          if(duration >= 60) d.push((duration / 60 | 0) + ' min');
-          //if(duration >= 3600) d.push((duration / 3600 | 0) + ' h');
+          args = [formatCallDuration(action.duration)];
+          break;
+        }
 
-          langPackKey = langPack[_];
-          args = [d.reverse().join(' ')];
+        case 'messageActionGroupCall': {
+          _ += '.' + (action as any).type;
+
+          args = [];
+          if(!_.endsWith('You')) {
+            args.push(getNameDivHTML(message.fromId, plain));
+          }
+
+          args.push(formatCallDuration(action.duration));
+          break;
+        }
+
+        case 'messageActionInviteToGroupCall': {
+          const peerIds = [message.fromId, action.users[0]];
+          let a = 'ActionGroupCall';
+          const myId = appUsersManager.getSelf().id;
+          if(peerIds[0] === myId) a += 'You';
+          a += 'Invited';
+          if(peerIds[1] === myId) a += 'You';
+          peerIds.findAndSplice(peerId => peerId === myId);
+
+          langPackKey = a as LangPackKey;
+          args = peerIds.map(peerId => getNameDivHTML(peerId, plain));
+          break;
+        }
+
+        case 'messageActionGroupCallScheduled': {
+          const today = new Date();
+          const date = new Date(action.schedule_date * 1000);
+          const daysToStart = (date.getTime() - today.getTime()) / 86400e3;
+          const tomorrowDate = new Date(today);
+          tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+
+          langPackKey = 'ChatList.Service.VoiceChatScheduled';
+          const myId = appUsersManager.getSelf().id;
+          if(message.fromId === myId) {
+            langPackKey += 'You';
+          }
+
+          let k: LangPackKey, _args: any[] = [];
+          if(daysToStart < 1 && date.getDate() === today.getDate()) {
+            k = 'TodayAtFormattedWithToday';
+          } else if(daysToStart < 2 && date.getDate() === tomorrowDate.getDate()) {
+            k = 'Time.TomorrowAt';
+          } else {
+            k = 'formatDateAtTime';
+            _args.push(new I18n.IntlDateElement({
+              date, 
+              options: {
+                day: '2-digit',
+                month: '2-digit',
+                year: '2-digit'
+              }
+            }).element);
+          }
+
+          _args.push(formatTime(date));
+          const t = i18n(k, _args);
+          args = [t];
+
           break;
         }
 
@@ -2668,15 +2743,12 @@ export class AppMessagesManager {
         case 'messageActionChatJoinedByLink':
         case 'messageActionChannelEditVideo':
         case 'messageActionChannelDeletePhoto': {
-          langPackKey = langPack[_];
           args = [getNameDivHTML(message.fromId, plain)];
           break;
         }
 
         case 'messageActionChannelEditTitle':
         case 'messageActionChatEditTitle': {
-          langPackKey = langPack[_];
-          
           args = [];
           if(action._ === 'messageActionChatEditTitle') {
             args.push(getNameDivHTML(message.fromId, plain));
@@ -2692,7 +2764,6 @@ export class AppMessagesManager {
           const users: number[] = (action as MessageAction.messageActionChatAddUser).users 
             || [(action as MessageAction.messageActionChatDeleteUser).user_id];
 
-          langPackKey = langPack[_];
           args = [getNameDivHTML(message.fromId, plain)];
 
           if(users.length > 1) {
@@ -2725,8 +2796,7 @@ export class AppMessagesManager {
           });
 
           const node = htmlToSpan(anchorHTML);
-          
-          langPackKey = langPack[_];
+
           args = [node];
           break;
         }

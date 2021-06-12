@@ -47,6 +47,12 @@ export const langPack: {[actionType: string]: LangPackKey} = {
 	"messageActionPhoneCall.in_missed": "ChatList.Service.Call.Missed",
 	"messageActionPhoneCall.out_missed": "ChatList.Service.Call.Cancelled",
 
+	"messageActionGroupCall.started": "ActionGroupCallJustStarted",
+	"messageActionGroupCall.started_by": "ActionGroupCallStarted",
+	"messageActionGroupCall.started_byYou": "ActionGroupCallStartedByYou",
+	"messageActionGroupCall.ended_by": "Chat.Service.VoiceChatFinished",
+	"messageActionGroupCall.ended_byYou": "Chat.Service.VoiceChatFinishedYou",
+
 	"messageActionBotAllowed": "Chat.Service.BotPermissionAllowed"
 };
 
@@ -198,7 +204,12 @@ namespace I18n {
 			return;
 		}
 
-		pluralRules = new Intl.PluralRules(langPack.lang_code);
+		try {
+			pluralRules = new Intl.PluralRules(langPack.lang_code);
+		} catch(err) {
+			console.error('pluralRules error', err);
+			pluralRules = new Intl.PluralRules(langPack.lang_code.split('-', 1)[0]);
+		}
 
 		strings.clear();
 
