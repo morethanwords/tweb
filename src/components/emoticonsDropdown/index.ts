@@ -257,8 +257,10 @@ export class EmoticonsDropdown {
       this.events.onOpen.forEach(cb => cb());
 
       const sel = document.getSelection();
-      if(sel.rangeCount) {
+      if(sel.rangeCount && document.activeElement === appImManager.chat.input.messageInput) {
         this.savedRange = sel.getRangeAt(0);
+      } else {
+        this.savedRange = undefined;
       }
 
       EmoticonsDropdown.lazyLoadQueue.lock();
