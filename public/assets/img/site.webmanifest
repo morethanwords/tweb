@@ -1,7 +1,7 @@
 {
     "name": "Telegram WebK",
     "short_name": "Telegram WebK",
-    "start_url": "/",
+    "start_url": "./",
     "description": "Telegram is a cloud-based mobile and desktop messaging app with a focus on security and speed.",
     "icons": [
         {
@@ -52,5 +52,6 @@
     ],
     "theme_color": "#ffffff",
     "background_color": "#ffffff",
-    "display": "minimal-ui"
+    "display": "minimal-ui",
+    "gcm_sender_id": "122867383838"
 }

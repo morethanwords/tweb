@@ -6,6 +6,7 @@
 
 import { cancelEvent } from "../helpers/dom/cancelEvent";
 import { attachClickEvent } from "../helpers/dom/clickEvent";
+import loadFonts from "../helpers/dom/loadFonts";
 import { Config, LangPackDifference, LangPackString } from "../layer";
 import I18n, { LangPackKey } from "../lib/langPack";
 import apiManager from "../lib/mtproto/mtprotoworker";
@@ -61,7 +62,11 @@ export default function getLanguageChangeButton(appendTo: HTMLElement) {
     });
 
     const btnChangeLanguage = Button('btn-primary btn-secondary btn-primary-transparent primary', {text: 'Login.ContinueOnLanguage'});
-    appendTo.append(btnChangeLanguage);
+    loadFonts().then(() => {
+      window.requestAnimationFrame(() => {
+        appendTo.append(btnChangeLanguage);
+      });
+    });
 
     rootScope.addEventListener('language_change', () => {
       btnChangeLanguage.remove();

@@ -1,5 +1,3 @@
-//import {stackBlurImage} from '../lib/StackBlur';
-//import appStateManager from "../lib/appManagers/appStateManager";
 /*
  * https://github.com/morethanwords/tweb
  * Copyright (C) 2019-2021 Eduard Kuzmenko
@@ -7,6 +5,7 @@
  */
 
 import blurActiveElement from "../helpers/dom/blurActiveElement";
+import loadFonts from "../helpers/dom/loadFonts";
 import appStateManager from "../lib/appManagers/appStateManager";
 import I18n from "../lib/langPack";
 import Page from "./page";
@@ -30,25 +29,27 @@ let onFirstMount = () => {
   }
 
   blurActiveElement();
-  return new Promise<void>((resolve) => {
-    window.requestAnimationFrame(() => {
-      const promise = import('../lib/appManagers/appDialogsManager');
-      promise.finally(async() => {
-        //alert('pageIm!');
-        resolve();
-    
-        //AudioContext && global.navigator && global.navigator.mediaDevices && global.navigator.mediaDevices.getUserMedia && global.WebAssembly;
-    
-        /* // @ts-ignore
-        var AudioContext = globalThis.AudioContext || globalThis.webkitAudioContext;
-        alert('AudioContext:' + typeof(AudioContext));
-        // @ts-ignore
-        alert('global.navigator:' + typeof(navigator));
-        alert('navigator.mediaDevices:' + typeof(navigator.mediaDevices));
-        alert('navigator.mediaDevices.getUserMedia:' + typeof(navigator.mediaDevices?.getUserMedia));
-        alert('global.WebAssembly:' + typeof(WebAssembly)); */
-    
-        //(Array.from(document.getElementsByClassName('rp')) as HTMLElement[]).forEach(el => ripple(el));
+  return loadFonts().then(() => {
+    return new Promise<void>((resolve) => {
+      window.requestAnimationFrame(() => {
+        const promise = import('../lib/appManagers/appDialogsManager');
+        promise.finally(async() => {
+          //alert('pageIm!');
+          resolve();
+      
+          //AudioContext && global.navigator && global.navigator.mediaDevices && global.navigator.mediaDevices.getUserMedia && global.WebAssembly;
+      
+          /* // @ts-ignore
+          var AudioContext = globalThis.AudioContext || globalThis.webkitAudioContext;
+          alert('AudioContext:' + typeof(AudioContext));
+          // @ts-ignore
+          alert('global.navigator:' + typeof(navigator));
+          alert('navigator.mediaDevices:' + typeof(navigator.mediaDevices));
+          alert('navigator.mediaDevices.getUserMedia:' + typeof(navigator.mediaDevices?.getUserMedia));
+          alert('global.WebAssembly:' + typeof(WebAssembly)); */
+      
+          //(Array.from(document.getElementsByClassName('rp')) as HTMLElement[]).forEach(el => ripple(el));
+        });
       });
     });
   });
