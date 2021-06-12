@@ -441,6 +441,34 @@ const lang = {
   "Emoji": "Emoji",
   "AddContactTitle": "Add Contact",
   "HiddenName": "Deleted Account",
+  "ActionGroupCallStarted": "un1 started a voice chat",
+  "ActionGroupCallStartedByYou": "You started a voice chat",
+  "ActionGroupCallJustStarted": "Voice chat started",
+  "ActionGroupCallInvited": "un1 invited un2 to the voice chat",
+  "ActionGroupCallYouInvited": "You invited un2 to the voice chat",
+  "ActionGroupCallInvitedYou": "un1 invited you to the voice chat",
+  "Seconds": {
+    "one_value": "%1$d second",
+    "other_value": "%1$d seconds"
+  },
+  "Minutes": {
+    "one_value": "%1$d minute",
+    "other_value": "%1$d minutes"
+  },
+  "Hours": {
+    "one_value": "%1$d hour",
+    "other_value": "%1$d hours"
+  },
+  "Days": {
+    "one_value": "%1$d day",
+    "other_value": "%1$d days"
+  },
+  "Weeks": {
+    "one_value": "%1$d week",
+    "other_value": "%1$d weeks"
+  },
+  "TodayAtFormattedWithToday": "today at %1$s",
+  "formatDateAtTime": "%1$s at %2$s",
 
   // * macos
   "AccountSettings.Filters": "Chat Folders",
@@ -465,6 +493,10 @@ const lang = {
   "Chat.Service.Channel.RemovedPhoto": "Channel photo removed",
   "Chat.Service.Channel.UpdatedVideo": "Channel video updated",
   "Chat.Service.BotPermissionAllowed": "You allowed this bot to message you when you logged in on %@",
+  "Chat.Service.VoiceChatFinished": "%1$@ ended the voice chat (%2$@)",
+  "Chat.Service.VoiceChatFinishedYou": "You ended the voice chat (%@)",
+  //"Chat.Service.VoiceChatScheduled": "%1$@ scheduled a [voice chat](open) for %2$@",
+  //"Chat.Service.VoiceChatScheduledYou": "You scheduled a [voice chat](open) for %1$@",
   "Chat.Poll.Unvote": "Retract Vote",
   "Chat.Poll.Stop": "Stop Poll",
   "Chat.Poll.ViewResults": "View Results",
@@ -516,6 +548,8 @@ const lang = {
   "ChatList.Service.Call.outgoing": "Outgoing Call (%@)",
   "ChatList.Service.Call.Cancelled": "Cancelled Call",
   "ChatList.Service.Call.Missed": "Missed Call",
+  "ChatList.Service.VoiceChatScheduled": "%1$@ scheduled a voice chat for %2$@",
+  "ChatList.Service.VoiceChatScheduledYou": "You scheduled a voice chat for %2$@",
   "ChatList.Filter.Header": "Create folders for different groups of chats and quickly switch between them.",
   "ChatList.Filter.NewTitle": "Create Folder",
   "ChatList.Filter.List.Title": "Chat Folders",
@@ -677,11 +711,13 @@ const lang = {
   "GeneralSettings.BigEmoji": "Large Emoji",
   "GeneralSettings.EmojiPrediction": "Suggest Emoji",
   "GroupPermission.Delete": "Delete Exception",
+  "ScheduleController.at": "at",
   "Schedule.SendToday": "Send today at %@",
   "Schedule.SendDate": "Send on %@ at %@",
   //"Schedule.SendWhenOnline": "Send When Online",
   "Stickers.Recent": "Recent",
   //"Stickers.Favorite": "Favorite",
+  "Time.TomorrowAt": "tomorrow at %@",
   "TwoStepAuth.SetPasswordHelp": "You can set a password that will be required when you log in on a new device in addition to the code you get in the SMS.",
   "TwoStepAuth.GenericHelp": "You have enabled Two-Step verification.\nYou'll need the password you set up here to log in to your Telegram account.",
   "TwoStepAuth.ChangePassword": "Change Password",
