@@ -8,6 +8,7 @@ import App from './config/app';
 import blurActiveElement from './helpers/dom/blurActiveElement';
 import findUpClassName from './helpers/dom/findUpClassName';
 import fixSafariStickyInput from './helpers/dom/fixSafariStickyInput';
+import loadFonts from './helpers/dom/loadFonts';
 import { isMobileSafari } from './helpers/userAgent';
 import './materialize.scss';
 import './scss/style.scss';
@@ -261,11 +262,6 @@ console.timeEnd('get storage1'); */
 
     const langPromise = I18n.default.getCacheLangPack();
 
-    function loadFonts(): Promise<void> {
-      // @ts-ignore
-      return 'fonts' in document ? Promise.all(['400 1rem Roboto', '500 1rem Roboto'].map(font => document.fonts.load(font))) : Promise.resolve();
-    }
-  
     const [state, langPack] = await Promise.all([
       appStateManager.default.getState(), 
       langPromise

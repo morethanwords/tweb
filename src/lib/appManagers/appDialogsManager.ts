@@ -395,7 +395,9 @@ export class AppDialogsManager {
     new ConnectionStatusComponent(this.chatsContainer);
     this.chatsContainer.append(bottomPart);
 
-    lottieLoader.loadLottieWorkers();
+    setTimeout(() => {
+      lottieLoader.loadLottieWorkers();
+    }, 200);
   }
 
   private getOffset(side: 'top' | 'bottom'): {index: number, pos: number} {
