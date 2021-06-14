@@ -68,10 +68,9 @@ async function requestCache(event: FetchEvent) {
       cache.put(event.request, response.clone());
     } else if(response.status === 304) { // possible fix for 304 in Safari
       const url = event.request.url.replace(/\?.+$/, '') + '?' + (Math.random() * 100000 | 0);
-      const request = new Request(url);
-      response = await fetch(request);
+      response = await fetch(url);
       if(isCorrectResponse(response)) {
-        cache.put(request, response.clone());
+        cache.put(event.request, response.clone());
       }
     }
   
