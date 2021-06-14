@@ -178,7 +178,7 @@ export class AppSidebarLeft extends SidebarSlider {
       icon: 'char w',
       text: 'ChatList.Menu.SwitchTo.Webogram',
       onClick: () => {
-        location.href = 'https://web.telegram.org/';
+        location.href = 'https://web.telegram.org/?legacy=1';
       },
       verify: () => App.isMainDomain
     }];

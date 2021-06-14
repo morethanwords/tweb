@@ -43,7 +43,7 @@ const lang = {
   "Chat.Search.NoMessagesFound": "No messages found",
   "Chat.Search.PrivateSearch": "Private Search",
   //"ChatList.Menu.Archived": "Archived",
-  "ChatList.Menu.SwitchTo.Webogram": "Switch to Webogram",
+  "ChatList.Menu.SwitchTo.Webogram": "Switch to Old Version",
   "ChatList.Menu.SwitchTo.Z": "Switch to Z version",
   "ConnectionStatus.ReconnectIn": "Reconnect in %ds, %s",
   "ConnectionStatus.Reconnect": "reconnect",
