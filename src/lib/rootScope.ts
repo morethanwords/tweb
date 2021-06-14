@@ -109,7 +109,7 @@ export type BroadcastEvents = {
   'notify_settings': Update.updateNotifySettings,
   'notify_peer_type_settings': {key: Exclude<NotifyPeer['_'], 'notifyPeer'>, settings: PeerNotifySettings},
 
-  'language_change': void,
+  'language_change': string,
   
   'theme_change': void,
 

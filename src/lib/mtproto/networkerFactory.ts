@@ -12,9 +12,12 @@
 import MTPNetworker from "./networker";
 import { ConnectionStatusChange, InvokeApiOptions } from "../../types";
 import MTTransport from "./transports/transport";
+import App from "../../config/app";
+import { MOUNT_CLASS_TO } from "../../config/debug";
 
 export class NetworkerFactory {
   private networkers: MTPNetworker[] = [];
+  public language = navigator.language || App.langPackCode;
   public updatesProcessor: (obj: any) => void = null;
   public onConnectionStatusChange: (info: ConnectionStatusChange) => void = null;
   public akStopped = false;
@@ -46,6 +49,17 @@ export class NetworkerFactory {
   public stopAll() {
     this.akStopped = true;
   }
+
+  public setLanguage(langCode: string) {
+    this.language = langCode;
+    for(const networker of this.networkers) {
+      if(!networker.isFileNetworker) {
+        networker.connectionInited = false;
+      }
+    }
+  }
 }
 
-export default new NetworkerFactory();
+const networkerFactory = new NetworkerFactory();
+MOUNT_CLASS_TO && (MOUNT_CLASS_TO.networkerFactory = networkerFactory);
+export default networkerFactory;

@@ -15,7 +15,7 @@ import CryptoWorker from '../crypto/cryptoworker';
 import sessionStorage from '../sessionStorage';
 import Schema from './schema';
 import timeManager from './timeManager';
-import NetworkerFactory from './networkerFactory';
+import networkerFactory from './networkerFactory';
 import { logger, LogTypes } from '../logger';
 import { InvokeApiOptions } from '../../types';
 import { longToBytes } from '../crypto/crypto_utils';
@@ -79,7 +79,7 @@ let invokeAfterMsgConstructor: number;
 export default class MTPNetworker {
   private authKeyUint8: Uint8Array;
 
-  private isFileNetworker: boolean;
+  public isFileNetworker: boolean;
   private isFileUpload: boolean;
   private isFileDownload: boolean;
 
@@ -92,7 +92,7 @@ export default class MTPNetworker {
   private pendingMessages: {[msgId: string]: number} = {};
   private pendingAcks: Array<string> = [];
   private pendingResends: Array<string> = [];
-  private connectionInited = false;
+  public connectionInited = false;
 
   private nextReqTimeout: number;
   private nextReq: number = 0;
@@ -288,7 +288,7 @@ export default class MTPNetworker {
   
     if(!this.connectionInited) { // this will call once for each new session
       ///////this.log('Wrap api call !this.connectionInited');
-      
+
       const invokeWithLayer = Schema.API.methods.find(m => m.method === 'invokeWithLayer');
       if(!invokeWithLayer) throw new Error('no invokeWithLayer!');
       serializer.storeInt(+invokeWithLayer.id >>> 0, 'invokeWithLayer');
@@ -307,7 +307,7 @@ export default class MTPNetworker {
       serializer.storeString(App.version + (App.isMainDomain ? ' ' + App.suffix : ''), 'app_version');
       serializer.storeString(navigator.language || 'en', 'system_lang_code');
       serializer.storeString(App.langPack, 'lang_pack');
-      serializer.storeString(navigator.language || 'en', 'lang_code');
+      serializer.storeString(networkerFactory.language, 'lang_code');
       //serializer.storeInt(0x0, 'proxy');
       /* serializer.storeMethod('initConnection', {
         'flags': 0,
@@ -698,8 +698,8 @@ export default class MTPNetworker {
     this.isOnline = online;
 
     if(willChange) {
-      if(NetworkerFactory.onConnectionStatusChange) {
-        NetworkerFactory.onConnectionStatusChange({
+      if(networkerFactory.onConnectionStatusChange) {
+        networkerFactory.onConnectionStatusChange({
           _: 'networkerStatus', 
           online: this.isOnline, 
           dcId: this.dcId,
@@ -792,7 +792,7 @@ export default class MTPNetworker {
   }
 
   public isStopped() {
-    return NetworkerFactory.akStopped && !this.isFileNetworker;
+    return networkerFactory.akStopped && !this.isFileNetworker;
   }
 
   private performScheduledRequest() {
@@ -1544,8 +1544,8 @@ export default class MTPNetworker {
         this.applyServerSalt(message.server_salt);
   
         sessionStorage.get('dc').then((baseDcId) => {
-          if(baseDcId === this.dcId && !this.isFileNetworker && NetworkerFactory.updatesProcessor) {
-            NetworkerFactory.updatesProcessor(message);
+          if(baseDcId === this.dcId && !this.isFileNetworker && networkerFactory.updatesProcessor) {
+            networkerFactory.updatesProcessor(message);
           }
         });
         break;
@@ -1649,8 +1649,8 @@ export default class MTPNetworker {
           this.log.debug('Update', message);
         } */
         
-        if(NetworkerFactory.updatesProcessor !== null) {
-          NetworkerFactory.updatesProcessor(message);
+        if(networkerFactory.updatesProcessor !== null) {
+          networkerFactory.updatesProcessor(message);
         }
         break;
     }

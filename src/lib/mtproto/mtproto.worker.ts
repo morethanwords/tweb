@@ -131,10 +131,11 @@ const onMessage = async(e: any) => {
         break;
       }
 
+      case 'setLanguage':
       case 'startAll':
       case 'stopAll': {
         // @ts-ignore
-        networkerFactory[task.task].apply(networkerFactory);
+        networkerFactory[task.task].apply(networkerFactory, task.args);
         break;
       }
   
