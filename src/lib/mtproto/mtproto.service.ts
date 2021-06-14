@@ -50,17 +50,23 @@ ctx.addEventListener('message', (e) => {
 //const cacheStorage = new CacheStorageController('cachedAssets');
 let taskId = 0;
 
+function isCorrectResponse(response: Response) {
+  return response.ok && response.status === 200;
+}
+
 async function requestCache(event: FetchEvent) {
   try {
     const cache = await ctx.caches.open('cachedAssets');
     const file = await cache.match(event.request);
   
-    if(file) {
+    if(file && isCorrectResponse(file)) {
       return file;
     }
   
     const response = await fetch(event.request);
-    cache.put(event.request, response.clone());
+    if(isCorrectResponse(response)) {
+      cache.put(event.request, response.clone());
+    }
   
     return response;
   } catch(err) {

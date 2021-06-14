@@ -47,7 +47,7 @@ export class ApiUpdatesManager {
     syncLoading: null
   };
 
-  public channelStates: {[channelId: number]: UpdatesState} = {};
+  private channelStates: {[channelId: number]: UpdatesState} = {};
   private attached = false;
 
   private log = logger('UPDATES', LogTypes.Error | LogTypes.Warn | LogTypes.Log/*  | LogTypes.Debug */);
@@ -305,6 +305,8 @@ export class ApiUpdatesManager {
         delete updatesState.seq;
         delete updatesState.date;
         
+        this.channelStates = {};
+        
         rootScope.dispatchEvent('state_cleared');
       }
   
@@ -426,8 +428,8 @@ export class ApiUpdatesManager {
 
     return false;
   }
-  
-  private getChannelState(channelId: number, pts?: number) {
+
+  public getChannelState(channelId: number, pts?: number) {
     if(this.channelStates[channelId] === undefined) {
       this.addChannelState(channelId, pts);
     }

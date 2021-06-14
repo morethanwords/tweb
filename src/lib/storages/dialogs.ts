@@ -302,7 +302,7 @@ export default class DialogsStorage {
     dialog.topMessage = incomingMessage;
 
     if(dialog.peerId < 0 && dialog.pts) {
-      const newPts = this.apiUpdatesManager.channelStates[-dialog.peerId].pts;
+      const newPts = this.apiUpdatesManager.getChannelState(-dialog.peerId, dialog.pts).pts;
       dialog.pts = newPts;
     }
 

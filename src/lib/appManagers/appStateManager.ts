@@ -24,7 +24,7 @@ import DATABASE_STATE from '../../config/databases/state';
 import sessionStorage from '../sessionStorage';
 
 const REFRESH_EVERY = 24 * 60 * 60 * 1000; // 1 day
-const REFRESH_EVERY_WEEK = 24 * 60 * 60 * 1000 * 7; // 7 days
+//const REFRESH_EVERY_WEEK = 24 * 60 * 60 * 1000 * 7; // 7 days
 const STATE_VERSION = App.version;
 
 export type Background = {
@@ -159,7 +159,7 @@ const ALL_KEYS = Object.keys(STATE_INIT) as any as Array<keyof State>;
 const REFRESH_KEYS = ['contactsList', 'stateCreatedTime',
   'maxSeenMsgId', 'filters', 'topPeers'] as any as Array<keyof State>;
 
-const REFRESH_KEYS_WEEK = ['dialogs', 'allDialogsLoaded', 'updates', 'pinnedOrders'] as any as Array<keyof State>;
+//const REFRESH_KEYS_WEEK = ['dialogs', 'allDialogsLoaded', 'updates', 'pinnedOrders'] as any as Array<keyof State>;
 
 export class AppStateManager extends EventListenerBase<{
   save: (state: State) => Promise<void>,
@@ -330,13 +330,13 @@ export class AppStateManager extends EventListenerBase<{
           
           r(REFRESH_KEYS);
 
-          if((state.stateCreatedTime + REFRESH_EVERY_WEEK) < time) {
+          /* if((state.stateCreatedTime + REFRESH_EVERY_WEEK) < time) {
             if(DEBUG) {
               this.log('will refresh updates');
             }
 
             r(REFRESH_KEYS_WEEK);
-          }
+          } */
         }
         
         //state = this.state = new Proxy(state, getHandler());
