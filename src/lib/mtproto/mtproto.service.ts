@@ -63,12 +63,13 @@ async function requestCache(event: FetchEvent) {
       return file;
     }
   
-    let response = await fetch(event.request);
+    const headers: HeadersInit = {'Vary': '*'};
+    let response = await fetch(event.request, {headers});
     if(isCorrectResponse(response)) {
       cache.put(event.request, response.clone());
     } else if(response.status === 304) { // possible fix for 304 in Safari
       const url = event.request.url.replace(/\?.+$/, '') + '?' + (Math.random() * 100000 | 0);
-      response = await fetch(url);
+      response = await fetch(url, {headers});
       if(isCorrectResponse(response)) {
         cache.put(event.request, response.clone());
       }
