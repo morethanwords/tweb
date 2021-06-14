@@ -179,6 +179,10 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
       }
     });
 
+    rootScope.addEventListener('language_change', (language) => {
+      this.performTaskWorkerVoid('setLanguage', language);
+    });
+
     /// #if !MTPROTO_SW
     this.registerWorker();
     /// #endif
@@ -310,22 +314,25 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
     }
   }
 
+  public performTaskWorkerVoid(task: string, ...args: any[]) {
+    const params = {
+      task,
+      taskId: this.taskId,
+      args
+    };
+
+    this.pending.push(params);
+    this.releasePending();
+
+    this.taskId++;
+  }
+
   public performTaskWorker<T>(task: string, ...args: any[]) {
     this.debug && this.log.debug('start', task, args);
 
     return new Promise<T>((resolve, reject) => {
       this.awaiting[this.taskId] = {resolve, reject, taskName: task};
-  
-      const params = {
-        task,
-        taskId: this.taskId,
-        args
-      };
-
-      this.pending.push(params);
-      this.releasePending();
-  
-      this.taskId++;
+      this.performTaskWorkerVoid(task, ...args);
     });
   }
 
@@ -504,15 +511,15 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
   }
 
   public toggleStorage(enabled: boolean) {
-    return this.performTaskWorker('toggleStorage', enabled);
+    return this.performTaskWorkerVoid('toggleStorage', enabled);
   }
 
   public stopAll() {
-    return this.performTaskWorker('stopAll');
+    return this.performTaskWorkerVoid('stopAll');
   }
 
   public startAll() {
-    return this.performTaskWorker('startAll');
+    return this.performTaskWorkerVoid('startAll');
   }
 }
 

@@ -57,7 +57,7 @@ function isCorrectResponse(response: Response) {
 async function requestCache(event: FetchEvent) {
   try {
     const cache = await ctx.caches.open('cachedAssets');
-    const file = await cache.match(event.request);
+    const file = await cache.match(event.request, {ignoreVary: true});
   
     if(file && isCorrectResponse(file)) {
       return file;
