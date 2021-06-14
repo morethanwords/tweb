@@ -94,13 +94,16 @@ let onFirstMount = () => {
       const liArr: Array<HTMLLIElement> = [];
       c.phoneCode.split(' and ').forEach((phoneCode: string) => {
         const li = document.createElement('li');
-        const spanEmoji = document.createElement('span');
 
-        const kek = RichTextProcessor.wrapRichText(emoji);
-
-        li.appendChild(spanEmoji);
-        spanEmoji.outerHTML = kek;
-  
+        let wrapped = RichTextProcessor.wrapEmojiText(emoji);
+        if(RichTextProcessor.emojiSupported) {
+          const spanEmoji = document.createElement('span');
+          spanEmoji.innerHTML = wrapped;
+          li.append(spanEmoji);
+        } else {
+          li.innerHTML = wrapped;
+        }
+        
         li.append(c.name);
 
         const span = document.createElement('span');

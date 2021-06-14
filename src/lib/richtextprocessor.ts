@@ -410,13 +410,14 @@ namespace RichTextProcessor {
     noLinebreaks: true,
     noCommands: true,
     wrappingDraft: true,
+    //mustWrapEmoji: boolean,
     fromBot: boolean,
     noTextFormat: true,
     passEntities: Partial<{
       [_ in MessageEntity['_']]: boolean
     }>,
 
-    contextHashtag?: string
+    contextHashtag?: string,
   }> = {}) {
     if(!text) {
       return '';
@@ -540,7 +541,9 @@ namespace RichTextProcessor {
             // } else {
               insertPart(entity, `<img src="assets/img/emoji/${entity.unicode}.png" alt="`, `" class="emoji">`);
             // }
-          }
+          }/*  else if(options.mustWrapEmoji) {
+            insertPart(entity, '<span class="emoji">', '</span>');
+          } */
           /* if(!emojiSupported) {
             insertPart(entity, `<img src="assets/img/emoji/${entity.unicode}.png" alt="`, `" class="emoji">`);
           } */
