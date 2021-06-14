@@ -40,6 +40,7 @@ import { attachClickEvent } from "../../helpers/dom/clickEvent";
 import positionElementByIndex from "../../helpers/dom/positionElementByIndex";
 import replaceContent from "../../helpers/dom/replaceContent";
 import ConnectionStatusComponent from "../../components/connectionStatus";
+import appChatsManager from "./appChatsManager";
 
 export type DialogDom = {
   avatarEl: AvatarElement,
@@ -323,6 +324,11 @@ export class AppDialogsManager {
         this.unsetTyping(dialog);
       }
     });
+
+    /* rootScope.addEventListener('state_cleared', () => {
+      appUsersManager.clear();
+      appChatsManager.clear();
+    }); */
 
     const foldersScrollable = new ScrollableX(this.folders.menuScrollContainer);
     bottomPart.prepend(this.folders.menuScrollContainer);

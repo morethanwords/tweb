@@ -10,6 +10,7 @@ import type { AppMessagesManager } from "../../lib/appManagers/appMessagesManage
 import type { AppPeersManager } from "../../lib/appManagers/appPeersManager";
 import type { AppSidebarRight } from "../sidebarRight";
 import type Chat from "./chat";
+import { RIGHT_COLUMN_ACTIVE_CLASSNAME } from "../sidebarRight";
 import mediaSizes, { ScreenSize } from "../../helpers/mediaSizes";
 import { isSafari } from "../../helpers/userAgent";
 import rootScope from "../../lib/rootScope";
@@ -31,6 +32,7 @@ import findUpClassName from "../../helpers/dom/findUpClassName";
 import blurActiveElement from "../../helpers/dom/blurActiveElement";
 import { cancelEvent } from "../../helpers/dom/cancelEvent";
 import { attachClickEvent } from "../../helpers/dom/clickEvent";
+import findUpTag from "../../helpers/dom/findUpTag";
 
 export default class ChatTopbar {
   public container: HTMLDivElement;
@@ -150,6 +152,8 @@ export default class ChatTopbar {
       } else {
         if(mediaSizes.activeScreen === ScreenSize.medium && document.body.classList.contains(LEFT_COLUMN_ACTIVE_CLASSNAME)) {
           onBtnBackClick();
+        } else if(findUpTag(e.target, 'AVATAR-ELEMENT')) {
+          this.appSidebarRight.toggleSidebar(!document.body.classList.contains(RIGHT_COLUMN_ACTIVE_CLASSNAME));
         } else {
           this.appSidebarRight.toggleSidebar(true);
         }

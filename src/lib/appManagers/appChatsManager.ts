@@ -33,16 +33,18 @@ export type UserTyping = Partial<{userId: number, action: SendMessageAction, tim
 export class AppChatsManager {
   private storage = appStateManager.storages.chats;
   
-  private chats: {[id: number]: Chat.channel | Chat.chat | any} = {};
-  //private usernames: any = {};
-  //private channelAccess: any = {};
-  //private megagroups: {[id: number]: true} = {};
+  private chats: {[id: number]: Chat.channel | Chat.chat | any};
+  //private usernames: any;
+  //private channelAccess: any;
+  //private megagroups: {[id: number]: true};
 
-  private megagroupOnlines: {[id: number]: {timestamp: number, onlines: number}} = {};
+  private megagroupOnlines: {[id: number]: {timestamp: number, onlines: number}};
 
-  private typingsInPeer: {[peerId: number]: UserTyping[]} = {};
+  private typingsInPeer: {[peerId: number]: UserTyping[]};
 
   constructor() {
+    this.clear();
+
     rootScope.addMultipleEventsListeners({
       /* updateChannel: (update) => {
         const channelId = update.channel_id;
@@ -100,6 +102,26 @@ export class AppChatsManager {
         this.storage.delete(-peerId);
       });
     });
+  }
+
+  public clear() {
+    if(this.chats) {
+      for(const chatId in this.chats) {
+        if(!appStateManager.isPeerNeeded(-+chatId)) {
+          /* const chat = this.chats[chatId];
+          if(chat.username) {
+            delete this.usernames[cleanUsername(chat.username)];
+          } */
+  
+          delete this.chats[chatId];
+        }
+      }
+    } else {
+      this.chats = {};
+    }
+
+    this.megagroupOnlines = {};
+    this.typingsInPeer = {};
   }
 
   private onUpdateUserTyping = (update: Update.updateUserTyping | Update.updateChatUserTyping | Update.updateChannelUserTyping) => {

@@ -36,16 +36,18 @@ export type User = MTUser.user;
 export class AppUsersManager {
   private storage = appStateManager.storages.users;
   
-  private users: {[userId: number]: User} = {};
-  private usernames: {[username: string]: number} = {};
-  private contactsIndex = new SearchIndex<number>();
+  private users: {[userId: number]: User};
+  private usernames: {[username: string]: number};
+  private contactsIndex: SearchIndex<number>;
   private contactsFillPromise: Promise<Set<number>>;
-  private contactsList: Set<number> = new Set();
-  private updatedContactsList = false;
+  private contactsList: Set<number>;
+  private updatedContactsList: boolean;
   
   private getTopPeersPromise: Promise<number[]>;
 
   constructor() {
+    this.clear();
+
     setInterval(this.updateUsersStatuses, 60000);
 
     rootScope.addEventListener('state_synchronized', this.updateUsersStatuses);
@@ -156,6 +158,29 @@ export class AppUsersManager {
         this.storage.delete(peerId);
       });
     });
+  }
+
+  public clear() {
+    if(this.users) {
+      for(const userId in this.users) {
+        if(!appStateManager.isPeerNeeded(+userId)) {
+          const user = this.users[userId];
+          if(user.username) {
+            delete this.usernames[cleanUsername(user.username)];
+          }
+  
+          delete this.users[userId];
+        }
+      }
+    } else {
+      this.users = {};
+      this.usernames = {};
+    }
+    
+    this.contactsIndex = new SearchIndex();
+    this.contactsFillPromise = undefined;
+    this.contactsList = new Set();
+    this.updatedContactsList = false;
   }
 
   private onContactsModified() {

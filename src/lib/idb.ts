@@ -53,15 +53,16 @@ export default class IDBStorage<T extends Database<any>> {
 
   constructor(db: T, storeName: typeof db['stores'][0]['name']) {
     safeAssign(this, db);
+
+    if(Modes.test) {
+      this.name += '_test';
+    }
+
     this.storeName = storeName;
 
     this.log = logger('IDB-' + this.storeName);
 
     this.openDatabase(true);
-
-    if(Modes.test) {
-      this.name += '_test';
-    }
 
     IDBStorage.STORAGES.push(this);
   }
