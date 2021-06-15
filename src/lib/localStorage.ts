@@ -19,7 +19,7 @@ class LocalStorage<Storage extends Record<string, any>> {
   private cache: Partial<Storage> = {};
   private useStorage = true;
 
-  constructor(private preserveKeys: (keyof Storage)[]) {
+  constructor(/* private preserveKeys: (keyof Storage)[] */) {
     if(Modes.test) {
       this.prefix = 't_';
     }
@@ -42,6 +42,8 @@ class LocalStorage<Storage extends Record<string, any>> {
         } catch(err) {
           //console.error(err);
         }
+      } else {
+        value = undefined;
       }
 
       return value;
@@ -76,12 +78,16 @@ class LocalStorage<Storage extends Record<string, any>> {
       delete this.cache[key];
     }
     
-    if(this.useStorage) {
-      localStorage.removeItem(this.prefix + key);
-    }
+    //if(this.useStorage) {
+      try {
+        localStorage.removeItem(this.prefix + key);
+      } catch(err) {
+        
+      }
+    //}
   }
 
-  public clear(preserveKeys: (keyof Storage)[] = this.preserveKeys) {
+  /* public clear(preserveKeys: (keyof Storage)[] = this.preserveKeys) {
     // if(this.useStorage) {
       try {
         let obj: Partial<Storage> = {};
@@ -103,6 +109,18 @@ class LocalStorage<Storage extends Record<string, any>> {
 
       }
     // }
+  } */
+
+  public clear() {
+    const keys: string[] = ['dc', 'server_time_offset', 'xt_instance', 'user_auth'];
+    for(let i = 1; i <= 5; ++i) {
+      keys.push(`dc${i}_server_salt`);
+      keys.push(`dc${i}_auth_key`);
+    }
+
+    for(let key of keys) {
+      this.delete(key, true);
+    }
   }
 
   public toggleStorage(enabled: boolean) {
@@ -138,11 +156,11 @@ export default class LocalStorageController<Storage extends Record<string, any>>
 
   private storage: LocalStorage<Storage>;
 
-  constructor(private preserveKeys: (keyof Storage)[] = []) {
+  constructor(/* private preserveKeys: (keyof Storage)[] = [] */) {
     LocalStorageController.STORAGES.push(this);
 
     if(!isWorker) {
-      this.storage = new LocalStorage(preserveKeys);
+      this.storage = new LocalStorage(/* preserveKeys */);
     }
   }
 
@@ -196,8 +214,8 @@ export default class LocalStorageController<Storage extends Record<string, any>>
     return this.proxy<void>('delete', key, saveLocal);
   }
 
-  public clear(preserveKeys?: (keyof Storage)[]) {
-    return this.proxy<void>('clear', preserveKeys);
+  public clear(/* preserveKeys?: (keyof Storage)[] */) {
+    return this.proxy<void>('clear'/* , preserveKeys */);
   }
 
   public toggleStorage(enabled: boolean) {
