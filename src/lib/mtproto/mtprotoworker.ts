@@ -4,7 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type { LocalStorageProxyDeleteTask, LocalStorageProxySetTask } from '../storage';
+import type { LocalStorageProxyTask, LocalStorageProxyTaskResponse } from '../localStorage';
+//import type { LocalStorageProxyDeleteTask, LocalStorageProxySetTask } from '../storage';
 import type { InvokeApiOptions } from '../../types';
 import type { MethodDeclMap } from '../../layer';
 import MTProtoWorker from 'worker-loader!./mtproto.worker';
@@ -22,6 +23,7 @@ import DEBUG, { MOUNT_CLASS_TO } from '../../config/debug';
 import Socket from './transports/websocket';
 import IDBStorage from '../idb';
 import singleInstance from './singleInstance';
+import sessionStorage from '../sessionStorage';
 
 type Task = {
   taskId: number,
@@ -93,9 +95,10 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
     this.registerServiceWorker();
 
     this.addTaskListener('clear', () => {
-      const promise = IDBStorage.deleteDatabase();
-      localStorage.clear(); // * clear legacy Webogram's localStorage
-      promise.finally(() => {
+      Promise.all([
+        IDBStorage.deleteDatabase(), 
+        sessionStorage.clear()
+      ]).finally(() => {
         location.reload();
       });
     });
@@ -164,19 +167,16 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
       }
     });
 
-    this.addTaskListener('localStorageProxy', (task: LocalStorageProxySetTask | LocalStorageProxyDeleteTask) => {
+    this.addTaskListener('localStorageProxy', (task: LocalStorageProxyTask) => {
       const storageTask = task.payload;
-      if(storageTask.type === 'set') {
-        for(let i = 0, length = storageTask.keys.length; i < length; ++i) {
-          if(storageTask.values[i] !== undefined) {
-            localStorage.setItem(storageTask.keys[i], JSON.stringify(storageTask.values[i]));
-          }
-        }
-      } else if(storageTask.type === 'delete') {
-        for(let i = 0, length = storageTask.keys.length; i < length; ++i) {
-          localStorage.removeItem(storageTask.keys[i]);
-        }
-      }
+      // @ts-ignore
+      sessionStorage[storageTask.type](...storageTask.args).then(res => {
+        this.postMessage({
+          type: 'localStorageProxy',
+          id: task.id,
+          payload: res
+        } as LocalStorageProxyTaskResponse);
+      });
     });
 
     rootScope.addEventListener('language_change', (language) => {
@@ -483,7 +483,7 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
 
   public setUserAuth(userAuth: UserAuth | number) {
     if(typeof(userAuth) === 'number') {
-      userAuth = {dcID: 0, id: userAuth};
+      userAuth = {dcID: 0, date: Date.now() / 1000 | 0, id: userAuth};
     }
     
     rootScope.dispatchEvent('user_auth', userAuth);

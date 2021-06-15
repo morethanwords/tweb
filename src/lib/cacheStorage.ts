@@ -23,6 +23,10 @@ export default class CacheStorageController {
     if(Modes.test) {
       this.dbName += '_test';
     }
+
+    if(CacheStorageController.STORAGES.length) {
+      this.useStorage = CacheStorageController.STORAGES[0].useStorage;
+    }
     
     this.openDatabase();
     CacheStorageController.STORAGES.push(this);
@@ -131,7 +135,7 @@ export default class CacheStorageController {
 
   public getFileWriter(fileName: string, mimeType: string) {
     const fakeWriter = FileManager.getFakeFileWriter(mimeType, (blob) => {
-      return this.saveFile(fileName, blob);
+      return this.saveFile(fileName, blob).catch(() => blob);
     });
 
     return Promise.resolve(fakeWriter);

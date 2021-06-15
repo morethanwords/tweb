@@ -10,15 +10,15 @@
  */
 
 import { Database } from "../config/databases";
-import DATABASE_SESSION from "../config/databases/session";
+//import DATABASE_SESSION from "../config/databases/session";
 import { CancellablePromise, deferredPromise } from "../helpers/cancellablePromise";
 import { throttle } from "../helpers/schedulers";
-import { WorkerTaskTemplate } from "../types";
+//import { WorkerTaskTemplate } from "../types";
 import IDBStorage from "./idb";
 
 function noop() {}
 
-export interface LocalStorageProxySetTask extends WorkerTaskTemplate {
+/* export interface LocalStorageProxySetTask extends WorkerTaskTemplate {
   type: 'localStorageProxy',
   payload: {
     type: 'set',
@@ -33,7 +33,7 @@ export interface LocalStorageProxyDeleteTask extends WorkerTaskTemplate {
     type: 'delete',
     keys: string[]
   }
-};
+}; */
 
 export default class AppStorage<Storage extends Record<string, any>, T extends Database<any>/* Storage extends {[name: string]: any} *//* Storage extends Record<string, any> */> {
   private static STORAGES: AppStorage<any, Database<any>>[] = [];
@@ -57,6 +57,10 @@ export default class AppStorage<Storage extends Record<string, any>, T extends D
   constructor(private db: T, storeName: typeof db['stores'][number]['name']) {
     this.storage = new IDBStorage<T>(db, storeName);
 
+    if(AppStorage.STORAGES.length) {
+      this.useStorage = AppStorage.STORAGES[0].useStorage;
+    }
+
     AppStorage.STORAGES.push(this);
 
     this.saveThrottled = throttle(async() => {
@@ -74,7 +78,7 @@ export default class AppStorage<Storage extends Record<string, any>, T extends D
           //await this.storage.save(key, new Response(value, {headers: {'Content-Type': 'application/json'}}));
 
           const values = keys.map(key => this.cache[key]);
-          if(db === DATABASE_SESSION && !('localStorage' in self)) { // * support legacy Webogram's localStorage
+          /* if(db === DATABASE_SESSION && !('localStorage' in self)) { // * support legacy Webogram's localStorage
             self.postMessage({
               type: 'localStorageProxy', 
               payload: {
@@ -83,7 +87,7 @@ export default class AppStorage<Storage extends Record<string, any>, T extends D
                 values
               }
             } as LocalStorageProxySetTask);
-          }
+          } */
 
           await this.storage.save(keys, values);
           //console.log('setItem: have set', key/* , value */);
@@ -110,7 +114,7 @@ export default class AppStorage<Storage extends Record<string, any>, T extends D
         set.clear();
 
         try {
-          if(db === DATABASE_SESSION && !('localStorage' in self)) { // * support legacy Webogram's localStorage
+          /* if(db === DATABASE_SESSION && !('localStorage' in self)) { // * support legacy Webogram's localStorage
             self.postMessage({
               type: 'localStorageProxy', 
               payload: {
@@ -118,7 +122,7 @@ export default class AppStorage<Storage extends Record<string, any>, T extends D
                 keys
               }
             } as LocalStorageProxyDeleteTask);
-          }
+          } */
 
           await this.storage.delete(keys);
         } catch(e) {
@@ -275,19 +279,19 @@ export default class AppStorage<Storage extends Record<string, any>, T extends D
         storage.getPromises.forEach((deferred) => deferred.resolve());
         storage.getPromises.clear();
 
-        if(storage.db === DATABASE_SESSION && 'localStorage' in self) { // * support legacy Webogram's localStorage
+        /* if(storage.db === DATABASE_SESSION && 'localStorage' in self) { // * support legacy Webogram's localStorage
           localStorage.clear();
-        }
+        } */
 
         return storage.clear();
       } else {
-        if(storage.db === DATABASE_SESSION && 'localStorage' in self) { // * support legacy Webogram's localStorage
+        /* if(storage.db === DATABASE_SESSION && 'localStorage' in self) { // * support legacy Webogram's localStorage
           for(const i in storage.cache) {
             if(storage.cache[i] !== undefined) {
               localStorage.setItem(i, JSON.stringify(storage.cache[i]));
             }
           }
-        }
+        } */
 
         return storage.set(storage.cache);
       }

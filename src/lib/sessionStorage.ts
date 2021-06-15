@@ -7,10 +7,9 @@
 import type { AppInstance } from './mtproto/singleInstance';
 import type { UserAuth } from './mtproto/mtproto_config';
 import { MOUNT_CLASS_TO } from '../config/debug';
-import AppStorage from './storage';
-import DATABASE_SESSION from '../config/databases/session';
+import LocalStorageController from './localStorage';
 
-const sessionStorage = new AppStorage<{
+const sessionStorage = new LocalStorageController<{
   dc: number,
   user_auth: UserAuth,
   dc1_auth_key: string,
@@ -24,7 +23,8 @@ const sessionStorage = new AppStorage<{
   dc4_server_salt: string,
   dc5_server_salt: string,
   server_time_offset: number,
-  xt_instance: AppInstance
-}, typeof DATABASE_SESSION>(DATABASE_SESSION, 'session');
+  xt_instance: AppInstance,
+  kz_version: 'k' | 'z'
+}>(['kz_version']);
 MOUNT_CLASS_TO.appStorage = sessionStorage;
 export default sessionStorage;

@@ -263,7 +263,7 @@ export class AppStateManager extends EventListenerBase<{
 
           const values = await Promise.all(keys.map(key => stateStorage.get(key as any)));
           keys.push('user_auth');
-          values.push(typeof(auth) === 'number' ? {dcID: values[0] || App.baseDcId, id: auth} : auth);
+          values.push(typeof(auth) === 'number' ? {dcID: values[0] || App.baseDcId, date: Date.now() / 1000 | 0, id: auth} as UserAuth : auth);
 
           let obj: any = {};
           keys.forEach((key, idx) => {
@@ -273,7 +273,7 @@ export class AppStateManager extends EventListenerBase<{
           await sessionStorage.set(obj);
         }
         
-        if(!auth) { // try to read Webogram's session from localStorage
+        /* if(!auth) { // try to read Webogram's session from localStorage
           try {
             const keys = Object.keys(localStorage);
             for(let i = 0; i < keys.length; ++i) {
@@ -295,12 +295,12 @@ export class AppStateManager extends EventListenerBase<{
           } catch(err) {
             this.log.error('localStorage import error', err);
           }
-        }
+        } */
 
         if(auth) {
           // ! Warning ! DON'T delete this
           state.authState = {_: 'authStateSignedIn'};
-          rootScope.dispatchEvent('user_auth', typeof(auth) === 'number' ? {dcID: 0, id: auth} : auth); // * support old version
+          rootScope.dispatchEvent('user_auth', typeof(auth) === 'number' ? {dcID: 0, date: Date.now() / 1000 | 0, id: auth} : auth); // * support old version
         }
 
         // * Read storages
