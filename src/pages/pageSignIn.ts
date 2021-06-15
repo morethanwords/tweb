@@ -33,6 +33,7 @@ import { cancelEvent } from "../helpers/dom/cancelEvent";
 import { attachClickEvent } from "../helpers/dom/clickEvent";
 import replaceContent from "../helpers/dom/replaceContent";
 import toggleDisability from "../helpers/dom/toggleDisability";
+import sessionStorage from "../lib/sessionStorage";
 
 type Country = _Country & {
   li?: HTMLLIElement[]
@@ -332,6 +333,7 @@ let onFirstMount = () => {
     AppStorage.toggleStorage(keepSigned);
     CacheStorageController.toggleStorage(keepSigned);
     apiManager.toggleStorage(keepSigned);
+    sessionStorage.toggleStorage(keepSigned);
   });
 
   appStateManager.getState().then(state => {

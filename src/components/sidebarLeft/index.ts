@@ -36,6 +36,7 @@ import PeerTitle from "../peerTitle";
 import App from "../../config/app";
 import ButtonMenuToggle from "../buttonMenuToggle";
 import replaceContent from "../../helpers/dom/replaceContent";
+import sessionStorage from "../../lib/sessionStorage";
 
 export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
 
@@ -171,7 +172,9 @@ export class AppSidebarLeft extends SidebarSlider {
       icon: 'char z',
       text: 'ChatList.Menu.SwitchTo.Z',
       onClick: () => {
-        location.href = 'https://web.telegram.org/z/';
+        sessionStorage.set({kz_version: 'z'}).then(() => {
+          location.href = 'https://web.telegram.org/z/';
+        });
       },
       verify: () => App.isMainDomain
     }, {

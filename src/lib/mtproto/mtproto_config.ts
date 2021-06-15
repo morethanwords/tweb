@@ -5,8 +5,8 @@
  */
 
 /**
- * Legacy Webogram's format, don't change dcID to camelCase.
+ * Legacy Webogram's format, don't change dcID to camelCase. date is timestamp
  */
-export type UserAuth = {dcID: number, id: number};
+export type UserAuth = {dcID: number | string, date: number, id: number};
 
 export const REPLIES_PEER_ID = 1271266957;

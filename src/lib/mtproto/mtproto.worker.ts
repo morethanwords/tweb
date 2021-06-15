@@ -15,8 +15,11 @@ import type { ServiceWorkerTask, ServiceWorkerTaskResponse } from './mtproto.ser
 import { ctx } from '../../helpers/userAgent';
 import { socketsProxied } from './dcConfigurator';
 import { notifyAll } from '../../helpers/context';
-import AppStorage from '../storage';
+// import AppStorage from '../storage';
 import CacheStorageController from '../cacheStorage';
+import sessionStorage from '../sessionStorage';
+import { LocalStorageProxyTask } from '../localStorage';
+import { WebpConvertTask } from '../webp/webpWorkerController';
 
 let webpSupported = false;
 export const isWebpSupported = () => {
@@ -31,53 +34,67 @@ networkerFactory.onConnectionStatusChange = (status) => {
   notifyAll({type: 'connectionStatusChange', payload: status});
 };
 
+const taskListeners = {
+  convertWebp: (task: WebpConvertTask) => {
+    const {fileName, bytes} = task.payload;
+    const deferred = apiFileManager.webpConvertPromises[fileName];
+    if(deferred) {
+      deferred.resolve(bytes);
+      delete apiFileManager.webpConvertPromises[fileName];
+    }
+  },
+
+  requestFilePart: async(task: ServiceWorkerTask) => {
+    const responseTask: ServiceWorkerTaskResponse = {
+      type: task.type,
+      id: task.id
+    };
+
+    try {
+      const res = await apiFileManager.requestFilePart(...task.payload);
+      responseTask.payload = res;
+    } catch(err) {
+      responseTask.originalPayload = task.payload;
+      responseTask.error = err;
+    }
+
+    notifyAll(responseTask);
+  },
+
+  webpSupport: (task: any) => {
+    webpSupported = task.payload;
+  },
+
+  socketProxy: (task: any) => {
+    const socketTask = task.payload;
+    const id = socketTask.id;
+    
+    const socketProxied = socketsProxied.get(id);
+    if(socketTask.type === 'message') {
+      socketProxied.dispatchEvent('message', socketTask.payload);
+    } else if(socketTask.type === 'open') {
+      socketProxied.dispatchEvent('open');
+    } else if(socketTask.type === 'close') {
+      socketProxied.dispatchEvent('close');
+      socketsProxied.delete(id);
+    }
+  },
+
+  localStorageProxy: (task: LocalStorageProxyTask) => {
+    sessionStorage.finishTask(task.id, task.payload);
+  }
+};
+
 const onMessage = async(e: any) => {
   try {
     const task = e.data;
     const taskId = task.taskId;
 
-    if(task.type === 'convertWebp') {
-      const {fileName, bytes} = task.payload;
-      const deferred = apiFileManager.webpConvertPromises[fileName];
-      if(deferred) {
-        deferred.resolve(bytes);
-        delete apiFileManager.webpConvertPromises[fileName];
-      }
-
+    // @ts-ignore
+    const f = taskListeners[task.type];
+    if(f) {
+      f(task);
       return;
-    } else if((task as ServiceWorkerTask).type === 'requestFilePart') {
-      const task = e.data as ServiceWorkerTask;
-      const responseTask: ServiceWorkerTaskResponse = {
-        type: task.type,
-        id: task.id
-      };
-
-      try {
-        const res = await apiFileManager.requestFilePart(...task.payload);
-        responseTask.payload = res;
-      } catch(err) {
-        responseTask.originalPayload = task.payload;
-        responseTask.error = err;
-      }
-
-      notifyAll(responseTask);
-      return;
-    } else if(task.type === 'webpSupport') {
-      webpSupported = task.payload;
-      return;
-    } else if(task.type === 'socketProxy') {
-      const socketTask = task.payload;
-      const id = socketTask.id;
-      
-      const socketProxied = socketsProxied.get(id);
-      if(socketTask.type === 'message') {
-        socketProxied.dispatchEvent('message', socketTask.payload);
-      } else if(socketTask.type === 'open') {
-        socketProxied.dispatchEvent('open');
-      } else if(socketTask.type === 'close') {
-        socketProxied.dispatchEvent('close');
-        socketsProxied.delete(id);
-      }
     }
 
     if(!task.task) {
@@ -126,7 +143,7 @@ const onMessage = async(e: any) => {
 
       case 'toggleStorage': {
         const enabled = task.args[0];
-        AppStorage.toggleStorage(enabled);
+        // AppStorage.toggleStorage(enabled);
         CacheStorageController.toggleStorage(enabled);
         break;
       }
