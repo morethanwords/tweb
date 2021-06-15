@@ -172,7 +172,7 @@ export class AppSidebarLeft extends SidebarSlider {
       icon: 'char z',
       text: 'ChatList.Menu.SwitchTo.Z',
       onClick: () => {
-        sessionStorage.set({kz_version: 'z'}).then(() => {
+        sessionStorage.set({kz_version: 'Z'}).then(() => {
           location.href = 'https://web.telegram.org/z/';
         });
       },
