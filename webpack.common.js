@@ -142,7 +142,7 @@ module.exports = {
 
   plugins: [
     new ServiceWorkerWebpackPlugin({
-      entry: path.join(__dirname, 'src/lib/mtproto/mtproto.service.ts'),
+      entry: path.join(__dirname, 'src/lib/serviceWorker/index.service.ts'),
       filename: 'sw.js',
       //excludes: ['**/*'],
       includes: [
