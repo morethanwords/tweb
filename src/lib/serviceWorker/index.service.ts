@@ -16,7 +16,7 @@ import { logger, LogTypes } from '../logger';
 import { CancellablePromise } from '../../helpers/cancellablePromise';
 import { CACHE_ASSETS_NAME, requestCache } from './cache';
 import onStreamFetch from './stream';
-// import { closeAllNotifications, onPing } from './push';
+import { closeAllNotifications, onPing } from './push';
 
 export const log = logger('SW', LogTypes.Error | LogTypes.Debug | LogTypes.Log | LogTypes.Warn);
 const ctx = self as any as ServiceWorkerGlobalScope;
@@ -62,10 +62,10 @@ const taskListeners: {
   [type in ServiceWorkerTask['type']]: (task: any, event: ExtendableMessageEvent) => void
 } = {
   notifications_clear: () => {
-    // closeAllNotifications();
+    closeAllNotifications();
   },
   ping: (task: ServiceWorkerPingTask, event) => {
-    // onPing(task, event);
+    onPing(task, event);
   },
   requestFilePart: (task: RequestFilePartTaskResponse) => {
     const promise = deferredPromises[task.id];
