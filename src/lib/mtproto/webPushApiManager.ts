@@ -18,6 +18,7 @@ import { ServiceWorkerNotificationsClearTask, ServiceWorkerPingTask, ServiceWork
 import apiManager from "./mtprotoworker";
 import I18n, { LangPackKey } from "../langPack";
 import { isMobile } from "../../helpers/userAgent";
+import appRuntimeManager from "../appManagers/appRuntimeManager";
 
 export type PushSubscriptionNotifyType = 'init' | 'subscribe' | 'unsubscribe';
 export type PushSubscriptionNotifyEvent = `push_${PushSubscriptionNotifyType}`;
@@ -211,8 +212,7 @@ export class WebPushApiManager {
 
     apiManager.addServiceWorkerTaskListener('push_click', (task: ServiceWorkerPushClickTask) => {
       if(rootScope.idle && rootScope.idle.deactivated) {
-        // AppRuntimeManager.reload(); // WARNING
-        location.reload();
+        appRuntimeManager.reload();
         return;
       }
 
