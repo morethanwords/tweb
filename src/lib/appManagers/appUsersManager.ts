@@ -15,7 +15,7 @@ import cleanSearchText from "../../helpers/cleanSearchText";
 import cleanUsername from "../../helpers/cleanUsername";
 import { tsNow } from "../../helpers/date";
 import { safeReplaceObject, isObject } from "../../helpers/object";
-import { InputUser, Update, User as MTUser, UserStatus } from "../../layer";
+import { InputUser, Update, User as MTUser, UserProfilePhoto, UserStatus } from "../../layer";
 import I18n, { i18n, LangPackKey } from "../langPack";
 //import apiManager from '../mtproto/apiManager';
 import apiManager from '../mtproto/mtprotoworker';
@@ -330,9 +330,11 @@ export class AppUsersManager {
     const userId = user.id;
     const oldUser = this.users[userId];
 
-    if(oldUser && !override) {
-      return;
-    }
+    // ! commented block can affect performance !
+    // if(oldUser && !override) {
+    //   console.log('saveApiUser same');
+    //   return;
+    // }
 
     if(user.pFlags === undefined) {
       user.pFlags = {};
@@ -367,7 +369,7 @@ export class AppUsersManager {
 
     //user.sortStatus = user.pFlags.bot ? -1 : this.getUserStatusForSort(user.status);
 
-    let changedTitle = false;
+    let changedPhoto = false, changedTitle = false;
     if(oldUser === undefined) {
       this.users[userId] = user;
     } else {
@@ -377,12 +379,22 @@ export class AppUsersManager {
         changedTitle = true;
       }
 
+      const oldPhotoId = (oldUser.photo as UserProfilePhoto.userProfilePhoto)?.photo_id;
+      const newPhotoId = (user.photo as UserProfilePhoto.userProfilePhoto)?.photo_id;
+      if(oldPhotoId !== newPhotoId) {
+        changedPhoto = true;
+      }
+
       /* if(user.pFlags.bot && user.bot_info_version !== oldUser.bot_info_version) {
         
       } */
 
       safeReplaceObject(oldUser, user);
       rootScope.dispatchEvent('user_update', userId);
+    }
+
+    if(changedPhoto) {
+      rootScope.dispatchEvent('avatar_update', user.id);
     }
 
     if(changedTitle) {
