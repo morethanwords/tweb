@@ -4,6 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import findUpAttribute from "../helpers/dom/findUpAttribute";
 import getRichValue from "../helpers/dom/getRichValue";
 import isInputEmpty from "../helpers/dom/isInputEmpty";
 import { debounce } from "../helpers/schedulers";
@@ -12,7 +13,7 @@ import RichTextProcessor from "../lib/richtextprocessor";
 
 let init = () => {
   document.addEventListener('paste', (e) => {
-    if(!(e.target as HTMLElement).hasAttribute('contenteditable') && !(e.target as HTMLElement).parentElement.hasAttribute('contenteditable')) {
+    if(!findUpAttribute(e.target, 'contenteditable="true"')) {
       return;
     }
     //console.log('document paste');
