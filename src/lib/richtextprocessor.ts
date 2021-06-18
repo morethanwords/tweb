@@ -217,7 +217,7 @@ namespace RichTextProcessor {
       } else if(match[13]) { // Bot command
         entities.push({
           _: 'messageEntityBotCommand',
-          offset: matchIndex + (match[11] ? match[11].length : 0),
+          offset: matchIndex + (match[11] ? match[11].length : 0) + (match[12] ? match[12].length : 0),
           length: 1 + match[13].length + (match[14] ? 1 + match[14].length : 0),
           unsafe: true
         });
