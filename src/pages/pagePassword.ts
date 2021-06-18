@@ -10,7 +10,6 @@ import { AccountPassword } from '../layer';
 import appStateManager from '../lib/appManagers/appStateManager';
 import passwordManager from '../lib/mtproto/passwordManager';
 import Page from './page';
-import pageIm from './pageIm';
 import Button from '../components/button';
 import PasswordInputField from '../components/passwordInputField';
 import PasswordMonkey from '../components/monkeys/password';
@@ -91,7 +90,9 @@ let onFirstMount = (): Promise<any> => {
       switch(response._) {
         case 'auth.authorization':
           clearInterval(getStateInterval);
-          pageIm.mount();
+          import('./pageIm').then(m => {
+            m.default.mount();
+          });
           if(monkey) monkey.remove();
           break;
         default:

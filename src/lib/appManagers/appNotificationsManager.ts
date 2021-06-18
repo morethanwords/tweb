@@ -706,7 +706,6 @@ export class AppNotificationsManager {
   }
 
   private registerDevice(tokenData: PushSubscriptionNotify) {
-    return;
     if(this.registeredDevice && deepEqual(this.registeredDevice, tokenData)) {
       return false;
     }
@@ -725,7 +724,6 @@ export class AppNotificationsManager {
   }
 
   private unregisterDevice(tokenData: PushSubscriptionNotify) {
-    return;
     if(!this.registeredDevice) {
       return false;
     }

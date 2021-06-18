@@ -48,6 +48,7 @@ import ButtonCorner from "../../buttonCorner";
 import { cancelEvent } from "../../../helpers/dom/cancelEvent";
 import { attachClickEvent } from "../../../helpers/dom/clickEvent";
 import replaceContent from "../../../helpers/dom/replaceContent";
+import appAvatarsManager from "../../../lib/appManagers/appAvatarsManager";
 
 let setText = (text: string, row: Row) => {
   //fastRaf(() => {
@@ -437,7 +438,7 @@ class PeerProfileAvatars {
       });
     } else {
       const photo = appPeersManager.getPeerPhoto(this.peerId);
-      appProfileManager.putAvatar(avatar, this.peerId, photo, 'photo_big', img);
+      appAvatarsManager.putAvatar(avatar, this.peerId, photo, 'photo_big', img);
     }
 
     this.avatars.append(avatar);

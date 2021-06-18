@@ -14,9 +14,10 @@ import appPhotosManager from "../lib/appManagers/appPhotosManager";
 import type { LazyLoadQueueIntersector } from "./lazyLoadQueue";
 import { attachClickEvent } from "../helpers/dom/clickEvent";
 import { cancelEvent } from "../helpers/dom/cancelEvent";
+import appAvatarsManager from "../lib/appManagers/appAvatarsManager";
 
 const onAvatarUpdate = (peerId: number) => {
-  appProfileManager.removeFromAvatarsCache(peerId);
+  appAvatarsManager.removeFromAvatarsCache(peerId);
   (Array.from(document.querySelectorAll('avatar-element[peer="' + peerId + '"]')) as AvatarElement[]).forEach(elem => {
     //console.log('updating avatar:', elem);
     elem.update();
@@ -180,7 +181,7 @@ export default class AvatarElement extends HTMLElement {
   }
 
   private r(onlyThumb = false) {
-    const res = appProfileManager.putPhoto(this, this.peerId, this.isDialog, this.peerTitle, onlyThumb);
+    const res = appAvatarsManager.putPhoto(this, this.peerId, this.isDialog, this.peerTitle, onlyThumb);
     const promise = res ? res.loadPromise : Promise.resolve();
     if(this.loadPromises) {
       if(res && res.cached) {

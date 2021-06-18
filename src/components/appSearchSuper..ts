@@ -718,7 +718,7 @@ export default class AppSearchSuper {
           if(showMembersCount && (peer.participants_count || peer.participants)) {
             const regExp = new RegExp(`(${escapeRegExp(query)}|${escapeRegExp(cleanSearchText(query))})`, 'gi');
             dom.titleSpan.innerHTML = dom.titleSpan.innerHTML.replace(regExp, '<i>$1</i>');
-            dom.lastMessageSpan.append(appChatsManager.getChatMembersString(-peerId));
+            dom.lastMessageSpan.append(appProfileManager.getChatMembersString(-peerId));
           } else if(peerId === rootScope.myId) {
             dom.lastMessageSpan.append(i18n('Presence.YourChat'));
           } else {
@@ -811,7 +811,7 @@ export default class AppSearchSuper {
               autonomous: true
             });
     
-            dom.lastMessageSpan.append(peerId > 0 ? appUsersManager.getUserStatusString(peerId) : appChatsManager.getChatMembersString(peerId));
+            dom.lastMessageSpan.append(peerId > 0 ? appUsersManager.getUserStatusString(peerId) : appProfileManager.getChatMembersString(-peerId));
           });
     
           if(!state.recentSearch.length) {

@@ -18,7 +18,6 @@ import apiManager from '../lib/mtproto/mtprotoworker';
 import RichTextProcessor from '../lib/richtextprocessor';
 import LoginPage from './loginPage';
 import Page from './page';
-import pageIm from './pageIm';
 import blurActiveElement from '../helpers/dom/blurActiveElement';
 import replaceContent from '../helpers/dom/replaceContent';
 
@@ -135,7 +134,9 @@ const onFirstMount = () => import('../lib/appManagers/appProfileManager').then(i
           apiManager.setUserAuth(response.user.id);
 
           sendAvatar().finally(() => {
-            pageIm.mount();
+            import('./pageIm').then(m => {
+              m.default.mount();
+            });
           });
           
           break;

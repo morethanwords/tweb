@@ -10,7 +10,7 @@ import type { AppMessagesManager, Dialog, MessagesStorage } from "./appManagers/
 import type { Poll, PollResults } from "./appManagers/appPollsManager";
 import type { MyDialogFilter } from "./storages/filters";
 import type { ConnectionStatusChange } from "../types";
-import type { UserTyping } from "./appManagers/appChatsManager";
+import type { UserTyping } from "./appManagers/appProfileManager";
 import type Chat from "../components/chat/chat";
 import type { UserAuth } from "./mtproto/mtproto_config";
 import type { State, Theme } from "./appManagers/appStateManager";
@@ -86,6 +86,7 @@ export type BroadcastEvents = {
   'chat_full_update': number,
   'poll_update': {poll: Poll, results: PollResults},
   'chat_update': number,
+  'invalidate_participants': number,
   //'channel_settings': {channelId: number},
   'webpage_updated': {id: string, msgs: number[]},
 

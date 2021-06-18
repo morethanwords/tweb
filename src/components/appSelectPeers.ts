@@ -447,7 +447,7 @@ export default class AppSelectPeers {
 
       let subtitleEl: HTMLElement;
       if(peerId < 0) {
-        subtitleEl = appChatsManager.getChatMembersString(-peerId);
+        subtitleEl = appProfileManager.getChatMembersString(-peerId);
       } else if(peerId === rootScope.myId) {
         subtitleEl = i18n('Presence.YourChat');
       } else {
