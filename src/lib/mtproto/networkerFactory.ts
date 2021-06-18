@@ -21,6 +21,7 @@ export class NetworkerFactory {
   public updatesProcessor: (obj: any) => void = null;
   public onConnectionStatusChange: (info: ConnectionStatusChange) => void = null;
   public akStopped = false;
+  public userAgent = navigator.userAgent;
 
   public setUpdatesProcessor(callback: (obj: any) => void) {
     this.updatesProcessor = callback;

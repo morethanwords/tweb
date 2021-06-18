@@ -82,6 +82,10 @@ const taskListeners = {
 
   localStorageProxy: (task: LocalStorageProxyTask) => {
     sessionStorage.finishTask(task.id, task.payload);
+  },
+
+  userAgent: (task: any) => {
+    networkerFactory.userAgent = task.payload;
   }
 };
 

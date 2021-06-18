@@ -302,7 +302,7 @@ export default class MTPNetworker {
       serializer.storeInt(+initConnection.id >>> 0, 'initConnection');
       serializer.storeInt(0x0, 'flags');
       serializer.storeInt(App.id, 'api_id');
-      serializer.storeString(navigator.userAgent || 'Unknown UserAgent', 'device_model');
+      serializer.storeString(networkerFactory.userAgent || 'Unknown UserAgent', 'device_model');
       serializer.storeString(navigator.platform || 'Unknown Platform', 'system_version');
       serializer.storeString(App.version + (App.isMainDomain ? ' ' + App.suffix : ''), 'app_version');
       serializer.storeString(navigator.language || 'en', 'system_lang_code');
