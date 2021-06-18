@@ -49,7 +49,7 @@ export default class IDBStorage<T extends Database<any>> {
   private name: string;
   private version: number;
   private stores: IDBStore[];
-  private storeName: string;
+  private storeName: T['stores'][0]['name'];
 
   constructor(db: T, storeName: typeof db['stores'][0]['name']) {
     safeAssign(this, db);
@@ -67,8 +67,12 @@ export default class IDBStorage<T extends Database<any>> {
     IDBStorage.STORAGES.push(this);
   }
 
-  public static closeDatabases() {
+  public static closeDatabases(preserve?: IDBStorage<Database<any>>) {
     this.STORAGES.forEach(storage => {
+      if(preserve && preserve === storage) {
+        return;
+      }
+
       const db = storage.db;
       if(db) {
         db.onclose = () => {};
@@ -77,7 +81,19 @@ export default class IDBStorage<T extends Database<any>> {
     });
   }
 
-  public static deleteDatabase() {
+  /**
+   * ! WARNING ! function requires at least one opened connection
+   */
+  /* public static clearObjectStores() {
+    const storage = this.STORAGES[0];
+    this.closeDatabases(storage);
+
+    const names = Array.from(storage.db.objectStoreNames);
+    const promises = names.map(name => storage.clear(name));
+    return Promise.all(promises);
+  } */
+
+  /* public static deleteDatabase() {
     this.closeDatabases();
 
     const storages = this.STORAGES;
@@ -97,7 +113,7 @@ export default class IDBStorage<T extends Database<any>> {
     });
 
     return Promise.all(promises);
-  }
+  } */
 
   public isAvailable() {
     return this.storageIsAvailable;
@@ -215,8 +231,8 @@ export default class IDBStorage<T extends Database<any>> {
     }, DEBUG ? 'delete: ' + entryName.join(', ') : '');
   }
 
-  public deleteAll() {
-    return this.getObjectStore('readwrite', (objectStore) => objectStore.clear(), DEBUG ? 'deleteAll' : '');
+  public clear(storeName?: IDBStorage<T>['storeName']) {
+    return this.getObjectStore('readwrite', (objectStore) => objectStore.clear(), DEBUG ? 'clear' : '', storeName);
   }
 
   public save(entryName: string | string[], value: any | any[]) {
@@ -328,7 +344,7 @@ export default class IDBStorage<T extends Database<any>> {
     }, DEBUG ? 'get: ' + entryName.join(', ') : '');
   }
 
-  private getObjectStore<T>(mode: IDBTransactionMode, objectStore: (objectStore: IDBObjectStore) => IDBRequest | IDBRequest[], log?: string) {
+  private getObjectStore<T>(mode: IDBTransactionMode, objectStore: (objectStore: IDBObjectStore) => IDBRequest | IDBRequest[], log?: string, storeName = this.storeName) {
     let perf: number;
 
     if(log) {
@@ -338,7 +354,7 @@ export default class IDBStorage<T extends Database<any>> {
 
     return this.openDatabase().then((db) => {
       return new Promise<T>((resolve, reject) => {
-        const transaction = db.transaction([this.storeName], mode);
+        const transaction = db.transaction([storeName], mode);
 
         transaction.onerror = (e) => {
           clearTimeout(timeout);
@@ -365,7 +381,7 @@ export default class IDBStorage<T extends Database<any>> {
           this.log.error('IndexedDB: transaction abort!', transaction.error);
         }); */
   
-        const requests = objectStore(transaction.objectStore(this.storeName));
+        const requests = objectStore(transaction.objectStore(storeName));
 
         const isArray = Array.isArray(requests);
         const r: IDBRequest[] = isArray ? requests : [].concat(requests) as any;
