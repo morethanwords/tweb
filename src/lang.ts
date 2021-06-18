@@ -117,6 +117,12 @@ const lang = {
     "other_value": "Forwarded %d messages"
   },
   "Notifications.New": "New notification",
+  "PushNotification.Action.Mute1d": "Mute background alerts for 1 day",
+	"PushNotification.Action.Settings": "Background alerts settings",
+	"PushNotification.Action.Mute1d.Mobile": "Mute for 24H",
+	"PushNotification.Action.Settings.Mobile": "Alerts settings",
+	"PushNotification.Message.NoPreview": "You have a new message",
+	//"PushNotification.Action.Mute1d.Success": "Notification settings were successfully saved.",
 
   // * android
   "ActionCreateChannel": "Channel created",

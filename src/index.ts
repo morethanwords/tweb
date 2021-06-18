@@ -313,6 +313,12 @@ console.timeEnd('get storage1'); */
         scrollable.append(placeholder.cloneNode());
       }
 
+      try {
+        (await import('./lib/mtproto/webPushApiManager')).default.forceUnsubscribe();
+      } catch(err) {
+        
+      }
+
       let pagePromise: Promise<void>;
       //langPromise.then(async() => {
         switch(authState._) {

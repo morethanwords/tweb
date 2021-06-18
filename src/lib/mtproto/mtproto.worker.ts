@@ -11,7 +11,7 @@ import apiManager from "./apiManager";
 import cryptoWorker from "../crypto/cryptoworker";
 import networkerFactory from "./networkerFactory";
 import apiFileManager from './apiFileManager';
-import type { ServiceWorkerTask, ServiceWorkerTaskResponse } from './mtproto.service';
+import type { RequestFilePartTask, RequestFilePartTaskResponse } from '../serviceWorker/index.service';
 import { ctx } from '../../helpers/userAgent';
 import { socketsProxied } from './dcConfigurator';
 import { notifyAll } from '../../helpers/context';
@@ -44,8 +44,8 @@ const taskListeners = {
     }
   },
 
-  requestFilePart: async(task: ServiceWorkerTask) => {
-    const responseTask: ServiceWorkerTaskResponse = {
+  requestFilePart: async(task: RequestFilePartTask) => {
+    const responseTask: RequestFilePartTaskResponse = {
       type: task.type,
       id: task.id
     };

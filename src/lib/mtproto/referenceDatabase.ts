@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type { ServiceWorkerTask, ServiceWorkerTaskResponse } from "./mtproto.service";
+import type { RequestFilePartTask, RequestFilePartTaskResponse } from "../serviceWorker/index.service";
 import type { ApiError } from "./apiManager";
 import appMessagesManager from "../appManagers/appMessagesManager";
 import { Photo } from "../../layer";
@@ -38,7 +38,7 @@ class ReferenceDatabase {
   private links: {[hex: string]: ReferenceBytes} = {};
 
   constructor() {
-    apiManager.addTaskListener('requestFilePart', (task: ServiceWorkerTaskResponse) => {
+    apiManager.addTaskListener('requestFilePart', (task: RequestFilePartTaskResponse) => {
       if(task.error) {
         const onError = (error: ApiError) => {
           if(error?.type === 'FILE_REFERENCE_EXPIRED') {
@@ -47,7 +47,7 @@ class ReferenceDatabase {
             referenceDatabase.refreshReference(bytes).then(() => {
               // @ts-ignore
               task.originalPayload[1].file_reference = referenceDatabase.getReferenceByLink(bytes);
-              const newTask: ServiceWorkerTask = {
+              const newTask: RequestFilePartTask = {
                 type: task.type,
                 id: task.id,
                 payload: task.originalPayload

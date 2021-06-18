@@ -29,6 +29,8 @@ export type WorkerTaskTemplate = {
   error?: ApiError
 };
 
+export type WorkerTaskVoidTemplate = Omit<WorkerTaskTemplate, 'id'>;
+
 export type Modify<T, R> = Omit<T, keyof R> & R;
 
 //export type Parameters<T> = T extends (... args: infer T) => any ? T : never; 

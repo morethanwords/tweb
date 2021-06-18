@@ -15,6 +15,8 @@ import type Chat from "../components/chat/chat";
 import type { UserAuth } from "./mtproto/mtproto_config";
 import type { State, Theme } from "./appManagers/appStateManager";
 import type { MyDraftMessage } from "./appManagers/appDraftsManager";
+import type { PushSubscriptionNotify } from "./mtproto/webPushApiManager";
+import type { PushNotificationObject } from "./serviceWorker/push";
 import EventListenerBase from "../helpers/eventListenerBase";
 import { MOUNT_CLASS_TO } from "../config/debug";
 
@@ -113,7 +115,13 @@ export type BroadcastEvents = {
   
   'theme_change': void,
 
-  'instance_deactivated': void
+  'instance_activated': void,
+  'instance_deactivated': void,
+
+  'push_notification_click': PushNotificationObject,
+  'push_init': PushSubscriptionNotify,
+  'push_subscribe': PushSubscriptionNotify,
+  'push_unsubscribe': PushSubscriptionNotify,
 };
 
 export class RootScope extends EventListenerBase<{

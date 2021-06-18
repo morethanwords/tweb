@@ -16,7 +16,7 @@ import { logger } from '../logger';
 import rootScope from '../rootScope';
 import webpWorkerController from '../webp/webpWorkerController';
 import type { DownloadOptions } from './apiFileManager';
-import type { ServiceWorkerTask } from './mtproto.service';
+import type { ServiceWorkerTask } from '../serviceWorker/index.service';
 import { UserAuth } from './mtproto_config';
 import type { MTMessage } from './networker';
 import DEBUG, { MOUNT_CLASS_TO } from '../../config/debug';
@@ -24,6 +24,7 @@ import Socket from './transports/websocket';
 import IDBStorage from '../idb';
 import singleInstance from './singleInstance';
 import sessionStorage from '../sessionStorage';
+import webPushApiManager from './webPushApiManager';
 
 type Task = {
   taskId: number,
@@ -83,6 +84,7 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
   private sockets: Map<number, Socket> = new Map();
 
   private taskListeners: {[taskType: string]: (task: any) => void} = {};
+  private taskListenersSW: {[taskType: string]: (task: any) => void} = {};
 
   public onServiceWorkerFail: () => void;
 
@@ -97,7 +99,8 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
     this.addTaskListener('clear', () => {
       Promise.all([
         IDBStorage.deleteDatabase(), 
-        sessionStorage.clear()
+        sessionStorage.clear(),
+        webPushApiManager.forceUnsubscribe()
       ]).finally(() => {
         location.reload();
       });
@@ -235,7 +238,14 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
       if(!isObject(task)) {
         return;
       }
-      
+
+      const callback = this.taskListenersSW[task.type];
+      if(callback) {
+        callback(task);
+      }
+    });
+
+    this.addServiceWorkerTaskListener('requestFilePart', (task) => {
       this.postMessage(task);
     });
     /// #endif
@@ -262,6 +272,10 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
 
   public addTaskListener(name: keyof ApiManagerProxy['taskListeners'], callback: ApiManagerProxy['taskListeners'][typeof name]) {
     this.taskListeners[name] = callback;
+  }
+
+  public addServiceWorkerTaskListener(name: keyof ApiManagerProxy['taskListenersSW'], callback: ApiManagerProxy['taskListenersSW'][typeof name]) {
+    this.taskListenersSW[name] = callback;
   }
 
   private onWorkerMessage = (e: MessageEvent) => {
