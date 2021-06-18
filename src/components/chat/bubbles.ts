@@ -310,8 +310,10 @@ export default class ChatBubbles {
 
         //getHeavyAnimationPromise().then(() => {
           fastRaf(() => {
-            bubble.classList.remove('is-sending');
-            bubble.classList.add(this.peerId === rootScope.myId && this.chat.type !== 'scheduled' ? 'is-read' : 'is-sent');
+            if(bubble.classList.contains('is-sending')) {
+              bubble.classList.remove('is-sending');
+              bubble.classList.add(this.peerId === rootScope.myId && this.chat.type !== 'scheduled' ? 'is-read' : 'is-sent');
+            }
           });
         //});
 
@@ -1222,7 +1224,7 @@ export default class ChatBubbles {
       if(msgId > 0 && msgId <= maxId) {
         const bubble = this.bubbles[msgId];
         if(bubble) {
-          bubble.classList.remove('is-sent');
+          bubble.classList.remove('is-sent', 'is-sending'); // is-sending can be when there are bulk of updates (e.g. sending command to Stickers bot)
           bubble.classList.add('is-read');
         }
         
