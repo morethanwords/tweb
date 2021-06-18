@@ -25,6 +25,7 @@ import stateStorage from "../stateStorage";
 import apiUpdatesManager from "./apiUpdatesManager";
 import appChatsManager from "./appChatsManager";
 import appPeersManager from "./appPeersManager";
+import appRuntimeManager from "./appRuntimeManager";
 import appStateManager from "./appStateManager";
 import appUsersManager from "./appUsersManager";
 
@@ -599,7 +600,7 @@ export class AppNotificationsManager {
 
     notification.onclick = () => {
       notification.close();
-      //AppRuntimeManager.focus();
+      appRuntimeManager.focus();
       this.clear();
       if(data.onclick) {
         data.onclick();

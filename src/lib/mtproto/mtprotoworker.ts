@@ -25,6 +25,7 @@ import singleInstance from './singleInstance';
 import sessionStorage from '../sessionStorage';
 import webPushApiManager from './webPushApiManager';
 import AppStorage from '../storage';
+import appRuntimeManager from '../appManagers/appRuntimeManager';
 
 type Task = {
   taskId: number,
@@ -102,7 +103,7 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
         sessionStorage.clear(),
         webPushApiManager.forceUnsubscribe()
       ]).finally(() => {
-        location.reload();
+        appRuntimeManager.reload();
       });
     });
 
