@@ -100,7 +100,7 @@ export default class ChatContextMenu {
         if(chat.selection.isSelecting && !button.withSelection) {
           good = false;
         } else {
-          good = contentWrapper || isTouchSupported ? 
+          good = contentWrapper || isTouchSupported || true ? 
             button.verify() : 
             button.notDirect && button.verify() && button.notDirect();
         }
