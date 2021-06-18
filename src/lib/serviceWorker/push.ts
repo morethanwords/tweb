@@ -91,8 +91,8 @@ class SomethingGetter<T extends Database<any>, Storage extends Record<string, an
 type PushStorage = {
   push_mute_until: number,
   push_last_alive: number,
-  push_lang: any
-  push_settings: any
+  push_lang: Partial<ServiceWorkerPingTask['payload']['lang']>
+  push_settings: Partial<ServiceWorkerPingTask['payload']['settings']>
 };
 
 const getter = new SomethingGetter<typeof DATABASE_STATE, PushStorage>(DATABASE_STATE, 'session', {
