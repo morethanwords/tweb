@@ -54,7 +54,7 @@ export default class AppStorage<Storage extends Record<string, any>, T extends D
   private deleteThrottled: () => void;
   private deleteDeferred = deferredPromise<void>();
 
-  constructor(private db: T, storeName: typeof db['stores'][number]['name']) {
+  constructor(private db: T, private storeName: typeof db['stores'][number]['name']) {
     this.storage = new IDBStorage<T>(db, storeName);
 
     if(AppStorage.STORAGES.length) {
@@ -266,7 +266,7 @@ export default class AppStorage<Storage extends Record<string, any>, T extends D
   }
 
   public clear() {
-    return this.storage.deleteAll().catch(noop);
+    return this.storage.clear().catch(noop);
   }
 
   public static toggleStorage(enabled: boolean) {
@@ -278,27 +278,14 @@ export default class AppStorage<Storage extends Record<string, any>, T extends D
         storage.keysToDelete.clear();
         storage.getPromises.forEach((deferred) => deferred.resolve());
         storage.getPromises.clear();
-
-        /* if(storage.db === DATABASE_SESSION && 'localStorage' in self) { // * support legacy Webogram's localStorage
-          localStorage.clear();
-        } */
-
         return storage.clear();
       } else {
-        /* if(storage.db === DATABASE_SESSION && 'localStorage' in self) { // * support legacy Webogram's localStorage
-          for(const i in storage.cache) {
-            if(storage.cache[i] !== undefined) {
-              localStorage.setItem(i, JSON.stringify(storage.cache[i]));
-            }
-          }
-        } */
-
         return storage.set(storage.cache);
       }
     })).catch(noop);
   }
 
-  public deleteDatabase() {
+  /* public deleteDatabase() {
     return IDBStorage.deleteDatabase().catch(noop);
-  }
+  } */
 }

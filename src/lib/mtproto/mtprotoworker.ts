@@ -21,10 +21,10 @@ import { UserAuth } from './mtproto_config';
 import type { MTMessage } from './networker';
 import DEBUG, { MOUNT_CLASS_TO } from '../../config/debug';
 import Socket from './transports/websocket';
-import IDBStorage from '../idb';
 import singleInstance from './singleInstance';
 import sessionStorage from '../sessionStorage';
 import webPushApiManager from './webPushApiManager';
+import AppStorage from '../storage';
 
 type Task = {
   taskId: number,
@@ -98,7 +98,7 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
 
     this.addTaskListener('clear', () => {
       Promise.all([
-        IDBStorage.deleteDatabase(), 
+        AppStorage.toggleStorage(false), 
         sessionStorage.clear(),
         webPushApiManager.forceUnsubscribe()
       ]).finally(() => {
@@ -509,6 +509,7 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
   }
 
   public logOut(): Promise<void> {
+    // AppStorage.toggleStorage(false);
     return this.performTaskWorker('logOut');
   }
 
