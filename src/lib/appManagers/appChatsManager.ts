@@ -10,25 +10,20 @@
  */
 
 import { MOUNT_CLASS_TO } from "../../config/debug";
-import { numberThousandSplitter } from "../../helpers/number";
 import { isObject, safeReplaceObject, copy, deepEqual } from "../../helpers/object";
-import { ChannelParticipant, Chat, ChatAdminRights, ChatBannedRights, ChatFull, ChatParticipant, ChatParticipants, ChatPhoto, InputChannel, InputChatPhoto, InputFile, InputPeer, SendMessageAction, Update, Updates } from "../../layer";
-import { i18n, LangPackKey } from "../langPack";
+import { ChannelParticipant, Chat, ChatAdminRights, ChatBannedRights, ChatParticipant, ChatPhoto, InputChannel, InputChatPhoto, InputFile, InputPeer, Update, Updates } from "../../layer";
 import apiManagerProxy from "../mtproto/mtprotoworker";
 import apiManager from '../mtproto/mtprotoworker';
 import { RichTextProcessor } from "../richtextprocessor";
 import rootScope from "../rootScope";
 import apiUpdatesManager from "./apiUpdatesManager";
 import appPeersManager from "./appPeersManager";
-import appProfileManager from "./appProfileManager";
 import appStateManager from "./appStateManager";
 import appUsersManager from "./appUsersManager";
 
 export type Channel = Chat.channel;
 
 export type ChatRights = keyof ChatBannedRights['pFlags'] | keyof ChatAdminRights['pFlags'] | 'change_type' | 'change_permissions' | 'delete_chat' | 'view_participants';
-
-export type UserTyping = Partial<{userId: number, action: SendMessageAction, timeout: number}>;
 
 export class AppChatsManager {
   private storage = appStateManager.storages.chats;
@@ -37,10 +32,6 @@ export class AppChatsManager {
   //private usernames: any;
   //private channelAccess: any;
   //private megagroups: {[id: number]: true};
-
-  private megagroupOnlines: {[id: number]: {timestamp: number, onlines: number}};
-
-  private typingsInPeer: {[peerId: number]: UserTyping[]};
 
   constructor() {
     this.clear();
@@ -65,11 +56,7 @@ export class AppChatsManager {
           chat.default_banned_rights = update.default_banned_rights;
           rootScope.dispatchEvent('chat_update', chatId);
         }
-      },
-
-      updateUserTyping: this.onUpdateUserTyping,
-      updateChatUserTyping: this.onUpdateUserTyping,
-      updateChannelUserTyping: this.onUpdateUserTyping
+      }
     });
 
     appStateManager.getState().then((state) => {
@@ -119,81 +106,6 @@ export class AppChatsManager {
     } else {
       this.chats = {};
     }
-
-    this.megagroupOnlines = {};
-    this.typingsInPeer = {};
-  }
-
-  private onUpdateUserTyping = (update: Update.updateUserTyping | Update.updateChatUserTyping | Update.updateChannelUserTyping) => {
-    const fromId = (update as Update.updateUserTyping).user_id || appPeersManager.getPeerId((update as Update.updateChatUserTyping).from_id);
-    if(rootScope.myId === fromId || update.action._ === 'speakingInGroupCallAction') {
-      return;
-    }
-    
-    const peerId = update._ === 'updateUserTyping' ? 
-      fromId : 
-      -((update as Update.updateChatUserTyping).chat_id || (update as Update.updateChannelUserTyping).channel_id);
-    const typings = this.typingsInPeer[peerId] ?? (this.typingsInPeer[peerId] = []);
-    let typing = typings.find(t => t.userId === fromId);
-
-    const cancelAction = () => {
-      delete typing.timeout;
-      //typings.findAndSplice(t => t === typing);
-      const idx = typings.indexOf(typing);
-      if(idx !== -1) {
-        typings.splice(idx, 1);
-      }
-
-      rootScope.dispatchEvent('peer_typings', {peerId, typings});
-
-      if(!typings.length) {
-        delete this.typingsInPeer[peerId];
-      }
-    };
-
-    if(typing && typing.timeout !== undefined) {
-      clearTimeout(typing.timeout);
-    }
-
-    if(update.action._ === 'sendMessageCancelAction') {
-      if(!typing) {
-        return;
-      }
-
-      cancelAction();
-      return;
-    } else {
-      if(!typing) {
-        typing = {
-          userId: fromId
-        };
-
-        typings.push(typing);
-      }
-
-      //console.log('updateChatUserTyping', update, typings);
-      
-      typing.action = update.action;
-      
-      if(!appUsersManager.hasUser(fromId)) {
-        if(update._ === 'updateChatUserTyping') {
-          if(update.chat_id && appChatsManager.hasChat(update.chat_id) && !appChatsManager.isChannel(update.chat_id)) {
-            appProfileManager.getChatFull(update.chat_id);
-          }
-        }
-        
-        //return;
-      }
-      
-      appUsersManager.forceUserOnline(fromId);
-
-      typing.timeout = window.setTimeout(cancelAction, 6000);
-      rootScope.dispatchEvent('peer_typings', {peerId, typings});
-    }
-  };
-
-  public getPeerTypings(peerId: number) {
-    return this.typingsInPeer[peerId];
   }
 
   public saveApiChats(apiChats: any[], override?: boolean) {
@@ -486,27 +398,6 @@ export class AppChatsManager {
     return 'g' + id;
   }
 
-  public getChatMembersString(id: number) {
-    const chat = this.getChat(id);
-    const chatFull = appProfileManager.chatsFull[id];
-    let count: number;
-    if(chatFull) {
-      if(chatFull._ === 'channelFull') {
-        count = chatFull.participants_count;
-      } else {
-        count = (chatFull.participants as ChatParticipants.chatParticipants).participants?.length;
-      }
-    } else {
-      count = chat.participants_count || chat.participants?.participants.length;
-    }
-
-    const isChannel = this.isBroadcast(id);
-    count = count || 1;
-
-    let key: LangPackKey = isChannel ? 'Peer.Status.Subscribers' : 'Peer.Status.Member';
-    return i18n(key, [numberThousandSplitter(count)]);
-  }
-
   /* public wrapForFull(id: number, fullChat: any) {
     const chatFull = copy(fullChat);
     const chat = this.getChat(id);
@@ -600,45 +491,6 @@ export class AppChatsManager {
     });
   }
 
-  public async getOnlines(id: number): Promise<number> {
-    if(this.isMegagroup(id)) {
-      const timestamp = Date.now() / 1000 | 0;
-      const cached = this.megagroupOnlines[id] ?? (this.megagroupOnlines[id] = {timestamp: 0, onlines: 1});
-      if((timestamp - cached.timestamp) < 60) {
-        return cached.onlines;
-      }
-
-      const res = await apiManager.invokeApi('messages.getOnlines', {
-        peer: this.getChannelInputPeer(id)
-      });
-
-      const onlines = res.onlines ?? 1;
-      cached.timestamp = timestamp;
-      cached.onlines = onlines;
-
-      return onlines;
-    } else if(this.isBroadcast(id)) {
-      return 1;
-    }
-
-    const chatInfo = await appProfileManager.getChatFull(id);
-    const _participants = (chatInfo as ChatFull.chatFull).participants as ChatParticipants.chatParticipants;
-    if(_participants && _participants.participants) {
-      const participants = _participants.participants;
-
-      return participants.reduce((acc: number, participant) => {
-        const user = appUsersManager.getUser(participant.user_id);
-        if(user && user.status && user.status._ === 'userStatusOnline') {
-          return acc + 1;
-        }
-
-        return acc;
-      }, 0);
-    } else {
-      return 1;
-    }
-  }
-
   private onChatUpdated = (chatId: number, updates: any) => {
     //console.log('onChatUpdated', chatId, updates);
 
@@ -647,7 +499,7 @@ export class AppChatsManager {
         /* updates.updates &&
         updates.updates.length && */
         this.isChannel(chatId)) {
-      appProfileManager.invalidateChannelParticipants(chatId);
+      rootScope.dispatchEvent('invalidate_participants', chatId);
     }
   };
 

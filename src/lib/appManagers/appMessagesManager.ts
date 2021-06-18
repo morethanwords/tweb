@@ -53,6 +53,7 @@ import htmlToDocumentFragment from "../../helpers/dom/htmlToDocumentFragment";
 import htmlToSpan from "../../helpers/dom/htmlToSpan";
 import { REPLIES_PEER_ID } from "../mtproto/mtproto_config";
 import formatCallDuration from "../../helpers/formatCallDuration";
+import appAvatarsManager from "./appAvatarsManager";
 
 //console.trace('include');
 // TODO: если удалить сообщение в непрогруженном диалоге, то при обновлении, из-за стейта, последнего сообщения в чатлисте не будет
@@ -304,8 +305,6 @@ export class AppMessagesManager {
         this.maxSeenId = state.maxSeenMsgId;
       }
     });
-
-    appNotificationsManager.start();
   }
 
   public construct() {
@@ -4546,7 +4545,7 @@ export class AppMessagesManager {
 
     const peerPhoto = appPeersManager.getPeerPhoto(peerId);
     if(peerPhoto) {
-      appProfileManager.loadAvatar(peerId, peerPhoto, 'photo_small').loadPromise.then(url => {
+      appAvatarsManager.loadAvatar(peerId, peerPhoto, 'photo_small').loadPromise.then(url => {
         if(message.pFlags.unread) {
           notification.image = url;
           appNotificationsManager.notify(notification);

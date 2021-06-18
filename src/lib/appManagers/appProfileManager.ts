@@ -11,10 +11,9 @@
 
 import { MOUNT_CLASS_TO } from "../../config/debug";
 import { tsNow } from "../../helpers/date";
-import renderImageFromUrl from "../../helpers/dom/renderImageFromUrl";
-import replaceContent from "../../helpers/dom/replaceContent";
-import sequentialDom from "../../helpers/sequentialDom";
-import { ChannelParticipantsFilter, ChannelsChannelParticipants, Chat, ChatFull, ChatParticipants, ChatPhoto, ExportedChatInvite, InputChannel, InputFile, InputFileLocation, PhotoSize, Update, UserFull, UserProfilePhoto } from "../../layer";
+import { numberThousandSplitter } from "../../helpers/number";
+import { ChannelParticipantsFilter, ChannelsChannelParticipants, Chat, ChatFull, ChatParticipants, ChatPhoto, ExportedChatInvite, InputChannel, InputFile, InputFileLocation, PhotoSize, SendMessageAction, Update, UserFull, UserProfilePhoto } from "../../layer";
+import { LangPackKey, i18n } from "../langPack";
 //import apiManager from '../mtproto/apiManager';
 import apiManager from '../mtproto/mtprotoworker';
 import { RichTextProcessor } from "../richtextprocessor";
@@ -22,13 +21,12 @@ import rootScope from "../rootScope";
 import SearchIndex from "../searchIndex";
 import apiUpdatesManager from "./apiUpdatesManager";
 import appChatsManager from "./appChatsManager";
-import appDownloadManager from "./appDownloadManager";
 import appNotificationsManager from "./appNotificationsManager";
 import appPeersManager from "./appPeersManager";
-import appPhotosManager, { MyPhoto } from "./appPhotosManager";
+import appPhotosManager from "./appPhotosManager";
 import appUsersManager, { User } from "./appUsersManager";
 
-type PeerPhotoSize = 'photo_small' | 'photo_big';
+export type UserTyping = Partial<{userId: number, action: SendMessageAction, timeout: number}>;
 
 export class AppProfileManager {
   //private botInfos: any = {};
@@ -36,11 +34,9 @@ export class AppProfileManager {
   public chatsFull: {[id: string]: ChatFull} = {};
   private fullPromises: {[peerId: string]: Promise<ChatFull.chatFull | ChatFull.channelFull | UserFull>} = {};
 
-  private savedAvatarURLs: {
-    [peerId: number]: {
-      [size in PeerPhotoSize]?: string | Promise<string>
-    }
-  } = {};
+  private megagroupOnlines: {[id: number]: {timestamp: number, onlines: number}};
+
+  private typingsInPeer: {[peerId: number]: UserTyping[]};
 
   constructor() {
     rootScope.addMultipleEventsListeners({
@@ -93,7 +89,11 @@ export class AppProfileManager {
             }
           }
         }
-      }
+      },
+
+      updateUserTyping: this.onUpdateUserTyping,
+      updateChatUserTyping: this.onUpdateUserTyping,
+      updateChannelUserTyping: this.onUpdateUserTyping
     });
 
     rootScope.addEventListener('chat_update', (chatId) => {
@@ -121,6 +121,13 @@ export class AppProfileManager {
         rootScope.dispatchEvent('chat_full_update', chatId);
       }
     });
+
+    rootScope.addEventListener('invalidate_participants', chatId => {
+      this.invalidateChannelParticipants(chatId);
+    });
+
+    this.megagroupOnlines = {};
+    this.typingsInPeer = {};
   }
 
   /* public saveBotInfo(botInfo: any) {
@@ -457,177 +464,144 @@ export class AppProfileManager {
     });
   }
 
-  public removeFromAvatarsCache(peerId: number) {
-    if(this.savedAvatarURLs[peerId]) {
-      delete this.savedAvatarURLs[peerId];
+  public getChatMembersString(id: number) {
+    const chat = appChatsManager.getChat(id);
+    const chatFull = this.chatsFull[id];
+    let count: number;
+    if(chatFull) {
+      if(chatFull._ === 'channelFull') {
+        count = chatFull.participants_count;
+      } else {
+        count = (chatFull.participants as ChatParticipants.chatParticipants).participants?.length;
+      }
+    } else {
+      count = chat.participants_count || chat.participants?.participants.length;
     }
+
+    const isChannel = appChatsManager.isBroadcast(id);
+    count = count || 1;
+
+    let key: LangPackKey = isChannel ? 'Peer.Status.Subscribers' : 'Peer.Status.Member';
+    return i18n(key, [numberThousandSplitter(count)]);
   }
 
-  public loadAvatar(peerId: number, photo: UserProfilePhoto.userProfilePhoto | ChatPhoto.chatPhoto, size: PeerPhotoSize) {
-    const inputPeer = appPeersManager.getInputPeerById(peerId);
-
-    let cached = false;
-    let getAvatarPromise: Promise<string>;
-    let saved = this.savedAvatarURLs[peerId];
-    if(!saved || !saved[size]) {
-      if(!saved) {
-        saved = this.savedAvatarURLs[peerId] = {};
+  public async getOnlines(id: number): Promise<number> {
+    if(appChatsManager.isMegagroup(id)) {
+      const timestamp = Date.now() / 1000 | 0;
+      const cached = this.megagroupOnlines[id] ?? (this.megagroupOnlines[id] = {timestamp: 0, onlines: 1});
+      if((timestamp - cached.timestamp) < 60) {
+        return cached.onlines;
       }
 
-      //console.warn('will invoke downloadSmallFile:', peerId);
-      const peerPhotoFileLocation: InputFileLocation.inputPeerPhotoFileLocation = {
-        _: 'inputPeerPhotoFileLocation', 
-        pFlags: {},
-        peer: inputPeer, 
-        photo_id: photo.photo_id
-      };
-
-      if(size === 'photo_big') {
-        peerPhotoFileLocation.pFlags.big = true;
-      }
-
-      const downloadOptions = {dcId: photo.dc_id, location: peerPhotoFileLocation};
-
-      /* let str: string;
-      const time = Date.now();
-      if(peerId === 0) {
-        str = `download avatar ${peerId}`;
-      } */
-
-      const promise = appDownloadManager.download(downloadOptions);
-      getAvatarPromise = saved[size] = promise.then(blob => {
-        return saved[size] = URL.createObjectURL(blob);
-
-        /* if(str) {
-          console.log(str, Date.now() / 1000, Date.now() - time);
-        } */
+      const res = await apiManager.invokeApi('messages.getOnlines', {
+        peer: appChatsManager.getChannelInputPeer(id)
       });
-    } else if(typeof(saved[size]) !== 'string') {
-      getAvatarPromise = saved[size] as Promise<any>;
-    } else {
-      getAvatarPromise = Promise.resolve(saved[size]);
-      cached = true;
+
+      const onlines = res.onlines ?? 1;
+      cached.timestamp = timestamp;
+      cached.onlines = onlines;
+
+      return onlines;
+    } else if(appChatsManager.isBroadcast(id)) {
+      return 1;
     }
 
-    return {cached, loadPromise: getAvatarPromise};
-  }
+    const chatInfo = await this.getChatFull(id);
+    const _participants = (chatInfo as ChatFull.chatFull).participants as ChatParticipants.chatParticipants;
+    if(_participants && _participants.participants) {
+      const participants = _participants.participants;
 
-  public putAvatar(div: HTMLElement, peerId: number, photo: UserProfilePhoto.userProfilePhoto | ChatPhoto.chatPhoto, size: PeerPhotoSize, img = new Image(), onlyThumb = false) {
-    let {cached, loadPromise} = this.loadAvatar(peerId, photo, size);
-
-    let renderThumbPromise: Promise<void>;
-    let callback: () => void;
-    if(cached) {
-      // смотри в misc.ts: renderImageFromUrl
-      callback = () => {
-        replaceContent(div, img);
-        div.dataset.color = '';
-      };
-    } else {
-      const animate = rootScope.settings.animationsEnabled;
-      if(animate) {
-        img.classList.add('fade-in');
-      }
-
-      let thumbImage: HTMLImageElement;
-      if(photo.stripped_thumb) {
-        thumbImage = new Image();
-        div.classList.add('avatar-relative');
-        thumbImage.classList.add('avatar-photo', 'avatar-photo-thumbnail');
-        img.classList.add('avatar-photo');
-        const url = appPhotosManager.getPreviewURLFromBytes(photo.stripped_thumb);
-        renderThumbPromise = renderImageFromUrl(thumbImage, url).then(() => {
-          replaceContent(div, thumbImage);
-        });
-      }
-
-      callback = () => {
-        if(photo.stripped_thumb) {
-          div.append(img);
-        } else {
-          replaceContent(div, img);
+      return participants.reduce((acc: number, participant) => {
+        const user = appUsersManager.getUser(participant.user_id);
+        if(user && user.status && user.status._ === 'userStatusOnline') {
+          return acc + 1;
         }
 
-        setTimeout(() => {
-          if(div.childElementCount) {
-            sequentialDom.mutateElement(img, () => {
-              div.dataset.color = '';
-              
-              if(animate) {
-                img.classList.remove('fade-in');
-              }
-
-              if(thumbImage) {
-                thumbImage.remove();
-              }
-            });
-          }
-        }, animate ? 200 : 0);
-      };
+        return acc;
+      }, 0);
+    } else {
+      return 1;
     }
-
-    const renderPromise = loadPromise
-    .then((url) => renderImageFromUrl(img, url/* , false */))
-    .then(() => callback());
-
-    return {cached, loadPromise: renderThumbPromise || renderPromise};
   }
 
-  // peerId === peerId || title
-  public putPhoto(div: HTMLElement, peerId: number, isDialog = false, title = '', onlyThumb = false) {
-    const photo = appPeersManager.getPeerPhoto(peerId);
-
-    const size: PeerPhotoSize = 'photo_small';
-    const avatarAvailable = !!photo;
-    const avatarRendered = div.firstElementChild && !(div.firstElementChild as HTMLElement).classList.contains('emoji');
+  private onUpdateUserTyping = (update: Update.updateUserTyping | Update.updateChatUserTyping | Update.updateChannelUserTyping) => {
+    const fromId = (update as Update.updateUserTyping).user_id || appPeersManager.getPeerId((update as Update.updateChatUserTyping).from_id);
+    if(rootScope.myId === fromId || update.action._ === 'speakingInGroupCallAction') {
+      return;
+    }
     
-    const myId = rootScope.myId;
+    const peerId = update._ === 'updateUserTyping' ? 
+      fromId : 
+      -((update as Update.updateChatUserTyping).chat_id || (update as Update.updateChannelUserTyping).channel_id);
+    const typings = this.typingsInPeer[peerId] ?? (this.typingsInPeer[peerId] = []);
+    let typing = typings.find(t => t.userId === fromId);
 
-    //console.log('loadDialogPhoto location:', location, inputPeer);
-    if(peerId === myId && isDialog) {
-      div.innerText = '';
-      div.dataset.color = '';
-      div.classList.add('tgico-saved');
-      div.classList.remove('tgico-deletedaccount');
+    const cancelAction = () => {
+      delete typing.timeout;
+      //typings.findAndSplice(t => t === typing);
+      const idx = typings.indexOf(typing);
+      if(idx !== -1) {
+        typings.splice(idx, 1);
+      }
+
+      rootScope.dispatchEvent('peer_typings', {peerId, typings});
+
+      if(!typings.length) {
+        delete this.typingsInPeer[peerId];
+      }
+    };
+
+    if(typing && typing.timeout !== undefined) {
+      clearTimeout(typing.timeout);
+    }
+
+    if(update.action._ === 'sendMessageCancelAction') {
+      if(!typing) {
+        return;
+      }
+
+      cancelAction();
       return;
     }
 
-    if(peerId > 0) {
-      const user = appUsersManager.getUser(peerId);
-      if(user && user.pFlags && user.pFlags.deleted) {
-        div.innerText = '';
-        div.dataset.color = appPeersManager.getPeerColorById(peerId);
-        div.classList.add('tgico-deletedaccount');
-        div.classList.remove('tgico-saved');
-        return;
-      }
+    if(!typing) {
+      typing = {
+        userId: fromId
+      };
+
+      typings.push(typing);
     }
 
-    if(!avatarAvailable || !avatarRendered || !this.savedAvatarURLs[peerId]) {
-      let color = '';
-      if(peerId && (peerId !== myId || !isDialog)) {
-        color = appPeersManager.getPeerColorById(peerId);
+    //console.log('updateChatUserTyping', update, typings);
+    
+    typing.action = update.action;
+    
+    const hasUser = appUsersManager.hasUser(fromId);
+    if(!hasUser) {
+      // let's load user here
+      if(update._ === 'updateChatUserTyping') {
+        if(update.chat_id && appChatsManager.hasChat(update.chat_id) && !appChatsManager.isChannel(update.chat_id)) {
+          appProfileManager.getChatFull(update.chat_id).then(() => {
+            if(typing.timeout !== undefined && appUsersManager.hasUser(fromId)) {
+              rootScope.dispatchEvent('peer_typings', {peerId, typings});
+            }
+          });
+        }
       }
       
-      div.innerText = '';
-      div.classList.remove('tgico-saved', 'tgico-deletedaccount');
-      div.dataset.color = color;
-
-      let abbr: string;
-      if(!title) {
-        const peer = appPeersManager.getPeer(peerId);
-        abbr = peer.initials ?? '';
-      } else {
-        abbr = RichTextProcessor.getAbbreviation(title);
-      }
-
-      div.innerHTML = abbr;
-      //return Promise.resolve(true);
+      //return;
+    } else {
+      appUsersManager.forceUserOnline(fromId);
     }
 
-    if(avatarAvailable/*  && false */) {
-      return this.putAvatar(div, peerId, photo, size, undefined, onlyThumb);
+    typing.timeout = window.setTimeout(cancelAction, 6000);
+    if(hasUser) {
+      rootScope.dispatchEvent('peer_typings', {peerId, typings});
     }
+  };
+
+  public getPeerTypings(peerId: number) {
+    return this.typingsInPeer[peerId];
   }
 }
 

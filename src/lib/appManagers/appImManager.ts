@@ -103,6 +103,7 @@ export class AppImManager {
 
   constructor() {
     apiUpdatesManager.attach();
+    appNotificationsManager.start();
 
     this.log = logger('IM', LogTypes.Log | LogTypes.Warn | LogTypes.Debug | LogTypes.Error);
 
@@ -1035,7 +1036,7 @@ export class AppImManager {
 
   public getPeerTyping(peerId: number, container?: HTMLElement) {
     if(!appUsersManager.isBot(peerId)) {
-      const typings = appChatsManager.getPeerTypings(peerId);
+      const typings = appProfileManager.getPeerTypings(peerId);
       if(!typings || !typings.length) {
         return;
       }
@@ -1152,7 +1153,7 @@ export class AppImManager {
 
       const participants_count = chatInfo.participants_count || (chatInfo.participants && chatInfo.participants.participants && chatInfo.participants.participants.length) || 1;
       //if(participants_count) {
-        subtitle = appChatsManager.getChatMembersString(-peerId);
+        subtitle = appProfileManager.getChatMembersString(-peerId);
 
         if(participants_count < 2) return subtitle;
         /* const onlines = await appChatsManager.getOnlines(chat.id);

@@ -9,10 +9,7 @@ import { AuthSentCode, AuthSentCodeType, AuthSignIn } from '../layer';
 import appStateManager from '../lib/appManagers/appStateManager';
 import apiManager from '../lib/mtproto/mtprotoworker';
 import Page from './page';
-import pageIm from './pageIm';
-import pagePassword from './pagePassword';
 import pageSignIn from './pageSignIn';
-import pageSignUp from './pageSignUp';
 import TrackingMonkey from '../components/monkeys/tracking';
 import CodeInputField from '../components/codeInputField';
 import { i18n, LangPackKey } from '../lib/langPack';
@@ -72,15 +69,19 @@ let onFirstMount = (): Promise<any> => {
         case 'auth.authorization':
           apiManager.setUserAuth(response.user.id);
 
-          pageIm.mount();
+          import('./pageIm').then(m => {
+            m.default.mount();
+          });
           cleanup();
           break;
         case 'auth.authorizationSignUpRequired':
           //console.log('Registration needed!');
 
-          pageSignUp.mount({
-            'phone_number': authCode.phone_number,
-            'phone_code_hash': authCode.phone_code_hash
+          import('./pageSignUp').then(m => {
+            m.default.mount({
+              'phone_number': authCode.phone_number,
+              'phone_code_hash': authCode.phone_code_hash
+            });
           });
 
           cleanup();
@@ -96,7 +97,7 @@ let onFirstMount = (): Promise<any> => {
           //console.warn('pageAuthCode: SESSION_PASSWORD_NEEDED');
           good = true;
           err.handled = true;
-          await pagePassword.mount();
+          await (await import('./pagePassword')).default.mount(); // lol
           setTimeout(() => {
             codeInput.value = '';
           }, 300);
