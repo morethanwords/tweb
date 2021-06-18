@@ -171,7 +171,11 @@ export class AppImManager {
     });
 
     rootScope.addEventListener('history_focus', (e) => {
-      const {peerId, mid} = e;
+      let {peerId, mid} = e;
+      if(mid) {
+        mid = appMessagesManager.generateMessageId(mid); // because mid can come from notification, i.e. server message id
+      }
+      
       this.setInnerPeer(peerId, mid);
     });
 
@@ -204,8 +208,7 @@ export class AppImManager {
       (popup as any).onClose = () => {
         document.body.classList.add('deactivated-backwards');
 
-        singleInstance.reset();
-        singleInstance.checkInstance(false);
+        singleInstance.activateInstance();
 
         setTimeout(() => {
           document.body.classList.remove('deactivated', 'deactivated-backwards');

@@ -157,7 +157,7 @@ export class ApiManager {
       storageKeys.push(prefix + dcId + '_auth_key');
     }
     
-    // WebPushApiManager.forceUnsubscribe(); // WARNING
+    // WebPushApiManager.forceUnsubscribe(); // WARNING // moved to worker's master
     const storageResult = await Promise.all(storageKeys.map(key => sessionStorage.get(key as any)));
     
     const logoutPromises: Promise<any>[] = [];
