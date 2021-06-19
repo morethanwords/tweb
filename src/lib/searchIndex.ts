@@ -14,7 +14,7 @@ import cleanSearchText from '../helpers/cleanSearchText';
 export default class SearchIndex<SearchWhat> {
   private fullTexts: Map<SearchWhat, string> = new Map();
 
-  constructor(private cleanText = true, private latinize = true) {
+  constructor(private cleanText = true, private latinize = true, private minChars: number = 1) {
 
   }
 
@@ -57,11 +57,12 @@ export default class SearchIndex<SearchWhat> {
       query = cleanSearchText(query, this.latinize);
     }
 
-    const newFoundObjs: Array<{fullText: string, what: SearchWhat}> = [];
+    const newFoundObjs: Array<{fullText: string, fullTextLength: number, what: SearchWhat, foundChars: number}> = [];
     const queryWords = query.split(' ');
     const queryWordsLength = queryWords.length;
     fullTexts.forEach((fullText, what) => {
       let found = true;
+      let foundChars = 0;
       for(let i = 0; i < queryWordsLength; ++i) { // * verify that all words are found
         const word = queryWords[i];
         const idx = fullText.indexOf(word);
@@ -69,12 +70,20 @@ export default class SearchIndex<SearchWhat> {
           found = false;
           break;
         }
+
+        foundChars += word.length;
       }
 
       if(found) {
-        newFoundObjs.push({fullText, what});
+        foundChars += queryWordsLength - 1;
+        const fullTextLength = fullText.length;
+        if(this.minChars <= foundChars || fullTextLength <= foundChars) {
+          newFoundObjs.push({fullText, fullTextLength, what, foundChars});
+        }
       }
     });
+
+    newFoundObjs.sort((a, b) => a.fullTextLength - b.fullTextLength || b.foundChars - a.foundChars);
 
     //newFoundObjs.sort((a, b) => a.fullText.localeCompare(b.fullText));
     const newFoundObjs2: Set<SearchWhat> = new Set(newFoundObjs.map(o => o.what));
