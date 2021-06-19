@@ -14,7 +14,8 @@ import cleanSearchText from '../helpers/cleanSearchText';
 export default class SearchIndex<SearchWhat> {
   private fullTexts: Map<SearchWhat, string> = new Map();
 
-  constructor(private cleanText = true, private latinize = true, private minChars: number = 1) {
+  // minChars can be 0 because it requires at least one word (one symbol) to be found
+  constructor(private cleanText = true, private latinize = true, private minChars: number = 0) {
 
   }
 
