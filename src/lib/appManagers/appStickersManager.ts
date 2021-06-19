@@ -46,7 +46,8 @@ export class AppStickersManager {
     id: string,
     access_hash: string
   }, params: Partial<{
-    overwrite: boolean
+    overwrite: boolean,
+    useCache: boolean
   }> = {}): Promise<MessagesStickerSet> {
     if(this.getStickerSetPromises[set.id]) {
       return this.getStickerSetPromises[set.id];
@@ -55,7 +56,7 @@ export class AppStickersManager {
     return this.getStickerSetPromises[set.id] = new Promise(async(resolve) => {
       if(!params.overwrite) {
         const cachedSet = await this.storage.get(set.id);
-        if(cachedSet && cachedSet.documents?.length && (Date.now() - cachedSet.refreshTime) < CACHE_TIME) {
+        if(cachedSet && cachedSet.documents?.length && ((Date.now() - cachedSet.refreshTime) < CACHE_TIME || params.useCache)) {
           this.saveStickers(cachedSet.documents);
           resolve(cachedSet);
           delete this.getStickerSetPromises[set.id];
@@ -236,7 +237,7 @@ export class AppStickersManager {
 
   public preloadStickerSets() {
     return this.getAllStickers().then(allStickers => {
-      return Promise.all((allStickers as MessagesAllStickers.messagesAllStickers).sets.map(set => this.getStickerSet(set)));
+      return Promise.all((allStickers as MessagesAllStickers.messagesAllStickers).sets.map(set => this.getStickerSet(set, {useCache: true})));
     });
   }
 
