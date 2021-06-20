@@ -826,6 +826,11 @@ export default class AppSearchSuper {
         appUsersManager.getTopPeers().then(peers => {
           if(!middleware()) return;
 
+          const idx = peers.indexOf(rootScope.myId);
+          if(idx !== -1) {
+            peers = peers.slice();
+            peers.splice(idx, 1);
+          }
           //console.log('got top categories:', categories);
           if(peers.length) {
             peers.forEach((peerId) => {

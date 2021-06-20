@@ -34,5 +34,12 @@ export default function formatDuration(duration: number, showLast = 2) {
     });
   });
 
-  return d.slice(-showLast).reverse();
+  const out = d.slice(-showLast).reverse();
+  for(let i = out.length - 1; i >= 0; --i) {
+    if(out[i].duration === 0) {
+      out.splice(i, 1);
+    }
+  }
+  
+  return out;
 }
