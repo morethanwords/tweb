@@ -18,7 +18,7 @@ import networkerFactory from './networkerFactory';
 import authorizer from './authorizer';
 import dcConfigurator, { ConnectionType, TransportType } from './dcConfigurator';
 import { logger } from '../logger';
-import type { InvokeApiOptions } from '../../types';
+import type { DcId, InvokeApiOptions, TrueDcId } from '../../types';
 import type { MethodDeclMap } from '../../layer';
 import { CancellablePromise, deferredPromise } from '../../helpers/cancellablePromise';
 import { bytesFromHex, bytesToHex } from '../../helpers/bytes';
@@ -78,7 +78,7 @@ export class ApiManager {
   
   private cachedExportPromise: {[x: number]: Promise<unknown>} = {};
   private gettingNetworkers: {[dcIdAndType: string]: Promise<MTPNetworker>} = {};
-  private baseDcId = 0;
+  private baseDcId: DcId = 0 as DcId;
   
   //public telegramMeNotified = false;
 
@@ -140,7 +140,7 @@ export class ApiManager {
     /// #endif
   }
 
-  public setBaseDcId(dcId: number) {
+  public setBaseDcId(dcId: DcId) {
     this.baseDcId = dcId;
 
     sessionStorage.set({
@@ -163,14 +163,14 @@ export class ApiManager {
     const logoutPromises: Promise<any>[] = [];
     for(let i = 0; i < storageResult.length; i++) {
       if(storageResult[i]) {
-        logoutPromises.push(this.invokeApi('auth.logOut', {}, {dcId: i + 1, ignoreErrors: true}));
+        logoutPromises.push(this.invokeApi('auth.logOut', {}, {dcId: (i + 1) as DcId, ignoreErrors: true}));
       }
     }
 
     const clear = () => {
       //console.error('apiManager: logOut clear');
       
-      this.baseDcId = 0;
+      this.baseDcId = undefined;
       //this.telegramMeNotify(false);
       IDBStorage.closeDatabases();
       self.postMessage({type: 'clear'});
@@ -189,7 +189,7 @@ export class ApiManager {
   }
   
   // mtpGetNetworker
-  public getNetworker(dcId: number, options: InvokeApiOptions = {}): Promise<MTPNetworker> {
+  public getNetworker(dcId: DcId, options: InvokeApiOptions = {}): Promise<MTPNetworker> {
     const connectionType: ConnectionType = options.fileDownload ? 'download' : (options.fileUpload ? 'upload' : 'client');
     //const connectionType: ConnectionType = 'client';
 
@@ -237,10 +237,10 @@ export class ApiManager {
       return this.gettingNetworkers[getKey];
     }
 
-    const ak = 'dc' + dcId + '_auth_key';
-    const ss = 'dc' + dcId + '_server_salt';
+    const ak: `dc${TrueDcId}_auth_key` = `dc${dcId}_auth_key` as any;
+    const ss: `dc${TrueDcId}_server_salt` = `dc${dcId}_server_salt` as any;
     
-    return this.gettingNetworkers[getKey] = Promise.all([ak, ss].map(key => sessionStorage.get(key as any)))
+    return this.gettingNetworkers[getKey] = Promise.all([ak, ss].map(key => sessionStorage.get(key)))
     .then(async([authKeyHex, serverSaltHex]) => {
       const transport = dcConfigurator.chooseServer(dcId, connectionType, transportType, false);
       let networker: MTPNetworker;
@@ -271,6 +271,16 @@ export class ApiManager {
           delete this.gettingNetworkers[getKey];
           throw error;
         }
+      }
+
+      if(networker.isFileNetworker) {
+        networker.onDrain = () => {
+          this.log('networker drain', networker);
+          
+          networker.onDrain = undefined;
+          const idx = networkers.indexOf(networker);
+          networkers.splice(idx, 1);
+        };
       }
 
       /* networker.onConnectionStatusChange = (online) => {
@@ -354,7 +364,7 @@ export class ApiManager {
       }
     };
     
-    let dcId: number;
+    let dcId: DcId;
     
     let cachedNetworker: MTPNetworker;
     let stack = (new Error()).stack || 'empty stack';
@@ -400,7 +410,7 @@ export class ApiManager {
             this.invokeApi(method, params, options).then(deferred.resolve, rejectPromise);
           }, rejectPromise);
         } else if(error.code === 303) {
-          const newDcId = +error.type.match(/^(PHONE_MIGRATE_|NETWORK_MIGRATE_|USER_MIGRATE_|FILE_MIGRATE_)(\d+)/)[2];
+          const newDcId = +error.type.match(/^(PHONE_MIGRATE_|NETWORK_MIGRATE_|USER_MIGRATE_|FILE_MIGRATE_)(\d+)/)[2] as DcId;
           if(newDcId !== dcId) {
             if(options.dcId) {
               options.dcId = newDcId;
