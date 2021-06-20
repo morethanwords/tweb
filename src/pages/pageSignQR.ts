@@ -4,6 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import type { DcId } from '../types';
 import apiManager from '../lib/mtproto/mtprotoworker';
 import Page from './page';
 import serverTimeManager from '../lib/mtproto/serverTimeManager';
@@ -65,7 +66,7 @@ let onFirstMount = async() => {
     cachedPromise = null;
   }, true);
   
-  let options: {dcId?: number, ignoreErrors: true} = {ignoreErrors: true};
+  let options: {dcId?: DcId, ignoreErrors: true} = {ignoreErrors: true};
   let prevToken: Uint8Array | number[];
 
   const iterate = async(isLoop: boolean) => {
@@ -78,7 +79,7 @@ let onFirstMount = async() => {
   
       if(loginToken._ === 'auth.loginTokenMigrateTo') {
         if(!options.dcId) {
-          options.dcId = loginToken.dc_id;
+          options.dcId = loginToken.dc_id as DcId;
           apiManager.setBaseDcId(loginToken.dc_id);
           //continue;
         }

@@ -16,6 +16,7 @@ import { notifyAll, notifySomeone } from "../../helpers/context";
 import { getFileNameByLocation } from "../../helpers/fileName";
 import { nextRandomInt } from "../../helpers/random";
 import { InputFile, InputFileLocation, UploadFile } from "../../layer";
+import { DcId } from "../../types";
 import CacheStorageController from "../cacheStorage";
 import cryptoWorker from "../crypto/cryptoworker";
 import FileManager from "../filemanager";
@@ -30,7 +31,7 @@ type Delayed = {
 };
 
 export type DownloadOptions = {
-  dcId: number, 
+  dcId: DcId, 
   location: InputFileLocation, 
   size?: number,
   fileName?: string,
@@ -155,7 +156,7 @@ export class ApiFileManager {
     return canceled;
   }
 
-  public requestFilePart(dcId: number, location: InputFileLocation, offset: number, limit: number, id = 0, queueId = 0, checkCancel?: () => void) {
+  public requestFilePart(dcId: DcId, location: InputFileLocation, offset: number, limit: number, id = 0, queueId = 0, checkCancel?: () => void) {
     return this.downloadRequest(dcId, id, async() => {
       checkCancel && checkCancel();
 

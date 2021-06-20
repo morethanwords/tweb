@@ -74,6 +74,7 @@ export type MTMessage = InvokeApiOptions & MTMessageOptions & {
 };
 
 const CONNECTION_TIMEOUT = 5000;
+const DRAIN_TIMEOUT = 10000;
 let invokeAfterMsgConstructor: number;
 
 export default class MTPNetworker {
@@ -123,6 +124,11 @@ export default class MTPNetworker {
   private lastResponseTime = 0;
 
   private debug = DEBUG /* && false */ || Modes.debug;
+
+  public activeRequests = 0;
+
+  public onDrain: () => void;
+  private onDrainTimeout: number;
 
   //private disconnectDelay: number;
   //private pingPromise: CancellablePromise<any>;
@@ -687,7 +693,19 @@ export default class MTPNetworker {
       promise.finally(() => {
         clearTimeout(timeout);
         this.setConnectionStatus(true);
+        
+        if(!--this.activeRequests && this.onDrain) {
+          this.onDrainTimeout = self.setTimeout(() => {
+            this.log('drain');
+            this.onDrain();
+          }, DRAIN_TIMEOUT);
+        }
       });
+      
+      ++this.activeRequests;
+      if(this.onDrainTimeout !== undefined) {
+        clearTimeout(this.onDrainTimeout);
+      }
     }
 
     return promise;

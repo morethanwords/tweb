@@ -9,6 +9,8 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
+import type { DcId } from "../types";
+
 const App = {
   id: 1025907,
   hash: '452b0359b988148995f22ff0f4229750',
@@ -17,7 +19,7 @@ const App = {
   langPack: 'macos',
   langPackCode: 'en',
   domains: [] as string[],
-  baseDcId: 2,
+  baseDcId: 2 as DcId,
   isMainDomain: location.hostname === 'web.telegram.org',
   suffix: 'K'
 };

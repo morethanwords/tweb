@@ -1,8 +1,11 @@
 import { AuthSentCode } from "./layer";
 import type { ApiError } from "./lib/mtproto/apiManager";
 
+export type DcId = number;
+export type TrueDcId = 1 | 2 | 3 | 4 | 5;
+
 export type InvokeApiOptions = Partial<{
-  dcId: number,
+  dcId: DcId,
   floodMaxTimeout: number,
   noErrorBox: true,
   fileUpload: true,
