@@ -26,6 +26,7 @@ import sessionStorage from '../sessionStorage';
 import webPushApiManager from './webPushApiManager';
 import AppStorage from '../storage';
 import appRuntimeManager from '../appManagers/appRuntimeManager';
+import { SocketProxyTask } from './transports/socketProxied';
 
 type Task = {
   taskId: number,
@@ -115,7 +116,7 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
       webpWorkerController.postMessage(task);
     });
 
-    this.addTaskListener('socketProxy', (task) => {
+    this.addTaskListener('socketProxy', (task: SocketProxyTask) => {
       const socketTask = task.payload;
       const id = socketTask.id;
       //console.log('socketProxy', socketTask, id);
@@ -123,7 +124,7 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
       if(socketTask.type === 'send') {
         const socket = this.sockets.get(id);
         socket.send(socketTask.payload);
-      } else if(socketTask.type === 'close') {
+      } else if(socketTask.type === 'close') { // will remove from map in onClose
         const socket = this.sockets.get(id);
         socket.close();
       } else if(socketTask.type === 'setup') {

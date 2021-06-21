@@ -30,6 +30,9 @@ export default class TcpObfuscated implements MTTransport {
   private lastCloseTime: number;
   private connection: MTConnection;
 
+  private autoReconnect = true;
+  private reconnectTimeout: number;
+
   //private debugPayloads: MTPNetworker['debugRequests'] = [];
 
   constructor(private Connection: MTConnectionConstructable, 
@@ -115,31 +118,80 @@ export default class TcpObfuscated implements MTTransport {
     this.connection.removeEventListener('message', this.onMessage);
     this.connection = undefined;
     
-    const time = Date.now();
-    const diff = time - this.lastCloseTime;
-    const needTimeout = !isNaN(diff) && diff < this.retryTimeout ? this.retryTimeout - diff : 0;
+    let needTimeout: number;
+    if(this.autoReconnect) {
+      const time = Date.now();
+      const diff = time - this.lastCloseTime;
+      needTimeout = !isNaN(diff) && diff < this.retryTimeout ? this.retryTimeout - diff : 0;
+    }
     
     if(this.networker) {
       this.networker.setConnectionStatus(false, needTimeout);
       this.pending.length = 0;
     }
+
+    if(this.autoReconnect) {
+      this.log('will try to reconnect after timeout:', needTimeout / 1000);
+      this.reconnectTimeout = self.setTimeout(this.reconnect, needTimeout);
+    } else {
+      this.log('reconnect isn\'t needed');
+    }
+  };
+
+  /**
+   * invoke only when closed
+   */
+  public reconnect = () => {
+    if(this.reconnectTimeout !== undefined) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = undefined;
+    }
+
+    if(this.connected) {
+      return;
+    }
+
+    this.log('trying to reconnect...');
+    this.lastCloseTime = Date.now();
     
-    this.log('will try to reconnect after timeout:', needTimeout / 1000);
-    setTimeout(() => {
-      this.log('trying to reconnect...');
-      this.lastCloseTime = Date.now();
-      
-      if(!this.networker) {
-        for(const pending of this.pending) {
-          if(pending.bodySent) {
-            pending.bodySent = false;
-          }
+    if(!this.networker) {
+      for(const pending of this.pending) {
+        if(pending.bodySent) {
+          pending.bodySent = false;
         }
       }
-      
-      this.connect();
-    }, needTimeout);
-  };
+    }
+    
+    this.connect();
+  }
+
+  public destroy() {
+    this.setAutoReconnect(false);
+    this.close();
+  }
+
+  public close() {
+    if(this.connection) {
+      this.connection.close();
+    }
+  }
+
+  /**
+   * Will connect if enable and disconnected \
+   * Will reset reconnection timeout if disable
+   */
+  public setAutoReconnect(enable: boolean) {
+    this.autoReconnect = enable;
+
+    if(!enable) {
+      if(this.reconnectTimeout !== undefined) {
+        clearTimeout(this.reconnectTimeout);
+        this.reconnectTimeout = undefined;
+      }
+    } else if(!this.connection && this.reconnectTimeout === undefined) {
+      this.reconnect();
+    }
+  }
 
   private connect() {
     this.connection = new this.Connection(this.dcId, this.url, this.logSuffix);

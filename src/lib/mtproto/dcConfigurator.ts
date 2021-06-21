@@ -9,7 +9,7 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import MTTransport, { MTConnection, MTConnectionConstructable } from './transports/transport';
+import MTTransport, { MTConnectionConstructable } from './transports/transport';
 import Modes from '../../config/modes';
 
 /// #if MTPROTO_HTTP || MTPROTO_HTTP_UPLOAD
@@ -19,9 +19,9 @@ import HTTP from './transports/http';
 /// #if !MTPROTO_HTTP
 import Socket from './transports/websocket';
 import TcpObfuscated from './transports/tcpObfuscated';
-import EventListenerBase from '../../helpers/eventListenerBase';
 import { isSafari } from '../../helpers/userAgent';
-import { notifyAll, isWebWorker } from '../../helpers/context';
+import { isWebWorker } from '../../helpers/context';
+import SocketProxied from './transports/socketProxied';
 /// #endif
 
 export type TransportType = 'websocket' | 'https' | 'http';
@@ -34,64 +34,7 @@ type Servers = {
   }
 };
 
-let socketId = 0;
 const TEST_SUFFIX = Modes.test ? '_test' : '';
-
-/// #if !MTPROTO_SW
-class SocketProxied extends EventListenerBase<{
-  open: () => void,
-  message: (buffer: ArrayBuffer) => any,
-  close: () => void,
-}> implements MTConnection {
-  private id: number;
-
-  constructor(protected dcId: number, protected url: string, logSuffix: string) {
-    super();
-    this.id = ++socketId;
-    socketsProxied.set(this.id, this);
-
-    notifyAll({
-      type: 'socketProxy',
-      payload: {
-        type: 'setup', 
-        payload: {
-          dcId, 
-          url,
-          logSuffix
-        },
-        id: this.id
-      }
-    });
-  }
-
-  public send(payload: Uint8Array) {
-    const task: any = {
-      type: 'socketProxy', 
-      payload: {
-        type: 'send',
-        payload,
-        id: this.id
-      }
-    };
-
-    notifyAll(task);
-  }
-
-  public close() {
-    const task: any = {
-      type: 'socketProxy',
-      payload: {
-        type: 'close',
-        id: this.id
-      }
-    };
-
-    notifyAll(task);
-  }
-}
-/// #endif
-
-export const socketsProxied: Map<number, SocketProxied> = new Map();
 
 export class DcConfigurator {
   private sslSubdomains = ['pluto', 'venus', 'aurora', 'vesta', 'flora'];
