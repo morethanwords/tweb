@@ -111,12 +111,7 @@ export default class TcpObfuscated implements MTTransport {
   };
 
   private onClose = () => {
-    this.connected = false;
-
-    this.connection.removeEventListener('open', this.onOpen);
-    this.connection.removeEventListener('close', this.onClose);
-    this.connection.removeEventListener('message', this.onMessage);
-    this.connection = undefined;
+    this.clear();
     
     let needTimeout: number;
     if(this.autoReconnect) {
@@ -138,6 +133,17 @@ export default class TcpObfuscated implements MTTransport {
     }
   };
 
+  private clear() {
+    this.connected = false;
+
+    if(this.connection) {
+      this.connection.removeEventListener('open', this.onOpen);
+      this.connection.removeEventListener('close', this.onClose);
+      this.connection.removeEventListener('message', this.onMessage);
+      this.connection = undefined;
+    }
+  }
+
   /**
    * invoke only when closed
    */
@@ -147,7 +153,7 @@ export default class TcpObfuscated implements MTTransport {
       this.reconnectTimeout = undefined;
     }
 
-    if(this.connected) {
+    if(this.connection) {
       return;
     }
 
@@ -194,6 +200,11 @@ export default class TcpObfuscated implements MTTransport {
   }
 
   private connect() {
+    if(this.connection) {
+      this.close();
+      this.clear();
+    }
+
     this.connection = new this.Connection(this.dcId, this.url, this.logSuffix);
     this.connection.addEventListener('open', this.onOpen);
     this.connection.addEventListener('close', this.onClose);

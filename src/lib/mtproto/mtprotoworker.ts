@@ -188,6 +188,10 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
       this.performTaskWorkerVoid('setLanguage', language);
     });
 
+    window.addEventListener('online', (event) => {
+      this.postMessage({type: 'online'});
+    });
+
     /// #if !MTPROTO_SW
     this.registerWorker();
     /// #endif

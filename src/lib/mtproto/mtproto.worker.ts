@@ -86,6 +86,10 @@ const taskListeners = {
 
   userAgent: (task: any) => {
     networkerFactory.userAgent = task.payload;
+  },
+
+  online: () => {
+    networkerFactory.forceReconnectTimeout();
   }
 };
 

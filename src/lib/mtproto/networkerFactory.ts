@@ -66,6 +66,12 @@ export class NetworkerFactory {
       }
     }
   }
+
+  public forceReconnectTimeout() {
+    for(const networker of this.networkers) {
+      networker.forceReconnectTimeout();
+    }
+  }
 }
 
 const networkerFactory = new NetworkerFactory();
