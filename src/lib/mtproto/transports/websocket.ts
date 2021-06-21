@@ -56,7 +56,7 @@ export default class Socket extends EventListenerBase<{
       return;
     }
 
-    this.log.error('close execution');
+    this.log('close execution');
 
     try {
       this.ws.close();
