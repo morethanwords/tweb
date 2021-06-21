@@ -17,7 +17,7 @@ import Schema from './schema';
 import timeManager from './timeManager';
 import networkerFactory from './networkerFactory';
 import { logger, LogTypes } from '../logger';
-import { assumeType, InvokeApiOptions } from '../../types';
+import { InvokeApiOptions } from '../../types';
 import { longToBytes } from '../crypto/crypto_utils';
 import MTTransport from './transports/transport';
 import { convertToUint8Array, bufferConcat, bytesCmp, bytesToHex } from '../../helpers/bytes';
@@ -370,8 +370,8 @@ export default class MTPNetworker {
   }
 
   public destroy() {
-    assumeType<TcpObfuscated>(this.transport);
-    this.transport.destroy();
+    //assumeType<TcpObfuscated>(this.transport);
+    (this.transport as TcpObfuscated).destroy();
   }
 
   // private sendPingDelayDisconnect = () => {

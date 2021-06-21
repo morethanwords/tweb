@@ -23,6 +23,13 @@ export class NetworkerFactory {
   public akStopped = false;
   public userAgent = navigator.userAgent;
 
+  public removeNetworker(networker: MTPNetworker) {
+    const idx = this.networkers.indexOf(networker);
+    if(idx !== -1) {
+      this.networkers.splice(idx, 1);
+    }
+  }
+
   public setUpdatesProcessor(callback: (obj: any) => void) {
     this.updatesProcessor = callback;
   }

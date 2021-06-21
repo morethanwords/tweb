@@ -273,13 +273,15 @@ export class ApiManager {
         }
       }
 
-      if(networker.isFileNetworker) {
+      if(transportType === 'websocket' && networker.isFileNetworker) {
         networker.onDrain = () => {
-          this.log('networker drain', networker);
-          
+          this.log('networker drain', networker.dcId);
+
           networker.onDrain = undefined;
           const idx = networkers.indexOf(networker);
           networkers.splice(idx, 1);
+          networkerFactory.removeNetworker(networker);
+          networker.destroy();
         };
       }
 
