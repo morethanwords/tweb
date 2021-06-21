@@ -13,13 +13,13 @@ import networkerFactory from "./networkerFactory";
 import apiFileManager from './apiFileManager';
 import type { RequestFilePartTask, RequestFilePartTaskResponse } from '../serviceWorker/index.service';
 import { ctx } from '../../helpers/userAgent';
-import { socketsProxied } from './dcConfigurator';
 import { notifyAll } from '../../helpers/context';
 // import AppStorage from '../storage';
 import CacheStorageController from '../cacheStorage';
 import sessionStorage from '../sessionStorage';
 import { LocalStorageProxyTask } from '../localStorage';
 import { WebpConvertTask } from '../webp/webpWorkerController';
+import { socketsProxied } from './transports/socketProxied';
 
 let webpSupported = false;
 export const isWebpSupported = () => {

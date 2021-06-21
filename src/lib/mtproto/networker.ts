@@ -17,7 +17,7 @@ import Schema from './schema';
 import timeManager from './timeManager';
 import networkerFactory from './networkerFactory';
 import { logger, LogTypes } from '../logger';
-import { InvokeApiOptions } from '../../types';
+import { assumeType, InvokeApiOptions } from '../../types';
 import { longToBytes } from '../crypto/crypto_utils';
 import MTTransport from './transports/transport';
 import { convertToUint8Array, bufferConcat, bytesCmp, bytesToHex } from '../../helpers/bytes';
@@ -31,7 +31,7 @@ import HTTP from './transports/http';
 /// #endif
 
 import type TcpObfuscated from './transports/tcpObfuscated';
-import { bigInt2str, cmp, rightShift_, str2bigInt } from '../../vendor/leemon';
+import { bigInt2str, rightShift_, str2bigInt } from '../../vendor/leemon';
 import { forEachReverse } from '../../helpers/array';
 
 //console.error('networker included!', new Error().stack);
@@ -369,6 +369,11 @@ export default class MTPNetworker {
     return this.pushMessage(message, options);
   }
 
+  public destroy() {
+    assumeType<TcpObfuscated>(this.transport);
+    this.transport.destroy();
+  }
+
   // private sendPingDelayDisconnect = () => {
   //   if(this.pingPromise || true) return;
 
@@ -693,7 +698,7 @@ export default class MTPNetworker {
       promise.finally(() => {
         clearTimeout(timeout);
         this.setConnectionStatus(true);
-        
+
         if(!--this.activeRequests && this.onDrain) {
           this.onDrainTimeout = self.setTimeout(() => {
             this.log('drain');
