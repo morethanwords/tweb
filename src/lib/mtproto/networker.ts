@@ -374,6 +374,12 @@ export default class MTPNetworker {
     (this.transport as TcpObfuscated).destroy();
   }
 
+  public forceReconnectTimeout() {
+    if((this.transport as TcpObfuscated).reconnect) {
+      (this.transport as TcpObfuscated).reconnect();
+    }
+  }
+
   // private sendPingDelayDisconnect = () => {
   //   if(this.pingPromise || true) return;
 
