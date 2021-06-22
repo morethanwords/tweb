@@ -21,12 +21,15 @@ export default class AutocompleteHelper extends EventListenerBase<{
   protected container: HTMLElement;
   protected list: HTMLElement;
   protected resetTarget: () => void;
+  protected detach: () => void;
   protected init?(): void;
 
   protected controller: AutocompleteHelperController;
   protected listType: 'xy' | 'x' | 'y';
   protected onSelect: (target: Element) => boolean | void;
   protected waitForKey?: string;
+
+  protected navigationItem: NavigationItem;
 
   constructor(options: {
     appendTo: HTMLElement,
@@ -50,6 +53,10 @@ export default class AutocompleteHelper extends EventListenerBase<{
   }
 
   protected onVisible = () => {
+    if(this.detach) { // it can be so because 'visible' calls before animation's end
+      this.detach();
+    }
+
     const list = this.list;
     const {detach, resetTarget} = attachListNavigation({
       list, 
@@ -59,16 +66,16 @@ export default class AutocompleteHelper extends EventListenerBase<{
       waitForKey: this.waitForKey
     });
 
+    this.detach = detach;
     this.resetTarget = resetTarget;
-    let navigationItem: NavigationItem;
-    if(!isMobile) {
-      navigationItem = {
+    if(!isMobile && !this.navigationItem) {
+      this.navigationItem = {
         type: 'autocomplete-helper',
         onPop: () => this.toggle(true),
         noBlurOnPop: true
       };
 
-      appNavigationController.pushItem(navigationItem);
+      appNavigationController.pushItem(this.navigationItem);
     }
 
     this.addEventListener('hidden', () => {
@@ -76,8 +83,8 @@ export default class AutocompleteHelper extends EventListenerBase<{
       list.innerHTML = '';
       detach();
 
-      if(navigationItem) {
-        appNavigationController.removeItem(navigationItem);
+      if(this.navigationItem) {
+        appNavigationController.removeItem(this.navigationItem);
       }
     }, true);
   };
