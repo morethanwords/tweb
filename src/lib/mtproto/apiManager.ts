@@ -157,15 +157,15 @@ export class ApiManager {
   
   // mtpLogOut
   public async logOut() {
-    const storageKeys: Array<string> = [];
+    const storageKeys: Array<`dc${TrueDcId}_auth_key`> = [];
     
     const prefix = 'dc';
     for(let dcId = 1; dcId <= 5; dcId++) {
-      storageKeys.push(prefix + dcId + '_auth_key');
+      storageKeys.push(prefix + dcId + '_auth_key' as any);
     }
     
     // WebPushApiManager.forceUnsubscribe(); // WARNING // moved to worker's master
-    const storageResult = await Promise.all(storageKeys.map(key => sessionStorage.get(key as any)));
+    const storageResult = await Promise.all(storageKeys.map(key => sessionStorage.get(key)));
     
     const logoutPromises: Promise<any>[] = [];
     for(let i = 0; i < storageResult.length; i++) {
