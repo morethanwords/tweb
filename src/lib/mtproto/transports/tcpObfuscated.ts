@@ -168,9 +168,10 @@ export default class TcpObfuscated implements MTTransport {
           pending.bodySent = false;
         }
       }
+    } else {
+      this.networker.setConnectionStatus(ConnectionStatus.Connecting);
     }
-    
-    this.networker.setConnectionStatus(ConnectionStatus.Connecting);
+
     this.connect();
   }
 

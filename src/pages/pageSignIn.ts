@@ -34,6 +34,7 @@ import { attachClickEvent } from "../helpers/dom/clickEvent";
 import replaceContent from "../helpers/dom/replaceContent";
 import toggleDisability from "../helpers/dom/toggleDisability";
 import sessionStorage from "../lib/sessionStorage";
+import { TrueDcId } from "../types";
 
 type Country = _Country & {
   li?: HTMLLIElement[]
@@ -432,24 +433,35 @@ let onFirstMount = () => {
 
   let tryAgain = () => {
     apiManager.invokeApi('help.getNearestDc').then((nearestDcResult) => {
-      const dcs = [1, 2, 3, 4, 5];
+      const dcs = new Set([1, 2, 3, 4, 5]);
       const done: number[] = [nearestDcResult.this_dc];
 
       let promise: Promise<any>;
       if(nearestDcResult.nearest_dc !== nearestDcResult.this_dc) {
         promise = apiManager.getNetworker(nearestDcResult.nearest_dc).then(() => {
-          done.push(nearestDcResult.nearest_dc)
+          done.push(nearestDcResult.nearest_dc);
         });
       }
 
       (promise || Promise.resolve()).then(() => {
-        const g = () => {
-          const dcId = dcs.shift();
+        done.forEach(dcId => {
+          dcs.delete(dcId);
+        });
+
+        const _dcs = [...dcs];
+        const g = async(): Promise<void> => {
+          const dcId = _dcs.shift();
           if(!dcId) return;
 
+          const dbKey: `dc${TrueDcId}_auth_key` = `dc${dcId}_auth_key` as any;
+          const key = await sessionStorage.get(dbKey);
+          if(key) {
+            return g();
+          }
+
           setTimeout(() => { // * если одновременно запросить все нетворкеры, не будет проходить запрос на код
-            apiManager.getNetworker(dcId, {fileDownload: true}).finally(g);
-          }, done.includes(dcId) ? 0 : 3000);
+            apiManager.getNetworker(dcId/* , {fileDownload: true} */).finally(g);
+          }, /* done.includes(dcId) ? 0 :  */3000);
         };
         
         g();
