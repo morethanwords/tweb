@@ -189,7 +189,7 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
     });
 
     window.addEventListener('online', (event) => {
-      this.forceReconnect();
+      this.forceReconnectTimeout();
     });
 
     /// #if !MTPROTO_SW
@@ -544,8 +544,12 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
     return this.performTaskWorkerVoid('startAll');
   }
 
-  public forceReconnect() {
+  public forceReconnectTimeout() {
     this.postMessage({type: 'online'});
+  }
+
+  public forceReconnect() {
+    this.postMessage({type: 'forceReconnect'});
   }
 }
 

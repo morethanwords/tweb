@@ -73,6 +73,15 @@ export class NetworkerFactory {
       networker.forceReconnectTimeout();
     }
   }
+
+  public forceReconnect() {
+    for(const networker of this.networkers) {
+      if(!networker.isFileNetworker) {
+        networker.forceReconnect();
+        break;
+      }
+    }
+  }
 }
 
 const networkerFactory = new NetworkerFactory();

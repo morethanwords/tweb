@@ -382,6 +382,12 @@ export default class MTPNetworker {
     }
   }
 
+  public forceReconnect() {
+    if((this.transport as TcpObfuscated).forceReconnect) {
+      (this.transport as TcpObfuscated).forceReconnect();
+    }
+  }
+
   // private sendPingDelayDisconnect = () => {
   //   if(this.pingPromise || true) return;
 
@@ -696,7 +702,9 @@ export default class MTPNetworker {
         }
 
         this.log.error('timeout', message);
-        this.setConnectionStatus(ConnectionStatus.Closed);
+        if(this.isOnline) {
+          this.setConnectionStatus(ConnectionStatus.TimedOut);
+        }
 
         /* this.getEncryptedOutput(message).then(bytes => {
           this.log.error('timeout encrypted', bytes);

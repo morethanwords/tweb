@@ -31,6 +31,7 @@ export default class ConnectionStatusComponent {
   private hadConnect = false;
   private retryAt: number;
   private connecting = false;
+  private timedOut = false;
   private updating = false;
 
   private log: ReturnType<typeof logger>;
@@ -114,7 +115,8 @@ export default class ConnectionStatusComponent {
       if(online && !this.hadConnect) {
         this.hadConnect = true;
       }
-
+      
+      this.timedOut = status && status.status === ConnectionStatus.TimedOut;
       this.connecting = !online;
       this.retryAt = status && status.retryAt;
       DEBUG && this.log('connecting', this.connecting);
@@ -129,10 +131,25 @@ export default class ConnectionStatusComponent {
     this.statusPreloader.attach(this.statusEl);
   };
 
+  private getA(langPackKey: LangPackKey, callback: () => void) {
+    const a = document.createElement('a');
+    a.classList.add('force-reconnect');
+    a.append(i18n(langPackKey));
+    a.addEventListener('click', (e) => {
+      cancelEvent(e);
+      callback();
+    });
+
+    return a;
+  }
+
   private setState = () => {
     const timeout = ConnectionStatusComponent.CHANGE_STATE_DELAY;
     if(this.connecting) {
-      if(this.hadConnect) {
+      if(this.timedOut) {
+        const a = this.getA('ConnectionStatus.ForceReconnect', () => apiManager.forceReconnect());
+        this.setStatusText('ConnectionStatus.TimedOut', [a]);
+      } else if(this.hadConnect) {
         if(this.retryAt !== undefined) {
           const timerSpan = document.createElement('span');
           const retryAt = this.retryAt;
@@ -146,13 +163,7 @@ export default class ConnectionStatusComponent {
           setTime();
           const interval = setInterval(setTime, 1e3);
   
-          const a = document.createElement('a');
-          a.classList.add('force-reconnect');
-          a.append(i18n('ConnectionStatus.Reconnect'));
-          a.addEventListener('click', (e) => {
-            cancelEvent(e);
-            apiManager.forceReconnect();
-          });
+          const a = this.getA('ConnectionStatus.Reconnect', () => apiManager.forceReconnectTimeout());
           this.setStatusText('ConnectionStatus.ReconnectIn', [timerSpan, a]);
         } else {
           this.setStatusText('ConnectionStatus.Reconnecting');
