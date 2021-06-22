@@ -47,6 +47,7 @@ const lang = {
   "ChatList.Menu.SwitchTo.Z": "Switch to Z version",
   "ConnectionStatus.ReconnectIn": "Reconnect in %ds, %s",
   "ConnectionStatus.Reconnect": "reconnect",
+  "ConnectionStatus.Reconnecting": "Reconnecting...",
   "ConnectionStatus.Waiting": "Waiting for network...",
   "Deactivated.Title": "Too many tabs...",
   "Deactivated.Subtitle": "Telegram supports only one active tab with the app.\nClick anywhere to continue using this tab.",

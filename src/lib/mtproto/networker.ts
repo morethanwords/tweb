@@ -33,6 +33,7 @@ import HTTP from './transports/http';
 import type TcpObfuscated from './transports/tcpObfuscated';
 import { bigInt2str, rightShift_, str2bigInt } from '../../vendor/leemon';
 import { forEachReverse } from '../../helpers/array';
+import { ConnectionStatus } from './connectionStatus';
 
 //console.error('networker included!', new Error().stack);
 
@@ -121,6 +122,7 @@ export default class MTPNetworker {
   private log: ReturnType<typeof logger>;
   
   public isOnline = false;
+  public status: ConnectionStatus = ConnectionStatus.Closed;
   private lastResponseTime = 0;
 
   private debug = DEBUG /* && false */ || Modes.debug;
@@ -190,7 +192,7 @@ export default class MTPNetworker {
     // }
 
     if((this.transport as TcpObfuscated).connected) {
-      this.setConnectionStatus(true);
+      this.setConnectionStatus(ConnectionStatus.Connected);
     }
   }
 
@@ -694,7 +696,7 @@ export default class MTPNetworker {
         }
 
         this.log.error('timeout', message);
-        this.setConnectionStatus(false);
+        this.setConnectionStatus(ConnectionStatus.Closed);
 
         /* this.getEncryptedOutput(message).then(bytes => {
           this.log.error('timeout encrypted', bytes);
@@ -703,7 +705,7 @@ export default class MTPNetworker {
   
       promise.finally(() => {
         clearTimeout(timeout);
-        this.setConnectionStatus(true);
+        this.setConnectionStatus(ConnectionStatus.Connected);
 
         if(!--this.activeRequests && this.onDrain) {
           this.onDrainTimeout = self.setTimeout(() => {
@@ -722,21 +724,23 @@ export default class MTPNetworker {
     return promise;
   }
 
-  public setConnectionStatus(online: boolean, timeout?: number) {
-    const willChange = this.isOnline !== online;
-    this.isOnline = online;
+  public setConnectionStatus(status: ConnectionStatus, retryAt?: number) {
+    const isOnline = status === ConnectionStatus.Connected;
+    const willChange = this.status !== status;
+    this.isOnline = isOnline;
+    this.status = status;
 
     if(willChange) {
       if(networkerFactory.onConnectionStatusChange) {
         networkerFactory.onConnectionStatusChange({
-          _: 'networkerStatus', 
-          online: this.isOnline, 
+          _: 'networkerStatus',
+          status,
           dcId: this.dcId,
           name: this.name,
           isFileNetworker: this.isFileNetworker,
           isFileDownload: this.isFileDownload,
           isFileUpload: this.isFileUpload,
-          timeout
+          retryAt
         });
       }
 

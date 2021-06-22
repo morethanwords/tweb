@@ -9,7 +9,6 @@ import type { MyDocument } from "./appManagers/appDocsManager";
 import type { AppMessagesManager, Dialog, MessagesStorage } from "./appManagers/appMessagesManager";
 import type { Poll, PollResults } from "./appManagers/appPollsManager";
 import type { MyDialogFilter } from "./storages/filters";
-import type { ConnectionStatusChange } from "../types";
 import type { UserTyping } from "./appManagers/appProfileManager";
 import type Chat from "../components/chat/chat";
 import type { UserAuth } from "./mtproto/mtproto_config";
@@ -17,6 +16,7 @@ import type { State, Theme } from "./appManagers/appStateManager";
 import type { MyDraftMessage } from "./appManagers/appDraftsManager";
 import type { PushSubscriptionNotify } from "./mtproto/webPushApiManager";
 import type { PushNotificationObject } from "./serviceWorker/push";
+import type { ConnectionStatusChange } from "./mtproto/connectionStatus";
 import EventListenerBase from "../helpers/eventListenerBase";
 import { MOUNT_CLASS_TO } from "../config/debug";
 

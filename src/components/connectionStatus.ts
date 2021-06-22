@@ -15,6 +15,9 @@ import Button from "./button";
 import ProgressivePreloader from "./preloader";
 import SetTransition from "./singleTransition";
 import sessionStorage from '../lib/sessionStorage';
+import { ConnectionStatus } from "../lib/mtproto/connectionStatus";
+import { cancelEvent } from "../helpers/dom/cancelEvent";
+import apiManager from "../lib/mtproto/mtprotoworker";
 
 export default class ConnectionStatusComponent {
   public static CHANGE_STATE_DELAY = 1000;
@@ -23,9 +26,10 @@ export default class ConnectionStatusComponent {
   private statusEl: HTMLElement;
   private statusPreloader: ProgressivePreloader;
 
-  private currentLangPackKey = '';
+  private currentLangPackKey: LangPackKey;
 
-  private connectingTimeout: number;
+  private hadConnect = false;
+  private retryAt: number;
   private connecting = false;
   private updating = false;
 
@@ -77,13 +81,13 @@ export default class ConnectionStatusComponent {
 
     /* let bool = true;
     document.addEventListener('dblclick', () => {
-      rootScope.broadcast('connection_status_change', {
+      rootScope.dispatchEvent('connection_status_change', {
         dcId: 2,
         isFileDownload: false,
         isFileNetworker: false,
         isFileUpload: false,
         name: "NET-2",
-        online: bool = !bool,
+        status: bool ? (bool = false, ConnectionStatus.Closed) : (bool = true, ConnectionStatus.Connected),
         _: "networkerStatus"
       });
     }); */
@@ -101,34 +105,61 @@ export default class ConnectionStatusComponent {
       }
 
       const status = rootScope.connectionStatus['NET-' + baseDcId];
-      const online = status && status.online;
+      const online = status && status.status === ConnectionStatus.Connected;
 
       if(this.connecting && online) {
         apiUpdatesManager.forceGetDifference();
       }
 
+      if(online && !this.hadConnect) {
+        this.hadConnect = true;
+      }
+
       this.connecting = !online;
-      this.connectingTimeout = status && status.timeout;
+      this.retryAt = status && status.retryAt;
       DEBUG && this.log('connecting', this.connecting);
       this.setState();
     });
   };
 
-  private setStatusText = (langPackKey: LangPackKey) => {
+  private setStatusText = (langPackKey: LangPackKey, args?: any[]) => {
     if(this.currentLangPackKey === langPackKey) return;
     this.currentLangPackKey = langPackKey;
-    replaceContent(this.statusEl, i18n(langPackKey));
+    replaceContent(this.statusEl, i18n(langPackKey, args));
     this.statusPreloader.attach(this.statusEl);
   };
 
   private setState = () => {
     const timeout = ConnectionStatusComponent.CHANGE_STATE_DELAY;
     if(this.connecting) {
-      // if(this.connectingTimeout) {
-      //   this.setStatusText('ConnectionStatus.Reconnect');
-      // } else {
+      if(this.hadConnect) {
+        if(this.retryAt !== undefined) {
+          const timerSpan = document.createElement('span');
+          const retryAt = this.retryAt;
+          const setTime = () => {
+            const now = Date.now();
+            timerSpan.innerText = '' + Math.round((retryAt - now) / 1000);
+            if(now > retryAt) {
+              clearInterval(interval);
+            }
+          };
+          setTime();
+          const interval = setInterval(setTime, 1e3);
+  
+          const a = document.createElement('a');
+          a.classList.add('force-reconnect');
+          a.append(i18n('ConnectionStatus.Reconnect'));
+          a.addEventListener('click', (e) => {
+            cancelEvent(e);
+            apiManager.forceReconnect();
+          });
+          this.setStatusText('ConnectionStatus.ReconnectIn', [timerSpan, a]);
+        } else {
+          this.setStatusText('ConnectionStatus.Reconnecting');
+        }
+      } else {
         this.setStatusText('ConnectionStatus.Waiting');
-      // }
+      }
     } else if(this.updating) {
       this.setStatusText('Updating');
     }

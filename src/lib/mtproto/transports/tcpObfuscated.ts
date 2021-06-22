@@ -10,6 +10,7 @@ import MTPNetworker from "../networker";
 import Obfuscation from "./obfuscation";
 import MTTransport, { MTConnection, MTConnectionConstructable } from "./transport";
 import intermediatePacketCodec from './intermediate';
+import { ConnectionStatus } from "../connectionStatus";
 
 export default class TcpObfuscated implements MTTransport {
   private codec = intermediatePacketCodec;
@@ -58,7 +59,7 @@ export default class TcpObfuscated implements MTTransport {
 
     if(this.networker) {
       this.pending.length = 0; // ! clear queue and reformat messages to container, because if sending simultaneously 10+ messages, connection will die
-      this.networker.setConnectionStatus(true);
+      this.networker.setConnectionStatus(ConnectionStatus.Connected);
       this.networker.cleanupSent();
       this.networker.resend();
     } else {
@@ -113,15 +114,16 @@ export default class TcpObfuscated implements MTTransport {
   private onClose = () => {
     this.clear();
     
-    let needTimeout: number;
+    let needTimeout: number, retryAt: number;
     if(this.autoReconnect) {
       const time = Date.now();
       const diff = time - this.lastCloseTime;
       needTimeout = !isNaN(diff) && diff < this.retryTimeout ? this.retryTimeout - diff : 0;
+      retryAt = time + needTimeout;
     }
     
     if(this.networker) {
-      this.networker.setConnectionStatus(false, needTimeout);
+      this.networker.setConnectionStatus(ConnectionStatus.Closed, retryAt);
       this.pending.length = 0;
     }
 
@@ -168,6 +170,7 @@ export default class TcpObfuscated implements MTTransport {
       }
     }
     
+    this.networker.setConnectionStatus(ConnectionStatus.Connecting);
     this.connect();
   }
 
