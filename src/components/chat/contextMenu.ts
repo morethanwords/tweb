@@ -8,6 +8,8 @@ import type { AppMessagesManager } from "../../lib/appManagers/appMessagesManage
 import type { AppChatsManager } from "../../lib/appManagers/appChatsManager";
 import type { AppPeersManager } from "../../lib/appManagers/appPeersManager";
 import type { AppPollsManager, Poll } from "../../lib/appManagers/appPollsManager";
+import type { AppDocsManager, MyDocument } from "../../lib/appManagers/appDocsManager";
+import type { AppStateManager } from "../../lib/appManagers/appStateManager";
 import type Chat from "./chat";
 import { isTouchSupported } from "../../helpers/touchSupport";
 import ButtonMenu, { ButtonMenuItemOptions } from "../buttonMenu";
@@ -18,13 +20,12 @@ import PopupPinMessage from "../popups/unpinMessage";
 import { copyTextToClipboard } from "../../helpers/clipboard";
 import PopupSendNow from "../popups/sendNow";
 import { toast } from "../toast";
-import I18n, { LangPackKey } from "../../lib/langPack";
+import I18n, { i18n, LangPackKey } from "../../lib/langPack";
 import findUpClassName from "../../helpers/dom/findUpClassName";
 import { cancelEvent } from "../../helpers/dom/cancelEvent";
 import cancelSelection from "../../helpers/dom/cancelSelection";
 import { attachClickEvent } from "../../helpers/dom/clickEvent";
 import isSelectionEmpty from "../../helpers/dom/isSelectionEmpty";
-import appDocsManager, { MyDocument } from "../../lib/appManagers/appDocsManager";
 
 export default class ChatContextMenu {
   private buttons: (ButtonMenuItemOptions & {verify: () => boolean, notDirect?: () => boolean, withSelection?: true})[];
@@ -39,7 +40,13 @@ export default class ChatContextMenu {
   private mid: number;
   private message: any;
 
-  constructor(private attachTo: HTMLElement, private chat: Chat, private appMessagesManager: AppMessagesManager, private appChatsManager: AppChatsManager, private appPeersManager: AppPeersManager, private appPollsManager: AppPollsManager) {
+  constructor(private attachTo: HTMLElement, 
+    private chat: Chat, 
+    private appMessagesManager: AppMessagesManager, 
+    private appPeersManager: AppPeersManager, 
+    private appPollsManager: AppPollsManager,
+    private appDocsManager: AppDocsManager
+  ) {
     const onContextMenu = (e: MouseEvent | Touch | TouchEvent) => {
       if(this.init) {
         this.init();
@@ -246,7 +253,7 @@ export default class ChatContextMenu {
       icon: 'download',
       text: 'MediaViewer.Context.Download',
       onClick: () => {
-        appDocsManager.saveDocFile(this.message.media.document);
+        this.appDocsManager.saveDocFile(this.message.media.document);
       },
       verify: () => {
         if(this.message.pFlags.is_outgoing) {

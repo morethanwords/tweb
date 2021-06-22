@@ -27,6 +27,7 @@ const lang = {
   "ExceptionModal.Search.Placeholder": "Add exception...",
   "Chat.Menu.SelectMessages": "Select Messages",
   "Chat.Menu.ClearSelection": "Clear Selection",
+  "Chat.Menu.Hint": "To **edit** or **reply**, close this menu.\nThen tap next to a message.",
   "Chat.Input.UnpinAll": "Unpin All Messages",
   "Chat.Input.Attach.PhotoOrVideo": "Photo or Video",
   "Chat.Input.Attach.Document": "Document",

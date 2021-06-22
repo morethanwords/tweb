@@ -33,6 +33,7 @@ import blurActiveElement from "../../helpers/dom/blurActiveElement";
 import { cancelEvent } from "../../helpers/dom/cancelEvent";
 import { attachClickEvent } from "../../helpers/dom/clickEvent";
 import findUpTag from "../../helpers/dom/findUpTag";
+import { toast } from "../toast";
 
 export default class ChatTopbar {
   public container: HTMLDivElement;
@@ -217,7 +218,22 @@ export default class ChatTopbar {
       icon: 'select',
       text: 'Chat.Menu.SelectMessages',
       onClick: () => {
-        this.chat.selection.toggleSelection(true, true);
+        const selection = this.chat.selection;
+        selection.toggleSelection(true, true);
+        appStateManager.getState().then(state => {
+          if(state.chatContextMenuHintWasShown) {
+            return;
+          }
+
+          const original = selection.toggleByBubble.bind(selection);
+          selection.toggleByBubble = (bubble) => {
+            appStateManager.pushToState('chatContextMenuHintWasShown', true);
+            toast(i18n('Chat.Menu.Hint'));
+
+            selection.toggleByBubble = original;
+            selection.toggleByBubble(bubble);
+          };
+        });
       },
       verify: () => !this.chat.selection.isSelecting && !!Object.keys(this.chat.bubbles.bubbles).length
     }, {
