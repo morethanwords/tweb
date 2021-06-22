@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { SliderSuperTab } from "../../slider";
+import { SliderSuperTabEventable } from "../../sliderTab";
 import { SettingSection } from "..";
 import Row from "../../row";
 import { AccountPassword, Authorization, InputPrivacyKey } from "../../../layer";
@@ -27,12 +27,13 @@ import rootScope from "../../../lib/rootScope";
 import { convertKeyToInputKey } from "../../../helpers/string";
 import { i18n, LangPackKey, _i18n } from "../../../lib/langPack";
 import replaceContent from "../../../helpers/dom/replaceContent";
+import CheckboxField from "../../checkboxField";
 
-export default class AppPrivacyAndSecurityTab extends SliderSuperTab {
+export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
   private activeSessionsRow: Row;
   private authorizations: Authorization.authorization[];
 
-  protected init() {
+  protected async init() {
     this.container.classList.add('privacy-container');
     this.setTitle('PrivacySettings');
 
@@ -222,6 +223,39 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTab {
 
       rootScope.addEventListener('privacy_update', (update) => {
         updatePrivacyRow(convertKeyToInputKey(update.key._) as any);
+      });
+    }
+
+    {
+      await apiManager.invokeApi('account.getContentSettings').then(settings => {
+        if(!settings.pFlags.sensitive_can_change) {
+          return;
+        }
+        
+        const enabled = settings.pFlags.sensitive_enabled;
+        const section = new SettingSection({name: 'Privacy.SensitiveContent'});
+
+        const sensitiveRow = new Row({
+          checkboxField: new CheckboxField({text: 'PrivacyAndSecurity.SensitiveText', checked: enabled}),
+          subtitleLangKey: 'PrivacyAndSecurity.SensitiveDesc',
+          noCheckboxSubtitle: true
+        });
+        
+        section.content.append(sensitiveRow.container);
+  
+        this.scrollable.append(section.container);
+
+        this.eventListener.addEventListener('destroy', () => {
+          const _enabled = sensitiveRow.checkboxField.checked;
+          const isChanged = _enabled !== enabled;
+          if(!isChanged) {
+            return;
+          }
+
+          apiManager.invokeApi('account.setContentSettings', {
+            sensitive_enabled: _enabled
+          });
+        }, true);
       });
     }
   }
