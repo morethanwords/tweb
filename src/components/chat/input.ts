@@ -1265,7 +1265,7 @@ export default class ChatInput {
         foundHelper = this.commandsHelper;
       }
     } else if(rootScope.settings.emoji.suggest) { // emoji
-      if(!value.match(/^\s*:(.+):\s*$/)) {
+      if(!value.match(/^\s*:(.+):\s*$/) && !value.match(/:[;!@#$%^&*()-=|]/)) {
         foundHelper = this.emojiHelper;
         this.emojiHelper.checkQuery(query, firstChar);
       }
