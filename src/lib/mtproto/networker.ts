@@ -139,7 +139,7 @@ export default class MTPNetworker {
   //private debugRequests: Array<{before: Uint8Array, after: Uint8Array}> = [];
 
   constructor(public dcId: number, private authKey: number[], private authKeyId: Uint8Array,
-    serverSalt: number[], private transport: MTTransport, options: InvokeApiOptions = {}) {
+    serverSalt: number[], public transport: MTTransport, options: InvokeApiOptions = {}) {
     this.authKeyUint8 = convertToUint8Array(this.authKey);
     this.serverSalt = convertToUint8Array(serverSalt);
 
@@ -715,21 +715,28 @@ export default class MTPNetworker {
         clearTimeout(timeout);
         this.setConnectionStatus(ConnectionStatus.Connected);
 
-        if(!--this.activeRequests && this.onDrain) {
-          this.onDrainTimeout = self.setTimeout(() => {
-            this.log('drain');
-            this.onDrain();
-          }, DRAIN_TIMEOUT);
-        }
+        --this.activeRequests;
+        this.setDrainTimeout();
       });
       
       ++this.activeRequests;
       if(this.onDrainTimeout !== undefined) {
         clearTimeout(this.onDrainTimeout);
+        this.onDrainTimeout = undefined;
       }
     }
 
     return promise;
+  }
+
+  public setDrainTimeout() {
+    if(!this.activeRequests && this.onDrain && this.onDrainTimeout === undefined) {
+      this.onDrainTimeout = self.setTimeout(() => {
+        this.onDrainTimeout = undefined;
+        this.log('drain');
+        this.onDrain();
+      }, DRAIN_TIMEOUT);
+    }
   }
 
   public setConnectionStatus(status: ConnectionStatus, retryAt?: number) {

@@ -16,7 +16,7 @@ import { isObject } from './bin_utils';
 import networkerFactory from './networkerFactory';
 //import { telegramMeWebService } from './mtproto';
 import authorizer from './authorizer';
-import dcConfigurator, { ConnectionType, TransportType } from './dcConfigurator';
+import dcConfigurator, { ConnectionType, DcConfigurator, TransportType } from './dcConfigurator';
 import { logger } from '../logger';
 import type { DcId, InvokeApiOptions, TrueDcId } from '../../types';
 import type { MethodDeclMap } from '../../layer';
@@ -141,6 +141,13 @@ export class ApiManager {
   }
 
   public setBaseDcId(dcId: DcId) {
+    const wasDcId = this.baseDcId;
+    if(wasDcId) { // if migrated set ondrain
+      this.getNetworker(wasDcId).then(networker => {
+        this.setOnDrainIfNeeded(networker);
+      });
+    }
+
     this.baseDcId = dcId;
 
     sessionStorage.set({
@@ -242,7 +249,7 @@ export class ApiManager {
     
     return this.gettingNetworkers[getKey] = Promise.all([ak, ss].map(key => sessionStorage.get(key)))
     .then(async([authKeyHex, serverSaltHex]) => {
-      const transport = dcConfigurator.chooseServer(dcId, connectionType, transportType, false);
+      const transport = dcConfigurator.chooseServer(dcId, connectionType, transportType, connectionType === 'client');
       let networker: MTPNetworker;
       if(authKeyHex && authKeyHex.length === 512) {
         if(!serverSaltHex || serverSaltHex.length !== 16) {
@@ -273,25 +280,43 @@ export class ApiManager {
         }
       }
 
-      if(transportType === 'websocket' && networker.isFileNetworker) {
+      /* networker.onConnectionStatusChange = (online) => {
+        console.log('status:', online);
+      }; */
+      
+      delete this.gettingNetworkers[getKey];
+      networkers.unshift(networker);
+      this.setOnDrainIfNeeded(networker);
+      return networker;
+    });
+  }
+
+  public setOnDrainIfNeeded(networker: MTPNetworker) {
+    if(networker.onDrain) {
+      return;
+    }
+    
+    const checkPromise: Promise<boolean> = networker.isFileNetworker ? 
+      Promise.resolve(true) : 
+      this.getBaseDcId().then(baseDcId => networker.dcId !== baseDcId);
+    checkPromise.then(canRelease => {
+      if(networker.onDrain) {
+        return;
+      }
+      
+      if(canRelease) {
         networker.onDrain = () => {
           this.log('networker drain', networker.dcId);
 
           networker.onDrain = undefined;
-          const idx = networkers.indexOf(networker);
-          networkers.splice(idx, 1);
-          networkerFactory.removeNetworker(networker);
           networker.destroy();
+          networkerFactory.removeNetworker(networker);
+          DcConfigurator.removeTransport(this.cachedNetworkers, networker);
+          DcConfigurator.removeTransport(dcConfigurator.chosenServers, networker.transport);
         };
+
+        networker.setDrainTimeout();
       }
-
-      /* networker.onConnectionStatusChange = (online) => {
-        console.log('status:', online);
-      }; */
-
-      delete this.gettingNetworkers[getKey];
-      networkers.unshift(networker);
-      return networker;
     });
   }
   

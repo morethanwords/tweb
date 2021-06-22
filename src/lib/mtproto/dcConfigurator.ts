@@ -53,7 +53,7 @@ export class DcConfigurator {
       {id: 5, host: '149.154.171.5',   port: 80}
     ];
 
-  private chosenServers: Servers = {} as any;
+  public chosenServers: Servers = {} as any;
 
   /// #if !MTPROTO_HTTP
   private transportSocket = (dcId: number, connectionType: ConnectionType) => {
@@ -133,6 +133,23 @@ export class DcConfigurator {
     }
   
     return transports[0];
+  }
+  
+  public static removeTransport<T>(obj: any, transport: T) {
+    for(const transportType in obj) {
+      // @ts-ignore
+      for(const connectionType in obj[transportType]) {
+        // @ts-ignore
+        for(const dcId in obj[transportType][connectionType]) {
+          // @ts-ignore
+          const transports: T[] = obj[transportType][connectionType][dcId];
+          const idx = transports.indexOf(transport);
+          if(idx !== -1) {
+            transports.splice(idx, 1);
+          }
+        }
+      }
+    }
   }
 }
 
