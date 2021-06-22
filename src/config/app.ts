@@ -14,7 +14,7 @@ import type { DcId } from "../types";
 const App = {
   id: 1025907,
   hash: '452b0359b988148995f22ff0f4229750',
-  version: '0.5.7',
+  version: '0.5.8',
   langPackVersion: '0.2.6',
   langPack: 'macos',
   langPackCode: 'en',
