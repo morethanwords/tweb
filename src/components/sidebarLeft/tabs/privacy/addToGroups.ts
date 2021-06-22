@@ -7,6 +7,7 @@
 import { SliderSuperTabEventable } from "../../../sliderTab";
 import PrivacySection from "../../../privacySection";
 import { LangPackKey } from "../../../../lib/langPack";
+import { PrivacyType } from "../../../../lib/appManagers/appPrivacyManager";
 
 export default class AppPrivacyAddToGroupsTab extends SliderSuperTabEventable {
   protected init() {
@@ -20,7 +21,8 @@ export default class AppPrivacyAddToGroupsTab extends SliderSuperTabEventable {
       inputKey: 'inputPrivacyKeyChatInvite',
       captions: [caption, caption, caption],
       exceptionTexts: ['PrivacySettingsController.NeverAllow', 'PrivacySettingsController.AlwaysAllow'],
-      appendTo: this.scrollable
+      appendTo: this.scrollable,
+      skipTypes: [PrivacyType.Nobody]
     });
   }
 }
