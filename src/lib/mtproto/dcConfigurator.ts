@@ -22,6 +22,7 @@ import TcpObfuscated from './transports/tcpObfuscated';
 import { isSafari } from '../../helpers/userAgent';
 import { isWebWorker } from '../../helpers/context';
 import SocketProxied from './transports/socketProxied';
+import App from '../../config/app';
 /// #endif
 
 export type TransportType = 'websocket' | 'https' | 'http';
@@ -56,10 +57,9 @@ export class DcConfigurator {
   public chosenServers: Servers = {} as any;
 
   /// #if !MTPROTO_HTTP
-  private transportSocket = (dcId: number, connectionType: ConnectionType) => {
-    const subdomain = this.sslSubdomains[dcId - 1];
+  private transportSocket = (dcId: number, connectionType: ConnectionType, suffix: string) => {
     const path = 'apiws' + TEST_SUFFIX;
-    const chosenServer = 'wss://' + subdomain + '.web.telegram.org/' + path;
+    const chosenServer = `wss://${App.suffix.toLowerCase()}ws${dcId}${suffix}.web.telegram.org/${path}`;
     const logSuffix = connectionType === 'upload' ? '-U' : connectionType === 'download' ? '-D' : '';
 
     const retryTimeout = connectionType === 'client' ? 10000 : 10000;
@@ -71,7 +71,7 @@ export class DcConfigurator {
   /// #endif
 
   /// #if MTPROTO_HTTP_UPLOAD || MTPROTO_HTTP
-  private transportHTTP = (dcId: number, connectionType: ConnectionType) => {
+  private transportHTTP = (dcId: number, connectionType: ConnectionType, suffix: string) => {
     if(Modes.ssl || !Modes.http) {
       const subdomain = this.sslSubdomains[dcId - 1] + (connectionType !== 'client' ? '-1' : '');
       const path = Modes.test ? 'apiw_test1' : 'apiw1';
@@ -112,12 +112,14 @@ export class DcConfigurator {
     if(!transports.length || !reuse/*  || (upload && transports.length < 1) */) {
       let transport: MTTransport;
 
+      const suffix = connectionType === 'client' ? '' : '-1';
+
       /// #if MTPROTO_HTTP_UPLOAD
-      transport = (transportType === 'websocket' ? this.transportSocket : this.transportHTTP)(dcId, connectionType);
+      transport = (transportType === 'websocket' ? this.transportSocket : this.transportHTTP)(dcId, connectionType, suffix);
       /// #elif !MTPROTO_HTTP
-      transport = this.transportSocket(dcId, connectionType);
+      transport = this.transportSocket(dcId, connectionType, suffix);
       /// #else
-      transport = this.transportHTTP(dcId, connectionType);
+      transport = this.transportHTTP(dcId, connectionType, suffix);
       /// #endif
   
       if(!transport) {
