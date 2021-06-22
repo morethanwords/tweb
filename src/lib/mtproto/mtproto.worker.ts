@@ -90,7 +90,11 @@ const taskListeners = {
 
   online: () => {
     networkerFactory.forceReconnectTimeout();
-  }
+  },
+
+  forceReconnect: () => {
+    networkerFactory.forceReconnect();
+  },
 };
 
 const onMessage = async(e: any) => {

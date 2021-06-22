@@ -7,7 +7,8 @@
 export enum ConnectionStatus {
   Connected,
   Connecting,
-  Closed
+  Closed,
+  TimedOut
 };
 
 export type ConnectionStatusChange = {

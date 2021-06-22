@@ -135,7 +135,7 @@ export default class TcpObfuscated implements MTTransport {
     }
   };
 
-  private clear() {
+  public clear() {
     this.connected = false;
 
     if(this.connection) {
@@ -174,14 +174,28 @@ export default class TcpObfuscated implements MTTransport {
     this.connect();
   }
 
+  public forceReconnect() {
+    this.close();
+    this.reconnect();
+  }
+
   public destroy() {
     this.setAutoReconnect(false);
     this.close();
   }
 
   public close() {
-    if(this.connection) {
-      this.connection.close();
+    const connection = this.connection;
+    if(connection) {
+      const connected = this.connected;
+      this.clear();
+      if(connected) { // wait for buffered messages if they are there
+        connection.addEventListener('message', this.onMessage);
+        connection.addEventListener('close', () => {
+          connection.removeEventListener('message', this.onMessage);
+        }, true);
+        connection.close();
+      }
     }
   }
 
@@ -205,7 +219,6 @@ export default class TcpObfuscated implements MTTransport {
   private connect() {
     if(this.connection) {
       this.close();
-      this.clear();
     }
 
     this.connection = new this.Connection(this.dcId, this.url, this.logSuffix);
