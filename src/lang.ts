@@ -82,6 +82,7 @@ const lang = {
     "one_value": "%1$d device",
     "other_value": "%1$d devices"
   },
+  "Privacy.SensitiveContent": "Sensitive Content",
   "PrivacyModal.Search.Placeholder": "Add Users or Groups...",
   "Permissions.NoExceptions": "No exceptions",
   "Permissions.ExceptionsCount": {
@@ -683,6 +684,8 @@ const lang = {
   },
   "PrivacyAndSecurity.Item.On": "On",
   "PrivacyAndSecurity.Item.Off": "Off",
+  "PrivacyAndSecurity.SensitiveText": "Disable filtering",
+  "PrivacyAndSecurity.SensitiveDesc": "Display sensitive media in public channels on all your Telegram devices.",
   "PrivacySettings.VoiceCalls": "Calls",
   "PrivacySettings.Forwards": "Forwarded Messages",
   "PrivacySettings.Groups": "Groups and Channels",

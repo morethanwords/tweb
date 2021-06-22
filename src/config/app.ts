@@ -15,7 +15,7 @@ const App = {
   id: 1025907,
   hash: '452b0359b988148995f22ff0f4229750',
   version: '0.5.7',
-  langPackVersion: '0.2.4',
+  langPackVersion: '0.2.5',
   langPack: 'macos',
   langPackCode: 'en',
   domains: [] as string[],
