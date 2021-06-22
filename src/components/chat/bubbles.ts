@@ -30,7 +30,7 @@ import StickyIntersector from "../stickyIntersector";
 import animationIntersector from "../animationIntersector";
 import RichTextProcessor from "../../lib/richtextprocessor";
 import mediaSizes from "../../helpers/mediaSizes";
-import { isAndroid, isApple, isSafari } from "../../helpers/userAgent";
+import { isAndroid, isApple, isMobile, isSafari } from "../../helpers/userAgent";
 import I18n, { i18n, langPack } from "../../lib/langPack";
 import AvatarElement from "../avatar";
 import { formatPhoneNumber } from "../misc";
@@ -422,17 +422,19 @@ export default class ChatBubbles {
       });
     }
 
-    this.listenerSetter.add(this.bubblesContainer, 'dblclick', (e) => {
-      if(this.chat.selection.isSelecting || !this.appMessagesManager.canWriteToPeer(this.peerId, this.chat.threadId)) {
-        return;
-      }
-      
-      const bubble = (e.target as HTMLElement).classList.contains('bubble') ? e.target as HTMLElement : null;
-      if(bubble) {
-        const mid = +bubble.dataset.mid
-        this.chat.input.initMessageReply(mid);
-      }
-    });
+    if(!isMobile) {
+      this.listenerSetter.add(this.bubblesContainer, 'dblclick', (e) => {
+        if(this.chat.selection.isSelecting || !this.appMessagesManager.canWriteToPeer(this.peerId, this.chat.threadId)) {
+          return;
+        }
+        
+        const bubble = (e.target as HTMLElement).classList.contains('bubble') ? e.target as HTMLElement : null;
+        if(bubble) {
+          const mid = +bubble.dataset.mid
+          this.chat.input.initMessageReply(mid);
+        }
+      });
+    }
 
     /* if(false)  */this.stickyIntersector = new StickyIntersector(this.scrollable.container, (stuck, target) => {
       for(const timestamp in this.dateMessages) {
