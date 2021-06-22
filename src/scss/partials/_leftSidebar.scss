@@ -1002,12 +1002,11 @@
 
 .privacy-container {
   .sidebar-left-section.no-delimiter {
-    padding-bottom: 0;
     padding-top: .75rem;
   }
 
-  .sidebar-left-section:last-child {
-    padding-top: .4375rem;
+  .sidebar-left-section {
+    padding: 0 0 .5rem;
   }
 
   /* .privacy-navigation-container {
