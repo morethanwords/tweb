@@ -442,10 +442,16 @@
     &-button {
       color: #2e3939;
       align-self: center;
-      pointer-events: none;
+      cursor: default;
       padding-left: 4.5rem;
       text-align: left;
       height: 3.5rem;
+
+      .force-reconnect {
+        cursor: pointer;
+        text-decoration: underline;
+        color: inherit;
+      }
 
       transform: translateY(-100%);
 
@@ -468,6 +474,7 @@
       bottom: 0;
       right: 0;
       overflow: hidden;
+      background-color: var(--surface-color);
 
       transform: translateY(0);
       height: 100%;

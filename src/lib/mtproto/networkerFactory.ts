@@ -9,8 +9,9 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
+import type { ConnectionStatusChange } from "./connectionStatus";
 import MTPNetworker from "./networker";
-import { ConnectionStatusChange, InvokeApiOptions } from "../../types";
+import { InvokeApiOptions } from "../../types";
 import MTTransport from "./transports/transport";
 import App from "../../config/app";
 import { MOUNT_CLASS_TO } from "../../config/debug";
