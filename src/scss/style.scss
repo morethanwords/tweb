@@ -662,6 +662,10 @@ input:-webkit-autofill:active {
   animation: fade-in-opacity-fade-out-opacity 3s linear forwards;
   z-index: 5;
   max-width: 22.5rem;
+
+  b {
+    color: inherit;
+  }
 }
 
 hr {

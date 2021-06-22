@@ -88,7 +88,8 @@ export type State = {
     },
     nightTheme?: boolean, // ! DEPRECATED
   },
-  keepSigned: boolean
+  keepSigned: boolean,
+  chatContextMenuHintWasShown: boolean
 };
 
 export const STATE_INIT: State = {
@@ -151,7 +152,8 @@ export const STATE_INIT: State = {
       sound: false
     }
   },
-  keepSigned: true
+  keepSigned: true,
+  chatContextMenuHintWasShown: false
 };
 
 const ALL_KEYS = Object.keys(STATE_INIT) as any as Array<keyof State>;

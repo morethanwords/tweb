@@ -21,6 +21,7 @@ import type { ApiManagerProxy } from "../../lib/mtproto/mtprotoworker";
 import type { AppDraftsManager } from "../../lib/appManagers/appDraftsManager";
 import type { AppEmojiManager } from "../../lib/appManagers/appEmojiManager";
 import type { ServerTimeManager } from "../../lib/mtproto/serverTimeManager";
+import type { State } from "../../lib/appManagers/appStateManager";
 import type stateStorage from '../../lib/stateStorage';
 import EventListenerBase from "../../helpers/eventListenerBase";
 import { logger, LogTypes } from "../../lib/logger";
@@ -35,7 +36,6 @@ import { REPLIES_PEER_ID } from "../../lib/mtproto/mtproto_config";
 import SetTransition from "../singleTransition";
 import { fastRaf } from "../../helpers/schedulers";
 import AppPrivateSearchTab from "../sidebarRight/tabs/search";
-import type { State } from "../../lib/appManagers/appStateManager";
 import renderImageFromUrl from "../../helpers/dom/renderImageFromUrl";
 import mediaSizes from "../../helpers/mediaSizes";
 import ChatSearch from "./search";
@@ -173,7 +173,7 @@ export default class Chat extends EventListenerBase<{
     this.bubbles = new ChatBubbles(this, this.appMessagesManager, this.appStickersManager, this.appUsersManager, this.appInlineBotsManager, this.appPhotosManager, this.appPeersManager);
     this.input = new ChatInput(this, this.appMessagesManager, this.appDocsManager, this.appChatsManager, this.appPeersManager, this.appWebPagesManager, this.appImManager, this.appDraftsManager, this.serverTimeManager, this.appNotificationsManager, this.appEmojiManager);
     this.selection = new ChatSelection(this, this.bubbles, this.input, this.appMessagesManager);
-    this.contextMenu = new ChatContextMenu(this.bubbles.bubblesContainer, this, this.appMessagesManager, this.appChatsManager, this.appPeersManager, this.appPollsManager);
+    this.contextMenu = new ChatContextMenu(this.bubbles.bubblesContainer, this, this.appMessagesManager, this.appPeersManager, this.appPollsManager, this.appDocsManager);
 
     if(this.type === 'chat') {
       this.topbar.constructUtils();

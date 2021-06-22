@@ -4,10 +4,12 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import replaceContent from "../helpers/dom/replaceContent";
+
 const toastEl = document.createElement('div');
 toastEl.classList.add('toast');
-export function toast(html: string) {
-  toastEl.innerHTML = html;
+export function toast(content: string | Node) {
+  replaceContent(toastEl, content);
   document.body.append(toastEl);
 
   if(toastEl.dataset.timeout) clearTimeout(+toastEl.dataset.timeout);
