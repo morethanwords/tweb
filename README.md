@@ -1,5 +1,5 @@
 ## Telegram Web K
-Based on Webogram, patched and improved. Available for everyone here: https://webk.telegram.org/
+Based on Webogram, patched and improved. Available for everyone here: https://web.telegram.org/k/
 
 
 ### Developing
