@@ -9,14 +9,6 @@ export const isApple = navigator.userAgent.search(/OS X|iPhone|iPad|iOS/i) !== -
 export const isAndroid = navigator.userAgent.toLowerCase().indexOf('android') !== -1;
 export const isChromium = /Chrome/.test(navigator.userAgent) && /Google Inc/.test(navigator.vendor);
 
-/**
- * Returns true when run in WebKit derived browsers.
- * This is used as a workaround for a memory leak in Safari caused by using Transferable objects to
- * transfer data between WebWorkers and the main thread.
- * https://github.com/mapbox/mapbox-gl-js/issues/8771
- *
- * This should be removed once the underlying Safari issue is fixed.
- */
 export const ctx = typeof(window) !== 'undefined' ? window : self;
 
 // https://stackoverflow.com/a/58065241

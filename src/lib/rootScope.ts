@@ -123,6 +123,8 @@ export type BroadcastEvents = {
   'push_init': PushSubscriptionNotify,
   'push_subscribe': PushSubscriptionNotify,
   'push_unsubscribe': PushSubscriptionNotify,
+
+  'emoji_recent': string
 };
 
 export class RootScope extends EventListenerBase<{

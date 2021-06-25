@@ -17,6 +17,7 @@ import { MessageEntity } from '../layer';
 import { encodeEntities } from '../helpers/string';
 import { isSafari } from '../helpers/userAgent';
 import { MOUNT_CLASS_TO } from '../config/debug';
+import IS_EMOJI_SUPPORTED from '../helpers/emojiSupport';
 
 const EmojiHelper = {
   emojiMap: (code: string) => { return code; },
@@ -114,7 +115,7 @@ for(let i in markdownEntities) {
 }
 
 namespace RichTextProcessor {
-  export const emojiSupported = navigator.userAgent.search(/OS X|iPhone|iPad|iOS/i) !== -1/*  && false *//*  || true */;
+  export const emojiSupported = IS_EMOJI_SUPPORTED;
 
   export function getEmojiSpritesheetCoords(emojiCode: string) {
     let unified = encodeEmoji(emojiCode).replace(/-?fe0f/g, '');

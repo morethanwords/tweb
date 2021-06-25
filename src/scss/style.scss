@@ -1302,6 +1302,7 @@ middle-ellipsis-element {
       height: 1.75rem;
       border-radius: 50%;
       background-color: var(--light-secondary-text-color);
+      pointer-events: none;
 
       @include animation-level(2) {
         opacity: 0;

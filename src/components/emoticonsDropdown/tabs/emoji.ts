@@ -15,6 +15,7 @@ import Config from "../../../lib/config";
 import { i18n, LangPackKey } from "../../../lib/langPack";
 import { RichTextProcessor } from "../../../lib/richtextprocessor";
 import rootScope from "../../../lib/rootScope";
+import { emojiFromCodePoints } from "../../../vendor/emoji";
 import { putPreloader } from "../../misc";
 import Scrollable from "../../scrollable";
 import StickyIntersector from "../../stickyIntersector";
@@ -53,10 +54,10 @@ export function appendEmoji(emoji: string, container: HTMLElement, prepend = fal
 
   if(spanEmoji.firstElementChild && !RichTextProcessor.emojiSupported) {
     const image = spanEmoji.firstElementChild as HTMLImageElement;
-    image.setAttribute('loading', 'lazy');
-
+    
     const url = image.src;
     if(!loadedURLs.has(url)) {
+      image.setAttribute('loading', 'lazy');
       const placeholder = document.createElement('span');
       placeholder.classList.add('emoji-placeholder');
 
@@ -89,6 +90,8 @@ export function appendEmoji(emoji: string, container: HTMLElement, prepend = fal
 }
 
 export function getEmojiFromElement(element: HTMLElement) {
+  if(!findUpClassName(element, 'super-emoji')) return '';
+
   if(element.nodeType === 3) return element.nodeValue;
   if(element.tagName === 'SPAN' && !element.classList.contains('emoji') && element.firstElementChild) {
     element = element.firstElementChild as HTMLElement;
@@ -170,7 +173,7 @@ export default class EmojiTab implements EmoticonsTab {
           console.log('append emoji', emoji, emojiUnicode(emoji));
         } */
 
-        let emoji = unified.split('-').reduce((prev, curr) => prev + String.fromCodePoint(parseInt(curr, 16)), '');
+        let emoji = emojiFromCodePoints(unified);
         //if(emoji.includes('🕵')) {
           //console.log('toCodePoints', toCodePoints(emoji));
           //emoji = emoji.replace(/(\u200d[\u2640\u2642\u2695])(?!\ufe0f)/, '\ufe0f$1');
@@ -236,64 +239,75 @@ export default class EmojiTab implements EmoticonsTab {
     this.content.addEventListener('click', this.onContentClick);
     this.stickyIntersector = EmoticonsDropdown.menuOnClick(menu, emojiScroll);
     this.init = null;
+
+    rootScope.addEventListener('emoji_recent', (emoji) => {
+      const children = Array.from(this.recentItemsDiv.children) as HTMLElement[];
+      for(let i = 0, length = children.length; i < length; ++i) {
+        const el = children[i];
+        const _emoji = getEmojiFromElement(el);
+        if(emoji === _emoji) {
+          if(i === 0) {
+            return;
+          }
+
+          el.remove();
+        }
+      }
+
+      appendEmoji(emoji, this.recentItemsDiv, true);
+      this.recentItemsDiv.parentElement.classList.remove('hide');
+    });
   }
 
   onContentClick = (e: MouseEvent) => {
     cancelEvent(e);
-    let target = e.target as HTMLElement;
-    //if(target.tagName !== 'SPAN') return;
-
-    if(target.tagName === 'SPAN' && !target.classList.contains('emoji')) {
-      target = findUpClassName(target, 'super-emoji');
-      if(!target) {
-        return;
-      }
-
-      target = target.firstChild as HTMLElement;
-    } else if(target.tagName === 'DIV') return;
-
-    // set selection range
-    const savedRange = isTouchSupported ? undefined : emoticonsDropdown.getSavedRange();
-    let sel: Selection;
-    if(savedRange) {
-      sel = document.getSelection();
-      sel.removeAllRanges();
-      sel.addRange(savedRange);
-    }
-
-    const html = RichTextProcessor.emojiSupported ? 
-      (target.nodeType === 3 ? target.nodeValue : target.innerHTML) : 
-      target.outerHTML;
-
-    if((document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.hasAttribute('contenteditable'))) || 
-      savedRange) {
-      document.execCommand('insertHTML', true, html);
-    } else {
-      appImManager.chat.input.messageInput.innerHTML += html;
-    }
-
-    /* if(sel && isTouchSupported) {
-      sel.removeRange(savedRange);
-      blurActiveElement();
-    } */
-
-    // Recent
-    const emoji = getEmojiFromElement(target);
-    (Array.from(this.recentItemsDiv.children) as HTMLElement[]).forEach((el, idx) => {
-      const _emoji = getEmojiFromElement(el);
-      if(emoji === _emoji) {
-        el.remove();
-      }
-    });
     
-    appendEmoji(emoji, this.recentItemsDiv, true);
+    const emoji = getEmojiFromElement(e.target as HTMLElement);
+    if(!emoji) {
+      return;
+    }
 
-    appEmojiManager.pushRecentEmoji(emoji);
-    this.recentItemsDiv.parentElement.classList.remove('hide');
+    const messageInput = appImManager.chat.input.messageInput;
+    let inputHTML = messageInput.innerHTML;
 
+    const html = RichTextProcessor.wrapEmojiText(emoji);
+    let inserted = false;
+    if(window.getSelection) {
+      const savedRange = isTouchSupported ? undefined : emoticonsDropdown.getSavedRange();
+      let sel = window.getSelection();
+      if(savedRange) {
+        sel.removeAllRanges();
+        sel.addRange(savedRange);
+      }
+
+      if(sel.getRangeAt && sel.rangeCount) {
+        var el = document.createElement('div');
+        el.innerHTML = html;
+        var node = el.firstChild;
+        var range = sel.getRangeAt(0);
+        range.deleteContents();
+        //range.insertNode(document.createTextNode(' '));
+        range.insertNode(node);
+        range.setStart(node, 0);
+        inserted = true;
+  
+        setTimeout(() => {
+          range = document.createRange();
+          range.setStartAfter(node);
+          range.collapse(true);
+          sel.removeAllRanges();
+          sel.addRange(range);
+        }, 0);
+      }
+    }
+
+    if(!inserted || messageInput.innerHTML === inputHTML) {
+      messageInput.insertAdjacentHTML('beforeend', html);
+    }
+    
     // Append to input
     const event = new Event('input', {bubbles: true, cancelable: true});
-    appImManager.chat.input.messageInput.dispatchEvent(event);
+    messageInput.dispatchEvent(event);
   };
 
   onClose() {

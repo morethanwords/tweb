@@ -10,6 +10,7 @@ import { validateInitObject } from "../../helpers/object";
 import I18n from "../langPack";
 import { isObject } from "../mtproto/bin_utils";
 import apiManager from "../mtproto/mtprotoworker";
+import rootScope from "../rootScope";
 import SearchIndex from "../searchIndex";
 import stateStorage from "../stateStorage";
 import appStateManager from "./appStateManager";
@@ -226,6 +227,7 @@ export class AppEmojiManager {
       }
 
       appStateManager.pushToState('recentEmoji', recent);
+      rootScope.dispatchEvent('emoji_recent', emoji);
     });
   }
 }
