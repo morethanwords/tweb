@@ -30,26 +30,21 @@ import { SliceEnd } from "../../helpers/slicedArray";
 export default class DialogsStorage {
   private storage: AppStateManager['storages']['dialogs'];
   
-  private dialogs: {[peerId: string]: Dialog} = {};
-  public byFolders: {[folderId: number]: Dialog[]} = {};
+  private dialogs: {[peerId: string]: Dialog};
+  public byFolders: {[folderId: number]: Dialog[]};
 
   private allDialogsLoaded: {[folder_id: number]: boolean};
   private dialogsOffsetDate: {[folder_id: number]: number};
   private pinnedOrders: {[folder_id: number]: number[]};
   private dialogsNum: number;
 
-  private dialogsIndex = new SearchIndex<number>();
+  private dialogsIndex: SearchIndex<number>;
 
   private cachedResults: {
     query: string,
     count: number,
     dialogs: Dialog[],
     folderId: number
-  } = {
-    query: '',
-    count: 0,
-    dialogs: [],
-    folderId: 0
   };
 
   constructor(private appMessagesManager: AppMessagesManager, 
@@ -62,9 +57,8 @@ export default class DialogsStorage {
     private apiUpdatesManager: ApiUpdatesManager,
     private serverTimeManager: ServerTimeManager
   ) {
+    this.clear();
     this.storage = this.appStateManager.storages.dialogs;
-
-    this.reset();
 
     rootScope.addEventListener('language_change', (e) => {
       const peerId = appUsersManager.getSelf().id;
@@ -123,7 +117,9 @@ export default class DialogsStorage {
     this.appStateManager.pushToState('allDialogsLoaded', this.allDialogsLoaded);
   }
 
-  public reset() {
+  public clear() {
+    this.dialogs = {};
+    this.byFolders = {};
     this.allDialogsLoaded = {};
     this.dialogsOffsetDate = {};
     this.pinnedOrders = {
@@ -131,6 +127,13 @@ export default class DialogsStorage {
       1: []
     };
     this.dialogsNum = 0;
+    this.dialogsIndex = new SearchIndex<number>();
+    this.cachedResults = {
+      query: '',
+      count: 0,
+      dialogs: [],
+      folderId: 0
+    };
   }
 
   public resetPinnedOrder(folderId: number) {

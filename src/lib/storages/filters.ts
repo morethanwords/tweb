@@ -29,8 +29,8 @@ export type MyDialogFilter = Modify<DialogFilter, {
 const START_ORDER_INDEX = 1;
 
 export default class FiltersStorage {
-  public filters: {[filterId: string]: MyDialogFilter} = {};
-  private orderIndex = START_ORDER_INDEX;
+  public filters: {[filterId: string]: MyDialogFilter};
+  private orderIndex: number;
 
   constructor(private appMessagesManager: AppMessagesManager,
     private appPeersManager: AppPeersManager, 
@@ -40,6 +40,7 @@ export default class FiltersStorage {
     private apiUpdatesManager: ApiUpdatesManager, 
     /* private apiManager: ApiManagerProxy, */ 
     private rootScope: typeof _rootScope) {
+    this.clear();
 
     this.appStateManager.getState().then((state) => {
       this.filters = state.filters;
@@ -74,6 +75,11 @@ export default class FiltersStorage {
 
       updateDialogFilterOrder: this.onUpdateDialogFilterOrder
     });
+  }
+
+  public clear() {
+    this.filters = {};
+    this.orderIndex = START_ORDER_INDEX;
   }
 
   private onUpdateDialogFilter = (update: Update.updateDialogFilter) => {

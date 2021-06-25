@@ -114,17 +114,17 @@ export class AppMessagesManager {
   private static MESSAGE_ID_INCREMENT = 0x10000;
   private static MESSAGE_ID_OFFSET = 0xFFFFFFFF;
 
-  private messagesStorageByPeerId: {[peerId: string]: MessagesStorage} = {};
-  public groupedMessagesStorage: {[groupId: string]: MessagesStorage} = {}; // will be used for albums
-  private scheduledMessagesStorage: {[peerId: string]: MessagesStorage} = {};
+  private messagesStorageByPeerId: {[peerId: string]: MessagesStorage};
+  public groupedMessagesStorage: {[groupId: string]: MessagesStorage}; // will be used for albums
+  private scheduledMessagesStorage: {[peerId: string]: MessagesStorage};
   private historiesStorage: {
     [peerId: string]: HistoryStorage
-  } = {};
+  };
   private threadsStorage: {
     [peerId: string]: {
       [threadId: string]: HistoryStorage
     }
-  } = {};
+  };
   private searchesStorage: {
     [peerId: string]: Partial<{
       [inputFilter in MyInputMessagesFilter]: {
@@ -132,13 +132,13 @@ export class AppMessagesManager {
         history: number[]
       }
     }>
-  } = {};
-  public pinnedMessages: {[peerId: string]: PinnedStorage} = {};
+  };
+  public pinnedMessages: {[peerId: string]: PinnedStorage};
 
-  public threadsServiceMessagesIdsStorage: {[peerId_threadId: string]: number} = {};
+  public threadsServiceMessagesIdsStorage: {[peerId_threadId: string]: number};
   private threadsToReplies: {
     [peerId_threadId: string]: string;
-  } = {};
+  };
 
   private pendingByRandomId: {
     [randomId: string]: {
@@ -197,6 +197,8 @@ export class AppMessagesManager {
   private typings: {[peerId: string]: {type: SendMessageAction['_'], timeout?: number}} = {};
 
   constructor() {
+    this.clear();
+
     rootScope.addMultipleEventsListeners({
       updateMessageID: this.onUpdateMessageId,
 
@@ -305,6 +307,21 @@ export class AppMessagesManager {
         this.maxSeenId = state.maxSeenMsgId;
       }
     });
+  }
+
+  public clear() {
+    this.messagesStorageByPeerId = {};
+    this.groupedMessagesStorage = {};
+    this.scheduledMessagesStorage = {};
+    this.historiesStorage = {};
+    this.threadsStorage = {};
+    this.searchesStorage = {};
+    this.pinnedMessages = {};
+    this.threadsServiceMessagesIdsStorage = {};
+    this.threadsToReplies = {};
+
+    this.dialogsStorage && this.dialogsStorage.clear();
+    this.filtersStorage && this.filtersStorage.clear();
   }
 
   public construct() {
