@@ -21,4 +21,4 @@ export const isFirefox = navigator.userAgent.toLowerCase().indexOf('firefox') > 
 
 export const isMobileSafari = isSafari && isAppleMobile;
 
-export const isMobile = /* screen.width && screen.width < 480 ||  */navigator.userAgent.search(/iOS|iPhone OS|Android|BlackBerry|BB10|Series ?[64]0|J2ME|MIDP|opera mini|opera mobi|mobi.+Gecko|Windows Phone/i) != -1;
+export const isMobile = /* screen.width && screen.width < 480 ||  */navigator.maxTouchPoints > 0 && navigator.userAgent.search(/iOS|iPhone OS|Android|BlackBerry|BB10|Series ?[64]0|J2ME|MIDP|opera mini|opera mobi|mobi.+Gecko|Windows Phone/i) != -1;

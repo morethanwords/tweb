@@ -39,4 +39,8 @@
   @else if $media == esg-bottom {
     @media only screen and (max-height: 569px) { @content; }
   }
+
+  @else if $media == esg-bottom-new {
+    @media only screen and (max-height: 569px), only screen and (max-width: $small-screen) { @content; }
+  }
 }
