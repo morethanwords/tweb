@@ -22,7 +22,7 @@
       border-radius: 0 !important;
       display: -ms-flexbox;
       display: flex;
-    
+
       video {
         width: 100%;
         height: 100%;
@@ -37,7 +37,7 @@
       padding: 7px 0px 9px 14px;
       font-size: 15px;
       color: white;
-      
+
       @include respond-to(handhelds) {
         padding: 7px 0px 9px;
       }
@@ -146,11 +146,11 @@
     .progress-line {
       margin: 0 16px;
       border-radius: var(--border-radius);
-  
+
       &__filled {
         background: var(--primary-color);
       }
-  
+
       &__loaded, & {
         background: rgba(255, 255, 255, .38);
       }
@@ -223,7 +223,7 @@
       //margin: -3px .75rem 0 2px;
       margin: -3px 2px 0 2px;
     }
-    
+
     &__icon {
       fill: #fff;
       width: 24px;
@@ -248,6 +248,7 @@
 
       &__filled {
         background: #fff;
+        z-index: -1;
       }
 
       &__seek {
@@ -258,7 +259,7 @@
         }
       }
     }
-    
+
   }
 
   &.is-buffering {
