@@ -6,9 +6,11 @@
 
 import App from './config/app';
 import blurActiveElement from './helpers/dom/blurActiveElement';
+import { cancelEvent } from './helpers/dom/cancelEvent';
 import findUpClassName from './helpers/dom/findUpClassName';
 import fixSafariStickyInput from './helpers/dom/fixSafariStickyInput';
 import loadFonts from './helpers/dom/loadFonts';
+import IS_EMOJI_SUPPORTED from './helpers/emojiSupport';
 import { isMobileSafari } from './helpers/userAgent';
 import './materialize.scss';
 import './scss/style.scss';
@@ -141,6 +143,16 @@ console.timeEnd('get storage1'); */
     rootScope.default.addEventListener('overlay_toggle', () => {
       toggleResizeMode();
     });
+
+    if(userAgent.isFirefox && !IS_EMOJI_SUPPORTED) {
+      document.addEventListener('dragstart', (e) => {
+        const target = e.target as HTMLElement;
+        if(target.tagName === 'IMG' && target.classList.contains('emoji')) {
+          cancelEvent(e);
+          return false;
+        }
+      });
+    }
 
     if(userAgent.isApple) {
       if(userAgent.isSafari) {

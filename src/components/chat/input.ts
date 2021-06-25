@@ -43,7 +43,7 @@ import PopupPinMessage from '../popups/unpinMessage';
 import { debounce } from '../../helpers/schedulers';
 import { tsNow } from '../../helpers/date';
 import appNavigationController from '../appNavigationController';
-import { isMobile } from '../../helpers/userAgent';
+import { isMobile, isMobileSafari } from '../../helpers/userAgent';
 import { i18n } from '../../lib/langPack';
 import { generateTail } from './bubbles';
 import findUpClassName from '../../helpers/dom/findUpClassName';
@@ -64,6 +64,8 @@ import CommandsHelper from './commandsHelper';
 import AutocompleteHelperController from './autocompleteHelperController';
 import AutocompleteHelper from './autocompleteHelper';
 import MentionsHelper from './mentionsHelper';
+import fixSafariStickyInput from '../../helpers/dom/fixSafariStickyInput';
+import { emojiFromCodePoints } from '../../vendor/emoji';
 
 const RECORD_MIN_TIME = 500;
 const POSTING_MEDIA_NOT_ALLOWED = 'Posting media content isn\'t allowed in this group.';
@@ -1142,15 +1144,15 @@ export default class ChatInput {
     this.updateSendBtn();
   };
 
-  public insertAtCaret(insertText: string, insertEntity?: MessageEntity) {
+  public insertAtCaret(insertText: string, insertEntity?: MessageEntity, isHelper = true) {
     const {value: fullValue, caretPos, entities} = getRichValueWithCaret(this.messageInput);
     const pos = caretPos >= 0 ? caretPos : fullValue.length;
     const prefix = fullValue.substr(0, pos);
     const suffix = fullValue.substr(pos);
 
-    const matches = prefix.match(ChatInput.AUTO_COMPLETE_REG_EXP);
+    const matches = isHelper ? prefix.match(ChatInput.AUTO_COMPLETE_REG_EXP) : null;
 
-    const matchIndex = matches.index + (matches[0].length - matches[2].length);
+    const matchIndex = matches ? matches.index + (matches[0].length - matches[2].length) : prefix.length;
     const newPrefix = prefix.slice(0, matchIndex);
     const newValue = newPrefix + insertText + suffix;
 
@@ -1173,7 +1175,7 @@ export default class ChatInput {
     });
     
     // add offset to entities next to emoji
-    const diff = insertLength - matches[2].length;
+    const diff = insertLength - (matches ? matches[2].length : prefix.length);
     entities.forEach(entity => {
       if(entity.offset >= matchIndex) {
         entity.offset += diff;
@@ -1423,7 +1425,17 @@ export default class ChatInput {
   };
 
   public clearInput(canSetDraft = true) {
-    this.messageInputField.value = '';
+    if(document.activeElement === this.messageInput && isMobileSafari) {
+      const i = document.createElement('input');
+      document.body.append(i);
+      fixSafariStickyInput(i);
+      this.messageInputField.value = '';
+      fixSafariStickyInput(this.messageInput);
+      i.remove();
+    } else {
+      this.messageInputField.value = '';
+    }
+
     if(isTouchSupported) {
       //this.messageInput.innerText = '';
     } else {
@@ -1476,6 +1488,14 @@ export default class ChatInput {
 
     this.scheduleDate = undefined;
     this.sendSilent = undefined;
+
+    const value = this.messageInputField.value;
+    const entities = RichTextProcessor.parseEntities(value);
+    const emojiEntities: MessageEntity.messageEntityEmoji[] = entities.filter(entity => entity._ === 'messageEntityEmoji') as any;
+    emojiEntities.forEach(entity => {
+      const emoji = emojiFromCodePoints(entity.unicode);
+      this.appEmojiManager.pushRecentEmoji(emoji);
+    });
 
     if(clearInput) {
       this.lastUrl = '';

@@ -34,7 +34,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
   private authorizations: Authorization.authorization[];
 
   protected async init() {
-    this.container.classList.add('privacy-container');
+    this.container.classList.add('dont-u-dare-block-me');
     this.setTitle('PrivacySettings');
 
     const SUBTITLE: LangPackKey = 'Loading';

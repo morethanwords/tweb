@@ -39,3 +39,7 @@ export function getEmojiToneIndex(input: string) {
   let match = input.match(/[\uDFFB-\uDFFF]/);
   return match ? 5 - (57343 - match[0].charCodeAt(0)) : 0;
 }
+
+export function emojiFromCodePoints(codePoints: string) {
+  return codePoints.split('-').reduce((prev, curr) => prev + String.fromCodePoint(parseInt(curr, 16)), '');
+}

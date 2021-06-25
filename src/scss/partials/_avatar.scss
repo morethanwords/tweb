@@ -87,6 +87,7 @@ avatar-element {
     width: var(--size) !important;
     height: var(--size) !important;
     border-radius: inherit !important;
+    display: block; // fix Firefox below empty space
 
     &.fade-in {
       animation: fade-in-opacity .2s ease forwards;
