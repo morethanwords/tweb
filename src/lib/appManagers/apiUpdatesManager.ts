@@ -247,7 +247,7 @@ export class ApiUpdatesManager {
 
     const promise = apiManager.invokeApi('updates.getDifference', {
       pts: updatesState.pts, 
-      // pts_total_limit: 1200,
+      pts_total_limit: first && false ? 1200 : undefined,
       date: updatesState.date, 
       qts: -1
     }, {

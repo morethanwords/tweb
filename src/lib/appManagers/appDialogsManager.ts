@@ -325,10 +325,11 @@ export class AppDialogsManager {
       }
     });
 
-    /* rootScope.addEventListener('state_cleared', () => {
+    rootScope.addEventListener('state_cleared', () => {
       appUsersManager.clear();
       appChatsManager.clear();
-    }); */
+      appMessagesManager.clear();
+    });
 
     const foldersScrollable = new ScrollableX(this.folders.menuScrollContainer);
     bottomPart.prepend(this.folders.menuScrollContainer);

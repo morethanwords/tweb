@@ -160,8 +160,8 @@ export default class ConnectionStatusComponent {
               clearInterval(interval);
             }
           };
-          setTime();
           const interval = setInterval(setTime, 1e3);
+          setTime();
   
           const a = this.getA('ConnectionStatus.Reconnect', () => apiManager.forceReconnectTimeout());
           this.setStatusText('ConnectionStatus.ReconnectIn', [timerSpan, a]);
