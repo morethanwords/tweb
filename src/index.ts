@@ -279,7 +279,7 @@ console.timeEnd('get storage1'); */
     /**
      * won't fire if font is loaded too fast
      */
-    function fadeInWhenFontsReady(elem: HTMLElement, promise: Promise<void>) {
+    function fadeInWhenFontsReady(elem: HTMLElement, promise: Promise<any>) {
       elem.style.opacity = '0';
 
       promise.then(() => {
@@ -346,8 +346,13 @@ console.timeEnd('get storage1'); */
           await pagePromise;
         }
 
-        // @ts-ignore
-        const promise = 'fonts' in document ? document.fonts.ready : Promise.resolve();
+        const promise = 'fonts' in document ? 
+          Promise.race([
+            new Promise((resolve) => setTimeout(resolve, 1e3)), 
+            // @ts-ignore
+            document.fonts.ready
+          ]) : 
+          Promise.resolve();
         fadeInWhenFontsReady(scrollable, promise);
       }
 
