@@ -110,7 +110,7 @@ $chat-helper-size: 39px;
 
 	.menu-send {
 		top: auto;
-    bottom: calc(100% + 10px);
+    bottom: calc(100% + .5rem);
     //right: var(--chat-input-padding);
 	}
 	
@@ -817,7 +817,11 @@ $chat-helper-size: 39px;
 
 		.btn-menu {
 			right: calc(var(--padding-horizontal) * -1 - .125rem);
-			bottom: calc(100% + 1.25rem);
+			bottom: calc(100% + 1.125rem);
+
+			@include respond-to(esg-bottom-new) {
+				bottom: calc(100% + .875rem);
+			}
 			
 			> div {
 				padding: 0 38px 0 16px;
