@@ -1,2 +1,0 @@
-(this.webpackJsonp=this.webpackJsonp||[]).push([[26],{18:function(n,o,t){"use strict";t.r(o),t.d(o,"isTouchSupported",(function(){return c}));const c="ontouchstart"in window||window.DocumentTouch&&document instanceof DocumentTouch}}]);
-//# sourceMappingURL=26.998b7f3164888b2102ce.chunk.js.map
