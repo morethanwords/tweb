@@ -34,7 +34,8 @@ export class AppChatsManager {
   //private megagroups: {[id: number]: true};
 
   constructor() {
-    this.clear();
+    this.chats = this.storage.getCache();
+    this.clear(true);
 
     rootScope.addMultipleEventsListeners({
       /* updateChannel: (update) => {
@@ -62,7 +63,6 @@ export class AppChatsManager {
     appStateManager.getState().then((state) => {
       const chats = appStateManager.storagesResults.chats;
       if(chats.length) {
-        this.chats = {};
         for(let i = 0, length = chats.length; i < length; ++i) {
           const chat = chats[i];
           if(chat) {
@@ -91,20 +91,22 @@ export class AppChatsManager {
     });
   }
 
-  public clear() {
-    if(this.chats) {
-      for(const chatId in this.chats) {
-        if(!appStateManager.isPeerNeeded(-+chatId)) {
+  public clear(init = false) {
+    if(!init) {
+      const chats = appStateManager.storagesResults.chats;
+      for(const _chatId in this.chats) {
+        const chatId = +_chatId;
+        if(!chatId) continue;
+        if(!appStateManager.isPeerNeeded(-chatId)) {
           /* const chat = this.chats[chatId];
           if(chat.username) {
             delete this.usernames[cleanUsername(chat.username)];
           } */
-  
-          delete this.chats[chatId];
+          
+          chats.findAndSplice((chat) => chat.id === chatId);
+          this.storage.delete(chatId);
         }
       }
-    } else {
-      this.chats = {};
     }
   }
 

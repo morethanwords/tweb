@@ -265,7 +265,13 @@ export default class AppStorage<Storage extends Record<string, any>, T extends D
     return this.useStorage ? this.deleteDeferred : Promise.resolve();
   }
 
-  public clear() {
+  public clear(saveLocal = false) {
+    if(!saveLocal) {
+      for(const i in this.cache) {
+        delete this.cache[i];
+      }
+    }
+
     return this.storage.clear().catch(noop);
   }
 
@@ -278,7 +284,7 @@ export default class AppStorage<Storage extends Record<string, any>, T extends D
         storage.keysToDelete.clear();
         storage.getPromises.forEach((deferred) => deferred.resolve());
         storage.getPromises.clear();
-        return storage.clear();
+        return storage.clear(true);
       } else {
         return storage.set(storage.cache);
       }

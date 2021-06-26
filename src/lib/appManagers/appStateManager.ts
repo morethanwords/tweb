@@ -183,7 +183,11 @@ export class AppStateManager extends EventListenerBase<{
     dialogs: new AppStorage<Record<number, Dialog>, typeof DATABASE_STATE>(DATABASE_STATE, 'dialogs')
   };
 
-  public storagesResults: {[key in keyof AppStateManager['storages']]: any[]} = {} as any;
+  public storagesResults: {
+    users: User[],
+    chats: Chat[],
+    dialogs: Dialog[]
+  } = {} as any;
 
   public storage = stateStorage;
 

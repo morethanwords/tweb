@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { copy } from "../../helpers/object";
+import { copy, safeReplaceObject } from "../../helpers/object";
 import type { DialogFilter, Update } from "../../layer";
 import type { Modify } from "../../types";
 import type { AppPeersManager } from "../appManagers/appPeersManager";
@@ -41,9 +41,10 @@ export default class FiltersStorage {
     /* private apiManager: ApiManagerProxy, */ 
     private rootScope: typeof _rootScope) {
     this.clear();
+    this.filters = {};
 
     this.appStateManager.getState().then((state) => {
-      this.filters = state.filters;
+      safeReplaceObject(this.filters, state.filters);
 
       for(const filterId in this.filters) {
         const filter = this.filters[filterId];
@@ -77,8 +78,11 @@ export default class FiltersStorage {
     });
   }
 
-  public clear() {
-    this.filters = {};
+  public clear(init = false) {
+    if(!init) {
+      safeReplaceObject(this.filters, {});
+    }
+
     this.orderIndex = START_ORDER_INDEX;
   }
 
@@ -243,7 +247,7 @@ export default class FiltersStorage {
       return keys.map(filterId => this.filters[filterId]).sort((a, b) => a.orderIndex - b.orderIndex);
     }
 
-    const filters: MyDialogFilter[] = await apiManager.invokeApi('messages.getDialogFilters') as any;
+    const filters: MyDialogFilter[] = await apiManager.invokeApiSingle('messages.getDialogFilters') as any;
     for(const filter of filters) {
       this.saveDialogFilter(filter, overwrite);
     }
