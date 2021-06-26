@@ -57,8 +57,9 @@ export default class DialogsStorage {
     private apiUpdatesManager: ApiUpdatesManager,
     private serverTimeManager: ServerTimeManager
   ) {
-    this.clear();
     this.storage = this.appStateManager.storages.dialogs;
+    this.dialogs = this.storage.getCache();
+    this.clear(true);
 
     rootScope.addEventListener('language_change', (e) => {
       const peerId = appUsersManager.getSelf().id;
@@ -117,8 +118,13 @@ export default class DialogsStorage {
     this.appStateManager.pushToState('allDialogsLoaded', this.allDialogsLoaded);
   }
 
-  public clear() {
-    this.dialogs = {};
+  public clear(init = false) {
+    if(!init) {
+      const dialogs = this.appStateManager.storagesResults.dialogs;
+      dialogs.length = 0;
+      this.storage.clear();
+    }
+
     this.byFolders = {};
     this.allDialogsLoaded = {};
     this.dialogsOffsetDate = {};

@@ -46,7 +46,8 @@ export class AppUsersManager {
   private getTopPeersPromise: Promise<number[]>;
 
   constructor() {
-    this.clear();
+    this.users = this.storage.getCache();
+    this.clear(true);
 
     setInterval(this.updateUsersStatuses, 60000);
 
@@ -120,7 +121,6 @@ export class AppUsersManager {
     appStateManager.getState().then((state) => {
       const users = appStateManager.storagesResults.users;
       if(users.length) {
-        this.users = {};
         for(let i = 0, length = users.length; i < length; ++i) {
           const user = users[i];
           if(user) {
@@ -160,20 +160,23 @@ export class AppUsersManager {
     });
   }
 
-  public clear() {
-    if(this.users) {
-      for(const userId in this.users) {
-        if(!appStateManager.isPeerNeeded(+userId)) {
+  public clear(init = false) {
+    if(!init) {
+      const users = appStateManager.storagesResults.users;
+      for(const _userId in this.users) {
+        const userId = +_userId;
+        if(!userId) continue;
+        if(!appStateManager.isPeerNeeded(userId)) {
           const user = this.users[userId];
           if(user.username) {
             delete this.usernames[cleanUsername(user.username)];
           }
-  
-          delete this.users[userId];
+
+          users.findAndSplice((user) => user.id === userId);
+          this.storage.delete(userId);
         }
       }
     } else {
-      this.users = {};
       this.usernames = {};
     }
     

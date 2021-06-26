@@ -21,7 +21,7 @@ import appPeersManager from './appPeersManager';
 import appImManager from "./appImManager";
 import appMessagesManager, { Dialog } from "./appMessagesManager";
 import {MyDialogFilter as DialogFilter} from "../storages/filters";
-import appStateManager from "./appStateManager";
+import appStateManager, { AppStateManager, State } from "./appStateManager";
 import appUsersManager from "./appUsersManager";
 import Button from "../../components/button";
 import SetTransition from "../../components/singleTransition";
@@ -328,7 +328,33 @@ export class AppDialogsManager {
     rootScope.addEventListener('state_cleared', () => {
       appUsersManager.clear();
       appChatsManager.clear();
+      
+      const filtersStorage = appMessagesManager.filtersStorage;
+      const filters = filtersStorage.filters;
+      for(const filterId in filters) { // delete filters
+        rootScope.dispatchEvent('updateDialogFilter', {
+          _: 'updateDialogFilter',
+          id: +filterId,
+        });
+      }
+
       appMessagesManager.clear();
+
+      /* const clearPromises: Promise<any>[] = [];
+      for(const name in appStateManager.storagesResults) {
+        const results = appStateManager.storagesResults[name as keyof AppStateManager['storages']];
+        const storage = appStateManager.storages[name as keyof AppStateManager['storages']];
+        results.length = 0;
+        clearPromises.push(storage.clear());
+      } */
+
+      this.validateForFilter();
+      Promise.all([
+        appStateManager.getState(), 
+        //Promise.all(clearPromises)
+      ]).then(([state]) => {
+        this.onStateLoaded(state);
+      });
     });
 
     const foldersScrollable = new ScrollableX(this.folders.menuScrollContainer);
@@ -356,28 +382,8 @@ export class AppDialogsManager {
     //selectTab(0);
     (this.folders.menu.firstElementChild as HTMLElement).click();
     appMessagesManager.construct();
-    appStateManager.getState().then(async(state) => {
-      appNotificationsManager.getNotifyPeerTypeSettings();
-      
-      const renderFiltersPromise = appMessagesManager.filtersStorage.getDialogFilters().then((filters) => {
-        for(const filter of filters) {
-          this.addFilter(filter);
-        }
-      });
-
-      if(state.filters && Object.keys(state.filters).length) {
-        await renderFiltersPromise;
-        if(this.showFiltersPromise) {
-          await this.showFiltersPromise;
-        }
-      }
-
-      if(appStateManager.storagesResults.dialogs.length) {
-        appDraftsManager.getAllDrafts();
-        appDraftsManager.addMissedDialogs();
-      }
-
-      return this.loadDialogs();
+    appStateManager.getState().then((state) => {
+      return this.onStateLoaded(state);
     }).then(() => {
       //return;
       
@@ -405,6 +411,29 @@ export class AppDialogsManager {
     setTimeout(() => {
       lottieLoader.loadLottieWorkers();
     }, 200);
+  }
+
+  private async onStateLoaded(state: State) {
+    appNotificationsManager.getNotifyPeerTypeSettings();
+      
+    const renderFiltersPromise = appMessagesManager.filtersStorage.getDialogFilters().then((filters) => {
+      for(const filter of filters) {
+        this.addFilter(filter);
+      }
+    });
+
+    if(state.filters && Object.keys(state.filters).length) {
+      await renderFiltersPromise;
+      if(this.showFiltersPromise) {
+        await this.showFiltersPromise;
+      }
+    }
+
+    if(appStateManager.storagesResults.dialogs.length) {
+      appDraftsManager.addMissedDialogs();
+    }
+
+    return this.loadDialogs();
   }
 
   private getOffset(side: 'top' | 'bottom'): {index: number, pos: number} {
