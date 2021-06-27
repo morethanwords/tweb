@@ -9,31 +9,47 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
+import type { ApplyServerTimeOffsetTask } from './timeManager';
 import { MOUNT_CLASS_TO } from '../../config/debug';
-import { tsNow } from '../../helpers/date';
+// import { tsNow } from '../../helpers/date';
 import sessionStorage from '../sessionStorage';
+import apiManager from './mtprotoworker';
 
 export class ServerTimeManager {
-  public timestampNow = tsNow(true);
-  public midnightNoOffset = this.timestampNow - (this.timestampNow % 86400);
-  public midnightOffseted = new Date();
+  /* private midnightNoOffset: number;
+  private midnightOffseted: Date;
 
-  public midnightOffset = this.midnightNoOffset - (Math.floor(+this.midnightOffseted / 1000));
+  private midnightOffset: number; */
 
-  public serverTimeOffset = 0; // in seconds
-  public timeParams = {
-    midnightOffset: this.midnightOffset,
-    serverTimeOffset: this.serverTimeOffset
-  };
+  public serverTimeOffset: number; // in seconds
+  /* private timeParams: {
+    midnightOffset: number,
+    serverTimeOffset: number
+  }; */
 
   constructor() {
+    /* const timestampNow = tsNow(true);
+    this.midnightNoOffset = timestampNow - (timestampNow % 86400);
+    this.midnightOffseted = new Date();
     this.midnightOffseted.setHours(0, 0, 0, 0);
+    
+    this.midnightOffset = this.midnightNoOffset - (Math.floor(+this.midnightOffseted / 1000)); */
+
+    this.serverTimeOffset = 0;
+    /* this.timeParams = {
+      midnightOffset: this.midnightOffset,
+      serverTimeOffset: this.serverTimeOffset
+    }; */
 
     sessionStorage.get('server_time_offset').then((to) => {
       if(to) {
         this.serverTimeOffset = to;
-        this.timeParams.serverTimeOffset = to;
+        // this.timeParams.serverTimeOffset = to;
       }
+    });
+
+    apiManager.addTaskListener('applyServerTimeOffset', (task: ApplyServerTimeOffsetTask) => {
+      this.serverTimeOffset = task.payload;
     });
   }
 }

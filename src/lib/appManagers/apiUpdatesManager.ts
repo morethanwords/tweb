@@ -20,6 +20,7 @@ import appUsersManager from "./appUsersManager";
 import appChatsManager from "./appChatsManager";
 import appPeersManager from "./appPeersManager";
 import appStateManager from './appStateManager';
+import serverTimeManager from '../mtproto/serverTimeManager';
 
 type UpdatesState = {
   pendingPtsUpdates: {pts: number, pts_count: number}[],
@@ -302,8 +303,8 @@ export class ApiUpdatesManager {
         updatesState.date = nextState.date;
       } else {
         updatesState.pts = differenceResult.pts;
+        updatesState.date = (Date.now() / 1000 | 0) + serverTimeManager.serverTimeOffset;
         delete updatesState.seq;
-        delete updatesState.date;
         
         this.channelStates = {};
         
