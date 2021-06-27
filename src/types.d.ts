@@ -48,6 +48,8 @@ export type AnyFunction = (...args: any) => any;
 export type AnyToVoidFunction = (...args: any) => void;
 export type NoneToVoidFunction = () => void;
 
+export type Awaited<T> = T extends PromiseLike<infer U> ? Awaited<U> : T;
+
 export type AuthState = AuthState.signIn | AuthState.signQr | AuthState.authCode | AuthState.password | AuthState.signUp | AuthState.signedIn;
 export namespace AuthState {
   export type signIn = {

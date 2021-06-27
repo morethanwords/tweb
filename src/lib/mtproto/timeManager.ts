@@ -13,6 +13,8 @@ import sessionStorage from '../sessionStorage';
 import { longFromInts } from './bin_utils';
 import { nextRandomInt } from '../../helpers/random';
 import { MOUNT_CLASS_TO } from '../../config/debug';
+import { WorkerTaskVoidTemplate } from '../../types';
+import { notifySomeone } from '../../helpers/context';
 
 /*
 let lol: any = {};
@@ -21,9 +23,14 @@ for(var i = 0; i < 100; i++) {
 }
 */
 
+export interface ApplyServerTimeOffsetTask extends WorkerTaskVoidTemplate {
+  type: 'applyServerTimeOffset',
+  payload: TimeManager['timeOffset']
+};
+
 export class TimeManager {
-  private lastMessageId = [0, 0];
-  private timeOffset = 0;
+  private lastMessageId: [number, number] = [0, 0];
+  private timeOffset: number = 0;
 
   constructor() {
     sessionStorage.get('server_time_offset').then((to) => {
@@ -39,7 +46,7 @@ export class TimeManager {
       timeMSec = timeTicks % 1000,
       random = nextRandomInt(0xFFFF);
 
-    let messageId = [timeSec, (timeMSec << 21) | (random << 3) | 4];
+    let messageId: TimeManager['lastMessageId'] = [timeSec, (timeMSec << 21) | (random << 3) | 4];
     if(this.lastMessageId[0] > messageId[0] ||
       this.lastMessageId[0] === messageId[0] && this.lastMessageId[1] >= messageId[1]) {
       messageId = [this.lastMessageId[0], this.lastMessageId[1] + 4];
@@ -71,6 +78,14 @@ export class TimeManager {
     this.timeOffset = newTimeOffset;
     
     //console.log('[TimeManager]: Apply server time', serverTime, localTime, newTimeOffset, changed);
+
+    /// #if MTPROTO_WORKER
+    const task: ApplyServerTimeOffsetTask = {
+      type: 'applyServerTimeOffset',
+      payload: newTimeOffset
+    };
+    notifySomeone(task);
+    /// #endif
 
     return changed;
   }
