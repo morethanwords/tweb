@@ -19,6 +19,7 @@ export type ButtonMenuItemOptions = {
   element?: HTMLElement,
   options?: AttachClickOptions,
   checkboxField?: CheckboxField,
+  keepOpen?: boolean
   /* , cancelEvent?: true */
 };
 
@@ -40,11 +41,16 @@ const ButtonMenuItem = (options: ButtonMenuItemOptions) => {
     }, options.options);
   }
 
-  // * cancel keyboard close
-  attachClickEvent(el, CLICK_EVENT_NAME !== 'click' ? (e) => {
+  const keepOpen = !!options.checkboxField || !!options.keepOpen;
+
+  // * cancel mobile keyboard close
+  attachClickEvent(el, CLICK_EVENT_NAME !== 'click' || keepOpen ? (e) => {
     cancelEvent(e);
     onClick(e);
-    closeBtnMenu();
+
+    if(!keepOpen) {
+      closeBtnMenu();
+    }
   } : onClick, options.options);
 
   return options.element = el;
