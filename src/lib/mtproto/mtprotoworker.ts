@@ -28,6 +28,7 @@ import AppStorage from '../storage';
 import appRuntimeManager from '../appManagers/appRuntimeManager';
 import { SocketProxyTask } from './transports/socketProxied';
 import telegramMeWebManager from './telegramMeWebManager';
+import { pause } from '../../helpers/schedulers';
 
 type Task = {
   taskId: number,
@@ -103,7 +104,10 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
       Promise.all([
         AppStorage.toggleStorage(false), 
         sessionStorage.clear(),
-        telegramMeWebManager.setAuthorized(false),
+        Promise.race([
+          telegramMeWebManager.setAuthorized(false),
+          pause(3000)
+        ]),
         webPushApiManager.forceUnsubscribe()
       ]).finally(() => {
         appRuntimeManager.reload();
