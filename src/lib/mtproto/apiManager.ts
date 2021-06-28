@@ -88,7 +88,7 @@ export class ApiManager {
 
   //private lol = false;
   
-  constructor() {
+  // constructor() {
     //MtpSingleInstanceService.start();
     
     /* AppStorage.get<number>('dc').then((dcId) => {
@@ -96,7 +96,7 @@ export class ApiManager {
         this.baseDcId = dcId;
       }
     }); */
-  }
+  // }
   
   /* public telegramMeNotify(newValue: boolean) {
     if(this.telegramMeNotified !== newValue) {

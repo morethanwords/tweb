@@ -25,7 +25,11 @@ const sessionStorage = new LocalStorageController<{
   dc5_server_salt: string,
   server_time_offset: number,
   xt_instance: AppInstance,
-  kz_version: 'K' | 'Z'
+  kz_version: 'K' | 'Z',
+  tgme_sync: {
+    canRedirect: boolean,
+    ts: number
+  }
 }>(/* ['kz_version'] */);
 MOUNT_CLASS_TO.appStorage = sessionStorage;
 export default sessionStorage;

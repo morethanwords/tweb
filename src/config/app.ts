@@ -11,6 +11,8 @@
 
 import type { DcId } from "../types";
 
+export const MAIN_DOMAIN = 'web.telegram.org';
+
 const App = {
   id: 1025907,
   hash: '452b0359b988148995f22ff0f4229750',
@@ -18,9 +20,9 @@ const App = {
   langPackVersion: '0.2.9',
   langPack: 'macos',
   langPackCode: 'en',
-  domains: [] as string[],
+  domains: [MAIN_DOMAIN] as string[],
   baseDcId: 2 as DcId,
-  isMainDomain: location.hostname === 'web.telegram.org',
+  isMainDomain: location.hostname === MAIN_DOMAIN,
   suffix: 'K'
 };
 
