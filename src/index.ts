@@ -326,7 +326,13 @@ console.timeEnd('get storage1'); */
       }
 
       try {
-        (await import('./lib/mtproto/webPushApiManager')).default.forceUnsubscribe();
+        await Promise.all([
+          import('./lib/mtproto/telegramMeWebManager'),
+          import('./lib/mtproto/webPushApiManager')
+        ]).then(([meModule, pushModule]) => {
+          meModule.default.setAuthorized(false);
+          pushModule.default.forceUnsubscribe();
+        });
       } catch(err) {
         
       }

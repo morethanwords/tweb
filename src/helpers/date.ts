@@ -93,7 +93,7 @@ export const getFullDate = (date: Date, options: Partial<{
 
 export function tsNow(seconds?: true) {
   const t = Date.now();
-  return seconds ? Math.floor(t / 1000) : t;
+  return seconds ? t / 1000 | 0 : t;
 }
 
 // https://github.com/DrKLO/Telegram/blob/d52b2c921abd3c1e8d6368858313ad0cb0468c07/TMessagesProj/src/main/java/org/telegram/ui/Adapters/FiltersView.java
