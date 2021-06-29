@@ -465,7 +465,11 @@ export class AppProfileManager {
   }
 
   public getChatMembersString(id: number) {
-    const chat = appChatsManager.getChat(id);
+    const chat: Chat = appChatsManager.getChat(id);
+    if(chat._ === 'chatForbidden') {
+      return i18n('YouWereKicked');
+    }
+
     const chatFull = this.chatsFull[id];
     let count: number;
     if(chatFull) {
@@ -475,7 +479,7 @@ export class AppProfileManager {
         count = (chatFull.participants as ChatParticipants.chatParticipants).participants?.length;
       }
     } else {
-      count = chat.participants_count || chat.participants?.participants.length;
+      count = (chat as Chat.chat).participants_count || (chat as any).participants?.participants.length;
     }
 
     const isChannel = appChatsManager.isBroadcast(id);

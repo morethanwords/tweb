@@ -482,6 +482,7 @@ const lang = {
   "formatDateAtTime": "%1$s at %2$s",
   "JoinByPeekChannelTitle": "Join Channel",
   "JoinByPeekGroupTitle": "Join Group",
+  "YouWereKicked": "you were removed",
 
   // * macos
   "AccountSettings.Filters": "Chat Folders",

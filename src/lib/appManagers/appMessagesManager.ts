@@ -4454,9 +4454,9 @@ export class AppMessagesManager {
 
   public canWriteToPeer(peerId: number, threadId?: number) {
     if(peerId < 0) {
-      const isChannel = appPeersManager.isChannel(peerId);
-      const hasRights = isChannel && appChatsManager.hasRights(-peerId, 'send_messages', undefined, !!threadId); 
-      return !isChannel || hasRights;
+      //const isChannel = appPeersManager.isChannel(peerId);
+      const hasRights = /* isChannel &&  */appChatsManager.hasRights(-peerId, 'send_messages', undefined, !!threadId); 
+      return /* !isChannel ||  */hasRights;
     } else {
       return appUsersManager.canSendToUser(peerId);
     }
