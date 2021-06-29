@@ -16,6 +16,11 @@ import DATABASE_STATE from '../../config/databases/state';
 
 const CACHE_TIME = 3600e3;
 
+export type MyStickerSetInput = {
+  id: string,
+  access_hash?: string
+};
+
 export class AppStickersManager {
   private storage = new AppStorage<Record<string, MessagesStickerSet>, typeof DATABASE_STATE>(DATABASE_STATE, 'stickerSets');
 
@@ -23,7 +28,7 @@ export class AppStickersManager {
   private getStickersByEmoticonsPromises: {[emoticon: string]: Promise<Document[]>} = {};
   
   constructor() {
-    this.getStickerSet({id: 'emoji', access_hash: ''});
+    this.getStickerSet({id: 'emoji'}, {saveById: true});
 
     rootScope.addMultipleEventsListeners({
       updateNewStickerSet: (update) => {
@@ -42,24 +47,23 @@ export class AppStickersManager {
     });
   }
 
-  public async getStickerSet(set: {
-    id: string,
-    access_hash: string
-  }, params: Partial<{
+  public async getStickerSet(set: MyStickerSetInput, params: Partial<{
     overwrite: boolean,
-    useCache: boolean
+    useCache: boolean,
+    saveById: boolean
   }> = {}): Promise<MessagesStickerSet> {
-    if(this.getStickerSetPromises[set.id]) {
-      return this.getStickerSetPromises[set.id];
+    const id = set.id;
+    if(this.getStickerSetPromises[id]) {
+      return this.getStickerSetPromises[id];
     }
 
-    return this.getStickerSetPromises[set.id] = new Promise(async(resolve) => {
+    return this.getStickerSetPromises[id] = new Promise(async(resolve) => {
       if(!params.overwrite) {
-        const cachedSet = await this.storage.get(set.id);
+        const cachedSet = await this.storage.get(id);
         if(cachedSet && cachedSet.documents?.length && ((Date.now() - cachedSet.refreshTime) < CACHE_TIME || params.useCache)) {
           this.saveStickers(cachedSet.documents);
           resolve(cachedSet);
-          delete this.getStickerSetPromises[set.id];
+          delete this.getStickerSetPromises[id];
           return;
         }
       }
@@ -69,14 +73,15 @@ export class AppStickersManager {
           stickerset: this.getStickerSetInput(set)
         });
   
-        this.saveStickerSet(stickerSet, set.id);
+        const saveById = params.saveById ? id : stickerSet.set.id;
+        this.saveStickerSet(stickerSet, saveById);
   
         resolve(stickerSet);
       } catch(err) {
         resolve(null);
       }
       
-      delete this.getStickerSetPromises[set.id];
+      delete this.getStickerSetPromises[id];
     });
   }
 
@@ -158,14 +163,23 @@ export class AppStickersManager {
     //return promise;
   } */
 
-  public getStickerSetInput(set: {id: string, access_hash: string}): InputStickerSet {
-    return set.id === 'emoji' ? {
-      _: 'inputStickerSetAnimatedEmoji'
-    } : {
-      _: 'inputStickerSetID',
-      id: set.id,
-      access_hash: set.access_hash
-    };
+  public getStickerSetInput(set: MyStickerSetInput): InputStickerSet {
+    if(set.id === 'emoji') {
+      return {
+        _: 'inputStickerSetAnimatedEmoji'
+      };
+    } else if(!set.access_hash) {
+      return {
+        _: 'inputStickerSetShortName',
+        short_name: set.id
+      };
+    } else {
+      return {
+        _: 'inputStickerSetID',
+        id: set.id,
+        access_hash: set.access_hash
+      };
+    }
   }
 
   public async getFeaturedStickers() {

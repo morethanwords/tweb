@@ -59,6 +59,7 @@ import whichChild from '../../helpers/dom/whichChild';
 import appEmojiManager from './appEmojiManager';
 import PopupElement from '../../components/popups';
 import singleInstance from '../mtproto/singleInstance';
+import PopupStickers from '../../components/popups/stickers';
 
 //console.log('appImManager included33!');
 
@@ -223,9 +224,7 @@ export class AppImManager {
       stateStorage.setToCache('chatPositions', c || {});
     });
 
-    (window as any).showMaskedAlert = (element: HTMLAnchorElement, e: Event) => {
-      cancelEvent(null);
-
+    this.addAnchorListener('showMaskedAlert', (params, element) => {
       const href = element.href;
 
       const a = element.cloneNode(true) as HTMLAnchorElement;
@@ -244,19 +243,9 @@ export class AppImManager {
           },
         }]
       }).show();
+    }, false);
 
-      return false;
-    };
-
-    (window as any).execBotCommand = (element: HTMLAnchorElement, e: Event) => {
-      cancelEvent(null);
-
-      const href = element.href;
-      const params = this.parseUriParams(href);
-      if(!params) {
-        return;
-      }
-
+    this.addAnchorListener('execBotCommand', (params) => {
       const {command, bot} = params;
 
       /* const promise = bot ? this.openUsername(bot).then(() => this.chat.peerId) : Promise.resolve(this.chat.peerId);
@@ -267,23 +256,35 @@ export class AppImManager {
       appMessagesManager.sendText(this.chat.peerId, '/' + command + (bot ? '@' + bot : ''));
 
       //console.log(command, bot);
+    });
 
-      return false;
-    };
-
-    (window as any).searchByHashtag = (element: HTMLAnchorElement, e: Event) => {
-      cancelEvent(null);
-
-      const href = element.href;
-      const params = this.parseUriParams(href);
+    this.addAnchorListener('searchByHashtag', (params) => {
       if(!params) {
         return;
       }
 
       const {hashtag} = params;
       this.chat.initSearch('#' + hashtag + ' ');
+    });
 
-      return false;
+    this.addAnchorListener('addstickers', (params) => {
+      new PopupStickers({id: params[1]}).show();
+    }, true);
+  }
+
+  private addAnchorListener(name: 'showMaskedAlert' | 'execBotCommand' | 'searchByHashtag' | 'addstickers', 
+    callback: (params: any, element: HTMLAnchorElement) => boolean | void, parseParams = true) {
+    (window as any)[name] = (element: HTMLAnchorElement, e: Event) => {
+      cancelEvent(null);
+
+      const href = element.href;
+      let params: any;
+      if(parseParams) {
+        params = !element.href.includes('#') ? new URL(element.href).pathname.split('/').slice(1) : this.parseUriParams(href);
+      }
+
+      const res = callback(params, element);
+      return res === undefined ? res : false;
     };
   }
 

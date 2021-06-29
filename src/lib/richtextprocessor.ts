@@ -573,12 +573,15 @@ namespace RichTextProcessor {
             const entityText = text.substr(entity.offset, entity.length);
 
             // let inner: string;
-            let url: string;
+            let url: string = (entity as MessageEntity.messageEntityTextUrl).url || entityText;
             let masked = false;
-            if(entity._ === 'messageEntityTextUrl') {
-              url = (entity as MessageEntity.messageEntityTextUrl).url;
-              url = wrapUrl(url, true);
+            let onclick: string;
 
+            const wrapped = wrapUrl(url, true);
+            url = wrapped.url;
+            onclick = wrapped.onclick;
+
+            if(entity._ === 'messageEntityTextUrl') {
               const nextEntity = entities[i + 1];
               if(nextEntity?._ === 'messageEntityUrl' && 
                 nextEntity.length === entity.length && 
@@ -590,11 +593,13 @@ namespace RichTextProcessor {
                 masked = true;
               }
             } else {
-              url = wrapUrl(entityText, false);
               //inner = encodeEntities(replaceUrlEncodings(entityText));
             }
 
             const currentContext = url[0] === '#';
+            if(!onclick && masked && !currentContext) {
+              onclick = 'showMaskedAlert';
+            }
 
             const href = (currentContext || typeof electronHelpers === 'undefined') 
               ? encodeEntities(url)
@@ -603,7 +608,7 @@ namespace RichTextProcessor {
             const target = (currentContext || typeof electronHelpers !== 'undefined')
               ? '' : ' target="_blank" rel="noopener noreferrer"';
 
-            insertPart(entity, `<a class="anchor-url" href="${href}"${target}${masked && !currentContext ? 'onclick="showMaskedAlert(this)"' : ''}>`, '</a>');
+            insertPart(entity, `<a class="anchor-url" href="${href}"${target}${onclick ? `onclick="${onclick}(this)"` : ''}>`, '</a>');
           }
 
           break;
@@ -789,13 +794,14 @@ namespace RichTextProcessor {
     return wrapRichText(text, {entities});
   }
 
-  export function wrapUrl(url: string, unsafe?: number | boolean): string {
+  export function wrapUrl(url: string, unsafe?: number | boolean): {url: string, onclick: string} {
     if(!matchUrlProtocol(url)) {
       url = 'https://' + url;
     }
   
     let tgMeMatch;
     let telescoPeMatch;
+    let onclick: string;
     /* if(unsafe === 2) {
       url = 'tg://unsafe_url?url=' + encodeURIComponent(url);
     } else  */if((tgMeMatch = url.match(/^(?:https?:\/\/)?t(?:elegram)?\.me\/(.+)/))) {
@@ -803,12 +809,19 @@ namespace RichTextProcessor {
       const path = fullPath.split('/');
       switch(path[0]) {
         case 'joinchat':
+        case 'addstickers':
+          onclick = path[0];
+          break;
+  
+        /* case 'joinchat':
+          onclick = 'joinchat';
           url = 'tg://join?invite=' + path[1];
           break;
   
         case 'addstickers':
+          onclick = 'addstickers';
           url = 'tg://addstickers?set=' + path[1];
-          break;
+          break; */
   
         default:
           if(path[1] && path[1].match(/^\d+$/)) {               // https://t.me/.+/[0-9]+ (channel w/ username)
@@ -846,7 +859,7 @@ namespace RichTextProcessor {
       url = 'tg://unsafe_url?url=' + encodeURIComponent(url);
     } */
   
-    return url;
+    return {url, onclick};
   }
 
   export function matchUrlProtocol(text: string) {
