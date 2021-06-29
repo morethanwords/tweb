@@ -5,7 +5,7 @@
  */
 
 import PopupElement from ".";
-import appStickersManager from "../../lib/appManagers/appStickersManager";
+import appStickersManager, { AppStickersManager } from "../../lib/appManagers/appStickersManager";
 import { RichTextProcessor } from "../../lib/richtextprocessor";
 import Scrollable from "../scrollable";
 import { wrapSticker } from "../wrappers";
@@ -29,11 +29,7 @@ export default class PopupStickers extends PopupElement {
 
   private set: StickerSet.stickerSet;
 
-  constructor(private stickerSetInput: {
-    //_: 'inputStickerSetID',
-    id: string,
-    access_hash: string
-  }) {
+  constructor(private stickerSetInput: Parameters<AppStickersManager['getStickerSet']>[0]) {
     super('popup-stickers', null, {closable: true, overlayClosable: true, body: true});
 
     this.h6 = document.createElement('h6');

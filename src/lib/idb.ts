@@ -354,6 +354,10 @@ export default class IDBStorage<T extends Database<any>> {
 
     return this.openDatabase().then((db) => {
       return new Promise<T>((resolve, reject) => {
+        /* if(mode === 'readwrite') {
+          return;
+        } */
+
         const transaction = db.transaction([storeName], mode);
 
         transaction.onerror = (e) => {
