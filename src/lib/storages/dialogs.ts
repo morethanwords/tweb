@@ -94,7 +94,7 @@ export default class DialogsStorage {
               this.appMessagesManager.saveMessages([dialog.topMessage]);
             }
   
-            this.saveDialog(dialog);
+            this.saveDialog(dialog, undefined, true);
 
             // ! WARNING, убрать это когда нужно будет делать чтобы pending сообщения сохранялись
             const message = this.appMessagesManager.getMessageByPeer(dialog.peerId, dialog.top_message);
@@ -180,7 +180,7 @@ export default class DialogsStorage {
     return dialogs.map(d => d.dialog);
   }
 
-  public getDialog(peerId: number, folderId?: number): [Dialog, number] | [] {
+  public getDialog(peerId: number, folderId?: number, skipMigrated = true): [Dialog, number] | [] {
     const folders: Dialog[][] = [];
 
     if(folderId === undefined) {
@@ -193,9 +193,14 @@ export default class DialogsStorage {
     }
 
     for(let folder of folders) {
-      const index = folder.findIndex(dialog => dialog.peerId === peerId);
-      if(index !== -1) {
-        return [folder[index], index];
+      let i = 0, skipped = 0;
+      for(let length = folder.length; i < length; ++i) {
+        const dialog = folder[i];
+        if(dialog.peerId === peerId) {
+          return [dialog, i - skipped];
+        } else if(skipMigrated && dialog.migratedTo !== undefined) {
+          ++skipped;
+        }
       }
     }
 
@@ -272,7 +277,7 @@ export default class DialogsStorage {
     return this.generateDialogPinnedDateByIndex(pinnedIndex);
   }
 
-  public generateDialog(peerId: number) {
+  /* public generateDialog(peerId: number) {
     const dialog: Dialog = {
       _: 'dialog',
       pFlags: {},
@@ -288,7 +293,7 @@ export default class DialogsStorage {
     };
 
     return dialog;
-  }
+  } */
 
   public setDialogToState(dialog: Dialog) {
     const historyStorage = this.appMessagesManager.getHistoryStorage(dialog.peerId);
@@ -427,11 +432,11 @@ export default class DialogsStorage {
   /**
    * Won't save migrated from peer, forbidden peers, left and kicked
    */
-  public saveDialog(dialog: Dialog, folderId = 0) {
+  public saveDialog(dialog: Dialog, folderId = 0, saveOffset = false) {
     const peerId = this.appPeersManager.getPeerId(dialog.peer);
     if(!peerId) {
       console.error('saveConversation no peerId???', dialog, folderId);
-      return false;
+      return;
     }
 
     if(dialog._ !== 'dialog'/*  || peerId === 239602833 */) {
@@ -442,8 +447,9 @@ export default class DialogsStorage {
 
     if(peerId < 0) {
       const chat: Chat = this.appChatsManager.getChat(-peerId);
-      if(chat._ === 'channelForbidden' || chat._ === 'chatForbidden' || (chat as Chat.chat).pFlags.left || (chat as Chat.chat).pFlags.kicked) {
-        return false;
+      // ! chatForbidden stays for chat where you're kicked
+      if(chat._ === 'channelForbidden' /* || chat._ === 'chatForbidden' */ || (chat as Chat.chat).pFlags.left || (chat as Chat.chat).pFlags.kicked) {
+        return;
       }
     }
 
@@ -480,7 +486,8 @@ export default class DialogsStorage {
         const migratedToPeer = this.appPeersManager.getPeerId(chat.migrated_to);
         this.appMessagesManager.migratedFromTo[peerId] = migratedToPeer;
         this.appMessagesManager.migratedToFrom[migratedToPeer] = peerId;
-        return;
+        dialog.migratedTo = migratedToPeer;
+        //return;
       }
     }
 
@@ -538,7 +545,7 @@ export default class DialogsStorage {
       safeReplaceObject(wasDialogBefore, dialog);
     }
 
-    this.pushDialog(dialog, message.date);
+    this.pushDialog(dialog, saveOffset && message.date);
   }
 
   public getDialogs(query = '', offsetIndex?: number, limit = 20, folderId = 0) {
@@ -589,7 +596,7 @@ export default class DialogsStorage {
       });
     }
 
-    return this.appMessagesManager.getTopMessages(limit, realFolderId).then(messagesDialogs => {
+    return this.appMessagesManager.getTopMessages(limit, realFolderId).then(result => {
       //const curDialogStorage = this[folderId];
 
       offset = 0;
@@ -605,8 +612,9 @@ export default class DialogsStorage {
 
       return {
         dialogs: curDialogStorage.slice(offset, offset + limit),
-        count: messagesDialogs._ === 'messages.dialogs' ? messagesDialogs.dialogs.length : messagesDialogs.count,
-        isEnd: this.isDialogsLoaded(realFolderId) && (offset + limit) >= curDialogStorage.length
+        count: result.count === undefined ? curDialogStorage.length : result.count,
+        // isEnd: this.isDialogsLoaded(realFolderId) && (offset + limit) >= curDialogStorage.length
+        isEnd: result.isEnd
       };
     });
   }
