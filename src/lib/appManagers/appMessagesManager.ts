@@ -1654,7 +1654,7 @@ export class AppMessagesManager {
     }
   }
 
-  public lolSet = new Set();
+  // public lolSet = new Set();
   public getTopMessages(limit: number, folderId: number, offsetDate?: number) {
     //const dialogs = this.dialogsStorage.getFolder(folderId);
     let offsetId = 0;
@@ -1727,9 +1727,9 @@ export class AppMessagesManager {
           return;
         }
 
-        if(!folderId && !dialog.folder_id) {
-          this.lolSet.add(dialog.peerId);
-        }
+        // if(!folderId && !dialog.folder_id) {
+        //   this.lolSet.add(dialog.peerId);
+        // }
 
         /* if(dialog.peerId === -1213511294) {
           this.log.error('lun bot', folderId, d);
