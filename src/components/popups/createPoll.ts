@@ -12,7 +12,6 @@ import InputField from "../inputField";
 import RadioField from "../radioField";
 import Scrollable from "../scrollable";
 import SendContextMenu from "../chat/sendContextMenu";
-import { MessageEntity } from "../../layer";
 import I18n, { _i18n, i18n } from "../../lib/langPack";
 import findUpTag from "../../helpers/dom/findUpTag";
 import { cancelEvent } from "../../helpers/dom/cancelEvent";

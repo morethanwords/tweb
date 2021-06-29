@@ -43,7 +43,7 @@ import appNavigationController from '../../components/appNavigationController';
 import appNotificationsManager from './appNotificationsManager';
 import AppPrivateSearchTab from '../../components/sidebarRight/tabs/search';
 import { i18n, LangPackKey } from '../langPack';
-import { SendMessageAction } from '../../layer';
+import { ChatInvite, SendMessageAction } from '../../layer';
 import { hslaStringToHex } from '../../helpers/color';
 import { copy, getObjectKeysAndSort } from '../../helpers/object';
 import { getFilesFromEvent } from '../../helpers/files';
@@ -60,6 +60,7 @@ import appEmojiManager from './appEmojiManager';
 import PopupElement from '../../components/popups';
 import singleInstance from '../mtproto/singleInstance';
 import PopupStickers from '../../components/popups/stickers';
+import PopupJoinChatInvite from '../../components/popups/joinChatInvite';
 
 //console.log('appImManager included33!');
 
@@ -224,66 +225,108 @@ export class AppImManager {
       stateStorage.setToCache('chatPositions', c || {});
     });
 
-    this.addAnchorListener('showMaskedAlert', (params, element) => {
-      const href = element.href;
+    this.addAnchorListener<void>({
+      name: 'showMaskedAlert', 
+      callback: (params, element) => {
+        const href = element.href;
 
-      const a = element.cloneNode(true) as HTMLAnchorElement;
-      a.className = 'anchor-url';
-      a.innerText = href;
-      a.removeAttribute('onclick');
+        const a = element.cloneNode(true) as HTMLAnchorElement;
+        a.className = 'anchor-url';
+        a.innerText = href;
+        a.removeAttribute('onclick');
 
-      new PopupPeer('popup-masked-url', {
-        titleLangKey: 'OpenUrlTitle',
-        descriptionLangKey: 'OpenUrlAlert2',
-        descriptionLangArgs: [a],
-        buttons: [{
-          langKey: 'Open',
-          callback: () => {
-            a.click();
-          },
-        }]
-      }).show();
-    }, false);
-
-    this.addAnchorListener('execBotCommand', (params) => {
-      const {command, bot} = params;
-
-      /* const promise = bot ? this.openUsername(bot).then(() => this.chat.peerId) : Promise.resolve(this.chat.peerId);
-      promise.then(peerId => {
-        appMessagesManager.sendText(peerId, '/' + command);
-      }); */
-
-      appMessagesManager.sendText(this.chat.peerId, '/' + command + (bot ? '@' + bot : ''));
-
-      //console.log(command, bot);
+        new PopupPeer('popup-masked-url', {
+          titleLangKey: 'OpenUrlTitle',
+          descriptionLangKey: 'OpenUrlAlert2',
+          descriptionLangArgs: [a],
+          buttons: [{
+            langKey: 'Open',
+            callback: () => {
+              a.click();
+            },
+          }]
+        }).show();
+      }, 
+      noParams: true
     });
 
-    this.addAnchorListener('searchByHashtag', (params) => {
-      if(!params) {
-        return;
+    this.addAnchorListener<{command: string, bot: string}>({
+      name: 'execBotCommand', 
+      callback: (params) => {
+        const {command, bot} = params;
+
+        /* const promise = bot ? this.openUsername(bot).then(() => this.chat.peerId) : Promise.resolve(this.chat.peerId);
+        promise.then(peerId => {
+          appMessagesManager.sendText(peerId, '/' + command);
+        }); */
+
+        appMessagesManager.sendText(this.chat.peerId, '/' + command + (bot ? '@' + bot : ''));
+
+        //console.log(command, bot);
       }
-
-      const {hashtag} = params;
-      this.chat.initSearch('#' + hashtag + ' ');
     });
 
-    this.addAnchorListener('addstickers', (params) => {
-      new PopupStickers({id: params[1]}).show();
-    }, true);
+    this.addAnchorListener<{hashtag: string}>({
+      name: 'searchByHashtag', 
+      callback: (params) => {
+        if(!params) {
+          return;
+        }
+
+        const {hashtag} = params;
+        this.chat.initSearch('#' + hashtag + ' ');
+      }
+    });
+
+    this.addAnchorListener<['addstickers', string]>({
+      name: 'addstickers', 
+      callback: (params) => {
+        new PopupStickers({id: params[1]}).show();
+      }, 
+      parsePathname: true
+    });
+
+    this.addAnchorListener<['joinchat', string]>({
+      name: 'joinchat', 
+      callback: (params) => {
+        apiManager.invokeApi('messages.checkChatInvite', {
+          hash: params[1]
+        }).then(chatInvite => {
+          if((chatInvite as ChatInvite.chatInvitePeek).chat) {
+            appChatsManager.saveApiChat((chatInvite as ChatInvite.chatInvitePeek).chat, true);
+          }
+
+          // console.log(chatInvite);
+
+          if(chatInvite._ === 'chatInviteAlready' ||
+            chatInvite._ === 'chatInvitePeek'/*  && chatInvite.expires > tsNow(true) */) {
+            this.setInnerPeer(-chatInvite.chat.id);
+            return;
+          }
+
+          new PopupJoinChatInvite(params[1], chatInvite).show();
+        });
+      },
+      parsePathname: true
+    });
   }
 
-  private addAnchorListener(name: 'showMaskedAlert' | 'execBotCommand' | 'searchByHashtag' | 'addstickers', 
-    callback: (params: any, element: HTMLAnchorElement) => boolean | void, parseParams = true) {
-    (window as any)[name] = (element: HTMLAnchorElement, e: Event) => {
+  private addAnchorListener<Params extends any>(options: {
+    name: 'showMaskedAlert' | 'execBotCommand' | 'searchByHashtag' | 'addstickers' | 'joinchat', 
+    callback: (params: Params, element: HTMLAnchorElement) => boolean | void, 
+    noParams?: boolean, 
+    parsePathname?: boolean
+  }) {
+    (window as any)[options.name] = (element: HTMLAnchorElement/* , e: Event */) => {
       cancelEvent(null);
 
       const href = element.href;
       let params: any;
-      if(parseParams) {
-        params = !element.href.includes('#') ? new URL(element.href).pathname.split('/').slice(1) : this.parseUriParams(href);
+      if(!options.noParams) {
+        params = options.parsePathname ? new URL(element.href).pathname.split('/').slice(1) : this.parseUriParams(href);
       }
 
-      const res = callback(params, element);
+      const res = options.callback(params, element);
       return res === undefined ? res : false;
     };
   }

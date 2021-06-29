@@ -1,0 +1,20 @@
+.popup-join-chat-invite {
+  user-select: none;
+  
+  .popup-body {
+    align-items: center;
+    padding: .5rem 0 1.25rem;
+  }
+
+  .chat-title {
+    font-weight: bold;
+    margin: .75rem 0 .25rem;
+    line-height: var(--line-height);
+  }
+
+  .chat-participants-count {
+    color: var(--secondary-text-color);
+    font-size: .875rem;
+    line-height: var(--line-height);
+  }
+}

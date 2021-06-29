@@ -80,6 +80,10 @@ avatar-element {
   &:before {
     line-height: inherit !important;
   }
+
+  &.media-container {
+    position: relative;
+  }
   
   img {
     //width: 100% !important;

@@ -457,10 +457,10 @@ export class AppChatsManager {
       broadcast: true,
       title,
       about
-    }).then((updates: any) => {
+    }).then((updates) => {
       apiUpdatesManager.processUpdateMessage(updates);
 
-      const channelId = updates.chats[0].id;
+      const channelId = (updates as any).chats[0].id;
       rootScope.dispatchEvent('history_focus', {peerId: -channelId});
 
       return channelId;
