@@ -1231,7 +1231,8 @@ export namespace Dialog {
 		folder_id?: number,
 		index?: number,
 		peerId?: number,
-		topMessage?: any
+		topMessage?: any,
+		migratedTo?: number
 	};
 
 	export type dialogFolder = {

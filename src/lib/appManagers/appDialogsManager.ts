@@ -326,35 +326,34 @@ export class AppDialogsManager {
     });
 
     rootScope.addEventListener('state_cleared', () => {
-      appUsersManager.clear();
-      appChatsManager.clear();
-      
-      const filtersStorage = appMessagesManager.filtersStorage;
-      const filters = filtersStorage.filters;
-      for(const filterId in filters) { // delete filters
-        rootScope.dispatchEvent('updateDialogFilter', {
-          _: 'updateDialogFilter',
-          id: +filterId,
-        });
-      }
+      //setTimeout(() => 
+      appStateManager.getState().then((state) => {
+        appUsersManager.clear();
+        appChatsManager.clear();
+        
+        const filtersStorage = appMessagesManager.filtersStorage;
+        const filters = filtersStorage.filters;
+        for(const filterId in filters) { // delete filters
+          rootScope.dispatchEvent('updateDialogFilter', {
+            _: 'updateDialogFilter',
+            id: +filterId,
+          });
+        }
 
-      appMessagesManager.clear();
+        appMessagesManager.clear();
 
-      /* const clearPromises: Promise<any>[] = [];
-      for(const name in appStateManager.storagesResults) {
-        const results = appStateManager.storagesResults[name as keyof AppStateManager['storages']];
-        const storage = appStateManager.storages[name as keyof AppStateManager['storages']];
-        results.length = 0;
-        clearPromises.push(storage.clear());
-      } */
+        /* const clearPromises: Promise<any>[] = [];
+        for(const name in appStateManager.storagesResults) {
+          const results = appStateManager.storagesResults[name as keyof AppStateManager['storages']];
+          const storage = appStateManager.storages[name as keyof AppStateManager['storages']];
+          results.length = 0;
+          clearPromises.push(storage.clear());
+        } */
 
-      this.validateForFilter();
-      Promise.all([
-        appStateManager.getState(), 
-        //Promise.all(clearPromises)
-      ]).then(([state]) => {
+        this.validateForFilter();
+
         this.onStateLoaded(state);
-      });
+      })//, 5000);
     });
 
     const foldersScrollable = new ScrollableX(this.folders.menuScrollContainer);
@@ -450,6 +449,7 @@ export class AppDialogsManager {
   }
 
   private isDialogMustBeInViewport(dialog: Dialog) {
+    if(dialog.migratedTo !== undefined) return false;
     //return true;
     const topOffset = this.getOffset('top');
     const bottomOffset = this.getOffset('bottom');
@@ -636,8 +636,10 @@ export class AppDialogsManager {
       this.showFiltersPromise = new Promise<void>((resolve) => {
         window.setTimeout(() => {
           this.showFiltersPromise = undefined;
-          this.folders.menuScrollContainer.classList.remove('hide');
-          this.setFiltersUnreadCount();
+          if(Object.keys(this.filtersRendered).length > 1) {
+            this.folders.menuScrollContainer.classList.remove('hide');
+            this.setFiltersUnreadCount();
+          }
           resolve();
         }, 0);
       });
@@ -661,14 +663,13 @@ export class AppDialogsManager {
   
       const filterId = this.filterId;
       let loadCount = 30/*this.chatsLoadCount */;
-  
-      const storage = appMessagesManager.dialogsStorage.getFolder(filterId);
       let offsetIndex = 0;
-  
+      
       if(side === 'top') {
         const element = this.chatList.firstElementChild as HTMLElement;
         if(element) {
           const peerId = +element.dataset.peerId;
+          const storage = appMessagesManager.dialogsStorage.getFolder(filterId);
           const index = storage.findIndex(dialog => dialog.peerId === peerId);
           const needIndex = Math.max(0, index - loadCount);
           loadCount = index - needIndex;
@@ -678,7 +679,7 @@ export class AppDialogsManager {
         const element = this.chatList.lastElementChild as HTMLElement;
         if(element) {
           const peerId = +element.dataset.peerId;
-          const dialog = storage.find(dialog => dialog.peerId === peerId);
+          const dialog = appMessagesManager.getDialogOnly(peerId);
           offsetIndex = dialog.index;
         }
       }
@@ -1210,7 +1211,7 @@ export class AppDialogsManager {
     const peerId: number = dialog.peerId;
 
     if(container === undefined) {
-      if(this.doms[peerId]) return;
+      if(this.doms[peerId] || dialog.migratedTo !== undefined) return;
 
       const filter = appMessagesManager.filtersStorage.filters[this.filterId];
       if((filter && !appMessagesManager.filtersStorage.testDialogForFilter(dialog, filter)) || (!filter && this.filterId !== dialog.folder_id)) {

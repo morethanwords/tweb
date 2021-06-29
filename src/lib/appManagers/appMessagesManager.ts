@@ -54,6 +54,8 @@ import htmlToSpan from "../../helpers/dom/htmlToSpan";
 import { REPLIES_PEER_ID } from "../mtproto/mtproto_config";
 import formatCallDuration from "../../helpers/formatCallDuration";
 import appAvatarsManager from "./appAvatarsManager";
+import telegramMeWebManager from "../mtproto/telegramMeWebManager";
+import { getMiddleware } from "../../helpers/middleware";
 
 //console.trace('include');
 // TODO: если удалить сообщение в непрогруженном диалоге, то при обновлении, из-за стейта, последнего сообщения в чатлисте не будет
@@ -196,6 +198,8 @@ export class AppMessagesManager {
 
   private typings: {[peerId: string]: {type: SendMessageAction['_'], timeout?: number}} = {};
 
+  private middleware: ReturnType<typeof getMiddleware>;
+
   constructor() {
     this.clear();
 
@@ -310,6 +314,12 @@ export class AppMessagesManager {
   }
 
   public clear() {
+    if(this.middleware) {
+      this.middleware.clean();
+    } else {
+      this.middleware = getMiddleware();
+    }
+
     this.messagesStorageByPeerId = {};
     this.groupedMessagesStorage = {};
     this.scheduledMessagesStorage = {};
@@ -1575,7 +1585,7 @@ export class AppMessagesManager {
     for(let folderId = 0; folderId < 2; ++folderId) {
       let offsetDate = 0;
       for(;;) {
-        const {dialogs} = await appMessagesManager.getTopMessages(limit, folderId, offsetDate);
+        const {dialogs, isEnd} = await this.getTopMessages(limit, folderId, offsetDate);
   
         if(dialogs.length) {
           outDialogs.push(...dialogs as Dialog[]);
@@ -1590,7 +1600,9 @@ export class AppMessagesManager {
             console.error('refreshConversations: got no offsetDate', dialog);
             break;
           }
-        } else {
+        }
+        
+        if(isEnd) {
           break;
         }
       }
@@ -1642,8 +1654,9 @@ export class AppMessagesManager {
     }
   }
 
+  public lolSet = new Set();
   public getTopMessages(limit: number, folderId: number, offsetDate?: number) {
-    const dialogs = this.dialogsStorage.getFolder(folderId);
+    //const dialogs = this.dialogsStorage.getFolder(folderId);
     let offsetId = 0;
     let offsetPeerId = 0;
     let offsetIndex = 0;
@@ -1656,6 +1669,8 @@ export class AppMessagesManager {
       offsetIndex = offsetDate * 0x10000;
       offsetDate += serverTimeManager.serverTimeOffset;
     }
+
+    const middleware = this.middleware.get();
 
     // ! ВНИМАНИЕ: ОЧЕНЬ СЛОЖНАЯ ЛОГИКА:
     // ! если делать запрос сначала по папке 0, потом по папке 1, по индексу 0 в массиве будет один и тот же диалог, с dialog.pFlags.pinned, ЛОЛ???
@@ -1671,7 +1686,7 @@ export class AppMessagesManager {
       //timeout: APITIMEOUT,
       noErrorBox: true
     }).then((dialogsResult) => {
-      if(dialogsResult._ === 'messages.dialogsNotModified') return null;
+      if(!middleware() || dialogsResult._ === 'messages.dialogsNotModified') return null;
 
       if(DEBUG) {
         this.log('messages.getDialogs result:', dialogsResult.dialogs, {...dialogsResult.dialogs[0]});
@@ -1681,9 +1696,13 @@ export class AppMessagesManager {
         telegramMeWebService.setAuthorized(true);
       } */
 
-      // can reset here pinned order
+      // can reset pinned order here
       if(!offsetId && !offsetDate && !offsetPeerId) {
         this.dialogsStorage.resetPinnedOrder(folderId);
+      }
+
+      if(!offsetDate) {
+        telegramMeWebManager.setAuthorized(true);
       }
 
       appUsersManager.saveApiUsers(dialogsResult.users);
@@ -1696,16 +1715,20 @@ export class AppMessagesManager {
       forEachReverse((dialogsResult.dialogs as Dialog[]), dialog => {
         //const d = Object.assign({}, dialog);
         // ! нужно передавать folderId, так как по папке !== 0 нет свойства folder_id
-        this.dialogsStorage.saveDialog(dialog, dialog.folder_id ?? folderId);
+        this.dialogsStorage.saveDialog(dialog, dialog.folder_id ?? folderId, true);
 
         if(!maxSeenIdIncremented &&
-          !appPeersManager.isChannel(appPeersManager.getPeerId(dialog.peer))) {
+          !appPeersManager.isChannel(dialog.peerId || appPeersManager.getPeerId(dialog.peer))) {
           this.incrementMaxSeenId(dialog.top_message);
           maxSeenIdIncremented = true;
         }
 
         if(dialog.peerId === undefined) {
           return;
+        }
+
+        if(!folderId && !dialog.folder_id) {
+          this.lolSet.add(dialog.peerId);
         }
 
         /* if(dialog.peerId === -1213511294) {
@@ -1744,9 +1767,20 @@ export class AppMessagesManager {
 
       const count = (dialogsResult as MessagesDialogs.messagesDialogsSlice).count;
 
-      if(limit > dialogsResult.dialogs.length || 
+      // exclude empty draft dialogs
+      const dialogs = this.dialogsStorage.getFolder(folderId);
+      let dialogsLength = 0;
+      for(let i = 0, length = dialogs.length; i < length; ++i) {
+        if(this.getServerMessageId(dialogs[i].top_message)) {
+          ++dialogsLength;
+        }
+      }
+
+      const isEnd = /* limit > dialogsResult.dialogs.length || */ 
         !count || 
-        dialogs.length >= count) {
+        dialogsLength >= count ||
+        !dialogsResult.dialogs.length;
+      if(isEnd) {
         this.dialogsStorage.setDialogsLoaded(folderId, true);
       }
 
@@ -1756,7 +1790,11 @@ export class AppMessagesManager {
         rootScope.dispatchEvent('dialogs_multiupdate', {});
       }
 
-      return dialogsResult;
+      return {
+        isEnd, 
+        count, 
+        dialogs: (dialogsResult as MessagesDialogs.messagesDialogsSlice).dialogs
+      };
     });
   }
 
@@ -1914,13 +1952,15 @@ export class AppMessagesManager {
     return this.dialogsStorage.getDialogOnly(peerId);
   }
 
-  public reloadConversation(peerId: number | number[]) {
-    [].concat(peerId).forEach(peerId => {
-      if(!this.reloadConversationsPeers.has(peerId)) {
-        this.reloadConversationsPeers.add(peerId);
-        //this.log('will reloadConversation', peerId);
-      }
-    });
+  public reloadConversation(peerId?: number | number[]) {
+    if(peerId !== undefined) {
+      [].concat(peerId).forEach(peerId => {
+        if(!this.reloadConversationsPeers.has(peerId)) {
+          this.reloadConversationsPeers.add(peerId);
+          //this.log('will reloadConversation', peerId);
+        }
+      });
+    }
 
     if(this.reloadConversationsPromise) return this.reloadConversationsPromise;
     return this.reloadConversationsPromise = new Promise((resolve, reject) => {
@@ -1933,13 +1973,17 @@ export class AppMessagesManager {
           resolve();
         }, reject).finally(() => {
           this.reloadConversationsPromise = null;
+
+          if(this.reloadConversationsPeers.size) {
+            this.reloadConversation();
+          }
         });
       }, 0);
     });
   }
 
   private doFlushHistory(inputPeer: any, justClear?: boolean, revoke?: boolean): Promise<true> {
-    return apiManager.invokeApi('messages.deleteHistory', {
+    return apiManager.invokeApiSingle('messages.deleteHistory', {
       just_clear: justClear,
       revoke: revoke,
       peer: inputPeer,
@@ -1959,7 +2003,7 @@ export class AppMessagesManager {
       }
 
       return this.doFlushHistory(inputPeer, justClear);
-    })
+    });
   }
 
   public async flushHistory(peerId: number, justClear?: boolean, revoke?: boolean) {
@@ -1970,7 +2014,7 @@ export class AppMessagesManager {
 
       const channelId = -peerId;
       const maxId = historyResult.history[0] || 0;
-      return apiManager.invokeApi('channels.deleteHistory', {
+      return apiManager.invokeApiSingle('channels.deleteHistory', {
         channel: appChatsManager.getChannelInput(channelId),
         max_id: maxId
       }).then(() => {
@@ -2045,7 +2089,7 @@ export class AppMessagesManager {
   }
 
   public unpinAllMessages(peerId: number): Promise<boolean> {
-    return apiManager.invokeApi('messages.unpinAllMessages', {
+    return apiManager.invokeApiSingle('messages.unpinAllMessages', {
       peer: appPeersManager.getInputPeerById(peerId)
     }).then(affectedHistory => {
       apiUpdatesManager.processUpdateMessage({

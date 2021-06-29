@@ -29,7 +29,8 @@
   "params": [
     {"name": "index", "type": "number"},
     {"name": "peerId", "type": "number"},
-    {"name": "topMessage", "type": "any"}
+    {"name": "topMessage", "type": "any"},
+    {"name": "migratedTo", "type": "number"}
   ]
 }, {
   "predicate": "dialogFolder",
