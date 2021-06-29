@@ -6,36 +6,12 @@
 
 // * Jolly Cobra's schedulers
 import { AnyToVoidFunction, NoneToVoidFunction } from "../types";
+import _debounce from './schedulers/debounce';
 
 //type Scheduler = typeof requestAnimationFrame | typeof onTickEnd | typeof runNow;
 
-export function debounce<F extends AnyToVoidFunction>(
-  fn: F,
-  ms: number,
-  shouldRunFirst = true,
-  shouldRunLast = true,
-) {
-  let waitingTimeout: number | null = null;
-
-  return (...args: Parameters<F>) => {
-    if(waitingTimeout) {
-      clearTimeout(waitingTimeout);
-      waitingTimeout = null;
-    } else if(shouldRunFirst) {
-      // @ts-ignore
-      fn(...args);
-    }
-
-    waitingTimeout = setTimeout(() => {
-      if(shouldRunLast) {
-        // @ts-ignore
-        fn(...args);
-      }
-
-      waitingTimeout = null;
-    }, ms) as any;
-  };
-}
+const debounce = _debounce;
+export {debounce};
 
 export function throttle<F extends AnyToVoidFunction>(
   fn: F,
