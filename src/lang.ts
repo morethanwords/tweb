@@ -480,6 +480,8 @@ const lang = {
   },
   "TodayAtFormattedWithToday": "today at %1$s",
   "formatDateAtTime": "%1$s at %2$s",
+  "JoinByPeekChannelTitle": "Join Channel",
+  "JoinByPeekGroupTitle": "Join Group",
 
   // * macos
   "AccountSettings.Filters": "Chat Folders",
