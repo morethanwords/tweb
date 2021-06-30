@@ -4,14 +4,51 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { deferredPromise } from "../../helpers/cancellablePromise";
+import { readBlobAsUint8Array } from "../../helpers/blob";
+import { CancellablePromise, deferredPromise } from "../../helpers/cancellablePromise";
 import { notifySomeone } from "../../helpers/context";
 import debounce from "../../helpers/schedulers/debounce";
 import { isSafari } from "../../helpers/userAgent";
 import { InputFileLocation, UploadFile } from "../../layer";
+import CacheStorageController from "../cacheStorage";
 import { DownloadOptions } from "../mtproto/apiFileManager";
-import { RequestFilePartTask, deferredPromises, incrementTaskId } from "./index.service";
+import { RequestFilePartTask, deferredPromises, log } from "./index.service";
 import timeout from "./timeout";
+
+const cacheStorage = new CacheStorageController('cachedStreamChunks');
+const CHUNK_TTL = 86400;
+const CHUNK_CACHED_TIME_HEADER = 'Time-Cached';
+
+const clearOldChunks = () => {
+  return cacheStorage.timeoutOperation((cache) => {
+    return cache.keys().then(requests => {
+      const filtered: Map<StreamId, Request> = new Map();
+      const timestamp = Date.now() / 1000 | 0;
+      for(const request of requests) {
+        const match = request.url.match(/\/(\d+?)\?/);
+        if(match && !filtered.has(match[1])) {
+          filtered.set(match[1], request);
+        }
+      }
+
+      const promises: Promise<any>[] = [];
+      for(const [id, request] of filtered) {
+        const promise = cache.match(request).then((response) => {
+          if((+response.headers.get(CHUNK_CACHED_TIME_HEADER) + CHUNK_TTL) <= timestamp) {
+            log('will delete stream chunk:', id);
+            return cache.delete(request, {ignoreSearch: true, ignoreVary: true});
+          }
+        });
+
+        promises.push(promise);
+      }
+
+      return Promise.all(promises);
+    });
+  });
+};
+
+setInterval(clearOldChunks, 1800e3);
 
 type StreamRange = [number, number];
 type StreamId = string;
@@ -20,6 +57,7 @@ class Stream {
   private destroyDebounced: () => void;
   private id: StreamId;
   private limitPart: number;
+  private loadedOffsets: Set<number> = new Set();
 
   constructor(private info: DownloadOptions) {
     this.id = Stream.getId(info);
@@ -27,24 +65,85 @@ class Stream {
 
     // ! если грузить очень большое видео чанками по 512Кб в мобильном Safari, то стрим не запустится
     this.limitPart = info.size > (75 * 1024 * 1024) ? STREAM_CHUNK_UPPER_LIMIT : STREAM_CHUNK_MIDDLE_LIMIT;
-    this.destroyDebounced = debounce(this.destroy, 15000, false, true);
+    this.destroyDebounced = debounce(this.destroy, 150000, false, true);
   }
 
   private destroy = () => {
     streams.delete(this.id);
   };
 
-  private requestFilePart(alignedOffset: number, limit: number) {
-    const task: RequestFilePartTask = {
+  private requestFilePartFromWorker(alignedOffset: number, limit: number, fromPreload = false) {
+    const task: Omit<RequestFilePartTask, 'id'> = {
       type: 'requestFilePart',
-      id: incrementTaskId(),
       payload: [this.info.dcId, this.info.location, alignedOffset, limit]
     };
 
+    const taskId = JSON.stringify(task);
+    (task as RequestFilePartTask).id = taskId;
+
+    let deferred = deferredPromises[taskId] as CancellablePromise<UploadFile.uploadFile>;
+    if(deferred) {
+      return deferred.then(uploadFile => uploadFile.bytes);
+    }
+
     notifySomeone(task);
+
+    this.loadedOffsets.add(alignedOffset);
     
-    const deferred = deferredPromises[task.id] = deferredPromise<UploadFile.uploadFile>();
-    return deferred;
+    deferred = deferredPromises[taskId] = deferredPromise<UploadFile.uploadFile>();
+    const bytesPromise = deferred.then(uploadFile => uploadFile.bytes);
+
+    this.saveChunkToCache(bytesPromise, alignedOffset, limit);
+    !fromPreload && this.preloadChunks(alignedOffset, alignedOffset + (this.limitPart * 15));
+
+    return bytesPromise;
+  }
+
+  private requestFilePartFromCache(alignedOffset: number, limit: number, fromPreload?: boolean) {
+    const key = this.getChunkKey(alignedOffset, limit);
+    return cacheStorage.getFile(key).then((blob: Blob) => {
+      return fromPreload ? new Uint8Array() : readBlobAsUint8Array(blob);
+    }, (error) => {
+      if(error === 'NO_ENTRY_FOUND') {
+        return;
+      }
+    });
+  }
+
+  private requestFilePart(alignedOffset: number, limit: number, fromPreload?: boolean) {
+    return this.requestFilePartFromCache(alignedOffset, limit, fromPreload).then(bytes => {
+      return bytes || this.requestFilePartFromWorker(alignedOffset, limit, fromPreload);
+    });
+  }
+
+  private saveChunkToCache(deferred: Promise<Uint8Array>, alignedOffset: number, limit: number) {
+    return deferred.then(bytes => {
+      const key = this.getChunkKey(alignedOffset, limit);
+      const response = new Response(bytes, {
+        headers: {
+          'Content-Length': '' + bytes.length,
+          'Content-Type': 'application/octet-stream',
+          [CHUNK_CACHED_TIME_HEADER]: '' + (Date.now() / 1000 | 0)
+        }
+      });
+
+      return cacheStorage.save(key, response);
+    });
+  }
+
+  private preloadChunks(offset: number, end: number) {
+    if(end > this.info.size) {
+      end = this.info.size;
+    }
+
+    for(; offset < end; offset += this.limitPart) {
+      if(this.loadedOffsets.has(offset)) {
+        continue;
+      }
+
+      this.loadedOffsets.add(offset);
+      this.requestFilePart(offset, this.limitPart, true);
+    }
   }
 
   public requestRange(range: StreamRange) {
@@ -66,9 +165,7 @@ class Stream {
     const limit = end && end < this.limitPart ? alignLimit(end - offset + 1) : this.limitPart;
     const alignedOffset = alignOffset(offset, limit);
 
-    return this.requestFilePart(alignedOffset, limit).then(result => {
-      let ab = result.bytes as Uint8Array;
-        
+    return this.requestFilePart(alignedOffset, limit).then(ab => {
       //log.debug('[stream] requestFilePart result:', result);
 
       const headers: Record<string, string> = {
@@ -96,11 +193,15 @@ class Stream {
     });
   }
 
+  private getChunkKey(alignedOffset: number, limit: number) {
+    return this.id + '?offset=' + alignedOffset + '&limit=' + limit;
+  }
+
   public static get(info: DownloadOptions) {
     return streams.get(this.getId(info)) ?? new Stream(info);
   }
 
-  public static getId(info: DownloadOptions) {
+  private static getId(info: DownloadOptions) {
     return (info.location as InputFileLocation.inputDocumentFileLocation).id;
   }
 }

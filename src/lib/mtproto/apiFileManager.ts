@@ -11,6 +11,7 @@
 
 import { MOUNT_CLASS_TO } from "../../config/debug";
 import Modes from "../../config/modes";
+import { readBlobAsArrayBuffer } from "../../helpers/blob";
 import { CancellablePromise, deferredPromise } from "../../helpers/cancellablePromise";
 import { notifyAll, notifySomeone } from "../../helpers/context";
 import { getFileNameByLocation } from "../../helpers/fileName";
@@ -489,73 +490,59 @@ export class ApiFileManager {
       for(let offset = 0; offset < fileSize; offset += partSize) {
         const part = _part++; // 0, 1
         yield self.downloadRequest('upload', id, () => {
-          return new Promise<void>((uploadResolve, uploadReject) => {
-            const reader = new FileReader();
-            const blob = file.slice(offset, offset + partSize);
-    
-            reader.onloadend = (e) => {
-              if(canceled) {
-                uploadReject({type: 'UPLOAD_CANCELED'});
-                return;
-              }
-              
-              if(e.target.readyState !== FileReader.DONE) {
-                self.log.error('wrong readyState!');
-                uploadReject({type: 'WRONG_READY_STATE'});
-                return;
-              }
-  
-              let buffer = e.target.result as ArrayBuffer;
-              self.debug && self.log('Upload file part, isBig:', isBigFile, part, buffer.byteLength, new Uint8Array(buffer).length, new Uint8Array(buffer).slice().length);
+          const blob = file.slice(offset, offset + partSize);
 
-              /* const u = new Uint8Array(buffer.byteLength);
-              for(let i = 0; i < u.length; ++i) {
-                //u[i] = Math.random() * 255 | 0;
-                u[i] = 0;
+          return readBlobAsArrayBuffer(blob).then(buffer => {
+            if(canceled) {
+              throw {type: 'UPLOAD_CANCELED'};
+            }
+
+            self.debug && self.log('Upload file part, isBig:', isBigFile, part, buffer.byteLength, new Uint8Array(buffer).length, new Uint8Array(buffer).slice().length);
+
+            /* const u = new Uint8Array(buffer.byteLength);
+            for(let i = 0; i < u.length; ++i) {
+              //u[i] = Math.random() * 255 | 0;
+              u[i] = 0;
+            }
+            buffer = u.buffer; */
+  
+            /* setTimeout(() => {
+              doneParts++;
+              uploadResolve();
+  
+              //////this.log('Progress', doneParts * partSize / fileSize);
+
+              self.log('done part', part, doneParts);
+  
+              deferred.notify({done: doneParts * partSize, total: fileSize});
+  
+              if(doneParts >= totalParts) {
+                deferred.resolve(resultInputFile);
+                resolved = true;
               }
-              buffer = u.buffer; */
-  
-              /* setTimeout(() => {
-                doneParts++;
-                uploadResolve();
-  
-                //////this.log('Progress', doneParts * partSize / fileSize);
+            }, 1250);
+            return; */
 
-                self.log('done part', part, doneParts);
+            return apiManager.invokeApi(method, {
+              file_id: fileId,
+              file_part: part,
+              file_total_parts: totalParts,
+              bytes: buffer/* new Uint8Array(buffer) */
+            } as any, {
+              //startMaxLength: partSize + 256,
+              fileUpload: true
+            }).then((result) => {
+              doneParts++;
   
-                deferred.notify({done: doneParts * partSize, total: fileSize});
+              //////this.log('Progress', doneParts * partSize / fileSize);
   
-                if(doneParts >= totalParts) {
-                  deferred.resolve(resultInputFile);
-                  resolved = true;
-                }
-              }, 1250);
-              return; */
-
-              apiManager.invokeApi(method, {
-                file_id: fileId,
-                file_part: part,
-                file_total_parts: totalParts,
-                bytes: buffer/* new Uint8Array(buffer) */
-              } as any, {
-                //startMaxLength: partSize + 256,
-                fileUpload: true
-              }).then((result) => {
-                doneParts++;
-                uploadResolve();
+              deferred.notify({done: doneParts * partSize, total: fileSize});
   
-                //////this.log('Progress', doneParts * partSize / fileSize);
-  
-                deferred.notify({done: doneParts * partSize, total: fileSize});
-  
-                if(doneParts >= totalParts) {
-                  deferred.resolve(resultInputFile);
-                  resolved = true;
-                }
-              }, errorHandler);
-            };
-    
-            reader.readAsArrayBuffer(blob);
+              if(doneParts >= totalParts) {
+                deferred.resolve(resultInputFile);
+                resolved = true;
+              }
+            }, errorHandler);
           });
         }, activeDelta).catch(errorHandler);
       }

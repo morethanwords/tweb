@@ -9,6 +9,7 @@ import resizeableImage from "../../lib/cropper";
 import PopupElement from ".";
 import { ripple } from "../ripple";
 import { _i18n } from "../../lib/langPack";
+import { readBlobAsDataURL } from "../../helpers/blob";
 
 export default class PopupAvatar extends PopupElement {
   private cropContainer: HTMLElement;
@@ -49,11 +50,8 @@ export default class PopupAvatar extends PopupElement {
       if(!file) {
         return;
       }
-  
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const contents = e.target.result as string;
-        
+
+      readBlobAsDataURL(file).then(contents => {
         this.image = new Image();
         this.cropContainer.append(this.image);
         this.image.src = contents;
@@ -67,9 +65,7 @@ export default class PopupAvatar extends PopupElement {
           this.cropper = resizeableImage(this.image, this.canvas);
           this.input.value = '';
         };
-      };
-  
-      reader.readAsDataURL(file);
+      });
     }, false);
 
     this.btnSubmit = document.createElement('button');

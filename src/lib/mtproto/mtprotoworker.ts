@@ -6,7 +6,7 @@
 
 import type { LocalStorageProxyTask, LocalStorageProxyTaskResponse } from '../localStorage';
 //import type { LocalStorageProxyDeleteTask, LocalStorageProxySetTask } from '../storage';
-import type { InvokeApiOptions } from '../../types';
+import type { InvokeApiOptions, WorkerTaskVoidTemplate } from '../../types';
 import type { MethodDeclMap } from '../../layer';
 import MTProtoWorker from 'worker-loader!./mtproto.worker';
 //import './mtproto.worker';
@@ -29,6 +29,7 @@ import appRuntimeManager from '../appManagers/appRuntimeManager';
 import { SocketProxyTask } from './transports/socketProxied';
 import telegramMeWebManager from './telegramMeWebManager';
 import { pause } from '../../helpers/schedulers';
+import { CacheStorageDbName } from '../cacheStorage';
 
 type Task = {
   taskId: number,
@@ -45,9 +46,15 @@ type HashOptions = {
   [queryJSON: string]: HashResult
 };
 
+export interface ToggleStorageTask extends WorkerTaskVoidTemplate {
+  type: 'toggleStorage',
+  payload: boolean
+};
+
 export class ApiManagerProxy extends CryptoWorkerMethods {
   public worker: /* Window */Worker;
   public postMessage: (...args: any[]) => void;
+  public postSWMessage: (...args: any[]) => void = () => {};
   private afterMessageIdTemp = 0;
 
   private taskId = 0;
@@ -101,6 +108,7 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
     this.registerServiceWorker();
 
     this.addTaskListener('clear', () => {
+      const toClear: CacheStorageDbName[] = ['cachedFiles', 'cachedStreamChunks'];
       Promise.all([
         AppStorage.toggleStorage(false), 
         sessionStorage.clear(),
@@ -108,7 +116,8 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
           telegramMeWebManager.setAuthorized(false),
           pause(3000)
         ]),
-        webPushApiManager.forceUnsubscribe()
+        webPushApiManager.forceUnsubscribe(),
+        Promise.all(toClear.map(cacheName => caches.delete(cacheName)))
       ]).finally(() => {
         appRuntimeManager.reload();
       });
@@ -219,6 +228,8 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
       sw.addEventListener('statechange', (e) => {
         this.log('SW statechange', e);
       });
+
+      this.postSWMessage = worker.controller.postMessage.bind(worker.controller);
 
       /// #if MTPROTO_SW
       const controller = worker.controller || registration.installing || registration.waiting || registration.active;
@@ -539,7 +550,9 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
   }
 
   public toggleStorage(enabled: boolean) {
-    return this.performTaskWorkerVoid('toggleStorage', enabled);
+    const task: ToggleStorageTask = {type: 'toggleStorage', payload: enabled};
+    this.postMessage(task);
+    this.postSWMessage(task);
   }
 
   public stopAll() {

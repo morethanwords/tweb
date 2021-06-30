@@ -9,7 +9,7 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import { blobConstruct } from "../helpers/blob";
+import { blobConstruct, readBlobAsUint8Array } from "../helpers/blob";
 
 export class FileManager {
   public blobSupported = true;
@@ -28,17 +28,8 @@ export class FileManager {
   
   public write(fileWriter: ReturnType<FileManager['getFakeFileWriter']>, bytes: Uint8Array | Blob | string): Promise<void> {
     if(bytes instanceof Blob) { // is file bytes
-      return new Promise((resolve, reject) => {
-        let fileReader = new FileReader();
-        fileReader.onload = function(event) {
-          let arrayBuffer = event.target.result as ArrayBuffer;
-          
-          let arr = new Uint8Array(arrayBuffer);
-          
-          fileWriter.write(arr).then(resolve, reject);
-        };
-        
-        fileReader.readAsArrayBuffer(bytes);
+      return readBlobAsUint8Array(bytes).then(arr => {
+        return fileWriter.write(arr);
       });
     } else {
       return fileWriter.write(bytes);

@@ -20,6 +20,7 @@ import sessionStorage from '../sessionStorage';
 import { LocalStorageProxyTask } from '../localStorage';
 import { WebpConvertTask } from '../webp/webpWorkerController';
 import { socketsProxied } from './transports/socketProxied';
+import { ToggleStorageTask } from './mtprotoworker';
 
 let webpSupported = false;
 export const isWebpSupported = () => {
@@ -95,6 +96,12 @@ const taskListeners = {
   forceReconnect: () => {
     networkerFactory.forceReconnect();
   },
+
+  toggleStorage: (task: ToggleStorageTask) => {
+    const enabled = task.payload;
+    // AppStorage.toggleStorage(enabled);
+    CacheStorageController.toggleStorage(enabled);
+  }
 };
 
 const onMessage = async(e: any) => {
@@ -150,13 +157,6 @@ const onMessage = async(e: any) => {
           notifyAll({taskId, result: null});
         });
         
-        break;
-      }
-
-      case 'toggleStorage': {
-        const enabled = task.args[0];
-        // AppStorage.toggleStorage(enabled);
-        CacheStorageController.toggleStorage(enabled);
         break;
       }
 
