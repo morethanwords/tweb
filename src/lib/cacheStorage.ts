@@ -10,16 +10,17 @@ import FileManager from './filemanager';
 //import { MOUNT_CLASS_TO } from './mtproto/mtproto_config';
 //import { logger } from './polyfill';
 
+export type CacheStorageDbName = 'cachedFiles' | 'cachedStreamChunks' | 'cachedAssets';
+
 export default class CacheStorageController {
   private static STORAGES: CacheStorageController[] = [];
-  //public dbName = 'cachedFiles';
   private openDbPromise: Promise<Cache>;
 
   private useStorage = true;
 
   //private log: ReturnType<typeof logger> = logger('CS');
 
-  constructor(private dbName: string) {
+  constructor(private dbName: CacheStorageDbName) {
     if(Modes.test) {
       this.dbName += '_test';
     }
@@ -33,34 +34,47 @@ export default class CacheStorageController {
   }
 
   private openDatabase(): Promise<Cache> {
-    if(this.openDbPromise) {
-      return this.openDbPromise;
-    }
-
-    return this.openDbPromise = caches.open(this.dbName);
+    return this.openDbPromise ?? (this.openDbPromise = caches.open(this.dbName));
   }
 
   public delete(entryName: string) {
-    return this.timeoutOperation((cache) => {
-      return cache.delete('/' + entryName);
-    });
+    return this.timeoutOperation((cache) => cache.delete('/' + entryName));
   }
 
   public deleteAll() {
     return caches.delete(this.dbName);
   }
 
-  public save(entryName: string, response: Response) {
-    if(!this.useStorage) return Promise.reject('STORAGE_OFFLINE');
+  public get(entryName: string) {
+    return this.timeoutOperation((cache) => cache.match('/' + entryName));
+  }
 
-    return this.timeoutOperation((cache) => {
-      return cache.put('/' + entryName, response);
+  public save(entryName: string, response: Response) {
+    return this.timeoutOperation((cache) => cache.put('/' + entryName, response));
+  }
+
+  public getFile(fileName: string, method: 'blob' | 'json' | 'text' = 'blob'): Promise<any> {
+    /* if(method === 'blob') {
+      return Promise.reject();
+    } */
+
+    // const str = `get fileName: ${fileName}`;
+    // console.time(str);
+    return this.get(fileName).then((response) => {
+      if(!response) {
+        //console.warn('getFile:', response, fileName);
+        throw 'NO_ENTRY_FOUND';
+      }
+
+      const promise = response[method]();
+      // promise.then(() => {
+      //   console.timeEnd(str);
+      // });
+      return promise;
     });
   }
 
   public saveFile(fileName: string, blob: Blob | Uint8Array) {
-    if(!this.useStorage) return Promise.reject('STORAGE_OFFLINE');
-
     //return Promise.resolve(blobConstruct([blob]));
     if(!(blob instanceof Blob)) {
       blob = blobConstruct(blob) as Blob;
@@ -72,41 +86,14 @@ export default class CacheStorageController {
       }
     });
     
-    return this.save(fileName, response).then(() => {
-      return blob as Blob;
-    });
+    return this.save(fileName, response).then(() => blob as Blob);
   }
 
-  /* public getBlobSize(blob: any) {
-    return blob.size || blob.byteLength || blob.length;
-  } */
+  public timeoutOperation<T>(callback: (cache: Cache) => Promise<T>) {
+    if(!this.useStorage) {
+      return Promise.reject('STORAGE_OFFLINE');
+    }
 
-  public getFile(fileName: string, method: 'blob' | 'json' | 'text' = 'blob'): Promise<any> {
-    if(!this.useStorage) return Promise.reject('STORAGE_OFFLINE');
-
-    /* if(method === 'blob') {
-      return Promise.reject();
-    } */
-
-    // const str = `get fileName: ${fileName}`;
-    // console.time(str);
-    return this.timeoutOperation(async(cache) => {
-      const response = await cache.match('/' + fileName);
-
-      if(!response || !cache) {
-        //console.warn('getFile:', response, fileName);
-        throw 'NO_ENTRY_FOUND';
-      }
-   
-      const promise = response[method]();
-      // promise.then(() => {
-      //   console.timeEnd(str);
-      // });
-      return promise;
-    });
-  }
-
-  private timeoutOperation<T>(callback: (cache: Cache) => Promise<T>) {
     return new Promise<T>(async(resolve, reject) => {
       let rejected = false;
       const timeout = setTimeout(() => {
@@ -118,6 +105,8 @@ export default class CacheStorageController {
       try {
         const cache = await this.openDatabase();
         if(!cache) {
+          this.useStorage = false;
+          this.openDbPromise = undefined;
           throw 'no cache?';
         }
 

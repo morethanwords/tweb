@@ -9,16 +9,32 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-export const readBlobAsText = (blob: Blob) => {
-  return new Promise<string>(resolve => {
+export function readBlobAs(blob: Blob, method: 'readAsText'): Promise<string>;
+export function readBlobAs(blob: Blob, method: 'readAsDataURL'): Promise<string>;
+export function readBlobAs(blob: Blob, method: 'readAsArrayBuffer'): Promise<ArrayBuffer>;
+export function readBlobAs(blob: Blob, method: 'readAsArrayBuffer' | 'readAsText' | 'readAsDataURL'): Promise<any> {
+  return new Promise<any>((resolve) => {
     const reader = new FileReader();
-    reader.addEventListener('loadend', (e) => {
-      // @ts-ignore
-      resolve(e.srcElement.result);
-    });
-    reader.readAsText(blob);
+    reader.addEventListener('loadend', (e) => resolve(e.target.result));
+    reader[method](blob);
   });
-};
+}
+
+export function readBlobAsText(blob: Blob) {
+  return readBlobAs(blob, 'readAsText');
+}
+
+export function readBlobAsDataURL(blob: Blob) {
+  return readBlobAs(blob, 'readAsDataURL');
+}
+
+export function readBlobAsArrayBuffer(blob: Blob) {
+  return readBlobAs(blob, 'readAsArrayBuffer');
+}
+
+export function readBlobAsUint8Array(blob: Blob) {
+  return readBlobAsArrayBuffer(blob).then(buffer => new Uint8Array(buffer));
+}
 
 export function blobConstruct(blobParts: any, mimeType: string = ''): Blob {
   let blob;

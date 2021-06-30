@@ -8,26 +8,28 @@
 import '../mtproto/mtproto.worker';
 /// #endif
 //import CacheStorageController from '../cacheStorage';
-import type { WorkerTaskTemplate, WorkerTaskVoidTemplate } from '../../types';
+import type { Modify, WorkerTaskTemplate, WorkerTaskVoidTemplate } from '../../types';
 import type { InputFileLocation, UploadFile } from '../../layer';
 import type { WebPushApiManager } from '../mtproto/webPushApiManager';
 import type { PushNotificationObject } from './push';
+import type { ToggleStorageTask } from '../mtproto/mtprotoworker';
 import { logger, LogTypes } from '../logger';
 import { CancellablePromise } from '../../helpers/cancellablePromise';
 import { CACHE_ASSETS_NAME, requestCache } from './cache';
 import onStreamFetch from './stream';
 import { closeAllNotifications, onPing } from './push';
+import CacheStorageController from '../cacheStorage';
 
 export const log = logger('SW', LogTypes.Error | LogTypes.Debug | LogTypes.Log | LogTypes.Warn);
 const ctx = self as any as ServiceWorkerGlobalScope;
-export const deferredPromises: {[taskId: number]: CancellablePromise<any>} = {};
+export const deferredPromises: {[taskId: string]: CancellablePromise<any>} = {};
 
-export interface RequestFilePartTask extends WorkerTaskTemplate {
+export interface RequestFilePartTask extends Modify<WorkerTaskTemplate, {id: string}> {
   type: 'requestFilePart',
   payload: [number, InputFileLocation, number, number]
 };
 
-export interface RequestFilePartTaskResponse extends WorkerTaskTemplate {
+export interface RequestFilePartTaskResponse extends Modify<WorkerTaskTemplate, {id: string}> {
   type: 'requestFilePart',
   payload?: UploadFile.uploadFile,
   originalPayload?: RequestFilePartTask['payload']
@@ -55,7 +57,7 @@ export interface ServiceWorkerPushClickTask extends WorkerTaskVoidTemplate {
   payload: PushNotificationObject
 };
 
-export type ServiceWorkerTask = RequestFilePartTaskResponse | ServiceWorkerPingTask | ServiceWorkerNotificationsClearTask;
+export type ServiceWorkerTask = RequestFilePartTaskResponse | ServiceWorkerPingTask | ServiceWorkerNotificationsClearTask | ToggleStorageTask;
 
 /// #if !MTPROTO_SW
 const taskListeners: {
@@ -77,6 +79,9 @@ const taskListeners: {
     }
 
     delete deferredPromises[task.id];
+  },
+  toggleStorage: (task: ToggleStorageTask) => {
+    CacheStorageController.toggleStorage(task.payload);
   }
 };
 ctx.addEventListener('message', (e) => {
@@ -89,7 +94,7 @@ ctx.addEventListener('message', (e) => {
 /// #endif
 
 //const cacheStorage = new CacheStorageController('cachedAssets');
-let taskId = 0;
+/* let taskId = 0;
 
 export function getTaskId() {
   return taskId;
@@ -97,7 +102,7 @@ export function getTaskId() {
 
 export function incrementTaskId() {
   return taskId++;
-}
+} */
 
 const onFetch = (event: FetchEvent): void => {
   if(event.request.url.indexOf(location.origin + '/') === 0 && event.request.url.match(/\.(js|css|jpe?g|json|wasm|png|mp3|svg|tgs|ico|woff2?|ttf|webmanifest?)(?:\?.*)?$/)) {
