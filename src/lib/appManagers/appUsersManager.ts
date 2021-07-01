@@ -46,7 +46,6 @@ export class AppUsersManager {
   private getTopPeersPromise: Promise<number[]>;
 
   constructor() {
-    this.users = this.storage.getCache();
     this.clear(true);
 
     setInterval(this.updateUsersStatuses, 60000);
@@ -174,9 +173,11 @@ export class AppUsersManager {
 
           users.findAndSplice((user) => user.id === userId);
           this.storage.delete(userId);
+          delete this.users[userId];
         }
       }
     } else {
+      this.users = {};
       this.usernames = {};
     }
     
