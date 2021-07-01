@@ -93,6 +93,8 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
   protected onPrevClick: (target: TargetType) => void;
   protected onNextClick: (target: TargetType) => void;
   protected loadMoreMedia: (older: boolean) => Promise<void>;
+
+  protected videoPlayer: VideoPlayer;
   
   constructor(topButtons: Array<keyof AppMediaViewerBase<ContentAdditionType, ButtonsAdditionType, TargetType>['buttons']>) {
     this.log = logger('AMV');
@@ -336,6 +338,11 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
   };
 
   protected async setMoverToTarget(target: HTMLElement, closing = false, fromRight = 0) {
+    if(this.videoPlayer) { // there could be a better place for it
+      this.videoPlayer.removeListeners();
+      this.videoPlayer = undefined;
+    }
+
     const mover = this.content.mover;
 
     if(!closing) {
@@ -1055,6 +1062,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
               }
   
               const player = new VideoPlayer(video, true, media.supportsStreaming);
+              this.videoPlayer = player;
               /* div.append(video);
               mover.append(player.wrapper); */
             });
