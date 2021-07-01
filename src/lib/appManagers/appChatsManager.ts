@@ -34,7 +34,6 @@ export class AppChatsManager {
   //private megagroups: {[id: number]: true};
 
   constructor() {
-    this.chats = this.storage.getCache();
     this.clear(true);
 
     rootScope.addMultipleEventsListeners({
@@ -105,8 +104,11 @@ export class AppChatsManager {
           
           chats.findAndSplice((chat) => chat.id === chatId);
           this.storage.delete(chatId);
+          delete this.chats[chatId];
         }
       }
+    } else {
+      this.chats = {};
     }
   }
 
