@@ -64,10 +64,13 @@
   font-size: 0;
   //overflow: hidden;
   //border-radius: 5px;
-  cursor: pointer;
   display: flex;
 	align-items: center;
 	justify-content: center;
+
+  &.show-controls video {
+    cursor: pointer;
+  }
 
   &:before {
     content: '';
@@ -123,8 +126,15 @@
       left: 50%;
       transform: translate3d(-50%, -50%, 0) scale(1);
       font-size: 64px;
-      transition: all .2s;
+      transition: visibility .2s, opacity .2s;
       touch-action: manipulation;
+    }
+  }
+
+  &:not(.played) {
+    .default__button--big {
+      opacity: 0;
+      visibility: hidden;
     }
   }
 
@@ -138,7 +148,7 @@
     bottom: 0;
     right: 0;
     left: 0;
-    transition: all .3s;
+    transition: transform .3s;
     text-align: left;
     direction: ltr;
     z-index: 6;
@@ -168,7 +178,7 @@
     position: absolute;
     background-repeat: repeat-x;
     background-image: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAADGCAYAAAAT+OqFAAAAdklEQVQoz42QQQ7AIAgEF/T/D+kbq/RWAlnQyyazA4aoAB4FsBSA/bFjuF1EOL7VbrIrBuusmrt4ZZORfb6ehbWdnRHEIiITaEUKa5EJqUakRSaEYBJSCY2dEstQY7AuxahwXFrvZmWl2rh4JZ07z9dLtesfNj5q0FU3A5ObbwAAAABJRU5ErkJggg==);
-    transition: all .3s;
+    transition: transform .3s;
     pointer-events: none;
   }
 
@@ -181,15 +191,20 @@
       transform: translate3d(0, 50px, 0);
     }
 
-    html.no-touch &:hover,
-    &.show-controls {
-      .default__gradient-bottom {
-        transform: translateZ(0);
-      }
+    .default__controls {
+      transform: translate3d(0, 52px, 0);
+    }
 
-      .default__controls {
+    /* html.no-touch &:hover,*/
+    &.show-controls.ckin__fullscreen, 
+    &.show-controls:not(.ckin__fullscreen):hover {
+      .default__gradient-bottom, .default__controls {
         transform: translateZ(0);
       }
+    }
+
+    &:not(.show-controls) {
+      cursor: none;
     }
 
     &:before {
@@ -203,11 +218,7 @@
       visibility: hidden;
     }
 
-    .default__controls {
-      transform: translate3d(0, 52px, 0);
-    }
-
-    .toggle {
+    .toggle:not(.default__button--big) {
       &:before {
         content: $tgico-pause;
       }
@@ -238,6 +249,7 @@
     }
 
     .progress-line {
+      --color: #fff;
       margin: 0;
       width: 50px;
 
@@ -246,19 +258,10 @@
         display: none;
       }
 
-      &__filled {
-        background: #fff;
-      }
-
       &__seek {
         --thumb-size: 15px;
-
-        &::-webkit-slider-thumb {
-          background: #fff;
-        }
       }
-    }
-    
+    } 
   }
 
   &.is-buffering {
@@ -309,6 +312,7 @@ video::-webkit-media-controls-enclosure {
     padding: 0;
     margin: 0;
     outline: none;
+    caret-color: var(--color);
 
     &:focus {
       outline: none;

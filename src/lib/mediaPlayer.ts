@@ -10,6 +10,7 @@ import { isTouchSupported } from "../helpers/touchSupport";
 import RangeSelector from "../components/rangeSelector";
 import { onVideoLoad } from "../helpers/files";
 import { cancelEvent } from "../helpers/dom/cancelEvent";
+import ListenerSetter from "../helpers/listenerSetter";
 
 export class MediaProgressLine extends RangeSelector {
   private filledLoad: HTMLDivElement;
@@ -165,16 +166,20 @@ export class MediaProgressLine extends RangeSelector {
 
 let lastVolume = 1, muted = !lastVolume;
 export default class VideoPlayer {
-  public wrapper: HTMLDivElement;
-  public progress: MediaProgressLine;
+  private wrapper: HTMLDivElement;
+  private progress: MediaProgressLine;
   private skin: string;
+
+  private listenerSetter: ListenerSetter;
 
   /* private videoParent: HTMLElement;
   private videoWhichChild: number; */
 
-  constructor(public video: HTMLVideoElement, play = false, streamable = false, duration?: number) {
+  constructor(private video: HTMLVideoElement, play = false, streamable = false, duration?: number) {
     this.wrapper = document.createElement('div');
     this.wrapper.classList.add('ckin__player');
+
+    this.listenerSetter = new ListenerSetter();
 
     video.parentNode.insertBefore(this.wrapper, video);
     this.wrapper.appendChild(video);
@@ -184,7 +189,7 @@ export default class VideoPlayer {
     this.stylePlayer(duration);
 
     if(this.skin === 'default') {
-      let controls = this.wrapper.querySelector('.default__controls.ckin__controls') as HTMLDivElement;
+      const controls = this.wrapper.querySelector('.default__controls.ckin__controls') as HTMLDivElement;
       this.progress = new MediaProgressLine(video, streamable);
       controls.prepend(this.progress.container);
     }
@@ -228,10 +233,12 @@ export default class VideoPlayer {
       `;
       const volumeSvg = volumeDiv.firstElementChild as SVGSVGElement;
 
-      volumeSvg.addEventListener('click', (e) => {
-        cancelEvent(e);
+      const onMuteClick = (e?: Event) => {
+        e && cancelEvent(e);
         video.muted = !video.muted;
-      });
+      };
+
+      this.listenerSetter.add(volumeSvg, 'click', onMuteClick);
 
       const volumeProgress = new RangeSelector(0.01, 1, 0, 1);
       volumeProgress.setListeners();
@@ -270,7 +277,7 @@ export default class VideoPlayer {
       };
       
       // не вызовется повторно если на 1 установить 1
-      video.addEventListener('volumechange', () => {
+      this.listenerSetter.add(video, 'volumechange', () => {
         muted = video.muted;
         lastVolume = video.volume;
         setVolume();
@@ -287,46 +294,56 @@ export default class VideoPlayer {
       leftControls.insertBefore(volumeDiv, timeElapsed.parentElement);
 
       Array.from(toggle).forEach((button) => {
-        return button.addEventListener('click', () => {
+        this.listenerSetter.add(button, 'click', () => {
           this.togglePlay();
         });
       });
 
-      video.addEventListener('click', () => {
+      this.listenerSetter.add(video, 'click', () => {
         if(!isTouchSupported) {
           this.togglePlay();
-          return;
         }
       });
 
+      let showControlsTimeout = 0;
+
+      const showControls = () => {
+        if(showControlsTimeout) clearTimeout(showControlsTimeout);
+        else player.classList.add('show-controls');
+
+        showControlsTimeout = window.setTimeout(() => {
+          showControlsTimeout = 0;
+          player.classList.remove('show-controls');
+        }, 3e3);
+      };
+
       if(isTouchSupported) {
-        let showControlsTimeout = 0;
-
-        const t = () => {
-          showControlsTimeout = window.setTimeout(() => {
-            showControlsTimeout = 0;
-            player.classList.remove('show-controls');
-          }, 3e3);
-        };
-
-        player.addEventListener('click', () => {
-          if(showControlsTimeout) {
-            clearTimeout(showControlsTimeout);
-          } else {
-            player.classList.add('show-controls');
-          }
-  
-          t();
+        this.listenerSetter.add(player, 'click', () => {
+          showControls();
         });
 
-        player.addEventListener('touchstart', () => {
+        this.listenerSetter.add(player, 'touchstart', () => {
           player.classList.add('show-controls');
           clearTimeout(showControlsTimeout);
         });
 
-        player.addEventListener('touchend', () => {
+        this.listenerSetter.add(player, 'touchend', () => {
           if(player.classList.contains('is-playing')) {
-            t();
+            showControls();
+          }
+        });
+      } else {
+        this.listenerSetter.add(this.wrapper, 'mousemove', () => {
+          showControls();
+        });
+
+        this.listenerSetter.add(document, 'keydown', (e: KeyboardEvent) => {
+          if(e.code === 'KeyF') {
+            this.toggleFullScreen(fullScreenButton);
+          } else if(e.code === 'KeyM') {
+            onMuteClick();
+          } else if(e.code === 'Space') {
+            this.togglePlay();
           }
         });
       }
@@ -342,32 +359,34 @@ export default class VideoPlayer {
       /* video.addEventListener('play', () => {
       }); */
 
-      video.addEventListener('dblclick', () => {
-        if(isTouchSupported) {
-          return;
+      this.listenerSetter.add(video, 'dblclick', () => {
+        if(!isTouchSupported) {
+          this.toggleFullScreen(fullScreenButton);
         }
+      });
 
-        return this.toggleFullScreen(fullScreenButton);
-      })
-
-      fullScreenButton.addEventListener('click', (e) => {
-        return this.toggleFullScreen(fullScreenButton);
+      this.listenerSetter.add(fullScreenButton, 'click', (e) => {
+        this.toggleFullScreen(fullScreenButton);
       });
 
       'webkitfullscreenchange mozfullscreenchange fullscreenchange MSFullscreenChange'.split(' ').forEach(eventName => {
-        player.addEventListener(eventName, this.onFullScreen, false);
+        this.listenerSetter.add(player, eventName, this.onFullScreen, false);
       });
 
-      video.addEventListener('timeupdate', () => {
+      this.listenerSetter.add(video, 'timeupdate', () => {
         timeElapsed.innerHTML = String(video.currentTime | 0).toHHMMSS();
       });
+
+      this.listenerSetter.add(video, 'play', () => {
+        this.wrapper.classList.add('played');
+      }, {once: true});
     }
 
-    video.addEventListener('play', () => {
+    this.listenerSetter.add(video, 'play', () => {
       this.wrapper.classList.add('is-playing');
     });
 
-    video.addEventListener('pause', () => {
+    this.listenerSetter.add(video, 'pause', () => {
       this.wrapper.classList.remove('is-playing');
     });
   
@@ -380,21 +399,8 @@ export default class VideoPlayer {
     }
   }
 
-  public togglePlay(stop?: boolean) {
-    //console.log('video togglePlay:', stop, this.video.paused);
-
-    if(stop) {
-      this.video.pause();
-      this.wrapper.classList.remove('is-playing');
-      return;
-    } else if(stop === false) {
-      this.video.play();
-      this.wrapper.classList.add('is-playing');
-      return;
-    }
-  
+  public togglePlay() {
     this.video[this.video.paused ? 'play' : 'pause']();
-    //this.wrapper.classList.toggle('is-playing', !this.video.paused);
   }
 
   private buildControls() {
@@ -514,7 +520,11 @@ export default class VideoPlayer {
     const isFullscreenNow = document.webkitFullscreenElement !== null;
     if(!isFullscreenNow) {
       this.wrapper.classList.remove('ckin__fullscreen');
-    } else {
     }
   };
+
+  public removeListeners() {
+    this.listenerSetter.removeAll();
+    this.progress.removeListeners();
+  }
 }
