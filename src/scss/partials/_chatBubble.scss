@@ -414,6 +414,10 @@ $bubble-margin: .25rem;
       /* width: min-content; */
       max-width: 100%;
     }
+
+    .message {
+      max-width: 420px;
+    }
   }
 
   &.webpage {
@@ -626,8 +630,8 @@ $bubble-margin: .25rem;
   
   &:not(.sticker) {
     .attachment {
-      max-width: unquote('min(480px, 100%)');
-      max-height: unquote('min(480px, 100%)');
+      max-width: unquote('min(420px, 100%)');
+      max-height: unquote('min(340px, 100%)');
 
       width: max-content;
     }
@@ -725,8 +729,8 @@ $bubble-margin: .25rem;
     overflow: hidden;
     
     .preview {
-      max-height: unquote('min(400px, 100%)');
-      max-width: unquote('min(480px, 100%)');
+      max-width: unquote('min(420px, 100%)');
+      max-height: unquote('min(340px, 100%)');
       border-radius: 4px;
       margin-bottom: 3px;
       overflow: hidden;

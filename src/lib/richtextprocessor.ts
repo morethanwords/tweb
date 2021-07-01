@@ -658,24 +658,22 @@ namespace RichTextProcessor {
 
     lol.sort((a, b) => a.offset - b.offset);
 
-    let out = '';
+    const arr: string[] = [];
     let usedLength = 0;
     for(const {part, offset} of lol) {
       if(offset > usedLength) {
-        out += encodeEntities(text.slice(usedLength, offset));
+        arr.push(encodeEntities(text.slice(usedLength, offset)));
         usedLength = offset;
       }
 
-      out += part;
-
-      
+      arr.push(part);
     }
 
     if(usedLength < text.length) {
-      out += encodeEntities(text.slice(usedLength));
+      arr.push(encodeEntities(text.slice(usedLength)));
     }
 
-    return out;
+    return arr.join('');
   }
 
   export function fixEmoji(text: string, entities?: MessageEntity[]) {

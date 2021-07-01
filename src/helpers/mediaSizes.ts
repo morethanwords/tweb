@@ -70,8 +70,8 @@ class MediaSizes extends EventListenerBase<{
       emojiSticker: makeMediaSize(112, 112)
     },
     desktop: {
-      regular: makeMediaSize(400, 320),
-      webpage: makeMediaSize(400, 320),
+      regular: makeMediaSize(420, 340),
+      webpage: makeMediaSize(420, 340),
       album: makeMediaSize(420, 0),
       esgSticker: makeMediaSize(80, 80),
       animatedSticker: makeMediaSize(200, 200),
