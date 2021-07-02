@@ -22,7 +22,10 @@ export type Listener<T extends ListenerElement> = {
   element: ListenerElement, 
   event: ListenerEvent<T>, 
   callback: ListenerCallback, 
-  options?: ListenerOptions
+  options?: ListenerOptions,
+
+  onceFired?: true, // will be set only when options.once is set
+  onceCallback?: () => void,
 };
 
 export type ListenerElement = Window | Document | HTMLElement | Element | RootScope | any;
@@ -43,12 +46,31 @@ export default class ListenerSetter {
   public addManual<T extends ListenerElement>(listener: Listener<T>) {
     // @ts-ignore
     listener.element.addEventListener(listener.event, listener.callback, listener.options);
+
+    if(listener.options?.once) { // remove listener when its called
+      listener.onceCallback = () => {
+        this.remove(listener);
+        listener.onceFired = true;
+      };
+      
+      // @ts-ignore
+      listener.element.addEventListener(listener.event, listener.onceCallback, listener.options);
+    }
+
     this.listeners.add(listener);
   }
 
   public remove<T extends ListenerElement>(listener: Listener<T>) {
-    // @ts-ignore
-    listener.element.removeEventListener(listener.event, listener.callback, listener.options);
+    if(!listener.onceFired) {
+      // @ts-ignore
+      listener.element.removeEventListener(listener.event, listener.callback, listener.options);
+
+      if(listener.onceCallback) {
+        // @ts-ignore
+        listener.element.removeEventListener(listener.event, listener.onceCallback, listener.options);
+      }
+    }
+
     this.listeners.delete(listener);
   }
 
