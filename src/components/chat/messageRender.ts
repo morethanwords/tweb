@@ -132,7 +132,7 @@ export namespace MessageRender {
       }).element;
     }
 
-    const wrapped = wrapReply(originalPeerTitle, originalMessage.message || '', originalMessage);
+    const wrapped = wrapReply(originalPeerTitle, undefined, originalMessage);
     if(currentReplyDiv) {
       currentReplyDiv.replaceWith(wrapped);
     } else {

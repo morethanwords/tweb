@@ -95,12 +95,14 @@ export function wrapReplyDivAndCaption(options: {
       }
     }
   } else {
-    if(typeof(subtitle) === 'string') {
+    if(message) {
+      subtitleEl.textContent = '';
+      subtitleEl.append(appMessagesManager.wrapMessageForReply(message, message.message && limitSymbols(message.message, 140)));
+    } else if(typeof(subtitle) === 'string') {
       subtitle = limitSymbols(subtitle, 140);
       subtitle = RichTextProcessor.wrapEmojiText(subtitle);
+      replaceContent(subtitleEl, subtitle);
     }
-
-    replaceContent(subtitleEl, subtitle);
   }
   
   return setMedia;
