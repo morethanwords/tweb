@@ -177,15 +177,8 @@ $chat-helper-size: 39px;
 	}
 
 	.btn-scheduled {
-		position: absolute;
-		right: 3.625rem;
-		align-self: center;
-		display: none !important;
-		margin: 0 !important;
-		
-		@include animation-level(2) {
-			animation: grow-icon .4s forwards ease-in-out !important;
-		}
+		/* position: absolute;
+		right: 3.625rem; */
 
 		&:after {
 			content: "";
@@ -199,8 +192,18 @@ $chat-helper-size: 39px;
 		}
 	}
 
+	.float {
+		align-self: center;
+		display: none !important;
+		margin: 0 .75rem 0 0 !important;
+		
+		@include animation-level(2) {
+			animation: grow-icon .4s forwards ease-in-out !important;
+		}
+	}
+
 	&:not(.is-recording) {
-		.btn-scheduled.show:not(.hide) {
+		.float.show:not(.hide) {
 			display: flex !important;
 		}
 	}

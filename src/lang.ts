@@ -483,6 +483,7 @@ const lang = {
   "JoinByPeekChannelTitle": "Join Channel",
   "JoinByPeekGroupTitle": "Join Group",
   "YouWereKicked": "you were removed",
+  "ViaBot": "via",
 
   // * macos
   "AccountSettings.Filters": "Chat Folders",

@@ -2583,14 +2583,17 @@ export default class ChatBubbles {
 
     let savedFrom = '';
     
-    const needName = (peerId < 0 && (peerId !== message.fromId || our)) && message.fromId !== rootScope.myId;
+    const needName = ((peerId < 0 && (peerId !== message.fromId || our)) && message.fromId !== rootScope.myId) || message.viaBotId;
     if(needName || message.fwd_from || message.reply_to_mid) { // chat
       let title: HTMLSpanElement;
 
       const isForwardFromChannel = message.from_id && message.from_id._ === 'peerChannel' && message.fromId === message.fwdFromId;
       
       let isHidden = message.fwd_from && !message.fwd_from.from_id && !message.fwd_from.channel_id;
-      if(isHidden) {
+      if(message.viaBotId) {
+        title = document.createElement('span');
+        title.innerText = '@' + this.appUsersManager.getUser(message.viaBotId).username;
+      } else if(isHidden) {
         ///////this.log('message to render hidden', message);
         title = document.createElement('span');
         title.innerHTML = RichTextProcessor.wrapEmojiText(message.fwd_from.from_name);
@@ -2598,12 +2601,22 @@ export default class ChatBubbles {
         //title = message.fwd_from.from_name;
         bubble.classList.add('hidden-profile');
       } else {
-        title = new PeerTitle({peerId: message.fwdFromId || message.fromId}).element;
+        title = new PeerTitle({peerId: message.viaBotId || message.fwdFromId || message.fromId}).element;
       }
       
       //this.log(title);
       
-      if((message.fwdFromId || message.fwd_from)) {
+      if(message.viaBotId) {
+        if(!bubble.classList.contains('sticker')) {
+          let nameDiv = document.createElement('div');
+          nameDiv.classList.add('name');
+          nameDiv.dataset.peerId = message.viaBotId;
+          nameDiv.append(i18n('ViaBot'), ' ', title);
+          nameContainer.append(nameDiv);
+        } else {
+          bubble.classList.add('hide-name');
+        }
+      } else if((message.fwdFromId || message.fwd_from)) {
         if(this.peerId !== rootScope.myId && !isForwardFromChannel) {
           bubble.classList.add('forwarded');
         }

@@ -17,7 +17,7 @@ import { createPosterForVideo } from "../../helpers/files";
 import { copy, getObjectKeysAndSort } from "../../helpers/object";
 import { randomLong } from "../../helpers/random";
 import { splitStringByLength, limitSymbols, escapeRegExp } from "../../helpers/string";
-import { Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates } from "../../layer";
+import { Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup } from "../../layer";
 import { InvokeApiOptions } from "../../types";
 import I18n, { i18n, join, langPack, LangPackKey, _i18n } from "../langPack";
 import { logger, LogTypes } from "../logger";
@@ -56,6 +56,7 @@ import formatCallDuration from "../../helpers/formatCallDuration";
 import appAvatarsManager from "./appAvatarsManager";
 import telegramMeWebManager from "../mtproto/telegramMeWebManager";
 import { getMiddleware } from "../../helpers/middleware";
+import assumeType from "../../helpers/assumeType";
 
 //console.trace('include');
 // TODO: если удалить сообщение в непрогруженном диалоге, то при обновлении, из-за стейта, последнего сообщения в чатлисте не будет
@@ -74,7 +75,7 @@ export type HistoryStorage = {
   triedToReadMaxId?: number,
 
   maxOutId?: number,
-  reply_markup?: any
+  reply_markup?: Exclude<ReplyMarkup, ReplyMarkup.replyInlineMarkup>
 };
 
 export type HistoryResult = {
@@ -3025,19 +3026,24 @@ export class AppMessagesManager {
     ) && !message.pFlags.is_outgoing;
   }
 
-  public mergeReplyKeyboard(historyStorage: HistoryStorage, message: any) {
+  public getReplyKeyboard(peerId: number) {
+    return this.getHistoryStorage(peerId).reply_markup;
+  }
+
+  public mergeReplyKeyboard(historyStorage: HistoryStorage, message: Message.messageService | Message.message) {
     // this.log('merge', message.mid, message.reply_markup, historyStorage.reply_markup)
-    if(!message.reply_markup &&
+    let messageReplyMarkup = (message as Message.message).reply_markup;
+    if(!messageReplyMarkup &&
       !message.pFlags?.out &&
-      !message.action) {
+      !(message as Message.messageService).action) {
       return false;
     }
-    if(message.reply_markup &&
-      message.reply_markup._ === 'replyInlineMarkup') {
+
+    if(messageReplyMarkup?._ === 'replyInlineMarkup') {
       return false;
     }
-    var messageReplyMarkup = message.reply_markup;
-    var lastReplyMarkup = historyStorage.reply_markup;
+
+    const lastReplyMarkup = historyStorage.reply_markup;
     if(messageReplyMarkup) {
       if(lastReplyMarkup && lastReplyMarkup.mid >= message.mid) {
         return false;
@@ -3049,15 +3055,19 @@ export class AppMessagesManager {
 
       if(historyStorage.maxOutId &&
         message.mid < historyStorage.maxOutId &&
-        messageReplyMarkup.pFlags.single_use) {
-        messageReplyMarkup.pFlags.hidden = true;
+        (messageReplyMarkup as ReplyMarkup.replyKeyboardMarkup | ReplyMarkup.replyKeyboardForceReply).pFlags.single_use) {
+        (messageReplyMarkup as ReplyMarkup.replyKeyboardMarkup | ReplyMarkup.replyKeyboardForceReply).pFlags.hidden = true;
       }
-      messageReplyMarkup = Object.assign({
+
+      messageReplyMarkup.mid = message.mid;
+      /* messageReplyMarkup = Object.assign({
         mid: message.mid
-      }, messageReplyMarkup);
+      }, messageReplyMarkup); */
+
       if(messageReplyMarkup._ !== 'replyKeyboardHide') {
         messageReplyMarkup.fromId = appPeersManager.getPeerId(message.from_id);
       }
+
       historyStorage.reply_markup = messageReplyMarkup;
       // this.log('set', historyStorage.reply_markup)
       return true;
@@ -3065,10 +3075,11 @@ export class AppMessagesManager {
 
     if(message.pFlags.out) {
       if(lastReplyMarkup) {
+        assumeType<ReplyMarkup.replyKeyboardMarkup>(lastReplyMarkup);
         if(lastReplyMarkup.pFlags.single_use &&
           !lastReplyMarkup.pFlags.hidden &&
           (message.mid > lastReplyMarkup.mid || message.pFlags.is_outgoing) &&
-          message.message) {
+          (message as Message.message).message) {
           lastReplyMarkup.pFlags.hidden = true;
           // this.log('set', historyStorage.reply_markup)
           return true;
@@ -3079,10 +3090,10 @@ export class AppMessagesManager {
       }
     }
 
-    if(message.action &&
-      message.action._ === 'messageActionChatDeleteUser' &&
+    assumeType<Message.messageService>(message);
+    if(message.action?._ === 'messageActionChatDeleteUser' &&
       (lastReplyMarkup
-        ? message.action.user_id === lastReplyMarkup.fromId
+        ? message.action.user_id === (lastReplyMarkup as ReplyMarkup.replyKeyboardMarkup).fromId
         : appUsersManager.isBot(message.action.user_id)
       )
     ) {
@@ -4804,7 +4815,7 @@ export class AppMessagesManager {
       const wasTotalCount = historyStorage.history.length; */
 
       const mids = messages.map((message) => {
-        if(this.mergeReplyKeyboard(historyStorage, message)) {
+        if(this.mergeReplyKeyboard(historyStorage, message as MyMessage)) {
           rootScope.dispatchEvent('history_reply_markup', {peerId});
         }
 

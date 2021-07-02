@@ -23,11 +23,10 @@ import AppGifsTab from "../sidebarRight/tabs/gifs";
 import AppStickersTab from "../sidebarRight/tabs/stickers";
 import findUpClassName from "../../helpers/dom/findUpClassName";
 import findUpTag from "../../helpers/dom/findUpTag";
-import ListenerSetter from "../../helpers/listenerSetter";
 import blurActiveElement from "../../helpers/dom/blurActiveElement";
-import { attachClickEvent } from "../../helpers/dom/clickEvent";
 import whichChild from "../../helpers/dom/whichChild";
 import { cancelEvent } from "../../helpers/dom/cancelEvent";
+import DropdownHover from "../../helpers/dropdownHover";
 
 export const EMOTICONSSTICKERGROUP = 'emoticons-dropdown';
 
@@ -36,13 +35,8 @@ export interface EmoticonsTab {
   onCloseAfterTimeout?: () => void
 }
 
-const KEEP_OPEN = false;
-const TOGGLE_TIMEOUT = 200;
-const ANIMATION_DURATION = 200;
-
-export class EmoticonsDropdown {
+export class EmoticonsDropdown extends DropdownHover {
   public static lazyLoadQueue = new LazyLoadQueue();
-  private element: HTMLElement;
 
   private emojiTab: EmojiTab;
   public stickersTab: StickersTab;
@@ -56,73 +50,70 @@ export class EmoticonsDropdown {
 
   private searchButton: HTMLElement;
   private deleteBtn: HTMLElement;
-  
-  private displayTimeout: number;
-
-  public events: {
-    onClose: Array<() => void>,
-    onCloseAfter: Array<() => void>,
-    onOpen: Array<() => void>,
-    onOpenAfter: Array<() => void>
-  } = {
-    onClose: [],
-    onCloseAfter: [],
-    onOpen: [],
-    onOpenAfter: []
-  };
 
   private selectTab: ReturnType<typeof horizontalMenu>;
-  private forceClose = false;
 
   private savedRange: Range;
 
   constructor() {
-    this.element = document.getElementById('emoji-dropdown') as HTMLDivElement;
+    super({
+      element: document.getElementById('emoji-dropdown') as HTMLDivElement
+    });
+
+    this.addEventListener('open', async() => {
+      if(isTouchSupported) {
+        //appImManager.chat.input.saveScroll();
+        if(blurActiveElement()) {
+          await pause(100);
+        }
+      }
+
+      if(this.element.parentElement !== appImManager.chat.input.chatInput) {
+        appImManager.chat.input.chatInput.append(this.element);
+      }
+
+      const sel = document.getSelection();
+      if(sel.rangeCount && document.activeElement === appImManager.chat.input.messageInput) {
+        this.savedRange = sel.getRangeAt(0);
+      } else {
+        this.savedRange = undefined;
+      }
+
+      EmoticonsDropdown.lazyLoadQueue.lock();
+      //EmoticonsDropdown.lazyLoadQueue.unlock();
+      animationIntersector.lockIntersectionGroup(EMOTICONSSTICKERGROUP);
+    });
+
+    this.addEventListener('opened', () => {
+      animationIntersector.unlockIntersectionGroup(EMOTICONSSTICKERGROUP);
+      EmoticonsDropdown.lazyLoadQueue.unlock();
+      EmoticonsDropdown.lazyLoadQueue.refresh();
+
+      this.container.classList.remove('disable-hover');
+    });
+
+    this.addEventListener('close', () => {
+      EmoticonsDropdown.lazyLoadQueue.lock();
+      //EmoticonsDropdown.lazyLoadQueue.lock();
+
+      // нужно залочить группу и выключить стикеры
+      animationIntersector.lockIntersectionGroup(EMOTICONSSTICKERGROUP);
+      animationIntersector.checkAnimations(true, EMOTICONSSTICKERGROUP);
+    });
+
+    this.addEventListener('closed', () => {
+      // теперь можно убрать visible, чтобы они не включились после фокуса
+      animationIntersector.unlockIntersectionGroup(EMOTICONSSTICKERGROUP);
+      EmoticonsDropdown.lazyLoadQueue.unlock();
+      EmoticonsDropdown.lazyLoadQueue.refresh();
+
+      this.container.classList.remove('disable-hover');
+
+      this.savedRange = undefined;
+    });
   }
 
-  public attachButtonListener(button: HTMLElement, listenerSetter: ListenerSetter) {
-    let firstTime = true;
-    if(isTouchSupported) {
-      attachClickEvent(button, () => {
-        if(firstTime) {
-          firstTime = false;
-          this.toggle(true);
-        } else {
-          this.toggle();
-        }
-      }, {listenerSetter});
-    } else {
-      listenerSetter.add(button, 'mouseover', (e) => {
-        //console.log('onmouseover button');
-        if(firstTime) {
-          listenerSetter.add(button, 'mouseout', this.onMouseOut);
-          firstTime = false;
-        }
-
-        clearTimeout(this.displayTimeout);
-        this.displayTimeout = window.setTimeout(() => {
-          this.toggle(true);
-        }, TOGGLE_TIMEOUT);
-      });
-    }
-  }
-
-  private onMouseOut = (e: MouseEvent) => {
-    if(KEEP_OPEN) return;
-    clearTimeout(this.displayTimeout);
-    if(!this.element.classList.contains('active')) return;
-
-    const toElement = (e as any).toElement as Element;
-    if(toElement && findUpClassName(toElement, 'emoji-dropdown')) {
-      return;
-    }
-
-    this.displayTimeout = window.setTimeout(() => {
-      this.toggle(false);
-    }, TOGGLE_TIMEOUT);
-  };
-
-  private init() {
+  protected init() {
     this.emojiTab = new EmojiTab();
     this.stickersTab = new StickersTab();
     this.gifsTab = new GifsTab();
@@ -186,17 +177,7 @@ export class EmoticonsDropdown {
     rootScope.addEventListener('peer_changed', this.checkRights);
     this.checkRights();
 
-    if(!isTouchSupported) {
-      this.element.onmouseout = this.onMouseOut;
-      this.element.onmouseover = (e) => {
-        if(this.forceClose) {
-          return;
-        }
-
-        //console.log('onmouseover element');
-        clearTimeout(this.displayTimeout);
-      };
-    }
+    return super.init();
   }
 
   private onSelectTabClick = (id: number) => {
@@ -226,116 +207,6 @@ export class EmoticonsDropdown {
     if(active && whichChild(active) !== 1 && (!canSendStickers || !canSendGifs)) {
       this.selectTab(0, false);
     }
-  };
-
-  public toggle = async(enable?: boolean) => {
-    //if(!this.element) return;
-    const willBeActive = (!!this.element.style.display && enable === undefined) || enable;
-    if(this.init) {
-      if(willBeActive) {
-        this.init();
-        this.init = null;
-      } else {
-        return;
-      }
-    }
-
-    if(isTouchSupported) {
-      if(willBeActive) {
-        //appImManager.chat.input.saveScroll();
-        if(blurActiveElement()) {
-          await pause(100);
-        }
-      }
-    }
-
-    if(this.element.parentElement !== appImManager.chat.input.chatInput) {
-      appImManager.chat.input.chatInput.append(this.element);
-    }
-    
-    if((this.element.style.display && enable === undefined) || enable) {
-      this.events.onOpen.forEach(cb => cb());
-
-      const sel = document.getSelection();
-      if(sel.rangeCount && document.activeElement === appImManager.chat.input.messageInput) {
-        this.savedRange = sel.getRangeAt(0);
-      } else {
-        this.savedRange = undefined;
-      }
-
-      EmoticonsDropdown.lazyLoadQueue.lock();
-      //EmoticonsDropdown.lazyLoadQueue.unlock();
-      animationIntersector.lockIntersectionGroup(EMOTICONSSTICKERGROUP);
-
-      this.element.style.display = '';
-      void this.element.offsetLeft; // reflow
-      this.element.classList.add('active');
-
-      clearTimeout(this.displayTimeout);
-      this.displayTimeout = window.setTimeout(() => {
-        animationIntersector.unlockIntersectionGroup(EMOTICONSSTICKERGROUP);
-        EmoticonsDropdown.lazyLoadQueue.unlock();
-        EmoticonsDropdown.lazyLoadQueue.refresh();
-
-        this.forceClose = false;
-        this.container.classList.remove('disable-hover');
-
-        this.events.onOpenAfter.forEach(cb => cb());
-      }, isTouchSupported ? 0 : ANIMATION_DURATION);
-
-      // ! can't use together with resizeObserver
-      /* if(isTouchSupported) {
-        const height = this.element.scrollHeight + appImManager.chat.input.inputContainer.scrollHeight - 10;
-        console.log('[ESG]: toggle: enable height', height);
-        appImManager.chat.bubbles.scrollable.scrollTop += height;
-      } */
-
-      /* if(touchSupport) {
-        this.restoreScroll();
-      } */
-    } else {
-      this.events.onClose.forEach(cb => cb());
-
-      EmoticonsDropdown.lazyLoadQueue.lock();
-      //EmoticonsDropdown.lazyLoadQueue.lock();
-
-      // нужно залочить группу и выключить стикеры
-      animationIntersector.lockIntersectionGroup(EMOTICONSSTICKERGROUP);
-      animationIntersector.checkAnimations(true, EMOTICONSSTICKERGROUP);
-
-      this.element.classList.remove('active');
-
-      clearTimeout(this.displayTimeout);
-      this.displayTimeout = window.setTimeout(() => {
-        this.element.style.display = 'none';
-
-        // теперь можно убрать visible, чтобы они не включились после фокуса
-        animationIntersector.unlockIntersectionGroup(EMOTICONSSTICKERGROUP);
-        EmoticonsDropdown.lazyLoadQueue.unlock();
-        EmoticonsDropdown.lazyLoadQueue.refresh();
-
-        this.forceClose = false;
-        this.container.classList.remove('disable-hover');
-
-        this.events.onCloseAfter.forEach(cb => cb());
-
-        this.savedRange = undefined;
-      }, isTouchSupported ? 0 : ANIMATION_DURATION);
-
-      /* if(isTouchSupported) {
-        const scrollHeight = this.container.scrollHeight;
-        if(scrollHeight) {
-          const height = this.container.scrollHeight + appImManager.chat.input.inputContainer.scrollHeight - 10;
-          appImManager.chat.bubbles.scrollable.scrollTop -= height;
-        }
-      } */
-
-      /* if(touchSupport) {
-        this.restoreScroll();
-      } */
-    }
-
-    //animationIntersector.checkAnimations(false, EMOTICONSSTICKERGROUP);
   };
 
   public static menuOnClick = (menu: HTMLElement, scroll: Scrollable, menuScroll?: ScrollableX) => {
@@ -431,11 +302,11 @@ export class EmoticonsDropdown {
   };
 
   public addLazyLoadQueueRepeat(lazyLoadQueue: LazyLoadQueueIntersector, processInvisibleDiv: (div: HTMLElement) => void) {
-    this.events.onClose.push(() => {
+    this.addEventListener('close', () => {
       lazyLoadQueue.lock();
     });
 
-    this.events.onCloseAfter.push(() => {
+    this.addEventListener('closed', () => {
       const divs = lazyLoadQueue.intersector.getVisible();
 
       for(const div of divs) {
@@ -445,7 +316,7 @@ export class EmoticonsDropdown {
       lazyLoadQueue.intersector.clearVisible();
     });
 
-    this.events.onOpenAfter.push(() => {
+    this.addEventListener('opened', () => {
       lazyLoadQueue.unlockAndRefresh();
     });
   }

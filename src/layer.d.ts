@@ -857,7 +857,8 @@ export namespace Message {
 		peerId?: number,
 		fromId?: number,
 		random_id?: string,
-		rReply?: string
+		rReply?: string,
+		viaBotId?: number
 	};
 
 	export type messageService = {
@@ -884,7 +885,8 @@ export namespace Message {
 		deleted?: boolean,
 		peerId?: number,
 		fromId?: number,
-		rReply?: string
+		rReply?: string,
+		viaBotId?: number
 	};
 }
 
@@ -3995,7 +3997,8 @@ export namespace ReplyMarkup {
 		flags?: number,
 		pFlags?: Partial<{
 			selective?: true,
-		}>
+		}>,
+		mid?: number
 	};
 
 	export type replyKeyboardForceReply = {
@@ -4004,7 +4007,10 @@ export namespace ReplyMarkup {
 		pFlags?: Partial<{
 			single_use?: true,
 			selective?: true,
-		}>
+			hidden?: true,
+		}>,
+		mid?: number,
+		fromId?: number
 	};
 
 	export type replyKeyboardMarkup = {
@@ -4014,8 +4020,11 @@ export namespace ReplyMarkup {
 			resize?: true,
 			single_use?: true,
 			selective?: true,
+			hidden?: true,
 		}>,
-		rows: Array<KeyboardButtonRow>
+		rows: Array<KeyboardButtonRow>,
+		mid?: number,
+		fromId?: number
 	};
 
 	export type replyInlineMarkup = {

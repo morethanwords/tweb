@@ -43,7 +43,7 @@ export default class BubbleGroups {
 
     const timestamp = message.date;
     const mid = message.mid;
-    let fromId = message.fromId;
+    let fromId = message.viaBotId || message.fromId;
     let group: Group;
 
     // fix for saved messages forward to self

@@ -66,6 +66,7 @@ import AutocompleteHelper from './autocompleteHelper';
 import MentionsHelper from './mentionsHelper';
 import fixSafariStickyInput from '../../helpers/dom/fixSafariStickyInput';
 import { emojiFromCodePoints } from '../../vendor/emoji';
+import ReplyKeyboard from './replyKeyboard';
 
 const RECORD_MIN_TIME = 500;
 const POSTING_MEDIA_NOT_ALLOWED = 'Posting media content isn\'t allowed in this group.';
@@ -88,7 +89,10 @@ export default class ChatInput {
   public rowsWrapper: HTMLDivElement;
   private newMessageWrapper: HTMLDivElement;
   private btnToggleEmoticons: HTMLButtonElement;
+  private btnToggleReplyMarkup: HTMLButtonElement;
   private btnSendContainer: HTMLDivElement;
+
+  private replyKeyboard: ReplyKeyboard;
 
   private attachMenu: HTMLButtonElement;
   private attachMenuButtons: (ButtonMenuItemOptions & {verify: (peerId: number) => boolean})[];
@@ -294,8 +298,7 @@ export default class ChatInput {
       this.goDownUnreadBadge.classList.add('badge', 'badge-24', 'badge-primary');
       this.goDownBtn.append(this.goDownUnreadBadge);
 
-      this.btnScheduled = ButtonIcon('scheduled', {noRipple: true});
-      this.btnScheduled.classList.add('btn-scheduled', 'hide');
+      this.btnScheduled = ButtonIcon('scheduled btn-scheduled float hide', {noRipple: true});
 
       attachClickEvent(this.btnScheduled, (e) => {
         this.appImManager.openScheduled(this.chat.peerId);
@@ -322,6 +325,16 @@ export default class ChatInput {
           this.btnScheduled.classList.toggle('hide', !value.length);
         });
       });
+
+      this.btnToggleReplyMarkup = ButtonIcon('botcom toggle-reply-markup float hide', {noRipple: true});
+      this.replyKeyboard = new ReplyKeyboard({
+        appendTo: this.rowsWrapper,
+        listenerSetter: this.listenerSetter,
+        appMessagesManager: this.appMessagesManager,
+        btnHover: this.btnToggleReplyMarkup
+      });
+      this.listenerSetter.add(this.replyKeyboard, 'open', () => this.btnToggleReplyMarkup.classList.add('active'));
+      this.listenerSetter.add(this.replyKeyboard, 'close', () => this.btnToggleReplyMarkup.classList.remove('active'));
     }
 
     this.attachMenuButtons = [{
@@ -367,7 +380,7 @@ export default class ChatInput {
     this.fileInput.multiple = true;
     this.fileInput.style.display = 'none';
 
-    this.newMessageWrapper.append(...[this.btnToggleEmoticons, this.inputMessageContainer, this.btnScheduled, this.attachMenu, this.recordTimeEl, this.fileInput].filter(Boolean));
+    this.newMessageWrapper.append(...[this.btnToggleEmoticons, this.inputMessageContainer, this.btnScheduled, this.btnToggleReplyMarkup, this.attachMenu, this.recordTimeEl, this.fileInput].filter(Boolean));
 
     this.rowsWrapper.append(this.replyElements.container);
     this.autocompleteHelperController = new AutocompleteHelperController();
@@ -418,8 +431,8 @@ export default class ChatInput {
     this.inputContainer.append(this.btnCancelRecord, this.btnSendContainer);
 
     emoticonsDropdown.attachButtonListener(this.btnToggleEmoticons, this.listenerSetter);
-    emoticonsDropdown.events.onOpen.push(this.onEmoticonsOpen);
-    emoticonsDropdown.events.onClose.push(this.onEmoticonsClose);
+    this.listenerSetter.add(emoticonsDropdown, 'open', this.onEmoticonsOpen);
+    this.listenerSetter.add(emoticonsDropdown, 'close', this.onEmoticonsClose);
 
     this.attachMessageInputField();
 
@@ -651,9 +664,6 @@ export default class ChatInput {
   public destroy() {
     //this.chat.log.error('Input destroying');
 
-    emoticonsDropdown.events.onOpen.findAndSplice(f => f === this.onEmoticonsOpen);
-    emoticonsDropdown.events.onClose.findAndSplice(f => f === this.onEmoticonsClose);
-
     this.listenerSetter.removeAll();
   }
 
@@ -718,6 +728,10 @@ export default class ChatInput {
         if(!middleware()) return;
         this.btnScheduled.classList.toggle('hide', !mids.length);
       });
+    }
+
+    if(this.replyKeyboard) {
+      this.replyKeyboard.setPeer(peerId);
     }
 
     if(this.sendMenu) {
@@ -1478,6 +1492,10 @@ export default class ChatInput {
 
     if(this.btnScheduled) {
       this.btnScheduled.classList.toggle('show', isInputEmpty);
+    }
+
+    if(this.btnToggleReplyMarkup) {
+      this.btnToggleReplyMarkup.classList.toggle('show', isInputEmpty);
     }
   }
 
