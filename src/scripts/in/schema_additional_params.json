@@ -50,7 +50,8 @@
     {"name": "random_id", "type": "string"},
     {"name": "unread", "type": "true"},
     {"name": "is_outgoing", "type": "true"},
-    {"name": "rReply", "type": "string"}
+    {"name": "rReply", "type": "string"},
+    {"name": "viaBotId", "type": "number"}
   ]
 }, {
   "predicate": "messageService",
@@ -61,7 +62,8 @@
     {"name": "fromId", "type": "number"},
     {"name": "unread", "type": "true"},
     {"name": "is_outgoing", "type": "true"},
-    {"name": "rReply", "type": "string"}
+    {"name": "rReply", "type": "string"},
+    {"name": "viaBotId", "type": "number"}
   ]
 }, {
   "predicate": "messageEmpty",
@@ -236,5 +238,24 @@
   "predicate": "messages.stickerSet",
   "params": [
     {"name": "refreshTime", "type": "number"}
+  ]
+}, {
+  "predicate": "replyKeyboardHide",
+  "params": [
+    {"name": "mid", "type": "number"}
+  ]
+}, {
+  "predicate": "replyKeyboardForceReply",
+  "params": [
+    {"name": "mid", "type": "number"},
+    {"name": "hidden", "type": "true"},
+    {"name": "fromId", "type": "number"}
+  ]
+}, {
+  "predicate": "replyKeyboardMarkup",
+  "params": [
+    {"name": "mid", "type": "number"},
+    {"name": "hidden", "type": "true"},
+    {"name": "fromId", "type": "number"}
   ]
 }]

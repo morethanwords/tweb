@@ -1,0 +1,64 @@
+.reply-keyboard {
+  background: var(--surface-color);
+  position: absolute !important;
+	right: 0;
+	bottom: calc(100% + .625rem);
+	width: 26.25rem !important;
+	//height: 26.25rem;
+	max-height: 26.25rem;
+	box-shadow: 0px 5px 10px 5px rgba(16, 35, 47, .14);
+	z-index: 3;
+	border-radius: $border-radius-medium;
+	transition: transform var(--esg-transition), opacity var(--esg-transition);
+	transform: scale(0);
+	opacity: 0;
+	transform-origin: bottom right;
+  padding: .625rem !important;
+  display: block !important;
+
+  @include respond-to(esg-bottom-new) {
+		bottom: calc(100% + .5rem);
+	}
+
+	&.active {
+		opacity: 1;
+		transform: scale(1);
+	}
+
+	body.animation-level-0 & {
+		transition: none;
+	}
+
+  &-row {
+    display: flex;
+
+    & + & {
+      margin-top: .3125rem;
+    }
+  }
+
+  &-button {
+    width: 100%;
+    border-radius: .375rem;
+    border: 2px solid var(--primary-color);
+    text-align: center;
+    color: var(--primary-color);
+    background-color: transparent;
+    height: 3rem;
+    font-weight: 500;
+    font-size: .9375rem;
+
+    @include animation-level(2) {
+      transition: color .15s, background-color .15s;
+    }
+
+    @include hover() {
+      background-color: var(--primary-color);
+      color: #fff;
+    }
+
+    & + & {
+      margin-left: .3125rem;
+    }
+  }
+}

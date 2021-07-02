@@ -305,8 +305,9 @@ export default class DialogsStorage {
       if(!message.pFlags.is_outgoing) {
         incomingMessage = message;
   
-        if(message.fromId !== dialog.peerId) {
-          this.appStateManager.requestPeer(message.fromId, 'topMessage_' + dialog.peerId, 1);
+        const fromId = message.viaBotId || message.fromId;
+        if(fromId !== dialog.peerId) {
+          this.appStateManager.requestPeer(fromId, 'topMessage_' + dialog.peerId, 1);
         }
 
         break;
@@ -519,14 +520,17 @@ export default class DialogsStorage {
     const slice = historyStorage.history.slice;
     /* if(historyStorage === undefined) { // warning
       historyStorage.history.push(mid);
-      if(this.mergeReplyKeyboard(historyStorage, message)) {
-        rootScope.broadcast('history_reply_markup', {peerId});
-      }
     } else  */if(!slice.length) {
       historyStorage.history.unshift(mid);
+      if(this.appMessagesManager.mergeReplyKeyboard(historyStorage, message)) {
+        rootScope.dispatchEvent('history_reply_markup', {peerId});
+      }
     } else if(!slice.isEnd(SliceEnd.Bottom)) { // * this will probably never happen, however, if it does, then it will fix slice with top_message
       const slice = historyStorage.history.insertSlice([mid]);
       slice.setEnd(SliceEnd.Bottom);
+      if(this.appMessagesManager.mergeReplyKeyboard(historyStorage, message)) {
+        rootScope.dispatchEvent('history_reply_markup', {peerId});
+      }
     }
 
     historyStorage.maxId = mid;

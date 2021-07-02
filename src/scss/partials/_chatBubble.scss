@@ -1261,6 +1261,12 @@ $bubble-margin: .25rem;
     }
   }
 
+  &.with-reply-markup {
+    .bubble-content {
+      min-width: 100%;
+    }
+  }
+
   &.with-replies .attachment {
     border-bottom-left-radius: 0;
     border-bottom-right-radius: 0;
