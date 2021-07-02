@@ -107,4 +107,12 @@
       display: none;
     }
   }
+
+  &-media {
+    width: 48px !important;
+    height: 48px !important;
+    position: absolute !important;
+    margin: 0 !important;
+    left: .5rem;
+  }
 }

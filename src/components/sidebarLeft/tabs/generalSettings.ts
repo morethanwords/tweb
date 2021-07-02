@@ -17,6 +17,13 @@ import Row from "../../row";
 import AppBackgroundTab from "./background";
 import { LangPackKey, _i18n } from "../../../lib/langPack";
 import { attachClickEvent } from "../../../helpers/dom/clickEvent";
+import appStickersManager from "../../../lib/appManagers/appStickersManager";
+import assumeType from "../../../helpers/assumeType";
+import { MessagesAllStickers, StickerSet } from "../../../layer";
+import RichTextProcessor from "../../../lib/richtextprocessor";
+import { wrapStickerSetThumb } from "../../wrappers";
+import LazyLoadQueue from "../../lazyLoadQueue";
+import PopupStickers from "../../popups/stickers";
 
 export class RangeSettingSelector {
   public container: HTMLDivElement;
@@ -204,6 +211,64 @@ export default class AppGeneralSettingsTab extends SliderSuperTab {
         name: 'loop', 
         stateKey: 'settings.stickers.loop',
         withRipple: true
+      });
+
+      const stickerSets: {[id: string]: Row} = {};
+
+      const lazyLoadQueue = new LazyLoadQueue();
+      const renderStickerSet = (stickerSet: StickerSet.stickerSet, method: 'append' | 'prepend' = 'append') => {
+        const row = new Row({
+          title: RichTextProcessor.wrapEmojiText(stickerSet.title),
+          subtitleLangKey: 'Stickers',
+          subtitleLangArgs: [stickerSet.count],
+          havePadding: true,
+          clickable: () => {
+            new PopupStickers({id: stickerSet.id, access_hash: stickerSet.access_hash}).show();
+          }
+        });
+
+        stickerSets[stickerSet.id] = row;
+
+        const div = document.createElement('div');
+        div.classList.add('row-media');
+
+        wrapStickerSetThumb({
+          set: stickerSet,
+          container: div,
+          group: 'GENERAL-SETTINGS',
+          lazyLoadQueue,
+          width: 48,
+          height: 48,
+          autoplay: true
+        });
+
+        row.container.append(div);
+
+        container[method](row.container);
+      };
+
+      appStickersManager.getAllStickers().then(allStickers => {
+        assumeType<MessagesAllStickers.messagesAllStickers>(allStickers);
+        for(const stickerSet of allStickers.sets) {
+          renderStickerSet(stickerSet);
+        }
+      });
+
+      this.listenerSetter.add(rootScope, 'stickers_installed', (e) => {
+        const set: StickerSet.stickerSet = e;
+        
+        if(!stickerSets[set.id]) {
+          renderStickerSet(set, 'prepend');
+        }
+      });
+  
+      this.listenerSetter.add(rootScope, 'stickers_deleted', (e) => {
+        const set: StickerSet.stickerSet = e;
+        
+        if(stickerSets[set.id]) {
+          stickerSets[set.id].container.remove();
+          delete stickerSets[set.id];
+        }
       });
 
       container.append(suggestCheckboxField.label, loopCheckboxField.label);
