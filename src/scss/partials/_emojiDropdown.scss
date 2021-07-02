@@ -175,6 +175,10 @@
 	
 	.sticker-category {
 		position: relative;
+
+		.category-title {
+			cursor: pointer;
+		}
 		
 		/* &::after {
 			content: "";
