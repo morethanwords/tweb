@@ -231,7 +231,7 @@ export default class StickersTab implements EmoticonsTab {
     //let stickersDiv = contentStickersDiv.querySelector('.os-content') as HTMLDivElement;
 
     this.recentDiv = document.createElement('div');
-    this.recentDiv.classList.add('sticker-category', 'disable-hover');
+    this.recentDiv.classList.add('sticker-category', 'stickers-recent');
 
     let menuWrapper = this.content.previousElementSibling as HTMLDivElement;
     this.menu = menuWrapper.firstElementChild as HTMLUListElement;
