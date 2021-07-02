@@ -21,7 +21,7 @@ import LazyLoadQueue, { LazyLoadQueueRepeat } from "../../lazyLoadQueue";
 import { putPreloader } from "../../misc";
 import Scrollable, { ScrollableX } from "../../scrollable";
 import StickyIntersector from "../../stickyIntersector";
-import { wrapSticker } from "../../wrappers";
+import { wrapSticker, wrapStickerSetThumb } from "../../wrappers";
 
 export class SuperStickerRenderer {
   public lazyLoadQueue: LazyLoadQueueRepeat;
@@ -214,47 +214,15 @@ export default class StickersTab implements EmoticonsTab {
 
     //console.log('got stickerSet', stickerSet, li);
     
-    if(stickerSet.set.thumbs?.length) {
-      EmoticonsDropdown.lazyLoadQueue.push({
-        div: button,
-        load: () => {
-          const downloadOptions = appStickersManager.getStickerSetThumbDownloadOptions(stickerSet.set);
-          const promise = appDownloadManager.download(downloadOptions);
-
-          if(stickerSet.set.pFlags.animated) {
-            return promise
-            .then(readBlobAsText)
-            //.then(JSON.parse)
-            .then(json => {
-              lottieLoader.loadAnimationWorker({
-                container: button,
-                loop: true,
-                autoplay: false,
-                animationData: json,
-                width: 32,
-                height: 32,
-                needUpscale: true
-              }, EMOTICONSSTICKERGROUP);
-            });
-          } else {
-            const image = new Image();
-    
-            return promise.then(blob => {
-              renderImageFromUrl(image, URL.createObjectURL(blob), () => {
-                button.append(image);
-              });
-            });
-          }
-        }
-      });
-    } else if(stickerSet.documents[0]._ !== 'documentEmpty') { // as thumb will be used first sticker
-      wrapSticker({
-        doc: stickerSet.documents[0],
-        div: button as any, 
-        group: EMOTICONSSTICKERGROUP,
-        lazyLoadQueue: EmoticonsDropdown.lazyLoadQueue
-      }); // kostil
-    }
+    wrapStickerSetThumb({
+      set,
+      container: button,
+      group: EMOTICONSSTICKERGROUP,
+      lazyLoadQueue: EmoticonsDropdown.lazyLoadQueue,
+      width: 32,
+      height: 32,
+      autoplay: false
+    });
   }
 
   init() {

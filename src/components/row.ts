@@ -25,7 +25,8 @@ export default class Row {
   constructor(options: Partial<{
     icon: string,
     subtitle: string,
-    subtitleLangKey: LangPackKey
+    subtitleLangKey: LangPackKey,
+    subtitleLangArgs: any[],
     radioField: Row['radioField'],
     checkboxField: Row['checkboxField'],
     noCheckboxSubtitle: boolean,
@@ -33,7 +34,8 @@ export default class Row {
     titleLangKey: LangPackKey,
     titleRight: string | HTMLElement,
     clickable: boolean | ((e: Event) => void),
-    navigationTab: SliderSuperTab
+    navigationTab: SliderSuperTab,
+    havePadding: boolean
   }> = {}) {
     this.container = document.createElement(options.radioField || options.checkboxField ? 'label' : 'div');
     this.container.classList.add('row');
@@ -44,11 +46,11 @@ export default class Row {
     if(options.subtitle) {
       this.subtitle.innerHTML = options.subtitle;
     } else if(options.subtitleLangKey) {
-      this.subtitle.append(i18n(options.subtitleLangKey));
+      this.subtitle.append(i18n(options.subtitleLangKey, options.subtitleLangArgs));
     }
     this.container.append(this.subtitle);
 
-    let havePadding = false;
+    let havePadding = !!options.havePadding;
     if(options.radioField || options.checkboxField) {
       havePadding = true;
       if(options.radioField) {

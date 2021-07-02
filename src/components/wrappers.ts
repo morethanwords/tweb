@@ -12,7 +12,7 @@ import { formatDateAccordingToToday, months } from '../helpers/date';
 import mediaSizes from '../helpers/mediaSizes';
 import { formatBytes } from '../helpers/number';
 import { isSafari } from '../helpers/userAgent';
-import { PhotoSize } from '../layer';
+import { PhotoSize, StickerSet } from '../layer';
 import appDocsManager, { MyDocument } from "../lib/appManagers/appDocsManager";
 import appMessagesManager from '../lib/appManagers/appMessagesManager';
 import appPhotosManager, { MyPhoto } from '../lib/appManagers/appPhotosManager';
@@ -41,6 +41,7 @@ import appStickersManager from '../lib/appManagers/appStickersManager';
 import { cancelEvent } from '../helpers/dom/cancelEvent';
 import { attachClickEvent } from '../helpers/dom/clickEvent';
 import isInDOM from '../helpers/dom/isInDOM';
+import lottieLoader from '../lib/lottieLoader';
 
 const MAX_VIDEO_AUTOPLAY_SIZE = 50 * 1024 * 1024; // 50 MB
 
@@ -1164,6 +1165,66 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
   }
 
   return loadPromise;
+}
+
+export async function wrapStickerSetThumb({set, lazyLoadQueue, container, group, autoplay, width, height}: {
+  set: StickerSet.stickerSet,
+  lazyLoadQueue: LazyLoadQueue,
+  container: HTMLElement,
+  group: string,
+  autoplay: boolean,
+  width: number,
+  height: number
+}) {
+  if(set.thumbs?.length) {
+    container.classList.add('media-sticker-wrapper');
+    lazyLoadQueue.push({
+      div: container,
+      load: () => {
+        const downloadOptions = appStickersManager.getStickerSetThumbDownloadOptions(set);
+        const promise = appDownloadManager.download(downloadOptions);
+
+        if(set.pFlags.animated) {
+          return promise
+          .then(readBlobAsText)
+          //.then(JSON.parse)
+          .then(json => {
+            lottieLoader.loadAnimationWorker({
+              container,
+              loop: true,
+              autoplay,
+              animationData: json,
+              width,
+              height,
+              needUpscale: true
+            }, group);
+          });
+        } else {
+          const image = new Image();
+          image.classList.add('media-sticker');
+  
+          return promise.then(blob => {
+            renderImageFromUrl(image, URL.createObjectURL(blob), () => {
+              container.append(image);
+            });
+          });
+        }
+      }
+    });
+
+    return;
+  }
+
+  const promise = appStickersManager.getStickerSet(set);
+  const stickerSet = await promise;
+  if(stickerSet.documents[0]._ !== 'documentEmpty') { // as thumb will be used first sticker
+    wrapSticker({
+      doc: stickerSet.documents[0],
+      div: container, 
+      group: group,
+      lazyLoadQueue
+    }); // kostil
+  }
 }
 
 export function wrapLocalSticker({emoji, width, height}: {
