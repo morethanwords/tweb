@@ -10,8 +10,11 @@ import { ReplyMarkup } from "../../layer";
 import RichTextProcessor from "../../lib/richtextprocessor";
 import rootScope from "../../lib/rootScope";
 import { safeAssign } from "../../helpers/object";
-import ListenerSetter from "../../helpers/listenerSetter";
+import ListenerSetter, { Listener } from "../../helpers/listenerSetter";
 import findUpClassName from "../../helpers/dom/findUpClassName";
+import { isTouchSupported } from "../../helpers/touchSupport";
+import findUpAsChild from "../../helpers/dom/findUpAsChild";
+import { cancelEvent } from "../../helpers/dom/cancelEvent";
 
 export default class ReplyKeyboard extends DropdownHover {
   private static BASE_CLASS = 'reply-keyboard';
@@ -20,6 +23,7 @@ export default class ReplyKeyboard extends DropdownHover {
   private appMessagesManager: AppMessagesManager;
   private btnHover: HTMLElement;
   private peerId: number;
+  private touchListener: Listener<HTMLElement>;
 
   constructor(options: {
     listenerSetter: ListenerSetter,
@@ -49,8 +53,15 @@ export default class ReplyKeyboard extends DropdownHover {
 
     this.listenerSetter.add(this, 'open', () => {
       this.render();
-    });
 
+      if(isTouchSupported) {
+        this.touchListener = this.listenerSetter.add(document.body, 'touchstart', this.onBodyTouchStart, {passive: false, capture: true});
+        this.listenerSetter.add(this, 'close', () => {
+          this.listenerSetter.remove(this.touchListener);
+        }, {once: true});
+      }
+    });
+    
     this.listenerSetter.add(this.element, 'click', (e) => {
       const target = findUpClassName(e.target, 'btn');
       if(!target) {
@@ -63,6 +74,14 @@ export default class ReplyKeyboard extends DropdownHover {
 
     return super.init();
   }
+
+  private onBodyTouchStart = (e: TouchEvent) => {
+    const target = e.touches[0].target as HTMLElement;
+    if(!findUpAsChild(target, this.element) && target !== this.btnHover) {
+      cancelEvent(e);
+      this.toggle(false);
+    }
+  };
 
   private getReplyMarkup(): ReplyMarkup {
     return this.appMessagesManager.getHistoryStorage(this.peerId).reply_markup ?? {
