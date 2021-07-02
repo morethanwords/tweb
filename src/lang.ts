@@ -484,6 +484,8 @@ const lang = {
   "JoinByPeekGroupTitle": "Join Group",
   "YouWereKicked": "you were removed",
   "ViaBot": "via",
+  "InviteExpired": "This invite link has expired.",
+  "NoUsernameFound": "There is no Telegram account with this username.",
 
   // * macos
   "AccountSettings.Filters": "Chat Folders",

@@ -61,6 +61,7 @@ import PopupElement from '../../components/popups';
 import singleInstance from '../mtproto/singleInstance';
 import PopupStickers from '../../components/popups/stickers';
 import PopupJoinChatInvite from '../../components/popups/joinChatInvite';
+import { toast } from '../../components/toast';
 
 //console.log('appImManager included33!');
 
@@ -305,6 +306,10 @@ export class AppImManager {
           }
 
           new PopupJoinChatInvite(params[1], chatInvite).show();
+        }, (err) => {
+          if(err.type === 'INVITE_HASH_EXPIRED') {
+            toast(i18n('InviteExpired'));
+          }
         });
       },
       parsePathname: true
@@ -381,6 +386,10 @@ export class AppImManager {
       const peerId = isUser ? peer.id : -peer.id;
 
       return this.setInnerPeer(peerId, msgId);
+    }, (err) => {
+      if(err.type === 'USERNAME_NOT_OCCUPIED') {
+        toast(i18n('NoUsernameFound'));
+      }
     });
   }
 
