@@ -303,13 +303,10 @@ export class AppUsersManager {
       id: appPeersManager.getInputPeerById(peerId)
     }).then(value => {
       if(value) {
-        apiUpdatesManager.processUpdateMessage({
-          _: 'updateShort',
-          update: {
-            _: 'updatePeerBlocked',
-            peer_id: appPeersManager.getOutputPeer(peerId),
-            blocked: block
-          } as Update.updatePeerBlocked
+        apiUpdatesManager.processLocalUpdate({
+          _: 'updatePeerBlocked',
+          peer_id: appPeersManager.getOutputPeer(peerId),
+          blocked: block
         });
       }
 

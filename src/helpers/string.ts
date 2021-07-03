@@ -94,9 +94,9 @@ export function splitStringByLength(str: string, maxLength: number) {
 
 //(window as any).checkRTL = checkRTL;
 
-export function convertInputKeyToKey(inputKey: string) {
+export function convertInputKeyToKey<T extends string>(inputKey: string) {
   const str = inputKey.replace('input', '');
-  return (str[0].toLowerCase() + str.slice(1)) as string;
+  return (str[0].toLowerCase() + str.slice(1)) as T;
 }
 
 export function convertKeyToInputKey(key: string) {

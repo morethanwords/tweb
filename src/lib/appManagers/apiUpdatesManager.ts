@@ -11,7 +11,7 @@
 
 //import apiManager from '../mtproto/apiManager';
 import DEBUG, { MOUNT_CLASS_TO } from '../../config/debug';
-import { Update } from '../../layer';
+import { Update, Updates } from '../../layer';
 import { logger, LogTypes } from '../logger';
 import apiManager from '../mtproto/mtprotoworker';
 import rootScope from '../rootScope';
@@ -163,6 +163,13 @@ export class ApiUpdatesManager {
     if(!this.updatesState.syncLoading) {
       this.getDifference();
     }
+  }
+
+  public processLocalUpdate(update: Update) {
+    this.processUpdateMessage({
+      _: 'updateShort',
+      update
+    } as Updates);
   }
 
   public processUpdateMessage = (updateMessage: any, options: Partial<{

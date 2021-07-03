@@ -17,7 +17,7 @@ import { createPosterForVideo } from "../../helpers/files";
 import { copy, getObjectKeysAndSort } from "../../helpers/object";
 import { randomLong } from "../../helpers/random";
 import { splitStringByLength, limitSymbols, escapeRegExp } from "../../helpers/string";
-import { Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup } from "../../layer";
+import { Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup, InputPeer } from "../../layer";
 import { InvokeApiOptions } from "../../types";
 import I18n, { i18n, join, langPack, LangPackKey, _i18n } from "../langPack";
 import { logger, LogTypes } from "../logger";
@@ -1562,12 +1562,11 @@ export class AppMessagesManager {
       const {peerId, tempId, storage} = pendingData;
       const historyStorage = this.getHistoryStorage(peerId);
 
-      apiUpdatesManager.processUpdateMessage({
-        _: 'updateShort',
-        update: {
-          _: 'updateDeleteMessages',
-          messages: [tempId]
-        }
+      apiUpdatesManager.processLocalUpdate({
+        _: 'updateDeleteMessages',
+        messages: [tempId],
+        pts: undefined,
+        pts_count: undefined
       });
 
       historyStorage.history.delete(tempId);
@@ -1983,11 +1982,11 @@ export class AppMessagesManager {
     });
   }
 
-  private doFlushHistory(inputPeer: any, justClear?: boolean, revoke?: boolean): Promise<true> {
+  private doFlushHistory(peer: InputPeer, just_clear?: boolean, revoke?: boolean): Promise<true> {
     return apiManager.invokeApiSingle('messages.deleteHistory', {
-      just_clear: justClear,
-      revoke: revoke,
-      peer: inputPeer,
+      just_clear,
+      revoke,
+      peer,
       max_id: 0
     }).then((affectedHistory) => {
       apiUpdatesManager.processUpdateMessage({
@@ -2003,7 +2002,7 @@ export class AppMessagesManager {
         return true;
       }
 
-      return this.doFlushHistory(inputPeer, justClear);
+      return this.doFlushHistory(peer, just_clear);
     });
   }
 
@@ -2019,13 +2018,10 @@ export class AppMessagesManager {
         channel: appChatsManager.getChannelInput(channelId),
         max_id: maxId
       }).then(() => {
-        apiUpdatesManager.processUpdateMessage({
-          _: 'updateShort',
-          update: {
-            _: 'updateChannelAvailableMessages',
-            channel_id: channelId,
-            available_min_id: maxId
-          } as Update.updateChannelAvailableMessages
+        apiUpdatesManager.processLocalUpdate({
+          _: 'updateChannelAvailableMessages',
+          channel_id: channelId,
+          available_min_id: maxId
         });
 
         return true;
@@ -2277,7 +2273,7 @@ export class AppMessagesManager {
         if(message.replies.read_max_id) message.replies.read_max_id = this.generateMessageId(message.replies.read_max_id);
       }
 
-      const overwriting = !!message.peerId;
+      const overwriting = !!peerId;
       if(!overwriting) {
         message.date -= serverTimeManager.serverTimeOffset;
       }
@@ -2286,7 +2282,7 @@ export class AppMessagesManager {
       const myId = appUsersManager.getSelf().id;
 
       message.peerId = peerId;
-      if(message.peerId === myId/*  && !message.from_id && !message.fwd_from */) {
+      if(peerId === myId/*  && !message.from_id && !message.fwd_from */) {
         message.fromId = message.fwd_from ? (message.fwd_from.from_id ? appPeersManager.getPeerId(message.fwd_from.from_id) : 0) : myId;
       } else {
         //message.fromId = message.pFlags.post || (!message.pFlags.out && !message.from_id) ? peerId : appPeersManager.getPeerId(message.from_id);
@@ -2396,7 +2392,7 @@ export class AppMessagesManager {
             let type: string;
             if(action.duration === undefined) {
               type = 'started';
-              if(message.peerId !== message.fromId) {
+              if(peerId !== message.fromId) {
                 type += '_by' + suffix;
               }
             } else {
@@ -3553,15 +3549,12 @@ export class AppMessagesManager {
         channel: appChatsManager.getChannelInput(channelId),
         id: localMessageIds
       }).then((affectedMessages) => {
-        apiUpdatesManager.processUpdateMessage({
-          _: 'updateShort',
-          update: {
-            _: 'updateDeleteChannelMessages',
-            channel_id: channelId,
-            messages: mids,
-            pts: affectedMessages.pts,
-            pts_count: affectedMessages.pts_count
-          }
+        apiUpdatesManager.processLocalUpdate({
+          _: 'updateDeleteChannelMessages',
+          channel_id: channelId,
+          messages: mids,
+          pts: affectedMessages.pts,
+          pts_count: affectedMessages.pts_count
         });
       });
     } else {
@@ -3569,14 +3562,11 @@ export class AppMessagesManager {
         revoke,
         id: localMessageIds
       }).then((affectedMessages) => {
-        apiUpdatesManager.processUpdateMessage({
-          _: 'updateShort',
-          update: {
-            _: 'updateDeleteMessages',
-            messages: mids,
-            pts: affectedMessages.pts,
-            pts_count: affectedMessages.pts_count
-          }
+        apiUpdatesManager.processLocalUpdate({
+          _: 'updateDeleteMessages',
+          messages: mids,
+          pts: affectedMessages.pts,
+          pts_count: affectedMessages.pts_count
         });
       });
     }
@@ -3610,14 +3600,11 @@ export class AppMessagesManager {
         });
       }
 
-      apiUpdatesManager.processUpdateMessage({
-        _: 'updateShort',
-        update: {
-          _: 'updateReadChannelDiscussionInbox',
-          channel_id: -peerId,
-          top_msg_id: threadId,
-          read_max_id: maxId
-        } as Update.updateReadChannelDiscussionInbox
+      apiUpdatesManager.processLocalUpdate({
+        _: 'updateReadChannelDiscussionInbox',
+        channel_id: -peerId,
+        top_msg_id: threadId,
+        read_max_id: maxId
       });
     } else if(appPeersManager.isChannel(peerId)) {
       if(!historyStorage.readPromise) {
@@ -3627,13 +3614,12 @@ export class AppMessagesManager {
         });
       }
 
-      apiUpdatesManager.processUpdateMessage({
-        _: 'updateShort',
-        update: {
-          _: 'updateReadChannelInbox',
-          max_id: maxId,
-          channel_id: -peerId
-        } as Update.updateReadChannelInbox
+      apiUpdatesManager.processLocalUpdate({
+        _: 'updateReadChannelInbox',
+        max_id: maxId,
+        channel_id: -peerId,
+        still_unread_count: undefined,
+        pts: undefined
       });
     } else {
       if(!historyStorage.readPromise) {
@@ -3652,13 +3638,13 @@ export class AppMessagesManager {
         });
       }
 
-      apiUpdatesManager.processUpdateMessage({
-        _: 'updateShort',
-        update: {
-          _: 'updateReadHistoryInbox',
-          max_id: maxId,
-          peer: appPeersManager.getOutputPeer(peerId)
-        } as Update.updateReadHistoryInbox
+      apiUpdatesManager.processLocalUpdate({
+        _: 'updateReadHistoryInbox',
+        max_id: maxId,
+        peer: appPeersManager.getOutputPeer(peerId),
+        still_unread_count: undefined,
+        pts: undefined,
+        pts_count: undefined
       });
     }
 
@@ -3698,27 +3684,21 @@ export class AppMessagesManager {
         channel: appChatsManager.getChannelInput(channelId),
         id: msgIds
       }).then(() => {
-        apiUpdatesManager.processUpdateMessage({
-          _: 'updateShort',
-          update: {
-            _: 'updateChannelReadMessagesContents',
-            channel_id: channelId,
-            messages: msgIds
-          } as Update.updateChannelReadMessagesContents
+        apiUpdatesManager.processLocalUpdate({
+          _: 'updateChannelReadMessagesContents',
+          channel_id: channelId,
+          messages: msgIds
         });
       });
     } else {
       apiManager.invokeApi('messages.readMessageContents', {
         id: msgIds
       }).then((affectedMessages) => {
-        apiUpdatesManager.processUpdateMessage({
-          _: 'updateShort',
-          update: {
-            _: 'updateReadMessagesContents',
-            messages: msgIds,
-            pts: affectedMessages.pts,
-            pts_count: affectedMessages.pts_count
-          } as Update.updateReadMessagesContents
+        apiUpdatesManager.processLocalUpdate({
+          _: 'updateReadMessagesContents',
+          messages: msgIds,
+          pts: affectedMessages.pts,
+          pts_count: affectedMessages.pts_count
         });
       });
     }
@@ -3887,8 +3867,39 @@ export class AppMessagesManager {
       rootScope.dispatchEvent('history_reply_markup', {peerId});
     }
 
-    if(message.fromId > 0 && !message.pFlags.out && message.from_id) {
-      appUsersManager.forceUserOnline(message.fromId, message.date);
+    const fromId = message.fromId;
+    if(fromId > 0 && !message.pFlags.out && message.from_id) {
+      appUsersManager.forceUserOnline(fromId, message.date);
+
+      const action: SendMessageAction = {
+        _: 'sendMessageCancelAction'
+      };
+
+      let update: Update.updateUserTyping | Update.updateChatUserTyping | Update.updateChannelUserTyping;
+      if(peerId > 0) {
+        update = {
+          _: 'updateUserTyping',
+          action,
+          user_id: fromId
+        };
+      } else if(appPeersManager.isChannel(peerId)) {
+        update = {
+          _: 'updateChannelUserTyping',
+          action,
+          channel_id: -peerId,
+          from_id: appPeersManager.getOutputPeer(fromId),
+          top_msg_id: threadId ? this.getServerMessageId(threadId) : undefined
+        };
+      } else {
+        update = {
+          _: 'updateChatUserTyping',
+          action,
+          chat_id: -peerId,
+          from_id: appPeersManager.getOutputPeer(fromId)
+        };
+      }
+
+      apiUpdatesManager.processLocalUpdate(update);
     }
 
     if(!pendingMessage) {
@@ -3908,7 +3919,7 @@ export class AppMessagesManager {
     }
 
     if(inboxUnread/*  && ($rootScope.selectedPeerID != peerID || $rootScope.idle.isIDLE) */) {
-      const notifyPeer = message.peerId;
+      const notifyPeer = peerId;
       let notifyPeerToHandle = this.notificationsToHandle[notifyPeer];
       if(notifyPeerToHandle === undefined) {
         notifyPeerToHandle = this.notificationsToHandle[notifyPeer] = {
@@ -3917,8 +3928,8 @@ export class AppMessagesManager {
         };
       }
 
-      if(notifyPeerToHandle.fromId !== message.fromId) {
-        notifyPeerToHandle.fromId = message.fromId;
+      if(notifyPeerToHandle.fromId !== fromId) {
+        notifyPeerToHandle.fromId = fromId;
         notifyPeerToHandle.fwdCount = 0;
       }
 

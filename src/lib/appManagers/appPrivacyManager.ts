@@ -44,20 +44,17 @@ export class AppPrivacyManager {
       appUsersManager.saveApiUsers(privacyRules.users);
       appChatsManager.saveApiChats(privacyRules.chats);
 
-      apiUpdatesManager.processUpdateMessage({
-        _: 'updateShort',
-        update: {
-          _: 'updatePrivacy',
-          key: {
-            _: convertInputKeyToKey(inputKey)
-          },
-          rules: rules.map(inputRule => {
-            const rule: PrivacyRule = {} as any;
-            Object.assign(rule, inputRule);
-            rule._ = convertInputKeyToKey(rule._) as any;
-            return rule;
-          })
-        } as Update.updatePrivacy
+      apiUpdatesManager.processLocalUpdate({
+        _: 'updatePrivacy',
+        key: {
+          _: convertInputKeyToKey(inputKey)
+        },
+        rules: rules.map(inputRule => {
+          const rule: PrivacyRule = {} as any;
+          Object.assign(rule, inputRule);
+          rule._ = convertInputKeyToKey(rule._) as any;
+          return rule;
+        })
       });
 
       //console.log('privacy rules', inputKey, privacyRules, privacyRules.rules);

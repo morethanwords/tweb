@@ -658,25 +658,22 @@ export class AppChatsManager {
 
       if(typeof(participant) !== 'number') {
         const timestamp = Date.now() / 1000 | 0;
-        apiUpdatesManager.processUpdateMessage({
-          _: 'updateShort',
-          update: {
-            _: 'updateChannelParticipant',
-            channel_id: id,
+        apiUpdatesManager.processLocalUpdate({
+          _: 'updateChannelParticipant',
+          channel_id: id,
+          date: timestamp,
+          actor_id: undefined,
+          qts: undefined,
+          user_id: peerId,
+          prev_participant: participant,
+          new_participant: Object.keys(banned_rights.pFlags).length ? {
+            _: 'channelParticipantBanned',
             date: timestamp,
-            actor_id: undefined,
-            qts: undefined,
-            user_id: peerId,
-            prev_participant: participant,
-            new_participant: Object.keys(banned_rights.pFlags).length ? {
-              _: 'channelParticipantBanned',
-              date: timestamp,
-              banned_rights,
-              kicked_by: appUsersManager.getSelf().id,
-              peer: appPeersManager.getOutputPeer(peerId),
-              pFlags: {}
-            } : undefined
-          } as Update.updateChannelParticipant
+            banned_rights,
+            kicked_by: appUsersManager.getSelf().id,
+            peer: appPeersManager.getOutputPeer(peerId),
+            pFlags: {}
+          } : undefined
         });
       }
     });
