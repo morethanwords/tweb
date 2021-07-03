@@ -451,15 +451,12 @@ export class AppProfileManager {
         peerId: myId
       });
 
-      apiUpdatesManager.processUpdateMessage({
-        _: 'updateShort',
-        update: {
-          _: 'updateUserPhoto',
-          user_id: myId,
-          date: tsNow(true),
-          photo: appUsersManager.getUser(myId).photo,
-          previous: true
-        } as Update.updateUserPhoto
+      apiUpdatesManager.processLocalUpdate({
+        _: 'updateUserPhoto',
+        user_id: myId,
+        date: tsNow(true),
+        photo: appUsersManager.getUser(myId).photo,
+        previous: true
       });
     });
   }

@@ -353,19 +353,16 @@ export class AppNotificationsManager {
       settings
     }).then(value => {
       if(value) {
-        apiUpdatesManager.processUpdateMessage({
-          _: 'updateShort',
-          update: {
-            _: 'updateNotifySettings', 
-            peer: {
-              ...peer,
-              _: convertInputKeyToKey(peer._)
-            }, 
-            notify_settings: { // ! WOW, IT WORKS !
-              ...settings,
-              _: 'peerNotifySettings',
-            }
-          } as Update.updateNotifySettings
+        apiUpdatesManager.processLocalUpdate({
+          _: 'updateNotifySettings', 
+          peer: {
+            ...peer as any,
+            _: convertInputKeyToKey(peer._)
+          }, 
+          notify_settings: { // ! WOW, IT WORKS !
+            ...settings,
+            _: 'peerNotifySettings',
+          }
         });
       }
     });
