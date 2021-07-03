@@ -7,7 +7,7 @@
 import { SliderSuperTabEventable } from "../../sliderTab";
 import { SettingSection } from "..";
 import Row from "../../row";
-import { AccountPassword, Authorization, InputPrivacyKey } from "../../../layer";
+import { AccountPassword, Authorization, InputPrivacyKey, Updates } from "../../../layer";
 import appPrivacyManager, { PrivacyType } from "../../../lib/appManagers/appPrivacyManager";
 import AppPrivacyPhoneNumberTab from "./privacy/phoneNumber";
 import AppTwoStepVerificationTab from "./2fa";
@@ -28,12 +28,15 @@ import { convertKeyToInputKey } from "../../../helpers/string";
 import { i18n, LangPackKey, _i18n } from "../../../lib/langPack";
 import replaceContent from "../../../helpers/dom/replaceContent";
 import CheckboxField from "../../checkboxField";
+import PopupPeer from "../../popups/peer";
+import appDraftsManager from "../../../lib/appManagers/appDraftsManager";
+import Button from "../../button";
 
 export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
   private activeSessionsRow: Row;
   private authorizations: Authorization.authorization[];
 
-  protected async init() {
+  protected init() {
     this.container.classList.add('dont-u-dare-block-me');
     this.setTitle('PrivacySettings');
 
@@ -226,14 +229,16 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
       });
     }
 
+    const promises: Promise<any>[] = [];
     {
-      await apiManager.invokeApi('account.getContentSettings').then(settings => {
+      const section = new SettingSection({name: 'Privacy.SensitiveContent'});
+
+      promises.push(apiManager.invokeApi('account.getContentSettings').then(settings => {
         if(!settings.pFlags.sensitive_can_change) {
           return;
         }
         
         const enabled = settings.pFlags.sensitive_enabled;
-        const section = new SettingSection({name: 'Privacy.SensitiveContent'});
 
         const sensitiveRow = new Row({
           checkboxField: new CheckboxField({text: 'PrivacyAndSecurity.SensitiveText', checked: enabled}),
@@ -243,21 +248,62 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
         
         section.content.append(sensitiveRow.container);
   
-        this.scrollable.append(section.container);
-
+        
         this.eventListener.addEventListener('destroy', () => {
           const _enabled = sensitiveRow.checkboxField.checked;
           const isChanged = _enabled !== enabled;
           if(!isChanged) {
             return;
           }
-
+          
           apiManager.invokeApi('account.setContentSettings', {
             sensitive_enabled: _enabled
           });
         }, true);
-      });
+      }));
+
+      this.scrollable.append(section.container);
     }
+
+    {
+      const section = new SettingSection({name: 'FilterChats'});
+
+      const onDeleteClick = () => {
+        const popup = new PopupPeer('popup-delete-drafts', {
+          buttons: [{
+            langKey: 'Delete',
+            callback: () => {
+              appDraftsManager.clearAllDrafts();
+            },
+            isDanger: true,
+          }], 
+          titleLangKey: 'AreYouSureClearDraftsTitle',
+          descriptionLangKey: 'AreYouSureClearDrafts'
+        });
+  
+        popup.show();
+      };
+
+      const deleteButton = Button('btn-primary btn-transparent', {icon: 'delete', text: 'PrivacyDeleteCloudDrafts'});
+      this.listenerSetter.add(deleteButton, 'click', onDeleteClick);
+      section.content.append(deleteButton);
+
+      /* promises.push(apiManager.invokeApi('messages.getAllDrafts').then(drafts => {
+        const draftsRow = new Row({
+          titleLangKey: 'PrivacyDeleteCloudDrafts',
+          subtitleLangKey: 'Drafts',
+          subtitleLangArgs: [(drafts as Updates.updates).updates.length],
+          icon: 'delete',
+          clickable: onDeleteClick
+        });
+        
+        section.content.append(draftsRow.container);
+      })); */
+
+      this.scrollable.append(section.container);
+    }
+
+    return Promise.all(promises);
   }
 
   public updateActiveSessions() {

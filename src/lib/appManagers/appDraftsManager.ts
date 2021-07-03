@@ -227,6 +227,24 @@ export class AppDraftsManager {
 
     return true;
   }
+
+  public clearAllDrafts() {
+    return apiManager.invokeApi('messages.clearAllDrafts').then(bool => {
+      if(!bool) {
+        return;
+      }
+
+      for(const peerId in this.drafts) {
+        const splitted = peerId.split('_');
+        const threadId = splitted[1];
+        rootScope.dispatchEvent('draft_updated', {
+          peerId: +splitted[0],
+          threadId: threadId ? +threadId : undefined,
+          draft: undefined
+        });
+      }
+    });
+  }
 }
 
 const appDraftsManager = new AppDraftsManager();
