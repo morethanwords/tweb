@@ -54,6 +54,10 @@ const lang = {
   "ConnectionStatus.Waiting": "Waiting for network...",
   "Deactivated.Title": "Too many tabs...",
   "Deactivated.Subtitle": "Telegram supports only one active tab with the app.\nClick anywhere to continue using this tab.",
+  /* "Drafts": {
+    "one_value": "%d draft",
+    "other_value": "%d drafts",
+  }, */
   "General.Keyboard": "Keyboard",
   "General.SendShortcut.Enter": "Send by Enter",
   "General.SendShortcut.CtrlEnter": "Send by %s + Enter",
@@ -486,6 +490,9 @@ const lang = {
   "ViaBot": "via",
   "InviteExpired": "This invite link has expired.",
   "NoUsernameFound": "There is no Telegram account with this username.",
+  "PrivacyDeleteCloudDrafts": "Delete All Cloud Drafts",
+  "AreYouSureClearDraftsTitle": "Delete cloud drafts",
+  "AreYouSureClearDrafts": "Are you sure you want to delete all cloud drafts?",
 
   // * macos
   "AccountSettings.Filters": "Chat Folders",
