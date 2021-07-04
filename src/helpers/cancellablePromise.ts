@@ -5,7 +5,7 @@
  */
 
 export interface CancellablePromise<T> extends Promise<T> {
-  resolve?: (...args: any[]) => void,
+  resolve?: (value: T) => void,
   reject?: (...args: any[]) => void,
   cancel?: () => void,
 

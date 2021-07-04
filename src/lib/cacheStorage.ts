@@ -50,6 +50,7 @@ export default class CacheStorageController {
   }
 
   public save(entryName: string, response: Response) {
+    // return new Promise((resolve) => {}); // DEBUG
     return this.timeoutOperation((cache) => cache.put('/' + entryName, response));
   }
 

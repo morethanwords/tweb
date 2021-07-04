@@ -10,7 +10,7 @@ import '../polyfill';
 import apiManager from "./apiManager";
 import cryptoWorker from "../crypto/cryptoworker";
 import networkerFactory from "./networkerFactory";
-import apiFileManager from './apiFileManager';
+import apiFileManager, { RefreshReferenceTaskResponse } from './apiFileManager';
 import type { RequestFilePartTask, RequestFilePartTaskResponse } from '../serviceWorker/index.service';
 import { ctx } from '../../helpers/userAgent';
 import { notifyAll } from '../../helpers/context';
@@ -21,6 +21,7 @@ import { LocalStorageProxyTask } from '../localStorage';
 import { WebpConvertTask } from '../webp/webpWorkerController';
 import { socketsProxied } from './transports/socketProxied';
 import { ToggleStorageTask } from './mtprotoworker';
+import { bytesToHex } from '../../helpers/bytes';
 
 let webpSupported = false;
 export const isWebpSupported = () => {
@@ -43,23 +44,6 @@ const taskListeners = {
       deferred.resolve(bytes);
       delete apiFileManager.webpConvertPromises[fileName];
     }
-  },
-
-  requestFilePart: async(task: RequestFilePartTask) => {
-    const responseTask: RequestFilePartTaskResponse = {
-      type: task.type,
-      id: task.id
-    };
-
-    try {
-      const res = await apiFileManager.requestFilePart(...task.payload);
-      responseTask.payload = res;
-    } catch(err) {
-      responseTask.originalPayload = task.payload;
-      responseTask.error = err;
-    }
-
-    notifyAll(responseTask);
   },
 
   webpSupport: (task: any) => {
@@ -101,6 +85,18 @@ const taskListeners = {
     const enabled = task.payload;
     // AppStorage.toggleStorage(enabled);
     CacheStorageController.toggleStorage(enabled);
+  },
+
+  refreshReference: (task: RefreshReferenceTaskResponse) => {
+    const hex = bytesToHex(task.originalPayload);
+    const deferred = apiFileManager.refreshReferencePromises[hex];
+    if(deferred) {
+      if(task.error) {
+        deferred.reject(task.error);
+      } else {
+        deferred.resolve(task.payload);
+      }
+    }
   }
 };
 
@@ -128,6 +124,7 @@ const onMessage = async(e: any) => {
           notifyAll({taskId, result});
         });
   
+      case 'requestFilePart':
       case 'setQueueId':
       case 'cancelDownload':
       case 'uploadFile':

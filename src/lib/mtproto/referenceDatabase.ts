@@ -5,13 +5,15 @@
  */
 
 import type { RequestFilePartTask, RequestFilePartTaskResponse } from "../serviceWorker/index.service";
+import { RefreshReferenceTask, RefreshReferenceTaskResponse } from "./apiFileManager";
 import type { ApiError } from "./apiManager";
 import appMessagesManager from "../appManagers/appMessagesManager";
-import { Photo } from "../../layer";
+import { InputFileLocation, Photo } from "../../layer";
 import { bytesToHex } from "../../helpers/bytes";
 import { deepEqual } from "../../helpers/object";
 import { MOUNT_CLASS_TO } from "../../config/debug";
 import apiManager from "./mtprotoworker";
+import assumeType from "../../helpers/assumeType";
 
 export type ReferenceContext = ReferenceContext.referenceContextProfilePhoto | ReferenceContext.referenceContextMessage;
 export namespace ReferenceContext {
@@ -38,32 +40,19 @@ class ReferenceDatabase {
   private links: {[hex: string]: ReferenceBytes} = {};
 
   constructor() {
-    apiManager.addTaskListener('requestFilePart', (task: RequestFilePartTaskResponse) => {
-      if(task.error) {
-        const onError = (error: ApiError) => {
-          if(error?.type === 'FILE_REFERENCE_EXPIRED') {
-            // @ts-ignore
-            const bytes = task.originalPayload[1].file_reference;
-            referenceDatabase.refreshReference(bytes).then(() => {
-              // @ts-ignore
-              task.originalPayload[1].file_reference = referenceDatabase.getReferenceByLink(bytes);
-              const newTask: RequestFilePartTask = {
-                type: task.type,
-                id: task.id,
-                payload: task.originalPayload
-              };
+    apiManager.addTaskListener('refreshReference', (task: RefreshReferenceTask) => {
+      const bytes = task.payload;
 
-              apiManager.postMessage(newTask);
-            }).catch(onError);
-          } else {
-            navigator.serviceWorker.controller.postMessage(task);
-          }
-        };
+      assumeType<RefreshReferenceTaskResponse>(task);
+      task.originalPayload = bytes;
 
-        onError(task.error);
-      } else {
-        navigator.serviceWorker.controller.postMessage(task);
-      }
+      this.refreshReference(bytes).then(() => {
+        task.payload = this.getReferenceByLink(bytes);
+        apiManager.postMessage(task);
+      }, (err) => {
+        task.error = err;
+        apiManager.postMessage(task);
+      });
     });
   }
 
