@@ -161,7 +161,7 @@ export default class AppStorage<Storage extends Record<string, any>, T extends D
           const deferred = this.getPromises.get(key);
           if(deferred) {
             //deferred.reject(error);
-            deferred.resolve();
+            deferred.resolve(undefined);
             this.getPromises.delete(key);
           }
         }
@@ -196,8 +196,8 @@ export default class AppStorage<Storage extends Record<string, any>, T extends D
       const r = this.getPromises.get(key);
       if(r) return r as any;
 
-      const p = deferredPromise<Storage[typeof key]>();
-      this.getPromises.set(key, p);
+      const p = deferredPromise<Storage[T]>();
+      this.getPromises.set(key, p as any);
 
       this.getThrottled();
 
@@ -282,7 +282,7 @@ export default class AppStorage<Storage extends Record<string, any>, T extends D
       if(!enabled) {
         storage.keysToSet.clear();
         storage.keysToDelete.clear();
-        storage.getPromises.forEach((deferred) => deferred.resolve());
+        storage.getPromises.forEach((deferred) => deferred.resolve(undefined));
         storage.getPromises.clear();
         return storage.clear(true);
       } else {

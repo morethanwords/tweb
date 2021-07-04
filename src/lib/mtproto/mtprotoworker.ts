@@ -6,8 +6,8 @@
 
 import type { LocalStorageProxyTask, LocalStorageProxyTaskResponse } from '../localStorage';
 //import type { LocalStorageProxyDeleteTask, LocalStorageProxySetTask } from '../storage';
-import type { InvokeApiOptions, WorkerTaskVoidTemplate } from '../../types';
-import type { MethodDeclMap } from '../../layer';
+import type { Awaited, InvokeApiOptions, WorkerTaskVoidTemplate } from '../../types';
+import type { InputFile, MethodDeclMap } from '../../layer';
 import MTProtoWorker from 'worker-loader!./mtproto.worker';
 //import './mtproto.worker';
 import { isObject } from '../../helpers/object';
@@ -15,8 +15,8 @@ import CryptoWorkerMethods from '../crypto/crypto_methods';
 import { logger } from '../logger';
 import rootScope from '../rootScope';
 import webpWorkerController from '../webp/webpWorkerController';
-import type { DownloadOptions } from './apiFileManager';
-import type { ServiceWorkerTask } from '../serviceWorker/index.service';
+import { ApiFileManager, DownloadOptions } from './apiFileManager';
+import type { RequestFilePartTask, RequestFilePartTaskResponse, ServiceWorkerTask } from '../serviceWorker/index.service';
 import { UserAuth } from './mtproto_config';
 import type { MTMessage } from './networker';
 import DEBUG, { MOUNT_CLASS_TO } from '../../config/debug';
@@ -268,9 +268,23 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
       }
     });
 
-    this.addServiceWorkerTaskListener('requestFilePart', (task) => {
-      this.postMessage(task);
+    this.addServiceWorkerTaskListener('requestFilePart', (task: RequestFilePartTask) => {
+      const responseTask: RequestFilePartTaskResponse = {
+        type: task.type,
+        id: task.id
+      };
+      
+      this.performTaskWorker<Awaited<ReturnType<ApiFileManager['requestFilePart']>>>('requestFilePart', ...task.payload)
+      .then((uploadFile) => {
+        responseTask.payload = uploadFile;
+        this.postSWMessage(responseTask);
+      }, (err) => {
+        responseTask.originalPayload = task.payload;
+        responseTask.error = err;
+        this.postSWMessage(responseTask);
+      });
     });
+
     /// #endif
 
     worker.addEventListener('messageerror', (e) => {
@@ -542,11 +556,11 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
   }
 
   public downloadFile(options: DownloadOptions) {
-    return this.performTaskWorker('downloadFile', options);
+    return this.performTaskWorker<Blob>('downloadFile', options);
   }
 
   public uploadFile(options: {file: Blob | File, fileName: string}) {
-    return this.performTaskWorker('uploadFile', options);
+    return this.performTaskWorker<InputFile>('uploadFile', options);
   }
 
   public toggleStorage(enabled: boolean) {

@@ -9,6 +9,7 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
+import type { ReferenceBytes } from "./referenceDatabase";
 import { MOUNT_CLASS_TO } from "../../config/debug";
 import Modes from "../../config/modes";
 import { readBlobAsArrayBuffer } from "../../helpers/blob";
@@ -17,18 +18,20 @@ import { notifyAll, notifySomeone } from "../../helpers/context";
 import { getFileNameByLocation } from "../../helpers/fileName";
 import { nextRandomInt } from "../../helpers/random";
 import { InputFile, InputFileLocation, UploadFile } from "../../layer";
-import { DcId } from "../../types";
+import { DcId, WorkerTaskVoidTemplate } from "../../types";
 import CacheStorageController from "../cacheStorage";
 import cryptoWorker from "../crypto/cryptoworker";
 import FileManager from "../filemanager";
 import { logger, LogTypes } from "../logger";
 import apiManager from "./apiManager";
 import { isWebpSupported } from "./mtproto.worker";
+import { bytesToHex } from "../../helpers/bytes";
+import assumeType from "../../helpers/assumeType";
 
 type Delayed = {
   offset: number, 
-  writeFilePromise: CancellablePromise<unknown>, 
-  writeFileDeferred: CancellablePromise<unknown>
+  writeFilePromise: CancellablePromise<void>, 
+  writeFileDeferred: CancellablePromise<void>
 };
 
 export type DownloadOptions = {
@@ -43,6 +46,17 @@ export type DownloadOptions = {
 };
 
 type MyUploadFile = UploadFile.uploadFile;
+
+export interface RefreshReferenceTask extends WorkerTaskVoidTemplate {
+  type: 'refreshReference',
+  payload: ReferenceBytes,
+};
+
+export interface RefreshReferenceTaskResponse extends WorkerTaskVoidTemplate {
+  type: 'refreshReference',
+  payload: ReferenceBytes,
+  originalPayload: ReferenceBytes
+};
 
 const MAX_FILE_SAVE_SIZE = 20e6;
 
@@ -72,11 +86,23 @@ export class ApiFileManager {
   private downloadActives: {[dcId: string]: number} = {};
 
   public webpConvertPromises: {[fileName: string]: CancellablePromise<Uint8Array>} = {};
+  public refreshReferencePromises: {[referenceHex: string]: CancellablePromise<ReferenceBytes>} = {};
 
   private log: ReturnType<typeof logger> = logger('AFM', LogTypes.Error | LogTypes.Log);
   private tempId = 0;
   private queueId = 0;
   private debug = Modes.debug;
+
+  constructor() {
+    setInterval(() => { // clear old promises
+      for(const hex in this.refreshReferencePromises) {
+        const deferred = this.refreshReferencePromises[hex];
+        if(deferred.isFulfilled || deferred.isRejected) {
+          delete this.refreshReferencePromises[hex];
+        }
+      }
+    }, 1800e3);
+  }
 
   private downloadRequest(dcId: 'upload', id: number, cb: () => Promise<void>, activeDelta: number, queueId?: number): Promise<void>;
   private downloadRequest(dcId: number, id: number, cb: () => Promise<MyUploadFile>, activeDelta: number, queueId?: number): Promise<MyUploadFile>;
@@ -161,14 +187,36 @@ export class ApiFileManager {
     return this.downloadRequest(dcId, id, async() => {
       checkCancel && checkCancel();
 
-      return apiManager.invokeApi('upload.getFile', {
-        location,
-        offset,
-        limit
-      } as any, {
-        dcId,
-        fileDownload: true
-      }) as Promise<MyUploadFile>;
+      const invoke = (): Promise<MyUploadFile> => {
+        const promise = apiManager.invokeApi('upload.getFile', {
+          location,
+          offset,
+          limit
+        } as any, {
+          dcId,
+          fileDownload: true
+        }) as Promise<MyUploadFile>;
+
+        return promise.catch((err) => {
+          if(err.type === 'FILE_REFERENCE_EXPIRED') {
+            return this.refreshReference(location).then(() => invoke());
+          }
+
+          throw err;
+        });
+      };
+
+      assumeType<InputFileLocation.inputDocumentFileLocation>(location);
+      const reference = location.file_reference;
+      if(reference && !location.checkedReference) { // check stream's location because it's new every call
+        location.checkedReference = true;
+        const hex = bytesToHex(reference);
+        if(this.refreshReferencePromises[hex]) {
+          return this.refreshReference(location).then(() => invoke());
+        }
+      }
+
+      return invoke();
     }, this.getDelta(limit), queueId);
   }
 
@@ -204,6 +252,29 @@ export class ApiFileManager {
     notifySomeone(task);
     return this.webpConvertPromises[fileName] = convertPromise;
   };
+
+  private refreshReference(inputFileLocation: InputFileLocation) {
+    const reference = (inputFileLocation as InputFileLocation.inputDocumentFileLocation).file_reference;
+    const hex = bytesToHex(reference);
+    let promise = this.refreshReferencePromises[hex];
+    const havePromise = !!promise;
+
+    if(!havePromise) {
+      promise = deferredPromise<ReferenceBytes>();
+    }
+    
+    promise.then(reference => {
+      (inputFileLocation as InputFileLocation.inputDocumentFileLocation).file_reference = reference;
+    });
+
+    if(havePromise) {
+      return promise;
+    }
+
+    const task = {type: 'refreshReference', payload: reference};
+    notifySomeone(task);
+    return this.refreshReferencePromises[hex] = promise;
+  }
 
   public downloadFile(options: DownloadOptions): CancellablePromise<Blob> {
     if(!FileManager.isAvailable()) {
@@ -293,8 +364,8 @@ export class ApiFileManager {
         const limit = options.limitPart || this.getLimitPart(size);
         let offset: number;
         let startOffset = 0;
-        let writeFilePromise: CancellablePromise<unknown> = Promise.resolve(),
-          writeFileDeferred: CancellablePromise<unknown>;
+        let writeFilePromise: CancellablePromise<void> = Promise.resolve(),
+          writeFileDeferred: CancellablePromise<void>;
         //const maxRequests = 13107200 / limit; // * 100 Mb speed
         const maxRequests = Infinity;
 

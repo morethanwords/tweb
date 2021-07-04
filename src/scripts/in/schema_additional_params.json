@@ -258,4 +258,9 @@
     {"name": "hidden", "type": "true"},
     {"name": "fromId", "type": "number"}
   ]
+}, {
+  "predicate": "inputDocumentFileLocation",
+  "params": [
+    {"name": "checkedReference", "type": "boolean"}
+  ]
 }]
