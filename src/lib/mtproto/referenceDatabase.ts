@@ -61,9 +61,9 @@ class ReferenceDatabase {
     if(!contexts) {
       contexts = new Set();
       this.contexts.set(reference, contexts);
-      this.links[bytesToHex(reference)] = reference;
     }
-
+    
+    this.links[bytesToHex(reference)] = reference;
     for(const _context of contexts) {
       if(deepEqual(_context, context)) {
         return;
