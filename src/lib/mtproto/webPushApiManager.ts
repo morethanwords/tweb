@@ -181,9 +181,7 @@ export class WebPushApiManager {
       }
     };
 
-    if(navigator.serviceWorker.controller) {
-      navigator.serviceWorker.controller.postMessage(task);
-    }
+    apiManager.postSWMessage(task);
 
     this.isAliveTO = setTimeout(this.isAliveNotify, 10000);
   }
@@ -199,10 +197,8 @@ export class WebPushApiManager {
       return;
     }
 
-    if(navigator.serviceWorker.controller) {
-      const task: ServiceWorkerNotificationsClearTask = {type: 'notifications_clear'};
-      navigator.serviceWorker.controller.postMessage(task);
-    }
+    const task: ServiceWorkerNotificationsClearTask = {type: 'notifications_clear'};
+    apiManager.postSWMessage(task);
   }
 
   public setUpServiceWorkerChannel() {

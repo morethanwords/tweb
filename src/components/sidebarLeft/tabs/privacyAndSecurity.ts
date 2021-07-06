@@ -31,6 +31,7 @@ import CheckboxField from "../../checkboxField";
 import PopupPeer from "../../popups/peer";
 import appDraftsManager from "../../../lib/appManagers/appDraftsManager";
 import Button from "../../button";
+import toggleDisability from "../../../helpers/dom/toggleDisability";
 
 export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
   private activeSessionsRow: Row;
@@ -232,6 +233,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
     const promises: Promise<any>[] = [];
     {
       const section = new SettingSection({name: 'Privacy.SensitiveContent'});
+      section.container.classList.add('hide');
 
       promises.push(apiManager.invokeApi('account.getContentSettings').then(settings => {
         if(!settings.pFlags.sensitive_can_change) {
@@ -247,7 +249,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
         });
         
         section.content.append(sensitiveRow.container);
-  
+        section.container.classList.remove('hide');
         
         this.eventListener.addEventListener('destroy', () => {
           const _enabled = sensitiveRow.checkboxField.checked;
@@ -273,7 +275,10 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
           buttons: [{
             langKey: 'Delete',
             callback: () => {
-              appDraftsManager.clearAllDrafts();
+              const toggle = toggleDisability([deleteButton], true);
+              appDraftsManager.clearAllDrafts().then(() => {
+                toggle();
+              });
             },
             isDanger: true,
           }], 
