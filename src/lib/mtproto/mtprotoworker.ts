@@ -54,7 +54,7 @@ export interface ToggleStorageTask extends WorkerTaskVoidTemplate {
 export class ApiManagerProxy extends CryptoWorkerMethods {
   public worker: /* Window */Worker;
   public postMessage: (...args: any[]) => void;
-  public postSWMessage: (...args: any[]) => void = () => {};
+  //public postSWMessage: (...args: any[]) => void = () => {};
   private afterMessageIdTemp = 0;
 
   private taskId = 0;
@@ -229,7 +229,7 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
         this.log('SW statechange', e);
       });
 
-      this.postSWMessage = worker.controller.postMessage.bind(worker.controller);
+      //this.postSWMessage = worker.controller.postMessage.bind(worker.controller);
 
       /// #if MTPROTO_SW
       const controller = worker.controller || registration.installing || registration.waiting || registration.active;
@@ -290,6 +290,12 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
     worker.addEventListener('messageerror', (e) => {
       this.log.error('SW messageerror:', e);
     });
+  }
+
+  public postSWMessage(message: any) {
+    if(navigator.serviceWorker.controller) {
+      navigator.serviceWorker.controller.postMessage(message);
+    }
   }
 
   private onWorkerFirstMessage(worker: any) {

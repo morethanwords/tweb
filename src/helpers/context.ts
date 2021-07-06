@@ -10,6 +10,12 @@ export const isWorker = isWebWorker || isServiceWorker;
 
 // в SW может быть сразу две переменных TRUE, поэтому проверяю по последней
 
+export const getWindowClients = () => {
+  return (self as any as ServiceWorkerGlobalScope)
+  .clients
+  .matchAll({ includeUncontrolled: false, type: 'window' });
+};
+
 const notifyServiceWorker = (all: boolean, ...args: any[]) => {
   (self as any as ServiceWorkerGlobalScope)
   .clients

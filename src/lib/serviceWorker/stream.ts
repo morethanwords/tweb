@@ -6,7 +6,7 @@
 
 import { readBlobAsUint8Array } from "../../helpers/blob";
 import { CancellablePromise, deferredPromise } from "../../helpers/cancellablePromise";
-import { notifySomeone } from "../../helpers/context";
+import { getWindowClients, notifySomeone } from "../../helpers/context";
 import debounce from "../../helpers/schedulers/debounce";
 import { isSafari } from "../../helpers/userAgent";
 import { InputFileLocation, UploadFile } from "../../layer";
@@ -49,6 +49,20 @@ const clearOldChunks = () => {
 };
 
 setInterval(clearOldChunks, 1800e3);
+setInterval(() => {
+  getWindowClients().then((clients) => {
+    for(const [clientId, promises] of deferredPromises) {
+      if(!clients.find(client => client.id === clientId)) {
+        for(const taskId in promises) {
+          const promise = promises[taskId];
+          promise.reject();
+        }
+
+        deferredPromises.delete(clientId);
+      }
+    }
+  });
+}, 120e3);
 
 type StreamRange = [number, number];
 type StreamId = string;
@@ -72,7 +86,7 @@ class Stream {
     streams.delete(this.id);
   };
 
-  private requestFilePartFromWorker(alignedOffset: number, limit: number, fromPreload = false) {
+  private async requestFilePartFromWorker(alignedOffset: number, limit: number, fromPreload = false) {
     const task: Omit<RequestFilePartTask, 'id'> = {
       type: 'requestFilePart',
       payload: [this.info.dcId, this.info.location, alignedOffset, limit]
@@ -81,16 +95,32 @@ class Stream {
     const taskId = JSON.stringify(task);
     (task as RequestFilePartTask).id = taskId;
 
-    let deferred = deferredPromises[taskId] as CancellablePromise<UploadFile.uploadFile>;
+    const windowClient = await getWindowClients().then((clients) => {
+      if(!clients.length) {
+        return;
+      }
+
+      return clients.find(client => deferredPromises.has(client.id)) || clients[0];
+    });
+
+    if(!windowClient) {
+      throw new Error('no window');
+    }
+
+    let promises = deferredPromises.get(windowClient.id);
+    if(!promises) {
+      deferredPromises.set(windowClient.id, promises = {});
+    }
+    
+    let deferred = promises[taskId] as CancellablePromise<UploadFile.uploadFile>;
     if(deferred) {
       return deferred.then(uploadFile => uploadFile.bytes);
     }
-
-    notifySomeone(task);
-
+    
+    windowClient.postMessage(task);
     this.loadedOffsets.add(alignedOffset);
     
-    deferred = deferredPromises[taskId] = deferredPromise<UploadFile.uploadFile>();
+    deferred = promises[taskId] = deferredPromise<UploadFile.uploadFile>();
     const bytesPromise = deferred.then(uploadFile => uploadFile.bytes);
 
     this.saveChunkToCache(bytesPromise, alignedOffset, limit);

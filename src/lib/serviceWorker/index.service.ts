@@ -22,7 +22,7 @@ import CacheStorageController from '../cacheStorage';
 
 export const log = logger('SW', LogTypes.Error | LogTypes.Debug | LogTypes.Log | LogTypes.Warn);
 const ctx = self as any as ServiceWorkerGlobalScope;
-export const deferredPromises: {[taskId: string]: CancellablePromise<any>} = {};
+export const deferredPromises: Map<WindowClient['id'], {[taskId: string]: CancellablePromise<any>}> = new Map();
 
 export interface RequestFilePartTask extends Modify<WorkerTaskTemplate, {id: string}> {
   type: 'requestFilePart',
@@ -69,16 +69,23 @@ const taskListeners: {
   ping: (task: ServiceWorkerPingTask, event) => {
     onPing(task, event);
   },
-  requestFilePart: (task: RequestFilePartTaskResponse) => {
-    const promise = deferredPromises[task.id];
-
-    if(task.error) {
-      promise.reject(task.error);
-    } else {
-      promise.resolve(task.payload);
+  requestFilePart: (task: RequestFilePartTaskResponse, e: ExtendableMessageEvent) => {
+    const windowClient = e.source as WindowClient;
+    const promises = deferredPromises.get(windowClient.id);
+    if(!promises) {
+      return;
     }
 
-    delete deferredPromises[task.id];
+    const promise = promises[task.id];
+    if(promise) {
+      if(task.error) {
+        promise.reject(task.error);
+      } else {
+        promise.resolve(task.payload);
+      }
+  
+      delete promises[task.id];
+    }
   },
   toggleStorage: (task: ToggleStorageTask) => {
     CacheStorageController.toggleStorage(task.payload);
