@@ -479,6 +479,10 @@ export class ApiManager {
           setTimeout(() => {
             performRequest(cachedNetworker);
           }, options.waitTime * 1000);
+        } else if(error.type === 'UNKNOWN') {
+          setTimeout(() => {
+            performRequest(cachedNetworker);
+          }, 1000);
         } else {
           rejectPromise(error);
         }

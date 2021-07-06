@@ -4,11 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type { RequestFilePartTask, RequestFilePartTaskResponse } from "../serviceWorker/index.service";
 import { RefreshReferenceTask, RefreshReferenceTaskResponse } from "./apiFileManager";
-import type { ApiError } from "./apiManager";
 import appMessagesManager from "../appManagers/appMessagesManager";
-import { InputFileLocation, Photo } from "../../layer";
+import { Photo } from "../../layer";
 import { bytesToHex } from "../../helpers/bytes";
 import { deepEqual } from "../../helpers/object";
 import { MOUNT_CLASS_TO } from "../../config/debug";
@@ -61,9 +59,9 @@ class ReferenceDatabase {
     if(!contexts) {
       contexts = new Set();
       this.contexts.set(reference, contexts);
-      this.links[bytesToHex(reference)] = reference;
     }
-
+    
+    this.links[bytesToHex(reference)] = reference;
     for(const _context of contexts) {
       if(deepEqual(_context, context)) {
         return;

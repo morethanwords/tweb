@@ -60,26 +60,28 @@ export class AppDocsManager {
     }
     
     //console.log('saveDoc', apiDoc, this.docs[apiDoc.id]);
-    if(oldDoc) {
-      //if(doc._ !== 'documentEmpty' && doc._ === d._) {
-        if(doc.thumbs) {
-          if(!oldDoc.thumbs) oldDoc.thumbs = doc.thumbs;
-          /* else if(apiDoc.thumbs[0].bytes && !d.thumbs[0].bytes) {
-            d.thumbs.unshift(apiDoc.thumbs[0]);
-          } else if(d.thumbs[0].url) { // fix for converted thumb in safari
-            apiDoc.thumbs[0] = d.thumbs[0];
-          } */
-        }
+    // if(oldDoc) {
+    //   //if(doc._ !== 'documentEmpty' && doc._ === d._) {
+    //     if(doc.thumbs) {
+    //       if(!oldDoc.thumbs) oldDoc.thumbs = doc.thumbs;
+    //       /* else if(apiDoc.thumbs[0].bytes && !d.thumbs[0].bytes) {
+    //         d.thumbs.unshift(apiDoc.thumbs[0]);
+    //       } else if(d.thumbs[0].url) { // fix for converted thumb in safari
+    //         apiDoc.thumbs[0] = d.thumbs[0];
+    //       } */
+    //     }
 
-      //}
+    //   //}
 
-      return oldDoc;
+    //   return oldDoc;
 
-      //return Object.assign(d, apiDoc, context);
-      //return context ? Object.assign(d, context) : d;
+    //   //return Object.assign(d, apiDoc, context);
+    //   //return context ? Object.assign(d, context) : d;
+    // }
+
+    if(!oldDoc) {
+      this.docs[doc.id] = doc;
     }
-
-    this.docs[doc.id] = doc;
 
     // * exclude from state
     // defineNotNumerableProperties(doc, [/* 'thumbs',  */'type', 'h', 'w', 'file_name', 
@@ -211,6 +213,10 @@ export class AppDocsManager {
     /* if(!doc.url) {
       doc.url = this.getFileURL(doc);
     } */
+
+    if(oldDoc) {
+      return Object.assign(oldDoc, doc);
+    }
 
     return doc;
   }
