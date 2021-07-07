@@ -523,6 +523,6 @@ export default class ChatSelection {
   }
 
   public canSelectBubble(bubble: HTMLElement) {
-    return !bubble.classList.contains('service') && !bubble.classList.contains('is-sending');
+    return !bubble.classList.contains('service') && !bubble.classList.contains('is-sending') && !bubble.classList.contains('bubble-first');
   }
 }

@@ -833,6 +833,7 @@ export namespace Message {
 			pinned?: true,
 			unread?: true,
 			is_outgoing?: true,
+			bot_description?: true,
 		}>,
 		id: number,
 		from_id?: Peer,

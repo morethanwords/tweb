@@ -721,6 +721,20 @@ $bubble-margin: .25rem;
     }
   }
 
+  &-first {
+    order: -1;
+    margin-top: .5rem;
+    justify-content: center;
+
+    .time {
+      display: none !important;
+    }
+
+    &:before, &:after {
+      display: none;
+    }
+  }
+
   .web {
     padding-top: 1px;
     margin: 4px 0 -5px 1px;

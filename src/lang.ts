@@ -493,6 +493,7 @@ const lang = {
   "PrivacyDeleteCloudDrafts": "Delete All Cloud Drafts",
   "AreYouSureClearDraftsTitle": "Delete cloud drafts",
   "AreYouSureClearDrafts": "Are you sure you want to delete all cloud drafts?",
+  "BotInfoTitle": "What can this bot do?",
 
   // * macos
   "AccountSettings.Filters": "Chat Folders",
