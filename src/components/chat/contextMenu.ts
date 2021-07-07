@@ -61,7 +61,7 @@ export default class ChatContextMenu {
       } catch(e) {}
 
       // ! context menu click by date bubble (there is no pointer-events)
-      if(!bubble) return;
+      if(!bubble || bubble.classList.contains('bubble-first')) return;
 
       if(e instanceof MouseEvent || e.hasOwnProperty('preventDefault')) (e as any).preventDefault();
       if(this.element.classList.contains('active')) {

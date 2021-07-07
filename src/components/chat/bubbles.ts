@@ -10,9 +10,9 @@ import type { AppStickersManager } from "../../lib/appManagers/appStickersManage
 import type { AppUsersManager } from "../../lib/appManagers/appUsersManager";
 import type { AppInlineBotsManager } from "../../lib/appManagers/appInlineBotsManager";
 import type { AppPhotosManager } from "../../lib/appManagers/appPhotosManager";
-import type { AppDocsManager, MyDocument } from "../../lib/appManagers/appDocsManager";
+import type { MyDocument } from "../../lib/appManagers/appDocsManager";
 import type { AppPeersManager } from "../../lib/appManagers/appPeersManager";
-import type stateStorage from '../../lib/stateStorage';
+import type { AppProfileManager } from "../../lib/appManagers/appProfileManager";
 import type Chat from "./chat";
 import { CHAT_ANIMATION_GROUP } from "../../lib/appManagers/appImManager";
 import { getObjectKeysAndSort } from "../../helpers/object";
@@ -38,7 +38,6 @@ import { ripple } from "../ripple";
 import { wrapAlbum, wrapPhoto, wrapVideo, wrapDocument, wrapSticker, wrapPoll, wrapGroupedDocuments } from "../wrappers";
 import { MessageRender } from "./messageRender";
 import LazyLoadQueue from "../lazyLoadQueue";
-import { AppChatsManager } from "../../lib/appManagers/appChatsManager";
 import ListenerSetter from "../../helpers/listenerSetter";
 import PollElement from "../poll";
 import AudioElement from "../audio";
@@ -147,13 +146,16 @@ export default class ChatBubbles {
     [_ in MessageEntity['_']]: boolean
   }> = {};
 
+  private onAnimateLadder: () => void;
+
   constructor(private chat: Chat, 
     private appMessagesManager: AppMessagesManager, 
     private appStickersManager: AppStickersManager, 
     private appUsersManager: AppUsersManager, 
     private appInlineBotsManager: AppInlineBotsManager, 
     private appPhotosManager: AppPhotosManager, 
-    private appPeersManager: AppPeersManager
+    private appPeersManager: AppPeersManager,
+    private appProfileManager: AppProfileManager
   ) {
     //this.chat.log.error('Bubbles construction');
     
@@ -429,7 +431,7 @@ export default class ChatBubbles {
         }
         
         const bubble = (e.target as HTMLElement).classList.contains('bubble') ? e.target as HTMLElement : null;
-        if(bubble) {
+        if(bubble && !bubble.classList.contains('bubble-first')) {
           const mid = +bubble.dataset.mid
           this.chat.input.initMessageReply(mid);
         }
@@ -2825,8 +2827,12 @@ export default class ChatBubbles {
       }
 
       while(history.length) {
-        let message = this.chat.getMessage(method());
-        this.renderMessage(message, reverse, true);
+        const message = this.chat.getMessage(method());
+        if(message.id > 0) {
+          this.renderMessage(message, reverse, true);
+        } else {
+          this.processLocalMessageRender(message);
+        }
       }
 
       (this.messagesQueuePromise || Promise.resolve())
@@ -2918,6 +2924,147 @@ export default class ChatBubbles {
     }
   }
 
+  private animateAsLadder(additionMsgId: number, additionMsgIds: number[], isAdditionRender: boolean, backLimit: number, maxId: number) {
+    if(!Object.keys(this.bubbles).length) {
+      return;
+    }
+
+    if(this.onAnimateLadder) {
+      this.onAnimateLadder();
+    }
+
+    let sortedMids = getObjectKeysAndSort(this.bubbles, 'desc');
+
+    if(isAdditionRender && additionMsgIds.length) {
+      sortedMids = sortedMids.filter(mid => !additionMsgIds.includes(mid));
+    }
+
+    let targetMid: number;
+    if(backLimit) {
+      targetMid = maxId || Math.max(...sortedMids); // * on discussion enter
+    } else {
+      if(additionMsgId) {
+        targetMid = additionMsgId;
+      } else { // * if maxId === 0
+        targetMid = Math.max(...sortedMids);
+      }
+    }
+
+    const topIds = sortedMids.slice(sortedMids.findIndex(mid => targetMid > mid));
+    const middleIds = isAdditionRender ? [] : [targetMid];
+    const bottomIds = isAdditionRender ? [] : sortedMids.slice(0, sortedMids.findIndex(mid => targetMid >= mid)).reverse();
+    
+    if(DEBUG) {
+      this.log('getHistory: targeting mid:', targetMid, maxId, additionMsgId, 
+        topIds.map(m => this.appMessagesManager.getServerMessageId(m)), 
+        bottomIds.map(m => this.appMessagesManager.getServerMessageId(m)));
+    }
+
+    const setBubbles: HTMLElement[] = [];
+
+    this.chatInner.classList.add('zoom-fading');
+    const delay = isAdditionRender ? 10 : 40;
+    const offsetIndex = isAdditionRender ? 0 : 1;
+    const animateAsLadder = (mids: number[], offsetIndex = 0) => {
+      const animationPromise = deferredPromise<void>();
+      let lastMsDelay = 0;
+      mids.forEach((mid, idx) => {
+        if(!this.bubbles[mid]) {
+          this.log.warn('animateAsLadder: no bubble by mid:', mid);
+          return;
+        }
+
+        const contentWrapper = this.bubbles[mid].lastElementChild as HTMLElement;
+
+        lastMsDelay = ((idx + offsetIndex) || 0.1) * delay;
+        //lastMsDelay = (idx + offsetIndex) * delay;
+        //lastMsDelay = (idx || 0.1) * 1000;
+        
+        contentWrapper.classList.add('zoom-fade');
+        contentWrapper.style.transitionDelay = lastMsDelay + 'ms';
+
+        if(idx === (mids.length - 1)) {
+          const onTransitionEnd = (e: TransitionEvent) => {
+            if(e.target !== contentWrapper) {
+              return;
+            }
+
+            animationPromise.resolve();
+            contentWrapper.removeEventListener('transitionend', onTransitionEnd);
+          };
+
+          contentWrapper.addEventListener('transitionend', onTransitionEnd);
+        }
+        
+        //this.log('supa', bubble);
+
+        setBubbles.push(contentWrapper);
+      });
+
+      if(!mids.length) {
+        animationPromise.resolve();
+      }
+
+      return {lastMsDelay, animationPromise};
+    };
+
+    const topRes = animateAsLadder(topIds, offsetIndex);
+    const middleRes = animateAsLadder(middleIds);
+    const bottomRes = animateAsLadder(bottomIds, offsetIndex);
+    const promises = [topRes.animationPromise, middleRes.animationPromise, bottomRes.animationPromise];
+    const delays: number[] = [topRes.lastMsDelay, middleRes.lastMsDelay, bottomRes.lastMsDelay];
+
+    fastRaf(() => {
+      setBubbles.forEach(contentWrapper => {
+        contentWrapper.classList.remove('zoom-fade');
+      });
+    });
+
+    let promise: Promise<any>;
+    if(topIds.length || middleIds.length || bottomIds.length) {
+      promise = Promise.all(promises);
+
+      dispatchHeavyAnimationEvent(promise, Math.max(...delays) + 200) // * 200 - transition time
+      .then(() => { 
+        fastRaf(() => {
+          setBubbles.forEach(contentWrapper => {
+            contentWrapper.style.transitionDelay = '';
+          });
+
+          this.chatInner.classList.remove('zoom-fading');
+        });
+
+        // ! в хроме, каким-то образом из-за zoom-fade класса начинает прыгать скролл при подгрузке сообщений вверх, 
+        // ! т.е. скролл не ставится, так же, как в сафари при translateZ на блок выше scrollable
+        if(!isSafari) {
+          this.needReflowScroll = true;
+        }
+      });
+    }
+
+    return promise;
+  }
+
+  private processLocalMessageRender(message: any) {
+    const bubble = this.renderMessage(message, false, false, undefined, false);
+    bubble.classList.add('bubble-first', 'is-group-last', 'is-group-first');
+    bubble.classList.remove('can-have-tail', 'is-in');
+
+    const messageDiv = bubble.querySelector('.message');
+    const b = document.createElement('b');
+    b.append(i18n('BotInfoTitle'));
+    messageDiv.prepend(b, '\n\n');
+    
+    if(this.messagesQueueOnRenderAdditional) {
+      this.onAnimateLadder = () => {
+        this.chatInner.prepend(bubble);
+        this.onAnimateLadder = undefined;
+      };
+    } else {
+      this.chatInner.prepend(bubble);
+    }
+  }
+
   /**
    * Load and render history
    * @param maxId max message id
@@ -3002,28 +3149,50 @@ export default class ChatBubbles {
 
     this.isFirstLoad = false;
 
-    const processResult = (historyResult: typeof result) => {
-      if(this.chat.type === 'discussion' && 'offsetIdOffset' in historyResult) {
-        //this.log('discussion got history', loadCount, backLimit, historyResult, isTopEnd);
-
-        // * inject discussion start
-        if(historyResult.history.isEnd(SliceEnd.Top)) {
+    const processResult = async(historyResult: typeof result) => {
+      if('offsetIdOffset' in historyResult && historyResult.history.isEnd(SliceEnd.Top)) {
+        if(this.chat.type === 'discussion') { // * inject discussion start
+          //this.log('discussion got history', loadCount, backLimit, historyResult, isTopEnd);
           const serviceStartMessageId = this.appMessagesManager.threadsServiceMessagesIdsStorage[this.peerId + '_' + this.chat.threadId];
           if(serviceStartMessageId) historyResult.history.push(serviceStartMessageId);
           historyResult.history.push(...this.chat.getMidsByMid(this.chat.threadId).reverse());
-          this.scrollable.loadedAll.top = true;
+        } else if(this.appUsersManager.isBot(this.peerId)) {
+          this.log('inject bot description');
+
+          await this.appProfileManager.getProfile(this.peerId).then(userFull => {
+            if(!userFull.bot_info?.description) {
+              return;
+            }
+
+            const offset = this.appMessagesManager.generateMessageId(0);
+            const message: Message.message = {
+              _: 'message',
+              date: 0,
+              id: -(this.peerId + offset),
+              message: userFull.bot_info.description,
+              peer_id: this.appPeersManager.getOutputPeer(this.peerId),
+              pFlags: {
+                bot_description: true
+              }
+            };
+
+            this.appMessagesManager.saveMessages([message]);
+            this.processLocalMessageRender(message);
+          });
         }
+
+        this.scrollable.loadedAll.top = true;
       }
     };
 
-    const sup = (result: HistoryResult) => {
+    const sup = async(result: HistoryResult) => {
       /* if(maxId && result.history?.length) {
         if(this.bubbles[maxId]) {
           result.history.findAndSplice(mid => mid === maxId);  
         }
       } */
 
-      processResult(result);
+      await processResult(result);
         
       ////console.timeEnd('render history total');
       
@@ -3081,119 +3250,8 @@ export default class ChatBubbles {
         if(--times) return;
 
         this.messagesQueueOnRenderAdditional = undefined;
-        if(!Object.keys(this.bubbles).length) {
-          return;
-        }
-
-        let sortedMids = getObjectKeysAndSort(this.bubbles, 'desc');
-
-        if(isAdditionRender && additionMsgIds.length) {
-          sortedMids = sortedMids.filter(mid => !additionMsgIds.includes(mid));
-        }
-
-        let targetMid: number;
-        if(backLimit) {
-          targetMid = maxId || Math.max(...sortedMids); // * on discussion enter
-        } else {
-          if(additionMsgId) {
-            targetMid = additionMsgId;
-          } else { // * if maxId === 0
-            targetMid = Math.max(...sortedMids);
-          }
-        }
-
-        const topIds = sortedMids.slice(sortedMids.findIndex(mid => targetMid > mid));
-        const middleIds = isAdditionRender ? [] : [targetMid];
-        const bottomIds = isAdditionRender ? [] : sortedMids.slice(0, sortedMids.findIndex(mid => targetMid >= mid)).reverse();
         
-        if(DEBUG) {
-          this.log('getHistory: targeting mid:', targetMid, maxId, additionMsgId, 
-            topIds.map(m => this.appMessagesManager.getServerMessageId(m)), 
-            bottomIds.map(m => this.appMessagesManager.getServerMessageId(m)));
-        }
-
-        const setBubbles: HTMLElement[] = [];
-
-        this.chatInner.classList.add('zoom-fading');
-        const delay = isAdditionRender ? 10 : 40;
-        const offsetIndex = isAdditionRender ? 0 : 1;
-        const animateAsLadder = (mids: number[], offsetIndex = 0) => {
-          const animationPromise = deferredPromise<void>();
-          let lastMsDelay = 0;
-          mids.forEach((mid, idx) => {
-            if(!this.bubbles[mid]) {
-              this.log.warn('animateAsLadder: no bubble by mid:', mid);
-              return;
-            }
-
-            const contentWrapper = this.bubbles[mid].lastElementChild as HTMLElement;
-
-            lastMsDelay = ((idx + offsetIndex) || 0.1) * delay;
-            //lastMsDelay = (idx + offsetIndex) * delay;
-            //lastMsDelay = (idx || 0.1) * 1000;
-            
-            contentWrapper.classList.add('zoom-fade');
-            contentWrapper.style.transitionDelay = lastMsDelay + 'ms';
-
-            if(idx === (mids.length - 1)) {
-              const onTransitionEnd = (e: TransitionEvent) => {
-                if(e.target !== contentWrapper) {
-                  return;
-                }
-
-                animationPromise.resolve();
-                contentWrapper.removeEventListener('transitionend', onTransitionEnd);
-              };
-  
-              contentWrapper.addEventListener('transitionend', onTransitionEnd);
-            }
-            
-            //this.log('supa', bubble);
-
-            setBubbles.push(contentWrapper);
-          });
-
-          if(!mids.length) {
-            animationPromise.resolve();
-          }
-
-          return {lastMsDelay, animationPromise};
-        };
-
-        const topRes = animateAsLadder(topIds, offsetIndex);
-        const middleRes = animateAsLadder(middleIds);
-        const bottomRes = animateAsLadder(bottomIds, offsetIndex);
-        const promises = [topRes.animationPromise, middleRes.animationPromise, bottomRes.animationPromise];
-        const delays: number[] = [topRes.lastMsDelay, middleRes.lastMsDelay, bottomRes.lastMsDelay];
-
-        fastRaf(() => {
-          setBubbles.forEach(contentWrapper => {
-            contentWrapper.classList.remove('zoom-fade');
-          });
-        });
-
-        let promise: Promise<any>;
-        if(topIds.length || middleIds.length || bottomIds.length) {
-          promise = Promise.all(promises);
-
-          dispatchHeavyAnimationEvent(promise, Math.max(...delays) + 200) // * 200 - transition time
-          .then(() => { 
-            fastRaf(() => {
-              setBubbles.forEach(contentWrapper => {
-                contentWrapper.style.transitionDelay = '';
-              });
-
-              this.chatInner.classList.remove('zoom-fading');
-            });
-
-            // ! в хроме, каким-то образом из-за zoom-fade класса начинает прыгать скролл при подгрузке сообщений вверх, 
-            // ! т.е. скролл не ставится, так же, как в сафари при translateZ на блок выше scrollable
-            if(!isSafari) {
-              this.needReflowScroll = true;
-            }
-          });
-        }
-
+        const promise = this.animateAsLadder(additionMsgId, additionMsgIds, isAdditionRender, backLimit, maxId);
         (promise || Promise.resolve()).then(() => {
           setTimeout(() => { // preload messages
             this.loadMoreHistory(reverse, true);

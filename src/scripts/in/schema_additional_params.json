@@ -51,7 +51,8 @@
     {"name": "unread", "type": "true"},
     {"name": "is_outgoing", "type": "true"},
     {"name": "rReply", "type": "string"},
-    {"name": "viaBotId", "type": "number"}
+    {"name": "viaBotId", "type": "number"},
+    {"name": "bot_description", "type": "true"}
   ]
 }, {
   "predicate": "messageService",

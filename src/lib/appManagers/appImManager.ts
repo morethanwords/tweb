@@ -438,14 +438,15 @@ export class AppImManager {
     //const bubble = chat.bubbles.getBubbleByPoint('top');
     //if(bubble) {
       //const top = bubble.getBoundingClientRect().top;
-      const top = chat.bubbles.scrollable.scrollTop;
+      const chatBubbles = chat.bubbles;
+      const top = chatBubbles.scrollable.scrollTop;
 
       const key = chat.peerId + (chat.threadId ? '_' + chat.threadId : '');
 
       const chatPositions = stateStorage.getFromCache('chatPositions');
-      if(!(chat.bubbles.scrollable.getDistanceToEnd() <= 16 && chat.bubbles.scrollable.loadedAll.bottom) && Object.keys(chat.bubbles.bubbles).length) {
+      if(!(chatBubbles.scrollable.getDistanceToEnd() <= 16 && chatBubbles.scrollable.loadedAll.bottom) && Object.keys(chatBubbles.bubbles).length) {
         const position = {
-          mids: getObjectKeysAndSort(chat.bubbles.bubbles, 'desc'),
+          mids: getObjectKeysAndSort(chatBubbles.bubbles, 'desc'),
           top
         };
 
