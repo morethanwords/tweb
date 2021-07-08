@@ -725,6 +725,8 @@ $bubble-margin: .25rem;
     order: -1;
     margin-top: .5rem;
     justify-content: center;
+    flex: 1 1 auto;
+    align-items: center;
 
     .time {
       display: none !important;
