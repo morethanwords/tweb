@@ -727,6 +727,11 @@ $bubble-margin: .25rem;
     justify-content: center;
     flex: 1 1 auto;
     align-items: center;
+    max-width: 100%;
+
+    .bubble-content-wrapper {
+      max-width: 100%;
+    }
 
     &.empty-placeholder {
       position: absolute;
