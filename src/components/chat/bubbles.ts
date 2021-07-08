@@ -69,7 +69,6 @@ import whichChild from "../../helpers/dom/whichChild";
 import { cancelAnimationByKey } from "../../helpers/animation";
 import assumeType from "../../helpers/assumeType";
 import { EmoticonsDropdown } from "../emoticonsDropdown";
-import appDocsManager from "../../lib/appManagers/appDocsManager";
 
 const USE_MEDIA_TAILS = false;
 const IGNORE_ACTIONS: Set<Message.messageService['action']['_']> = new Set([
@@ -719,7 +718,7 @@ export default class ChatBubbles {
         this.log('will readHistory by maxId:', maxId);
       }
 
-      return;
+      // return;
       
       return this.appMessagesManager.readHistory(this.peerId, maxId, this.chat.threadId).catch((err: any) => {
         this.log.error('readHistory err:', err);
@@ -3148,8 +3147,8 @@ export default class ChatBubbles {
 
         const loadPromises: Promise<any>[] = [];
         wrapSticker({
-          //doc, 
-          doc: appDocsManager.getDoc("5431607541660389336"), // cubigator mockup
+          doc, 
+          // doc: appDocsManager.getDoc("5431607541660389336"), // cubigator mockup
           div: stickerDiv,
           middleware,
           lazyLoadQueue: this.lazyLoadQueue,
