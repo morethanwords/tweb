@@ -25,7 +25,7 @@ import PopupDatePicker from "../popups/datePicker";
 import PopupForward from "../popups/forward";
 import PopupStickers from "../popups/stickers";
 import ProgressivePreloader from "../preloader";
-import Scrollable from "../scrollable";
+import Scrollable, { SliceSides } from "../scrollable";
 import StickyIntersector from "../stickyIntersector";
 import animationIntersector from "../animationIntersector";
 import RichTextProcessor from "../../lib/richtextprocessor";
@@ -45,7 +45,7 @@ import { Message, MessageEntity,  MessageReplyHeader, Update } from "../../layer
 import { REPLIES_PEER_ID } from "../../lib/mtproto/mtproto_config";
 import { FocusDirection } from "../../helpers/fastSmoothScroll";
 import useHeavyAnimationCheck, { getHeavyAnimationPromise, dispatchHeavyAnimationEvent, interruptHeavyAnimation } from "../../hooks/useHeavyAnimationCheck";
-import { fastRaf } from "../../helpers/schedulers";
+import { fastRaf, fastRafPromise } from "../../helpers/schedulers";
 import { deferredPromise } from "../../helpers/cancellablePromise";
 import RepliesElement from "./replies";
 import DEBUG from "../../config/debug";
@@ -69,7 +69,7 @@ import whichChild from "../../helpers/dom/whichChild";
 import { cancelAnimationByKey } from "../../helpers/animation";
 
 const USE_MEDIA_TAILS = false;
-const IGNORE_ACTIONS: Message.messageService['action']['_'][] = [/* 'messageActionHistoryClear' */];
+const IGNORE_ACTIONS: Message.messageService['action']['_'][] = ['messageActionHistoryClear'];
 
 const TEST_SCROLL_TIMES: number = undefined;
 let TEST_SCROLL = TEST_SCROLL_TIMES;
@@ -146,7 +146,7 @@ export default class ChatBubbles {
     [_ in MessageEntity['_']]: boolean
   }> = {};
 
-  private onAnimateLadder: () => void;
+  private onAnimateLadder: () => Promise<any>;
 
   constructor(private chat: Chat, 
     private appMessagesManager: AppMessagesManager, 
@@ -1124,7 +1124,7 @@ export default class ChatBubbles {
           
       // if scroll down after search
       if(history.indexOf(historyStorage.maxId) !== -1) {
-        this.scrollable.loadedAll.bottom = true;
+        this.setLoaded('bottom', true);
         return;
       }
 
@@ -1171,8 +1171,8 @@ export default class ChatBubbles {
 
   public setScroll() {
     this.scrollable = new Scrollable(null, 'IM', /* 10300 */300);
-    this.scrollable.loadedAll.top = false;
-    this.scrollable.loadedAll.bottom = false;
+    this.setLoaded('top', false);
+    this.setLoaded('bottom', false);
 
     this.scrollable.container.append(this.chatInner);
 
@@ -1465,8 +1465,8 @@ export default class ChatBubbles {
 
   public cleanup(bubblesToo = false) {
     ////console.time('appImManager cleanup');
-    this.scrollable.loadedAll.top = false;
-    this.scrollable.loadedAll.bottom = false;
+    this.setLoaded('top', false);
+    this.setLoaded('bottom', false);
 
     // cancel scroll
     cancelAnimationByKey(this.scrollable.container);
@@ -1728,7 +1728,7 @@ export default class ChatBubbles {
       if(!needFetchNew) {
         // warning
         if(!lastMsgId || this.bubbles[topMessage] || lastMsgId === topMessage) {
-          this.scrollable.loadedAll.bottom = true;
+          this.setLoaded('bottom', true);
         }
       } else {
         const middleware = this.getMiddleware();
@@ -1756,7 +1756,7 @@ export default class ChatBubbles {
                   const slice = historyStorage.history.slice;
                   const isBottomEnd = slice.isEnd(SliceEnd.Bottom);
                   if(this.scrollable.loadedAll.bottom && this.scrollable.loadedAll.bottom !== isBottomEnd) {
-                    this.scrollable.loadedAll.bottom = isBottomEnd;
+                    this.setLoaded('bottom', isBottomEnd);
                     this.onScroll();
                   }
 
@@ -1858,7 +1858,7 @@ export default class ChatBubbles {
         const middleware = this.getMiddleware();
         Promise.all(promises).then(() => {
           if(!middleware()) {
-            return Promise.reject('setMessagesQueuePromise: peer changed!');
+            throw 'setMessagesQueuePromise: peer changed!';
           }
 
           if(this.messagesQueueOnRender) {
@@ -2776,11 +2776,11 @@ export default class ChatBubbles {
     const firstSlice = historyStorage.history.first;
     const lastSlice = historyStorage.history.last;
     if(firstSlice.isEnd(SliceEnd.Bottom) && (!firstSlice.length || history.includes(firstSlice[0]))) {
-      this.scrollable.loadedAll.bottom = true;
+      this.setLoaded('bottom', true);
     }
     
     if(lastSlice.isEnd(SliceEnd.Top) && (!lastSlice.length || history.includes(lastSlice[lastSlice.length - 1]))) {
-      this.scrollable.loadedAll.top = true;
+      this.setLoaded('top', true);
     }
 
     //console.time('appImManager render history');
@@ -2838,6 +2838,14 @@ export default class ChatBubbles {
       (this.messagesQueuePromise || Promise.resolve())
       //.then(() => new Promise(resolve => setTimeout(resolve, 100)))
       .then(() => {
+        if(this.scrollable.loadedAll.top && this.messagesQueueOnRenderAdditional) {
+          this.messagesQueueOnRenderAdditional();
+
+          if(this.messagesQueueOnRenderAdditional) {
+            this.messagesQueueOnRenderAdditional();
+          }
+        }
+
         if(previousScrollHeightMinusTop !== undefined) {
           /* const scrollHeight = this.scrollable.scrollHeight;
           const addedHeight = scrollHeight - previousScrollHeight;
@@ -2917,20 +2925,16 @@ export default class ChatBubbles {
       return promise;
     } else if(this.chat.type === 'scheduled') {
       return this.appMessagesManager.getScheduledMessages(this.peerId).then(mids => {
-        this.scrollable.loadedAll.top = true;
-        this.scrollable.loadedAll.bottom = true;
+        this.setLoaded('top', true);
+        this.setLoaded('bottom', true);
         return {history: mids.slice().reverse()};
       });
     }
   }
 
-  private animateAsLadder(additionMsgId: number, additionMsgIds: number[], isAdditionRender: boolean, backLimit: number, maxId: number) {
+  private async animateAsLadder(additionMsgId: number, additionMsgIds: number[], isAdditionRender: boolean, backLimit: number, maxId: number) {
     if(!Object.keys(this.bubbles).length) {
       return;
-    }
-
-    if(this.onAnimateLadder) {
-      this.onAnimateLadder();
     }
 
     let sortedMids = getObjectKeysAndSort(this.bubbles, 'desc');
@@ -3014,11 +3018,17 @@ export default class ChatBubbles {
     const promises = [topRes.animationPromise, middleRes.animationPromise, bottomRes.animationPromise];
     const delays: number[] = [topRes.lastMsDelay, middleRes.lastMsDelay, bottomRes.lastMsDelay];
 
+    if(this.onAnimateLadder) {
+      await this.onAnimateLadder();
+    }
+
+    // fastRaf(() => {
     fastRaf(() => {
       setBubbles.forEach(contentWrapper => {
         contentWrapper.classList.remove('zoom-fade');
       });
     });
+    // });
 
     let promise: Promise<any>;
     if(topIds.length || middleIds.length || bottomIds.length) {
@@ -3059,9 +3069,48 @@ export default class ChatBubbles {
       this.onAnimateLadder = () => {
         this.chatInner.prepend(bubble);
         this.onAnimateLadder = undefined;
+
+        // need raf here because animation won't fire if this message is single
+        if(!this.messagesQueuePromise) {
+          return fastRafPromise();
+        }
       };
     } else {
       this.chatInner.prepend(bubble);
+    }
+  }
+
+  private setLoaded(side: SliceSides, value: boolean) {
+    const willChange = this.scrollable.loadedAll[side] !== value;
+    if(!willChange) {
+      return;
+    }
+
+    this.scrollable.loadedAll[side] = value;
+
+    if(side === 'top' && value && this.appUsersManager.isBot(this.peerId)) {
+      this.log('inject bot description');
+
+      return this.appProfileManager.getProfile(this.peerId).then(userFull => {
+        if(!userFull.bot_info?.description) {
+          return;
+        }
+
+        const offset = this.appMessagesManager.generateMessageId(0);
+        const message: Message.message = {
+          _: 'message',
+          date: 0,
+          id: -(this.peerId + offset),
+          message: userFull.bot_info.description,
+          peer_id: this.appPeersManager.getOutputPeer(this.peerId),
+          pFlags: {
+            bot_description: true
+          }
+        };
+
+        this.appMessagesManager.saveMessages([message]);
+        this.processLocalMessageRender(message);
+      });
     }
   }
 
@@ -3156,32 +3205,9 @@ export default class ChatBubbles {
           const serviceStartMessageId = this.appMessagesManager.threadsServiceMessagesIdsStorage[this.peerId + '_' + this.chat.threadId];
           if(serviceStartMessageId) historyResult.history.push(serviceStartMessageId);
           historyResult.history.push(...this.chat.getMidsByMid(this.chat.threadId).reverse());
-        } else if(this.appUsersManager.isBot(this.peerId)) {
-          this.log('inject bot description');
-
-          await this.appProfileManager.getProfile(this.peerId).then(userFull => {
-            if(!userFull.bot_info?.description) {
-              return;
-            }
-
-            const offset = this.appMessagesManager.generateMessageId(0);
-            const message: Message.message = {
-              _: 'message',
-              date: 0,
-              id: -(this.peerId + offset),
-              message: userFull.bot_info.description,
-              peer_id: this.appPeersManager.getOutputPeer(this.peerId),
-              pFlags: {
-                bot_description: true
-              }
-            };
-
-            this.appMessagesManager.saveMessages([message]);
-            this.processLocalMessageRender(message);
-          });
         }
 
-        this.scrollable.loadedAll.top = true;
+        await this.setLoaded('top', true);
       }
     };
 
@@ -3293,7 +3319,7 @@ export default class ChatBubbles {
           //ids = ids.slice(-removeCount);
           //ids = ids.slice(removeCount * 2);
           ids = ids.slice(safeCount);
-          this.scrollable.loadedAll.bottom = false;
+          this.setLoaded('bottom', false);
 
           //this.log('getHistory: slice bottom messages:', ids.length, loadCount);
           //this.getHistoryBottomPromise = undefined; // !WARNING, это нужно для обратной загрузки истории, если запрос словил флуд
@@ -3301,7 +3327,7 @@ export default class ChatBubbles {
           //ids = ids.slice(0, removeCount);
           //ids = ids.slice(0, ids.length - (removeCount * 2));
           ids = ids.slice(0, ids.length - safeCount);
-          this.scrollable.loadedAll.top = false;
+          this.setLoaded('top', false);
 
           //this.log('getHistory: slice up messages:', ids.length, loadCount);
           //this.getHistoryTopPromise = undefined; // !WARNING, это нужно для обратной загрузки истории, если запрос словил флуд

@@ -106,6 +106,18 @@ export function fastRaf(callback: NoneToVoidFunction) {
   }
 }
 
+let rafPromise: Promise<DOMHighResTimeStamp>;
+export function fastRafPromise() {
+  if(rafPromise) return rafPromise;
+
+  rafPromise = new Promise(requestAnimationFrame);
+  rafPromise.then(() => {
+    rafPromise = undefined;
+  });
+
+  return rafPromise;
+}
+
 export function doubleRaf() {
   return new Promise<void>((resolve) => {
     fastRaf(() => {
