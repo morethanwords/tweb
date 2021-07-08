@@ -46,7 +46,7 @@ import { REPLIES_PEER_ID } from "../../lib/mtproto/mtproto_config";
 import { FocusDirection } from "../../helpers/fastSmoothScroll";
 import useHeavyAnimationCheck, { getHeavyAnimationPromise, dispatchHeavyAnimationEvent, interruptHeavyAnimation } from "../../hooks/useHeavyAnimationCheck";
 import { fastRaf, fastRafPromise } from "../../helpers/schedulers";
-import { deferredPromise } from "../../helpers/cancellablePromise";
+import { CancellablePromise, deferredPromise } from "../../helpers/cancellablePromise";
 import RepliesElement from "./replies";
 import DEBUG from "../../config/debug";
 import { SliceEnd } from "../../helpers/slicedArray";
@@ -69,6 +69,7 @@ import whichChild from "../../helpers/dom/whichChild";
 import { cancelAnimationByKey } from "../../helpers/animation";
 import assumeType from "../../helpers/assumeType";
 import { EmoticonsDropdown } from "../emoticonsDropdown";
+import appDocsManager from "../../lib/appManagers/appDocsManager";
 
 const USE_MEDIA_TAILS = false;
 const IGNORE_ACTIONS: Set<Message.messageService['action']['_']> = new Set([
@@ -98,6 +99,7 @@ export default class ChatBubbles {
   public needUpdate: {replyToPeerId: number, replyMid: number, mid: number}[] = []; // if need wrapSingleMessage
 
   public bubbles: {[mid: string]: HTMLDivElement} = {};
+  public skippedMids: Set<number> = new Set();
   private dateMessages: {[timestamp: number]: { 
     div: HTMLDivElement, 
     firstTimestamp: number, 
@@ -153,7 +155,9 @@ export default class ChatBubbles {
     [_ in MessageEntity['_']]: boolean
   }> = {};
 
-  private onAnimateLadder: () => Promise<any>;
+  private onAnimateLadder: () => Promise<any> | void;
+  // private ladderDeferred: CancellablePromise<void>;
+  private resolveLadderAnimation: () => Promise<any>;
 
   constructor(private chat: Chat, 
     private appMessagesManager: AppMessagesManager, 
@@ -312,10 +316,11 @@ export default class ChatBubbles {
         this.log.warn('message_sent there is no bubble', e);
       }
 
-      if(this.bubbles[tempId]) {
-        const bubble = this.bubbles[tempId];
-        this.bubbles[mid] = bubble;
-        delete this.bubbles[tempId];
+      const bubbles = this.bubbles;
+      if(bubbles[tempId]) {
+        const bubble = bubbles[tempId];
+        bubbles[mid] = bubble;
+        delete bubbles[tempId];
 
         //getHeavyAnimationPromise().then(() => {
           fastRaf(() => {
@@ -675,6 +680,10 @@ export default class ChatBubbles {
     }
   }
 
+  public getRenderedLength() {
+    return Object.keys(this.bubbles).length - this.skippedMids.size;
+  }
+
   private onUnreadedInViewport(target: HTMLElement, mid: number) {
     this.unreadedSeen.add(mid);
     this.unreadedObserver.unobserve(target);
@@ -709,6 +718,8 @@ export default class ChatBubbles {
       if(DEBUG) {
         this.log('will readHistory by maxId:', maxId);
       }
+
+      return;
       
       return this.appMessagesManager.readHistory(this.peerId, maxId, this.chat.threadId).catch((err: any) => {
         this.log.error('readHistory err:', err);
@@ -1253,6 +1264,7 @@ export default class ChatBubbles {
 
       const bubble = this.bubbles[mid];
       delete this.bubbles[mid];
+      this.skippedMids.delete(mid);
 
       if(this.firstUnreadBubble === bubble) {
         this.firstUnreadBubble = null;
@@ -1486,26 +1498,27 @@ export default class ChatBubbles {
     }
 
     this.bubbles = {};
+    this.skippedMids.clear();
     this.dateMessages = {};
     this.bubbleGroups.cleanup();
     this.unreadOut.clear();
     this.needUpdate.length = 0;
     this.lazyLoadQueue.clear();
-
+    
     // clear messages
     if(bubblesToo) {
       this.scrollable.container.textContent = '';
     }
-
+    
     this.firstUnreadBubble = null;
     this.attachedUnreadBubble = false;
-
+    
     this.messagesQueue.length = 0;
     this.messagesQueuePromise = null;
-
+    
     this.getHistoryTopPromise = this.getHistoryBottomPromise = undefined;
     this.fetchNewPromise = undefined;
-
+    
     if(this.stickyIntersector) {
       this.stickyIntersector.disconnect();
     }
@@ -1516,11 +1529,12 @@ export default class ChatBubbles {
       this.unreadedSeen.clear();
       this.readPromise = undefined;
     }
-
+    
     this.loadedTopTimes = this.loadedBottomTimes = 0;
-
+    
     this.middleware.clean();
-
+    
+    this.resolveLadderAnimation = undefined;
     ////console.timeEnd('appImManager cleanup');
   }
 
@@ -1664,6 +1678,8 @@ export default class ChatBubbles {
     }
 
     //console.timeEnd('appImManager setPeer pre promise');
+    /* this.ladderDeferred && this.ladderDeferred.resolve();
+    this.ladderDeferred = deferredPromise<void>(); */
     
     animationIntersector.lockGroup(CHAT_ANIMATION_GROUP);
     const setPeerPromise = promise.then(() => {
@@ -1676,6 +1692,13 @@ export default class ChatBubbles {
       } else {
         this.preloader.detach();
       }
+
+      if(this.resolveLadderAnimation) {
+        this.resolveLadderAnimation();
+        this.resolveLadderAnimation = undefined;
+      }
+
+      // this.ladderDeferred.resolve();
 
       replaceContent(this.scrollable.container, this.chatInner);
 
@@ -2030,6 +2053,7 @@ export default class ChatBubbles {
 
       if(!sameMid) {
         delete this.bubbles[originalMid];
+        this.skippedMids.delete(originalMid);
       }
 
       //bubble.innerHTML = '';
@@ -2049,6 +2073,7 @@ export default class ChatBubbles {
       if(action) {
         const _ = action._;
         if(IGNORE_ACTIONS.has(_) || (langPack.hasOwnProperty(_) && !langPack[_])) {
+          this.skippedMids.add(+message.mid);
           return bubble;
         }
       }
@@ -2759,7 +2784,7 @@ export default class ChatBubbles {
     return bubble;
   }
 
-  public performHistoryResult(history: number[], reverse: boolean, isBackLimit: boolean, additionMsgId?: number) {
+  public async performHistoryResult(history: number[], reverse: boolean, isBackLimit: boolean, additionMsgId?: number) {
     // commented bot getProfile in getHistory!
     // if(!history/* .filter((id: number) => id > 0) */.length) {
     //   if(!isBackLimit) {
@@ -2790,125 +2815,118 @@ export default class ChatBubbles {
       }
     } */
 
+    //console.time('appImManager render history');
+
+    //await new Promise((resolve) => setTimeout(resolve, 1e3));
+
+    /* if(DEBUG) {
+      this.log('performHistoryResult: will render some messages:', history.length, this.isHeavyAnimationInProgress, this.messagesQueuePromise);
+    } */
+
+    //const padding = 10000;
+    //const realLength = this.scrollable.container.childElementCount;
+    let previousScrollHeightMinusTop: number/* , previousScrollHeight: number */;
+    //if(realLength > 0/*  && (reverse || isSafari) */) { // for safari need set when scrolling bottom too
+    //if(!this.scrollable.isHeavyScrolling) {
+      this.messagesQueueOnRender = () => {
+        const {scrollTop, scrollHeight} = this.scrollable;
+
+        //previousScrollHeight = scrollHeight;
+        //previousScrollHeight = scrollHeight + padding;
+        previousScrollHeightMinusTop = reverse ? scrollHeight - scrollTop : scrollTop;
+
+        //this.chatInner.style.paddingTop = padding + 'px';
+        /* if(reverse) {
+          previousScrollHeightMinusTop = this.scrollable.scrollHeight - scrollTop;
+        } else {
+          previousScrollHeightMinusTop = scrollTop;
+        } */
+
+        /* if(DEBUG) {
+          this.log('performHistoryResult: messagesQueueOnRender, scrollTop:', scrollTop, scrollHeight, previousScrollHeightMinusTop);
+        } */
+        this.messagesQueueOnRender = undefined;
+      };
+    //}
+    //}
+
+    if(this.needReflowScroll) {
+      reflowScrollableElement(this.scrollable.container);
+      this.needReflowScroll = false;
+    }
+
+    const cb = (mid: number) => {
+      const message = this.chat.getMessage(mid);
+      if(message.id > 0) {
+        this.renderMessage(message, reverse, true);
+      } else {
+        this.processLocalMessageRender(message);
+      }
+    };
+
+    const length = history.length;
+    if(reverse) for(let i = 0; i < length; ++i) cb(history[i]);
+    else for(let i = length - 1; i >= 0; --i) cb(history[i]);
+
     const historyStorage = this.appMessagesManager.getHistoryStorage(this.peerId, this.chat.threadId);
     const firstSlice = historyStorage.history.first;
     const lastSlice = historyStorage.history.last;
     if(firstSlice.isEnd(SliceEnd.Bottom) && (!firstSlice.length || history.includes(firstSlice[0]))) {
-      this.setLoaded('bottom', true);
+      this.setLoaded('bottom', true, false);
     }
     
     if(lastSlice.isEnd(SliceEnd.Top) && (!lastSlice.length || history.includes(lastSlice[lastSlice.length - 1]))) {
-      this.setLoaded('top', true);
+      this.setLoaded('top', true, false);
     }
 
-    //console.time('appImManager render history');
+    await this.messagesQueuePromise;//.then(() => new Promise(resolve => setTimeout(resolve, 100)))
 
-    return new Promise<boolean>((resolve, reject) => {
-      //await new Promise((resolve) => setTimeout(resolve, 1e3));
+    if(this.scrollable.loadedAll.top && this.messagesQueueOnRenderAdditional) {
+      this.messagesQueueOnRenderAdditional();
 
+      if(this.messagesQueueOnRenderAdditional) {
+        this.messagesQueueOnRenderAdditional();
+      }
+    }
+
+    if(previousScrollHeightMinusTop !== undefined) {
+      /* const scrollHeight = this.scrollable.scrollHeight;
+      const addedHeight = scrollHeight - previousScrollHeight;
+      
+      this.chatInner.style.paddingTop = (10000 - addedHeight) + 'px'; */
+      /* const scrollHeight = this.scrollable.scrollHeight;
+      const addedHeight = scrollHeight - previousScrollHeight;
+      
+      this.chatInner.style.paddingTop = (padding - addedHeight) + 'px';
+      
+      //const newScrollTop = reverse ? scrollHeight - previousScrollHeightMinusTop : previousScrollHeightMinusTop;
+      const newScrollTop = reverse ? scrollHeight - addedHeight - previousScrollHeightMinusTop : previousScrollHeightMinusTop;
+      this.log('performHistoryResult: will set scrollTop', 
+      previousScrollHeightMinusTop, this.scrollable.scrollHeight, 
+      newScrollTop, this.scrollable.container.clientHeight); */
+      //const newScrollTop = reverse ? scrollHeight - previousScrollHeightMinusTop : previousScrollHeightMinusTop;
+      const newScrollTop = reverse ? this.scrollable.scrollHeight - previousScrollHeightMinusTop : previousScrollHeightMinusTop;
+      
       /* if(DEBUG) {
-        this.log('performHistoryResult: will render some messages:', history.length, this.isHeavyAnimationInProgress, this.messagesQueuePromise);
+        this.log('performHistoryResult: will set up scrollTop:', newScrollTop, this.isHeavyAnimationInProgress);
       } */
 
-      const method = (reverse ? history.shift : history.pop).bind(history);
+      // touchSupport for safari iOS
+      //isTouchSupported && isApple && (this.scrollable.container.style.overflow = 'hidden');
+      this.scrollable.scrollTop = newScrollTop;
+      //this.scrollable.scrollTop = this.scrollable.scrollHeight;
+      //isTouchSupported && isApple && (this.scrollable.container.style.overflow = '');
 
-      //const padding = 10000;
-      //const realLength = this.scrollable.container.childElementCount;
-      let previousScrollHeightMinusTop: number/* , previousScrollHeight: number */;
-      //if(realLength > 0/*  && (reverse || isSafari) */) { // for safari need set when scrolling bottom too
-      //if(!this.scrollable.isHeavyScrolling) {
-        this.messagesQueueOnRender = () => {
-          const {scrollTop, scrollHeight} = this.scrollable;
-
-          //previousScrollHeight = scrollHeight;
-          //previousScrollHeight = scrollHeight + padding;
-          previousScrollHeightMinusTop = reverse ? scrollHeight - scrollTop : scrollTop;
-
-          //this.chatInner.style.paddingTop = padding + 'px';
-          /* if(reverse) {
-            previousScrollHeightMinusTop = this.scrollable.scrollHeight - scrollTop;
-          } else {
-            previousScrollHeightMinusTop = scrollTop;
-          } */
-
-          /* if(DEBUG) {
-            this.log('performHistoryResult: messagesQueueOnRender, scrollTop:', scrollTop, scrollHeight, previousScrollHeightMinusTop);
-          } */
-          this.messagesQueueOnRender = undefined;
-        };
-      //}
-      //}
-
-      if(this.needReflowScroll) {
+      if(isSafari/*  && !isAppleMobile */) { // * fix blinking and jumping
         reflowScrollableElement(this.scrollable.container);
-        this.needReflowScroll = false;
       }
 
-      while(history.length) {
-        const message = this.chat.getMessage(method());
-        if(message.id > 0) {
-          this.renderMessage(message, reverse, true);
-        } else {
-          this.processLocalMessageRender(message);
-        }
-      }
+      /* if(DEBUG) {
+        this.log('performHistoryResult: have set up scrollTop:', newScrollTop, this.scrollable.scrollTop, this.scrollable.scrollHeight, this.isHeavyAnimationInProgress);
+      } */
+    }
 
-      (this.messagesQueuePromise || Promise.resolve())
-      //.then(() => new Promise(resolve => setTimeout(resolve, 100)))
-      .then(() => {
-        if(this.scrollable.loadedAll.top && this.messagesQueueOnRenderAdditional) {
-          this.messagesQueueOnRenderAdditional();
-
-          if(this.messagesQueueOnRenderAdditional) {
-            this.messagesQueueOnRenderAdditional();
-          }
-        }
-
-        if(previousScrollHeightMinusTop !== undefined) {
-          /* const scrollHeight = this.scrollable.scrollHeight;
-          const addedHeight = scrollHeight - previousScrollHeight;
-          
-          this.chatInner.style.paddingTop = (10000 - addedHeight) + 'px'; */
-          /* const scrollHeight = this.scrollable.scrollHeight;
-          const addedHeight = scrollHeight - previousScrollHeight;
-          
-          this.chatInner.style.paddingTop = (padding - addedHeight) + 'px';
-          
-          //const newScrollTop = reverse ? scrollHeight - previousScrollHeightMinusTop : previousScrollHeightMinusTop;
-          const newScrollTop = reverse ? scrollHeight - addedHeight - previousScrollHeightMinusTop : previousScrollHeightMinusTop;
-          this.log('performHistoryResult: will set scrollTop', 
-          previousScrollHeightMinusTop, this.scrollable.scrollHeight, 
-          newScrollTop, this.scrollable.container.clientHeight); */
-          //const newScrollTop = reverse ? scrollHeight - previousScrollHeightMinusTop : previousScrollHeightMinusTop;
-          const newScrollTop = reverse ? this.scrollable.scrollHeight - previousScrollHeightMinusTop : previousScrollHeightMinusTop;
-          
-          /* if(DEBUG) {
-            this.log('performHistoryResult: will set up scrollTop:', newScrollTop, this.isHeavyAnimationInProgress);
-          } */
-
-          // touchSupport for safari iOS
-          //isTouchSupported && isApple && (this.scrollable.container.style.overflow = 'hidden');
-          this.scrollable.scrollTop = newScrollTop;
-          //this.scrollable.scrollTop = this.scrollable.scrollHeight;
-          //isTouchSupported && isApple && (this.scrollable.container.style.overflow = '');
-
-          if(isSafari/*  && !isAppleMobile */) { // * fix blinking and jumping
-            reflowScrollableElement(this.scrollable.container);
-          }
-
-          /* if(DEBUG) {
-            this.log('performHistoryResult: have set up scrollTop:', newScrollTop, this.scrollable.scrollTop, this.scrollable.scrollHeight, this.isHeavyAnimationInProgress);
-          } */
-        }
-
-        resolve(true);
-      }, reject);
-    }).then(() => {
-      //console.timeEnd('appImManager render history');
-
-      //return new Promise<boolean>((resolve) => setTimeout(() => resolve(true), 300));
-      return true;
-    });
+    return true;
   }
 
   onDatePick = (timestamp: number) => {
@@ -2951,6 +2969,19 @@ export default class ChatBubbles {
   }
 
   private async animateAsLadder(additionMsgId: number, additionMsgIds: number[], isAdditionRender: boolean, backLimit: number, maxId: number) {
+    /* const middleware = this.getMiddleware();
+    await this.ladderDeferred; */
+
+    if(this.chat.setPeerPromise && !this.resolveLadderAnimation) {
+      // @ts-ignore
+      this.resolveLadderAnimation = this.animateAsLadder.bind(this, additionMsgId, additionMsgIds, isAdditionRender, backLimit, maxId);
+      return;
+    }
+
+    /* if(!middleware()) {
+      return;
+    } */
+
     if(!Object.keys(this.bubbles).length) {
       return;
     }
@@ -2991,7 +3022,7 @@ export default class ChatBubbles {
       const animationPromise = deferredPromise<void>();
       let lastMsDelay = 0;
       mids.forEach((mid, idx) => {
-        if(!this.bubbles[mid]) {
+        if(!this.bubbles[mid] || this.skippedMids.has(mid)) {
           this.log.warn('animateAsLadder: no bubble by mid:', mid);
           return;
         }
@@ -3111,13 +3142,14 @@ export default class ChatBubbles {
       stickerDiv.classList.add('empty-placeholder-sticker');
 
       const middleware = this.getMiddleware();
+      
       const loadPromise = this.appStickersManager.getGreetingSticker().then(doc => {
         if(!middleware()) return;
 
         const loadPromises: Promise<any>[] = [];
         wrapSticker({
-          doc, 
-          // doc: appDocsManager.getDoc("5431607541660389336"), // cubigator mockup
+          //doc, 
+          doc: appDocsManager.getDoc("5431607541660389336"), // cubigator mockup
           div: stickerDiv,
           middleware,
           lazyLoadQueue: this.lazyLoadQueue,
@@ -3176,13 +3208,14 @@ export default class ChatBubbles {
   }
 
   private processLocalMessageRender(message: Message) {
-    const bubble = this.renderMessage(message);
+    const bubble = this.renderMessage(message, undefined, undefined, undefined, false);
     bubble.classList.add('bubble-first', 'is-group-last', 'is-group-first');
     bubble.classList.remove('can-have-tail', 'is-in');
 
     const messageDiv = bubble.querySelector('.message, .service-msg');
     const elements: (Node | string)[] = [];
-    if(this.appPeersManager.isBot(this.peerId)) {
+    const isBot = this.appPeersManager.isBot(this.peerId);
+    if(isBot && message._ === 'message') {
       const b = document.createElement('b');
       b.append(i18n('BotInfoTitle'));
       elements.push(b, '\n\n');
@@ -3190,7 +3223,7 @@ export default class ChatBubbles {
       this.renderEmptyPlaceholder('group', bubble, message, elements);
     } else if(rootScope.myId === this.peerId) {
       this.renderEmptyPlaceholder('saved', bubble, message, elements);
-    } else if(this.peerId > 0 && this.appMessagesManager.canWriteToPeer(this.peerId) && this.chat.type === 'chat') {
+    } else if(this.peerId > 0 && !isBot && this.appMessagesManager.canWriteToPeer(this.peerId) && this.chat.type === 'chat') {
       this.renderEmptyPlaceholder('greeting', bubble, message, elements);
     } else if(this.chat.type === 'scheduled') {
       this.renderEmptyPlaceholder('noScheduledMessages', bubble, message, elements);
@@ -3242,7 +3275,7 @@ export default class ChatBubbles {
     return message;
   }
 
-  private setLoaded(side: SliceSides, value: boolean) {
+  private setLoaded(side: SliceSides, value: boolean, checkPlaceholders = true) {
     const willChange = this.scrollable.loadedAll[side] !== value;
     if(!willChange) {
       return;
@@ -3250,11 +3283,21 @@ export default class ChatBubbles {
 
     this.scrollable.loadedAll[side] = value;
 
+    /* if(!checkPlaceholders) {
+      return;
+    } */
+
     if(side === 'top' && value && this.appUsersManager.isBot(this.peerId)) {
       this.log('inject bot description');
 
+      const middleware = this.getMiddleware();
       return this.appProfileManager.getProfile(this.peerId).then(userFull => {
+        if(!middleware()) {
+          return;
+        }
+
         if(!userFull.bot_info?.description) {
+          this.checkIfEmptyPlaceholderNeeded();
           return;
         }
 
@@ -3272,7 +3315,14 @@ export default class ChatBubbles {
   public checkIfEmptyPlaceholderNeeded() {
     if(this.scrollable.loadedAll.top && 
       this.scrollable.loadedAll.bottom && 
-      !this.chatInner.childElementCount) {
+      (
+        !this.appMessagesManager.getHistoryStorage(this.peerId).count || 
+        (
+          Object.keys(this.bubbles).length && 
+          !this.getRenderedLength()
+        )
+      )
+    ) {
       this.log('inject empty peer placeholder');
 
       const message = this.generateLocalFirstMessage(true);
@@ -3381,18 +3431,18 @@ export default class ChatBubbles {
       }
     };
 
-    const sup = async(result: HistoryResult) => {
+    const sup = (result: HistoryResult) => {
       /* if(maxId && result.history?.length) {
         if(this.bubbles[maxId]) {
           result.history.findAndSplice(mid => mid === maxId);  
         }
       } */
 
-      await processResult(result);
-        
       ////console.timeEnd('render history total');
       
       return getHeavyAnimationPromise().then(() => {
+        return processResult(result);
+      }).then(() => {
         return this.performHistoryResult(result.history || [], reverse, isBackLimit, !isAdditionRender && additionMsgId);
       });
     };
