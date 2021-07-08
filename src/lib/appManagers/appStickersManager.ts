@@ -26,6 +26,10 @@ export class AppStickersManager {
 
   private getStickerSetPromises: {[setId: string]: Promise<MessagesStickerSet>} = {};
   private getStickersByEmoticonsPromises: {[emoticon: string]: Promise<Document[]>} = {};
+
+  private greetingStickers: Document.document[];
+  private getGreetingStickersTimeout: number;
+  private getGreetingStickersPromise: Promise<void>;
   
   constructor() {
     this.getStickerSet({id: 'emoji'}, {saveById: true});
@@ -35,6 +39,37 @@ export class AppStickersManager {
         this.saveStickerSet(update.stickerset, update.stickerset.set.id);
         rootScope.dispatchEvent('stickers_installed', update.stickerset.set);
       }
+    });
+
+    this.getGreetingStickersTimeout = window.setTimeout(() => {
+      this.getGreetingStickersTimeout = undefined;
+      this.getGreetingSticker(true);
+    }, 5000);
+  }
+
+  public getGreetingSticker(justPreload = false) {
+    if(this.getGreetingStickersTimeout) {
+      clearTimeout(this.getGreetingStickersTimeout);
+      this.getGreetingStickersTimeout = undefined;
+    }
+
+    if(!this.getGreetingStickersPromise) {
+      this.getGreetingStickersPromise = this.getStickersByEmoticon('👋', false).then(docs => {
+        this.greetingStickers = docs.slice() as Document.document[];
+        this.greetingStickers.sort((a, b) => Math.random() - Math.random());
+      });
+    }
+    
+    return this.getGreetingStickersPromise.then(() => {
+      let doc: Document.document;
+      if(!justPreload) {
+        doc = this.greetingStickers.shift();
+        this.greetingStickers.push(doc);
+      }
+
+      appDocsManager.downloadDoc(this.greetingStickers[0]); // preload next sticker
+
+      return doc;
     });
   }
 
@@ -255,15 +290,15 @@ export class AppStickersManager {
     });
   }
 
-  public getStickersByEmoticon(emoticon: string) {
+  public getStickersByEmoticon(emoticon: string, includeOurStickers = true) {
     if(this.getStickersByEmoticonsPromises[emoticon]) return this.getStickersByEmoticonsPromises[emoticon];
 
     return this.getStickersByEmoticonsPromises[emoticon] = Promise.all([
       apiManager.invokeApiHashable('messages.getStickers', {
         emoticon
       }),
-      this.preloadStickerSets(),
-      this.getRecentStickers()
+      includeOurStickers ? this.preloadStickerSets() : [],
+      includeOurStickers ? this.getRecentStickers().then(res => res.packs) : []
     ]).then(([messagesStickers, installedSets, recentStickers]) => {
       const foundStickers = (messagesStickers as MessagesStickers.messagesStickers).stickers.map(sticker => appDocsManager.saveDoc(sticker));
       const cachedStickersAnimated: Document.document[] = [], cachedStickersStatic: Document.document[] = [];
@@ -281,7 +316,7 @@ export class AppStickersManager {
         }
       };
 
-      iteratePacks(recentStickers.packs);
+      iteratePacks(recentStickers);
 
       for(const set of installedSets) {
         iteratePacks(set.packs);

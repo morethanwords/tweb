@@ -728,6 +728,81 @@ $bubble-margin: .25rem;
     flex: 1 1 auto;
     align-items: center;
 
+    &.empty-placeholder {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+
+      &.has-description {
+        .service-msg {
+          flex-direction: column;
+          align-items: flex-start !important;
+          padding: .75rem 1rem .875rem !important;
+        }
+  
+        .center {
+          align-self: center;
+        }
+  
+        .empty-placeholder-title {
+          font-weight: 500;
+          font-size: 1rem !important;
+        }
+
+        .bubble-content {
+          border-radius: 1.5rem !important;
+        }
+      }
+
+      .empty-placeholder-line + .empty-placeholder-line {
+        margin-top: .5rem;
+      }
+
+      .tgico-check {
+        margin-right: .25rem;
+        font-size: 1.25rem;
+        vertical-align: bottom;
+        margin-left: -.1875rem;
+      }
+
+      .empty-placeholder-list-bullet {
+        margin-right: .3125rem;
+      }
+
+      &:not(:first-child:last-child) {
+        .bubble-content-wrapper {
+          transform: scale3d(.8, .8, 1) translateX(0);
+          //transform: scale(.8) translateX(0);
+          opacity: 0;
+        }
+      }
+
+      &.empty-placeholder-group {
+        .empty-placeholder-list-item {
+          margin-top: .4375rem !important;
+        }
+      }
+
+      &.empty-placeholder-greeting {
+        .service-msg {
+          max-width: 232px;
+        }
+
+        .empty-placeholder-subtitle {
+          margin-top: .25rem !important;
+        }
+      }
+
+      .empty-placeholder-sticker {
+        margin-top: .75rem !important;
+        position: relative;
+        width: 200px;
+        height: 200px;
+        cursor: pointer;
+      }
+    }
+
     .time {
       display: none !important;
     }
@@ -1641,8 +1716,10 @@ $bubble-margin: .25rem;
     opacity: 0;
   }
 
-  @include respond-to(not-handhelds) {
-    max-width: 85%;
+  .bubble:not(.service) & {
+    @include respond-to(not-handhelds) {
+      max-width: 85%;
+    }
   }
 
   @include respond-to(handhelds) {
@@ -1680,6 +1757,10 @@ $bubble-margin: .25rem;
 .bubble.service {
   align-self: center;
   justify-content: center;
+
+  b {
+    color: inherit;
+  }
 
   .bubble-content {
     background-color: transparent;

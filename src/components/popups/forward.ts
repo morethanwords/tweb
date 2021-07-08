@@ -24,7 +24,8 @@ export default class PopupForward extends PopupPickUser {
       },
       onClose,
       placeholder: 'ShareModal.Search.ForwardPlaceholder',
-      chatRightsAction: 'send_messages'
+      chatRightsAction: 'send_messages',
+      selfPresence: 'ChatYourSelf'
     });
   }
 }

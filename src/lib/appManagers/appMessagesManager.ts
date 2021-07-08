@@ -2788,12 +2788,22 @@ export class AppMessagesManager {
           break;
         }
 
+        case 'messageActionChatCreate': {
+          const myId = appUsersManager.getSelf().id;
+          if(message.fromId === myId) {
+            _ += 'You';
+          } else {
+            args = [getNameDivHTML(message.fromId, plain)];
+          }
+          
+          break;
+        }
+
         case 'messageActionPinMessage':
         case 'messageActionContactSignUp':
         case 'messageActionChatReturn':
         case 'messageActionChatLeave':
         case 'messageActionChatJoined':
-        case 'messageActionChatCreate':
         case 'messageActionChatEditPhoto':
         case 'messageActionChatDeletePhoto':
         case 'messageActionChatEditVideo':
@@ -3419,7 +3429,7 @@ export class AppMessagesManager {
       _: 'messageService',
       pFlags: {
         is_single: true
-      } as any,
+      },
       id: this.generateMessageId(maxMessageId, true),
       date: message.date,
       from_id: {_: 'peerUser', user_id: 0}/* message.from_id */,
