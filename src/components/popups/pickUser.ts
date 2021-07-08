@@ -19,6 +19,7 @@ export default class PopupPickUser extends PopupElement {
     placeholder: LangPackKey,
     chatRightsAction?: AppSelectPeers['chatRightsAction'],
     peerId?: number,
+    selfPresence?: LangPackKey
   }) {
     super('popup-forward', null, {closable: true, overlayClosable: true, body: true});
 
@@ -54,7 +55,8 @@ export default class PopupPickUser extends PopupElement {
       rippleEnabled: false,
       avatarSize: 46,
       peerId: options.peerId,
-      placeholder: options.placeholder
+      placeholder: options.placeholder,
+      selfPresence: options.selfPresence
     });
 
     //this.scrollable = new Scrollable(this.body);

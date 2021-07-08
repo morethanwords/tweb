@@ -69,6 +69,8 @@ export default class AppSelectPeers {
   private peerId = 0;
 
   private placeholder: LangPackKey;
+
+  private selfPresence: LangPackKey = 'Presence.YourChat';
   
   constructor(options: {
     appendTo: AppSelectPeers['appendTo'], 
@@ -81,7 +83,8 @@ export default class AppSelectPeers {
     multiSelect?: AppSelectPeers['multiSelect'],
     rippleEnabled?: boolean,
     avatarSize?: AppSelectPeers['avatarSize'],
-    placeholder?: LangPackKey
+    placeholder?: LangPackKey,
+    selfPresence?: LangPackKey
   }) {
     safeAssign(this, options);
 
@@ -449,7 +452,7 @@ export default class AppSelectPeers {
       if(peerId < 0) {
         subtitleEl = appProfileManager.getChatMembersString(-peerId);
       } else if(peerId === rootScope.myId) {
-        subtitleEl = i18n('Presence.YourChat');
+        subtitleEl = i18n(this.selfPresence);
       } else {
         subtitleEl = appUsersManager.getUserStatusString(peerId);
       }

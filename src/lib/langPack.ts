@@ -17,6 +17,7 @@ import rootScope from "./rootScope";
 
 export const langPack: {[actionType: string]: LangPackKey} = {
   "messageActionChatCreate": "ActionCreateGroup",
+  "messageActionChatCreateYou": "ActionYouCreateGroup",
 	"messageActionChatEditTitle": "ActionChangedTitle",
 	"messageActionChatEditPhoto": "ActionChangedPhoto",
 	"messageActionChatEditVideo": "ActionChangedVideo",
