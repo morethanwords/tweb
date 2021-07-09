@@ -13,6 +13,7 @@ import LocalStorageController from './localStorage';
 const sessionStorage = new LocalStorageController<{
   dc: DcId,
   user_auth: UserAuth,
+  state_id: number,
   dc1_auth_key: string,
   dc2_auth_key: string,
   dc3_auth_key: string,

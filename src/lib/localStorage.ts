@@ -112,7 +112,7 @@ class LocalStorage<Storage extends Record<string, any>> {
   } */
 
   public clear() {
-    const keys: string[] = ['dc', 'server_time_offset', 'xt_instance', 'user_auth'];
+    const keys: string[] = ['dc', 'server_time_offset', 'xt_instance', 'user_auth', 'state_id'];
     for(let i = 1; i <= 5; ++i) {
       keys.push(`dc${i}_server_salt`);
       keys.push(`dc${i}_auth_key`);

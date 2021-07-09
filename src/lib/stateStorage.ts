@@ -17,7 +17,8 @@ const stateStorage = new AppStorage<{
     [peerId_threadId: string]: ChatSavedPosition
   },
   langPack: LangPackDifference,
-  drafts: AppDraftsManager['drafts']
+  drafts: AppDraftsManager['drafts'],
+  user_auth: any, // support old webk format
 } & State, typeof DATABASE_STATE>(DATABASE_STATE, 'session');
 MOUNT_CLASS_TO.stateStorage = stateStorage;
 export default stateStorage;
