@@ -178,6 +178,8 @@ class PeerProfileAvatars {
   public avatars: HTMLElement;
   public gradient: HTMLElement;
   public info: HTMLElement;
+  public arrowPrevious: HTMLElement;
+  public arrowNext: HTMLElement;
   private tabs: HTMLDivElement;
   private listLoader: ListLoader<string | Message.messageService>;
   private peerId: number;
@@ -198,7 +200,21 @@ class PeerProfileAvatars {
     this.tabs = document.createElement('div');
     this.tabs.classList.add(PeerProfileAvatars.BASE_CLASS + '-tabs');
 
-    this.container.append(this.avatars, this.gradient, this.info, this.tabs);
+    this.arrowPrevious = document.createElement('div');
+    this.arrowPrevious.classList.add(PeerProfileAvatars.BASE_CLASS + '-arrow');
+
+    /* const previousIcon = document.createElement('i');
+    previousIcon.classList.add(PeerProfileAvatars.BASE_CLASS + '-arrow-icon', 'tgico-previous');
+    this.arrowBack.append(previousIcon); */
+    
+    this.arrowNext = document.createElement('div');
+    this.arrowNext.classList.add(PeerProfileAvatars.BASE_CLASS + '-arrow', PeerProfileAvatars.BASE_CLASS + '-arrow-next');
+
+    /* const nextIcon = document.createElement('i');
+    nextIcon.classList.add(PeerProfileAvatars.BASE_CLASS + '-arrow-icon', 'tgico-next');
+    this.arrowNext.append(nextIcon); */
+
+    this.container.append(this.avatars, this.gradient, this.info, this.tabs, this.arrowPrevious, this.arrowNext);
 
     const checkScrollTop = () => {
       if(this.scrollable.scrollTop !== 0) {
@@ -258,7 +274,18 @@ class PeerProfileAvatars {
   
         // this.avatars.classList.remove('no-transition');
         // fastRaf(() => {
-          this.listLoader.go(toRight ? 1 : -1);
+          this.avatars.classList.add('no-transition');
+          void this.avatars.offsetLeft; // reflow
+
+          let distance: number;
+          if(this.listLoader.index === 0 && !toRight) distance = this.listLoader.count - 1;
+          else if(this.listLoader.index === (this.listLoader.count - 1) && toRight) distance = -(this.listLoader.count - 1);
+          else distance = toRight ? 1 : -1;
+          this.listLoader.go(distance);
+
+          fastRaf(() => {
+            this.avatars.classList.remove('no-transition');
+          });
         // });
       }
     });
@@ -288,7 +315,7 @@ class PeerProfileAvatars {
           cancelNextClick();
           cancelEvent(e);
           return false;
-        } else if(this.tabs.classList.contains('hide') || freeze) {
+        } else if(this.container.classList.contains('is-single') || freeze) {
           return false;
         }
 
@@ -305,6 +332,7 @@ class PeerProfileAvatars {
         
         this.avatars.style.transform = PeerProfileAvatars.TRANSLATE_TEMPLATE.replace('{x}', x + 'px');
 
+        this.container.classList.add('is-swiping');
         this.avatars.classList.add('no-transition');
         void this.avatars.offsetLeft; // reflow
       },
@@ -317,6 +345,7 @@ class PeerProfileAvatars {
         this.avatars.classList.remove('no-transition');
         fastRaf(() => {
           this.listLoader.go(addIndex);
+          this.container.classList.remove('is-swiping');
         });
       }
     });
@@ -410,7 +439,7 @@ class PeerProfileAvatars {
       tab.classList.add('active');
     }
 
-    this.tabs.classList.toggle('hide', this.tabs.childElementCount <= 1);
+    this.container.classList.toggle('is-single', this.tabs.childElementCount <= 1);
   }
 
   public processItem = (photoId: string | Message.messageService) => {
