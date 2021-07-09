@@ -161,18 +161,26 @@ class Stream {
     });
   }
 
+  private preloadChunk(offset: number) {
+    if(this.loadedOffsets.has(offset)) {
+      return;
+    }
+
+    this.loadedOffsets.add(offset);
+    this.requestFilePart(offset, this.limitPart, true);
+  }
+
   private preloadChunks(offset: number, end: number) {
     if(end > this.info.size) {
       end = this.info.size;
     }
 
-    for(; offset < end; offset += this.limitPart) {
-      if(this.loadedOffsets.has(offset)) {
-        continue;
+    if(!offset) { // load last chunk for bounds
+      this.preloadChunk(alignOffset(offset, this.limitPart));
+    } else { // don't preload next chunks before the start
+      for(; offset < end; offset += this.limitPart) {
+        this.preloadChunk(offset);
       }
-
-      this.loadedOffsets.add(offset);
-      this.requestFilePart(offset, this.limitPart, true);
     }
   }
 
@@ -184,7 +192,7 @@ class Stream {
       return possibleResponse;
     }
 
-    const [offset, end] = range;
+    let [offset, end] = range;
 
     /* if(info.size > limitPart && isSafari && offset === limitPart) {
       //end = info.size - 1;
@@ -195,21 +203,26 @@ class Stream {
     const limit = end && end < this.limitPart ? alignLimit(end - offset + 1) : this.limitPart;
     const alignedOffset = alignOffset(offset, limit);
 
+    if(!end) {
+      end = Math.min(offset + limit, this.info.size - 1);
+    }
+
     return this.requestFilePart(alignedOffset, limit).then(ab => {
       //log.debug('[stream] requestFilePart result:', result);
 
+      // if(isSafari) {
+      if(offset !== alignedOffset || end !== (alignedOffset + limit)) {
+        ab = ab.slice(offset - alignedOffset, end - alignedOffset + 1);
+      }
+      
       const headers: Record<string, string> = {
         'Accept-Ranges': 'bytes',
-        'Content-Range': `bytes ${alignedOffset}-${alignedOffset + ab.byteLength - 1}/${this.info.size || '*'}`,
-        'Content-Length': `${ab.byteLength}`,
+        'Content-Range': `bytes ${offset}-${offset + ab.byteLength - 1}/${this.info.size || '*'}`,
+        'Content-Length': `${ab.byteLength}`
       };
 
-      if(this.info.mimeType) headers['Content-Type'] = this.info.mimeType;
-
-      if(isSafari) {
-        ab = ab.slice(offset - alignedOffset, end - alignedOffset + 1);
-        headers['Content-Range'] = `bytes ${offset}-${offset + ab.byteLength - 1}/${this.info.size || '*'}`;
-        headers['Content-Length'] = `${ab.byteLength}`;
+      if(this.info.mimeType) {
+        headers['Content-Type'] = this.info.mimeType;
       }
 
       // simulate slow connection

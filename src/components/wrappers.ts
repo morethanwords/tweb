@@ -329,6 +329,11 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
       }
     }
 
+    video.addEventListener('error', (e) => {
+      console.error("Error " + video.error.code + "; details: " + video.error.message);
+      preloader.detach();
+    }, {once: true});
+
     if(!noAutoDownload && f) {
       f();
       f = null;
