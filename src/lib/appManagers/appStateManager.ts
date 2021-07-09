@@ -22,6 +22,7 @@ import { Chat } from '../../layer';
 import { isMobile } from '../../helpers/userAgent';
 import DATABASE_STATE from '../../config/databases/state';
 import sessionStorage from '../sessionStorage';
+import { nextRandomInt } from '../../helpers/random';
 
 const REFRESH_EVERY = 24 * 60 * 60 * 1000; // 1 day
 //const REFRESH_EVERY_WEEK = 24 * 60 * 60 * 1000 * 7; // 7 days
@@ -89,7 +90,8 @@ export type State = {
     nightTheme?: boolean, // ! DEPRECATED
   },
   keepSigned: boolean,
-  chatContextMenuHintWasShown: boolean
+  chatContextMenuHintWasShown: boolean,
+  stateId: number
 };
 
 export const STATE_INIT: State = {
@@ -153,7 +155,8 @@ export const STATE_INIT: State = {
     }
   },
   keepSigned: true,
-  chatContextMenuHintWasShown: false
+  chatContextMenuHintWasShown: false,
+  stateId: nextRandomInt(0xFFFFFFFF)
 };
 
 const ALL_KEYS = Object.keys(STATE_INIT) as any as Array<keyof State>;
@@ -203,9 +206,9 @@ export class AppStateManager extends EventListenerBase<{
       const storagesKeys = Object.keys(this.storages) as Array<keyof AppStateManager['storages']>;
       const storagesPromises: Promise<any>[] = storagesKeys.map(key => this.storages[key].getAll());
 
-      const promises: Promise<any>[] = ALL_KEYS.map(key => stateStorage.get(key))
-      .concat(sessionStorage.get('user_auth'))
-      .concat(stateStorage.get('user_auth' as any)) // support old webk format
+      const promises/* : Promise<any>[] */ = ALL_KEYS.map(key => stateStorage.get(key))
+      .concat(sessionStorage.get('user_auth'), sessionStorage.get('state_id'))
+      .concat(stateStorage.get('user_auth')) // support old webk format
       .concat(storagesPromises);
 
       Promise.all(promises).then(async(arr) => {
@@ -258,7 +261,8 @@ export class AppStateManager extends EventListenerBase<{
 
         // * Read auth
         let auth = arr.shift() as UserAuth | number;
-        let shiftedWebKAuth = arr.shift() as UserAuth | number;
+        const stateId = arr.shift() as number;
+        const shiftedWebKAuth = arr.shift() as UserAuth | number;
         if(!auth && shiftedWebKAuth) { // support old webk auth
           auth = shiftedWebKAuth;
           const keys: string[] = ['dc', 'server_time_offset', 'xt_instance'];
@@ -315,6 +319,36 @@ export class AppStateManager extends EventListenerBase<{
         }
 
         arr.splice(0, storagesKeys.length);
+
+        if(state.stateId !== stateId) {
+          if(stateId !== undefined) {
+            const preserve: Map<keyof State, State[keyof State]> = new Map([
+              ['authState', undefined],
+              ['stateId', undefined]
+            ]);
+  
+            preserve.forEach((_, key) => {
+              preserve.set(key, copy(state[key]));
+            });
+  
+            state = this.state = copy(STATE_INIT);
+  
+            preserve.forEach((value, key) => {
+              // @ts-ignore
+              state[key] = value;
+            });
+
+            for(const key in this.storagesResults) {
+              this.storagesResults[key as keyof AppStateManager['storagesResults']].length = 0;
+            }
+
+            this.storage.set(state);
+          }
+
+          await sessionStorage.set({
+            state_id: state.stateId
+          });
+        }
 
         const time = Date.now();
         if((state.stateCreatedTime + REFRESH_EVERY) < time) {
