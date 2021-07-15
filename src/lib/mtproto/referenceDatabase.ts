@@ -82,7 +82,7 @@ class ReferenceDatabase {
 
   public getContext(reference: ReferenceBytes): [ReferenceContext, ReferenceBytes] {
     const contexts = this.getContexts(reference);
-    return contexts ? [contexts[0].values().next().value, contexts[1]] : undefined;
+    return contexts[0] ? [contexts[0].values().next().value, contexts[1]] : undefined;
   }
 
   public deleteContext(reference: ReferenceBytes, context: ReferenceContext, contexts?: ReferenceContexts) {
@@ -104,10 +104,20 @@ class ReferenceDatabase {
   }
 
   public refreshReference(reference: ReferenceBytes, context?: ReferenceContext): Promise<void> {
-    [context, reference] = this.getContext(reference);
+    if(!context) {
+      const c = this.getContext(reference);
+      if(!c) {
+        return Promise.reject('NO_CONTEXT');
+      }
+
+      [context, reference] = c;
+    }
+
+    let promise: Promise<any>;
     switch(context?.type) {
       case 'message': {
-        return appMessagesManager.wrapSingleMessage(context.peerId, context.messageId, true);
+        promise = appMessagesManager.wrapSingleMessage(context.peerId, context.messageId, true);
+        break; 
         // .then(() => {
         //   console.log('FILE_REFERENCE_EXPIRED: got message', context, appMessagesManager.getMessage((context as ReferenceContext.referenceContextMessage).messageId).media, reference);
         // });
@@ -118,6 +128,23 @@ class ReferenceDatabase {
         return Promise.reject();
       }
     }
+
+    const hex = bytesToHex(reference);
+    return promise.then(() => {
+      const newHex = bytesToHex(reference);
+      if(hex !== newHex) {
+        return;
+      }
+
+      this.deleteContext(reference, context);
+
+      const newContext = this.getContext(reference);
+      if(newContext) {
+        return this.refreshReference(reference, newContext[0]);
+      }
+
+      throw 'NO_NEW_CONTEXT';
+    });
   }
 
   /* handleReferenceError = (reference: ReferenceBytes, error: ApiError) => {

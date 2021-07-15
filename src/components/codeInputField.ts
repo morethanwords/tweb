@@ -9,7 +9,7 @@ import InputField, { InputFieldOptions } from "./inputField";
 export default class CodeInputField extends InputField {
   constructor(options: InputFieldOptions & {
     length: number,
-    onFill: (code: number) => void
+    onFill: (code: string) => void
   }) {
     super({
       plainText: true,
@@ -31,7 +31,7 @@ export default class CodeInputField extends InputField {
   
       const length = this.value.length;
       if(length === options.length) { // submit code
-        options.onFill(+this.value);
+        options.onFill(this.value);
       } else if(length === lastLength) {
         return;
       }

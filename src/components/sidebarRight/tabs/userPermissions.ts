@@ -66,7 +66,7 @@ export default class AppUserPermissionsTab extends SliderSuperTabEventable {
         appChatsManager.editBanned(this.chatId, this.participant, rights);
       };
 
-      this.eventListener.addEventListener('destroy', destroyListener);
+      this.eventListener.addEventListener('destroy', destroyListener, {once: true});
 
       this.scrollable.append(section.container);
     }

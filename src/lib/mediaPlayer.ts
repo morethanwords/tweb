@@ -238,7 +238,7 @@ export default class VideoPlayer {
         video.muted = !video.muted;
       };
 
-      this.listenerSetter.add(volumeSvg, 'click', onMuteClick);
+      this.listenerSetter.add(volumeSvg)('click', onMuteClick);
 
       const volumeProgress = new RangeSelector(0.01, 1, 0, 1);
       volumeProgress.setListeners();
@@ -277,7 +277,7 @@ export default class VideoPlayer {
       };
       
       // не вызовется повторно если на 1 установить 1
-      this.listenerSetter.add(video, 'volumechange', () => {
+      this.listenerSetter.add(video)('volumechange', () => {
         muted = video.muted;
         lastVolume = video.volume;
         setVolume();
@@ -294,12 +294,12 @@ export default class VideoPlayer {
       leftControls.insertBefore(volumeDiv, timeElapsed.parentElement);
 
       Array.from(toggle).forEach((button) => {
-        this.listenerSetter.add(button, 'click', () => {
+        this.listenerSetter.add(button)('click', () => {
           this.togglePlay();
         });
       });
 
-      this.listenerSetter.add(video, 'click', () => {
+      this.listenerSetter.add(video)('click', () => {
         if(!isTouchSupported) {
           this.togglePlay();
         }
@@ -318,26 +318,26 @@ export default class VideoPlayer {
       };
 
       if(isTouchSupported) {
-        this.listenerSetter.add(player, 'click', () => {
+        this.listenerSetter.add(player)('click', () => {
           showControls();
         });
 
-        this.listenerSetter.add(player, 'touchstart', () => {
+        this.listenerSetter.add(player)('touchstart', () => {
           player.classList.add('show-controls');
           clearTimeout(showControlsTimeout);
         });
 
-        this.listenerSetter.add(player, 'touchend', () => {
+        this.listenerSetter.add(player)('touchend', () => {
           if(player.classList.contains('is-playing')) {
             showControls();
           }
         });
       } else {
-        this.listenerSetter.add(this.wrapper, 'mousemove', () => {
+        this.listenerSetter.add(this.wrapper)('mousemove', () => {
           showControls();
         });
 
-        this.listenerSetter.add(document, 'keydown', (e: KeyboardEvent) => {
+        this.listenerSetter.add(document)('keydown', (e: KeyboardEvent) => {
           if(e.code === 'KeyF') {
             this.toggleFullScreen(fullScreenButton);
           } else if(e.code === 'KeyM') {
@@ -359,34 +359,34 @@ export default class VideoPlayer {
       /* video.addEventListener('play', () => {
       }); */
 
-      this.listenerSetter.add(video, 'dblclick', () => {
+      this.listenerSetter.add(video)('dblclick', () => {
         if(!isTouchSupported) {
           this.toggleFullScreen(fullScreenButton);
         }
       });
 
-      this.listenerSetter.add(fullScreenButton, 'click', (e) => {
+      this.listenerSetter.add(fullScreenButton)('click', (e) => {
         this.toggleFullScreen(fullScreenButton);
       });
 
       'webkitfullscreenchange mozfullscreenchange fullscreenchange MSFullscreenChange'.split(' ').forEach(eventName => {
-        this.listenerSetter.add(player, eventName, this.onFullScreen, false);
+        this.listenerSetter.add(player)(eventName, this.onFullScreen, false);
       });
 
-      this.listenerSetter.add(video, 'timeupdate', () => {
+      this.listenerSetter.add(video)('timeupdate', () => {
         timeElapsed.innerHTML = String(video.currentTime | 0).toHHMMSS();
       });
 
-      this.listenerSetter.add(video, 'play', () => {
+      this.listenerSetter.add(video)('play', () => {
         this.wrapper.classList.add('played');
       }, {once: true});
     }
 
-    this.listenerSetter.add(video, 'play', () => {
+    this.listenerSetter.add(video)('play', () => {
       this.wrapper.classList.add('is-playing');
     });
 
-    this.listenerSetter.add(video, 'pause', () => {
+    this.listenerSetter.add(video)('pause', () => {
       this.wrapper.classList.remove('is-playing');
     });
   

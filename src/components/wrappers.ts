@@ -1095,7 +1095,7 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
           appDocsManager.saveLottiePreview(doc, animation.canvas, toneIndex);
 
           //deferred.resolve();
-        }, true);
+        }, {once: true});
   
         if(emoji) {
           attachClickEvent(div, (e) => {

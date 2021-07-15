@@ -194,7 +194,7 @@ export default class TcpObfuscated implements MTTransport {
         connection.addEventListener('message', this.onMessage);
         connection.addEventListener('close', () => {
           connection.removeEventListener('message', this.onMessage);
-        }, true);
+        }, {once: true});
         connection.close();
       }
     }

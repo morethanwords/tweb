@@ -53,9 +53,12 @@ import type { ArgumentTypes, SuperReturnType } from "../types";
  * Better not to remove listeners during setting
  * Should add listener callback only once
  */
-export default class EventListenerBase<Listeners extends {[name: string]: Function}> {
+
+// type EventLitenerCallback<T> = (data: T) => 
+// export default class EventListenerBase<Listeners extends {[name: string]: Function}> {
+export default class EventListenerBase<Listeners extends Record<string, Function>> {
   protected listeners: Partial<{
-    [k in keyof Listeners]: Array<{callback: Listeners[k], once?: boolean}>
+    [k in keyof Listeners]: Array<{callback: Listeners[k], options: boolean | AddEventListenerOptions}>
   }>;
   protected listenerResults: Partial<{
     [k in keyof Listeners]: ArgumentTypes<Listeners[k]>
@@ -73,16 +76,18 @@ export default class EventListenerBase<Listeners extends {[name: string]: Functi
     this.listenerResults = {};
   }
 
-  public addEventListener<T extends keyof Listeners>(name: T, callback: Listeners[T], once?: boolean) {
+  public addEventListener<T extends keyof Listeners>(name: T, callback: Listeners[T], options?: boolean | AddEventListenerOptions) {
+    (this.listeners[name] ?? (this.listeners[name] = [])).push({callback, options}); // ! add before because if you don't, you won't be able to delete it from callback
+
     if(this.listenerResults.hasOwnProperty(name)) {
       callback(...this.listenerResults[name]);
       
-      if(once) {
+      if((options as AddEventListenerOptions)?.once) {
+        this.listeners[name].pop();
         return;
       }
     }
     
-    (this.listeners[name] ?? (this.listeners[name] = [])).push({callback, once});
     //e.add(this, name, {callback, once});
   }
 
@@ -94,7 +99,7 @@ export default class EventListenerBase<Listeners extends {[name: string]: Functi
     }
   }
 
-  public removeEventListener<T extends keyof Listeners>(name: T, callback: Listeners[T]) {
+  public removeEventListener<T extends keyof Listeners>(name: T, callback: Listeners[T], options?: boolean | AddEventListenerOptions) {
     if(this.listeners[name]) {
       this.listeners[name].findAndSplice(l => l.callback === callback);
     }
@@ -116,15 +121,15 @@ export default class EventListenerBase<Listeners extends {[name: string]: Functi
     if(listeners) {
       // ! this one will guarantee execution even if delete another listener during setting
       const left = listeners.slice();
-      left.forEach((listener: any) => {
-        const index = listeners.findIndex((l: any) => l.callback === listener.callback);
+      left.forEach((listener) => {
+        const index = listeners.findIndex((l) => l.callback === listener.callback);
         if(index === -1) {
           return;
         }
 
         arr.push(listener.callback(...args));
 
-        if(listener.once) {
+        if((listener.options as AddEventListenerOptions)?.once) {
           this.removeEventListener(name, listener.callback);
         }
       });

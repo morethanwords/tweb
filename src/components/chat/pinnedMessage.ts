@@ -288,7 +288,7 @@ export default class ChatPinnedMessage {
       this.topbar.openPinned(true);
     }, {listenerSetter: this.listenerSetter});
 
-    this.listenerSetter.add(rootScope, 'peer_pinned_messages', (e) => {
+    this.listenerSetter.add(rootScope)('peer_pinned_messages', (e) => {
       const peerId = e.peerId;
 
       if(peerId === this.topbar.peerId) {
@@ -310,7 +310,7 @@ export default class ChatPinnedMessage {
       }
     });
 
-    this.listenerSetter.add(rootScope, 'peer_pinned_hidden', (e) => {
+    this.listenerSetter.add(rootScope)('peer_pinned_hidden', (e) => {
       const {peerId, maxId} = e;
 
       if(peerId === this.topbar.peerId) {

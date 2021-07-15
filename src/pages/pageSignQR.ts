@@ -64,7 +64,7 @@ let onFirstMount = async() => {
   rootScope.addEventListener('user_auth', () => {
     stop = true;
     cachedPromise = null;
-  }, true);
+  }, {once: true});
   
   let options: {dcId?: DcId, ignoreErrors: true} = {ignoreErrors: true};
   let prevToken: Uint8Array | number[];

@@ -56,12 +56,12 @@ export class TimeManager {
 
     const ret = longFromInts(messageId[0], messageId[1]);
 
-    /* if(lol[ret]) {
-      console.error('[TimeManager]: Generated SAME msg id', messageId, this.timeOffset, ret);
-    }
-    lol[ret] = true;
+    // if(lol[ret]) {
+    //   console.error('[TimeManager]: Generated SAME msg id', messageId, this.timeOffset, ret);
+    // }
+    // lol[ret] = true;
 
-    console.log('[TimeManager]: Generated msg id', messageId, this.timeOffset, ret); */
+    // console.log('[TimeManager]: Generated msg id', messageId, this.timeOffset, ret);
 
     return ret
   }

@@ -30,7 +30,7 @@ let onFirstMount = (): Promise<any> => {
     name: randomLong(),
     length: CODELENGTH,
     onFill: (code) => {
-      submitCode('' + code);
+      submitCode(code);
     }
   });
 

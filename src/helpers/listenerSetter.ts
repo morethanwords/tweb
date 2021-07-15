@@ -4,23 +4,11 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type { RootScope } from "../lib/rootScope";
-import { ArgumentTypes } from "../types";
+import type EventListenerBase from "./eventListenerBase";
 
-/* export type Listener<T extends ListenerElement> = {
+export type Listener = {
   element: ListenerElement, 
-  event: ListenerEvent<T>, 
-  callback: ListenerCallback<T>, 
-  options?: ListenerOptions
-};
-
-export type ListenerElement = HTMLElement | RootScope;
-export type ListenerEvent<T extends ListenerElement> = ArgumentTypes<T['addEventListener']>[0];
-export type ListenerCallback<T extends ListenerElement> = ArgumentTypes<T['addEventListener']>[1];
-export type ListenerOptions = any; */
-export type Listener<T extends ListenerElement> = {
-  element: ListenerElement, 
-  event: ListenerEvent<T>, 
+  event: ListenerEvent, 
   callback: ListenerCallback, 
   options?: ListenerOptions,
 
@@ -28,22 +16,39 @@ export type Listener<T extends ListenerElement> = {
   onceCallback?: () => void,
 };
 
-export type ListenerElement = Window | Document | HTMLElement | Element | RootScope | any;
-//export type ListenerEvent<T extends ListenerElement> = ArgumentTypes<T['addEventListener']>[0];
-export type ListenerEvent<T extends ListenerElement> = string;
-export type ListenerCallback = (...args: any[]) => any;
-export type ListenerOptions = any;
+export type ListenerElement = Window | Document | HTMLElement | Element | EventListenerBase<any>;
+export type ListenerEvent = string;
+export type ListenerCallback = Function;
+export type ListenerOptions = AddEventListenerOptions;
+
+/* const originalAddEventListener = HTMLElement.prototype.addEventListener;
+HTMLElement.prototype.addEventListener = function(this, name: string, callback: EventListenerOrEventListenerObject, options: AddEventListenerOptions) {
+  console.log('nu zdarova', name);
+  originalAddEventListener.call(this, name, callback, options);
+
+  if(options?.ls) {
+    return options.ls.addFromElement(this, name, callback as any, options);
+  }
+}; */
 
 export default class ListenerSetter {
-  private listeners: Set<Listener<any>> = new Set();
+  private listeners: Set<Listener> = new Set();
 
-  public add<T extends ListenerElement>(element: T, event: ListenerEvent<T>, callback: ListenerCallback, options?: ListenerOptions) {
-    const listener: Listener<T> = {element, event, callback, options};
-    this.addManual(listener);
-    return listener;
+  public add<T extends ListenerElement>(element: T): T['addEventListener'] {
+    return ((event: string, callback: Function, options: ListenerOptions) => {
+      const listener: Listener = {element, event, callback, options};
+      this.addManual(listener);
+      return listener;
+    }) as any;
   }
 
-  public addManual<T extends ListenerElement>(listener: Listener<T>) {
+  /* public addFromElement<T extends ListenerElement>(element: T, event: ListenerEvent, callback: ListenerCallback, options: ListenerOptions) {
+    const listener: Listener = {element, event, callback, options};
+    this.addManual(listener);
+    return listener;
+  } */
+
+  public addManual(listener: Listener) {
     // @ts-ignore
     listener.element.addEventListener(listener.event, listener.callback, listener.options);
 
@@ -60,7 +65,7 @@ export default class ListenerSetter {
     this.listeners.add(listener);
   }
 
-  public remove<T extends ListenerElement>(listener: Listener<T>) {
+  public remove(listener: Listener) {
     if(!listener.onceFired) {
       // @ts-ignore
       listener.element.removeEventListener(listener.event, listener.callback, listener.options);
@@ -74,10 +79,18 @@ export default class ListenerSetter {
     this.listeners.delete(listener);
   }
 
-  public removeManual<T extends ListenerElement>(element: T, event: ListenerEvent<T>, callback: ListenerCallback, options?: ListenerOptions) {
-    let listener: Listener<T>;
+  public removeManual<T extends ListenerElement>(
+    element: T, 
+    event: ListenerEvent, 
+    callback: ListenerCallback, 
+    options?: ListenerOptions
+  ) {
+    let listener: Listener;
     for(const _listener of this.listeners) {
-      if(_listener.element === element && _listener.event === event && _listener.callback === callback && _listener.options === options) {
+      if(_listener.element === element && 
+        _listener.event === event && 
+        _listener.callback === callback && 
+        _listener.options === options) {
         listener = _listener;
         break;
       }

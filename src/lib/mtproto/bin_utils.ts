@@ -71,6 +71,11 @@ export function dataUrlToBlob(url: string) {
   return blob;
 } */
 
+export function intToUint(val: number) {
+  // return val < 0 ? val + 4294967296 : val; // 0 <= val <= Infinity
+  return val >>> 0; // (4294967296 >>> 0) === 0; 0 <= val <= 4294967295
+}
+
 /* export function bytesFromBigInt(bigInt: BigInteger, len?: number) {
   var bytes = bigInt.toByteArray();
 
@@ -97,6 +102,8 @@ export function longFromInts(high: number, low: number): string {
   //let perf = performance.now();
   //let str = bigint(high).shiftLeft(32).add(bigint(low)).toString(10);
   //console.log('longFromInts jsbn', performance.now() - perf);
+  high = intToUint(high);
+  low = intToUint(low);
   
   //perf = performance.now();
   const bigInt = str2bigInt(high.toString(16), 16, 32);//int2bigInt(high, 64, 64);
@@ -123,28 +130,35 @@ export function sortLongsArray(arr: string[]) {
   });
 }
 
-export function addPadding(bytes: any, blockSize: number = 16, zeroes?: boolean, full = false, prepend = false) {
-  let len = bytes.byteLength || bytes.length;
-  let needPadding = blockSize - (len % blockSize);
-  if(needPadding > 0 && (needPadding < blockSize || full)) {
+export function addPadding<T extends number[] | ArrayBuffer | Uint8Array>(
+  bytes: T, 
+  blockSize: number = 16, 
+  zeroes?: boolean, 
+  blockSizeAsTotalLength = false, 
+  prepend = false
+): T {
+  const len = (bytes as ArrayBuffer).byteLength || (bytes as Uint8Array).length;
+  const needPadding = blockSizeAsTotalLength ? blockSize - len : blockSize - (len % blockSize);
+  if(needPadding > 0 && needPadding < blockSize) {
     ////console.log('addPadding()', len, blockSize, needPadding);
-    let padding = new Array(needPadding);
+    const padding: number[] = new Array(needPadding);
     if(zeroes) {
-      for(let i = 0; i < needPadding; i++) {
+      for(let i = 0; i < needPadding; ++i) {
         padding[i] = 0;
       }
     } else {
-      for(let i = 0; i < padding.length; ++i) {
+      for(let i = 0; i < needPadding; ++i) {
         padding[i] = nextRandomInt(255);
       }
     }
 
     if(bytes instanceof ArrayBuffer) {
-      bytes = (prepend ? bufferConcats(padding, bytes) : bufferConcats(bytes, padding)).buffer;
+      return (prepend ? bufferConcats(padding, bytes) : bufferConcats(bytes, padding)).buffer as T;
     } else if(bytes instanceof Uint8Array) {
-      bytes = prepend ? bufferConcats(padding, bytes) : bufferConcats(bytes, padding);
+      return (prepend ? bufferConcats(padding, bytes) : bufferConcats(bytes, padding)) as T;
     } else {
-      bytes = prepend ? padding.concat(bytes) : bytes.concat(padding);
+      // @ts-ignore
+      return (prepend ? padding.concat(bytes) : bytes.concat(padding)) as T;
     }
   }
 

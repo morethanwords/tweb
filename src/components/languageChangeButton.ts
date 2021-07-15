@@ -70,7 +70,7 @@ export default function getLanguageChangeButton(appendTo: HTMLElement) {
 
     rootScope.addEventListener('language_change', () => {
       btnChangeLanguage.remove();
-    }, true);
+    }, {once: true});
 
     backup.forEach(string => {
       I18n.strings.set(string.key as LangPackKey, string);

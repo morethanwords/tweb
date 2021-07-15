@@ -205,13 +205,13 @@ export default class Chat extends EventListenerBase<{
     this.container.classList.add('type-' + this.type);
     this.container.append(this.topbar.container, this.bubbles.bubblesContainer, this.input.chatInput);
 
-    this.bubbles.listenerSetter.add(rootScope, 'dialog_migrate', ({migrateFrom, migrateTo}) => {
+    this.bubbles.listenerSetter.add(rootScope)('dialog_migrate', ({migrateFrom, migrateTo}) => {
       if(this.peerId === migrateFrom) {
         this.setPeer(migrateTo);
       }
     });
 
-    this.bubbles.listenerSetter.add(rootScope, 'dialog_drop', (e) => {
+    this.bubbles.listenerSetter.add(rootScope)('dialog_drop', (e) => {
       if(e.peerId === this.peerId) {
         this.appImManager.setPeer(0);
       }

@@ -30,14 +30,23 @@ let top = {};
   //process.exit(0);
 }); */
 
+function uintToInt(val) {
+  if(val > 2147483647) {
+    val = val - 4294967296;
+  }
+
+  return val;
+}
+
 ['MTProto', 'API'].forEach(key => {
   let schema = json[key];
 
   ['constructors', 'methods'].forEach(key => {
     schema[key].forEach(smth => {
-      if(+smth.id < 0) {
+      /* if(+smth.id < 0) {
         smth.id = +smth.id + 4294967296;
-      }
+      } */
+      smth.id = uintToInt(+smth.id);
     });
   });
 

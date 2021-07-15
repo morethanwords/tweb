@@ -49,7 +49,7 @@ export default class EditPeer {
     }
 
     this.inputFields.forEach(inputField => {
-      this.listenerSetter.add(inputField.input, 'input', this.handleChange);
+      this.listenerSetter.add(inputField.input)('input', this.handleChange);
     });
   }
 

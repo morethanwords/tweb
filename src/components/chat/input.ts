@@ -74,7 +74,8 @@ const POSTING_MEDIA_NOT_ALLOWED = 'Posting media content isn\'t allowed in this 
 type ChatInputHelperType = 'edit' | 'webpage' | 'forward' | 'reply';
 
 export default class ChatInput {
-  private static AUTO_COMPLETE_REG_EXP = /(\s|^)((?::|.)(?!.*[:@]).*|(?:[@\/]\S*))$/;
+  // private static AUTO_COMPLETE_REG_EXP = /(\s|^)((?::|.)(?!.*[:@]).*|(?:[@\/]\S*))$/;
+  private static AUTO_COMPLETE_REG_EXP = /(\s|^)((?:(?:@|^\/)\S*)|(?::|[^:@\/])(?!.*[:@\/]).*)$/;
   public messageInput: HTMLElement;
   public messageInputField: InputField;
   private fileInput: HTMLInputElement;
@@ -210,7 +211,7 @@ export default class ChatInput {
     // @ts-ignore
     let height = window.visualViewport.height; */
     // @ts-ignore
-    // this.listenerSetter.add(window.visualViewport, 'resize', () => {
+    // this.listenerSetter.add(window.visualViewport)('resize', () => {
     //   const scrollable = this.chat.bubbles.scrollable;
     //   const wasScrolledDown = scrollable.isScrolledDown;
       
@@ -248,7 +249,7 @@ export default class ChatInput {
     // });
 
     // ! Can't use it with resizeObserver
-    /* this.listenerSetter.add(window.visualViewport, 'resize', () => {
+    /* this.listenerSetter.add(window.visualViewport)('resize', () => {
       const scrollable = this.chat.bubbles.scrollable;
       const wasScrolledDown = scrollable.isScrolledDown;
 
@@ -304,7 +305,7 @@ export default class ChatInput {
         this.appImManager.openScheduled(this.chat.peerId);
       }, {listenerSetter: this.listenerSetter});
 
-      this.listenerSetter.add(rootScope, 'scheduled_new', (e) => {
+      this.listenerSetter.add(rootScope)('scheduled_new', (e) => {
         const peerId = e.peerId;
 
         if(this.chat.peerId !== peerId) {
@@ -314,7 +315,7 @@ export default class ChatInput {
         this.btnScheduled.classList.remove('hide');
       });
 
-      this.listenerSetter.add(rootScope, 'scheduled_delete', (e) => {
+      this.listenerSetter.add(rootScope)('scheduled_delete', (e) => {
         const peerId = e.peerId;
 
         if(this.chat.peerId !== peerId) {
@@ -333,8 +334,8 @@ export default class ChatInput {
         appMessagesManager: this.appMessagesManager,
         btnHover: this.btnToggleReplyMarkup
       });
-      this.listenerSetter.add(this.replyKeyboard, 'open', () => this.btnToggleReplyMarkup.classList.add('active'));
-      this.listenerSetter.add(this.replyKeyboard, 'close', () => this.btnToggleReplyMarkup.classList.remove('active'));
+      this.listenerSetter.add(this.replyKeyboard)('open', () => this.btnToggleReplyMarkup.classList.add('active'));
+      this.listenerSetter.add(this.replyKeyboard)('close', () => this.btnToggleReplyMarkup.classList.remove('active'));
     }
 
     this.attachMenuButtons = [{
@@ -431,8 +432,8 @@ export default class ChatInput {
     this.inputContainer.append(this.btnCancelRecord, this.btnSendContainer);
 
     emoticonsDropdown.attachButtonListener(this.btnToggleEmoticons, this.listenerSetter);
-    this.listenerSetter.add(emoticonsDropdown, 'open', this.onEmoticonsOpen);
-    this.listenerSetter.add(emoticonsDropdown, 'close', this.onEmoticonsClose);
+    this.listenerSetter.add(emoticonsDropdown)('open', this.onEmoticonsOpen);
+    this.listenerSetter.add(emoticonsDropdown)('close', this.onEmoticonsClose);
 
     this.attachMessageInputField();
 
@@ -445,7 +446,7 @@ export default class ChatInput {
       }
     }, {passive: false, capture: true}); */
 
-    this.listenerSetter.add(rootScope, 'settings_updated', () => {
+    this.listenerSetter.add(rootScope)('settings_updated', () => {
       if(this.stickersHelper || this.emojiHelper) {
         this.previousQuery = undefined;
         this.checkAutocomplete();
@@ -461,13 +462,13 @@ export default class ChatInput {
       }
     });
 
-    this.listenerSetter.add(rootScope, 'draft_updated', (e) => {
+    this.listenerSetter.add(rootScope)('draft_updated', (e) => {
       const {peerId, threadId, draft} = e;
       if(this.chat.threadId !== threadId || this.chat.peerId !== peerId) return;
       this.setDraft(draft);
     });
 
-    this.listenerSetter.add(rootScope, 'peer_changing', (chat) => {
+    this.listenerSetter.add(rootScope)('peer_changing', (chat) => {
       if(this.chat === chat) {
         this.saveDraft();
       }
@@ -489,7 +490,7 @@ export default class ChatInput {
 
     this.updateSendBtn();
 
-    this.listenerSetter.add(this.fileInput, 'change', (e) => {
+    this.listenerSetter.add(this.fileInput)('change', (e) => {
       let files = (e.target as HTMLInputElement & EventTarget).files;
       if(!files.length) {
         return;
@@ -576,7 +577,7 @@ export default class ChatInput {
     this.fakePinnedControlBtn = fakeContainer.firstChild as HTMLElement;
     this.fakeRowsWrapper.append(fakeContainer);
 
-    this.listenerSetter.add(this.pinnedControlBtn, 'click', () => {
+    this.listenerSetter.add(this.pinnedControlBtn)('click', () => {
       const peerId = this.chat.peerId;
 
       new PopupPinMessage(peerId, 0, true, () => {
@@ -801,7 +802,7 @@ export default class ChatInput {
   }
 
   private attachMessageInputListeners() {
-    this.listenerSetter.add(this.messageInput, 'keydown', (e: KeyboardEvent) => {
+    this.listenerSetter.add(this.messageInput)('keydown', (e: KeyboardEvent) => {
       if(isSendShortcutPressed(e)) {
         this.sendMessage();
       } else if(e.ctrlKey || e.metaKey) {
@@ -831,12 +832,12 @@ export default class ChatInput {
         emoticonsDropdown.toggle(false);
       }, {listenerSetter: this.listenerSetter});
 
-      /* this.listenerSetter.add(window, 'resize', () => {
+      /* this.listenerSetter.add(window)('resize', () => {
         this.restoreScroll();
       }); */
 
       /* if(isSafari) {  
-        this.listenerSetter.add(this.messageInput, 'mousedown', () => {
+        this.listenerSetter.add(this.messageInput)('mousedown', () => {
           window.requestAnimationFrame(() => {
             window.requestAnimationFrame(() => {
               emoticonsDropdown.toggle(false);
@@ -846,7 +847,7 @@ export default class ChatInput {
       } */
     }
 
-    /* this.listenerSetter.add(this.messageInput, 'beforeinput', (e: Event) => {
+    /* this.listenerSetter.add(this.messageInput)('beforeinput', (e: Event) => {
       // * validate due to manual formatting through browser's context menu
       const inputType = (e as InputEvent).inputType;
       //console.log('message beforeinput event', e);
@@ -859,13 +860,13 @@ export default class ChatInput {
         }
       }
     }); */
-    this.listenerSetter.add(this.messageInput, 'input', this.onMessageInput);
-    this.listenerSetter.add(this.messageInput, 'keyup', () => {
+    this.listenerSetter.add(this.messageInput)('input', this.onMessageInput);
+    this.listenerSetter.add(this.messageInput)('keyup', () => {
       this.checkAutocomplete();
     });
 
     if(this.chat.type === 'chat' || this.chat.type === 'discussion') {
-      this.listenerSetter.add(this.messageInput, 'focusin', () => {
+      this.listenerSetter.add(this.messageInput)('focusin', () => {
         if(this.chat.bubbles.scrollable.loadedAll.bottom) {
           this.appMessagesManager.readAllHistory(this.chat.peerId, this.chat.threadId);
         }

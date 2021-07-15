@@ -242,7 +242,7 @@ export class ApiFileManager {
   private uncompressTGS = (bytes: Uint8Array, fileName: string) => {
     //this.log('uncompressTGS', bytes, bytes.slice().buffer);
     // slice нужен потому что в uint8array - 5053 length, в arraybuffer - 5084
-    return cryptoWorker.gzipUncompress<string>(bytes.slice().buffer, true);
+    return cryptoWorker.invokeCrypto('gzipUncompress', bytes.slice().buffer, true) as Promise<string>;
   };
 
   private convertWebp = (bytes: Uint8Array, fileName: string) => {
@@ -261,10 +261,15 @@ export class ApiFileManager {
 
     if(!havePromise) {
       promise = deferredPromise<ReferenceBytes>();
+      this.refreshReferencePromises[hex] = promise;
     }
-    
-    promise.then(reference => {
-      (inputFileLocation as InputFileLocation.inputDocumentFileLocation).file_reference = reference;
+
+    promise = promise.then(reference => {
+      if(hex === bytesToHex(reference)) {
+        throw 'REFERENCE_IS_NOT_REFRESHED';
+      }
+      
+      return (inputFileLocation as InputFileLocation.inputDocumentFileLocation).file_reference = reference;
     });
 
     if(havePromise) {

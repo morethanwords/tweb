@@ -64,3 +64,7 @@ export function insertInDescendSortedArray<T extends {[smth in K]?: number}, K e
   console.error('wtf', array, element);
   return array.indexOf(element);
 }
+
+export function filterUnique<T extends Array<any>>(arr: T): T {
+  return [...new Set(arr)] as T;
+}

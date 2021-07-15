@@ -11,7 +11,7 @@ import { CLICK_EVENT_NAME } from "../helpers/dom/clickEvent";
 import ListenerSetter from "../helpers/listenerSetter";
 import mediaSizes from "../helpers/mediaSizes";
 import { isTouchSupported } from "../helpers/touchSupport";
-import { isApple, isMobileSafari, isSafari } from "../helpers/userAgent";
+import { isApple, isMobileSafari } from "../helpers/userAgent";
 import appNavigationController from "./appNavigationController";
 
 export function putPreloader(elem: Element, returnDiv = false): HTMLElement {
@@ -308,18 +308,21 @@ export function positionMenu({pageX, pageY}: MouseEvent | Touch, elem: HTMLEleme
 }
 
 export function attachContextMenuListener(element: HTMLElement, callback: (e: Touch | MouseEvent) => void, listenerSetter?: ListenerSetter) {
-  const add = listenerSetter ? listenerSetter.add.bind(listenerSetter, element) : element.addEventListener.bind(element);
+  const add = listenerSetter ? listenerSetter.add(element) : element.addEventListener.bind(element);
   const remove = listenerSetter ? listenerSetter.removeManual.bind(listenerSetter, element) : element.removeEventListener.bind(element);
 
   if(isApple && isTouchSupported) {
     let timeout: number;
 
-    const options: any = /* null */{capture: true};
+    const options: EventListenerOptions = {capture: true};
 
     const onCancel = () => {
       clearTimeout(timeout);
+      // @ts-ignore
       remove('touchmove', onCancel, options);
+      // @ts-ignore
       remove('touchend', onCancel, options);
+      // @ts-ignore
       remove('touchcancel', onCancel, options);
     };
 

@@ -397,6 +397,10 @@ export class AppProfileManager {
 
   public getMentions(chatId: number, query: string, threadId?: number): Promise<number[]> {
     const processUserIds = (userIds: number[]) => {
+      /* const startsWithAt = query.charAt(0) === '@';
+      if(startsWithAt) query = query.slice(1);
+      
+      const index = new SearchIndex<number>(!startsWithAt, !startsWithAt); */
       const index = new SearchIndex<number>(true, true);
       userIds.forEach(userId => {
         index.indexObject(userId, appUsersManager.getUserSearchText(userId));

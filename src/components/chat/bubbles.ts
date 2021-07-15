@@ -157,6 +157,7 @@ export default class ChatBubbles {
   private onAnimateLadder: () => Promise<any> | void;
   // private ladderDeferred: CancellablePromise<void>;
   private resolveLadderAnimation: () => Promise<any>;
+  private emptyPlaceholderMid: number;
 
   constructor(private chat: Chat, 
     private appMessagesManager: AppMessagesManager, 
@@ -194,7 +195,7 @@ export default class ChatBubbles {
     // * events
 
     // will call when sent for update pos
-    this.listenerSetter.add(rootScope, 'history_update', (e) => {
+    this.listenerSetter.add(rootScope)('history_update', (e) => {
       const {storage, peerId, mid} = e;
       
       if(mid && peerId === this.peerId && this.chat.getMessagesStorage() === storage) {
@@ -219,9 +220,9 @@ export default class ChatBubbles {
       }
     });
 
-    //this.listenerSetter.add(rootScope, '')
+    //this.listenerSetter.add(rootScope)('')
 
-    this.listenerSetter.add(rootScope, 'dialog_flush', (e) => {
+    this.listenerSetter.add(rootScope)('dialog_flush', (e) => {
       let peerId: number = e.peerId;
       if(this.peerId === peerId) {
         this.deleteMessagesByIds(Object.keys(this.bubbles).map(m => +m));
@@ -229,7 +230,7 @@ export default class ChatBubbles {
     });
 
     // Calls when message successfully sent and we have an id
-    this.listenerSetter.add(rootScope, 'message_sent', (e) => {
+    this.listenerSetter.add(rootScope)('message_sent', (e) => {
       const {storage, tempId, tempMessage, mid} = e;
 
       // ! can't use peerId to validate here, because id can be the same in 'scheduled' and 'chat' types
@@ -349,7 +350,7 @@ export default class ChatBubbles {
       }
     });
 
-    this.listenerSetter.add(rootScope, 'message_edit', (e) => {
+    this.listenerSetter.add(rootScope)('message_edit', (e) => {
       fastRaf(() => {
         const {storage, peerId, mid} = e;
       
@@ -369,7 +370,7 @@ export default class ChatBubbles {
       });
     });
 
-    this.listenerSetter.add(rootScope, 'album_edit', (e) => {
+    this.listenerSetter.add(rootScope)('album_edit', (e) => {
       //fastRaf(() => { // ! can't use delayed smth here, need original bubble to be edited
         const {peerId, groupId, deletedMids} = e;
       
@@ -384,7 +385,7 @@ export default class ChatBubbles {
       //});
     });
 
-    this.listenerSetter.add(rootScope, 'messages_downloaded', (e) => {
+    this.listenerSetter.add(rootScope)('messages_downloaded', (e) => {
       const {peerId, mids} = e;
 
       const middleware = this.getMiddleware();
@@ -422,10 +423,10 @@ export default class ChatBubbles {
       });
     });
 
-    this.listenerSetter.add(this.bubblesContainer, 'click', this.onBubblesClick/* , {capture: true, passive: false} */);
+    this.listenerSetter.add(this.bubblesContainer)('click', this.onBubblesClick/* , {capture: true, passive: false} */);
 
     if(DEBUG) {
-      this.listenerSetter.add(this.bubblesContainer, 'dblclick', (e) => {
+      this.listenerSetter.add(this.bubblesContainer)('dblclick', (e) => {
         const bubble = findUpClassName(e.target, 'grouped-item') || findUpClassName(e.target, 'bubble');
         if(bubble) {
           const mid = +bubble.dataset.mid
@@ -436,7 +437,7 @@ export default class ChatBubbles {
     }
 
     if(!isMobile) {
-      this.listenerSetter.add(this.bubblesContainer, 'dblclick', (e) => {
+      this.listenerSetter.add(this.bubblesContainer)('dblclick', (e) => {
         if(this.chat.selection.isSelecting || !this.appMessagesManager.canWriteToPeer(this.peerId, this.chat.threadId)) {
           return;
         }
@@ -479,7 +480,7 @@ export default class ChatBubbles {
 
   public constructPeerHelpers() {
     // will call when message is sent (only 1)
-    this.listenerSetter.add(rootScope, 'history_append', (e) => {
+    this.listenerSetter.add(rootScope)('history_append', (e) => {
       const {peerId, storage, mid} = e;
 
       if(peerId !== this.peerId || storage !== this.chat.getMessagesStorage()) return;
@@ -491,15 +492,13 @@ export default class ChatBubbles {
       }
     });
 
-    this.listenerSetter.add(rootScope, 'history_multiappend', (e) => {
-      const msgIdsByPeer = e;
-
+    this.listenerSetter.add(rootScope)('history_multiappend', (msgIdsByPeer) => {
       if(!(this.peerId in msgIdsByPeer)) return;
-      const msgIds = Array.from(msgIdsByPeer[this.peerId] as number[]).slice().sort((a, b) => b - a);
+      const msgIds = Array.from(msgIdsByPeer[this.peerId]).slice().sort((a, b) => b - a);
       this.renderNewMessagesByIds(msgIds);
     });
     
-    this.listenerSetter.add(rootScope, 'history_delete', (e) => {
+    this.listenerSetter.add(rootScope)('history_delete', (e) => {
       const {peerId, msgs} = e;
 
       const mids = Object.keys(msgs).map(s => +s);
@@ -509,7 +508,7 @@ export default class ChatBubbles {
       }
     });
 
-    this.listenerSetter.add(rootScope, 'dialog_unread', (e) => {
+    this.listenerSetter.add(rootScope)('dialog_unread', (e) => {
       const info = e;
 
       if(info.peerId === this.peerId) {
@@ -518,7 +517,7 @@ export default class ChatBubbles {
       }
     });
 
-    this.listenerSetter.add(rootScope, 'dialogs_multiupdate', (e) => {
+    this.listenerSetter.add(rootScope)('dialogs_multiupdate', (e) => {
       const dialogs = e;
 
       if(dialogs[this.peerId]) {
@@ -526,13 +525,13 @@ export default class ChatBubbles {
       }
     });
 
-    this.listenerSetter.add(rootScope, 'dialog_notify_settings', (dialog) => {
+    this.listenerSetter.add(rootScope)('dialog_notify_settings', (dialog) => {
       if(this.peerId === dialog.peerId) {
         this.chat.input.setUnreadCount();
       }
     });
 
-    this.listenerSetter.add(rootScope, 'chat_update', (e) => {
+    this.listenerSetter.add(rootScope)('chat_update', (e) => {
       const chatId: number = e;
       if(this.peerId === -chatId) {
         const hadRights = this.chatInner.classList.contains('has-rights');
@@ -545,7 +544,7 @@ export default class ChatBubbles {
       }
     });
 
-    this.listenerSetter.add(rootScope, 'settings_updated', (e: BroadcastEvents['settings_updated']) => {
+    this.listenerSetter.add(rootScope)('settings_updated', (e: BroadcastEvents['settings_updated']) => {
       if(e.key === 'settings.emoji.big') {
         const isScrolledDown = this.scrollable.isScrolledDown;
         if(!isScrolledDown) {
@@ -735,7 +734,7 @@ export default class ChatBubbles {
   }
 
   public constructPinnedHelpers() {
-    this.listenerSetter.add(rootScope, 'peer_pinned_messages', (e) => {
+    this.listenerSetter.add(rootScope)('peer_pinned_messages', (e) => {
       const {peerId, mids, pinned} = e;
       if(peerId !== this.peerId) return;
 
@@ -752,7 +751,7 @@ export default class ChatBubbles {
       this.chat.topbar.setTitle(Object.keys(this.appMessagesManager.getScheduledMessagesStorage(this.peerId)).length);
     };
 
-    this.listenerSetter.add(rootScope, 'scheduled_new', (e) => {
+    this.listenerSetter.add(rootScope)('scheduled_new', (e) => {
       const {peerId, mid} = e;
       if(peerId !== this.peerId) return;
 
@@ -760,7 +759,7 @@ export default class ChatBubbles {
       onUpdate();
     });
 
-    this.listenerSetter.add(rootScope, 'scheduled_delete', (e) => {
+    this.listenerSetter.add(rootScope)('scheduled_delete', (e) => {
       const {peerId, mids} = e;
       if(peerId !== this.peerId) return;
 
@@ -1277,6 +1276,10 @@ export default class ChatBubbles {
       //this.unreaded.findAndSplice(mid => mid === id);
       bubble.remove();
       //bubble.remove();
+
+      if(this.emptyPlaceholderMid === mid) {
+        this.emptyPlaceholderMid = undefined;
+      }
     });
 
     if(permanent && this.chat.selection.isSelecting) {
@@ -1345,7 +1348,13 @@ export default class ChatBubbles {
     return this.scrollable.scrollIntoViewNew(element, position, 4, undefined, forceDirection, forceDuration);
   }
 
-  public scrollToBubbleEnd(bubble = this.chatInner.lastElementChild.lastElementChild as HTMLElement) {
+  public scrollToBubbleEnd(bubble?: HTMLElement) {
+    if(!bubble) {
+      const lastDateGroup = this.getLastDateGroup();
+      if(lastDateGroup) {
+        bubble = lastDateGroup.lastElementChild as HTMLElement;
+      }
+    }
     /* if(DEBUG) {
       this.log('scrollToNewLastBubble: will scroll into view:', bubble);
     } */
@@ -1358,9 +1367,23 @@ export default class ChatBubbles {
     }
   }
 
+  // ! can't get it by chatInner.lastElementChild because placeholder can be the last...
+  private getLastDateGroup() {
+    let lastTime = 0, lastElem: HTMLElement;
+    for(const i in this.dateMessages) {
+      const dateMessage = this.dateMessages[i];
+      if(dateMessage.firstTimestamp > lastTime) {
+        lastElem = dateMessage.container;
+        lastTime = dateMessage.firstTimestamp;
+      }
+    }
+
+    return lastElem;
+  }
+
   public scrollToBubbleIfLast(bubble: HTMLElement) {
     if(bubble.parentElement.lastElementChild === bubble && 
-      bubble.parentElement.parentElement.lastElementChild === bubble.parentElement) {
+      this.getLastDateGroup().lastElementChild === bubble.parentElement) {
       this.scrollToBubbleEnd(bubble);
     }
   }
@@ -1533,7 +1556,9 @@ export default class ChatBubbles {
     
     this.middleware.clean();
     
+    this.onAnimateLadder = undefined;
     this.resolveLadderAnimation = undefined;
+    this.emptyPlaceholderMid = undefined;
     ////console.timeEnd('appImManager cleanup');
   }
 
@@ -3206,7 +3231,7 @@ export default class ChatBubbles {
     elements.forEach((element: any) => element.classList.add('empty-placeholder-line'));
   }
 
-  private processLocalMessageRender(message: Message) {
+  private processLocalMessageRender(message: Message.message | Message.messageService) {
     const bubble = this.renderMessage(message, undefined, undefined, undefined, false);
     bubble.classList.add('bubble-first', 'is-group-last', 'is-group-first');
     bubble.classList.remove('can-have-tail', 'is-in');
@@ -3249,6 +3274,8 @@ export default class ChatBubbles {
     } else {
       this.chatInner.prepend(bubble);
     }
+
+    this.emptyPlaceholderMid = message.mid;
   }
 
   private generateLocalFirstMessage<T extends boolean>(service?: T, fill?: (message: GenerateLocalMessageType<T>) => void): GenerateLocalMessageType<T> {
@@ -3314,6 +3341,7 @@ export default class ChatBubbles {
   public checkIfEmptyPlaceholderNeeded() {
     if(this.scrollable.loadedAll.top && 
       this.scrollable.loadedAll.bottom && 
+      this.emptyPlaceholderMid === undefined && 
       (
         !this.appMessagesManager.getHistoryStorage(this.peerId).count || 
         (

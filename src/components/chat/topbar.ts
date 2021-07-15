@@ -132,7 +132,7 @@ export default class ChatTopbar {
 
     // * fix topbar overflow section
 
-    this.listenerSetter.add(window, 'resize', this.onResize);
+    this.listenerSetter.add(window)('resize', this.onResize);
     mediaSizes.addEventListener('changeScreen', this.onChangeScreen);
 
     attachClickEvent(this.container, (e) => {
@@ -299,7 +299,7 @@ export default class ChatTopbar {
     //});
     }, {listenerSetter: this.listenerSetter});
 
-    this.listenerSetter.add(rootScope, 'chat_update', (e) => {
+    this.listenerSetter.add(rootScope)('chat_update', (e) => {
       const chatId: number = e;
       if(this.peerId === -chatId) {
         const chat = this.appChatsManager.getChat(chatId) as Channel/*  | Chat */;
@@ -309,13 +309,13 @@ export default class ChatTopbar {
       }
     });
 
-    this.listenerSetter.add(rootScope, 'dialog_notify_settings', (dialog) => {
+    this.listenerSetter.add(rootScope)('dialog_notify_settings', (dialog) => {
       if(dialog.peerId === this.peerId) {
         this.setMutedState();
       }
     });
 
-    this.listenerSetter.add(rootScope, 'peer_typings', (e) => {
+    this.listenerSetter.add(rootScope)('peer_typings', (e) => {
       const {peerId} = e;
 
       if(this.peerId === peerId) {
@@ -323,7 +323,7 @@ export default class ChatTopbar {
       }
     });
 
-    this.listenerSetter.add(rootScope, 'user_update', (e) => {
+    this.listenerSetter.add(rootScope)('user_update', (e) => {
       const userId = e;
 
       if(this.peerId === userId) {
@@ -356,7 +356,7 @@ export default class ChatTopbar {
   }
 
   public constructPinnedHelpers() {
-    this.listenerSetter.add(rootScope, 'peer_pinned_messages', (e) => {
+    this.listenerSetter.add(rootScope)('peer_pinned_messages', (e) => {
       const {peerId, mids, pinned} = e;
 
       if(peerId !== this.peerId) return;

@@ -88,7 +88,7 @@ export default class AutocompleteHelper extends EventListenerBase<{
       if(this.navigationItem) {
         appNavigationController.removeItem(this.navigationItem);
       }
-    }, true);
+    }, {once: true});
   };
 
   protected attachNavigation() {

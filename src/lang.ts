@@ -510,6 +510,14 @@ const lang = {
   "NoMessages": "No messages here yet...",
   "NoScheduledMessages": "No scheduled messages here yet...",
   "NoMessagesGreetingsDescription": "Send a message or tap the greeting below.",
+  "InviteToGroupError": "Sorry, you can\'t add this user to groups because of user\'s privacy settings.",
+  "InviteToChannelError": "Sorry, you can\'t add this user to channels because of user\'s privacy settings.",
+  "AddMembersAlertTitle": "Add %1$s",
+  "AddOneMemberAlertTitle": "Add member",
+  "AddMembersAlertNamesText": "Are you sure you want to add %1$s to **%2$s**?",
+  "AddMembersAlertCountText": "Are you sure you want to add %1$s to **%2$s**?",
+  "AddMembersForwardMessages": "Show the last 100 messages to the new members",
+  "AddOneMemberForwardMessages": "Show the last 100 messages to **%1$s**",
 
   // * macos
   "AccountSettings.Filters": "Chat Folders",
@@ -689,11 +697,6 @@ const lang = {
   "PeerInfo.SharedMedia": "Shared Media",
   "PeerInfo.Subscribers": "Subscribers",
   "PeerInfo.DeleteContact": "Delete Contact",
-  "PeerInfo.Confirm.AddMembers1": {
-    "one_value": "Add %d user to the group?",
-    "other_value": "Add %d users to the group?"
-  },
-  "PeerInfo.Confirm.AddMember": "Add \"%@\" to the group?",
   //"PeerInfo.Confirm.RemovePeer": "Remove %@ from the group?",
   "PeerMedia.Members": "Members",
   "PollResults.Title.Poll": "Poll Results",

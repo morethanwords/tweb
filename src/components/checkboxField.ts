@@ -137,6 +137,10 @@ export default class CheckboxField {
   }
 
   set checked(checked: boolean) {
+    /* if(this.checked === checked) {
+      return;
+    } */
+    
     this.setValueSilently(checked);
 
     const event = new Event('change', {bubbles: true, cancelable: true});

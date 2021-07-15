@@ -42,7 +42,7 @@ export default class ChatAudio extends PinnedContainer {
 
     this.wrapper.prepend(this.toggleEl);
 
-    this.topbar.listenerSetter.add(rootScope, 'audio_play', (e) => {
+    this.topbar.listenerSetter.add(rootScope)('audio_play', (e) => {
       const {doc, mid, peerId} = e;
 
       let title: string | HTMLElement, subtitle: string;
@@ -65,7 +65,7 @@ export default class ChatAudio extends PinnedContainer {
       this.toggle(false);
     });
 
-    this.topbar.listenerSetter.add(rootScope, 'audio_pause', () => {
+    this.topbar.listenerSetter.add(rootScope)('audio_pause', () => {
       this.toggleEl.classList.remove('flip-icon');
     });
   }

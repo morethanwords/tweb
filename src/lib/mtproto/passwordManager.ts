@@ -9,12 +9,10 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import type { AccountPassword, AccountPasswordInputSettings, AccountUpdatePasswordSettings, InputCheckPasswordSRP, PasswordKdfAlgo } from '../../layer';
-import type CryptoWorkerMethods from '../crypto/crypto_methods';
+import type { AccountPassword, AccountUpdatePasswordSettings, InputCheckPasswordSRP, PasswordKdfAlgo } from '../../layer';
 import { MOUNT_CLASS_TO } from '../../config/debug';
 import appUsersManager from '../appManagers/appUsersManager';
 import apiManager from './mtprotoworker';
-//import { computeCheck } from "../crypto/srp";
 
 export class PasswordManager {
   public getState(): Promise<AccountPassword> {
@@ -33,7 +31,7 @@ export class PasswordManager {
     //state.new_algo = Object.assign({}, state.new_algo);
 
     return this.getState().then(state => {
-      let currentHashPromise: ReturnType<CryptoWorkerMethods['computeSRP']>;
+      let currentHashPromise: Promise<InputCheckPasswordSRP>;
       let newHashPromise: Promise<Uint8Array>;
       const params: AccountUpdatePasswordSettings = {
         password: null,
@@ -45,7 +43,7 @@ export class PasswordManager {
       };
   
       if(settings.currentPassword) {
-        currentHashPromise = apiManager.computeSRP(settings.currentPassword, state);
+        currentHashPromise = apiManager.invokeCrypto('computeSRP', settings.currentPassword, state, false) as any;
       } else {
         currentHashPromise = Promise.resolve({
           _: 'inputCheckPasswordEmpty'
@@ -60,7 +58,7 @@ export class PasswordManager {
       newAlgo.salt1 = salt1;
   
       if(settings.newPassword) {
-        newHashPromise = apiManager.computeSRP(settings.newPassword, state, true) as any;
+        newHashPromise = apiManager.invokeCrypto('computeSRP', settings.newPassword, state, true) as any;
       } else {
         newHashPromise = Promise.resolve(new Uint8Array());
       }
@@ -76,10 +74,10 @@ export class PasswordManager {
   }
 
   public check(password: string, state: AccountPassword, options: any = {}) {
-    return apiManager.computeSRP(password, state).then((inputCheckPassword) => {
+    return apiManager.invokeCrypto('computeSRP', password, state, false).then((inputCheckPassword) => {
       //console.log('SRP', inputCheckPassword);
       return apiManager.invokeApi('auth.checkPassword', {
-        password: inputCheckPassword
+        password: inputCheckPassword as InputCheckPasswordSRP.inputCheckPasswordSRP
       }, options).then(auth => {
         if(auth._ === 'auth.authorization') {
           appUsersManager.saveApiUser(auth.user);

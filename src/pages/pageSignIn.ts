@@ -34,7 +34,7 @@ import { attachClickEvent } from "../helpers/dom/clickEvent";
 import replaceContent from "../helpers/dom/replaceContent";
 import toggleDisability from "../helpers/dom/toggleDisability";
 import sessionStorage from "../lib/sessionStorage";
-import { TrueDcId } from "../types";
+import { DcAuthKey } from "../types";
 
 type Country = _Country & {
   li?: HTMLLIElement[]
@@ -324,7 +324,8 @@ let onFirstMount = () => {
   const signedCheckboxField = new CheckboxField({
     text: 'Login.KeepSigned', 
     name: 'keepSession',
-    withRipple: true
+    withRipple: true,
+    checked: true
   });
 
   signedCheckboxField.input.addEventListener('change', () => {
@@ -453,7 +454,7 @@ let onFirstMount = () => {
           const dcId = _dcs.shift();
           if(!dcId) return;
 
-          const dbKey: `dc${TrueDcId}_auth_key` = `dc${dcId}_auth_key` as any;
+          const dbKey: DcAuthKey = `dc${dcId}_auth_key` as any;
           const key = await sessionStorage.get(dbKey);
           if(key) {
             return g();

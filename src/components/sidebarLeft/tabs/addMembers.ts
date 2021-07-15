@@ -6,7 +6,7 @@
 
 import { SliderSuperTab } from "../../slider";
 import AppSelectPeers from "../../appSelectPeers";
-import { putPreloader } from "../../misc";
+import { putPreloader, setButtonLoader } from "../../misc";
 import { LangPackKey, _i18n } from "../../../lib/langPack";
 import ButtonCorner from "../../buttonCorner";
 
@@ -41,13 +41,12 @@ export default class AppAddMembersTab extends SliderSuperTab {
   }
 
   public attachToPromise(promise: Promise<any>) {
-    this.nextBtn.classList.remove('tgico-arrow_next');
-    this.nextBtn.disabled = true;
-    putPreloader(this.nextBtn);
-    this.selector.freezed = true;
+    const removeLoader = setButtonLoader(this.nextBtn, 'arrow_next');
 
     promise.then(() => {
       this.close();
+    }, () => {
+      removeLoader();
     });
   }
 

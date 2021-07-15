@@ -11,7 +11,7 @@ export default function handleScrollSideEvent(elem: HTMLElement, side: 'top' | '
   if(isTouchSupported) {
     let lastY: number;
     const options = {passive: true};
-    listenerSetter.add(elem, 'touchstart', (e) => {
+    listenerSetter.add(elem)('touchstart', (e) => {
       if(e.touches.length > 1) {
         onTouchEnd();
         return;
@@ -19,8 +19,8 @@ export default function handleScrollSideEvent(elem: HTMLElement, side: 'top' | '
 
       lastY = e.touches[0].clientY;
 
-      listenerSetter.add(elem, 'touchmove', onTouchMove, options);
-      listenerSetter.add(elem, 'touchend', onTouchEnd, options);
+      listenerSetter.add(elem)('touchmove', onTouchMove, options);
+      listenerSetter.add(elem)('touchend', onTouchEnd, options);
     }, options);
 
     const onTouchMove = (e: TouchEvent) => {
@@ -38,7 +38,7 @@ export default function handleScrollSideEvent(elem: HTMLElement, side: 'top' | '
       listenerSetter.removeManual(elem, 'touchend', onTouchEnd, options);
     };
   } else {
-    listenerSetter.add(elem, 'wheel', (e) => {
+    listenerSetter.add(elem)('wheel', (e) => {
       const isDown = e.deltaY > 0;
       //this.log('wheel', e, isDown);
       if(side === 'bottom' && isDown) callback();

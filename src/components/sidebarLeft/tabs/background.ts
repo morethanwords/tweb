@@ -66,7 +66,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
         withRipple: true
       });
 
-      this.listenerSetter.add(blurCheckboxField.input, 'change', () => {
+      this.listenerSetter.add(blurCheckboxField.input)('change', () => {
         this.theme.background.blur = blurCheckboxField.input.checked;
         appStateManager.pushToState('settings', rootScope.settings);
 

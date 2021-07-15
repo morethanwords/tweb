@@ -84,7 +84,7 @@ export default class AppEditContactTab extends SliderSuperTab {
         appMessagesManager.mutePeer(this.peerId);
       });
 
-      this.listenerSetter.add(rootScope, 'notify_settings', (update) => {
+      this.listenerSetter.add(rootScope)('notify_settings', (update) => {
         if(update.peer._ !== 'notifyPeer') return;
         const peerId = appPeersManager.getPeerId(update.peer.peer);
         if(this.peerId === peerId) {

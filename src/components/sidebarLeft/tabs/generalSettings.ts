@@ -254,7 +254,7 @@ export default class AppGeneralSettingsTab extends SliderSuperTab {
         }
       });
 
-      this.listenerSetter.add(rootScope, 'stickers_installed', (e) => {
+      this.listenerSetter.add(rootScope)('stickers_installed', (e) => {
         const set: StickerSet.stickerSet = e;
         
         if(!stickerSets[set.id]) {
@@ -262,7 +262,7 @@ export default class AppGeneralSettingsTab extends SliderSuperTab {
         }
       });
   
-      this.listenerSetter.add(rootScope, 'stickers_deleted', (e) => {
+      this.listenerSetter.add(rootScope)('stickers_deleted', (e) => {
         const set: StickerSet.stickerSet = e;
         
         if(stickerSets[set.id]) {

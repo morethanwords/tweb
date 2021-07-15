@@ -176,6 +176,7 @@
     padding: 0;
     transform: translateY(-50%);
     top: 50%;
+    z-index: 1;
 
     &:first-child {
       margin-right: 1.6875rem;

@@ -153,7 +153,7 @@ export class AppNotificationsManager {
     rootScope.addEventListener('dialogs_multiupdate', () => {
       //unregisterTopMsgs()
       this.topMessagesDeferred.resolve();
-    }, true);
+    }, {once: true});
 
     rootScope.addEventListener('push_notification_click', (notificationData) => {
       if(notificationData.action === 'push_settings') {

@@ -18,7 +18,7 @@ import networkerFactory from './networkerFactory';
 import authorizer from './authorizer';
 import dcConfigurator, { ConnectionType, DcConfigurator, TransportType } from './dcConfigurator';
 import { logger } from '../logger';
-import type { DcId, InvokeApiOptions, TrueDcId } from '../../types';
+import type { DcAuthKey, DcId, DcServerSalt, InvokeApiOptions } from '../../types';
 import type { MethodDeclMap } from '../../layer';
 import { CancellablePromise, deferredPromise } from '../../helpers/cancellablePromise';
 import { bytesFromHex, bytesToHex } from '../../helpers/bytes';
@@ -84,7 +84,12 @@ export class ApiManager {
 
   private log: ReturnType<typeof logger> = logger('API');
 
-  private afterMessageTempIds: {[tempId: string]: string} = {};
+  private afterMessageTempIds: {
+    [tempId: string]: {
+      messageId: string,
+      promise: Promise<any>
+    }
+  } = {};
 
   //private lol = false;
   
@@ -122,7 +127,6 @@ export class ApiManager {
     return this.baseDcId;
   }
   
-  // mtpSetUserAuth
   public async setUserAuth(userAuth: UserAuth) {
     if(!userAuth.dcID) {
       const baseDcId = await this.getBaseDcId();
@@ -155,9 +159,8 @@ export class ApiManager {
     });
   }
   
-  // mtpLogOut
   public async logOut() {
-    const storageKeys: Array<`dc${TrueDcId}_auth_key`> = [];
+    const storageKeys: Array<DcAuthKey> = [];
     
     const prefix = 'dc';
     for(let dcId = 1; dcId <= 5; dcId++) {
@@ -187,15 +190,13 @@ export class ApiManager {
 
     //return;
     
-    return Promise.all(logoutPromises).then(() => {
-    }, (error) => {
+    return Promise.all(logoutPromises).catch((error) => {
       error.handled = true;
     }).finally(clear)/* .then(() => {
       location.pathname = '/';
     }) */;
   }
   
-  // mtpGetNetworker
   public getNetworker(dcId: DcId, options: InvokeApiOptions = {}): Promise<MTPNetworker> {
     const connectionType: ConnectionType = options.fileDownload ? 'download' : (options.fileUpload ? 'upload' : 'client');
     //const connectionType: ConnectionType = 'client';
@@ -244,8 +245,8 @@ export class ApiManager {
       return this.gettingNetworkers[getKey];
     }
 
-    const ak: `dc${TrueDcId}_auth_key` = `dc${dcId}_auth_key` as any;
-    const ss: `dc${TrueDcId}_server_salt` = `dc${dcId}_server_salt` as any;
+    const ak: DcAuthKey = `dc${dcId}_auth_key` as any;
+    const ss: DcServerSalt = `dc${dcId}_server_salt` as any;
     
     return this.gettingNetworkers[getKey] = Promise.all([ak, ss].map(key => sessionStorage.get(key)))
     .then(async([authKeyHex, serverSaltHex]) => {
@@ -257,7 +258,7 @@ export class ApiManager {
         }
         
         const authKey = bytesFromHex(authKeyHex);
-        const authKeyId = (await CryptoWorker.sha1Hash(new Uint8Array(authKey))).slice(-8);
+        const authKeyId = (await CryptoWorker.invokeCrypto('sha1-hash', authKey)).slice(-8);
         const serverSalt = bytesFromHex(serverSaltHex);
         
         networker = networkerFactory.getNetworker(dcId, authKey, authKeyId, serverSalt, transport, options);
@@ -320,7 +321,6 @@ export class ApiManager {
     });
   }
   
-  // mtpInvokeApi
   public invokeApi<T extends keyof MethodDeclMap>(method: T, params: MethodDeclMap[T]['req'] = {}, options: InvokeApiOptions = {}): CancellablePromise<MethodDeclMap[T]["res"]> {
     ///////this.log('Invoke api', method, params, options);
 
@@ -331,18 +331,14 @@ export class ApiManager {
 
     const deferred = deferredPromise<MethodDeclMap[T]['res']>();
 
-    let afterMessageIdTemp = options.afterMessageId;
-    if(afterMessageIdTemp) {
-      deferred.finally(() => {
-        delete this.afterMessageTempIds[afterMessageIdTemp];
+    let {afterMessageId, prepareTempMessageId} = options;
+    if(prepareTempMessageId) {
+      deferred.then(() => {
+        delete this.afterMessageTempIds[prepareTempMessageId];
       });
     }
 
     if(MOUNT_CLASS_TO) {
-      deferred.finally(() => {
-        clearInterval(interval);
-      });
-  
       const startTime = Date.now();
       const interval = ctx.setInterval(() => {
         if(!cachedNetworker || !cachedNetworker.isStopped()) {
@@ -350,6 +346,10 @@ export class ApiManager {
         }
         //this.cachedUploadNetworkers[2].requestMessageStatus();
       }, 5e3);
+
+      deferred.finally(() => {
+        clearInterval(interval);
+      });
     }
 
     const rejectPromise = (error: ApiError) => {
@@ -396,17 +396,25 @@ export class ApiManager {
     let cachedNetworker: MTPNetworker;
     let stack = (new Error()).stack || 'empty stack';
     const performRequest = (networker: MTPNetworker) => {
-      if(afterMessageIdTemp) {
-        options.afterMessageId = this.afterMessageTempIds[afterMessageIdTemp];
+      if(afterMessageId) {
+        const after = this.afterMessageTempIds[afterMessageId];
+        if(after) {
+          options.afterMessageId = after.messageId;
+        }
       }
+
       const promise = (cachedNetworker = networker).wrapApiCall(method, params, options);
-      if(options.prepareTempMessageId) {
-        this.afterMessageTempIds[options.prepareTempMessageId] = (options as MTMessage).messageId;
+
+      if(prepareTempMessageId) {
+        this.afterMessageTempIds[prepareTempMessageId] = {
+          messageId: (options as MTMessage).messageId,
+          promise: deferred
+        };
       }
 
       return promise.then(deferred.resolve, (error: ApiError) => {
         //if(!options.ignoreErrors) {
-        if(error.type !== 'FILE_REFERENCE_EXPIRED' && error.type !== 'MSG_WAIT_FAILED') {
+        if(error.type !== 'FILE_REFERENCE_EXPIRED'/*  && error.type !== 'MSG_WAIT_FAILED' */) {
           this.log.error('Error', error.code, error.type, this.baseDcId, dcId, method, params);
         }
         
@@ -450,24 +458,24 @@ export class ApiManager {
             }, rejectPromise);
           }
         } else if(!options.rawError && error.code === 420) {
-          const waitTime = +error.type.match(/^FLOOD_WAIT_(\d+)/)[1] || 10;
+          const waitTime = +error.type.match(/^FLOOD_WAIT_(\d+)/)[1] || 1;
           
-          if(waitTime > (options.floodMaxTimeout !== undefined ? options.floodMaxTimeout : 60)) {
+          if(waitTime > (options.floodMaxTimeout !== undefined ? options.floodMaxTimeout : 60) && !options.prepareTempMessageId) {
             return rejectPromise(error);
           }
           
           setTimeout(() => {
             performRequest(cachedNetworker);
           }, waitTime/* (waitTime + 5) */ * 1000); // 03.02.2020
-        } else if(!options.rawError && error.code === 500) {
-          if(error.type === 'MSG_WAIT_FAILED') {
-            afterMessageIdTemp = undefined;
-            delete options.afterMessageId;
-            delete this.afterMessageTempIds[options.prepareTempMessageId];
-            performRequest(cachedNetworker);
-            return;
-          }
+        } else if(!options.rawError && ['MSG_WAIT_FAILED', 'MSG_WAIT_TIMEOUT'].includes(error.type)) {
+          const after = this.afterMessageTempIds[afterMessageId];
 
+          afterMessageId = undefined;
+          delete options.afterMessageId;
+
+          if(after) after.promise.then(() => performRequest(cachedNetworker));
+          else performRequest(cachedNetworker);
+        } else if(!options.rawError && error.code === 500) {
           const now = Date.now();
           if(options.stopTime) {
             if(now >= options.stopTime) {

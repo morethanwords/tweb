@@ -4,7 +4,6 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { bytesFromArrayBuffer } from '../../../helpers/bytes';
 import MTTransport from './transport';
 
 export default class HTTP implements MTTransport {
@@ -18,14 +17,14 @@ export default class HTTP implements MTTransport {
       if(response.status !== 200) {
         response.arrayBuffer().then(buffer => {
           console.log('not 200', 
-          new TextDecoder("utf-8").decode(new Uint8Array(bytesFromArrayBuffer(buffer))));
+          new TextDecoder("utf-8").decode(new Uint8Array(buffer)));
         })
 
         throw response;
       } 
 
       return response.arrayBuffer().then(buffer => {
-        return new Uint8Array(bytesFromArrayBuffer(buffer));
+        return new Uint8Array(buffer);
       }); 
     });
   }

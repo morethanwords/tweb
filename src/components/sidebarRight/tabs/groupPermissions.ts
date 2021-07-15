@@ -71,7 +71,7 @@ export class ChatPermissions {
       if(options.participant && defaultBannedRights.pFlags[mainFlag]) {
         info.checkboxField.input.disabled = true;
         
-        /* options.listenerSetter.add(info.checkboxField.input, 'change', (e) => {
+        /* options.listenerSetter.add(info.checkboxField.input)('change', (e) => {
           if(!e.isTrusted) {
             return;
           }
@@ -87,7 +87,7 @@ export class ChatPermissions {
       }
 
       if(this.toggleWith[mainFlag]) {
-        options.listenerSetter.add(info.checkboxField.input, 'change', () => {
+        options.listenerSetter.add(info.checkboxField.input)('change', () => {
           if(!info.checkboxField.checked) {
             const other = this.v.filter(i => this.toggleWith[mainFlag].includes(i.flags[0]));
             other.forEach(info => {
@@ -143,7 +143,7 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
 
       this.eventListener.addEventListener('destroy', () => {
         appChatsManager.editChatDefaultBannedRights(this.chatId, chatPermissions.takeOut());
-      });
+      }, {once: true});
 
       this.scrollable.append(section.container);
     }
@@ -257,7 +257,7 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
         //dom.lastMessageSpan.innerHTML = 'Can Add Users and Pin Messages';
       };
 
-      this.listenerSetter.add(rootScope, 'updateChannelParticipant', (update: Update.updateChannelParticipant) => {
+      this.listenerSetter.add(rootScope)('updateChannelParticipant', (update: Update.updateChannelParticipant) => {
         const needAdd = update.new_participant?._ === 'channelParticipantBanned' && !update.new_participant.banned_rights.pFlags.view_messages;
         const li = list.querySelector(`[data-peer-id="${update.user_id}"]`);
         if(needAdd) {
