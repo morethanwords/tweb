@@ -88,7 +88,7 @@ export default function(
       handleAnimationStart();
     }
 
-    const add = listenerSetter ? listenerSetter.add.bind(listenerSetter, rootScope) : rootScope.addEventListener.bind(rootScope);
+    const add = listenerSetter ? listenerSetter.add(rootScope) : rootScope.addEventListener.bind(rootScope);
     const remove = listenerSetter ? listenerSetter.removeManual.bind(listenerSetter, rootScope) : rootScope.removeEventListener.bind(rootScope);
     add(ANIMATION_START_EVENT, handleAnimationStart);
     add(ANIMATION_END_EVENT, handleAnimationEnd);

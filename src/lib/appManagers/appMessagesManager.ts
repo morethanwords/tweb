@@ -113,6 +113,11 @@ export type MessagesStorage = {
 
 export type MyMessageActionType = Message.messageService['action']['_'];
 
+type PendingAfterMsg = Partial<InvokeApiOptions & {
+  afterMessageId: string,
+  messageId: string
+}>;
+
 export class AppMessagesManager {
   private static MESSAGE_ID_INCREMENT = 0x10000;
   private static MESSAGE_ID_OFFSET = 0xFFFFFFFF;
@@ -152,7 +157,7 @@ export class AppMessagesManager {
     }
   } = {};
   private pendingByMessageId: {[mid: string]: string} = {};
-  private pendingAfterMsgs: any = {};
+  private pendingAfterMsgs: {[peerId: string]: PendingAfterMsg} = {};
   public pendingTopMsgs: {[peerId: string]: number} = {};
   private tempNum = 0;
   private tempFinalizeCallbacks: {
@@ -487,7 +492,7 @@ export class AppMessagesManager {
 
     message.send = () => {
       toggleError(false);
-      const sentRequestOptions: InvokeApiOptions = {};
+      const sentRequestOptions: PendingAfterMsg = {};
       if(this.pendingAfterMsgs[peerId]) {
         sentRequestOptions.afterMessageId = this.pendingAfterMsgs[peerId].messageId;
       }
@@ -1259,7 +1264,7 @@ export class AppMessagesManager {
     };
 
     message.send = () => {
-      const sentRequestOptions: any = {};
+      const sentRequestOptions: PendingAfterMsg = {};
       if(this.pendingAfterMsgs[peerId]) {
         sentRequestOptions.afterMessageId = this.pendingAfterMsgs[peerId].messageId;
       }
@@ -1768,7 +1773,7 @@ export class AppMessagesManager {
       const count = (dialogsResult as MessagesDialogs.messagesDialogsSlice).count;
 
       // exclude empty draft dialogs
-      const dialogs = this.dialogsStorage.getFolder(folderId);
+      const dialogs = this.dialogsStorage.getFolder(folderId, false);
       let dialogsLength = 0;
       for(let i = 0, length = dialogs.length; i < length; ++i) {
         if(this.getServerMessageId(dialogs[i].top_message)) {
@@ -1854,7 +1859,7 @@ export class AppMessagesManager {
       });
     });
 
-    const sentRequestOptions: InvokeApiOptions = {};
+    const sentRequestOptions: PendingAfterMsg = {};
     if(this.pendingAfterMsgs[peerId]) {
       sentRequestOptions.afterMessageId = this.pendingAfterMsgs[peerId].messageId;
     }
@@ -4582,6 +4587,8 @@ export class AppMessagesManager {
 
     const tempMessage = this.getMessageFromStorage(storage, tempId);
     delete storage[tempId];
+    
+    this.handleReleasingMessage(tempMessage);
 
     rootScope.dispatchEvent('message_sent', {storage, tempId, tempMessage, mid});
   }
@@ -5078,6 +5085,24 @@ export class AppMessagesManager {
     });
   }
 
+  private handleReleasingMessage(message: any) {
+    if((message as Message.message).media) {
+      // @ts-ignore
+      const c = message.media.webpage || message.media;
+      const smth = c.photo || c.document;
+
+      if(smth?.file_reference) {
+        referenceDatabase.deleteContext(smth.file_reference, {type: 'message', peerId: message.peerId, messageId: message.mid});
+      }
+
+      // @ts-ignore
+      if(message.media.webpage) {
+        // @ts-ignore
+        appWebPagesManager.deleteWebPageFromPending(message.media.webpage, mid);
+      }
+    }
+  }
+
   private handleDeletedMessages(peerId: number, storage: MessagesStorage, messages: number[]) {
     const history: {
       count: number, 
@@ -5090,21 +5115,7 @@ export class AppMessagesManager {
       const message: MyMessage = this.getMessageFromStorage(storage, mid);
       if(message.deleted) continue;
 
-      if((message as Message.message).media) {
-        // @ts-ignore
-        const c = message.media.webpage || message.media;
-        const smth = c.photo || c.document;
-
-        if(smth?.file_reference) {
-          referenceDatabase.deleteContext(smth.file_reference, {type: 'message', peerId, messageId: mid});
-        }
-
-        // @ts-ignore
-        if(message.media.webpage) {
-          // @ts-ignore
-          appWebPagesManager.deleteWebPageFromPending(message.media.webpage, mid);
-        }
-      }
+      this.handleReleasingMessage(message);
 
       this.updateMessageRepliesIfNeeded(message);
 

@@ -3,6 +3,8 @@ import type { ApiError } from "./lib/mtproto/apiManager";
 
 export type DcId = number;
 export type TrueDcId = 1 | 2 | 3 | 4 | 5;
+export type DcAuthKey = `dc${TrueDcId}_auth_key`;
+export type DcServerSalt = `dc${TrueDcId}_server_salt`;
 
 export type InvokeApiOptions = Partial<{
   dcId: DcId,
@@ -49,6 +51,21 @@ export type AnyToVoidFunction = (...args: any) => void;
 export type NoneToVoidFunction = () => void;
 
 export type Awaited<T> = T extends PromiseLike<infer U> ? Awaited<U> : T;
+
+// https://stackoverflow.com/a/60762482/6758968
+type Shift<A extends Array<any>> = ((...args: A) => void) extends ((...args: [A[0], ...infer R]) => void) ? R : never;
+
+type GrowExpRev<A extends Array<any>, N extends number, P extends Array<Array<any>>> = A['length'] extends N ? A : {
+  0: GrowExpRev<[...A, ...P[0]], N, P>,
+  1: GrowExpRev<A, N, Shift<P>>
+}[[...A, ...P[0]][N] extends undefined ? 0 : 1];
+
+type GrowExp<A extends Array<any>, N extends number, P extends Array<Array<any>>> = A['length'] extends N ? A : {
+  0: GrowExp<[...A, ...A], N, [A, ...P]>,
+  1: GrowExpRev<A, N, P>
+}[[...A, ...A][N] extends undefined ? 0 : 1];
+
+export type FixedSizeArray<T, N extends number> = N extends 0 ? [] : N extends 1 ? [T] : GrowExp<[T, T], N, [[T]]>;
 
 export type AuthState = AuthState.signIn | AuthState.signQr | AuthState.authCode | AuthState.password | AuthState.signUp | AuthState.signedIn;
 export namespace AuthState {

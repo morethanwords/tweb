@@ -10,26 +10,24 @@
  */
 
 export function bytesToHex(bytes: ArrayLike<number>) {
-  bytes = bytes || [];
-  let arr: string[] = [];
+  const arr: string[] = new Array(bytes.length);
   for(let i = 0; i < bytes.length; ++i) {
-    arr.push((bytes[i] < 16 ? '0' : '') + (bytes[i] || 0).toString(16));
+    arr[i] = (bytes[i] < 16 ? '0' : '') + (bytes[i] || 0).toString(16);
   }
   return arr.join('');
 }
 
 export function bytesFromHex(hexString: string) {
   const len = hexString.length;
+  const bytes = new Uint8Array(Math.ceil(len / 2));
   let start = 0;
-  let bytes: number[] = [];
 
   if(len % 2) { // read 0x581 as 0x0581
-    bytes.push(parseInt(hexString.charAt(0), 16));
-    ++start;
+    bytes[start++] = parseInt(hexString.charAt(0), 16);
   }
 
   for(let i = start; i < len; i += 2) {
-    bytes.push(parseInt(hexString.substr(i, 2), 16));
+    bytes[start++] = parseInt(hexString.substr(i, 2), 16);
   }
 
   return bytes;
@@ -67,7 +65,7 @@ export function uint6ToBase64(nUint6: number) {
           ? 43
           : nUint6 === 63
             ? 47
-            : 65
+            : 65;
 }
 
 export function bytesCmp(bytes1: number[] | Uint8Array, bytes2: number[] | Uint8Array) {
@@ -85,9 +83,9 @@ export function bytesCmp(bytes1: number[] | Uint8Array, bytes2: number[] | Uint8
   return true;
 }
 
-export function bytesXor(bytes1: number[] | Uint8Array, bytes2: number[] | Uint8Array) {
+export function bytesXor(bytes1: Uint8Array, bytes2: Uint8Array) {
   const len = bytes1.length;
-  const bytes: number[] = [];
+  const bytes = new Uint8Array(len);
 
   for(let i = 0; i < len; ++i) {
     bytes[i] = bytes1[i] ^ bytes2[i];
@@ -96,7 +94,7 @@ export function bytesXor(bytes1: number[] | Uint8Array, bytes2: number[] | Uint8
   return bytes;
 }
 
-export function bytesToArrayBuffer(b: number[]) {
+/* export function bytesToArrayBuffer(b: number[]) {
   return (new Uint8Array(b)).buffer;
 }
 
@@ -110,11 +108,11 @@ export function convertToArrayBuffer(bytes: any | ArrayBuffer | Uint8Array) {
     return bytes.buffer;
   }
   return bytesToArrayBuffer(bytes);
-}
+} */
 
 export function convertToUint8Array(bytes: Uint8Array | ArrayBuffer | number[] | string): Uint8Array {
-  if((bytes as Uint8Array).buffer !== undefined) {
-    return bytes as Uint8Array;
+  if(bytes instanceof Uint8Array) {
+    return bytes;
   } else if(typeof(bytes) === 'string') {
     return new TextEncoder().encode(bytes);
   }
@@ -122,7 +120,7 @@ export function convertToUint8Array(bytes: Uint8Array | ArrayBuffer | number[] |
   return new Uint8Array(bytes);
 }
 
-export function bytesFromArrayBuffer(buffer: ArrayBuffer) {
+/* export function bytesFromArrayBuffer(buffer: ArrayBuffer) {
   const len = buffer.byteLength;
   const byteView = new Uint8Array(buffer);
   const bytes: number[] = [];
@@ -142,36 +140,33 @@ export function bufferConcat(buffer1: any, buffer2: any) {
   tmp.set(buffer2 instanceof ArrayBuffer ? new Uint8Array(buffer2) : buffer2, l1);
 
   return tmp.buffer;
-}
+} */
 
-export function bufferConcats(...args: any[]) {
-  let length = 0;
-  args.forEach(b => length += b.byteLength || b.length);
+export function bufferConcats(...args: (ArrayBuffer | Uint8Array | number[])[]) {
+  const length = args.reduce((acc, v) => acc + ((v as ArrayBuffer).byteLength || (v as Uint8Array).length), 0);
 
   const tmp = new Uint8Array(length);
   
   let lastLength = 0;
   args.forEach(b => {
     tmp.set(b instanceof ArrayBuffer ? new Uint8Array(b) : b, lastLength);
-    lastLength += b.byteLength || b.length;
+    lastLength += (b as ArrayBuffer).byteLength || (b as Uint8Array).length;
   });
 
   return tmp/* .buffer */;
 }
 
 export function bytesFromWordss(input: Uint32Array) {
-  const o: number[] = [];
+  const o = new Uint8Array(input.byteLength);
   for(let i = 0, length = input.length * 4; i < length; ++i) {
-    o.push((input[i >>> 2] >>> (24 - (i % 4) * 8)) & 0xff);
+    o[i] = ((input[i >>> 2] >>> (24 - (i % 4) * 8)) & 0xff);
   }
 
   return o;
 }
 
-export function bytesToWordss(input: ArrayBuffer | Uint8Array) {
-  let bytes: Uint8Array;
-  if(input instanceof ArrayBuffer) bytes = new Uint8Array(input);
-  else bytes = input;
+export function bytesToWordss(input: Parameters<typeof convertToUint8Array>[0]) {
+  const bytes = convertToUint8Array(input);
 
   const words: number[] = [];
   for(let i = 0, len = bytes.length; i < len; ++i) {

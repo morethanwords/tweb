@@ -73,9 +73,9 @@ export default class AppNotificationsTab extends SliderSuperTabEventable {
           inputSettings.show_previews = showPreviews;
 
           appNotificationsManager.updateNotifySettings(inputNotifyPeer, inputSettings);
-        }, true);
+        }, {once: true});
 
-        this.listenerSetter.add(rootScope, 'notify_settings', (update: Update.updateNotifySettings) => {
+        this.listenerSetter.add(rootScope)('notify_settings', (update: Update.updateNotifySettings) => {
           const inputKey = convertKeyToInputKey(update.peer._) as any;
           if(options.inputKey === inputKey) {
             notifySettings = update.notify_settings;
@@ -134,7 +134,7 @@ export default class AppNotificationsTab extends SliderSuperTabEventable {
           if(enabled !== _enabled) {
             appNotificationsManager.setContactSignUpNotification(!_enabled);
           }
-        }, true);
+        }, {once: true});
       });
     }
   }

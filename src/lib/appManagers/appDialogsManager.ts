@@ -103,6 +103,8 @@ export class AppDialogsManager {
 
   private lastActiveElements: Set<HTMLElement> = new Set();
 
+  private offsets: {top: number, bottom: number} = {top: 0, bottom: 0};
+
   constructor() {
     this.chatsPreloader = putPreloader(null, true);
 
@@ -435,7 +437,7 @@ export class AppDialogsManager {
     return this.loadDialogs();
   }
 
-  private getOffset(side: 'top' | 'bottom'): {index: number, pos: number} {
+  /* private getOffset(side: 'top' | 'bottom'): {index: number, pos: number} {
     if(!this.scroll.loadedAll[side]) {
       const element = (side === 'top' ? this.chatList.firstElementChild : this.chatList.lastElementChild) as HTMLElement;
       if(element) {
@@ -446,13 +448,16 @@ export class AppDialogsManager {
     }
 
     return {index: 0, pos: -1};
+  } */
+  private getOffsetIndex(side: 'top' | 'bottom') {
+    return {index: this.scroll.loadedAll[side] ? 0 : this.offsets[side]};
   }
 
   private isDialogMustBeInViewport(dialog: Dialog) {
     if(dialog.migratedTo !== undefined) return false;
     //return true;
-    const topOffset = this.getOffset('top');
-    const bottomOffset = this.getOffset('bottom');
+    const topOffset = this.getOffsetIndex('top');
+    const bottomOffset = this.getOffsetIndex('bottom');
     
     if(!topOffset.index && !bottomOffset.index) {
       return true;
@@ -523,6 +528,7 @@ export class AppDialogsManager {
     this.scroll = this.scrollables[this.filterId];
     this.scroll.loadedAll.top = true;
     this.scroll.loadedAll.bottom = false;
+    this.offsets.top = this.offsets.bottom = 0;
     this.loadDialogsPromise = undefined;
     this.chatList = this.chatLists[this.filterId];
     this.loadDialogs();
@@ -665,22 +671,16 @@ export class AppDialogsManager {
       let loadCount = 30/*this.chatsLoadCount */;
       let offsetIndex = 0;
       
-      if(side === 'top') {
-        const element = this.chatList.firstElementChild as HTMLElement;
-        if(element) {
-          const peerId = +element.dataset.peerId;
+      const {index: currentOffsetIndex} = this.getOffsetIndex(side);
+      if(currentOffsetIndex) {
+        if(side === 'top') {
           const storage = appMessagesManager.dialogsStorage.getFolder(filterId);
-          const index = storage.findIndex(dialog => dialog.peerId === peerId);
+          const index = storage.findIndex(dialog => dialog.index <= currentOffsetIndex);
           const needIndex = Math.max(0, index - loadCount);
           loadCount = index - needIndex;
           offsetIndex = storage[needIndex].index + 1;
-        }
-      } else {
-        const element = this.chatList.lastElementChild as HTMLElement;
-        if(element) {
-          const peerId = +element.dataset.peerId;
-          const dialog = appMessagesManager.getDialogOnly(peerId);
-          offsetIndex = dialog.index;
+        } else {
+          offsetIndex = currentOffsetIndex;
         }
       }
       
@@ -726,6 +726,8 @@ export class AppDialogsManager {
             });
           });
         }
+
+        this.offsets[side] = result.dialogs[side === 'top' ? 0 : result.dialogs.length - 1].index;
 
         this.onListLengthChange();
   
@@ -797,6 +799,11 @@ export class AppDialogsManager {
     if(this.sliceTimeout) clearTimeout(this.sliceTimeout);
     this.sliceTimeout = window.setTimeout(() => {
       this.sliceTimeout = undefined;
+      
+      if(this.reorderDialogsTimeout) {
+        this.onChatsRegularScroll();
+        return;
+      }
 
       if(!this.chatList.childElementCount) {
         return;
@@ -861,11 +868,11 @@ export class AppDialogsManager {
       } */
 
       if(sliceFromStart.length) {
-        this.scroll.loadedAll['top'] = false;
+        this.scroll.loadedAll.top = false;
       }
 
       if(sliceFromEnd.length) {
-        this.scroll.loadedAll['bottom'] = false;
+        this.scroll.loadedAll.bottom = false;
       }
 
       sliced.push(...sliceFromStart);
@@ -875,6 +882,8 @@ export class AppDialogsManager {
         const peerId = +el.dataset.peerId;
         this.deleteDialog(peerId);
       });
+
+      this.setOffsets();
 
       //this.log('[slicer] elements', firstElement, lastElement, rect, sliced, sliceFromStart.length, sliceFromEnd.length);
 
@@ -889,6 +898,18 @@ export class AppDialogsManager {
       //this.scroll.scrollIntoView(firstElement, false);
     }, 200);
   };
+
+  private setOffsets() {
+    const firstDialog = this.getDialogFromElement(this.chatList.firstElementChild as HTMLElement);
+    const lastDialog = this.getDialogFromElement(this.chatList.lastElementChild as HTMLElement);
+
+    this.offsets.top = firstDialog.index;
+    this.offsets.bottom = lastDialog.index;
+  }
+
+  private getDialogFromElement(element: HTMLElement) {
+    return appMessagesManager.getDialogOnly(+element.dataset.peerId);
+  }
 
   public onChatsScrollTop = () => {
     this.onChatsScroll('top');
@@ -982,11 +1003,14 @@ export class AppDialogsManager {
     
     this.reorderDialogsTimeout = window.requestAnimationFrame(() => {
       this.reorderDialogsTimeout = 0;
-      const offset = Math.max(0, this.getOffset('top').pos);
-  
       const dialogs = appMessagesManager.dialogsStorage.getFolder(this.filterId);
+
       const currentOrder = (Array.from(this.chatList.children) as HTMLElement[]).map(el => +el.dataset.peerId);
-  
+
+      const {index} = this.getOffsetIndex('top');
+      const pos = dialogs.findIndex(dialog => dialog.index <= index);
+
+      const offset = Math.max(0, pos);
       dialogs.forEach((dialog, index) => {
         const dom = this.getDialogDom(dialog.peerId);
         if(!dom) {

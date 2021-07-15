@@ -53,8 +53,6 @@ export interface ToggleStorageTask extends WorkerTaskVoidTemplate {
 
 export class ApiManagerProxy extends CryptoWorkerMethods {
   public worker: /* Window */Worker;
-  public postMessage: (...args: any[]) => void;
-  //public postSWMessage: (...args: any[]) => void = () => {};
   private afterMessageIdTemp = 0;
 
   private taskId = 0;
@@ -98,6 +96,8 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
   private taskListenersSW: {[taskType: string]: (task: any) => void} = {};
 
   public onServiceWorkerFail: () => void;
+
+  private postMessagesWaiting: any[][] = [];
 
   constructor() {
     super();
@@ -292,6 +292,10 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
     });
   }
 
+  public postMessage(...args: any[]) {
+    this.postMessagesWaiting.push(args);
+  }
+
   public postSWMessage(message: any) {
     if(navigator.serviceWorker.controller) {
       navigator.serviceWorker.controller.postMessage(message);
@@ -304,6 +308,9 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
       this.log('set webWorker');
 
       this.postMessage = this.worker.postMessage.bind(this.worker);
+
+      this.postMessagesWaiting.forEach(args => this.postMessage(...args));
+      this.postMessagesWaiting.length = 0;
 
       const isWebpSupported = webpWorkerController.isWebpSupported();
       this.log('WebP supported:', isWebpSupported);

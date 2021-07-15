@@ -110,7 +110,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
         }
       };
 
-      this.listenerSetter.add(rootScope, 'peer_block', () => {
+      this.listenerSetter.add(rootScope)('peer_block', () => {
         /* const {blocked, peerId} = update;
         if(!blocked) blockedPeerIds.findAndSplice(p => p === peerId);
         else blockedPeerIds.unshift(peerId);
@@ -261,7 +261,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
           apiManager.invokeApi('account.setContentSettings', {
             sensitive_enabled: _enabled
           });
-        }, true);
+        }, {once: true});
       }));
 
       this.scrollable.append(section.container);
@@ -290,7 +290,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
       };
 
       const deleteButton = Button('btn-primary btn-transparent', {icon: 'delete', text: 'PrivacyDeleteCloudDrafts'});
-      this.listenerSetter.add(deleteButton, 'click', onDeleteClick);
+      this.listenerSetter.add(deleteButton)('click', onDeleteClick);
       section.content.append(deleteButton);
 
       /* promises.push(apiManager.invokeApi('messages.getAllDrafts').then(drafts => {

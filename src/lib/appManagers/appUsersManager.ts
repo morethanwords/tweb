@@ -11,11 +11,12 @@
 
 import { formatPhoneNumber } from "../../components/misc";
 import { MOUNT_CLASS_TO } from "../../config/debug";
+import { filterUnique } from "../../helpers/array";
 import cleanSearchText from "../../helpers/cleanSearchText";
 import cleanUsername from "../../helpers/cleanUsername";
 import { tsNow } from "../../helpers/date";
 import { safeReplaceObject, isObject } from "../../helpers/object";
-import { InputUser, Update, User as MTUser, UserProfilePhoto, UserStatus } from "../../layer";
+import { InputUser, User as MTUser, UserProfilePhoto, UserStatus } from "../../layer";
 import I18n, { i18n, LangPackKey } from "../langPack";
 //import apiManager from '../mtproto/apiManager';
 import apiManager from '../mtproto/mtprotoworker';
@@ -299,7 +300,7 @@ export class AppUsersManager {
   }
 
   public toggleBlock(peerId: number, block: boolean) {
-    return apiManager.invokeApi(block ? 'contacts.block' : 'contacts.unblock', {
+    return apiManager.invokeApiSingle(block ? 'contacts.block' : 'contacts.unblock', {
       id: appPeersManager.getInputPeerById(peerId)
     }).then(value => {
       if(value) {
@@ -553,7 +554,7 @@ export class AppUsersManager {
   }
 
   public isContact(id: number) {
-    return this.contactsList.has(id);
+    return this.contactsList.has(id) || (this.users[id] && this.users[id].pFlags.contact);
   }
   
   public isRegularUser(id: number) {
@@ -566,7 +567,7 @@ export class AppUsersManager {
   }
 
   public hasUser(id: number, allowMin?: boolean) {
-    var user = this.users[id];
+    const user = this.users[id];
     return isObject(user) && (allowMin || !user.pFlags.min);
   }
 
@@ -760,7 +761,7 @@ export class AppUsersManager {
   }
 
   public getBlocked(offset = 0, limit = 0) {
-    return apiManager.invokeApi('contacts.getBlocked', {offset, limit}).then(contactsBlocked => {
+    return apiManager.invokeApiSingle('contacts.getBlocked', {offset, limit}).then(contactsBlocked => {
       this.saveApiUsers(contactsBlocked.users);
       appChatsManager.saveApiChats(contactsBlocked.chats);
       const count = contactsBlocked._ === 'contacts.blocked' ? contactsBlocked.users.length + contactsBlocked.chats.length : contactsBlocked.count;
@@ -796,7 +797,7 @@ export class AppUsersManager {
     });
   } */
   public searchContacts(query: string, limit = 20) {
-    return apiManager.invokeApi('contacts.search', {
+    return apiManager.invokeApiSingle('contacts.search', {
       q: query,
       limit
     }).then(peers => {
@@ -804,7 +805,7 @@ export class AppUsersManager {
       appChatsManager.saveApiChats(peers.chats);
 
       const out = {
-        my_results: [...new Set(peers.my_results.map(p => appPeersManager.getPeerId(p)))], // ! contacts.search returns duplicates in my_results
+        my_results: filterUnique(peers.my_results.map(p => appPeersManager.getPeerId(p))), // ! contacts.search returns duplicates in my_results
         results: peers.results.map(p => appPeersManager.getPeerId(p))
       };
 

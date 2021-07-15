@@ -30,7 +30,7 @@ export class UsernameInputField extends InputField {
 
     this.checkUsernameDebounced = debounce(this.checkUsername.bind(this), 150, false, true);
 
-    options.listenerSetter.add(this.input, 'input', () => {
+    options.listenerSetter.add(this.input)('input', () => {
       const value = this.getValue();
 
       //console.log('userNameInput:', value);

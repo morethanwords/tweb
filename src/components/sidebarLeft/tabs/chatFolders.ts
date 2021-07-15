@@ -170,7 +170,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
       onFiltersContainerUpdate();
     });
 
-    this.listenerSetter.add(rootScope, 'filter_update', (e) => {
+    this.listenerSetter.add(rootScope)('filter_update', (e) => {
       const filter = e;
       if(this.filtersRendered.hasOwnProperty(filter.id)) {
         this.renderFolder(filter, null, this.filtersRendered[filter.id]);
@@ -183,7 +183,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
       this.getSuggestedFilters();
     });
 
-    this.listenerSetter.add(rootScope, 'filter_delete', (e) => {
+    this.listenerSetter.add(rootScope)('filter_delete', (e) => {
       const filter = e;
       if(this.filtersRendered.hasOwnProperty(filter.id)) {
         /* for(const suggested of this.suggestedFilters) {
@@ -200,7 +200,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
       onFiltersContainerUpdate();
     });
 
-    this.listenerSetter.add(rootScope, 'filter_order', (e: BroadcastEvents['filter_order']) => {
+    this.listenerSetter.add(rootScope)('filter_order', (e: BroadcastEvents['filter_order']) => {
       const order = e;
       order.forEach((filterId, idx) => {
         const container = this.filtersRendered[filterId].container;
@@ -208,9 +208,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
       });
     });
 
-    this.getSuggestedFilters();
-
-    return this.loadAnimationPromise = lottieLoader.loadAnimationFromURL({
+    this.loadAnimationPromise = lottieLoader.loadAnimationFromURL({
       container: this.stickerContainer,
       loop: false,
       autoplay: false,
@@ -221,6 +219,13 @@ export default class AppChatFoldersTab extends SliderSuperTab {
 
       return lottieLoader.waitForFirstFrame(player);
     });
+
+    this.getSuggestedFilters()
+
+    /* return Promise.all([
+      this.loadAnimationPromise
+    ]); */
+    return this.loadAnimationPromise;
   }
 
   onOpenAfterTimeout() {
@@ -231,7 +236,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
   }
 
   private getSuggestedFilters() {
-    apiManager.invokeApi('messages.getSuggestedDialogFilters').then(suggestedFilters => {
+    return apiManager.invokeApi('messages.getSuggestedDialogFilters').then(suggestedFilters => {
       this.suggestedSection.container.style.display = suggestedFilters.length ? '' : 'none';
       Array.from(this.suggestedSection.content.children).slice(1).forEach(el => el.remove());
 

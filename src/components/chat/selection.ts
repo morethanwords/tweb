@@ -50,14 +50,14 @@ export default class ChatSelection {
     this.listenerSetter = bubbles.listenerSetter;
 
     if(isTouchSupported) {
-      this.listenerSetter.add(bubblesContainer, 'touchend', (e) => {
+      this.listenerSetter.add(bubblesContainer)('touchend', (e) => {
         if(!this.isSelecting) return;
         this.selectedText = getSelectedText();
       });
       return;
     }
 
-    this.listenerSetter.add(bubblesContainer, 'mousedown', (e) => {
+    this.listenerSetter.add(bubblesContainer)('mousedown', (e) => {
       //console.log('selection mousedown', e);
       const bubble = findUpClassName(e.target, 'bubble');
       // LEFT BUTTON
@@ -162,8 +162,8 @@ export default class ChatSelection {
       };
 
       const documentListenerOptions = {once: true};
-      this.listenerSetter.add(bubblesContainer, 'mousemove', onMouseMove);
-      this.listenerSetter.add(document, 'mouseup', onMouseUp, documentListenerOptions);
+      this.listenerSetter.add(bubblesContainer)('mousemove', onMouseMove);
+      this.listenerSetter.add(document)('mouseup', onMouseUp, documentListenerOptions);
     });
   }
 
@@ -355,7 +355,7 @@ export default class ChatSelection {
         this.selectionContainer.classList.add('selection-container');
 
         const btnCancel = ButtonIcon('close', {noRipple: true});
-        this.listenerSetter.add(btnCancel, 'click', this.cancelSelection, {once: true});
+        this.listenerSetter.add(btnCancel)('click', this.cancelSelection, {once: true});
 
         this.selectionCountEl = document.createElement('div');
         this.selectionCountEl.classList.add('selection-container-count');
@@ -363,7 +363,7 @@ export default class ChatSelection {
         if(this.chat.type === 'scheduled') {
           this.selectionSendNowBtn = Button('btn-primary btn-transparent btn-short text-bold selection-container-send', {icon: 'send2'});
           this.selectionSendNowBtn.append(i18n('MessageScheduleSend'));
-          this.listenerSetter.add(this.selectionSendNowBtn, 'click', () => {
+          this.listenerSetter.add(this.selectionSendNowBtn)('click', () => {
             new PopupSendNow(this.bubbles.peerId, [...this.selectedMids], () => {
               this.cancelSelection();
             })
@@ -371,7 +371,7 @@ export default class ChatSelection {
         } else {
           this.selectionForwardBtn = Button('btn-primary btn-transparent text-bold selection-container-forward', {icon: 'forward'});
           this.selectionForwardBtn.append(i18n('Forward'));
-          this.listenerSetter.add(this.selectionForwardBtn, 'click', () => {
+          this.listenerSetter.add(this.selectionForwardBtn)('click', () => {
             new PopupForward(this.bubbles.peerId, [...this.selectedMids], () => {
               this.cancelSelection();
             });
@@ -380,7 +380,7 @@ export default class ChatSelection {
 
         this.selectionDeleteBtn = Button('btn-primary btn-transparent danger text-bold selection-container-delete', {icon: 'delete'});
         this.selectionDeleteBtn.append(i18n('Delete'));
-        this.listenerSetter.add(this.selectionDeleteBtn, 'click', () => {
+        this.listenerSetter.add(this.selectionDeleteBtn)('click', () => {
           new PopupDeleteMessages(this.bubbles.peerId, [...this.selectedMids], this.chat.type, () => {
             this.cancelSelection();
           });

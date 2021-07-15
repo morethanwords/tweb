@@ -29,7 +29,7 @@ import I18n, { i18n, LangPackKey } from "../../../lib/langPack";
 import { SettingSection } from "../../sidebarLeft";
 import Row from "../../row";
 import { copyTextToClipboard } from "../../../helpers/clipboard";
-import { toast } from "../../toast";
+import { toast, toastNew } from "../../toast";
 import { fastRaf } from "../../../helpers/schedulers";
 import { safeAssign } from "../../../helpers/object";
 import { forEachReverse } from "../../../helpers/array";
@@ -39,7 +39,7 @@ import SwipeHandler from "../../swipeHandler";
 import { MOUNT_CLASS_TO } from "../../../config/debug";
 import AppAddMembersTab from "../../sidebarLeft/tabs/addMembers";
 import PopupPickUser from "../../popups/pickUser";
-import PopupPeer from "../../popups/peer";
+import PopupPeer, { PopupPeerButtonCallbackCheckboxes, PopupPeerCheckboxOptions } from "../../popups/peer";
 import Scrollable from "../../scrollable";
 import { isTouchSupported } from "../../../helpers/touchSupport";
 import { isFirefox } from "../../../helpers/userAgent";
@@ -949,19 +949,51 @@ export default class AppSharedMediaTab extends SliderSuperTab {
       const id = -this.peerId;
       const isChannel = appChatsManager.isChannel(id);
 
-      const showConfirmation = (peerIds: number[], callback: () => void) => {
-        let titleLangKey: LangPackKey = 'GroupAddMembers', descriptionLangKey: LangPackKey, descriptionLangArgs: any[];
+      const showConfirmation = (peerIds: number[], callback: (checked: PopupPeerButtonCallbackCheckboxes) => void) => {
+        let titleLangKey: LangPackKey, titleLangArgs: any[],
+          descriptionLangKey: LangPackKey, descriptionLangArgs: any[],
+          checkboxes: PopupPeerCheckboxOptions[];
 
         if(peerIds.length > 1) {
-          descriptionLangKey = 'PeerInfo.Confirm.AddMembers1';
-          descriptionLangArgs = [peerIds.length];
+          titleLangKey = 'AddMembersAlertTitle';
+          titleLangArgs = [i18n('Members', [peerIds.length])];
+          descriptionLangKey = 'AddMembersAlertCountText';
+          descriptionLangArgs = peerIds.map(peerId => {
+            const b = document.createElement('b');
+            b.append(new PeerTitle({peerId}).element);
+            return b;
+          });
+
+          if(!isChannel) {
+            checkboxes = [{
+              text: 'AddMembersForwardMessages',
+              checked: true
+            }];
+          }
         } else {
-          descriptionLangKey = 'PeerInfo.Confirm.AddMember';
-          descriptionLangArgs = [new PeerTitle({
-            peerId: peerIds[0],
-            onlyFirstName: true
-          }).element];
+          titleLangKey = 'AddOneMemberAlertTitle';
+          descriptionLangKey = 'AddMembersAlertNamesText';
+          const b = document.createElement('b');
+          b.append(new PeerTitle({
+            peerId: peerIds[0]
+          }).element);
+          descriptionLangArgs = [b];
+
+          if(!isChannel) {
+            checkboxes = [{
+              text: 'AddOneMemberForwardMessages',
+              textArgs: [new PeerTitle({
+                peerId: peerIds[0],
+                onlyFirstName: true
+              }).element],
+              checked: true
+            }];
+          }
         }
+
+        descriptionLangArgs.push(new PeerTitle({
+          peerId: -id
+        }).element);
 
         new PopupPeer('popup-add-members', {
           peerId: -id,
@@ -970,11 +1002,16 @@ export default class AppSharedMediaTab extends SliderSuperTab {
           descriptionLangArgs,
           buttons: [{
             langKey: 'Add',
-            callback: () => {
-              callback();
-            }
-          }]
+            callback
+          }],
+          checkboxes
         }).show();
+      };
+
+      const onError = (err: any) => {
+        if(err.type === 'USER_PRIVACY_RESTRICTED') {
+          toastNew({langPackKey: 'InviteToGroupError'});
+        }
       };
       
       if(isChannel) {
@@ -985,7 +1022,9 @@ export default class AppSharedMediaTab extends SliderSuperTab {
           skippable: false,
           takeOut: (peerIds) => {
             showConfirmation(peerIds, () => {
-              tab.attachToPromise(appChatsManager.inviteToChannel(id, peerIds));
+              const promise = appChatsManager.inviteToChannel(id, peerIds);
+              promise.catch(onError);
+              tab.attachToPromise(promise);
             });
 
             return false;
@@ -999,8 +1038,9 @@ export default class AppSharedMediaTab extends SliderSuperTab {
           placeholder: 'Search',
           onSelect: (peerId) => {
             setTimeout(() => {
-              showConfirmation([peerId], () => {
-                appChatsManager.addChatUser(id, peerId);
+              showConfirmation([peerId], (checked) => {
+                appChatsManager.addChatUser(id, peerId, checked.size ? undefined : 0)
+                .catch(onError);
               });
             }, 0);
           },

@@ -188,10 +188,10 @@ export default class AppSelectPeers {
           this.cachedContacts = null;
         }
         
-        //if(this.peerType.includes('dialogs')) {
+        if(this.peerType.includes('dialogs')) {
           this.folderId = 0;
           this.offsetIndex = 0;
-        //}
+        }
 
         for(let i in this.tempIds) {
           // @ts-ignore
@@ -335,9 +335,9 @@ export default class AppSelectPeers {
       this.loadedWhat.contacts = true;
 
       // need to load non-contacts
-      if(!this.peerType.includes('dialogs')) {
+      /* if(!this.peerType.includes('dialogs')) {
         return this.getMoreDialogs();
-      }
+      } */
     }
   }
 
@@ -376,7 +376,7 @@ export default class AppSelectPeers {
     const get = () => {
       const promises: Promise<any>[] = [];
 
-      if(!loadedAllDialogs && (this.peerType.includes('dialogs') || this.peerType.includes('contacts'))) {
+      if(!loadedAllDialogs && (this.peerType.includes('dialogs')/*  || this.peerType.includes('contacts') */)) {
         if(!loadAllDialogsPromise) {
           loadAllDialogsPromise = appMessagesManager.getConversationsAll()
           .then(() => {
@@ -389,7 +389,7 @@ export default class AppSelectPeers {
         promises.push(loadAllDialogsPromise);
       }
   
-      if((this.peerType.includes('dialogs') || this.loadedWhat.contacts) && !this.loadedWhat.archived) { // to load non-contacts
+      if((this.peerType.includes('dialogs')/*  || this.loadedWhat.contacts */) && !this.loadedWhat.archived) { // to load non-contacts
         promises.push(this.getMoreDialogs());
   
         if(!this.loadedWhat.archived) {

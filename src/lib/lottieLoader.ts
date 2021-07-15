@@ -442,7 +442,7 @@ export class RLottiePlayer extends EventListenerBase<{
       };
 
       this.addEventListener('enterFrame', this.frameListener);
-    }, true);
+    }, {once: true});
   }
 }
 
@@ -606,7 +606,7 @@ class LottieLoader {
             resolve();
             this.loaded = true;
           }
-        });
+        }, {once: true});
       }
     });
   }
@@ -678,12 +678,12 @@ class LottieLoader {
     
     return fetch(url)
     .then(res => res.arrayBuffer())
-    .then(data => apiManager.gzipUncompress<string>(data, true))
+    .then(data => apiManager.invokeCrypto('gzipUncompress', data, true))
     /* .then(str => {
       return new Promise<string>((resolve) => setTimeout(() => resolve(str), 2e3));
     }) */
     .then(str => {
-      return this.loadAnimationWorker(Object.assign(params, {animationData: str/* JSON.parse(str) */, needUpscale: true}));
+      return this.loadAnimationWorker(Object.assign(params, {animationData: str as string/* JSON.parse(str) */, needUpscale: true}));
     });
   }
 
@@ -695,7 +695,7 @@ class LottieLoader {
         }, true);
       }) */
       new Promise<void>((resolve) => {
-        player.addEventListener('firstFrame', resolve, true);
+        player.addEventListener('firstFrame', resolve, {once: true});
       }),
       pause(2500)
     ]);

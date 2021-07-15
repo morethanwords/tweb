@@ -23,10 +23,11 @@ import {str2bigInt, bpe, equalsInt, greater,
 import { addPadding } from '../mtproto/bin_utils';
 import { bytesToWordss, bytesFromWordss, bytesToHex, bytesFromHex, convertToUint8Array } from '../../helpers/bytes';
 import { nextRandomInt } from '../../helpers/random';
+import type { RSAPublicKeyHex } from '../mtproto/rsaKeysManager';
 
 const subtle = typeof(window) !== 'undefined' && 'crypto' in window ? window.crypto.subtle : self.crypto.subtle;
 
-export function longToBytes(sLong: string): Array<number> {
+export function longToBytes(sLong: string) {
   /* let perf = performance.now();
   for(let i = 0; i < 1000000; ++i) {
     bytesFromWords({words: longToInts(sLong), sigBytes: 8}).reverse();
@@ -41,13 +42,14 @@ export function longToBytes(sLong: string): Array<number> {
   }
   console.log('longToBytes LEEMON', sLong, performance.now() - perf); */
 
-  const bytes = addPadding(bigInt2bytes(str2bigInt(sLong, 10), false), 8, true, false, false);
+  const bigIntBytes = new Uint8Array(bigInt2bytes(str2bigInt(sLong, 10), false));
+  const bytes = addPadding(bigIntBytes, 8, true, false, false);
   //console.log('longToBytes', bytes, b);
   
   return bytes;
 }
 
-export function sha1HashSync(bytes: Uint8Array | ArrayBuffer | string) {
+export function sha1HashSync(bytes: Parameters<typeof convertToUint8Array>[0]) {
   return subtle.digest('SHA-1', convertToUint8Array(bytes)).then(b => {
     return new Uint8Array(b);
   });
@@ -66,7 +68,7 @@ export function sha1HashSync(bytes: Uint8Array | ArrayBuffer | string) {
   return new Uint8Array(hashBytes); */
 }
 
-export function sha256HashSync(bytes: Uint8Array | ArrayBuffer | string) {
+export function sha256HashSync(bytes: Parameters<typeof convertToUint8Array>[0]) {
   return subtle.digest('SHA-256', convertToUint8Array(bytes)).then(b => {
     //console.log('legacy', performance.now() - perfS);
     return new Uint8Array(b);
@@ -86,7 +88,7 @@ export function sha256HashSync(bytes: Uint8Array | ArrayBuffer | string) {
   return bytesFromWordss(hash); */
 }
 
-export function aesEncryptSync(bytes: ArrayBuffer, keyBytes: ArrayBuffer, ivBytes: ArrayBuffer) {
+export function aesEncryptSync(bytes: Uint8Array, keyBytes: Uint8Array, ivBytes: Uint8Array) {
   //console.log(dT(), 'AES encrypt start', bytes, keyBytes, ivBytes);
   // console.log('aes before padding bytes:', bytesToHex(bytes));
   bytes = addPadding(bytes);
@@ -110,66 +112,60 @@ export function aesDecryptSync(bytes: Uint8Array, keyBytes: Uint8Array, ivBytes:
   return bytesFromWordss(decryptedBytes);
 }
 
-export function rsaEncrypt(publicKey: {modulus: string, exponent: string}, bytes: any): number[] {
+export function rsaEncrypt(bytes: Uint8Array, publicKey: RSAPublicKeyHex) {
   //console.log(dT(), 'RSA encrypt start', publicKey, bytes);
 
-  bytes = addPadding(bytes, 255);
+  const N = str2bigInt(publicKey.modulus, 16);
+  const E = str2bigInt(publicKey.exponent, 16);
+  const X = str2bigInt(bytesToHex(bytes), 16);
 
-  var N = str2bigInt(publicKey.modulus, 16);
-  var E = str2bigInt(publicKey.exponent, 16);
-  var X = str2bigInt(bytesToHex(bytes), 16);
-
-  var encryptedBigInt = powMod(X, E, N);
-  var encryptedBytes = bytesFromHex(bigInt2str(encryptedBigInt, 16));
+  const encryptedBigInt = powMod(X, E, N);
+  const encryptedBytes = bytesFromHex(bigInt2str(encryptedBigInt, 16));
 
   //console.log(dT(), 'RSA encrypt finish');
 
   return encryptedBytes;
 }
 
-export async function hash_pbkdf2(/* hasher: 'string',  */buffer: any, salt: any, iterations: number) {
-  // @ts-ignore
-  let importKey = await subtle.importKey(
-    "raw", //only "raw" is allowed
-    buffer, //your password
-    {
-      name: "PBKDF2",
-    },
-    false, //whether the key is extractable (i.e. can be used in exportKey)
-    ["deriveKey", "deriveBits"] //can be any combination of "deriveKey" and "deriveBits"
+export async function hash_pbkdf2(buffer: Parameters<SubtleCrypto['importKey']>[1], salt: HkdfParams['salt'], iterations: number) {
+  const importKey = await subtle.importKey(
+    'raw',
+    buffer,
+    {name: 'PBKDF2'},
+    false,
+    [/* 'deriveKey',  */'deriveBits']
   );
   
-  /* let deriveKey =  */await subtle.deriveKey(
+  /* await subtle.deriveKey(
     {
-      "name": "PBKDF2",
-      salt: salt,
-      iterations: iterations,
-      hash: {name: "SHA-512"}, //can be "SHA-1", "SHA-256", "SHA-384", or "SHA-512"
+      name: 'PBKDF2',
+      salt,
+      iterations,
+      hash: {name: 'SHA-512'}
     },
-    importKey, //your key from generateKey or importKey
-    { //the key type you want to create based on the derived bits
-      name: "AES-CTR", //can be any AES algorithm ("AES-CTR", "AES-CBC", "AES-CMAC", "AES-GCM", "AES-CFB", "AES-KW", "ECDH", "DH", or "HMAC")
-      //the generateKey parameters for that type of algorithm
-      length: 256, //can be  128, 192, or 256
+    importKey,
+    {
+      name: 'AES-CTR',
+      length: 256
     },
-    false, //whether the derived key is extractable (i.e. can be used in exportKey)
-    ["encrypt", "decrypt"] //limited to the options in that algorithm's importKey
-  );
+    false,
+    ['encrypt', 'decrypt']
+  ); */
 
   let bits = subtle.deriveBits({
-      "name": "PBKDF2",
-      salt: salt,
-      iterations: iterations,
-      hash: {name: "SHA-512"}, //can be "SHA-1", "SHA-256", "SHA-384", or "SHA-512"
+      name: 'PBKDF2',
+      salt,
+      iterations,
+      hash: {name: 'SHA-512'},
     },
-    importKey, //your key from generateKey or importKey
-    512 //the number of bits you want to derive
+    importKey,
+    512
   );
 
-  return bits;
+  return bits.then(buffer => new Uint8Array(buffer));
 }
 
-export function pqPrimeFactorization(pqBytes: number[]) {
+export function pqPrimeFactorization(pqBytes: Uint8Array | number[]) {
   let result: ReturnType<typeof pqPrimeLeemon>;
 
   //console.log('PQ start', pqBytes, bytesToHex(pqBytes));
@@ -178,7 +174,7 @@ export function pqPrimeFactorization(pqBytes: number[]) {
     //console.time('PQ leemon');
     result = pqPrimeLeemon(str2bigInt(bytesToHex(pqBytes), 16, Math.ceil(64 / bpe) + 1));
     //console.timeEnd('PQ leemon');
-  } catch (e) {
+  } catch(e) {
     console.error('Pq leemon Exception', e);
   }
 
@@ -187,7 +183,7 @@ export function pqPrimeFactorization(pqBytes: number[]) {
   return result;
 }
 
-export function pqPrimeLeemon(what: any) {
+export function pqPrimeLeemon(what: number[]): [Uint8Array, Uint8Array, number] {
   var minBits = 64;
   var minLen = Math.ceil(minBits / bpe) + 1;
   var it = 0;
@@ -262,15 +258,15 @@ export function pqPrimeLeemon(what: any) {
 
   // console.log(dT(), 'done', bigInt2str(what, 10), bigInt2str(P, 10), bigInt2str(Q, 10))
 
-  return [bigInt2bytes(P), bigInt2bytes(Q), it];
+  return [new Uint8Array(bigInt2bytes(P)), new Uint8Array(bigInt2bytes(Q)), it];
 }
 
 export function bytesModPow(x: number[] | Uint8Array, y: number[] | Uint8Array, m: number[] | Uint8Array) {
   try {
-    var xBigInt = str2bigInt(bytesToHex(x), 16);
-    var yBigInt = str2bigInt(bytesToHex(y), 16);
-    var mBigInt = str2bigInt(bytesToHex(m), 16);
-    var resBigInt = powMod(xBigInt, yBigInt, mBigInt);
+    const xBigInt = str2bigInt(bytesToHex(x), 16);
+    const yBigInt = str2bigInt(bytesToHex(y), 16);
+    const mBigInt = str2bigInt(bytesToHex(m), 16);
+    const resBigInt = powMod(xBigInt, yBigInt, mBigInt);
 
     return bytesFromHex(bigInt2str(resBigInt, 16));
   } catch(e) {
@@ -280,11 +276,11 @@ export function bytesModPow(x: number[] | Uint8Array, y: number[] | Uint8Array, 
   //return bytesFromBigInt(new BigInteger(x).modPow(new BigInteger(y), new BigInteger(m)), 256);
 }
 
-export function gzipUncompress(bytes: ArrayBuffer, toString: true): string;
-export function gzipUncompress(bytes: ArrayBuffer, toString?: false): Uint8Array;
+//export function gzipUncompress(bytes: ArrayBuffer, toString: true): string;
+//export function gzipUncompress(bytes: ArrayBuffer, toString?: false): Uint8Array;
 export function gzipUncompress(bytes: ArrayBuffer, toString?: boolean): string | Uint8Array {
   //console.log(dT(), 'Gzip uncompress start');
-  var result = pako.inflate(bytes, toString ? {to: 'string'} : undefined);
+  const result = pako.inflate(bytes, toString ? {to: 'string'} : undefined);
   //console.log(dT(), 'Gzip uncompress finish'/* , result */);
   return result;
 }

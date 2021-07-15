@@ -35,9 +35,9 @@ export class NetworkerFactory {
     this.updatesProcessor = callback;
   }
 
-  public getNetworker(dcId: number, authKey: number[], authKeyID: Uint8Array, serverSalt: number[], transport: MTTransport, options: InvokeApiOptions) {
+  public getNetworker(dcId: number, authKey: Uint8Array, authKeyId: Uint8Array, serverSalt: Uint8Array, transport: MTTransport, options: InvokeApiOptions) {
     //console.log('NetworkerFactory: creating new instance of MTPNetworker:', dcId, options);
-    const networker = new MTPNetworker(dcId, authKey, authKeyID, serverSalt, transport, options);
+    const networker = new MTPNetworker(dcId, authKey, authKeyId, serverSalt, transport, options);
     this.networkers.push(networker);
     return networker;
   }

@@ -20,7 +20,7 @@ import { logger, LogTypes } from '../logger';
 import { InvokeApiOptions } from '../../types';
 import { longToBytes } from '../crypto/crypto_utils';
 import MTTransport from './transports/transport';
-import { convertToUint8Array, bufferConcat, bytesCmp, bytesToHex } from '../../helpers/bytes';
+import { convertToUint8Array, bytesCmp, bytesToHex, bufferConcats } from '../../helpers/bytes';
 import { nextRandomInt } from '../../helpers/random';
 import App from '../../config/app';
 import DEBUG from '../../config/debug';
@@ -138,8 +138,8 @@ export default class MTPNetworker {
 
   //private debugRequests: Array<{before: Uint8Array, after: Uint8Array}> = [];
 
-  constructor(public dcId: number, private authKey: number[], private authKeyId: Uint8Array,
-    serverSalt: number[], public transport: MTTransport, options: InvokeApiOptions = {}) {
+  constructor(public dcId: number, private authKey: Uint8Array, private authKeyId: Uint8Array,
+    serverSalt: Uint8Array, public transport: MTTransport, options: InvokeApiOptions = {}) {
     this.authKeyUint8 = convertToUint8Array(this.authKey);
     this.serverSalt = convertToUint8Array(serverSalt);
 
@@ -299,7 +299,7 @@ export default class MTPNetworker {
 
       const invokeWithLayer = Schema.API.methods.find(m => m.method === 'invokeWithLayer');
       if(!invokeWithLayer) throw new Error('no invokeWithLayer!');
-      serializer.storeInt(+invokeWithLayer.id >>> 0, 'invokeWithLayer');
+      serializer.storeInt(+invokeWithLayer.id, 'invokeWithLayer');
 
       // @ts-ignore
       serializer.storeInt(Schema.layer, 'layer');
@@ -307,7 +307,7 @@ export default class MTPNetworker {
       const initConnection = Schema.API.methods.find(m => m.method === 'initConnection');
       if(!initConnection) throw new Error('no initConnection!');
   
-      serializer.storeInt(+initConnection.id >>> 0, 'initConnection');
+      serializer.storeInt(+initConnection.id, 'initConnection');
       serializer.storeInt(0x0, 'flags');
       serializer.storeInt(App.id, 'api_id');
       serializer.storeString(networkerFactory.userAgent || 'Unknown UserAgent', 'device_model');
@@ -332,13 +332,13 @@ export default class MTPNetworker {
     if(options.afterMessageId) {
       if(invokeAfterMsgConstructor === undefined) {
         const m = Schema.API.methods.find(m => m.method === 'invokeAfterMsg');
-        invokeAfterMsgConstructor = m ? +m.id >>> 0 : 0;
+        invokeAfterMsgConstructor = m ? +m.id : 0;
       }
       
       if(invokeAfterMsgConstructor) {
-        //if(this.debug) {
-          //this.log('Api call options.afterMessageId!');
-        //}
+        // if(this.debug) {
+        //   this.log('invokeApi: store invokeAfterMsg');
+        // }
     
         serializer.storeInt(invokeAfterMsgConstructor, 'invokeAfterMsg');
         serializer.storeLong(options.afterMessageId, 'msg_id');
@@ -558,7 +558,7 @@ export default class MTPNetworker {
     const pingMessage = {
       msg_id: timeManager.generateId(),
       seq_no: this.generateSeqNo(true),
-      body: serializer.getBytes()
+      body: serializer.getBytes(true)
     };
 
     this.sendEncryptedRequest(pingMessage).then((result) => {
@@ -797,29 +797,29 @@ export default class MTPNetworker {
   }
 
   // * correct, fully checked
-  private async getMsgKey(dataWithPadding: ArrayBuffer, isOut: boolean) {
+  private async getMsgKey(dataWithPadding: Uint8Array, isOut: boolean) {
     const x = isOut ? 0 : 8;
-    const msgKeyLargePlain = bufferConcat(this.authKeyUint8.subarray(88 + x, 88 + x + 32), dataWithPadding);
+    const msgKeyLargePlain = bufferConcats(this.authKeyUint8.subarray(88 + x, 88 + x + 32), dataWithPadding);
 
-    const msgKeyLarge = await CryptoWorker.sha256Hash(msgKeyLargePlain);
+    const msgKeyLarge = await CryptoWorker.invokeCrypto('sha256-hash', msgKeyLargePlain);
     const msgKey = new Uint8Array(msgKeyLarge).subarray(8, 24);
     return msgKey;
   };
 
   // * correct, fully checked
-  private getAesKeyIv(msgKey: Uint8Array | number[], isOut: boolean): Promise<[Uint8Array, Uint8Array]> {
+  private getAesKeyIv(msgKey: Uint8Array, isOut: boolean): Promise<[Uint8Array, Uint8Array]> {
     const x = isOut ? 0 : 8;
     const sha2aText = new Uint8Array(52);
     const sha2bText = new Uint8Array(52);
-    const promises: Array<Promise<number[]>> = [];
+    const promises: Array<Promise<Uint8Array>> = [];
   
     sha2aText.set(msgKey, 0);
     sha2aText.set(this.authKeyUint8.subarray(x, x + 36), 16);
-    promises.push(CryptoWorker.sha256Hash(sha2aText));
+    promises.push(CryptoWorker.invokeCrypto('sha256-hash', sha2aText));
   
     sha2bText.set(this.authKeyUint8.subarray(40 + x, 40 + x + 36), 0);
     sha2bText.set(msgKey, 36);
-    promises.push(CryptoWorker.sha256Hash(sha2bText));
+    promises.push(CryptoWorker.invokeCrypto('sha256-hash', sha2bText));
 
     return Promise.all(promises).then((results) => {
       const aesKey = new Uint8Array(32);
@@ -954,7 +954,7 @@ export default class MTPNetworker {
       messages.push({
         msg_id: timeManager.generateId(),
         seq_no: this.generateSeqNo(),
-        body: serializer.getBytes()
+        body: serializer.getBytes(true)
       });
     }
     /// #endif
@@ -1012,6 +1012,7 @@ export default class MTPNetworker {
     const innerMessages: string[] = [];
     messages.forEach((message, i) => {
       innerMessages.push(message.msg_id);
+      // this.log('Pushing to container:', message.msg_id);
       container.storeLong(message.msg_id, 'CONTAINER[' + i + '][msg_id]');
       container.storeInt(message.seq_no, 'CONTAINER[' + i + '][seq_no]');
       container.storeInt(message.body.length, 'CONTAINER[' + i + '][bytes]');
@@ -1035,12 +1036,12 @@ export default class MTPNetworker {
     };
   }
 
-  private async getEncryptedMessage(dataWithPadding: ArrayBuffer) {
+  private async getEncryptedMessage(dataWithPadding: Uint8Array) {
     const msgKey = await this.getMsgKey(dataWithPadding, true);
     const keyIv = await this.getAesKeyIv(msgKey, true);
     // this.log('after msg key iv')
 
-    const encryptedBytes = await CryptoWorker.aesEncrypt(dataWithPadding, keyIv[0], keyIv[1]);
+    const encryptedBytes = await CryptoWorker.invokeCrypto('aes-encrypt', dataWithPadding, keyIv[0], keyIv[1]);
     // this.log('Finish encrypt')
 
     return {
@@ -1049,11 +1050,11 @@ export default class MTPNetworker {
     };
   }
 
-  private getDecryptedMessage(msgKey: Uint8Array, encryptedData: Uint8Array): Promise<ArrayBuffer> {
+  private getDecryptedMessage(msgKey: Uint8Array, encryptedData: Uint8Array) {
     // this.log('get decrypted start')
     return this.getAesKeyIv(msgKey, false).then((keyIv) => {
       // this.log('after msg key iv')
-      return CryptoWorker.aesDecrypt(encryptedData, keyIv[0], keyIv[1]);
+      return CryptoWorker.invokeCrypto('aes-decrypt', encryptedData, keyIv[0], keyIv[1]);
     });
   }
 
@@ -1102,7 +1103,7 @@ export default class MTPNetworker {
       this.log.error('wrong length', dataBuffer, canBeLength, message.msg_id);
     } */
 
-    const paddingLength = (16 - (data.offset % 16)) + 16 * (1 + nextRandomInt(5));
+    const paddingLength = (16 - (data.getOffset() % 16)) + 16 * (1 + nextRandomInt(5));
     const padding = /* (message as any).padding ||  */new Uint8Array(paddingLength).randomize()/* .fill(0) */;
     /* const padding = [167, 148, 207, 226, 86, 192, 193, 57, 124, 153, 174, 145, 159, 1, 5, 70, 127, 157, 
       51, 241, 46, 85, 141, 212, 139, 234, 213, 164, 197, 116, 245, 70, 184, 40, 40, 201, 233, 211, 150, 
@@ -1112,7 +1113,7 @@ export default class MTPNetworker {
 
     //(message as any).padding = padding;
 
-    const dataWithPadding = bufferConcat(dataBuffer, padding);
+    const dataWithPadding = bufferConcats(dataBuffer, padding);
     // this.log('Adding padding', dataBuffer, padding, dataWithPadding)
     // this.log('auth_key_id', bytesToHex(self.authKeyID))
 
@@ -1214,8 +1215,8 @@ export default class MTPNetworker {
   
         let deserializer = new TLDeserialization(dataWithPadding, {mtproto: true});
   
-        /* const salt =  */deserializer.fetchIntBytes(64, false, 'salt'); // need
-        const sessionId = deserializer.fetchIntBytes(64, false, 'session_id');
+        /* const salt =  */deserializer.fetchIntBytes(64, true, 'salt'); // need
+        const sessionId = deserializer.fetchIntBytes(64, true, 'session_id');
         const messageId = deserializer.fetchLong('message_id');
   
         if(!bytesCmp(sessionId, this.sessionId) &&
@@ -1268,10 +1269,10 @@ export default class MTPNetworker {
                 };
               }
 
-              if(deserializer.offset !== offset + result.bytes) {
+              if(deserializer.getOffset() !== offset + result.bytes) {
                 // console.warn(dT(), 'set offset', this.offset, offset, result.bytes)
                 // this.log(result)
-                deserializer.offset = offset + result.bytes;
+                deserializer.setOffset(offset + result.bytes);
               }
               // this.log('override message', result)
             },

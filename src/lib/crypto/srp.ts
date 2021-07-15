@@ -1,32 +1,39 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
 import CryptoWorker from "../crypto/cryptoworker";
 import {str2bigInt, isZero,
   bigInt2str, powMod, int2bigInt, mult, mod, sub, bitSize, negative, add, greater} from '../../vendor/leemon';
 
 import {logger, LogTypes} from '../logger';
-import { AccountPassword, PasswordKdfAlgo } from "../../layer";
-import { bufferConcats, bytesToHex, bytesFromHex, bufferConcat, bytesXor } from "../../helpers/bytes";
+import { AccountPassword, InputCheckPasswordSRP, PasswordKdfAlgo } from "../../layer";
+import { bufferConcats, bytesToHex, bytesFromHex, bytesXor, convertToUint8Array } from "../../helpers/bytes";
+import { addPadding } from "../mtproto/bin_utils";
 //import { MOUNT_CLASS_TO } from "../../config/debug";
 
 const log = logger('SRP', LogTypes.Error);
 
 //MOUNT_CLASS_TO && Object.assign(MOUNT_CLASS_TO, {str2bigInt, bigInt2str, int2bigInt});
 
-export async function makePasswordHash(password: string, client_salt: Uint8Array, server_salt: Uint8Array): Promise<number[]> {
+export async function makePasswordHash(password: string, client_salt: Uint8Array, server_salt: Uint8Array) {
   // ! look into crypto_methods.test.ts
-  let buffer: any = await CryptoWorker.sha256Hash(bufferConcats(client_salt, new TextEncoder().encode(password), client_salt));
+  let buffer = await CryptoWorker.invokeCrypto('sha256-hash', bufferConcats(client_salt, new TextEncoder().encode(password), client_salt));
   //log('encoded 1', bytesToHex(new Uint8Array(buffer)));
 
   buffer = bufferConcats(server_salt, buffer, server_salt);
 
-  buffer = await CryptoWorker.sha256Hash(buffer);
+  buffer = await CryptoWorker.invokeCrypto('sha256-hash', buffer);
   //log('encoded 2', buffer, bytesToHex(new Uint8Array(buffer)));
 
-  let hash = await CryptoWorker.pbkdf2(new Uint8Array(buffer), client_salt, 100000);
+  let hash = await CryptoWorker.invokeCrypto('pbkdf2', new Uint8Array(buffer), client_salt, 100000);
   //log('encoded 3', hash, bytesToHex(new Uint8Array(hash)));
 
   hash = bufferConcats(server_salt, hash, server_salt);
 
-  buffer = await CryptoWorker.sha256Hash(hash);
+  buffer = await CryptoWorker.invokeCrypto('sha256-hash', hash);
   //log('got password hash:', buffer, bytesToHex(new Uint8Array(buffer)));
 
   return buffer;
@@ -63,13 +70,17 @@ export async function computeSRP(password: string, state: AccountPassword, isNew
 
   //check_prime_and_good(algo.p, g);
 
-  const pw_hash = await makePasswordHash(password, new Uint8Array(algo.salt1), new Uint8Array(algo.salt2));
-  const x = str2bigInt(bytesToHex(new Uint8Array(pw_hash)), 16);
+  const pw_hash = await makePasswordHash(password, algo.salt1, algo.salt2);
+  const x = str2bigInt(bytesToHex(pw_hash), 16);
 
   //log('computed pw_hash:', pw_hash, x, bytesToHex(new Uint8Array(pw_hash)));
 
-  const padArray = function(arr: any[], len: number, fill = 0) {
-    return new Uint8Array(Array(len).fill(fill).concat(arr).slice(-len));
+  const padArray = function(arr: number[] | Uint8Array, len: number) {
+    if(!(arr instanceof Uint8Array)) {
+      arr = convertToUint8Array(arr);
+    }
+
+    return addPadding(arr, len, true, true, true);
   };
 
   const pForHash = padArray(bytesFromHex(bigInt2str(p, 16)), 256);
@@ -102,8 +113,8 @@ export async function computeSRP(password: string, state: AccountPassword, isNew
 
   //log('g_x', bigInt2str(g_x, 16));
 
-  let k: any = await CryptoWorker.sha256Hash(bufferConcat(pForHash, gForHash));
-  k = str2bigInt(bytesToHex(new Uint8Array(k)), 16);
+  const kHash = await CryptoWorker.invokeCrypto('sha256-hash', bufferConcats(pForHash, gForHash));
+  const k = str2bigInt(bytesToHex(kHash), 16);
 
   //log('k', bigInt2str(k, 16));
 
@@ -140,9 +151,8 @@ export async function computeSRP(password: string, state: AccountPassword, isNew
       if(is_good_mod_exp_first(A, p)) {
         const a_for_hash = bytesFromHex(bigInt2str(A, 16));
 
-        const s: any = await CryptoWorker.sha256Hash(
-          bufferConcat(new Uint8Array(a_for_hash), new Uint8Array(b_for_hash)));
-        const u = str2bigInt(bytesToHex(new Uint8Array(s)), 16);
+        const s = await CryptoWorker.invokeCrypto('sha256-hash', bufferConcats(a_for_hash, b_for_hash));
+        const u = str2bigInt(s.hex, 16);
         if(!isZero(u) && !negative(u))
           return {a, a_for_hash, u};
       } 
@@ -150,7 +160,7 @@ export async function computeSRP(password: string, state: AccountPassword, isNew
   }
     
 
-  let {a, a_for_hash, u} = await generate_and_check_random();
+  const {a, a_for_hash, u} = await generate_and_check_random();
 
   /* log('a', bigInt2str(a, 16));
   log('a_for_hash', bytesToHex(a_for_hash));
@@ -161,7 +171,7 @@ export async function computeSRP(password: string, state: AccountPassword, isNew
   log('subtract', bigInt2str(B, 16), bigInt2str(kg_x, 16));
   log('B - kg_x', bigInt2str(sub(B, kg_x), 16)); */
 
-  let g_b;
+  let g_b: number[];
   if(!greater(B, k_v)) {
     //log('negative');
     g_b = add(B, p);
@@ -175,39 +185,37 @@ export async function computeSRP(password: string, state: AccountPassword, isNew
   /* if(!is_good_mod_exp_first(g_b, p))
     throw new Error('bad g_b'); */
 
-  let ux = mult(u, x);
+  const ux = mult(u, x);
   //log('u and x multiply', bigInt2str(u, 16), bigInt2str(x, 16), bigInt2str(ux, 16));
-  let a_ux = add(a, ux);
-  let S = powMod(g_b, a_ux, p);
+  const a_ux = add(a, ux);
+  const S = powMod(g_b, a_ux, p);
 
-  let K = await CryptoWorker.sha256Hash(padArray(bytesFromHex(bigInt2str(S, 16)), 256));
+  const K = await CryptoWorker.invokeCrypto('sha256-hash', padArray(bytesFromHex(bigInt2str(S, 16)), 256));
 
   //log('K', bytesToHex(K), new Uint32Array(new Uint8Array(K).buffer));
 
-  let h1 = await CryptoWorker.sha256Hash(pForHash);
-  let h2 = await CryptoWorker.sha256Hash(gForHash);
-  h1 = bytesXor(new Uint8Array(h1), new Uint8Array(h2));
+  let h1 = await CryptoWorker.invokeCrypto('sha256-hash', pForHash);
+  const h2 = await CryptoWorker.invokeCrypto('sha256-hash', gForHash);
+  h1 = bytesXor(h1, h2);
 
-  let buff = bufferConcats(h1, 
-    await CryptoWorker.sha256Hash(algo.salt1),
-    await CryptoWorker.sha256Hash(algo.salt2),
+  const buff = bufferConcats(h1, 
+    await CryptoWorker.invokeCrypto('sha256-hash', algo.salt1),
+    await CryptoWorker.invokeCrypto('sha256-hash', algo.salt2),
     a_for_hash,
     b_for_hash,
     K
   );
 
-  let M1: any = await CryptoWorker.sha256Hash(buff);
+  const M1 = await CryptoWorker.invokeCrypto('sha256-hash', buff);
 
-  let out = {
+  const out = {
     _: 'inputCheckPasswordSRP', 
     srp_id: state.srp_id, 
     A: new Uint8Array(a_for_hash), 
-    M1: new Uint8Array(M1) 
-  };
+    M1
+  } as InputCheckPasswordSRP.inputCheckPasswordSRP;
 
 
   //log('out', bytesToHex(out.A), bytesToHex(out.M1));
   return out;
-  
-  /* console.log(gForHash, pForHash, bForHash); */
 }

@@ -7,20 +7,19 @@
 // just to include
 import '../polyfill';
 
+import type { LocalStorageProxyTask } from '../localStorage';
+import type { WebpConvertTask } from '../webp/webpWorkerController';
+import type { ToggleStorageTask } from './mtprotoworker';
+import type { RefreshReferenceTaskResponse } from './apiFileManager';
 import apiManager from "./apiManager";
 import cryptoWorker from "../crypto/cryptoworker";
 import networkerFactory from "./networkerFactory";
-import apiFileManager, { RefreshReferenceTaskResponse } from './apiFileManager';
-import type { RequestFilePartTask, RequestFilePartTaskResponse } from '../serviceWorker/index.service';
+import apiFileManager from './apiFileManager';
 import { ctx } from '../../helpers/userAgent';
 import { notifyAll } from '../../helpers/context';
-// import AppStorage from '../storage';
 import CacheStorageController from '../cacheStorage';
 import sessionStorage from '../sessionStorage';
-import { LocalStorageProxyTask } from '../localStorage';
-import { WebpConvertTask } from '../webp/webpWorkerController';
 import { socketsProxied } from './transports/socketProxied';
-import { ToggleStorageTask } from './mtprotoworker';
 import { bytesToHex } from '../../helpers/bytes';
 
 let webpSupported = false;
@@ -102,7 +101,12 @@ const taskListeners = {
 
 const onMessage = async(e: any) => {
   try {
-    const task = e.data;
+    const task: {
+      task: string,
+      taskId: number,
+      args: any[],
+      type?: string
+    } = e.data;
     const taskId = task.taskId;
 
     // @ts-ignore
@@ -119,8 +123,7 @@ const onMessage = async(e: any) => {
     switch(task.task) {
       case 'computeSRP':
       case 'gzipUncompress':
-        // @ts-ignore
-        return cryptoWorker[task.task].apply(cryptoWorker, task.args).then(result => {
+        return cryptoWorker.invokeCrypto(task.task, ...task.args as any).then(result => {
           notifyAll({taskId, result});
         });
   
@@ -131,7 +134,7 @@ const onMessage = async(e: any) => {
       case 'downloadFile': {
         try {
           // @ts-ignore
-          let result = apiFileManager[task.task].apply(apiFileManager, task.args);
+          let result: any = apiFileManager[task.task].apply(apiFileManager, task.args);
   
           if(result instanceof Promise) {
             /* (result as ReturnType<ApiFileManager['downloadFile']>).notify = (progress: {done: number, total: number, offset: number}) => {
@@ -186,7 +189,7 @@ const onMessage = async(e: any) => {
       }
     }
   } catch(err) {
-
+    console.error('worker task error:', err);
   }
 };
 

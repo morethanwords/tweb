@@ -86,7 +86,7 @@ export default class AppEditChatTab extends SliderSuperTab {
             tab.chatFull = chatFull;
             tab.open();
 
-            this.listenerSetter.add(tab.eventListener, 'destroy', setChatTypeSubtitle);
+            this.listenerSetter.add(tab.eventListener)('destroy', setChatTypeSubtitle);
           },
           icon: 'lock'
         });
@@ -137,7 +137,7 @@ export default class AppEditChatTab extends SliderSuperTab {
         setPermissionsLength();        
         section.content.append(permissionsRow.container);
 
-        this.listenerSetter.add(rootScope, 'chat_update', (chatId) => {
+        this.listenerSetter.add(rootScope)('chat_update', (chatId) => {
           if(this.chatId === chatId) {
             setPermissionsLength();
           }
@@ -294,7 +294,7 @@ export default class AppEditChatTab extends SliderSuperTab {
 
     if(!isChannel) {
       // ! this one will fire earlier than tab's closeAfterTimeout (destroy) event and listeners will be erased, so destroy won't fire
-      this.listenerSetter.add(rootScope, 'dialog_migrate', ({migrateFrom, migrateTo}) => {
+      this.listenerSetter.add(rootScope)('dialog_migrate', ({migrateFrom, migrateTo}) => {
         if(-this.chatId === migrateFrom) {
           this.chatId = -migrateTo;
           this._init();

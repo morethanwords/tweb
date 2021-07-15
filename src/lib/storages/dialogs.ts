@@ -150,9 +150,10 @@ export default class DialogsStorage {
     return this.dialogsOffsetDate[folderId] || 0;
   }
 
-  public getFolder(id: number) {
+  public getFolder(id: number, skipMigrated = true) {
     if(id <= 1) {
-      return this.byFolders[id] ?? (this.byFolders[id] = []);
+      const arr = this.byFolders[id] ?? (this.byFolders[id] = []);
+      return skipMigrated ? arr.filter(dialog => dialog.migratedTo === undefined) : arr;
     }
 
     const dialogs: {dialog: Dialog, index: number}[] = [];
@@ -160,7 +161,7 @@ export default class DialogsStorage {
 
     for(const peerId in this.dialogs) {
       const dialog = this.dialogs[peerId];
-      if(this.appMessagesManager.filtersStorage.testDialogForFilter(dialog, filter)) {
+      if(this.appMessagesManager.filtersStorage.testDialogForFilter(dialog, filter) && (!skipMigrated || dialog.migratedTo === undefined)) {
         let index: number;
 
         const pinnedIndex = filter.pinned_peers.indexOf(dialog.peerId);
@@ -189,7 +190,7 @@ export default class DialogsStorage {
         folders.push(dialogs[folderId]);
       }
     } else {
-      folders.push(this.getFolder(folderId));
+      folders.push(this.getFolder(folderId, skipMigrated));
     }
 
     for(let folder of folders) {
@@ -329,7 +330,7 @@ export default class DialogsStorage {
   }
 
   public pushDialog(dialog: Dialog, offsetDate?: number) {
-    const dialogs = this.getFolder(dialog.folder_id);
+    const dialogs = this.getFolder(dialog.folder_id, false);
     const pos = dialogs.findIndex(d => d.peerId === dialog.peerId);
     if(pos !== -1) {
       dialogs.splice(pos, 1);
@@ -554,7 +555,7 @@ export default class DialogsStorage {
 
   public getDialogs(query = '', offsetIndex?: number, limit = 20, folderId = 0) {
     const realFolderId = folderId > 1 ? 0 : folderId;
-    let curDialogStorage = this.getFolder(folderId);
+    let curDialogStorage = this.getFolder(folderId, false);
 
     if(query) {
       if(!limit || this.cachedResults.query !== query || this.cachedResults.folderId !== folderId) {
@@ -699,7 +700,7 @@ export default class DialogsStorage {
         this.generateIndexForDialog(dialog);
       });
       
-      this.getFolder(folderId).forEach(dialog => {
+      this.getFolder(folderId, false).forEach(dialog => {
         const peerId = dialog.peerId;
         if(dialog.pFlags.pinned && !newPinned[peerId]) {
           this.appMessagesManager.scheduleHandleNewDialogs(peerId);

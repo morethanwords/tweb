@@ -9,8 +9,13 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import { MOUNT_CLASS_TO } from '../../config/debug';
-import CryptoWorkerMethods from './crypto_methods';
+// import { MOUNT_CLASS_TO } from '../../config/debug';
+import CryptoWorkerMethods, { CryptoMethods } from './crypto_methods';
+
+/// #if MTPROTO_WORKER
+import { aesDecryptSync, aesEncryptSync, bytesModPow, gzipUncompress, hash_pbkdf2, pqPrimeFactorization, rsaEncrypt, sha1HashSync, sha256HashSync } from './crypto_utils';
+import { computeSRP } from './srp';
+/// #endif
 
 type Task = {
   taskId: number,
@@ -31,36 +36,49 @@ class CryptoWorker extends CryptoWorkerMethods {
   private pending: Array<Task> = [];
   private debug = false;
 
-  private utils: {[name: string]: (...args: any[]) => any} = {};
+  private utils: CryptoMethods;
 
   constructor() {
     super();
     console.log('CW constructor');
 
     /// #if MTPROTO_WORKER
-    Promise.all([
-      import('./crypto_utils').then(utils => {
-        Object.assign(this.utils, {
-          'sha1-hash': utils.sha1HashSync,
-          'sha256-hash': utils.sha256HashSync,
-          'pbkdf2': utils.hash_pbkdf2,
-          'aes-encrypt': utils.aesEncryptSync,
-          'aes-decrypt': utils.aesDecryptSync,
-          'rsa-encrypt': utils.rsaEncrypt,
-          'factorize': utils.pqPrimeFactorization,
-          'mod-pow': utils.bytesModPow,
-          'gzipUncompress': utils.gzipUncompress,
-        });
-      }),
+    this.utils = {
+      'sha1-hash': sha1HashSync,
+      'sha256-hash': sha256HashSync,
+      'pbkdf2': hash_pbkdf2,
+      'aes-encrypt': aesEncryptSync,
+      'aes-decrypt': aesDecryptSync,
+      'rsa-encrypt': rsaEncrypt,
+      'factorize': pqPrimeFactorization,
+      'mod-pow': bytesModPow,
+      'gzipUncompress': gzipUncompress,
+      'computeSRP': computeSRP
+    };
 
-      import('./srp').then(srp => {
-        this.utils.computeSRP = srp.computeSRP;
-      })/* ,
+    // Promise.all([
+    //   import('./crypto_utils').then(utils => {
+    //     Object.assign(this.utils, {
+    //       'sha1-hash': utils.sha1HashSync,
+    //       'sha256-hash': utils.sha256HashSync,
+    //       'pbkdf2': utils.hash_pbkdf2,
+    //       'aes-encrypt': utils.aesEncryptSync,
+    //       'aes-decrypt': utils.aesDecryptSync,
+    //       'rsa-encrypt': utils.rsaEncrypt,
+    //       'factorize': utils.pqPrimeFactorization,
+    //       'mod-pow': utils.bytesModPow,
+    //       'gzipUncompress': utils.gzipUncompress,
+    //     });
+    //   }),
 
-      import('../bin_utils').then(utils => {
-        this.utils.unzip = utils.gzipUncompress;
-      }) */
-    ]);
+    //   import('./srp').then(srp => {
+    //     this.utils.computeSRP = srp.computeSRP;
+    //   })/* ,
+
+    //   import('../bin_utils').then(utils => {
+    //     this.utils.unzip = utils.gzipUncompress;
+    //   }) */
+    // ]);
 
     return;
     /// #else
@@ -102,6 +120,7 @@ class CryptoWorker extends CryptoWorkerMethods {
     this.debug && console.log('CW start', task, args);
 
     /// #if MTPROTO_WORKER
+    // @ts-ignore
     return Promise.resolve<T>(this.utils[task](...args));
     /// #else
     return new Promise<T>((resolve, reject) => {
@@ -136,5 +155,5 @@ class CryptoWorker extends CryptoWorkerMethods {
 }
 
 const cryptoWorker = new CryptoWorker();
-MOUNT_CLASS_TO.CryptoWorker = cryptoWorker;
+// MOUNT_CLASS_TO.CryptoWorker = cryptoWorker;
 export default cryptoWorker;

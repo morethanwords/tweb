@@ -9,8 +9,9 @@ import PopupElement, { addCancelButton, PopupButton, PopupOptions } from ".";
 import { i18n, LangPackKey } from "../../lib/langPack";
 import CheckboxField, { CheckboxFieldOptions } from "../checkboxField";
 
-export type PopupPeerButtonCallbackCheckboxes = Partial<{[text in LangPackKey]: boolean}>;
+export type PopupPeerButtonCallbackCheckboxes = Set<LangPackKey>;
 export type PopupPeerButtonCallback = (checkboxes?: PopupPeerButtonCallbackCheckboxes) => void;
+export type PopupPeerCheckboxOptions = CheckboxFieldOptions & {checkboxField?: CheckboxField};
 
 export type PopupPeerOptions = PopupOptions & Partial<{
   peerId: number,
@@ -21,7 +22,7 @@ export type PopupPeerOptions = PopupOptions & Partial<{
   descriptionLangKey?: LangPackKey,
   descriptionLangArgs?: any[],
   buttons: Array<Omit<PopupButton, 'callback'> & Partial<{callback: PopupPeerButtonCallback}>>,
-  checkboxes: Array<CheckboxFieldOptions & {checkboxField?: CheckboxField}>
+  checkboxes: Array<PopupPeerCheckboxOptions>
 }>;
 export default class PopupPeer extends PopupElement {
   constructor(private className: string, options: PopupPeerOptions = {}) {
@@ -60,9 +61,11 @@ export default class PopupPeer extends PopupElement {
         if(button.callback) {
           const original = button.callback;
           button.callback = () => {
-            const c: PopupPeerButtonCallbackCheckboxes = {};
+            const c: Set<LangPackKey> = new Set();
             options.checkboxes.forEach(o => {
-              c[o.text] = o.checkboxField.checked;
+              if(o.checkboxField.checked) {
+                c.add(o.text);
+              }
             });
             original(c);
           };

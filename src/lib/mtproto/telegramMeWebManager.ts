@@ -18,12 +18,12 @@ import sessionStorage from '../sessionStorage';
 export class TelegramMeWebManager {
   private disabled = /* false &&  */(Modes.test || App.domains.indexOf(location.hostname) === -1);
 
-  public async setAuthorized(canRedirect: boolean) {
+  public setAuthorized(canRedirect: boolean) {
     if(this.disabled) {
       return;
     }
 
-    sessionStorage.get('tgme_sync').then((curValue) => {
+    return sessionStorage.get('tgme_sync').then((curValue) => {
       const ts = tsNow(true);
       if(canRedirect &&
         curValue &&

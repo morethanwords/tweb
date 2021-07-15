@@ -23,7 +23,7 @@ export default class ReplyKeyboard extends DropdownHover {
   private appMessagesManager: AppMessagesManager;
   private btnHover: HTMLElement;
   private peerId: number;
-  private touchListener: Listener<HTMLElement>;
+  private touchListener: Listener;
 
   constructor(options: {
     listenerSetter: ListenerSetter,
@@ -41,7 +41,7 @@ export default class ReplyKeyboard extends DropdownHover {
     this.element.style.display = 'none';
 
     this.attachButtonListener(this.btnHover, this.listenerSetter);
-    this.listenerSetter.add(rootScope, 'history_reply_markup', ({peerId}) => {
+    this.listenerSetter.add(rootScope)('history_reply_markup', ({peerId}) => {
       if(this.peerId === peerId && this.checkAvailability() && this.isActive()) {
         this.render();
       }
@@ -51,18 +51,18 @@ export default class ReplyKeyboard extends DropdownHover {
   protected init() {
     this.appendTo.append(this.element);
 
-    this.listenerSetter.add(this, 'open', () => {
+    this.listenerSetter.add(this)('open', () => {
       this.render();
 
       if(isTouchSupported) {
-        this.touchListener = this.listenerSetter.add(document.body, 'touchstart', this.onBodyTouchStart, {passive: false, capture: true});
-        this.listenerSetter.add(this, 'close', () => {
+        this.touchListener = this.listenerSetter.add(document.body)('touchstart', this.onBodyTouchStart, {passive: false, capture: true}) as any as Listener;
+        this.listenerSetter.add(this)('close', () => {
           this.listenerSetter.remove(this.touchListener);
         }, {once: true});
       }
     });
     
-    this.listenerSetter.add(this.element, 'click', (e) => {
+    this.listenerSetter.add(this.element)('click', (e) => {
       const target = findUpClassName(e.target, 'btn');
       if(!target) {
         return;

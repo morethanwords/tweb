@@ -205,7 +205,7 @@ export default class PrivacySection {
         }
         
         appPrivacyManager.setPrivacy(options.inputKey, rules);
-      }, true);
+      }, {once: true});
     });
   }
 
