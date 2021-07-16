@@ -21,7 +21,7 @@ import appPeersManager from './appPeersManager';
 import appImManager from "./appImManager";
 import appMessagesManager, { Dialog } from "./appMessagesManager";
 import {MyDialogFilter as DialogFilter} from "../storages/filters";
-import appStateManager, { AppStateManager, State } from "./appStateManager";
+import appStateManager, { State } from "./appStateManager";
 import appUsersManager from "./appUsersManager";
 import Button from "../../components/button";
 import SetTransition from "../../components/singleTransition";
@@ -29,7 +29,7 @@ import appDraftsManager, { MyDraftMessage } from "./appDraftsManager";
 import DEBUG, { MOUNT_CLASS_TO } from "../../config/debug";
 import appNotificationsManager from "./appNotificationsManager";
 import PeerTitle from "../../components/peerTitle";
-import { i18n, _i18n } from "../langPack";
+import { i18n, LangPackKey, _i18n } from "../langPack";
 import findUpTag from "../../helpers/dom/findUpTag";
 import { LazyLoadQueueIntersector } from "../../components/lazyLoadQueue";
 import lottieLoader from "../lottieLoader";
@@ -727,7 +727,10 @@ export class AppDialogsManager {
           });
         }
 
-        this.offsets[side] = result.dialogs[side === 'top' ? 0 : result.dialogs.length - 1].index;
+        const offsetDialog = result.dialogs[side === 'top' ? 0 : result.dialogs.length - 1];
+        if(offsetDialog) {
+          this.offsets[side] = offsetDialog.index;
+        }
 
         this.onListLengthChange();
   
@@ -749,34 +752,50 @@ export class AppDialogsManager {
     });
   }
 
+  private generateEmptyPlaceholder(options: {
+    title: LangPackKey,
+    subtitle: LangPackKey,
+    classNameType: string
+  }) {
+    const BASE_CLASS = 'empty-placeholder';
+    const div = document.createElement('div');
+    div.classList.add(BASE_CLASS, BASE_CLASS + '-' + options.classNameType);
+    
+    const header = document.createElement('div');
+    header.classList.add(BASE_CLASS + '-header');
+    _i18n(header, options.title);
+
+    const subtitle = document.createElement('div');
+    subtitle.classList.add(BASE_CLASS + '-subtitle');
+    _i18n(subtitle, options.subtitle);
+
+    div.append(header, subtitle);
+
+    return div;
+  }
+
   private onListLengthChange = () => {
     //return;
 
     if(this.filterId < 2) return;
     
-    const emptyFolder = this.chatList.parentElement.querySelector('.empty-folder');
+    const emptyPlaceholder = this.chatList.parentElement.querySelector('.empty-placeholder');
     if(this.scroll.loadedAll.bottom && !this.chatList.childElementCount) {
-      if(emptyFolder) {
+      if(emptyPlaceholder) {
         return;
       }
 
-      const BASE_CLASS = 'empty-folder';
-      const div = document.createElement('div');
-      div.classList.add(BASE_CLASS);
-      
-      div.append(wrapLocalSticker({
+      const d = this.generateEmptyPlaceholder({
+        title: 'FilterNoChatsToDisplay',
+        subtitle: 'FilterNoChatsToDisplayInfo',
+        classNameType: 'folder'
+      });
+
+      d.prepend(wrapLocalSticker({
         emoji: '📂',
         width: 128,
         height: 128
-      }).container);
-
-      const header = document.createElement('div');
-      header.classList.add(BASE_CLASS + '-header');
-      _i18n(header, 'FilterNoChatsToDisplay');
-
-      const subtitle = document.createElement('div');
-      subtitle.classList.add(BASE_CLASS + '-subtitle');
-      _i18n(subtitle, 'FilterNoChatsToDisplayInfo');
+      }).container)
 
       const button = Button('btn-primary btn-color-primary btn-control tgico', {
         text: 'FilterHeaderEdit',
@@ -787,11 +806,11 @@ export class AppDialogsManager {
         new AppEditFolderTab(appSidebarLeft).open(appMessagesManager.filtersStorage.filters[this.filterId]);
       });
 
-      div.append(header, subtitle, button);
+      d.append(button);
 
-      this.chatList.parentElement.append(div);
-    } else if(emptyFolder) {
-      emptyFolder.remove();
+      this.chatList.parentElement.append(d);
+    } else if(emptyPlaceholder) {
+      emptyPlaceholder.remove();
     }
   };
 
