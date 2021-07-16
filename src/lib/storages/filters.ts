@@ -182,6 +182,10 @@ export default class FiltersStorage {
   public toggleDialogPin(peerId: number, filterId: number) {
     const filter = this.filters[filterId];
 
+    if(filter.pinned_peers.length >= this.rootScope.config.pinned_infolder_count_max) {
+      return Promise.reject({type: 'PINNED_DIALOGS_TOO_MUCH'});
+    }
+
     const wasPinned = filter.pinned_peers.findAndSplice(p => p === peerId);
     if(!wasPinned) {
       filter.pinned_peers.unshift(peerId);

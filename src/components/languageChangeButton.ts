@@ -26,7 +26,7 @@ rootScope.addEventListener('language_change', () => {
 
 function getLang(): Promise<[Config.config, LangPackString[], LangPackDifference.langPackDifference]> {
   if(cachedPromise) return cachedPromise;
-  return cachedPromise = apiManager.invokeApiCacheable('help.getConfig').then(config => {
+  return cachedPromise = apiManager.getConfig().then(config => {
     if(config.suggested_lang_code !== I18n.lastRequestedLangCode) {
       //I18n.loadLangPack(config.suggested_lang_code);
 

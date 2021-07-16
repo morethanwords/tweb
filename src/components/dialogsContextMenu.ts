@@ -14,6 +14,10 @@ import PopupDeleteDialog from "./popups/deleteDialog";
 import { i18n } from "../lib/langPack";
 import findUpTag from "../helpers/dom/findUpTag";
 import appNotificationsManager from "../lib/appManagers/appNotificationsManager";
+import PopupPeer from "./popups/peer";
+import AppChatFoldersTab from "./sidebarLeft/tabs/chatFolders";
+import appSidebarLeft from "./sidebarLeft";
+import { toastNew } from "./toast";
 
 export default class DialogsContextMenu {
   private element: HTMLElement;
@@ -101,7 +105,27 @@ export default class DialogsContextMenu {
   };
 
   private onPinClick = () => {
-    appMessagesManager.toggleDialogPin(this.selectedId, this.filterId);
+    appMessagesManager.toggleDialogPin(this.selectedId, this.filterId).catch(err => {
+      if(err.type === 'PINNED_DIALOGS_TOO_MUCH') {
+        if(this.filterId >= 1) {
+          toastNew({langPackKey: 'PinFolderLimitReached'});
+        } else {
+          new PopupPeer('pinned-dialogs-too-much', {
+            buttons: [{
+              langKey: 'OK',
+              isCancel: true
+            }, {
+              langKey: 'FiltersSetupPinAlert',
+              callback: () => {
+                new AppChatFoldersTab(appSidebarLeft).open();
+              }
+            }],
+            descriptionLangKey: 'PinToTopLimitReached2',
+            descriptionLangArgs: [i18n('Chats', [rootScope.config.pinned_dialogs_count_max])]
+          }).show();
+        }
+      }
+    });
   };
 
   private onUnmuteClick = () => {

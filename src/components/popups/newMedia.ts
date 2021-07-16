@@ -19,6 +19,7 @@ import appDownloadManager from "../../lib/appManagers/appDownloadManager";
 import calcImageInBox from "../../helpers/calcImageInBox";
 import isSendShortcutPressed from "../../helpers/dom/isSendShortcutPressed";
 import placeCaretAtEnd from "../../helpers/dom/placeCaretAtEnd";
+import rootScope from "../../lib/rootScope";
 
 type SendFileParams = Partial<{
   file: File,
@@ -29,8 +30,6 @@ type SendFileParams = Partial<{
   height: number,
   duration: number
 }>;
-
-const MAX_LENGTH_CAPTION = 1024;
 
 // TODO: .gif upload as video
 
@@ -87,7 +86,7 @@ export default class PopupNewMedia extends PopupElement {
       placeholder: 'PreviewSender.CaptionPlaceholder',
       label: 'Caption',
       name: 'photo-caption',
-      maxLength: MAX_LENGTH_CAPTION,
+      maxLength: rootScope.config.caption_length_max,
       showLengthOn: 80
     });
     this.input = this.inputField.input;
@@ -150,7 +149,7 @@ export default class PopupNewMedia extends PopupElement {
     }
 
     let caption = this.inputField.value;
-    if(caption.length > MAX_LENGTH_CAPTION) {
+    if(caption.length > rootScope.config.caption_length_max) {
       toast(I18n.format('Error.PreviewSender.CaptionTooLong', true));
       return;
     }
