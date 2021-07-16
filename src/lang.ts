@@ -523,6 +523,7 @@ const lang = {
   "AppName": "Telegram",
   "OK": "OK",
   "PinFolderLimitReached": "Sorry, you can\'t pin any more chats to the top.",
+  "Send": "Send",
 
   // * macos
   "AccountSettings.Filters": "Chat Folders",

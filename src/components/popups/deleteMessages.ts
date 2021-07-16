@@ -7,8 +7,8 @@
 import appChatsManager from "../../lib/appManagers/appChatsManager";
 import appMessagesManager from "../../lib/appManagers/appMessagesManager";
 import rootScope from "../../lib/rootScope";
-import { addCancelButton, PopupButton } from ".";
-import PopupPeer from "./peer";
+import { addCancelButton } from ".";
+import PopupPeer, { PopupPeerButtonCallbackCheckboxes, PopupPeerOptions } from "./peer";
 import { ChatType } from "../chat/chat";
 import { i18n, LangPackKey } from "../../lib/langPack";
 import PeerTitle from "../peerTitle";
@@ -21,16 +21,16 @@ export default class PopupDeleteMessages {
     }).element;
 
     mids = mids.slice();
-    const callback = (revoke?: true) => {
+    const callback = (checked: PopupPeerButtonCallbackCheckboxes, revoke?: boolean) => {
       onConfirm && onConfirm();
       if(type === 'scheduled') {
         appMessagesManager.deleteScheduledMessages(peerId, mids);
       } else {
-        appMessagesManager.deleteMessages(peerId, mids, revoke);
+        appMessagesManager.deleteMessages(peerId, mids, !!checked.size || revoke);
       }
     };
 
-    let title: LangPackKey, titleArgs: any[], description: LangPackKey, descriptionArgs: any[], buttons: PopupButton[];
+    let title: LangPackKey, titleArgs: any[], description: LangPackKey, descriptionArgs: any[], buttons: PopupPeerOptions['buttons'], checkboxes: PopupPeerOptions['checkboxes'] = [];
     if(mids.length === 1) {
       title = 'DeleteSingleMessagesTitle';
     } else {
@@ -43,18 +43,16 @@ export default class PopupDeleteMessages {
     buttons = [{
       langKey: 'Delete',
       isDanger: true,
-      callback: () => callback()
+      callback
     }];
 
     if(peerId === rootScope.myId || type === 'scheduled') {
       
     } else {
       if(peerId > 0) {
-        buttons.push({
-          langKey: 'DeleteMessagesOptionAlso',
-          langArgs: [peerTitleElement],
-          isDanger: true,
-          callback: () => callback(true)
+        checkboxes.push({
+          text: 'DeleteMessagesOptionAlso',
+          textArgs: [peerTitleElement]
         });
       } else {
         const chat = appChatsManager.getChat(-peerId);
@@ -68,16 +66,12 @@ export default class PopupDeleteMessages {
 
           if(canRevoke.length) {
             if(canRevoke.length === mids.length) {
-              buttons.push({
-                langKey: 'DeleteForAll',
-                isDanger: true,
-                callback: () => callback(true)
+              checkboxes.push({
+                text: 'DeleteForAll'
               });
             } else {
-              buttons.push({
-                langKey: 'DeleteMessagesOption',
-                isDanger: true,
-                callback: () => callback(true)
+              checkboxes.push({
+                text: 'DeleteMessagesOption'
               });
 
               description = 'DeleteMessagesTextGroup';
@@ -86,7 +80,7 @@ export default class PopupDeleteMessages {
             }
           }
         } else {
-          buttons[0].callback = () => callback(true);
+          buttons[0].callback = (checked) => callback(checked, true);
         }
       }
     }
@@ -99,7 +93,8 @@ export default class PopupDeleteMessages {
       titleLangArgs: titleArgs,
       descriptionLangKey: description,
       descriptionLangArgs: descriptionArgs,
-      buttons
+      buttons,
+      checkboxes
     });
 
     popup.show();
