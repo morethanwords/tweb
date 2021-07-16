@@ -1025,7 +1025,7 @@ export class AppImManager {
     }
 
     const chat = this.chat;
-    if(!chat.init) { // * use first not inited chat
+    if(chat.inited) { // * use first not inited chat
       this.createNewChat();
     }
 

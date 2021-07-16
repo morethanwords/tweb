@@ -217,6 +217,10 @@ export class AppChatsManager {
       return false;
     }
 
+    if((chat as Chat.chat).pFlags.deactivated && action !== 'view_messages') {
+      return false;
+    }
+
     if(chat.pFlags.creator && rights === undefined) {
       return true;
     }

@@ -1168,7 +1168,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
       }
     } else {
       const chat: Chat = appChatsManager.getChat(-this.peerId);
-      if(chat._ === 'chat' || (chat as Chat.channel).admin_rights) {
+      if((chat._ === 'chat' || (chat as Chat.channel).admin_rights) && !(chat as Chat.chat).pFlags.deactivated) {
         this.editBtn.style.display = '';
       }
     }

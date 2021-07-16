@@ -46,6 +46,8 @@ const lang = {
   //"ChatList.Menu.Archived": "Archived",
   "ChatList.Menu.SwitchTo.Webogram": "Switch to Old Version",
   "ChatList.Menu.SwitchTo.Z": "Switch to Z version",
+  "ChatMigration.From": "Migrated from %s",
+  "ChatMigration.To": "Migrated to %s",
   "ConnectionStatus.ForceReconnect": "force reconnect",
   "ConnectionStatus.ReconnectIn": "Reconnect in %ds, %s",
   "ConnectionStatus.Reconnect": "reconnect",

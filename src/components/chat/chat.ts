@@ -55,7 +55,7 @@ export default class Chat extends EventListenerBase<{
   public contextMenu: ChatContextMenu;
 
   public wasAlreadyUsed = false;
-  public initPeerId = 0;
+  // public initPeerId = 0;
   public peerId = 0;
   public threadId: number;
   public setPeerPromise: Promise<void>;
@@ -66,6 +66,8 @@ export default class Chat extends EventListenerBase<{
   public type: ChatType = 'chat';
 
   public noAutoDownloadMedia: boolean;
+
+  public inited = false;
   
   constructor(public appImManager: AppImManager, 
     public appChatsManager: AppChatsManager, 
@@ -166,8 +168,8 @@ export default class Chat extends EventListenerBase<{
     }
   }
 
-  public init(peerId: number) {
-    this.initPeerId = peerId;
+  public init(/* peerId: number */) {
+    // this.initPeerId = peerId;
 
     this.topbar = new ChatTopbar(this, appSidebarRight, this.appMessagesManager, this.appPeersManager, this.appChatsManager, this.appNotificationsManager);
     this.bubbles = new ChatBubbles(this, this.appMessagesManager, this.appStickersManager, this.appUsersManager, this.appInlineBotsManager, this.appPhotosManager, this.appPeersManager, this.appProfileManager);
@@ -246,9 +248,15 @@ export default class Chat extends EventListenerBase<{
   }
 
   public setPeer(peerId: number, lastMsgId?: number) {
-    if(this.init) {
-      this.init(peerId);
-      this.init = null;
+    if(!peerId) {
+      this.inited = false;
+    } else if(!this.inited) {
+      if(this.init) {
+        this.init(/* peerId */);
+        this.init = null;
+      }
+
+      this.inited = true;
     }
 
     const samePeer = this.peerId === peerId;
