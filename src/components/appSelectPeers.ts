@@ -72,7 +72,7 @@ export default class AppSelectPeers {
 
   private placeholder: LangPackKey;
 
-  private selfPresence: LangPackKey = 'Presence.YourChat'
+  private selfPresence: LangPackKey = 'Presence.YourChat';
   
   private needSwitchList = false;
   
