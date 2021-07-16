@@ -21,6 +21,8 @@ import findUpClassName from "../helpers/dom/findUpClassName";
 import PeerTitle from "./peerTitle";
 import { cancelEvent } from "../helpers/dom/cancelEvent";
 import replaceContent from "../helpers/dom/replaceContent";
+import { filterUnique } from "../helpers/array";
+import debounce from "../helpers/schedulers/debounce";
 
 type PeerType = 'contacts' | 'dialogs' | 'channelParticipants';
 
@@ -70,7 +72,9 @@ export default class AppSelectPeers {
 
   private placeholder: LangPackKey;
 
-  private selfPresence: LangPackKey = 'Presence.YourChat';
+  private selfPresence: LangPackKey = 'Presence.YourChat'
+  
+  private needSwitchList = false;
   
   constructor(options: {
     appendTo: AppSelectPeers['appendTo'], 
@@ -90,13 +94,12 @@ export default class AppSelectPeers {
 
     this.container.classList.add('selector');
 
-    let needSwitchList = false;
     const f = (this.renderResultsFunc || this.renderResults).bind(this);
     this.renderResultsFunc = (peerIds: number[]) => {
-      if(needSwitchList) {
+      if(this.needSwitchList) {
         this.scrollable.splitUp.replaceWith(this.list);
         this.scrollable.setVirtualContainer(this.list);
-        needSwitchList = false;
+        this.needSwitchList = false;
       }
       
       peerIds = peerIds.filter(peerId => {
@@ -181,35 +184,8 @@ export default class AppSelectPeers {
       checkbox.checked = !checkbox.checked;
     });
 
-    this.input.addEventListener('input', () => {
-      const value = this.input.value;
-      if(this.query !== value) {
-        if(this.peerType.includes('contacts')) {
-          this.cachedContacts = null;
-        }
-        
-        if(this.peerType.includes('dialogs')) {
-          this.folderId = 0;
-          this.offsetIndex = 0;
-        }
-
-        for(let i in this.tempIds) {
-          // @ts-ignore
-          ++this.tempIds[i];
-        }
-
-        this.list = appDialogsManager.createChatList();
-
-        this.promise = null;
-        this.loadedWhat = {};
-        this.query = value;
-        this.renderedPeerIds.clear();
-        needSwitchList = true;
-        
-        //console.log('selectPeers input:', this.query);
-        this.getMoreResults();
-      }
-    });
+    const debouncedInput = debounce(this.onInput, 200, false, true);
+    this.input.addEventListener('input', debouncedInput);
 
     this.scrollable.onScrolledBottom = () => {
       this.getMoreResults();
@@ -228,6 +204,36 @@ export default class AppSelectPeers {
       }
     }, 0);
   }
+
+  private onInput = () => {
+    const value = this.input.value;
+    if(this.query !== value) {
+      if(this.peerType.includes('contacts')) {
+        this.cachedContacts = null;
+      }
+      
+      if(this.peerType.includes('dialogs')) {
+        this.folderId = 0;
+        this.offsetIndex = 0;
+      }
+
+      for(let i in this.tempIds) {
+        // @ts-ignore
+        ++this.tempIds[i];
+      }
+
+      this.list = appDialogsManager.createChatList();
+
+      this.promise = null;
+      this.loadedWhat = {};
+      this.query = value;
+      this.renderedPeerIds.clear();
+      this.needSwitchList = true;
+      
+      //console.log('selectPeers input:', this.query);
+      this.getMoreResults();
+    }
+  };
 
   private renderSaved() {
     if(!this.offsetIndex && this.folderId === 0 && this.peerType.includes('dialogs') && (!this.query || appUsersManager.testSelfSearch(this.query))) {
@@ -254,13 +260,14 @@ export default class AppSelectPeers {
     const pageCount = appPhotosManager.windowH / 72 * 1.25 | 0;
 
     const tempId = this.getTempId('dialogs');
-    this.promise = appMessagesManager.getConversations(this.query, this.offsetIndex, pageCount, this.folderId);
-    const value = await this.promise;
-    this.promise = null;
-
+    const promise = appMessagesManager.getConversations(this.query, this.offsetIndex, pageCount, this.folderId);
+    this.promise = promise;
+    const value = await promise;
     if(this.tempIds.dialogs !== tempId) {
       return;
     }
+
+    this.promise = null;
 
     let dialogs = value.dialogs as Dialog[];
     if(dialogs.length) {
@@ -270,9 +277,7 @@ export default class AppSelectPeers {
       dialogs.findAndSplice(d => d.peerId === rootScope.myId); // no my account
 
       if(this.chatRightsAction) {
-        dialogs = dialogs.filter(d => {
-          return (d.peerId > 0 && (this.chatRightsAction !== 'send_messages' || appUsersManager.canSendToUser(d.peerId))) || appChatsManager.hasRights(-d.peerId, this.chatRightsAction);
-        });
+        dialogs = dialogs.filter(d => this.filterByRights(d.peerId));
       }
 
       this.renderSaved();
@@ -280,7 +285,9 @@ export default class AppSelectPeers {
       this.offsetIndex = newOffsetIndex;
 
       this.renderResultsFunc(dialogs.map(dialog => dialog.peerId));
-    } else {
+    }
+    
+    if(value.isEnd) {
       if(!this.loadedWhat.dialogs) {
         this.renderSaved();
 
@@ -299,6 +306,13 @@ export default class AppSelectPeers {
     }
   }
 
+  private filterByRights(peerId: number) {
+    return (
+      peerId > 0 && 
+      (this.chatRightsAction !== 'send_messages' || appUsersManager.canSendToUser(peerId))
+    ) || appChatsManager.hasRights(-peerId, this.chatRightsAction);
+  }
+
   private async getMoreContacts() {
     if(this.promise) return this.promise;
 
@@ -315,11 +329,30 @@ export default class AppSelectPeers {
       this.promise = Promise.all(promises);
       this.cachedContacts = (await this.promise)[0].slice(); */
       const tempId = this.getTempId('contacts');
-      this.promise = appUsersManager.getContacts(this.query);
-      this.cachedContacts = (await this.promise).slice();
+      const promise = Promise.all([
+        appUsersManager.getContacts(this.query),
+        this.query ? appUsersManager.searchContacts(this.query) : undefined
+      ]);
+
+      this.promise = promise;
+      const [cachedContacts, searchResult] = await promise;
       if(this.tempIds.contacts !== tempId) {
         return;
       }
+
+      if(searchResult) {
+        let resultPeerIds = searchResult.my_results.concat(searchResult.results);
+
+        if(this.chatRightsAction) {
+          resultPeerIds = resultPeerIds.filter(peerId => this.filterByRights(peerId));
+        }
+
+        if(!this.peerType.includes('dialogs')) {
+          resultPeerIds = resultPeerIds.filter(peerId => peerId > 0);
+        }
+
+        this.cachedContacts = filterUnique(cachedContacts.concat(resultPeerIds));
+      } else this.cachedContacts = cachedContacts.slice();
 
       this.cachedContacts.findAndSplice(userId => userId === rootScope.myId); // no my account
       this.promise = null;
@@ -468,6 +501,11 @@ export default class AppSelectPeers {
     if(!this.multiSelect) {
       this.onChange(this.selected.size);
       return;
+    }
+
+    if(this.query.trim()) {
+      this.input.value = '';
+      this.onInput();
     }
 
     const div = document.createElement('div');

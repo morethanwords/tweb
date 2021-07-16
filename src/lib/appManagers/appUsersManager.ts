@@ -797,10 +797,10 @@ export class AppUsersManager {
     });
   } */
   public searchContacts(query: string, limit = 20) {
-    return apiManager.invokeApiSingle('contacts.search', {
+    return apiManager.invokeApiCacheable('contacts.search', {
       q: query,
       limit
-    }).then(peers => {
+    }, {cacheSeconds: 60}).then(peers => {
       this.saveApiUsers(peers.users);
       appChatsManager.saveApiChats(peers.chats);
 
