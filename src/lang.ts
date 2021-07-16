@@ -518,6 +518,11 @@ const lang = {
   "AddMembersAlertCountText": "Are you sure you want to add %1$s to **%2$s**?",
   "AddMembersForwardMessages": "Show the last 100 messages to the new members",
   "AddOneMemberForwardMessages": "Show the last 100 messages to **%1$s**",
+  "PinToTopLimitReached2": "Sorry, you can only pin %1$s to the top in the main list. More chats can be pinned in Chat Folders and your Archive.",
+  "FiltersSetupPinAlert": "Set Up Folders",
+  "AppName": "Telegram",
+  "OK": "OK",
+  "PinFolderLimitReached": "Sorry, you can\'t pin any more chats to the top.",
 
   // * macos
   "AccountSettings.Filters": "Chat Folders",

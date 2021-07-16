@@ -146,6 +146,10 @@ export default class DialogsStorage {
     this.pinnedOrders[folderId] = [];
   }
 
+  public getPinnedOrders(folderId: number) {
+    return this.pinnedOrders[folderId];
+  }
+
   public getOffsetDate(folderId: number) {
     return this.dialogsOffsetDate[folderId] || 0;
   }

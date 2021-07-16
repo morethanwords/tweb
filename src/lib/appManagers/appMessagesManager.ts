@@ -438,7 +438,7 @@ export class AppMessagesManager {
       options.replyToMsgId = options.threadId;
     }
 
-    const MAX_LENGTH = 4096;
+    const MAX_LENGTH = rootScope.config.message_length_max;
     if(text.length > MAX_LENGTH) {
       const splitted = splitStringByLength(text, MAX_LENGTH);
       text = splitted[0];
@@ -2913,6 +2913,11 @@ export class AppMessagesManager {
   public toggleDialogPin(peerId: number, filterId?: number) {
     if(filterId > 1) {
       return this.filtersStorage.toggleDialogPin(peerId, filterId);
+    } else {
+      const max = filterId === 1 ? rootScope.config.pinned_infolder_count_max : rootScope.config.pinned_dialogs_count_max;
+      if(this.dialogsStorage.getPinnedOrders(filterId).length >= max) {
+        return Promise.reject({type: 'PINNED_DIALOGS_TOO_MUCH'});
+      }
     }
 
     const dialog = this.getDialogOnly(peerId);
@@ -3017,11 +3022,12 @@ export class AppMessagesManager {
     }
 
     // * second rule for saved messages, because there is no 'out' flag
-    if(message.pFlags.out || this.getMessagePeer(message) === appUsersManager.getSelf().id) {
+    if(/* message.pFlags.out ||  */this.getMessagePeer(message) === appUsersManager.getSelf().id) {
       return true;
     }
 
-    if((message.date < (tsNow(true) - (2 * 86400)) && message.media?._ !== 'messageMediaPoll') || !message.pFlags.out) {
+    if((message.date < (tsNow(true) - rootScope.config.edit_time_limit) && 
+      message.media?._ !== 'messageMediaPoll') || !message.pFlags.out) {
       return false;
     }
 

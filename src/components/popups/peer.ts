@@ -36,7 +36,7 @@ export default class PopupPeer extends PopupElement {
       this.header.prepend(avatarEl);
     }
 
-    if(options.descriptionLangKey) this.title.append(i18n(options.titleLangKey, options.titleLangArgs));
+    if(options.titleLangKey || !options.title) this.title.append(i18n(options.titleLangKey || 'AppName', options.titleLangArgs));
     else this.title.innerText = options.title || '';
 
     let p = document.createElement('p');

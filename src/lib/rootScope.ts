@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type { Message, StickerSet, Update, NotifyPeer, PeerNotifySettings, ConstructorDeclMap } from "../layer";
+import type { Message, StickerSet, Update, NotifyPeer, PeerNotifySettings, ConstructorDeclMap, Config } from "../layer";
 import type { MyDocument } from "./appManagers/appDocsManager";
 import type { AppMessagesManager, Dialog, MessagesStorage } from "./appManagers/appMessagesManager";
 import type { Poll, PollResults } from "./appManagers/appPollsManager";
@@ -144,6 +144,14 @@ export class RootScope extends EventListenerBase<{
   public settings: State['settings'];
   public peerId = 0;
   public systemTheme: Theme['name'];
+  public config: Partial<Config.config> = {
+    forwarded_count_max: 100,
+    edit_time_limit: 86400 * 2,
+    pinned_dialogs_count_max: 5,
+    pinned_infolder_count_max: 100,
+    message_length_max: 4096,
+    caption_length_max: 1024,
+  };
 
   constructor() {
     super();

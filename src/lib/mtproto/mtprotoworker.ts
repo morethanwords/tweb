@@ -7,7 +7,7 @@
 import type { LocalStorageProxyTask, LocalStorageProxyTaskResponse } from '../localStorage';
 //import type { LocalStorageProxyDeleteTask, LocalStorageProxySetTask } from '../storage';
 import type { Awaited, InvokeApiOptions, WorkerTaskVoidTemplate } from '../../types';
-import type { InputFile, MethodDeclMap } from '../../layer';
+import type { Config, InputFile, MethodDeclMap } from '../../layer';
 import MTProtoWorker from 'worker-loader!./mtproto.worker';
 //import './mtproto.worker';
 import { isObject } from '../../helpers/object';
@@ -98,6 +98,8 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
   public onServiceWorkerFail: () => void;
 
   private postMessagesWaiting: any[][] = [];
+
+  private getConfigPromise: Promise<Config.config>;
 
   constructor() {
     super();
@@ -210,6 +212,10 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
     /// #if !MTPROTO_SW
     this.registerWorker();
     /// #endif
+
+    setTimeout(() => {
+      this.getConfig();
+    }, 5000);
   }
 
   public isServiceWorkerOnline() {
@@ -596,6 +602,14 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
 
   public forceReconnect() {
     this.postMessage({type: 'forceReconnect'});
+  }
+
+  public getConfig() {
+    if(this.getConfigPromise) return this.getConfigPromise;
+    return this.getConfigPromise = this.invokeApi('help.getConfig').then(config => {
+      rootScope.config = config;
+      return config;
+    });
   }
 }
 

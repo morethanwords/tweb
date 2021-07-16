@@ -26,8 +26,8 @@ import blurActiveElement from "../../helpers/dom/blurActiveElement";
 import { cancelEvent } from "../../helpers/dom/cancelEvent";
 import cancelSelection from "../../helpers/dom/cancelSelection";
 import getSelectedText from "../../helpers/dom/getSelectedText";
+import rootScope from "../../lib/rootScope";
 
-const MAX_SELECTION_LENGTH = 100;
 //const MIN_CLICK_MOVE = 32; // minimum bubble height
 
 export default class ChatSelection {
@@ -473,7 +473,7 @@ export default class ChatSelection {
     if(found) {
       this.selectedMids.delete(mid);
     } else {
-      const diff = MAX_SELECTION_LENGTH - this.selectedMids.size - 1;
+      const diff = rootScope.config.forwarded_count_max - this.selectedMids.size - 1;
       if(diff < 0) {
         toast(I18n.format('Chat.Selection.LimitToast', true));
         return;
