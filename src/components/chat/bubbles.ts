@@ -2892,15 +2892,20 @@ export default class ChatBubbles {
     if(reverse) for(let i = 0; i < length; ++i) cb(history[i]);
     else for(let i = length - 1; i >= 0; --i) cb(history[i]);
 
-    const historyStorage = this.appMessagesManager.getHistoryStorage(this.peerId, this.chat.threadId);
-    const firstSlice = historyStorage.history.first;
-    const lastSlice = historyStorage.history.last;
-    if(firstSlice.isEnd(SliceEnd.Bottom) && (!firstSlice.length || history.includes(firstSlice[0]))) {
-      this.setLoaded('bottom', true, false);
-    }
-    
-    if(lastSlice.isEnd(SliceEnd.Top) && (!lastSlice.length || history.includes(lastSlice[lastSlice.length - 1]))) {
-      this.setLoaded('top', true, false);
+    if(this.chat.type !== 'scheduled') {
+      const historyStorage = this.appMessagesManager.getHistoryStorage(this.peerId, this.chat.threadId);
+      const firstSlice = historyStorage.history.first;
+      const lastSlice = historyStorage.history.last;
+      if(firstSlice.isEnd(SliceEnd.Bottom) && (!firstSlice.length || history.includes(firstSlice[0]))) {
+        this.setLoaded('bottom', true, false);
+      }
+      
+      if(lastSlice.isEnd(SliceEnd.Top) && (!lastSlice.length || history.includes(lastSlice[lastSlice.length - 1]))) {
+        this.setLoaded('top', true, false);
+      }
+    } else {
+      this.setLoaded('top', true);
+      this.setLoaded('bottom', true);
     }
 
     await this.messagesQueuePromise;//.then(() => new Promise(resolve => setTimeout(resolve, 100)))
@@ -2985,8 +2990,8 @@ export default class ChatBubbles {
       return promise;
     } else if(this.chat.type === 'scheduled') {
       return this.appMessagesManager.getScheduledMessages(this.peerId).then(mids => {
-        this.setLoaded('top', true);
-        this.setLoaded('bottom', true);
+        // this.setLoaded('top', true);
+        // this.setLoaded('bottom', true);
         return {history: mids.slice().reverse()};
       });
     }
@@ -3347,7 +3352,8 @@ export default class ChatBubbles {
         (
           Object.keys(this.bubbles).length && 
           !this.getRenderedLength()
-        )
+        ) ||
+        (this.chat.type === 'scheduled' && !Object.keys(this.bubbles).length)
       )
     ) {
       this.log('inject empty peer placeholder');
