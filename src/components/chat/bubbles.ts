@@ -73,7 +73,8 @@ import { EmoticonsDropdown } from "../emoticonsDropdown";
 const USE_MEDIA_TAILS = false;
 const IGNORE_ACTIONS: Set<Message.messageService['action']['_']> = new Set([
   'messageActionHistoryClear',
-  'messageActionChatCreate'
+  'messageActionChatCreate'/* ,
+  'messageActionChannelMigrateFrom' */
 ]);
 
 const TEST_SCROLL_TIMES: number = undefined;
@@ -1724,6 +1725,8 @@ export default class ChatBubbles {
 
       // this.ladderDeferred.resolve();
 
+      this.scrollable.lastScrollDirection = 0;
+      this.scrollable.lastScrollTop = 0;
       replaceContent(this.scrollable.container, this.chatInner);
 
       animationIntersector.unlockGroup(CHAT_ANIMATION_GROUP);
@@ -1775,6 +1778,12 @@ export default class ChatBubbles {
 
       this.onScroll();
 
+      const middleware = this.getMiddleware();
+      const afterSetPromise = Promise.all([setPeerPromise, getHeavyAnimationPromise()]);
+      afterSetPromise.then(() => { // check whether list isn't full
+        this.scrollable.checkForTriggers();
+      });
+
       this.chat.dispatchEvent('setPeer', lastMsgId, !isJump);
 
       const needFetchInterval = this.appMessagesManager.isFetchIntervalNeeded(peerId);
@@ -1785,8 +1794,7 @@ export default class ChatBubbles {
           this.setLoaded('bottom', true);
         }
       } else {
-        const middleware = this.getMiddleware();
-        Promise.all([setPeerPromise, getHeavyAnimationPromise()]).then(() => {
+        afterSetPromise.then(() => {
           if(!middleware()) {
             return;
           }
@@ -2108,7 +2116,13 @@ export default class ChatBubbles {
       const s = document.createElement('div');
       s.classList.add('service-msg');
       if(action) {
-        s.append(this.appMessagesManager.wrapMessageActionTextNew(message));
+        if(action._ === 'messageActionChannelMigrateFrom') {
+          s.append(i18n('ChatMigration.From', [new PeerTitle({peerId: -action.chat_id}).element]));
+        } else if(action._ === 'messageActionChatMigrateTo') {
+          s.append(i18n('ChatMigration.To', [new PeerTitle({peerId: -action.channel_id}).element]));
+        } else {
+          s.append(this.appMessagesManager.wrapMessageActionTextNew(message));
+        }
       }
       bubbleContainer.append(s);
 
