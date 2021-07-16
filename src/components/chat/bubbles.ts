@@ -2296,7 +2296,7 @@ export default class ChatBubbles {
     }
 
     const messageWithReplies = this.appMessagesManager.getMessageWithReplies(message);
-    const withReplies = !!messageWithReplies;
+    const withReplies = !!messageWithReplies && message.mid > 0;
 
     if(withReplies) {
       bubble.classList.add('with-replies');
@@ -3298,7 +3298,7 @@ export default class ChatBubbles {
   }
 
   private generateLocalFirstMessage<T extends boolean>(service?: T, fill?: (message: GenerateLocalMessageType<T>) => void): GenerateLocalMessageType<T> {
-    const offset = this.appMessagesManager.generateMessageId(0);
+    const offset = this.appMessagesManager.generateMessageId(this.chat.type === 'scheduled' ? -1 : 0);
 
     const message: Omit<Message.message | Message.messageService, 'message'> & {message?: string} = {
       _: service ? 'messageService' : 'message',
