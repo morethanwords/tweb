@@ -2077,12 +2077,12 @@ export class AppMessagesManager {
     });
   }
 
-  public updatePinnedMessage(peerId: number, mid: number, unpin?: true, silent?: true, oneSide?: true) {
+  public updatePinnedMessage(peerId: number, mid: number, unpin?: boolean, silent?: boolean, pm_oneside?: boolean) {
     return apiManager.invokeApi('messages.updatePinnedMessage', {
       peer: appPeersManager.getInputPeerById(peerId),
       unpin,
       silent,
-      pm_oneside: oneSide,
+      pm_oneside,
       id: this.getServerMessageId(mid)
     }).then(updates => {
       //this.log('pinned updates:', updates);
@@ -3540,7 +3540,7 @@ export class AppMessagesManager {
     });
   }
 
-  public deleteMessages(peerId: number, mids: number[], revoke?: true) {
+  public deleteMessages(peerId: number, mids: number[], revoke?: boolean) {
     let promise: Promise<any>;
 
     const localMessageIds = mids.map(mid => this.getServerMessageId(mid));

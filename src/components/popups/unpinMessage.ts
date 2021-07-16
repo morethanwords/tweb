@@ -5,8 +5,8 @@
  */
 
 import appMessagesManager from "../../lib/appManagers/appMessagesManager";
-import { addCancelButton, PopupButton } from ".";
-import PopupPeer from "./peer";
+import { addCancelButton } from ".";
+import PopupPeer, { PopupPeerButtonCallbackCheckboxes, PopupPeerOptions } from "./peer";
 import appPeersManager from "../../lib/appManagers/appPeersManager";
 import rootScope from "../../lib/rootScope";
 import { LangPackKey } from "../../lib/langPack";
@@ -15,11 +15,11 @@ import PeerTitle from "../peerTitle";
 
 export default class PopupPinMessage {
   constructor(peerId: number, mid: number, unpin?: true, onConfirm?: () => void) {
-    let title: LangPackKey, description: LangPackKey, buttons: PopupButton[] = [];
+    let title: LangPackKey, description: LangPackKey, buttons: PopupPeerOptions['buttons'] = [], checkboxes: PopupPeerOptions['checkboxes'] = [];
 
     const canUnpin = appPeersManager.canPinMessage(peerId);
 
-    const callback = (oneSide?: true, silent?: true) => {
+    const callback = (checked: PopupPeerButtonCallbackCheckboxes, oneSide?: boolean, silent?: boolean) => {
       setTimeout(() => { // * костыль, потому что document.elementFromPoint вернёт popup-peer пока он будет закрываться
         let promise: Promise<any>;
         if(unpin && !mid) {
@@ -57,7 +57,7 @@ export default class PopupPinMessage {
       buttons.push({
         langKey: buttonText,
         isDanger: true,
-        callback: () => callback()
+        callback
       });
     } else {
       title = 'PinMessageAlertTitle';
@@ -66,7 +66,7 @@ export default class PopupPinMessage {
       if(peerId < 0) {
         buttons.push({
           langKey: pinButtonText,
-          callback: () => callback()
+          callback: (checked) => callback(checked, false, !checked.size)
         });
 
         if(appChatsManager.isBroadcast(-peerId)) {
@@ -74,9 +74,9 @@ export default class PopupPinMessage {
         } else {
           description = 'PinMessageAlert';
   
-          buttons.push({
-            langKey: 'PinNotify',
-            callback: () => callback(undefined, true)
+          checkboxes.push({
+            text: 'PinNotify',
+            checked: true
           });
         }
       } else {
@@ -85,18 +85,18 @@ export default class PopupPinMessage {
         if(peerId === rootScope.myId) {
           buttons.push({
             langKey: pinButtonText,
-            callback: () => callback()
+            callback
           });
         } else {
           buttons.push({
             langKey: pinButtonText,
-            callback: () => callback(true)
+            callback: (checked) => callback(checked, !checked.size)
           });
-  
-          buttons.push({
-            langKey: 'PinAlsoFor',
-            langArgs: [new PeerTitle({peerId, onlyFirstName: true}).element],
-            callback: () => callback()
+
+          checkboxes.push({
+            text: 'PinAlsoFor',
+            textArgs: [new PeerTitle({peerId, onlyFirstName: true}).element],
+            checked: true
           });
         }
       }
@@ -108,7 +108,8 @@ export default class PopupPinMessage {
       peerId,
       titleLangKey: title,
       descriptionLangKey: description,
-      buttons
+      buttons,
+      checkboxes
     });
 
     popup.show();

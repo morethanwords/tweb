@@ -21,13 +21,8 @@ export default class PopupSendNow {
     };
 
     buttons.push({
-      text: 'SEND',
+      langKey: 'Send',
       callback
-    });
-
-    buttons.push({
-      text: 'CANCEL',
-      isCancel: true
     });
 
     const popup = new PopupPeer('popup-delete-chat', {
