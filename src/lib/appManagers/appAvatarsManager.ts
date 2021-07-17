@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import renderImageFromUrl from "../../helpers/dom/renderImageFromUrl";
+import renderImageFromUrl, { renderImageFromUrlPromise } from "../../helpers/dom/renderImageFromUrl";
 import replaceContent from "../../helpers/dom/replaceContent";
 import sequentialDom from "../../helpers/sequentialDom";
 import { UserProfilePhoto, ChatPhoto, InputFileLocation } from "../../layer";
@@ -103,7 +103,7 @@ export class AppAvatarsManager {
         thumbImage.classList.add('avatar-photo', 'avatar-photo-thumbnail');
         img.classList.add('avatar-photo');
         const url = appPhotosManager.getPreviewURLFromBytes(photo.stripped_thumb);
-        renderThumbPromise = renderImageFromUrl(thumbImage, url).then(() => {
+        renderThumbPromise = renderImageFromUrlPromise(thumbImage, url).then(() => {
           replaceContent(div, thumbImage);
         });
       }
@@ -134,7 +134,7 @@ export class AppAvatarsManager {
     }
 
     const renderPromise = loadPromise
-    .then((url) => renderImageFromUrl(img, url/* , false */))
+    .then((url) => renderImageFromUrlPromise(img, url/* , false */))
     .then(() => callback());
 
     return {cached, loadPromise: renderThumbPromise || renderPromise};

@@ -3148,14 +3148,15 @@ export default class ChatBubbles {
   }
 
   private renderEmptyPlaceholder(type: 'group' | 'saved' | 'noMessages' | 'noScheduledMessages' | 'greeting', bubble: HTMLElement, message: any, elements: (Node | string)[]) {
-    bubble.classList.add('empty-placeholder', 'empty-placeholder-' + type);
+    const BASE_CLASS = 'empty-bubble-placeholder';
+    bubble.classList.add(BASE_CLASS, BASE_CLASS + '-' + type);
 
     let title: HTMLElement; 
     if(type === 'group') title = i18n('GroupEmptyTitle1');
     else if(type === 'saved') title = i18n('ChatYourSelfTitle');
     else if(type === 'noMessages' || type === 'greeting') title = i18n('NoMessages');
     else if(type === 'noScheduledMessages') title = i18n('NoScheduledMessages');
-    title.classList.add('center', 'empty-placeholder-title');
+    title.classList.add('center', BASE_CLASS + '-title');
 
     elements.push(title);
 
@@ -3177,12 +3178,12 @@ export default class ChatBubbles {
       ];
     } else if(type === 'greeting') {
       const subtitle = i18n('NoMessagesGreetingsDescription');
-      subtitle.classList.add('center', 'empty-placeholder-subtitle');
+      subtitle.classList.add('center', BASE_CLASS + '-subtitle');
 
       this.messagesQueue.findAndSplice(q => q.bubble === bubble);
 
       const stickerDiv = document.createElement('div');
-      stickerDiv.classList.add('empty-placeholder-sticker');
+      stickerDiv.classList.add(BASE_CLASS + '-sticker');
 
       const middleware = this.getMiddleware();
       
@@ -3221,7 +3222,7 @@ export default class ChatBubbles {
       elements.push(
         ...listElements.map(elem => {
           const span = document.createElement('span');
-          span.classList.add('empty-placeholder-list-item');
+          span.classList.add(BASE_CLASS + '-list-item');
           span.append(elem);
           return span;
         })
@@ -3236,7 +3237,7 @@ export default class ChatBubbles {
       } else if(type === 'saved') {
         listElements.forEach(elem => {
           const i = document.createElement('span');
-          i.classList.add('empty-placeholder-list-bullet');
+          i.classList.add(BASE_CLASS + '-list-bullet');
           i.innerText = '•';
           elem.prepend(i);
         });
@@ -3247,7 +3248,7 @@ export default class ChatBubbles {
       bubble.classList.add('has-description');
     }
 
-    elements.forEach((element: any) => element.classList.add('empty-placeholder-line'));
+    elements.forEach((element: any) => element.classList.add(BASE_CLASS + '-line'));
   }
 
   private processLocalMessageRender(message: Message.message | Message.messageService) {

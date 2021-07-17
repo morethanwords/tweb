@@ -12,7 +12,8 @@ const set = (elem: HTMLElement | HTMLImageElement | SVGImageElement | HTMLVideoE
 };
 
 // проблема функции в том, что она не подходит для ссылок, пригодна только для blob'ов, потому что обычным ссылкам нужен 'load' каждый раз.
-export default async function renderImageFromUrl(elem: HTMLElement | HTMLImageElement | SVGImageElement | HTMLVideoElement, url: string, callback?: (err?: Event) => void, useCache = true) {
+export default function renderImageFromUrl(elem: HTMLElement | HTMLImageElement | SVGImageElement | HTMLVideoElement, 
+  url: string, callback?: (err?: Event) => void, useCache = true) {
   if(!url) {
     console.error('renderImageFromUrl: no url?', elem, url);
     callback && callback();
@@ -53,4 +54,10 @@ export default async function renderImageFromUrl(elem: HTMLElement | HTMLImageEl
       loader.addEventListener('error', callback);
     }
   }
+}
+
+export function renderImageFromUrlPromise(elem: Parameters<typeof renderImageFromUrl>[0], url: string, useCache?: boolean) {
+  return new Promise((resolve) => {
+    renderImageFromUrl(elem, url, resolve, useCache);
+  });
 }

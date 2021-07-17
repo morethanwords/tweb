@@ -29,7 +29,7 @@ import appDraftsManager, { MyDraftMessage } from "./appDraftsManager";
 import DEBUG, { MOUNT_CLASS_TO } from "../../config/debug";
 import appNotificationsManager from "./appNotificationsManager";
 import PeerTitle from "../../components/peerTitle";
-import { i18n, LangPackKey, _i18n } from "../langPack";
+import I18n, { FormatterArguments, i18n, LangPackKey, _i18n } from "../langPack";
 import findUpTag from "../../helpers/dom/findUpTag";
 import { LazyLoadQueueIntersector } from "../../components/lazyLoadQueue";
 import lottieLoader from "../lottieLoader";
@@ -41,6 +41,8 @@ import positionElementByIndex from "../../helpers/dom/positionElementByIndex";
 import replaceContent from "../../helpers/dom/replaceContent";
 import ConnectionStatusComponent from "../../components/connectionStatus";
 import appChatsManager from "./appChatsManager";
+import { renderImageFromUrlPromise } from "../../helpers/dom/renderImageFromUrl";
+import { fastRafPromise } from "../../helpers/schedulers";
 
 export type DialogDom = {
   avatarEl: AvatarElement,
@@ -754,12 +756,13 @@ export class AppDialogsManager {
 
   private generateEmptyPlaceholder(options: {
     title: LangPackKey,
-    subtitle: LangPackKey,
+    subtitle?: LangPackKey,
+    subtitleArgs?: FormatterArguments,
     classNameType: string
   }) {
     const BASE_CLASS = 'empty-placeholder';
-    const div = document.createElement('div');
-    div.classList.add(BASE_CLASS, BASE_CLASS + '-' + options.classNameType);
+    const container = document.createElement('div');
+    container.classList.add(BASE_CLASS, BASE_CLASS + '-' + options.classNameType);
     
     const header = document.createElement('div');
     header.classList.add(BASE_CLASS + '-header');
@@ -767,31 +770,82 @@ export class AppDialogsManager {
 
     const subtitle = document.createElement('div');
     subtitle.classList.add(BASE_CLASS + '-subtitle');
-    _i18n(subtitle, options.subtitle);
+    if(options.subtitle) {
+      _i18n(subtitle, options.subtitle, options.subtitleArgs);
+    }
 
-    div.append(header, subtitle);
+    container.append(header, subtitle);
 
-    return div;
+    return {container, header, subtitle};
   }
 
   private onListLengthChange = () => {
     //return;
+    if(this.filterId === 1) {
+      return;
+    }
 
-    if(this.filterId < 2) return;
+    let placeholderContainer = (Array.from(this.chatList.parentElement.children) as HTMLElement[]).find(el => el.matches('.empty-placeholder'));
+    const needPlaceholder = this.scroll.loadedAll.bottom && !this.chatList.childElementCount/*  || true */;
+    // this.chatList.style.display = 'none';
     
-    const emptyPlaceholder = this.chatList.parentElement.querySelector('.empty-placeholder');
-    if(this.scroll.loadedAll.bottom && !this.chatList.childElementCount) {
-      if(emptyPlaceholder) {
-        return;
+    if(needPlaceholder && placeholderContainer) {
+      return;
+    } else if(!needPlaceholder) {
+      if(placeholderContainer) {
+        placeholderContainer.remove();
       }
 
-      const d = this.generateEmptyPlaceholder({
+      return;
+    }
+
+    let placeholder: ReturnType<AppDialogsManager['generateEmptyPlaceholder']>;
+    if(!this.filterId) {
+      placeholder = this.generateEmptyPlaceholder({
+        title: 'ChatList.Main.EmptyPlaceholder.Title',
+        classNameType: 'dialogs'
+      });
+      
+      placeholderContainer = placeholder.container;
+      
+      const img = document.createElement('img');
+      img.classList.add('empty-placeholder-dialogs-icon');
+      
+      Promise.all([
+        appUsersManager.getContacts().then(users => {
+          let key: LangPackKey, args: FormatterArguments;
+
+          if(users.length) {
+            key = 'ChatList.Main.EmptyPlaceholder.Subtitle';
+            args = [i18n('Contacts.Count', [users.length])];
+          } else {
+            key = 'ChatList.Main.EmptyPlaceholder.SubtitleNoContacts';
+            args = [];
+          }
+
+          const subtitleEl = new I18n.IntlElement({
+            key,
+            args,
+            element: placeholder.subtitle
+          });
+        }),
+        renderImageFromUrlPromise(img, 'assets/img/EmptyChats.svg'),
+        fastRafPromise()
+      ]).then(() => {
+        placeholderContainer.classList.add('visible');
+      });
+
+      placeholderContainer.prepend(img);
+    } else {
+      placeholder = this.generateEmptyPlaceholder({
         title: 'FilterNoChatsToDisplay',
         subtitle: 'FilterNoChatsToDisplayInfo',
         classNameType: 'folder'
       });
 
-      d.prepend(wrapLocalSticker({
+      placeholderContainer = placeholder.container;
+
+      placeholderContainer.prepend(wrapLocalSticker({
         emoji: '📂',
         width: 128,
         height: 128
@@ -806,12 +860,10 @@ export class AppDialogsManager {
         new AppEditFolderTab(appSidebarLeft).open(appMessagesManager.filtersStorage.filters[this.filterId]);
       });
 
-      d.append(button);
-
-      this.chatList.parentElement.append(d);
-    } else if(emptyPlaceholder) {
-      emptyPlaceholder.remove();
+      placeholderContainer.append(button);
     }
+
+    this.chatList.parentElement.append(placeholderContainer);
   };
 
   public onChatsRegularScroll = () => {
