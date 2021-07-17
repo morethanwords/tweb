@@ -14,6 +14,7 @@ import apiManager from "./mtproto/mtprotoworker";
 import stateStorage from "./stateStorage";
 import App from "../config/app";
 import rootScope from "./rootScope";
+import RichTextProcessor from "./richtextprocessor";
 
 export const langPack: {[actionType: string]: LangPackKey} = {
   "messageActionChatCreate": "ActionCreateGroup",
@@ -58,6 +59,9 @@ export const langPack: {[actionType: string]: LangPackKey} = {
 };
 
 export type LangPackKey = /* string |  */keyof typeof lang | keyof typeof langSign;
+
+export type FormatterArgument = string | Node;
+export type FormatterArguments = FormatterArgument[];
 
 namespace I18n {
 	export const strings: Map<LangPackKey, LangPackString> = new Map();
@@ -230,12 +234,12 @@ namespace I18n {
 		});
 	}
 
-	export function superFormatter(input: string, args?: any[], indexHolder = {i: 0}) {
-		let out: (string | HTMLElement)[] = [];
-		const regExp = /(\*\*)(.+?)\1|(\n)|un\d|%\d\$.|%./g;
+	export function superFormatter(input: string, args?: FormatterArguments, indexHolder = {i: 0}) {
+		let out: FormatterArguments = [];
+		const regExp = /(\*\*)(.+?)\1|(\n)|(\[.+?\]\(.*?\))|un\d|%\d\$.|%./g;
 
 		let lastIndex = 0;
-		input.replace(regExp, (match, p1: any, p2: any, p3: any, offset: number, string: string) => {
+		input.replace(regExp, (match, p1: any, p2: any, p3: any, p4: string, offset: number, string: string) => {
 			//console.table({match, p1, p2, offset, string});
 
 			out.push(string.slice(lastIndex, offset));
@@ -252,6 +256,23 @@ namespace I18n {
 				}
 			} else if(p3) {
 				out.push(document.createElement('br'));
+			} else if(p4) {
+				const a = document.createElement('a');
+
+				const idx = p4.lastIndexOf(']');
+				const text = p4.slice(1, idx);
+				a.append(...superFormatter(text, args, indexHolder));
+
+				const url = p4.slice(idx + 2, p4.length - 1);
+				if(url) {
+					const wrappedUrl = RichTextProcessor.wrapUrl(url);
+					a.href = wrappedUrl.url;
+					if(wrappedUrl.onclick) a.setAttribute('onclick', wrappedUrl.onclick);
+					a.target = '_blank';
+				}
+
+				out.push(a);
+				console.log('p4', p4);
 			} else if(args) {
 				out.push(args[indexHolder.i++]);
 			}
@@ -268,8 +289,8 @@ namespace I18n {
 	}
 	
 	export function format(key: LangPackKey, plain: true, args?: any[]): string;
-	export function format(key: LangPackKey, plain?: false, args?: any[]): (string | HTMLElement)[];
-	export function format(key: LangPackKey, plain = false, args?: any[]): (string | HTMLElement)[] | string {
+	export function format(key: LangPackKey, plain?: false, args?: any[]): FormatterArguments;
+	export function format(key: LangPackKey, plain = false, args?: any[]): FormatterArguments | string {
 		const str = strings.get(key);
 		let input: string;
 		if(str) {
@@ -329,7 +350,7 @@ namespace I18n {
 
 	export type IntlElementOptions = IntlElementBaseOptions & {
 		key: LangPackKey,
-		args?: any[]
+		args?: FormatterArguments
 	};
 	export class IntlElement extends IntlElementBase<IntlElementOptions> {
 		public key: IntlElementOptions['key'];

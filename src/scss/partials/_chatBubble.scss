@@ -733,7 +733,7 @@ $bubble-margin: .25rem;
       max-width: 100%;
     }
 
-    &.empty-placeholder {
+    &.empty-bubble-placeholder {
       position: absolute;
       top: 50%;
       left: 50%;
@@ -750,7 +750,7 @@ $bubble-margin: .25rem;
           align-self: center;
         }
   
-        .empty-placeholder-title {
+        .empty-bubble-placeholder-title {
           font-weight: 500;
           font-size: 1rem !important;
         }
@@ -760,7 +760,11 @@ $bubble-margin: .25rem;
         }
       }
 
-      .empty-placeholder-line + .empty-placeholder-line {
+      .empty-bubble-placeholder-line {
+        color: #fff;
+      }
+
+      .empty-bubble-placeholder-line + .empty-bubble-placeholder-line {
         margin-top: .5rem;
       }
 
@@ -771,7 +775,7 @@ $bubble-margin: .25rem;
         margin-left: -.1875rem;
       }
 
-      .empty-placeholder-list-bullet {
+      .empty-bubble-placeholder-list-bullet {
         margin-right: .3125rem;
       }
 
@@ -784,23 +788,23 @@ $bubble-margin: .25rem;
         }
       }
 
-      &.empty-placeholder-group {
-        .empty-placeholder-list-item {
+      &.empty-bubble-placeholder-group {
+        .empty-bubble-placeholder-list-item {
           margin-top: .4375rem !important;
         }
       }
 
-      &.empty-placeholder-greeting {
+      &.empty-bubble-placeholder-greeting {
         .service-msg {
           max-width: 232px;
         }
 
-        .empty-placeholder-subtitle {
+        .empty-bubble-placeholder-subtitle {
           margin-top: .25rem !important;
         }
       }
 
-      .empty-placeholder-sticker {
+      .empty-bubble-placeholder-sticker {
         margin-top: .75rem !important;
         position: relative;
         width: 200px;

@@ -43,6 +43,9 @@ const lang = {
   },
   "Chat.Search.NoMessagesFound": "No messages found",
   "Chat.Search.PrivateSearch": "Private Search",
+  "ChatList.Main.EmptyPlaceholder.Title": "Your chats will appear here",
+  "ChatList.Main.EmptyPlaceholder.Subtitle": "You have %s on Telegram",
+  "ChatList.Main.EmptyPlaceholder.SubtitleNoContacts": "Use Telegram app on your [Android](https://telegram.org/android) or [iOS](https://telegram.org/dl/ios) device to sync your contacts",
   //"ChatList.Menu.Archived": "Archived",
   "ChatList.Menu.SwitchTo.Webogram": "Switch to Old Version",
   "ChatList.Menu.SwitchTo.Z": "Switch to Z version",
@@ -54,6 +57,10 @@ const lang = {
   "ConnectionStatus.Reconnecting": "Reconnecting...",
   "ConnectionStatus.TimedOut": "Request timed out, %s",
   "ConnectionStatus.Waiting": "Waiting for network...",
+  "Contacts.Count": {
+    "one_value": "%d contact",
+    "other_value": "%d contacts",
+  },
   "Deactivated.Title": "Too many tabs...",
   "Deactivated.Subtitle": "Telegram supports only one active tab with the app.\nClick anywhere to continue using this tab.",
   /* "Drafts": {

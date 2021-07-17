@@ -23,7 +23,7 @@ import appDownloadManager, { ThumbCache } from "./appDownloadManager";
 import appUsersManager from "./appUsersManager";
 import blur from "../../helpers/blur";
 import { MOUNT_CLASS_TO } from "../../config/debug";
-import renderImageFromUrl from "../../helpers/dom/renderImageFromUrl";
+import { renderImageFromUrlPromise } from "../../helpers/dom/renderImageFromUrl";
 import calcImageInBox from "../../helpers/calcImageInBox";
 import { makeMediaSize, MediaSize } from "../../helpers/mediaSizes";
 
@@ -208,9 +208,7 @@ export class AppPhotosManager {
     image.classList.add('thumbnail');
 
     const loadPromise = (useBlur ? blur(url) : Promise.resolve(url)).then(url => {
-      return new Promise<any>((resolve) => {
-        renderImageFromUrl(image, url, resolve);
-      });
+      return renderImageFromUrlPromise(image, url);
     });
     
     return {image, loadPromise};
