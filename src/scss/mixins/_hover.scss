@@ -15,7 +15,8 @@
     }
   }
 
-  html.no-touch &:hover {
+  html.no-touch &:hover,
+  html.no-touch &:active {
     @if $property != null {
       @if $use-transition {
         transition: .2s #{$property};

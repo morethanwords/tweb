@@ -661,7 +661,7 @@ export class AppDialogsManager {
     
     if(this.loadDialogsPromise/*  || 1 === 1 */) return this.loadDialogsPromise;
 
-    const promise = new Promise<void>(async(resolve, reject) => {
+    const promise = new Promise<void>(async(resolve) => {
       if(!this.chatList.childElementCount) {
         const container = this.chatList.parentElement;
         container.append(this.chatsPreloader);
@@ -697,7 +697,7 @@ export class AppDialogsManager {
   
         const result = await getConversationPromise;
   
-        if(this.filterId !== filterId) {
+        if(this.loadDialogsPromise !== promise) {
           return;
         }
   
@@ -747,11 +747,11 @@ export class AppDialogsManager {
       
       this.chatsPreloader.remove();
       resolve();
-    });
-
-    return this.loadDialogsPromise = promise.finally(() => {
+    }).finally(() => {
       this.loadDialogsPromise = undefined;
     });
+
+    return this.loadDialogsPromise = promise;
   }
 
   private generateEmptyPlaceholder(options: {
@@ -788,7 +788,7 @@ export class AppDialogsManager {
     let placeholderContainer = (Array.from(this.chatList.parentElement.children) as HTMLElement[]).find(el => el.matches('.empty-placeholder'));
     const needPlaceholder = this.scroll.loadedAll.bottom && !this.chatList.childElementCount/*  || true */;
     // this.chatList.style.display = 'none';
-    
+
     if(needPlaceholder && placeholderContainer) {
       return;
     } else if(!needPlaceholder) {

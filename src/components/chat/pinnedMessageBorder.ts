@@ -1,5 +1,17 @@
 // https://github.com/evgeny-nadymov/telegram-react/blob/master/src/Components/ColumnMiddle/PinnedMessageBorder.js
 
+enum BAR_HEIGHTS {
+  ONE = 32,
+  TWO = 15,
+  THREE = 10,
+  FOUR = 8,
+  MORE = 8
+};
+
+const GAP = 1;
+const WIDTH = 2;
+const BASE_CLASS = 'pinned-message-border';
+
 export default class PinnedMessageBorder {
   private border: HTMLElement;
   private wrapper: HTMLElement;
@@ -20,13 +32,15 @@ export default class PinnedMessageBorder {
     const radius = 1;
 
     let d = '';
-    if(count === 3) {
-      d = this.drawRect(0, 0, 2, barHeight, radius)
-        + this.drawRect(0, 11, 2, barHeight + 1, radius)
-        + this.drawRect(0, 23, 2, barHeight, radius);
+    /* if(count === 3) {
+      d = this.drawRect(0, 0, WIDTH, barHeight, radius)
+        + this.drawRect(0, barHeight + GAP, WIDTH, barHeight + 1, radius)
+        + this.drawRect(0, barHeight * 2 + GAP * 2 + 1, WIDTH, barHeight, radius);
+    } */if(count === 2) {
+      d = this.drawRect(0, 0, WIDTH, barHeight, radius) + this.drawRect(0, barHeight + GAP * 2, WIDTH, barHeight, radius);
     } else {
-      for(let i = 0; i < count; i++) {
-        d += this.drawRect(0, (barHeight + 2) * i, 2, barHeight, radius);
+      for(let i = 0; i < count; ++i) {
+        d += this.drawRect(0, (barHeight + GAP) * i, WIDTH, barHeight, radius);
       }
     }
 
@@ -44,56 +58,56 @@ export default class PinnedMessageBorder {
   };
 
   private getBarHeight = (count: number, index: number) => {
-    let barHeight = 32;
-    if(count === 1) {
-      barHeight = 32;
+    let barHeight: number;
+    if(count <= 1) {
+      barHeight = BAR_HEIGHTS.ONE;
     } else if(count === 2) {
-      barHeight = 15;
+      barHeight = BAR_HEIGHTS.TWO;
     } else if(count === 3) {
-      barHeight = 9;
+      barHeight = BAR_HEIGHTS.THREE;
     } else if(count === 4) {
-      barHeight = 7;
+      barHeight = BAR_HEIGHTS.FOUR;
     } else if(count > 3) {
-      barHeight = 7;
+      barHeight = BAR_HEIGHTS.MORE;
     }
 
     return barHeight;
   };
 
   private getMarkHeight = (count: number, index: number) => {
-    let barHeight = 32;
-    if(count === 1) {
-      barHeight = 32;
+    let markHeight: number;
+    if(count <= 1) {
+      markHeight = BAR_HEIGHTS.ONE;
     } else if(count === 2) {
-      barHeight = 15;
+      markHeight = BAR_HEIGHTS.TWO;
     } else if(count === 3) {
-      barHeight = index === 1 ? 10 : 9;
+      markHeight = BAR_HEIGHTS.THREE;
     } else if(count === 4) {
-      barHeight = 7;
+      markHeight = BAR_HEIGHTS.FOUR;
     } else if(count > 3) {
-      barHeight = 7;
+      markHeight = BAR_HEIGHTS.MORE;
     }
 
-    return barHeight;
+    return markHeight;
   };
 
   private getMarkTranslateY = (index: number, barHeight: number, count: number) => {
     if(count === 1) {
       return 0;
     } else if(count === 2) {
-      return index === 0 ? 0 : barHeight + 2;
+      return !index ? 0 : barHeight + GAP;
     }
 
     if(count === 3) {
-      if(index === 0) {
+      if(!index) {
         return 0;
-      } else if (index === 1) {
-        return 11;
+      } else if(index === 1) {
+        return barHeight + GAP;
       }
 
-      return 23;
+      return barHeight * 2 + GAP * 2 + 1;
     } else {
-      return (barHeight + 2) * index;
+      return (barHeight + GAP) * index;
     }
   };
 
@@ -104,21 +118,22 @@ export default class PinnedMessageBorder {
 
     if(index <= 1) {
       return 0;
-    } else if(index >= count - 2) {
-      return trackHeight - 32;
+    } else if(index >= (count - 2)) {
+      return trackHeight - BAR_HEIGHTS.ONE - barHeight;
     }
 
-    return (barHeight + 4) / 2 + (index - 2) * (barHeight + 2);
+    // return (index + 1) * barHeight + index * GAP;
+    return (barHeight + GAP * 2) / 2 + (index - 2) * (barHeight + GAP);
   };
 
   private getTrackHeight = (count: number, barHeight: number) => {
-    return count <= 3 ? 32 : barHeight * count + 2 * (count - 1);
+    return count <= 3 ? BAR_HEIGHTS.ONE : barHeight * count + GAP * (count - 1);
   };
 
   public render(count: number, index: number) {
     if(!this.border) {
       this.border = document.createElement('div');
-      this.border.classList.add('pinned-message-border');
+      this.border.classList.add(BASE_CLASS);
 
       this.wrapper = document.createElement('div');
       this.border.append(this.wrapper);
@@ -126,8 +141,8 @@ export default class PinnedMessageBorder {
     
     if(count === 1) {
       if(this.count !== count) {
-        this.wrapper.className = 'pinned-message-border-wrapper-1';
-        this.border.classList.remove('pinned-message-border-mask');
+        this.wrapper.className = BASE_CLASS + '-wrapper-1';
+        this.border.classList.remove(BASE_CLASS + '-mask');
         this.wrapper.innerHTML = this.wrapper.style.cssText = '';
       }
 
@@ -144,9 +159,9 @@ export default class PinnedMessageBorder {
     const markTranslateY = this.getMarkTranslateY(index, barHeight, count);
     const trackTranslateY = this.getTrackTranslateY(index, count, barHeight, trackHeight);
 
-    this.border.classList.toggle('pinned-message-border-mask', count > 4);
+    this.border.classList.toggle(BASE_CLASS + '-mask', count > 4);
 
-    this.wrapper.className = 'pinned-message-border-wrapper';
+    this.wrapper.className = BASE_CLASS + '-wrapper';
     this.wrapper.style.cssText = `clip-path: url(#${clipPathId}); width: 2px; height: ${trackHeight}px; transform: translateY(-${trackTranslateY}px);`;
     
     if(!this.svg) {
@@ -160,7 +175,7 @@ export default class PinnedMessageBorder {
       this.svg.append(this.defs);
 
       this.mark = document.createElement('div');
-      this.mark.classList.add('pinned-message-border-mark');
+      this.mark.classList.add(BASE_CLASS + '-mark');
     }
 
     if(!this.svg.parentElement) {
