@@ -272,7 +272,6 @@ namespace I18n {
 				}
 
 				out.push(a);
-				console.log('p4', p4);
 			} else if(args) {
 				out.push(args[indexHolder.i++]);
 			}

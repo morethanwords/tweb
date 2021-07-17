@@ -7,21 +7,23 @@
 .pinned-message {
   &-border {
     position: relative;
-    height: 35px;
-    width: 2px;
-    padding: 1.5px 0;
-    //padding: 0 0 6px 6px;
-    //overflow: hidden;
+    height: 2rem;
+    width: .125rem;
+    // padding: .125rem 0;
 
     &-wrapper-1 {
-      height: 32px;
-      width: 2px;
+      position: relative;
+      top: 50%;
+      transform: translateY(-50%);
+      height: 2rem;
+      width: .125rem;
       border-radius: 1px;
       background: var(--primary-color);
     }
 
     &-mask {
-      mask-image: linear-gradient(to bottom, transparent 0, black 6px, black 38px, transparent 44px);
+      height: 2.5rem;
+      mask-image: linear-gradient(to bottom, transparent 0, black 4px, black 36px, transparent 40px);
     }
 
     &-wrapper {
@@ -37,7 +39,7 @@
         bottom: 0;
         display: block;
         background: var(--primary-color);
-        opacity: .53;
+        opacity: .4;
       }
     }
 
@@ -60,9 +62,18 @@
     body:not(.animation-level-0) & {
       &-wrapper, &-mark {
         will-change: transform;
-        transition: transform 0.25s ease-in-out;
+        transition: transform .25s ease-in-out;
       }
     }
+  }
+
+  &-content {
+    --height: 32px;
+    height: var(--height);
+  }
+
+  &-media {
+    border-radius: .1875rem;
   }
 }
 
@@ -86,16 +97,15 @@
   }
   
   &-content {
-    margin-left: 8px;
     flex-grow: 1;
     flex-shrink: 1;
     overflow: hidden;
     pointer-events: none;
     position: relative;
-    height: 2rem;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
+    margin-left: .5rem;
   }
 
   &-title {
@@ -120,7 +130,6 @@
   &-media {
     height: 2rem;
     width: 2rem;
-    border-radius: .5rem;
     overflow: hidden;
     position: absolute;
     left: 0;
@@ -167,7 +176,7 @@
 .reply {
   &.is-media {
     .reply-content {
-      padding-left: 2.5rem;
+      padding-left: 2.25rem;
     }
   }
 
@@ -180,6 +189,14 @@
     border-radius: 1px;
     min-width: 2px;
     background: var(--primary-color);
+  }
+
+  &-content {
+    height: 2rem;
+  }
+
+  &-media {
+    border-radius: .25rem;
   }
 }
 
@@ -267,10 +284,10 @@
     width: 2rem;
     height: 2rem;
     position: absolute;
-    transition: transform var(--pm-transition)/* , opacity var(--pm-transition) */;
+    margin-left: -.25rem;
 
-    body.animation-level-0 & {
-      transition: none;
+    @include animation-level(2) {
+      transition: transform var(--pm-transition)/* , opacity var(--pm-transition) */;
     }
   }
 
@@ -285,13 +302,15 @@
   } */
   
   // * fix blink in safari, can't add translateX from nowhere...
-  &-title, &-subtitle {
+  &-title, 
+  &-subtitle {
     transform: translateX(0);
   }
 
   &.is-media {
-    .pinned-message-title, .pinned-message-subtitle {
-      transform: translateX(2.5rem);
+    .pinned-message-title, 
+    .pinned-message-subtitle {
+      transform: translateX(2.25rem);
       //overflow: hidden !important;
     }
   }
@@ -301,12 +320,16 @@
     //opacity: 0;
   }
 
+  .pinned-container-wrapper {
+    min-width: 16rem;
+  }
+
   &:not(.is-floating) {
     //width: 15.5rem;
 
-    .pinned-message-content {
-      margin-right: 2.5rem;
-    }
+    /* .pinned-message-content {
+      margin-right: 2.25rem;
+    } */
 
     .pinned-message-close {
       display: flex;
@@ -316,8 +339,9 @@
 
   &.is-floating {
     &.is-media {
-      .pinned-message-title, .pinned-message-subtitle {
-        width: calc(100% - 2.5rem);    
+      .pinned-message-title, 
+      .pinned-message-subtitle {
+        width: calc(100% - 2.25rem);    
       }
     }
 
@@ -329,21 +353,26 @@
   }
 
   &-content {
-    > .pinned-message-title, > .pinned-message-subtitle {
+    .pinned-message-title, 
+    .pinned-message-subtitle {
       position: relative;
-      height: 50%;
+      height: calc(var(--height) / 2);
       overflow: visible;
-      transition: transform var(--pm-transition);
 
-      body.animation-level-0 & {
-        transition: none;
+      @include animation-level(2) {
+        transition: transform var(--pm-transition);
       }
     }
   }
 
+  &-title {
+    margin-top: -.0625rem;
+    margin-bottom: .1875rem;
+  }
+
   &-subtitle {
     .animated-super-row {
-      font-size: 14px;
+      font-size: .875rem;
       line-height: 16px;
       overflow: hidden;
       white-space: nowrap;
@@ -403,7 +432,8 @@
   } */
  
 
-  &.hide ~ .tgico-pinlist, &:not(.is-many) ~ .tgico-pinlist {
+  &.hide ~ .tgico-pinlist, 
+  &:not(.is-many) ~ .tgico-pinlist {
     display: none; 
   }
 

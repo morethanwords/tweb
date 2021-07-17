@@ -533,6 +533,7 @@ const lang = {
   "OK": "OK",
   "PinFolderLimitReached": "Sorry, you can\'t pin any more chats to the top.",
   "Send": "Send",
+  "ChannelJoin": "JOIN",
 
   // * macos
   "AccountSettings.Filters": "Chat Folders",

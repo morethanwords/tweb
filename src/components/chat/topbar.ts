@@ -34,6 +34,7 @@ import { cancelEvent } from "../../helpers/dom/cancelEvent";
 import { attachClickEvent } from "../../helpers/dom/clickEvent";
 import findUpTag from "../../helpers/dom/findUpTag";
 import { toast } from "../toast";
+import replaceContent from "../../helpers/dom/replaceContent";
 
 export default class ChatTopbar {
   public container: HTMLDivElement;
@@ -271,8 +272,6 @@ export default class ChatTopbar {
     this.pinnedMessage = new ChatPinnedMessage(this, this.chat, this.appMessagesManager, this.appPeersManager);
 
     this.btnJoin = Button('btn-primary btn-color-primary chat-join hide');
-    this.btnJoin.append(i18n('Chat.Subscribe'));
-
     this.btnPinned = ButtonIcon('pinlist');
     this.btnMute = ButtonIcon('mute');
 
@@ -292,11 +291,24 @@ export default class ChatTopbar {
       cancelEvent(e);
 
       blurActiveElement();
+      const middleware = this.chat.bubbles.getMiddleware();
       this.btnJoin.setAttribute('disabled', 'true');
-      this.appChatsManager.joinChannel(-this.peerId).finally(() => {
+
+      const chatId = -this.peerId;
+      let promise: Promise<any>;
+      if(this.appChatsManager.isChannel(chatId)) {
+        promise = this.appChatsManager.joinChannel(chatId);
+      } else {
+        promise = this.appChatsManager.addChatUser(chatId, rootScope.myId);
+      }
+
+      promise.finally(() => {
+        if(!middleware()) {
+          return;
+        }
+
         this.btnJoin.removeAttribute('disabled');
       });
-    //});
     }, {listenerSetter: this.listenerSetter});
 
     this.listenerSetter.add(rootScope)('chat_update', (e) => {
@@ -419,7 +431,10 @@ export default class ChatTopbar {
     const isBroadcast = this.appPeersManager.isBroadcast(peerId);
 
     this.btnMute && this.btnMute.classList.toggle('hide', !isBroadcast);
-    this.btnJoin && this.btnJoin.classList.toggle('hide', !this.appChatsManager.getChat(-peerId)?.pFlags?.left);
+    if(this.btnJoin) {
+      replaceContent(this.btnJoin, i18n(this.appChatsManager.isChannel(-peerId) ? 'Chat.Subscribe' : 'ChannelJoin'));
+      this.btnJoin.classList.toggle('hide', !this.appChatsManager.getChat(-peerId)?.pFlags?.left);
+    }
     this.setUtilsWidth();
 
     const middleware = this.chat.bubbles.getMiddleware();

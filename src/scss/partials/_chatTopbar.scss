@@ -173,11 +173,11 @@
 
 	.chat-join {
 		width: auto;
-		width: 117px;
-		height: 36px;
+		height: 2.25rem;
 		font-weight: 400;
 		font-size: 0.875rem;
 		margin-right: .5rem;
+		padding: 0 1.375rem; // same as in new media popup
 
 		&:not(.hide) + .chat-mute-button {
 			display: none;

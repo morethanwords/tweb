@@ -2913,17 +2913,20 @@ export class AppMessagesManager {
   public toggleDialogPin(peerId: number, filterId?: number) {
     if(filterId > 1) {
       return this.filtersStorage.toggleDialogPin(peerId, filterId);
-    } else {
-      const max = filterId === 1 ? rootScope.config.pinned_infolder_count_max : rootScope.config.pinned_dialogs_count_max;
-      if(this.dialogsStorage.getPinnedOrders(filterId).length >= max) {
-        return Promise.reject({type: 'PINNED_DIALOGS_TOO_MUCH'});
-      }
     }
 
     const dialog = this.getDialogOnly(peerId);
     if(!dialog) return Promise.reject();
 
     const pinned = dialog.pFlags?.pinned ? undefined : true;
+
+    if(pinned) {
+      const max = filterId === 1 ? rootScope.config.pinned_infolder_count_max : rootScope.config.pinned_dialogs_count_max;
+      if(this.dialogsStorage.getPinnedOrders(filterId).length >= max) {
+        return Promise.reject({type: 'PINNED_DIALOGS_TOO_MUCH'});
+      }
+    }
+
     return apiManager.invokeApi('messages.toggleDialogPin', {
       peer: appPeersManager.getInputDialogPeerById(peerId),
       pinned
