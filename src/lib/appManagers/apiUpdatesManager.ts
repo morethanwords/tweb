@@ -11,7 +11,7 @@
 
 //import apiManager from '../mtproto/apiManager';
 import DEBUG, { MOUNT_CLASS_TO } from '../../config/debug';
-import { Update, Updates } from '../../layer';
+import { Message, MessageFwdHeader, Peer, Update, Updates } from '../../layer';
 import { logger, LogTypes } from '../logger';
 import apiManager from '../mtproto/mtprotoworker';
 import rootScope from '../rootScope';
@@ -23,7 +23,7 @@ import appStateManager from './appStateManager';
 import serverTimeManager from '../mtproto/serverTimeManager';
 
 type UpdatesState = {
-  pendingPtsUpdates: {pts: number, pts_count: number}[],
+  pendingPtsUpdates: (Update & {pts: number, pts_count: number})[],
   pendingSeqUpdates?: {[seq: number]: {seq: number, date: number, updates: any[]}},
   syncPending: {
     seqAwaiting?: number,
@@ -229,7 +229,7 @@ export class ApiUpdatesManager {
         appUsersManager.saveApiUsers(updateMessage.users, options.override);
         appChatsManager.saveApiChats(updateMessage.chats, options.override);
   
-        updateMessage.updates.forEach((update: any) => {
+        updateMessage.updates.forEach((update: Update) => {
           this.processUpdate(update, processOpts);
         });
         break;
@@ -446,7 +446,7 @@ export class ApiUpdatesManager {
     return this.channelStates[channelId];
   }
 
-  private processUpdate(update: any, options: Partial<{
+  private processUpdate(update: Update, options: Partial<{
     date: number,
     seq: number,
     seqStart: number/* ,
@@ -458,18 +458,24 @@ export class ApiUpdatesManager {
       case 'updateEditChannelMessage':
         channelId = -appPeersManager.getPeerId(update.message.peer_id);
         break;
-      case 'updateDeleteChannelMessages':
+      /* case 'updateDeleteChannelMessages':
         channelId = update.channel_id;
-        break;
+        break; */
       case 'updateChannelTooLong':
         channelId = update.channel_id;
         if(!(channelId in this.channelStates)) {
           return false;
         }
         break;
+      default:
+        if('channel_id' in update) {
+          channelId = update.channel_id;
+        }
+        break;
     }
   
-    const curState = channelId ? this.getChannelState(channelId, update.pts) : this.updatesState;
+    const {pts, pts_count} = update as Update.updateNewMessage;
+    const curState = channelId ? this.getChannelState(channelId, pts) : this.updatesState;
   
     // this.log.log('process', channelId, curState.pts, update)
   
@@ -490,16 +496,16 @@ export class ApiUpdatesManager {
         update._ === 'updateEditMessage' ||
         update._ === 'updateNewChannelMessage' ||
         update._ === 'updateEditChannelMessage') {
-      const message = update.message;
+      const message = update.message as Message.message;
       const toPeerId = appPeersManager.getPeerId(message.peer_id);
-      const fwdHeader = message.fwd_from || {};
-      let reason: any = false;
+      const fwdHeader: MessageFwdHeader.messageFwdHeader = message.fwd_from || {} as any;
+      let reason: string;
       if(message.from_id && !appUsersManager.hasUser(appPeersManager.getPeerId(message.from_id), message.pFlags.post/* || channelId*/) && (reason = 'author') ||
-          fwdHeader.from_id && !appUsersManager.hasUser(appPeersManager.getPeerId(fwdHeader.from_id), !!fwdHeader.channel_id) && (reason = 'fwdAuthor') ||
-          fwdHeader.channel_id && !appChatsManager.hasChat(fwdHeader.channel_id, true) && (reason = 'fwdChannel') ||
+          fwdHeader.from_id && !appUsersManager.hasUser(appPeersManager.getPeerId(fwdHeader.from_id), !!(fwdHeader.from_id as Peer.peerChannel).channel_id) && (reason = 'fwdAuthor') ||
+          (fwdHeader.from_id as Peer.peerChannel)?.channel_id && !appChatsManager.hasChat((fwdHeader.from_id as Peer.peerChannel).channel_id, true) && (reason = 'fwdChannel') ||
           toPeerId > 0 && !appUsersManager.hasUser(toPeerId) && (reason = 'toPeer User') ||
           toPeerId < 0 && !appChatsManager.hasChat(-toPeerId) && (reason = 'toPeer Chat')) {
-        this.log.warn('Not enough data for message update', toPeerId, reason, message)
+        this.log.warn('Not enough data for message update', toPeerId, reason, message);
         if(channelId && appChatsManager.hasChat(channelId)) {
           this.getChannelDifference(channelId);
         } else {
@@ -515,11 +521,11 @@ export class ApiUpdatesManager {
     let popPts: boolean;
     let popSeq: boolean;
   
-    if(update.pts) {
-      const newPts = curState.pts + (update.pts_count || 0);
-      if(newPts < update.pts) {
+    if(pts) {
+      const newPts = curState.pts + (pts_count || 0);
+      if(newPts < pts) {
         this.debug && this.log.warn('Pts hole', curState, update, channelId && appChatsManager.getChat(channelId));
-        curState.pendingPtsUpdates.push(update);
+        curState.pendingPtsUpdates.push(update as Update.updateNewMessage);
         if(!curState.syncPending && !curState.syncLoading) {
           curState.syncPending = {
             timeout: window.setTimeout(() => {
@@ -542,12 +548,12 @@ export class ApiUpdatesManager {
         return false;
       }
 
-      if(update.pts > curState.pts) {
-        curState.pts = update.pts;
+      if(pts > curState.pts) {
+        curState.pts = pts;
         popPts = true;
   
         curState.lastPtsUpdateTime = Date.now();
-      } else if(update.pts_count) {
+      } else if(pts_count) {
         // this.log.warn('Duplicate update', update)
         return false;
       }
