@@ -123,7 +123,8 @@ export default class PinnedMessageBorder {
     }
 
     // return (index + 1) * barHeight + index * GAP;
-    return (barHeight + GAP * 2) / 2 + (index - 2) * (barHeight + GAP);
+    return index * barHeight - (count - index - 1) * GAP;
+    //return (barHeight + GAP * 2) / 2 + (index - 2) * (barHeight + GAP);
   };
 
   private getTrackHeight = (count: number, barHeight: number) => {
@@ -160,6 +161,16 @@ export default class PinnedMessageBorder {
     const trackTranslateY = this.getTrackTranslateY(index, count, barHeight, trackHeight);
 
     this.border.classList.toggle(BASE_CLASS + '-mask', count > 4);
+
+    if(index <= 1) {
+      this.border.classList.add('mask-bottom');
+      this.border.classList.remove('mask-top');
+    } else if(index >= (count - 2)) {
+      this.border.classList.add('mask-top');
+      this.border.classList.remove('mask-bottom');
+    } else {
+      this.border.classList.add('mask-top', 'mask-bottom');
+    }
 
     this.wrapper.className = BASE_CLASS + '-wrapper';
     this.wrapper.style.cssText = `clip-path: url(#${clipPathId}); width: 2px; height: ${trackHeight}px; transform: translateY(-${trackTranslateY}px);`;
