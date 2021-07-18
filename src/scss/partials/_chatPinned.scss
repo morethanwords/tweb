@@ -9,6 +9,7 @@
     position: relative;
     height: 2rem;
     width: .125rem;
+    flex: 0 0 auto;
     // padding: .125rem 0;
 
     &-wrapper-1 {
@@ -22,8 +23,50 @@
     }
 
     &-mask {
-      height: 2.5rem;
-      mask-image: linear-gradient(to bottom, transparent 0, black 4px, black 36px, transparent 40px);
+      --mask-height: .375rem;
+      --height: 2.5rem;
+      height: var(--height);
+      overflow: hidden;
+      /* mask-image: linear-gradient(to bottom, transparent 0, black var(--mask-height), black calc(var(--height) - var(--mask-height)), transparent var(--height));
+      
+      &.mask-top {
+        mask-image: linear-gradient(to bottom, transparent 0, black var(--mask-height));
+      }
+
+      &.mask-bottom {
+        mask-image: linear-gradient(to bottom, black calc(var(--height) - var(--mask-height)), transparent var(--height));
+      } */
+
+      &:before, 
+      &:after {
+        position: absolute;
+        left: 0;
+        right: 0;
+        content: " ";
+        display: block;
+        z-index: 1;
+        height: var(--mask-height);
+        opacity: 0;
+
+        @include animation-level(2) {
+          transition: opacity .2s ease-in-out;
+        }
+      }
+
+      &:before {
+        top: 0;
+        background: linear-gradient(var(--surface-color), transparent);
+      }
+
+      &:after {
+        bottom: 0;
+        background: linear-gradient(transparent, var(--surface-color));
+      }
+
+      &.mask-top:before,
+      &.mask-bottom:after {
+        opacity: 1;
+      }
     }
 
     &-wrapper {
@@ -117,7 +160,7 @@
     //line-height: 18px;
     //line-height: 1;
     //line-height: 15px;
-    line-height: 16px;
+    line-height: var(--line-height);
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
@@ -357,6 +400,7 @@
     .pinned-message-subtitle {
       position: relative;
       height: calc(var(--height) / 2);
+      min-height: calc(var(--height) / 2);
       overflow: visible;
 
       @include animation-level(2) {
@@ -366,8 +410,8 @@
   }
 
   &-title {
-    margin-top: -.0625rem;
-    margin-bottom: .1875rem;
+    margin-top: -.125rem;
+    margin-bottom: .25rem;
   }
 
   &-subtitle {
