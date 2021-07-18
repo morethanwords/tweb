@@ -380,14 +380,14 @@
     }
   }
 
-  &.is-floating {
-    &.is-media {
-      .pinned-message-title, 
-      .pinned-message-subtitle {
-        width: calc(100% - 2.25rem);    
-      }
+  &.is-media {
+    .pinned-message-title, 
+    .pinned-message-subtitle {
+      width: calc(100% - 2.25rem);    
     }
+  }
 
+  &.is-floating {
     .chat:not(.type-discussion) & {
       .pinned-container-wrapper {
         padding-right: 3rem;
