@@ -425,6 +425,8 @@ input[type=range] {
 }
 
 .right-controls {
+    display: flex;
+    align-items: center;
     float: right;
 }
 
