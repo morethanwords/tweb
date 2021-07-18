@@ -23,11 +23,11 @@ export default class PopupDeleteDialog {
       onSelect && onSelect(promise);
     }; */
 
-    const callbackLeave = (checked: PopupPeerButtonCallbackCheckboxes) => {
+    const callbackLeave = (checked: PopupPeerButtonCallbackCheckboxes, flush = checkboxes && !!checked.size) => {
       let promise = appChatsManager.leave(-peerId);
       
-      if(checkboxes && checked.size) {
-        promise = promise.then(() => {
+      if(flush) {
+        promise = promise.finally(() => {
           return appMessagesManager.flushHistory(peerId);
         }) as any;
       }
@@ -135,7 +135,7 @@ export default class PopupDeleteDialog {
           buttons = [{
             langKey: 'DeleteChatUser',
             isDanger: true,
-            callback: callbackLeave
+            callback: (checkboxes) => callbackLeave(checkboxes, true)
           }];
         }
 

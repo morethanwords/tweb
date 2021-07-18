@@ -483,6 +483,8 @@ export class AppStateManager extends EventListenerBase<{
 
     if(peerId) {
       this.singlePeerMap.set(type, peerId);
+    } else {
+      this.singlePeerMap.delete(type);
     }
   }
 
