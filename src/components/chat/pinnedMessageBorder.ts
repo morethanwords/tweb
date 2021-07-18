@@ -123,7 +123,7 @@ export default class PinnedMessageBorder {
     }
 
     // return (index + 1) * barHeight + index * GAP;
-    return index * barHeight - (count - index - 1) * GAP;
+    return (index - 2) * barHeight + index * GAP;
     //return (barHeight + GAP * 2) / 2 + (index - 2) * (barHeight + GAP);
   };
 
