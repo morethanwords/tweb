@@ -2007,7 +2007,7 @@ export class AppMessagesManager {
         return true;
       }
 
-      return this.doFlushHistory(peer, just_clear);
+      return this.doFlushHistory(peer, just_clear, revoke);
     });
   }
 
@@ -2021,7 +2021,7 @@ export class AppMessagesManager {
       const maxId = historyResult.history[0] || 0;
       return apiManager.invokeApiSingle('channels.deleteHistory', {
         channel: appChatsManager.getChannelInput(channelId),
-        max_id: maxId
+        max_id: this.getServerMessageId(maxId)
       }).then(() => {
         apiUpdatesManager.processLocalUpdate({
           _: 'updateChannelAvailableMessages',
@@ -2036,12 +2036,22 @@ export class AppMessagesManager {
     return this.doFlushHistory(appPeersManager.getInputPeerById(peerId), justClear, revoke).then(() => {
       delete this.historiesStorage[peerId];
       delete this.messagesStorageByPeerId[peerId];
-
+      delete this.scheduledMessagesStorage[peerId];
+      delete this.threadsStorage[peerId];
+      delete this.searchesStorage[peerId];
+      delete this.pinnedMessages[peerId];
+      delete this.pendingAfterMsgs[peerId];
+      delete this.pendingTopMsgs[peerId];
+      delete this.needSingleMessages[peerId];
+      
       if(justClear) {
         rootScope.dispatchEvent('dialog_flush', {peerId});
       } else {
-        this.dialogsStorage.dropDialog(peerId);
+        delete this.notificationsToHandle[peerId];
+        delete this.typings[peerId];
+        this.reloadConversationsPeers.delete(peerId);
 
+        this.dialogsStorage.dropDialog(peerId);
         rootScope.dispatchEvent('dialog_drop', {peerId});
       }
     });

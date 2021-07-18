@@ -360,11 +360,12 @@ export default class DialogsStorage {
   }
 
   public dropDialog(peerId: number): [Dialog, number] | [] {
-    const foundDialog = this.getDialog(peerId);
+    const foundDialog = this.getDialog(peerId, undefined, false);
     if(foundDialog[0]) {
       this.byFolders[foundDialog[0].folder_id].splice(foundDialog[1], 1);
-      delete this.dialogs[peerId];
+      this.pinnedOrders[foundDialog[0].folder_id].findAndSplice(_peerId => peerId === _peerId);
       this.dialogsIndex.indexObject(peerId, '');
+      delete this.dialogs[peerId];
 
       // clear from state
       this.appStateManager.keepPeerSingle(0, 'topMessage_' + peerId);
