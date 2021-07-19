@@ -12,6 +12,7 @@ import { deepEqual } from "../../helpers/object";
 import { MOUNT_CLASS_TO } from "../../config/debug";
 import apiManager from "./mtprotoworker";
 import assumeType from "../../helpers/assumeType";
+import { logger } from "../logger";
 
 export type ReferenceContext = ReferenceContext.referenceContextProfilePhoto | ReferenceContext.referenceContextMessage;
 export namespace ReferenceContext {
@@ -36,21 +37,20 @@ class ReferenceDatabase {
   private contexts: Map<ReferenceBytes, ReferenceContexts> = new Map();
   //private references: Map<ReferenceBytes, number[]> = new Map();
   private links: {[hex: string]: ReferenceBytes} = {};
+  private log = logger('RD', undefined, true);
 
   constructor() {
     apiManager.addTaskListener('refreshReference', (task: RefreshReferenceTask) => {
-      const bytes = task.payload;
+      const originalPayload = task.payload;
 
       assumeType<RefreshReferenceTaskResponse>(task);
-      task.originalPayload = bytes;
+      task.originalPayload = originalPayload;
 
-      this.refreshReference(bytes).then(() => {
-        task.payload = this.getReferenceByLink(bytes);
-        apiManager.postMessage(task);
+      this.refreshReference(originalPayload).then((bytes) => {
+        task.payload = bytes;
       }, (err) => {
         task.error = err;
-        apiManager.postMessage(task);
-      });
+      }).then(() => apiManager.postMessage(task));
     });
   }
 
@@ -103,10 +103,12 @@ class ReferenceDatabase {
     return false;
   }
 
-  public refreshReference(reference: ReferenceBytes, context?: ReferenceContext): Promise<void> {
+  public refreshReference(reference: ReferenceBytes, context?: ReferenceContext): Promise<Uint8Array | number[]> {
+    this.log('refreshReference: start', reference.slice(), context);
     if(!context) {
       const c = this.getContext(reference);
       if(!c) {
+        this.log('refreshReference: got no context for reference:', reference.slice());
         return Promise.reject('NO_CONTEXT');
       }
 
@@ -124,16 +126,18 @@ class ReferenceDatabase {
       }
 
       default: {
-        console.warn('FILE_REFERENCE_EXPIRED: not implemented context', context);
+        this.log.warn('refreshReference: not implemented context', context);
         return Promise.reject();
       }
     }
 
     const hex = bytesToHex(reference);
+    this.log('refreshReference: refreshing reference:', hex);
     return promise.then(() => {
       const newHex = bytesToHex(reference);
+      this.log('refreshReference: refreshed, reference before:', hex, 'after:', newHex);
       if(hex !== newHex) {
-        return;
+        return reference;
       }
 
       this.deleteContext(reference, context);
@@ -146,17 +150,6 @@ class ReferenceDatabase {
       throw 'NO_NEW_CONTEXT';
     });
   }
-
-  /* handleReferenceError = (reference: ReferenceBytes, error: ApiError) => {
-    switch(error.type) {
-      case 'FILE_REFERENCE_EXPIRED': {
-        return this.refreshReference(reference);
-      }
-
-      default:
-        return Promise.reject(error);
-    }
-  }; */
 
   /* public replaceReference(oldReference: ReferenceBytes, newReference: ReferenceBytes) {
     const contexts = this.contexts.get(oldReference);

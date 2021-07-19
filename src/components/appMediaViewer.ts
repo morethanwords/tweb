@@ -117,16 +117,18 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     mainDiv.classList.add(MEDIA_VIEWER_CLASSNAME);
 
     const topbar = this.topbar = document.createElement('div');
-    topbar.classList.add(MEDIA_VIEWER_CLASSNAME + '-topbar');
+    topbar.classList.add(MEDIA_VIEWER_CLASSNAME + '-topbar', MEDIA_VIEWER_CLASSNAME + '-appear');
 
     const topbarLeft = document.createElement('div');
     topbarLeft.classList.add(MEDIA_VIEWER_CLASSNAME + '-topbar-left');
 
+    
     this.buttons['mobile-close'] = ButtonIcon('close', {onlyMobile: true});
-
+    
     // * author
     this.author.container = document.createElement('div');
     this.author.container.classList.add(MEDIA_VIEWER_CLASSNAME + '-author', 'no-select');
+    const authorRight = document.createElement('div');
 
     this.author.avatarEl = new AvatarElement();
     this.author.avatarEl.classList.add(MEDIA_VIEWER_CLASSNAME + '-userpic', 'avatar-44');
@@ -137,7 +139,9 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     this.author.date = document.createElement('div');
     this.author.date.classList.add(MEDIA_VIEWER_CLASSNAME + '-date');
 
-    this.author.container.append(this.author.avatarEl, this.author.nameEl, this.author.date);
+    authorRight.append(this.author.nameEl, this.author.date);
+
+    this.author.container.append(this.author.avatarEl, authorRight);
 
     // * buttons
     const buttonsDiv = document.createElement('div');
@@ -974,7 +978,8 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
 
     //const maxWidth = appPhotosManager.windowW - 16;
     const maxWidth = mediaSizes.isMobile ? this.pageEl.scrollWidth : this.pageEl.scrollWidth - 16;
-    const maxHeight = mediaSizes.isMobile ? appPhotosManager.windowH : appPhotosManager.windowH - 100;
+    // TODO: const maxHeight = mediaSizes.isMobile ? appPhotosManager.windowH : appPhotosManager.windowH - 100;
+    const maxHeight = appPhotosManager.windowH - 120;
     let thumbPromise: Promise<any> = Promise.resolve();
     const size = appPhotosManager.setAttachmentSize(media, container, maxWidth, maxHeight, mediaSizes.isMobile ? false : true).photoSize;
     if(useContainerAsTarget) {

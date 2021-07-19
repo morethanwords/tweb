@@ -42,18 +42,6 @@
       }
     }
   }
-
-  &__overlay {
-    position: relative;
-
-    &:before {
-      background: radial-gradient(ellipse at center, transparent 0%, rgba(0, 0, 0, .5) 100%);
-    }
-
-    &--2:before {
-      background: rgba(24, 24, 24, .8);
-    }
-  }
 }
 
 .default {
@@ -71,7 +59,7 @@
     cursor: pointer;
   }
 
-  &:before {
+  /* &:before {
     content: '';
     position: absolute;
     top: 0;
@@ -81,27 +69,11 @@
     transition: opacity .2s;
     opacity: 1;
     visibility: visible;
-  }
-
-  &__title {
-    position: absolute;
-    left: 20px;
-    top: 20px;
-    z-index: 1;
-    font-size: 24px;
-    color: rgba(255, 255, 255, .8);
-    font-style: italic;
-  }
+  } */
 
   &__button {
-    width: 2rem;
-    height: 2rem;
     color: #fff;
-    padding: 0 .625rem;
-
-    @include respond-to(handhelds) {
-      font-size: 1.375rem;
-    }
+    padding: .375rem;
 
     i {
       align-self: center;
@@ -137,11 +109,6 @@
       opacity: 0;
       visibility: hidden;
     }
-  }
-
-  &__slider {
-    width: 10px;
-    height: 30px;
   }
 
   &__controls {
@@ -183,6 +150,12 @@
     pointer-events: none;
   }
 
+  &:not(.ckin__fullscreen) .default__gradient-bottom {
+    @include respond-to(handhelds) {
+      display: none;
+    }
+  }
+
   .toggle:before {
     content: $tgico-play;
   }
@@ -194,6 +167,10 @@
 
     .default__controls {
       transform: translate3d(0, 52px, 0);
+
+      @include respond-to(handhelds) {
+        transform: translate3d(0, 65px, 0);
+      }
     }
 
     /* html.no-touch &:hover,*/
@@ -240,15 +217,11 @@
     
     &__icon {
       fill: #fff;
-      width: 1.5rem;
-      height: 1.5rem;
+      width: 2.25rem;
+      height: 2.25rem;
       margin-right: .5rem;
       cursor: pointer;
-
-      @include respond-to(handhelds) {
-        width: 1.25rem;
-        height: 1.25rem;
-      }
+      padding: .375rem;
     }
 
     .progress-line {
@@ -416,26 +389,21 @@ input[type=range] {
   }
 }
 
-.left-controls {
+.left-controls,
+.right-controls {
   display: flex;
   align-items: center;
 }
 
-.right-controls {
-    display: flex;
-    align-items: center;
-    float: right;
-}
-
 .bottom-controls {
-  padding: 0 .25rem;
-  height: 2rem;
+  padding: 0 .625rem;
+  height: 2.25rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
 
   @include respond-to(handhelds) {
     height: 3.5rem;
-    padding: 0 .375rem;
+    padding: 0 .5rem;
   }
 }
