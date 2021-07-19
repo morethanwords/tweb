@@ -4,3 +4,6 @@
 [submodule "tweb-design"]
 	path = tweb-design
 	url = https://github.com/morethanwords/tweb-design
+[submodule "rlottie-web"]
+	path = src/rlottie-web
+	url = https://github.com/morethanwords/rlottie-web
