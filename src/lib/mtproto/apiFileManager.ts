@@ -27,6 +27,7 @@ import apiManager from "./apiManager";
 import { isWebpSupported } from "./mtproto.worker";
 import { bytesToHex } from "../../helpers/bytes";
 import assumeType from "../../helpers/assumeType";
+import { ctx } from "../../helpers/userAgent";
 
 type Delayed = {
   offset: number, 
@@ -86,7 +87,12 @@ export class ApiFileManager {
   private downloadActives: {[dcId: string]: number} = {};
 
   public webpConvertPromises: {[fileName: string]: CancellablePromise<Uint8Array>} = {};
-  public refreshReferencePromises: {[referenceHex: string]: CancellablePromise<ReferenceBytes>} = {};
+  public refreshReferencePromises: {
+    [referenceHex: string]: {
+      deferred: CancellablePromise<ReferenceBytes>,
+      timeout: number
+    }
+  } = {};
 
   private log: ReturnType<typeof logger> = logger('AFM', LogTypes.Error | LogTypes.Log);
   private tempId = 0;
@@ -96,7 +102,7 @@ export class ApiFileManager {
   constructor() {
     setInterval(() => { // clear old promises
       for(const hex in this.refreshReferencePromises) {
-        const deferred = this.refreshReferencePromises[hex];
+        const {deferred} = this.refreshReferencePromises[hex];
         if(deferred.isFulfilled || deferred.isRejected) {
           delete this.refreshReferencePromises[hex];
         }
@@ -184,10 +190,12 @@ export class ApiFileManager {
   }
 
   public requestFilePart(dcId: DcId, location: InputFileLocation, offset: number, limit: number, id = 0, queueId = 0, checkCancel?: () => void) {
-    return this.downloadRequest(dcId, id, async() => {
+    return this.downloadRequest(dcId, id, () => {
       checkCancel && checkCancel();
 
       const invoke = (): Promise<MyUploadFile> => {
+        checkCancel && checkCancel();
+
         const promise = apiManager.invokeApi('upload.getFile', {
           location,
           offset,
@@ -199,7 +207,7 @@ export class ApiFileManager {
 
         return promise.catch((err) => {
           if(err.type === 'FILE_REFERENCE_EXPIRED') {
-            return this.refreshReference(location).then(() => invoke());
+            return this.refreshReference(location).then(invoke);
           }
 
           throw err;
@@ -212,7 +220,7 @@ export class ApiFileManager {
         location.checkedReference = true;
         const hex = bytesToHex(reference);
         if(this.refreshReferencePromises[hex]) {
-          return this.refreshReference(location).then(() => invoke());
+          return this.refreshReference(location).then(invoke);
         }
       }
 
@@ -256,29 +264,35 @@ export class ApiFileManager {
   private refreshReference(inputFileLocation: InputFileLocation) {
     const reference = (inputFileLocation as InputFileLocation.inputDocumentFileLocation).file_reference;
     const hex = bytesToHex(reference);
-    let promise = this.refreshReferencePromises[hex];
-    const havePromise = !!promise;
 
-    if(!havePromise) {
-      promise = deferredPromise<ReferenceBytes>();
-      this.refreshReferencePromises[hex] = promise;
+    let r = this.refreshReferencePromises[hex];
+    if(!r) {
+      const deferred = deferredPromise<ReferenceBytes>();
+
+      r = this.refreshReferencePromises[hex] = {
+        deferred,
+        timeout: ctx.setTimeout(() => {
+          this.log.error('Didn\'t refresh the reference:', inputFileLocation);
+          deferred.reject('REFERENCE_IS_NOT_REFRESHED');
+        }, 60000)
+      };
+
+      deferred.finally(() => {
+        clearTimeout(r.timeout);
+      });
+
+      const task = {type: 'refreshReference', payload: reference};
+      notifySomeone(task);
     }
 
-    promise = promise.then(reference => {
+    // have to replace file_reference in any way, because location can be different everytime if it's stream
+    return r.deferred.then(reference => {
       if(hex === bytesToHex(reference)) {
         throw 'REFERENCE_IS_NOT_REFRESHED';
       }
-      
-      return (inputFileLocation as InputFileLocation.inputDocumentFileLocation).file_reference = reference;
+
+      (inputFileLocation as InputFileLocation.inputDocumentFileLocation).file_reference = reference;
     });
-
-    if(havePromise) {
-      return promise;
-    }
-
-    const task = {type: 'refreshReference', payload: reference};
-    notifySomeone(task);
-    return this.refreshReferencePromises[hex] = promise;
   }
 
   public downloadFile(options: DownloadOptions): CancellablePromise<Blob> {

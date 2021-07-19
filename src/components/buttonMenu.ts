@@ -13,8 +13,9 @@ import { closeBtnMenu } from "./misc";
 import { ripple } from "./ripple";
 
 export type ButtonMenuItemOptions = {
-  icon: string, 
-  text: LangPackKey, 
+  icon?: string, 
+  text?: LangPackKey, 
+  regularText?: string, 
   onClick: (e: MouseEvent | TouchEvent) => void, 
   element?: HTMLElement,
   options?: AttachClickOptions,
@@ -28,9 +29,11 @@ const ButtonMenuItem = (options: ButtonMenuItemOptions) => {
 
   const {icon, text, onClick} = options;
   const el = document.createElement('div');
-  el.className = 'btn-menu-item tgico-' + icon;
+  el.className = 'btn-menu-item' + (icon ? ' tgico-' + icon : '');
   ripple(el);
-  const t = i18n(text);
+
+  const t = text ? i18n(text) : document.createElement('span');
+  if(options.regularText) t.innerHTML = options.regularText;
   t.classList.add('btn-menu-item-text');
   el.append(t);
 
