@@ -238,7 +238,6 @@ export class AppMessagesManager {
 
       updateChannel: this.onUpdateChannel,
 
-      // @ts-ignore
       updateChannelReload: this.onUpdateChannelReload,
 
       updateChannelMessageViews: this.onUpdateChannelMessageViews,
@@ -4017,8 +4016,7 @@ export class AppMessagesManager {
 
     const dialog = this.getDialogOnly(peerId);
     const isTopMessage = dialog && dialog.top_message === mid;
-    // @ts-ignore
-    if(message.clear_history) { // that's will never happen
+    if((message as Message.message).clear_history) {
       if(isTopMessage) {
         rootScope.dispatchEvent('dialog_flush', {peerId});
       }
@@ -4263,9 +4261,8 @@ export class AppMessagesManager {
     }
   };
 
-  private onUpdateChannelReload = (update: any) => {
-    // @ts-ignore
-    const channelId: number = update.channel_id;
+  private onUpdateChannelReload = (update: Update.updateChannelReload) => {
+    const channelId = update.channel_id;
     const peerId = -channelId;
 
     this.dialogsStorage.dropDialog(peerId);
@@ -5104,20 +5101,18 @@ export class AppMessagesManager {
     });
   }
 
-  private handleReleasingMessage(message: any) {
-    if((message as Message.message).media) {
+  private handleReleasingMessage(message: MyMessage) {
+    if('media' in message) {
       // @ts-ignore
       const c = message.media.webpage || message.media;
-      const smth = c.photo || c.document;
+      const smth: Photo.photo | MyDocument = c.photo || c.document;
 
       if(smth?.file_reference) {
         referenceDatabase.deleteContext(smth.file_reference, {type: 'message', peerId: message.peerId, messageId: message.mid});
       }
 
-      // @ts-ignore
-      if(message.media.webpage) {
-        // @ts-ignore
-        appWebPagesManager.deleteWebPageFromPending(message.media.webpage, mid);
+      if('webpage' in message.media) {
+        appWebPagesManager.deleteWebPageFromPending(message.media.webpage, message.mid);
       }
     }
   }
