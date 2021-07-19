@@ -423,7 +423,7 @@ export default class VideoPlayer {
             </div>
           </div>
           <div class="right-controls">
-            <button class="btn-icon ${skin}__button btn-menu-toggle settings tgico-settings" title="Playback Rate"></button>
+            <button class="btn-icon ${skin}__button btn-menu-toggle settings tgico-settings hide" title="Playback Rate"></button>
             <button class="btn-icon ${skin}__button fullscreen tgico-fullscreen" title="Full Screen"></button>
           </div>
         </div>
