@@ -5,7 +5,6 @@ dist
 **/.DS_Store
 stats.json
 certs
-src/rlottie.github.io
 public2
 public3
 .vscode
