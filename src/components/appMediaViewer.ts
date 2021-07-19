@@ -26,7 +26,7 @@ import { LazyLoadQueueBase } from "./lazyLoadQueue";
 import PopupForward from "./popups/forward";
 import ProgressivePreloader from "./preloader";
 import Scrollable from "./scrollable";
-import appSidebarRight, { AppSidebarRight } from "./sidebarRight";
+import appSidebarRight from "./sidebarRight";
 import SwipeHandler from "./swipeHandler";
 import { months, ONE_DAY } from "../helpers/date";
 import { SearchSuperContext } from "./appSearchSuper.";
@@ -37,7 +37,6 @@ import { forEachReverse } from "../helpers/array";
 import AppSharedMediaTab from "./sidebarRight/tabs/sharedMedia";
 import findUpClassName from "../helpers/dom/findUpClassName";
 import renderImageFromUrl from "../helpers/dom/renderImageFromUrl";
-import findUpAsChild from "../helpers/dom/findUpAsChild";
 import getVisibleRect from "../helpers/dom/getVisibleRect";
 import appDownloadManager from "../lib/appManagers/appDownloadManager";
 import { cancelEvent } from "../helpers/dom/cancelEvent";
@@ -53,11 +52,12 @@ import PeerTitle from "./peerTitle";
 const MEDIA_VIEWER_CLASSNAME = 'media-viewer';
 
 class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType extends string, TargetType extends object> {
-  public wholeDiv: HTMLElement;
+  protected wholeDiv: HTMLElement;
   protected overlaysDiv: HTMLElement;
   protected author: {[k in 'container' | 'avatarEl' | 'nameEl' | 'date']: HTMLElement} = {} as any;
   protected content: {[k in 'main' | 'container' | 'media' | 'mover' | ContentAdditionType]: HTMLElement} = {} as any;
-  public buttons: {[k in 'download' | 'close' | 'prev' | 'next' | 'mobile-close' | ButtonsAdditionType]: HTMLElement} = {} as any;
+  protected buttons: {[k in 'download' | 'close' | 'prev' | 'next' | 'mobile-close' | ButtonsAdditionType]: HTMLElement} = {} as any;
+  protected topbar: HTMLElement;
   
   protected tempId = 0;
   protected preloader: ProgressivePreloader = null;
@@ -69,7 +69,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
   //protected targetContainer: HTMLElement = null;
   //protected loadMore: () => void = null;
 
-  public log: ReturnType<typeof logger>; 
+  protected log: ReturnType<typeof logger>; 
 
   protected isFirstOpen = true;
   protected loadMediaPromiseUp: Promise<void> = null;
@@ -116,6 +116,14 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     const mainDiv = document.createElement('div');
     mainDiv.classList.add(MEDIA_VIEWER_CLASSNAME);
 
+    const topbar = this.topbar = document.createElement('div');
+    topbar.classList.add(MEDIA_VIEWER_CLASSNAME + '-topbar');
+
+    const topbarLeft = document.createElement('div');
+    topbarLeft.classList.add(MEDIA_VIEWER_CLASSNAME + '-topbar-left');
+
+    this.buttons['mobile-close'] = ButtonIcon('close', {onlyMobile: true});
+
     // * author
     this.author.container = document.createElement('div');
     this.author.container.classList.add(MEDIA_VIEWER_CLASSNAME + '-author', 'no-select');
@@ -154,11 +162,12 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     this.content.container.append(this.content.media);
 
     this.content.main.append(this.content.container);
-    mainDiv.append(this.author.container, buttonsDiv, this.content.main);
+    mainDiv.append(this.content.main);
     this.overlaysDiv.append(mainDiv);
     // * overlays end
-
-    this.buttons["mobile-close"] = ButtonIcon('close', {onlyMobile: true});
+    
+    topbarLeft.append(this.buttons['mobile-close'], this.author.container);
+    topbar.append(topbarLeft, buttonsDiv);
 
     this.buttons.prev = document.createElement('div');
     this.buttons.prev.className = `${MEDIA_VIEWER_CLASSNAME}-switcher ${MEDIA_VIEWER_CLASSNAME}-switcher-left`;
@@ -168,7 +177,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     this.buttons.next.className = `${MEDIA_VIEWER_CLASSNAME}-switcher ${MEDIA_VIEWER_CLASSNAME}-switcher-right`;
     this.buttons.next.innerHTML = `<span class="tgico-down ${MEDIA_VIEWER_CLASSNAME}-next-button"></span>`;
 
-    this.wholeDiv.append(this.overlaysDiv, this.buttons['mobile-close'], this.buttons.prev, this.buttons.next);
+    this.wholeDiv.append(this.overlaysDiv, this.buttons.prev, this.buttons.next, this.topbar);
 
     // * constructing html end
     
@@ -177,7 +186,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
 
   protected setListeners() {
     this.buttons.download.addEventListener('click', this.onDownloadClick);
-    [this.buttons.close, this.buttons["mobile-close"], this.preloaderStreamable.preloader].forEach(el => {
+    [this.buttons.close, this.buttons['mobile-close'], this.preloaderStreamable.preloader].forEach(el => {
       el.addEventListener('click', this.close.bind(this));
     });
 
@@ -251,7 +260,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
 
   protected setBtnMenuToggle(buttons: ButtonMenuItemOptions[]) {
     const btnMenuToggle = ButtonMenuToggle({onlyMobile: true}, 'bottom-left', buttons);
-    this.wholeDiv.append(btnMenuToggle);
+    this.topbar.append(btnMenuToggle);
   }
 
   public close(e?: MouseEvent) {
@@ -965,8 +974,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
 
     //const maxWidth = appPhotosManager.windowW - 16;
     const maxWidth = mediaSizes.isMobile ? this.pageEl.scrollWidth : this.pageEl.scrollWidth - 16;
-    // TODO: const maxHeight = mediaSizes.isMobile ? appPhotosManager.windowH : appPhotosManager.windowH - 100;
-    const maxHeight = appPhotosManager.windowH - 100;
+    const maxHeight = mediaSizes.isMobile ? appPhotosManager.windowH : appPhotosManager.windowH - 100;
     let thumbPromise: Promise<any> = Promise.resolve();
     const size = appPhotosManager.setAttachmentSize(media, container, maxWidth, maxHeight, mediaSizes.isMobile ? false : true).photoSize;
     if(useContainerAsTarget) {
