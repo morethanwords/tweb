@@ -55,6 +55,7 @@ export class AppStickersManager {
 
     if(!this.getGreetingStickersPromise) {
       this.getGreetingStickersPromise = this.getStickersByEmoticon('👋⭐️', false).then(docs => {
+        if(!docs.length) throw 'NO_STICKERS';
         this.greetingStickers = docs.slice() as Document.document[];
         this.greetingStickers.sort((a, b) => Math.random() - Math.random());
       });

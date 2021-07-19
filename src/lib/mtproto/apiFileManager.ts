@@ -86,7 +86,12 @@ export class ApiFileManager {
   private downloadActives: {[dcId: string]: number} = {};
 
   public webpConvertPromises: {[fileName: string]: CancellablePromise<Uint8Array>} = {};
-  public refreshReferencePromises: {[referenceHex: string]: CancellablePromise<ReferenceBytes>} = {};
+  public refreshReferencePromises: {
+    [referenceHex: string]: {
+      deferred: CancellablePromise<ReferenceBytes>,
+      ready: Promise<void>
+    }
+  } = {};
 
   private log: ReturnType<typeof logger> = logger('AFM', LogTypes.Error | LogTypes.Log);
   private tempId = 0;
@@ -96,7 +101,7 @@ export class ApiFileManager {
   constructor() {
     setInterval(() => { // clear old promises
       for(const hex in this.refreshReferencePromises) {
-        const deferred = this.refreshReferencePromises[hex];
+        const {deferred} = this.refreshReferencePromises[hex];
         if(deferred.isFulfilled || deferred.isRejected) {
           delete this.refreshReferencePromises[hex];
         }
@@ -256,29 +261,36 @@ export class ApiFileManager {
   private refreshReference(inputFileLocation: InputFileLocation) {
     const reference = (inputFileLocation as InputFileLocation.inputDocumentFileLocation).file_reference;
     const hex = bytesToHex(reference);
-    let promise = this.refreshReferencePromises[hex];
-    const havePromise = !!promise;
 
-    if(!havePromise) {
-      promise = deferredPromise<ReferenceBytes>();
-      this.refreshReferencePromises[hex] = promise;
+    let r = this.refreshReferencePromises[hex];
+    if(!r) {
+      const deferred = deferredPromise<ReferenceBytes>();
+
+      r = this.refreshReferencePromises[hex] = {
+        deferred,
+        ready: deferred.then(reference => {
+          if(hex === bytesToHex(reference)) {
+            throw 'REFERENCE_IS_NOT_REFRESHED';
+          }
+
+          (inputFileLocation as InputFileLocation.inputDocumentFileLocation).file_reference = reference;
+        })
+      };
+
+      const timeout = setTimeout(() => {
+        this.log.error('Didn\'t refresh the reference:', inputFileLocation);
+        deferred.reject('REFERENCE_IS_NOT_REFRESHED');
+      }, 60000);
+
+      deferred.finally(() => {
+        clearTimeout(timeout);
+      });
+
+      const task = {type: 'refreshReference', payload: reference};
+      notifySomeone(task);
     }
 
-    promise = promise.then(reference => {
-      if(hex === bytesToHex(reference)) {
-        throw 'REFERENCE_IS_NOT_REFRESHED';
-      }
-      
-      return (inputFileLocation as InputFileLocation.inputDocumentFileLocation).file_reference = reference;
-    });
-
-    if(havePromise) {
-      return promise;
-    }
-
-    const task = {type: 'refreshReference', payload: reference};
-    notifySomeone(task);
-    return this.refreshReferencePromises[hex] = promise;
+    return r.ready;
   }
 
   public downloadFile(options: DownloadOptions): CancellablePromise<Blob> {
