@@ -366,7 +366,6 @@ export class ApiUpdatesManager {
         this.debug && this.log.debug('channel diff too long', differenceResult);
         delete this.channelStates[channelId];
 
-        // @ts-ignore
         this.saveUpdate({_: 'updateChannelReload', channel_id: channelId});
         return;
       }

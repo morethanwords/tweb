@@ -88,7 +88,8 @@ const taskListeners = {
 
   refreshReference: (task: RefreshReferenceTaskResponse) => {
     const hex = bytesToHex(task.originalPayload);
-    const deferred = apiFileManager.refreshReferencePromises[hex];
+    const r = apiFileManager.refreshReferencePromises[hex];
+    const deferred = r?.deferred;
     if(deferred) {
       if(task.error) {
         deferred.reject(task.error);

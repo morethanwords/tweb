@@ -94,16 +94,10 @@
   }
 
   &__button {
-    background: none;
-    border: 0;
+    width: 2rem;
+    height: 2rem;
     color: #fff;
-    outline: 0;
     padding: 0 .625rem;
-    cursor: pointer;
-    font-size: 1.5rem;
-    line-height: 1;
-    display: flex;
-    align-items: center;
 
     @include respond-to(handhelds) {
       font-size: 1.375rem;
@@ -428,6 +422,8 @@ input[type=range] {
 }
 
 .right-controls {
+    display: flex;
+    align-items: center;
     float: right;
 }
 

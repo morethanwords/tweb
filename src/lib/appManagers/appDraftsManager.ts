@@ -37,7 +37,7 @@ export class AppDraftsManager {
     rootScope.addMultipleEventsListeners({
       updateDraftMessage: (update) => {
         const peerID = appPeersManager.getPeerId(update.peer);
-        this.saveDraft(peerID, (update as any).threadId, update.draft, {notify: true});
+        this.saveDraft(peerID, update.threadId, update.draft, {notify: true});
       }
     });
   }
