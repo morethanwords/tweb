@@ -27,6 +27,7 @@ import apiManager from "./apiManager";
 import { isWebpSupported } from "./mtproto.worker";
 import { bytesToHex } from "../../helpers/bytes";
 import assumeType from "../../helpers/assumeType";
+import { ctx } from "../../helpers/userAgent";
 
 type Delayed = {
   offset: number, 
@@ -89,7 +90,7 @@ export class ApiFileManager {
   public refreshReferencePromises: {
     [referenceHex: string]: {
       deferred: CancellablePromise<ReferenceBytes>,
-      ready: Promise<void>
+      timeout: number
     }
   } = {};
 
@@ -189,10 +190,12 @@ export class ApiFileManager {
   }
 
   public requestFilePart(dcId: DcId, location: InputFileLocation, offset: number, limit: number, id = 0, queueId = 0, checkCancel?: () => void) {
-    return this.downloadRequest(dcId, id, async() => {
+    return this.downloadRequest(dcId, id, () => {
       checkCancel && checkCancel();
 
       const invoke = (): Promise<MyUploadFile> => {
+        checkCancel && checkCancel();
+
         const promise = apiManager.invokeApi('upload.getFile', {
           location,
           offset,
@@ -204,7 +207,7 @@ export class ApiFileManager {
 
         return promise.catch((err) => {
           if(err.type === 'FILE_REFERENCE_EXPIRED') {
-            return this.refreshReference(location).then(() => invoke());
+            return this.refreshReference(location).then(invoke);
           }
 
           throw err;
@@ -217,7 +220,7 @@ export class ApiFileManager {
         location.checkedReference = true;
         const hex = bytesToHex(reference);
         if(this.refreshReferencePromises[hex]) {
-          return this.refreshReference(location).then(() => invoke());
+          return this.refreshReference(location).then(invoke);
         }
       }
 
@@ -268,29 +271,28 @@ export class ApiFileManager {
 
       r = this.refreshReferencePromises[hex] = {
         deferred,
-        ready: deferred.then(reference => {
-          if(hex === bytesToHex(reference)) {
-            throw 'REFERENCE_IS_NOT_REFRESHED';
-          }
-
-          (inputFileLocation as InputFileLocation.inputDocumentFileLocation).file_reference = reference;
-        })
+        timeout: ctx.setTimeout(() => {
+          this.log.error('Didn\'t refresh the reference:', inputFileLocation);
+          deferred.reject('REFERENCE_IS_NOT_REFRESHED');
+        }, 60000)
       };
 
-      const timeout = setTimeout(() => {
-        this.log.error('Didn\'t refresh the reference:', inputFileLocation);
-        deferred.reject('REFERENCE_IS_NOT_REFRESHED');
-      }, 60000);
-
       deferred.finally(() => {
-        clearTimeout(timeout);
+        clearTimeout(r.timeout);
       });
 
       const task = {type: 'refreshReference', payload: reference};
       notifySomeone(task);
     }
 
-    return r.ready;
+    // have to replace file_reference in any way, because location can be different everytime if it's stream
+    return r.deferred.then(reference => {
+      if(hex === bytesToHex(reference)) {
+        throw 'REFERENCE_IS_NOT_REFRESHED';
+      }
+
+      (inputFileLocation as InputFileLocation.inputDocumentFileLocation).file_reference = reference;
+    });
   }
 
   public downloadFile(options: DownloadOptions): CancellablePromise<Blob> {
