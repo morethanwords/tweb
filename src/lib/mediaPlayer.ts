@@ -11,6 +11,9 @@ import RangeSelector from "../components/rangeSelector";
 import { onVideoLoad } from "../helpers/files";
 import { cancelEvent } from "../helpers/dom/cancelEvent";
 import ListenerSetter from "../helpers/listenerSetter";
+import ButtonMenu from "../components/buttonMenu";
+import { ButtonMenuToggleHandler } from "../components/buttonMenuToggle";
+import { LangPackKey } from "./langPack";
 
 export class MediaProgressLine extends RangeSelector {
   private filledLoad: HTMLDivElement;
@@ -187,6 +190,7 @@ export default class VideoPlayer {
     this.skin = video.dataset.ckin ?? 'default';
 
     this.stylePlayer(duration);
+    this.setBtnMenuToggle();
 
     if(this.skin === 'default') {
       const controls = this.wrapper.querySelector('.default__controls.ckin__controls') as HTMLDivElement;
@@ -420,11 +424,23 @@ export default class VideoPlayer {
             </div>
           </div>
           <div class="right-controls">
+            <button class="${skin}__button btn-menu-toggle settings tgico-settings" title="Playback Rate"></button>
             <button class="${skin}__button fullscreen tgico-fullscreen" title="Full Screen"></button>
           </div>
         </div>
       </div>`;
     }
+  }
+
+  protected setBtnMenuToggle() {
+    const buttons = [0.25, 0.5, 1, 1.25, 1.5, 2].map((rate) => {
+        return { icon: '', text: rate.toString() as LangPackKey, onClick: () => { this.video.playbackRate = rate; } }
+    });
+    const btnMenu = ButtonMenu(buttons);
+    const settingsButton = this.wrapper.querySelector('.settings') as HTMLElement;
+    btnMenu.classList.add('top-left');
+    ButtonMenuToggleHandler(settingsButton);
+    settingsButton.append(btnMenu);
   }
 
   public static isFullScreen(): boolean {
