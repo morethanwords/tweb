@@ -170,7 +170,7 @@ let lastVolume = 1, muted = !lastVolume;
 export default class VideoPlayer {
   private wrapper: HTMLDivElement;
   private progress: MediaProgressLine;
-  private skin: string;
+  private skin: 'default';
 
   private listenerSetter: ListenerSetter;
 
@@ -186,10 +186,10 @@ export default class VideoPlayer {
     video.parentNode.insertBefore(this.wrapper, video);
     this.wrapper.appendChild(video);
 
-    this.skin = video.dataset.ckin ?? 'default';
+    this.skin = 'default';
 
     this.stylePlayer(duration);
-    this.setBtnMenuToggle();
+    // this.setBtnMenuToggle();
 
     if(this.skin === 'default') {
       const controls = this.wrapper.querySelector('.default__controls.ckin__controls') as HTMLDivElement;
@@ -402,7 +402,7 @@ export default class VideoPlayer {
     }
   }
 
-  public togglePlay() {
+  protected togglePlay() {
     this.video[this.video.paused ? 'play' : 'pause']();
   }
 
@@ -450,7 +450,7 @@ export default class VideoPlayer {
     return !!(document.fullscreenElement || document.mozFullScreenElement || document.webkitFullscreenElement || document.msFullscreenElement);
   }
   
-  public toggleFullScreen(fullScreenButton: HTMLElement) {
+  protected toggleFullScreen(fullScreenButton: HTMLElement) {
     // alternative standard method
     const player = this.wrapper;
 
@@ -533,7 +533,7 @@ export default class VideoPlayer {
     }
   }
   
-  onFullScreen = () => {
+  protected onFullScreen = () => {
     // @ts-ignore
     const isFullscreenNow = document.webkitFullscreenElement !== null;
     if(!isFullscreenNow) {

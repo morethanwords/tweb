@@ -467,7 +467,7 @@ export class ApiUpdatesManager {
         }
         break;
       default:
-        if('channel_id' in update) {
+        if('channel_id' in update && 'pts' in update) {
           channelId = update.channel_id;
         }
         break;

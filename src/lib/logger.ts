@@ -21,8 +21,8 @@ function dT() {
   return '[' + ((Date.now() - _logTimer) / 1000).toFixed(3) + ']';
 }
 
-export function logger(prefix: string, type: LogTypes = LogTypes.Log | LogTypes.Warn | LogTypes.Error) {
-  if(!DEBUG/*  || true */) {
+export function logger(prefix: string, type: LogTypes = LogTypes.Log | LogTypes.Warn | LogTypes.Error, ignoreDebugReset = false) {
+  if(!DEBUG && !ignoreDebugReset/*  || true */) {
     type = LogTypes.Error;
   }
 
