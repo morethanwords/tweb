@@ -51,7 +51,8 @@
     {"name": "unread", "type": "true"},
     {"name": "is_outgoing", "type": "true"},
     {"name": "rReply", "type": "string"},
-    {"name": "viaBotId", "type": "number"}
+    {"name": "viaBotId", "type": "number"},
+    {"name": "clear_history", "type": "boolean"}
   ]
 }, {
   "predicate": "messageService",
@@ -233,8 +234,15 @@
 }, {
   "predicate": "updateDraftMessage",
   "params": [
-    {"name": "local", "type": "boolean"}
+    {"name": "local", "type": "boolean"},
+    {"name": "threadId", "type": "number"}
   ]
+}, {
+  "predicate": "updateChannelReload",
+  "params": [
+    {"name": "channel_id", "type": "number"}
+  ],
+  "type": "Update"
 }, {
   "predicate": "messages.stickerSet",
   "params": [
