@@ -11,7 +11,7 @@
 
 import sessionStorage from '../sessionStorage';
 import { longFromInts } from './bin_utils';
-import { nextRandomInt } from '../../helpers/random';
+import { nextRandomUint } from '../../helpers/random';
 import { MOUNT_CLASS_TO } from '../../config/debug';
 import { WorkerTaskVoidTemplate } from '../../types';
 import { notifySomeone } from '../../helpers/context';
@@ -44,7 +44,7 @@ export class TimeManager {
     const timeTicks = Date.now(),
       timeSec = Math.floor(timeTicks / 1000) + this.timeOffset,
       timeMSec = timeTicks % 1000,
-      random = nextRandomInt(0xFFFF);
+      random = nextRandomUint(16);
 
     let messageId: TimeManager['lastMessageId'] = [timeSec, (timeMSec << 21) | (random << 3) | 4];
     if(this.lastMessageId[0] > messageId[0] ||

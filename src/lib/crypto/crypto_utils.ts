@@ -22,7 +22,7 @@ import {str2bigInt, bpe, equalsInt, greater,
 
 import { addPadding } from '../mtproto/bin_utils';
 import { bytesToWordss, bytesFromWordss, bytesToHex, bytesFromHex, convertToUint8Array } from '../../helpers/bytes';
-import { nextRandomInt } from '../../helpers/random';
+import { nextRandomUint } from '../../helpers/random';
 import type { RSAPublicKeyHex } from '../mtproto/rsaKeysManager';
 
 const subtle = typeof(window) !== 'undefined' && 'crypto' in window ? window.crypto.subtle : self.crypto.subtle;
@@ -200,8 +200,8 @@ export function pqPrimeLeemon(what: number[]): [Uint8Array, Uint8Array, number] 
   var y = new Array(minLen);
 
   for(i = 0; i < 3; ++i) {
-    q = (nextRandomInt(128) & 15) + 17;
-    copyInt_(x, nextRandomInt(1000000000) + 1);
+    q = (nextRandomUint(8) & 15) + 17;
+    copyInt_(x, nextRandomUint(32) + 1);
     copy_(y, x);
     lim = 1 << (i + 18);
 

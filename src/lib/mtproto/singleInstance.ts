@@ -10,7 +10,7 @@
  */
 
 import { MOUNT_CLASS_TO } from "../../config/debug";
-import { nextRandomInt } from "../../helpers/random";
+import { nextRandomUint } from "../../helpers/random";
 import { logger } from "../logger";
 import rootScope from "../rootScope";
 import sessionStorage from "../sessionStorage";
@@ -53,7 +53,7 @@ export class SingleInstance {
   }
 
   public reset() {
-    this.instanceID = nextRandomInt(0xFFFFFFFF);
+    this.instanceID = nextRandomUint(32);
     this.masterInstance = false;
     if(this.deactivateTimeout) clearTimeout(this.deactivateTimeout);
     this.deactivateTimeout = 0;

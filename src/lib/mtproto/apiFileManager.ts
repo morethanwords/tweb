@@ -16,7 +16,7 @@ import { readBlobAsArrayBuffer } from "../../helpers/blob";
 import { CancellablePromise, deferredPromise } from "../../helpers/cancellablePromise";
 import { notifyAll, notifySomeone } from "../../helpers/context";
 import { getFileNameByLocation } from "../../helpers/fileName";
-import { nextRandomInt } from "../../helpers/random";
+import { randomLong } from "../../helpers/random";
 import { InputFile, InputFileLocation, UploadFile } from "../../layer";
 import { DcId, WorkerTaskVoidTemplate } from "../../types";
 import CacheStorageController from "../cacheStorage";
@@ -524,7 +524,7 @@ export class ApiFileManager {
     const activeDelta = this.getDelta(partSize);
 
     const totalParts = Math.ceil(fileSize / partSize);
-    const fileId: [number, number] = [nextRandomInt(0xFFFFFFFF), nextRandomInt(0xFFFFFFFF)];
+    const fileId = randomLong();
 
     let _part = 0;
 
