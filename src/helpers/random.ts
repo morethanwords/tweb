@@ -4,11 +4,17 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-export function nextRandomInt(maxValue: number) {
-  return Math.floor(Math.random() * maxValue);
+const arrays = {
+  8: new Uint8Array(1),
+  16: new Uint16Array(1),
+  32: new Uint32Array(1),
+};
+export function nextRandomUint(bits: 8 | 16 | 32) {
+  const array = arrays[bits];
+  crypto.getRandomValues(array);
+  return array[0];
 }
 
 export function randomLong() {
-  return '' + nextRandomInt(0xFFFFFFFF) + nextRandomInt(0xFFFFFF);
-  //return '' + parseInt(nextRandomInt(0xFFFFFFFF).toString(16) + nextRandomInt(0xFFFFFFFF).toString(16), 16);
+  return '' + nextRandomUint(32) + nextRandomUint(32);
 }

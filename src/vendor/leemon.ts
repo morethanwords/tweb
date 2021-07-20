@@ -345,11 +345,11 @@ export function expand(x: number[], n: number): number[] {
  * @param {number} k
  * @returns {number[]}
  */
-export function randTruePrime(k: number): number[] {
+/* export function randTruePrime(k: number): number[] {
   var ans = int2bigInt(0, k, 0)
   randTruePrime_(ans, k)
   return trim(ans, 1)
-}
+} */
 
 /**
  * return a k-bit random probable prime with probability of error < 2^-80
@@ -358,7 +358,7 @@ export function randTruePrime(k: number): number[] {
  * @param {number} k
  * @returns {number[]}
  */
-export function randProbPrime(k: number): number[] {
+/* export function randProbPrime(k: number): number[] {
   if (k >= 600) return randProbPrimeRounds(k, 2) //numbers from HAC table 4.3
   if (k >= 550) return randProbPrimeRounds(k, 4)
   if (k >= 500) return randProbPrimeRounds(k, 5)
@@ -370,7 +370,7 @@ export function randProbPrime(k: number): number[] {
   if (k >= 150) return randProbPrimeRounds(k, 18)
   if (k >= 100) return randProbPrimeRounds(k, 27)
   return randProbPrimeRounds(k, 40) //number from HAC remark 4.26 (only an estimate)
-}
+} */
 
 /**
  * return a k-bit probable random prime using n rounds of Miller Rabin
@@ -381,7 +381,7 @@ export function randProbPrime(k: number): number[] {
  * @param {number} n
  * @returns {number[]}
  */
-export function randProbPrimeRounds(k: number, n: number): number[] {
+/* export function randProbPrimeRounds(k: number, n: number): number[] {
   var ans, i, divisible, B
   B = 30000 //B is largest prime to use in trial division
   ans = int2bigInt(0, k, 0)
@@ -423,11 +423,7 @@ export function randProbPrimeRounds(k: number, n: number): number[] {
 
     if (!divisible) return ans
   }
-  /*::
-  declare var never: empty
-  return never
-  */
-}
+} */
 
 /**
  * return a new bigInt equal to (x mod n) for bigInts x and n.
@@ -450,11 +446,11 @@ export function mod(x: number[], n: number[]): number[] {
  * @param {number} n
  * @returns {number[]}
  */
-export function addInt(x: number[], n: number): number[] {
+/* export function addInt(x: number[], n: number): number[] {
   var ans = expand(x, x.length + 1)
   addInt_(ans, n)
   return trim(ans, 1)
-}
+} */
 
 /**
  * return x*y for bigInts x and y. This is faster when y<x.
@@ -547,11 +543,11 @@ export function add(x: number[], y: number[]): number[] {
  * @param {number[]} n
  * @returns {(number[] | null)}
  */
-export function inverseMod(x: number[], n: number[]): number[] | null {
+/* export function inverseMod(x: number[], n: number[]): number[] | null {
   var ans = expand(x, n.length)
   var s = inverseMod_(ans, n)
   return s ? trim(ans, 1) : null
-}
+} */
 
 /**
  * return (x*y mod n) for bigInts x,y,n.
@@ -580,7 +576,7 @@ export function multMod(x: number[], y: number[], n: number[]): number[] {
  * @param {number} k
  * @return {void}
  */
-export function randTruePrime_(ans: number[], k: number): void {
+/* export function randTruePrime_(ans: number[], k: number): void {
   var c, m, pm, dd, j, r, B, divisible, z, zz, recSize
   var w
   if (primes.length == 0) primes = findPrimes(30000) //check for divisibility by primes <=30000
@@ -712,7 +708,7 @@ export function randTruePrime_(ans: number[], k: number): void {
       }
     }
   }
-}
+} */
 
 /**
  * Return an n-bit random BigInt (n>=1).  If s=1, then the most significant of those n bits is set to 1.
@@ -722,13 +718,13 @@ export function randTruePrime_(ans: number[], k: number): void {
  * @param {number} s
  * @returns {number[]}
  */
-export function randBigInt(n: number, s: number): number[] {
+/* export function randBigInt(n: number, s: number): number[] {
   var a, b
   a = Math.floor((n - 1) / bpe) + 2 //# array elements to hold the BigInt with a leading 0 element
   b = int2bigInt(0, 0, a)
   randBigInt_(b, n, s)
   return b
-}
+} */
 
 /**
  * Set b to an n-bit random BigInt.  If s=1, then the most significant of those n bits is set to 1.
@@ -741,7 +737,7 @@ export function randBigInt(n: number, s: number): number[] {
  * @param {number} s
  * @return {void}
  */
-export function randBigInt_(b: number[], n: number, s: number): void {
+/* export function randBigInt_(b: number[], n: number, s: number): void {
   var i, a
   for (i = 0; i < b.length; i++) b[i] = 0
   a = Math.floor((n - 1) / bpe) + 1 //# array elements to hold the BigInt
@@ -750,7 +746,7 @@ export function randBigInt_(b: number[], n: number, s: number): void {
   }
   b[a - 1] &= (2 << ((n - 1) % bpe)) - 1
   if (s == 1) b[a - 1] |= 1 << ((n - 1) % bpe)
-}
+} */
 
 /**
  * Return the greatest common divisor of bigInts x and y (each with same number of elements).
@@ -852,7 +848,7 @@ export function GCD_(x: number[], y: number[]): void {
  * @param {number[]} n
  * @returns {(0 | 1)}
  */
-export function inverseMod_(x: number[], n: number[]): Bool {
+/* export function inverseMod_(x: number[], n: number[]): Bool {
   var k = 1 + 2 * Math.max(x.length, n.length)
 
   if (!(x[0] & 1) && !(n[0] & 1)) {
@@ -934,11 +930,7 @@ export function inverseMod_(x: number[], n: number[]): Bool {
       return 1
     }
   }
-  /*::
-  declare var never: empty
-  return never
-  */
-}
+} */
 
 /**
  * return x**(-1) mod n, for integers x and n.
@@ -973,9 +965,9 @@ export function inverseModInt(x: number, n: number): number {
 }
 
 //this deprecated function is for backward compatibility only.
-function inverseModInt_(x: number, n: number) {
+/* function inverseModInt_(x: number, n: number) {
   return inverseModInt(x, n)
-}
+} */
 
 /**
  * Given positive bigInts x and y, change the bigints v, a, and b to positive bigInts such that:

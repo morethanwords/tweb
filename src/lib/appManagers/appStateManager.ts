@@ -22,7 +22,7 @@ import { Chat } from '../../layer';
 import { isMobile } from '../../helpers/userAgent';
 import DATABASE_STATE from '../../config/databases/state';
 import sessionStorage from '../sessionStorage';
-import { nextRandomInt } from '../../helpers/random';
+import { nextRandomUint } from '../../helpers/random';
 
 const REFRESH_EVERY = 24 * 60 * 60 * 1000; // 1 day
 //const REFRESH_EVERY_WEEK = 24 * 60 * 60 * 1000 * 7; // 7 days
@@ -156,7 +156,7 @@ export const STATE_INIT: State = {
   },
   keepSigned: true,
   chatContextMenuHintWasShown: false,
-  stateId: nextRandomInt(0xFFFFFFFF)
+  stateId: nextRandomUint(32)
 };
 
 const ALL_KEYS = Object.keys(STATE_INIT) as any as Array<keyof State>;

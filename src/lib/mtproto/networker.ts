@@ -21,7 +21,7 @@ import { InvokeApiOptions } from '../../types';
 import { longToBytes } from '../crypto/crypto_utils';
 import MTTransport from './transports/transport';
 import { convertToUint8Array, bytesCmp, bytesToHex, bufferConcats } from '../../helpers/bytes';
-import { nextRandomInt } from '../../helpers/random';
+import { nextRandomUint, randomLong } from '../../helpers/random';
 import App from '../../config/app';
 import DEBUG from '../../config/debug';
 import Modes from '../../config/modes';
@@ -549,7 +549,7 @@ export default class MTPNetworker {
     this.checkConnectionTimeout = 0;
   
     const serializer = new TLSerialization({mtproto: true});
-    const pingId = [nextRandomInt(0xFFFFFFFF), nextRandomInt(0xFFFFFFFF)];
+    const pingId = randomLong();
   
     serializer.storeMethod('ping', {
       ping_id: pingId
@@ -1103,7 +1103,7 @@ export default class MTPNetworker {
       this.log.error('wrong length', dataBuffer, canBeLength, message.msg_id);
     } */
 
-    const paddingLength = (16 - (data.getOffset() % 16)) + 16 * (1 + nextRandomInt(5));
+    const paddingLength = (16 - (data.getOffset() % 16)) + 16 * (1 + nextRandomUint(8) % 5);
     const padding = /* (message as any).padding ||  */new Uint8Array(paddingLength).randomize()/* .fill(0) */;
     /* const padding = [167, 148, 207, 226, 86, 192, 193, 57, 124, 153, 174, 145, 159, 1, 5, 70, 127, 157, 
       51, 241, 46, 85, 141, 212, 139, 234, 213, 164, 197, 116, 245, 70, 184, 40, 40, 201, 233, 211, 150, 

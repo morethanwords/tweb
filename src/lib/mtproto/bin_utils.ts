@@ -11,7 +11,6 @@
 
 import { bufferConcats } from '../../helpers/bytes';
 import { add_, bigInt2str, cmp, leftShift_, str2bigInt } from '../../vendor/leemon';
-import { nextRandomInt } from '../../helpers/random';
 
 /// #if !MTPROTO_WORKER
 // @ts-ignore
@@ -141,15 +140,13 @@ export function addPadding<T extends number[] | ArrayBuffer | Uint8Array>(
   const needPadding = blockSizeAsTotalLength ? blockSize - len : blockSize - (len % blockSize);
   if(needPadding > 0 && needPadding < blockSize) {
     ////console.log('addPadding()', len, blockSize, needPadding);
-    const padding: number[] = new Array(needPadding);
+    const padding = new Uint8Array(needPadding);
     if(zeroes) {
       for(let i = 0; i < needPadding; ++i) {
         padding[i] = 0;
       }
     } else {
-      for(let i = 0; i < needPadding; ++i) {
-        padding[i] = nextRandomInt(255);
-      }
+      padding.randomize();
     }
 
     if(bytes instanceof ArrayBuffer) {
@@ -158,7 +155,7 @@ export function addPadding<T extends number[] | ArrayBuffer | Uint8Array>(
       return (prepend ? bufferConcats(padding, bytes) : bufferConcats(bytes, padding)) as T;
     } else {
       // @ts-ignore
-      return (prepend ? padding.concat(bytes) : bytes.concat(padding)) as T;
+      return (prepend ? [...padding].concat(bytes) : bytes.concat([...padding])) as T;
     }
   }
 
