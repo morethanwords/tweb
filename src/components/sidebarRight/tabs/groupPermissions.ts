@@ -201,7 +201,7 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
       const c = section.generateContentElement();
       c.classList.add('chatlist-container');
       
-      const list = appDialogsManager.createChatList();
+      const list = appDialogsManager.createChatList({new: true});
       c.append(list);
 
       attachClickEvent(list, (e) => {

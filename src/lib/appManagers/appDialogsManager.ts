@@ -35,7 +35,7 @@ import { LazyLoadQueueIntersector } from "../../components/lazyLoadQueue";
 import lottieLoader from "../lottieLoader";
 import { wrapLocalSticker } from "../../components/wrappers";
 import AppEditFolderTab from "../../components/sidebarLeft/tabs/editFolder";
-import appSidebarLeft from "../../components/sidebarLeft";
+import appSidebarLeft, { SettingSection } from "../../components/sidebarLeft";
 import { attachClickEvent } from "../../helpers/dom/clickEvent";
 import positionElementByIndex from "../../helpers/dom/positionElementByIndex";
 import replaceContent from "../../helpers/dom/replaceContent";
@@ -43,6 +43,8 @@ import ConnectionStatusComponent from "../../components/connectionStatus";
 import appChatsManager from "./appChatsManager";
 import { renderImageFromUrlPromise } from "../../helpers/dom/renderImageFromUrl";
 import { fastRafPromise } from "../../helpers/schedulers";
+import appPhotosManager from "./appPhotosManager";
+import SortedUserList from "../../components/sortedUserList";
 
 export type DialogDom = {
   avatarEl: AvatarElement,
@@ -106,6 +108,7 @@ export class AppDialogsManager {
   private lastActiveElements: Set<HTMLElement> = new Set();
 
   private offsets: {top: number, bottom: number} = {top: 0, bottom: 0};
+  loadContacts: () => void;
 
   constructor() {
     this.chatsPreloader = putPreloader(null, true);
@@ -436,7 +439,7 @@ export class AppDialogsManager {
       appDraftsManager.addMissedDialogs();
     }
 
-    return this.loadDialogs();
+    return this.onChatsScroll();
   }
 
   /* private getOffset(side: 'top' | 'bottom'): {index: number, pos: number} {
@@ -533,7 +536,7 @@ export class AppDialogsManager {
     this.offsets.top = this.offsets.bottom = 0;
     this.loadDialogsPromise = undefined;
     this.chatList = this.chatLists[this.filterId];
-    this.loadDialogs();
+    this.onChatsScroll();
   };
 
   private setFilterUnreadCount(filterId: number, folder?: Dialog[]) {
@@ -593,7 +596,6 @@ export class AppDialogsManager {
     const scrollable = new Scrollable(null, 'CL', 500);
     scrollable.container.addEventListener('scroll', this.onChatsRegularScroll);
     scrollable.container.dataset.filterId = '' + filterId;
-    scrollable.container.append(list);
     scrollable.onScrolledTop = this.onChatsScrollTop;
     scrollable.onScrolledBottom = this.onChatsScroll;
     scrollable.setVirtualContainer(list);
@@ -627,6 +629,23 @@ export class AppDialogsManager {
 
     const ul = this.createChatList();
     const scrollable = this.generateScrollable(ul, filter.id);
+
+    scrollable.container.classList.add('chatlist-parts');
+
+    /* const parts = document.createElement('div');
+    parts.classList.add('chatlist-parts'); */
+    
+    const top = document.createElement('div');
+    top.classList.add('chatlist-top');
+    
+    const bottom = document.createElement('div');
+    bottom.classList.add('chatlist-bottom');
+
+    top.append(ul);
+    scrollable.container.append(top, bottom);
+    /* parts.append(top, bottom);
+    scrollable.container.append(parts); */
+    
     const div = scrollable.container;
     //this.folders.container.append(div);
     positionElementByIndex(scrollable.container, this.folders.container, filter.orderIndex);
@@ -654,7 +673,7 @@ export class AppDialogsManager {
     }
   }
 
-  private loadDialogs(side: SliceSides = 'bottom') {
+  private loadDialogs(side: SliceSides) {
     /* if(testScroll) {
       return;
     } */
@@ -779,13 +798,13 @@ export class AppDialogsManager {
     return {container, header, subtitle};
   }
 
-  private onListLengthChange = () => {
-    //return;
+  private checkIfPlaceholderNeeded() {
     if(this.filterId === 1) {
       return;
     }
 
-    let placeholderContainer = (Array.from(this.chatList.parentElement.children) as HTMLElement[]).find(el => el.matches('.empty-placeholder'));
+    const part = this.chatList.parentElement as HTMLElement;
+    let placeholderContainer = (Array.from(part.children) as HTMLElement[]).find(el => el.matches('.empty-placeholder'));
     const needPlaceholder = this.scroll.loadedAll.bottom && !this.chatList.childElementCount/*  || true */;
     // this.chatList.style.display = 'none';
 
@@ -793,6 +812,7 @@ export class AppDialogsManager {
       return;
     } else if(!needPlaceholder) {
       if(placeholderContainer) {
+        part.classList.remove('with-placeholder');
         placeholderContainer.remove();
       }
 
@@ -863,7 +883,55 @@ export class AppDialogsManager {
       placeholderContainer.append(button);
     }
 
-    this.chatList.parentElement.append(placeholderContainer);
+    part.append(placeholderContainer);
+    part.classList.add('with-placeholder');
+  }
+
+  private onListLengthChange = () => {
+    return;
+
+    this.checkIfPlaceholderNeeded();
+
+    if(this.filterId > 0) return;
+    const bottom = this.chatList.parentElement.nextElementSibling as HTMLElement;
+
+    if(bottom.childElementCount) return;
+
+    bottom.parentElement.classList.add('with-contacts');
+
+    const section = new SettingSection({
+      name: 'Contacts',
+      noDelimiter: true,
+      fakeGradientDelimiter: true
+    });
+
+    section.container.classList.add('hide');
+
+    appUsersManager.getContacts(undefined, undefined, 'online').then(contacts => {
+      const sortedUserList = new SortedUserList({avatarSize: 42, new: true});
+      this.loadContacts = () => {
+        const pageCount = appPhotosManager.windowH / 60 | 0;
+        const arr = contacts.splice(0, pageCount);
+
+        arr.forEach((peerId) => {
+          sortedUserList.add(peerId);
+        });
+
+        if(!contacts.length) {
+          this.loadContacts = undefined;
+        }
+      };
+
+      this.loadContacts();
+
+      const list = sortedUserList.list;
+      list.classList.add('chatlist-new');
+      this.setListClickListener(list);
+      section.content.append(list);
+      section.container.classList.remove('hide');
+    });
+
+    bottom.append(section.container);
   };
 
   public onChatsRegularScroll = () => {
@@ -987,9 +1055,16 @@ export class AppDialogsManager {
   };
   
   public onChatsScroll = (side: SliceSides = 'bottom') => {
-    if(this.scroll.loadedAll[side] || this.loadDialogsPromise) return;
+    if(this.scroll.loadedAll[side]) {
+      if(this.loadContacts) {
+        this.loadContacts();
+      }
+
+      return;
+    } else if(this.loadDialogsPromise) return this.loadDialogsPromise;
+
     this.log('onChatsScroll', side);
-    this.loadDialogs(side);
+    return this.loadDialogs(side);
   };
 
   public setListClickListener(list: HTMLUListElement, onFound?: () => void, withContext = false, autonomous = false, openInner = false) {
@@ -1050,14 +1125,19 @@ export class AppDialogsManager {
     }
   }
 
-  public createChatList(/* options: {
-    avatarSize?: number,
-    handheldsSize?: number,
-    //size?: number,
-  } = {} */) {
+  public createChatList(options: {
+    // avatarSize?: number,
+    // handheldsSize?: number,
+    // size?: number,
+    new?: boolean
+  } = {}) {
     const list = document.createElement('ul');
     list.classList.add('chatlist'/* , 
       'chatlist-avatar-' + (options.avatarSize || 54) *//* , 'chatlist-' + (options.size || 72) */);
+
+    if(options.new) {
+      list.classList.add('chatlist-new');
+    }
 
     /* if(options.handheldsSize) {
       list.classList.add('chatlist-handhelds-' + options.handheldsSize);

@@ -3133,6 +3133,7 @@ export namespace Document {
 		h?: number,
 		w?: number,
 		file_name?: string,
+		fileName?: string,
 		file?: File,
 		duration?: number,
 		audioTitle?: string,

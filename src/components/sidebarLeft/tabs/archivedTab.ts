@@ -17,7 +17,7 @@ export default class AppArchivedTab extends SliderSuperTab {
 
     if(!appDialogsManager.chatLists[AppArchivedTab.filterId]) {
       const chatList = appDialogsManager.createChatList();
-      appDialogsManager.generateScrollable(chatList, AppArchivedTab.filterId);
+      appDialogsManager.generateScrollable(chatList, AppArchivedTab.filterId).container.append(chatList);
       appDialogsManager.setListClickListener(chatList, null, true);
       //appDialogsManager.setListClickListener(archivedChatList, null, true); // * to test peer changing
     }

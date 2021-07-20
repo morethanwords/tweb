@@ -261,7 +261,7 @@ export class AppUsersManager {
     return arr.filter(Boolean).join(' ');
   }
 
-  public getContacts(query?: string, includeSaved = false) {
+  public getContacts(query?: string, includeSaved = false, sortBy: 'name' | 'online' | 'none' = 'name') {
     return this.fillContacts().then(_contactsList => {
       let contactsList = [..._contactsList];
       if(query) {
@@ -271,29 +271,26 @@ export class AppUsersManager {
         contactsList = filteredContactsList;
       }
 
-      contactsList.sort((userId1: number, userId2: number) => {
-        const sortName1 = (this.users[userId1] || {}).sortName || '';
-        const sortName2 = (this.users[userId2] || {}).sortName || '';
+      if(sortBy === 'name') {
+        contactsList.sort((userId1, userId2) => {
+          const sortName1 = (this.users[userId1] || {}).sortName || '';
+          const sortName2 = (this.users[userId2] || {}).sortName || '';
+          return sortName1.localeCompare(sortName2);
+        });
+      } else if(sortBy === 'online') {
+        contactsList.sort((userId1, userId2) => {
+          const status1 = appUsersManager.getUserStatusForSort(appUsersManager.getUser(userId1).status);
+          const status2 = appUsersManager.getUserStatusForSort(appUsersManager.getUser(userId2).status);
+          return status2 - status1;
+        });
+      }
 
-        return sortName1.localeCompare(sortName2);
-      });
-
+      contactsList.findAndSplice(p => p === rootScope.myId);
       if(includeSaved) {
         if(this.testSelfSearch(query)) {
-          contactsList.findAndSplice(p => p === rootScope.myId);
           contactsList.unshift(rootScope.myId);
         }
       }
-
-      /* contactsList.sort((userId1: number, userId2: number) => {
-        const sortName1 = (this.users[userId1] || {}).sortName || '';
-        const sortName2 = (this.users[userId2] || {}).sortName || '';
-        if(sortName1 === sortName2) {
-          return 0;
-        } 
-        
-        return sortName1 > sortName2 ? 1 : -1;
-      }); */
 
       return contactsList;
     });

@@ -8,7 +8,6 @@ import { SliderSuperTab } from "../../slider";
 import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
 import appUsersManager from "../../../lib/appManagers/appUsersManager";
 import appPhotosManager from "../../../lib/appManagers/appPhotosManager";
-import rootScope from "../../../lib/rootScope";
 import InputSearch from "../../inputSearch";
 import { isMobile } from "../../../helpers/userAgent";
 import { canFocus } from "../../../helpers/dom/canFocus";
@@ -67,7 +66,7 @@ export default class AppContactsTab extends SliderSuperTab {
     if(this.promise) return this.promise;
     this.scrollable.onScrolledBottom = null;
 
-    this.promise = appUsersManager.getContacts(query).then(_contacts => {
+    this.promise = appUsersManager.getContacts(query, undefined, 'online').then(contacts => {
       this.promise = null;
 
       if(!this.alive) {
@@ -75,42 +74,26 @@ export default class AppContactsTab extends SliderSuperTab {
         return;
       }
 
-      const contacts = [..._contacts];
-
-      if(!query) {
-        contacts.findAndSplice(u => u === rootScope.myId);
-      }
-      /* if(query && 'saved messages'.includes(query.toLowerCase())) {
-        contacts.unshift(rootScope.myID);
-      } */
-
-      let sorted = contacts
-      .map(userId => {
-        let user = appUsersManager.getUser(userId);
-        let status = appUsersManager.getUserStatusForSort(user.status);
-
-        return {user, status};
-      })
-      .sort((a, b) => b.status - a.status);
-
       let renderPage = () => {
-        let pageCount = appPhotosManager.windowH / 72 * 1.25 | 0;
-        let arr = sorted.splice(0, pageCount); // надо splice!
+        const pageCount = appPhotosManager.windowH / 72 * 1.25 | 0;
+        const arr = contacts.splice(0, pageCount); // надо splice!
 
-        arr.forEach(({user}) => {
-          let {dialog, dom} = appDialogsManager.addDialogNew({
-            dialog: user.id,
+        arr.forEach((peerId) => {
+          const {dom} = appDialogsManager.addDialogNew({
+            dialog: peerId,
             container: this.list,
             drawStatus: false,
             avatarSize: 48,
             autonomous: true
           });
   
-          let status = appUsersManager.getUserStatusString(user.id);
+          const status = appUsersManager.getUserStatusString(peerId);
           dom.lastMessageSpan.append(status);
         });
 
-        if(!sorted.length) renderPage = undefined;
+        if(!contacts.length) {
+          renderPage = undefined;
+        }
       };
 
       renderPage();

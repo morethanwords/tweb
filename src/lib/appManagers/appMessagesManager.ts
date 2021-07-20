@@ -2626,7 +2626,7 @@ export class AppMessagesManager {
               addPart(undefined, ((plain ? document.stickerEmojiRaw : document.stickerEmoji) || '') + 'Sticker');
               text = '';
             } else {
-              addPart(document.file_name, undefined, message.message);
+              addPart(undefined, plain ? document.file_name : RichTextProcessor.wrapEmojiText(document.file_name), message.message);
             }
   
             break;

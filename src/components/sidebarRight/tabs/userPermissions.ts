@@ -36,7 +36,7 @@ export default class AppUserPermissionsTab extends SliderSuperTabEventable {
       div.classList.add('chatlist-container');
       section.content.insertBefore(div, section.title);
 
-      const list = appDialogsManager.createChatList();
+      const list = appDialogsManager.createChatList({new: true});
       div.append(list);
 
       const {dom} = appDialogsManager.addDialogNew({

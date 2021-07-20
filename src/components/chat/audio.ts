@@ -56,7 +56,7 @@ export default class ChatAudio extends PinnedContainer {
         //subtitle = 'Voice message';
         subtitle = formatDate(message.date, false, false);
       } else {
-        title = doc.audioTitle || doc.file_name;
+        title = doc.audioTitle || doc.fileName;
         subtitle = doc.audioPerformer ? RichTextProcessor.wrapPlainText(doc.audioPerformer) : 'Unknown Artist';
       }
 

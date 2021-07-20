@@ -708,35 +708,8 @@
     padding: 0 0 .5rem;
   }
 
-  // * supernew and correct layout
-  .chatlist {
+  .chatlist-new {
     padding: 0;
-
-    li {
-      height: 72px;
-      padding: 0 .75rem;
-      align-items: center;
-    }
-
-    .user-caption {
-      padding-left: .75rem;
-    }
-
-    p {
-      height: auto;
-    }
-
-    span {
-      line-height: 1.3125;
-    }
-
-    .dialog-subtitle {
-      margin-top: .125rem;
-    }
-
-    .user-last-message {
-      font-size: .875rem;
-    }
   }
 }
 

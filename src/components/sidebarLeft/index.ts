@@ -575,12 +575,16 @@ export class SettingSection {
   constructor(options: {
     name?: LangPackKey, 
     caption?: LangPackKey | true,
-    noDelimiter?: boolean
+    noDelimiter?: boolean,
+    fakeGradientDelimiter?: boolean
   }) {
     this.container = document.createElement('div');
     this.container.classList.add('sidebar-left-section');
 
-    if(!options.noDelimiter) {
+    if(options.fakeGradientDelimiter) {
+      this.container.append(generateDelimiter());
+      this.container.classList.add('with-fake-delimiter');
+    } else if(!options.noDelimiter) {
       const hr = document.createElement('hr');
       this.container.append(hr);
     } else {
@@ -618,6 +622,12 @@ export const generateSection = (appendTo: Scrollable, name?: LangPackKey, captio
   const section = new SettingSection({name, caption});
   appendTo.append(section.container);
   return section.content;
+};
+
+export const generateDelimiter = () => {
+  const delimiter = document.createElement('div');
+  delimiter.classList.add('gradient-delimiter');
+  return delimiter;
 };
 
 const appSidebarLeft = new AppSidebarLeft();

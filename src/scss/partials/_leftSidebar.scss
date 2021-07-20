@@ -830,6 +830,10 @@
     user-select: none;
     padding: .5rem 0 1rem;
 
+    &.with-fake-delimiter {
+      padding-top: 0;
+    }
+
     @include respond-to(handhelds) {
       padding-bottom: .5rem;
     }
@@ -1182,6 +1186,9 @@
 }
 
 .empty-placeholder {
+  // left: 50%;
+  // transform: translate(-50%, -50%);
+  // position: absolute;
   top: 40%;
   transform: translateY(-50%);
   text-align: center;
@@ -1190,6 +1197,7 @@
   width: 21rem !important;
   margin: 0 auto;
   padding: 0 1rem;
+  position: relative;
   
   .media-sticker-wrapper {
     width: 128px;

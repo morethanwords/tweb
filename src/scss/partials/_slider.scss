@@ -147,12 +147,12 @@
       display: flex;
     }
     
-    > div:not(.scroll-padding) {
+    /* > div:not(.scroll-padding) {
       width: 100%;
       max-width: 100%;
       //overflow: hidden;
       position: relative;
-    }
+    } */
   }
 
   /* &[data-animation="tabs"] {

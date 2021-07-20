@@ -272,7 +272,7 @@ function wrapAudio(audioEl: AudioElement) {
 
   const senderTitle = audioEl.showSender ? appMessagesManager.getSenderToPeerText(message) : '';
 
-  let title = doc.type === 'voice' ? senderTitle : (doc.audioTitle || doc.file_name);
+  let title = doc.type === 'voice' ? senderTitle : (doc.audioTitle || doc.fileName);
   let subtitle: string;
   
   if(doc.type === 'voice') {

@@ -6,6 +6,7 @@
     {"name": "h", "type": "number"},
     {"name": "w", "type": "number"},
     {"name": "file_name", "type": "string"},
+    {"name": "fileName", "type": "string"},
     {"name": "file", "type": "File"},
     {"name": "duration", "type": "number"},
     {"name": "audioTitle", "type": "string"},
