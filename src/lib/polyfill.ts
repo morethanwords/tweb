@@ -23,9 +23,14 @@ Object.defineProperty(Uint8Array.prototype, 'hex', {
 
 Uint8Array.prototype.randomize = function() {
   //secureRandom.nextBytes(this);
-  for(let i = 0; i < this.length; ++i) {
-    this[i] = nextRandomInt(255);
+  if(crypto && 'getRandomValues' in crypto) {
+    crypto.getRandomValues(this);
+  } else {
+    for(let i = 0; i < this.length; ++i) {
+      this[i] = nextRandomInt(255);
+    }
   }
+  
   return this;
 };
 
