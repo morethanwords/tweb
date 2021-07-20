@@ -91,12 +91,13 @@
         flex-direction: row;
       } */
 
-      > div {
+      .container {
         height: 810px;
         padding: 0;
         flex: 1 1 auto;
         display: flex;
         flex-direction: column;
+        width: 100%;
 
         @media screen and (max-height: 810px) {
           height: 760px;

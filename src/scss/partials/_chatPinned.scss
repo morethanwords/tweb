@@ -249,12 +249,14 @@
 
   &.is-floating {
     position: absolute !important;
-    top: 100%;
-    width: 100% !important;
-    background: var(--surface-color) !important;
+    top: 3.5rem;
+    right: 0;
     left: 0;
-    max-height: 100% !important;
-    height: 52px;
+    margin: 0;
+    width: auto;
+    height: 3.25rem;
+    max-height: 3.25rem;
+    background: var(--surface-color) !important;
 
     .pinned-container-close {
       position: absolute;

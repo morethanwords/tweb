@@ -64,7 +64,9 @@ type AuthOptions = {
   serverSalt?: Uint8Array,
 
   localTime?: number,
-  serverTime?: any
+  serverTime?: any,
+
+  localTry?: number
 };
 
 type ResPQ = {
@@ -122,8 +124,7 @@ export class Authorizer {
     const transport = dcConfigurator.chooseServer(dcId);
     const baseError = {
       code: 406,
-      type: 'NETWORK_BAD_RESPONSE',
-      transport
+      type: 'NETWORK_BAD_RESPONSE'
     };
     
     if(DEBUG) {
@@ -245,7 +246,7 @@ export class Authorizer {
     return this.sendReqDhParams(auth);
   }
   
-  private async sendReqDhParams(auth: AuthOptions) {
+  private async sendReqDhParams(auth: AuthOptions): Promise<AuthOptions> {
     auth.newNonce = new Uint8Array(32).randomize();
 
     const p_q_inner_data_dc: P_Q_inner_data = {
@@ -578,16 +579,26 @@ export class Authorizer {
     MTProto.secureRandom.nextBytes(nonce); */
     
     if(!dcConfigurator.chooseServer(dcId)) {
-      return Promise.reject(new Error('[MT] No server found for dc ' + dcId));
+      throw new Error('[MT] No server found for dc ' + dcId);
     }
 
     // await new Promise((resolve) => setTimeout(resolve, 2e3));
 
+    const auth: AuthOptions = {dcId, nonce, localTry: 1};
+    
     try {
-      const promise = this.sendReqPQ({dcId, nonce});
+      const promise = this.sendReqPQ(auth);
       this.cached[dcId] = promise;
       return await promise;
     } catch(err) {
+      if(err.originalError === -404 && auth.localTry <= 3) {
+        return this.sendReqPQ({
+          dcId: auth.dcId, 
+          nonce: new Uint8Array(16).randomize(),
+          localTry: auth.localTry + 1
+        });
+      }
+
       delete this.cached[dcId];
       throw err;
     }

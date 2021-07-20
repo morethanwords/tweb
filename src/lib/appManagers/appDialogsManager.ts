@@ -108,7 +108,9 @@ export class AppDialogsManager {
   private lastActiveElements: Set<HTMLElement> = new Set();
 
   private offsets: {top: number, bottom: number} = {top: 0, bottom: 0};
-  loadContacts: () => void;
+  
+  private loadContacts: () => void;
+  private processContact: (peerId: number) => void;
 
   constructor() {
     this.chatsPreloader = putPreloader(null, true);
@@ -190,8 +192,7 @@ export class AppDialogsManager {
       this.setFiltersUnreadCount();
     }); */
 
-    rootScope.addEventListener('dialog_flush', (e) => {
-      const peerId: number = e.peerId;
+    rootScope.addEventListener('dialog_flush', ({peerId}) => {
       const dialog = appMessagesManager.getDialogOnly(peerId);
       if(dialog) {
         this.setLastMessage(dialog);
@@ -200,29 +201,31 @@ export class AppDialogsManager {
       }
     });
 
-    rootScope.addEventListener('dialogs_multiupdate', (e) => {
-      const dialogs = e;
-
+    rootScope.addEventListener('dialogs_multiupdate', (dialogs) => {
       for(const id in dialogs) {
         const dialog = dialogs[id];
         this.updateDialog(dialog);
+
+        if(this.processContact) {
+          this.processContact(+id);
+        }
       }
 
       this.validateForFilter();
       this.setFiltersUnreadCount();
     });
 
-    rootScope.addEventListener('dialog_drop', (e) => {
-      const {peerId} = e;
-
+    rootScope.addEventListener('dialog_drop', ({peerId}) => {
       this.deleteDialog(peerId);
       this.setFiltersUnreadCount();
+
+      if(this.processContact) {
+        this.processContact(peerId);
+      }
     });
 
-    rootScope.addEventListener('dialog_unread', (e) => {
-      const info = e;
-
-      const dialog = appMessagesManager.getDialogOnly(info.peerId);
+    rootScope.addEventListener('dialog_unread', ({peerId}) => {
+      const dialog = appMessagesManager.getDialogOnly(peerId);
       if(dialog) {
         this.setUnreadMessages(dialog);
         this.validateForFilter();
@@ -234,16 +237,18 @@ export class AppDialogsManager {
       this.setUnreadMessages(dialog); // возможно это не нужно, но нужно менять is-muted
     });
 
-    rootScope.addEventListener('dialog_draft', (e) => {
-      const dialog = appMessagesManager.getDialogOnly(e.peerId);
+    rootScope.addEventListener('dialog_draft', ({peerId}) => {
+      const dialog = appMessagesManager.getDialogOnly(peerId);
       if(dialog) {
         this.updateDialog(dialog);
+
+        if(this.processContact) {
+          this.processContact(peerId);
+        }
       }
     });
 
-    rootScope.addEventListener('peer_changed', (e) => {
-      const peerId = e;
-
+    rootScope.addEventListener('peer_changed', (peerId) => {
       //const perf = performance.now();
       for(const element of this.lastActiveElements) {
         if(+element.dataset.peerId !== peerId) {
@@ -260,8 +265,7 @@ export class AppDialogsManager {
       //this.log('peer_changed total time:', performance.now() - perf);
     });
 
-    rootScope.addEventListener('filter_update', (e) => {
-      const filter: DialogFilter = e;
+    rootScope.addEventListener('filter_update', (filter) => {
       if(!this.filtersRendered[filter.id]) {
         this.addFilter(filter);
         return;
@@ -280,8 +284,7 @@ export class AppDialogsManager {
       elements.title.innerHTML = RichTextProcessor.wrapEmojiText(filter.title);
     });
 
-    rootScope.addEventListener('filter_delete', (e) => {
-      const filter: DialogFilter = e;
+    rootScope.addEventListener('filter_delete', (filter) => {
       const elements = this.filtersRendered[filter.id];
       if(!elements) return;
 
@@ -301,9 +304,7 @@ export class AppDialogsManager {
       }
     });
 
-    rootScope.addEventListener('filter_order', (e) => {
-      const order = e;
-      
+    rootScope.addEventListener('filter_order', (order) => {
       const containerToAppend = this.folders.menu as HTMLElement;
       order.forEach((filterId) => {
         const filter = appMessagesManager.filtersStorage.filters[filterId];
@@ -319,9 +320,7 @@ export class AppDialogsManager {
       } */
     });
 
-    rootScope.addEventListener('peer_typings', (e) => {
-      const {peerId, typings} = e;
-
+    rootScope.addEventListener('peer_typings', ({peerId, typings}) => {
       const dialog = appMessagesManager.getDialogOnly(peerId);
       if(!dialog) return;
 
@@ -888,16 +887,27 @@ export class AppDialogsManager {
   }
 
   private onListLengthChange = () => {
-    return;
-
     this.checkIfPlaceholderNeeded();
 
     if(this.filterId > 0) return;
+
+    const count = this.chatList.childElementCount;
+
+    const parts = this.chatList.parentElement.parentElement;
     const bottom = this.chatList.parentElement.nextElementSibling as HTMLElement;
+    const hasContacts = !!bottom.childElementCount;
+    if(count >= 10) {
+      if(hasContacts) {
+        parts.classList.remove('with-contacts');
+        bottom.innerHTML = '';
+        this.loadContacts = undefined;
+        this.processContact = undefined;
+      }
 
-    if(bottom.childElementCount) return;
+      return;
+    } else if(hasContacts) return;
 
-    bottom.parentElement.classList.add('with-contacts');
+    parts.classList.add('with-contacts');
 
     const section = new SettingSection({
       name: 'Contacts',
@@ -911,7 +921,7 @@ export class AppDialogsManager {
       const sortedUserList = new SortedUserList({avatarSize: 42, new: true});
       this.loadContacts = () => {
         const pageCount = appPhotosManager.windowH / 60 | 0;
-        const arr = contacts.splice(0, pageCount);
+        const arr = contacts.splice(0, pageCount).filter(this.verifyUserIdForContacts);
 
         arr.forEach((peerId) => {
           sortedUserList.add(peerId);
@@ -924,6 +934,17 @@ export class AppDialogsManager {
 
       this.loadContacts();
 
+      this.processContact = (peerId) => {
+        if(peerId < 0) {
+          return;
+        }
+
+        const good = this.verifyUserIdForContacts(peerId);
+        const added = sortedUserList.has(peerId);
+        if(!added && good) sortedUserList.add(peerId);
+        else if(added && !good) sortedUserList.delete(peerId);
+      };
+
       const list = sortedUserList.list;
       list.classList.add('chatlist-new');
       this.setListClickListener(list);
@@ -932,6 +953,11 @@ export class AppDialogsManager {
     });
 
     bottom.append(section.container);
+  };
+
+  private verifyUserIdForContacts = (peerId: number) => {
+    const dialog = appMessagesManager.getDialogOnly(peerId);
+    return !dialog;
   };
 
   public onChatsRegularScroll = () => {
@@ -944,7 +970,7 @@ export class AppDialogsManager {
         return;
       }
 
-      if(!this.chatList.childElementCount) {
+      if(!this.chatList.childElementCount || this.processContact) {
         return;
       }
 
