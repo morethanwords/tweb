@@ -21,8 +21,8 @@ type SortedUser = {
 };
 export default class SortedUserList {
   protected static SORT_INTERVAL = 30e3;
-  protected users: Map<number, SortedUser>;
-  protected sorted: Array<SortedUser>;
+  public users: Map<number, SortedUser>;
+  public sorted: Array<SortedUser>;
   public list: HTMLUListElement;
   
   protected lazyLoadQueue: LazyLoadQueueIntersector;
@@ -78,8 +78,12 @@ export default class SortedUserList {
     return true;
   }
 
+  public has(peerId: number) {
+    return this.users.has(peerId);
+  }
+
   public add(peerId: number) {
-    if(this.users.has(peerId)) {
+    if(this.has(peerId)) {
       return;
     }
 
@@ -102,6 +106,17 @@ export default class SortedUserList {
 
     this.users.set(peerId, sortedUser);
     this.update(peerId);
+  }
+
+  public delete(peerId: number) {
+    const user = this.users.get(peerId);
+    if(!user) {
+      return;
+    }
+    
+    user.dom.listEl.remove();
+    this.users.delete(peerId);
+    this.sorted.findAndSplice(_user => _user === user);
   }
 
   public update(peerId: number, batch = false) {
