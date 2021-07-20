@@ -293,7 +293,7 @@ export class Authorizer {
     };
     
     const keyAesEncrypted = await getKeyAesEncrypted();
-    const encryptedData = await CryptoWorker.invokeCrypto('rsa-encrypt', keyAesEncrypted, auth.publicKey);
+    const encryptedData = addPadding(await CryptoWorker.invokeCrypto('rsa-encrypt', keyAesEncrypted, auth.publicKey), 256, true, true, true);
 
     const req_DH_params: req_DH_params = {
       nonce: auth.nonce,

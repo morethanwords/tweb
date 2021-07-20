@@ -5,13 +5,10 @@
  */
 
 import { bytesToHex, bytesFromHex, bufferConcats } from '../helpers/bytes';
-import { nextRandomInt } from '../helpers/random';
-
-//export const secureRandom = new SecureRandom();
 
 Object.defineProperty(Uint8Array.prototype, 'hex', {
   get: function(): string {
-    return bytesToHex([...this]);
+    return bytesToHex(this);
   },
   
   set: function(str: string) {
@@ -22,13 +19,10 @@ Object.defineProperty(Uint8Array.prototype, 'hex', {
 });
 
 Uint8Array.prototype.randomize = function() {
-  //secureRandom.nextBytes(this);
   if(crypto && 'getRandomValues' in crypto) {
     crypto.getRandomValues(this);
   } else {
-    for(let i = 0; i < this.length; ++i) {
-      this[i] = nextRandomInt(255);
-    }
+    throw new Error('NO_SECURE_RANDOM');
   }
   
   return this;
