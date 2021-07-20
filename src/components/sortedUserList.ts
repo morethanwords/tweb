@@ -12,6 +12,7 @@ import { insertInDescendSortedArray } from "../helpers/array";
 import isInDOM from "../helpers/dom/isInDOM";
 import positionElementByIndex from "../helpers/dom/positionElementByIndex";
 import replaceContent from "../helpers/dom/replaceContent";
+import { safeAssign } from "../helpers/object";
 
 type SortedUser = {
   peerId: number, 
@@ -19,14 +20,24 @@ type SortedUser = {
   dom: DialogDom
 };
 export default class SortedUserList {
-  public static SORT_INTERVAL = 30e3;
+  protected static SORT_INTERVAL = 30e3;
+  protected users: Map<number, SortedUser>;
+  protected sorted: Array<SortedUser>;
   public list: HTMLUListElement;
-  public users: Map<number, SortedUser>;
-  public sorted: Array<SortedUser>;
-  public lazyLoadQueue: LazyLoadQueueIntersector;
+  
+  protected lazyLoadQueue: LazyLoadQueueIntersector;
+  protected avatarSize = 48;
+  protected rippleEnabled = true;
 
-  constructor() {
-    this.list = appDialogsManager.createChatList();
+  constructor(options: Partial<{
+    lazyLoadQueue: SortedUserList['lazyLoadQueue'],
+    avatarSize: SortedUserList['avatarSize'],
+    rippleEnabled: SortedUserList['rippleEnabled'],
+    new: boolean
+  }> = {}) {
+    safeAssign(this, options);
+
+    this.list = appDialogsManager.createChatList({new: options.new});
 
     this.users = new Map();
     this.sorted = [];
@@ -76,10 +87,10 @@ export default class SortedUserList {
       dialog: peerId,
       container: false,
       drawStatus: false,
-      avatarSize: 48,
+      avatarSize: this.avatarSize,
       autonomous: true,
       meAsSaved: false,
-      rippleEnabled: false,
+      rippleEnabled: this.rippleEnabled,
       lazyLoadQueue: this.lazyLoadQueue
     });
 

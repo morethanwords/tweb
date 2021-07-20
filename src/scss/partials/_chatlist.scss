@@ -399,6 +399,89 @@ ul.chatlist {
   li.is-muted .unread {
     background-color: var(--secondary-color);
   }
+
+  &-parts {
+    /* width: 100%;
+    min-height: 100%;
+    display: flex;
+    flex-direction: column; */
+
+    &.with-contacts {
+      .chatlist-top:not(.with-placeholder) {
+        height: auto;
+        padding-bottom: .5rem;
+      }
+
+      .chatlist-top.with-placeholder {
+        height: 24.125rem;
+  
+        .empty-placeholder-dialogs {
+          top: 50%;
+        }
+      }
+    }
+  }
+
+  // do not set position: relative here. will break chatlist slicing.
+  &-top {
+    // flex: 0 0 auto;
+    height: 100%;
+  }
+
+  &-bottom {
+    // flex: 1 1 auto;
+    max-height: 36.375rem;
+
+    .sidebar-left-section {
+      padding-bottom: 0;
+    }
+
+    .chatlist-new {
+      padding: 0;
+      margin-top: -.5rem;
+
+      li {
+        height: 3.5rem;
+      }
+
+      .user-caption {
+        padding-left: 1.125rem;
+      }
+
+      .dialog-subtitle {
+        margin-top: .0625rem;
+      }
+    }
+  }
+
+  // * supernew correct layout
+  &-new {
+    li {
+      height: 4.5rem;
+      padding: 0 .75rem;
+      align-items: center;
+    }
+
+    .user-caption {
+      padding-left: .75rem;
+    }
+
+    p {
+      height: auto !important;
+    }
+
+    span {
+      line-height: var(--line-height) !important;
+    }
+
+    .dialog-subtitle {
+      margin-top: .125rem;
+    }
+
+    .user-last-message {
+      font-size: .875rem;
+    }
+  }
 }
 
 // use together like class="chatlist-container contacts-container"

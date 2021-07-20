@@ -26,7 +26,7 @@ import { Chat, Message, MessageAction, ChatFull, Photo } from "../../../layer";
 import Button from "../../button";
 import ButtonIcon from "../../buttonIcon";
 import I18n, { i18n, LangPackKey } from "../../../lib/langPack";
-import { SettingSection } from "../../sidebarLeft";
+import { generateDelimiter, SettingSection } from "../../sidebarLeft";
 import Row from "../../row";
 import { copyTextToClipboard } from "../../../helpers/clipboard";
 import { toast, toastNew } from "../../toast";
@@ -572,10 +572,7 @@ class PeerProfile {
     
     this.section.content.append(this.phone.container, this.username.container, this.bio.container, this.notifications.container);
 
-    const delimiter = document.createElement('div');
-    delimiter.classList.add('gradient-delimiter');
-
-    this.element.append(this.section.container, delimiter);
+    this.element.append(this.section.container, generateDelimiter());
 
     this.notifications.checkboxField.input.addEventListener('change', (e) => {
       if(!e.isTrusted) {

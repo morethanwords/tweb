@@ -507,7 +507,7 @@ export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showS
   }
 
   //let fileName = stringMiddleOverflow(doc.file_name || 'Unknown.file', 26);
-  let fileName = doc.file_name || 'Unknown.file';
+  let fileName = doc.fileName || 'Unknown.file';
   let size = formatBytes(doc.size);
   
   if(withTime) {

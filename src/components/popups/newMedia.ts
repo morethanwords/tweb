@@ -20,6 +20,7 @@ import calcImageInBox from "../../helpers/calcImageInBox";
 import isSendShortcutPressed from "../../helpers/dom/isSendShortcutPressed";
 import placeCaretAtEnd from "../../helpers/dom/placeCaretAtEnd";
 import rootScope from "../../lib/rootScope";
+import RichTextProcessor from "../../lib/richtextprocessor";
 
 type SendFileParams = Partial<{
   file: File,
@@ -298,6 +299,7 @@ export default class PopupNewMedia extends PopupElement {
             _: 'document',
             file: file,
             file_name: file.name || '',
+            fileName: file.name ? RichTextProcessor.wrapEmojiText(file.name) : '',
             size: file.size,
             type: isPhoto ? 'photo' : 'doc'
           } as MyDocument;

@@ -748,7 +748,7 @@ namespace RichTextProcessor {
     });
   }
   
-  export function wrapPlainText(text: any) {
+  export function wrapPlainText(text: string) {
     if(emojiSupported) {
       return text;
     }
@@ -757,32 +757,32 @@ namespace RichTextProcessor {
       return '';
     }
   
-    text = text.replace(/\ufe0f/g, '', text);
+    text = text.replace(/\ufe0f/g, '');
     var match;
     var raw = text;
-    var text: any = [],
-      emojiTitle;
+    const arr: string[] = [];
+    let emojiTitle;
     fullRegExp.lastIndex = 0;
     while((match = raw.match(fullRegExp))) {
-      text.push(raw.substr(0, match.index))
+      arr.push(raw.substr(0, match.index))
       if(match[8]) {
         // @ts-ignore
         const emojiCode = EmojiHelper.emojiMap[match[8]];
         if(emojiCode &&
         // @ts-ignore
           (emojiTitle = emojiData[emojiCode][1][0])) {
-          text.push(':' + emojiTitle + ':');
+          arr.push(':' + emojiTitle + ':');
         } else {
-          text.push(match[0]);
+          arr.push(match[0]);
         }
       } else {
-        text.push(match[0]);
+        arr.push(match[0]);
       }
   
       raw = raw.substr(match.index + match[0].length);
     }
-    text.push(raw);
-    return text.join('');
+    arr.push(raw);
+    return arr.join('');
   }
 
   export function wrapEmojiText(text: string) {
