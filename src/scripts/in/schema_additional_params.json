@@ -53,7 +53,10 @@
     {"name": "is_outgoing", "type": "true"},
     {"name": "rReply", "type": "string"},
     {"name": "viaBotId", "type": "number"},
-    {"name": "clear_history", "type": "boolean"}
+    {"name": "clear_history", "type": "boolean"},
+    {"name": "pending", "type": "boolean"},
+    {"name": "error", "type": "any"},
+    {"name": "send", "type": "() => Promise<any>"}
   ]
 }, {
   "predicate": "messageService",
