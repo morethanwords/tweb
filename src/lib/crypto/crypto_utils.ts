@@ -18,7 +18,7 @@ import pako from 'pako/dist/pako_inflate.min.js';
 
 import {str2bigInt, bpe, equalsInt, greater, 
   copy_, eGCD_, add_, rightShift_, sub_, copyInt_, isZero,
-  divide_, one, bigInt2str, powMod, bigInt2bytes} from '../../vendor/leemon';//from 'leemon';
+  divide_, one, bigInt2str, powMod, bigInt2bytes, int2bigInt, mod} from '../../vendor/leemon';//from 'leemon';
 
 import { addPadding } from '../mtproto/bin_utils';
 import { bytesToWordss, bytesFromWordss, bytesToHex, bytesFromHex, convertToUint8Array } from '../../helpers/bytes';
@@ -201,7 +201,7 @@ export function pqPrimeLeemon(what: number[]): [Uint8Array, Uint8Array, number] 
 
   for(i = 0; i < 3; ++i) {
     q = (nextRandomUint(8) & 15) + 17;
-    copyInt_(x, nextRandomUint(32) + 1);
+    copy_(x, mod(int2bigInt(nextRandomUint(32), 32, 0), what));
     copy_(y, x);
     lim = 1 << (i + 18);
 
