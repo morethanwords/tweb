@@ -856,7 +856,10 @@ export namespace Message {
 		random_id?: string,
 		rReply?: string,
 		viaBotId?: number,
-		clear_history?: boolean
+		clear_history?: boolean,
+		pending?: boolean,
+		error?: any,
+		send?: () => Promise<any>
 	};
 
 	export type messageService = {

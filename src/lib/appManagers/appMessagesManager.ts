@@ -480,7 +480,7 @@ export class AppMessagesManager {
       };
     }
 
-    const toggleError = (on: any) => {
+    const toggleError = (on: boolean) => {
       if(on) {
         message.error = true;
       } else {
@@ -525,7 +525,9 @@ export class AppMessagesManager {
       } */
 
       //this.log('sendText', message.mid);
-      apiPromise.then((updates: Updates) => {
+      this.pendingAfterMsgs[peerId] = sentRequestOptions;
+
+      return apiPromise.then((updates: Updates) => {
         //this.log('sendText sent', message.mid);
         //if(is<Updates.updateShortSentMessage>(updates, updates._ === 'updateShortSentMessage')) {
         if(updates._ === 'updateShortSentMessage') {
@@ -579,9 +581,7 @@ export class AppMessagesManager {
           delete this.pendingAfterMsgs[peerId];
         }
       });
-
-      this.pendingAfterMsgs[peerId] = sentRequestOptions;
-    }
+    };
 
     this.beforeMessageSending(message, {
       isScheduled: !!options.scheduleDate || undefined, 
@@ -831,7 +831,7 @@ export class AppMessagesManager {
       _: 'messageMediaDocument',
       pFlags: {},
       document: file 
-    } : media;
+    } as MessageMedia.messageMediaDocument : media as any;
 
     const toggleError = (on: boolean) => {
       if(on) {
@@ -888,6 +888,7 @@ export class AppMessagesManager {
               this.log('appMessagesManager: sendFile uploaded:', inputFile);
             } */
 
+            // @ts-ignore
             delete message.media.preloader;
 
             inputFile.name = apiFileName;
@@ -1163,7 +1164,7 @@ export class AppMessagesManager {
     const message = this.generateOutgoingMessage(peerId, options);
     const replyToMsgId = options.replyToMsgId ? this.getServerMessageId(options.replyToMsgId) : undefined;
 
-    let media;
+    let media: MessageMedia;
     switch(inputMedia._) {
       case 'inputMediaPoll': {
         inputMedia.poll.id = message.id;
@@ -1291,7 +1292,9 @@ export class AppMessagesManager {
         }, sentRequestOptions);
       }
 
-      apiPromise.then((updates) => {
+      this.pendingAfterMsgs[peerId] = sentRequestOptions;
+
+      return apiPromise.then((updates) => {
         if(updates.updates) {
           updates.updates.forEach((update: any) => {
             if(update._ === 'updateDraftMessage') {
@@ -1308,8 +1311,7 @@ export class AppMessagesManager {
           delete this.pendingAfterMsgs[peerId];
         }
       });
-      this.pendingAfterMsgs[peerId] = sentRequestOptions;
-    }
+    };
 
     this.beforeMessageSending(message, {
       isScheduled: !!options.scheduleDate || undefined, 
@@ -1402,7 +1404,7 @@ export class AppMessagesManager {
       options.replyToMsgId = options.threadId;
     }
 
-    const message: any = {
+    const message: Message.message = {
       _: 'message',
       id: this.generateTempMessageId(peerId),
       from_id: this.generateFromId(peerId),
@@ -5102,17 +5104,18 @@ export class AppMessagesManager {
   }
 
   private handleReleasingMessage(message: MyMessage) {
-    if('media' in message) {
+    const media = (message as Message.message).media;
+    if(media) {
       // @ts-ignore
-      const c = message.media.webpage || message.media;
+      const c = media.webpage || media;
       const smth: Photo.photo | MyDocument = c.photo || c.document;
 
       if(smth?.file_reference) {
         referenceDatabase.deleteContext(smth.file_reference, {type: 'message', peerId: message.peerId, messageId: message.mid});
       }
 
-      if('webpage' in message.media) {
-        appWebPagesManager.deleteWebPageFromPending(message.media.webpage, message.mid);
+      if('webpage' in media) {
+        appWebPagesManager.deleteWebPageFromPending(media.webpage, message.mid);
       }
     }
   }

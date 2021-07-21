@@ -534,7 +534,8 @@ export class Authorizer {
         const newNonceHash1 = (await CryptoWorker.invokeCrypto('sha1-hash', auth.newNonce.concat([1], authKeyAux))).slice(-16);
         
         if(!bytesCmp(newNonceHash1, response.new_nonce_hash1)) {
-          throw new Error('[MT] Set_client_DH_params_answer new_nonce_hash1 mismatch');
+          this.log.error('Set_client_DH_params_answer new_nonce_hash1 mismatch', newNonceHash1, response);
+          throw new Error('new_nonce_hash1 mismatch');
         }
         
         const serverSalt = bytesXor(auth.newNonce.slice(0, 8), auth.serverNonce.slice(0, 8));
@@ -591,7 +592,7 @@ export class Authorizer {
       this.cached[dcId] = promise;
       return await promise;
     } catch(err) {
-      if(err.originalError === -404 && auth.localTry <= 3) {
+      if(/* err.originalError === -404 &&  */auth.localTry <= 3) {
         return this.sendReqPQ({
           dcId: auth.dcId, 
           nonce: new Uint8Array(16).randomize(),

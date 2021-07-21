@@ -16,5 +16,5 @@ export function nextRandomUint(bits: 8 | 16 | 32) {
 }
 
 export function randomLong() {
-  return '' + nextRandomUint(32) + nextRandomUint(32);
+  return '' + nextRandomUint(32) + nextRandomUint(32) % 0xFFFFFF;
 }
