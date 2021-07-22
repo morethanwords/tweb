@@ -10,6 +10,7 @@ import { validateInitObject } from "../../helpers/object";
 import I18n from "../langPack";
 import { isObject } from "../mtproto/bin_utils";
 import apiManager from "../mtproto/mtprotoworker";
+import RichTextProcessor from "../richtextprocessor";
 import rootScope from "../rootScope";
 import SearchIndex from "../searchIndex";
 import stateStorage from "../stateStorage";
@@ -219,6 +220,7 @@ export class AppEmojiManager {
   }
 
   public pushRecentEmoji(emoji: string) {
+    emoji = RichTextProcessor.fixEmoji(emoji);
     this.getRecentEmojis().then(recent => {
       recent.findAndSplice(e => e === emoji);
       recent.unshift(emoji);
