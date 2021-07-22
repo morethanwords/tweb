@@ -1492,6 +1492,8 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     const fromId = message.fromId;
     const media = this.getMediaFromMessage(message);
 
+    this.buttons.forward.classList.toggle('hide', message._ === 'messageService');
+
     this.currentMessageId = mid;
     this.currentPeerId = message.peerId;
     const promise = super._openMedia(media, message.date, fromId, fromRight, target, reverse, prevTargets, nextTargets, needLoadMore);
