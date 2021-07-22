@@ -29,7 +29,7 @@ export namespace MessageRender {
       bubble.classList.add('channel-post');
       time = formatNumber(message.views, 1) + ' <i class="tgico-channelviews time-icon"></i> ' + (postAuthor ? RichTextProcessor.wrapEmojiText(postAuthor) + ', ' : '') + time;
   
-      if(!message.fwd_from?.saved_from_msg_id) {
+      if(!message.fwd_from?.saved_from_msg_id && chat.type !== 'pinned') {
         const forward = document.createElement('div');
         forward.classList.add('bubble-beside-button', 'forward');
         forward.innerHTML = `

@@ -9,13 +9,14 @@ import { addCancelButton } from ".";
 import PopupPeer, { PopupPeerButtonCallbackCheckboxes, PopupPeerOptions } from "./peer";
 import appPeersManager from "../../lib/appManagers/appPeersManager";
 import rootScope from "../../lib/rootScope";
-import { LangPackKey } from "../../lib/langPack";
+import { FormatterArguments, LangPackKey } from "../../lib/langPack";
 import appChatsManager from "../../lib/appManagers/appChatsManager";
 import PeerTitle from "../peerTitle";
 
 export default class PopupPinMessage {
   constructor(peerId: number, mid: number, unpin?: true, onConfirm?: () => void) {
-    let title: LangPackKey, description: LangPackKey, buttons: PopupPeerOptions['buttons'] = [], checkboxes: PopupPeerOptions['checkboxes'] = [];
+    let title: LangPackKey, description: LangPackKey, descriptionArgs: FormatterArguments, 
+      buttons: PopupPeerOptions['buttons'] = [], checkboxes: PopupPeerOptions['checkboxes'] = [];
 
     const canUnpin = appPeersManager.canPinMessage(peerId);
 
@@ -44,6 +45,7 @@ export default class PopupPinMessage {
         if(canUnpin) {
           title = 'Popup.Unpin.AllTitle';
           description = 'Chat.UnpinAllMessagesConfirmation';
+          descriptionArgs = ['' + (appMessagesManager.pinnedMessages[peerId]?.count || 1)];
         } else {
           title = 'Popup.Unpin.HideTitle';
           description = 'Popup.Unpin.HideDescription';
@@ -108,6 +110,7 @@ export default class PopupPinMessage {
       peerId,
       titleLangKey: title,
       descriptionLangKey: description,
+      descriptionLangArgs: descriptionArgs,
       buttons,
       checkboxes
     });
