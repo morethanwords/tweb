@@ -72,12 +72,7 @@ export class EmoticonsDropdown extends DropdownHover {
         appImManager.chat.input.chatInput.append(this.element);
       }
 
-      const sel = document.getSelection();
-      if(sel.rangeCount && document.activeElement === appImManager.chat.input.messageInput) {
-        this.savedRange = sel.getRangeAt(0);
-      } else {
-        this.savedRange = undefined;
-      }
+      this.savedRange = this.getGoodRange();
 
       EmoticonsDropdown.lazyLoadQueue.lock();
       //EmoticonsDropdown.lazyLoadQueue.unlock();
@@ -322,7 +317,14 @@ export class EmoticonsDropdown extends DropdownHover {
   }
 
   public getSavedRange() {
-    return this.savedRange;
+    return this.getGoodRange() || this.savedRange;
+  }
+
+  private getGoodRange() {
+    const sel = document.getSelection();
+    if(sel.rangeCount && document.activeElement === appImManager.chat.input.messageInput) {
+      return sel.getRangeAt(0);
+    }
   }
 }
 
