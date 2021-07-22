@@ -244,7 +244,7 @@ export default class EmojiTab implements EmoticonsTab {
       const children = Array.from(this.recentItemsDiv.children) as HTMLElement[];
       for(let i = 0, length = children.length; i < length; ++i) {
         const el = children[i];
-        const _emoji = getEmojiFromElement(el);
+        const _emoji = RichTextProcessor.fixEmoji(getEmojiFromElement(el));
         if(emoji === _emoji) {
           if(i === 0) {
             return;
