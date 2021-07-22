@@ -154,6 +154,14 @@ console.timeEnd('get storage1'); */
       });
     }
 
+    // prevent firefox image dragging
+    document.addEventListener('dragstart', (e) => {
+      if((e.target as HTMLElement)?.tagName === "IMG") {
+        e.preventDefault();
+        return false;
+      }
+    });
+
     if(userAgent.isApple) {
       if(userAgent.isSafari) {
         document.documentElement.classList.add('is-safari');
