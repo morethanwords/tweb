@@ -5039,16 +5039,18 @@ export class AppMessagesManager {
               id: msgIds
             });
           }
-    
-          promises.push(promise.then(getMessagesResult => {
+
+          const after = promise.then(getMessagesResult => {
             if(getMessagesResult._ !== 'messages.messagesNotModified') {
               appUsersManager.saveApiUsers(getMessagesResult.users);
               appChatsManager.saveApiChats(getMessagesResult.chats);
               this.saveMessages(getMessagesResult.messages);
             }
-    
+          }).finally(() => {
             rootScope.dispatchEvent('messages_downloaded', {peerId: +peerId, mids});
-          }));
+          });
+    
+          promises.push(after);
         }
 
         Promise.all(promises).finally(() => {
