@@ -133,7 +133,12 @@ export default class DialogsStorage {
       1: []
     };
     this.dialogsNum = 0;
-    this.dialogsIndex = new SearchIndex<number>();
+    this.dialogsIndex = new SearchIndex<number>({
+      clearBadChars: true,
+      ignoreCase: true,
+      latinize: true,
+      includeTag: true
+    });
     this.cachedResults = {
       query: '',
       count: 0,

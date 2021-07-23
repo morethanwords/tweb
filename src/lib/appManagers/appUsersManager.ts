@@ -16,7 +16,7 @@ import cleanSearchText from "../../helpers/cleanSearchText";
 import cleanUsername from "../../helpers/cleanUsername";
 import { tsNow } from "../../helpers/date";
 import { safeReplaceObject, isObject } from "../../helpers/object";
-import { InputUser, User as MTUser, UserProfilePhoto, UserStatus } from "../../layer";
+import { Chat, InputUser, User as MTUser, UserProfilePhoto, UserStatus } from "../../layer";
 import I18n, { i18n, LangPackKey } from "../langPack";
 //import apiManager from '../mtproto/apiManager';
 import apiManager from '../mtproto/mtprotoworker';
@@ -33,6 +33,7 @@ import appStateManager from "./appStateManager";
 // TODO: updateUserBlocked
 
 export type User = MTUser.user;
+export type TopPeerType = 'correspondents' | 'bots_inline';
 
 export class AppUsersManager {
   private storage = appStateManager.storages.users;
@@ -44,7 +45,7 @@ export class AppUsersManager {
   private contactsList: Set<number>;
   private updatedContactsList: boolean;
   
-  private getTopPeersPromise: Promise<number[]>;
+  private getTopPeersPromises: {[type in TopPeerType]?: Promise<number[]>};
 
   constructor() {
     this.clear(true);
@@ -182,7 +183,8 @@ export class AppUsersManager {
       this.usernames = {};
     }
     
-    this.contactsIndex = new SearchIndex();
+    this.getTopPeersPromises = {};
+    this.contactsIndex = this.createSearchIndex();
     this.contactsFillPromise = undefined;
     this.contactsList = new Set();
     this.updatedContactsList = false;
@@ -219,7 +221,7 @@ export class AppUsersManager {
     return this.contactsFillPromise || (this.contactsFillPromise = promise);
   }
 
-  public resolveUsername(username: string) {
+  public resolveUsername(username: string): Promise<Chat | User> {
     if(username[0] === '@') {
       username = username.slice(1);
     }
@@ -314,9 +316,18 @@ export class AppUsersManager {
 
   public testSelfSearch(query: string) {
     const user = this.getSelf();
-    const index = new SearchIndex();
+    const index = this.createSearchIndex();
     index.indexObject(user.id, this.getUserSearchText(user.id));
     return index.search(query).has(user.id);
+  }
+
+  private createSearchIndex() {
+    return new SearchIndex<number>({
+      clearBadChars: true,
+      ignoreCase: true,
+      latinize: true,
+      includeTag: true
+    });
   }
 
   public saveApiUsers(apiUsers: any[], override?: boolean) {
@@ -721,19 +732,20 @@ export class AppUsersManager {
     });
   } */
 
-  public getTopPeers(): Promise<number[]> {
-    if(this.getTopPeersPromise) return this.getTopPeersPromise;
+  public getTopPeers(type: TopPeerType): Promise<number[]> {
+    if(this.getTopPeersPromises[type]) return this.getTopPeersPromises[type];
 
-    return this.getTopPeersPromise = appStateManager.getState().then((state) => {
-      if(state?.topPeers?.length) {
-        return state.topPeers;
+    return this.getTopPeersPromises[type] = appStateManager.getState().then((state) => {
+      const cached = state.topPeersCache[type];
+      if(cached?.peerIds?.length) {
+        return cached.peerIds;
       }
 
       return apiManager.invokeApi('contacts.getTopPeers', {
-        correspondents: true,
+        [type]: true,
         offset: 0,
         limit: 15,
-        hash: 0,
+        hash: 0
       }).then((result) => {
         let peerIds: number[] = [];
         if(result._ === 'contacts.topPeers') {
@@ -750,7 +762,11 @@ export class AppUsersManager {
           }
         }
   
-        appStateManager.pushToState('topPeers', peerIds);
+        state.topPeersCache[type] = {
+          peerIds,
+          cachedTime: Date.now()
+        };
+        appStateManager.pushToState('topPeersCache', state.topPeersCache);
   
         return peerIds;
       });

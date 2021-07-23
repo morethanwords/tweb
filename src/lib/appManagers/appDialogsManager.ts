@@ -834,7 +834,7 @@ export class AppDialogsManager {
         appUsersManager.getContacts().then(users => {
           let key: LangPackKey, args: FormatterArguments;
 
-          if(users.length) {
+          if(users.length/*  && false */) {
             key = 'ChatList.Main.EmptyPlaceholder.Subtitle';
             args = [i18n('Contacts.Count', [users.length])];
           } else {

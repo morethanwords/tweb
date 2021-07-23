@@ -823,7 +823,7 @@ export default class AppSearchSuper {
       };
 
       return Promise.all([
-        appUsersManager.getTopPeers().then(peers => {
+        appUsersManager.getTopPeers('correspondents').then(peers => {
           if(!middleware()) return;
 
           const idx = peers.indexOf(rootScope.myId);

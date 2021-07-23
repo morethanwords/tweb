@@ -14,20 +14,40 @@ import Config from "../lib/config";
 const badCharsRe = /[`~!@#$%^&*()\-_=+\[\]\\|{}'";:\/?.>,<]+/g;
 const trimRe = /^\s+|\s$/g;
 
+export function clearBadCharsAndTrim(text: string) {
+  return text.replace(badCharsRe, '').replace(trimRe, '');
+}
+
+export function latinizeString(text: string) {
+  return text.replace(/[^A-Za-z0-9]/g, (ch) => {
+    const latinizeCh = Config.LatinizeMap[ch];
+    return latinizeCh !== undefined ? latinizeCh : ch;
+  });
+}
+
 export default function cleanSearchText(text: string, latinize = true) {
   const hasTag = text.charAt(0) === '%';
-  text = text.replace(badCharsRe, '').replace(trimRe, '');
-  if(latinize) {
-    text = text.replace(/[^A-Za-z0-9]/g, (ch) => {
-      const latinizeCh = Config.LatinizeMap[ch];
-      return latinizeCh !== undefined ? latinizeCh : ch;
-    });
-  }
+  text = clearBadCharsAndTrim(text);
+  if(latinize) text = latinizeString(text);
   
   text = text.toLowerCase();
-  if(hasTag) {
-    text = '%' + text;
-  }
+  if(hasTag) text = '%' + text;
 
+  return text;
+}
+
+export type ProcessSearchTextOptions = Partial<{
+  clearBadChars: boolean,
+  latinize: boolean,
+  ignoreCase: boolean,
+  includeTag: boolean
+}>;
+
+export function processSearchText(text: string, options: ProcessSearchTextOptions = {}) {
+  const hasTag = options.includeTag && text.charAt(0) === '%';
+  if(options.clearBadChars) text = clearBadCharsAndTrim(text);
+  if(options.latinize) text = latinizeString(text);
+  if(options.ignoreCase) text = text.toLowerCase();
+  if(hasTag) text = '%' + text;
   return text;
 }

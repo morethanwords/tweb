@@ -246,7 +246,7 @@ export class AppSidebarLeft extends SidebarSlider {
       this.archivedCount.classList.toggle('hide', !e.count);
     });
 
-    appUsersManager.getTopPeers();
+    appUsersManager.getTopPeers('correspondents');
 
     appStateManager.getState().then(state => {
       const recentSearch = state.recentSearch || [];
