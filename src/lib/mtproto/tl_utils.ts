@@ -634,6 +634,19 @@ class TLDeserialization {
   
     return bytes;
   }
+
+  private fetchVector(type: string, field?: string) {
+    const len = this.readInt(field + '[count]');
+    const result: any[] = new Array(len);
+    if(len > 0) {
+      const itemType = type.substr(7, type.length - 8); // for "Vector<itemType>"
+      for(let i = 0; i < len; ++i) {
+        result[i] = this.fetchObject(itemType, field + '[' + i + ']');
+      }
+    }
+  
+    return result;
+  }
   
   public fetchObject(type: string, field?: string): any {
     switch(type) {
@@ -662,33 +675,8 @@ class TLDeserialization {
   
     field = field || type || 'Object';
   
-    if(type.charAt(0).toLowerCase() === 'v' && type.substr(1, 5) === 'ector') {
-      if(type.charAt(0) === 'V') {
-        const constructorCmp = this.readInt(field + '[id]');
-  
-        if(constructorCmp === gzipPacked) { // Gzip packed
-          const compressed = this.fetchBytes(field + '[packed_string]');
-          const uncompressed = gzipUncompress(compressed) as Uint8Array;
-          const newDeserializer = new TLDeserialization(uncompressed);
-  
-          return newDeserializer.fetchObject(type, field);
-        }
-
-        if(constructorCmp !== vector) {
-          throw new Error('Invalid vector constructor ' + constructorCmp);
-        }
-      }
-
-      const len = this.readInt(field + '[count]');
-      const result: any[] = new Array(len);
-      if(len > 0) {
-        const itemType = type.substr(7, type.length - 8); // for "Vector<itemType>"
-        for(let i = 0; i < len; ++i) {
-          result[i] = this.fetchObject(itemType, field + '[' + i + ']');
-        }
-      }
-  
-      return result;
+    if(type.charAt(0) === 'v' && type.substr(1, 5) === 'ector') {
+      return this.fetchVector(type, field);
     }
   
     const schema = this.mtproto ? Schema.MTProto : Schema.API;
@@ -715,6 +703,10 @@ class TLDeserialization {
         const newDeserializer = new TLDeserialization(uncompressed);
   
         return newDeserializer.fetchObject(type, field);
+      }
+
+      if(constructorCmp === vector) {
+        return this.fetchVector(type, field);
       }
   
       let index = schema.constructorsIndex;
