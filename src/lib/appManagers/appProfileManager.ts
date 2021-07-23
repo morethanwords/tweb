@@ -397,11 +397,15 @@ export class AppProfileManager {
 
   public getMentions(chatId: number, query: string, threadId?: number): Promise<number[]> {
     const processUserIds = (userIds: number[]) => {
+      const startsWithAt = query.charAt(0) === '@';
+      if(startsWithAt) query = query.slice(1);
       /* const startsWithAt = query.charAt(0) === '@';
       if(startsWithAt) query = query.slice(1);
       
       const index = new SearchIndex<number>(!startsWithAt, !startsWithAt); */
-      const index = new SearchIndex<number>(true, true);
+      const index = new SearchIndex<number>({
+        ignoreCase: true
+      });
       userIds.forEach(userId => {
         index.indexObject(userId, appUsersManager.getUserSearchText(userId));
       });
@@ -409,19 +413,31 @@ export class AppProfileManager {
       return Array.from(index.search(query));
     };
 
+    let promise: Promise<number[]>;
     if(appChatsManager.isChannel(chatId)) {
-      return this.getChannelParticipants(chatId, {
+      promise = this.getChannelParticipants(chatId, {
         _: 'channelParticipantsMentions',
         q: query,
         top_msg_id: threadId
       }, 50, 0).then(cP => {
-        return processUserIds(cP.participants.map(p => appChatsManager.getParticipantPeerId(p)));
+        return cP.participants.map(p => appChatsManager.getParticipantPeerId(p));
+      });
+    } else if(chatId) {
+      promise = (this.getChatFull(chatId) as Promise<ChatFull.chatFull>).then(chatFull => {
+        return (chatFull.participants as ChatParticipants.chatParticipants).participants.map(p => p.user_id);
       });
     } else {
-      return (this.getChatFull(chatId) as Promise<ChatFull.chatFull>).then(chatFull => {
-        return processUserIds((chatFull.participants as ChatParticipants.chatParticipants).participants.map(p => p.user_id));
-      });
+      promise = Promise.resolve([]);
     }
+
+    return Promise.all([
+      [],// appUsersManager.getTopPeers('bots_inline').catch(() => []), 
+      promise
+    ]).then(results => {
+      const peerIds = results[0].concat(results[1]);
+
+      return processUserIds(peerIds);
+    });
   }
 
   public invalidateChannelParticipants(id: number) {

@@ -43,9 +43,9 @@ export default class MentionsHelper extends AutocompletePeerHelper {
 
   public checkQuery(query: string, peerId: number, topMsgId: number) {
     const trimmed = query.trim(); // check that there is no whitespace
-    if(peerId > 0 || query.length !== trimmed.length) return false;
+    if(query.length !== trimmed.length) return false;
 
-    this.appProfileManager.getMentions(-peerId, trimmed, topMsgId).then(peerIds => {
+    this.appProfileManager.getMentions(peerId ? -peerId : 0, trimmed, topMsgId).then(peerIds => {
       const username = trimmed.slice(1).toLowerCase();
       this.render(peerIds.map(peerId => {
         const user = this.appUsersManager.getUser(peerId);

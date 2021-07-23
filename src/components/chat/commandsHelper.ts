@@ -41,7 +41,9 @@ export default class CommandsHelper extends AutocompletePeerHelper {
       }
 
       const botInfos: BotInfo.botInfo[] = [].concat(full.bot_info);
-      const index = new SearchIndex<string>(false, false);
+      const index = new SearchIndex<string>({
+        ignoreCase: true
+      });
       
       const commands: Map<string, {peerId: number, name: string, description: string}> = new Map();
       botInfos.forEach(botInfo => {

@@ -142,6 +142,12 @@ $chat-helper-size: 39px;
 		@include respond-to(handhelds) {
 			max-height: 10rem;
 		}
+
+		&[data-inline-placeholder]:after {
+			content: attr(data-inline-placeholder);
+			color: #a2acb4;
+			pointer-events: none;
+		}
 	}
 
 	.toggle-emoticons {

@@ -9,14 +9,13 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import cleanSearchText from '../helpers/cleanSearchText';
+import { processSearchText, ProcessSearchTextOptions } from '../helpers/cleanSearchText';
 
 export default class SearchIndex<SearchWhat> {
   private fullTexts: Map<SearchWhat, string> = new Map();
 
   // minChars can be 0 because it requires at least one word (one symbol) to be found
-  constructor(private cleanText = true, private latinize = true, private minChars: number = 0) {
-
+  constructor(private options?: ProcessSearchTextOptions, private minChars = 0) {
   }
 
   public indexObject(id: SearchWhat, searchText: string) {
@@ -24,8 +23,8 @@ export default class SearchIndex<SearchWhat> {
       return false;
     } */
 
-    if(searchText.trim() && this.cleanText) {
-      searchText = cleanSearchText(searchText, this.latinize);
+    if(this.options && searchText.trim()) {
+      searchText = processSearchText(searchText, this.options);
     }
 
     if(!searchText) {
@@ -54,8 +53,8 @@ export default class SearchIndex<SearchWhat> {
     const fullTexts = this.fullTexts;
     //const shortIndexes = searchIndex.shortIndexes;
 
-    if(this.cleanText) {
-      query = cleanSearchText(query, this.latinize);
+    if(this.options) {
+      query = processSearchText(query, this.options);
     }
 
     const newFoundObjs: Array<{fullText: string, fullTextLength: number, what: SearchWhat, foundChars: number}> = [];

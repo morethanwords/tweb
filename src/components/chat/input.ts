@@ -14,6 +14,7 @@ import type { AppImManager } from '../../lib/appManagers/appImManager';
 import type { AppDraftsManager, MyDraftMessage } from '../../lib/appManagers/appDraftsManager';
 import type { AppEmojiManager } from '../../lib/appManagers/appEmojiManager';
 import type { ServerTimeManager } from '../../lib/mtproto/serverTimeManager';
+import type { AppUsersManager } from '../../lib/appManagers/appUsersManager';
 import type Chat from './chat';
 import Recorder from '../../../public/recorder.min';
 import { isTouchSupported } from "../../helpers/touchSupport";
@@ -75,7 +76,7 @@ type ChatInputHelperType = 'edit' | 'webpage' | 'forward' | 'reply';
 
 export default class ChatInput {
   // private static AUTO_COMPLETE_REG_EXP = /(\s|^)((?::|.)(?!.*[:@]).*|(?:[@\/]\S*))$/;
-  private static AUTO_COMPLETE_REG_EXP = /(\s|^)((?:(?:@|^\/)\S*)|(?::|[^:@\/])(?!.*[:@\/]).*)$/;
+  private static AUTO_COMPLETE_REG_EXP = /(\s|^)((?:(?:@|^\/)\S*)|(?::|^[^:@\/])(?!.*[:@\/]).*)$/;
   public messageInput: HTMLElement;
   public messageInputField: InputField;
   private fileInput: HTMLInputElement;
@@ -169,7 +170,8 @@ export default class ChatInput {
     private appDraftsManager: AppDraftsManager, 
     private serverTimeManager: ServerTimeManager, 
     private appNotificationsManager: AppNotificationsManager,
-    private appEmojiManager: AppEmojiManager
+    private appEmojiManager: AppEmojiManager,
+    private appUsersManager: AppUsersManager
   ) {
     this.listenerSetter = new ListenerSetter();
   }
@@ -448,7 +450,8 @@ export default class ChatInput {
 
     this.listenerSetter.add(rootScope)('settings_updated', () => {
       if(this.stickersHelper || this.emojiHelper) {
-        this.previousQuery = undefined;
+        // this.previousQuery = undefined;
+        this.previousQuery = '';
         this.checkAutocomplete();
         /* if(!rootScope.settings.stickers.suggest) {
           this.stickersHelper.checkEmoticon('');
@@ -1242,20 +1245,27 @@ export default class ChatInput {
 
     value = value.substr(0, caretPos);
 
-    const matches = value.match(ChatInput.AUTO_COMPLETE_REG_EXP);
-    if(!matches) {
-      this.previousQuery = undefined;
-      this.autocompleteHelperController.hideOtherHelpers();
+    if(this.previousQuery === value) {
       return;
     }
 
-    if(this.previousQuery === matches[0]) {
+    this.previousQuery = value;
+    
+    const matches = value.match(ChatInput.AUTO_COMPLETE_REG_EXP);
+    let foundHelper: AutocompleteHelper;
+    if(!matches) {
+      foundHelper = this.checkInlineAutocomplete(value);
+      // this.previousQuery = undefined;
+      this.autocompleteHelperController.hideOtherHelpers(foundHelper);
+      return;
+    }
+
+    /* if(this.previousQuery === matches[0]) {
       return;
     }
     
-    this.previousQuery = matches[0];
+    this.previousQuery = matches[0]; */
 
-    let foundHelper: AutocompleteHelper;
     const entity = entities[0];
 
     const query = matches[2];
@@ -1267,14 +1277,9 @@ export default class ChatInput {
       entity?._ === 'messageEntityEmoji' && entity.length === value.length && !entity.offset) {
       foundHelper = this.stickersHelper;
       this.stickersHelper.checkEmoticon(value);
-    } else 
-    //let query = cleanSearchText(query);
-
-    //console.log('autocomplete matches', matches);
-
-    if(firstChar === '@') { // mentions
+    } else if(firstChar === '@') { // mentions
       const topMsgId = this.chat.threadId ? this.appMessagesManager.getServerMessageId(this.chat.threadId) : undefined;
-      if(this.mentionsHelper.checkQuery(query, this.chat.peerId, topMsgId)) {
+      if(this.mentionsHelper.checkQuery(query, this.chat.peerId > 0 ? 0 : this.chat.peerId, topMsgId)) {
         foundHelper = this.mentionsHelper;
       }
     } else if(!matches[1] && firstChar === '/') { // commands
@@ -1286,9 +1291,31 @@ export default class ChatInput {
         foundHelper = this.emojiHelper;
         this.emojiHelper.checkQuery(query, firstChar);
       }
+    } else {
+      foundHelper = this.checkInlineAutocomplete(value);
     }
 
     this.autocompleteHelperController.hideOtherHelpers(foundHelper);
+  }
+
+  private checkInlineAutocomplete(value: string): AutocompleteHelper {
+    return;
+    
+    const inlineMatch = value.match(/^@([a-zA-Z\\d_]{3,32})\s/);
+    if(inlineMatch) {
+      const username = inlineMatch[1];
+      console.log('inline match username', username);
+      this.appUsersManager.resolveUsername(username).then(peer => {
+        if(peer._ === 'user') {
+          if(peer.bot_inline_placeholder) {
+            this.messageInput.dataset.inlinePlaceholder = peer.bot_inline_placeholder;
+          }
+
+          console.log(peer);
+        }
+      });
+      return;
+    }
   }
 
   private onBtnSendClick = (e: Event) => {

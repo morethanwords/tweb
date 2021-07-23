@@ -133,7 +133,7 @@ export class ApiFileManager {
 
   private downloadCheck(dcId: string | number) {
     const downloadPull = this.downloadPulls[dcId];
-    const downloadLimit = dcId === 'upload' ? 24 : 24;
+    const downloadLimit = dcId === 'upload' ? 24 : 36;
     //const downloadLimit = Infinity;
 
     if(this.downloadActives[dcId] >= downloadLimit || !downloadPull || !downloadPull.length) {

@@ -6,7 +6,7 @@
 
 import type { Dialog } from './appMessagesManager';
 import type { UserAuth } from '../mtproto/mtproto_config';
-import type { User } from './appUsersManager';
+import type { TopPeerType, User } from './appUsersManager';
 import type { AuthState } from '../../types';
 import type FiltersStorage from '../storages/filters';
 import type DialogsStorage from '../storages/dialogs';
@@ -54,7 +54,12 @@ export type State = {
   maxSeenMsgId: number,
   stateCreatedTime: number,
   recentEmoji: string[],
-  topPeers: number[],
+  topPeersCache: {
+    [type in TopPeerType]?: {
+      peerIds: number[],
+      cachedTime: number
+    }
+  },
   recentSearch: number[],
   version: typeof STATE_VERSION,
   authState: AuthState,
@@ -103,7 +108,7 @@ export const STATE_INIT: State = {
   maxSeenMsgId: 0,
   stateCreatedTime: Date.now(),
   recentEmoji: [],
-  topPeers: [],
+  topPeersCache: {},
   recentSearch: [],
   version: STATE_VERSION,
   authState: {
