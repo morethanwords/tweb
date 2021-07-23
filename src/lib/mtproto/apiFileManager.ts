@@ -145,7 +145,7 @@ export class ApiFileManager {
     const activeDelta = data.activeDelta || 1;
 
     this.downloadActives[dcId] += activeDelta;
-
+ 
     data.cb()
     .then((result) => {
       this.downloadActives[dcId] -= activeDelta;
@@ -190,11 +190,11 @@ export class ApiFileManager {
   }
 
   public requestFilePart(dcId: DcId, location: InputFileLocation, offset: number, limit: number, id = 0, queueId = 0, checkCancel?: () => void) {
-    return this.downloadRequest(dcId, id, () => {
+    return this.downloadRequest(dcId, id, async() => { // do not remove async, because checkCancel will throw an error
       checkCancel && checkCancel();
 
-      const invoke = (): Promise<MyUploadFile> => {
-        checkCancel && checkCancel();
+      const invoke = async(): Promise<MyUploadFile> => {
+        checkCancel && checkCancel(); // do not remove async, because checkCancel will throw an error
 
         const promise = apiManager.invokeApi('upload.getFile', {
           location,
