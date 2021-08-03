@@ -445,7 +445,7 @@ export class ApiManager {
             this.invokeApi(method, params, options).then(deferred.resolve, rejectPromise);
           }, rejectPromise);
         } else if(error.code === 303) {
-          const newDcId = +error.type.match(/^(PHONE_MIGRATE_|NETWORK_MIGRATE_|USER_MIGRATE_|FILE_MIGRATE_)(\d+)/)[2] as DcId;
+          const newDcId = +error.type.match(/^(PHONE_MIGRATE_|NETWORK_MIGRATE_|USER_MIGRATE_)(\d+)/)[2] as DcId;
           if(newDcId !== dcId) {
             if(options.dcId) {
               options.dcId = newDcId;
@@ -456,6 +456,15 @@ export class ApiManager {
             this.getNetworker(newDcId, options).then((networker) => {
               networker.wrapApiCall(method, params, options).then(deferred.resolve, rejectPromise);
             }, rejectPromise);
+          }
+        } else if(error.code === 400 && error.type.indexOf('FILE_MIGRATE') === 0) {
+          const newDcId = +error.type.match(/^(FILE_MIGRATE_)(\d+)/)[2] as DcId;
+          if(newDcId !== dcId) {
+            this.getNetworker(newDcId, options).then((networker) => {
+              networker.wrapApiCall(method, params, options).then(deferred.resolve, rejectPromise);
+            }, rejectPromise);
+          } else {
+            rejectPromise(error);
           }
         } else if(!options.rawError && error.code === 420) {
           const waitTime = +error.type.match(/^FLOOD_WAIT_(\d+)/)[1] || 1;

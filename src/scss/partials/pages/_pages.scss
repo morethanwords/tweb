@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 /*
  * https://github.com/morethanwords/tweb
  * Copyright (C) 2019-2021 Eduard Kuzmenko
@@ -269,3 +270,276 @@
   opacity: 1;
   transition: opacity var(--transition-standard-in);
 }
+=======
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
+#auth-pages {
+  max-width: 100%;
+  overflow: hidden;
+  background: var(--surface-color);
+
+  .btn-primary {
+    text-transform: uppercase;
+
+    @include respond-to(handhelds) {
+      height: 50px;
+    }
+  }
+
+  .subtitle {
+    margin: 0;
+
+    @include respond-to(handhelds) {
+      font-size: 14px;
+    }
+  }
+
+  .input-wrapper {
+    margin-top: 49px;
+
+    @include respond-to(handhelds) {
+      margin-top: 41px;
+      width: 100%;
+      padding: 0 16px;
+    }
+  }
+
+  .auth-image, .subtitle, .input-wrapper {
+    flex: 0 0 auto;
+  }
+
+  > .scrollable {
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    max-width: 720px; // 360 + 360 / 2
+    margin: 0 auto;
+
+    .auth-placeholder {
+      flex: 1;
+      min-height: 3rem;
+      /* height: 105px; */
+      width: 100%;
+    }
+
+    @media screen and (max-height: 810px) {
+      .auth-placeholder:last-child {
+        display: none;
+      }
+    }
+  }
+
+  .tabs-container {
+    $max-width: 720px;
+    max-width: $max-width;
+    min-width: auto;
+    margin: 0 auto;
+    position: relative;
+
+    @media only screen and (min-width: $max-width + 1px) {
+      &:before, &:after {
+        content: " ";
+        position: absolute;
+        width: 100%;
+        left: -100%;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        background: var(--surface-color);
+        z-index: 1;
+      }
+  
+      &:after {
+        left: 100%;
+      }
+    }
+
+    > div {
+      /* justify-content: center; */
+      /* &.active {
+        flex-direction: row;
+      } */
+
+      .container {
+        height: 810px;
+        padding: 0;
+        flex: 1 1 auto;
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+
+        @media screen and (max-height: 810px) {
+          height: 760px;
+        }
+      }
+    }
+  }
+
+  // @media (max-height: 858px) {
+  //   height: auto;
+
+  //   /* .tabs-container > div > div {
+  //     height: auto;
+  //   } */
+  // }
+
+  .page-password {
+    .input-wrapper {
+      @include respond-to(handhelds) {
+        margin-top: 31px;
+      }
+
+      .btn-primary {
+        margin-top: 1rem;
+      }
+    }
+  }
+}
+
+.page-sign {
+  .checkbox-field {
+    margin-top: .5rem;
+    margin-bottom: .5rem;
+  }
+}
+
+.page-sign, .page-signUp {
+  .auth-image {
+    width: 7.5rem;
+    height: 7.5rem;
+    margin-bottom: 1.5rem;
+
+    @include respond-to(not-handhelds) {
+      width: 10rem;
+      height: 10rem;
+      margin-bottom: 1.5rem;
+    }
+  }
+}
+
+.page-authCode {
+  .phone-wrapper {
+    flex: 0 0 auto;
+  }
+}
+
+.sign-logo {
+  max-width: 100%;
+  max-height: 100%;
+  fill: var(--primary-color);
+}
+
+.page-sign, .page-signQR {
+  .btn-secondary {
+    font-weight: normal;
+  }
+
+  .qr {
+    margin-top: 1.5rem;
+  }
+}
+
+.page-signQR {
+  overflow: unset !important;
+
+  .auth-image {
+    width: 240px !important;
+    height: 240px !important;
+    //overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    .preloader {
+      transform: none;
+      left: unset;
+      top: unset;
+    }
+
+    .qr-canvas {
+      width: 100%;
+      height: 100%;
+
+      & + .qr-canvas {
+        display: none;
+      }
+    }
+  }
+
+  .input-wrapper {
+    margin-top: 1rem !important;
+  }
+
+  h4 {
+    flex: 0 0 auto;
+  }
+
+  .qr-description {
+    max-width: 480px;
+    margin: 1rem auto;
+    line-height: 1.3125;
+    text-align: left;
+
+    li {
+      margin-top: .5rem;
+    }
+  }
+}
+
+/* .page-signQR {
+  .auth-image {
+    position: relative;
+
+    .sign-logo {
+      width: 36px;
+      height: 36px;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background-color: #fff;
+      border-radius: 50%;
+    }
+  }
+} */
+
+.page-signUp {
+  .auth-image {
+    margin-top: 10px;
+    margin-bottom: 14px;
+
+    @include respond-to(handhelds) {
+      margin-bottom: 24px;
+    }
+  }
+
+  .fullName  {
+    flex: 0 0 auto;
+  }
+
+  #signUp {
+    @include respond-to(handhelds) {
+      margin-top: 100px;
+    }
+  }
+
+  .input-field {
+    text-align: initial;
+  }
+}
+
+.page-sign {
+  .btn-primary {
+    margin-top: 1.1875rem; // * verified with mockup
+  }
+}
+
+#auth-pages > .scrollable, #main-columns {
+  opacity: 1;
+  transition: opacity var(--transition-standard-in);
+}
+>>>>>>> a3a258651320e5e8e7903d8bfe1cb222d84de6dc

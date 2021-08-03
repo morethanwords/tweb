@@ -15,12 +15,12 @@ import rootScope from "../../lib/rootScope";
 import Chat from "./chat";
 import ListenerSetter from "../../helpers/listenerSetter";
 import ButtonIcon from "../buttonIcon";
-import { debounce } from "../../helpers/schedulers";
 import { getHeavyAnimationPromise } from "../../hooks/useHeavyAnimationCheck";
 import { i18n } from "../../lib/langPack";
 import { cancelEvent } from "../../helpers/dom/cancelEvent";
 import { attachClickEvent } from "../../helpers/dom/clickEvent";
 import handleScrollSideEvent from "../../helpers/dom/handleScrollSideEvent";
+import debounce from "../../helpers/schedulers/debounce";
 
 class AnimatedSuper {
   static DURATION = 200;
@@ -557,7 +557,7 @@ export default class ChatPinnedMessage {
     }
   }
 
-  public _setPinnedMessage() {
+  public async _setPinnedMessage() {
     /////this.log('setting pinned message', message);
     //return;
     /* const promise: Promise<any> = this.chat.setPeerPromise || this.chat.bubbles.messagesQueuePromise || Promise.resolve();
@@ -592,14 +592,18 @@ export default class ChatPinnedMessage {
         const writeMediaTo = this.animatedMedia.getRow(pinnedIndex);
         writeMediaTo.classList.add('pinned-message-media');
         //writeMediaTo.innerHTML = writeMediaTo.style.cssText = writeMediaTo.dataset.docId = '';
+        const loadPromises: Promise<any>[] = [];
         const isMediaSet = wrapReplyDivAndCaption({
           title: undefined,
           titleEl: null,
           subtitle: message.message,
           subtitleEl: writeTo,
           message,
-          mediaEl: writeMediaTo
+          mediaEl: writeMediaTo,
+          loadPromises
         });
+
+        await Promise.all(loadPromises);
 
         this.pinnedMessageContainer.divAndCaption.container.classList.toggle('is-media', isMediaSet);
 

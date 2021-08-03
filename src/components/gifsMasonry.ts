@@ -12,6 +12,7 @@ import Scrollable from "./scrollable";
 import { CancellablePromise, deferredPromise } from "../helpers/cancellablePromise";
 import renderImageFromUrl from "../helpers/dom/renderImageFromUrl";
 import calcImageInBox from "../helpers/calcImageInBox";
+import { doubleRaf } from "../helpers/schedulers";
 
 const width = 400;
 const maxSingleWidth = width - 100;
@@ -20,8 +21,9 @@ const height = 100;
 export default class GifsMasonry {
   public lazyLoadQueue: LazyLoadQueueRepeat2;
   private scrollPromise: CancellablePromise<void> = Promise.resolve();
+  private timeout: number = 0;
 
-  constructor(private element: HTMLElement, private group: string, private scrollable: Scrollable) {
+  constructor(private element: HTMLElement, private group: string, private scrollable: Scrollable, attach = true) {
     this.lazyLoadQueue = new LazyLoadQueueRepeat2(undefined, (target, visible) => {
       if(visible) {
         this.processVisibleDiv(target);
@@ -39,25 +41,40 @@ export default class GifsMasonry {
       }
     }, .25e3); */
 
-    let timeout = 0;
-    // memory leak
-    scrollable.container.addEventListener('scroll', () => {
-      if(timeout) {
-        clearTimeout(timeout);
-      } else {
-        this.scrollPromise = deferredPromise<void>();
-        //animationIntersector.checkAnimations(true, group);
-      }
+    if(attach) {
+      this.attach();
+    }
+  }
+  
+  private onScroll = () => {
+    if(this.timeout) {
+      clearTimeout(this.timeout);
+    } else {
+      this.scrollPromise = deferredPromise<void>();
+      //animationIntersector.checkAnimations(true, group);
+    }
 
-      timeout = window.setTimeout(() => {
-        timeout = 0;
-        this.scrollPromise.resolve();
-        //animationIntersector.checkAnimations(false, group);
-      }, 150);
-    });
+    this.timeout = window.setTimeout(() => {
+      this.timeout = 0;
+      this.scrollPromise.resolve();
+      //animationIntersector.checkAnimations(false, group);
+    }, 150);
+  };
+
+  public attach() {
+    this.scrollable.container.addEventListener('scroll', this.onScroll);
   }
 
-  processVisibleDiv = (div: HTMLElement) => {
+  public detach() {
+    this.clear();
+    this.scrollable.container.removeEventListener('scroll', this.onScroll);
+  }
+
+  public clear() {
+    this.lazyLoadQueue.clear();
+  }
+
+  private processVisibleDiv(div: HTMLElement) {
     const video = div.querySelector('video');
     if(video) {
       return;
@@ -117,9 +134,9 @@ export default class GifsMasonry {
     //return load();
     
     this.lazyLoadQueue.push({div, load});
-  };
+  }
 
-  processInvisibleDiv = async(div: HTMLElement) => {
+  public processInvisibleDiv = (div: HTMLElement) => {
     return this.scrollPromise.then(async() => {
       //return;
 
@@ -133,9 +150,7 @@ export default class GifsMasonry {
       if(img) {
         img && img.classList.remove('hide');
   
-        await new Promise((resolve) => {
-          window.requestAnimationFrame(() => window.requestAnimationFrame(resolve));
-        });
+        await doubleRaf();
       }
 
       if(this.lazyLoadQueue.intersector.isVisible(div)) {
@@ -154,7 +169,7 @@ export default class GifsMasonry {
     });
   };
 
-  public add(doc: MyDocument) {
+  public add(doc: MyDocument, appendTo = this.element) {
     let gifWidth = doc.w;
     let gifHeight = doc.h;
     if(gifHeight < height) {
@@ -185,7 +200,7 @@ export default class GifsMasonry {
     //div.style.height = h + 'px';
     div.dataset.docId = doc.id;
 
-    this.element.append(div);
+    appendTo.append(div);
 
     //this.lazyLoadQueue.observe({div, load: this.processVisibleDiv});
     this.lazyLoadQueue.observe(div);
@@ -198,6 +213,7 @@ export default class GifsMasonry {
     let img: HTMLImageElement;
     if(willBeAPoster) {
       img = new Image();
+      img.classList.add('media-poster');
 
       if(!gotThumb.cacheContext.url) {
         gotThumb.promise.then(() => {

@@ -10,7 +10,7 @@ import { MOUNT_CLASS_TO } from '../config/debug';
 import EventListenerBase from "../helpers/eventListenerBase";
 import mediaSizes from "../helpers/mediaSizes";
 import { clamp } from '../helpers/number';
-import { pause } from '../helpers/schedulers';
+import { pause } from '../helpers/schedulers/pause';
 import { isAndroid, isApple, isAppleMobile, isSafari } from "../helpers/userAgent";
 import { logger, LogTypes } from "./logger";
 import apiManager from "./mtproto/mtprotoworker";

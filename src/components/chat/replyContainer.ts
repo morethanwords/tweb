@@ -4,16 +4,16 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import renderImageFromUrl from "../../helpers/dom/renderImageFromUrl";
 import replaceContent from "../../helpers/dom/replaceContent";
+import { getMiddleware } from "../../helpers/middleware";
 import { limitSymbols } from "../../helpers/string";
-import appDownloadManager from "../../lib/appManagers/appDownloadManager";
 import appImManager, { CHAT_ANIMATION_GROUP } from "../../lib/appManagers/appImManager";
 import appMessagesManager from "../../lib/appManagers/appMessagesManager";
-import appPhotosManager from "../../lib/appManagers/appPhotosManager";
 import { RichTextProcessor } from "../../lib/richtextprocessor";
 import DivAndCaption from "../divAndCaption";
-import { wrapSticker } from "../wrappers";
+import { wrapPhoto, wrapSticker } from "../wrappers";
+
+const MEDIA_SIZE = 32;
 
 export function wrapReplyDivAndCaption(options: {
   title: string | HTMLElement,
@@ -21,9 +21,10 @@ export function wrapReplyDivAndCaption(options: {
   subtitle: string | HTMLElement,
   subtitleEl: HTMLElement,
   message: any,
-  mediaEl: HTMLElement
+  mediaEl: HTMLElement,
+  loadPromises?: Promise<any>[]
 }) {
-  let {title, titleEl, subtitle, subtitleEl, mediaEl, message} = options;
+  let {title, titleEl, subtitle, subtitleEl, mediaEl, message, loadPromises} = options;
   if(title !== undefined) {
     if(typeof(title) === 'string') {
       title = limitSymbols(title, 140);
@@ -33,8 +34,14 @@ export function wrapReplyDivAndCaption(options: {
     replaceContent(titleEl, title);
   }
 
+  if(!loadPromises) {
+    loadPromises = [];
+  }
+
   let media = message && message.media;
-  let setMedia = false;
+  let setMedia = false, isRound = false;
+  const mediaChildren = mediaEl ? Array.from(mediaEl.children) : [];
+  let middleware: () => boolean;
   if(media && mediaEl) {
     subtitleEl.textContent = '';
     subtitleEl.append(appMessagesManager.wrapMessageForReply(message));
@@ -45,52 +52,43 @@ export function wrapReplyDivAndCaption(options: {
       media = media.webpage;
     }
     
-    if(media.photo || (media.document && ['video', 'sticker', 'gif'].indexOf(media.document.type) !== -1)) {
-      /* const middlewareOriginal = appImManager.chat.bubbles.getMiddleware();
-      const middleware = () => {
-        
-      }; */
+    if(media.photo || (media.document && ['video', 'sticker', 'gif', 'round'].indexOf(media.document.type) !== -1)) {
+      middleware = appImManager.chat.bubbles.getMiddleware();
+      const lazyLoadQueue = appImManager.chat.bubbles.lazyLoadQueue;
 
-      const boxSize = 32;
       if(media.document?.type === 'sticker') {
-        if(mediaEl.style.backgroundImage) {
-          mediaEl.style.backgroundImage = ''; 
-        }
-
         setMedia = true;
         wrapSticker({
           doc: media.document,
           div: mediaEl,
-          lazyLoadQueue: appImManager.chat.bubbles.lazyLoadQueue,
+          lazyLoadQueue,
           group: CHAT_ANIMATION_GROUP,
           //onlyThumb: media.document.sticker === 2,
-          width: boxSize,
-          height: boxSize
+          width: MEDIA_SIZE,
+          height: MEDIA_SIZE,
+          middleware,
+          loadPromises
         });
       } else {
-        if(mediaEl.firstElementChild) {
-          mediaEl.innerHTML = '';
-        }
-
         const photo = media.photo || media.document;
 
-        const size = appPhotosManager.choosePhotoSize(photo, boxSize, boxSize/* mediaSizes.active.regular.width, mediaSizes.active.regular.height */);
-        const cacheContext = appDownloadManager.getCacheContext(photo, size.type);
+        isRound = photo.type === 'round';
 
-        if(!cacheContext.downloaded) {
-          const sizes = photo.sizes || photo.thumbs;
-          if(sizes && sizes[0].bytes) {
-            setMedia = true;
-            renderImageFromUrl(mediaEl, appPhotosManager.getPreviewURLFromThumb(photo, sizes[0]));
-          }
-        }
-
-        if(size._ !== 'photoSizeEmpty') {
-          setMedia = true;
-          appPhotosManager.preloadPhoto(photo, size)
-          .then(() => {
-            renderImageFromUrl(mediaEl, cacheContext.url);
+        try {
+          wrapPhoto({
+            photo,
+            container: mediaEl,
+            boxWidth: MEDIA_SIZE,
+            boxHeight: MEDIA_SIZE,
+            middleware,
+            lazyLoadQueue,
+            noBlur: true,
+            withoutPreloader: true,
+            loadPromises
           });
+          setMedia = true;
+        } catch(err) {
+
         }
       }
     }
@@ -104,7 +102,16 @@ export function wrapReplyDivAndCaption(options: {
       replaceContent(subtitleEl, subtitle);
     }
   }
-  
+
+  Promise.all(loadPromises).then(() => {
+    if(middleware && !middleware()) return;
+    mediaChildren.forEach(child => child.remove());
+
+    if(mediaEl) {
+      mediaEl.classList.toggle('is-round', isRound);
+    }
+  });
+
   return setMedia;
 }
 

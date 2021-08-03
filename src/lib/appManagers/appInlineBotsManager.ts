@@ -10,43 +10,56 @@
  */
 
 import { toast } from "../../components/toast";
-import { BotInlineResult } from "../../layer";
+import { BotInlineResult, GeoPoint, InputGeoPoint, InputMedia, MessageEntity, ReplyMarkup } from "../../layer";
 import appPeersManager from "./appPeersManager";
 import apiManagerProxy from "../mtproto/mtprotoworker";
 import { RichTextProcessor } from "../richtextprocessor";
-import appDocsManager from "./appDocsManager";
-import appPhotosManager from "./appPhotosManager";
-import appUsersManager from "./appUsersManager";
+import appDocsManager, { MyDocument } from "./appDocsManager";
+import appPhotosManager, { MyPhoto } from "./appPhotosManager";
+import appUsersManager, { MyTopPeer } from "./appUsersManager";
 import appMessagesManager from "./appMessagesManager";
+import { MOUNT_CLASS_TO } from "../../config/debug";
+import rootScope from "../rootScope";
+import appDraftsManager from "./appDraftsManager";
+import appMessagesIdsManager from "./appMessagesIdsManager";
+import { insertInDescendSortedArray } from "../../helpers/array";
+import appStateManager from "./appStateManager";
 
 export class AppInlineBotsManager {
-  private inlineResults: {[qId: string]: BotInlineResult} = {};
+  private inlineResults: {[queryAndResultIds: string]: BotInlineResult} = {};
+  private setHash: {
+    [botId: string]: {
+      peerId: number, 
+      time: number
+    }
+  } = {};
 
-  public getInlineResults(peerId: number, botId: number, query = '', offset = '', geo?: any) {
+  public getGeoInput(geo: GeoPoint): InputGeoPoint {
+    return geo._ === 'geoPoint' ? {
+      _: 'inputGeoPoint',
+      lat: geo.lat,
+      long: geo.long,
+      accuracy_radius: geo.accuracy_radius
+    } : {
+      _: 'inputGeoPointEmpty'
+    };
+  }
+
+  public getInlineResults(peerId: number, botId: number, query = '', offset = '', geo?: GeoPoint) {
     return apiManagerProxy.invokeApi('messages.getInlineBotResults', {
       bot: appUsersManager.getUserInput(botId),
       peer: appPeersManager.getInputPeerById(peerId),
-      query: query,
-      geo_point: (geo && {_: 'inputGeoPoint', lat: geo['lat'], long: geo['long']}) || undefined,
+      query,
+      geo_point: geo ? this.getGeoInput(geo) : undefined,
       offset
     }, {/* timeout: 1,  */stopTime: -1, noErrorBox: true}).then(botResults => {
       const queryId = botResults.query_id;
-      /* delete botResults._;
-      delete botResults.query_id; */
-      
+
       /* if(botResults.switch_pm) {
         botResults.switch_pm.rText = RichTextProcessor.wrapRichText(botResults.switch_pm.text, {noLinebreaks: true, noLinks: true});
       } */
       
       botResults.results.forEach(result => {
-        const qId = queryId + '_' + result.id;
-        /* result.qID = qID;
-        result.botID = botID;
-        
-        result.rTitle = RichTextProcessor.wrapRichText(result.title, {noLinebreaks: true, noLinks: true});
-        result.rDescription = RichTextProcessor.wrapRichText(result.description, {noLinebreaks: true, noLinks: true});
-        result.initials = ((result as botInlineResult).url || result.title || result.type || '').substr(0, 1); */
-
         if(result._ === 'botInlineMediaResult') {
           if(result.document) {
             result.document = appDocsManager.saveDoc(result.document);
@@ -57,65 +70,46 @@ export class AppInlineBotsManager {
           }
         }
         
-        this.inlineResults[qId] = result;
+        this.inlineResults[this.generateQId(queryId, result.id)] = result;
       });
 
       return botResults;
     });
   }
-  
-  /* function getPopularBots () {
-    return Storage.get('inline_bots_popular').then(function (bots) {
-      var result = []
-      var i, len
-      var userId
-      if (bots && bots.length) {
-        var now = tsNow(true)
-        for (i = 0, len = bots.length; i < len; i++) {
-          if ((now - bots[i][3]) > 14 * 86400) {
-            continue
-          }
-          userId = bots[i][0]
-          if (!AppUsersManager.hasUser(userId)) {
-            AppUsersManager.saveApiUser(bots[i][1])
-          }
-          result.push({id: userId, rate: bots[i][2], date: bots[i][3]})
-        }
-      }
-      return result
-    })
+
+  public generateQId(queryId: string, resultId: string) {
+    return queryId + '_' + resultId;
   }
-  
-  function pushPopularBot (id) {
-    getPopularBots().then(function (bots) {
-      var exists = false
-      var count = bots.length
-      var result = []
-      for (var i = 0; i < count; i++) {
-        if (bots[i].id === id) {
-          exists = true
-          bots[i].rate++
-          bots[i].date = tsNow(true)
-        }
-        var user = AppUsersManager.getUser(bots[i].id)
-        result.push([bots[i].id, user, bots[i].rate, bots[i].date])
-      }
-      if (exists) {
-        result.sort(function (a, b) {
-          return b[2] - a[2]
-        })
+
+  private pushPopularBot(botId: number) {
+    appUsersManager.getTopPeers('bots_inline').then((topPeers) => {
+      const index = topPeers.findIndex(topPeer => topPeer.id);
+      let topPeer: MyTopPeer;
+      if(index !== -1) {
+        topPeer = topPeers[index];
       } else {
-        if (result.length > 15) {
-          result = result.slice(0, 15)
-        }
-        result.push([id, AppUsersManager.getUser(id), 1, tsNow(true)])
+        topPeer = {
+          id: botId,
+          rating: 0
+        };
       }
-      ConfigStorage.set({inline_bots_popular: result})
+
+      ++topPeer.rating;
+      insertInDescendSortedArray(topPeers, topPeer, 'rating');
+
+      appStateManager.setKeyValueToStorage('topPeersCache');
       
-      rootScope.$broadcast('inline_bots_popular')
-    })
+      // rootScope.$broadcast('inline_bots_popular')
+    });
+  }
+
+  public switchToPM(fromPeerId: number, botId: number, startParam: string) {
+    this.setHash[botId] = {peerId: fromPeerId, time: Date.now()};
+    rootScope.dispatchEvent('history_focus', {peerId: botId});
+    return appMessagesManager.startBot(botId, 0, startParam);
   }
   
+  /*
   function resolveInlineMention (username) {
     return AppPeersManager.resolveUsername(username).then(function (peerId) {
       if (peerId > 0) {
@@ -220,72 +214,34 @@ export class AppInlineBotsManager {
           
           i += rowCnt
         })
-      }
-      
-      function switchToPM (fromPeerID, botID, startParam) {
-        var peerString = AppPeersManager.getPeerString(fromPeerID)
-        var setHash = {}
-        setHash['inline_switch_pm' + botID] = {peer: peerString, time: tsNow()}
-        Storage.set(setHash)
-        rootScope.$broadcast('history_focus', {peerString: AppPeersManager.getPeerString(botID)})
-        AppMessagesManager.startBot(botID, 0, startParam)
-      }
-      
-      function checkSwitchReturn (botID) {
-        var bot = AppUsersManager.getUser(botID)
-        if (!bot || !bot.pFlags.bot || !bot.bot_inline_placeholder) {
-          return qSync.when(false)
-        }
-        var key = 'inline_switch_pm' + botID
-        return Storage.get(key).then(function (peerData) {
-          if (peerData) {
-            Storage.remove(key)
-            if (tsNow() - peerData.time < 3600000) {
-              return peerData.peer
-            }
-          }
-          return false
-        })
-      }
-      
-      function switchInlineQuery (botID, toPeerString, query) {
-        rootScope.$broadcast('history_focus', {
-          peerString: toPeerString,
-          attachment: {
-            _: 'inline_query',
-            mention: '@' + AppUsersManager.getUser(botID).username,
-            query: query
-          }
-        })
-      }
-      
-      function switchInlineButtonClick (id, button) {
-        var message = AppMessagesManager.getMessage(id)
-        var botID = message.viaBotId || message.fromId
-        if (button.pFlags && button.pFlags.same_peer) {
-          var peerId = AppMessagesManager.getMessagePeer(message)
-          var toPeerString = AppPeersManager.getPeerString(peerId)
-          switchInlineQuery(botID, toPeerString, button.query)
-          return
-        }
-        return checkSwitchReturn(botID).then(function (retPeerString) {
-          if (retPeerString) {
-            return switchInlineQuery(botID, retPeerString, button.query)
-          }
-          PeersSelectService.selectPeer({
-            canSend: true
-          }).then(function (toPeerString) {
-            return switchInlineQuery(botID, toPeerString, button.query)
-          })
-        })
       } */
-      
+
+  public async checkSwitchReturn(botId: number) {
+    const bot = appUsersManager.getUser(botId);
+    if(!bot || !bot.pFlags.bot || !bot.bot_inline_placeholder) {
+      return;
+    }
+
+    const peerData = this.setHash[botId];
+    if(peerData) {
+      delete this.setHash[botId];
+      if((Date.now() - peerData.time) < 3600e3) {
+        return peerData.peerId;
+      }
+    }
+  }
+
+  public switchInlineQuery(peerId: number, threadId: number, botId: number, query: string) {
+    rootScope.dispatchEvent('history_focus', {peerId, threadId});
+    appDraftsManager.setDraft(peerId, threadId, '@' + appUsersManager.getUser(botId).username + ' ' + query);
+  }
+
   public callbackButtonClick(peerId: number, mid: number, button: any) {
     return apiManagerProxy.invokeApi('messages.getBotCallbackAnswer', {
       peer: appPeersManager.getInputPeerById(peerId),
-      msg_id: appMessagesManager.getServerMessageId(mid),
+      msg_id: appMessagesIdsManager.getServerMessageId(mid),
       data: button.data
-    }, {timeout: 1, stopTime: -1, noErrorBox: true}).then((callbackAnswer) => {
+    }, {/* timeout: 1,  */stopTime: -1, noErrorBox: true}).then((callbackAnswer) => {
       if(typeof callbackAnswer.message === 'string' && callbackAnswer.message.length) {
         toast(RichTextProcessor.wrapRichText(callbackAnswer.message, {noLinks: true, noLinebreaks: true}));
       }
@@ -310,102 +266,116 @@ export class AppInlineBotsManager {
         AppGamesManager.openGame(message.media.game.id, id, callbackAnswer.url)
       }
     })
-  }
+  } */
 
-  function sendInlineResult (peerId, qID, options) {
-    var inlineResult = inlineResults[qID]
-    if (inlineResult === undefined) {
-      return false
+  public sendInlineResult(peerId: number, botId: number, queryAndResultIds: string, options: Partial<{
+    viaBotId: number,
+    queryId: string,
+    resultId: string,
+    replyMarkup: ReplyMarkup,
+    entities: MessageEntity[],
+    replyToMsgId: number,
+    clearDraft: true,
+    scheduleDate: number,
+    silent: true,
+    geoPoint: GeoPoint
+  }> = {}) {
+    const inlineResult = this.inlineResults[queryAndResultIds];
+    if(!inlineResult) {
+      return;
     }
-    pushPopularBot(inlineResult.botID)
-    var splitted = qID.split('_')
-    var queryID = splitted.shift()
-    var resultID = splitted.join('_')
-    options = options || {}
-    options.viaBotId = inlineResult.botID
-    options.queryID = queryID
-    options.resultID = resultID
-    if (inlineResult.send_message.reply_markup) {
-      options.reply_markup = inlineResult.send_message.reply_markup
+
+    this.pushPopularBot(botId);
+    const splitted = queryAndResultIds.split('_');
+    const queryID = splitted.shift();
+    const resultID = splitted.join('_');
+    options.viaBotId = botId;
+    options.queryId = queryID;
+    options.resultId = resultID;
+    if(inlineResult.send_message.reply_markup) {
+      options.replyMarkup = inlineResult.send_message.reply_markup;
     }
     
-    if (inlineResult.send_message._ === 'botInlineMessageText') {
-      options.entities = inlineResult.send_message.entities
-      AppMessagesManager.sendText(peerId, inlineResult.send_message.message, options)
+    if(inlineResult.send_message._ === 'botInlineMessageText') {
+      options.entities = inlineResult.send_message.entities;
+      appMessagesManager.sendText(peerId, inlineResult.send_message.message, options);
     } else {
-      var caption = ''
-      var inputMedia = false
-      switch (inlineResult.send_message._) {
-        case 'botInlineMessageMediaAuto':
-        caption = inlineResult.send_message.caption
-        if (inlineResult._ === 'botInlineMediaResult') {
-          var doc = inlineResult.document
-          var photo = inlineResult.photo
-          if (doc) {
-            inputMedia = {
-              _: 'inputMediaDocument',
-              id: {_: 'inputDocument', id: doc.id, access_hash: doc.access_hash},
-              caption: caption
-            }
-          } else {
-            inputMedia = {
-              _: 'inputMediaPhoto',
-              id: {_: 'inputPhoto', id: photo.id, access_hash: photo.access_hash},
-              caption: caption
+      let caption = '';
+      let inputMedia: InputMedia;
+      const sendMessage = inlineResult.send_message;
+      switch(sendMessage._) {
+        case 'botInlineMessageMediaAuto': {
+          caption = sendMessage.message;
+
+          if(inlineResult._ === 'botInlineMediaResult') {
+            const {document, photo} = inlineResult;
+            if(document) {
+              inputMedia = appDocsManager.getMediaInput(document as MyDocument);
+            } else {
+              inputMedia = appPhotosManager.getMediaInput(photo as MyPhoto);
             }
           }
+
+          break;
         }
-        break
+
+        case 'botInlineMessageMediaGeo': {
+          inputMedia = {
+            _: 'inputMediaGeoPoint',
+            geo_point: this.getGeoInput(sendMessage.geo)
+          };
+
+          options.geoPoint = sendMessage.geo;
+
+          break;
+        }
         
-        case 'botInlineMessageMediaGeo':
-        inputMedia = {
-          _: 'inputMediaGeoPoint',
-          geo_point: {
-            _: 'inputGeoPoint',
-            'lat': inlineResult.send_message.geo['lat'],
-            'long': inlineResult.send_message.geo['long']
-          }
+        case 'botInlineMessageMediaVenue': {
+          inputMedia = {
+            _: 'inputMediaVenue',
+            geo_point: this.getGeoInput(sendMessage.geo),
+            title: sendMessage.title,
+            address: sendMessage.address,
+            provider: sendMessage.provider,
+            venue_id: sendMessage.venue_id,
+            venue_type: sendMessage.venue_type
+          };
+
+          options.geoPoint = sendMessage.geo;
+
+          break;
         }
-        break
-        
-        case 'botInlineMessageMediaVenue':
-        inputMedia = {
-          _: 'inputMediaVenue',
-          geo_point: {
-            _: 'inputGeoPoint',
-            'lat': inlineResult.send_message.geo['lat'],
-            'long': inlineResult.send_message.geo['long']
-          },
-          title: inlineResult.send_message.title,
-          address: inlineResult.send_message.address,
-          provider: inlineResult.send_message.provider,
-          venue_id: inlineResult.send_message.venue_id
+
+        case 'botInlineMessageMediaContact': {
+          inputMedia = {
+            _: 'inputMediaContact',
+            phone_number: sendMessage.phone_number,
+            first_name: sendMessage.first_name,
+            last_name: sendMessage.last_name,
+            vcard: sendMessage.vcard
+          };
+
+          break;
         }
-        break
-        
-        case 'botInlineMessageMediaContact':
-        inputMedia = {
-          _: 'inputMediaContact',
-          phone_number: inlineResult.send_message.phone_number,
-          first_name: inlineResult.send_message.first_name,
-          last_name: inlineResult.send_message.last_name
-        }
-        break
       }
-      if (!inputMedia) {
+
+      if(!inputMedia) {
         inputMedia = {
           _: 'messageMediaPending',
           type: inlineResult.type,
-          file_name: inlineResult.title || inlineResult.content_url || inlineResult.url,
+          file_name: inlineResult.title || 
+            (inlineResult as BotInlineResult.botInlineResult).content?.url || 
+            (inlineResult as BotInlineResult.botInlineResult).url,
           size: 0,
           progress: {percent: 30, total: 0}
-        }
+        } as any;
       }
-      AppMessagesManager.sendOther(peerId, inputMedia, options)
+
+      appMessagesManager.sendOther(peerId, inputMedia, options);
     }
   }
   
-  function checkGeoLocationAccess (botID) {
+  /* function checkGeoLocationAccess (botID) {
     var key = 'bot_access_geo' + botID
     return Storage.get(key).then(function (geoAccess) {
       if (geoAccess && geoAccess.granted) {
@@ -429,4 +399,5 @@ export class AppInlineBotsManager {
 }
 
 const appInlineBotsManager = new AppInlineBotsManager();
+MOUNT_CLASS_TO && (MOUNT_CLASS_TO.appInlineBotsManager = appInlineBotsManager);
 export default appInlineBotsManager;

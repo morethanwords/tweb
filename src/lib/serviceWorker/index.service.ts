@@ -9,10 +9,11 @@ import '../mtproto/mtproto.worker';
 /// #endif
 //import CacheStorageController from '../cacheStorage';
 import type { Modify, WorkerTaskTemplate, WorkerTaskVoidTemplate } from '../../types';
-import type { InputFileLocation, UploadFile } from '../../layer';
+import type { InputFileLocation, InputWebFileLocation, UploadFile } from '../../layer';
 import type { WebPushApiManager } from '../mtproto/webPushApiManager';
 import type { PushNotificationObject } from './push';
 import type { ToggleStorageTask } from '../mtproto/mtprotoworker';
+import type { MyUploadFile } from '../mtproto/apiFileManager';
 import { logger, LogTypes } from '../logger';
 import { CancellablePromise } from '../../helpers/cancellablePromise';
 import { CACHE_ASSETS_NAME, requestCache } from './cache';
@@ -26,12 +27,12 @@ export const deferredPromises: Map<WindowClient['id'], {[taskId: string]: Cancel
 
 export interface RequestFilePartTask extends Modify<WorkerTaskTemplate, {id: string}> {
   type: 'requestFilePart',
-  payload: [number, InputFileLocation, number, number]
+  payload: [number, InputFileLocation | InputWebFileLocation, number, number]
 };
 
 export interface RequestFilePartTaskResponse extends Modify<WorkerTaskTemplate, {id: string}> {
   type: 'requestFilePart',
-  payload?: UploadFile.uploadFile,
+  payload?: MyUploadFile,
   originalPayload?: RequestFilePartTask['payload']
 };
 
