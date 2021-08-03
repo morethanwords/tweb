@@ -347,6 +347,10 @@ export default class VideoPlayer {
             onMuteClick();
           } else if(e.code === 'Space') {
             this.togglePlay();
+          } else if(e.altKey && e.code === 'Equal') {
+            this.video.playbackRate += 0.25;
+          } else if(e.altKey && e.code === 'Minus') {
+            this.video.playbackRate -= 0.25;
           }
         });
       }
