@@ -76,6 +76,7 @@ $chat-input-inner-padding-handhelds: .25rem;
   --line-height: 1.3125;
   --esg-sticker-size: 80px;
   --disabled-opacity: .3;
+  --round-video-size: 280px;
 
   // https://github.com/overtake/TelegramSwift/blob/5cc7d2475fe4738a6aa0486c23eaf80a89d33b97/submodules/TGUIKit/TGUIKit/PresentationTheme.swift#L2054
   --peer-avatar-red-top: #ff885e;
@@ -237,6 +238,7 @@ html.night {
 @import "partials/chatMarkupTooltip";
 @import "partials/chatStickersHelper";
 @import "partials/chatEmojiHelper";
+@import "partials/chatInlineHelper";
 @import "partials/chatSearch";
 @import "partials/chatDrop";
 @import "partials/crop";
@@ -906,7 +908,10 @@ img.emoji {
 
 .fade-in-transition {
   opacity: 1;
-  transition: opacity .2s ease;
+
+  @include animation-level(2) {
+    transition: opacity .2s ease-in-out;
+  }
 }
 
 .show-more {
@@ -1142,7 +1147,7 @@ middle-ellipsis-element {
   fill: rgba(0, 0, 0, .08);
 }
 
-.media-photo, .media-video, .media-sticker, .media-round {
+.media-photo, .media-video, .media-sticker, .media-round, .media-poster {
   position: absolute;
   top: 0;
   right: 0;
@@ -1182,8 +1187,8 @@ middle-ellipsis-element {
 }
 
 .media-round {
-  max-width: 200px;
-  max-height: 200px;
+  max-width: var(--round-video-size);
+  max-height: var(--round-video-size);
   z-index: 1;
 
   canvas {
@@ -1195,7 +1200,7 @@ middle-ellipsis-element {
 
   .video-time {
     padding: 1px 6px 2px;
-    background-color: rgba(0, 0, 0, .23) !important;
+    background-color: var(--message-highlightning-color) !important;
   }
 
   &.is-paused .video-time {

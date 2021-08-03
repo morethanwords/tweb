@@ -157,33 +157,23 @@
   
   &-title, &-subtitle {
     font-size: 14px;
-    //line-height: 18px;
-    //line-height: 1;
-    //line-height: 15px;
     line-height: var(--line-height);
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
-
-    // @include respond-to(handhelds) {
-    // 	line-height: 13px;
-    // }
   }
 
   &-media {
-    height: 2rem;
-    width: 2rem;
+    height: 2rem !important;
+    width: 2rem !important;
     overflow: hidden;
     position: absolute;
     left: 0;
     top: 0;
-    background-repeat: no-repeat;
-    background-size: cover;
-    background-position: center center;
 
-    /* > img, > video {
-
-    } */
+    &.is-round {
+      border-radius: 50%;
+    }
 
     // sticker
     /* > img {

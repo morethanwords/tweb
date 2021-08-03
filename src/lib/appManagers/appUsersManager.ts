@@ -34,6 +34,7 @@ import appStateManager from "./appStateManager";
 
 export type User = MTUser.user;
 export type TopPeerType = 'correspondents' | 'bots_inline';
+export type MyTopPeer = {id: number, rating: number};
 
 export class AppUsersManager {
   private storage = appStateManager.storages.users;
@@ -45,7 +46,7 @@ export class AppUsersManager {
   private contactsList: Set<number>;
   private updatedContactsList: boolean;
   
-  private getTopPeersPromises: {[type in TopPeerType]?: Promise<number[]>};
+  private getTopPeersPromises: {[type in TopPeerType]?: Promise<MyTopPeer[]>};
 
   constructor() {
     this.clear(true);
@@ -732,13 +733,13 @@ export class AppUsersManager {
     });
   } */
 
-  public getTopPeers(type: TopPeerType): Promise<number[]> {
+  public getTopPeers(type: TopPeerType) {
     if(this.getTopPeersPromises[type]) return this.getTopPeersPromises[type];
 
     return this.getTopPeersPromises[type] = appStateManager.getState().then((state) => {
       const cached = state.topPeersCache[type];
-      if(cached?.peerIds?.length) {
-        return cached.peerIds;
+      if(cached && (cached.cachedTime + 86400e3) > Date.now() && cached.peers) {
+        return cached.peers;
       }
 
       return apiManager.invokeApi('contacts.getTopPeers', {
@@ -747,28 +748,28 @@ export class AppUsersManager {
         limit: 15,
         hash: 0
       }).then((result) => {
-        let peerIds: number[] = [];
+        let topPeers: MyTopPeer[] = [];
         if(result._ === 'contacts.topPeers') {
           //console.log(result);
           this.saveApiUsers(result.users);
           appChatsManager.saveApiChats(result.chats);
 
           if(result.categories.length) {
-            peerIds = result.categories[0].peers.map((topPeer) => {
+            topPeers = result.categories[0].peers.map((topPeer) => {
               const peerId = appPeersManager.getPeerId(topPeer.peer);
               appStateManager.requestPeer(peerId, 'topPeer');
-              return peerId;
+              return {id: peerId, rating: topPeer.rating};
             });
           }
         }
   
         state.topPeersCache[type] = {
-          peerIds,
+          peers: topPeers,
           cachedTime: Date.now()
         };
         appStateManager.pushToState('topPeersCache', state.topPeersCache);
   
-        return peerIds;
+        return topPeers;
       });
     });
   }

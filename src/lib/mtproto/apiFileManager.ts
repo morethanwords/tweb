@@ -17,7 +17,7 @@ import { CancellablePromise, deferredPromise } from "../../helpers/cancellablePr
 import { notifyAll, notifySomeone } from "../../helpers/context";
 import { getFileNameByLocation } from "../../helpers/fileName";
 import { randomLong } from "../../helpers/random";
-import { InputFile, InputFileLocation, UploadFile } from "../../layer";
+import { InputFile, InputFileLocation, InputWebFileLocation, UploadFile, UploadWebFile } from "../../layer";
 import { DcId, WorkerTaskVoidTemplate } from "../../types";
 import CacheStorageController from "../cacheStorage";
 import cryptoWorker from "../crypto/cryptoworker";
@@ -37,7 +37,7 @@ type Delayed = {
 
 export type DownloadOptions = {
   dcId: DcId, 
-  location: InputFileLocation, 
+  location: InputFileLocation | InputWebFileLocation, 
   size?: number,
   fileName?: string,
   mimeType?: string,
@@ -46,7 +46,7 @@ export type DownloadOptions = {
   onlyCache?: boolean,
 };
 
-type MyUploadFile = UploadFile.uploadFile;
+export type MyUploadFile = UploadFile.uploadFile | UploadWebFile.uploadWebFile;
 
 export interface RefreshReferenceTask extends WorkerTaskVoidTemplate {
   type: 'refreshReference',
@@ -189,6 +189,21 @@ export class ApiFileManager {
     return canceled;
   }
 
+  public requestWebFilePart(dcId: DcId, location: InputWebFileLocation, offset: number, limit: number, id = 0, queueId = 0, checkCancel?: () => void) {
+    return this.downloadRequest(dcId, id, async() => { // do not remove async, because checkCancel will throw an error
+      checkCancel && checkCancel();
+
+      return apiManager.invokeApi('upload.getWebFile', {
+        location,
+        offset,
+        limit
+      }, {
+        dcId,
+        fileDownload: true
+      });
+    }, this.getDelta(limit), queueId);
+  }
+
   public requestFilePart(dcId: DcId, location: InputFileLocation, offset: number, limit: number, id = 0, queueId = 0, checkCancel?: () => void) {
     return this.downloadRequest(dcId, id, async() => { // do not remove async, because checkCancel will throw an error
       checkCancel && checkCancel();
@@ -200,7 +215,7 @@ export class ApiFileManager {
           location,
           offset,
           limit
-        } as any, {
+        }, {
           dcId,
           fileDownload: true
         }) as Promise<MyUploadFile>;
@@ -401,6 +416,8 @@ export class ApiFileManager {
           return bytes;
         };
 
+        const r = location._ === 'inputWebFileLocation' ? this.requestWebFilePart.bind(this) : this.requestFilePart.bind(this);
+
         const delayed: Delayed[] = [];
         offset = startOffset;
         do {
@@ -417,9 +434,10 @@ export class ApiFileManager {
 
           const {offset, writeFilePromise, writeFileDeferred} = delayed.shift();
           try {
-            const result = await this.requestFilePart(dcId, location, offset, limit, id, options.queueId, checkCancel);
+            // @ts-ignore
+            const result = await r(dcId, location as any, offset, limit, id, options.queueId, checkCancel);
 
-            const bytes: Uint8Array = result.bytes as any;
+            const bytes = result.bytes;
 
             if(delayed.length) {
               superpuper();

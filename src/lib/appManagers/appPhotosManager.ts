@@ -379,7 +379,7 @@ export class AppPhotosManager {
     return isObject(photoId) ? photoId as MyPhoto : this.photos[photoId as any as string];
   }
 
-  public getInput(photo: MyPhoto): InputMedia.inputMediaPhoto {
+  public getMediaInput(photo: MyPhoto): InputMedia.inputMediaPhoto {
     return {
       _: 'inputMediaPhoto',
       id: {

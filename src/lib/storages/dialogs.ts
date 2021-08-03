@@ -18,6 +18,7 @@ import type { AppDraftsManager } from "../appManagers/appDraftsManager";
 import type { AppNotificationsManager } from "../appManagers/appNotificationsManager";
 import type { ApiUpdatesManager } from "../appManagers/apiUpdatesManager";
 import type { ServerTimeManager } from "../mtproto/serverTimeManager";
+import type { AppMessagesIdsManager } from "../appManagers/appMessagesIdsManager";
 import { tsNow } from "../../helpers/date";
 import apiManager from "../mtproto/mtprotoworker";
 import SearchIndex from "../searchIndex";
@@ -55,7 +56,8 @@ export default class DialogsStorage {
     private appNotificationsManager: AppNotificationsManager,
     private appStateManager: AppStateManager,
     private apiUpdatesManager: ApiUpdatesManager,
-    private serverTimeManager: ServerTimeManager
+    private serverTimeManager: ServerTimeManager,
+    private appMessagesIdsManager: AppMessagesIdsManager
   ) {
     this.storage = this.appStateManager.storages.dialogs;
     this.dialogs = this.storage.getCache();
@@ -88,7 +90,7 @@ export default class DialogsStorage {
         for(let i = 0, length = dialogs.length; i < length; ++i) {
           const dialog = dialogs[i];
           if(dialog) {
-            dialog.top_message = this.appMessagesManager.getServerMessageId(dialog.top_message); // * fix outgoing message to avoid copying dialog
+            dialog.top_message = this.appMessagesIdsManager.getServerMessageId(dialog.top_message); // * fix outgoing message to avoid copying dialog
 
             if(dialog.topMessage) {
               this.appMessagesManager.saveMessages([dialog.topMessage]);
@@ -470,7 +472,7 @@ export default class DialogsStorage {
 
     let mid: number, message;
     if(dialog.top_message) {
-      mid = this.appMessagesManager.generateMessageId(dialog.top_message);//dialog.top_message;
+      mid = this.appMessagesIdsManager.generateMessageId(dialog.top_message);//dialog.top_message;
       message = this.appMessagesManager.getMessageByPeer(peerId, mid);
     } else {
       mid = this.appMessagesManager.generateTempMessageId(peerId);
@@ -506,8 +508,8 @@ export default class DialogsStorage {
     const wasDialogBefore = this.getDialogOnly(peerId);
 
     dialog.top_message = mid;
-    dialog.read_inbox_max_id = this.appMessagesManager.generateMessageId(wasDialogBefore && !dialog.read_inbox_max_id ? wasDialogBefore.read_inbox_max_id : dialog.read_inbox_max_id);
-    dialog.read_outbox_max_id = this.appMessagesManager.generateMessageId(wasDialogBefore && !dialog.read_outbox_max_id ? wasDialogBefore.read_outbox_max_id : dialog.read_outbox_max_id);
+    dialog.read_inbox_max_id = this.appMessagesIdsManager.generateMessageId(wasDialogBefore && !dialog.read_inbox_max_id ? wasDialogBefore.read_inbox_max_id : dialog.read_inbox_max_id);
+    dialog.read_outbox_max_id = this.appMessagesIdsManager.generateMessageId(wasDialogBefore && !dialog.read_outbox_max_id ? wasDialogBefore.read_outbox_max_id : dialog.read_outbox_max_id);
 
     if(!dialog.hasOwnProperty('folder_id')) {
       if(dialog._ === 'dialog') {

@@ -6,7 +6,7 @@
 
 import type { Dialog } from './appMessagesManager';
 import type { UserAuth } from '../mtproto/mtproto_config';
-import type { TopPeerType, User } from './appUsersManager';
+import type { MyTopPeer, TopPeerType, User } from './appUsersManager';
 import type { AuthState } from '../../types';
 import type FiltersStorage from '../storages/filters';
 import type DialogsStorage from '../storages/dialogs';
@@ -56,7 +56,7 @@ export type State = {
   recentEmoji: string[],
   topPeersCache: {
     [type in TopPeerType]?: {
-      peerIds: number[],
+      peers: MyTopPeer[],
       cachedTime: number
     }
   },
@@ -446,6 +446,10 @@ export class AppStateManager extends EventListenerBase<{
       this.state[key] = value;
     }
 
+    this.setKeyValueToStorage(key, value);
+  }
+
+  public setKeyValueToStorage<T extends keyof State>(key: T, value: State[T] = this.state[key]) {
     this.storage.set({
       [key]: value
     });

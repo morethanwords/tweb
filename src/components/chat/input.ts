@@ -15,6 +15,8 @@ import type { AppDraftsManager, MyDraftMessage } from '../../lib/appManagers/app
 import type { AppEmojiManager } from '../../lib/appManagers/appEmojiManager';
 import type { ServerTimeManager } from '../../lib/mtproto/serverTimeManager';
 import type { AppUsersManager } from '../../lib/appManagers/appUsersManager';
+import type { AppInlineBotsManager } from '../../lib/appManagers/appInlineBotsManager';
+import type { AppMessagesIdsManager } from '../../lib/appManagers/appMessagesIdsManager';
 import type Chat from './chat';
 import Recorder from '../../../public/recorder.min';
 import { isTouchSupported } from "../../helpers/touchSupport";
@@ -30,7 +32,7 @@ import PopupNewMedia from '../popups/newMedia';
 import { toast } from "../toast";
 import { wrapReply } from "../wrappers";
 import InputField from '../inputField';
-import { MessageEntity, DraftMessage, BotInfo, BotCommand } from '../../layer';
+import { MessageEntity, DraftMessage } from '../../layer';
 import StickersHelper from './stickersHelper';
 import ButtonIcon from '../buttonIcon';
 import DivAndCaption from '../divAndCaption';
@@ -41,7 +43,6 @@ import PopupSchedule from '../popups/schedule';
 import SendMenu from './sendContextMenu';
 import rootScope from '../../lib/rootScope';
 import PopupPinMessage from '../popups/unpinMessage';
-import { debounce } from '../../helpers/schedulers';
 import { tsNow } from '../../helpers/date';
 import appNavigationController from '../appNavigationController';
 import { isMobile, isMobileSafari } from '../../helpers/userAgent';
@@ -68,6 +69,11 @@ import MentionsHelper from './mentionsHelper';
 import fixSafariStickyInput from '../../helpers/dom/fixSafariStickyInput';
 import { emojiFromCodePoints } from '../../vendor/emoji';
 import ReplyKeyboard from './replyKeyboard';
+import InlineHelper from './inlineHelper';
+import debounce from '../../helpers/schedulers/debounce';
+import noop from '../../helpers/noop';
+import { putPreloader } from '../misc';
+import SetTransition from '../singleTransition';
 
 const RECORD_MIN_TIME = 500;
 const POSTING_MEDIA_NOT_ALLOWED = 'Posting media content isn\'t allowed in this group.';
@@ -145,6 +151,7 @@ export default class ChatInput {
   private emojiHelper: EmojiHelper;
   private commandsHelper: CommandsHelper;
   private mentionsHelper: MentionsHelper;
+  private inlineHelper: InlineHelper;
   private listenerSetter: ListenerSetter;
 
   private pinnedControlBtn: HTMLButtonElement;
@@ -152,6 +159,8 @@ export default class ChatInput {
   private goDownBtn: HTMLButtonElement;
   private goDownUnreadBadge: HTMLElement;
   private btnScheduled: HTMLButtonElement;
+
+  private btnPreloader: HTMLButtonElement;
 
   private saveDraftDebounced: () => void;
 
@@ -162,6 +171,7 @@ export default class ChatInput {
 
   constructor(private chat: Chat, 
     private appMessagesManager: AppMessagesManager, 
+    private appMessagesIdsManager: AppMessagesIdsManager, 
     private appDocsManager: AppDocsManager, 
     private appChatsManager: AppChatsManager, 
     private appPeersManager: AppPeersManager, 
@@ -171,7 +181,8 @@ export default class ChatInput {
     private serverTimeManager: ServerTimeManager, 
     private appNotificationsManager: AppNotificationsManager,
     private appEmojiManager: AppEmojiManager,
-    private appUsersManager: AppUsersManager
+    private appUsersManager: AppUsersManager,
+    private appInlineBotsManager: AppInlineBotsManager
   ) {
     this.listenerSetter = new ListenerSetter();
   }
@@ -391,6 +402,7 @@ export default class ChatInput {
     this.emojiHelper = new EmojiHelper(this.rowsWrapper, this.autocompleteHelperController, this, this.appEmojiManager);
     this.commandsHelper = new CommandsHelper(this.rowsWrapper, this.autocompleteHelperController, this, this.chat.appProfileManager, this.chat.appUsersManager);
     this.mentionsHelper = new MentionsHelper(this.rowsWrapper, this.autocompleteHelperController, this, this.chat.appProfileManager, this.chat.appUsersManager);
+    this.inlineHelper = new InlineHelper(this.rowsWrapper, this.autocompleteHelperController, this.chat, this.appUsersManager, this.appInlineBotsManager);
     this.rowsWrapper.append(this.newMessageWrapper);
 
     this.btnCancelRecord = ButtonIcon('delete danger btn-circle z-depth-1 btn-record-cancel');
@@ -466,9 +478,9 @@ export default class ChatInput {
     });
 
     this.listenerSetter.add(rootScope)('draft_updated', (e) => {
-      const {peerId, threadId, draft} = e;
+      const {peerId, threadId, draft, force} = e;
       if(this.chat.threadId !== threadId || this.chat.peerId !== peerId) return;
-      this.setDraft(draft);
+      this.setDraft(draft, true, force);
     });
 
     this.listenerSetter.add(rootScope)('peer_changing', (chat) => {
@@ -620,6 +632,10 @@ export default class ChatInput {
     this.btnToggleEmoticons.classList.toggle(toggleClass, false);
   };
 
+  public getReadyToSend(callback: () => void) {
+    return this.chat.type === 'scheduled' ? (this.scheduleSending(callback), true) : (callback(), false);
+  }
+
   public scheduleSending = (callback: () => void = this.sendMessage.bind(this, true), initDate = new Date()) => {
     new PopupSchedule(initDate, (timestamp) => {
       const minTimestamp = (Date.now() / 1000 | 0) + 10;
@@ -687,8 +703,8 @@ export default class ChatInput {
     }
   }
 
-  public setDraft(draft?: MyDraftMessage, fromUpdate = true) {
-    if(!isInputEmpty(this.messageInput) || this.chat.type === 'scheduled') return false;
+  public setDraft(draft?: MyDraftMessage, fromUpdate = true, force = false) {
+    if((!force && !isInputEmpty(this.messageInput)) || this.chat.type === 'scheduled') return false;
     
     if(!draft) {
       draft = this.appDraftsManager.getDraft(this.chat.peerId, this.chat.threadId);
@@ -698,6 +714,9 @@ export default class ChatInput {
       }
     }
 
+    if(this.messageInputField.value === draft.rMessage) return false;
+
+    this.clearHelper();
     this.noWebPage = draft.pFlags.no_webpage;
     if(draft.reply_to_msg_id) {
       this.initMessageReply(draft.reply_to_msg_id);
@@ -1253,69 +1272,83 @@ export default class ChatInput {
     
     const matches = value.match(ChatInput.AUTO_COMPLETE_REG_EXP);
     let foundHelper: AutocompleteHelper;
-    if(!matches) {
-      foundHelper = this.checkInlineAutocomplete(value);
-      // this.previousQuery = undefined;
-      this.autocompleteHelperController.hideOtherHelpers(foundHelper);
-      return;
-    }
+    if(matches) {
+      const entity = entities[0];
 
-    /* if(this.previousQuery === matches[0]) {
-      return;
+      const query = matches[2];
+      const firstChar = query[0];
+
+      if(this.stickersHelper && 
+        rootScope.settings.stickers.suggest && 
+        (this.chat.peerId > 0 || this.appChatsManager.hasRights(this.chat.peerId, 'send_stickers')) &&
+        entity?._ === 'messageEntityEmoji' && entity.length === value.length && !entity.offset) {
+        foundHelper = this.stickersHelper;
+        this.stickersHelper.checkEmoticon(value);
+      } else if(firstChar === '@') { // mentions
+        const topMsgId = this.chat.threadId ? this.appMessagesIdsManager.getServerMessageId(this.chat.threadId) : undefined;
+        if(this.mentionsHelper.checkQuery(query, this.chat.peerId > 0 ? 0 : this.chat.peerId, topMsgId)) {
+          foundHelper = this.mentionsHelper;
+        }
+      } else if(!matches[1] && firstChar === '/') { // commands
+        if(this.commandsHelper.checkQuery(query, this.chat.peerId)) {
+          foundHelper = this.commandsHelper;
+        }
+      } else if(rootScope.settings.emoji.suggest) { // emoji
+        if(!value.match(/^\s*:(.+):\s*$/) && !value.match(/:[;!@#$%^&*()-=|]/)) {
+          foundHelper = this.emojiHelper;
+          this.emojiHelper.checkQuery(query, firstChar);
+        }
+      }
     }
     
-    this.previousQuery = matches[0]; */
-
-    const entity = entities[0];
-
-    const query = matches[2];
-    const firstChar = query[0];
-
-    if(this.stickersHelper && 
-      rootScope.settings.stickers.suggest && 
-      (this.chat.peerId > 0 || this.appChatsManager.hasRights(this.chat.peerId, 'send_stickers')) &&
-      entity?._ === 'messageEntityEmoji' && entity.length === value.length && !entity.offset) {
-      foundHelper = this.stickersHelper;
-      this.stickersHelper.checkEmoticon(value);
-    } else if(firstChar === '@') { // mentions
-      const topMsgId = this.chat.threadId ? this.appMessagesManager.getServerMessageId(this.chat.threadId) : undefined;
-      if(this.mentionsHelper.checkQuery(query, this.chat.peerId > 0 ? 0 : this.chat.peerId, topMsgId)) {
-        foundHelper = this.mentionsHelper;
-      }
-    } else if(!matches[1] && firstChar === '/') { // commands
-      if(this.commandsHelper.checkQuery(query, this.chat.peerId)) {
-        foundHelper = this.commandsHelper;
-      }
-    } else if(rootScope.settings.emoji.suggest) { // emoji
-      if(!value.match(/^\s*:(.+):\s*$/) && !value.match(/:[;!@#$%^&*()-=|]/)) {
-        foundHelper = this.emojiHelper;
-        this.emojiHelper.checkQuery(query, firstChar);
-      }
-    } else {
-      foundHelper = this.checkInlineAutocomplete(value);
-    }
+    foundHelper = this.checkInlineAutocomplete(value, foundHelper);
 
     this.autocompleteHelperController.hideOtherHelpers(foundHelper);
   }
 
-  private checkInlineAutocomplete(value: string): AutocompleteHelper {
-    return;
-    
-    const inlineMatch = value.match(/^@([a-zA-Z\\d_]{3,32})\s/);
-    if(inlineMatch) {
-      const username = inlineMatch[1];
-      console.log('inline match username', username);
-      this.appUsersManager.resolveUsername(username).then(peer => {
-        if(peer._ === 'user') {
-          if(peer.bot_inline_placeholder) {
-            this.messageInput.dataset.inlinePlaceholder = peer.bot_inline_placeholder;
+  private checkInlineAutocomplete(value: string, foundHelper?: AutocompleteHelper): AutocompleteHelper {
+    let needPlaceholder = false;
+
+    if(!foundHelper) {
+      const inlineMatch = value.match(/^@([a-zA-Z\\d_]{3,32})\s/);
+      if(inlineMatch) {
+        const username = inlineMatch[1];
+        const query = value.slice(inlineMatch[0].length);
+        needPlaceholder = inlineMatch[0].length === value.length;
+  
+        foundHelper = this.inlineHelper;
+
+        if(!this.btnPreloader) {
+          this.btnPreloader = ButtonIcon('none btn-preloader float show disable-hover', {noRipple: true});
+          putPreloader(this.btnPreloader, true);
+          this.inputMessageContainer.parentElement.insertBefore(this.btnPreloader, this.inputMessageContainer.nextSibling);
+        } else {
+          SetTransition(this.btnPreloader, 'show', true, 400);
+        }
+        
+        this.inlineHelper.checkQuery(this.chat.peerId, username, query).then(({user, renderPromise}) => {
+          if(needPlaceholder) {
+            this.messageInput.dataset.inlinePlaceholder = user.bot_inline_placeholder;
           }
 
-          console.log(peer);
-        }
-      });
-      return;
+          renderPromise.then(() => {
+            SetTransition(this.btnPreloader, 'show', false, 400);
+          });
+        }).catch(noop);
+      }
     }
+    
+    if(!needPlaceholder) {
+      delete this.messageInput.dataset.inlinePlaceholder;
+    }
+
+    if(foundHelper !== this.inlineHelper) {
+      if(this.btnPreloader) {
+        SetTransition(this.btnPreloader, 'show', false, 400);
+      }
+    }
+
+    return foundHelper;
   }
 
   private onBtnSendClick = (e: Event) => {
@@ -1466,16 +1499,16 @@ export default class ChatInput {
     }
   };
 
-  public clearInput(canSetDraft = true) {
-    if(document.activeElement === this.messageInput && isMobileSafari) {
+  public clearInput(canSetDraft = true, fireEvent = true, clearValue = '') {
+    if(document.activeElement === this.messageInput && isMobileSafari) { // fix first char uppercase
       const i = document.createElement('input');
       document.body.append(i);
       fixSafariStickyInput(i);
-      this.messageInputField.value = '';
+      this.messageInputField.setValueSilently(clearValue);
       fixSafariStickyInput(this.messageInput);
       i.remove();
     } else {
-      this.messageInputField.value = '';
+      this.messageInputField.setValueSilently(clearValue);
     }
 
     if(isTouchSupported) {
@@ -1496,9 +1529,9 @@ export default class ChatInput {
       set = this.setDraft(undefined, false);
     }
 
-    /* if(!set) {
+    if(!set && fireEvent) {
       this.onMessageInput();
-    } */
+    }
   }
 
   public isInputEmpty() {
@@ -1608,11 +1641,11 @@ export default class ChatInput {
     const flag = document.type === 'sticker' ? 'send_stickers' : (document.type === 'gif' ? 'send_gifs' : 'send_media');
     if(this.chat.peerId < 0 && !this.appChatsManager.hasRights(this.chat.peerId, flag)) {
       toast(POSTING_MEDIA_NOT_ALLOWED);
-      return;
+      return false;
     }
 
     if(this.chat.type === 'scheduled' && !force) {
-      this.scheduleSending(() => this.sendMessageWithDocument(document, true));
+      this.scheduleSending(() => this.sendMessageWithDocument(document, true, clearDraft));
       return false;
     }
 
@@ -1749,10 +1782,14 @@ export default class ChatInput {
   }
 
   public setInputValue(value: string, clear = true, focus = true) {
-    clear && this.clearInput();
-    this.messageInputField.value = value || '';
+    if(!value) value = '';
+
+    if(clear) this.clearInput(false, false, value);
+    else this.messageInputField.setValueSilently(value);
+
     window.requestAnimationFrame(() => {
       focus && placeCaretAtEnd(this.messageInput);
+      this.onMessageInput();
       this.messageInput.scrollTop = this.messageInput.scrollHeight;
     });
   }

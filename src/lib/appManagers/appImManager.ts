@@ -30,7 +30,7 @@ import { isTouchSupported } from '../../helpers/touchSupport';
 import appPollsManager from './appPollsManager';
 import SetTransition from '../../components/singleTransition';
 import ChatDragAndDrop from '../../components/chat/dragAndDrop';
-import { debounce, pause, doubleRaf } from '../../helpers/schedulers';
+import { doubleRaf } from '../../helpers/schedulers';
 import lottieLoader from '../lottieLoader';
 import useHeavyAnimationCheck, { dispatchHeavyAnimationEvent } from '../../hooks/useHeavyAnimationCheck';
 import appDraftsManager from './appDraftsManager';
@@ -62,6 +62,9 @@ import singleInstance from '../mtproto/singleInstance';
 import PopupStickers from '../../components/popups/stickers';
 import PopupJoinChatInvite from '../../components/popups/joinChatInvite';
 import { toast } from '../../components/toast';
+import debounce from '../../helpers/schedulers/debounce';
+import { pause } from '../../helpers/schedulers/pause';
+import appMessagesIdsManager from './appMessagesIdsManager';
 
 //console.log('appImManager included33!');
 
@@ -175,12 +178,11 @@ export class AppImManager {
     });
 
     rootScope.addEventListener('history_focus', (e) => {
-      let {peerId, mid} = e;
-      if(mid) {
-        mid = appMessagesManager.generateMessageId(mid); // because mid can come from notification, i.e. server message id
-      }
+      let {peerId, threadId, mid} = e;
+      if(threadId) threadId = appMessagesIdsManager.generateMessageId(threadId);
+      if(mid) mid = appMessagesIdsManager.generateMessageId(mid); // because mid can come from notification, i.e. server message id
       
-      this.setInnerPeer(peerId, mid);
+      this.setInnerPeer(peerId, mid, threadId ? 'discussion' : undefined, threadId);
     });
 
     rootScope.addEventListener('peer_changing', (chat) => {
@@ -360,7 +362,7 @@ export class AppImManager {
     switch(splitted[0]) {
       case '#/im': {
         const p = params.p;
-        let postId = params.post !== undefined ? appMessagesManager.generateMessageId(+params.post) : undefined;
+        let postId = params.post !== undefined ? appMessagesIdsManager.generateMessageId(+params.post) : undefined;
 
         switch(p[0]) {
           case '@': {
@@ -880,7 +882,8 @@ export class AppImManager {
       serverTimeManager, 
       stateStorage, 
       appNotificationsManager, 
-      appEmojiManager
+      appEmojiManager,
+      appMessagesIdsManager
     );
 
     if(this.chats.length) {

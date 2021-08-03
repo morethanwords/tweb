@@ -27,7 +27,7 @@ export default class StickersHelper extends AutocompleteHelper {
       controller,
       listType: 'xy', 
       onSelect: (target) => {
-        EmoticonsDropdown.onMediaClick({target}, true);
+        return !EmoticonsDropdown.onMediaClick({target}, true);
       }, 
       waitForKey: 'ArrowUp'
     });
@@ -78,7 +78,7 @@ export default class StickersHelper extends AutocompleteHelper {
             container.append(this.superStickerRenderer.renderSticker(sticker as MyDocument, undefined, promises));
           });
 
-          (Promise.all(promises) as Promise<any>).then(resolve, resolve);
+          (Promise.all(promises) as Promise<any>).finally(resolve);
         });
       } else {
         ready = Promise.resolve();

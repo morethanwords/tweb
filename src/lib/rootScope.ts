@@ -53,7 +53,7 @@ export type BroadcastEvents = {
   'history_delete': {peerId: number, msgs: {[mid: number]: true}},
   'history_forbidden': number,
   'history_reload': number,
-  'history_focus': {peerId: number, mid?: number},
+  'history_focus': {peerId: number, threadId?: number, mid?: number},
   //'history_request': void,
   
   'message_edit': {storage: MessagesStorage, peerId: number, mid: number},
@@ -88,12 +88,12 @@ export type BroadcastEvents = {
   'chat_update': number,
   'invalidate_participants': number,
   //'channel_settings': {channelId: number},
-  'webpage_updated': {id: string, msgs: number[]},
+  'webpage_updated': {id: string, msgs: {peerId: number, mid: number, isScheduled: boolean}[]},
 
   'download_progress': any,
   'connection_status_change': ConnectionStatusChange,
   'settings_updated': {key: string, value: any},
-  'draft_updated': {peerId: number, threadId: number, draft: MyDraftMessage | undefined},
+  'draft_updated': {peerId: number, threadId: number, draft: MyDraftMessage | undefined, force?: boolean},
 
   'event-heavy-animation-start': void,
   'event-heavy-animation-end': void,

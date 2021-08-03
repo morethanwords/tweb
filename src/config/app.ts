@@ -16,7 +16,7 @@ export const MAIN_DOMAIN = 'web.telegram.org';
 const App = {
   id: 1025907,
   hash: '452b0359b988148995f22ff0f4229750',
-  version: '0.6.2',
+  version: '0.7.0',
   langPackVersion: '0.3.2',
   langPack: 'macos',
   langPackCode: 'en',

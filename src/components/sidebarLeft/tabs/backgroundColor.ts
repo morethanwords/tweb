@@ -9,7 +9,7 @@ import { hexaToRgba } from "../../../helpers/color";
 import { attachClickEvent } from "../../../helpers/dom/clickEvent";
 import findUpClassName from "../../../helpers/dom/findUpClassName";
 import highlightningColor from "../../../helpers/highlightningColor";
-import { throttle } from "../../../helpers/schedulers";
+import throttle from "../../../helpers/schedulers/throttle";
 import appImManager from "../../../lib/appManagers/appImManager";
 import appStateManager, { Theme } from "../../../lib/appManagers/appStateManager";
 import rootScope from "../../../lib/rootScope";

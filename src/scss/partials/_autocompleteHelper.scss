@@ -7,7 +7,8 @@
 .autocomplete-helper {
   --border-radius: #{$border-radius-medium};
   position: absolute !important;
-	bottom: calc(100% + .625rem);
+	// bottom: calc(100% + .625rem);
+	bottom: calc(100% + .5rem);
 	overflow: hidden;
 	padding: 0 !important;
   border-radius: var(--border-radius) !important;
@@ -15,9 +16,9 @@
 	left: 0;
   width: auto !important;
 
-	@include respond-to(esg-bottom-new) {
+	/* @include respond-to(esg-bottom-new) {
 		bottom: calc(100% + .5rem);
-	}
+	} */
 
   &:not(.is-visible) {
 		display: none;

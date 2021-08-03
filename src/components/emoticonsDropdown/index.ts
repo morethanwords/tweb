@@ -17,7 +17,6 @@ import StickyIntersector from "../stickyIntersector";
 import EmojiTab from "./tabs/emoji";
 import GifsTab from "./tabs/gifs";
 import StickersTab from "./tabs/stickers";
-import { pause } from "../../helpers/schedulers";
 import { MOUNT_CLASS_TO } from "../../config/debug";
 import AppGifsTab from "../sidebarRight/tabs/gifs";
 import AppStickersTab from "../sidebarRight/tabs/stickers";
@@ -27,6 +26,7 @@ import blurActiveElement from "../../helpers/dom/blurActiveElement";
 import whichChild from "../../helpers/dom/whichChild";
 import { cancelEvent } from "../../helpers/dom/cancelEvent";
 import DropdownHover from "../../helpers/dropdownHover";
+import { pause } from "../../helpers/schedulers/pause";
 
 export const EMOTICONSSTICKERGROUP = 'emoticons-dropdown';
 
@@ -278,10 +278,10 @@ export class EmoticonsDropdown extends DropdownHover {
     let target = e.target as HTMLElement;
     target = findUpTag(target, 'DIV');
 
-    if(!target) return;
+    if(!target) return false;
     
     const fileId = target.dataset.docId;
-    if(!fileId) return;
+    if(!fileId) return false;
 
     if(appImManager.chat.input.sendMessageWithDocument(fileId, undefined, clearDraft)) {
       /* dropdown.classList.remove('active');
@@ -291,8 +291,11 @@ export class EmoticonsDropdown extends DropdownHover {
         emoticonsDropdown.container.classList.add('disable-hover');
         emoticonsDropdown.toggle(false);
       }
+
+      return true;
     } else {
       console.warn('got no doc by id:', fileId);
+      return false;
     }
   };
 

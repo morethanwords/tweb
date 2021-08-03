@@ -21,6 +21,7 @@ import type { ApiManagerProxy } from "../../lib/mtproto/mtprotoworker";
 import type { AppDraftsManager } from "../../lib/appManagers/appDraftsManager";
 import type { AppEmojiManager } from "../../lib/appManagers/appEmojiManager";
 import type { ServerTimeManager } from "../../lib/mtproto/serverTimeManager";
+import type { AppMessagesIdsManager } from "../../lib/appManagers/appMessagesIdsManager";
 import type { State } from "../../lib/appManagers/appStateManager";
 import type stateStorage from '../../lib/stateStorage';
 import EventListenerBase from "../../helpers/eventListenerBase";
@@ -86,7 +87,8 @@ export default class Chat extends EventListenerBase<{
     public serverTimeManager: ServerTimeManager, 
     public storage: typeof stateStorage, 
     public appNotificationsManager: AppNotificationsManager,
-    public appEmojiManager: AppEmojiManager
+    public appEmojiManager: AppEmojiManager,
+    public appMessagesIdsManager: AppMessagesIdsManager
   ) {
     super();
 
@@ -172,10 +174,10 @@ export default class Chat extends EventListenerBase<{
     // this.initPeerId = peerId;
 
     this.topbar = new ChatTopbar(this, appSidebarRight, this.appMessagesManager, this.appPeersManager, this.appChatsManager, this.appNotificationsManager);
-    this.bubbles = new ChatBubbles(this, this.appMessagesManager, this.appStickersManager, this.appUsersManager, this.appInlineBotsManager, this.appPhotosManager, this.appPeersManager, this.appProfileManager);
-    this.input = new ChatInput(this, this.appMessagesManager, this.appDocsManager, this.appChatsManager, this.appPeersManager, this.appWebPagesManager, this.appImManager, this.appDraftsManager, this.serverTimeManager, this.appNotificationsManager, this.appEmojiManager, this.appUsersManager);
+    this.bubbles = new ChatBubbles(this, this.appMessagesManager, this.appStickersManager, this.appUsersManager, this.appInlineBotsManager, this.appPhotosManager, this.appPeersManager, this.appProfileManager, this.appDraftsManager, this.appMessagesIdsManager);
+    this.input = new ChatInput(this, this.appMessagesManager, this.appMessagesIdsManager, this.appDocsManager, this.appChatsManager, this.appPeersManager, this.appWebPagesManager, this.appImManager, this.appDraftsManager, this.serverTimeManager, this.appNotificationsManager, this.appEmojiManager, this.appUsersManager, this.appInlineBotsManager);
     this.selection = new ChatSelection(this, this.bubbles, this.input, this.appMessagesManager);
-    this.contextMenu = new ChatContextMenu(this.bubbles.bubblesContainer, this, this.appMessagesManager, this.appPeersManager, this.appPollsManager, this.appDocsManager);
+    this.contextMenu = new ChatContextMenu(this.bubbles.bubblesContainer, this, this.appMessagesManager, this.appPeersManager, this.appPollsManager, this.appDocsManager, this.appMessagesIdsManager);
 
     if(this.type === 'chat') {
       this.topbar.constructUtils();

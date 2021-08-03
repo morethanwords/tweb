@@ -28,8 +28,8 @@ import AppStorage from '../storage';
 import appRuntimeManager from '../appManagers/appRuntimeManager';
 import { SocketProxyTask } from './transports/socketProxied';
 import telegramMeWebManager from './telegramMeWebManager';
-import { pause } from '../../helpers/schedulers';
 import { CacheStorageDbName } from '../cacheStorage';
+import { pause } from '../../helpers/schedulers/pause';
 
 type Task = {
   taskId: number,

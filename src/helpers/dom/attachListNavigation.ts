@@ -14,6 +14,9 @@ type ArrowKey = 'ArrowUp' | 'ArrowDown' | 'ArrowLeft' | 'ArrowRight';
 const HANDLE_EVENT = 'keydown';
 const ACTIVE_CLASS_NAME = 'active';
 
+const AXIS_Y_KEYS: ArrowKey[] = ['ArrowUp', 'ArrowDown'];
+const AXIS_X_KEYS: ArrowKey[] = ['ArrowLeft', 'ArrowRight'];
+
 export default function attachListNavigation({list, type, onSelect, once, waitForKey}: {
   list: HTMLElement, 
   type: 'xy' | 'x' | 'y',
@@ -21,7 +24,7 @@ export default function attachListNavigation({list, type, onSelect, once, waitFo
   once: boolean,
   waitForKey?: string
 }) {
-  const keyNames: Set<ArrowKey> = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']);
+  const keyNames = new Set(type === 'xy' ? AXIS_Y_KEYS.concat(AXIS_X_KEYS) : (type === 'x' ? AXIS_X_KEYS : AXIS_Y_KEYS)); 
 
   let target: Element;
   const getCurrentTarget = () => {
@@ -40,6 +43,7 @@ export default function attachListNavigation({list, type, onSelect, once, waitFo
     }
 
     target = _target;
+    if(!target) return;
     target.classList.add(ACTIVE_CLASS_NAME);
 
     if(hadTarget && scrollable && scrollTo) {

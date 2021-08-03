@@ -7,7 +7,7 @@
 import findUpAttribute from "../helpers/dom/findUpAttribute";
 import getRichValue from "../helpers/dom/getRichValue";
 import isInputEmpty from "../helpers/dom/isInputEmpty";
-import { debounce } from "../helpers/schedulers";
+import debounce from "../helpers/schedulers/debounce";
 import { i18n, LangPackKey, _i18n } from "../lib/langPack";
 import RichTextProcessor from "../lib/richtextprocessor";
 
