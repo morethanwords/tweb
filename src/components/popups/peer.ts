@@ -51,7 +51,7 @@ export default class PopupPeer extends PopupElement {
       this.container.classList.add('have-checkbox');
       
       options.checkboxes.forEach(o => {
-        o.withRipple = true;
+        o.withRipple = false;
         const checkboxField = new CheckboxField(o);
         o.checkboxField = checkboxField;
         fragment.append(checkboxField.label);

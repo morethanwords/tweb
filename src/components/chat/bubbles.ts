@@ -43,12 +43,12 @@ import LazyLoadQueue from "../lazyLoadQueue";
 import ListenerSetter from "../../helpers/listenerSetter";
 import PollElement from "../poll";
 import AudioElement from "../audio";
-import { KeyboardButton, Message, MessageEntity,  MessageReplyHeader, ReplyMarkup, Update } from "../../layer";
+import { Message, MessageEntity,  MessageReplyHeader, ReplyMarkup, Update } from "../../layer";
 import { REPLIES_PEER_ID } from "../../lib/mtproto/mtproto_config";
 import { FocusDirection } from "../../helpers/fastSmoothScroll";
 import useHeavyAnimationCheck, { getHeavyAnimationPromise, dispatchHeavyAnimationEvent, interruptHeavyAnimation } from "../../hooks/useHeavyAnimationCheck";
 import { fastRaf, fastRafPromise } from "../../helpers/schedulers";
-import { CancellablePromise, deferredPromise } from "../../helpers/cancellablePromise";
+import { deferredPromise } from "../../helpers/cancellablePromise";
 import RepliesElement from "./replies";
 import DEBUG from "../../config/debug";
 import { SliceEnd } from "../../helpers/slicedArray";
@@ -71,7 +71,6 @@ import whichChild from "../../helpers/dom/whichChild";
 import { cancelAnimationByKey } from "../../helpers/animation";
 import assumeType from "../../helpers/assumeType";
 import { EmoticonsDropdown } from "../emoticonsDropdown";
-import PopupPickUser from "../popups/pickUser";
 
 const USE_MEDIA_TAILS = false;
 const IGNORE_ACTIONS: Set<Message.messageService['action']['_']> = new Set([
@@ -860,6 +859,7 @@ export default class ChatBubbles {
       if(nameDiv.classList.contains('is-via')) {
         const message = '@' + this.appUsersManager.getUser(peerId).username + ' ';
         this.appDraftsManager.setDraft(this.peerId, this.chat.threadId, message);
+        cancelEvent(e);
       } else if(savedFrom) {
         const splitted = savedFrom.split('_');
         const peerId = +splitted[0];
@@ -985,7 +985,8 @@ export default class ChatBubbles {
         return;
       } else if(target.classList.contains('forward')) {
         const mid = +bubble.dataset.mid;
-        new PopupForward(this.peerId, [mid]);
+        const message = this.appMessagesManager.getMessageByPeer(this.peerId, mid);
+        new PopupForward(this.peerId, this.appMessagesManager.getMidsByMessage(message));
         //appSidebarRight.forwardTab.open([mid]);
         return;
       }

@@ -813,6 +813,7 @@ export default class ChatInput {
     this.messageInputField.input.classList.replace('input-field-input', 'input-message-input');
     this.messageInputField.inputFake.classList.replace('input-field-input', 'input-message-input');
     this.messageInput = this.messageInputField.input;
+    this.messageInput.classList.add('no-scrollbar');
     this.attachMessageInputListeners();
 
     if(oldInputField) {
@@ -1327,7 +1328,7 @@ export default class ChatInput {
         }
         
         this.inlineHelper.checkQuery(this.chat.peerId, username, query).then(({user, renderPromise}) => {
-          if(needPlaceholder) {
+          if(needPlaceholder && user.bot_inline_placeholder) {
             this.messageInput.dataset.inlinePlaceholder = user.bot_inline_placeholder;
           }
 

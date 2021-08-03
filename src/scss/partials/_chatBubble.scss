@@ -2276,6 +2276,10 @@ $bubble-margin: .25rem;
     //line-height: var(--line-height);
     background: var(--message-highlightning-color);
 
+    &.anchor-url {
+      text-decoration: none !important;
+    }
+
     &:after {
       content: " ";
       display: block;
