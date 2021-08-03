@@ -545,8 +545,8 @@ $bubble-margin: .25rem;
 
   &.round {
     .attachment {
-      max-width: 200px !important;
-      max-height: 200px !important;
+      max-width: var(--round-video-size) !important;
+      max-height: var(--round-video-size) !important;
 
       .media-photo, .media-video {
         border-radius: 50%;
@@ -2306,13 +2306,25 @@ $bubble-margin: .25rem;
       margin-left: .3125rem;
     }
 
-    &.is-link:before {
-      content: $tgico-arrow-next;
+    &.tgico:before, 
+    .forward-icon {
       position: absolute;
       right: .125rem;
       top: .125rem;
       display: block;
+    }
+
+    &.is-link:before {
+      content: $tgico-arrow-next;
       transform: rotate(-45deg);
+    }
+
+    /* &.is-switch-inline:before {
+      content: $tgico-forward;
+    } */
+
+    .forward-icon {
+      width: .875rem;
     }
 
     img.emoji {

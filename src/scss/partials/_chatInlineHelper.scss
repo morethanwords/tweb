@@ -1,0 +1,112 @@
+.inline-helper {
+  $parent: ".inline-helper";
+  user-select: none;
+  
+  &:not(.is-gallery) {
+    min-width: unquote("min(20rem, 100%)");
+  }
+
+  .scrollable {
+    position: relative;
+    max-height: 232px;
+  }
+
+  &-separator {
+    height: 1px;
+    width: 100%;
+    margin-left: 4rem;
+    background-color: var(--border-color);
+
+    &:last-child {
+      display: none;
+    }
+  }
+
+  .btn-primary {
+    border-radius: unset;
+  }
+
+  &-results:not(.is-gallery) {
+    cursor: pointer;
+
+    #{$parent} {
+      &-result {
+        height: 4rem;
+        padding: .5rem .5rem .5rem 4rem;
+        line-height: var(--line-height);
+    
+        &-preview {
+          position: absolute;
+          left: .5rem;
+          width: 3rem !important;
+          height: 3rem !important;
+          overflow: hidden;
+    
+          &.empty {
+            color: #fff;
+            text-transform: uppercase;
+            font-size: 1.75rem;
+            background-color: var(--primary-color);
+            border-radius: .375rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+        }
+      }
+    }
+  }
+
+  .media-photo, .media-video, .media-poster {
+    object-fit: cover;
+    width: 100%;
+    height: 100%;
+  }
+
+  .gif {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: auto !important;
+    height: auto !important;
+  }
+
+  &-results.is-gallery {
+    max-width: 100%;
+    border-radius: var(--border-radius);
+    // padding: 0.4375rem;
+    grid-template-columns: repeat(auto-fill, unquote("minmax(var(--esg-sticker-size), 1fr)"));
+    grid-gap: 1px;
+
+    #{$parent} {
+      &-result {
+        width: auto !important;
+        height: auto !important;
+      }
+    }
+  }
+
+  &-result {
+    position: relative;
+
+    &-title {
+      font-weight: 500;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      overflow: hidden;
+    }
+
+    &-description {
+      font-size: .875rem;
+      color: var(--secondary-text-color);
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      text-overflow: ellipsis;
+      overflow: hidden;
+      white-space: pre-wrap;
+    }
+  }
+}

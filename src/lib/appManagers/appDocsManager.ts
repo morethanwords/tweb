@@ -11,7 +11,7 @@
 
 import { FileURLType, getFileNameByLocation, getFileURL } from '../../helpers/fileName';
 import { safeReplaceArrayInObject, defineNotNumerableProperties, isObject } from '../../helpers/object';
-import { Document, InputFileLocation, PhotoSize } from '../../layer';
+import { Document, InputFileLocation, InputMedia, PhotoSize } from '../../layer';
 import referenceDatabase, { ReferenceContext } from '../mtproto/referenceDatabase';
 import opusDecodeController from '../opusDecodeController';
 import { RichTextProcessor } from '../richtextprocessor';
@@ -226,7 +226,7 @@ export class AppDocsManager {
     return isObject(docId) && typeof(docId) !== 'string' ? docId as any : this.docs[docId as string] as any;
   }
 
-  public getMediaInput(doc: MyDocument) {
+  public getMediaInput(doc: MyDocument): InputMedia.inputMediaDocument {
     return {
       _: 'inputMediaDocument',
       id: {

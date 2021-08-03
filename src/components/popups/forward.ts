@@ -8,12 +8,12 @@ import appImManager from "../../lib/appManagers/appImManager";
 import PopupPickUser from "./pickUser";
 
 export default class PopupForward extends PopupPickUser {
-  constructor(fromPeerId: number, mids: number[], onSelect?: () => Promise<void> | void, onClose?: () => void) {
+  constructor(fromPeerId: number, mids: number[], onSelect?: (peerId: number) => Promise<void> | void, onClose?: () => void, overrideOnSelect = false) {
     super({
       peerTypes: ['dialogs', 'contacts'],
-      onSelect: async(peerId) => {
+      onSelect: overrideOnSelect ? onSelect : async(peerId) => {
         if(onSelect) {
-          const res = onSelect();
+          const res = onSelect(peerId);
           if(res instanceof Promise) {
             await res;
           }

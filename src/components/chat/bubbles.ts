@@ -13,6 +13,8 @@ import type { AppPhotosManager } from "../../lib/appManagers/appPhotosManager";
 import type { MyDocument } from "../../lib/appManagers/appDocsManager";
 import type { AppPeersManager } from "../../lib/appManagers/appPeersManager";
 import type { AppProfileManager } from "../../lib/appManagers/appProfileManager";
+import type { AppDraftsManager } from "../../lib/appManagers/appDraftsManager";
+import type { AppMessagesIdsManager } from "../../lib/appManagers/appMessagesIdsManager";
 import type Chat from "./chat";
 import { CHAT_ANIMATION_GROUP } from "../../lib/appManagers/appImManager";
 import { getObjectKeysAndSort } from "../../helpers/object";
@@ -41,7 +43,7 @@ import LazyLoadQueue from "../lazyLoadQueue";
 import ListenerSetter from "../../helpers/listenerSetter";
 import PollElement from "../poll";
 import AudioElement from "../audio";
-import { Message, MessageEntity,  MessageReplyHeader, Update } from "../../layer";
+import { KeyboardButton, Message, MessageEntity,  MessageReplyHeader, ReplyMarkup, Update } from "../../layer";
 import { REPLIES_PEER_ID } from "../../lib/mtproto/mtproto_config";
 import { FocusDirection } from "../../helpers/fastSmoothScroll";
 import useHeavyAnimationCheck, { getHeavyAnimationPromise, dispatchHeavyAnimationEvent, interruptHeavyAnimation } from "../../hooks/useHeavyAnimationCheck";
@@ -69,6 +71,7 @@ import whichChild from "../../helpers/dom/whichChild";
 import { cancelAnimationByKey } from "../../helpers/animation";
 import assumeType from "../../helpers/assumeType";
 import { EmoticonsDropdown } from "../emoticonsDropdown";
+import PopupPickUser from "../popups/pickUser";
 
 const USE_MEDIA_TAILS = false;
 const IGNORE_ACTIONS: Set<Message.messageService['action']['_']> = new Set([
@@ -167,7 +170,9 @@ export default class ChatBubbles {
     private appInlineBotsManager: AppInlineBotsManager, 
     private appPhotosManager: AppPhotosManager, 
     private appPeersManager: AppPeersManager,
-    private appProfileManager: AppProfileManager
+    private appProfileManager: AppProfileManager,
+    private appDraftsManager: AppDraftsManager,
+    private appMessagesIdsManager: AppMessagesIdsManager
   ) {
     //this.chat.log.error('Bubbles construction');
     
@@ -352,7 +357,7 @@ export default class ChatBubbles {
     });
 
     this.listenerSetter.add(rootScope)('message_edit', (e) => {
-      fastRaf(() => {
+      // fastRaf(() => {
         const {storage, peerId, mid} = e;
       
         if(peerId !== this.peerId || storage !== this.chat.getMessagesStorage()) return;
@@ -360,15 +365,18 @@ export default class ChatBubbles {
         if(!mounted) return;
 
         const updatePosition = this.chat.type === 'scheduled';
+        const scrolledDown = this.scrolledDown;
         this.renderMessage(mounted.message, true, false, mounted.bubble, updatePosition);
-        this.scrollToBubbleIfLast(mounted.bubble);
+        if(scrolledDown) {
+          this.scrollToBubbleIfLast(mounted.bubble);
+        }
 
         if(updatePosition) {
           (this.messagesQueuePromise || Promise.resolve()).then(() => {
             this.deleteEmptyDateGroups();
           });
         }
-      });
+      // });
     });
 
     this.listenerSetter.add(rootScope)('album_edit', (e) => {
@@ -849,7 +857,10 @@ export default class ChatBubbles {
       target = nameDiv || target;
       const peerId = +(target.dataset.peerId || target.getAttribute('peer'));
       const savedFrom = target.dataset.savedFrom;
-      if(savedFrom) {
+      if(nameDiv.classList.contains('is-via')) {
+        const message = '@' + this.appUsersManager.getUser(peerId).username + ' ';
+        this.appDraftsManager.setDraft(this.peerId, this.chat.threadId, message);
+      } else if(savedFrom) {
         const splitted = savedFrom.split('_');
         const peerId = +splitted[0];
         const msgId = +splitted[1];
@@ -1384,7 +1395,7 @@ export default class ChatBubbles {
 
   public scrollToBubbleIfLast(bubble: HTMLElement) {
     if(bubble.parentElement.lastElementChild === bubble && 
-      this.getLastDateGroup().lastElementChild === bubble.parentElement) {
+      this.getLastDateGroup().parentElement.lastElementChild === bubble.parentElement) {
       this.scrollToBubbleEnd(bubble);
     }
   }
@@ -2211,18 +2222,18 @@ export default class ChatBubbles {
     //bubble.prepend(timeSpan, messageDiv); // that's bad
 
     if(message.reply_markup && message.reply_markup._ === 'replyInlineMarkup' && message.reply_markup.rows && message.reply_markup.rows.length) {
-      const rows = message.reply_markup.rows;
+      const rows = (message.reply_markup as ReplyMarkup.replyKeyboardMarkup).rows;
 
       const containerDiv = document.createElement('div');
       containerDiv.classList.add('reply-markup');
-      rows.forEach((row: any) => {
+      rows.forEach((row) => {
         const buttons = row.buttons;
         if(!buttons || !buttons.length) return;
 
         const rowDiv = document.createElement('div');
         rowDiv.classList.add('reply-markup-row');
 
-        buttons.forEach((button: any) => {
+        buttons.forEach((button) => {
           const text = RichTextProcessor.wrapRichText(button.text, {noLinks: true, noLinebreaks: true});
 
           let buttonEl: HTMLButtonElement | HTMLAnchorElement;
@@ -2244,6 +2255,46 @@ export default class ChatBubbles {
               break;
             }
 
+            case 'keyboardButtonSwitchInline': {
+              buttonEl = document.createElement('button');
+              buttonEl.classList.add('is-switch-inline'/* , 'tgico' */);
+              const i = document.createElement('i');
+              i.classList.add('forward-icon');
+              i.innerHTML = `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" preserveAspectRatio="xMidYMid meet" viewBox="0 0 24 24">
+                <defs>
+                  <path d="M13.55 3.24L13.64 3.25L13.73 3.27L13.81 3.29L13.9 3.32L13.98 3.35L14.06 3.39L14.14 3.43L14.22 3.48L14.29 3.53L14.36 3.59L14.43 3.64L22.23 10.85L22.36 10.99L22.48 11.15L22.57 11.31L22.64 11.48L22.69 11.66L22.72 11.85L22.73 12.04L22.71 12.22L22.67 12.41L22.61 12.59L22.53 12.76L22.42 12.93L22.29 13.09L22.23 13.15L14.43 20.36L14.28 20.48L14.12 20.58L13.95 20.66L13.77 20.72L13.58 20.76L13.4 20.77L13.22 20.76L13.03 20.73L12.85 20.68L12.68 20.61L12.52 20.52L12.36 20.4L12.22 20.27L12.16 20.2L12.1 20.13L12.05 20.05L12.01 19.98L11.96 19.9L11.93 19.82L11.89 19.73L11.87 19.65L11.84 19.56L11.83 19.47L11.81 19.39L11.81 19.3L11.8 19.2L11.8 16.42L11 16.49L10.23 16.58L9.51 16.71L8.82 16.88L8.18 17.09L7.57 17.33L7.01 17.6L6.48 17.91L5.99 18.26L5.55 18.64L5.14 19.05L4.77 19.51L4.43 19.99L4.29 20.23L4.21 20.35L4.11 20.47L4 20.57L3.88 20.65L3.75 20.72L3.62 20.78L3.48 20.82L3.33 20.84L3.19 20.84L3.04 20.83L2.9 20.79L2.75 20.74L2.62 20.68L2.53 20.62L2.45 20.56L2.38 20.5L2.31 20.43L2.25 20.36L2.2 20.28L2.15 20.19L2.11 20.11L2.07 20.02L2.04 19.92L2.02 19.83L2.01 19.73L2 19.63L2.04 17.99L2.19 16.46L2.46 15.05L2.85 13.75L3.35 12.58L3.97 11.53L4.7 10.6L5.55 9.8L6.51 9.12L7.59 8.56L8.77 8.13L10.07 7.83L11.48 7.65L11.8 7.63L11.8 4.8L11.91 4.56L12.02 4.35L12.14 4.16L12.25 3.98L12.37 3.82L12.48 3.68L12.61 3.56L12.73 3.46L12.85 3.38L12.98 3.31L13.11 3.27L13.24 3.24L13.37 3.23L13.46 3.23L13.55 3.24Z" id="b13RmHDQtl"></path>
+                </defs>
+                <use xlink:href="#b13RmHDQtl" opacity="1" fill="#fff" fill-opacity="1"></use>
+              </svg>`;
+              buttonEl.append(i);
+              attachClickEvent(buttonEl, (e) => {
+                cancelEvent(e);
+
+                const botId = message.viaBotId || message.fromId;
+                let promise: Promise<number>;
+                if(button.pFlags.same_peer) promise = Promise.resolve(this.peerId);
+                else promise = this.appInlineBotsManager.checkSwitchReturn(botId).then(peerId => {
+                  if(peerId) {
+                    return peerId;
+                  }
+                  
+                  return new Promise<number>((resolve, reject) => {
+                    new PopupForward(this.peerId, [], (peerId) => {
+                      resolve(peerId);
+                    }, () => {
+                      reject();
+                    }, true);
+                  });
+                });
+                
+                promise.then(peerId => {
+                  const threadId = this.peerId === peerId ? this.chat.threadId : undefined;
+                  this.appInlineBotsManager.switchInlineQuery(peerId, threadId, botId, button.query);
+                });
+              });
+              break;
+            }
+
             default: {
               buttonEl = document.createElement('button');
               break;
@@ -2251,7 +2302,7 @@ export default class ChatBubbles {
           }
           
           buttonEl.classList.add('reply-markup-button', 'rp');
-          buttonEl.innerHTML = text;
+          buttonEl.insertAdjacentHTML('beforeend', text);
 
           ripple(buttonEl);
 
@@ -2265,7 +2316,7 @@ export default class ChatBubbles {
         let target = e.target as HTMLElement;
         
         if(!target.classList.contains('reply-markup-button')) target = findUpClassName(target, 'reply-markup-button');
-        if(!target || target.classList.contains('is-link')) return;
+        if(!target || target.classList.contains('is-link') || target.classList.contains('is-switch-inline')) return;
 
         cancelEvent(e);
 
@@ -2692,7 +2743,7 @@ export default class ChatBubbles {
       if(message.viaBotId) {
         if(!bubble.classList.contains('sticker')) {
           let nameDiv = document.createElement('div');
-          nameDiv.classList.add('name');
+          nameDiv.classList.add('name', 'is-via');
           nameDiv.dataset.peerId = message.viaBotId;
           nameDiv.append(i18n('ViaBot'), ' ', title);
           nameContainer.append(nameDiv);
@@ -3052,8 +3103,8 @@ export default class ChatBubbles {
     
     if(DEBUG) {
       this.log('getHistory: targeting mid:', targetMid, maxId, additionMsgId, 
-        topIds.map(m => this.appMessagesManager.getServerMessageId(m)), 
-        bottomIds.map(m => this.appMessagesManager.getServerMessageId(m)));
+        topIds.map(m => this.appMessagesIdsManager.getServerMessageId(m)), 
+        bottomIds.map(m => this.appMessagesIdsManager.getServerMessageId(m)));
     }
 
     const setBubbles: HTMLElement[] = [];
@@ -3299,7 +3350,7 @@ export default class ChatBubbles {
   }
 
   private generateLocalFirstMessage<T extends boolean>(service?: T, fill?: (message: GenerateLocalMessageType<T>) => void): GenerateLocalMessageType<T> {
-    const offset = this.appMessagesManager.generateMessageId(this.chat.type === 'scheduled' ? -1 : 0);
+    const offset = this.appMessagesIdsManager.generateMessageId(this.chat.type === 'scheduled' ? -1 : 0);
 
     const message: Omit<Message.message | Message.messageService, 'message'> & {message?: string} = {
       _: service ? 'messageService' : 'message',

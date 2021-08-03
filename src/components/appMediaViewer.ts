@@ -44,6 +44,7 @@ import fillPropertyValue from "../helpers/fillPropertyValue";
 import generatePathData from "../helpers/generatePathData";
 import replaceContent from "../helpers/dom/replaceContent";
 import PeerTitle from "./peerTitle";
+import appMessagesIdsManager from "../lib/appManagers/appMessagesIdsManager";
 
 // TODO: масштабирование картинок (не SVG) при ресайзе, и правильный возврат на исходную позицию
 // TODO: картинки "обрезаются" если возвращаются или появляются с места, где есть их перекрытие (топбар, поле ввода)
@@ -1386,7 +1387,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     }
 
     if(anchor) maxId = anchor.mid;
-    if(!older) maxId = appMessagesManager.incrementMessageId(maxId, 1);
+    if(!older) maxId = appMessagesIdsManager.incrementMessageId(maxId, 1);
 
     const promise = appMessagesManager.getSearch({
       peerId: this.searchContext.peerId,

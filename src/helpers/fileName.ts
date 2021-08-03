@@ -4,12 +4,12 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type { InputFileLocation, InputStickerSet } from "../layer";
+import type { InputFileLocation, InputStickerSet, InputWebFileLocation } from "../layer";
 import type { DownloadOptions } from "../lib/mtproto/apiFileManager";
 
 const FILENAME_JOINER = '_';
 
-export function getFileNameByLocation(location: InputFileLocation, options?: Partial<{
+export function getFileNameByLocation(location: InputFileLocation | InputWebFileLocation, options?: Partial<{
   fileName: string
 }>) {
   const fileName = '';//(options?.fileName || '').split('.');
@@ -42,6 +42,11 @@ export function getFileNameByLocation(location: InputFileLocation, options?: Par
 
     case 'inputFileLocation': {
       str = location.volume_id + '_' + location.local_id;
+      break;
+    }
+
+    case 'inputWebFileLocation': {
+      str = ['webFile', location.url].join(FILENAME_JOINER);
       break;
     }
 

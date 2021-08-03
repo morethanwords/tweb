@@ -12,6 +12,7 @@ import apiManager from "../mtproto/mtprotoworker";
 import { RichTextProcessor } from "../richtextprocessor";
 import rootScope from "../rootScope";
 import apiUpdatesManager from "./apiUpdatesManager";
+import appMessagesIdsManager from "./appMessagesIdsManager";
 import appMessagesManager from './appMessagesManager';
 import appPeersManager from './appPeersManager';
 import appUsersManager from "./appUsersManager";
@@ -181,7 +182,7 @@ export class AppPollsManager {
 
     return apiManager.invokeApi('messages.sendVote', {
       peer: inputPeer,
-      msg_id: appMessagesManager.getServerMessageId(message.mid),
+      msg_id: appMessagesIdsManager.getServerMessageId(message.mid),
       options
     }).then(updates => {
       this.log('sendVote updates:', updates);
@@ -194,7 +195,7 @@ export class AppPollsManager {
 
     return apiManager.invokeApi('messages.getPollResults', {
       peer: inputPeer,
-      msg_id: appMessagesManager.getServerMessageId(message.mid)
+      msg_id: appMessagesIdsManager.getServerMessageId(message.mid)
     }).then(updates => {
       apiUpdatesManager.processUpdateMessage(updates);
       this.log('getResults updates:', updates);
@@ -204,7 +205,7 @@ export class AppPollsManager {
   public getVotes(message: any, option?: Uint8Array, offset?: string, limit = 20) {
     return apiManager.invokeApi('messages.getPollVotes', {
       peer: appPeersManager.getInputPeerById(message.peerId),
-      id: appMessagesManager.getServerMessageId(message.mid),
+      id: appMessagesIdsManager.getServerMessageId(message.mid),
       option,
       offset,
       limit

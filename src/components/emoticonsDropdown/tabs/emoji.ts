@@ -7,7 +7,8 @@
 import emoticonsDropdown, { EmoticonsDropdown, EmoticonsTab } from "..";
 import { cancelEvent } from "../../../helpers/dom/cancelEvent";
 import findUpClassName from "../../../helpers/dom/findUpClassName";
-import { fastRaf, pause } from "../../../helpers/schedulers";
+import { fastRaf } from "../../../helpers/schedulers";
+import { pause } from "../../../helpers/schedulers/pause";
 import { isTouchSupported } from "../../../helpers/touchSupport";
 import appEmojiManager from "../../../lib/appManagers/appEmojiManager";
 import appImManager from "../../../lib/appManagers/appImManager";

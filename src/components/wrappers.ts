@@ -143,8 +143,8 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
     const divRound = document.createElement('div');
     divRound.classList.add('media-round', 'z-depth-1');
 
-    divRound.innerHTML = `<svg class="progress-ring" width="200px" height="200px">
-      <circle class="progress-ring__circle" stroke="white" stroke-opacity="0.3" stroke-width="3.5" cx="100" cy="100" r="93" fill="transparent" transform="rotate(-90, 100, 100)"/>
+    divRound.innerHTML = `<svg class="progress-ring" width="280px" height="280px" style="transform: rotate(-90deg);">
+      <circle class="progress-ring__circle" stroke="white" stroke-opacity="0.3" stroke-width="3.5" cx="140" cy="140" r="133" fill="transparent"/>
     </svg>`;
 
     const circle = divRound.querySelector('.progress-ring__circle') as SVGCircleElement;
@@ -176,6 +176,7 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
         globalVideo.removeEventListener('play', onPlay);
         globalVideo.removeEventListener('timeupdate', onTimeUpdate);
         globalVideo.removeEventListener('pause', onPaused);
+        globalVideo.removeEventListener('ended', onEnded);
       });
     };
 
@@ -214,9 +215,18 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
       divRound.classList.add('is-paused');
     };
 
+    const onEnded = () => {
+      video.classList.remove('hide');
+      divRound.classList.add('is-paused');
+      
+      video.currentTime = 0;
+      spanTime.innerText = ('' + globalVideo.duration).toHHMMSS(false);
+    };
+
     globalVideo.addEventListener('play', onPlay);
     globalVideo.addEventListener('timeupdate', onTimeUpdate);
     globalVideo.addEventListener('pause', onPaused);
+    globalVideo.addEventListener('ended', onEnded);
 
     attachClickEvent(canvas, (e) => {
       cancelEvent(e);
@@ -330,7 +340,10 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
     }
 
     video.addEventListener('error', (e) => {
-      console.error("Error " + video.error.code + "; details: " + video.error.message);
+      if(video.error.code !== 4) {
+        console.error("Error " + video.error.code + "; details: " + video.error.message);
+      }
+      
       if(preloader) {
         preloader.detach();
       }
@@ -661,7 +674,7 @@ export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showS
 
 export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withTail, isOut, lazyLoadQueue, middleware, size, withoutPreloader, loadPromises, noAutoDownload, noBlur, noThumb, noFadeIn}: {
   photo: MyPhoto | MyDocument, 
-  message: any, 
+  message?: any, 
   container: HTMLElement, 
   boxWidth?: number, 
   boxHeight?: number, 
@@ -783,9 +796,6 @@ export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withT
   //console.log('wrapPhoto downloaded:', photo, photo.downloaded, container);
 
   const needFadeIn = (thumbImage || !cacheContext.downloaded) && rootScope.settings.animationsEnabled && !noFadeIn;
-  if(needFadeIn) {
-    image.classList.add('fade-in');
-  }
 
   let preloader: ProgressivePreloader;
   if(message?.media?.preloader) { // means upload
@@ -811,34 +821,7 @@ export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withT
   const onLoad = (): Promise<void> => {
     if(middleware && !middleware()) return Promise.resolve();
 
-    return new Promise((resolve) => {
-      /* if(photo._ === 'document') {
-        console.error('wrapPhoto: will render document', photo, size, cacheContext);
-        return resolve();
-      } */
-
-      renderImageFromUrl(image, cacheContext.url, () => {
-        sequentialDom.mutateElement(container, () => {
-          aspecter.append(image);
-
-          fastRaf(() => {
-            resolve();
-          });
-  
-          if(needFadeIn) {
-            image.addEventListener('animationend', () => {
-              sequentialDom.mutate(() => {
-                image.classList.remove('fade-in');
-    
-                if(thumbImage) {
-                  thumbImage.remove();
-                }
-              });
-            }, {once: true});
-          }
-        });
-      });
-    });
+    return renderImageWithFadeIn(container, image, cacheContext.url, needFadeIn, aspecter, thumbImage);
   };
 
   let loadPromise: Promise<any>;
@@ -888,6 +871,47 @@ export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withT
     preloader,
     aspecter
   };
+}
+
+export function renderImageWithFadeIn(container: HTMLElement, 
+  image: HTMLImageElement, 
+  url: string, 
+  needFadeIn: boolean, 
+  aspecter = container,
+  thumbImage?: HTMLImageElement
+) {
+  if(needFadeIn) {
+    image.classList.add('fade-in');
+  }
+
+  return new Promise<void>((resolve) => {
+    /* if(photo._ === 'document') {
+      console.error('wrapPhoto: will render document', photo, size, cacheContext);
+      return resolve();
+    } */
+
+    renderImageFromUrl(image, url, () => {
+      sequentialDom.mutateElement(container, () => {
+        aspecter.append(image);
+
+        fastRaf(() => {
+          resolve();
+        });
+
+        if(needFadeIn) {
+          image.addEventListener('animationend', () => {
+            sequentialDom.mutate(() => {
+              image.classList.remove('fade-in');
+  
+              if(thumbImage) {
+                thumbImage.remove();
+              }
+            });
+          }, {once: true});
+        }
+      });
+    });
+  });
 }
 
 export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, onlyThumb, emoji, width, height, withThumb, loop, loadPromises, needFadeIn}: {

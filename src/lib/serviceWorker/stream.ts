@@ -6,9 +6,8 @@
 
 import { readBlobAsUint8Array } from "../../helpers/blob";
 import { CancellablePromise, deferredPromise } from "../../helpers/cancellablePromise";
-import { getWindowClients, notifySomeone } from "../../helpers/context";
+import { getWindowClients } from "../../helpers/context";
 import debounce from "../../helpers/schedulers/debounce";
-import { isSafari } from "../../helpers/userAgent";
 import { InputFileLocation, UploadFile } from "../../layer";
 import CacheStorageController from "../cacheStorage";
 import { DownloadOptions } from "../mtproto/apiFileManager";

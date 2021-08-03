@@ -23,8 +23,10 @@ export default class CommandsHelper extends AutocompletePeerHelper {
       'commands-helper',
       (target) => {
         const innerHTML = target.querySelector(`.${AutocompletePeerHelper.BASE_CLASS_LIST_ELEMENT}-name`).innerHTML;
-        chatInput.messageInput.innerHTML = innerHTML;
-        chatInput.sendMessage();
+        return chatInput.getReadyToSend(() => {
+          chatInput.messageInput.innerHTML = innerHTML;
+          chatInput.sendMessage(true);
+        });
       }
     );
   }

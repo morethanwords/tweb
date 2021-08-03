@@ -826,16 +826,16 @@ export default class AppSearchSuper {
         appUsersManager.getTopPeers('correspondents').then(peers => {
           if(!middleware()) return;
 
-          const idx = peers.indexOf(rootScope.myId);
+          const idx = peers.findIndex(peer => peer.id === rootScope.myId);
           if(idx !== -1) {
             peers = peers.slice();
             peers.splice(idx, 1);
           }
           //console.log('got top categories:', categories);
           if(peers.length) {
-            peers.forEach((peerId) => {
+            peers.forEach((peer) => {
               appDialogsManager.addDialogNew({
-                dialog: peerId, 
+                dialog: peer.id, 
                 container: this.searchGroups.people.list, 
                 drawStatus: false,
                 onlyFirstName: true,

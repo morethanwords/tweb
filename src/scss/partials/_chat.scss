@@ -198,6 +198,23 @@ $chat-helper-size: 39px;
 		}
 	}
 
+	.btn-preloader {
+		.preloader {
+			width: 1.5rem;
+			height: 1.5rem;
+
+			.preloader-path {
+				stroke: var(--secondary-text-color);
+			}
+		}
+		
+		&.show.backwards {
+			@include animation-level(2) {
+				animation: hide-icon .4s forwards ease-in-out !important;
+			}
+		}
+	}
+
 	.float {
 		align-self: center;
 		display: none !important;

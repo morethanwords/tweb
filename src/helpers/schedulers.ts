@@ -5,48 +5,9 @@
  */
 
 // * Jolly Cobra's schedulers
-import { AnyToVoidFunction, NoneToVoidFunction } from "../types";
-import _debounce from './schedulers/debounce';
+import { NoneToVoidFunction } from "../types";
 
 //type Scheduler = typeof requestAnimationFrame | typeof onTickEnd | typeof runNow;
-
-const debounce = _debounce;
-export {debounce};
-
-export function throttle<F extends AnyToVoidFunction>(
-  fn: F,
-  ms: number,
-  shouldRunFirst = true,
-) {
-  let interval: number | null = null;
-  let isPending: boolean;
-  let args: Parameters<F>;
-
-  return (..._args: Parameters<F>) => {
-    isPending = true;
-    args = _args;
-
-    if(!interval) {
-      if(shouldRunFirst) {
-        isPending = false;
-        // @ts-ignore
-        fn(...args);
-      }
-
-      interval = setInterval(() => {
-        if (!isPending) {
-          clearInterval(interval!);
-          interval = null;
-          return;
-        }
-
-        isPending = false;
-        // @ts-ignore
-        fn(...args);
-      }, ms) as any;
-    }
-  };
-}
 
 /* export function throttleWithRaf<F extends AnyToVoidFunction>(fn: F) {
   return throttleWith(fastRaf, fn);
@@ -86,10 +47,6 @@ export function onTickEnd(cb: NoneToVoidFunction) {
 function runNow(fn: NoneToVoidFunction) {
   fn();
 } */
-
-export const pause = (ms: number) => new Promise<void>((resolve) => {
-  setTimeout(resolve, ms);
-});
 
 let fastRafCallbacks: NoneToVoidFunction[] | undefined;
 export function fastRaf(callback: NoneToVoidFunction) {

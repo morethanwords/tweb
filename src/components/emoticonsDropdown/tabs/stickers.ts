@@ -34,18 +34,17 @@ export class SuperStickerRenderer {
     });
   }
 
+  public clear() {
+    this.lazyLoadQueue.clear();
+  }
+
   public renderSticker(doc: MyDocument, div?: HTMLDivElement, loadPromises?: Promise<any>[]) {
     if(!div) {
       div = document.createElement('div');
       div.classList.add('grid-item', 'super-sticker');
 
       if(doc.sticker === 2) {
-        this.animatedDivs.add(div);
-
-        this.lazyLoadQueue.observe({
-          div, 
-          load: this.processVisibleDiv
-        });
+        this.observeAnimatedDiv(div);
       }
     }
 
@@ -60,6 +59,15 @@ export class SuperStickerRenderer {
     });
 
     return div;
+  }
+
+  public observeAnimatedDiv(div: HTMLDivElement) {
+    this.animatedDivs.add(div);
+
+    this.lazyLoadQueue.observe({
+      div, 
+      load: this.processVisibleDiv
+    });
   }
 
   private checkAnimationContainer = (div: HTMLElement, visible: boolean) => {

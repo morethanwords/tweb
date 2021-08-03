@@ -21,10 +21,11 @@ import rootScope from "../rootScope";
 import SearchIndex from "../searchIndex";
 import apiUpdatesManager from "./apiUpdatesManager";
 import appChatsManager from "./appChatsManager";
+import appMessagesIdsManager from "./appMessagesIdsManager";
 import appNotificationsManager from "./appNotificationsManager";
 import appPeersManager from "./appPeersManager";
 import appPhotosManager from "./appPhotosManager";
-import appUsersManager, { User } from "./appUsersManager";
+import appUsersManager, { MyTopPeer, User } from "./appUsersManager";
 
 export type UserTyping = Partial<{userId: number, action: SendMessageAction, timeout: number}>;
 
@@ -396,7 +397,7 @@ export class AppProfileManager {
   }
 
   public getMentions(chatId: number, query: string, threadId?: number): Promise<number[]> {
-    const processUserIds = (userIds: number[]) => {
+    const processUserIds = (topPeers: MyTopPeer[]) => {
       const startsWithAt = query.charAt(0) === '@';
       if(startsWithAt) query = query.slice(1);
       /* const startsWithAt = query.charAt(0) === '@';
@@ -406,11 +407,16 @@ export class AppProfileManager {
       const index = new SearchIndex<number>({
         ignoreCase: true
       });
-      userIds.forEach(userId => {
-        index.indexObject(userId, appUsersManager.getUserSearchText(userId));
+
+      const ratingMap: Map<number, number> = new Map();
+      topPeers.forEach(peer => {
+        index.indexObject(peer.id, appUsersManager.getUserSearchText(peer.id));
+        ratingMap.set(peer.id, peer.rating);
       });
 
-      return Array.from(index.search(query));
+      const peerIds = Array.from(index.search(query));
+      peerIds.sort((a, b) => ratingMap.get(b) - ratingMap.get(a));
+      return peerIds;
     };
 
     let promise: Promise<number[]>;
@@ -418,7 +424,7 @@ export class AppProfileManager {
       promise = this.getChannelParticipants(chatId, {
         _: 'channelParticipantsMentions',
         q: query,
-        top_msg_id: threadId
+        top_msg_id: appMessagesIdsManager.getServerMessageId(threadId)
       }, 50, 0).then(cP => {
         return cP.participants.map(p => appChatsManager.getParticipantPeerId(p));
       });
@@ -431,12 +437,13 @@ export class AppProfileManager {
     }
 
     return Promise.all([
-      [],// appUsersManager.getTopPeers('bots_inline').catch(() => []), 
+      // [],
+      appUsersManager.getTopPeers('bots_inline').catch(() => [] as MyTopPeer[]), 
       promise
     ]).then(results => {
-      const peerIds = results[0].concat(results[1]);
+      const peers = results[0].concat(results[1].map(peerId => ({id: peerId, rating: 0})));
 
-      return processUserIds(peerIds);
+      return processUserIds(peers);
     });
   }
 

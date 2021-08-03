@@ -22,6 +22,7 @@ import { deepEqual } from "../../helpers/object";
 import { isObject } from "../mtproto/bin_utils";
 import { MOUNT_CLASS_TO } from "../../config/debug";
 import stateStorage from "../stateStorage";
+import appMessagesIdsManager from "./appMessagesIdsManager";
 
 export type MyDraftMessage = DraftMessage.draftMessage;
 
@@ -72,20 +73,20 @@ export class AppDraftsManager {
   }
 
   public getAllDrafts() {
-    return this.getAllDraftPromise || (this.getAllDraftPromise = new Promise((resolve) => {
-      apiManager.invokeApi('messages.getAllDrafts').then((updates) => {
+    return this.getAllDraftPromise || (
+      this.getAllDraftPromise = apiManager.invokeApi('messages.getAllDrafts')
+      .then((updates) => {
         const p = apiUpdatesManager.updatesState.syncLoading || Promise.resolve();
         p.then(() => {
           apiUpdatesManager.processUpdateMessage(updates);
         });
-        
-        resolve();
-      });
-    }));
+      })
+    );
   }
 
   public saveDraft(peerId: number, threadId: number, apiDraft: DraftMessage, options: Partial<{
-    notify: boolean
+    notify: boolean,
+    force: boolean
   }> = {}) {
     const draft = this.processApiDraft(apiDraft);
 
@@ -105,7 +106,8 @@ export class AppDraftsManager {
       rootScope.dispatchEvent('draft_updated', {
         peerId,
         threadId,
-        draft
+        draft,
+        force: options.force
       });
     }
 
@@ -174,13 +176,13 @@ export class AppDraftsManager {
     draft.rMessage = RichTextProcessor.wrapDraftText(draft.message, {entities: totalEntities});
     //draft.rReply = appMessagesManager.getRichReplyText(draft);
     if(draft.reply_to_msg_id) {
-      draft.reply_to_msg_id = appMessagesManager.generateMessageId(draft.reply_to_msg_id);
+      draft.reply_to_msg_id = appMessagesIdsManager.generateMessageId(draft.reply_to_msg_id);
     }
 
     return draft;
   }
 
-  public async syncDraft(peerId: number, threadId: number, localDraft?: MyDraftMessage, saveOnServer = true) {
+  public async syncDraft(peerId: number, threadId: number, localDraft?: MyDraftMessage, saveOnServer = true, force = false) {
     // console.warn(dT(), 'sync draft', peerID)
     const serverDraft = this.getDraft(peerId, threadId);
     if(this.draftsAreEqual(serverDraft, localDraft)) {
@@ -202,7 +204,7 @@ export class AppDraftsManager {
       let entities: MessageEntity[] = localDraft.entities;
 
       if(localDraft.reply_to_msg_id) {
-        params.reply_to_msg_id = appMessagesManager.getServerMessageId(localDraft.reply_to_msg_id);
+        params.reply_to_msg_id = appMessagesIdsManager.getServerMessageId(localDraft.reply_to_msg_id);
       }
 
       if(entities?.length) {
@@ -219,7 +221,7 @@ export class AppDraftsManager {
     const saveLocalDraft = draftObj || localDraft;
     saveLocalDraft.date = tsNow(true) + serverTimeManager.serverTimeOffset;
 
-    this.saveDraft(peerId, threadId, saveLocalDraft, {notify: true});
+    this.saveDraft(peerId, threadId, saveLocalDraft, {notify: true, force});
 
     if(saveOnServer && !threadId) {
       return apiManager.invokeApi('messages.saveDraft', params);
@@ -244,6 +246,30 @@ export class AppDraftsManager {
         });
       }
     });
+  }
+
+  public clearDraft(peerId: number, threadId: number) {
+    if(threadId) {
+      this.syncDraft(peerId, threadId);
+    } else {
+      this.saveDraft(peerId, threadId, null, {notify: true/* , force: true */});  
+    }
+  }
+
+  public setDraft(peerId: number, threadId: number, message: string, entities?: MessageEntity[]) {
+    const draft: DraftMessage.draftMessage = {
+      _: 'draftMessage',
+      date: Date.now() / 1000 | 0,
+      message,
+      pFlags: {},
+      entities
+    };
+
+    if(threadId) {
+      this.syncDraft(peerId, threadId, draft, false, true);
+    } else {
+      this.saveDraft(peerId, threadId, draft, {notify: true, force: true});  
+    }
   }
 }
 

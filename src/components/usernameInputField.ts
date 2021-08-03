@@ -5,7 +5,7 @@
  */
 
 import ListenerSetter from "../helpers/listenerSetter";
-import { debounce } from "../helpers/schedulers";
+import debounce from "../helpers/schedulers/debounce";
 import appChatsManager from "../lib/appManagers/appChatsManager";
 import { LangPackKey } from "../lib/langPack";
 import apiManager from "../lib/mtproto/mtprotoworker";

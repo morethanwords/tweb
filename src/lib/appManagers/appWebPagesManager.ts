@@ -16,13 +16,17 @@ import { ReferenceContext } from "../mtproto/referenceDatabase";
 import rootScope from "../rootScope";
 import { safeReplaceObject } from "../../helpers/object";
 import { limitSymbols } from "../../helpers/string";
+import { WebPage } from "../../layer";
+import { MOUNT_CLASS_TO } from "../../config/debug";
+
+const photoTypeSet = new Set(['photo', 'video', 'gif', 'document']);
 
 export class AppWebPagesManager {
-  private webpages: any = {};
+  private webpages: {
+    [webPageId: string]: WebPage
+  } = {};
   private pendingWebPages: {
-    [webPageId: string]: {
-      [mid: string]: true
-    }
+    [webPageId: string]: Set<string>
   } = {};
   
   constructor() {
@@ -33,79 +37,83 @@ export class AppWebPagesManager {
     });
   }
   
-  public saveWebPage(apiWebPage: any, mid?: number, mediaContext?: ReferenceContext) {
-    if(apiWebPage.photo && apiWebPage.photo._ === 'photo') {
-      //appPhotosManager.savePhoto(apiWebPage.photo, mediaContext);
-      apiWebPage.photo = appPhotosManager.savePhoto(apiWebPage.photo, mediaContext);
+  public saveWebPage(apiWebPage: WebPage, messageKey?: string, mediaContext?: ReferenceContext) {
+    if(apiWebPage._ === 'webPageNotModified') return;
+    const {id} = apiWebPage;
+
+    if(apiWebPage._ === 'webPage') {
+      if(apiWebPage.photo?._ === 'photo') {
+        apiWebPage.photo = appPhotosManager.savePhoto(apiWebPage.photo, mediaContext);
+      } else {
+        delete apiWebPage.photo;
+      }
+  
+      if(apiWebPage.document?._ === 'document') {
+        apiWebPage.document = appDocsManager.saveDoc(apiWebPage.document, mediaContext);
+      } else {
+        if(apiWebPage.type === 'document') {
+          delete apiWebPage.type;
+        }
+  
+        delete apiWebPage.document;
+      }
+
+      const siteName = apiWebPage.site_name;
+      let shortTitle = apiWebPage.title || apiWebPage.author || siteName || '';
+      if(siteName && shortTitle === siteName) {
+        delete apiWebPage.site_name;
+      }
+
+      shortTitle = limitSymbols(shortTitle, 80, 100);
+
+      apiWebPage.rTitle = RichTextProcessor.wrapRichText(shortTitle, {noLinks: true, noLinebreaks: true});
+      let contextHashtag = '';
+      if(siteName === 'GitHub') {
+        const matches = apiWebPage.url.match(/(https?:\/\/github\.com\/[^\/]+\/[^\/]+)/);
+        if(matches) {
+          contextHashtag = matches[0] + '/issues/{1}';
+        }
+      }
+
+      // delete apiWebPage.description
+      const shortDescriptionText = limitSymbols(apiWebPage.description || '', 150, 180);
+      apiWebPage.rDescription = RichTextProcessor.wrapRichText(shortDescriptionText, {
+        contextSite: siteName || 'external',
+        contextHashtag: contextHashtag
+      });
+
+      if(!photoTypeSet.has(apiWebPage.type) &&
+        !apiWebPage.description &&
+        apiWebPage.photo) {
+        apiWebPage.type = 'photo';
+      }
+    }
+    
+    let pendingSet = this.pendingWebPages[id];
+    if(messageKey) {
+      if(!pendingSet) pendingSet = this.pendingWebPages[id] = new Set();
+      pendingSet.add(messageKey);
+    }
+    
+    if(this.webpages[id] === undefined) {
+      this.webpages[id] = apiWebPage;
     } else {
-      delete apiWebPage.photo;
-    }
-
-    if(apiWebPage.document && apiWebPage.document._ === 'document') {
-      apiWebPage.document = appDocsManager.saveDoc(apiWebPage.document, mediaContext); // warning 11.04.2020
-    } else {
-      if(apiWebPage.type === 'document') {
-        delete apiWebPage.type;
-      }
-
-      delete apiWebPage.document;
+      safeReplaceObject(this.webpages[id], apiWebPage);
     }
     
-    const siteName = apiWebPage.site_name;
-    let shortTitle = apiWebPage.title || apiWebPage.author || siteName || '';
-    if(siteName && shortTitle === siteName) {
-      delete apiWebPage.site_name;
-    }
-
-    shortTitle = limitSymbols(shortTitle, 80, 100);
-
-    apiWebPage.rTitle = RichTextProcessor.wrapRichText(shortTitle, {noLinks: true, noLinebreaks: true});
-    let contextHashtag = '';
-    if(siteName === 'GitHub') {
-      const matches = apiWebPage.url.match(/(https?:\/\/github\.com\/[^\/]+\/[^\/]+)/);
-      if(matches) {
-        contextHashtag = matches[0] + '/issues/{1}';
-      }
-    }
-
-    // delete apiWebPage.description
-    const shortDescriptionText = limitSymbols(apiWebPage.description || '', 150, 180);
-    apiWebPage.rDescription = RichTextProcessor.wrapRichText(shortDescriptionText, {
-      contextSite: siteName || 'external',
-      contextHashtag: contextHashtag
-    });
-    
-    if(apiWebPage.type !== 'photo' &&
-      apiWebPage.type !== 'video' &&
-      apiWebPage.type !== 'gif' &&
-      apiWebPage.type !== 'document' &&
-      !apiWebPage.description &&
-      apiWebPage.photo) {
-      apiWebPage.type = 'photo';
-    }
-    
-    if(mid) {
-      if(this.pendingWebPages[apiWebPage.id] === undefined) {
-        this.pendingWebPages[apiWebPage.id] = {};
-      }
-
-      this.pendingWebPages[apiWebPage.id][mid] = true;
-    }
-    
-    if(this.webpages[apiWebPage.id] === undefined) {
-      this.webpages[apiWebPage.id] = apiWebPage;
-    } else {
-      safeReplaceObject(this.webpages[apiWebPage.id], apiWebPage);
-    }
-    
-    if(!mid && this.pendingWebPages[apiWebPage.id] !== undefined) {
-      const msgs: number[] = [];
-      for(const msgId in this.pendingWebPages[apiWebPage.id]) {
-        msgs.push(+msgId);
-      }
+    if(!messageKey && pendingSet !== undefined) {
+      const msgs: {peerId: number, mid: number, isScheduled: boolean}[] = [];
+      pendingSet.forEach((value) => {
+        const splitted = value.split('_');
+        msgs.push({
+          peerId: +splitted[0], 
+          mid: +splitted[1], 
+          isScheduled: !!splitted[2]
+        });
+      });
 
       rootScope.dispatchEvent('webpage_updated', {
-        id: apiWebPage.id,
+        id,
         msgs
       });
     }
@@ -113,12 +121,19 @@ export class AppWebPagesManager {
     return apiWebPage;
   }
 
-  public deleteWebPageFromPending(webPage: any, mid: number) {
-    const id = webPage.id;
-    if(this.pendingWebPages[id] && this.pendingWebPages[id][mid]) {
-      delete this.pendingWebPages[id][mid];
+  public getMessageKeyForPendingWebPage(peerId: number, mid: number, isScheduled = false) {
+    return peerId + '_' + mid + (isScheduled ? '_s' : '');
+  }
 
-      if(!Object.keys(this.pendingWebPages[id]).length) {
+  public deleteWebPageFromPending(webPage: WebPage, messageKey: string) {
+    const id = (webPage as WebPage.webPage).id;
+    if(!id) return;
+
+    const set = this.pendingWebPages[id];
+    if(set && set.has(messageKey)) {
+      set.delete(messageKey);
+
+      if(!set.size) {
         delete this.pendingWebPages[id];
       }
     }
@@ -129,4 +144,6 @@ export class AppWebPagesManager {
   }
 }
 
-export default new AppWebPagesManager();
+const appWebPagesManager = new AppWebPagesManager();
+MOUNT_CLASS_TO && (MOUNT_CLASS_TO.appWebPagesManager = appWebPagesManager);
+export default appWebPagesManager;

@@ -11,7 +11,7 @@
     {"name": "duration", "type": "number"},
     {"name": "audioTitle", "type": "string"},
     {"name": "audioPerformer", "type": "string"},
-    {"name": "sticker", "type": "number"},
+    {"name": "sticker", "type": "1 | 2"},
     {"name": "stickerEmoji", "type": "string"},
     {"name": "stickerEmojiRaw", "type": "string"},
     {"name": "stickerSetInput", "type": "InputStickerSet.inputStickerSetID"},
@@ -275,5 +275,11 @@
   "predicate": "inputDocumentFileLocation",
   "params": [
     {"name": "checkedReference", "type": "boolean"}
+  ]
+}, {
+  "predicate": "webPage",
+  "params": [
+    {"name": "rTitle", "type": "string"},
+    {"name": "rDescription", "type": "string"}
   ]
 }]
