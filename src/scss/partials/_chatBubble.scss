@@ -395,15 +395,6 @@ $bubble-margin: .25rem;
     opacity: 1;
   } */
 
-  .reply {
-    width: auto;
-
-    .reply-content {
-      height: auto;
-      min-height: 32px;
-    }
-  }
-  
   &.photo, &.video {
     .bubble-content {
       width: min-content;
@@ -932,11 +923,18 @@ $bubble-margin: .25rem;
     cursor: pointer;
     border-radius: 4px;
     min-width: 10rem;
+    width: auto;
+
+    &-media {
+      top: .125rem;
+    }
 
     &-content {
       //max-width: 300px;
       position: absolute;
-      max-width: calc(100% - 24px);
+      max-width: calc(100% - 1.5rem);
+      height: auto;
+      min-height: 32px;
     }
   }
 
