@@ -239,7 +239,7 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
     });
 
     if(globalVideo.paused) {
-      if(globalVideo.duration && globalVideo.currentTime !== globalVideo.duration) {
+      if(globalVideo.duration && globalVideo.currentTime !== globalVideo.duration && globalVideo.currentTime > 0) {
         onFrame();
         onTimeUpdate();
         video.classList.add('hide');
