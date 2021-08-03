@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { pause } from "./schedulers";
+import { pause } from "./schedulers/pause";
 import { isAppleMobile } from "./userAgent";
 
 export function preloadVideo(url: string): Promise<HTMLVideoElement> {

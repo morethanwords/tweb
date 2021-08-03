@@ -4,10 +4,10 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { throttle } from "../helpers/schedulers";
 import { logger, LogTypes } from "../lib/logger";
 import VisibilityIntersector, { OnVisibilityChange } from "./visibilityIntersector";
 import { findAndSpliceAll } from "../helpers/array";
+import throttle from "../helpers/schedulers/throttle";
 
 type LazyLoadElementBase = {
   load: () => Promise<any>

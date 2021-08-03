@@ -84,7 +84,7 @@ export default class ReplyKeyboard extends DropdownHover {
   };
 
   private getReplyMarkup(): ReplyMarkup {
-    return this.appMessagesManager.getHistoryStorage(this.peerId).reply_markup ?? {
+    return this.appMessagesManager.getHistoryStorage(this.peerId).replyMarkup ?? {
       _: 'replyKeyboardHide'
     };
   }

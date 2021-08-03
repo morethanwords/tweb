@@ -1,3 +1,289 @@
+<<<<<<< HEAD
+[{
+  "predicate": "document",
+  "params": [
+    {"name": "thumbs", "type": "Array<PhotoSize.photoSize | PhotoSize.photoCachedSize | PhotoSize.photoStrippedSize | PhotoSize.photoPathSize>"},
+    {"name": "type", "type": "'gif' | 'sticker' | 'audio' | 'voice' | 'video' | 'round' | 'photo' | 'pdf'"},
+    {"name": "h", "type": "number"},
+    {"name": "w", "type": "number"},
+    {"name": "file_name", "type": "string"},
+    {"name": "fileName", "type": "string"},
+    {"name": "file", "type": "File"},
+    {"name": "duration", "type": "number"},
+    {"name": "audioTitle", "type": "string"},
+    {"name": "audioPerformer", "type": "string"},
+    {"name": "sticker", "type": "1 | 2"},
+    {"name": "stickerEmoji", "type": "string"},
+    {"name": "stickerEmojiRaw", "type": "string"},
+    {"name": "stickerSetInput", "type": "InputStickerSet.inputStickerSetID"},
+    {"name": "stickerThumbConverted", "type": "true"},
+    {"name": "stickerCachedThumbs", "type": "{[toneIndex: number]: {url: string, w: number, h: number}}"},
+    {"name": "animated", "type": "boolean"},
+    {"name": "supportsStreaming", "type": "boolean"}
+  ]
+}, {
+  "predicate": "photoSizeProgressive",
+  "params": [
+    {"name": "size", "type": "number"}
+  ]
+}, {
+  "predicate": "dialog",
+  "params": [
+    {"name": "index", "type": "number"},
+    {"name": "peerId", "type": "number"},
+    {"name": "topMessage", "type": "any"},
+    {"name": "migratedTo", "type": "number"}
+  ]
+}, {
+  "predicate": "dialogFolder",
+  "params": [
+    {"name": "index", "type": "number"},
+    {"name": "peerId", "type": "number"},
+    {"name": "folder_id", "type": "number"}
+  ]
+}, {
+  "predicate": "message",
+  "params": [
+    {"name": "mid", "type": "number"},
+    {"name": "deleted", "type": "boolean"},
+    {"name": "peerId", "type": "number"},
+    {"name": "fromId", "type": "number"},
+    {"name": "grouped_id", "type": "string"},
+    {"name": "random_id", "type": "string"},
+    {"name": "unread", "type": "true"},
+    {"name": "is_outgoing", "type": "true"},
+    {"name": "rReply", "type": "string"},
+    {"name": "viaBotId", "type": "number"},
+    {"name": "clear_history", "type": "boolean"},
+    {"name": "pending", "type": "boolean"},
+    {"name": "error", "type": "any"},
+    {"name": "send", "type": "() => Promise<any>"}
+  ]
+}, {
+  "predicate": "messageService",
+  "params": [
+    {"name": "mid", "type": "number"},
+    {"name": "deleted", "type": "boolean"},
+    {"name": "peerId", "type": "number"},
+    {"name": "fromId", "type": "number"},
+    {"name": "unread", "type": "true"},
+    {"name": "is_outgoing", "type": "true"},
+    {"name": "rReply", "type": "string"},
+    {"name": "viaBotId", "type": "number"},
+    {"name": "is_single", "type": "true"}
+  ]
+}, {
+  "predicate": "messageEmpty",
+  "params": [
+    {"name": "deleted", "type": "boolean"}
+  ]
+}, {
+  "predicate": "userFull",
+  "params": [
+    {"name": "rAbout", "type": "string"}
+  ]
+}, {
+  "predicate": "messageEntityEmoji",
+  "params": [
+    {"name": "offset", "type": "number"},
+    {"name": "length", "type": "number"},
+    {"name": "unicode", "type": "string"}
+  ],
+  "type": "MessageEntity"
+}, {
+  "predicate": "messageEntityHighlight",
+  "params": [
+    {"name": "offset", "type": "number"},
+    {"name": "length", "type": "number"}
+  ],
+  "type": "MessageEntity"
+}, {
+  "predicate": "messageEntityLinebreak",
+  "params": [
+    {"name": "offset", "type": "number"},
+    {"name": "length", "type": "number"}
+  ],
+  "type": "MessageEntity"
+}, {
+  "predicate": "messageEntityCaret",
+  "params": [
+    {"name": "offset", "type": "number"},
+    {"name": "length", "type": "number"}
+  ],
+  "type": "MessageEntity"
+}, {
+  "predicate": "messageEntityBotCommand",
+  "params": [
+    {"name": "unsafe", "type": "boolean"}
+  ]
+}, {
+  "predicate": "user",
+  "params": [
+    {"name": "initials", "type": "string"},
+    {"name": "sortName", "type": "string"}
+  ]
+}, {
+  "predicate": "auth.sentCode",
+  "params": [
+    {"name": "phone_number", "type": "string"}
+  ]
+}, {
+  "predicate": "draftMessage",
+  "params": [
+    {"name": "rReply", "type": "string"},
+    {"name": "rMessage", "type": "string"}
+  ]
+}, {
+  "predicate": "chat",
+  "params": [
+    {"name": "initials", "type": "string"}
+  ]
+}, {
+  "predicate": "chatForbidden",
+  "params": [
+    {"name": "initials", "type": "string"}
+  ]
+}, {
+  "predicate": "channel",
+  "params": [
+    {"name": "initials", "type": "string"}
+  ]
+}, {
+  "predicate": "channelForbidden",
+  "params": [
+    {"name": "initials", "type": "string"}
+  ]
+}, {
+  "predicate": "messageActionChatLeave",
+  "params": [
+    {"name": "user_id", "type": "number"}
+  ],
+  "type": "MessageAction"
+}, {
+  "predicate": "messageActionChannelDeletePhoto",
+  "params": [],
+  "type": "MessageAction"
+}, {
+  "predicate": "messageActionChannelEditTitle",
+  "params": [
+    {"name": "title", "type": "string"}
+  ],
+  "type": "MessageAction"
+}, {
+  "predicate": "messageActionChannelEditPhoto",
+  "params": [
+    {"name": "photo", "type": "Photo"}
+  ],
+  "type": "MessageAction"
+}, {
+  "predicate": "messageActionChannelEditVideo",
+  "params": [
+    {"name": "photo", "type": "Photo"}
+  ],
+  "type": "MessageAction"
+}, {
+  "predicate": "messageActionChatEditVideo",
+  "params": [
+    {"name": "photo", "type": "Photo"}
+  ],
+  "type": "MessageAction"
+}, {
+  "predicate": "messageActionChatAddUsers",
+  "params": [
+    {"name": "users", "type": "Array<number>"}
+  ],
+  "type": "MessageAction"
+}, {
+  "predicate": "messageActionChatJoined",
+  "params": [
+    {"name": "users", "type": "Array<number>"}
+  ],
+  "type": "MessageAction"
+}, {
+  "predicate": "messageActionChatReturn",
+  "params": [
+    {"name": "users", "type": "Array<number>"}
+  ],
+  "type": "MessageAction"
+}, {
+  "predicate": "messageActionChatJoinedYou",
+  "params": [
+    {"name": "users", "type": "Array<number>"}
+  ],
+  "type": "MessageAction"
+}, {
+  "predicate": "messageActionChatReturnYou",
+  "params": [
+    {"name": "users", "type": "Array<number>"}
+  ],
+  "type": "MessageAction"
+}, {
+  "predicate": "langPackDifference",
+  "params": [
+    {"name": "local", "type": "boolean"},
+    {"name": "appVersion", "type": "string"}
+  ]
+}, {
+  "predicate": "updateNewDiscussionMessage",
+  "params": [
+    {"name": "message", "type": "Message"}
+  ],
+  "type": "Update"
+}, {
+  "predicate": "updateDeleteDiscussionMessages",
+  "params": [
+    {"name": "messages", "type": "number[]"},
+    {"name": "channel_id", "type": "number"}
+  ],
+  "type": "Update"
+}, {
+  "predicate": "updateDraftMessage",
+  "params": [
+    {"name": "local", "type": "boolean"},
+    {"name": "threadId", "type": "number"}
+  ]
+}, {
+  "predicate": "updateChannelReload",
+  "params": [
+    {"name": "channel_id", "type": "number"}
+  ],
+  "type": "Update"
+}, {
+  "predicate": "messages.stickerSet",
+  "params": [
+    {"name": "refreshTime", "type": "number"}
+  ]
+}, {
+  "predicate": "replyKeyboardHide",
+  "params": [
+    {"name": "mid", "type": "number"}
+  ]
+}, {
+  "predicate": "replyKeyboardForceReply",
+  "params": [
+    {"name": "mid", "type": "number"},
+    {"name": "hidden", "type": "true"},
+    {"name": "fromId", "type": "number"}
+  ]
+}, {
+  "predicate": "replyKeyboardMarkup",
+  "params": [
+    {"name": "mid", "type": "number"},
+    {"name": "hidden", "type": "true"},
+    {"name": "fromId", "type": "number"}
+  ]
+}, {
+  "predicate": "inputDocumentFileLocation",
+  "params": [
+    {"name": "checkedReference", "type": "boolean"}
+  ]
+}, {
+  "predicate": "webPage",
+  "params": [
+    {"name": "rTitle", "type": "string"},
+    {"name": "rDescription", "type": "string"}
+  ]
+=======
 [{
   "predicate": "document",
   "params": [
@@ -276,4 +562,5 @@
   "params": [
     {"name": "checkedReference", "type": "boolean"}
   ]
+>>>>>>> a3a258651320e5e8e7903d8bfe1cb222d84de6dc
 }]

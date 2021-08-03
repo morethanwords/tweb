@@ -3141,7 +3141,7 @@ export namespace Document {
 		duration?: number,
 		audioTitle?: string,
 		audioPerformer?: string,
-		sticker?: number,
+		sticker?: 1 | 2,
 		stickerEmoji?: string,
 		stickerEmojiRaw?: string,
 		stickerSetInput?: InputStickerSet.inputStickerSetID,
@@ -3627,7 +3627,9 @@ export namespace WebPage {
 		author?: string,
 		document?: Document,
 		cached_page?: Page,
-		attributes?: Array<WebPageAttribute>
+		attributes?: Array<WebPageAttribute>,
+		rTitle?: string,
+		rDescription?: string
 	};
 
 	export type webPageNotModified = {

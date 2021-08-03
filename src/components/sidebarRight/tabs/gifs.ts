@@ -81,7 +81,7 @@ export default class AppGifsTab extends SliderSuperTab {
     this.searchPromise = null;
     this.nextOffset = '';
     this.loadedAll = false;
-    this.masonry.lazyLoadQueue.clear();
+    this.masonry.clear();
   }
 
   public open() {

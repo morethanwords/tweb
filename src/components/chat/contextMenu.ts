@@ -5,11 +5,10 @@
  */
 
 import type { AppMessagesManager } from "../../lib/appManagers/appMessagesManager";
-import type { AppChatsManager } from "../../lib/appManagers/appChatsManager";
 import type { AppPeersManager } from "../../lib/appManagers/appPeersManager";
 import type { AppPollsManager, Poll } from "../../lib/appManagers/appPollsManager";
 import type { AppDocsManager, MyDocument } from "../../lib/appManagers/appDocsManager";
-import type { AppStateManager } from "../../lib/appManagers/appStateManager";
+import type { AppMessagesIdsManager } from "../../lib/appManagers/appMessagesIdsManager";
 import type Chat from "./chat";
 import { isTouchSupported } from "../../helpers/touchSupport";
 import ButtonMenu, { ButtonMenuItemOptions } from "../buttonMenu";
@@ -45,7 +44,8 @@ export default class ChatContextMenu {
     private appMessagesManager: AppMessagesManager, 
     private appPeersManager: AppPeersManager, 
     private appPollsManager: AppPollsManager,
-    private appDocsManager: AppDocsManager
+    private appDocsManager: AppDocsManager,
+    private appMessagesIdsManager: AppMessagesIdsManager
   ) {
     const onContextMenu = (e: MouseEvent | Touch | TouchEvent) => {
       if(this.init) {
@@ -365,7 +365,7 @@ export default class ChatContextMenu {
 
   private onCopyLinkClick = () => {
     const username = this.appPeersManager.getPeerUsername(this.peerId);
-    const msgId = this.appMessagesManager.getServerMessageId(this.mid);
+    const msgId = this.appMessagesIdsManager.getServerMessageId(this.mid);
     let url = 'https://t.me/';
     let key: LangPackKey;
     if(username) {

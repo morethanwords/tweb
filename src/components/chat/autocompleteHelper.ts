@@ -71,7 +71,10 @@ export default class AutocompleteHelper extends EventListenerBase<{
     if(!isMobile && !this.navigationItem) {
       this.navigationItem = {
         type: 'autocomplete-helper',
-        onPop: () => this.toggle(true),
+        onPop: () => {
+          this.navigationItem = undefined;
+          this.toggle(true);
+        },
         noBlurOnPop: true
       };
 
@@ -87,6 +90,7 @@ export default class AutocompleteHelper extends EventListenerBase<{
 
       if(this.navigationItem) {
         appNavigationController.removeItem(this.navigationItem);
+        this.navigationItem = undefined;
       }
     }, {once: true});
   };
@@ -105,8 +109,8 @@ export default class AutocompleteHelper extends EventListenerBase<{
     }
 
     if(this.hidden === hide) {
-      if(!hide && this.resetTarget) {
-        this.resetTarget();
+      if(!hide) {
+        this.dispatchEvent('visible'); // reset target and listener
       }
 
       return;
@@ -117,8 +121,19 @@ export default class AutocompleteHelper extends EventListenerBase<{
     if(!hide) {
       this.controller.hideOtherHelpers(this);
       this.dispatchEvent('visible'); // fire it before so target will be set
-    } else if(!fromController) {
-      this.controller.hideOtherHelpers();
+    } else {
+      if(this.navigationItem) {
+        appNavigationController.removeItem(this.navigationItem);
+        this.navigationItem = undefined;
+      }
+
+      if(!fromController) {
+        this.controller.hideOtherHelpers();
+      }
+
+      if(this.detach) { // force detach here
+        this.detach();
+      }
     }
 
     SetTransition(this.container, 'is-visible', !hide, rootScope.settings.animationsEnabled ? 200 : 0, () => {
