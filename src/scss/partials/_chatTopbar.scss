@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 /*
  * https://github.com/morethanwords/tweb
  * Copyright (C) 2019-2021 Eduard Kuzmenko
@@ -230,4 +231,238 @@
 			margin-top: 1px;
 		} */
 	}
+=======
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
+.topbar {
+	width: 100%;
+	background-color: #fff;
+	user-select: none;
+	box-shadow: 0px 1px 5px -1px rgba(0, 0, 0, .21);
+	z-index: 1;
+	min-height: 3.5rem;
+	max-height: 3.5rem;
+
+	&.is-pinned-floating {
+		&.is-pinned-audio-shown, &.is-pinned-message-shown:not(.hide-pinned) {
+			margin-bottom: 52px;
+			/* & + .bubbles {
+				margin-top: 52px;
+			} */
+
+			& ~ .drops-container {
+				--pinned-floating-height: 52px;
+			}
+		}
+
+		&.is-pinned-message-shown:not(.hide-pinned):not(.is-pinned-audio-shown) {
+			.pinned-message {
+				display: flex;
+			}
+		}
+	}
+
+	@include respond-to(not-handhelds) {
+		.menu-search {
+			display: none;
+		}
+
+		&.is-pinned-message-shown:not(.hide-pinned) {
+			.pinned-message {
+				display: flex;
+			}
+		}
+	}
+
+	@include respond-to(no-floating-left-sidebar) {
+		.chat:first-child & {
+			.sidebar-close-button {
+				display: none;
+			}
+
+			.chat-info {
+				padding-left: .1875rem;
+			}
+		}
+	}
+
+	.sidebar-close-button {
+		position: absolute;
+	}
+
+	/* @include respond-to(wide-screens) {
+		transition: .2s ease-in-out;
+		align-self: start;
+
+		body.is-right-column-shown & {
+			width: calc(100% - (#{$large-screen} / 4));
+		}
+
+		body.animation-level-0 & {
+			transition: none;
+		}
+	} */
+
+	/* @include respond-to(handhelds) {
+		position: sticky;
+		top: 0;
+		z-index: 3;
+	} */
+
+	.user-title {
+		cursor: pointer;
+		font-size: 1rem;
+		line-height: 24px;
+		max-width: calc(100% - 1.5rem);
+	
+		/* @include respond-to(handhelds) {
+			text-overflow: ellipsis;
+			white-space: nowrap;
+			overflow: hidden;
+		} */
+	
+		span.emoji {
+			vertical-align: inherit;
+		}
+	}
+	
+	.user-title, .info {
+		white-space: nowrap;
+		text-overflow: ellipsis;
+		overflow: hidden;
+		line-height: var(--line-height);
+	}
+
+	.info:not(:empty) {
+		margin-top: 1px;
+	}
+
+	.btn-menu-toggle {
+		.btn-menu {
+			top: calc(100% + 7px);
+
+			@include respond-to(handhelds) {
+				top: 29px;
+			}
+		}
+		
+		@include respond-to(handhelds) {
+			margin-left: 0;
+		}
+	}
+	
+	.chat-info {
+		flex: 1 1 auto;
+		overflow: hidden;
+		padding-left: 49px;
+		//--utils-width: NaN;
+
+		@include respond-to(handhelds) {
+			padding-left: 52px;
+    }
+		
+		//&.have-utils-width {
+			max-width: calc(100% - var(--utils-width));
+
+			@include respond-to(medium-screens) {
+				body.is-right-column-shown & {
+					max-width: calc(100% - var(--right-column-width) - var(--utils-width));
+				}
+			}
+		//}
+	}
+
+	.chat-utils {
+		display: flex;
+		align-items: center;
+		flex: 0 0 auto;
+
+		/* position: absolute;
+    right: 0px;
+    padding-right: inherit; */
+
+		@include respond-to(medium-screens) {
+			transition: transform var(--transition-standard-out);
+	
+			body.is-right-column-shown & {
+				transform: translate3d(calc(var(--right-column-width) * -1), 0, 0);
+				transition: transform var(--transition-standard-in);
+			}
+
+			body.animation-level-0 & {
+				transition: none;
+			}
+		}
+
+		@include respond-to(handhelds) {
+			> .btn-icon:not(.btn-menu-toggle) {
+				display: none;
+			}
+		}
+	}
+
+	.chat-join {
+		width: auto;
+		height: 2.25rem;
+		font-weight: 400;
+		font-size: 0.875rem;
+		margin-right: .5rem;
+		padding: 0 1.375rem; // same as in new media popup
+
+		&:not(.hide) + .chat-mute-button {
+			display: none;
+		}
+	}
+	
+	.content {
+		flex: 1 1 auto;
+		padding-left: 1.125rem;
+		max-width: 100%;
+		overflow: hidden;
+	}
+	
+	.person {
+		display: flex;
+		align-items: center;
+		cursor: pointer;
+
+		&-avatar {
+			flex: 0 0 auto;
+		}
+
+		.bottom {
+			font-size: .875rem;
+			//line-height: 18px;
+			color: var(--secondary-text-color);
+			
+			.online {
+				color: var(--primary-color);
+			}
+		}
+	}
+
+	&.hide-pinned + .bubbles {
+		.bubbles-inner {
+			margin-bottom: .25rem;
+		}
+	}
+
+	.chat:not(.type-chat) & {
+		.content {
+			padding-left: 16px;
+		}
+
+		/* .user-title {
+			font-size: 20px;
+		}
+
+		.sidebar-close-button:before {
+			margin-top: 1px;
+		} */
+	}
+>>>>>>> a3a258651320e5e8e7903d8bfe1cb222d84de6dc
 }
