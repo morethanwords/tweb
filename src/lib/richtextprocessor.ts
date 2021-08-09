@@ -542,9 +542,10 @@ namespace RichTextProcessor {
             // } else {
               insertPart(entity, `<img src="assets/img/emoji/${entity.unicode}.png" alt="`, `" class="emoji">`);
             // }
-          }/*  else if(options.mustWrapEmoji) {
+          //} else if(options.mustWrapEmoji) {
+          } else if(!options.wrappingDraft) {
             insertPart(entity, '<span class="emoji">', '</span>');
-          } */
+          }
           /* if(!emojiSupported) {
             insertPart(entity, `<img src="assets/img/emoji/${entity.unicode}.png" alt="`, `" class="emoji">`);
           } */
