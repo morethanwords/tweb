@@ -418,8 +418,8 @@ export {i18n_};
 const _i18n = I18n._i18n;
 export {_i18n};
 
-export function join(elements: HTMLElement[], useLast = true) {
-	const arr: HTMLElement[] = elements.slice(0, 1);
+export function join(elements: (Node | string)[], useLast = true) {
+	const arr = elements.slice(0, 1);
   for(let i = 1; i < elements.length; ++i) {
     const isLast = (elements.length - 1) === i;
     const delimiterKey: LangPackKey = isLast && useLast ? 'WordDelimiterLast' : 'WordDelimiter';

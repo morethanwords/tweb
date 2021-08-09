@@ -5,7 +5,7 @@
  */
 
 $btn-send-margin: .5rem;
-$chat-helper-size: 39px;
+$chat-helper-size: 36px;
 
 /* #bubble-contextmenu > div {
 	padding: 0 5.25 0 1rem;
@@ -136,7 +136,7 @@ $chat-helper-size: 39px;
 		}
 
 		@media only screen and (max-height: 30rem) {
-			max-height: unquote('max(39px, calc(100vh - 10rem))');
+			max-height: unquote('max(36px, calc(100vh - 10rem))');
 		}
 
 		@include respond-to(handhelds) {
@@ -861,9 +861,9 @@ $chat-helper-size: 39px;
 		align-items: center;
 		width: 100%;
 		position: relative;
-		z-index: 2;
+		// z-index: 2;
 		background-color: inherit;
-		border-radius: 12px;
+		border-radius: .75rem;
 		padding: var(--padding);
 	}
 	
@@ -879,16 +879,22 @@ $chat-helper-size: 39px;
 		height: 0;
 		width: calc(100% - var(--padding-horizontal) * 2);
 		padding: 0;
-		margin-top: .3125rem;//var(--padding-vertical);
-		margin-bottom: -.3125rem;
-		transition: height var(--layer-transition);
+		margin-top: .5625rem;//var(--padding-vertical);
+		margin-bottom: -.5625rem;
 		//height: calc(#{$chat-helper-size} + .3125rem);
-		align-items: flex-start;
+		align-items: center;
 		user-select: none;
 		z-index: 2;
+		opacity: 0;
+		pointer-events: none;
 
-		@include animation-level(0) {
-			transition: none;
+		@include animation-level(2) {
+			transition: height var(--layer-transition), opacity var(--layer-transition);
+		}
+
+		@include respond-to(esg-bottom-new) {
+			margin-top: .3125rem;
+			margin-bottom: -.3125rem;
 		}
 
 		/* @include respond-to(handhelds) {
@@ -902,7 +908,9 @@ $chat-helper-size: 39px;
 		} */
 
 		.chat.is-helper-active & {
-			height: 39px;
+			pointer-events: unset;
+			height: #{$chat-helper-size};
+			opacity: 1;
 		}
 		
 		/* &.active {
@@ -911,15 +919,20 @@ $chat-helper-size: 39px;
 		
 		.reply {
 			width: 100%;
-			margin-left: .5rem;
-			min-height: 35px;
+			margin: 0 .625rem;
+			// min-height: 35px;
+
+			&-title {
+				margin-top: -1px;
+				margin-bottom: 1px;
+			}
 		}
 
-		span.emoji {
+		/* span.emoji {
 			font-size: .8rem;
-		}
+		} */
 	}
-	
+
 	.new-message-wrapper {
 		//padding: 4.5px 0;
 		//padding-bottom: 4.5px;

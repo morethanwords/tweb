@@ -9,6 +9,7 @@ import { getMiddleware } from "../../helpers/middleware";
 import { limitSymbols } from "../../helpers/string";
 import appImManager, { CHAT_ANIMATION_GROUP } from "../../lib/appManagers/appImManager";
 import appMessagesManager from "../../lib/appManagers/appMessagesManager";
+import appPhotosManager from "../../lib/appManagers/appPhotosManager";
 import { RichTextProcessor } from "../../lib/richtextprocessor";
 import DivAndCaption from "../divAndCaption";
 import { wrapPhoto, wrapSticker } from "../wrappers";
@@ -80,6 +81,7 @@ export function wrapReplyDivAndCaption(options: {
             container: mediaEl,
             boxWidth: MEDIA_SIZE,
             boxHeight: MEDIA_SIZE,
+            size: appPhotosManager.choosePhotoSize(photo, MEDIA_SIZE, MEDIA_SIZE),
             middleware,
             lazyLoadQueue,
             noBlur: true,

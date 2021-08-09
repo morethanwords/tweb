@@ -2574,8 +2574,8 @@ export class AppMessagesManager {
             addPart(undefined, plain ? prefix + media.game.title : RichTextProcessor.wrapEmojiText(prefix + media.game.title));
             break;
           }
-          case 'messageMediaDocument':
-            let document = media.document;
+          case 'messageMediaDocument': {
+            const document = media.document;
   
             if(document.type === 'video') {
               addPart('AttachVideo', undefined, message.message);
@@ -2586,13 +2586,15 @@ export class AppMessagesManager {
             } else if(document.type === 'round') {
               addPart('AttachRound', undefined, message.message);
             } else if(document.type === 'sticker') {
-              addPart(undefined, ((plain ? document.stickerEmojiRaw : document.stickerEmoji) || '') + 'Sticker');
+              addPart(undefined, ((plain ? document.stickerEmojiRaw : document.stickerEmoji) || ''));
+              addPart('AttachSticker');
               text = '';
             } else {
               addPart(undefined, plain ? document.file_name : RichTextProcessor.wrapEmojiText(document.file_name), message.message);
             }
   
             break;
+          }
   
           default:
             //messageText += media._;
