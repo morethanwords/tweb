@@ -925,7 +925,12 @@ $chat-helper-size: 36px;
 			&-title {
 				margin-top: -1px;
 				margin-bottom: 1px;
+
 			}
+		}
+
+		.peer-title {
+			font-weight: 500;
 		}
 
 		/* span.emoji {

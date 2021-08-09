@@ -74,6 +74,8 @@ import debounce from '../../helpers/schedulers/debounce';
 import noop from '../../helpers/noop';
 import { putPreloader } from '../misc';
 import SetTransition from '../singleTransition';
+import replaceContent from '../../helpers/dom/replaceContent';
+import PeerTitle from '../peerTitle';
 
 const RECORD_MIN_TIME = 500;
 const POSTING_MEDIA_NOT_ALLOWED = 'Posting media content isn\'t allowed in this group.';
@@ -108,11 +110,9 @@ export default class ChatInput {
   private sendMenu: SendMenu;
 
   private replyElements: {
-    container?: HTMLElement,
-    cancelBtn?: HTMLButtonElement,
-    titleEl?: HTMLElement,
-    subtitleEl?: HTMLElement
-  } = {};
+    container: HTMLElement,
+    cancelBtn: HTMLButtonElement
+  } = {} as any;
 
   private willSendWebPage: any = null;
   private forwardingMids: number[] = [];
@@ -292,12 +292,7 @@ export default class ChatInput {
 
     this.replyElements.cancelBtn = ButtonIcon('close reply-cancel');
 
-    const dac = new DivAndCaption('reply');
-
-    this.replyElements.titleEl = dac.title;
-    this.replyElements.subtitleEl = dac.subtitle;
-
-    this.replyElements.container.append(this.replyElements.cancelBtn, dac.container);
+    this.replyElements.container.append(this.replyElements.cancelBtn);
 
     this.newMessageWrapper = document.createElement('div');
     this.newMessageWrapper.classList.add('new-message-wrapper');
@@ -1691,9 +1686,8 @@ export default class ChatInput {
       // ! костыль
       const replyFragment = this.appMessagesManager.wrapMessageForReply(message, undefined, [message.mid]);
       this.setTopInfo('edit', f, 'Editing', undefined, input, message);
-      const subtitleEl = this.replyElements.container.querySelector('.reply-subtitle');
-      subtitleEl.textContent = '';
-      subtitleEl.append(replyFragment);
+      const subtitleEl = this.replyElements.container.querySelector('.reply-subtitle') as HTMLElement;
+      replaceContent(subtitleEl, replyFragment);
 
       this.editMsgId = mid;
       input = undefined;
@@ -1736,9 +1730,8 @@ export default class ChatInput {
         this.setTopInfo('forward', f, title);
 
         // ! костыль
-        const subtitleEl = this.replyElements.container.querySelector('.reply-subtitle');
-        subtitleEl.textContent = '';
-        subtitleEl.append(replyFragment);
+        const subtitleEl = this.replyElements.container.querySelector('.reply-subtitle') as HTMLElement;
+        replaceContent(subtitleEl, replyFragment);
       } else {
         this.setTopInfo('forward', f, title, mids.length + ' ' + (mids.length > 1 ? 'forwarded messages' : 'forwarded message'));
       }
@@ -1753,7 +1746,11 @@ export default class ChatInput {
   public initMessageReply(mid: number) {
     const message = this.chat.getMessage(mid);
     const f = () => {
-      this.setTopInfo('reply', f, this.appPeersManager.getPeerTitle(message.fromId, true), message.message, undefined, message);
+      const peerTitleEl = new PeerTitle({
+        peerId: message.fromId,
+        dialog: false
+      }).element;
+      this.setTopInfo('reply', f, peerTitleEl, message.message, undefined, message);
       this.replyToMsgId = mid;
     };
     f();
@@ -1795,17 +1792,24 @@ export default class ChatInput {
     });
   }
 
-  public setTopInfo(type: ChatInputHelperType, callerFunc: () => void, title = '', subtitle = '', input?: string, message?: any) {
+  public setTopInfo(type: ChatInputHelperType, 
+    callerFunc: () => void, 
+    title: HTMLElement | string = '', 
+    subtitle: HTMLElement | string = '', 
+    input?: string, 
+    message?: any) {
     if(type !== 'webpage') {
       this.clearHelper(type);
       this.helperType = type;
       this.helperFunc = callerFunc;
     }
 
-    if(this.replyElements.container.lastElementChild.tagName === 'DIV') {
-      this.replyElements.container.lastElementChild.remove();
-      this.replyElements.container.append(wrapReply(title, subtitle, message));
+    const replyParent = this.replyElements.container;
+    if(replyParent.lastElementChild.tagName === 'DIV') {
+      replyParent.lastElementChild.remove();
     }
+
+    replyParent.append(wrapReply(title, subtitle, message));
 
     this.chat.container.classList.add('is-helper-active');
     /* const scroll = appImManager.scrollable;

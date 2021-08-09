@@ -41,7 +41,7 @@ export function wrapReplyDivAndCaption(options: {
 
   let media = message && message.media;
   let setMedia = false, isRound = false;
-  const mediaChildren = mediaEl ? Array.from(mediaEl.children) : [];
+  const mediaChildren = mediaEl ? Array.from(mediaEl.children).slice() : [];
   let middleware: () => boolean;
   if(media && mediaEl) {
     subtitleEl.textContent = '';
