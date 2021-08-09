@@ -32,10 +32,9 @@ import PopupNewMedia from '../popups/newMedia';
 import { toast } from "../toast";
 import { wrapReply } from "../wrappers";
 import InputField from '../inputField';
-import { MessageEntity, DraftMessage } from '../../layer';
+import { MessageEntity, DraftMessage, WebPage } from '../../layer';
 import StickersHelper from './stickersHelper';
 import ButtonIcon from '../buttonIcon';
-import DivAndCaption from '../divAndCaption';
 import ButtonMenuToggle from '../buttonMenuToggle';
 import ListenerSetter from '../../helpers/listenerSetter';
 import Button from '../button';
@@ -46,7 +45,7 @@ import PopupPinMessage from '../popups/unpinMessage';
 import { tsNow } from '../../helpers/date';
 import appNavigationController from '../appNavigationController';
 import { isMobile, isMobileSafari } from '../../helpers/userAgent';
-import { i18n } from '../../lib/langPack';
+import { i18n, join } from '../../lib/langPack';
 import { generateTail } from './bubbles';
 import findUpClassName from '../../helpers/dom/findUpClassName';
 import ButtonCorner from '../buttonCorner';
@@ -76,6 +75,8 @@ import { putPreloader } from '../misc';
 import SetTransition from '../singleTransition';
 import replaceContent from '../../helpers/dom/replaceContent';
 import PeerTitle from '../peerTitle';
+import { fastRaf } from '../../helpers/schedulers';
+import PopupDeleteMessages from '../popups/deleteMessages';
 
 const RECORD_MIN_TIME = 500;
 const POSTING_MEDIA_NOT_ALLOWED = 'Posting media content isn\'t allowed in this group.';
@@ -114,7 +115,8 @@ export default class ChatInput {
     cancelBtn: HTMLButtonElement
   } = {} as any;
 
-  private willSendWebPage: any = null;
+  private getWebPagePromise: Promise<void>;
+  private willSendWebPage: WebPage = null;
   private forwardingMids: number[] = [];
   private forwardingFromPeerId: number = 0;
   public replyToMsgId: number;
@@ -483,6 +485,20 @@ export default class ChatInput {
         this.saveDraft();
       }
     });
+
+    if(this.chat.type === 'scheduled') {
+      this.listenerSetter.add(rootScope)('scheduled_delete', ({peerId, mids}) => {
+        if(this.chat.peerId === peerId && mids.includes(this.editMsgId)) {
+          this.onMessageSent();
+        }
+      });
+    } else {
+      this.listenerSetter.add(rootScope)('history_delete', ({peerId, msgs}) => {
+        if(this.chat.peerId === peerId && msgs[this.editMsgId]) {
+          this.onMessageSent();
+        }
+      });
+    }
 
     try {
       this.recorder = new Recorder({
@@ -1122,20 +1138,21 @@ export default class ChatInput {
 
         if(this.lastUrl !== url) {
           this.lastUrl = url;
-          this.willSendWebPage = null;
-          apiManager.invokeApi('messages.getWebPage', {
+          // this.willSendWebPage = null;
+          const promise = this.getWebPagePromise = apiManager.invokeApiHashable('messages.getWebPage', {
             url,
-            hash: 0
           }).then((webpage) => {
             webpage = this.appWebPagesManager.saveWebPage(webpage);
+            if(this.getWebPagePromise === promise) this.getWebPagePromise = undefined;
+            if(this.lastUrl !== url) return;
             if(webpage._  === 'webPage') {
-              if(this.lastUrl !== url) return;
               //console.log('got webpage: ', webpage);
 
               this.setTopInfo('webpage', () => {}, webpage.site_name || webpage.title || 'Webpage', webpage.description || webpage.url || '');
-
               delete this.noWebPage;
               this.willSendWebPage = webpage;
+            } else if(this.willSendWebPage) {
+              this.onHelperCancel();
             }
           });
         }
@@ -1478,6 +1495,7 @@ export default class ChatInput {
       const mids = this.forwardingMids.slice();
       const helperFunc = this.helperFunc;
       this.clearHelper();
+      this.updateSendBtn();
       let selected = false;
       new PopupForward(fromId, mids, () => {
         selected = true;
@@ -1596,17 +1614,23 @@ export default class ChatInput {
 
     //return;
     if(this.editMsgId) {
-      this.appMessagesManager.editMessage(this.chat.getMessage(this.editMsgId), value, {
-        entities,
-        noWebPage: this.noWebPage
-      });
+      if(!!value.trim()) {
+        this.appMessagesManager.editMessage(this.chat.getMessage(this.editMsgId), value, {
+          entities,
+          noWebPage: this.noWebPage
+        });
+      } else {
+        new PopupDeleteMessages(this.chat.peerId, [this.editMsgId], this.chat.type);
+
+        return;
+      }
     } else {
       this.appMessagesManager.sendText(this.chat.peerId, value, {
         entities,
         replyToMsgId: this.replyToMsgId,
         threadId: this.chat.threadId,
         noWebPage: this.noWebPage,
-        webPage: this.willSendWebPage,
+        webPage: this.getWebPagePromise ? undefined : this.willSendWebPage,
         scheduleDate: this.scheduleDate,
         silent: this.sendSilent,
         clearDraft: true
@@ -1683,11 +1707,8 @@ export default class ChatInput {
 
     let input = RichTextProcessor.wrapDraftText(message.message, {entities: message.totalEntities});
     const f = () => {
-      // ! костыль
       const replyFragment = this.appMessagesManager.wrapMessageForReply(message, undefined, [message.mid]);
-      this.setTopInfo('edit', f, 'Editing', undefined, input, message);
-      const subtitleEl = this.replyElements.container.querySelector('.reply-subtitle') as HTMLElement;
-      replaceContent(subtitleEl, replyFragment);
+      this.setTopInfo('edit', f, i18n('AccDescrEditing'), replyFragment, input, message);
 
       this.editMsgId = mid;
       input = undefined;
@@ -1707,17 +1728,23 @@ export default class ChatInput {
         }
       }));
 
-      const onlyFirstName = smth.size > 1;
+      const onlyFirstName = smth.size > 2;
       const peerTitles = [...smth].map(smth => {
         return typeof(smth) === 'number' ? 
-          this.appPeersManager.getPeerTitle(smth, true, onlyFirstName) : 
+          new PeerTitle({peerId: smth, dialog: false, onlyFirstName}).element : 
           (onlyFirstName ? smth.split(' ')[0] : smth);
       });
 
-      const title = peerTitles.length < 3 ? peerTitles.join(' and ') : peerTitles[0] + ' and ' + (peerTitles.length - 1) + ' others';
+      const title = document.createDocumentFragment();
+      if(peerTitles.length < 3) {
+        title.append(...join(peerTitles, false));
+      } else {
+        title.append(peerTitles[0], i18n('AndOther', [peerTitles.length - 1]));
+      }
+
       const firstMessage = this.appMessagesManager.getMessageByPeer(fromPeerId, mids[0]);
 
-      let usingFullAlbum = true;
+      let usingFullAlbum = !!firstMessage.grouped_id;
       if(firstMessage.grouped_id) {
         const albumMids = this.appMessagesManager.getMidsByMessage(firstMessage);
         if(albumMids.length !== mids.length || albumMids.find(mid => !mids.includes(mid))) {
@@ -1727,13 +1754,9 @@ export default class ChatInput {
 
       const replyFragment = this.appMessagesManager.wrapMessageForReply(firstMessage, undefined, mids);
       if(usingFullAlbum || mids.length === 1) {
-        this.setTopInfo('forward', f, title);
-
-        // ! костыль
-        const subtitleEl = this.replyElements.container.querySelector('.reply-subtitle') as HTMLElement;
-        replaceContent(subtitleEl, replyFragment);
+        this.setTopInfo('forward', f, title, replyFragment);
       } else {
-        this.setTopInfo('forward', f, title, mids.length + ' ' + (mids.length > 1 ? 'forwarded messages' : 'forwarded message'));
+        this.setTopInfo('forward', f, title, i18n('ForwardedMessageCount', [mids.length]));
       }
 
       this.forwardingMids = mids.slice();
@@ -1785,7 +1808,7 @@ export default class ChatInput {
     if(clear) this.clearInput(false, false, value);
     else this.messageInputField.setValueSilently(value);
 
-    window.requestAnimationFrame(() => {
+    fastRaf(() => {
       focus && placeCaretAtEnd(this.messageInput);
       this.onMessageInput();
       this.messageInput.scrollTop = this.messageInput.scrollHeight;
@@ -1794,8 +1817,8 @@ export default class ChatInput {
 
   public setTopInfo(type: ChatInputHelperType, 
     callerFunc: () => void, 
-    title: HTMLElement | string = '', 
-    subtitle: HTMLElement | string = '', 
+    title: Parameters<typeof wrapReply>[0] = '', 
+    subtitle: Parameters<typeof wrapReply>[1] = '', 
     input?: string, 
     message?: any) {
     if(type !== 'webpage') {
