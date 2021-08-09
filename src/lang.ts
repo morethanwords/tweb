@@ -143,6 +143,7 @@ const lang = {
 	//"PushNotification.Action.Mute1d.Success": "Notification settings were successfully saved.",
 
   // * android
+  "AccDescrEditing": "Editing",
   "ActionCreateChannel": "Channel created",
   "ActionCreateGroup": "un1 created the group",
   "ActionChangedTitle": "un1 changed the group name to un2",
@@ -162,6 +163,10 @@ const lang = {
   "ActionUserScored": "un1 scored %1$s",
   "ActionYouScoredInGame": "You scored %1$s in un2",
   "ActionUserScoredInGame": "un1 scored %1$s in un2",
+  "AndOther": {
+    "one_value": "and %1$d other",
+    "other_value": "and %1$d others"
+  },
   "AttachPhoto": "Photo",
   "AttachVideo": "Video",
   "AttachGif": "GIF",
@@ -191,6 +196,10 @@ const lang = {
   "FilterShowMoreChats": {
     "one_value": "Show %1$d More Chat",
     "other_value": "Show %1$d More Chats"
+  },
+  "ForwardedMessageCount": {
+    "one_value": "Forwarded message",
+    "other_value": "%1$d forwarded messages"
   },
   "FromYou": "You",
   "Add": "Add",
@@ -534,6 +543,7 @@ const lang = {
   "PinFolderLimitReached": "Sorry, you can\'t pin any more chats to the top.",
   "Send": "Send",
   "ChannelJoin": "JOIN",
+  "Yesterday": "yesterday",
 
   // * macos
   "AccountSettings.Filters": "Chat Folders",

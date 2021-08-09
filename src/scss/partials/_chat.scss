@@ -922,20 +922,15 @@ $chat-helper-size: 36px;
 			margin: 0 .625rem;
 			// min-height: 35px;
 
-			&-title {
-				margin-top: -1px;
-				margin-bottom: 1px;
-
-			}
+			/* &-content {
+				margin-left: .5rem;
+			} */
 		}
 
-		.peer-title {
-			font-weight: 500;
+		span.emoji {
+			margin: 0 .125rem;
+			// font-size: .8rem;
 		}
-
-		/* span.emoji {
-			font-size: .8rem;
-		} */
 	}
 
 	.new-message-wrapper {

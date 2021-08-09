@@ -72,7 +72,7 @@ $chat-input-inner-padding-handhelds: .25rem;
   --message-highlightning-color: hsla(85.5319, 36.9171%, 40.402%, .4);//rgba(77, 142, 80, .4);
   --messages-container-width: #{$messages-container-width};
   --messages-text-size: 16px;
-  --messages-secondary-text-size: calc(var(--messages-text-size) - 1px);
+  --messages-secondary-text-size: calc(var(--messages-text-size) - 2px);
   --line-height: 1.3125;
   --esg-sticker-size: 80px;
   --disabled-opacity: .3;

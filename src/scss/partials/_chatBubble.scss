@@ -814,39 +814,46 @@ $bubble-margin: .25rem;
   }
 
   .web {
-    padding-top: 1px;
-    margin: 4px 0 -5px 1px;
-    // margin-bottom: 5px;
+    margin: .125rem 0;
     max-width: 100%;
     overflow: hidden;
+    line-height: var(--line-height);
     
     .preview {
       max-width: unquote('min(420px, 100%)');
       max-height: unquote('min(340px, 100%)');
       border-radius: 4px;
-      margin-bottom: 3px;
       overflow: hidden;
       user-select: none;
       cursor: pointer;
       position: relative;
-
       width: max-content;
       
       img, video {
         max-width: 100%;
       }
+
+      &-resizer {
+        &:first-child {
+          margin: 3px 0;
+        }
+      }
+    }
+
+    &.no-text {
+      margin-bottom: .625rem;
     }
     
     .title {
-      letter-spacing: -.2px;
-      line-height: 1.2;
       font-weight: 500 !important;
+      
+      &:not(:first-child) {
+        margin-top: 1px;
+      }
     }
     
     .webpage-name {
-      letter-spacing: -.3px;
-      display: block;
-      font-size: calc(1rem - 1px);
+      font-size: var(--messages-secondary-text-size);
       font-weight: 500 !important;
       
       @include hover() {
@@ -857,28 +864,36 @@ $bubble-margin: .25rem;
     .text {
       overflow: hidden;
       text-overflow: ellipsis;
-      line-height: 1.2;
-      letter-spacing: -.3px;
-      margin-top: 2px;
+      margin-top: 1px;
       font-size: var(--messages-secondary-text-size);
     }
 
     .quote {
-      // padding-left: .5rem;
-      padding-left: .55rem;
       max-width: 100%;
       overflow: hidden;
       width: 100%;
+      display: flex;
+
+      &-text {
+        // max-width: calc(100% - .625rem); // left border
+        max-width: 100%;
+        padding-left: .625rem;
+        margin-left: -.625rem;
+      }
+
+      &:before {
+        flex: 0 0 auto;
+        width: .125rem;
+        border-radius: .125rem;
+        background-color: var(--primary-color);
+        margin: .1875rem .5rem .125rem 0;
+        content: " ";
+      }
     }
   }
   
   .web, .reply {
     font-size: var(--messages-secondary-text-size);
-  }
-
-  .reply-title {
-    font-weight: 500 !important;
-    display: inline !important;
   }
 
   &.is-square-photo {
@@ -887,26 +902,17 @@ $bubble-margin: .25rem;
     }
 
     .web {
-      .quote {
-        display: flex;
-        justify-content: space-between;
-      }
-  
       .preview-resizer {
-        order: 2;
-        flex-shrink: 0;
-        max-width: 5rem;
-        max-height: 5rem;
-
-        .preview {
-          max-width: unquote('min(5rem, 100%)');
-          max-height: unquote('min(5rem, 100%)');
-        }
+        margin: 0;
+        width: 2rem;
+        height: 2rem;
+        float: right;
       }
-  
-      .quote-text {
-        order: 1;
-        padding-right: 1rem;
+
+      .preview {
+        max-width: unquote('min(2rem, 100%)');
+        max-height: unquote('min(2rem, 100%)');
+        margin: 0;
       }
     }
   }
@@ -919,7 +925,7 @@ $bubble-margin: .25rem;
 
   .reply {
     padding: 4px;
-    margin: 0 4px 6px 4px;
+    margin: 0 4px 6px 6px;
     cursor: pointer;
     border-radius: 4px;
     min-width: 10rem;
@@ -1859,12 +1865,6 @@ $bubble-margin: .25rem;
     border-top-right-radius: 0;
   }
 
-  .quote {
-    @include hover() {
-      background-color: var(--light-primary-color);
-    }
-  }
-
   &.is-reply {
     &.emoji-big, &.sticker {
       .reply {
@@ -1878,11 +1878,9 @@ $bubble-margin: .25rem;
     }
   }
   
-  .quote {
-    border-left: 2px var(--primary-color) solid;
-  }
-
-  .quote .webpage-name, .reply-title/* , .reply i */ {
+  .quote .webpage-name, 
+  .reply-title
+  /* , .reply i */ {
     color: var(--primary-color);
   }
   
@@ -2010,12 +2008,6 @@ $bubble-margin: .25rem;
     border-top-right-radius: 0;
   }
 
-  .quote {
-    @include hover() {
-      background-color: var(--light-message-background-color);
-    }
-  }
-
   &.is-reply {
     &.emoji-big, &.sticker {
       .web, .reply {
@@ -2023,12 +2015,9 @@ $bubble-margin: .25rem;
       }
     }
   }
-  
-  .quote {
-    border-left: 2px solid var(--message-out-primary-color);
-  }
 
-  .reply-border {
+  .reply-border, 
+  .quote:before {
     background-color: var(--message-out-primary-color);
   }
 

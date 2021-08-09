@@ -2472,13 +2472,14 @@ export default class ChatBubbles {
             }
           }
           
-          if(previewResizer) {
-            quote.append(previewResizer);
-          }
-          
           let quoteTextDiv = document.createElement('div');
           quoteTextDiv.classList.add('quote-text');
 
+          if(previewResizer) {
+            quoteTextDiv.append(previewResizer);
+          }
+
+          let t: HTMLElement;
           if(webpage.site_name) {
             let nameEl = document.createElement('a');
             nameEl.classList.add('webpage-name');
@@ -2486,6 +2487,7 @@ export default class ChatBubbles {
             nameEl.href = webpage.url || '#';
             setInnerHTML(nameEl, RichTextProcessor.wrapEmojiText(webpage.site_name));
             quoteTextDiv.append(nameEl);
+            t = nameEl;
           }
 
           if(webpage.rTitle) {
@@ -2493,6 +2495,7 @@ export default class ChatBubbles {
             titleDiv.classList.add('title');
             setInnerHTML(titleDiv, webpage.rTitle);
             quoteTextDiv.append(titleDiv);
+            t = titleDiv;
           }
 
           if(webpage.rDescription) {
@@ -2500,6 +2503,13 @@ export default class ChatBubbles {
             textDiv.classList.add('text');
             setInnerHTML(textDiv, webpage.rDescription);
             quoteTextDiv.append(textDiv);
+            t = textDiv;
+          }
+
+          if(t) {
+            t.append(timeSpan);
+          } else {
+            box.classList.add('no-text');
           }
 
           quote.append(quoteTextDiv);
@@ -2512,7 +2522,7 @@ export default class ChatBubbles {
             if(size.w === size.h && quoteTextDiv.childElementCount) {
               bubble.classList.add('is-square-photo');
               isSquare = true;
-              this.appPhotosManager.setAttachmentSize(webpage.photo, preview, 80, 80, false);
+              this.appPhotosManager.setAttachmentSize(webpage.photo, preview, 32, 32, false);
             } else if(size.h > size.w) {
               bubble.classList.add('is-vertical-photo');
             }
@@ -2535,7 +2545,8 @@ export default class ChatBubbles {
           box.append(quote);
           
           //bubble.prepend(box);
-          messageDiv.insertBefore(box, messageDiv.lastElementChild);
+          messageDiv.append(box);
+          // messageDiv.insertBefore(box, messageDiv.lastElementChild);
           
           //this.log('night running', bubble.scrollHeight);
           

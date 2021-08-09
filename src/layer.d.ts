@@ -859,7 +859,8 @@ export namespace Message {
 		clear_history?: boolean,
 		pending?: boolean,
 		error?: any,
-		send?: () => Promise<any>
+		send?: () => Promise<any>,
+		totalEntities?: MessageEntity[]
 	};
 
 	export type messageService = {
