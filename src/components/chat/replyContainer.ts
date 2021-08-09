@@ -5,7 +5,6 @@
  */
 
 import replaceContent from "../../helpers/dom/replaceContent";
-import { getMiddleware } from "../../helpers/middleware";
 import { limitSymbols } from "../../helpers/string";
 import appImManager, { CHAT_ANIMATION_GROUP } from "../../lib/appManagers/appImManager";
 import appMessagesManager from "../../lib/appManagers/appMessagesManager";
@@ -17,9 +16,9 @@ import { wrapPhoto, wrapSticker } from "../wrappers";
 const MEDIA_SIZE = 32;
 
 export function wrapReplyDivAndCaption(options: {
-  title: string | HTMLElement,
+  title: string | HTMLElement | DocumentFragment,
   titleEl: HTMLElement,
-  subtitle: string | HTMLElement,
+  subtitle: string | HTMLElement | DocumentFragment,
   subtitleEl: HTMLElement,
   message: any,
   mediaEl: HTMLElement,
@@ -98,10 +97,13 @@ export function wrapReplyDivAndCaption(options: {
     if(message) {
       subtitleEl.textContent = '';
       subtitleEl.append(appMessagesManager.wrapMessageForReply(message, message.message && limitSymbols(message.message, 140)));
-    } else if(typeof(subtitle) === 'string') {
-      subtitle = limitSymbols(subtitle, 140);
-      subtitle = RichTextProcessor.wrapEmojiText(subtitle);
-      replaceContent(subtitleEl, subtitle);
+    } else {
+      if(typeof(subtitle) === 'string') {
+        subtitle = limitSymbols(subtitle, 140);
+        subtitle = RichTextProcessor.wrapEmojiText(subtitle);
+      }
+
+      replaceContent(subtitleEl, subtitle || '');
     }
   }
 
@@ -117,11 +119,11 @@ export function wrapReplyDivAndCaption(options: {
   return setMedia;
 }
 
-export default class ReplyContainer extends DivAndCaption<(title: string | HTMLElement, subtitle: string | HTMLElement, message?: any) => void> {
+export default class ReplyContainer extends DivAndCaption<(title: string | HTMLElement | DocumentFragment, subtitle: string | HTMLElement | DocumentFragment, message?: any) => void> {
   private mediaEl: HTMLElement;
 
   constructor(protected className: string) {
-    super(className, (title: string | HTMLElement, subtitle: string | HTMLElement = '', message?: any) => {
+    super(className, (title, subtitle = '', message?) => {
       if(!this.mediaEl) {
         this.mediaEl = document.createElement('div');
         this.mediaEl.classList.add(this.className + '-media');

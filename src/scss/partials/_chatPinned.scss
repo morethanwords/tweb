@@ -135,7 +135,7 @@
 
   &.is-media {
     .emoji:first-child {
-      margin-right: .25rem;
+      margin: 0 .25rem 0 0;
     }
   }
   
@@ -225,12 +225,24 @@
     height: 2rem;
   } */
 
+  &-content {
+    margin-left: .625rem;
+  }
+
   &-media {
     border-radius: .25rem;
   }
 
   &-cancel {
     margin-bottom: 0 !important;
+  }
+
+  &-title {
+    margin: -1px 0 1px;
+  }
+
+  .peer-title {
+    font-weight: 500;
   }
 }
 
