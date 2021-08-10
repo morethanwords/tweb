@@ -228,7 +228,7 @@ export class AppImManager {
       stateStorage.setToCache('chatPositions', c || {});
     });
 
-    this.addAnchorListener<void>({
+    this.addAnchorListener<{}>({
       name: 'showMaskedAlert', 
       callback: (params, element) => {
         const href = element.href;
@@ -249,14 +249,13 @@ export class AppImManager {
             },
           }]
         }).show();
-      }, 
-      noParams: true
+      }
     });
 
-    this.addAnchorListener<{command: string, bot: string}>({
+    this.addAnchorListener<{uriParams: {command: string, bot: string}}>({
       name: 'execBotCommand', 
-      callback: (params) => {
-        const {command, bot} = params;
+      callback: ({uriParams}) => {
+        const {command, bot} = uriParams;
 
         /* const promise = bot ? this.openUsername(bot).then(() => this.chat.peerId) : Promise.resolve(this.chat.peerId);
         promise.then(peerId => {
@@ -266,34 +265,36 @@ export class AppImManager {
         appMessagesManager.sendText(this.chat.peerId, '/' + command + (bot ? '@' + bot : ''));
 
         //console.log(command, bot);
-      }
+      },
+      parseUriParams: true
     });
 
-    this.addAnchorListener<{hashtag: string}>({
+    this.addAnchorListener<{uriParams: {hashtag: string}}>({
       name: 'searchByHashtag', 
-      callback: (params) => {
-        const {hashtag} = params;
+      callback: ({uriParams}) => {
+        const {hashtag} = uriParams;
         if(!hashtag) {
           return;
         }
 
         this.chat.initSearch('#' + hashtag + ' ');
-      }
+      },
+      parseUriParams: true
     });
 
-    this.addAnchorListener<['addstickers', string]>({
+    this.addAnchorListener<{pathnameParams: ['addstickers', string]}>({
       name: 'addstickers', 
-      callback: (params) => {
-        new PopupStickers({id: params[1]}).show();
+      callback: ({pathnameParams}) => {
+        new PopupStickers({id: pathnameParams[1]}).show();
       }, 
       parsePathname: true
     });
 
-    this.addAnchorListener<['joinchat', string]>({
+    this.addAnchorListener<{pathnameParams: ['joinchat', string]}>({
       name: 'joinchat', 
-      callback: (params) => {
+      callback: ({pathnameParams}) => {
         apiManager.invokeApi('messages.checkChatInvite', {
-          hash: params[1]
+          hash: pathnameParams[1]
         }).then(chatInvite => {
           if((chatInvite as ChatInvite.chatInvitePeek).chat) {
             appChatsManager.saveApiChat((chatInvite as ChatInvite.chatInvitePeek).chat, true);
@@ -307,7 +308,7 @@ export class AppImManager {
             return;
           }
 
-          new PopupJoinChatInvite(params[1], chatInvite).show();
+          new PopupJoinChatInvite(pathnameParams[1], chatInvite).show();
         }, (err) => {
           if(err.type === 'INVITE_HASH_EXPIRED') {
             toast(i18n('InviteExpired'));
@@ -351,10 +352,9 @@ export class AppImManager {
     });
   }
 
-  private addAnchorListener<Params extends any>(options: {
+  private addAnchorListener<Params extends {pathnameParams?: any, uriParams?: any}>(options: {
     name: 'showMaskedAlert' | 'execBotCommand' | 'searchByHashtag' | 'addstickers' | 'joinchat' | 'im', 
     callback: (params: Params, element: HTMLAnchorElement) => boolean | void, 
-    noParams?: boolean, 
     parsePathname?: boolean,
     parseUriParams?: boolean,
   }) {
@@ -365,19 +365,10 @@ export class AppImManager {
       let pathnameParams: any[];
       let uriParams: any;
 
-      if(!options.noParams) {
-        if(options.parsePathname) pathnameParams = new URL(element.href).pathname.split('/').slice(1);
-        if(options.parseUriParams) uriParams = this.parseUriParams(href);
-      }
+      if(options.parsePathname) pathnameParams = new URL(element.href).pathname.split('/').slice(1);
+      if(options.parseUriParams) uriParams = this.parseUriParams(href);
 
-      let out: any;
-      if(pathnameParams && uriParams) {
-        out = {pathnameParams, uriParams};
-      } else {
-        out = pathnameParams || uriParams;
-      }
-
-      const res = options.callback(out, element);
+      const res = options.callback({pathnameParams, uriParams} as Params, element);
       return res === undefined ? res : false;
     };
   }
