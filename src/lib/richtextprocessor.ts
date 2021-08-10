@@ -597,7 +597,7 @@ namespace RichTextProcessor {
               //inner = encodeEntities(replaceUrlEncodings(entityText));
             }
 
-            const currentContext = url[0] === '#';
+            const currentContext = !!onclick;
             if(!onclick && masked && !currentContext) {
               onclick = 'showMaskedAlert';
             }
@@ -644,12 +644,15 @@ namespace RichTextProcessor {
         }
 
         case 'messageEntityMention': {
-          const contextUrl = !options.noLinks && siteMentions[contextSite];
-          if(contextUrl) {
+          // const contextUrl = !options.noLinks && siteMentions[contextSite];
+          if(!options.noLinks) {
             const entityText = text.substr(entity.offset, entity.length);
             const username = entityText.substr(1);
 
-            insertPart(entity, `<a class="mention" href="${contextUrl.replace('{1}', encodeURIComponent(username))}"${contextExternal ? ' target="_blank" rel="noopener noreferrer"' : ''}>`, '</a>');
+            const {url, onclick} = wrapUrl('t.me/' + username);
+
+            // insertPart(entity, `<a class="mention" href="${contextUrl.replace('{1}', encodeURIComponent(username))}"${contextExternal ? ' target="_blank" rel="noopener noreferrer"' : ''}>`, '</a>');
+            insertPart(entity, `<a class="mention" href="${url}" ${onclick ? `onclick=${onclick}(this)` : ''}>`, '</a>');
           }
           
           break;
@@ -811,43 +814,11 @@ namespace RichTextProcessor {
         case 'addstickers':
           onclick = path[0];
           break;
-  
-        /* case 'joinchat':
-          onclick = 'joinchat';
-          url = 'tg://join?invite=' + path[1];
-          break;
-  
-        case 'addstickers':
-          onclick = 'addstickers';
-          url = 'tg://addstickers?set=' + path[1];
-          break; */
-  
-        default:
-          if(path[1] && path[1].match(/^\d+$/)) {               // https://t.me/.+/[0-9]+ (channel w/ username)
-            if(path[0] === 'c' && path[2]) {                    // https://t.me/c/111111111/111 (channel w/o username)
-              url = '#/im?p=' + path[1] + '&post=' + path[2];
-            } else {                                            // https://t.me/durov/151 (channel w/ username)
-              url = siteMentions['Telegram'].replace('{1}', path[0] + '&post=' + path[1]);
-            }
-          } else if(path.length === 1) {
-            const domainQuery = path[0].split('?');
-            const domain = domainQuery[0];
-            const query = domainQuery[1];
 
-            if(domain === 'iv') {
-              const match = (query || '').match(/url=([^&=]+)/);
-              if(match) {
-                url = match[1];
-                try {
-                  url = decodeURIComponent(url);
-                } catch (e) {}
-  
-                return wrapUrl(url, unsafe);
-              }
-            }
-  
-            url = siteMentions['Telegram'].replace('{1}', domain + (query ? '&' + query : ''));
-            //url = 'tg://resolve?domain=' + domain + (query ? '&' + query : '');
+        default:
+          if((path[1] && path[1].match(/^\d+(?:\?(?:comment|thread)=\d+)?$/)) || path.length === 1) {
+            onclick = 'im';
+            break;
           }
 
           break;

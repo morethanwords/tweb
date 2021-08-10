@@ -272,11 +272,11 @@ export class AppImManager {
     this.addAnchorListener<{hashtag: string}>({
       name: 'searchByHashtag', 
       callback: (params) => {
-        if(!params) {
+        const {hashtag} = params;
+        if(!hashtag) {
           return;
         }
 
-        const {hashtag} = params;
         this.chat.initSearch('#' + hashtag + ' ');
       }
     });
@@ -316,34 +316,75 @@ export class AppImManager {
       },
       parsePathname: true
     });
+
+    this.addAnchorListener<{
+    //   pathnameParams: ['c', string, string],
+    //   uriParams: {thread?: number}
+    // } | {
+    //   pathnameParams: [string, string?],
+    //   uriParams: {comment?: number}
+      pathnameParams: ['c', string, string] | [string, string?],
+      uriParams: {thread?: number} | {comment?: number}
+    }>({
+      name: 'im',
+      callback: (params) => {
+        console.log(params);
+
+        const {pathnameParams, uriParams} = params;
+        if(pathnameParams[0] === 'c') {
+          const peerId = -+pathnameParams[1];
+          const postId = appMessagesIdsManager.generateMessageId(+pathnameParams[2]);
+          const threadId = 'thread' in uriParams ? appMessagesIdsManager.generateMessageId(+uriParams.thread) : undefined;
+
+          if(threadId) this.openThread(peerId, postId, threadId);
+          else this.setInnerPeer(peerId, postId);
+        } else {
+          const username = pathnameParams[0];
+          const postId = pathnameParams[1] ? appMessagesIdsManager.generateMessageId(+pathnameParams[1]) : undefined;
+          const commentId = 'comment' in uriParams ? appMessagesIdsManager.generateMessageId(uriParams.comment) : undefined;
+
+          this.openUsername(username, postId, undefined, commentId);
+        }
+      },
+      parsePathname: true,
+      parseUriParams: true
+    });
   }
 
   private addAnchorListener<Params extends any>(options: {
-    name: 'showMaskedAlert' | 'execBotCommand' | 'searchByHashtag' | 'addstickers' | 'joinchat', 
+    name: 'showMaskedAlert' | 'execBotCommand' | 'searchByHashtag' | 'addstickers' | 'joinchat' | 'im', 
     callback: (params: Params, element: HTMLAnchorElement) => boolean | void, 
     noParams?: boolean, 
-    parsePathname?: boolean
+    parsePathname?: boolean,
+    parseUriParams?: boolean,
   }) {
     (window as any)[options.name] = (element: HTMLAnchorElement/* , e: Event */) => {
       cancelEvent(null);
 
       const href = element.href;
-      let params: any;
+      let pathnameParams: any[];
+      let uriParams: any;
+
       if(!options.noParams) {
-        params = options.parsePathname ? new URL(element.href).pathname.split('/').slice(1) : this.parseUriParams(href);
+        if(options.parsePathname) pathnameParams = new URL(element.href).pathname.split('/').slice(1);
+        if(options.parseUriParams) uriParams = this.parseUriParams(href);
       }
 
-      const res = options.callback(params, element);
+      let out: any;
+      if(pathnameParams && uriParams) {
+        out = {pathnameParams, uriParams};
+      } else {
+        out = pathnameParams || uriParams;
+      }
+
+      const res = options.callback(out, element);
       return res === undefined ? res : false;
     };
   }
 
   private parseUriParams(uri: string, splitted = uri.split('?')) {
-    if(!splitted[1]) {
-      return;
-    }
-
     const params: any = {};
+    if(!splitted[1]) return params;
     splitted[1].split('&').forEach(item => {
       params[item.split('=')[0]] = decodeURIComponent(item.split('=')[1]);
     });
@@ -382,16 +423,39 @@ export class AppImManager {
     //location.hash = '';
   };
 
-  public openUsername(username: string, msgId?: number) {
+  public openUsername(username: string, msgId?: number, threadId?: number, commentId?: number) {
     return appUsersManager.resolveUsername(username).then(peer => {
       const isUser = peer._ === 'user';
       const peerId = isUser ? peer.id : -peer.id;
 
-      return this.setInnerPeer(peerId, msgId);
+      if(threadId) return this.openThread(peerId, msgId, threadId);
+      else if(commentId) return this.openComment(peerId, msgId, commentId);
+      else return this.setInnerPeer(peerId, msgId);
     }, (err) => {
       if(err.type === 'USERNAME_NOT_OCCUPIED') {
         toast(i18n('NoUsernameFound'));
       }
+    });
+  }
+
+  /**
+   * Opens thread when peerId of discussion group is known
+   */
+  public openThread(peerId: number, lastMsgId: number, threadId: number) {
+    return appMessagesManager.wrapSingleMessage(peerId, threadId).then(() => {
+      const message = appMessagesManager.getMessageByPeer(peerId, threadId);
+      appMessagesManager.generateThreadServiceStartMessage(message);
+
+      return this.setInnerPeer(peerId, lastMsgId, 'discussion', threadId);
+    });
+  }
+
+  /**
+   * Opens comment directly from original channel
+   */
+  public openComment(peerId: number, msgId: number, commentId: number) {
+    return appMessagesManager.getDiscussionMessage(peerId, msgId).then(message => {
+      return this.openThread(message.peerId, commentId, message.mid);
     });
   }
 
