@@ -57,7 +57,7 @@ export type BroadcastEvents = {
   //'history_request': void,
   
   'message_edit': {storage: MessagesStorage, peerId: number, mid: number},
-  'message_views': {mid: number, views: number},
+  'message_views': {peerId: number, mid: number, views: number},
   'message_sent': {storage: MessagesStorage, tempId: number, tempMessage: any, mid: number},
   'messages_pending': void,
   'messages_read': void,

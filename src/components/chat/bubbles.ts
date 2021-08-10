@@ -71,6 +71,8 @@ import whichChild from "../../helpers/dom/whichChild";
 import { cancelAnimationByKey } from "../../helpers/animation";
 import assumeType from "../../helpers/assumeType";
 import { EmoticonsDropdown } from "../emoticonsDropdown";
+import debounce from "../../helpers/schedulers/debounce";
+import { formatNumber } from "../../helpers/number";
 
 const USE_MEDIA_TAILS = false;
 const IGNORE_ACTIONS: Set<Message.messageService['action']['_']> = new Set([
@@ -161,6 +163,10 @@ export default class ChatBubbles {
   // private ladderDeferred: CancellablePromise<void>;
   private resolveLadderAnimation: () => Promise<any>;
   private emptyPlaceholderMid: number;
+
+  private viewsObserver: IntersectionObserver;
+  private viewsMids: Set<number> = new Set();
+  private sendViewCountersDebounced: () => Promise<void>;
 
   constructor(private chat: Chat, 
     private appMessagesManager: AppMessagesManager, 
@@ -580,6 +586,27 @@ export default class ChatBubbles {
       }
     });
 
+    this.listenerSetter.add(rootScope)('message_views', (e) => {
+      if(this.peerId !== e.peerId) return;
+
+      fastRaf(() => {
+        const bubble = this.bubbles[e.mid];
+        if(!bubble) return;
+
+        const postViewsElements = Array.from(bubble.querySelectorAll('.post-views')) as HTMLElement[];
+        if(postViewsElements.length) {
+          const str = formatNumber(e.views, 1);
+          let different = false;
+          postViewsElements.forEach(postViews => {
+            if(different || postViews.innerHTML !== str) {
+              different = true;
+              postViews.innerHTML = str;
+            }
+          });
+        }
+      });
+    });
+
     this.unreadedObserver = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
         if(entry.isIntersecting) {
@@ -589,6 +616,23 @@ export default class ChatBubbles {
         }
       });
     });
+
+    this.viewsObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if(entry.isIntersecting) {
+          this.viewsMids.add(+(entry.target as HTMLElement).dataset.mid);
+          this.viewsObserver.unobserve(entry.target);
+          this.sendViewCountersDebounced();
+        }
+      });
+    });
+
+    this.sendViewCountersDebounced = debounce(() => {
+      const mids = [...this.viewsMids];
+      this.viewsMids.clear();
+
+      this.appMessagesManager.incrementMessageViews(this.peerId, mids);
+    }, 1000, false, true);
 
     if('ResizeObserver' in window) {
       let wasHeight = this.scrollable.container.offsetHeight;
@@ -1291,6 +1335,10 @@ export default class ChatBubbles {
         this.unreadedObserver.unobserve(bubble);
         this.unreaded.delete(bubble);
       }
+      if(this.viewsObserver) {
+        this.viewsObserver.unobserve(bubble);
+        this.viewsMids.delete(mid);
+      }
       //this.unreaded.findAndSplice(mid => mid === id);
       bubble.remove();
       //bubble.remove();
@@ -1515,10 +1563,12 @@ export default class ChatBubbles {
 
     this.lazyLoadQueue.clear();
     this.unreadedObserver && this.unreadedObserver.disconnect();
+    this.viewsObserver && this.viewsObserver.disconnect();
     this.stickyIntersector && this.stickyIntersector.disconnect();
 
     delete this.lazyLoadQueue;
     this.unreadedObserver && delete this.unreadedObserver;
+    this.viewsObserver && delete this.viewsObserver;
     this.stickyIntersector && delete this.stickyIntersector;
   }
 
@@ -1568,6 +1618,11 @@ export default class ChatBubbles {
       this.unreaded.clear();
       this.unreadedSeen.clear();
       this.readPromise = undefined;
+    }
+
+    if(this.viewsObserver) {
+      this.viewsObserver.disconnect();
+      this.viewsMids.clear();
     }
     
     this.loadedTopTimes = this.loadedBottomTimes = 0;
@@ -2012,7 +2067,11 @@ export default class ChatBubbles {
       }
     }
 
-    this.bubbleGroups.addBubble(bubble, message, reverse);
+    if(message._ === 'message') {
+      this.bubbleGroups.addBubble(bubble, message, reverse);
+    } else {
+      bubble.classList.add('is-group-first', 'is-group-last');
+    }
   }
 
   public getMiddleware() {
@@ -2227,6 +2286,10 @@ export default class ChatBubbles {
     bubbleContainer.prepend(messageDiv);
     //bubble.prepend(timeSpan, messageDiv); // that's bad
 
+    if(message.views && !message.pFlags.is_outgoing && this.viewsObserver) {
+      this.viewsObserver.observe(bubble);
+    }
+
     if(message.reply_markup && message.reply_markup._ === 'replyInlineMarkup' && message.reply_markup.rows && message.reply_markup.rows.length) {
       const rows = (message.reply_markup as ReplyMarkup.replyKeyboardMarkup).rows;
 
@@ -2421,9 +2484,9 @@ export default class ChatBubbles {
         case 'messageMediaWebPage': {
           processingWebPage = true;
           
-          let webpage: WebPage.webPage | WebPage.webPageEmpty = messageMedia.webpage;
+          let webpage: WebPage = messageMedia.webpage;
           ////////this.log('messageMediaWebPage', webpage);
-          if(webpage._ === 'webPageEmpty') {
+          if(webpage._ !== 'webPage') {
             break;
           } 
           
@@ -2445,10 +2508,8 @@ export default class ChatBubbles {
             previewResizer.append(preview);
           }
           
-          let doc: any = null;
-          if(webpage.document) {
-            doc = webpage.document;
-            
+          const doc = webpage.document as MyDocument;
+          if(doc) {
             if(doc.type === 'gif' || doc.type === 'video') {
               //if(doc.size <= 20e6) {
               bubble.classList.add('video');

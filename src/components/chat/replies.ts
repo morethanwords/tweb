@@ -12,6 +12,8 @@ import appPeersManager from "../../lib/appManagers/appPeersManager";
 import rootScope from "../../lib/rootScope";
 import { ripple } from "../ripple";
 import AvatarElement from "../avatar";
+import { i18n } from "../../lib/langPack";
+import replaceContent from "../../helpers/dom/replaceContent";
 
 const TAG_NAME = 'replies-element';
 
@@ -103,15 +105,15 @@ export default class RepliesElement extends HTMLElement {
         this.append(leftPart);
       }
   
-      let text: string;
+      let text: HTMLElement;
       if(replies) {
         if(replies.replies) {
-          text = replies.replies + ' ' + (replies.replies > 1 ? 'Comments' : 'Comment');
+          text = i18n('Comments', [replies.replies]);
         } else {
-          text = 'Leave a Comment';
+          text = i18n('LeaveAComment');
         }
       } else {
-        text = 'View in chat';
+        text = i18n('ViewInChat');
       }
 
       if(replies) {
@@ -141,7 +143,7 @@ export default class RepliesElement extends HTMLElement {
         this.append(textSpan, iconSpan, rippleContainer);
       }
 
-      textSpan.innerHTML = text;
+      replaceContent(textSpan, text);
     } else {
       this.classList.add('bubble-beside-button');
       this.innerHTML = `<span class="tgico-commentssticker"></span><span class="replies-beside-text">${replies?.replies ? formatNumber(replies.replies, 0) : ''}</span>`;

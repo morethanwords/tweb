@@ -41,6 +41,7 @@ export const langPack: {[actionType: string]: LangPackKey} = {
 	"messageActionChannelEditVideo": "Chat.Service.Channel.UpdatedVideo",
   "messageActionChannelDeletePhoto": "Chat.Service.Channel.RemovedPhoto",
   "messageActionHistoryClear": "HistoryCleared",
+	"messageActionDiscussionStarted": "DiscussionStarted",
 
   "messageActionChannelMigrateFrom": "ActionMigrateFromGroup",
 

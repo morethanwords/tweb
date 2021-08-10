@@ -56,7 +56,8 @@
     {"name": "clear_history", "type": "boolean"},
     {"name": "pending", "type": "boolean"},
     {"name": "error", "type": "any"},
-    {"name": "send", "type": "() => Promise<any>"}
+    {"name": "send", "type": "() => Promise<any>"},
+    {"name": "totalEntities", "type": "MessageEntity[]"}
   ]
 }, {
   "predicate": "messageService",
@@ -152,6 +153,10 @@
   "params": [
     {"name": "initials", "type": "string"}
   ]
+}, {
+  "predicate": "messageActionDiscussionStarted",
+  "params": [],
+  "type": "MessageAction"
 }, {
   "predicate": "messageActionChatLeave",
   "params": [
