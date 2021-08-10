@@ -27,7 +27,7 @@ export namespace MessageRender {
       const postAuthor = message.post_author || message.fwd_from?.post_author;
 
       bubble.classList.add('channel-post');
-      time = formatNumber(message.views, 1) + ' <i class="tgico-channelviews time-icon"></i> ' + (postAuthor ? RichTextProcessor.wrapEmojiText(postAuthor) + ', ' : '') + time;
+      time = '<span class="post-views">' + formatNumber(message.views, 1) + '</span> <i class="tgico-channelviews time-icon"></i> ' + (postAuthor ? RichTextProcessor.wrapEmojiText(postAuthor) + ', ' : '') + time;
   
       if(!message.fwd_from?.saved_from_msg_id && chat.type !== 'pinned') {
         const forward = document.createElement('div');

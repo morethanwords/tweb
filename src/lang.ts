@@ -183,6 +183,7 @@ const lang = {
   "ChannelMegaJoined": "You joined this group",
   "Channel.DescriptionPlaceholder": "Description (optional)",
   "DescriptionPlaceholder": "Description",
+  "DiscussionStarted": "Discussion started",
   "Draft": "Draft",
   "FilterAlwaysShow": "Include Chats",
   "FilterNeverShow": "Exclude Chats",
@@ -210,6 +211,10 @@ const lang = {
   "Channels": {
     "one_value": "%1$d channel",
     "other_value": "%1$d channels"
+  },
+  "Comments": {
+    "one_value": "%1$d Comment",
+    "other_value": "%1$d Comments"
   },
   "Groups": {
     "one_value": "%1$d group",
@@ -544,6 +549,8 @@ const lang = {
   "Send": "Send",
   "ChannelJoin": "JOIN",
   "Yesterday": "yesterday",
+  "LeaveAComment": "Leave a comment",
+  "ViewInChat": "View in chat",
 
   // * macos
   "AccountSettings.Filters": "Chat Folders",

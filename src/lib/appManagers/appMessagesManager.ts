@@ -120,9 +120,6 @@ type PendingAfterMsg = Partial<InvokeApiOptions & {
 }>;
 
 export class AppMessagesManager {
-  private static MESSAGE_ID_INCREMENT = 0x10000;
-  private static MESSAGE_ID_OFFSET = 0xFFFFFFFF;
-
   private messagesStorageByPeerId: {[peerId: string]: MessagesStorage};
   public groupedMessagesStorage: {[groupId: string]: MessagesStorage}; // will be used for albums
   private scheduledMessagesStorage: {[peerId: string]: MessagesStorage};
@@ -3463,8 +3460,7 @@ export class AppMessagesManager {
       from_id: {_: 'peerUser', user_id: 0}/* message.from_id */,
       peer_id: message.peer_id,
       action: {
-        _: 'messageActionCustomAction',
-        message: 'Discussion started'
+        _: 'messageActionDiscussionStarted'
       },
       reply_to: this.generateReplyHeader(message.id)
     };
@@ -4280,12 +4276,12 @@ export class AppMessagesManager {
   
   private onUpdateChannelMessageViews = (update: Update.updateChannelMessageViews) => {
     const views = update.views;
-    //const mid = update.id;
+    const peerId = -update.channel_id;
     const mid = appMessagesIdsManager.generateMessageId(update.id);
-    const message = this.getMessageByPeer(-update.channel_id, mid);
+    const message: Message.message = this.getMessageByPeer(peerId, mid);
     if(!message.deleted && message.views && message.views < views) {
       message.views = views;
-      rootScope.dispatchEvent('message_views', {mid, views});
+      rootScope.dispatchEvent('message_views', {peerId, mid, views});
     }
   };
 
@@ -4624,6 +4620,36 @@ export class AppMessagesManager {
 
     apiManager.invokeApi('messages.receivedMessages', {
       max_id: appMessagesIdsManager.getServerMessageId(maxId)
+    });
+  }
+
+  public incrementMessageViews(peerId: number, mids: number[]) {
+    if(!mids.length) {
+      return;
+    }
+
+    return apiManager.invokeApiSingle('messages.getMessagesViews', {
+      peer: appPeersManager.getInputPeerById(peerId),
+      id: mids.map(mid => appMessagesIdsManager.getServerMessageId(mid)),
+      increment: true
+    }).then(views => {
+      const updates: Update[] = new Array(mids.length);
+      const channelId = -peerId;
+      for(let i = 0, length = mids.length; i < length; ++i) {
+        updates[i] = {
+          _: 'updateChannelMessageViews',
+          channel_id: channelId,
+          id: mids[i],
+          views: views.views[i].views
+        };
+      }
+
+      apiUpdatesManager.processUpdateMessage({
+        _: 'updates',
+        updates,
+        chats: views.chats,
+        users: views.users
+      });
     });
   }
 
