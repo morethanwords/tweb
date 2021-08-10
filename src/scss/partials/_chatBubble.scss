@@ -814,7 +814,8 @@ $bubble-margin: .25rem;
   }
 
   .web {
-    margin: .125rem 0;
+    // margin: .125rem 0;
+    margin: .125rem 0 -.5625rem;
     max-width: 100%;
     overflow: hidden;
     line-height: var(--line-height);
@@ -836,12 +837,16 @@ $bubble-margin: .25rem;
       &-resizer {
         &:first-child {
           margin: 3px 0;
+
+          &:last-child {
+            margin-bottom: 2px;
+          }
         }
       }
     }
 
     &.no-text {
-      margin-bottom: .625rem;
+      margin-bottom: .75rem;
     }
     
     .title {
@@ -875,6 +880,7 @@ $bubble-margin: .25rem;
       display: flex;
 
       &-text {
+        width: 100%;
         // max-width: calc(100% - .625rem); // left border
         max-width: 100%;
         padding-left: .625rem;
@@ -902,11 +908,16 @@ $bubble-margin: .25rem;
     }
 
     .web {
+      .webpage-name {
+        margin-right: 1rem;
+      }
+
       .preview-resizer {
         margin: 0;
         width: 2rem;
         height: 2rem;
         float: right;
+        margin-left: .625rem;
       }
 
       .preview {
@@ -1386,12 +1397,12 @@ $bubble-margin: .25rem;
     pointer-events: none; // do not show title
     display: inline-flex;
     z-index: 1;
-    cursor: default;
     /* display: inline-flex;
     align-items: center; */
     height: 12px;
     direction: ltr;
     float: right; // * rtl fix
+    cursor: pointer;
 
     i {
       font-size: 1.15rem;

@@ -450,9 +450,12 @@ export default class ChatBubbles {
           return;
         }
         
-        const bubble = (e.target as HTMLElement).classList.contains('bubble') ? e.target as HTMLElement : null;
+        const target = e.target as HTMLElement;
+        const bubble = target.classList.contains('bubble') ? 
+          target : 
+          (target.classList.contains('document-selection') ? target.parentElement : null);
         if(bubble && !bubble.classList.contains('bubble-first')) {
-          const mid = +bubble.dataset.mid
+          const mid = +bubble.dataset.mid;
           this.chat.input.initMessageReply(mid);
         }
       });
@@ -798,6 +801,11 @@ export default class ChatBubbles {
         }
       }
 
+      return;
+    }
+
+    if(!isTouchSupported && findUpClassName(target, 'time')) {
+      this.chat.selection.toggleByBubble(bubble);
       return;
     }
 
@@ -2479,7 +2487,7 @@ export default class ChatBubbles {
             quoteTextDiv.append(previewResizer);
           }
 
-          let t: HTMLElement;
+          // let t: HTMLElement;
           if(webpage.site_name) {
             let nameEl = document.createElement('a');
             nameEl.classList.add('webpage-name');
@@ -2487,7 +2495,7 @@ export default class ChatBubbles {
             nameEl.href = webpage.url || '#';
             setInnerHTML(nameEl, RichTextProcessor.wrapEmojiText(webpage.site_name));
             quoteTextDiv.append(nameEl);
-            t = nameEl;
+            // t = nameEl;
           }
 
           if(webpage.rTitle) {
@@ -2495,7 +2503,7 @@ export default class ChatBubbles {
             titleDiv.classList.add('title');
             setInnerHTML(titleDiv, webpage.rTitle);
             quoteTextDiv.append(titleDiv);
-            t = titleDiv;
+            // t = titleDiv;
           }
 
           if(webpage.rDescription) {
@@ -2503,14 +2511,14 @@ export default class ChatBubbles {
             textDiv.classList.add('text');
             setInnerHTML(textDiv, webpage.rDescription);
             quoteTextDiv.append(textDiv);
-            t = textDiv;
+            // t = textDiv;
           }
 
-          if(t) {
+          /* if(t) {
             t.append(timeSpan);
           } else {
             box.classList.add('no-text');
-          }
+          } */
 
           quote.append(quoteTextDiv);
 
@@ -2523,6 +2531,10 @@ export default class ChatBubbles {
               bubble.classList.add('is-square-photo');
               isSquare = true;
               this.appPhotosManager.setAttachmentSize(webpage.photo, preview, 32, 32, false);
+
+              /* if(t) {
+                t.append(timeSpan);
+              } */
             } else if(size.h > size.w) {
               bubble.classList.add('is-vertical-photo');
             }
@@ -2545,8 +2557,11 @@ export default class ChatBubbles {
           box.append(quote);
           
           //bubble.prepend(box);
-          messageDiv.append(box);
-          // messageDiv.insertBefore(box, messageDiv.lastElementChild);
+          // if(timeSpan.parentElement === messageDiv) {
+            messageDiv.insertBefore(box, timeSpan);
+          // } else {
+          //   messageDiv.append(box);
+          // }
           
           //this.log('night running', bubble.scrollHeight);
           
