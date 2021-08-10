@@ -25,6 +25,7 @@ import { cancelEvent } from "../../helpers/dom/cancelEvent";
 import cancelSelection from "../../helpers/dom/cancelSelection";
 import { attachClickEvent } from "../../helpers/dom/clickEvent";
 import isSelectionEmpty from "../../helpers/dom/isSelectionEmpty";
+import { Message } from "../../layer";
 
 export default class ChatContextMenu {
   private buttons: (ButtonMenuItemOptions & {verify: () => boolean, notDirect?: () => boolean, withSelection?: true})[];
@@ -364,15 +365,22 @@ export default class ChatContextMenu {
   };
 
   private onCopyLinkClick = () => {
-    const username = this.appPeersManager.getPeerUsername(this.peerId);
+    let threadMessage: Message.message;
+    if(this.chat.type === 'discussion') {
+      threadMessage = this.appMessagesManager.getMessageByPeer(this.peerId, this.chat.threadId);
+    }
+
+    const username = this.appPeersManager.getPeerUsername(threadMessage ? threadMessage.fromId : this.peerId);
     const msgId = this.appMessagesIdsManager.getServerMessageId(this.mid);
     let url = 'https://t.me/';
     let key: LangPackKey;
     if(username) {
-      url += username + '/' + msgId;
+      url += username + '/' + (threadMessage ? this.appMessagesIdsManager.getServerMessageId(threadMessage.fwd_from.channel_post) : msgId);
+      if(threadMessage) url += '?comment=' + msgId;
       key = 'LinkCopied';
     } else {
       url += 'c/' + Math.abs(this.peerId) + '/' + msgId;
+      if(threadMessage) url += '?thread=' + this.appMessagesIdsManager.getServerMessageId(threadMessage.mid);
       key = 'LinkCopiedPrivateInfo';
     }
 
