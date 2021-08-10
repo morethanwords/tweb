@@ -860,6 +860,7 @@ $bubble-margin: .25rem;
     .webpage-name {
       font-size: var(--messages-secondary-text-size);
       font-weight: 500 !important;
+      text-decoration: none;
       
       @include hover() {
         text-decoration: underline;

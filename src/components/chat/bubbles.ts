@@ -43,7 +43,7 @@ import LazyLoadQueue from "../lazyLoadQueue";
 import ListenerSetter from "../../helpers/listenerSetter";
 import PollElement from "../poll";
 import AudioElement from "../audio";
-import { Message, MessageEntity,  MessageReplyHeader, ReplyMarkup, Update } from "../../layer";
+import { Message, MessageEntity,  MessageReplyHeader, Photo, PhotoSize, ReplyMarkup, Update, WebPage } from "../../layer";
 import { REPLIES_PEER_ID } from "../../lib/mtproto/mtproto_config";
 import { FocusDirection } from "../../helpers/fastSmoothScroll";
 import useHeavyAnimationCheck, { getHeavyAnimationPromise, dispatchHeavyAnimationEvent, interruptHeavyAnimation } from "../../hooks/useHeavyAnimationCheck";
@@ -841,11 +841,8 @@ export default class ChatBubbles {
         const message = this.chat.getMessage(bubbleMid) as Message.message;
         const peerId = this.appPeersManager.getPeerId(message.reply_to.reply_to_peer_id);
         const threadId = message.reply_to.reply_to_top_id;
-
-        this.appMessagesManager.wrapSingleMessage(peerId, threadId).then(() => {
-          this.appMessagesManager.generateThreadServiceStartMessage(this.appMessagesManager.getMessageByPeer(peerId, threadId));
-          this.chat.appImManager.setInnerPeer(peerId, message.fwd_from.saved_from_msg_id, 'discussion', threadId);
-        });
+        const lastMsgId = message.fwd_from.saved_from_msg_id;
+        this.chat.appImManager.openThread(peerId, lastMsgId, threadId);
       } else {
         const message = this.appMessagesManager.filterMessages(this.chat.getMessage(bubbleMid), message => !!(message as Message.message).replies)[0] as Message.message;
         const replies = message.replies;
@@ -2424,7 +2421,7 @@ export default class ChatBubbles {
         case 'messageMediaWebPage': {
           processingWebPage = true;
           
-          let webpage = messageMedia.webpage;
+          let webpage: WebPage.webPage | WebPage.webPageEmpty = messageMedia.webpage;
           ////////this.log('messageMediaWebPage', webpage);
           if(webpage._ === 'webPageEmpty') {
             break;
@@ -2439,7 +2436,8 @@ export default class ChatBubbles {
           quote.classList.add('quote');
 
           let previewResizer: HTMLDivElement, preview: HTMLDivElement;
-          if(webpage.photo || webpage.document) {
+          const photo: Photo.photo = webpage.photo as any;
+          if(photo || webpage.document) {
             previewResizer = document.createElement('div');
             previewResizer.classList.add('preview-resizer');
             preview = document.createElement('div');
@@ -2487,15 +2485,14 @@ export default class ChatBubbles {
             quoteTextDiv.append(previewResizer);
           }
 
-          // let t: HTMLElement;
+          let t: HTMLElement;
           if(webpage.site_name) {
-            let nameEl = document.createElement('a');
-            nameEl.classList.add('webpage-name');
-            nameEl.setAttribute('target', '_blank');
-            nameEl.href = webpage.url || '#';
-            setInnerHTML(nameEl, RichTextProcessor.wrapEmojiText(webpage.site_name));
-            quoteTextDiv.append(nameEl);
-            // t = nameEl;
+            const html = RichTextProcessor.wrapRichText(webpage.url);
+            const a: HTMLAnchorElement = htmlToDocumentFragment(html).firstElementChild as any;
+            a.classList.add('webpage-name');
+            setInnerHTML(a, RichTextProcessor.wrapEmojiText(webpage.site_name));
+            quoteTextDiv.append(a);
+            t = a;
           }
 
           if(webpage.rTitle) {
@@ -2503,7 +2500,7 @@ export default class ChatBubbles {
             titleDiv.classList.add('title');
             setInnerHTML(titleDiv, webpage.rTitle);
             quoteTextDiv.append(titleDiv);
-            // t = titleDiv;
+            t = titleDiv;
           }
 
           if(webpage.rDescription) {
@@ -2511,7 +2508,7 @@ export default class ChatBubbles {
             textDiv.classList.add('text');
             setInnerHTML(textDiv, webpage.rDescription);
             quoteTextDiv.append(textDiv);
-            // t = textDiv;
+            t = textDiv;
           }
 
           /* if(t) {
@@ -2522,15 +2519,15 @@ export default class ChatBubbles {
 
           quote.append(quoteTextDiv);
 
-          if(webpage.photo && !doc) {
+          if(photo && !doc) {
             bubble.classList.add('photo');
 
-            const size = webpage.photo.sizes[webpage.photo.sizes.length - 1];
+            const size: PhotoSize.photoSize = photo.sizes[photo.sizes.length - 1] as any;
             let isSquare = false;
-            if(size.w === size.h && quoteTextDiv.childElementCount) {
+            if(size.w === size.h && t) {
               bubble.classList.add('is-square-photo');
               isSquare = true;
-              this.appPhotosManager.setAttachmentSize(webpage.photo, preview, 32, 32, false);
+              this.appPhotosManager.setAttachmentSize(photo, preview, 32, 32, false);
 
               /* if(t) {
                 t.append(timeSpan);
@@ -2540,7 +2537,7 @@ export default class ChatBubbles {
             }
 
             wrapPhoto({
-              photo: webpage.photo, 
+              photo, 
               message, 
               container: preview, 
               boxWidth: isSquare ? 0 : mediaSizes.active.webpage.width, 
