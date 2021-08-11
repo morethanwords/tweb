@@ -76,7 +76,7 @@ const urlRegExp = urlProtocolRegExpPart +
   // resource path
   '(?:/(?:\\S{0,255}[^\\s.;,(\\[\\]{}<>"\'])?)?';
 const urlProtocolRegExp = new RegExp('^' + urlProtocolRegExpPart.slice(0, -1), 'i');
-const urlAnyProtocolRegExp = /^((?:.+?):\/\/|mailto:)/;
+const urlAnyProtocolRegExp = /^((?:[^\/]+?):\/\/|mailto:)/;
 const usernameRegExp = '[a-zA-Z\\d_]{5,32}';
 const botCommandRegExp = '\\/([a-zA-Z\\d_]{1,32})(?:@(' + usernameRegExp + '))?(\\b|$)';
 const fullRegExp = new RegExp('(^| )(@)(' + usernameRegExp + ')|(' + urlRegExp + ')|(\\n)|(' + emojiRegExp + ')|(^|[\\s\\(\\]])(#[' + alphaNumericRegExp + ']{2,64})|(^|\\s)' + botCommandRegExp, 'i');
