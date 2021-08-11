@@ -645,7 +645,7 @@ export class AppImManager {
     
     const IGNORE_KEYS = new Set(['PageUp', 'PageDown', 'Meta', 'Control']);
     const onKeyDown = (e: KeyboardEvent) => {
-      if(rootScope.overlayIsActive || IGNORE_KEYS.has(e.key)) return;
+      if(rootScope.isOverlayActive || IGNORE_KEYS.has(e.key)) return;
       
       const target = e.target as HTMLElement;
       
@@ -845,7 +845,7 @@ export class AppImManager {
 
   private canDrag() {
     const peerId = this.chat?.peerId;
-    return !(!peerId || rootScope.overlayIsActive || (peerId < 0 && !appChatsManager.hasRights(peerId, 'send_media')));
+    return !(!peerId || rootScope.isOverlayActive || (peerId < 0 && !appChatsManager.hasRights(peerId, 'send_media')));
   }
 
   private onDocumentPaste = (e: ClipboardEvent | DragEvent, attachType?: 'media' | 'document') => {

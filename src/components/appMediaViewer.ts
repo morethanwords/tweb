@@ -276,7 +276,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
       cancelEvent(e);
     }
 
-    if(this.setMoverAnimationPromise) return;
+    if(this.setMoverAnimationPromise) return Promise.reject();
 
     appNavigationController.removeByType('media');
 
@@ -302,7 +302,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
 
     promise.finally(() => {
       this.wholeDiv.remove();
-      rootScope.overlayIsActive = false;
+      rootScope.isOverlayActive = false;
       animationIntersector.checkAnimations(false);
     });
 
@@ -983,7 +983,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
       this.pageEl.insertBefore(this.wholeDiv, mainColumns);
       void this.wholeDiv.offsetLeft; // reflow
       this.wholeDiv.classList.add('active');
-      rootScope.overlayIsActive = true;
+      rootScope.isOverlayActive = true;
       animationIntersector.checkAnimations(true);
 
       if(!isMobileSafari) {
@@ -1329,6 +1329,25 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     super.setListeners();
     this.buttons.forward.addEventListener('click', this.onForwardClick);
     this.author.container.addEventListener('click', this.onAuthorClick);
+
+    const onCaptionClick = (e: MouseEvent) => {
+      if(e.target instanceof HTMLAnchorElement) { // close viewer if it's t.me/ redirect
+        const onclick = (e.target as HTMLElement).getAttribute('onclick');
+        if(!onclick || onclick.includes('showMaskedAlert')) {
+          return;
+        }
+
+        cancelEvent(e);
+
+        this.close().then(() => {
+          this.content.caption.removeEventListener('click', onCaptionClick, {capture: true});
+          (e.target as HTMLAnchorElement).click();
+        });
+
+        return false;
+      }
+    };
+    this.content.caption.addEventListener('click', onCaptionClick, {capture: true});
   }
 
   /* public close(e?: MouseEvent) {

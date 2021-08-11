@@ -23,7 +23,6 @@ const lang = {
   "EditProfile.Username.Available": "Username is available",
   "EditProfile.Username.Taken": "Username is already taken",
   "EditProfile.Username.Invalid": "Username is invalid",
-  "EditProfile.Username.Help": "You can choose a username on Telegram. If you do, people will be able to find you by this username and contact you without needing your phone number.\n\nYou can use a–z, 0–9 and underscores. Minimum length is 5 characters.",
   "ExceptionModal.Search.Placeholder": "Add exception...",
   "Chat.Menu.SelectMessages": "Select Messages",
   "Chat.Menu.ClearSelection": "Clear Selection",
@@ -32,10 +31,6 @@ const lang = {
   "Chat.Input.Attach.PhotoOrVideo": "Photo or Video",
   "Chat.Input.Attach.Document": "Document",
   "Chat.Subscribe": "SUBSCRIBE",
-  "Chat.Selection.MessagesCount": {
-    "one_value": "%d Message",
-    "other_value": "%d Messages"
-  },
   "Chat.Selection.LimitToast": "Max selection count reached.",
   "Chat.Search.MessagesFound": {
     "one_value": "%d message found",
@@ -79,7 +74,6 @@ const lang = {
   "Notifications.MessagePreview": "Message preview",
   "NewPrivateChat": "New Private Chat",
   "NewPoll.OptionLabel": "Option %d",
-  "NewPoll.Create": "CREATE",
   "Message.Context.Selection.Copy": "Copy selected",
   "Message.Context.Selection.Clear": "Clear selection",
   "Message.Context.Selection.Delete": "Delete selected",
@@ -552,6 +546,7 @@ const lang = {
   "LeaveAComment": "Leave a comment",
   "ViewInChat": "View in chat",
   "LinkNotFound": "Unfortunately, you can\'t access this message. You are not a member of the chat where it was posted.",
+  "Create": "Create",
 
   // * macos
   "AccountSettings.Filters": "Chat Folders",
@@ -811,7 +806,8 @@ const lang = {
   "TwoStepAuth.RecoveryCodeInvalid": "Invalid code. Please try again.",
   "TwoStepAuth.RecoveryCodeExpired": "Code Expired",
   "TwoStepAuth.SetupHintTitle": "Password Hint",
-  "TwoStepAuth.SetupHintPlaceholder": "Hint"
+  "TwoStepAuth.SetupHintPlaceholder": "Hint",
+  "UsernameSettings.ChangeDescription": "You can choose a username on Telegram. If you do, people will be able to find you by this username and contact you without needing your phone number.\n\n\nYou can use a-z, 0-9 and underscores. Minimum length is 5 characters."
 };
 
 export default lang;

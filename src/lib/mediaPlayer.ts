@@ -14,6 +14,7 @@ import ListenerSetter from "../helpers/listenerSetter";
 import ButtonMenu from "../components/buttonMenu";
 import { ButtonMenuToggleHandler } from "../components/buttonMenuToggle";
 import EventListenerBase from "../helpers/eventListenerBase";
+import rootScope from "./rootScope";
 
 export class MediaProgressLine extends RangeSelector {
   private filledLoad: HTMLDivElement;
@@ -370,10 +371,11 @@ export default class VideoPlayer extends EventListenerBase<{
         });
 
         this.listenerSetter.add(document)('keydown', (e: KeyboardEvent) => {
-          if((e.target as HTMLElement) === document.activeElement) {
+          if(rootScope.overlaysActive > 1) { // forward popup is active, etc
             return;
           }
 
+          let good = true;
           if(e.code === 'KeyF') {
             this.toggleFullScreen(fullScreenButton);
           } else if(e.code === 'KeyM') {
@@ -384,6 +386,13 @@ export default class VideoPlayer extends EventListenerBase<{
             this.video.playbackRate += 0.25;
           } else if(e.altKey && e.code === 'Minus') {
             this.video.playbackRate -= 0.25;
+          } else {
+            good = false;
+          }
+
+          if(good) {
+            cancelEvent(e);
+            return false;
           }
         });
       }

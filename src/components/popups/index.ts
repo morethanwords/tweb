@@ -144,7 +144,7 @@ export default class PopupElement {
     document.body.append(this.element);
     void this.element.offsetWidth; // reflow
     this.element.classList.add('active');
-    rootScope.overlayIsActive = true;
+    rootScope.isOverlayActive = true;
     animationIntersector.checkAnimations(true);
   }
 
@@ -158,7 +158,7 @@ export default class PopupElement {
     this.element.classList.remove('active');
 
     if(this.btnClose) this.btnClose.removeEventListener('click', this.hide);
-    rootScope.overlayIsActive = false;
+    rootScope.isOverlayActive = false;
 
     appNavigationController.removeItem(this.navigationItem);
     this.navigationItem = undefined;

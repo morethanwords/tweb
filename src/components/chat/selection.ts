@@ -228,7 +228,7 @@ export default class ChatSelection {
   private updateContainer(forceSelection = false) {
     if(!this.selectedMids.size && !forceSelection) return;
     this.selectionCountEl.textContent = '';
-    this.selectionCountEl.append(i18n('Chat.Selection.MessagesCount', [this.selectedMids.size]));
+    this.selectionCountEl.append(i18n('messages', [this.selectedMids.size]));
 
     let cantForward = !this.selectedMids.size, cantDelete = !this.selectedMids.size, cantSend = !this.selectedMids.size;
     for(const mid of this.selectedMids.values()) {
