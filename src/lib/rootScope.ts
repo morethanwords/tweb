@@ -132,7 +132,7 @@ export class RootScope extends EventListenerBase<{
 } & {
   [name in keyof BroadcastEvents]: (e: BroadcastEvents[name]) => void
 }> {
-  private _overlayIsActive: boolean = false;
+  public overlaysActive = 0;
   public myId = 0;
   public idle = {
     isIDLE: true,
@@ -217,13 +217,13 @@ export class RootScope extends EventListenerBase<{
     document.documentElement.classList.toggle('night', isNight);
   }
 
-  get overlayIsActive() {
-    return this._overlayIsActive;
+  get isOverlayActive() {
+    return this.overlaysActive > 0;
   }
 
-  set overlayIsActive(value: boolean) {
-    this._overlayIsActive = value;
-    this.dispatchEvent('overlay_toggle', value);
+  set isOverlayActive(value: boolean) {
+    this.overlaysActive += value ? 1 : -1;
+    this.dispatchEvent('overlay_toggle', this.isOverlayActive);
   }
 
   public getTheme(name: Theme['name'] = this.settings.theme === 'system' ? this.systemTheme : this.settings.theme) {

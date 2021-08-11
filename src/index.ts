@@ -65,7 +65,7 @@ console.timeEnd('get storage1'); */
     let lastVH: number;
     const setVH = () => {
       // @ts-ignore
-      const vh = (setViewportVH && !rootScope.default.overlayIsActive ? w.height || w.innerHeight : window.innerHeight) * 0.01;
+      const vh = (setViewportVH && !rootScope.default.isOverlayActive ? w.height || w.innerHeight : window.innerHeight) * 0.01;
       if(lastVH === vh) {
         return;
       } else if(lastVH < vh) {
@@ -116,7 +116,7 @@ console.timeEnd('get storage1'); */
     //console.log(new Uint8Array([255, 200, 145]).hex);
 
     const toggleResizeMode = () => {
-      setViewportVH = tabId === 1 && userAgent.isSafari && touchSupport.isTouchSupported && !rootScope.default.overlayIsActive;
+      setViewportVH = tabId === 1 && userAgent.isSafari && touchSupport.isTouchSupported && !rootScope.default.isOverlayActive;
       setVH();
 
       if(w !== window) {

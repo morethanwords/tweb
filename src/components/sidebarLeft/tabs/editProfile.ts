@@ -99,7 +99,7 @@ export default class AppEditProfileTab extends SliderSuperTab {
 
       const caption = document.createElement('div');
       caption.classList.add('caption');
-      caption.append(i18n('EditProfile.Username.Help'));
+      caption.append(i18n('UsernameSettings.ChangeDescription'));
       caption.append(document.createElement('br'), document.createElement('br'));
 
       const profileUrlContainer = this.profileUrlContainer = document.createElement('div');

@@ -12,7 +12,7 @@ import InputField from "../inputField";
 import RadioField from "../radioField";
 import Scrollable from "../scrollable";
 import SendContextMenu from "../chat/sendContextMenu";
-import I18n, { _i18n, i18n } from "../../lib/langPack";
+import I18n, { _i18n } from "../../lib/langPack";
 import findUpTag from "../../helpers/dom/findUpTag";
 import { cancelEvent } from "../../helpers/dom/cancelEvent";
 import getRichValue from "../../helpers/dom/getRichValue";
@@ -38,7 +38,7 @@ export default class PopupCreatePoll extends PopupElement {
   private optionInputFields: InputField[];
 
   constructor(private chat: Chat) {
-    super('popup-create-poll popup-new-media', null, {closable: true, withConfirm: 'NewPoll.Create', body: true});
+    super('popup-create-poll popup-new-media', null, {closable: true, withConfirm: 'Create', body: true});
 
     _i18n(this.title, 'NewPoll');
 
