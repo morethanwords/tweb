@@ -551,12 +551,14 @@ const lang = {
   "Yesterday": "yesterday",
   "LeaveAComment": "Leave a comment",
   "ViewInChat": "View in chat",
+  "LinkNotFound": "Unfortunately, you can\'t access this message. You are not a member of the chat where it was posted.",
 
   // * macos
   "AccountSettings.Filters": "Chat Folders",
   "AccountSettings.Notifications": "Notifications and Sounds",
   "AccountSettings.PrivacyAndSecurity": "Privacy and Security",
   "AccountSettings.Language": "Language",
+  "Alert.UserDoesntExists": "Sorry, this user doesn't seem to exist.",
   "Appearance.Reset": "Reset to Defaults",
   "Bio.Description": "Any details such as age, occupation or city.\nExample: 23 y.o. designer from San Francisco",
   "Channel.UsernameAboutChannel": "People can share this link with others and can find your channel using Telegram search.",
