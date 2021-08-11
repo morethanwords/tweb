@@ -65,6 +65,8 @@ import { toast, toastNew } from '../../components/toast';
 import debounce from '../../helpers/schedulers/debounce';
 import { pause } from '../../helpers/schedulers/pause';
 import appMessagesIdsManager from './appMessagesIdsManager';
+import { InternalLink, InternalLinkTypeMap, INTERNAL_LINK_TYPE } from './internalLink';
+import RichTextProcessor from '../richtextprocessor';
 
 //console.log('appImManager included33!');
 
@@ -265,8 +267,7 @@ export class AppImManager {
         appMessagesManager.sendText(this.chat.peerId, '/' + command + (bot ? '@' + bot : ''));
 
         //console.log(command, bot);
-      },
-      parseUriParams: true
+      }
     });
 
     this.addAnchorListener<{uriParams: {hashtag: string}}>({
@@ -278,23 +279,193 @@ export class AppImManager {
         }
 
         this.chat.initSearch('#' + hashtag + ' ');
-      },
-      parseUriParams: true
+      }
     });
 
     this.addAnchorListener<{pathnameParams: ['addstickers', string]}>({
       name: 'addstickers', 
       callback: ({pathnameParams}) => {
-        new PopupStickers({id: pathnameParams[1]}).show();
-      }, 
-      parsePathname: true
+        const link: InternalLink = {
+          _: INTERNAL_LINK_TYPE.STICKER_SET,
+          set: pathnameParams[1]
+        };
+
+        this.processInternalLink(link);
+      }
     });
 
     this.addAnchorListener<{pathnameParams: ['joinchat', string]}>({
       name: 'joinchat', 
       callback: ({pathnameParams}) => {
+        const link: InternalLink = {
+          _: INTERNAL_LINK_TYPE.JOIN_CHAT,
+          invite: pathnameParams[1]
+        };
+
+        this.processInternalLink(link);
+      }
+    });
+
+    this.addAnchorListener<{
+    //   pathnameParams: ['c', string, string],
+    //   uriParams: {thread?: number}
+    // } | {
+    //   pathnameParams: [string, string?],
+    //   uriParams: {comment?: number}
+      pathnameParams: ['c', string, string] | [string, string?],
+      uriParams: {thread?: string, comment?: string} | {comment?: string}
+    }>({
+      name: 'im',
+      callback: async({pathnameParams, uriParams}) => {
+        let link: InternalLink;
+        if(pathnameParams[0] === 'c') {
+          link = {
+            _: INTERNAL_LINK_TYPE.PRIVATE_POST,
+            channel: pathnameParams[1],
+            post: pathnameParams[2],
+            thread: 'thread' in uriParams ? uriParams.thread : undefined,
+            comment: uriParams.comment
+          };
+        } else {
+          link = {
+            _: INTERNAL_LINK_TYPE.MESSAGE,
+            domain: pathnameParams[0],
+            post: pathnameParams[1],
+            comment: uriParams.comment
+          };
+        }
+
+        this.processInternalLink(link);
+      }
+    });
+
+    this.addAnchorListener<{
+      uriParams: {
+        domain: string,
+
+        // telegrampassport
+        scope?: string,
+        nonce?: string,
+        payload?: string,
+        bot_id?: string,
+        public_key?: string,
+        callback_url?: string,
+
+        // regular
+        start?: string,
+        startgroup?: string,
+        game?: string,
+        voicechat?: string,
+        post?: string,
+        thread?: string,
+        comment?: string
+      }
+    }>({
+      name: 'resolve',
+      protocol: 'tg',
+      callback: ({uriParams}) => {
+        let link: InternalLink;
+        if(uriParams.domain === 'telegrampassport') {
+
+        } else {
+          link = this.makeLink(INTERNAL_LINK_TYPE.MESSAGE, uriParams);
+        }
+
+        this.processInternalLink(link);
+      }
+    });
+
+    this.addAnchorListener<{
+      uriParams: {
+        channel: string,
+        post: string,
+        thread?: string,
+        comment?: string
+      }
+    }>({
+      name: 'privatepost',
+      protocol: 'tg',
+      callback: ({uriParams}) => {
+        const link = this.makeLink(INTERNAL_LINK_TYPE.PRIVATE_POST, uriParams);
+        this.processInternalLink(link);
+      }
+    });
+
+    this.addAnchorListener<{
+      uriParams: {
+        set: string
+      }
+    }>({
+      name: 'addstickers',
+      protocol: 'tg',
+      callback: ({uriParams}) => {
+        const link = this.makeLink(INTERNAL_LINK_TYPE.STICKER_SET, uriParams);
+        this.processInternalLink(link);
+      }
+    });
+
+    this.addAnchorListener<{
+      uriParams: {
+        invite: string
+      }
+    }>({
+      name: 'joinchat',
+      protocol: 'tg',
+      callback: ({uriParams}) => {
+        const link = this.makeLink(INTERNAL_LINK_TYPE.JOIN_CHAT, uriParams);
+        this.processInternalLink(link);
+      }
+    });
+
+    this.onHashChange();
+  }
+
+  private makeLink<T extends INTERNAL_LINK_TYPE>(type: T, uriParams: Omit<InternalLinkTypeMap[T], '_'>) {
+    return {
+      _: type,
+      ...uriParams
+    } as any as InternalLinkTypeMap[T];
+  }
+
+  public async processInternalLink(link: InternalLink) {
+    switch(link?._) {
+      case INTERNAL_LINK_TYPE.MESSAGE: {
+        const postId = link.post ? appMessagesIdsManager.generateMessageId(+link.post) : undefined;
+        const commentId = link.comment ? appMessagesIdsManager.generateMessageId(+link.comment) : undefined;
+
+        this.openUsername(link.domain, postId, undefined, commentId);
+        break;
+      }
+
+      case INTERNAL_LINK_TYPE.PRIVATE_POST: {
+        const peerId = -+link.channel;
+
+        const chat = appChatsManager.getChat(-peerId);
+        if(chat.deleted) {
+          try {
+            await appChatsManager.resolveChannel(-peerId);
+          } catch(err) {
+            toastNew({langPackKey: 'LinkNotFound'});
+            throw err;
+          }
+        }
+
+        const postId = appMessagesIdsManager.generateMessageId(+link.post);
+        const threadId = link.thread ? appMessagesIdsManager.generateMessageId(+link.thread) : undefined;
+
+        if(threadId) this.openThread(peerId, postId, threadId);
+        else this.setInnerPeer(peerId, postId);
+        break;
+      }
+
+      case INTERNAL_LINK_TYPE.STICKER_SET: {
+        new PopupStickers({id: link.set}).show();
+        break;
+      }
+
+      case INTERNAL_LINK_TYPE.JOIN_CHAT: {
         apiManager.invokeApi('messages.checkChatInvite', {
-          hash: pathnameParams[1]
+          hash: link.invite
         }).then(chatInvite => {
           if((chatInvite as ChatInvite.chatInvitePeek).chat) {
             appChatsManager.saveApiChat((chatInvite as ChatInvite.chatInvitePeek).chat, true);
@@ -308,76 +479,39 @@ export class AppImManager {
             return;
           }
 
-          new PopupJoinChatInvite(pathnameParams[1], chatInvite).show();
+          new PopupJoinChatInvite(link.invite, chatInvite).show();
         }, (err) => {
           if(err.type === 'INVITE_HASH_EXPIRED') {
             toast(i18n('InviteExpired'));
           }
         });
-      },
-      parsePathname: true
-    });
+        break;
+      }
 
-    this.addAnchorListener<{
-    //   pathnameParams: ['c', string, string],
-    //   uriParams: {thread?: number}
-    // } | {
-    //   pathnameParams: [string, string?],
-    //   uriParams: {comment?: number}
-      pathnameParams: ['c', string, string] | [string, string?],
-      uriParams: {thread?: number} | {comment?: number}
-    }>({
-      name: 'im',
-      callback: async(params) => {
-        console.log(params);
-
-        const {pathnameParams, uriParams} = params;
-        if(pathnameParams[0] === 'c') {
-          const peerId = -+pathnameParams[1];
-
-          const chat = appChatsManager.getChat(-peerId);
-          if(chat.deleted) {
-            try {
-              await appChatsManager.resolveChannel(-peerId);
-            } catch(err) {
-              toastNew({langPackKey: 'LinkNotFound'});
-              throw err;
-            }
-          }
-
-          const postId = appMessagesIdsManager.generateMessageId(+pathnameParams[2]);
-          const threadId = 'thread' in uriParams ? appMessagesIdsManager.generateMessageId(+uriParams.thread) : undefined;
-
-          if(threadId) this.openThread(peerId, postId, threadId);
-          else this.setInnerPeer(peerId, postId);
-        } else {
-          const username = pathnameParams[0];
-          const postId = pathnameParams[1] ? appMessagesIdsManager.generateMessageId(+pathnameParams[1]) : undefined;
-          const commentId = 'comment' in uriParams ? appMessagesIdsManager.generateMessageId(uriParams.comment) : undefined;
-
-          this.openUsername(username, postId, undefined, commentId);
-        }
-      },
-      parsePathname: true,
-      parseUriParams: true
-    });
+      default: {
+        this.log.warn('Not supported internal link:', link);
+        break;
+      }
+    }
   }
 
   private addAnchorListener<Params extends {pathnameParams?: any, uriParams?: any}>(options: {
-    name: 'showMaskedAlert' | 'execBotCommand' | 'searchByHashtag' | 'addstickers' | 'joinchat' | 'im', 
-    callback: (params: Params, element: HTMLAnchorElement) => boolean | any, 
-    parsePathname?: boolean,
-    parseUriParams?: boolean,
+    name: 'showMaskedAlert' | 'execBotCommand' | 'searchByHashtag' | 'addstickers' | 'joinchat' | 'im' |
+          'resolve' | 'privatepost' | 'addstickers', 
+    protocol?: 'tg',
+    callback: (params: Params, element?: HTMLAnchorElement) => boolean | any, 
+    noPathnameParams?: boolean,
+    noUriParams?: boolean
   }) {
-    (window as any)[options.name] = (element: HTMLAnchorElement/* , e: Event */) => {
+    (window as any)[(options.protocol ? options.protocol + '_' : '') + options.name] = (element?: HTMLAnchorElement/* , e: Event */) => {
       cancelEvent(null);
 
       const href = element.href;
       let pathnameParams: any[];
       let uriParams: any;
 
-      if(options.parsePathname) pathnameParams = new URL(element.href).pathname.split('/').slice(1);
-      if(options.parseUriParams) uriParams = this.parseUriParams(href);
+      if(!options.noPathnameParams) pathnameParams = new URL(element.href).pathname.split('/').slice(1);
+      if(!options.noUriParams) uriParams = this.parseUriParams(href);
 
       const res = options.callback({pathnameParams, uriParams} as Params, element);
       return res === undefined ? res : false;
@@ -401,6 +535,17 @@ export class AppImManager {
     const params = this.parseUriParams(hash, splitted);
 
     this.log('hashchange', hash, splitted[0], params);
+
+    if(params.tgaddr) {
+      appNavigationController.replaceState();
+      const {onclick} = RichTextProcessor.wrapUrl(params.tgaddr);
+      if(onclick) {
+        const a = document.createElement('a');
+        a.href = params.tgaddr;
+        (window as any)[onclick](a);
+      }
+      return;
+    }
 
     switch(splitted[0]) {
       case '#/im': {

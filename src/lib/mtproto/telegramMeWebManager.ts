@@ -39,9 +39,10 @@ export class TelegramMeWebManager {
         }
       });
 
+      const path = `_websync_?authed=${canRedirect ? '1' : '0'}&version=${encodeURIComponent(App.version + ' ' + App.suffix)}`;
       const urls = [
-        '//telegram.me/_websync_?authed=' + (canRedirect ? '1' : '0'),
-        '//t.me/_websync_?authed=' + (canRedirect ? '1' : '0')
+        '//telegram.me/' + path,
+        '//t.me/' + path
       ];
 
       const promises = urls.map(url => {

@@ -801,8 +801,7 @@ namespace RichTextProcessor {
       url = 'https://' + url;
     }
   
-    let tgMeMatch;
-    let telescoPeMatch;
+    let tgMeMatch, telescoPeMatch, tgMatch;
     let onclick: string;
     /* if(unsafe === 2) {
       url = 'tg://unsafe_url?url=' + encodeURIComponent(url);
@@ -824,7 +823,12 @@ namespace RichTextProcessor {
           break;
       }
     } else if((telescoPeMatch = url.match(/^(?:https?:\/\/)?telesco\.pe\/([^/?]+)\/(\d+)/))) {
-      url = 'tg://resolve?domain=' + telescoPeMatch[1] + '&post=' + telescoPeMatch[2];
+      onclick = 'im';
+    } else if((tgMatch = url.match(/tg:(?:\/\/)?(.+?)(?:\?|$)/))) {
+      onclick = 'tg_' + tgMatch[1];
+      if(!(window as any)[onclick]) {
+        onclick = undefined;
+      }
     }/*  else if(unsafe) {
       url = 'tg://unsafe_url?url=' + encodeURIComponent(url);
     } */
