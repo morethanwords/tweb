@@ -1012,8 +1012,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     if(windowH < 1000000 && !mediaSizes.isMobile) {
       padding = 32 + 120;
     }
-    // const maxHeight = windowH - 120 - padding;
-    const maxHeight = windowH - 120;
+    const maxHeight = windowH - 120 - padding;
     let thumbPromise: Promise<any> = Promise.resolve();
     const size = appPhotosManager.setAttachmentSize(media, container, maxWidth, maxHeight, mediaSizes.isMobile ? false : true).photoSize;
     if(useContainerAsTarget) {
