@@ -61,7 +61,7 @@ import PopupElement from '../../components/popups';
 import singleInstance from '../mtproto/singleInstance';
 import PopupStickers from '../../components/popups/stickers';
 import PopupJoinChatInvite from '../../components/popups/joinChatInvite';
-import { toast } from '../../components/toast';
+import { toast, toastNew } from '../../components/toast';
 import debounce from '../../helpers/schedulers/debounce';
 import { pause } from '../../helpers/schedulers/pause';
 import appMessagesIdsManager from './appMessagesIdsManager';
@@ -328,12 +328,23 @@ export class AppImManager {
       uriParams: {thread?: number} | {comment?: number}
     }>({
       name: 'im',
-      callback: (params) => {
+      callback: async(params) => {
         console.log(params);
 
         const {pathnameParams, uriParams} = params;
         if(pathnameParams[0] === 'c') {
           const peerId = -+pathnameParams[1];
+
+          const chat = appChatsManager.getChat(-peerId);
+          if(chat.deleted) {
+            try {
+              await appChatsManager.resolveChannel(-peerId);
+            } catch(err) {
+              toastNew({langPackKey: 'LinkNotFound'});
+              throw err;
+            }
+          }
+
           const postId = appMessagesIdsManager.generateMessageId(+pathnameParams[2]);
           const threadId = 'thread' in uriParams ? appMessagesIdsManager.generateMessageId(+uriParams.thread) : undefined;
 
@@ -354,7 +365,7 @@ export class AppImManager {
 
   private addAnchorListener<Params extends {pathnameParams?: any, uriParams?: any}>(options: {
     name: 'showMaskedAlert' | 'execBotCommand' | 'searchByHashtag' | 'addstickers' | 'joinchat' | 'im', 
-    callback: (params: Params, element: HTMLAnchorElement) => boolean | void, 
+    callback: (params: Params, element: HTMLAnchorElement) => boolean | any, 
     parsePathname?: boolean,
     parseUriParams?: boolean,
   }) {
@@ -424,7 +435,9 @@ export class AppImManager {
       else return this.setInnerPeer(peerId, msgId);
     }, (err) => {
       if(err.type === 'USERNAME_NOT_OCCUPIED') {
-        toast(i18n('NoUsernameFound'));
+        toastNew({langPackKey: 'NoUsernameFound'});
+      } else if(err.type === 'USERNAME_INVALID') {
+        toastNew({langPackKey: 'Alert.UserDoesntExists'});
       }
     });
   }

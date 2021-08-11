@@ -1882,7 +1882,7 @@ export default class ChatBubbles {
                 }
   
                 this.appMessagesManager.getNewHistory(peerId, this.chat.threadId).then((historyStorage) => {
-                  if(!middleware()) {
+                  if(!middleware() || !historyStorage) {
                     resolve();
                     return;
                   }

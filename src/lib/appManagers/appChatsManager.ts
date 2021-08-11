@@ -700,6 +700,18 @@ export class AppChatsManager {
       }
     });
   }
+
+  public resolveChannel(id: number) {
+    return apiManager.invokeApiSingle('channels.getChannels', {
+      id: [{
+        _: 'inputChannel',
+        channel_id: id,
+        access_hash: '0'
+      }]
+    }).then(messagesChats => {
+      this.saveApiChats(messagesChats.chats);
+    });
+  }
 }
 
 const appChatsManager = new AppChatsManager();
