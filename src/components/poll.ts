@@ -564,7 +564,7 @@ export default class PollElement extends HTMLElement {
        */
       results.recent_voters/* .slice().reverse() */.forEach((userId, idx) => {
         const style = idx === 0 ? '' : `style="transform: translateX(-${idx * 3}px);"`;
-        html += `<avatar-element class="avatar-16" dialog="0" peer="${userId}" ${style}></avatar-element>`;
+        html += `<avatar-element class="avatar-16 poll-avatar" dialog="0" peer="${userId}" ${style}></avatar-element>`;
       });
       this.avatarsDiv.innerHTML = html;
     }

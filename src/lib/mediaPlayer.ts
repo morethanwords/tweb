@@ -13,6 +13,7 @@ import { cancelEvent } from "../helpers/dom/cancelEvent";
 import ListenerSetter from "../helpers/listenerSetter";
 import ButtonMenu from "../components/buttonMenu";
 import { ButtonMenuToggleHandler } from "../components/buttonMenuToggle";
+import EventListenerBase from "../helpers/eventListenerBase";
 
 export class MediaProgressLine extends RangeSelector {
   private filledLoad: HTMLDivElement;
@@ -167,7 +168,9 @@ export class MediaProgressLine extends RangeSelector {
 }
 
 let lastVolume = 1, muted = !lastVolume;
-export default class VideoPlayer {
+export default class VideoPlayer extends EventListenerBase<{
+  toggleControls: (show: boolean) => void
+}> {
   private wrapper: HTMLDivElement;
   private progress: MediaProgressLine;
   private skin: 'default';
@@ -178,6 +181,8 @@ export default class VideoPlayer {
   private videoWhichChild: number; */
 
   constructor(private video: HTMLVideoElement, play = false, streamable = false, duration?: number) {
+    super(false);
+
     this.wrapper = document.createElement('div');
     this.wrapper.classList.add('ckin__player');
 
@@ -308,39 +313,67 @@ export default class VideoPlayer {
         }
       });
 
+      const hideControls = () => {
+        clearTimeout(showControlsTimeout);
+        showControlsTimeout = 0;
+        
+        if(this.video.paused || !player.classList.contains('show-controls')) {
+          return;
+        }
+        
+        this.dispatchEvent('toggleControls', false);
+        player.classList.remove('show-controls');
+      };
+      
       let showControlsTimeout = 0;
-
-      const showControls = () => {
-        if(showControlsTimeout) clearTimeout(showControlsTimeout);
-        else player.classList.add('show-controls');
-
-        showControlsTimeout = window.setTimeout(() => {
+      const showControls = (setHideTimeout = true) => {
+        if(showControlsTimeout) {
+          clearTimeout(showControlsTimeout);
           showControlsTimeout = 0;
-          player.classList.remove('show-controls');
-        }, 3e3);
+        } else if(!player.classList.contains('show-controls')) {
+          this.dispatchEvent('toggleControls', true);
+          player.classList.add('show-controls');
+        }
+
+        if(!setHideTimeout) {
+          return;
+        }
+
+        showControlsTimeout = window.setTimeout(hideControls, 3e3);
+      };
+
+      const toggleControls = () => {
+        if(player.classList.contains('show-controls')) {
+          hideControls();
+        } else {
+          showControls();
+        }
       };
 
       if(isTouchSupported) {
         this.listenerSetter.add(player)('click', () => {
-          showControls();
+          toggleControls();
         });
 
-        this.listenerSetter.add(player)('touchstart', () => {
-          player.classList.add('show-controls');
-          clearTimeout(showControlsTimeout);
+        /* this.listenerSetter.add(player)('touchstart', () => {
+          showControls(false);
         });
 
         this.listenerSetter.add(player)('touchend', () => {
           if(player.classList.contains('is-playing')) {
             showControls();
           }
-        });
+        }); */
       } else {
         this.listenerSetter.add(this.wrapper)('mousemove', () => {
           showControls();
         });
 
         this.listenerSetter.add(document)('keydown', (e: KeyboardEvent) => {
+          if((e.target as HTMLElement) === document.activeElement) {
+            return;
+          }
+
           if(e.code === 'KeyF') {
             this.toggleFullScreen(fullScreenButton);
           } else if(e.code === 'KeyM') {
@@ -387,6 +420,10 @@ export default class VideoPlayer {
       this.listenerSetter.add(video)('play', () => {
         this.wrapper.classList.add('played');
       }, {once: true});
+
+      this.listenerSetter.add(video)('pause', () => {
+        showControls(false);
+      });
     }
 
     this.listenerSetter.add(video)('play', () => {
@@ -546,6 +583,7 @@ export default class VideoPlayer {
   };
 
   public removeListeners() {
+    super.cleanup();
     this.listenerSetter.removeAll();
     this.progress.removeListeners();
   }

@@ -245,7 +245,7 @@ export default class PrivacySection {
     return peers;
   }
 
-  private generateStr(peers: {users: number[], chats: number[]}): HTMLElement[] {
+  private generateStr(peers: {users: number[], chats: number[]}) {
     if(!peers.users.length && !peers.chats.length) {
       return [i18n('PrivacySettingsController.AddUsers')];
     }

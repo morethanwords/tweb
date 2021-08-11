@@ -810,6 +810,7 @@ export default class ChatInput {
     }
     
     this.attachMenu.toggleAttribute('disabled', !visible.length);
+    this.attachMenu.classList.toggle('btn-disabled', !visible.length);
     this.updateSendBtn();
   }
 

@@ -201,7 +201,9 @@ export default class AppBackgroundTab extends SliderSuperTab {
   };
 
   private addWallPaper(wallpaper: WallPaper.wallPaper, append = true) {
-    if(wallpaper.pFlags.pattern || (wallpaper.document as MyDocument).mime_type.indexOf('application/') === 0) {
+    if(wallpaper.pFlags.pattern || 
+      !wallpaper.document || 
+      (wallpaper.document as MyDocument).mime_type.indexOf('application/') === 0) {
       return;
     }
 

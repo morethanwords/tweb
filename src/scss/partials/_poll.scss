@@ -8,12 +8,12 @@ poll-element {
   margin-top: -1px;
   display: block;
   //min-width: 280px;
-  min-width: 330px;
+  width: 330px;
   user-select: none;
   color: var(--primary-text-color);
   
   @include respond-to(handhelds) {
-    min-width: 240px;
+    width: 240px;
   }
 
   &:not(.is-closed):not(.is-voted) .poll-answer {
@@ -77,6 +77,13 @@ poll-element {
     &-avatars {
       display: flex;
       margin-left: 18px;
+    }
+
+    &-avatar {
+      border: 1px solid var(--border-color);
+      cursor: pointer;
+      width: 18px;
+      height: 18px;
     }
 
     &-answer {
@@ -256,13 +263,6 @@ poll-element {
 
       }
     } */
-  }
-
-  avatar-element {
-    border: 1px solid var(--border-color);
-    cursor: pointer;
-    width: 18px;
-    height: 18px;
   }
 
   .circle-hover {
