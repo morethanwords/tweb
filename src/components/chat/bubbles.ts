@@ -452,7 +452,8 @@ export default class ChatBubbles {
 
     if(!isMobile) {
       this.listenerSetter.add(this.bubblesContainer)('dblclick', (e) => {
-        if(this.chat.selection.isSelecting || !this.appMessagesManager.canWriteToPeer(this.peerId, this.chat.threadId)) {
+        if(this.chat.selection.isSelecting || 
+          !this.appMessagesManager.canWriteToPeer(this.peerId, this.chat.threadId)) {
           return;
         }
         
@@ -462,6 +463,11 @@ export default class ChatBubbles {
           (target.classList.contains('document-selection') ? target.parentElement : null);
         if(bubble && !bubble.classList.contains('bubble-first')) {
           const mid = +bubble.dataset.mid;
+          const message = this.chat.getMessage(mid);
+          if(message.pFlags.is_outgoing) {
+            return;
+          }
+          
           this.chat.input.initMessageReply(mid);
         }
       });
