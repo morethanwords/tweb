@@ -205,6 +205,10 @@
           display: none !important;
         }
       }
+
+      &:empty {
+        display: none;
+      }
     }
     
     .search-super-tabs-scrollable { 

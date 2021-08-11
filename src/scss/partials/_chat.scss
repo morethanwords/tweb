@@ -853,6 +853,10 @@ $chat-helper-size: 36px;
 				padding: 0 38px 0 16px;
 			}
 		}
+
+		&.btn-disabled {
+			opacity: var(--disabled-opacity);
+		}
 	}
 	
 	> div {

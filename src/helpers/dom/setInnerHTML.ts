@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-export default function setInnerHTML(elem: HTMLElement, html: string) {
+export default function setInnerHTML(elem: Element, html: string) {
   elem.setAttribute('dir', 'auto');
   elem.innerHTML = html;
 }

@@ -38,7 +38,7 @@
       color: #fff;
       
       @include respond-to(handhelds) {
-        margin-left: 1rem;
+        margin-left: 1.125rem;
       }
     }
   }
@@ -95,8 +95,11 @@
       left: 50%;
       transform: translate3d(-50%, -50%, 0) scale(1);
       font-size: 4rem;
-      transition: visibility .2s, opacity .2s;
       touch-action: manipulation;
+      
+      @include animation-level(2) {
+        transition: visibility var(--layer-transition), opacity var(--layer-transition);
+      }
 
       @include respond-to(handhelds) {
         font-size: 3rem;
@@ -116,10 +119,13 @@
     bottom: 0;
     right: 0;
     left: 0;
-    transition: transform .3s;
     text-align: left;
     direction: ltr;
     z-index: 6;
+
+    @include animation-level(2) {
+      transition: transform var(--layer-transition);
+    }
 
     .progress-line {
       margin: 0 16px;
@@ -131,6 +137,10 @@
   
       &__loaded, & {
         background: rgba(255, 255, 255, .38);
+      }
+
+      @include respond-to(handhelds) {
+        margin-bottom: -1px;
       }
     }
   }
@@ -146,8 +156,11 @@
     position: absolute;
     background-repeat: repeat-x;
     background-image: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAADGCAYAAAAT+OqFAAAAdklEQVQoz42QQQ7AIAgEF/T/D+kbq/RWAlnQyyazA4aoAB4FsBSA/bFjuF1EOL7VbrIrBuusmrt4ZZORfb6ehbWdnRHEIiITaEUKa5EJqUakRSaEYBJSCY2dEstQY7AuxahwXFrvZmWl2rh4JZ07z9dLtesfNj5q0FU3A5ObbwAAAABJRU5ErkJggg==);
-    transition: transform .3s;
     pointer-events: none;
+
+    @include animation-level(2) {
+      transition: transform var(--layer-transition);
+    }
   }
 
   &:not(.ckin__fullscreen) .default__gradient-bottom {
@@ -403,7 +416,6 @@ input[type=range] {
   align-items: center;
 
   @include respond-to(handhelds) {
-    height: 3.5rem;
-    padding: 0 .5rem;
+    height: 3.625rem;
   }
 }

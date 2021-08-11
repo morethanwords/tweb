@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import renderImageFromUrl, { renderImageFromUrlPromise } from "../../helpers/dom/renderImageFromUrl";
+import { renderImageFromUrlPromise } from "../../helpers/dom/renderImageFromUrl";
 import replaceContent from "../../helpers/dom/replaceContent";
 import sequentialDom from "../../helpers/sequentialDom";
 import { UserProfilePhoto, ChatPhoto, InputFileLocation } from "../../layer";

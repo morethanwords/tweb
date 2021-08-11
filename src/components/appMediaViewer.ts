@@ -28,7 +28,7 @@ import ProgressivePreloader from "./preloader";
 import Scrollable from "./scrollable";
 import appSidebarRight from "./sidebarRight";
 import SwipeHandler from "./swipeHandler";
-import { months, ONE_DAY } from "../helpers/date";
+import { ONE_DAY } from "../helpers/date";
 import { SearchSuperContext } from "./appSearchSuper.";
 import DEBUG from "../config/debug";
 import appNavigationController from "./appNavigationController";
@@ -45,6 +45,9 @@ import generatePathData from "../helpers/generatePathData";
 import replaceContent from "../helpers/dom/replaceContent";
 import PeerTitle from "./peerTitle";
 import appMessagesIdsManager from "../lib/appManagers/appMessagesIdsManager";
+import I18n, { i18n } from "../lib/langPack";
+import { capitalizeFirstLetter } from "../helpers/string";
+import setInnerHTML from "../helpers/dom/setInnerHTML";
 
 // TODO: масштабирование картинок (не SVG) при ресайзе, и правильный возврат на исходную позицию
 // TODO: картинки "обрезаются" если возвращаются или появляются с места, где есть их перекрытие (топбар, поле ввода)
@@ -353,6 +356,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
 
   protected async setMoverToTarget(target: HTMLElement, closing = false, fromRight = 0) {
     if(this.videoPlayer) { // there could be a better place for it
+      this.wholeDiv.classList.remove('has-video-controls');
       this.videoPlayer.removeListeners();
       this.videoPlayer = undefined;
     }
@@ -859,19 +863,42 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     const time = new Date(timestamp * 1000);
     const now = date.getTime() / 1000;
 
-    const timeStr = time.getHours() + ':' + ('0' + time.getMinutes()).slice(-2);
-    let dateStr: string;
+    const timeEl = new I18n.IntlDateElement({
+      date: time,
+      options: {
+        hour: '2-digit',
+        minute: '2-digit'
+      }
+    }).element;
+
+    let dateEl: Node | string;
     if((now - timestamp) < ONE_DAY && date.getDate() === time.getDate()) { // if the same day
-      dateStr = 'Today';
+      dateEl = i18n('Date.Today');
     } else if((now - timestamp) < (ONE_DAY * 2) && (date.getDate() - 1) === time.getDate()) { // yesterday
-      dateStr = 'Yesterday';
+      dateEl = capitalizeFirstLetter(I18n.format('Yesterday', true));
     } else if(date.getFullYear() !== time.getFullYear()) { // different year
-      dateStr = months[time.getMonth()].slice(0, 3) + ' ' + time.getDate() + ', ' + time.getFullYear();
+      dateEl = new I18n.IntlDateElement({
+        date: time,
+        options: {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric'
+        }
+      }).element;
+      // dateStr = months[time.getMonth()].slice(0, 3) + ' ' + time.getDate() + ', ' + time.getFullYear();
     } else {
-      dateStr = months[time.getMonth()].slice(0, 3) + ' ' + time.getDate();
+      dateEl = new I18n.IntlDateElement({
+        date: time,
+        options: {
+          month: 'short',
+          day: 'numeric'
+        }
+      }).element;
+      // dateStr = months[time.getMonth()].slice(0, 3) + ' ' + time.getDate();
     }
 
-    this.author.date.innerText = dateStr + ' at ' + timeStr;
+    this.author.date.innerHTML = '';
+    this.author.date.append(dateEl, ' ', i18n('ScheduleController.at'), ' ', timeEl);
 
     replaceContent(this.author.nameEl, new PeerTitle({
       peerId: fromId,
@@ -882,7 +909,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
 
     let oldAvatar = this.author.avatarEl;
     this.author.avatarEl = (this.author.avatarEl.cloneNode() as AvatarElement);
-    this.author.avatarEl.setAttribute('peer', '' + fromId);
+    this.author.avatarEl.setAttribute('peer', '' + (fromId || rootScope.myId));
     oldAvatar.parentElement.replaceChild(this.author.avatarEl, oldAvatar);
   }
   
@@ -978,9 +1005,15 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     const mover = this.content.mover;
 
     //const maxWidth = appPhotosManager.windowW - 16;
-    const maxWidth = mediaSizes.isMobile ? this.pageEl.scrollWidth : this.pageEl.scrollWidth - 16;
+    const maxWidth = this.pageEl.scrollWidth;
     // TODO: const maxHeight = mediaSizes.isMobile ? appPhotosManager.windowH : appPhotosManager.windowH - 100;
-    const maxHeight = appPhotosManager.windowH - 120;
+    let padding = 0;
+    const windowH = appPhotosManager.windowH;
+    if(windowH < 1000000 && !mediaSizes.isMobile) {
+      padding = 32 + 120;
+    }
+    // const maxHeight = windowH - 120 - padding;
+    const maxHeight = windowH - 120;
     let thumbPromise: Promise<any> = Promise.resolve();
     const size = appPhotosManager.setAttachmentSize(media, container, maxWidth, maxHeight, mediaSizes.isMobile ? false : true).photoSize;
     if(useContainerAsTarget) {
@@ -1076,6 +1109,9 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
               }
   
               const player = new VideoPlayer(video, true, media.supportsStreaming);
+              player.addEventListener('toggleControls', (show) => {
+                this.wholeDiv.classList.toggle('has-video-controls', show);
+              });
               this.videoPlayer = player;
               /* div.append(video);
               mover.append(player.wrapper); */
@@ -1459,16 +1495,19 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
       || (message.media.webpage && (message.media.webpage.document || message.media.webpage.photo));
   }
 
-  private setCaption(message: any) {
+  private setCaption(message: Message.message) {
     const caption = message.message;
-    this.content.caption.classList.toggle('hide', !caption);
+    let html = '';
     if(caption) {
-      this.content.caption.firstElementChild.innerHTML = RichTextProcessor.wrapRichText(caption, {
+      html = RichTextProcessor.wrapRichText(caption, {
         entities: message.totalEntities
       });
-    } else {
-      this.content.caption.firstElementChild.innerHTML = '';
     }
+    
+    // html = 'Dandelion are a family of flowering plants that grow in many parts of the world.';
+    setInnerHTML(this.content.caption.firstElementChild, html);
+    this.content.caption.classList.toggle('hide', !caption);
+    // this.content.container.classList.toggle('with-caption', !!caption);
   }
 
   public setSearchContext(context: SearchSuperContext) {
@@ -1497,8 +1536,8 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
 
     this.currentMessageId = mid;
     this.currentPeerId = message.peerId;
-    const promise = super._openMedia(media, message.date, fromId, fromRight, target, reverse, prevTargets, nextTargets, needLoadMore);
     this.setCaption(message);
+    const promise = super._openMedia(media, message.date, fromId, fromRight, target, reverse, prevTargets, nextTargets, needLoadMore);
 
     return promise;
   }
