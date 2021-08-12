@@ -494,8 +494,14 @@ export default class ChatInput {
       });
     } else {
       this.listenerSetter.add(rootScope)('history_delete', ({peerId, msgs}) => {
-        if(this.chat.peerId === peerId && msgs[this.editMsgId]) {
-          this.onMessageSent();
+        if(this.chat.peerId === peerId) {
+          if(msgs[this.editMsgId]) {
+            this.onMessageSent();
+          }
+
+          if(this.replyToMsgId && msgs[this.replyToMsgId]) {
+            this.clearHelper('reply');
+          }
         }
       });
     }
@@ -725,7 +731,7 @@ export default class ChatInput {
       }
     }
 
-    if(this.messageInputField.value === draft.rMessage) return false;
+    if(this.messageInputField.value === draft.rMessage && this.replyToMsgId === draft.reply_to_msg_id) return false;
 
     this.clearHelper();
     this.noWebPage = draft.pFlags.no_webpage;
