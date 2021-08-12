@@ -57,7 +57,11 @@ const domainAddChars = '\u00b7';
 // Based on Regular Expression for URL validation by Diego Perini
 const urlAlphanumericRegExpPart = '[' + alphaCharsRegExp + '0-9]';
 const urlProtocolRegExpPart = '((?:https?|ftp)://|mailto:)?';
-const urlRegExp = urlProtocolRegExpPart +
+const urlAnyProtocolRegExpStr = '(?:[^/]+?)://|mailto:';
+const urlAnyProtocolRegExp = new RegExp('^' + urlAnyProtocolRegExpStr, 'i');
+const urlPathRegExpStr = '(?:\\S{0,255}[^\\s.;,(\\[\\]{}<>"\'])';
+const urlResourcePathRegExpStr = '(?:/' + urlPathRegExpStr + '?)?';
+let urlRegExp = urlProtocolRegExpPart +
   // user:pass authentication
   '(?:' + urlAlphanumericRegExpPart + '{1,64}(?::' + urlAlphanumericRegExpPart + '{0,64})?@)?' +
   '(?:' +
@@ -74,9 +78,13 @@ const urlRegExp = urlProtocolRegExpPart +
   // port number
   '(?::\\d{2,5})?' +
   // resource path
-  '(?:/(?:\\S{0,255}[^\\s.;,(\\[\\]{}<>"\'])?)?';
-const urlProtocolRegExp = new RegExp('^' + urlProtocolRegExpPart.slice(0, -1), 'i');
-const urlAnyProtocolRegExp = /^((?:[^\/]+?):\/\/|mailto:)/;
+  urlResourcePathRegExpStr;
+// const urlAnyRegExp = `((?:${urlAnyProtocolRegExpStr})[${alphaCharsRegExp}]+(?:\?${urlPathRegExpStr})?)`;
+const urlAnyRegExp = `((?:${urlAnyProtocolRegExpStr})[${alphaCharsRegExp}]+(?:\?${urlPathRegExpStr})?)`;
+// urlRegExp = `(?:${urlRegExp})|(?:${urlAnyRegExp})`;
+(window as any).urlAnyRegExp = urlAnyRegExp;
+(window as any).urlRegExp = urlRegExp;
+// const urlProtocolRegExp = new RegExp('^' + urlProtocolRegExpPart.slice(0, -1), 'i');
 const usernameRegExp = '[a-zA-Z\\d_]{5,32}';
 const botCommandRegExp = '\\/([a-zA-Z\\d_]{1,32})(?:@(' + usernameRegExp + '))?(\\b|$)';
 const fullRegExp = new RegExp('(^| )(@)(' + usernameRegExp + ')|(' + urlRegExp + ')|(\\n)|(' + emojiRegExp + ')|(^|[\\s\\(\\]])(#[' + alphaNumericRegExp + ']{2,64})|(^|\\s)' + botCommandRegExp, 'i');
