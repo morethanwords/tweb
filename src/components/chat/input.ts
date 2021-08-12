@@ -32,7 +32,7 @@ import PopupNewMedia from '../popups/newMedia';
 import { toast } from "../toast";
 import { wrapReply } from "../wrappers";
 import InputField from '../inputField';
-import { MessageEntity, DraftMessage, WebPage } from '../../layer';
+import { MessageEntity, DraftMessage, WebPage, Message } from '../../layer';
 import StickersHelper from './stickersHelper';
 import ButtonIcon from '../buttonIcon';
 import ButtonMenuToggle from '../buttonMenuToggle';
@@ -1768,13 +1768,32 @@ export default class ChatInput {
   }
 
   public initMessageReply(mid: number) {
-    const message = this.chat.getMessage(mid);
+    let message: Message = this.chat.getMessage(mid);
     const f = () => {
-      const peerTitleEl = new PeerTitle({
-        peerId: message.fromId,
-        dialog: false
-      }).element;
-      this.setTopInfo('reply', f, peerTitleEl, message.message, undefined, message);
+      let peerTitleEl: HTMLElement;
+      if(message._ === 'messageEmpty') { // load missing replying message
+        peerTitleEl = i18n('Loading');
+
+        this.chat.appMessagesManager.wrapSingleMessage(this.chat.peerId, mid).then(() => {
+          if(this.replyToMsgId !== mid) {
+            return;
+          }
+
+          message = this.chat.getMessage(mid);
+          if(message._ === 'messageEmpty') {
+            this.clearHelper('reply');
+          } else {
+            f();
+          }
+        });
+      } else {
+        peerTitleEl = new PeerTitle({
+          peerId: message.fromId,
+          dialog: false
+        }).element;
+      }
+
+      this.setTopInfo('reply', f, peerTitleEl, message && (message as Message.message).message, undefined, message);
       this.replyToMsgId = mid;
     };
     f();
