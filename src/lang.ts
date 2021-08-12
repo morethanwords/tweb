@@ -793,6 +793,8 @@ const lang = {
   //"Schedule.SendWhenOnline": "Send When Online",
   "Stickers.Recent": "Recent",
   //"Stickers.Favorite": "Favorite",
+  "Text.Context.Copy.Username": "Copy Username",
+  "Text.Context.Copy.Hashtag": "Copy Hashtag",
   "Time.TomorrowAt": "tomorrow at %@",
   "TwoStepAuth.SetPasswordHelp": "You can set a password that will be required when you log in on a new device in addition to the code you get in the SMS.",
   "TwoStepAuth.GenericHelp": "You have enabled Two-Step verification.\nYou'll need the password you set up here to log in to your Telegram account.",

@@ -36,6 +36,7 @@ export default class ChatContextMenu {
   private isTargetAGroupedItem: boolean;
   private isTextSelected: boolean;
   private isAnchorTarget: boolean;
+  private isUsernameTarget: boolean;
   private peerId: number;
   private mid: number;
   private message: any;
@@ -89,7 +90,11 @@ export default class ChatContextMenu {
       //this.msgID = msgID;
       this.target = e.target as HTMLElement;
       this.isTextSelected = !isSelectionEmpty();
-      this.isAnchorTarget = this.target.tagName === 'A' && (this.target as HTMLAnchorElement).target === '_blank';
+      this.isAnchorTarget = this.target.tagName === 'A' && (
+        (this.target as HTMLAnchorElement).target === '_blank' || 
+        this.target.classList.contains('anchor-url')
+      );
+      this.isUsernameTarget = this.target.tagName === 'A' && this.target.classList.contains('mention');
 
       const groupedItem = findUpClassName(this.target, 'grouped-item');
       this.isTargetAGroupedItem = !!groupedItem;
@@ -230,6 +235,22 @@ export default class ChatContextMenu {
       text: 'CopyLink',
       onClick: this.onCopyAnchorLinkClick,
       verify: () => this.isAnchorTarget,
+      withSelection: true
+    }, {
+      icon: 'copy',
+      text: 'Text.Context.Copy.Username',
+      onClick: () => {
+        copyTextToClipboard(this.target.innerHTML);
+      },
+      verify: () => this.isUsernameTarget,
+      withSelection: true
+    }, {
+      icon: 'copy',
+      text: 'Text.Context.Copy.Hashtag',
+      onClick: () => {
+        copyTextToClipboard(this.target.innerHTML);
+      },
+      verify: () => this.target.classList.contains('anchor-hashtag'),
       withSelection: true
     }, {
       icon: 'link',
