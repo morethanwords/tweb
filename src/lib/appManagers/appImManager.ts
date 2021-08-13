@@ -230,6 +230,10 @@ export class AppImManager {
       stateStorage.setToCache('chatPositions', c || {});
     });
 
+    // ! do not remove this line 
+    // ! instance can be deactivated before the UI starts, because it waits in background for RAF that is delayed
+    singleInstance.activateInstance();
+
     this.addAnchorListener<{}>({
       name: 'showMaskedAlert', 
       callback: (params, element) => {
