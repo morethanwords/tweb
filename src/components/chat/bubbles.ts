@@ -2537,6 +2537,7 @@ export default class ChatBubbles {
               const docDiv = wrapDocument({
                 message,
                 noAutoDownload: this.chat.noAutoDownloadMedia,
+                lazyLoadQueue: this.lazyLoadQueue
               });
               preview.append(docDiv);
               preview.classList.add('preview-with-document');
@@ -2594,7 +2595,7 @@ export default class ChatBubbles {
             if(size.w === size.h && t) {
               bubble.classList.add('is-square-photo');
               isSquare = true;
-              this.appPhotosManager.setAttachmentSize(photo, preview, 32, 32, false);
+              this.appPhotosManager.setAttachmentSize(photo, preview, 48, 48, false);
 
               /* if(t) {
                 t.append(timeSpan);
@@ -2717,7 +2718,8 @@ export default class ChatBubbles {
               messageDiv,
               chat: this.chat,
               loadPromises,
-              noAutoDownload: this.chat.noAutoDownloadMedia
+              noAutoDownload: this.chat.noAutoDownloadMedia,
+              lazyLoadQueue: this.lazyLoadQueue
             });
 
             if(newNameContainer) {

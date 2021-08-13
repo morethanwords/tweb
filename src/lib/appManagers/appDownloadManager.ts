@@ -12,7 +12,6 @@ import rootScope from "../rootScope";
 import apiManager from "../mtproto/mtprotoworker";
 import { deferredPromise, CancellablePromise } from "../../helpers/cancellablePromise";
 import { InputFile } from "../../layer";
-import referenceDatabase, {ReferenceBytes} from "../mtproto/referenceDatabase";
 import { getFileNameByLocation } from "../../helpers/fileName";
 import CacheStorageController from "../cacheStorage";
 import { MOUNT_CLASS_TO } from "../../config/debug";

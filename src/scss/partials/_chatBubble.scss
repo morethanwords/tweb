@@ -915,15 +915,16 @@ $bubble-margin: .25rem;
 
       .preview-resizer {
         margin: 0;
-        width: 2rem;
-        height: 2rem;
+        width: 3rem;
+        height: 3rem;
         float: right;
         margin-left: .625rem;
+        margin-top: .1875rem;
       }
 
       .preview {
-        max-width: unquote('min(2rem, 100%)');
-        max-height: unquote('min(2rem, 100%)');
+        max-width: unquote('min(3rem, 100%)');
+        max-height: unquote('min(3rem, 100%)');
         margin: 0;
       }
     }
