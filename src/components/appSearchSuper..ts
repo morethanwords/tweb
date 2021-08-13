@@ -508,7 +508,8 @@ export default class AppSearchSuper {
             fontWeight: 400,
             voiceAsMusic: true,
             showSender: showSender,
-            searchContext: this.copySearchContext(inputFilter)
+            searchContext: this.copySearchContext(inputFilter),
+            lazyLoadQueue: this.lazyLoadQueue
           });
 
           if(['audio', 'voice'].includes(message.media.document.type)) {

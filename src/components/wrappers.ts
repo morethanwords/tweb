@@ -445,7 +445,7 @@ export const formatDate = (timestamp: number, monthShort = false, withYear = tru
   return str + ' at ' + date.getHours() + ':' + ('0' + date.getMinutes()).slice(-2);
 };
 
-export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showSender, searchContext, loadPromises, noAutoDownload}: {
+export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showSender, searchContext, loadPromises, noAutoDownload, lazyLoadQueue}: {
   message: any, 
   withTime?: boolean,
   fontWeight?: number,
@@ -454,6 +454,7 @@ export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showS
   searchContext?: SearchSuperContext,
   loadPromises?: Promise<any>[],
   noAutoDownload?: boolean,
+  lazyLoadQueue?: LazyLoadQueue
 }): HTMLElement {
   if(!fontWeight) fontWeight = 500;
 
@@ -470,10 +471,7 @@ export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showS
     if(voiceAsMusic) audioElement.voiceAsMusic = voiceAsMusic;
     if(searchContext) audioElement.searchContext = searchContext;
     if(showSender) audioElement.showSender = showSender;
-    
-    if(uploading) {
-      audioElement.preloader = message.media.preloader;
-    }
+    if(uploading) audioElement.preloader = message.media.preloader;
 
     audioElement.dataset.fontWeight = '' + fontWeight;
     audioElement.render();
@@ -507,7 +505,8 @@ export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showS
         boxWidth: 54, 
         boxHeight: 54,
         loadPromises,
-        withoutPreloader: true
+        withoutPreloader: true,
+        lazyLoadQueue
       });
       icoDiv.style.width = icoDiv.style.height = '';
       if(wrapped.images.thumb) imgs.push(wrapped.images.thumb);
@@ -1444,7 +1443,7 @@ export function wrapAlbum({groupId, attachmentDiv, middleware, uploading, lazyLo
   });
 }
 
-export function wrapGroupedDocuments({albumMustBeRenderedFull, message, bubble, messageDiv, chat, loadPromises, noAutoDownload}: {
+export function wrapGroupedDocuments({albumMustBeRenderedFull, message, bubble, messageDiv, chat, loadPromises, noAutoDownload, lazyLoadQueue}: {
   albumMustBeRenderedFull: boolean,
   message: any,
   messageDiv: HTMLElement,
@@ -1453,6 +1452,7 @@ export function wrapGroupedDocuments({albumMustBeRenderedFull, message, bubble, 
   chat: Chat,
   loadPromises?: Promise<any>[],
   noAutoDownload?: boolean,
+  lazyLoadQueue?: LazyLoadQueue
 }) {
   let nameContainer: HTMLElement;
   const mids = albumMustBeRenderedFull ? chat.getMidsByMid(message.mid) : [message.mid];
@@ -1465,7 +1465,8 @@ export function wrapGroupedDocuments({albumMustBeRenderedFull, message, bubble, 
     const div = wrapDocument({
       message,
       loadPromises,
-      noAutoDownload
+      noAutoDownload,
+      lazyLoadQueue
     });
 
     const container = document.createElement('div');
