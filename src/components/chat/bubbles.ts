@@ -314,7 +314,7 @@ export default class ChatBubbles {
 
         if(message.media?.webpage && !bubble.querySelector('.web')) {
           getHeavyAnimationPromise().then(() => {
-            this.renderMessage(message, true, false, bubble, false);
+            this.safeRenderMessage(message, true, false, bubble, false);
             this.scrollToBubbleIfLast(bubble);
           });
           /* const mounted = this.getMountedBubble(mid);
@@ -371,7 +371,7 @@ export default class ChatBubbles {
 
         const updatePosition = this.chat.type === 'scheduled';
         const scrolledDown = this.scrolledDown;
-        this.renderMessage(mounted.message, true, false, mounted.bubble, updatePosition);
+        this.safeRenderMessage(mounted.message, true, false, mounted.bubble, updatePosition);
         if(scrolledDown) {
           this.scrollToBubbleIfLast(mounted.bubble);
         }
@@ -395,7 +395,7 @@ export default class ChatBubbles {
 
         const renderMaxId = getObjectKeysAndSort(this.appMessagesManager.groupedMessagesStorage[groupId], 'asc').pop();
 
-        this.renderMessage(this.chat.getMessage(renderMaxId), true, false, this.bubbles[renderedId], false);
+        this.safeRenderMessage(this.chat.getMessage(renderMaxId), true, false, this.bubbles[renderedId], false);
       //});
     });
 
@@ -579,7 +579,7 @@ export default class ChatBubbles {
           const bubble = this.bubbles[mid];
           if(bubble.classList.contains('can-have-big-emoji')) {
             const message = this.chat.getMessage(mid);
-            this.renderMessage(message, undefined, false, bubble);
+            this.safeRenderMessage(message, undefined, false, bubble);
             // this.bubbleGroups.addBubble(bubble, message, false);
           }
         });
@@ -2085,7 +2085,7 @@ export default class ChatBubbles {
   }
   
   // reverse means top
-  public renderMessage(message: any, reverse = false, multipleRender = false, bubble: HTMLDivElement = null, updatePosition = true) {
+  private renderMessage(message: any, reverse = false, multipleRender = false, bubble: HTMLDivElement = null, updatePosition = true) {
     /* if(DEBUG) {
       this.log.debug('message to render:', message);
     } */
@@ -2966,6 +2966,14 @@ export default class ChatBubbles {
     return bubble;
   }
 
+  private safeRenderMessage(message: any, reverse?: boolean, multipleRender?: boolean, bubble?: HTMLDivElement, updatePosition?: boolean) {
+    try {
+      return this.renderMessage(message, reverse, multipleRender, bubble, updatePosition);
+    } catch(err) {
+      this.log.error('renderMessage error:', err);
+    }
+  }
+
   public async performHistoryResult(history: number[], reverse: boolean, isBackLimit: boolean, additionMsgId?: number) {
     // commented bot getProfile in getHistory!
     // if(!history/* .filter((id: number) => id > 0) */.length) {
@@ -3040,7 +3048,7 @@ export default class ChatBubbles {
     const cb = (mid: number) => {
       const message = this.chat.getMessage(mid);
       if(message.id > 0) {
-        this.renderMessage(message, reverse, true);
+        this.safeRenderMessage(message, reverse, true);
       } else {
         this.processLocalMessageRender(message);
       }
@@ -3396,7 +3404,7 @@ export default class ChatBubbles {
   }
 
   private processLocalMessageRender(message: Message.message | Message.messageService) {
-    const bubble = this.renderMessage(message, undefined, undefined, undefined, false);
+    const bubble = this.safeRenderMessage(message, undefined, undefined, undefined, false);
     bubble.classList.add('bubble-first', 'is-group-last', 'is-group-first');
     bubble.classList.remove('can-have-tail', 'is-in');
 

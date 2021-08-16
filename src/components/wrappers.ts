@@ -42,6 +42,7 @@ import { cancelEvent } from '../helpers/dom/cancelEvent';
 import { attachClickEvent } from '../helpers/dom/clickEvent';
 import isInDOM from '../helpers/dom/isInDOM';
 import lottieLoader from '../lib/lottieLoader';
+import { clearBadCharsAndTrim } from '../helpers/cleanSearchText';
 
 const MAX_VIDEO_AUTOPLAY_SIZE = 50 * 1024 * 1024; // 50 MB
 
@@ -480,7 +481,9 @@ export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showS
 
   let extSplitted = doc.file_name ? doc.file_name.split('.') : '';
   let ext = '';
-  ext = extSplitted.length > 1 && Array.isArray(extSplitted) ? extSplitted.pop().toLowerCase() : 'file';
+  ext = extSplitted.length > 1 && Array.isArray(extSplitted) ? 
+    clearBadCharsAndTrim(extSplitted.pop().split(' ', 1)[0].toLowerCase()) : 
+    'file';
 
   let docDiv = document.createElement('div');
   docDiv.classList.add('document', `ext-${ext}`);
