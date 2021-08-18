@@ -90,41 +90,43 @@ export type BroadcastEvents = {
   //'channel_settings': {channelId: number},
   'webpage_updated': {id: string, msgs: {peerId: number, mid: number, isScheduled: boolean}[]},
 
-  'download_progress': any,
   'connection_status_change': ConnectionStatusChange,
   'settings_updated': {key: string, value: any},
   'draft_updated': {peerId: number, threadId: number, draft: MyDraftMessage | undefined, force?: boolean},
-
+  
   'event-heavy-animation-start': void,
   'event-heavy-animation-end': void,
-
+  
   'im_mount': void,
   'im_tab_change': number,
-
+  
   'idle': boolean,
-
+  
   'overlay_toggle': boolean,
-
+  
   'background_change': void,
-
+  
   'privacy_update': Update.updatePrivacy,
-
+  
   'notify_settings': Update.updateNotifySettings,
   'notify_peer_type_settings': {key: Exclude<NotifyPeer['_'], 'notifyPeer'>, settings: PeerNotifySettings},
-
+  
   'language_change': string,
   
   'theme_change': void,
-
+  
   'instance_activated': void,
   'instance_deactivated': void,
-
+  
   'push_notification_click': PushNotificationObject,
   'push_init': PushSubscriptionNotify,
   'push_subscribe': PushSubscriptionNotify,
   'push_unsubscribe': PushSubscriptionNotify,
-
-  'emoji_recent': string
+  
+  'emoji_recent': string,
+  
+  'download_start': string,
+  'download_progress': any,
 };
 
 export class RootScope extends EventListenerBase<{

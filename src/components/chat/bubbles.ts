@@ -955,50 +955,75 @@ export default class ChatBubbles {
       return;
     }
 
+    const documentDiv = findUpClassName(target, 'document-with-thumb');
     if((target.tagName === 'IMG' && !target.classList.contains('emoji') && !target.classList.contains('document-thumb')) 
       || target.classList.contains('album-item')
       || isVideoComponentElement
-      || (target.tagName === 'VIDEO' && !bubble.classList.contains('round'))) {
-      let messageId = +findUpClassName(target, 'album-item')?.dataset.mid || +bubble.dataset.mid;
-      let message = this.chat.getMessage(messageId);
+      || (target.tagName === 'VIDEO' && !bubble.classList.contains('round'))
+      || (documentDiv && !documentDiv.querySelector('.preloader-container'))) {
+      const groupedItem = findUpClassName(target, 'album-item') || findUpClassName(target, 'document-container');
+      const messageId = +(groupedItem || bubble).dataset.mid;
+      const message = this.chat.getMessage(messageId);
       if(!message) {
         this.log.warn('no message by messageId:', messageId);
         return;
       }
 
-      let targets: {element: HTMLElement, mid: number, peerId: number}[] = [];
-      let ids = Object.keys(this.bubbles).map(k => +k).filter(id => {
+      const f = documentDiv ? (media: any) => {
+        return AppMediaViewer.isMediaCompatibleForDocumentViewer(media);
+      } : (media: any) => {
+        return media._ === 'photo' || ['video', 'gif'].includes(media.type);
+      };
+
+      const targets: {element: HTMLElement, mid: number, peerId: number}[] = [];
+      const ids = Object.keys(this.bubbles).map(k => +k).filter(id => {
         //if(!this.scrollable.visibleElements.find(e => e.element === this.bubbles[id])) return false;
 
-        let message = this.chat.getMessage(id);
+        const message = this.chat.getMessage(id);
+        const media = this.appMessagesManager.getMediaFromMessage(message);
         
-        return message.media && (message.media.photo || (message.media.document && (message.media.document.type === 'video' || message.media.document.type === 'gif')) || (message.media.webpage && (message.media.webpage.document || message.media.webpage.photo)));
+        return media && f(media);
       }).sort((a, b) => a - b);
 
       ids.forEach(id => {
-        let withTail = this.bubbles[id].classList.contains('with-media-tail');
-        let str = '.album-item video, .album-item img, .preview video, .preview img, ';
-        if(withTail) {
-          str += '.bubble__media-container';
+        let selector: string;
+        if(documentDiv) {
+          selector = '.document-container';
         } else {
-          str += '.attachment video, .attachment img';
+          const withTail = this.bubbles[id].classList.contains('with-media-tail');
+          selector = '.album-item video, .album-item img, .preview video, .preview img, ';
+          if(withTail) {
+            selector += '.bubble__media-container';
+          } else {
+            selector += '.attachment video, .attachment img';
+          }
         }
 
-        const hasAspecter = !!this.bubbles[id].querySelector('.media-container-aspecter');
-        let elements = this.bubbles[id].querySelectorAll(str) as NodeListOf<HTMLElement>;
+        const elements = Array.from(this.bubbles[id].querySelectorAll(selector)) as HTMLElement[];
         const parents: Set<HTMLElement> = new Set();
-        Array.from(elements).forEach((element: HTMLElement) => {
-          if(hasAspecter && !findUpClassName(element, 'media-container-aspecter')) return;
-          let albumItem = findUpClassName(element, 'album-item');
-          const parent = albumItem || element.parentElement;
-          if(parents.has(parent)) return;
-          parents.add(parent);
-          targets.push({
-            element,
-            mid: +albumItem?.dataset.mid || id,
-            peerId: this.peerId
+        if(documentDiv) {
+          elements.forEach((element) => {
+            targets.push({
+              element: element.querySelector('.document-ico'),
+              mid: +element.dataset.mid,
+              peerId: this.peerId
+            });
           });
-        });
+        } else {
+          const hasAspecter = !!this.bubbles[id].querySelector('.media-container-aspecter');
+          elements.forEach((element) => {
+            if(hasAspecter && !findUpClassName(element, 'media-container-aspecter')) return;
+            let albumItem = findUpClassName(element, 'album-item');
+            const parent = albumItem || element.parentElement;
+            if(parents.has(parent)) return;
+            parents.add(parent);
+            targets.push({
+              element,
+              mid: albumItem ? +albumItem.dataset.mid : id,
+              peerId: this.peerId
+            });
+          });
+        }
       });
 
       targets.sort((a, b) => a.mid - b.mid);
@@ -1018,7 +1043,7 @@ export default class ChatBubbles {
       .setSearchContext({
         threadId: this.chat.threadId,
         peerId: this.peerId,
-        inputFilter: 'inputMessagesFilterPhotoVideo'
+        inputFilter: documentDiv ? 'inputMessagesFilterDocument' : 'inputMessagesFilterPhotoVideo'
       })
       .openMedia(message, targets[idx].element, 0, true, targets.slice(0, idx), targets.slice(idx + 1));
       
@@ -2760,7 +2785,7 @@ export default class ChatBubbles {
             </div>`;
 
           const avatarElem = new AvatarElement();
-          //avatarElem.lazyLoadQueue = this.lazyLoadQueue;
+          avatarElem.lazyLoadQueue = this.lazyLoadQueue;
           avatarElem.setAttribute('peer', '' + message.media.user_id);
           avatarElem.classList.add('contact-avatar', 'avatar-54');
 
@@ -2901,7 +2926,7 @@ export default class ChatBubbles {
       const needAvatar = this.chat.isAnyGroup() && !isOut;
       if(needAvatar) {
         let avatarElem = new AvatarElement();
-        //avatarElem.lazyLoadQueue = this.lazyLoadQueue;
+        avatarElem.lazyLoadQueue = this.lazyLoadQueue;
         avatarElem.classList.add('user-avatar', 'avatar-40');
         avatarElem.loadPromises = loadPromises;
 

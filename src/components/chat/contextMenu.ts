@@ -283,7 +283,12 @@ export default class ChatContextMenu {
         }
         
         const doc: MyDocument = this.message.media?.document;
-        return doc && doc.type && !(['gif', 'photo', 'video', 'sticker'] as MyDocument['type'][]).includes(doc.type);
+        if(!doc) return false;
+        
+        let hasTarget = !!isTouchSupported;
+        const isGoodType = !doc.type || !(['gif', 'video', 'sticker'] as MyDocument['type'][]).includes(doc.type);
+        if(isGoodType) hasTarget = hasTarget || !!findUpClassName(this.target, 'document') || !!findUpClassName(this.target, 'audio');
+        return isGoodType && hasTarget;
       }
     }, {
       icon: 'checkretract',
