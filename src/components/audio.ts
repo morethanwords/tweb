@@ -216,6 +216,7 @@ function wrapVoiceMessage(audioEl: AudioElement) {
     });
     progress.addEventListener('mousedown', (e) => {
       e.preventDefault();
+      if(e.button !== 1) return;
       if(!audio.paused) {
         audio.pause();
       }

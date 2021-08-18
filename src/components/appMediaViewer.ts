@@ -11,7 +11,7 @@ import { isMobileSafari, isSafari } from "../helpers/userAgent";
 import appDocsManager, { MyDocument } from "../lib/appManagers/appDocsManager";
 import appImManager from "../lib/appManagers/appImManager";
 import appMessagesManager from "../lib/appManagers/appMessagesManager";
-import appPhotosManager from "../lib/appManagers/appPhotosManager";
+import appPhotosManager, { MyPhoto } from "../lib/appManagers/appPhotosManager";
 import { logger } from "../lib/logger";
 import VideoPlayer from "../lib/mediaPlayer";
 import { RichTextProcessor } from "../lib/richtextprocessor";
@@ -36,7 +36,7 @@ import { Message } from "../layer";
 import { forEachReverse } from "../helpers/array";
 import AppSharedMediaTab from "./sidebarRight/tabs/sharedMedia";
 import findUpClassName from "../helpers/dom/findUpClassName";
-import renderImageFromUrl from "../helpers/dom/renderImageFromUrl";
+import renderImageFromUrl, { renderImageFromUrlPromise } from "../helpers/dom/renderImageFromUrl";
 import getVisibleRect from "../helpers/dom/getVisibleRect";
 import appDownloadManager from "../lib/appManagers/appDownloadManager";
 import { cancelEvent } from "../helpers/dom/cancelEvent";
@@ -48,6 +48,7 @@ import appMessagesIdsManager from "../lib/appManagers/appMessagesIdsManager";
 import I18n, { i18n } from "../lib/langPack";
 import { capitalizeFirstLetter } from "../helpers/string";
 import setInnerHTML from "../helpers/dom/setInnerHTML";
+import { doubleRaf, fastRaf } from "../helpers/schedulers";
 
 // TODO: масштабирование картинок (не SVG) при ресайзе, и правильный возврат на исходную позицию
 // TODO: картинки "обрезаются" если возвращаются или появляются с места, где есть их перекрытие (топбар, поле ввода)
@@ -511,8 +512,15 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     const deferred = this.setMoverAnimationPromise = deferredPromise<void>();
     const ret = {onAnimationEnd: deferred};
 
-    this.setMoverAnimationPromise.then(() => {
+    const timeout = setTimeout(() => {
+      if(!deferred.isFulfilled && !deferred.isRejected) {
+        deferred.resolve();
+      }
+    }, 1000);
+
+    this.setMoverAnimationPromise.finally(() => {
       this.setMoverAnimationPromise = null;
+      clearTimeout(timeout);
     });
 
     if(!closing) {
@@ -520,9 +528,11 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
       let src: string;
 
       if(target.tagName === 'DIV' || target.tagName === 'AVATAR-ELEMENT') { // useContainerAsTarget
-        if(target.firstElementChild) {
+        const images = Array.from(target.querySelectorAll('img')) as HTMLImageElement[];
+        const image = images.pop();
+        if(image) {
           mediaElement = new Image();
-          src = (target.firstElementChild as HTMLImageElement).src;
+          src = image.src;
           mover.append(mediaElement);
         }
         /* mediaElement = new Image();
@@ -532,8 +542,8 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
         mediaElement = new Image();
         src = target.src;
       } else if(target instanceof HTMLVideoElement) {
-        const video = mediaElement = document.createElement('video');
-        video.src = target?.src;
+        mediaElement = document.createElement('video');
+        mediaElement.src = target.src;
       } else if(target instanceof SVGSVGElement) {
         const clipId = target.dataset.clipId;
         const newClipId = clipId + '-mv';
@@ -605,13 +615,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
         }
 
         if(src) {
-          await new Promise((resolve, reject) => {
-            mediaElement.addEventListener('load', resolve);
-  
-            if(src) {
-              mediaElement.src = src;
-            }
-          });
+          await renderImageFromUrlPromise(mediaElement, src);
         }
       }/*  else if(mediaElement instanceof HTMLVideoElement && mediaElement.firstElementChild && ((mediaElement.firstElementChild as HTMLSourceElement).src || src)) {
         await new Promise((resolve, reject) => {
@@ -625,7 +629,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
   
       mover.style.display = '';
 
-      window.requestAnimationFrame(() => {
+      fastRaf(() => {
         mover.classList.add(wasActive ? 'moving' : 'active');
       });
     } else {
@@ -674,7 +678,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     //await new Promise((resolve) => setTimeout(resolve, 0));
     //await new Promise((resolve) => window.requestAnimationFrame(resolve));
     // * одного RAF'а недостаточно, иногда анимация с одним не срабатывает (преимущественно на мобильных)
-    await new Promise((resolve) => window.requestAnimationFrame(() => window.requestAnimationFrame(resolve)));
+    await doubleRaf();
 
     // чтобы проверить установленную позицию - раскомментировать
     // throw '';
@@ -779,7 +783,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
       else d = generatePathData(9 / scaleX * progress, 0, width/* width - (9 / scaleX * progress) */, height, ..._br);
       path.setAttributeNS(null, 'd', d);
 
-      if(diff < delay) window.requestAnimationFrame(step);
+      if(diff < delay) fastRaf(step);
     };
     
     //window.requestAnimationFrame(step);
@@ -829,6 +833,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
   protected setNewMover() {
     const newMover = document.createElement('div');
     newMover.classList.add('media-viewer-mover');
+    newMover.style.display = 'none';
 
     if(this.content.mover) {
       const oldMover = this.content.mover;
@@ -923,7 +928,8 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
 
     this.setAuthorInfo(fromId, timestamp);
     
-    const isVideo = (media as MyDocument).type === 'video' || (media as MyDocument).type === 'gif';
+    const isDocument = media._ === 'document';
+    const isVideo = media.mime_type && ((['video', 'gif'] as MyDocument['type'][]).includes((media as MyDocument).type) || (media as MyDocument).mime_type.indexOf('video/') === 0);
 
     if(this.isFirstOpen) {
       //this.targetContainer = targetContainer;
@@ -1014,7 +1020,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     }
     const maxHeight = windowH - 120 - padding;
     let thumbPromise: Promise<any> = Promise.resolve();
-    const size = appPhotosManager.setAttachmentSize(media, container, maxWidth, maxHeight, mediaSizes.isMobile ? false : true).photoSize;
+    const size = appPhotosManager.setAttachmentSize(media, container, maxWidth, maxHeight, mediaSizes.isMobile ? false : true, undefined, media._ === 'document' && media.w && media.h).photoSize;
     if(useContainerAsTarget) {
       const cacheContext = appDownloadManager.getCacheContext(media, size.type);
       let img: HTMLImageElement;
@@ -1040,7 +1046,8 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
       target = target.querySelector('img, video') || target;
     } */
 
-    const preloader = media.supportsStreaming ? this.preloaderStreamable : this.preloader;
+    const supportsStreaming = media.supportsStreaming;
+    const preloader = supportsStreaming ? this.preloaderStreamable : this.preloader;
 
     let setMoverPromise: Promise<void>;
     if(isVideo) {
@@ -1072,6 +1079,16 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
             video.pause();
           }
         });
+
+        video.addEventListener('error', (err) => {
+          if(video.error.code !== 4) {
+            this.log.error("Error " + video.error.code + "; details: " + video.error.message);
+          }
+
+          if(preloader) {
+            preloader.detach();
+          }
+        }, {once: true});
   
         if(isSafari) {
           // test stream
@@ -1107,7 +1124,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
                 return;
               }
   
-              const player = new VideoPlayer(video, true, media.supportsStreaming);
+              const player = new VideoPlayer(video, true, supportsStreaming);
               player.addEventListener('toggleControls', (show) => {
                 this.wholeDiv.classList.toggle('has-video-controls', show);
               });
@@ -1118,7 +1135,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
           }
         };
   
-        if(media.supportsStreaming) {
+        if(supportsStreaming) {
           onAnimationEnd.then(() => {
             if(video.readyState < video.HAVE_FUTURE_DATA) {
               preloader.attach(mover, true);
@@ -1158,9 +1175,9 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
         //if(!video.src || media.url !== video.src) {
           const load = () => {
             const cacheContext = appDownloadManager.getCacheContext(media);
-            const promise = media.supportsStreaming ? Promise.resolve() : appDocsManager.downloadDoc(media);
+            const promise: Promise<any> = supportsStreaming ? Promise.resolve() : appDocsManager.downloadDoc(media);
             
-            if(!media.supportsStreaming) {
+            if(!supportsStreaming) {
               onAnimationEnd.then(() => {
                 if(!cacheContext.url) {
                   preloader.attach(mover, true, promise);
@@ -1168,7 +1185,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
               });
             }
   
-            (promise as Promise<any>).then(async() => {
+            Promise.all([promise, onAnimationEnd]).then(async() => {
               if(this.tempId !== tempId) {
                 this.log.warn('media viewer changed video');
                 return;
@@ -1204,7 +1221,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
         
         const load = () => {
           const cacheContext = appDownloadManager.getCacheContext(media, size.type);
-          const cancellablePromise = appPhotosManager.preloadPhoto(media.id, size);
+          const cancellablePromise = isDocument ? appDocsManager.downloadDoc(media) : appPhotosManager.preloadPhoto(media, size);
   
           onAnimationEnd.then(() => {
             if(!cacheContext.url) {
@@ -1247,7 +1264,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
                   this.updateMediaSource(target, url, 'img');
   
                   if(haveImage) {
-                    window.requestAnimationFrame(() => {
+                    fastRaf(() => {
                       haveImage.remove();
                     });
                   }
@@ -1477,12 +1494,16 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
       }
 
       const method: any = older ? value.history.forEach.bind(value.history) : forEachReverse.bind(null, value.history);
+      const isForDocument = this.searchContext.inputFilter === 'inputMessagesFilterDocument';
       method((message: Message.message) => {
         const {mid, peerId} = message;
-        const media = this.getMediaFromMessage(message);
+        const media: MyPhoto | MyDocument = appMessagesManager.getMediaFromMessage(message);
 
         if(!media) return;
-        //if(media._ === 'document' && media.type !== 'video') return;
+        
+        if(isForDocument && !AppMediaViewer.isMediaCompatibleForDocumentViewer(media)) {
+          return;
+        }
 
         const t = {element: null as HTMLElement, mid, peerId};
         if(older) {
@@ -1506,12 +1527,6 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
 
     return promise;
   };
-
-  private getMediaFromMessage(message: any) {
-    return message.action ? message.action.photo : message.media.photo 
-      || message.media.document 
-      || (message.media.webpage && (message.media.webpage.document || message.media.webpage.photo));
-  }
 
   private setCaption(message: Message.message) {
     const caption = message.message;
@@ -1548,7 +1563,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
 
     const mid = message.mid;
     const fromId = message.fromId;
-    const media = this.getMediaFromMessage(message);
+    const media = appMessagesManager.getMediaFromMessage(message);
 
     this.buttons.forward.classList.toggle('hide', message._ === 'messageService');
 
@@ -1558,6 +1573,10 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     const promise = super._openMedia(media, message.date, fromId, fromRight, target, reverse, prevTargets, nextTargets, needLoadMore);
 
     return promise;
+  }
+
+  public static isMediaCompatibleForDocumentViewer(media: MyPhoto | MyDocument) {
+    return media._ === 'photo' || (['photo', 'video', 'gif'].includes(media.type) || media.mime_type.indexOf('video/') === 0);
   }
 }
 

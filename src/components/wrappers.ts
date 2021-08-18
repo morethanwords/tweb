@@ -446,6 +446,15 @@ export const formatDate = (timestamp: number, monthShort = false, withYear = tru
   return str + ' at ' + date.getHours() + ':' + ('0' + date.getMinutes()).slice(-2);
 };
 
+rootScope.addEventListener('download_start', (docId) => {
+  const elements = Array.from(document.querySelectorAll(`.document[data-doc-id="${docId}"]`)) as HTMLElement[];
+  elements.forEach(element => {
+    if(element.querySelector('.preloader-container.manual')) {
+      element.click();
+    }
+  });
+});
+
 export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showSender, searchContext, loadPromises, noAutoDownload, lazyLoadQueue}: {
   message: any, 
   withTime?: boolean,
@@ -569,14 +578,17 @@ export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showS
   const load = () => {
     const doc = appDocsManager.getDoc(docDiv.dataset.docId);
     let download: DownloadBlob;
+    const queueId = appImManager.chat.bubbles ? appImManager.chat.bubbles.lazyLoadQueue.queueId : undefined;
     if(doc.type === 'pdf') {
-      download = appDocsManager.downloadDoc(doc, appImManager.chat.bubbles ? appImManager.chat.bubbles.lazyLoadQueue.queueId : 0);
+      download = appDocsManager.downloadDoc(doc, queueId);
       download.then(() => {
         const cacheContext = appDownloadManager.getCacheContext(doc);
         window.open(cacheContext.url);
       });
+    } else if(doc.type === 'photo' || doc.type === 'video' || doc.mime_type.indexOf('video/') === 0) {
+      download = appDocsManager.downloadDoc(doc, queueId);
     } else {
-      download = appDocsManager.saveDocFile(doc, appImManager.chat.bubbles ? appImManager.chat.bubbles.lazyLoadQueue.queueId : 0);
+      download = appDocsManager.saveDocFile(doc, queueId);
     }
 
     if(downloadDiv) {
@@ -587,7 +599,11 @@ export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showS
     return {download};
   };
 
-  if(!(cacheContext.downloaded && !uploading)) {
+  if(appDocsManager.downloading.has(doc.id)) {
+    downloadDiv = docDiv.querySelector('.document-download');
+    preloader = new ProgressivePreloader();
+    preloader.attach(downloadDiv, false, appDocsManager.downloading.get(doc.id));
+  } else if(!(cacheContext.downloaded && !uploading)) {
     downloadDiv = docDiv.querySelector('.document-download');
     preloader = message.media.preloader as ProgressivePreloader;
 

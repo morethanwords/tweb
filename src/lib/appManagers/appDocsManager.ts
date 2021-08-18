@@ -22,6 +22,7 @@ import blur from '../../helpers/blur';
 import apiManager from '../mtproto/mtprotoworker';
 import { MOUNT_CLASS_TO } from '../../config/debug';
 import { getFullDate } from '../../helpers/date';
+import rootScope from '../rootScope';
 
 export type MyDocument = Document.document;
 
@@ -30,6 +31,7 @@ export type MyDocument = Document.document;
 export class AppDocsManager {
   private docs: {[docId: string]: MyDocument} = {};
   private savingLottiePreview: {[docId: string]: true} = {};
+  public downloading: Map<string, DownloadBlob> = new Map();
 
   constructor() {
     apiManager.onServiceWorkerFail = this.onServiceWorkerFail;
@@ -187,7 +189,7 @@ export class AppDocsManager {
     }
 
     if(apiManager.isServiceWorkerOnline()) {
-      if((doc.type === 'gif' && doc.size > 8e6) || doc.type === 'audio' || doc.type === 'video') {
+      if((doc.type === 'gif' && doc.size > 8e6) || doc.type === 'audio' || doc.type === 'video'/*  || doc.mime_type.indexOf('video/') === 0 */) {
         doc.supportsStreaming = true;
         
         const cacheContext = appDownloadManager.getCacheContext(doc);
@@ -323,13 +325,17 @@ export class AppDocsManager {
 
     const downloadOptions = this.getFileDownloadOptions(doc, undefined, queueId, onlyCache);
     download = appDownloadManager.download(downloadOptions);
+    this.downloading.set(doc.id, download);
+    rootScope.dispatchEvent('download_start', doc.id);
 
     const cacheContext = appDownloadManager.getCacheContext(doc);
     const originalPromise = download;
     originalPromise.then((blob) => {
       cacheContext.url = URL.createObjectURL(blob);
       cacheContext.downloaded = blob.size;
-    }, () => {});
+    }, () => {}).finally(() => {
+      this.downloading.delete(doc.id);
+    });
     
     if(doc.type === 'voice' && !opusDecodeController.isPlaySupported()) {
       download = originalPromise.then(async(blob) => {

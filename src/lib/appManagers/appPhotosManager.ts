@@ -87,7 +87,7 @@ export class AppPhotosManager {
     return this.photos[photo.id] = photo;
   }
   
-  public choosePhotoSize(photo: MyPhoto | MyDocument, boxWidth = 0, boxHeight = 0, useBytes = false) {
+  public choosePhotoSize(photo: MyPhoto | MyDocument, boxWidth = 0, boxHeight = 0, useBytes = false, pushDocumentSize = false) {
     if(window.devicePixelRatio > 1) {
       boxWidth *= 2;
       boxHeight *= 2;
@@ -105,7 +105,17 @@ export class AppPhotosManager {
     d	crop	1280x1280 */
 
     let bestPhotoSize: PhotoSize = {_: 'photoSizeEmpty', type: ''};
-    const sizes = ((photo as MyPhoto).sizes || (photo as MyDocument).thumbs) as PhotoSize[];
+    let sizes = (photo as MyPhoto).sizes || (photo as MyDocument).thumbs as PhotoSize[];
+    if(pushDocumentSize && sizes && photo._ === 'document') {
+      sizes = sizes.concat({
+        _: 'photoSize', 
+        w: (photo as MyDocument).w, 
+        h: (photo as MyDocument).h, 
+        size: (photo as MyDocument).size, 
+        type: undefined
+      });
+    }
+
     if(sizes?.length) {
       for(let i = 0, length = sizes.length; i < length; ++i) {
         const photoSize = sizes[i];
@@ -214,15 +224,22 @@ export class AppPhotosManager {
     return {image, loadPromise};
   }
   
-  public setAttachmentSize(photo: MyPhoto | MyDocument, element: HTMLElement | SVGForeignObjectElement, boxWidth: number, boxHeight: number, noZoom = true, message?: any) {
-    const photoSize = this.choosePhotoSize(photo, boxWidth, boxHeight);
+  public setAttachmentSize(photo: MyPhoto | MyDocument, 
+    element: HTMLElement | SVGForeignObjectElement, 
+    boxWidth: number, 
+    boxHeight: number, 
+    noZoom = true, 
+    message?: any,
+    pushDocumentSize?: boolean) {
+    const photoSize = this.choosePhotoSize(photo, boxWidth, boxHeight, undefined, pushDocumentSize);
     //console.log('setAttachmentSize', photo, photo.sizes[0].bytes, div);
     
     let size: MediaSize;
-    if(photo._ === 'document') {
-      size = makeMediaSize(photo.w || 512, photo.h || 512);
+    const isDocument = photo._ === 'document';
+    if(isDocument) {
+      size = makeMediaSize((photo as MyDocument).w || (photoSize as PhotoSize.photoSize).w || 512, (photo as MyDocument).h || (photoSize as PhotoSize.photoSize).h || 512);
     } else {
-      size = makeMediaSize('w' in photoSize ? photoSize.w : 100, 'h' in photoSize ? photoSize.h : 100);
+      size = makeMediaSize((photoSize as PhotoSize.photoSize).w || 100, (photoSize as PhotoSize.photoSize).h || 100);
     }
 
     let boxSize = makeMediaSize(boxWidth, boxHeight);
@@ -231,7 +248,7 @@ export class AppPhotosManager {
 
     let isFit = true;
 
-    if(photo._ === 'photo' || ['video', 'gif'].includes(photo.type)) {
+    if(!isDocument || ['video', 'gif'].includes((photo as MyDocument).type)) {
       if(boxSize.width < 200 && boxSize.height < 200) { // make at least one side this big
         boxSize = size = size.aspectCovered(makeMediaSize(200, 200));
       }
@@ -249,7 +266,7 @@ export class AppPhotosManager {
         }
       }
   
-      if(isFit && boxSize.width < 120) { // if image is too narrow
+      if(isFit && boxSize.width < 120 && message) { // if image is too narrow
         boxSize = makeMediaSize(120, boxSize.height);
         isFit = false;
       }
