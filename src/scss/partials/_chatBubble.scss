@@ -538,6 +538,8 @@ $bubble-margin: .25rem;
     .attachment {
       max-width: var(--round-video-size) !important;
       max-height: var(--round-video-size) !important;
+      width: var(--round-video-size) !important;
+      height: var(--round-video-size) !important;
 
       .media-photo, .media-video {
         border-radius: 50%;
