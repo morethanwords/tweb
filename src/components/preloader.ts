@@ -31,7 +31,7 @@ export default class ProgressivePreloader {
   private tryAgainOnFail = true;
   private attachMethod: 'append' | 'prepend' = 'append';
 
-  public loadFunc: () => {download: CancellablePromise<any>};
+  public loadFunc: (e?: Event) => {download: CancellablePromise<any>};
 
   private totalLength: number;
 
@@ -120,7 +120,7 @@ export default class ProgressivePreloader {
 
     if(this.preloader.classList.contains('manual')) {
       if(this.loadFunc) {
-        this.loadFunc();
+        this.loadFunc(e);
       }
     } else {
       if(this.promise && this.promise.cancel) {
