@@ -173,7 +173,7 @@
     content: $tgico-play;
   }
 
-  &.is-playing {
+  &.is-playing, &:not(.played) {
     .default__gradient-bottom {
       transform: translate3d(0, 50px, 0);
     }
@@ -187,9 +187,9 @@
     }
 
     /* html.no-touch &:hover,*/
-    &.show-controls.ckin__fullscreen, 
+    /* &.show-controls.ckin__fullscreen, 
     &.show-controls:not(.ckin__fullscreen):hover,
-    html.is-touch &.show-controls {
+    html.is-touch  */&.show-controls {
       .default__gradient-bottom, 
       .default__controls {
         transform: translateZ(0);
