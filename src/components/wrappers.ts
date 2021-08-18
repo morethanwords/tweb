@@ -575,11 +575,14 @@ export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showS
     }
   };
 
-  const load = () => {
+  const load = (e: Event) => {
+    const save = !e || e.isTrusted;
     const doc = appDocsManager.getDoc(docDiv.dataset.docId);
     let download: DownloadBlob;
     const queueId = appImManager.chat.bubbles ? appImManager.chat.bubbles.lazyLoadQueue.queueId : undefined;
-    if(doc.type === 'pdf') {
+    if(!save) {
+      download = appDocsManager.downloadDoc(doc, queueId);
+    } else if(doc.type === 'pdf') {
       download = appDocsManager.downloadDoc(doc, queueId);
       download.then(() => {
         const cacheContext = appDownloadManager.getCacheContext(doc);
@@ -624,7 +627,7 @@ export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showS
     if(preloader) {
       preloader.onClick(e);
     } else {
-      load();
+      load(e);
     }
   });
   

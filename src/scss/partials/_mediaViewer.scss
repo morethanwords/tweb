@@ -123,15 +123,16 @@
     bottom: .75rem;
     left: 0;
     right: 0;
-    padding: 0 .5rem;
+    padding: .5rem .5rem 0;
     // background-color: rgba(0, 0, 0, .6);
     // border-radius: 8px;
     opacity: 0;
     line-height: var(--line-height);
     white-space: pre-wrap;
+    background-color: transparent;
     
     @include animation-level(2) {
-      transition: opacity var(--open-duration);
+      transition: opacity var(--open-duration), background-color var(--open-duration);
     }
 
     a {
@@ -175,12 +176,22 @@
       }
 
       @include animation-level(2) {
-        transition: transform var(--layer-transition), opacity var(--open-duration) ease-in-out;
+        transition: transform var(--layer-transition), opacity var(--open-duration) ease-in-out, background-color var(--open-duration);
       }
 
       .media-viewer-whole.has-video-controls & {
         transform: translate3d(0, -69px, 0);
       }
+
+      @include hover() {
+        background-color: #000;
+        opacity: 1 !important;
+      }
+    }
+
+    &.is-focused {
+      background-color: #000;
+      opacity: 1 !important;
     }
   }
 

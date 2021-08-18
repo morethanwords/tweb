@@ -1316,7 +1316,26 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     this.content.main.prepend(stub); */
 
     this.content.caption = document.createElement('div');
-    this.content.caption.classList.add(MEDIA_VIEWER_CLASSNAME + '-caption'/* , 'media-viewer-stub' */);
+    this.content.caption.classList.add(MEDIA_VIEWER_CLASSNAME + '-caption', MEDIA_VIEWER_CLASSNAME + '-appear'/* , 'media-viewer-stub' */);
+
+    let captionTimeout: number;
+    this.content.caption.addEventListener('touchstart', () => {
+      if(!mediaSizes.isMobile) return;
+      
+      this.content.caption.classList.add('is-focused');
+      
+      if(captionTimeout) {
+        clearTimeout(captionTimeout);
+        captionTimeout = undefined;
+      }
+      
+      document.addEventListener('touchend', () => {
+        captionTimeout = window.setTimeout(() => {
+          captionTimeout = undefined;
+          this.content.caption.classList.remove('is-focused');
+        }, 1000);
+      }, {once: true});
+    });
 
     new Scrollable(this.content.caption);
 
