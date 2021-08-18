@@ -15,6 +15,7 @@ import ButtonMenu from "../components/buttonMenu";
 import { ButtonMenuToggleHandler } from "../components/buttonMenuToggle";
 import EventListenerBase from "../helpers/eventListenerBase";
 import rootScope from "./rootScope";
+import findUpClassName from "../helpers/dom/findUpClassName";
 
 export class MediaProgressLine extends RangeSelector {
   private filledLoad: HTMLDivElement;
@@ -368,6 +369,19 @@ export default class VideoPlayer extends EventListenerBase<{
       } else {
         this.listenerSetter.add(this.wrapper)('mousemove', () => {
           showControls();
+        });
+
+        this.listenerSetter.add(this.wrapper)('mouseenter', () => {
+          showControls(false);
+        });
+
+        this.listenerSetter.add(this.wrapper)('mouseleave', (e) => {
+          if(findUpClassName(e.relatedTarget, 'media-viewer-caption')) {
+            showControls(false);
+            return;
+          }
+          
+          hideControls();
         });
 
         this.listenerSetter.add(document)('keydown', (e: KeyboardEvent) => {

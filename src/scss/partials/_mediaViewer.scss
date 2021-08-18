@@ -130,9 +130,11 @@
     line-height: var(--line-height);
     white-space: pre-wrap;
     background-color: transparent;
+    visibility: hidden;
     
     @include animation-level(2) {
-      transition: opacity var(--open-duration), background-color var(--open-duration);
+      transition: transform var(--layer-transition), opacity var(--open-duration) ease-in-out, visibility 0s, background-color var(--open-duration) ease-in-out;
+      transition-delay: 0s, 0s, 0s, 0s;
     }
 
     a {
@@ -173,10 +175,6 @@
       .scrollable {
         padding: 0 .5rem;
         height: auto;
-      }
-
-      @include animation-level(2) {
-        transition: transform var(--layer-transition), opacity var(--open-duration) ease-in-out, background-color var(--open-duration);
       }
 
       .media-viewer-whole.has-video-controls & {
@@ -416,7 +414,10 @@
   &-appear {
     opacity: 0;
     visibility: hidden;
-    transition: opacity var(--open-duration) 0s, visibility 0s var(--open-duration);
+
+    @include animation-level(2) {
+      transition: opacity var(--open-duration) 0s, visibility 0s var(--open-duration);
+    }
   }
   
   &-topbar {
@@ -506,6 +507,11 @@
         opacity: 1;
         visibility: visible;
         transition: opacity var(--open-duration) 0s, visibility 0s 0s;
+      }
+
+      .media-viewer-caption {
+        visibility: visible;
+        transition-delay: 0s, 0s, var(--open-duration), 0s;
       }
     }
 
