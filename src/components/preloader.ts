@@ -21,7 +21,7 @@ export default class ProgressivePreloader {
   private downloadSvg: HTMLElement;
   
   private tempId = 0;
-  private detached = true;
+  public detached = true;
 
   public promise: CancellablePromise<any> = null;
 

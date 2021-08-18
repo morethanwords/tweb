@@ -611,7 +611,7 @@ $bubble-margin: .25rem;
     &-fitted {
       background-color: transparent !important;
 
-      .thumbnail {
+      > .thumbnail {
         opacity: .8;
       }
     }
