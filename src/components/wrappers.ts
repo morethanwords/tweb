@@ -80,7 +80,7 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
       spanTime.innerText = (doc.duration + '').toHHMMSS(false);
 
       if(!noPlayButton && doc.type !== 'round') {
-        if(canAutoplay) {
+        if(canAutoplay && !noAutoDownload) {
           spanTime.classList.add('tgico', 'can-autoplay');
         } else {
           needPlayButton = true;
@@ -232,6 +232,15 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
     attachClickEvent(canvas, (e) => {
       cancelEvent(e);
 
+      // ! костыль
+      if(preloader && !preloader.detached) {
+        preloader.onClick();
+      }
+
+      if(globalVideo.readyState < 2) {
+        return;
+      }
+
       if(globalVideo.paused) {
         globalVideo.play();
       } else {
@@ -316,7 +325,7 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
     });
   }
 
-  let f = noAutoDownload && photoRes?.preloader?.loadFunc;
+  let loadPhotoThumbFunc = noAutoDownload && photoRes?.preloader?.loadFunc;
   const load = () => {
     if(preloader && noAutoDownload && !withoutPreloader) {
       preloader.construct();
@@ -348,11 +357,15 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
       if(preloader) {
         preloader.detach();
       }
+
+      if(!deferred.isFulfilled) {
+        deferred.resolve();
+      }
     }, {once: true});
 
-    if(!noAutoDownload && f) {
-      f();
-      f = null;
+    if(!noAutoDownload && loadPhotoThumbFunc) {
+      loadPhotoThumbFunc();
+      loadPhotoThumbFunc = null;
     }
 
     noAutoDownload = undefined;
@@ -372,6 +385,10 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
         if(group) {
           animationIntersector.addAnimation(video, group);
         }
+
+        if(preloader) {
+          preloader.detach();
+        }
   
         deferred.resolve();
       });
@@ -381,11 +398,7 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
           spanTime.innerText = (video.duration - video.currentTime + '').toHHMMSS(false);
         });
       }
-  
-      video.addEventListener('error', (e) => {
-        deferred.resolve();
-      });
-  
+
       video.muted = true;
       video.loop = true;
       //video.play();
@@ -823,7 +836,7 @@ export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withT
     preloader = message.media.preloader;
     preloader.attach(container);
     noAutoDownload = undefined;
-  } else {
+  } else if(!cacheContext.downloaded) {
     preloader = new ProgressivePreloader({
       attachMethod: 'prepend'
     });
@@ -833,8 +846,6 @@ export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withT
     const promise = photo._ === 'document' && photo.mime_type === 'image/gif' ? 
       appDocsManager.downloadDoc(photo, /* undefined,  */lazyLoadQueue?.queueId) : 
       appPhotosManager.preloadPhoto(photo, size, lazyLoadQueue?.queueId, noAutoDownload);
-
-    noAutoDownload = undefined;
 
     return promise;
   };
@@ -846,24 +857,36 @@ export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withT
   };
 
   let loadPromise: Promise<any>;
+  const canAttachPreloader = (
+    (size as PhotoSize.photoSize).w >= 150 && 
+    (size as PhotoSize.photoSize).h >= 150
+    ) || noAutoDownload;
   const load = () => {
-    if(noAutoDownload && !withoutPreloader) {
+    if(noAutoDownload && !withoutPreloader && preloader) {
       preloader.construct();
       preloader.setManual();
     }
 
     const promise = getDownloadPromise();
 
-    if(!cacheContext.downloaded && !withoutPreloader && (size as PhotoSize.photoSize).w >= 150 && (size as PhotoSize.photoSize).h >= 150) {
+    if(preloader && 
+      !cacheContext.downloaded && 
+      !withoutPreloader && 
+      canAttachPreloader
+    ) {
       preloader.attach(container, false, promise);
     }
+
+    noAutoDownload = undefined;
 
     const renderPromise = promise.then(onLoad);
     renderPromise.catch(() => {});
     return {download: promise, render: renderPromise};
   };
 
-  preloader.setDownloadFunction(load);
+  if(preloader) {
+    preloader.setDownloadFunction(load);
+  }
   
   if(cacheContext.downloaded) {
     loadThumbPromise = loadPromise = load().render;

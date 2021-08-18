@@ -527,6 +527,13 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
       let mediaElement: HTMLImageElement | HTMLVideoElement;
       let src: string;
 
+      if(target instanceof HTMLVideoElement) {
+        const elements = Array.from(target.parentElement.querySelectorAll('img')) as HTMLImageElement[];
+        if(elements.length) {
+          target = elements.pop();
+        }
+      }
+
       if(target.tagName === 'DIV' || target.tagName === 'AVATAR-ELEMENT') { // useContainerAsTarget
         const images = Array.from(target.querySelectorAll('img')) as HTMLImageElement[];
         const image = images.pop();
@@ -856,7 +863,27 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     //if(target instanceof SVGSVGElement) {
       const el = target.tagName.toLowerCase() === tagName ? target : target.querySelector(tagName) as HTMLElement;
       if(el) {
+        // two parentElements because element can be contained in aspecter
+        const preloader = target.parentElement.parentElement.querySelector('.preloader-container') as HTMLElement;
+        if(preloader) {
+          if(tagName === 'video') {
+            if(preloader.classList.contains('manual')) {
+              preloader.click();
+              // return;
+            }
+  
+            return;
+          }
+          
+          preloader.remove();
+        }
+
         renderImageFromUrl(el, url);
+
+        // ! костыль, но он тут даже и не нужен
+        if(el.classList.contains('thumbnail') && el.parentElement.classList.contains('media-container-aspecter')) {
+          el.classList.remove('thumbnail');
+        }
       }
     /* } else {
 
@@ -1196,11 +1223,11 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
                 //if(!video.parentElement) {
                   div.firstElementChild.lastElementChild.append(video);
                 //}
-                
-                this.updateMediaSource(mover, url, 'video');
               } else {
                 renderImageFromUrl(video, url);
               }
+
+              this.updateMediaSource(target, url, 'video');
   
               createPlayer();
             });
@@ -1321,7 +1348,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     let captionTimeout: number;
     this.content.caption.addEventListener('touchstart', () => {
       if(!mediaSizes.isMobile) return;
-      
+
       this.content.caption.classList.add('is-focused');
       
       if(captionTimeout) {
