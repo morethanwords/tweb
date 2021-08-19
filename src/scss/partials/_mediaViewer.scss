@@ -130,11 +130,9 @@
     line-height: var(--line-height);
     white-space: pre-wrap;
     background-color: transparent;
-    visibility: hidden;
     
     @include animation-level(2) {
-      transition: transform var(--layer-transition), opacity var(--open-duration) ease-in-out, visibility 0s, background-color var(--open-duration) ease-in-out;
-      transition-delay: 0s, 0s, 0s, 0s;
+      transition: transform var(--layer-transition), opacity var(--open-duration) ease-in-out, background-color var(--open-duration) ease-in-out;
     }
 
     a {
@@ -179,6 +177,10 @@
 
       .media-viewer-whole.has-video-controls & {
         transform: translate3d(0, -69px, 0);
+      }
+
+      .media-viewer-whole.backwards & {
+        visibility: hidden;
       }
 
       @include hover() {
@@ -506,12 +508,15 @@
       > .btn-icon */ {
         opacity: 1;
         visibility: visible;
-        transition: opacity var(--open-duration) 0s, visibility 0s 0s;
+
+        @include animation-level(2) {
+          transition: opacity var(--open-duration) 0s, visibility 0s 0s;
+        }
       }
 
       .media-viewer-caption {
         visibility: visible;
-        transition-delay: 0s, 0s, var(--open-duration), 0s;
+        // transition-delay: 0s, 0s, var(--open-duration), 0s;
       }
     }
 

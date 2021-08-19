@@ -657,6 +657,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
         mover.classList.add('hiding');
       }
 
+      this.wholeDiv.classList.add('backwards');
       setTimeout(() => {
         this.wholeDiv.classList.remove('active');
       }, 0);
@@ -1346,6 +1347,16 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     this.content.caption.classList.add(MEDIA_VIEWER_CLASSNAME + '-caption'/* , 'media-viewer-stub' */);
 
     let captionTimeout: number;
+    const setCaptionTimeout = () => {
+      if(captionTimeout) {
+        clearTimeout(captionTimeout);
+      }
+
+      captionTimeout = window.setTimeout(() => {
+        captionTimeout = undefined;
+        this.content.caption.classList.remove('is-focused');
+      }, 800);
+    };
     this.content.caption.addEventListener('touchstart', () => {
       if(!mediaSizes.isMobile) return;
 
@@ -1356,15 +1367,11 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
         captionTimeout = undefined;
       }
       
-      document.addEventListener('touchend', () => {
-        captionTimeout = window.setTimeout(() => {
-          captionTimeout = undefined;
-          this.content.caption.classList.remove('is-focused');
-        }, 500);
-      }, {once: true});
+      document.addEventListener('touchend', setCaptionTimeout, {once: true});
     });
 
-    new Scrollable(this.content.caption);
+    const captionScrollable = new Scrollable(this.content.caption);
+    captionScrollable.onAdditionalScroll = setCaptionTimeout;
 
     //this.content.main.append(this.content.caption);
     this.wholeDiv.append(this.content.caption);
