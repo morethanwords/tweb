@@ -547,6 +547,7 @@ const lang = {
   "ViewInChat": "View in chat",
   "LinkNotFound": "Unfortunately, you can\'t access this message. You are not a member of the chat where it was posted.",
   "Create": "Create",
+  "ViewDiscussion": "View discussion",
 
   // * macos
   "AccountSettings.Filters": "Chat Folders",

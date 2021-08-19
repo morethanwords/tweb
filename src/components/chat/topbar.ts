@@ -9,6 +9,7 @@ import type { AppChatsManager, Channel } from "../../lib/appManagers/appChatsMan
 import type { AppMessagesManager } from "../../lib/appManagers/appMessagesManager";
 import type { AppPeersManager } from "../../lib/appManagers/appPeersManager";
 import type { AppSidebarRight } from "../sidebarRight";
+import type { AppProfileManager } from "../../lib/appManagers/appProfileManager";
 import type Chat from "./chat";
 import { RIGHT_COLUMN_ACTIVE_CLASSNAME } from "../sidebarRight";
 import mediaSizes, { ScreenSize } from "../../helpers/mediaSizes";
@@ -35,6 +36,7 @@ import { attachClickEvent } from "../../helpers/dom/clickEvent";
 import findUpTag from "../../helpers/dom/findUpTag";
 import { toast } from "../toast";
 import replaceContent from "../../helpers/dom/replaceContent";
+import { ChatFull } from "../../layer";
 
 export default class ChatTopbar {
   public container: HTMLDivElement;
@@ -62,7 +64,14 @@ export default class ChatTopbar {
 
   private menuButtons: (ButtonMenuItemOptions & {verify: () => boolean})[] = [];
 
-  constructor(private chat: Chat, private appSidebarRight: AppSidebarRight, private appMessagesManager: AppMessagesManager, private appPeersManager: AppPeersManager, private appChatsManager: AppChatsManager, private appNotificationsManager: AppNotificationsManager) {
+  constructor(private chat: Chat, 
+    private appSidebarRight: AppSidebarRight, 
+    private appMessagesManager: AppMessagesManager, 
+    private appPeersManager: AppPeersManager, 
+    private appChatsManager: AppChatsManager, 
+    private appNotificationsManager: AppNotificationsManager,
+    private appProfileManager: AppProfileManager
+  ) {
     this.listenerSetter = new ListenerSetter();
   }
 
@@ -215,6 +224,20 @@ export default class ChatTopbar {
         this.appMessagesManager.mutePeer(this.peerId);
       },
       verify: () => this.chat.type === 'chat' && rootScope.myId !== this.peerId && this.appNotificationsManager.isPeerLocalMuted(this.peerId, false)
+    }, {
+      icon: 'comments',
+      text: 'ViewDiscussion',
+      onClick: () => {
+        this.appProfileManager.getChannelFull(-this.peerId).then(channelFull => {
+          if(channelFull.linked_chat_id) {
+            this.chat.appImManager.setInnerPeer(-channelFull.linked_chat_id);
+          }
+        });
+      },
+      verify: () => {
+        const chatFull = this.appProfileManager.chatsFull[-this.peerId];
+        return this.chat.type === 'chat' && this.appPeersManager.isBroadcast(this.peerId) && !!(chatFull as ChatFull.channelFull)?.linked_chat_id;
+      }
     }, {
       icon: 'select',
       text: 'Chat.Menu.SelectMessages',
