@@ -156,11 +156,19 @@ export default class InlineHelper extends AutocompleteHelper {
         
         if(item._ === 'botInlineResult') {
           if(item.thumb && item.thumb.mime_type.indexOf('image/') === 0) {
-            const mediaContainer = document.createElement('div');
-            mediaContainer.classList.add('media-container');
-    
+            let mediaContainer: HTMLElement;
+            if(preview) {
+              mediaContainer = document.createElement('div');
+              preview.append(mediaContainer);
+            } else {
+              mediaContainer = container;
+            }
+
+            mediaContainer.classList.add('media-container'); 
+            isGallery && mediaContainer.classList.add('no-border-radius');
+
             this.lazyLoadQueue.push({
-              div: preview,
+              div: container,
               load: () => {
                 return appDownloadManager.download({
                   dcId: 4,
@@ -180,8 +188,6 @@ export default class InlineHelper extends AutocompleteHelper {
                 });
               }
             });
-            
-            preview.append(mediaContainer);
           }
         } else {
           const media = item.document as MyDocument || item.photo as MyPhoto;
@@ -199,6 +205,7 @@ export default class InlineHelper extends AutocompleteHelper {
             }
           } else if(media) {
             const size = isGallery ? 48 : undefined;
+            isGallery && container.classList.add('no-border-radius');
             wrapPhoto({
               photo: media,
               container: isGallery ? container : preview,
