@@ -49,6 +49,8 @@ import I18n, { i18n } from "../lib/langPack";
 import { capitalizeFirstLetter } from "../helpers/string";
 import setInnerHTML from "../helpers/dom/setInnerHTML";
 import { doubleRaf, fastRaf } from "../helpers/schedulers";
+import { attachClickEvent } from "../helpers/dom/clickEvent";
+import PopupDeleteMessages from "./popups/deleteMessages";
 
 // TODO: масштабирование картинок (не SVG) при ресайзе, и правильный возврат на исходную позицию
 // TODO: картинки "обрезаются" если возвращаются или появляются с места, где есть их перекрытие (топбар, поле ввода)
@@ -61,7 +63,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
   protected overlaysDiv: HTMLElement;
   protected author: {[k in 'container' | 'avatarEl' | 'nameEl' | 'date']: HTMLElement} = {} as any;
   protected content: {[k in 'main' | 'container' | 'media' | 'mover' | ContentAdditionType]: HTMLElement} = {} as any;
-  protected buttons: {[k in 'download' | 'close' | 'prev' | 'next' | 'mobile-close' | ButtonsAdditionType]: HTMLElement} = {} as any;
+  protected buttons: {[k in 'download' | 'close' | 'prev' | 'next' | 'mobile-close' | 'zoomin' | ButtonsAdditionType]: HTMLElement} = {} as any;
   protected topbar: HTMLElement;
   
   protected tempId = 0;
@@ -127,32 +129,31 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     const topbarLeft = document.createElement('div');
     topbarLeft.classList.add(MEDIA_VIEWER_CLASSNAME + '-topbar-left');
 
-    
     this.buttons['mobile-close'] = ButtonIcon('close', {onlyMobile: true});
     
     // * author
     this.author.container = document.createElement('div');
     this.author.container.classList.add(MEDIA_VIEWER_CLASSNAME + '-author', 'no-select');
     const authorRight = document.createElement('div');
-
+    
     this.author.avatarEl = new AvatarElement();
     this.author.avatarEl.classList.add(MEDIA_VIEWER_CLASSNAME + '-userpic', 'avatar-44');
-
+    
     this.author.nameEl = document.createElement('div');
     this.author.nameEl.classList.add(MEDIA_VIEWER_CLASSNAME + '-name');
-
+    
     this.author.date = document.createElement('div');
     this.author.date.classList.add(MEDIA_VIEWER_CLASSNAME + '-date');
-
+    
     authorRight.append(this.author.nameEl, this.author.date);
-
+    
     this.author.container.append(this.author.avatarEl, authorRight);
-
+    
     // * buttons
     const buttonsDiv = document.createElement('div');
     buttonsDiv.classList.add(MEDIA_VIEWER_CLASSNAME + '-buttons');
-
-    topButtons.concat(['download', 'close']).forEach(name => {
+    
+    topButtons.concat(['download', 'zoomin', 'close']).forEach(name => {
       const button = ButtonIcon(name, {noRipple: name === 'close' || undefined});
       this.buttons[name] = button;
       buttonsDiv.append(button);
@@ -1332,12 +1333,13 @@ type AppMediaViewerTargetType = {
   peerId: number
 };
 export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delete' | 'forward', AppMediaViewerTargetType> {
-  public currentMessageId = 0;
-  public currentPeerId = 0;
-  public searchContext: SearchSuperContext;
+  protected currentMessageId = 0;
+  protected currentPeerId = 0;
+  protected searchContext: SearchSuperContext;
+  protected btnMenuDelete: HTMLElement;
 
   constructor() {
-    super([/* 'delete',  */'forward']);
+    super(['delete', 'forward']);
 
     /* const stub = document.createElement('div');
     stub.classList.add(MEDIA_VIEWER_CLASSNAME + '-stub');
@@ -1376,7 +1378,9 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     //this.content.main.append(this.content.caption);
     this.wholeDiv.append(this.content.caption);
 
-    this.setBtnMenuToggle([{
+    attachClickEvent(this.buttons.delete, this.onDeleteClick);
+
+    const buttons: ButtonMenuItemOptions[] = [{
       icon: 'forward',
       text: 'Forward',
       onClick: this.onForwardClick
@@ -1384,11 +1388,14 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
       icon: 'download',
       text: 'MediaViewer.Context.Download',
       onClick: this.onDownloadClick
-    }/* , {
-      icon: 'delete danger btn-disabled',
+    }, {
+      icon: 'delete danger',
       text: 'Delete',
-      onClick: () => {}
-    } */]);
+      onClick: this.onDeleteClick
+    }];
+
+    this.setBtnMenuToggle(buttons);
+    this.btnMenuDelete = buttons[buttons.length - 1].element;
 
     // * constructing html end
     
@@ -1440,6 +1447,13 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
   onNextClick = (target: AppMediaViewerTargetType) => {
     this.prevTargets.push({element: this.lastTarget, mid: this.currentMessageId, peerId: this.currentPeerId});
     this.openMedia(appMessagesManager.getMessageByPeer(target.peerId, target.mid), target.element, 1);
+  };
+
+  onDeleteClick = () => {
+    new PopupDeleteMessages(this.currentPeerId, [this.currentMessageId], 'chat', () => {
+      this.lastTarget = this.content.media;
+      this.close();
+    });
   };
 
   onForwardClick = () => {
@@ -1619,6 +1633,11 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     const media = appMessagesManager.getMediaFromMessage(message);
 
     this.buttons.forward.classList.toggle('hide', message._ === 'messageService');
+
+    const canDeleteMessage = appMessagesManager.canDeleteMessage(message);
+    [this.buttons.delete, this.btnMenuDelete].forEach(button => {
+      button.classList.toggle('hide', !canDeleteMessage);
+    });
 
     this.currentMessageId = mid;
     this.currentPeerId = message.peerId;
