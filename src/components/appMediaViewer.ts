@@ -494,8 +494,10 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
       this.buttons.next.click();
     } else if(e.key === 'ArrowLeft') {
       this.buttons.prev.click();
-    } else if(this.ctrlKeyDown && (e.key === '-' || e.key === '=')) {
-      this.changeZoom(e.key === '=');
+    } else if(e.key === '-' || e.key === '=') {
+      if(this.ctrlKeyDown) {
+        this.changeZoom(e.key === '=');
+      }
     } else {
       good = false;
     }
@@ -520,8 +522,9 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
   };
 
   private onWheel = (e: WheelEvent) => {
+    cancelEvent(e);
+    
     if(this.ctrlKeyDown) {
-      cancelEvent(e);
       const scrollingUp = e.deltaY < 0;
       this.changeZoom(!!scrollingUp);
     }
