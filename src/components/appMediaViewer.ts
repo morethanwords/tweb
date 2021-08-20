@@ -500,6 +500,8 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
       this.buttons.next.click();
     } else if(e.key === 'ArrowLeft') {
       this.buttons.prev.click();
+    } else if(this.ctrlKeyDown && (e.key === '-' || e.key === '=')) {
+      this.changeZoom(e.key === '=');
     } else {
       good = false;
     }
