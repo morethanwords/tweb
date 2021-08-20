@@ -45,7 +45,7 @@ export default class SliderSuperTab implements SliderTab {
     this.destroyable = destroyable;
 
     this.container = document.createElement('div');
-    this.container.classList.add('sidebar-slider-item');
+    this.container.classList.add('tabs-tab', 'sidebar-slider-item');
 
     // * Header
     this.header = document.createElement('div');

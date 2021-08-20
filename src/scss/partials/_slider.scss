@@ -120,7 +120,7 @@
   //   transition: .3s transform;
   // }
   
-  > div {
+  .tabs-tab {
     // * can't define these rules because of old firefox, though they don't work
     //height: 100%;
     //max-height: 100%;
@@ -129,11 +129,9 @@
     
     display: none;
     flex-direction: column;
-    position: relative;
     grid-row-start: 1;
     grid-column-start: 1;
     background-color: var(--background-color);
-    //z-index: 1;
 
     body.animation-level-0 & {
       transition: none !important;
@@ -183,12 +181,30 @@
     }
   } */
   
-  &[data-animation="tabs"] > div {
+  &[data-animation="tabs"] .tabs-tab {
     transition: transform var(--tabs-transition);
   }
 
-  &[data-animation="navigation"] > div {
+  /* &[data-animation="navigation"] .tabs-tab {
     transition: transform var(--tabs-transition), filter var(--tabs-transition);
+  } */
+
+  &[data-animation="navigation"] {
+    /* .tabs-tab {
+      transition: transform var(--tabs-transition), filter var(--tabs-transition);
+    } */
+
+    &.animating {
+      .tabs-tab {
+        transition: transform var(--transition-standard-in), filter var(--transition-standard-in);
+      }
+
+      &.backwards {
+        .tabs-tab {
+          transition: transform var(--transition-standard-out), filter var(--transition-standard-out);
+        }
+      }
+    }
   }
 }
 

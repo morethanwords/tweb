@@ -629,7 +629,7 @@ export class AppDialogsManager {
     const ul = this.createChatList();
     const scrollable = this.generateScrollable(ul, filter.id);
 
-    scrollable.container.classList.add('chatlist-parts');
+    scrollable.container.classList.add('tabs-tab', 'chatlist-parts');
 
     /* const parts = document.createElement('div');
     parts.classList.add('chatlist-parts'); */

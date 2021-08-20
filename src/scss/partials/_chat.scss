@@ -34,8 +34,8 @@ $chat-helper-size: 36px;
 		--bottom: var(--padding-bottom);
 	} */
 
-	body.animation-level-0 & {
-		transition: none;
+	@include animation-level(0) {
+		transition: none !important;
 	}
 
 	/* // * for no ESG top
@@ -532,6 +532,7 @@ $chat-helper-size: 36px;
 	//overflow: hidden;
 	flex-direction: column;
 	//z-index: 1;
+	transition: transform var(--tabs-transition), filter var(--tabs-transition);
 
 	@include animation-level(0) {
 		transition: none !important;
@@ -988,9 +989,9 @@ $chat-helper-size: 36px;
 
 	transform: translateY(var(--translateY));
 	transition: transform var(--transition-standard-out);
-
-	body.animation-level-0 & {
-		transition: none;
+	
+	@include animation-level(0) {
+		transition: none !important;
 	}
 
 	/* html.is-safari & > .scrollable {
@@ -1080,8 +1081,11 @@ $chat-helper-size: 36px;
 				cursor: pointer;
 				//--translateY: 0;
 				opacity: 1;
-				transition: opacity var(--layer-transition), visibility 0s 0s !important;
 				visibility: visible;
+				
+				@include animation-level(2) {
+					transition: opacity var(--layer-transition), visibility 0s 0s !important;
+				}
 
 				/* &.is-broadcast {
 					--translateY: 79px !important;
@@ -1108,14 +1112,13 @@ $chat-helper-size: 36px;
 	max-width: var(--messages-container-width);
 
 	//padding-top: 10000px;
-
 	transition: transform var(--transition-standard-out);
 	transform: translateY(0);
 	/* transition: margin-top var(--layer-transition);
 	transition-delay: .2s; */
-
-	body.animation-level-0 & {
-		transition: none;
+	
+	@include animation-level(0) {
+		transition: none !important;
 	}
 
 	@include respond-to(medium-screens) {
@@ -1171,8 +1174,11 @@ $chat-helper-size: 36px;
 		opacity: 0.99999 !important; // 0.99999 сделано для сафари, т.к. без этого будет прыжок при скролле в самом низу или верху
 
 		html.is-safari & {
-			transition: transform var(--transition-standard-in);
 			transform: translateY(calc(var(--translateY) * -1));
+			
+			@include animation-level(2) {
+				transition: transform var(--transition-standard-in);
+			}
 		}
 	}
 }
@@ -1201,7 +1207,7 @@ $chat-helper-size: 36px;
 	//transition: opacity var(--layer-transition);
 	transform: none !important;
 
-	body.animation-level-0 & {
+	@include animation-level(0) {
 		transition: none !important;
 	}
 

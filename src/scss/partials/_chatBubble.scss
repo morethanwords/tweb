@@ -324,6 +324,9 @@ $bubble-margin: .25rem;
 
     html.no-touch & {
       opacity: 0;
+    }
+
+    html.no-touch body.animation-level-2 & {
       transition: opacity .2s ease-in-out;
     }
   }
@@ -658,6 +661,10 @@ $bubble-margin: .25rem;
     position: absolute;
     overflow: hidden;
 
+    @include animation-level(0) {
+      transition: none !important;
+    }
+
     /* .bubbles.is-selecting & {
       -webkit-mask-image: -webkit-radial-gradient(circle, white 100%, black 100%); // fix safari overflow
     } */
@@ -668,6 +675,10 @@ $bubble-margin: .25rem;
 
     &-media { // * fix overflow for handhelds
       border-radius: inherit;
+
+      @include animation-level(0) {
+        transition: none !important;
+      }
     }
 
     .bubble-select-checkbox {
@@ -1968,8 +1979,11 @@ $bubble-margin: .25rem;
 
         //@include respond-to(no-floating-left-sidebar) {
           body.is-right-column-shown & {
-            transition: transform var(--transition-standard-in), opacity var(--transition-standard-in);
             transform: scale(1) translateX(0);
+            
+            @include animation-level(2) {
+              transition: transform var(--transition-standard-in), opacity var(--transition-standard-in);
+            }
   
             &.zoom-fade {
               transform: scale3d(.8, .8, 1) translateX(0);
