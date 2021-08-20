@@ -654,6 +654,8 @@ export default class ChatInput {
   }
 
   public scheduleSending = (callback: () => void = this.sendMessage.bind(this, true), initDate = new Date()) => {
+    const canSendWhenOnline = this.chat.peerId > 0 && this.appUsersManager.isUserOnlineVisible(this.chat.peerId);
+
     new PopupSchedule(initDate, (timestamp) => {
       const minTimestamp = (Date.now() / 1000 | 0) + 10;
       if(timestamp <= minTimestamp) {
@@ -666,7 +668,7 @@ export default class ChatInput {
       if(this.chat.type !== 'scheduled' && timestamp) {
         this.appImManager.openScheduled(this.chat.peerId);
       }
-    }).show();
+    }, canSendWhenOnline).show();
   };
 
   public setUnreadCount() {

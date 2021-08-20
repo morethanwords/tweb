@@ -28,7 +28,7 @@ const checkDate = (date: Date) => {
 };
 
 export default class PopupSchedule extends PopupDatePicker {
-  constructor(initDate: Date, onPick: (timestamp: number) => void) {
+  constructor(initDate: Date, onPick: (timestamp: number) => void, canSendWhenOnline: boolean) {
     super(checkDate(initDate), onPick, {
       noButtons: true,
       noTitle: true,
@@ -43,13 +43,16 @@ export default class PopupSchedule extends PopupDatePicker {
     this.element.classList.add('popup-schedule');
     this.header.append(this.controlsDiv);
     this.title.replaceWith(this.monthTitle);
+    this.body.append(this.btnConfirm);
 
-    const btnSendWhenOnline = Button('btn-primary btn-secondary btn-primary-transparent primary', {text: 'Schedule.SendWhenOnline'});
-    this.body.append(this.btnConfirm, btnSendWhenOnline);
+    if(canSendWhenOnline) {
+      const btnSendWhenOnline = Button('btn-primary btn-secondary btn-primary-transparent primary', {text: 'Schedule.SendWhenOnline'});
+      this.body.append(btnSendWhenOnline);
 
-    attachClickEvent(btnSendWhenOnline, () => {
-      onPick(SEND_WHEN_ONLINE_TIMESTAMP);
-      this.hide();
-    });
+      attachClickEvent(btnSendWhenOnline, () => {
+        onPick(SEND_WHEN_ONLINE_TIMESTAMP);
+        this.hide();
+      });
+    }
   }
 }
