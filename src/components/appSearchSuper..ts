@@ -166,7 +166,7 @@ export default class AppSearchSuper {
 
     for(const mediaTab of this.mediaTabs) {
       const container = document.createElement('div');
-      container.classList.add('search-super-container-' + mediaTab.type);
+      container.classList.add('search-super-container-' + mediaTab.type, 'tabs-tab');
 
       const content = document.createElement('div');
       content.classList.add('search-super-content-' + mediaTab.type);

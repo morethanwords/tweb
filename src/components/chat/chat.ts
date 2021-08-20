@@ -93,7 +93,7 @@ export default class Chat extends EventListenerBase<{
     super();
 
     this.container = document.createElement('div');
-    this.container.classList.add('chat');
+    this.container.classList.add('chat', 'tabs-tab');
 
     this.backgroundEl = document.createElement('div');
     this.backgroundEl.classList.add('chat-background');

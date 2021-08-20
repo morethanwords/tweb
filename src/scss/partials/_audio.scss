@@ -24,11 +24,18 @@
 
   &-toggle {
     transform: rotate(-119deg);
-    transition: transform .25s;
+    
+    @include animation-level(2) {
+      transition: transform .25s ease-in-out;
+    }
 
     .part {
       position: absolute;
       background-color: white;
+
+      @include animation-level(2) {
+        transition: clip-path .25s ease-in-out;
+      }
 
       @include respond-to(not-handhelds) {
         height: 140px;
@@ -176,10 +183,6 @@
           57.20925% 42.53029%,
           56.87342% 42.46916%
         );
-      }
-
-      &.one, &.two {
-        transition: clip-path .25s;
       }
     }
   }
