@@ -116,4 +116,10 @@
     margin: 1rem auto 2rem;
     flex: 0 0 auto;
   }
+
+  @include animation-level(2) {
+    .main-column {
+      transition: var(--tabs-transition);
+    }
+  }
 }
