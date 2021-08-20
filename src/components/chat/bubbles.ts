@@ -73,6 +73,7 @@ import assumeType from "../../helpers/assumeType";
 import { EmoticonsDropdown } from "../emoticonsDropdown";
 import debounce from "../../helpers/schedulers/debounce";
 import { formatNumber } from "../../helpers/number";
+import { SEND_WHEN_ONLINE_TIMESTAMP } from "../../lib/mtproto/constants";
 
 const USE_MEDIA_TAILS = false;
 const IGNORE_ACTIONS: Set<Message.messageService['action']['_']> = new Set([
@@ -1509,9 +1510,13 @@ export default class ChatBubbles {
       
       const today = new Date();
       today.setHours(0, 0, 0, 0);
+
+      const isScheduled = this.chat.type === 'scheduled';
       
       if(today.getTime() === date.getTime()) {
-        dateElement = i18n(this.chat.type === 'scheduled' ? 'Chat.Date.ScheduledForToday' : 'Date.Today');
+        dateElement = i18n(isScheduled ? 'Chat.Date.ScheduledForToday' : 'Date.Today');
+      } else if(isScheduled && message.date === SEND_WHEN_ONLINE_TIMESTAMP) {
+        dateElement = i18n('MessageScheduledUntilOnline');
       } else {
         const options: Intl.DateTimeFormatOptions = {
           day: 'numeric',
@@ -1527,14 +1532,10 @@ export default class ChatBubbles {
           options
         }).element;
 
-        if(this.chat.type === 'scheduled') {
+        if(isScheduled) {
           dateElement = i18n('Chat.Date.ScheduledFor', [dateElement]);
         }
       }
-
-      /* if(this.chat.type === 'scheduled') {
-        str = 'Scheduled for ' + str;
-      } */
       
       const div = document.createElement('div');
       div.className = 'bubble service is-date';

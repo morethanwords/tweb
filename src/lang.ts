@@ -548,6 +548,7 @@ const lang = {
   "LinkNotFound": "Unfortunately, you can\'t access this message. You are not a member of the chat where it was posted.",
   "Create": "Create",
   "ViewDiscussion": "View discussion",
+  "MessageScheduledUntilOnline": "Scheduled until online",
 
   // * macos
   "AccountSettings.Filters": "Chat Folders",
@@ -562,7 +563,6 @@ const lang = {
   "Chat.CopySelectedText": "Copy Selected Text",
   "Chat.Confirm.Unpin": "Would you like to unpin this message?",
   "Chat.Date.ScheduledFor": "Scheduled for %@",
-  //"Chat.Date.ScheduledUntilOnline": "Scheduled until online",
   "Chat.Date.ScheduledForToday": "Scheduled for today",
   "Chat.DropTitle": "Drop files here to send them",
   "Chat.DropQuickDesc": "in a quick way",
@@ -791,7 +791,7 @@ const lang = {
   "ScheduleController.at": "at",
   "Schedule.SendToday": "Send today at %@",
   "Schedule.SendDate": "Send on %@ at %@",
-  //"Schedule.SendWhenOnline": "Send When Online",
+  "Schedule.SendWhenOnline": "Send When Online",
   "Stickers.Recent": "Recent",
   //"Stickers.Favorite": "Favorite",
   "Text.Context.Copy.Username": "Copy Username",

@@ -4,6 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import { attachClickEvent } from "../../helpers/dom/clickEvent";
+import { SEND_WHEN_ONLINE_TIMESTAMP } from "../../lib/mtproto/constants";
+import Button from "../button";
 import PopupDatePicker from "./datePicker";
 
 const getMinDate = () => {
@@ -13,20 +16,26 @@ const getMinDate = () => {
   return date;
 };
 
+const getMaxDate = () => {
+  const date = new Date();
+  date.setFullYear(date.getFullYear() + 1);
+  date.setDate(date.getDate() - 1);
+  return date;
+};
+
+const checkDate = (date: Date) => {
+  return date.getTime() > getMaxDate().getTime() ? new Date() : date;
+};
+
 export default class PopupSchedule extends PopupDatePicker {
   constructor(initDate: Date, onPick: (timestamp: number) => void) {
-    super(initDate, onPick, {
+    super(checkDate(initDate), onPick, {
       noButtons: true,
       noTitle: true,
       closable: true,
       withConfirm: true,
       minDate: getMinDate(),
-      maxDate: (() => {
-        const date = new Date();
-        date.setFullYear(date.getFullYear() + 1);
-        date.setDate(date.getDate() - 1);
-        return date;
-      })(),
+      maxDate: getMaxDate(),
       withTime: true,
       showOverflowMonths: true
     });
@@ -34,6 +43,13 @@ export default class PopupSchedule extends PopupDatePicker {
     this.element.classList.add('popup-schedule');
     this.header.append(this.controlsDiv);
     this.title.replaceWith(this.monthTitle);
-    this.body.append(this.btnConfirm);
+
+    const btnSendWhenOnline = Button('btn-primary btn-secondary btn-primary-transparent primary', {text: 'Schedule.SendWhenOnline'});
+    this.body.append(this.btnConfirm, btnSendWhenOnline);
+
+    attachClickEvent(btnSendWhenOnline, () => {
+      onPick(SEND_WHEN_ONLINE_TIMESTAMP);
+      this.hide();
+    });
   }
 }
