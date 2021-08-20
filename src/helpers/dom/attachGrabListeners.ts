@@ -6,7 +6,10 @@
 
 export type GrabEvent = {x: number, y: number, isTouch?: boolean};
 
-export default function attachGrabListeners(element: HTMLElement, onStart: (position: GrabEvent) => void, onMove: (position: GrabEvent) => void, onEnd: (position: GrabEvent) => void) {
+export default function attachGrabListeners(element: HTMLElement, 
+  onStart: (position: GrabEvent) => void, 
+  onMove: (position: GrabEvent) => void, 
+  onEnd?: (position: GrabEvent) => void) {
   // * Mouse
   const onMouseMove = (event: MouseEvent) => {
     onMove({x: event.pageX, y: event.pageY});

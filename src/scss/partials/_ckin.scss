@@ -45,8 +45,6 @@
 }
 
 .default {
-  border: 0 solid rgba(0, 0, 0, .2);
-  box-shadow: 0 0 20px rgba(0, 0, 0, .2);
   position: relative;
   font-size: 0;
   //overflow: hidden;
@@ -134,8 +132,12 @@
       &__filled {
         background: var(--primary-color);
       }
+
+      &__loaded {
+        background-color: #fff;
+      }
   
-      &__loaded, & {
+      & {
         background: rgba(255, 255, 255, .38);
       }
 
@@ -241,14 +243,11 @@
       --color: #fff;
       margin: 0;
       width: 50px;
+      --thumb-size: 15px;
 
       // https://stackoverflow.com/a/4816050
       html.is-ios & {
         display: none;
-      }
-
-      &__seek {
-        --thumb-size: 15px;
       }
     } 
   }
@@ -268,6 +267,7 @@ video::-webkit-media-controls-enclosure {
   --color: var(--primary-color);
   --height: 5px;
   --border-radius: 6px;
+  --thumb-size: 13px;
   border-radius: var(--border-radius);
   height: var(--height);
   position: relative;
@@ -285,12 +285,10 @@ video::-webkit-media-controls-enclosure {
   }
 
   &__seek {
-    --thumb-size: 13px;
     -webkit-appearance: none;
     -moz-appearance: none;
     background: transparent;
     width: 100%;
-    height: 100%;
     cursor: pointer;
     padding: 0;
     margin: 0;
@@ -300,63 +298,42 @@ video::-webkit-media-controls-enclosure {
     &:focus {
       outline: none;
 
-      &::-webkit-slider-runnable-track {
+      /* &::-webkit-slider-runnable-track {
         background: transparent;
       }
 
       &::-moz-range-track {
         outline: none;
-      }
-    }
-
-    &::-webkit-slider-runnable-track {
-      width: 100%;
-      cursor: pointer;
-      border-radius: 1.3px;
-      -webkit-appearance: none;
+      } */
     }
 
     &::-webkit-slider-thumb {
-      height: var(--thumb-size);
-      width: var(--thumb-size);
-      border-radius: 50%;
-      background-color: var(--color);
-      cursor: pointer;
-      -webkit-appearance: none;
-      border: none;
-      //margin-left: -.5px;
+      display: none;
     }
 
     &::-moz-range-thumb {
-      height: var(--thumb-size);
-      width: var(--thumb-size);
-      border-radius: 50%;
-      background-color: var(--color);
-      cursor: pointer;
-      -webkit-appearance: none;
-      border: none;
-      //margin-left: -.5px;
-    }
-
-    &::-ms-thumb {
-      height: var(--thumb-size);
-      width: var(--thumb-size);
-      border-radius: 50%;
-      background-color: var(--color);
-      cursor: pointer;
-      -webkit-appearance: none;
-      border: none;
-      //margin-left: -.5px;
+      display: none;
     }
 
     &::-moz-range-track {
-      width: 100%;
-      height: 8.4px;
-      cursor: pointer;
-      border: 1px solid transparent;
-      background: transparent;
-      //border-radius: 1.3px;
+      display: none;
     }
+
+    &::-webkit-slider-runnable-track {
+      display: none;
+    }
+
+    /* &::-webkit-slider-thumb,
+    &::-moz-range-thumb,
+    &::-moz-range-track,
+    &::-webkit-slider-runnable-track {
+      -webkit-appearance: none;
+      background: transparent; 
+      border-color: transparent;
+      color: transparent;
+      width: 0;
+      height: 0;
+    } */
   }
 
   &__filled {
@@ -366,6 +343,20 @@ video::-webkit-media-controls-enclosure {
     &:not(.progress-line__loaded) {
       background-color: var(--color);
       z-index: 1;
+
+      &:after {
+        content: " ";
+        display: block;
+        height: var(--thumb-size);
+        width: var(--thumb-size);
+        border-radius: 50%;
+        background-color: var(--color);
+        cursor: pointer;
+        position: absolute;
+        right: 0;
+        top: 50%;
+        transform: translate(calc(var(--thumb-size) / 2), -50%);
+      }
     }
   }
 
@@ -374,11 +365,19 @@ video::-webkit-media-controls-enclosure {
     background-color: var(--secondary-color);
   }
 
-  &__seek, &__filled, &__loaded {
+  &__seek, 
+  &__filled, 
+  &__loaded {
     border-radius: var(--border-radius);
     position: absolute;
-    height: 100%;
     top: 0;
+    bottom: 0;
+  }
+
+  @include animation-level(2) {
+    &.with-transition .progress-line__filled {
+      transition: width .2s;
+    }
   }
 }
 
