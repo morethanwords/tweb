@@ -427,6 +427,10 @@ export class AppUsersManager {
     return '+' + formatPhoneNumber(phone).formatted;
   }
 
+  public isUserOnlineVisible(id: number) {
+    return this.getUserStatusForSort(id) > 3;
+  }
+
   public getUserStatusForSort(status: User['status'] | number) {
     if(typeof(status) === 'number') {
       status = this.getUser(status).status;
