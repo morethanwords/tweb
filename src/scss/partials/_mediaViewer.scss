@@ -637,6 +637,12 @@ $inactive-opacity: .4;
       opacity: 0 !important;
       pointer-events: none;
     }
+
+    & ~ .media-viewer-movers {
+      .default__button--big {
+        opacity: 0 !important;
+      }
+    }
   }
 }
 

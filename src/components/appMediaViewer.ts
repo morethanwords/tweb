@@ -335,6 +335,10 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     const zoomValue = enable ? ZOOM_INITIAL_VALUE + ZOOM_STEP : 1;
     this.setZoomValue(zoomValue);
 
+    if(this.videoPlayer) {
+      this.videoPlayer.lockControls(enable ? false : undefined);
+    }
+
     if(enable) {
       if(!this.zoomSwipeHandler) {
         let lastDiffX: number, lastDiffY: number;
@@ -512,6 +516,10 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
   };
 
   private onKeyUp = (e: KeyboardEvent) => {
+    if(rootScope.overlaysActive > 1) {
+      return;
+    }
+
     if(!(e.ctrlKey || e.metaKey)) {
       this.ctrlKeyDown = false;
 
@@ -522,8 +530,12 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
   };
 
   private onWheel = (e: WheelEvent) => {
+    if(rootScope.overlaysActive > 1) {
+      return;
+    }
+
     cancelEvent(e);
-    
+
     if(this.ctrlKeyDown) {
       const scrollingUp = e.deltaY < 0;
       this.changeZoom(!!scrollingUp);
@@ -1359,6 +1371,9 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
                 this.wholeDiv.classList.toggle('has-video-controls', show);
               });
               this.videoPlayer = player;
+              if(this.isZooming()) {
+                this.videoPlayer.lockControls(false);
+              }
               /* div.append(video);
               mover.append(player.wrapper); */
             });

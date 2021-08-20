@@ -179,6 +179,10 @@ export default class VideoPlayer extends EventListenerBase<{
 
   private listenerSetter: ListenerSetter;
 
+  private showControlsTimeout = 0;
+
+  private controlsLocked: boolean;
+
   /* private videoParent: HTMLElement;
   private videoWhichChild: number; */
 
@@ -315,46 +319,9 @@ export default class VideoPlayer extends EventListenerBase<{
         }
       });
 
-      const hideControls = () => {
-        clearTimeout(showControlsTimeout);
-        showControlsTimeout = 0;
-        
-        if(this.video.paused || !player.classList.contains('show-controls')) {
-          return;
-        }
-        
-        this.dispatchEvent('toggleControls', false);
-        player.classList.remove('show-controls');
-      };
-      
-      let showControlsTimeout = 0;
-      const showControls = (setHideTimeout = true) => {
-        if(showControlsTimeout) {
-          clearTimeout(showControlsTimeout);
-          showControlsTimeout = 0;
-        } else if(!player.classList.contains('show-controls')) {
-          this.dispatchEvent('toggleControls', true);
-          player.classList.add('show-controls');
-        }
-
-        if(!setHideTimeout) {
-          return;
-        }
-
-        showControlsTimeout = window.setTimeout(hideControls, 3e3);
-      };
-
-      const toggleControls = () => {
-        if(player.classList.contains('show-controls')) {
-          hideControls();
-        } else {
-          showControls();
-        }
-      };
-
       if(isTouchSupported) {
         this.listenerSetter.add(player)('click', () => {
-          toggleControls();
+          this.toggleControls();
         });
 
         /* this.listenerSetter.add(player)('touchstart', () => {
@@ -368,20 +335,20 @@ export default class VideoPlayer extends EventListenerBase<{
         }); */
       } else {
         this.listenerSetter.add(this.wrapper)('mousemove', () => {
-          showControls();
+          this.showControls();
         });
 
         this.listenerSetter.add(this.wrapper)('mouseenter', () => {
-          showControls(false);
+          this.showControls(false);
         });
 
         this.listenerSetter.add(this.wrapper)('mouseleave', (e) => {
           if(findUpClassName(e.relatedTarget, 'media-viewer-caption')) {
-            showControls(false);
+            this.showControls(false);
             return;
           }
           
-          hideControls();
+          this.hideControls();
         });
 
         this.listenerSetter.add(document)('keydown', (e: KeyboardEvent) => {
@@ -445,7 +412,7 @@ export default class VideoPlayer extends EventListenerBase<{
       }, {once: true});
 
       this.listenerSetter.add(video)('pause', () => {
-        showControls(false);
+        this.showControls(false);
       });
     }
 
@@ -464,6 +431,57 @@ export default class VideoPlayer extends EventListenerBase<{
         timeDuration.innerHTML = String(Math.round(video.duration)).toHHMMSS();
       });
     }
+  }
+
+  public hideControls = () => {
+    clearTimeout(this.showControlsTimeout);
+    this.showControlsTimeout = 0;
+
+    const isShown = this.wrapper.classList.contains('show-controls');
+    if(this.controlsLocked !== false) {
+      if(this.video.paused || !isShown || this.controlsLocked) {
+        return;
+      }
+    } else if(!isShown) {
+      return;
+    }
+    
+    this.dispatchEvent('toggleControls', false);
+    this.wrapper.classList.remove('show-controls');
+  };
+  
+  public showControls = (setHideTimeout = true) => {
+    if(this.showControlsTimeout) {
+      clearTimeout(this.showControlsTimeout);
+      this.showControlsTimeout = 0;
+    } else if(!this.wrapper.classList.contains('show-controls') && this.controlsLocked !== false) {
+      this.dispatchEvent('toggleControls', true);
+      this.wrapper.classList.add('show-controls');
+    }
+
+    if(!setHideTimeout || this.controlsLocked) {
+      return;
+    }
+
+    this.showControlsTimeout = window.setTimeout(this.hideControls, 3e3);
+  };
+
+  public toggleControls = (show?: boolean) => {
+    const isShown = this.wrapper.classList.contains('show-controls');
+
+    if(show === undefined) {
+      if(isShown) this.hideControls();
+      else this.showControls();
+    } else if(show === isShown) return;
+    else if(show === false) this.hideControls();
+    else this.showControls();
+  };
+
+  public lockControls(visible: boolean) {
+    this.controlsLocked = visible;
+
+    this.wrapper.classList.toggle('disable-hover', visible === false);
+    this.toggleControls(visible);
   }
 
   protected togglePlay() {

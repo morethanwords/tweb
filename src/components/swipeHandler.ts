@@ -117,7 +117,7 @@ export default class SwipeHandler {
       this.hadMove = true;
 
       if(!isTouchSupported) {
-        this.element.style.cursor = this.cursor;
+        this.element.style.setProperty('cursor', this.cursor, 'important');
       }
 
       if(this.onFirstSwipe) {
