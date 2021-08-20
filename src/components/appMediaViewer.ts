@@ -51,6 +51,13 @@ import setInnerHTML from "../helpers/dom/setInnerHTML";
 import { doubleRaf, fastRaf } from "../helpers/schedulers";
 import { attachClickEvent } from "../helpers/dom/clickEvent";
 import PopupDeleteMessages from "./popups/deleteMessages";
+import RangeSelector from "./rangeSelector";
+import attachGrabListeners, { GrabEvent } from "../helpers/dom/attachGrabListeners";
+
+const ZOOM_STEP = 0.5;
+const ZOOM_INITIAL_VALUE = 1;
+const ZOOM_MIN_VALUE = 1;
+const ZOOM_MAX_VALUE = 4;
 
 // TODO: масштабирование картинок (не SVG) при ресайзе, и правильный возврат на исходную позицию
 // TODO: картинки "обрезаются" если возвращаются или появляются с места, где есть их перекрытие (топбар, поле ввода)
@@ -63,8 +70,9 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
   protected overlaysDiv: HTMLElement;
   protected author: {[k in 'container' | 'avatarEl' | 'nameEl' | 'date']: HTMLElement} = {} as any;
   protected content: {[k in 'main' | 'container' | 'media' | 'mover' | ContentAdditionType]: HTMLElement} = {} as any;
-  protected buttons: {[k in 'download' | 'close' | 'prev' | 'next' | 'mobile-close' | 'zoomin' | ButtonsAdditionType]: HTMLElement} = {} as any;
+  protected buttons: {[k in 'download' | 'close' | 'prev' | 'next' | 'mobile-close' | 'zoom' | ButtonsAdditionType]: HTMLElement} = {} as any;
   protected topbar: HTMLElement;
+  protected moversContainer: HTMLElement;
   
   protected tempId = 0;
   protected preloader: ProgressivePreloader = null;
@@ -102,7 +110,22 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
   protected loadMoreMedia: (older: boolean) => Promise<void>;
 
   protected videoPlayer: VideoPlayer;
+
+  protected zoomElements: {
+    container: HTMLElement,
+    btnOut: HTMLElement,
+    btnIn: HTMLElement,
+    rangeSelector: RangeSelector
+  } = {} as any;
+  // protected zoomValue = ZOOM_INITIAL_VALUE;
+  protected zoomSwipeHandler: SwipeHandler;
+  protected zoomSwipeStartX = 0;
+  protected zoomSwipeStartY = 0;
+  protected zoomSwipeX = 0;
+  protected zoomSwipeY = 0;
   
+  protected ctrlKeyDown: boolean;
+
   constructor(topButtons: Array<keyof AppMediaViewerBase<ContentAdditionType, ButtonsAdditionType, TargetType>['buttons']>) {
     this.log = logger('AMV');
     this.preloader = new ProgressivePreloader();
@@ -153,11 +176,33 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     const buttonsDiv = document.createElement('div');
     buttonsDiv.classList.add(MEDIA_VIEWER_CLASSNAME + '-buttons');
     
-    topButtons.concat(['download', 'zoomin', 'close']).forEach(name => {
-      const button = ButtonIcon(name, {noRipple: name === 'close' || undefined});
+    topButtons.concat(['download', 'zoom', 'close']).forEach(name => {
+      const button = ButtonIcon(name, {noRipple: true});
       this.buttons[name] = button;
       buttonsDiv.append(button);
     });
+
+    this.buttons.zoom.classList.add('zoom-in');
+
+    // * zoom
+    this.zoomElements.container = document.createElement('div');
+    this.zoomElements.container.classList.add('zoom-container');
+
+    this.zoomElements.btnOut = ButtonIcon('zoomout', {noRipple: true});
+    this.zoomElements.btnOut.addEventListener('click', () => this.changeZoom(false));
+    this.zoomElements.btnIn = ButtonIcon('zoomin', {noRipple: true});
+    this.zoomElements.btnIn.addEventListener('click', () => this.changeZoom(true));
+
+    this.zoomElements.rangeSelector = new RangeSelector(ZOOM_STEP, ZOOM_INITIAL_VALUE + ZOOM_STEP, ZOOM_MIN_VALUE, ZOOM_MAX_VALUE, true);
+    this.zoomElements.rangeSelector.setListeners();
+    this.zoomElements.rangeSelector.setHandlers({
+      onScrub: this.setZoomValue,
+      onMouseUp: () => this.setZoomValue()
+    });
+
+    this.zoomElements.container.append(this.zoomElements.btnOut, this.zoomElements.rangeSelector.container, this.zoomElements.btnIn);
+
+    this.wholeDiv.append(this.zoomElements.container);
 
     // * content
     this.content.main = document.createElement('div');
@@ -187,7 +232,17 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     this.buttons.next.className = `${MEDIA_VIEWER_CLASSNAME}-switcher ${MEDIA_VIEWER_CLASSNAME}-switcher-right`;
     this.buttons.next.innerHTML = `<span class="tgico-down ${MEDIA_VIEWER_CLASSNAME}-next-button"></span>`;
 
-    this.wholeDiv.append(this.overlaysDiv, this.buttons.prev, this.buttons.next, this.topbar);
+    this.moversContainer = document.createElement('div');
+    this.moversContainer.classList.add(MEDIA_VIEWER_CLASSNAME + '-movers');
+    this.moversContainer.addEventListener('wheel', (e) => {
+      if(this.ctrlKeyDown) {
+        cancelEvent(e);
+        const scrollingUp = e.deltaY < 0;
+        this.changeZoom(!!scrollingUp);
+      }
+    });
+
+    this.wholeDiv.append(this.overlaysDiv, this.buttons.prev, this.buttons.next, this.topbar, this.moversContainer);
 
     // * constructing html end
     
@@ -223,6 +278,8 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
         this.buttons.next.style.display = 'none';
       }
     });
+
+    this.buttons.zoom.addEventListener('click', () => this.toggleZoom());
 
     this.wholeDiv.addEventListener('click', this.onClick);
 
@@ -268,6 +325,80 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     }
   }
 
+  protected toggleZoom(enable?: boolean) {
+    const isVisible = this.isZooming();
+    if(this.zoomElements.rangeSelector.mousedown || this.ctrlKeyDown) {
+      enable = true;
+    }
+
+    if(isVisible === enable) return;
+
+    if(enable === undefined) {
+      enable = !isVisible;
+    }
+
+    this.buttons.zoom.classList.toggle('zoom-in', !enable);
+    this.zoomElements.container.classList.toggle('is-visible', enable);
+    const zoomValue = enable ? ZOOM_INITIAL_VALUE + ZOOM_STEP : 1;
+    this.setZoomValue(zoomValue);
+
+    if(enable) {
+      if(!this.zoomSwipeHandler) {
+        let lastDiffX: number, lastDiffY: number;
+        const multiplier = -1;
+        this.zoomSwipeHandler = new SwipeHandler({
+          element: this.moversContainer,
+          onFirstSwipe: () => {
+            lastDiffX = lastDiffY = 0;
+            this.moversContainer.classList.add('no-transition');
+          },
+          onSwipe: (xDiff, yDiff) => {
+            [xDiff, yDiff] = [xDiff * multiplier, yDiff * multiplier];
+            this.zoomSwipeX += xDiff - lastDiffX;
+            this.zoomSwipeY += yDiff - lastDiffY;
+            [lastDiffX, lastDiffY] = [xDiff, yDiff];
+
+            this.setZoomValue();
+          },
+          onReset: () => {
+            this.moversContainer.classList.remove('no-transition');
+          },
+          cursor: 'move'
+        });
+      } else {
+        this.zoomSwipeHandler.setListeners();
+      }
+      
+      this.zoomElements.rangeSelector.setProgress(zoomValue);
+    } else if(!enable) {
+      this.zoomSwipeHandler.removeListeners();
+    }
+  }
+
+  protected changeZoom(add: boolean) {
+    this.zoomElements.rangeSelector.addProgress(ZOOM_STEP * (add ? 1 : -1));
+    this.setZoomValue();
+  }
+
+  protected setZoomValue = (value = this.zoomElements.rangeSelector.value) => {
+    // this.zoomValue = value;
+    if(value === ZOOM_INITIAL_VALUE) {
+      this.zoomSwipeX = 0;
+      this.zoomSwipeY = 0;
+    }
+
+    this.moversContainer.style.transform = `matrix(${value}, 0, 0, ${value}, ${this.zoomSwipeX}, ${this.zoomSwipeY})`;
+
+    this.zoomElements.btnOut.classList.toggle('inactive', value === ZOOM_MIN_VALUE);
+    this.zoomElements.btnIn.classList.toggle('inactive', value === ZOOM_MAX_VALUE);
+
+    this.toggleZoom(value > ZOOM_INITIAL_VALUE);
+  };
+
+  protected isZooming() {
+    return this.zoomElements.container.classList.contains('is-visible');
+  }
+
   protected setBtnMenuToggle(buttons: ButtonMenuItemOptions[]) {
     const btnMenuToggle = ButtonMenuToggle({onlyMobile: true}, 'bottom-left', buttons);
     this.topbar.append(btnMenuToggle);
@@ -294,6 +425,11 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     this.setMoverPromise = null;
     this.tempId = -1;
 
+    if(this.zoomSwipeHandler) {
+      this.zoomSwipeHandler.removeListeners();
+      this.zoomSwipeHandler = undefined;
+    }
+
     /* if(appSidebarRight.historyTabIDs.slice(-1)[0] === AppSidebarRight.SLIDERITEMSIDS.forward) {
       promise.then(() => {
         appSidebarRight.forwardTab.closeBtn.click();
@@ -301,6 +437,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     } */
 
     window.removeEventListener('keydown', this.onKeyDown);
+    window.removeEventListener('keyup', this.onKeyUp);
 
     promise.finally(() => {
       this.wholeDiv.remove();
@@ -333,26 +470,56 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
       return;
     }
 
+    const isZooming = this.isZooming();
     let mover: HTMLElement = null;
-    ['media-viewer-mover', 'media-viewer-buttons', 'media-viewer-author', 'media-viewer-caption'].find(s => {
+    const classNames = ['ckin__player', 'media-viewer-buttons', 'media-viewer-author', 'media-viewer-caption', 'zoom-container'];
+    if(isZooming) {
+      classNames.push('media-viewer-movers');
+    }
+
+    classNames.find(s => {
       try {
         mover = findUpClassName(target, s);
         if(mover) return true;
       } catch(err) {return false;}
     });
 
-    if(/* target === this.mediaViewerDiv */!mover || target.tagName === 'IMG' || target.tagName === 'image') {
+    if(/* target === this.mediaViewerDiv */!mover || (!isZooming && (target.tagName === 'IMG' || target.tagName === 'image'))) {
       this.buttons.close.click();
     }
   };
 
   private onKeyDown = (e: KeyboardEvent) => {
     //this.log('onKeyDown', e);
+    if(rootScope.overlaysActive > 1) {
+      return;
+    }
     
+    let good = true;
     if(e.key === 'ArrowRight') {
       this.buttons.next.click();
     } else if(e.key === 'ArrowLeft') {
       this.buttons.prev.click();
+    } else {
+      good = false;
+    }
+
+    if(e.ctrlKey || e.metaKey) {
+      this.ctrlKeyDown = true;
+    }
+
+    if(good) {
+      cancelEvent(e);
+    }
+  };
+
+  private onKeyUp = (e: KeyboardEvent) => {
+    if(!(e.ctrlKey || e.metaKey)) {
+      this.ctrlKeyDown = false;
+
+      if(this.isZooming()) {
+        this.setZoomValue();
+      }
     }
   };
 
@@ -370,7 +537,8 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
       //mover.append(this.buttons.prev, this.buttons.next);
     }
     
-    this.removeCenterFromMover(mover);
+    const zoomValue = this.isZooming() && closing /* && false */ ? this.zoomElements.rangeSelector.value : ZOOM_INITIAL_VALUE;
+    /* if(!(zoomValue > 1 && closing)) */ this.removeCenterFromMover(mover);
 
     const wasActive = fromRight !== 0;
 
@@ -444,6 +612,14 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
       top = rect.top;
     }
 
+    if(zoomValue > 1) { // 33
+      // const diffX = (rect.width * zoomValue - rect.width) / 4;
+      const diffX = (rect.width * zoomValue - rect.width) / 2;
+      const diffY = (rect.height * zoomValue - rect.height) / 4;
+      // left -= diffX;
+      // top += diffY;
+    }
+
     transform += `translate3d(${left}px,${top}px,0) `;
 
     /* if(wasActive) {
@@ -485,6 +661,8 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     mover.style.width = containerRect.width + 'px';
     mover.style.height = containerRect.height + 'px';
 
+    // const scaleX = rect.width / (containerRect.width * zoomValue);
+    // const scaleY = rect.height / (containerRect.height * zoomValue);
     const scaleX = rect.width / containerRect.width;
     const scaleY = rect.height / containerRect.height;
     if(!wasActive) {
@@ -499,7 +677,17 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     }
     //let borderRadius = '0px 0px 0px 0px';
 
-    mover.style.transform = transform;
+    if(closing && zoomValue > 1) {
+      const width = this.moversContainer.scrollWidth * scaleX;
+      const height = this.moversContainer.scrollHeight * scaleY;
+      const willBeLeft = appPhotosManager.windowW / 2 - rect.width / 2;
+      const willBeTop = appPhotosManager.windowH / 2 - rect.height / 2;
+      const left = rect.left - willBeLeft/*  + (width - rect.width) / 2 */;
+      const top = rect.top - willBeTop/*  + (height - rect.height) / 2 */;
+      this.moversContainer.style.transform = `matrix(${scaleX}, 0, 0, ${scaleY}, ${left}, ${top})`;
+    } else {
+      mover.style.transform = transform;
+    }
 
     needOpacity && (mover.style.opacity = '0'/* !closing ? '0' : '' */);
 
@@ -663,6 +851,8 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
         this.wholeDiv.classList.remove('active');
       }, 0);
 
+      return ret;
+
       setTimeout(() => {
         mover.style.borderRadius = borderRadius;
 
@@ -679,10 +869,12 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
         deferred.resolve();
       }, delay);
 
+      mover.classList.remove('opening');
+
       return ret;
     }
 
-    mover.classList.toggle('opening', !closing);
+    mover.classList.add('opening');
 
     //await new Promise((resolve) => setTimeout(resolve, 0));
     //await new Promise((resolve) => window.requestAnimationFrame(resolve));
@@ -713,7 +905,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     }, 0/* delay / 2 */);
 
     mover.dataset.timeout = '' + setTimeout(() => {
-      mover.classList.remove('moving');
+      mover.classList.remove('moving', 'opening');
 
       if(aspecter) { // всё из-за видео, элементы управления скейлятся, так бы можно было этого не делать
         if(mover.querySelector('video') || true) {
@@ -848,7 +1040,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
       const oldMover = this.content.mover;
       oldMover.parentElement.append(newMover);
     } else {
-      this.wholeDiv.append(newMover);
+      this.moversContainer.append(newMover);
     }
 
     return this.content.mover = newMover;
@@ -1014,6 +1206,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
       this.setNewMover();
     } else {
       window.addEventListener('keydown', this.onKeyDown);
+      window.addEventListener('keyup', this.onKeyUp);
       const mainColumns = this.pageEl.querySelector('#main-columns');
       this.pageEl.insertBefore(this.wholeDiv, mainColumns);
       void this.wholeDiv.offsetLeft; // reflow
@@ -1039,13 +1232,13 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
 
     const mover = this.content.mover;
 
-    //const maxWidth = appPhotosManager.windowW - 16;
-    const maxWidth = this.pageEl.scrollWidth;
+    const maxWidth = appPhotosManager.windowW;
+    //const maxWidth = this.pageEl.scrollWidth;
     // TODO: const maxHeight = mediaSizes.isMobile ? appPhotosManager.windowH : appPhotosManager.windowH - 100;
     let padding = 0;
     const windowH = appPhotosManager.windowH;
     if(windowH < 1000000 && !mediaSizes.isMobile) {
-      padding = 32 + 120;
+      padding = 120;
     }
     const maxHeight = windowH - 120 - padding;
     let thumbPromise: Promise<any> = Promise.resolve();

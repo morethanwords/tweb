@@ -1123,16 +1123,13 @@
 
   .progress-line {
     --height: 2px;
+    --color: var(--primary-color);
     --border-radius: 4px;
+    --thumb-size: 12px;
     background-color: #e6ecf0;
     
     &__filled {
       background-color: var(--primary-color);
-    }
-    
-    &__seek {
-      --thumb-color: var(--primary-color);
-      --thumb-size: 12px;
     }
   }
 }

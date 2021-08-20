@@ -16,10 +16,11 @@ const attachGlobalListenerTo = window;
 
 export default class SwipeHandler {
   private element: HTMLElement;
-  private onSwipe: (xDiff: number, yDiff: number) => boolean;
+  private onSwipe: (xDiff: number, yDiff: number) => boolean | void;
   private verifyTouchTarget: (evt: TouchEvent | MouseEvent) => boolean;
   private onFirstSwipe: () => void;
   private onReset: () => void;
+  private cursor: 'grabbing' | 'move' = 'grabbing';
 
   private hadMove = false;
   private xDown: number = null;
@@ -31,15 +32,30 @@ export default class SwipeHandler {
     verifyTouchTarget?: SwipeHandler['verifyTouchTarget'],
     onFirstSwipe?: SwipeHandler['onFirstSwipe'],
     onReset?: SwipeHandler['onReset'],
+    cursor?: SwipeHandler['cursor']
   }) {
     safeAssign(this, options);
 
+    this.setListeners();
+  }
+
+  public setListeners() {
     if(!isTouchSupported) {
       this.element.addEventListener('mousedown', this.handleStart, false);
       attachGlobalListenerTo.addEventListener('mouseup', this.reset);
     } else {
       this.element.addEventListener('touchstart', this.handleStart, false);
       attachGlobalListenerTo.addEventListener('touchend', this.reset);
+    }
+  }
+
+  public removeListeners() {
+    if(!isTouchSupported) {
+      this.element.removeEventListener('mousedown', this.handleStart, false);
+      attachGlobalListenerTo.removeEventListener('mouseup', this.reset);
+    } else {
+      this.element.removeEventListener('touchstart', this.handleStart, false);
+      attachGlobalListenerTo.removeEventListener('touchend', this.reset);
     }
   }
 
@@ -101,7 +117,7 @@ export default class SwipeHandler {
       this.hadMove = true;
 
       if(!isTouchSupported) {
-        this.element.style.cursor = 'grabbing';
+        this.element.style.cursor = this.cursor;
       }
 
       if(this.onFirstSwipe) {
@@ -124,7 +140,8 @@ export default class SwipeHandler {
     // }
 
     /* reset values */
-    if(this.onSwipe(xDiff, yDiff)) {
+    const onSwipeResult = this.onSwipe(xDiff, yDiff);
+    if(onSwipeResult !== undefined && onSwipeResult) {
       this.reset();
     }
   };

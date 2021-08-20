@@ -4,6 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+$inactive-opacity: .4;
+
 .media-viewer {
   position: fixed;
   top: 0;
@@ -119,7 +121,7 @@
     word-break: break-word;
     overflow: hidden;
     text-overflow: ellipsis;
-    z-index: 5;
+    z-index: 4;
     bottom: .75rem;
     left: 0;
     right: 0;
@@ -151,7 +153,7 @@
 
     .media-viewer-whole.active & {
       html.no-touch & {
-        opacity: .4;
+        opacity: $inactive-opacity;
 
         &:hover {
           opacity: 1;
@@ -255,7 +257,7 @@
 
   &-mover/* , &-canvas */ {
     position: fixed!important;
-    z-index: 4;
+    // z-index: 4;
     //transition: .5s all;
     display: flex;
     justify-content: center;
@@ -435,14 +437,15 @@
     padding: 0 1.25rem;
 
     .btn-icon, .media-viewer-author {
-      color: #8b8b8b;
+      color: #fff;
+      opacity: $inactive-opacity;
 
       @include animation-level(2) {
-        transition: color var(--open-duration) ease-in-out;
+        transition: opacity var(--open-duration) ease-in-out, color var(--open-duration) ease-in-out, background-color var(--open-duration) ease-in-out;
       }
 
       @include hover() {
-        color: #fff;
+        opacity: 1;
       }
     }
 
@@ -530,6 +533,9 @@
       } */
   
       .btn-menu-toggle {
+        color: rgba(255, 255, 255, $inactive-opacity);
+        opacity: 1;
+
         &.menu-open {
           color: #fff;
           background-color: rgba(112, 117, 121, .2) !important;
@@ -544,6 +550,19 @@
     }
   }
 
+  &-movers {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 4;
+
+    @include animation-level(2) {
+      transition: transform var(--open-duration);
+    }
+  }
+
   /* &-switchers {
     position: relative;
     width: $large-screen;
@@ -551,6 +570,74 @@
     height: 100%;
     margin: 0 auto;
   } */
+}
+
+.tgico-zoom {
+  &:before {
+    content: $tgico-zoomout;
+  }
+
+  &.zoom-in:before {
+    content: $tgico-zoomin;
+  }
+}
+
+.zoom-container {
+  width: 17.125rem;
+  height: 3.375rem;
+  background-color: rgba(0, 0, 0, .4);
+  border-radius: $border-radius-big;
+  padding: .5rem;
+  opacity: 1;
+  
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  
+  position: absolute;
+  bottom: 1.25rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+
+  @include animation-level(2) {
+    transition: opacity var(--open-duration);
+  }
+  
+  .btn-icon {
+    color: #fff;
+
+    &.inactive {
+      pointer-events: none;
+      opacity: $inactive-opacity;
+    }
+  }
+
+  .progress-line {
+    --color: #fff;
+    --height: 2px;
+    flex: 1 1 auto;
+    margin: 0 1px;
+
+    &:before {
+      opacity: 1;
+    }
+  }
+
+  &:not(.is-visible),
+  .media-viewer-whole:not(.active) & {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  &.is-visible {
+    opacity: 1;
+
+    & ~ .media-viewer-caption {
+      opacity: 0 !important;
+      pointer-events: none;
+    }
+  }
 }
 
 .overlays {

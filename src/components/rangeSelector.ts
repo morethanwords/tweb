@@ -25,9 +25,12 @@ export default class RangeSelector {
 
   protected decimals: number;
 
-  constructor(protected step: number, protected value: number, protected min: number, protected max: number) {
+  constructor(protected step: number, value: number, protected min: number, protected max: number, withTransition = false) {
     this.container = document.createElement('div');
     this.container.classList.add('progress-line');
+    if(withTransition) {
+      this.container.classList.add('with-transition');
+    }
 
     this.filled = document.createElement('div');
     this.filled.classList.add('progress-line__filled');
@@ -52,6 +55,10 @@ export default class RangeSelector {
     //this.setListeners();
 
     this.container.append(this.filled, seek);
+  }
+
+  get value() {
+    return +this.seek.value;
   }
 
   public setHandlers(events: RangeSelector['events']) {
@@ -86,8 +93,13 @@ export default class RangeSelector {
   };
 
   public setProgress(value: number) {
-    this.setFilled(value);
     this.seek.value = '' + value;
+    this.setFilled(+this.seek.value); // clamp
+  }
+
+  public addProgress(value: number) {
+    this.seek.value = '' + (+this.seek.value + value);
+    this.setFilled(+this.seek.value); // clamp
   }
 
   public setFilled(value: number) {
