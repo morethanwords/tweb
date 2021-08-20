@@ -175,39 +175,32 @@
     content: $tgico-play;
   }
 
-  &.is-playing, &:not(.played) {
-    .default__gradient-bottom {
-      transform: translate3d(0, 50px, 0);
-    }
+  .default__gradient-bottom {
+    transform: translate3d(0, 50px, 0);
+  }
 
+  .default__controls {
+    transform: translate3d(0, 52px, 0);
+
+    @include respond-to(handhelds) {
+      transform: translate3d(0, 65px, 0);
+    }
+  }
+
+  &.show-controls {
+    .default__gradient-bottom, 
     .default__controls {
-      transform: translate3d(0, 52px, 0);
-
-      @include respond-to(handhelds) {
-        transform: translate3d(0, 65px, 0);
-      }
+      transform: translateZ(0);
     }
+  }
 
-    /* html.no-touch &:hover,*/
-    /* &.show-controls.ckin__fullscreen, 
-    &.show-controls:not(.ckin__fullscreen):hover,
-    html.is-touch  */&.show-controls {
-      .default__gradient-bottom, 
-      .default__controls {
-        transform: translateZ(0);
-      }
-    }
-
+  &.is-playing {
     &:not(.show-controls) {
       cursor: none;
     }
+  }
 
-    &:before {
-      opacity: 0;
-      visibility: hidden;
-      transform: translate3d(-50%, -50%, 0) scale(1.3);
-    }
-
+  &.is-playing, &:not(.played) {
     .default__button--big {
       opacity: 0;
       visibility: hidden;
