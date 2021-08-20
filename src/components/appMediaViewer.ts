@@ -234,13 +234,6 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
 
     this.moversContainer = document.createElement('div');
     this.moversContainer.classList.add(MEDIA_VIEWER_CLASSNAME + '-movers');
-    this.moversContainer.addEventListener('wheel', (e) => {
-      if(this.ctrlKeyDown) {
-        cancelEvent(e);
-        const scrollingUp = e.deltaY < 0;
-        this.changeZoom(!!scrollingUp);
-      }
-    });
 
     this.wholeDiv.append(this.overlaysDiv, this.buttons.prev, this.buttons.next, this.topbar, this.moversContainer);
 
@@ -438,6 +431,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
 
     window.removeEventListener('keydown', this.onKeyDown);
     window.removeEventListener('keyup', this.onKeyUp);
+    window.removeEventListener('wheel', this.onWheel);
 
     promise.finally(() => {
       this.wholeDiv.remove();
@@ -522,6 +516,14 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
       if(this.isZooming()) {
         this.setZoomValue();
       }
+    }
+  };
+
+  private onWheel = (e: WheelEvent) => {
+    if(this.ctrlKeyDown) {
+      cancelEvent(e);
+      const scrollingUp = e.deltaY < 0;
+      this.changeZoom(!!scrollingUp);
     }
   };
 
@@ -1209,6 +1211,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     } else {
       window.addEventListener('keydown', this.onKeyDown);
       window.addEventListener('keyup', this.onKeyUp);
+      if(!isTouchSupported) window.addEventListener('wheel', this.onWheel, {passive: false});
       const mainColumns = this.pageEl.querySelector('#main-columns');
       this.pageEl.insertBefore(this.wholeDiv, mainColumns);
       void this.wholeDiv.offsetLeft; // reflow
