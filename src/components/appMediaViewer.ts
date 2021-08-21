@@ -52,11 +52,10 @@ import { doubleRaf, fastRaf } from "../helpers/schedulers";
 import { attachClickEvent } from "../helpers/dom/clickEvent";
 import PopupDeleteMessages from "./popups/deleteMessages";
 import RangeSelector from "./rangeSelector";
-import attachGrabListeners, { GrabEvent } from "../helpers/dom/attachGrabListeners";
 
 const ZOOM_STEP = 0.5;
 const ZOOM_INITIAL_VALUE = 1;
-const ZOOM_MIN_VALUE = 1;
+const ZOOM_MIN_VALUE = 0.5;
 const ZOOM_MAX_VALUE = 4;
 
 // TODO: масштабирование картинок (не SVG) при ресайзе, и правильный возврат на исходную позицию
@@ -193,7 +192,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     this.zoomElements.btnIn = ButtonIcon('zoomin', {noRipple: true});
     this.zoomElements.btnIn.addEventListener('click', () => this.changeZoom(true));
 
-    this.zoomElements.rangeSelector = new RangeSelector(ZOOM_STEP, ZOOM_INITIAL_VALUE + ZOOM_STEP, ZOOM_MIN_VALUE, ZOOM_MAX_VALUE, true);
+    this.zoomElements.rangeSelector = new RangeSelector(ZOOM_STEP, ZOOM_INITIAL_VALUE, ZOOM_MIN_VALUE, ZOOM_MAX_VALUE, true);
     this.zoomElements.rangeSelector.setListeners();
     this.zoomElements.rangeSelector.setHandlers({
       onScrub: this.setZoomValue,
@@ -272,7 +271,12 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
       }
     });
 
-    this.buttons.zoom.addEventListener('click', () => this.toggleZoom());
+    this.buttons.zoom.addEventListener('click', () => {
+      if(this.isZooming()) this.toggleZoom(false);
+      else {
+        this.changeZoom(true);
+      }
+    });
 
     this.wholeDiv.addEventListener('click', this.onClick);
 
@@ -332,7 +336,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
 
     this.buttons.zoom.classList.toggle('zoom-in', !enable);
     this.zoomElements.container.classList.toggle('is-visible', enable);
-    const zoomValue = enable ? ZOOM_INITIAL_VALUE + ZOOM_STEP : 1;
+    const zoomValue = enable ? this.zoomElements.rangeSelector.value : 1;
     this.setZoomValue(zoomValue);
 
     if(this.videoPlayer) {
@@ -389,7 +393,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     this.zoomElements.btnOut.classList.toggle('inactive', value === ZOOM_MIN_VALUE);
     this.zoomElements.btnIn.classList.toggle('inactive', value === ZOOM_MAX_VALUE);
 
-    this.toggleZoom(value > ZOOM_INITIAL_VALUE);
+    this.toggleZoom(value !== ZOOM_INITIAL_VALUE);
   };
 
   protected isZooming() {
@@ -435,7 +439,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
 
     window.removeEventListener('keydown', this.onKeyDown);
     window.removeEventListener('keyup', this.onKeyUp);
-    window.removeEventListener('wheel', this.onWheel);
+    window.removeEventListener('wheel', this.onWheel, {capture: true});
 
     promise.finally(() => {
       this.wholeDiv.remove();
@@ -493,7 +497,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
       return;
     }
     
-    let good = true;
+    // let good = true;
     if(e.key === 'ArrowRight') {
       this.buttons.next.click();
     } else if(e.key === 'ArrowLeft') {
@@ -502,17 +506,17 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
       if(this.ctrlKeyDown) {
         this.changeZoom(e.key === '=');
       }
-    } else {
+    }/*  else {
       good = false;
-    }
+    } */
 
     if(e.ctrlKey || e.metaKey) {
       this.ctrlKeyDown = true;
     }
 
-    if(good) {
+    // if(good) {
       cancelEvent(e);
-    }
+    // }
   };
 
   private onKeyUp = (e: KeyboardEvent) => {
@@ -538,6 +542,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
 
     if(this.ctrlKeyDown) {
       const scrollingUp = e.deltaY < 0;
+      // if(!scrollingUp && !this.isZooming()) return;
       this.changeZoom(!!scrollingUp);
     }
   };
@@ -577,7 +582,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
 
     let rect: DOMRect;
     if(target) {
-      if(target instanceof AvatarElement || target.classList.contains('grid-item')) {
+      if(target instanceof AvatarElement || target.classList.contains('grid-item')/*  || target.classList.contains('document-ico') */) {
         realParent = target;
         rect = target.getBoundingClientRect();
       } else if(target instanceof SVGImageElement || target.parentElement instanceof SVGForeignObjectElement) {
@@ -631,13 +636,13 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
       top = rect.top;
     }
 
-    if(zoomValue > 1) { // 33
+    /* if(zoomValue > 1) { // 33
       // const diffX = (rect.width * zoomValue - rect.width) / 4;
       const diffX = (rect.width * zoomValue - rect.width) / 2;
       const diffY = (rect.height * zoomValue - rect.height) / 4;
       // left -= diffX;
       // top += diffY;
-    }
+    } */
 
     transform += `translate3d(${left}px,${top}px,0) `;
 
@@ -697,8 +702,8 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     //let borderRadius = '0px 0px 0px 0px';
 
     if(closing && zoomValue > 1) {
-      const width = this.moversContainer.scrollWidth * scaleX;
-      const height = this.moversContainer.scrollHeight * scaleY;
+      // const width = this.moversContainer.scrollWidth * scaleX;
+      // const height = this.moversContainer.scrollHeight * scaleY;
       const willBeLeft = appPhotosManager.windowW / 2 - rect.width / 2;
       const willBeTop = appPhotosManager.windowH / 2 - rect.height / 2;
       const left = rect.left - willBeLeft/*  + (width - rect.width) / 2 */;
@@ -870,7 +875,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
         this.wholeDiv.classList.remove('active');
       }, 0);
 
-      return ret;
+      //return ret;
 
       setTimeout(() => {
         mover.style.borderRadius = borderRadius;
@@ -1076,19 +1081,21 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     //if(target instanceof SVGSVGElement) {
       const el = target.tagName.toLowerCase() === tagName ? target : target.querySelector(tagName) as HTMLElement;
       if(el) {
-        // two parentElements because element can be contained in aspecter
-        const preloader = target.parentElement.parentElement.querySelector('.preloader-container') as HTMLElement;
-        if(preloader) {
-          if(tagName === 'video') {
-            if(preloader.classList.contains('manual')) {
-              preloader.click();
-              // return;
+        if(!target.classList.contains('document-ico') && findUpClassName(target, 'attachment')) {
+          // two parentElements because element can be contained in aspecter
+          const preloader = target.parentElement.parentElement.querySelector('.preloader-container') as HTMLElement;
+          if(preloader) {
+            if(tagName === 'video') {
+              if(preloader.classList.contains('manual')) {
+                preloader.click();
+                // return;
+              }
+    
+              return;
             }
-  
-            return;
+            
+            preloader.remove();
           }
-          
-          preloader.remove();
         }
 
         renderImageFromUrl(el, url);
@@ -1226,7 +1233,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     } else {
       window.addEventListener('keydown', this.onKeyDown);
       window.addEventListener('keyup', this.onKeyUp);
-      if(!isTouchSupported) window.addEventListener('wheel', this.onWheel, {passive: false});
+      if(!isTouchSupported) window.addEventListener('wheel', this.onWheel, {passive: false, capture: true});
       const mainColumns = this.pageEl.querySelector('#main-columns');
       this.pageEl.insertBefore(this.wholeDiv, mainColumns);
       void this.wholeDiv.offsetLeft; // reflow
