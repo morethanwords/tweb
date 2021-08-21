@@ -338,6 +338,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     this.zoomElements.container.classList.toggle('is-visible', enable);
     const zoomValue = enable ? this.zoomElements.rangeSelector.value : 1;
     this.setZoomValue(zoomValue);
+    this.zoomElements.rangeSelector.setProgress(zoomValue);
 
     if(this.videoPlayer) {
       this.videoPlayer.lockControls(enable ? false : undefined);
@@ -497,7 +498,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
       return;
     }
     
-    // let good = true;
+    let good = true;
     if(e.key === 'ArrowRight') {
       this.buttons.next.click();
     } else if(e.key === 'ArrowLeft') {
@@ -506,17 +507,17 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
       if(this.ctrlKeyDown) {
         this.changeZoom(e.key === '=');
       }
-    }/*  else {
+    } else {
       good = false;
-    } */
+    }
 
     if(e.ctrlKey || e.metaKey) {
       this.ctrlKeyDown = true;
     }
 
-    // if(good) {
+    if(good) {
       cancelEvent(e);
-    // }
+    }
   };
 
   private onKeyUp = (e: KeyboardEvent) => {
@@ -534,7 +535,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
   };
 
   private onWheel = (e: WheelEvent) => {
-    if(rootScope.overlaysActive > 1) {
+    if(rootScope.overlaysActive > 1 || (findUpClassName(e.target, 'media-viewer-caption') && !this.ctrlKeyDown)) {
       return;
     }
 
