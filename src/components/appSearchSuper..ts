@@ -274,9 +274,9 @@ export default class AppSearchSuper {
 
       this.onTransitionEnd();
     }, undefined, navScrollable);
-
-    this.tabs.inputMessagesFilterPhotoVideo.addEventListener('click', (e) => {
-      const target = findUpClassName(e.target as HTMLDivElement, 'grid-item');
+    
+    const onMediaClick = (className: string, targetClassName: string, inputFilter: MyInputMessagesFilter, e: MouseEvent) => {
+      const target = findUpClassName(e.target as HTMLDivElement, className);
       
       const mid = +target.dataset.mid;
       if(!mid) {
@@ -286,8 +286,13 @@ export default class AppSearchSuper {
 
       const peerId = +target.dataset.peerId;
 
-      const targets = (Array.from(this.tabs.inputMessagesFilterPhotoVideo.querySelectorAll('.grid-item')) as HTMLElement[]).map(el => {
-        return {element: el, mid: +el.dataset.mid, peerId: +el.dataset.peerId};
+      const targets = (Array.from(this.tabs[inputFilter].querySelectorAll('.' + targetClassName)) as HTMLElement[]).map(el => {
+        const containerEl = findUpClassName(el, className);
+        return {
+          element: el, 
+          mid: +containerEl.dataset.mid, 
+          peerId: +containerEl.dataset.peerId
+        };
       });
 
       //const ids = Object.keys(this.mediaDivsByIds).map(k => +k).sort((a, b) => a - b);
@@ -295,9 +300,12 @@ export default class AppSearchSuper {
       
       const message = appMessagesManager.getMessageByPeer(peerId, mid);
       new AppMediaViewer()
-      .setSearchContext(this.copySearchContext(this.mediaTab.inputFilter))
-      .openMedia(message, target, 0, false, targets.slice(0, idx), targets.slice(idx + 1));
-    });
+      .setSearchContext(this.copySearchContext(inputFilter))
+      .openMedia(message, targets[idx].element, 0, false, targets.slice(0, idx), targets.slice(idx + 1));
+    };
+
+    this.tabs.inputMessagesFilterPhotoVideo.addEventListener('click', onMediaClick.bind(null, 'grid-item', 'grid-item', 'inputMessagesFilterPhotoVideo'));
+    this.tabs.inputMessagesFilterDocument.addEventListener('click', onMediaClick.bind(null, 'document-with-thumb', 'media-container', 'inputMessagesFilterDocument'));
 
     this.mediaTab = this.mediaTabs[0];
 
