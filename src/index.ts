@@ -61,15 +61,15 @@ console.timeEnd('get storage1'); */
     // We listen to the resize event (https://css-tricks.com/the-trick-to-viewport-units-on-mobile/)
     // @ts-ignore
     const w = window.visualViewport || window; // * handle iOS keyboard
-    let setViewportVH = false;
+    let setViewportVH = false, hasFocus = false;
     let lastVH: number;
     const setVH = () => {
       // @ts-ignore
       const vh = (setViewportVH && !rootScope.default.isOverlayActive ? w.height || w.innerHeight : window.innerHeight) * 0.01;
       if(lastVH === vh) {
         return;
-      } else if(lastVH < vh) {
-        blurActiveElement(); // (Android) fix blur when keyboard is being closed
+      } else if(lastVH < vh && !hasFocus) {
+        blurActiveElement(); // (Android) fix blurring inputs when keyboard is being closed (e.g. closing keyboard by back arrow and touching a bubble)
       }
 
       lastVH = vh;
@@ -253,6 +253,14 @@ console.timeEnd('get storage1'); */
       }
     } else if(userAgent.isAndroid) {
       document.documentElement.classList.add('is-android');
+
+      document.addEventListener('focusin', () => {
+        hasFocus = true;
+      }, {passive: true});
+
+      document.addEventListener('focusout', () => {
+        hasFocus = false;
+      }, {passive: true});
     }
 
     if(!touchSupport.isTouchSupported) {
