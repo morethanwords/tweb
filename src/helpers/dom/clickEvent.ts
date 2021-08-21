@@ -51,3 +51,8 @@ export function detachClickEvent(elem: HTMLElement, callback: (e: TouchEvent | M
     elem.removeEventListener(CLICK_EVENT_NAME, callback, options);
   }
 }
+
+export function simulateClickEvent(elem: HTMLElement) {
+  const event = new Event(CLICK_EVENT_NAME, {bubbles: true, cancelable: true});
+  elem.dispatchEvent(event);
+}

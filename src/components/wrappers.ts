@@ -39,7 +39,7 @@ import { fastRaf } from '../helpers/schedulers';
 import appDownloadManager, { DownloadBlob, ThumbCache } from '../lib/appManagers/appDownloadManager';
 import appStickersManager from '../lib/appManagers/appStickersManager';
 import { cancelEvent } from '../helpers/dom/cancelEvent';
-import { attachClickEvent } from '../helpers/dom/clickEvent';
+import { attachClickEvent, simulateClickEvent } from '../helpers/dom/clickEvent';
 import isInDOM from '../helpers/dom/isInDOM';
 import lottieLoader from '../lib/lottieLoader';
 import { clearBadCharsAndTrim } from '../helpers/cleanSearchText';
@@ -463,7 +463,7 @@ rootScope.addEventListener('download_start', (docId) => {
   const elements = Array.from(document.querySelectorAll(`.document[data-doc-id="${docId}"]`)) as HTMLElement[];
   elements.forEach(element => {
     if(element.querySelector('.preloader-container.manual')) {
-      element.click();
+      simulateClickEvent(element);
     }
   });
 });
