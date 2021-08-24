@@ -280,8 +280,18 @@ $chat-helper-size: 36px;
 		&.record .tgico-microphone,
 		&.edit .tgico-check,
 		&.schedule .tgico-schedule {
-			animation: grow-icon .4s forwards ease-in-out !important;
 			visibility: visible !important;
+			
+			
+		}
+
+		@include animation-level(2) {
+			&.send .tgico-send, 
+			&.record .tgico-microphone,
+			&.edit .tgico-check,
+			&.schedule .tgico-schedule {
+				animation: grow-icon .4s forwards ease-in-out !important;
+			}
 		}
 	}
 

@@ -73,10 +73,10 @@ import debounce from '../../helpers/schedulers/debounce';
 import noop from '../../helpers/noop';
 import { putPreloader } from '../misc';
 import SetTransition from '../singleTransition';
-import replaceContent from '../../helpers/dom/replaceContent';
 import PeerTitle from '../peerTitle';
 import { fastRaf } from '../../helpers/schedulers';
 import PopupDeleteMessages from '../popups/deleteMessages';
+import fixSafariStickyInputFocusing, { IS_STICKY_INPUT_BUGGED } from '../../helpers/dom/fixSafariStickyInputFocusing';
 
 const RECORD_MIN_TIME = 500;
 const POSTING_MEDIA_NOT_ALLOWED = 'Posting media content isn\'t allowed in this group.';
@@ -495,11 +495,11 @@ export default class ChatInput {
     } else {
       this.listenerSetter.add(rootScope)('history_delete', ({peerId, msgs}) => {
         if(this.chat.peerId === peerId) {
-          if(msgs[this.editMsgId]) {
+          if(msgs.has(this.editMsgId)) {
             this.onMessageSent();
           }
 
-          if(this.replyToMsgId && msgs[this.replyToMsgId]) {
+          if(this.replyToMsgId && msgs.has(this.replyToMsgId)) {
             this.clearHelper('reply');
           }
         }
@@ -835,6 +835,10 @@ export default class ChatInput {
     this.messageInput = this.messageInputField.input;
     this.messageInput.classList.add('no-scrollbar');
     this.attachMessageInputListeners();
+    
+    if(IS_STICKY_INPUT_BUGGED) {
+      fixSafariStickyInputFocusing(this.messageInput);
+    }
 
     if(oldInputField) {
       oldInputField.input.replaceWith(this.messageInputField.input);
@@ -1061,7 +1065,7 @@ export default class ChatInput {
   
         if(good) {
           // * костыльчик
-          if(key === 'K') {
+          if(key === 'K' && this.appImManager.markupTooltip) {
             this.appImManager.markupTooltip.showLinkEditor();
             cancelEvent(e);
             break;
@@ -1185,7 +1189,9 @@ export default class ChatInput {
         this.appMessagesManager.setTyping(this.chat.peerId, {_: 'sendMessageCancelAction'});
       }
 
-      this.appImManager.markupTooltip.hide();
+      if(this.appImManager.markupTooltip) {
+        this.appImManager.markupTooltip.hide();
+      }
     } else {
       const time = Date.now();
       if(time - this.lastTimeType >= 6000) {

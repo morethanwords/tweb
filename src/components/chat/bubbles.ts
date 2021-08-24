@@ -525,10 +525,8 @@ export default class ChatBubbles {
     this.listenerSetter.add(rootScope)('history_delete', (e) => {
       const {peerId, msgs} = e;
 
-      const mids = Object.keys(msgs).map(s => +s);
-
       if(peerId === this.peerId) {
-        this.deleteMessagesByIds(mids);
+        this.deleteMessagesByIds(Array.from(msgs));
       }
     });
 

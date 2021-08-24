@@ -381,8 +381,14 @@
     .btn-corner {
       &:not(.menu-open) .tgico-newchat_filled, 
       &.menu-open .tgico-close {
-        animation: grow-icon .4s forwards ease-in-out !important;
         visibility: visible !important;
+      }
+
+      @include animation-level(2) {
+        &:not(.menu-open) .tgico-newchat_filled, 
+        &.menu-open .tgico-close {
+          animation: grow-icon .4s forwards ease-in-out !important;
+        }
       }
 
       @include respond-to(handhelds) {

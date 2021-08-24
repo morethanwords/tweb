@@ -865,8 +865,7 @@ export class AppImManager {
     rootScope.addEventListener('history_delete', (e) => {
       const {peerId, msgs} = e;
 
-      const mids = Object.keys(msgs).map(s => +s);
-      appSidebarRight.sharedMediaTab.deleteDeletedMessages(peerId, mids);
+      appSidebarRight.sharedMediaTab.deleteDeletedMessages(peerId, Array.from(msgs));
     });
 
     // Calls when message successfully sent and we have an id
