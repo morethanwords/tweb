@@ -7,8 +7,8 @@
 import App from './config/app';
 import blurActiveElement from './helpers/dom/blurActiveElement';
 import { cancelEvent } from './helpers/dom/cancelEvent';
-import findUpClassName from './helpers/dom/findUpClassName';
 import fixSafariStickyInput from './helpers/dom/fixSafariStickyInput';
+import { IS_STICKY_INPUT_BUGGED } from './helpers/dom/fixSafariStickyInputFocusing';
 import loadFonts from './helpers/dom/loadFonts';
 import IS_EMOJI_SUPPORTED from './helpers/emojiSupport';
 import { isMobileSafari } from './helpers/userAgent';
@@ -116,7 +116,7 @@ console.timeEnd('get storage1'); */
     //console.log(new Uint8Array([255, 200, 145]).hex);
 
     const toggleResizeMode = () => {
-      setViewportVH = tabId === 1 && userAgent.isSafari && touchSupport.isTouchSupported && !rootScope.default.isOverlayActive;
+      setViewportVH = tabId === 1 && IS_STICKY_INPUT_BUGGED && !rootScope.default.isOverlayActive;
       setVH();
 
       if(w !== window) {
@@ -165,85 +165,6 @@ console.timeEnd('get storage1'); */
     if(userAgent.isApple) {
       if(userAgent.isSafari) {
         document.documentElement.classList.add('is-safari');
-
-        if(userAgent.isMobile && touchSupport.isTouchSupported) {
-          let key: 'clientY' | 'pageY' = 'clientY';
-          let startY = 0;
-          const o = {capture: true, passive: false};
-          const onTouchMove = (e: TouchEvent) => {
-            const touch = e.touches[0];
-
-            //console.log('touchmove y', touch[key], startY);
-            
-            const scrollable = findUpClassName(touch.target, 'scrollable-y');
-            if(scrollable) {
-              const y = touch[key];
-              const scrolled = startY - y;
-
-              /* if(y < startY) {
-                startY = y;
-              } */
-
-              const scrollTop = scrollable.scrollTop;
-              const scrollHeight = scrollable.scrollHeight;
-              const clientHeight = scrollable.clientHeight;
-              const nextScrollTop = scrollTop ? Math.round(scrollTop + scrollable.clientHeight + scrolled) : scrollTop + scrolled;
-              //const needCancel = scrollHeight !== clientHeight ? (scrollTop && diff <= 1) || (scrollTop - diff) < 0 : true;
-              const needCancel = scrollHeight === clientHeight || nextScrollTop >= scrollHeight || nextScrollTop <= 0;
-              if(needCancel) {
-                e.preventDefault();
-              }
-
-              //console.log('touchmove with scrollable', scrollTop, startY, scrolled, nextScrollTop, needCancel, e.cancelable);
-            } else {
-              e.preventDefault();
-
-              //console.log('touchmove no scrollable', e, touch);
-            }
-
-            //if(e.target === document.documentElement || e.target === document.body) e.preventDefault();
-          };
-
-          // let isOpened = false;
-          document.addEventListener('focusin', (e) => {
-            if(!setViewportVH) return;
-            //console.log('focusin');
-
-            // isOpened = true;
-            // document.body.classList.add('is-keyboard-opened');
-
-            fixSafariStickyInput(e.target as HTMLElement);
-
-            document.addEventListener('touchmove', onTouchMove, o);
-            document.addEventListener('touchstart', (e) => {
-              if(e.touches.length > 1) return;
-              const touchStart = e.touches[0];
-    
-              startY = touchStart[key];
-            });
-          });
-
-          document.addEventListener('focusout', () => {
-            document.removeEventListener('touchmove', onTouchMove, o);
-            
-            // if(isOpened) {
-            //   isOpened = false;
-            //   document.body.classList.remove('is-keyboard-opened');
-            // }
-          });
-          
-          document.addEventListener('visibilitychange', () => {
-            if(!setViewportVH) return;
-            //console.log('window visibilitychange');
-            if(document.activeElement && (document.activeElement as HTMLElement).blur) {
-              fixSafariStickyInput(document.activeElement as HTMLElement);
-            }
-
-            /* blurActiveElement();
-            window.scrollTo(0, 0);
-            setVH(); */
-          });
-        }
       }
       
       document.documentElement.classList.add('is-mac', 'emoji-supported');

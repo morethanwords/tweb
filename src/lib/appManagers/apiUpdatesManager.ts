@@ -21,6 +21,7 @@ import appChatsManager from "./appChatsManager";
 import appPeersManager from "./appPeersManager";
 import appStateManager from './appStateManager';
 import serverTimeManager from '../mtproto/serverTimeManager';
+import assumeType from '../../helpers/assumeType';
 
 type UpdatesState = {
   pendingPtsUpdates: (Update & {pts: number, pts_count: number})[],
@@ -197,12 +198,13 @@ export class ApiUpdatesManager {
   
       case 'updateShortMessage':
       case 'updateShortChatMessage': {
+        assumeType<Updates.updateShortChatMessage | Updates.updateShortMessage>(updateMessage);
         this.debug && this.log.debug('updateShortMessage | updateShortChatMessage', {...updateMessage});
         const isOut = updateMessage.pFlags.out;
-        const fromId = updateMessage.from_id || (isOut ? rootScope.myId : updateMessage.user_id);
-        const toId = updateMessage.chat_id
-          ? -updateMessage.chat_id
-          : (updateMessage.user_id || rootScope.myId);
+        const fromId = (updateMessage as Updates.updateShortChatMessage).from_id || (isOut ? rootScope.myId : (updateMessage as Updates.updateShortMessage).user_id);
+        const toId = (updateMessage as Updates.updateShortChatMessage).chat_id
+          ? -(updateMessage as Updates.updateShortChatMessage).chat_id
+          : ((updateMessage as Updates.updateShortMessage).user_id || rootScope.myId);
   
         this.processUpdate({
           _: 'updateNewMessage',

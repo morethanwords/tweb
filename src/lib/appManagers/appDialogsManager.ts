@@ -1240,29 +1240,29 @@ export class AppDialogsManager {
       return;
     }
 
-    let peer = dialog.peer;
-    let peerId = dialog.peerId;
+    const peer = dialog.peer;
+    const peerId = dialog.peerId;
     //let peerId = appMessagesManager.getMessagePeer(lastMessage);
 
     //console.log('setting last message:', lastMessage);
 
     /* if(!dom.lastMessageSpan.classList.contains('user-typing')) */ {
 
-      dom.lastMessageSpan.textContent = '';
+      let fragment: DocumentFragment;
       if(highlightWord && lastMessage.message) {
-        dom.lastMessageSpan.append(appMessagesManager.wrapMessageForReply(lastMessage, undefined, undefined, false, highlightWord));
+        fragment = appMessagesManager.wrapMessageForReply(lastMessage, undefined, undefined, false, highlightWord);
       } else if(draftMessage) {
-        dom.lastMessageSpan.append(appMessagesManager.wrapMessageForReply(draftMessage));
+        fragment = appMessagesManager.wrapMessageForReply(draftMessage);
       } else if(!lastMessage.deleted) {
-        dom.lastMessageSpan.append(appMessagesManager.wrapMessageForReply(lastMessage));
+        fragment = appMessagesManager.wrapMessageForReply(lastMessage);
       }
+      replaceContent(dom.lastMessageSpan, fragment);
   
       /* if(lastMessage.from_id === auth.id) { // You:  */
       if(draftMessage) {
         const bold = document.createElement('b');
         bold.classList.add('danger');
-        bold.append(i18n('Draft'));
-        bold.append(': ');
+        bold.append(i18n('Draft'), ': ');
         dom.lastMessageSpan.prepend(bold);
       } else if(peer._ !== 'peerUser' && peerId !== lastMessage.fromId && !lastMessage.action) {
         const sender = appPeersManager.getPeer(lastMessage.fromId);
@@ -1288,8 +1288,7 @@ export class AppDialogsManager {
 
     if(!lastMessage.deleted || draftMessage/*  && lastMessage._ !== 'draftMessage' */) {
       const date = draftMessage ? Math.max(draftMessage.date, lastMessage.date || 0) : lastMessage.date;
-      dom.lastTimeSpan.textContent = '';
-      dom.lastTimeSpan.append(formatDateAccordingToTodayNew(new Date(date * 1000)));
+      replaceContent(dom.lastTimeSpan, formatDateAccordingToTodayNew(new Date(date * 1000)));
     } else dom.lastTimeSpan.textContent = '';
 
     if(this.doms[peerId] === dom) {
@@ -1317,18 +1316,15 @@ export class AppDialogsManager {
       SetTransition(dom.listEl, 'is-muted', isMuted, 200);
     }
 
-    const lastMessage = dialog.draft && dialog.draft._ === 'draftMessage' ? 
+    const lastMessage = dialog.draft?._ === 'draftMessage' ? 
       dialog.draft : 
       appMessagesManager.getMessageByPeer(dialog.peerId, dialog.top_message);
-    if(lastMessage._ !== 'messageEmpty' && !lastMessage.deleted && 
-      lastMessage.pFlags.out && lastMessage.peerId !== rootScope.myId/*  && 
+    if(!lastMessage.deleted && lastMessage.pFlags.out && lastMessage.peerId !== rootScope.myId/*  && 
       dialog.read_outbox_max_id */) { // maybe comment, 06.20.2020
-      const outgoing = (lastMessage.pFlags && lastMessage.pFlags.unread)
+      const isUnread = (lastMessage.pFlags && lastMessage.pFlags.unread)
         /*  && dialog.read_outbox_max_id !== 0 */; // maybe uncomment, 31.01.2020
-    
-      //console.log('outgoing', outgoing, lastMessage);
-  
-      if(outgoing) {
+
+      if(isUnread) {
         dom.statusSpan.classList.remove('tgico-checks');
         dom.statusSpan.classList.add('tgico-check');
       } else {
@@ -1337,12 +1333,10 @@ export class AppDialogsManager {
       }
     } else dom.statusSpan.classList.remove('tgico-check', 'tgico-checks');
 
-    dom.unreadMessagesSpan.innerText = '';
-
     const filter = appMessagesManager.filtersStorage.filters[this.filterId];
     let isPinned: boolean;
     if(filter) {
-      isPinned = filter.pinned_peers.findIndex(peerId => peerId === dialog.peerId) !== -1;
+      isPinned = filter.pinned_peers.indexOf(dialog.peerId) !== -1;
     } else {
       isPinned = !!dialog.pFlags.pinned;
     }
@@ -1358,6 +1352,7 @@ export class AppDialogsManager {
       dom.unreadMessagesSpan.innerText = '' + (dialog.unread_count || ' ');
       dom.unreadMessagesSpan.classList.add('unread');
     } else {
+      dom.unreadMessagesSpan.innerText = '';
       dom.unreadMessagesSpan.classList.remove('unread');
     }
   }

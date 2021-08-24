@@ -3946,10 +3946,15 @@ export class AppMessagesManager {
     
     const inboxUnread = !message.pFlags.out && message.pFlags.unread;
     if(dialog) {
-      this.setDialogTopMessage(message, dialog);
       if(inboxUnread) {
-        dialog.unread_count++;
+        ++dialog.unread_count;
+
+        if(message.pFlags.mentioned) {
+          ++dialog.unread_mentions_count;
+        }
       }
+
+      this.setDialogTopMessage(message, dialog);
     }
 
     if(inboxUnread/*  && ($rootScope.selectedPeerID != peerID || $rootScope.idle.isIDLE) */) {
@@ -4052,6 +4057,7 @@ export class AppMessagesManager {
     const foundDialog = this.getDialogOnly(peerId);
     const stillUnreadCount = (update as Update.updateReadChannelInbox).still_unread_count;
     let newUnreadCount = 0;
+    let newUnreadMentionsCount = 0;
     let foundAffected = false;
 
     //this.log.warn(dT(), 'read', peerId, isOut ? 'out' : 'in', maxId)
@@ -4076,7 +4082,7 @@ export class AppMessagesManager {
         continue;
       }
       
-      const message = storage[messageId];
+      const message: MyMessage = storage[messageId];
 
       if(message.pFlags.out !== isOut) {
         continue;
@@ -4087,7 +4093,7 @@ export class AppMessagesManager {
       }
 
       if(threadId) {
-        const replyTo = message.reply_to as MessageReplyHeader;
+        const replyTo = message.reply_to;
         if(!replyTo || (replyTo.reply_to_top_id || replyTo.reply_to_msg_id) !== threadId) {
           continue;
         }
@@ -4100,8 +4106,14 @@ export class AppMessagesManager {
           foundAffected = true;
         }
 
-        if(!message.pFlags.out && !threadId && foundDialog && stillUnreadCount === undefined) {
-          newUnreadCount = --foundDialog.unread_count;
+        if(!message.pFlags.out && !threadId && foundDialog) {
+          if(stillUnreadCount === undefined) {
+            newUnreadCount = --foundDialog.unread_count;
+          }
+
+          if(message.pFlags.mentioned) {
+            newUnreadMentionsCount = --foundDialog.unread_mentions_count;
+          }
         }
         
         appNotificationsManager.cancel('msg' + messageId);
@@ -4116,7 +4128,9 @@ export class AppMessagesManager {
       else foundDialog.read_inbox_max_id = maxId;
 
       if(!isOut) {
-        if(newUnreadCount < 0 || !this.getReadMaxIdIfUnread(peerId)) {
+        if(stillUnreadCount !== undefined) {
+          foundDialog.unread_count = stillUnreadCount;
+        } else if(newUnreadCount < 0 || !this.getReadMaxIdIfUnread(peerId)) {
           foundDialog.unread_count = 0;
         } else if(newUnreadCount && foundDialog.top_message > maxId) {
           foundDialog.unread_count = newUnreadCount;
@@ -4147,7 +4161,7 @@ export class AppMessagesManager {
     const mids = (update as Update.updateReadMessagesContents).messages.map(id => appMessagesIdsManager.generateMessageId(id));
     const peerId = channelId ? -channelId : this.getMessageById(mids[0]).peerId;
     for(const mid of mids) {
-      const message = this.getMessageByPeer(peerId, mid);
+      const message: MyMessage = this.getMessageByPeer(peerId, mid);
       if(!message.deleted) {
         delete message.pFlags.media_unread;
         this.setDialogToStateIfMessageIsTop(message);
@@ -4222,13 +4236,17 @@ export class AppMessagesManager {
 
     const foundDialog = this.getDialogOnly(peerId);
     if(foundDialog) {
+      if(historyUpdated.unreadMentions) {
+        foundDialog.unread_mentions_count -= historyUpdated.unreadMentions;
+      }
+
       if(historyUpdated.unread) {
         foundDialog.unread_count -= historyUpdated.unread;
 
         rootScope.dispatchEvent('dialog_unread', {peerId});
       }
 
-      if(historyUpdated.msgs[foundDialog.top_message]) {
+      if(historyUpdated.msgs.has(foundDialog.top_message)) {
         this.reloadConversation(peerId);
       }
     }
@@ -5156,9 +5174,15 @@ export class AppMessagesManager {
     const history: {
       count: number, 
       unread: number, 
-      msgs: {[mid: number]: true},
+      unreadMentions: number, 
+      msgs: Set<number>,
       albums?: {[groupId: string]: Set<number>},
-    } = {count: 0, unread: 0, msgs: {}};
+    } = {
+      count: 0, 
+      unread: 0, 
+      unreadMentions: 0, 
+      msgs: new Set()
+    };
 
     for(const mid of messages) {
       const message: MyMessage = this.getMessageFromStorage(storage, mid);
@@ -5169,11 +5193,16 @@ export class AppMessagesManager {
       this.updateMessageRepliesIfNeeded(message);
 
       if(!message.pFlags.out && !message.pFlags.is_outgoing && message.pFlags.unread) {
-        history.unread++;
+        ++history.unread;
         appNotificationsManager.cancel('msg' + mid);
+
+        if(message.pFlags.mentioned) {
+          ++history.unreadMentions;
+        }
       }
-      history.count++;
-      history.msgs[mid] = true;
+
+      ++history.count;
+      history.msgs.add(mid);
 
       message.deleted = true;
 

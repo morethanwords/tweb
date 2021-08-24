@@ -50,7 +50,7 @@ export type BroadcastEvents = {
   'history_update': {storage: MessagesStorage, peerId: number, mid: number},
   'history_reply_markup': {peerId: number},
   'history_multiappend': AppMessagesManager['newMessagesToHandle'],
-  'history_delete': {peerId: number, msgs: {[mid: number]: true}},
+  'history_delete': {peerId: number, msgs: Set<number>},
   'history_forbidden': number,
   'history_reload': number,
   'history_focus': {peerId: number, threadId?: number, mid?: number},
