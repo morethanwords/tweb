@@ -45,6 +45,8 @@ import { renderImageFromUrlPromise } from "../../helpers/dom/renderImageFromUrl"
 import { fastRafPromise } from "../../helpers/schedulers";
 import appPhotosManager from "./appPhotosManager";
 import SortedUserList from "../../components/sortedUserList";
+import { isTouchSupported } from "../../helpers/touchSupport";
+import handleTabSwipe from "../../helpers/dom/handleTabSwipe";
 
 export type DialogDom = {
   avatarEl: AvatarElement,
@@ -144,6 +146,13 @@ export class AppDialogsManager {
         }
       });
     } */
+
+    if(isTouchSupported) {
+      handleTabSwipe(this.folders.container, (next) => {
+        const prevId = selectTab.prevId();
+        selectTab(next ? prevId + 1 : prevId - 1);
+      });
+    }
 
     this.filterId = 0;
     this.addFilter({

@@ -12,6 +12,7 @@ import ListenerSetter from "../helpers/listenerSetter";
 import mediaSizes from "../helpers/mediaSizes";
 import { isTouchSupported } from "../helpers/touchSupport";
 import { isApple, isMobileSafari } from "../helpers/userAgent";
+import rootScope from "../lib/rootScope";
 import appNavigationController from "./appNavigationController";
 
 export function putPreloader(elem: Element, returnDiv = false): HTMLElement {
@@ -124,6 +125,8 @@ export const closeBtnMenu = () => {
     //openedMenu.previousElementSibling.remove(); // remove overlay
     if(menuOverlay) menuOverlay.remove();
     openedMenu = null;
+
+    rootScope.dispatchEvent('context_menu_toggle', false);
   }
   
   if(openedMenuOnClose) {
@@ -205,6 +208,8 @@ export function openBtnMenu(menuElement: HTMLElement, onClose?: () => void) {
   
   // ! safari iOS doesn't handle window click event on overlay, idk why
   document.addEventListener(CLICK_EVENT_NAME, onClick);
+
+  rootScope.dispatchEvent('context_menu_toggle', true);
 }
 
 const PADDING_TOP = 8;
@@ -307,6 +312,20 @@ export function positionMenu({pageX, pageY}: MouseEvent | Touch, elem: HTMLEleme
     (side === 'center' ? side : (side === 'left' ? 'right' : 'left')));
 }
 
+let _cancelContextMenuOpening = false, _cancelContextMenuOpeningTimeout = 0;
+export function cancelContextMenuOpening() {
+  if(_cancelContextMenuOpeningTimeout) {
+    clearTimeout(_cancelContextMenuOpeningTimeout);
+  }
+    
+  _cancelContextMenuOpeningTimeout = window.setTimeout(() => {
+    _cancelContextMenuOpeningTimeout = 0;
+    _cancelContextMenuOpening = false;
+  }, .4e3);
+
+  _cancelContextMenuOpening = true;
+}
+
 export function attachContextMenuListener(element: HTMLElement, callback: (e: Touch | MouseEvent) => void, listenerSetter?: ListenerSetter) {
   const add = listenerSetter ? listenerSetter.add(element) : element.addEventListener.bind(element);
   const remove = listenerSetter ? listenerSetter.removeManual.bind(listenerSetter, element) : element.removeEventListener.bind(element);
@@ -337,6 +356,11 @@ export function attachContextMenuListener(element: HTMLElement, callback: (e: To
       add('touchcancel', onCancel, options);
 
       timeout = window.setTimeout(() => {
+        if(_cancelContextMenuOpening) {
+          onCancel();
+          return;
+        }
+
         callback(e.touches[0]);
         onCancel();
 

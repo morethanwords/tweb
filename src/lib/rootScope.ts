@@ -127,6 +127,8 @@ export type BroadcastEvents = {
   
   'download_start': string,
   'download_progress': any,
+
+  'context_menu_toggle': boolean
 };
 
 export class RootScope extends EventListenerBase<{
