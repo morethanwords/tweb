@@ -26,7 +26,6 @@ import { ripple } from "./ripple";
 import Scrollable, { ScrollableX } from "./scrollable";
 import { wrapDocument, wrapPhoto, wrapVideo } from "./wrappers";
 import useHeavyAnimationCheck, { getHeavyAnimationPromise } from "../hooks/useHeavyAnimationCheck";
-import { isSafari } from "../helpers/userAgent";
 import { LangPackKey, i18n } from "../lib/langPack";
 import findUpClassName from "../helpers/dom/findUpClassName";
 import { getMiddleware } from "../helpers/middleware";
@@ -39,6 +38,8 @@ import mediaSizes from "../helpers/mediaSizes";
 import appImManager from "../lib/appManagers/appImManager";
 import positionElementByIndex from "../helpers/dom/positionElementByIndex";
 import cleanSearchText from "../helpers/cleanSearchText";
+import { isTouchSupported } from "../helpers/touchSupport";
+import handleTabSwipe from "../helpers/dom/handleTabSwipe";
 
 //const testScroll = false;
 
@@ -163,6 +164,13 @@ export default class AppSearchSuper {
 
     this.tabsContainer = document.createElement('div');
     this.tabsContainer.classList.add('search-super-tabs-container', 'tabs-container');
+
+    if(isTouchSupported) {
+      handleTabSwipe(this.tabsContainer, (next) => {
+        const prevId = this.selectTab.prevId();
+        this.selectTab(next ? prevId + 1 : prevId - 1);
+      });
+    }
 
     for(const mediaTab of this.mediaTabs) {
       const container = document.createElement('div');

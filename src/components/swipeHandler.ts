@@ -7,6 +7,7 @@
 import { cancelEvent } from "../helpers/dom/cancelEvent";
 import { safeAssign } from "../helpers/object";
 import { isTouchSupported } from "../helpers/touchSupport";
+import rootScope from "../lib/rootScope";
 
 const getEvent = (e: TouchEvent | MouseEvent) => {
   return (e as TouchEvent).touches ? (e as TouchEvent).touches[0] : e as MouseEvent;
@@ -14,13 +15,19 @@ const getEvent = (e: TouchEvent | MouseEvent) => {
 
 const attachGlobalListenerTo = window;
 
+let RESET_GLOBAL = false;
+rootScope.addEventListener('context_menu_toggle', (visible) => {
+  RESET_GLOBAL = visible;
+});
+
 export default class SwipeHandler {
   private element: HTMLElement;
-  private onSwipe: (xDiff: number, yDiff: number) => boolean | void;
+  private onSwipe: (xDiff: number, yDiff: number, e: TouchEvent | MouseEvent) => boolean | void;
   private verifyTouchTarget: (evt: TouchEvent | MouseEvent) => boolean;
   private onFirstSwipe: () => void;
   private onReset: () => void;
   private cursor: 'grabbing' | 'move' = 'grabbing';
+  private cancelEvent = true;
 
   private hadMove = false;
   private xDown: number = null;
@@ -32,7 +39,8 @@ export default class SwipeHandler {
     verifyTouchTarget?: SwipeHandler['verifyTouchTarget'],
     onFirstSwipe?: SwipeHandler['onFirstSwipe'],
     onReset?: SwipeHandler['onReset'],
-    cursor?: SwipeHandler['cursor']
+    cursor?: SwipeHandler['cursor'],
+    cancelEvent?: SwipeHandler['cancelEvent']
   }) {
     safeAssign(this, options);
 
@@ -96,11 +104,14 @@ export default class SwipeHandler {
   };
 
   handleMove = (_e: TouchEvent | MouseEvent) => {
-    if(this.xDown === null || this.yDown === null) {
-      return this.reset();
+    if(this.xDown === null || this.yDown === null || RESET_GLOBAL) {
+      this.reset();
+      return;
     }
 
-    cancelEvent(_e);
+    if(this.cancelEvent) {
+      cancelEvent(_e);
+    }
 
     const e = getEvent(_e);
     const xUp = e.clientX;
@@ -140,7 +151,7 @@ export default class SwipeHandler {
     // }
 
     /* reset values */
-    const onSwipeResult = this.onSwipe(xDiff, yDiff);
+    const onSwipeResult = this.onSwipe(xDiff, yDiff, _e);
     if(onSwipeResult !== undefined && onSwipeResult) {
       this.reset();
     }
