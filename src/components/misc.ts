@@ -52,8 +52,8 @@ export function setButtonLoader(elem: HTMLButtonElement, icon = 'check') {
 }
 
 let sortedCountries: Country[];
-export function formatPhoneNumber(str: string) {
-  str = str.replace(/\D/g, '');
+export function formatPhoneNumber(originalStr: string) {
+  let str = originalStr.replace(/\D/g, '');
   let phoneCode = str.slice(0, 6);
   
   ////console.log('str', str, phoneCode);
@@ -65,7 +65,7 @@ export function formatPhoneNumber(str: string) {
     return c.phoneCode.split(' and ').find((c) => phoneCode.indexOf(c.replace(/\D/g, '')) === 0);
   });
 
-  if(!country) return {formatted: str, country};
+  if(!country) return {formatted: str, country, leftPattern: ''};
 
   country = PhoneCodesMain[country.phoneCode] || country;
   
@@ -79,8 +79,16 @@ export function formatPhoneNumber(str: string) {
   /* if(country.pattern) {
     str = str.slice(0, country.pattern.length);
   } */
+
+  let leftPattern = pattern && pattern.length > str.length ? pattern.slice(str.length) : '';
+  if(leftPattern) {
+    /* const length = str.length;
+    leftPattern = leftPattern.split('').map((_, idx) => (length + idx).toString().slice(-1)).join(''); */
+    leftPattern = leftPattern.replace(/X/g, '‒');
+    // leftPattern = leftPattern.replace(/X/g, '0');
+  }
   
-  return {formatted: str, country};
+  return {formatted: str, country, leftPattern};
 }
 
 /* export function parseMenuButtonsTo(to: {[name: string]: HTMLElement}, elements: HTMLCollection | NodeListOf<HTMLElement>) {
