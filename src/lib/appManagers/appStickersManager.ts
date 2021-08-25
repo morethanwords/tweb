@@ -32,7 +32,7 @@ export class AppStickersManager {
   private getGreetingStickersPromise: Promise<void>;
   
   constructor() {
-    this.getStickerSet({id: 'emoji'}, {saveById: true});
+    this.getAnimatedEmojiStickerSet();
 
     rootScope.addMultipleEventsListeners({
       updateNewStickerSet: (update) => {
@@ -121,6 +121,10 @@ export class AppStickersManager {
     });
   }
 
+  public getAnimatedEmojiStickerSet() {
+    return this.getStickerSet({id: 'emoji'}, {saveById: true});
+  }
+
   public async getRecentStickers(): Promise<Modify<MessagesRecentStickers.messagesRecentStickers, {
     stickers: Document[]
   }>> {
@@ -138,6 +142,15 @@ export class AppStickersManager {
     emoji = emoji.replace(/\ufe0f/g, '').replace(/🏻|🏼|🏽|🏾|🏿/g, '');
     const pack = stickerSet.packs.find(p => p.emoticon === emoji);
     return pack ? appDocsManager.getDoc(pack.documents[0]) : undefined;
+  }
+
+  public preloadAnimatedEmojiSticker(emoji: string) {
+    return this.getAnimatedEmojiStickerSet().then(() => {
+      const doc = this.getAnimatedEmojiSticker(emoji);
+      if(doc) {
+        return appDocsManager.downloadDoc(doc);
+      }
+    });
   }
   
   public saveStickerSet(res: Omit<MessagesStickerSet.messagesStickerSet, '_'>, id: string) {

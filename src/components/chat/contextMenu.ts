@@ -26,6 +26,7 @@ import cancelSelection from "../../helpers/dom/cancelSelection";
 import { attachClickEvent } from "../../helpers/dom/clickEvent";
 import isSelectionEmpty from "../../helpers/dom/isSelectionEmpty";
 import { Message } from "../../layer";
+import PopupReportMessages from "../popups/reportMessages";
 
 export default class ChatContextMenu {
   private buttons: (ButtonMenuItemOptions & {verify: () => boolean, notDirect?: () => boolean, withSelection?: true})[];
@@ -320,6 +321,15 @@ export default class ChatContextMenu {
       verify: () => this.chat.selection.selectionForwardBtn && 
         this.chat.selection.selectedMids.has(this.mid) && 
         !this.chat.selection.selectionForwardBtn.hasAttribute('disabled'),
+      notDirect: () => true,
+      withSelection: true
+    }, {
+      icon: 'flag',
+      text: 'ReportChat',
+      onClick: () => {
+        new PopupReportMessages(this.peerId, [this.mid]);
+      },
+      verify: () => !this.message.pFlags.out && !this.message.pFlags.is_outgoing && this.appPeersManager.isChannel(this.peerId),
       notDirect: () => true,
       withSelection: true
     }, {

@@ -36,6 +36,7 @@ export default class PopupElement {
   protected btnClose: HTMLElement;
   protected btnConfirm: HTMLElement;
   protected body: HTMLElement;
+  protected buttons: HTMLElement;
 
   protected onClose: () => void;
   protected onCloseAfterTimeout: () => void;
@@ -91,7 +92,7 @@ export default class PopupElement {
     }
 
     if(buttons && buttons.length) {
-      const buttonsDiv = document.createElement('div');
+      const buttonsDiv = this.buttons = document.createElement('div');
       buttonsDiv.classList.add('popup-buttons');
 
       if(buttons.length === 2) {
