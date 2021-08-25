@@ -549,6 +549,17 @@ const lang = {
   "Create": "Create",
   "ViewDiscussion": "View discussion",
   "MessageScheduledUntilOnline": "Scheduled until online",
+  "ReportChat": "Report",
+  "ReportChatSpam": "Spam",
+  // "ReportChatFakeAccount": "Fake Account",
+  "ReportChatViolence": "Violence",
+  "ReportChatPornography": "Pornography",
+  "ReportChatChild": "Child Abuse",
+  "ReportChatOther": "Other",
+  "ReportChatDescription": "Description",
+  "ReportInfo": "Please enter any additional details relevant to your report.",
+  "ReportSentInfo": "Telegram moderators will review your report.\nThank you for your cooperation!",
+  "ReportHint": "Additional details...",
 
   // * macos
   "AccountSettings.Filters": "Chat Folders",
@@ -609,6 +620,7 @@ const lang = {
     "one_value": "%d Comment",
     "other_value": "%d Comments"
   },
+  "ChatTitle.ReportMessages": "Report Messages",
   "Chat.Send.WithoutSound": "Send Without Sound",
   "Chat.Send.SetReminder": "Set a Reminder",
   "Chat.Send.ScheduledMessage": "Schedule Message",

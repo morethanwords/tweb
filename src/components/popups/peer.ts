@@ -18,15 +18,16 @@ export type PopupPeerOptions = PopupOptions & Partial<{
   title: string,
   titleLangKey?: LangPackKey,
   titleLangArgs?: any[],
+  noTitle?: boolean,
   description: string,
   descriptionLangKey?: LangPackKey,
   descriptionLangArgs?: any[],
-  buttons: Array<Omit<PopupButton, 'callback'> & Partial<{callback: PopupPeerButtonCallback}>>,
+  buttons?: Array<Omit<PopupButton, 'callback'> & Partial<{callback: PopupPeerButtonCallback}>>,
   checkboxes: Array<PopupPeerCheckboxOptions>
 }>;
 export default class PopupPeer extends PopupElement {
   constructor(private className: string, options: PopupPeerOptions = {}) {
-    super('popup-peer' + (className ? ' ' + className : ''), addCancelButton(options.buttons), {overlayClosable: true, ...options});
+    super('popup-peer' + (className ? ' ' + className : ''), options.buttons && addCancelButton(options.buttons), {overlayClosable: true, ...options});
 
     if(options.peerId) {
       let avatarEl = new AvatarElement();
@@ -36,16 +37,21 @@ export default class PopupPeer extends PopupElement {
       this.header.prepend(avatarEl);
     }
 
-    if(options.titleLangKey || !options.title) this.title.append(i18n(options.titleLangKey || 'AppName', options.titleLangArgs));
-    else this.title.innerText = options.title || '';
-
-    let p = document.createElement('p');
-    p.classList.add('popup-description');
-    if(options.descriptionLangKey) p.append(i18n(options.descriptionLangKey, options.descriptionLangArgs));
-    else p.innerHTML = options.description;
+    if(!options.noTitle) {
+      if(options.titleLangKey || !options.title) this.title.append(i18n(options.titleLangKey || 'AppName', options.titleLangArgs));
+      else this.title.innerText = options.title || '';
+    }
 
     const fragment = document.createDocumentFragment();
-    fragment.append(p);
+
+    if(options.descriptionLangKey || options.description) {
+      const p = document.createElement('p');
+      p.classList.add('popup-description');
+      if(options.descriptionLangKey) p.append(i18n(options.descriptionLangKey, options.descriptionLangArgs));
+      else if(options.description) p.innerHTML = options.description;
+  
+      fragment.append(p);
+    }
 
     if(options.checkboxes) {
       this.container.classList.add('have-checkbox');

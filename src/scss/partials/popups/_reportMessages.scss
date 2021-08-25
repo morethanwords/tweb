@@ -1,0 +1,28 @@
+.popup-report-messages-confirm {
+  user-select: none;
+  
+  .media-sticker-wrapper {
+    width: 100px;
+    height: 100px;
+    position: relative;
+    margin: 0 auto;
+  }
+
+  .popup-body {
+    margin: 1em -.5rem .375rem -.5rem;
+    overflow: unset;
+  }
+
+  .popup-description {
+    font-size: .875rem;
+    text-align: center;
+  }
+
+  .popup-buttons {
+    margin-top: .625rem;
+  }
+
+  .input-field {
+    width: 100%;
+  }
+}

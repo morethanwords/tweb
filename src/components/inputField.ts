@@ -95,7 +95,7 @@ class InputField {
     this.container.classList.add('input-field');
 
     if(options.maxLength) {
-      options.showLengthOn = Math.round(options.maxLength / 3);
+      options.showLengthOn = Math.min(40, Math.round(options.maxLength / 3));
     }
 
     const {placeholder, maxLength, showLengthOn, name, plainText} = options;
