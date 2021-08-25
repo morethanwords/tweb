@@ -14,7 +14,7 @@ import Page from "./page";
 import InputField from "../components/inputField";
 import CheckboxField from "../components/checkboxField";
 import Button from "../components/button";
-import { isAppleMobile } from "../helpers/userAgent";
+import { isAndroid, isApple, isAppleMobile, isSafari } from "../helpers/userAgent";
 import fastSmoothScroll from "../helpers/fastSmoothScroll";
 import { isTouchSupported } from "../helpers/touchSupport";
 import App from "../config/app";
@@ -269,8 +269,14 @@ let onFirstMount = () => {
 
     const pixelRatio = window.devicePixelRatio;
     if(pixelRatio > 1) {
-      const letterSpacing = -(pixelRatio * .16) + 'px';
-      telEl.style.setProperty('--letter-spacing', letterSpacing);
+      let letterSpacing: number;
+      if(isApple) {
+        letterSpacing = pixelRatio * -.16;
+      } else if(isAndroid) {
+        letterSpacing = 0;
+      }
+
+      telEl.style.setProperty('--letter-spacing', letterSpacing + 'px');
     }
 
     const originalFunc = telInputField.setValueSilently.bind(telInputField);
