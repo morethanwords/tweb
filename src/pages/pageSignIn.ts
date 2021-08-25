@@ -35,6 +35,7 @@ import replaceContent from "../helpers/dom/replaceContent";
 import toggleDisability from "../helpers/dom/toggleDisability";
 import sessionStorage from "../lib/sessionStorage";
 import { DcAuthKey } from "../types";
+import placeCaretAtEnd from "../helpers/dom/placeCaretAtEnd";
 
 type Country = _Country & {
   li?: HTMLLIElement[]
@@ -142,9 +143,12 @@ let onFirstMount = () => {
     countryInput.value = countryName;
     lastCountrySelected = countries.find(c => c.name === countryName);
     
-    telEl.value = lastValue = phoneCode;
+    telInputField.value = lastValue = phoneCode;
     hidePicker();
-    setTimeout(() => telEl.focus(), 0);
+    setTimeout(() => {
+      telEl.focus();
+      placeCaretAtEnd(telEl, true);
+    }, 0);
   };
   
   initSelect();
@@ -250,37 +254,60 @@ let onFirstMount = () => {
   
   const telInputField = new InputField({
     label: 'Login.PhoneLabel',
-    plainText: true,
+    //plainText: true,
     name: 'phone'
   });
-  let telEl = telInputField.input as HTMLInputElement;
-  telEl.type = 'tel';
-  telEl.autocomplete = 'rr55RandomRR55';
-  telEl.addEventListener('input', function(this: typeof telEl, e) {
+
+  telInputField.container.classList.add('input-field-phone');
+
+  let telEl = telInputField.input;
+  if(telEl instanceof HTMLInputElement) {
+    telEl.type = 'tel';
+    telEl.autocomplete = 'rr55RandomRR55';
+  } else {
+    telEl.inputMode = 'decimal';
+
+    const pixelRatio = window.devicePixelRatio;
+    if(pixelRatio > 1) {
+      const letterSpacing = -(pixelRatio * .16) + 'px';
+      telEl.style.setProperty('--letter-spacing', letterSpacing);
+    }
+
+    const originalFunc = telInputField.setValueSilently.bind(telInputField);
+    telInputField.setValueSilently = (value) => {
+      originalFunc(value);
+      placeCaretAtEnd(telInputField.input, true);
+    };
+  }
+  
+  telEl.addEventListener('input', () => {
     //console.log('input', this.value);
-    this.classList.remove('error');
+    telEl.classList.remove('error');
 
     lottieLoader.loadLottieWorkers();
 
-    const value = this.value;
+    const value = telInputField.value;
     const diff = Math.abs(value.length - lastValue.length);
     if(diff > 1 && !pasted && isAppleMobile) {
-      this.value = lastValue + value;
+      telInputField.setValueSilently(lastValue + value);
     }
 
     pasted = false;
 
     telInputField.setLabel();
 
-    let formatted: string, country: Country;
-    if(this.value.replace(/\++/, '+') === '+') {
-      this.value = '+';
+    let formatted: string, country: Country, leftPattern = '';
+    if(telInputField.value.replace(/\++/, '+') === '+') {
+      telInputField.setValueSilently('+');
     } else {
-      const o = formatPhoneNumber(this.value);
+      const o = formatPhoneNumber(telInputField.value);
       formatted = o.formatted;
       country = o.country;
-      this.value = lastValue = formatted ? '+' + formatted : '';
+      leftPattern = o.leftPattern;
+      telInputField.setValueSilently(lastValue = formatted ? '+' + formatted : '');
     }
+
+    telEl.dataset.leftPattern = leftPattern/* .replace(/X/g, '0') */;
 
     //console.log(formatted, country);
 
@@ -290,15 +317,15 @@ let onFirstMount = () => {
       lastCountrySelected = country;
     }
 
-    //if(country && (this.value.length - 1) >= (country.pattern ? country.pattern.length : 9)) {
-    if(country || (this.value.length - 1) > 1) {
+    //if(country && (telInputField.value.length - 1) >= (country.pattern ? country.pattern.length : 9)) {
+    if(country || (telInputField.value.length - 1) > 1) {
       btnNext.style.visibility = '';
     } else {
       btnNext.style.visibility = 'hidden';
     }
   });
 
-  telEl.addEventListener('paste', (e) => {
+  telEl.addEventListener('paste', () => {
     pasted = true;
     //console.log('paste', telEl.value);
   });
@@ -307,7 +334,7 @@ let onFirstMount = () => {
     console.log('change', telEl.value);
   }); */
 
-  telEl.addEventListener('keypress', function(this: typeof telEl, e) {
+  telEl.addEventListener('keypress', (e) => {
     //console.log('keypress', this.value);
     if(!btnNext.style.visibility &&/* this.value.length >= 9 && */ e.key === 'Enter') {
       return onSubmit();
@@ -362,7 +389,7 @@ let onFirstMount = () => {
 
     //return;
 
-    let phone_number = telEl.value;
+    let phone_number = telInputField.value;
     apiManager.invokeApi('auth.sendCode', {
       phone_number: phone_number,
       api_id: App.id,
@@ -424,10 +451,11 @@ let onFirstMount = () => {
   inputWrapper.append(countryInputField.container, telInputField.container, signedCheckboxField.label, btnNext, btnQr);
 
   const h4 = document.createElement('h4');
+  h4.classList.add('text-center');
   _i18n(h4, 'Login.Title');
 
   const subtitle = document.createElement('div');
-  subtitle.classList.add('subtitle');
+  subtitle.classList.add('subtitle', 'text-center');
   _i18n(subtitle, 'Login.StartText');
 
   page.pageEl.querySelector('.container').append(h4, subtitle, inputWrapper);
@@ -470,12 +498,15 @@ let onFirstMount = () => {
       
       return nearestDcResult;
     }).then((nearestDcResult) => {
-      let country = countries.find((c) => c.code === nearestDcResult.country);
-      if(country) {
-        if(!countryInput.value.length && !telEl.value.length) {
+      if(!countryInput.value.length && !telInputField.value.length) {
+        const country = countries.find((c) => c.code === nearestDcResult.country);
+        if(country) {
           countryInput.value = country.name;
           lastCountrySelected = country;
-          telEl.value = lastValue = '+' + country.phoneCode.split(' and ').shift();
+          const str = '+' + country.phoneCode.split(' and ').shift();
+          const {leftPattern} = formatPhoneNumber(str);
+          telInputField.setValueSilently(lastValue = str);
+          telEl.dataset.leftPattern = leftPattern;
         }
       }
   

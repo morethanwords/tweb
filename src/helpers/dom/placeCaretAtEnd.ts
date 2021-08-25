@@ -11,8 +11,8 @@
 
 import { isTouchSupported } from "../touchSupport";
 
-export default function placeCaretAtEnd(el: HTMLElement) {
-  if(isTouchSupported) {
+export default function placeCaretAtEnd(el: HTMLElement, ignoreTouchCheck = false) {
+  if(isTouchSupported && (!ignoreTouchCheck || document.activeElement !== el)) {
     return;
   }
   

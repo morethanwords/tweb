@@ -433,3 +433,16 @@ input:focus, button:focus {
     }
   }
 }
+
+.input-field-phone {
+  .input-field-input {
+    --letter-spacing: .24px;
+
+    &:after {
+      content: attr(data-left-pattern);
+      // opacity: .4;
+      color: $placeholder-color;
+      letter-spacing: var(--letter-spacing);
+    }
+  }
+}
