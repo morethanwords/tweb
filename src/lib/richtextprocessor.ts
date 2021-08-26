@@ -244,7 +244,7 @@ namespace RichTextProcessor {
     })
   } */
 
-  export function parseMarkdown(text: string, currentEntities: MessageEntity[], noTrim?: boolean): string {
+  export function parseMarkdown(raw: string, currentEntities: MessageEntity[], noTrim?: boolean): string {
     /* if(!markdownTestRegExp.test(text)) {
       return noTrim ? text : text.trim();
     } */
@@ -253,14 +253,12 @@ namespace RichTextProcessor {
     let pushedEntity = false;
     const pushEntity = (entity: MessageEntity) => !findConflictingEntity(currentEntities, entity) ? (entities.push(entity), pushedEntity = true) : pushedEntity = false;
 
-    let raw = text;
-    let match;
-    let newText: any = [];
-    let rawOffset = 0;
+    const newTextParts: string[] = [];
+    let rawOffset = 0, match;
     while(match = raw.match(markdownRegExp)) {
       const matchIndex = rawOffset + match.index;
-      newText.push(raw.substr(0, match.index));
-      let text = (match[3] || match[8] || match[11] || match[13]);
+      newTextParts.push(raw.substr(0, match.index));
+      const text = (match[3] || match[8] || match[11] || match[13]);
       rawOffset -= text.length;
       //text = text.replace(/^\s+|\s+$/g, '');
       rawOffset += text.length;
@@ -268,7 +266,7 @@ namespace RichTextProcessor {
       let entity: MessageEntity;
       pushedEntity = false;
       if(text.match(/^`*$/)) {
-        newText.push(match[0]);
+        newTextParts.push(match[0]);
       } else if(match[3]) { // pre
         entity = {
           _: 'messageEntityPre',
@@ -283,7 +281,7 @@ namespace RichTextProcessor {
             rawOffset -= 1;
           }
   
-          newText.push(match[1] + text + match[5]);
+          newTextParts.push(match[1] + text + match[5]);
           
           rawOffset -= match[2].length + match[4].length;
         }
@@ -299,9 +297,9 @@ namespace RichTextProcessor {
 
         if(pushEntity(entity)) {
           if(!isSOH) {
-            newText.push(match[6] + text + match[9]);
+            newTextParts.push(match[6] + text + match[9]);
           } else {
-            newText.push(text);
+            newTextParts.push(text);
           }
   
           rawOffset -= match[7].length * 2 + (isSOH ? 2 : 0);
@@ -315,7 +313,7 @@ namespace RichTextProcessor {
         };
         
         if(pushEntity(entity)) {
-          newText.push(text);
+          newTextParts.push(text);
           
           rawOffset -= match[0].length - text.length;
         }
@@ -328,24 +326,24 @@ namespace RichTextProcessor {
         };
         
         if(pushEntity(entity)) {
-          newText.push(text);
+          newTextParts.push(text);
 
           rawOffset -= match[12].length - text.length;
         }
       }
 
       if(!pushedEntity) {
-        newText.push(match[0]);
+        newTextParts.push(match[0]);
       }
 
       raw = raw.substr(match.index + match[0].length);
       rawOffset += match.index + match[0].length;
     }
 
-    newText.push(raw);
-    newText = newText.join('');
+    newTextParts.push(raw);
+    let newText = newTextParts.join('');
     if(!newText.replace(/\s+/g, '').length) {
-      newText = text;
+      newText = raw;
       entities.splice(0, entities.length);
     }
 
@@ -355,6 +353,31 @@ namespace RichTextProcessor {
 
     mergeEntities(currentEntities, entities);
     combineSameEntities(currentEntities);
+
+    let length = newText.length;
+    if(!noTrim) {
+      // trim left
+      newText = newText.replace(/^\s*/, '');
+
+      let diff = length - newText.length;
+      if(diff) {
+        currentEntities.forEach(entity => {
+          entity.offset = Math.max(0, entity.offset - diff);
+        });
+      }
+
+      // trim right
+      newText = newText.replace(/\s*$/, '');
+      diff = length - newText.length;
+      length = newText.length;
+      if(diff) {
+        currentEntities.forEach(entity => {
+          if((entity.offset + entity.length) > length) {
+            entity.length = length - entity.offset;
+          }
+        });
+      }
+    }
 
     return newText;
   }
