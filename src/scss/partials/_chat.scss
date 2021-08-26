@@ -130,6 +130,11 @@ $chat-helper-size: 36px;
 		white-space: pre-wrap;
 		font-size: var(--messages-text-size);
 		line-height: var(--line-height);
+
+		pre {
+			display: inline;
+			margin: 0;
+		}
 		
 		@include animation-level(2) {
 			transition: height .1s;
