@@ -58,6 +58,7 @@ import telegramMeWebManager from "../mtproto/telegramMeWebManager";
 import { getMiddleware } from "../../helpers/middleware";
 import assumeType from "../../helpers/assumeType";
 import appMessagesIdsManager from "./appMessagesIdsManager";
+import type { MediaSize } from "../../helpers/mediaSizes";
 
 //console.trace('include');
 // TODO: если удалить сообщение в непрогруженном диалоге, то при обновлении, из-за стейта, последнего сообщения в чатлисте не будет
@@ -599,13 +600,17 @@ export class AppMessagesManager {
     width: number,
     height: number,
     objectURL: string,
-    thumbBlob: Blob,
-    thumbURL: string,
+    thumb: {
+      blob: Blob,
+      url: string,
+      size: MediaSize
+    },
     duration: number,
     background: true,
     silent: true,
     clearDraft: true,
     scheduleDate: number,
+    noSound: boolean,
 
     waveform: Uint8Array,
   }> = {}) {
@@ -696,10 +701,11 @@ export class AppMessagesManager {
       apiFileName = 'video.mp4';
       actionName = 'sendMessageUploadVideoAction';
 
-      let videoAttribute: DocumentAttribute.documentAttributeVideo = {
+      const videoAttribute: DocumentAttribute.documentAttributeVideo = {
         _: 'documentAttributeVideo',
         pFlags: {
-          round_message: options.isRoundMessage
+          round_message: options.isRoundMessage,
+          supports_streaming: true
         }, 
         duration: options.duration,
         w: options.width,
@@ -707,6 +713,15 @@ export class AppMessagesManager {
       };
 
       attributes.push(videoAttribute);
+
+      // * must follow after video attribute
+      if(options.noSound && 
+        file.size > (10 * 1024) && 
+        file.size < (10 * 1024 * 1024)) {
+        attributes.push({
+          _: 'documentAttributeAnimated'
+        });
+      }
     } else {
       attachType = 'document';
       apiFileName = 'document.' + fileType.split('/')[1];
@@ -749,18 +764,18 @@ export class AppMessagesManager {
           size: file.size
         };
       } else if(attachType === 'video') {
-        if(options.thumbURL) {
+        if(options.thumb) {
           thumb = {
             _: 'photoSize',
-            w: options.width,
-            h: options.height,
-            type: 'full',
-            size: options.thumbBlob.size
+            w: options.thumb.size.width,
+            h: options.thumb.size.height,
+            type: 'local-thumb',
+            size: options.thumb.blob.size
           };
 
           const thumbCacheContext = appDownloadManager.getCacheContext(document, thumb.type);
           thumbCacheContext.downloaded = thumb.size;
-          thumbCacheContext.url = options.thumbURL;
+          thumbCacheContext.url = options.thumb.url;
         }
       }
 
@@ -800,7 +815,6 @@ export class AppMessagesManager {
         if(err.name === 'AbortError' && !uploaded) {
           this.log('cancelling upload', media);
 
-          sentDeferred.reject(err);
           this.cancelPendingMessage(message.random_id);
           this.setTyping(peerId, {_: 'sendMessageCancelAction'});
 
@@ -867,12 +881,12 @@ export class AppMessagesManager {
           let thumbUploadPromise: typeof uploadPromise;
           if(attachType === 'video' && options.objectURL) {
             thumbUploadPromise = new Promise((resolve, reject) => {
-              const blobPromise = options.thumbBlob ? Promise.resolve(options.thumbBlob) : createPosterForVideo(options.objectURL);
-              blobPromise.then(blob => {
-                if(!blob) {
+              const thumbPromise = options.thumb && options.thumb.blob ? Promise.resolve(options.thumb) : createPosterForVideo(options.objectURL);
+              thumbPromise.then(thumb => {
+                if(!thumb) {
                   resolve(null);
                 } else {
-                  appDownloadManager.upload(blob).then(resolve, reject);
+                  appDownloadManager.upload(thumb.blob).then(resolve, reject);
                 }
               }, reject);
             });
@@ -3571,23 +3585,16 @@ export class AppMessagesManager {
 
     if(peerId < 0 && appPeersManager.isChannel(peerId)) {
       const channelId = -peerId;
-      const channel = appChatsManager.getChat(channelId);
-      if(!channel.pFlags.creator && !(channel.pFlags.editor && channel.pFlags.megagroup)) {
-        const goodMsgIds: number[] = [];
-        if(channel.pFlags.editor || channel.pFlags.megagroup) {
-          mids.forEach((msgId, i) => {
-            const message = this.getMessageByPeer(peerId, mids[i]);
-            if(message.pFlags.out) {
-              goodMsgIds.push(msgId);
-            }
-          });
-        }
+      const channel: Chat.channel = appChatsManager.getChat(channelId);
+      if(!channel.pFlags.creator && !channel.admin_rights?.pFlags?.delete_messages) {
+        mids = mids.filter((mid) => {
+          const message = this.getMessageByPeer(peerId, mid);
+          return !!message.pFlags.out;
+        });
 
-        if(!goodMsgIds.length) {
+        if(!mids.length) {
           return;
         }
-
-        mids = goodMsgIds;
       }
 
       promise = apiManager.invokeApi('channels.deleteMessages', {
