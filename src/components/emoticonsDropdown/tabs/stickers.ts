@@ -300,7 +300,7 @@ export default class StickersTab implements EmoticonsTab {
     this.scroll = new Scrollable(this.content, 'STICKERS');
     this.scroll.setVirtualContainer(this.stickersDiv);
 
-    this.stickyIntersector = EmoticonsDropdown.menuOnClick(this.menu, this.scroll, menuScroll);
+    this.stickyIntersector = EmoticonsDropdown.menuOnClick(this.menu, this.scroll, menuScroll).stickyIntersector;
 
     const preloader = putPreloader(this.content, true);
 

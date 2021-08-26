@@ -204,8 +204,7 @@ export class EmoticonsDropdown extends DropdownHover {
     }
   };
 
-  public static menuOnClick = (menu: HTMLElement, scroll: Scrollable, menuScroll?: ScrollableX) => {
-    let prevId = 0;
+  public static menuOnClick = (menu: HTMLElement, scroll: Scrollable, menuScroll?: ScrollableX, prevId = 0) => {
     let jumpedTo = -1;
 
     const setActive = (id: number) => {
@@ -271,7 +270,7 @@ export class EmoticonsDropdown extends DropdownHover {
       //console.log('set scrollTop:', offsetTop);
     });
 
-    return stickyIntersector;
+    return {stickyIntersector, setActive};
   };
 
   public static onMediaClick = (e: {target: EventTarget | Element}, clearDraft = false) => {
