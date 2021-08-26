@@ -382,6 +382,19 @@ namespace RichTextProcessor {
 
     currentEntities.push(...filtered);
     currentEntities.sort((a, b) => a.offset - b.offset);
+
+    if(!emojiSupported) { // fix splitted emoji. messageEntityTextUrl can split the emoji if starts before its end (e.g. on fe0f)
+      for(let i = 0; i < currentEntities.length; ++i) {
+        const entity = currentEntities[i];
+        if(entity._ === 'messageEntityEmoji') {
+          const nextEntity = currentEntities[i + 1];
+          if(nextEntity && nextEntity.offset < (entity.offset + entity.length)) {
+            entity.length = nextEntity.offset - entity.offset;
+          }
+        }
+      }
+    }
+
     return currentEntities;
   }
 

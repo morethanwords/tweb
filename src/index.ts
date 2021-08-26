@@ -7,7 +7,6 @@
 import App from './config/app';
 import blurActiveElement from './helpers/dom/blurActiveElement';
 import { cancelEvent } from './helpers/dom/cancelEvent';
-import fixSafariStickyInput from './helpers/dom/fixSafariStickyInput';
 import { IS_STICKY_INPUT_BUGGED } from './helpers/dom/fixSafariStickyInputFocusing';
 import loadFonts from './helpers/dom/loadFonts';
 import IS_EMOJI_SUPPORTED from './helpers/emojiSupport';
