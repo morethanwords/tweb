@@ -480,9 +480,7 @@ export class AppChatsManager {
     return apiManager.invokeApi('channels.inviteToChannel', {
       channel: input,
       users: usersInputs
-    }).then(updates => {
-      apiUpdatesManager.processUpdateMessage(updates);
-    });
+    }).then(this.onChatUpdated.bind(this, id));
   }
 
   public createChat(title: string, userIds: number[]): Promise<number> {
@@ -499,14 +497,11 @@ export class AppChatsManager {
     });
   }
 
-  private onChatUpdated = (chatId: number, updates: any) => {
+  private onChatUpdated = (chatId: number, updates?: any) => {
     //console.log('onChatUpdated', chatId, updates);
 
     apiUpdatesManager.processUpdateMessage(updates);
-    if(updates &&
-        /* updates.updates &&
-        updates.updates.length && */
-        this.isChannel(chatId)) {
+    if(updates?.updates?.length && this.isChannel(chatId)) {
       rootScope.dispatchEvent('invalidate_participants', chatId);
     }
   };
