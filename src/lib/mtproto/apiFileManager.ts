@@ -175,7 +175,7 @@ export class ApiFileManager {
   }
 
   public cancelDownload(fileName: string) {
-    const promises = (this.cachedDownloadPromises[fileName] ? [this.cachedDownloadPromises[fileName]] : []) || 
+    const promises = (this.cachedDownloadPromises[fileName] ? [this.cachedDownloadPromises[fileName]] : undefined) || 
       (this.uploadPromises[fileName] ? Array.from(this.uploadPromises[fileName]) : []);
     let canceled = false;
     for(let i = 0, length = promises.length; i < length; ++i) {

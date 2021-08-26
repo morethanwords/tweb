@@ -21,15 +21,20 @@ import isSendShortcutPressed from "../../helpers/dom/isSendShortcutPressed";
 import placeCaretAtEnd from "../../helpers/dom/placeCaretAtEnd";
 import rootScope from "../../lib/rootScope";
 import RichTextProcessor from "../../lib/richtextprocessor";
+import { MediaSize } from "../../helpers/mediaSizes";
 
 type SendFileParams = Partial<{
   file: File,
   objectURL: string,
-  thumbBlob: Blob,
-  thumbURL: string,
+  thumb: {
+    blob: Blob,
+    url: string,
+    size: MediaSize
+  },
   width: number,
   height: number,
-  duration: number
+  duration: number,
+  noSound: boolean
 }>;
 
 // TODO: .gif upload as video
@@ -263,11 +268,18 @@ export default class PopupNewMedia extends PopupElement {
               params.width = video.videoWidth;
               params.height = video.videoHeight;
               params.duration = Math.floor(video.duration);
+              
+              const audioDecodedByteCount = (video as any).webkitAudioDecodedByteCount;
+              if(audioDecodedByteCount !== undefined) {
+                params.noSound = !audioDecodedByteCount;
+              }
 
               itemDiv.append(video);
-              createPosterFromVideo(video).then(blob => {
-                params.thumbBlob = blob;
-                params.thumbURL = URL.createObjectURL(blob);
+              createPosterFromVideo(video).then(thumb => {
+                params.thumb = {
+                  url: URL.createObjectURL(thumb.blob),
+                  ...thumb
+                };
                 resolve(itemDiv);
               });
             });

@@ -174,7 +174,8 @@ poll-element {
     &-votes-count {
       color: var(--secondary-text-color);
       font-size: .875rem;
-      padding-top: .1875rem;
+      // padding-top: .1875rem; // THIS IS MOCKUP!
+      margin-top: -.5rem; // this is human-readable
     }
 
     &-line {

@@ -309,8 +309,9 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
 
   const cacheContext = appDownloadManager.getCacheContext(doc);
 
+  const isUpload = !!message?.media?.preloader;
   let preloader: ProgressivePreloader;
-  if(message?.media?.preloader) { // means upload
+  if(isUpload) { // means upload
     preloader = message.media.preloader as ProgressivePreloader;
     preloader.attach(container, false);
     noAutoDownload = undefined;
@@ -333,7 +334,7 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
     }
 
     let loadPromise: Promise<any> = Promise.resolve();
-    if(preloader) {
+    if(preloader && !isUpload) {
       if(!cacheContext.downloaded && !doc.supportsStreaming) {
         const promise = loadPromise = appDocsManager.downloadDoc(doc, lazyLoadQueue?.queueId, noAutoDownload);
         preloader.attach(container, false, promise);
@@ -354,7 +355,7 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
         console.error("Error " + video.error.code + "; details: " + video.error.message);
       }
       
-      if(preloader) {
+      if(preloader && !isUpload) {
         preloader.detach();
       }
 
@@ -386,7 +387,7 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
           animationIntersector.addAnimation(video, group);
         }
 
-        if(preloader) {
+        if(preloader && !isUpload) {
           preloader.detach();
         }
   
@@ -410,7 +411,7 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
     return {download: loadPromise, render: deferred};
   };
 
-  if(preloader) {
+  if(preloader && !isUpload) {
     preloader.setDownloadFunction(load);
   }
 
