@@ -108,6 +108,10 @@ export default class EmojiTab implements EmoticonsTab {
 
   private scroll: Scrollable;
   private stickyIntersector: StickyIntersector;
+  private menu: HTMLElement;
+
+  private closeScrollTop = 0;
+  private setMenuActive: (id: number) => boolean;
 
   init() {
     this.content = document.getElementById('content-emoji') as HTMLDivElement;
@@ -203,7 +207,7 @@ export default class EmojiTab implements EmoticonsTab {
 
     //console.timeEnd('emojiParse');
 
-    const menu = this.content.previousElementSibling as HTMLElement;
+    const menu = this.menu = this.content.previousElementSibling as HTMLElement;
     const emojiScroll = this.scroll = new Scrollable(this.content, 'EMOJI');
 
     //emojiScroll.setVirtualContainer(emojiScroll.container);
@@ -212,7 +216,16 @@ export default class EmojiTab implements EmoticonsTab {
 
     Promise.all([
       pause(200),
-      appEmojiManager.getRecentEmojis()
+      appEmojiManager.getRecentEmojis().then(recent => {
+        const hasRecent = !!recent.length;
+        const activeId = hasRecent ? 0 : 1;
+        this.menu.children[0].classList.toggle('hide', !hasRecent);
+        this.menu.children[activeId].classList.add('active');
+        const m = EmoticonsDropdown.menuOnClick(menu, emojiScroll, undefined, activeId);
+        this.stickyIntersector = m.stickyIntersector;
+        this.setMenuActive = m.setActive;
+        return recent;
+      })
     ]).then(([_, recent]) => {
       preloader.remove();
 
@@ -238,7 +251,6 @@ export default class EmojiTab implements EmoticonsTab {
     });
 
     this.content.addEventListener('click', this.onContentClick);
-    this.stickyIntersector = EmoticonsDropdown.menuOnClick(menu, emojiScroll);
     this.init = null;
 
     rootScope.addEventListener('emoji_recent', (emoji) => {
@@ -257,6 +269,15 @@ export default class EmojiTab implements EmoticonsTab {
 
       appendEmoji(emoji, this.recentItemsDiv, true);
       this.recentItemsDiv.parentElement.classList.remove('hide');
+      this.menu.children[0].classList.remove('hide');
+
+      if(!this.closeScrollTop) {
+        this.setMenuActive(0);
+      }
+    });
+
+    emoticonsDropdown.addEventListener('close', () => {
+      this.closeScrollTop = this.scroll.scrollTop;
     });
   }
 
