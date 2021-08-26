@@ -21,9 +21,10 @@ import findUpClassName from "../helpers/dom/findUpClassName";
 import { cancelEvent } from "../helpers/dom/cancelEvent";
 import { attachClickEvent, detachClickEvent } from "../helpers/dom/clickEvent";
 import replaceContent from "../helpers/dom/replaceContent";
+import windowSize from "../helpers/windowSize";
 
 let lineTotalLength = 0;
-//const tailLength = 9;
+const tailLength = 9;
 const times = 10;
 const fullTime = 340;
 const oneTime = fullTime / times;
@@ -108,6 +109,15 @@ rootScope.addEventListener('peer_changed', () => {
   }
 });
 
+mediaSizes.addEventListener('resize', () => {
+  PollElement.setMaxLength();
+  PollElement.resizePolls();
+});
+
+mediaSizes.addEventListener('changeScreen', () => {
+  PollElement.setMaxLength();
+});
+
 const hideQuizHint = (element: HTMLElement, onHide: () => void, timeout: number) => {
   element.classList.remove('active');
 
@@ -155,7 +165,9 @@ const setQuizHint = (solution: string, solution_entities: any[], onHide: () => v
 };
 
 export default class PollElement extends HTMLElement {
-  private svgLines: SVGSVGElement[];
+  public static MAX_OFFSET = -46.5;
+  public static MAX_LENGTH = 0;
+  public svgLines: SVGSVGElement[];
   private numberDivs: HTMLDivElement[];
   private answerDivs: HTMLDivElement[];
   private descDiv: HTMLElement;
@@ -164,9 +176,8 @@ export default class PollElement extends HTMLElement {
   private viewResults: HTMLElement;
   private votersCountDiv: HTMLDivElement;
 
-  private maxOffset = -46.5;
-  //private maxLength: number;
-  //private maxLengths: number[];
+  // private maxLength: number;
+  // private maxLengths: number[];
   private maxPercents: number[];
 
   public isClosed = false;
@@ -193,6 +204,22 @@ export default class PollElement extends HTMLElement {
     // элемент создан
   }
 
+  public static setMaxLength() {
+    const width = windowSize.windowW <= 360 ? windowSize.windowW - 120 : mediaSizes.active.poll.width;
+    this.MAX_LENGTH = width + tailLength + this.MAX_OFFSET + -13.7; // 13 - position left
+  }
+
+  public static resizePolls() {
+    if(!this.MAX_LENGTH) return;
+    const pollElements = Array.from(document.querySelectorAll('poll-element.is-voted')) as PollElement[];
+    pollElements.forEach(pollElement => {
+      pollElement.svgLines.forEach((svg, idx) => {
+        //void svg.getBoundingClientRect(); // reflow
+        pollElement.setLineProgress(idx, 1);
+      });
+    });
+  }
+
   public render() {
     // браузер вызывает этот метод при добавлении элемента в документ
     // (может вызываться много раз, если элемент многократно добавляется/удаляется)
@@ -200,6 +227,7 @@ export default class PollElement extends HTMLElement {
     if(!lineTotalLength) {
       lineTotalLength = (document.getElementById('poll-line') as any as SVGPathElement).getTotalLength();
       //console.log('line total length:', lineTotalLength);
+      PollElement.setMaxLength();
     }
 
     const pollId = this.message.media.poll.id;
@@ -230,6 +258,8 @@ export default class PollElement extends HTMLElement {
       }
     }
 
+    this.classList.toggle('is-multiple', this.isMultiple);
+
     const multipleSelect = this.isMultiple ? '<span class="poll-answer-selected tgico-check"></span>' : '';
     const votes = poll.answers.map((answer, idx) => {
       return `
@@ -243,7 +273,7 @@ export default class PollElement extends HTMLElement {
           </div>
           <div class="poll-answer-percents"></div>
           <div class="poll-answer-text">${RichTextProcessor.wrapEmojiText(answer.text)}</div>
-          <svg version="1.1" class="poll-line" style="display: none;" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 ${mediaSizes.active.regular.width} 35" xml:space="preserve">
+          <svg version="1.1" class="poll-line" style="display: none;" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 485.9 35" xml:space="preserve">
             <use href="#poll-line"></use>
           </svg>
           <span class="poll-answer-selected tgico"></span>
@@ -396,8 +426,9 @@ export default class PollElement extends HTMLElement {
       footerDiv.append(this.sendVoteBtn);
     }
 
-    //const width = this.getBoundingClientRect().width;
-    //this.maxLength = width + tailLength + this.maxOffset + -13.7; // 13 - position left
+    // const width = this.getBoundingClientRect().width;
+    // const width = mediaSizes.active.poll.width;
+    // this.maxLength = width + tailLength + this.maxOffset + -13.7; // 13 - position left
 
     if(poll.chosenIndexes.length || this.isClosed) {
       this.performResults(results, poll.chosenIndexes, false);
@@ -570,16 +601,13 @@ export default class PollElement extends HTMLElement {
     }
 
     if(this.isMultiple) {
-      this.sendVoteBtn.classList.toggle('hide', !!this.chosenIndexes.length);
-      if(!this.chosenIndexes.length) {
-        this.votersCountDiv.classList.add('hide');
-        this.viewResults.classList.add('hide');
-      } else if(this.isPublic) {
-        this.viewResults.classList.toggle('hide', !results.total_voters || !this.chosenIndexes.length);
-        this.votersCountDiv.classList.toggle('hide', !!this.chosenIndexes.length);
-      } else {
-        this.votersCountDiv.classList.toggle('hide', !this.chosenIndexes.length);
-      }
+      const isVoted = !!this.chosenIndexes.length;
+
+      const hideSendVoteBtn = this.isClosed || isVoted;
+      const hideViewResultsBtn = !this.isPublic || !results.total_voters || (!isVoted && !this.isClosed);
+      this.sendVoteBtn.classList.toggle('hide', hideSendVoteBtn);
+      this.viewResults.classList.toggle('hide', hideViewResultsBtn);
+      this.votersCountDiv.classList.toggle('hide', !hideSendVoteBtn || !hideViewResultsBtn);
     }
   }
 
@@ -591,7 +619,7 @@ export default class PollElement extends HTMLElement {
     });
 
     const maxValue = Math.max(...percents);
-    //this.maxLengths = percents.map(p => p / maxValue * this.maxLength);
+    // this.maxLengths = percents.map(p => p / maxValue * this.maxLength);
     this.maxPercents = percents.map(p => p / maxValue);
 
     // line
@@ -690,9 +718,10 @@ export default class PollElement extends HTMLElement {
       svg.style.strokeDasharray = '';
       svg.style.strokeDashoffset = '';
     } else {
-      //svg.style.strokeDasharray = (percents * this.maxLengths[index]) + ', 485.9';
-      svg.style.strokeDasharray = (multiplier * this.maxPercents[index] * 100) + '%, 485.9';
-      svg.style.strokeDashoffset = '' + multiplier * this.maxOffset;
+      // svg.style.strokeDasharray = (multiplier * this.maxLengths[index]) + ', 485.9';
+      svg.style.strokeDasharray = (multiplier * this.maxPercents[index] * PollElement.MAX_LENGTH) + ', 485.9';
+      // svg.style.strokeDasharray = (multiplier * this.maxPercents[index] * 100) + '%, 485.9';
+      svg.style.strokeDashoffset = '' + multiplier * PollElement.MAX_OFFSET;
     }
   }
 

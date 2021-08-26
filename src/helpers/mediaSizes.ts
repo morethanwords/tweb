@@ -37,7 +37,8 @@ type MediaTypeSizes = {
   esgSticker: MediaSize,
   animatedSticker: MediaSize,
   staticSticker: MediaSize,
-  emojiSticker: MediaSize
+  emojiSticker: MediaSize,
+  poll: MediaSize
 };
 
 export enum ScreenSize {
@@ -51,7 +52,8 @@ const MEDIUM_SIZE = 1275;
 const LARGE_SIZE = 1680;
 
 class MediaSizes extends EventListenerBase<{
-  changeScreen: (from: ScreenSize, to: ScreenSize) => void
+  changeScreen: (from: ScreenSize, to: ScreenSize) => void,
+  resize: () => void
 }> {
   private screenSizes: {key: ScreenSize, value: number}[] = [
     {key: ScreenSize.mobile, value: MOBILE_SIZE},
@@ -67,7 +69,8 @@ class MediaSizes extends EventListenerBase<{
       esgSticker: makeMediaSize(68, 68),
       animatedSticker: makeMediaSize(180, 180),
       staticSticker: makeMediaSize(180, 180),
-      emojiSticker: makeMediaSize(112, 112)
+      emojiSticker: makeMediaSize(112, 112),
+      poll: makeMediaSize(240, 0)
     },
     desktop: {
       regular: makeMediaSize(420, 340),
@@ -76,14 +79,15 @@ class MediaSizes extends EventListenerBase<{
       esgSticker: makeMediaSize(80, 80),
       animatedSticker: makeMediaSize(200, 200),
       staticSticker: makeMediaSize(200, 200),
-      emojiSticker: makeMediaSize(112, 112)
+      emojiSticker: makeMediaSize(112, 112),
+      poll: makeMediaSize(330, 0)
     }
   };
 
   public isMobile = false;
   public active: MediaTypeSizes;
   public activeScreen: ScreenSize;
-  public rAF: number;
+  private rAF: number;
 
   constructor() {
     super();
@@ -126,6 +130,10 @@ class MediaSizes extends EventListenerBase<{
       if(wasScreen !== undefined) {
         this.dispatchEvent('changeScreen', this.activeScreen, activeScreen);
       }
+    }
+
+    if(wasScreen !== undefined) {
+      this.dispatchEvent('resize');
     }
 
     /* if(this.isMobile) {

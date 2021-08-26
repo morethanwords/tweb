@@ -11,6 +11,7 @@ import appPhotosManager from "../../../lib/appManagers/appPhotosManager";
 import InputSearch from "../../inputSearch";
 import { isMobile } from "../../../helpers/userAgent";
 import { canFocus } from "../../../helpers/dom/canFocus";
+import windowSize from "../../../helpers/windowSize";
 
 // TODO: поиск по людям глобальный, если не нашло в контактах никого
 
@@ -75,7 +76,7 @@ export default class AppContactsTab extends SliderSuperTab {
       }
 
       let renderPage = () => {
-        const pageCount = appPhotosManager.windowH / 72 * 1.25 | 0;
+        const pageCount = windowSize.windowH / 72 * 1.25 | 0;
         const arr = contacts.splice(0, pageCount); // надо splice!
 
         arr.forEach((peerId) => {

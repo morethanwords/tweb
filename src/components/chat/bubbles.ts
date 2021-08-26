@@ -74,6 +74,7 @@ import { EmoticonsDropdown } from "../emoticonsDropdown";
 import debounce from "../../helpers/schedulers/debounce";
 import { formatNumber } from "../../helpers/number";
 import { SEND_WHEN_ONLINE_TIMESTAMP } from "../../lib/mtproto/constants";
+import windowSize from "../../helpers/windowSize";
 
 const USE_MEDIA_TAILS = false;
 const IGNORE_ACTIONS: Set<Message.messageService['action']['_']> = new Set([
@@ -1106,7 +1107,7 @@ export default class ChatBubbles {
         let bad = true;
         if(bubble) {
           const rect = bubble.getBoundingClientRect();
-          bad = (this.appPhotosManager.windowH / 2) > rect.top;
+          bad = (windowSize.windowH / 2) > rect.top;
         } else {
           const message = this.chat.getMessage(mid);
           if(!message.deleted) {
@@ -3570,7 +3571,7 @@ export default class ChatBubbles {
     const peerId = this.peerId;
 
     //console.time('appImManager call getHistory');
-    const pageCount = Math.min(30, this.appPhotosManager.windowH / 38/*  * 1.25 */ | 0);
+    const pageCount = Math.min(30, windowSize.windowH / 38/*  * 1.25 */ | 0);
     //const loadCount = Object.keys(this.bubbles).length > 0 ? 50 : pageCount;
     const realLoadCount = Object.keys(this.bubbles).length > 0/*  || additionMsgId */ ? Math.max(40, pageCount) : pageCount;//const realLoadCount = 50;
     //const realLoadCount = pageCount;//const realLoadCount = 50;

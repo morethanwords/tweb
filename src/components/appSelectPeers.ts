@@ -23,6 +23,7 @@ import { cancelEvent } from "../helpers/dom/cancelEvent";
 import replaceContent from "../helpers/dom/replaceContent";
 import { filterUnique } from "../helpers/array";
 import debounce from "../helpers/schedulers/debounce";
+import windowSize from "../helpers/windowSize";
 
 type PeerType = 'contacts' | 'dialogs' | 'channelParticipants';
 
@@ -257,7 +258,7 @@ export default class AppSelectPeers {
     }
     
     // в десктопе - сначала без группы, потом архивные, потом контакты без сообщений
-    const pageCount = appPhotosManager.windowH / 72 * 1.25 | 0;
+    const pageCount = windowSize.windowH / 72 * 1.25 | 0;
 
     const tempId = this.getTempId('dialogs');
     const promise = appMessagesManager.getConversations(this.query, this.offsetIndex, pageCount, this.folderId);
@@ -359,7 +360,7 @@ export default class AppSelectPeers {
     }
 
     if(this.cachedContacts.length) {
-      const pageCount = appPhotosManager.windowH / 72 * 1.25 | 0;
+      const pageCount = windowSize.windowH / 72 * 1.25 | 0;
       const arr = this.cachedContacts.splice(0, pageCount);
       this.renderResultsFunc(arr);
     }

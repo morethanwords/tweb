@@ -52,6 +52,7 @@ import { doubleRaf, fastRaf } from "../helpers/schedulers";
 import { attachClickEvent } from "../helpers/dom/clickEvent";
 import PopupDeleteMessages from "./popups/deleteMessages";
 import RangeSelector from "./rangeSelector";
+import windowSize from "../helpers/windowSize";
 
 const ZOOM_STEP = 0.5;
 const ZOOM_INITIAL_VALUE = 1;
@@ -289,7 +290,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
           }
           //console.log(xDiff, yDiff);
 
-          const percents = Math.abs(xDiff) / appPhotosManager.windowW;
+          const percents = Math.abs(xDiff) / windowSize.windowW;
           if(percents > .2 || xDiff > 125) {
             //console.log('will swipe', xDiff);
 
@@ -302,7 +303,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
             return true;
           }
 
-          const percentsY = Math.abs(yDiff) / appPhotosManager.windowH;
+          const percentsY = Math.abs(yDiff) / windowSize.windowH;
           if(percentsY > .2 || yDiff > 125) {
             this.buttons.close.click();
             return true;
@@ -630,7 +631,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     let top: number;
 
     if(wasActive) {
-      left = fromRight === 1 ? appPhotosManager.windowW : -containerRect.width;
+      left = fromRight === 1 ? windowSize.windowW : -containerRect.width;
       top = containerRect.top;
     } else {
       left = rect.left;
@@ -705,8 +706,8 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     if(closing && zoomValue > 1) {
       // const width = this.moversContainer.scrollWidth * scaleX;
       // const height = this.moversContainer.scrollHeight * scaleY;
-      const willBeLeft = appPhotosManager.windowW / 2 - rect.width / 2;
-      const willBeTop = appPhotosManager.windowH / 2 - rect.height / 2;
+      const willBeLeft = windowSize.windowW / 2 - rect.width / 2;
+      const willBeTop = windowSize.windowH / 2 - rect.height / 2;
       const left = rect.left - willBeLeft/*  + (width - rect.width) / 2 */;
       const top = rect.top - willBeTop/*  + (height - rect.height) / 2 */;
       this.moversContainer.style.transform = `matrix(${scaleX}, 0, 0, ${scaleY}, ${left}, ${top})`;
@@ -1028,7 +1029,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
   }
 
   protected moveTheMover(mover: HTMLElement, toLeft = true) {
-    const windowW = appPhotosManager.windowW;
+    const windowW = windowSize.windowW;
 
     this.removeCenterFromMover(mover);
 
@@ -1260,11 +1261,11 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
 
     const mover = this.content.mover;
 
-    const maxWidth = appPhotosManager.windowW;
+    const maxWidth = windowSize.windowW;
     //const maxWidth = this.pageEl.scrollWidth;
     // TODO: const maxHeight = mediaSizes.isMobile ? appPhotosManager.windowH : appPhotosManager.windowH - 100;
     let padding = 0;
-    const windowH = appPhotosManager.windowH;
+    const windowH = windowSize.windowH;
     if(windowH < 1000000 && !mediaSizes.isMobile) {
       padding = 120;
     }

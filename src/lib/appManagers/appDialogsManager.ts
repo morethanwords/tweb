@@ -47,6 +47,7 @@ import appPhotosManager from "./appPhotosManager";
 import SortedUserList from "../../components/sortedUserList";
 import { isTouchSupported } from "../../helpers/touchSupport";
 import handleTabSwipe from "../../helpers/dom/handleTabSwipe";
+import windowSize from "../../helpers/windowSize";
 
 export type DialogDom = {
   avatarEl: AvatarElement,
@@ -929,7 +930,7 @@ export class AppDialogsManager {
     appUsersManager.getContacts(undefined, undefined, 'online').then(contacts => {
       const sortedUserList = new SortedUserList({avatarSize: 42, new: true});
       this.loadContacts = () => {
-        const pageCount = appPhotosManager.windowH / 60 | 0;
+        const pageCount = windowSize.windowH / 60 | 0;
         const arr = contacts.splice(0, pageCount).filter(this.verifyUserIdForContacts);
 
         arr.forEach((peerId) => {
