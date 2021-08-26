@@ -156,7 +156,11 @@ $bubble-margin: .25rem;
     }
   }
 
-  &.channel-post {
+  .replies-footer + .poll-message .poll-footer-button {
+    border-radius: 0 !important;
+  }
+
+  /* &.channel-post {
     .message.poll-message {
       .time {
         position: unset;
@@ -166,7 +170,7 @@ $bubble-margin: .25rem;
 		poll-element .poll-footer {
 			height: auto;
 		}
-  }
+  } */
 
   &-select-checkbox {
     z-index: 3;
@@ -2206,6 +2210,11 @@ $bubble-margin: .25rem;
 
     .progress-ring__circle {
       stroke: var(--message-out-primary-color);
+    }
+
+    .c-ripple__circle {
+      background-color: var(--message-out-primary-color);
+      opacity: .08;
     }
   }
 
