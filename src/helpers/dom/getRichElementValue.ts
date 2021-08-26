@@ -30,7 +30,7 @@ export const markdownTags: {[type in MarkdownType]: MarkdownTag} = {
     entityName: 'messageEntityItalic'
   },
   monospace: {
-    match: '[style*="monospace"], [face="monospace"]',
+    match: '[style*="monospace"], [face="monospace"], pre',
     entityName: 'messageEntityPre'
   },
   strikethrough: {
