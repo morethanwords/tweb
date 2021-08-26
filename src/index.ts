@@ -61,14 +61,14 @@ console.timeEnd('get storage1'); */
     // We listen to the resize event (https://css-tricks.com/the-trick-to-viewport-units-on-mobile/)
     // @ts-ignore
     const w = window.visualViewport || window; // * handle iOS keyboard
-    let setViewportVH = false, hasFocus = false;
+    let setViewportVH = false/* , hasFocus = false */;
     let lastVH: number;
     const setVH = () => {
       // @ts-ignore
       const vh = (setViewportVH && !rootScope.default.isOverlayActive ? w.height || w.innerHeight : window.innerHeight) * 0.01;
       if(lastVH === vh) {
         return;
-      } else if(lastVH < vh && !hasFocus) {
+      } else if(touchSupport.isTouchSupported && lastVH < vh && (vh - lastVH) > 1) {
         blurActiveElement(); // (Android) fix blurring inputs when keyboard is being closed (e.g. closing keyboard by back arrow and touching a bubble)
       }
 
@@ -86,9 +86,6 @@ console.timeEnd('get storage1'); */
         }
       } */
     };
-
-    window.addEventListener('resize', setVH);
-    setVH();
 
     // * hook worker constructor to set search parameters (test, debug, etc)
     const workerHandler = {
@@ -110,39 +107,45 @@ console.timeEnd('get storage1'); */
       import('./lib/rootScope'),
       import('./lib/appManagers/appStateManager'),
       import('./lib/langPack'),
-    ])
+    ]);
+
     //console.timeEnd('get storage');
+
+    window.addEventListener('resize', setVH);
+    setVH();
 
     //console.log(new Uint8Array([255, 200, 145]).hex);
 
-    const toggleResizeMode = () => {
-      setViewportVH = tabId === 1 && IS_STICKY_INPUT_BUGGED && !rootScope.default.isOverlayActive;
-      setVH();
-
-      if(w !== window) {
-        if(setViewportVH) {
-          window.removeEventListener('resize', setVH);
-          w.addEventListener('resize', setVH);
-        } else {
-          w.removeEventListener('resize', setVH);
-          window.addEventListener('resize', setVH);
+    if(IS_STICKY_INPUT_BUGGED) {
+      const toggleResizeMode = () => {
+        setViewportVH = tabId === 1 && IS_STICKY_INPUT_BUGGED && !rootScope.default.isOverlayActive;
+        setVH();
+  
+        if(w !== window) {
+          if(setViewportVH) {
+            window.removeEventListener('resize', setVH);
+            w.addEventListener('resize', setVH);
+          } else {
+            w.removeEventListener('resize', setVH);
+            window.addEventListener('resize', setVH);
+          }
         }
-      }
-    };
-
-    let tabId: number;
-    rootScope.default.addEventListener('im_tab_change', (id) => {
-      const wasTabId = tabId !== undefined;
-      tabId = id;
-
-      if(wasTabId || tabId === 1) {
+      };
+  
+      let tabId: number;
+      rootScope.default.addEventListener('im_tab_change', (id) => {
+        const wasTabId = tabId !== undefined;
+        tabId = id;
+  
+        if(wasTabId || tabId === 1) {
+          toggleResizeMode();
+        }
+      });
+      
+      rootScope.default.addEventListener('overlay_toggle', () => {
         toggleResizeMode();
-      }
-    });
-    
-    rootScope.default.addEventListener('overlay_toggle', () => {
-      toggleResizeMode();
-    });
+      });
+    }
 
     if(userAgent.isFirefox && !IS_EMOJI_SUPPORTED) {
       document.addEventListener('dragstart', (e) => {
@@ -175,13 +178,14 @@ console.timeEnd('get storage1'); */
     } else if(userAgent.isAndroid) {
       document.documentElement.classList.add('is-android');
 
-      document.addEventListener('focusin', () => {
+      /* document.addEventListener('focusin', (e) => {
         hasFocus = true;
+        focusTime = Date.now();
       }, {passive: true});
 
       document.addEventListener('focusout', () => {
         hasFocus = false;
-      }, {passive: true});
+      }, {passive: true}); */
     }
 
     if(!touchSupport.isTouchSupported) {
