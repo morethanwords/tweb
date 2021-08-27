@@ -1303,7 +1303,7 @@ export default class ChatInput {
     if(matches) {
       const entity = entities[0];
 
-      const query = matches[2];
+      let query = matches[2];
       const firstChar = query[0];
 
       if(this.stickersHelper && 
@@ -1322,7 +1322,8 @@ export default class ChatInput {
           foundHelper = this.commandsHelper;
         }
       } else if(rootScope.settings.emoji.suggest) { // emoji
-        if(!value.match(/^\s*:(.+):\s*$/) && !value.match(/:[;!@#$%^&*()-=|]/)) {
+        query = query.replace(/^\s*/, '');
+        if(!value.match(/^\s*:(.+):\s*$/) && !value.match(/:[;!@#$%^&*()-=|]/) && query) {
           foundHelper = this.emojiHelper;
           this.emojiHelper.checkQuery(query, firstChar);
         }
