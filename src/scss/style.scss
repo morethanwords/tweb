@@ -854,6 +854,7 @@ img.emoji {
   user-select: text;
   outline: none;
   cursor: text;
+  white-space: pre-wrap;
 }
 
 [contenteditable][data-placeholder] {
