@@ -21,7 +21,7 @@ import AppMediaViewer from "./appMediaViewer";
 import { SearchGroup, SearchGroupType } from "./appSearch";
 import { horizontalMenu } from "./horizontalMenu";
 import LazyLoadQueue from "./lazyLoadQueue";
-import { putPreloader, formatPhoneNumber } from "./misc";
+import { putPreloader } from "./misc";
 import { ripple } from "./ripple";
 import Scrollable, { ScrollableX } from "./scrollable";
 import { wrapDocument, wrapPhoto, wrapVideo } from "./wrappers";
@@ -41,6 +41,7 @@ import cleanSearchText from "../helpers/cleanSearchText";
 import { isTouchSupported } from "../helpers/touchSupport";
 import handleTabSwipe from "../helpers/dom/handleTabSwipe";
 import windowSize from "../helpers/windowSize";
+import { formatPhoneNumber } from "../helpers/formatPhoneNumber";
 
 //const testScroll = false;
 

@@ -9,12 +9,12 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import { formatPhoneNumber } from "../../components/misc";
 import { MOUNT_CLASS_TO } from "../../config/debug";
 import { filterUnique } from "../../helpers/array";
 import cleanSearchText from "../../helpers/cleanSearchText";
 import cleanUsername from "../../helpers/cleanUsername";
 import { tsNow } from "../../helpers/date";
+import { formatPhoneNumber } from "../../helpers/formatPhoneNumber";
 import { safeReplaceObject, isObject } from "../../helpers/object";
 import { Chat, InputUser, User as MTUser, UserProfilePhoto, UserStatus } from "../../layer";
 import I18n, { i18n, LangPackKey } from "../langPack";

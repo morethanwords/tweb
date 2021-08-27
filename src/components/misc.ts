@@ -5,7 +5,6 @@
  */
 
 import { MOUNT_CLASS_TO } from "../config/debug";
-import Countries, { Country, PhoneCodesMain } from "../countries";
 import { cancelEvent } from "../helpers/dom/cancelEvent";
 import { CLICK_EVENT_NAME } from "../helpers/dom/clickEvent";
 import ListenerSetter from "../helpers/listenerSetter";
@@ -49,46 +48,6 @@ export function setButtonLoader(elem: HTMLButtonElement, icon = 'check') {
     elem.classList.add('tgico-' + icon);
     elem.removeAttribute('disabled');
   };
-}
-
-let sortedCountries: Country[];
-export function formatPhoneNumber(originalStr: string) {
-  let str = originalStr.replace(/\D/g, '');
-  let phoneCode = str.slice(0, 6);
-  
-  ////console.log('str', str, phoneCode);
-  if(!sortedCountries) {
-    sortedCountries = Countries.slice().sort((a, b) => b.phoneCode.length - a.phoneCode.length);
-  }
-  
-  let country = sortedCountries.find((c) => {
-    return c.phoneCode.split(' and ').find((c) => phoneCode.indexOf(c.replace(/\D/g, '')) === 0);
-  });
-
-  if(!country) return {formatted: str, country, leftPattern: ''};
-
-  country = PhoneCodesMain[country.phoneCode] || country;
-  
-  let pattern = country.pattern || country.phoneCode;
-  pattern.split('').forEach((symbol, idx) => {
-    if(symbol === ' ' && str[idx] !== ' ' && str.length > idx) {
-      str = str.slice(0, idx) + ' ' + str.slice(idx);
-    }
-  });
-  
-  /* if(country.pattern) {
-    str = str.slice(0, country.pattern.length);
-  } */
-
-  let leftPattern = pattern && pattern.length > str.length ? pattern.slice(str.length) : '';
-  if(leftPattern) {
-    /* const length = str.length;
-    leftPattern = leftPattern.split('').map((_, idx) => (length + idx).toString().slice(-1)).join(''); */
-    leftPattern = leftPattern.replace(/X/g, '‒');
-    // leftPattern = leftPattern.replace(/X/g, '0');
-  }
-  
-  return {formatted: str, country, leftPattern};
 }
 
 /* export function parseMenuButtonsTo(to: {[name: string]: HTMLElement}, elements: HTMLCollection | NodeListOf<HTMLElement>) {

@@ -4,10 +4,10 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import simulateEvent from "../helpers/dom/dispatchEvent";
 import findUpAttribute from "../helpers/dom/findUpAttribute";
 import getRichValue from "../helpers/dom/getRichValue";
 import isInputEmpty from "../helpers/dom/isInputEmpty";
-import debounce from "../helpers/schedulers/debounce";
 import { i18n, LangPackKey, _i18n } from "../lib/langPack";
 import RichTextProcessor from "../lib/richtextprocessor";
 
@@ -240,8 +240,7 @@ class InputField {
   set value(value: string) {
     this.setValueSilently(value, false);
 
-    const event = new Event('input', {bubbles: true, cancelable: true});
-    this.input.dispatchEvent(event);
+    simulateEvent(this.input, 'input');
   }
 
   public setValueSilently(value: string, fireFakeInput = true) {

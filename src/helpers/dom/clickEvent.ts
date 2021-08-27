@@ -6,6 +6,7 @@
 
 import type ListenerSetter from "../listenerSetter";
 import { isTouchSupported } from "../touchSupport";
+import simulateEvent from "./dispatchEvent";
 
 export const CLICK_EVENT_NAME: 'mousedown' | 'touchend' | 'click' = (isTouchSupported ? 'mousedown' : 'click') as any;
 export type AttachClickOptions = AddEventListenerOptions & Partial<{listenerSetter: ListenerSetter, touchMouseDown: true}>;
@@ -53,6 +54,5 @@ export function detachClickEvent(elem: HTMLElement, callback: (e: TouchEvent | M
 }
 
 export function simulateClickEvent(elem: HTMLElement) {
-  const event = new Event(CLICK_EVENT_NAME, {bubbles: true, cancelable: true});
-  elem.dispatchEvent(event);
+  simulateEvent(elem, CLICK_EVENT_NAME);
 }

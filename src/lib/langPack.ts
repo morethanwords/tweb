@@ -9,7 +9,7 @@ import { safeAssign } from "../helpers/object";
 import { capitalizeFirstLetter } from "../helpers/string";
 import type lang from "../lang";
 import type langSign from "../langSign";
-import { LangPackDifference, LangPackString } from "../layer";
+import { HelpCountriesList, HelpCountry, LangPackDifference, LangPackString } from "../layer";
 import apiManager from "./mtproto/mtprotoworker";
 import stateStorage from "./stateStorage";
 import App from "../config/app";
@@ -66,6 +66,7 @@ export type FormatterArguments = FormatterArgument[];
 
 namespace I18n {
 	export const strings: Map<LangPackKey, LangPackString> = new Map();
+	export const countriesList: HelpCountry[] = [];
 	let pluralRules: Intl.PluralRules;
 
 	let cacheLangPackPromise: Promise<LangPackDifference>;
@@ -101,8 +102,9 @@ namespace I18n {
 		lastRequestedLangCode = defaultCode;
 		return Promise.all([
 			import('../lang'),
-			import('../langSign')
-		]).then(([lang, langSign]) => {
+			import('../langSign'),
+			import('../countries')
+		]).then(([lang, langSign, countries]) => {
 			const strings: LangPackString[] = [];
 			formatLocalStrings(lang.default, strings);
 			formatLocalStrings(langSign.default, strings);
@@ -113,7 +115,8 @@ namespace I18n {
 				lang_code: defaultCode,
 				strings,
 				version: 0,
-				local: true
+				local: true,
+				countries: countries.default
 			};
 			return saveLangPack(langPack);
 		});
@@ -132,7 +135,11 @@ namespace I18n {
 			}),
 			import('../lang'),
 			import('../langSign'),
-			polyfillPromise
+			apiManager.invokeApiCacheable('help.getCountriesList', {
+				lang_code: langCode,
+				hash: 0
+			}) as Promise<HelpCountriesList.helpCountriesList>,
+			polyfillPromise,
 		]);
 	}
 
@@ -168,21 +175,22 @@ namespace I18n {
 
 	export function getLangPack(langCode: string) {
 		lastRequestedLangCode = langCode;
-		return loadLangPack(langCode).then(([langPack, _langPack, __langPack, ___langPack, _]) => {
+		return loadLangPack(langCode).then(([langPack1, langPack2, localLangPack1, localLangPack2, countries, _]) => {
 			let strings: LangPackString[] = [];
 
-			[__langPack, ___langPack].forEach(l => {
+			[localLangPack1, localLangPack2].forEach(l => {
 				formatLocalStrings(l.default as any, strings);
 			});
 
-			strings = strings.concat(langPack.strings);
+			strings = strings.concat(langPack1.strings);
 
-			for(const string of _langPack.strings) {
+			for(const string of langPack2.strings) {
 				strings.push(string);
 			}
 
-			langPack.strings = strings;
-			return saveLangPack(langPack);
+			langPack1.strings = strings;
+			langPack1.countries = countries;
+			return saveLangPack(langPack1);
 		});
 	}
 
@@ -221,6 +229,22 @@ namespace I18n {
 
 		for(const string of langPack.strings) {
 			strings.set(string.key as LangPackKey, string);
+		}
+
+		if(langPack.countries) {
+			countriesList.length = 0;
+			countriesList.push(...langPack.countries.countries);
+
+			langPack.countries.countries.forEach(country => {
+				if(country.name) {
+					const langPackKey: any = country.default_name;
+					strings.set(langPackKey, {
+						_: 'langPackString',
+						key: langPackKey,
+						value: country.name
+					});
+				}
+			});
 		}
 
 		rootScope.dispatchEvent('language_change', langPack.lang_code);
