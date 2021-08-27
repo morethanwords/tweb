@@ -2748,10 +2748,14 @@ export class AppMessagesManager {
           const tomorrowDate = new Date(today);
           tomorrowDate.setDate(tomorrowDate.getDate() + 1);
 
-          langPackKey = 'ChatList.Service.VoiceChatScheduled';
+          const isBroadcast = appPeersManager.isBroadcast(message.peerId);
+          langPackKey = isBroadcast ? 'ChatList.Service.VoiceChatScheduled.Channel' : 'ChatList.Service.VoiceChatScheduled';
+          args = [];
           const myId = appUsersManager.getSelf().id;
           if(message.fromId === myId) {
             langPackKey += 'You';
+          } else if(!isBroadcast) {
+            args.push(getNameDivHTML(message.fromId, plain));
           }
 
           let k: LangPackKey, _args: any[] = [];
@@ -2773,7 +2777,7 @@ export class AppMessagesManager {
 
           _args.push(formatTime(date));
           const t = i18n(k, _args);
-          args = [t];
+          args.push(t);
 
           break;
         }

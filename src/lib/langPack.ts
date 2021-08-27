@@ -53,6 +53,7 @@ export const langPack: {[actionType: string]: LangPackKey} = {
 	"messageActionGroupCall.started": "ActionGroupCallJustStarted",
 	"messageActionGroupCall.started_by": "ActionGroupCallStarted",
 	"messageActionGroupCall.started_byYou": "ActionGroupCallStartedByYou",
+	"messageActionGroupCall.ended": "ActionGroupCallEnded",
 	"messageActionGroupCall.ended_by": "Chat.Service.VoiceChatFinished",
 	"messageActionGroupCall.ended_byYou": "Chat.Service.VoiceChatFinishedYou",
 
