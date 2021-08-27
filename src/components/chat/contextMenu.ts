@@ -218,7 +218,7 @@ export default class ChatContextMenu {
       icon: 'copy',
       text: 'Copy',
       onClick: this.onCopyClick,
-      verify: () => !!this.message.message && !this.isTextSelected
+      verify: () => !!this.message.message && !this.isTextSelected && (!this.isAnchorTarget || this.message.message !== this.target.innerText)
     }, {
       icon: 'copy',
       text: 'Chat.CopySelectedText',
