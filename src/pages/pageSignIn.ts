@@ -17,7 +17,6 @@ import { isAndroid, isApple, isAppleMobile } from "../helpers/userAgent";
 import fastSmoothScroll from "../helpers/fastSmoothScroll";
 import { isTouchSupported } from "../helpers/touchSupport";
 import App from "../config/app";
-import Modes from "../config/modes";
 import I18n, { _i18n, i18n } from "../lib/langPack";
 import lottieLoader from "../lib/lottieLoader";
 import { ripple } from "../components/ripple";
@@ -40,6 +39,7 @@ import { HelpCountry, HelpCountryCode } from "../layer";
 import { getCountryEmoji } from "../vendor/emoji";
 import simulateEvent from "../helpers/dom/dispatchEvent";
 import stateStorage from "../lib/stateStorage";
+import rootScope from "../lib/rootScope";
 
 //import _countries from '../countries_pretty.json';
 let btnNext: HTMLButtonElement = null, btnQr: HTMLButtonElement;
@@ -63,9 +63,18 @@ let onFirstMount = () => {
   //const countries: Country[] = _countries.default.filter(c => c.emoji);
   // const countries: Country[] = Countries.filter(c => c.emoji).sort((a, b) => a.name.localeCompare(b.name));
   // const countries = I18n.countriesList.filter(country => !country.pFlags?.hidden);
-  const countries = I18n.countriesList
-  .filter(country => !country.pFlags?.hidden)
-  .sort((a, b) => (a.name || a.default_name).localeCompare(b.name || b.default_name));
+  const setCountries = () => {
+    countries = I18n.countriesList
+    .filter(country => !country.pFlags?.hidden)
+    .sort((a, b) => (a.name || a.default_name).localeCompare(b.name || b.default_name));
+  };
+  let countries: HelpCountry.helpCountry[]; 
+
+  setCountries();
+
+  rootScope.addEventListener('language_change', () => {
+    setCountries();
+  });
 
   const liMap: Map<string, HTMLLIElement[]> = new Map();
 
@@ -81,8 +90,8 @@ let onFirstMount = () => {
 
   countryInputField.container.classList.add('input-select');
 
-  const countryInput = countryInputField.input as HTMLInputElement;
-  countryInput.autocomplete = randomLong();
+  const countryInput = countryInputField.input;
+  // countryInput.autocomplete = randomLong();
 
   const selectWrapper = document.createElement('div');
   selectWrapper.classList.add('select-wrapper', 'z-depth-3', 'hide');
@@ -147,10 +156,12 @@ let onFirstMount = () => {
   const selectCountryByTarget = (target: HTMLElement) => {
     const defaultName = (target.childNodes[1] as HTMLElement).dataset.defaultName;
     const phoneCode = target.querySelector<HTMLElement>('.phone-code').innerText;
+    const countryCode = phoneCode.replace(/\D/g, '');
 
     replaceContent(countryInput, i18n(defaultName as any));
     simulateEvent(countryInput, 'input');
     lastCountrySelected = countries.find(c => c.default_name === defaultName);
+    lastCountryCodeSelected = lastCountrySelected.country_codes.find(_countryCode => _countryCode.country_code === countryCode);
     
     telInputField.value = lastValue = phoneCode;
     hidePicker();
@@ -220,11 +231,11 @@ let onFirstMount = () => {
     e.cancelBubble = true;
   }, {capture: true}); */
 
-  countryInput.addEventListener('keyup', function(this: typeof countryInput, e) {
+  countryInput.addEventListener('keyup', (e) => {
     if(e.ctrlKey || e.key === 'Control') return false;
 
     //let i = new RegExp('^' + this.value, 'i');
-    let _value = this.value.toLowerCase();
+    let _value = countryInputField.value.toLowerCase();
     let matches: HelpCountry[] = [];
     countries.forEach((c) => {
       let good = !![c.name, c.default_name].filter(Boolean).find(str => str.toLowerCase().indexOf(_value) !== -1)/*  === 0 */;//i.test(c.name);
@@ -330,7 +341,8 @@ let onFirstMount = () => {
     let countryName = country ? country.name || country.default_name : ''/* 'Unknown' */;
     if(countryName !== countryInputField.value && (
         !lastCountrySelected || 
-        !country || (
+        !country ||
+        !countryCode || (
           lastCountrySelected !== country && 
           lastCountryCodeSelected.country_code !== countryCode.country_code
         )
