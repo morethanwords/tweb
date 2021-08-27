@@ -97,7 +97,7 @@ export default class PopupNewMedia extends PopupElement {
     });
     this.input = this.inputField.input;
 
-    this.inputField.value = this.wasInputValue = this.chat.input.messageInputField.value;
+    this.inputField.value = this.wasInputValue = this.chat.input.messageInputField.input.innerHTML;
     this.chat.input.messageInputField.value = '';
 
     this.container.append(scrollable.container);
