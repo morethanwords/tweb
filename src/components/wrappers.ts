@@ -43,6 +43,7 @@ import { attachClickEvent, simulateClickEvent } from '../helpers/dom/clickEvent'
 import isInDOM from '../helpers/dom/isInDOM';
 import lottieLoader from '../lib/lottieLoader';
 import { clearBadCharsAndTrim } from '../helpers/cleanSearchText';
+import blur from '../helpers/blur';
 
 const MAX_VIDEO_AUTOPLAY_SIZE = 50 * 1024 * 1024; // 50 MB
 
@@ -707,7 +708,7 @@ export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showS
   return img;
 } */
 
-export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withTail, isOut, lazyLoadQueue, middleware, size, withoutPreloader, loadPromises, noAutoDownload, noBlur, noThumb, noFadeIn}: {
+export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withTail, isOut, lazyLoadQueue, middleware, size, withoutPreloader, loadPromises, noAutoDownload, noBlur, noThumb, noFadeIn, blurAfter}: {
   photo: MyPhoto | MyDocument, 
   message?: any, 
   container: HTMLElement, 
@@ -724,6 +725,7 @@ export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withT
   noBlur?: boolean,
   noThumb?: boolean,
   noFadeIn?: boolean,
+  blurAfter?: boolean,
 }) {
   if(!((photo as MyPhoto).sizes || (photo as MyDocument).thumbs)) {
     if(boxWidth && boxHeight && !size && photo._ === 'document') {
@@ -797,6 +799,7 @@ export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withT
             noAutoDownload,
             noBlur,
             noThumb: true,
+            blurAfter: true
             //noFadeIn: true
           });
           const thumbImage = res.images.full;
@@ -851,10 +854,20 @@ export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withT
     return promise;
   };
 
+  const renderOnLoad = (url: string) => {
+    return renderImageWithFadeIn(container, image, url, needFadeIn, aspecter, thumbImage);
+  };
+
   const onLoad = (): Promise<void> => {
     if(middleware && !middleware()) return Promise.resolve();
 
-    return renderImageWithFadeIn(container, image, cacheContext.url, needFadeIn, aspecter, thumbImage);
+    if(blurAfter) {
+      return blur(cacheContext.url, 12).then(url => {
+        return renderOnLoad(url);
+      });
+    }
+
+    return renderOnLoad(cacheContext.url);
   };
 
   let loadPromise: Promise<any>;
