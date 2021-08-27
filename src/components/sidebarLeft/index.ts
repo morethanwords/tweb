@@ -379,7 +379,7 @@ export class AppSidebarLeft extends SidebarSlider {
       div.dataset.key = '' + peerId;
       if(typeof(peerId) === 'number') {
         if(title === undefined) {
-          title = new PeerTitle({peerId, onlyFirstName: true}).element;
+          title = new PeerTitle({peerId}).element;
         }
 
         avatarEl.setAttribute('peer', '' + peerId);

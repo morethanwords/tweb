@@ -87,16 +87,16 @@ export class AppPeersManager {
     let title = '';
     if(peerId > 0) {
       if(peer.first_name) title += peer.first_name;
-      if(peer.last_name) title += ' ' + peer.last_name;
+      if(peer.last_name && (!onlyFirstName || !title)) title += ' ' + peer.last_name;
   
       if(!title) title = peer.pFlags.deleted ? I18n.format('HiddenName', true) : peer.username;
       else title = title.trim();
     } else {
       title = peer.title;
-    }
 
-    if(onlyFirstName) {
-      title = title.split(' ')[0];
+      if(onlyFirstName) {
+        title = title.split(' ')[0];
+      }
     }
     
     return plainText ? title : RichTextProcessor.wrapEmojiText(title);

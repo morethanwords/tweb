@@ -48,10 +48,7 @@ export default class ChatAudio extends PinnedContainer {
       let title: string | HTMLElement, subtitle: string;
       const message = appMessagesManager.getMessageByPeer(peerId, mid);
       if(doc.type === 'voice' || doc.type === 'round') {
-        title = new PeerTitle({
-          peerId: message.fromId,
-          onlyFirstName: true
-        }).element;
+        title = new PeerTitle({peerId: message.fromId}).element;
 
         //subtitle = 'Voice message';
         subtitle = formatDate(message.date, false, false);
