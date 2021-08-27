@@ -15,10 +15,7 @@ import PeerTitle from "../peerTitle";
 
 export default class PopupDeleteMessages {
   constructor(peerId: number, mids: number[], type: ChatType, onConfirm?: () => void) {
-    const peerTitleElement = new PeerTitle({
-      peerId,
-      onlyFirstName: true
-    }).element;
+    const peerTitleElement = new PeerTitle({peerId}).element;
 
     mids = mids.slice();
     const callback = (checked: PopupPeerButtonCallbackCheckboxes, revoke?: boolean) => {

@@ -979,10 +979,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
           if(!isChannel) {
             checkboxes = [{
               text: 'AddOneMemberForwardMessages',
-              textArgs: [new PeerTitle({
-                peerId: peerIds[0],
-                onlyFirstName: true
-              }).element],
+              textArgs: [new PeerTitle({peerId: peerIds[0]}).element],
               checked: true
             }];
           }

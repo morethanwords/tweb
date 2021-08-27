@@ -97,7 +97,7 @@ export default class PopupPinMessage {
 
           checkboxes.push({
             text: 'PinAlsoFor',
-            textArgs: [new PeerTitle({peerId, onlyFirstName: true}).element],
+            textArgs: [new PeerTitle({peerId}).element],
             checked: true
           });
         }

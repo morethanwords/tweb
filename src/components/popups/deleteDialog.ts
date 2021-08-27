@@ -13,10 +13,7 @@ import PopupPeer, { PopupPeerButtonCallbackCheckboxes, PopupPeerOptions } from "
 
 export default class PopupDeleteDialog {
   constructor(peerId: number, peerType: PeerType = appPeersManager.getDialogType(peerId), onSelect?: (promise: Promise<any>) => void) {
-    const peerTitleElement = new PeerTitle({
-      peerId,
-      onlyFirstName: true
-    }).element;
+    const peerTitleElement = new PeerTitle({peerId}).element;
 
     /* const callbackFlush = (checked: PopupPeerButtonCallbackCheckboxes) => {
       const promise = appMessagesManager.flushHistory(peerId, checkboxes ? !checked[checkboxes[0].text] : undefined);
@@ -86,10 +83,7 @@ export default class PopupDeleteDialog {
         checkboxes = [{
           text: 'DeleteMessagesOptionAlso',
           textArgs: [
-            new PeerTitle({
-              peerId,
-              onlyFirstName: true
-            }).element
+            new PeerTitle({peerId}).element
           ]
         }];
 
