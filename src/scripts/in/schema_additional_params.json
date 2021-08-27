@@ -225,7 +225,8 @@
   "predicate": "langPackDifference",
   "params": [
     {"name": "local", "type": "boolean"},
-    {"name": "appVersion", "type": "string"}
+    {"name": "appVersion", "type": "string"},
+    {"name": "countries", "type": "HelpCountriesList.helpCountriesList"}
   ]
 }, {
   "predicate": "updateNewDiscussionMessage",

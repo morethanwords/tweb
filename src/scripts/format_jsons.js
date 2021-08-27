@@ -7,7 +7,8 @@
 let emoji = require('./in/emoji_pretty.json');
 //let countries = require('./countries_pretty.json');
 
-let countries = require('fs').readFileSync('./in/countries.dat').toString();
+// let countries = require('fs').readFileSync('./in/countries.dat').toString();
+let countries = require('./in/countries.mtproto.json');
 //console.log(countries);
 
 //console.log(emoji, countries);
@@ -188,31 +189,49 @@ if(false) {
   require('fs').writeFileSync('./emoji.json', JSON.stringify(obj));
 } */
 
-{
-  let arr = [];
-  /* countries.forEach(e => {
-    let {name, code, phoneCode} = e;
+// old countries format
+// {
+//   let arr = [];
+//   /* countries.forEach(e => {
+//     let {name, code, phoneCode} = e;
     
-    arr.push([name, code, phoneCode]);
-  }); */
+//     arr.push([name, code, phoneCode]);
+//   }); */
   
-  const lines = countries.split('\n');
-  const data2 = [];
-  lines.forEach(x => {
-    if(!x.trim()) return;
-    const split = x.split(';');
-    const item = {
-      phoneCode: split[0],
-      code: split[1],
-      name: split[2],
-      pattern: split[3],
-      //count: Number(split[4]),
-      emoji: split[5]
-    };
+//   const lines = countries.split('\n');
+//   const data2 = [];
+//   lines.forEach(x => {
+//     if(!x.trim()) return;
+//     const split = x.split(';');
+//     const item = {
+//       phoneCode: split[0],
+//       code: split[1],
+//       name: split[2],
+//       pattern: split[3],
+//       //count: Number(split[4]),
+//       emoji: split[5]
+//     };
 
-    arr.push(item);
-    //console.log(item);
-  });
+//     arr.push(item);
+//     //console.log(item);
+//   });
   
-  require('fs').writeFileSync(writePathTo + 'countries.json', JSON.stringify(arr));
+//   require('fs').writeFileSync(writePathTo + 'countries.json', JSON.stringify(arr));
+// }
+
+{
+  const c = countries.filter(country => !country.pFlags.hidden);
+  c.forEach(country => {
+    delete country._;
+    delete country.pFlags;
+    delete country.flags;
+
+    country.country_codes.forEach(countryCode => {
+      delete countryCode._;
+      delete countryCode.pFlags;
+      delete countryCode.flags;
+    });
+  });
+
+  require('fs').writeFileSync(writePathTo + 'countries.json', JSON.stringify(c));
 }

@@ -40,6 +40,10 @@ export function getEmojiToneIndex(input: string) {
   return match ? 5 - (57343 - match[0].charCodeAt(0)) : 0;
 }
 
+export function getCountryEmoji(iso2: string) {
+  return String.fromCharCode(55356, 56741 + iso2.charCodeAt(0), 55356, 56741 + iso2.charCodeAt(1));
+}
+
 export function emojiFromCodePoints(codePoints: string) {
   return codePoints.split('-').reduce((prev, curr) => prev + String.fromCodePoint(parseInt(curr, 16)), '');
 }

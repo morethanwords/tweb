@@ -35,7 +35,6 @@ import mediaSizes from "../../helpers/mediaSizes";
 import { isAndroid, isApple, isMobile, isSafari } from "../../helpers/userAgent";
 import I18n, { i18n, langPack } from "../../lib/langPack";
 import AvatarElement from "../avatar";
-import { formatPhoneNumber } from "../misc";
 import { ripple } from "../ripple";
 import { wrapAlbum, wrapPhoto, wrapVideo, wrapDocument, wrapSticker, wrapPoll, wrapGroupedDocuments } from "../wrappers";
 import { MessageRender } from "./messageRender";
@@ -75,6 +74,7 @@ import debounce from "../../helpers/schedulers/debounce";
 import { formatNumber } from "../../helpers/number";
 import { SEND_WHEN_ONLINE_TIMESTAMP } from "../../lib/mtproto/constants";
 import windowSize from "../../helpers/windowSize";
+import { formatPhoneNumber } from "../../helpers/formatPhoneNumber";
 
 const USE_MEDIA_TAILS = false;
 const IGNORE_ACTIONS: Set<Message.messageService['action']['_']> = new Set([
