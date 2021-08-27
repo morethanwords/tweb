@@ -71,6 +71,7 @@ namespace I18n {
 
 	let cacheLangPackPromise: Promise<LangPackDifference>;
 	export let lastRequestedLangCode: string;
+	export let lastAppliedLangCode: string;
 	export let requestedServerLanguage = false;
 	export function getCacheLangPack(): Promise<LangPackDifference> {
 		if(cacheLangPackPromise) return cacheLangPackPromise;
@@ -247,7 +248,10 @@ namespace I18n {
 			});
 		}
 
-		rootScope.dispatchEvent('language_change', langPack.lang_code);
+		if(lastAppliedLangCode !== langPack.lang_code) {
+			rootScope.dispatchEvent('language_change', langPack.lang_code);
+			lastAppliedLangCode = langPack.lang_code;
+		}
 
 		const elements = Array.from(document.querySelectorAll(`.i18n`)) as HTMLElement[];
 		elements.forEach(element => {

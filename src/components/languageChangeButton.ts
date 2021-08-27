@@ -14,15 +14,7 @@ import rootScope from "../lib/rootScope";
 import Button from "./button";
 import { putPreloader } from "./misc";
 
-let set = false, times = 0;
-rootScope.addEventListener('language_change', () => {
-  if(++times < 2) {
-    return;
-  }
-
-  console.log('language_change');
-  set = true;
-});
+let set = false;
 
 function getLang(): Promise<[Config.config, LangPackString[], LangPackDifference.langPackDifference]> {
   if(cachedPromise) return cachedPromise;
@@ -62,6 +54,7 @@ export default function getLanguageChangeButton(appendTo: HTMLElement) {
     });
 
     const btnChangeLanguage = Button('btn-primary btn-secondary btn-primary-transparent primary', {text: 'Login.ContinueOnLanguage'});
+    btnChangeLanguage.lastElementChild.classList.remove('i18n'); // prevent changing language
     loadFonts().then(() => {
       window.requestAnimationFrame(() => {
         appendTo.append(btnChangeLanguage);
@@ -78,6 +71,8 @@ export default function getLanguageChangeButton(appendTo: HTMLElement) {
     
     attachClickEvent(btnChangeLanguage, (e) => {
       cancelEvent(e);
+
+      set = true;
 
       btnChangeLanguage.disabled = true;
       putPreloader(btnChangeLanguage);
