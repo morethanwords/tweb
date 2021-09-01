@@ -65,6 +65,7 @@ import type { MediaSize } from "../../helpers/mediaSizes";
 // TODO: если удалить диалог находясь в папке, то он не удалится из папки и будет виден в настройках
 
 const APITIMEOUT = 0;
+const DO_NOT_READ_HISTORY = false;
 
 export type HistoryStorage = {
   count: number | null,
@@ -204,6 +205,9 @@ export class AppMessagesManager {
   private typings: {[peerId: string]: {type: SendMessageAction['_'], timeout?: number}} = {};
 
   private middleware: ReturnType<typeof getMiddleware>;
+
+  private unreadMentions: {[peerId: string]: SlicedArray} = {};
+  private goToNextMentionPromises: {[peerId: string]: Promise<any>} = {};
 
   constructor() {
     this.clear();
@@ -3632,7 +3636,10 @@ export class AppMessagesManager {
 
   // TODO: cancel notification by peer when this function is being called
   public readHistory(peerId: number, maxId = 0, threadId?: number, force = false) {
-    // return Promise.resolve();
+    if(DO_NOT_READ_HISTORY) {
+      return Promise.resolve();
+    }
+
     // console.trace('start read')
     this.log('readHistory:', peerId, maxId, threadId);
     if(!this.getReadMaxIdIfUnread(peerId, threadId) && !force) {
@@ -3732,32 +3739,127 @@ export class AppMessagesManager {
     }
   }
 
+  public modifyCachedMentions(peerId: number, mid: number, add: boolean) {
+    const slicedArray = this.unreadMentions[peerId];
+    if(!slicedArray) return;
+
+    if(add) {
+      if(slicedArray.first.isEnd(SliceEnd.Top)) {
+        slicedArray.insertSlice([mid]);
+      }
+    } else {
+      slicedArray.delete(mid);
+    }
+  }
+
+  public goToNextMention(peerId: number) {
+    /* this.getUnreadMentions(peerId, 1, 2, 0).then(messages => {
+      console.log(messages);
+    }); */
+
+    const promise = this.goToNextMentionPromises[peerId];
+    if(promise) {
+      return promise;
+    }
+
+    const slicedArray = this.unreadMentions[peerId] ?? (this.unreadMentions[peerId] = new SlicedArray());
+    const length = slicedArray.length;
+    const isTopEnd = slicedArray.first.isEnd(SliceEnd.Top);
+    if(!length && isTopEnd) {
+      return Promise.resolve();
+    }
+
+    let loadNextPromise = Promise.resolve();
+    if(!isTopEnd && length < 25) {
+      loadNextPromise = this.loadNextMentions(peerId);
+    }
+
+    return this.goToNextMentionPromises[peerId] = loadNextPromise.then(() => {
+      const last = slicedArray.last;
+      const mid = last && last[last.length - 1];
+      if(mid) {
+        slicedArray.delete(mid);
+        rootScope.dispatchEvent('history_focus', {peerId, mid});
+      }
+    }).finally(() => {
+      delete this.goToNextMentionPromises[peerId];
+    });
+  }
+
+  public loadNextMentions(peerId: number) {
+    const slicedArray = this.unreadMentions[peerId];
+    const maxId = slicedArray.first[0] || 1;
+
+    const backLimit = 50;
+    const add_offset = -backLimit;
+    const limit = backLimit;
+    return this.getUnreadMentions(peerId, maxId, add_offset, limit).then(messages => {
+      this.mergeHistoryResult(slicedArray, messages, maxId === 1 ? 0 : maxId, limit, add_offset);
+    });
+  }
+
+  public getUnreadMentions(peerId: number, offsetId: number, add_offset: number, limit: number, maxId = 0, minId = 0) {
+    return apiManager.invokeApiSingle('messages.getUnreadMentions', {
+      peer: appPeersManager.getInputPeerById(peerId),
+      offset_id: appMessagesIdsManager.getServerMessageId(offsetId),
+      add_offset,
+      limit,
+      max_id: appMessagesIdsManager.getServerMessageId(maxId),
+      min_id: appMessagesIdsManager.getServerMessageId(minId)
+    }).then(messagesMessages => {
+      assumeType<Exclude<MessagesMessages, MessagesMessages.messagesMessagesNotModified>>(messagesMessages);
+      appUsersManager.saveApiUsers(messagesMessages.users);
+      appChatsManager.saveApiChats(messagesMessages.chats);
+      this.saveMessages(messagesMessages.messages);
+
+      return messagesMessages;
+    });
+  }
+
   public readMessages(peerId: number, msgIds: number[]) {
+    if(DO_NOT_READ_HISTORY) {
+      return Promise.resolve();
+    }
+
+    if(!msgIds.length) {
+      return Promise.resolve();
+    }
+
     msgIds = msgIds.map(mid => appMessagesIdsManager.getServerMessageId(mid));
+    let promise: Promise<any>, update: Update.updateChannelReadMessagesContents | Update.updateReadMessagesContents;
     if(peerId < 0 && appPeersManager.isChannel(peerId)) {
       const channelId = -peerId;
-      apiManager.invokeApi('channels.readMessageContents', {
+
+      update = {
+        _: 'updateChannelReadMessagesContents',
+        channel_id: channelId,
+        messages: msgIds
+      };
+
+      promise = apiManager.invokeApi('channels.readMessageContents', {
         channel: appChatsManager.getChannelInput(channelId),
         id: msgIds
-      }).then(() => {
-        apiUpdatesManager.processLocalUpdate({
-          _: 'updateChannelReadMessagesContents',
-          channel_id: channelId,
-          messages: msgIds
-        });
       });
     } else {
-      apiManager.invokeApi('messages.readMessageContents', {
+      update = {
+        _: 'updateReadMessagesContents',
+        messages: msgIds,
+        pts: undefined,
+        pts_count: undefined
+      };
+
+      promise = apiManager.invokeApi('messages.readMessageContents', {
         id: msgIds
       }).then((affectedMessages) => {
-        apiUpdatesManager.processLocalUpdate({
-          _: 'updateReadMessagesContents',
-          messages: msgIds,
-          pts: affectedMessages.pts,
-          pts_count: affectedMessages.pts_count
-        });
+        (update as Update.updateReadMessagesContents).pts = affectedMessages.pts;
+        (update as Update.updateReadMessagesContents).pts_count = affectedMessages.pts_count;
+        apiUpdatesManager.processLocalUpdate(update);
       });
     }
+
+    apiUpdatesManager.processLocalUpdate(update);
+
+    return promise;
   }
 
   public getHistoryStorage(peerId: number, threadId?: number) {
@@ -3973,6 +4075,7 @@ export class AppMessagesManager {
 
         if(message.pFlags.mentioned) {
           ++dialog.unread_mentions_count;
+          this.modifyCachedMentions(peerId, message.mid, true);
         }
       }
 
@@ -4135,6 +4238,7 @@ export class AppMessagesManager {
 
           if(message.pFlags.mentioned) {
             newUnreadMentionsCount = --foundDialog.unread_mentions_count;
+            this.modifyCachedMentions(peerId, message.mid, false);
           }
         }
         
@@ -4156,6 +4260,10 @@ export class AppMessagesManager {
           foundDialog.unread_count = 0;
         } else if(newUnreadCount && foundDialog.top_message > maxId) {
           foundDialog.unread_count = newUnreadCount;
+        }
+
+        if(newUnreadMentionsCount < 0) {
+          foundDialog.unread_mentions_count = 0;
         }
       }
       
@@ -4182,11 +4290,16 @@ export class AppMessagesManager {
     const channelId = (update as Update.updateChannelReadMessagesContents).channel_id;
     const mids = (update as Update.updateReadMessagesContents).messages.map(id => appMessagesIdsManager.generateMessageId(id));
     const peerId = channelId ? -channelId : this.getMessageById(mids[0]).peerId;
-    for(const mid of mids) {
+    for(let i = 0, length = mids.length; i < length; ++i) {
+      const mid = mids[i];
       const message: MyMessage = this.getMessageByPeer(peerId, mid);
-      if(!message.deleted) {
+      if(!message.deleted && message.pFlags.media_unread) {
         delete message.pFlags.media_unread;
         this.setDialogToStateIfMessageIsTop(message);
+
+        if(!message.pFlags.out && message.pFlags.mentioned) {
+          this.modifyCachedMentions(peerId, mid, false);
+        }
       }
     }
 
@@ -4259,7 +4372,7 @@ export class AppMessagesManager {
     const foundDialog = this.getDialogOnly(peerId);
     if(foundDialog) {
       if(historyUpdated.unreadMentions) {
-        foundDialog.unread_mentions_count -= historyUpdated.unreadMentions;
+        foundDialog.unread_mentions_count = Math.max(0, foundDialog.unread_mentions_count - historyUpdated.unreadMentions);
       }
 
       if(historyUpdated.unread) {
@@ -4911,17 +5024,62 @@ export class AppMessagesManager {
     });
   }
 
+  public isHistoryResultEnd(historyResult: Exclude<MessagesMessages, MessagesMessages.messagesMessagesNotModified>, limit: number, add_offset: number) {
+    const {offset_id_offset, messages} = historyResult as MessagesMessages.messagesMessagesSlice;
+
+    const count = (historyResult as MessagesMessages.messagesMessagesSlice).count || messages.length;
+    const offsetIdOffset = offset_id_offset || 0;
+
+    const topWasMeantToLoad = add_offset < 0 ? limit + add_offset : limit;
+
+    const isTopEnd = offsetIdOffset >= (count - topWasMeantToLoad) || count < topWasMeantToLoad;
+    const isBottomEnd = !offsetIdOffset || (add_offset < 0 && (offsetIdOffset + add_offset) <= 0);
+
+    return {count, offsetIdOffset, isTopEnd, isBottomEnd};
+  }
+
+  public mergeHistoryResult(slicedArray: SlicedArray, 
+    historyResult: Parameters<AppMessagesManager['isHistoryResultEnd']>[0], 
+    offset_id: number, 
+    limit: number, 
+    add_offset: number) {
+    const {messages} = historyResult as MessagesMessages.messagesMessagesSlice;
+    const isEnd = this.isHistoryResultEnd(historyResult, limit, add_offset);
+    const {count, offsetIdOffset, isTopEnd, isBottomEnd} = isEnd;
+    const mids = messages.map((message) => {
+      return (message as MyMessage).mid;
+    });
+
+    // * add bound manually. 
+    // * offset_id will be inclusive only if there is 'add_offset' <= -1 (-1 - will only include the 'offset_id')
+    if(offset_id && !mids.includes(offset_id) && offsetIdOffset < count) {
+      let i = 0;
+      for(const length = mids.length; i < length; ++i) {
+        if(offset_id > mids[i]) {
+          break;
+        }
+      }
+
+      mids.splice(i, 0, offset_id);
+    }
+
+    const slice = slicedArray.insertSlice(mids) || slicedArray.slice;
+    if(isTopEnd) {
+      slice.setEnd(SliceEnd.Top);
+    }
+  
+    if(isBottomEnd) {
+      slice.setEnd(SliceEnd.Bottom);
+    }
+
+    return {slice, mids, messages, ...isEnd};
+  }
+
   public fillHistoryStorage(peerId: number, offset_id: number, limit: number, add_offset: number, historyStorage: HistoryStorage, threadId?: number): Promise<void> {
     return this.requestHistory(peerId, offset_id, limit, add_offset, undefined, threadId).then((historyResult) => {
-      const {offset_id_offset, count, messages} = historyResult as MessagesMessages.messagesMessagesSlice;
+      const {count, isBottomEnd, slice, messages} = this.mergeHistoryResult(historyStorage.history, historyResult, offset_id, limit, add_offset);
 
-      historyStorage.count = count || messages.length;
-      const offsetIdOffset = offset_id_offset || 0;
-
-      const topWasMeantToLoad = add_offset < 0 ? limit + add_offset : limit;
-
-      const isTopEnd = offsetIdOffset >= (historyStorage.count - topWasMeantToLoad) || historyStorage.count < topWasMeantToLoad;
-      const isBottomEnd = !offsetIdOffset || (add_offset < 0 && (offsetIdOffset + add_offset) <= 0);
+      historyStorage.count = count;
 
       /* if(!maxId && historyResult.messages.length) {
         maxId = this.incrementMessageId((historyResult.messages[0] as MyMessage).mid, 1);
@@ -4929,34 +5087,14 @@ export class AppMessagesManager {
 
       const wasTotalCount = historyStorage.history.length; */
 
-      const mids = messages.map((message) => {
-        if(this.mergeReplyKeyboard(historyStorage, message as MyMessage)) {
+      for(let i = 0, length = messages.length; i < length; ++i) {
+        const message = messages[i] as MyMessage;
+        if(this.mergeReplyKeyboard(historyStorage, message)) {
           rootScope.dispatchEvent('history_reply_markup', {peerId});
         }
-
-        return (message as MyMessage).mid;
-      });
-
-      // * add bound manually. 
-      // * offset_id will be inclusive only if there is 'add_offset' <= -1 (-1 - will only include the 'offset_id')
-      if(offset_id && !mids.includes(offset_id) && offsetIdOffset < historyStorage.count) {
-        let i = 0;
-        for(const length = mids.length; i < length; ++i) {
-          if(offset_id > mids[i]) {
-            break;
-          }
-        }
-
-        mids.splice(i, 0, offset_id);
       }
-      
-      const slice = historyStorage.history.insertSlice(mids) || historyStorage.history.slice;
-      if(isTopEnd) {
-        slice.setEnd(SliceEnd.Top);
-      }
-  
+
       if(isBottomEnd) {
-        slice.setEnd(SliceEnd.Bottom);
         historyStorage.maxId = slice[0]; // ! WARNING
       }
       
@@ -5220,6 +5358,7 @@ export class AppMessagesManager {
 
         if(message.pFlags.mentioned) {
           ++history.unreadMentions;
+          this.modifyCachedMentions(peerId, mid, false);
         }
       }
 

@@ -43,11 +43,11 @@ import ConnectionStatusComponent from "../../components/connectionStatus";
 import appChatsManager from "./appChatsManager";
 import { renderImageFromUrlPromise } from "../../helpers/dom/renderImageFromUrl";
 import { fastRafPromise } from "../../helpers/schedulers";
-import appPhotosManager from "./appPhotosManager";
 import SortedUserList from "../../components/sortedUserList";
 import { isTouchSupported } from "../../helpers/touchSupport";
 import handleTabSwipe from "../../helpers/dom/handleTabSwipe";
 import windowSize from "../../helpers/windowSize";
+import isInDOM from "../../helpers/dom/isInDOM";
 
 export type DialogDom = {
   avatarEl: AvatarElement,
@@ -56,11 +56,12 @@ export type DialogDom = {
   titleSpanContainer: HTMLSpanElement,
   statusSpan: HTMLSpanElement,
   lastTimeSpan: HTMLSpanElement,
-  unreadMessagesSpan: HTMLSpanElement,
+  unreadBadge: HTMLElement,
+  mentionsBadge?: HTMLElement,
   lastMessageSpan: HTMLSpanElement,
   containerEl: HTMLElement,
   listEl: HTMLLIElement,
-  muteAnimationTimeout?: number
+  messageEl: HTMLElement
 };
 
 //const testScroll = false;
@@ -1331,7 +1332,7 @@ export class AppDialogsManager {
       appMessagesManager.getMessageByPeer(dialog.peerId, dialog.top_message);
     if(!lastMessage.deleted && lastMessage.pFlags.out && lastMessage.peerId !== rootScope.myId/*  && 
       dialog.read_outbox_max_id */) { // maybe comment, 06.20.2020
-      const isUnread = (lastMessage.pFlags && lastMessage.pFlags.unread)
+      const isUnread = !!lastMessage.pFlags?.unread
         /*  && dialog.read_outbox_max_id !== 0 */; // maybe uncomment, 31.01.2020
 
       if(isUnread) {
@@ -1351,20 +1352,61 @@ export class AppDialogsManager {
       isPinned = !!dialog.pFlags.pinned;
     }
 
-    if(isPinned) {
-      dom.unreadMessagesSpan.classList.add('tgico-chatspinned', 'tgico');
-    } else {
-      dom.unreadMessagesSpan.classList.remove('tgico-chatspinned', 'tgico');
+    const hasUnreadBadge = isPinned || !!dialog.unread_count || dialog.pFlags.unread_mark;
+    // dom.messageEl.classList.toggle('has-badge', hasBadge);
+
+    const isUnreadBadgeMounted = isInDOM(dom.unreadBadge);
+    if(hasUnreadBadge && !isUnreadBadgeMounted) {
+      dom.messageEl.append(dom.unreadBadge);
     }
 
-    if(dialog.unread_count || dialog.pFlags.unread_mark) {
-      //dom.unreadMessagesSpan.innerText = '' + (dialog.unread_count ? formatNumber(dialog.unread_count, 1) : ' ');
-      dom.unreadMessagesSpan.innerText = '' + (dialog.unread_count || ' ');
-      dom.unreadMessagesSpan.classList.add('unread');
-    } else {
-      dom.unreadMessagesSpan.innerText = '';
-      dom.unreadMessagesSpan.classList.remove('unread');
+    const hasMentionsBadge = dialog.unread_mentions_count > 1;
+    const isMentionBadgeMounted = dom.mentionsBadge && isInDOM(dom.mentionsBadge);
+    if(hasMentionsBadge) {
+      if(!dom.mentionsBadge) {
+        dom.mentionsBadge = document.createElement('div');
+        dom.mentionsBadge.className = 'dialog-subtitle-badge badge badge-24 mention mention-badge';
+        dom.mentionsBadge.innerText = '@';
+        dom.messageEl.insertBefore(dom.mentionsBadge, dom.lastMessageSpan.nextSibling);
+      }
     }
+
+    SetTransition(dom.unreadBadge, 'is-visible', hasUnreadBadge, 200, hasUnreadBadge ? undefined : () => {
+      dom.unreadBadge.remove();
+    }, !isUnreadBadgeMounted ? 2 : 0);
+
+    if(dom.mentionsBadge) {
+      SetTransition(dom.mentionsBadge, 'is-visible', hasMentionsBadge, 200, hasMentionsBadge ? undefined : () => {
+        dom.mentionsBadge.remove();
+        delete dom.mentionsBadge;
+      }, !isMentionBadgeMounted ? 2 : 0);
+    }
+
+    if(!hasUnreadBadge) {
+      return;
+    }
+
+    if(isPinned) {
+      dom.unreadBadge.classList.add('tgico-chatspinned', 'tgico');
+    } else {
+      dom.unreadBadge.classList.remove('tgico-chatspinned', 'tgico');
+    }
+
+    let isUnread = true, isMention = false;
+    if(dialog.unread_mentions_count && dialog.unread_count === 1) {
+      dom.unreadBadge.innerText = '@';
+      isMention = true;
+      // dom.unreadBadge.classList.add('tgico-mention', 'tgico');
+    } else if(dialog.unread_count || dialog.pFlags.unread_mark) {
+      //dom.unreadMessagesSpan.innerText = '' + (dialog.unread_count ? formatNumber(dialog.unread_count, 1) : ' ');
+      dom.unreadBadge.innerText = '' + (dialog.unread_count || ' ');
+    } else {
+      dom.unreadBadge.innerText = '';
+      isUnread = false;
+    }
+
+    dom.unreadBadge.classList.toggle('unread', isUnread);
+    dom.unreadBadge.classList.toggle('mention', isMention);
   }
 
   private accumulateArchivedUnread() {
@@ -1499,8 +1541,8 @@ export class AppDialogsManager {
     const lastTimeSpan = document.createElement('span');
     lastTimeSpan.classList.add('message-time');
 
-    const unreadMessagesSpan = document.createElement('div');
-    unreadMessagesSpan.className = 'dialog-subtitle-badge badge badge-24';
+    const unreadBadge = document.createElement('div');
+    unreadBadge.className = 'dialog-subtitle-badge badge badge-24';
 
     const titleP = document.createElement('p');
     titleP.classList.add('dialog-title');
@@ -1510,11 +1552,11 @@ export class AppDialogsManager {
     rightSpan.append(statusSpan, lastTimeSpan);
     titleP.append(titleSpanContainer, rightSpan);
 
-    const messageP = document.createElement('p');
-    messageP.classList.add('dialog-subtitle');
-    messageP.append(span, unreadMessagesSpan);
+    const messageEl = document.createElement('p');
+    messageEl.classList.add('dialog-subtitle');
+    messageEl.append(span);
 
-    captionDiv.append(titleP, messageP);
+    captionDiv.append(titleP, messageEl);
 
     const dom: DialogDom = {
       avatarEl,
@@ -1523,10 +1565,11 @@ export class AppDialogsManager {
       titleSpanContainer,
       statusSpan,
       lastTimeSpan,
-      unreadMessagesSpan,
+      unreadBadge,
       lastMessageSpan: span,
       containerEl: li,
-      listEl: li
+      listEl: li,
+      messageEl
     };
 
     /* let good = false;

@@ -35,7 +35,6 @@ export interface SliceConstructor {
   new(...items: ItemType[]): Slice;
 }
 
-// TODO: Clear empty arrays after deleting items
 export default class SlicedArray {
   private slices: Slice[]/*  = [[7,6,5],[4,3,2],[1,0,-1]] */;
   private sliceConstructor: SliceConstructor;
