@@ -1091,25 +1091,31 @@ $chat-helper-size: 36px;
 				//mask-image: linear-gradient(0deg, transparent 0, #000 28px);
 			//}
 
-			& + .chat-input .bubbles-go-down {
-				cursor: pointer;
-				//--translateY: 0;
-				opacity: 1;
-				visibility: visible;
-				
-				@include animation-level(2) {
-					transition: opacity var(--layer-transition), visibility 0s 0s !important;
+			& + .chat-input {
+				.bubbles-go-down {
+					cursor: pointer;
+					//--translateY: 0;
+					opacity: 1;
+					visibility: visible;
+					
+					@include animation-level(2) {
+						transition: opacity var(--layer-transition), visibility 0s 0s !important;
+					}
+	
+					/* &.is-broadcast {
+						--translateY: 79px !important;
+					} */
 				}
 
-				/* &.is-broadcast {
-					--translateY: 79px !important;
-				} */
-			}
+				.bubbles-go-mention {
+					--translateY: calc(var(--chat-input-size) * -1 + -.625rem);
+				}
+			} 
 		//}
 	}
 
 	.search-group.search-group-messages {
-		padding: 0.25rem 0 .5rem;
+		padding: .25rem 0 .5rem;
 	}
 }
 
@@ -1198,6 +1204,30 @@ $chat-helper-size: 36px;
 }
 
 .bubbles-go-down {
+	cursor: default;
+	opacity: 0;
+	visibility: hidden;
+	transform: none !important;
+	transition: opacity var(--layer-transition), visibility 0s .2s !important;
+}
+
+.bubbles-go-mention {
+	--translateY: 0;
+	cursor: default;
+	opacity: 0;
+	visibility: hidden;
+
+	&.is-visible {
+		cursor: pointer;
+		opacity: 1;
+		visibility: visible;
+		transition: transform var(--layer-transition), opacity var(--layer-transition), visibility 0s 0s !important;
+	}
+
+	transition: transform var(--layer-transition), opacity var(--layer-transition), visibility 0s .2s !important;
+}
+
+.bubbles-corner-button {
 	position: absolute;
 	background-color: var(--surface-color);
 	border-radius: 50%;
@@ -1209,17 +1239,11 @@ $chat-helper-size: 36px;
 	right: var(--chat-input-padding);
 	//top: calc((var(--chat-input-size) * -1) - 6px);
 	bottom: calc(var(--chat-input-size) + var(--bottom) + 10px);
-	cursor: default;
-	opacity: 0;
-	visibility: hidden;
 	z-index: 2;
 	//transition: transform var(--layer-transition), opacity var(--layer-transition) !important;
 	overflow: visible;
 	//--translateY: calc(var(--chat-input-size) + 10px);
 	//--translateY: calc(100% + 10px);
-	transition: opacity var(--layer-transition), visibility 0s .2s !important;
-	//transition: opacity var(--layer-transition);
-	transform: none !important;
 
 	@include animation-level(0) {
 		transition: none !important;

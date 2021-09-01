@@ -703,7 +703,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     }
     //let borderRadius = '0px 0px 0px 0px';
 
-    if(closing && zoomValue > 1) {
+    if(closing && zoomValue !== 1) {
       // const width = this.moversContainer.scrollWidth * scaleX;
       // const height = this.moversContainer.scrollHeight * scaleY;
       const willBeLeft = windowSize.windowW / 2 - rect.width / 2;

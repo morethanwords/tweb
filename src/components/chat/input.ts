@@ -160,6 +160,8 @@ export default class ChatInput {
 
   private goDownBtn: HTMLButtonElement;
   private goDownUnreadBadge: HTMLElement;
+  private goMentionBtn: HTMLButtonElement;
+  private goMentionUnreadBadge: HTMLSpanElement;
   private btnScheduled: HTMLButtonElement;
 
   private btnPreloader: HTMLButtonElement;
@@ -212,7 +214,7 @@ export default class ChatInput {
     this.inputContainer.append(this.rowsWrapper, fakeRowsWrapper, fakeSelectionWrapper);
     this.chatInput.append(this.inputContainer);
 
-    this.goDownBtn = ButtonCorner({icon: 'arrow_down', className: 'bubbles-go-down hide'});
+    this.goDownBtn = ButtonCorner({icon: 'arrow_down', className: 'bubbles-corner-button bubbles-go-down hide'});
     this.inputContainer.append(this.goDownBtn);
 
     attachClickEvent(this.goDownBtn, (e) => {
@@ -308,6 +310,17 @@ export default class ChatInput {
       this.goDownUnreadBadge = document.createElement('span');
       this.goDownUnreadBadge.classList.add('badge', 'badge-24', 'badge-primary');
       this.goDownBtn.append(this.goDownUnreadBadge);
+
+      this.goMentionBtn = ButtonCorner({icon: 'mention', className: 'bubbles-corner-button bubbles-go-mention'});
+      this.goMentionUnreadBadge = document.createElement('span');
+      this.goMentionUnreadBadge.classList.add('badge', 'badge-24', 'badge-primary');
+      this.goMentionBtn.append(this.goMentionUnreadBadge);
+      this.inputContainer.append(this.goMentionBtn);
+
+      attachClickEvent(this.goMentionBtn, (e) => {
+        cancelEvent(e);
+        this.appMessagesManager.goToNextMention(this.chat.peerId);
+      }, {listenerSetter: this.listenerSetter});
 
       this.btnScheduled = ButtonIcon('scheduled btn-scheduled float hide', {noRipple: true});
 
@@ -676,6 +689,12 @@ export default class ChatInput {
     const count = dialog?.unread_count;
     this.goDownUnreadBadge.innerText = '' + (count || '');
     this.goDownUnreadBadge.classList.toggle('badge-gray', this.appNotificationsManager.isPeerLocalMuted(this.chat.peerId, true));
+
+    if(this.goMentionUnreadBadge && this.chat.type === 'chat') {
+      const hasMentions = !!dialog?.unread_mentions_count;
+      this.goMentionUnreadBadge.innerText = hasMentions ? '' + (dialog.unread_mentions_count) : '';
+      this.goMentionBtn.classList.toggle('is-visible', hasMentions);
+    }
   }
 
   public saveDraft() {

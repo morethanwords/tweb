@@ -6,10 +6,26 @@
 
 import rootScope from "../lib/rootScope";
 
-const SetTransition = (element: HTMLElement, className: string, forwards: boolean, duration: number, onTransitionEnd?: () => void) => {
-  const timeout = element.dataset.timeout;
+const SetTransition = (element: HTMLElement, className: string, forwards: boolean, duration: number, onTransitionEnd?: () => void, useRafs?: number) => {
+  const {timeout, raf} = element.dataset;
   if(timeout !== undefined) {
     clearTimeout(+timeout);
+  }
+
+  if(raf !== undefined) {
+    window.cancelAnimationFrame(+raf);
+    if(!useRafs) {
+      delete element.dataset.raf;
+    }
+  }
+
+  if(useRafs) {
+    element.dataset.raf = '' + window.requestAnimationFrame(() => {
+      delete element.dataset.raf;
+      SetTransition(element, className, forwards, duration, onTransitionEnd, useRafs - 1);
+    });
+
+    return;
   }
 
   if(forwards && className) {

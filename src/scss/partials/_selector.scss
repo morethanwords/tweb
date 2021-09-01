@@ -54,14 +54,14 @@
   &-user {
     color: var(--primary-text-color);
     background-color: var(--light-secondary-text-color);
-    font-size: 16px;
+    font-size: 1rem;
     padding: 0 17px 0px 0px;
-    line-height: 1.875rem;
-    margin-left: -4px;
-    margin-right: 12px;
-    height: 32px;
+    margin-left: -.25rem;
+    margin-right: .75rem;
+    height: 2rem;
+    line-height: 2rem;
     margin-bottom: 7px;
-    border-radius: 24px;
+    border-radius: 1.5rem;
     user-select: none;
     flex: 0 0 auto;
     transition: .2s opacity, .2s transform, .2s background-color;
