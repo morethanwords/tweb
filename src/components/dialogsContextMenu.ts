@@ -49,7 +49,7 @@ export default class DialogsContextMenu {
       text: 'ChatList.Context.Pin',
       onClick: this.onPinClick,
       verify: () => {
-        const isPinned = this.filterId > 1 ? appMessagesManager.filtersStorage.filters[this.filterId].pinned_peers.includes(this.dialog.peerId) : !!this.dialog.pFlags?.pinned;
+        const isPinned = this.filterId > 1 ? appMessagesManager.filtersStorage.getFilter(this.filterId).pinned_peers.includes(this.dialog.peerId) : !!this.dialog.pFlags?.pinned;
         return !isPinned;
       }
     }, {
@@ -57,7 +57,7 @@ export default class DialogsContextMenu {
       text: 'ChatList.Context.Unpin',
       onClick: this.onPinClick,
       verify: () => {
-        const isPinned = this.filterId > 1 ? appMessagesManager.filtersStorage.filters[this.filterId].pinned_peers.includes(this.dialog.peerId) : !!this.dialog.pFlags?.pinned;
+        const isPinned = this.filterId > 1 ? appMessagesManager.filtersStorage.getFilter(this.filterId).pinned_peers.includes(this.dialog.peerId) : !!this.dialog.pFlags?.pinned;
         return isPinned;
       }
     }, {

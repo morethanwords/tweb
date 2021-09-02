@@ -1653,8 +1653,8 @@ export class AppMessagesManager {
     return outDialogs;
   }
 
-  public getConversations(query = '', offsetIndex?: number, limit = 20, folderId = 0) {
-    return this.dialogsStorage.getDialogs(query, offsetIndex, limit, folderId);
+  public getConversations(query = '', offsetIndex?: number, limit = 20, folderId = 0, skipMigrated?: boolean) {
+    return this.dialogsStorage.getDialogs(query, offsetIndex, limit, folderId, skipMigrated);
   }
 
   public getReadMaxIdIfUnread(peerId: number, threadId?: number) {

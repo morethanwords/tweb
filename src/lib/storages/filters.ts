@@ -21,8 +21,7 @@ import { AppStateManager } from "../appManagers/appStateManager";
 export type MyDialogFilter = Modify<DialogFilter, {
   pinned_peers: number[],
   include_peers: number[],
-  exclude_peers: number[],
-  orderIndex?: number
+  exclude_peers: number[]
 }>;
 
 // ! because 0 index is 'All Chats'
@@ -51,6 +50,10 @@ export default class FiltersStorage {
         if(filter.hasOwnProperty('orderIndex') && filter.orderIndex >= this.orderIndex) {
           this.orderIndex = filter.orderIndex + 1;
         }
+
+        /* this.appMessagesManager.dialogsStorage.folders[+filterId] = {
+          dialogs: []
+        }; */
       }
     });
 
@@ -114,18 +117,16 @@ export default class FiltersStorage {
   };
 
   public testDialogForFilter(dialog: Dialog, filter: MyDialogFilter) {
+    const peerId = dialog.peerId;
+
     // exclude_peers
-    for(const peerId of filter.exclude_peers) {
-      if(peerId === dialog.peerId) {
-        return false;
-      }
+    if(filter.exclude_peers.includes(peerId)) {
+      return false;
     }
 
     // include_peers
-    for(const peerId of filter.include_peers) {
-      if(peerId === dialog.peerId) {
-        return true;
-      }
+    if(filter.include_peers.includes(peerId)) {
+      return true;
     }
 
     const pFlags = filter.pFlags;
@@ -142,13 +143,12 @@ export default class FiltersStorage {
 
     // exclude_muted
     if(pFlags.exclude_muted) {
-      const isMuted = this.appNotificationsManager.isPeerLocalMuted(dialog.peerId);
+      const isMuted = this.appNotificationsManager.isPeerLocalMuted(peerId);
       if(isMuted) {
         return false;
       }
     }
 
-    const peerId = dialog.peerId;
     if(peerId < 0) {
       // broadcasts
       if(pFlags.broadcasts && this.appPeersManager.isBroadcast(peerId)) {
@@ -161,7 +161,7 @@ export default class FiltersStorage {
       }
     } else {
       // bots
-      if(this.appPeersManager.isBot(peerId)) {
+      if(this.appUsersManager.isBot(peerId)) {
         return !!pFlags.bots;
       }
       
@@ -177,6 +177,14 @@ export default class FiltersStorage {
     }
 
     return false;
+  }
+
+  public testDialogForFilterId(dialog: Dialog, filterId: number) {
+    return this.testDialogForFilter(dialog, this.filters[filterId]);
+  }
+
+  public getFilter(filterId: number) {
+    return this.filters[filterId];
   }
 
   public toggleDialogPin(peerId: number, filterId: number) {
@@ -195,7 +203,7 @@ export default class FiltersStorage {
   }
 
   public createDialogFilter(filter: MyDialogFilter) {
-    let maxId = Math.max(1, ...Object.keys(this.filters).map(i => +i));
+    const maxId = Math.max(1, ...Object.keys(this.filters).map(i => +i));
     filter = copy(filter);
     filter.id = maxId + 1;
     return this.updateDialogFilter(filter);
@@ -293,7 +301,7 @@ export default class FiltersStorage {
         this.orderIndex = filter.orderIndex + 1;
       }
     } else {
-      filter.orderIndex = this.orderIndex++;
+      filter.orderIndex = this.orderIndex++ as DialogFilter['orderIndex'];
     }
 
     this.appStateManager.pushToState('filters', this.filters);

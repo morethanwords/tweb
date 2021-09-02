@@ -295,6 +295,25 @@ ul.chatlist {
           transition: none;
         } */
       }
+
+      &-media {
+        width: 1.25rem;
+        height: 1.25rem;
+        position: relative;
+        flex: 0 0 auto;
+        border-radius: .1875rem;
+        margin-top: -0.1875rem;
+        margin-right: 0.375rem;
+        display: inline-block;
+        vertical-align: middle;
+
+        .media-photo {
+          width: inherit;
+          height: inherit;
+          object-fit: cover;
+          border-radius: inherit;
+        }
+      }
     }
   }
 
@@ -423,6 +442,10 @@ ul.chatlist {
   .mention {
     padding: 0;
     background-color: var(--chatlist-status-color) !important;
+
+    html.is-mac & {
+      line-height: 22px !important;
+    }
   }
 
   .mention-badge {

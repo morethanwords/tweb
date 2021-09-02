@@ -97,7 +97,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
         const filterId = filter.id;
         if(!this.filtersRendered.hasOwnProperty(filter.id)) {
           attachClickEvent(row.container, () => {
-            new AppEditFolderTab(this.slider).open(appMessagesManager.filtersStorage.filters[filterId]);
+            new AppEditFolderTab(this.slider).open(appMessagesManager.filtersStorage.getFilter(filterId));
           }, {listenerSetter: this.listenerSetter});
         }
 

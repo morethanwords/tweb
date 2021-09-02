@@ -34,7 +34,7 @@ export default class AppArchivedTab extends SliderSuperTab {
     }
 
     this.wasFilterId = appDialogsManager.filterId;
-    appDialogsManager.filterId = AppArchivedTab.filterId;
+    appDialogsManager.setFilterId(AppArchivedTab.filterId);
     appDialogsManager.onTabChange();
   }
 
@@ -44,7 +44,7 @@ export default class AppArchivedTab extends SliderSuperTab {
   }
 
   onClose() {
-    appDialogsManager.filterId = this.wasFilterId;
+    appDialogsManager.setFilterId(this.wasFilterId);
     appDialogsManager.onTabChange();
   }
 

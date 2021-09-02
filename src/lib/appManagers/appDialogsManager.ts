@@ -20,7 +20,7 @@ import apiUpdatesManager from "./apiUpdatesManager";
 import appPeersManager from './appPeersManager';
 import appImManager from "./appImManager";
 import appMessagesManager, { Dialog } from "./appMessagesManager";
-import {MyDialogFilter as DialogFilter} from "../storages/filters";
+import {MyDialogFilter as DialogFilter, MyDialogFilter} from "../storages/filters";
 import appStateManager, { State } from "./appStateManager";
 import appUsersManager from "./appUsersManager";
 import Button from "../../components/button";
@@ -33,7 +33,7 @@ import I18n, { FormatterArguments, i18n, LangPackKey, _i18n } from "../langPack"
 import findUpTag from "../../helpers/dom/findUpTag";
 import { LazyLoadQueueIntersector } from "../../components/lazyLoadQueue";
 import lottieLoader from "../lottieLoader";
-import { wrapLocalSticker } from "../../components/wrappers";
+import { wrapLocalSticker, wrapPhoto } from "../../components/wrappers";
 import AppEditFolderTab from "../../components/sidebarLeft/tabs/editFolder";
 import appSidebarLeft, { SettingSection } from "../../components/sidebarLeft";
 import { attachClickEvent } from "../../helpers/dom/clickEvent";
@@ -48,6 +48,8 @@ import { isTouchSupported } from "../../helpers/touchSupport";
 import handleTabSwipe from "../../helpers/dom/handleTabSwipe";
 import windowSize from "../../helpers/windowSize";
 import isInDOM from "../../helpers/dom/isInDOM";
+import appPhotosManager from "./appPhotosManager";
+import DialogsStorage from "../storages/dialogs";
 
 export type DialogDom = {
   avatarEl: AvatarElement,
@@ -61,7 +63,7 @@ export type DialogDom = {
   lastMessageSpan: HTMLSpanElement,
   containerEl: HTMLElement,
   listEl: HTMLLIElement,
-  messageEl: HTMLElement
+  subtitleEl: HTMLElement
 };
 
 //const testScroll = false;
@@ -116,6 +118,8 @@ export class AppDialogsManager {
   private loadContacts: () => void;
   private processContact: (peerId: number) => void;
 
+  private indexKey: ReturnType<DialogsStorage['getDialogIndexKey']>;
+
   constructor() {
     this.chatsPreloader = putPreloader(null, true);
 
@@ -156,7 +160,7 @@ export class AppDialogsManager {
       });
     }
 
-    this.filterId = 0;
+    this.setFilterId(0);
     this.addFilter({
       id: this.filterId,
       title: '',
@@ -207,7 +211,7 @@ export class AppDialogsManager {
       const dialog = appMessagesManager.getDialogOnly(peerId);
       if(dialog) {
         this.setLastMessage(dialog);
-        this.validateForFilter();
+        this.validateDialogForFilter(dialog);
         this.setFiltersUnreadCount();
       }
     });
@@ -220,9 +224,10 @@ export class AppDialogsManager {
         if(this.processContact) {
           this.processContact(+id);
         }
+
+        this.validateDialogForFilter(dialog);
       }
 
-      this.validateForFilter();
       this.setFiltersUnreadCount();
     });
 
@@ -239,7 +244,7 @@ export class AppDialogsManager {
       const dialog = appMessagesManager.getDialogOnly(peerId);
       if(dialog) {
         this.setUnreadMessages(dialog);
-        this.validateForFilter();
+        this.validateDialogForFilter(dialog);
         this.setFiltersUnreadCount();
       }
     });
@@ -283,7 +288,7 @@ export class AppDialogsManager {
       } else if(filter.id === this.filterId) { // это нет тут смысла вызывать, так как будет dialogs_multiupdate
         //this.validateForFilter();
         const folder = appMessagesManager.dialogsStorage.getFolder(filter.id);
-        this.validateForFilter();
+        this.validateListForFilter();
         for(let i = 0, length = folder.length; i < length; ++i) {
           const dialog = folder[i];
           this.updateDialog(dialog);
@@ -318,12 +323,14 @@ export class AppDialogsManager {
     rootScope.addEventListener('filter_order', (order) => {
       const containerToAppend = this.folders.menu as HTMLElement;
       order.forEach((filterId) => {
-        const filter = appMessagesManager.filtersStorage.filters[filterId];
+        const filter = appMessagesManager.filtersStorage.getFilter(filterId);
         const renderedFilter = this.filtersRendered[filterId];
 
         positionElementByIndex(renderedFilter.menu, containerToAppend, filter.orderIndex);
         positionElementByIndex(renderedFilter.container, this.folders.container, filter.orderIndex);
       });
+
+      this.indexKey = appMessagesManager.dialogsStorage.getDialogIndexKey(this.filterId);
 
       /* if(this.filterId) {
         const tabIndex = order.indexOf(this.filterId) + 1;
@@ -367,7 +374,7 @@ export class AppDialogsManager {
           clearPromises.push(storage.clear());
         } */
 
-        this.validateForFilter();
+        this.validateListForFilter();
 
         this.onStateLoaded(state);
       })//, 5000);
@@ -385,7 +392,7 @@ export class AppDialogsManager {
       if(this.filterId === id) return;
 
       this.chatLists[id].innerHTML = '';
-      this.filterId = id;
+      this.setFilterId(id);
       this.onTabChange();
     }, () => {
       for(const folderId in this.chatLists) {
@@ -427,6 +434,11 @@ export class AppDialogsManager {
     setTimeout(() => {
       lottieLoader.loadLottieWorkers();
     }, 200);
+  }
+
+  public setFilterId(filterId: number) {
+    this.filterId = filterId;
+    this.indexKey = appMessagesManager.dialogsStorage ? appMessagesManager.dialogsStorage.getDialogIndexKey(this.filterId) : 'index';
   }
 
   private async onStateLoaded(state: State) {
@@ -478,7 +490,7 @@ export class AppDialogsManager {
       return true;
     }
     
-    const index = dialog.index;
+    const index = dialog[this.indexKey];
     return (!topOffset.index || index <= topOffset.index) && (!bottomOffset.index || index >= bottomOffset.index);
   }
 
@@ -587,7 +599,7 @@ export class AppDialogsManager {
   /**
    * Удалит неподходящие чаты из списка, но не добавит их(!)
    */
-  private validateForFilter() {
+  private validateListForFilter() {
     // !WARNING, возможно это было зачем-то, но комментарий исправил архивирование
     //if(this.filterId === 0) return;
 
@@ -599,6 +611,23 @@ export class AppDialogsManager {
       if(folder.findIndex((dialog) => dialog.peerId === peerId) === -1) {
         this.deleteDialog(peerId);
       }
+    }
+  }
+
+  /**
+   * Удалит неподходящие чат из списка, но не добавит его(!)
+   */
+  private validateDialogForFilter(dialog: Dialog, filter?: MyDialogFilter) {
+    if(this.filterId <= 1 || !this.doms[dialog.peerId]) {
+      return;
+    }
+
+    if(!filter) {
+      filter = appMessagesManager.filtersStorage.getFilter(this.filterId);
+    }
+
+    if(!appMessagesManager.filtersStorage.testDialogForFilter(dialog, filter)) {
+      this.deleteDialog(dialog.peerId);
     }
   }
 
@@ -705,11 +734,11 @@ export class AppDialogsManager {
       const {index: currentOffsetIndex} = this.getOffsetIndex(side);
       if(currentOffsetIndex) {
         if(side === 'top') {
-          const storage = appMessagesManager.dialogsStorage.getFolder(filterId);
-          const index = storage.findIndex(dialog => dialog.index <= currentOffsetIndex);
+          const storage = appMessagesManager.dialogsStorage.getFolder(filterId, true);
+          const index = storage.findIndex(dialog => dialog[this.indexKey] <= currentOffsetIndex);
           const needIndex = Math.max(0, index - loadCount);
           loadCount = index - needIndex;
-          offsetIndex = storage[needIndex].index + 1;
+          offsetIndex = storage[needIndex][this.indexKey] + 1;
         } else {
           offsetIndex = currentOffsetIndex;
         }
@@ -721,7 +750,7 @@ export class AppDialogsManager {
         //console.time('getDialogs time');
   
         const getConversationPromise = (this.filterId > 1 ? appUsersManager.getContacts() as Promise<any> : Promise.resolve()).then(() => {
-          return appMessagesManager.getConversations('', offsetIndex, loadCount, filterId);
+          return appMessagesManager.getConversations('', offsetIndex, loadCount, filterId, true);
         });
   
         const result = await getConversationPromise;
@@ -742,7 +771,7 @@ export class AppDialogsManager {
           }
         } else {
           const storage = appMessagesManager.dialogsStorage.getFolder(filterId);
-          if(!result.dialogs.length || (storage.length && storage[0].index < offsetIndex)) {
+          if(!result.dialogs.length || (storage.length && storage[0][this.indexKey] < offsetIndex)) {
             this.scroll.loadedAll[side] = true;
           }
         }
@@ -760,7 +789,7 @@ export class AppDialogsManager {
 
         const offsetDialog = result.dialogs[side === 'top' ? 0 : result.dialogs.length - 1];
         if(offsetDialog) {
-          this.offsets[side] = offsetDialog.index;
+          this.offsets[side] = offsetDialog[this.indexKey];
         }
 
         this.onListLengthChange();
@@ -887,7 +916,7 @@ export class AppDialogsManager {
       });
 
       attachClickEvent(button, () => {
-        new AppEditFolderTab(appSidebarLeft).open(appMessagesManager.filtersStorage.filters[this.filterId]);
+        new AppEditFolderTab(appSidebarLeft).open(appMessagesManager.filtersStorage.getFilter(this.filterId));
       });
 
       placeholderContainer.append(button);
@@ -1079,8 +1108,8 @@ export class AppDialogsManager {
     const firstDialog = this.getDialogFromElement(this.chatList.firstElementChild as HTMLElement);
     const lastDialog = this.getDialogFromElement(this.chatList.lastElementChild as HTMLElement);
 
-    this.offsets.top = firstDialog.index;
-    this.offsets.bottom = lastDialog.index;
+    this.offsets.top = firstDialog[this.indexKey];
+    this.offsets.bottom = lastDialog[this.indexKey];
   }
 
   private getDialogFromElement(element: HTMLElement) {
@@ -1196,7 +1225,7 @@ export class AppDialogsManager {
       const currentOrder = (Array.from(this.chatList.children) as HTMLElement[]).map(el => +el.dataset.peerId);
 
       const {index} = this.getOffsetIndex('top');
-      const pos = dialogs.findIndex(dialog => dialog.index <= index);
+      const pos = dialogs.findIndex(dialog => dialog[this.indexKey] <= index);
 
       const offset = Math.max(0, pos);
       dialogs.forEach((dialog, index) => {
@@ -1267,6 +1296,28 @@ export class AppDialogsManager {
       } else if(!lastMessage.deleted) {
         fragment = appMessagesManager.wrapMessageForReply(lastMessage);
       }
+
+      /* if(!lastMessage.deleted && !draftMessage) {
+        const photo = lastMessage.media?.photo;
+        if(photo) {
+          const div = document.createElement('div');
+          div.classList.add('dialog-subtitle-media');
+          
+          const size = appPhotosManager.choosePhotoSize(photo, 20, 20);
+          
+          wrapPhoto({
+            photo,
+            message: lastMessage,
+            container: div,
+            withoutPreloader: true,
+            size
+          });
+          
+          fragment.prepend(div);
+          // dom.subtitleEl.prepend(div);
+        }
+      } */
+
       replaceContent(dom.lastMessageSpan, fragment);
   
       /* if(lastMessage.from_id === auth.id) { // You:  */
@@ -1344,7 +1395,7 @@ export class AppDialogsManager {
       }
     } else dom.statusSpan.classList.remove('tgico-check', 'tgico-checks');
 
-    const filter = appMessagesManager.filtersStorage.filters[this.filterId];
+    const filter = appMessagesManager.filtersStorage.getFilter(this.filterId);
     let isPinned: boolean;
     if(filter) {
       isPinned = filter.pinned_peers.indexOf(dialog.peerId) !== -1;
@@ -1357,7 +1408,7 @@ export class AppDialogsManager {
 
     const isUnreadBadgeMounted = isInDOM(dom.unreadBadge);
     if(hasUnreadBadge && !isUnreadBadgeMounted) {
-      dom.messageEl.append(dom.unreadBadge);
+      dom.subtitleEl.append(dom.unreadBadge);
     }
 
     const hasMentionsBadge = dialog.unread_mentions_count > 1;
@@ -1367,7 +1418,7 @@ export class AppDialogsManager {
         dom.mentionsBadge = document.createElement('div');
         dom.mentionsBadge.className = 'dialog-subtitle-badge badge badge-24 mention mention-badge';
         dom.mentionsBadge.innerText = '@';
-        dom.messageEl.insertBefore(dom.mentionsBadge, dom.lastMessageSpan.nextSibling);
+        dom.subtitleEl.insertBefore(dom.mentionsBadge, dom.lastMessageSpan.nextSibling);
       }
     }
 
@@ -1461,7 +1512,7 @@ export class AppDialogsManager {
     if(container === undefined) {
       if(this.doms[peerId] || dialog.migratedTo !== undefined) return;
 
-      const filter = appMessagesManager.filtersStorage.filters[this.filterId];
+      const filter = appMessagesManager.filtersStorage.getFilter(this.filterId);
       if((filter && !appMessagesManager.filtersStorage.testDialogForFilter(dialog, filter)) || (!filter && this.filterId !== dialog.folder_id)) {
         return;
       }
@@ -1552,11 +1603,11 @@ export class AppDialogsManager {
     rightSpan.append(statusSpan, lastTimeSpan);
     titleP.append(titleSpanContainer, rightSpan);
 
-    const messageEl = document.createElement('p');
-    messageEl.classList.add('dialog-subtitle');
-    messageEl.append(span);
+    const subtitleEl = document.createElement('p');
+    subtitleEl.classList.add('dialog-subtitle');
+    subtitleEl.append(span);
 
-    captionDiv.append(titleP, messageEl);
+    captionDiv.append(titleP, subtitleEl);
 
     const dom: DialogDom = {
       avatarEl,
@@ -1569,7 +1620,7 @@ export class AppDialogsManager {
       lastMessageSpan: span,
       containerEl: li,
       listEl: li,
-      messageEl
+      subtitleEl
     };
 
     /* let good = false;
