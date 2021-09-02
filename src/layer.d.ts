@@ -1239,6 +1239,17 @@ export namespace Dialog {
 		draft?: DraftMessage,
 		folder_id?: number,
 		index?: number,
+		index_0?: number,
+		index_1?: number,
+		index_2?: number,
+		index_3?: number,
+		index_4?: number,
+		index_5?: number,
+		index_6?: number,
+		index_7?: number,
+		index_8?: number,
+		index_9?: number,
+		index_10?: number,
 		peerId?: number,
 		topMessage?: any,
 		migratedTo?: number
@@ -8092,7 +8103,10 @@ export namespace DialogFilter {
 		emoticon?: string,
 		pinned_peers: Array<InputPeer>,
 		include_peers: Array<InputPeer>,
-		exclude_peers: Array<InputPeer>
+		exclude_peers: Array<InputPeer>,
+		orderIndex?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10,
+		peerId?: number,
+		folder_id?: number
 	};
 }
 

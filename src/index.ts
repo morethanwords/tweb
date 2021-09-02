@@ -169,10 +169,12 @@ console.timeEnd('get storage1'); */
         document.documentElement.classList.add('is-safari');
       }
       
-      document.documentElement.classList.add('is-mac', 'emoji-supported');
+      document.documentElement.classList.add('emoji-supported');
 
       if(userAgent.isAppleMobile) {
         document.documentElement.classList.add('is-ios');
+      } else {
+        document.documentElement.classList.add('is-mac');
       }
     } else if(userAgent.isAndroid) {
       document.documentElement.classList.add('is-android');

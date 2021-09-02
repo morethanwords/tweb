@@ -29,6 +29,17 @@
   "predicate": "dialog",
   "params": [
     {"name": "index", "type": "number"},
+    {"name": "index_0", "type": "number"},
+    {"name": "index_1", "type": "number"},
+    {"name": "index_2", "type": "number"},
+    {"name": "index_3", "type": "number"},
+    {"name": "index_4", "type": "number"},
+    {"name": "index_5", "type": "number"},
+    {"name": "index_6", "type": "number"},
+    {"name": "index_7", "type": "number"},
+    {"name": "index_8", "type": "number"},
+    {"name": "index_9", "type": "number"},
+    {"name": "index_10", "type": "number"},
     {"name": "peerId", "type": "number"},
     {"name": "topMessage", "type": "any"},
     {"name": "migratedTo", "type": "number"}
@@ -37,6 +48,13 @@
   "predicate": "dialogFolder",
   "params": [
     {"name": "index", "type": "number"},
+    {"name": "peerId", "type": "number"},
+    {"name": "folder_id", "type": "number"}
+  ]
+}, {
+  "predicate": "dialogFilter",
+  "params": [
+    {"name": "orderIndex", "type": "0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10"},
     {"name": "peerId", "type": "number"},
     {"name": "folder_id", "type": "number"}
   ]
