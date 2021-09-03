@@ -283,7 +283,7 @@ ul.chatlist {
           }
 
           &.animating {
-            transition: background-color .2s ease-in-out, transform .2s ease-in-out;
+            transition: background-color .2s var(--transition-standard-easing), transform .2s var(--transition-standard-easing);
           }
         }
 

@@ -836,7 +836,7 @@ export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withT
   const needFadeIn = (thumbImage || !cacheContext.downloaded) && rootScope.settings.animationsEnabled && !noFadeIn;
 
   let preloader: ProgressivePreloader;
-  if(message?.media?.preloader) { // means upload
+  if(message?.media?.preloader && !withoutPreloader) { // means upload
     preloader = message.media.preloader;
     preloader.attach(container);
     noAutoDownload = undefined;
