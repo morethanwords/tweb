@@ -277,13 +277,22 @@ ul.chatlist {
         @include animation-level(2) {
           transition: none;
           transform: scale(0);
+          opacity: 1;
 
           &.is-visible:not(.backwards) {
             transform: scale(1);
           }
 
+          &.backwards {
+            opacity: 0;
+          }
+
           &.animating {
-            transition: background-color .2s var(--transition-standard-easing), transform .2s var(--transition-standard-easing);
+            transition: background-color var(--chatlist-badge-transition-in), transform var(--chatlist-badge-transition-in);
+            
+            &.backwards {
+              transition: background-color var(--chatlist-badge-transition-out), transform var(--chatlist-badge-transition-out), opacity var(--chatlist-badge-transition-out);
+            }
           }
         }
 
@@ -333,8 +342,6 @@ ul.chatlist {
   }
 
   .user-caption {
-    max-width: 100%;
-    max-height: 100%;
     overflow: hidden;
     color: var(--secondary-text-color);
     flex: 1 1 auto;
