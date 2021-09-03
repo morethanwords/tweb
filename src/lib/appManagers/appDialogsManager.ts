@@ -1561,6 +1561,8 @@ export class AppDialogsManager {
       options.container = this.scroll;
     }
 
+    options.autonomous = false;
+
     const ret = this.addDialogNew(options);
 
     if(ret) {
