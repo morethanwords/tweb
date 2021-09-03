@@ -599,7 +599,26 @@ export default class DialogsStorage {
     return indexStr;
   }
 
-  public getDialogs(query = '', offsetIndex?: number, limit = 20, folderId = 0, skipMigrated = false) {
+  public getDialogs(query = '', offsetIndex?: number, limit = 20, folderId = 0, skipMigrated = false): {
+    cached: boolean;
+    promise: Promise<{
+      dialogs: Dialog[];
+      count: number;
+      isEnd: boolean;
+    }>;
+  } {
+    if(folderId > 1) {
+      const fillContactsResult = this.appUsersManager.fillContacts();
+      if(!fillContactsResult.cached) {
+        return {
+          cached: false,
+          promise: fillContactsResult.promise.then(() => {
+            return this.getDialogs(query, offsetIndex, limit, folderId, skipMigrated).promise;
+          })
+        };
+      }
+    }
+
     const realFolderId = folderId > 1 ? 0 : folderId;
     let curDialogStorage = this.getFolder(folderId, skipMigrated);
 
@@ -641,37 +660,43 @@ export default class DialogsStorage {
 
     const loadedAll = this.isDialogsLoaded(realFolderId);
     if(query || loadedAll || curDialogStorage.length >= offset + limit) {
-      return Promise.resolve({
-        dialogs: curDialogStorage.slice(offset, offset + limit),
-        count: loadedAll ? curDialogStorage.length : null,
-        isEnd: loadedAll && (offset + limit) >= curDialogStorage.length
-      });
+      return {
+        cached: true,
+        promise: Promise.resolve({
+          dialogs: curDialogStorage.slice(offset, offset + limit),
+          count: loadedAll ? curDialogStorage.length : null,
+          isEnd: loadedAll && (offset + limit) >= curDialogStorage.length
+        })
+      };
     }
 
-    return this.appMessagesManager.getTopMessages(limit, realFolderId).then(result => {
-      //const curDialogStorage = this[folderId];
-      if(skipMigrated) {
-        curDialogStorage = this.getFolder(folderId, skipMigrated);
-      }
-
-      offset = 0;
-      if(offsetIndex > 0) {
-        for(let length = curDialogStorage.length; offset < length; ++offset) {
-          if(offsetIndex > curDialogStorage[offset][indexStr]) {
-            break;
+    return {
+      cached: false,
+      promise: this.appMessagesManager.getTopMessages(limit, realFolderId).then(result => {
+        //const curDialogStorage = this[folderId];
+        if(skipMigrated) {
+          curDialogStorage = this.getFolder(folderId, skipMigrated);
+        }
+  
+        offset = 0;
+        if(offsetIndex > 0) {
+          for(let length = curDialogStorage.length; offset < length; ++offset) {
+            if(offsetIndex > curDialogStorage[offset][indexStr]) {
+              break;
+            }
           }
         }
-      }
-
-      //this.log.warn(offset, offset + limit, curDialogStorage.dialogs.length, this.dialogs.length);
-
-      return {
-        dialogs: curDialogStorage.slice(offset, offset + limit),
-        count: result.count === undefined ? curDialogStorage.length : result.count,
-        // isEnd: this.isDialogsLoaded(realFolderId) && (offset + limit) >= curDialogStorage.length
-        isEnd: result.isEnd
-      };
-    });
+  
+        //this.log.warn(offset, offset + limit, curDialogStorage.dialogs.length, this.dialogs.length);
+  
+        return {
+          dialogs: curDialogStorage.slice(offset, offset + limit),
+          count: result.count === undefined ? curDialogStorage.length : result.count,
+          // isEnd: this.isDialogsLoaded(realFolderId) && (offset + limit) >= curDialogStorage.length
+          isEnd: result.isEnd
+        };
+      })
+    };
   }
 
   // only 0 and 1 folders

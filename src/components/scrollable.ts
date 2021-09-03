@@ -212,11 +212,11 @@ export default class Scrollable extends ScrollableBase {
     }
   };
 
-  public prepend(...elements: HTMLElement[]) {
+  public prepend(...elements: (HTMLElement | DocumentFragment)[]) {
     (this.splitUp || this.padding || this.container).prepend(...elements);
   }
 
-  public append(...elements: HTMLElement[]) {
+  public append(...elements: (HTMLElement | DocumentFragment)[]) {
     (this.splitUp || this.padding || this.container).append(...elements);
   }
 

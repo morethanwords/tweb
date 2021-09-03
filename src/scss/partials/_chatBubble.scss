@@ -2049,6 +2049,14 @@ $bubble-margin: .25rem;
     }
   }
 
+  &.sticker, 
+  &.round, 
+  &.emoji-big {
+    .message {
+      right: 0;
+    }
+  }
+
   .reply-border, 
   .quote:before {
     background-color: var(--message-out-primary-color);

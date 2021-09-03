@@ -11,6 +11,7 @@
 
 import { MOUNT_CLASS_TO } from "../../config/debug";
 import { filterUnique } from "../../helpers/array";
+import { CancellablePromise, deferredPromise } from "../../helpers/cancellablePromise";
 import cleanSearchText from "../../helpers/cleanSearchText";
 import cleanUsername from "../../helpers/cleanUsername";
 import { tsNow } from "../../helpers/date";
@@ -42,7 +43,7 @@ export class AppUsersManager {
   private users: {[userId: number]: User};
   private usernames: {[username: string]: number};
   private contactsIndex: SearchIndex<number>;
-  private contactsFillPromise: Promise<Set<number>>;
+  private contactsFillPromise: CancellablePromise<Set<number>>;
   private contactsList: Set<number>;
   private updatedContactsList: boolean;
   
@@ -138,7 +139,8 @@ export class AppUsersManager {
         });
 
         if(contactsList.length) {
-          this.contactsFillPromise = Promise.resolve(this.contactsList);
+          this.contactsFillPromise = deferredPromise();
+          this.contactsFillPromise.resolve(this.contactsList);
         }
       }
 
@@ -198,13 +200,19 @@ export class AppUsersManager {
 
   public fillContacts() {
     if(this.contactsFillPromise && this.updatedContactsList) {
-      return this.contactsFillPromise;
+      return {
+        cached: this.contactsFillPromise.isFulfilled,
+        promise: this.contactsFillPromise
+      };
     }
 
     this.updatedContactsList = true;
 
-    const promise = apiManager.invokeApi('contacts.getContacts').then((result) => {
+    const promise = deferredPromise<Set<number>>();
+    apiManager.invokeApi('contacts.getContacts').then((result) => {
       if(result._ === 'contacts.contacts') {
+        this.contactsList.clear();
+      
         this.saveApiUsers(result.users);
 
         result.contacts.forEach((contact) => {
@@ -212,14 +220,19 @@ export class AppUsersManager {
         });
 
         this.onContactsModified();
+
+        this.contactsFillPromise = promise;
       }
 
-      this.contactsFillPromise = promise;
-
-      return this.contactsList;
+      promise.resolve(this.contactsList);
+    }, () => {
+      this.updatedContactsList = false;
     });
 
-    return this.contactsFillPromise || (this.contactsFillPromise = promise);
+    return {
+      cached: this.contactsFillPromise?.isFulfilled,
+      promise: this.contactsFillPromise || (this.contactsFillPromise = promise)
+    };
   }
 
   public resolveUsername(username: string): Promise<Chat | User> {
@@ -265,7 +278,7 @@ export class AppUsersManager {
   }
 
   public getContacts(query?: string, includeSaved = false, sortBy: 'name' | 'online' | 'none' = 'name') {
-    return this.fillContacts().then(_contactsList => {
+    return this.fillContacts().promise.then(_contactsList => {
       let contactsList = [..._contactsList];
       if(query) {
         const results = this.contactsIndex.search(query);

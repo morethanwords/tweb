@@ -261,7 +261,7 @@ export default class AppSelectPeers {
     const pageCount = windowSize.windowH / 72 * 1.25 | 0;
 
     const tempId = this.getTempId('dialogs');
-    const promise = appMessagesManager.getConversations(this.query, this.offsetIndex, pageCount, this.folderId, true);
+    const promise = appMessagesManager.getConversations(this.query, this.offsetIndex, pageCount, this.folderId, true).promise;
     this.promise = promise;
     const value = await promise;
     if(this.tempIds.dialogs !== tempId) {
