@@ -38,7 +38,8 @@ type MediaTypeSizes = {
   animatedSticker: MediaSize,
   staticSticker: MediaSize,
   emojiSticker: MediaSize,
-  poll: MediaSize
+  poll: MediaSize,
+  round: MediaSize
 };
 
 export enum ScreenSize {
@@ -70,7 +71,8 @@ class MediaSizes extends EventListenerBase<{
       animatedSticker: makeMediaSize(180, 180),
       staticSticker: makeMediaSize(180, 180),
       emojiSticker: makeMediaSize(112, 112),
-      poll: makeMediaSize(240, 0)
+      poll: makeMediaSize(240, 0),
+      round: makeMediaSize(200, 200)
     },
     desktop: {
       regular: makeMediaSize(420, 340),
@@ -80,7 +82,8 @@ class MediaSizes extends EventListenerBase<{
       animatedSticker: makeMediaSize(200, 200),
       staticSticker: makeMediaSize(200, 200),
       emojiSticker: makeMediaSize(112, 112),
-      poll: makeMediaSize(330, 0)
+      poll: makeMediaSize(330, 0),
+      round: makeMediaSize(280, 280)
     }
   };
 
@@ -128,7 +131,7 @@ class MediaSizes extends EventListenerBase<{
       //console.log('changeScreen', this.activeScreen, activeScreen);
 
       if(wasScreen !== undefined) {
-        this.dispatchEvent('changeScreen', this.activeScreen, activeScreen);
+        this.dispatchEvent('changeScreen', wasScreen, activeScreen);
       }
     }
 

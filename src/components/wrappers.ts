@@ -9,7 +9,7 @@ import { getEmojiToneIndex } from '../vendor/emoji';
 import { readBlobAsText } from '../helpers/blob';
 import { deferredPromise } from '../helpers/cancellablePromise';
 import { formatDateAccordingToToday, months } from '../helpers/date';
-import mediaSizes from '../helpers/mediaSizes';
+import mediaSizes, { ScreenSize } from '../helpers/mediaSizes';
 import { formatBytes } from '../helpers/number';
 import { isSafari } from '../helpers/userAgent';
 import { PhotoSize, StickerSet } from '../layer';
@@ -46,6 +46,29 @@ import { clearBadCharsAndTrim } from '../helpers/cleanSearchText';
 import blur from '../helpers/blur';
 
 const MAX_VIDEO_AUTOPLAY_SIZE = 50 * 1024 * 1024; // 50 MB
+
+let roundVideoCircumference = 0;
+mediaSizes.addEventListener('changeScreen', (from, to) => {
+  if(to === ScreenSize.mobile || from === ScreenSize.mobile) {
+    const elements = Array.from(document.querySelectorAll('.media-round .progress-ring')) as SVGSVGElement[];
+    const width = mediaSizes.active.round.width;
+    const halfSize = width / 2;
+    const radius = halfSize - 7;
+    roundVideoCircumference = 2 * Math.PI * radius;
+    elements.forEach(element => {
+      element.setAttributeNS(null, 'width', '' + width);
+      element.setAttributeNS(null, 'height', '' + width);
+
+      const circle = element.firstElementChild as SVGCircleElement;
+      circle.setAttributeNS(null, 'cx', '' + halfSize);
+      circle.setAttributeNS(null, 'cy', '' + halfSize);
+      circle.setAttributeNS(null, 'r', '' + radius);
+
+      circle.style.strokeDasharray = roundVideoCircumference + ' ' + roundVideoCircumference;
+      circle.style.strokeDashoffset = '' + roundVideoCircumference;
+    });
+  }
+});
 
 export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTail, isOut, middleware, lazyLoadQueue, noInfo, group, onlyPreview, withoutPreloader, loadPromises, noPlayButton, noAutoDownload, size}: {
   doc: MyDocument, 
@@ -145,15 +168,20 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
     const divRound = document.createElement('div');
     divRound.classList.add('media-round', 'z-depth-1');
 
-    divRound.innerHTML = `<svg class="progress-ring" width="280px" height="280px" style="transform: rotate(-90deg);">
-      <circle class="progress-ring__circle" stroke="white" stroke-opacity="0.3" stroke-width="3.5" cx="140" cy="140" r="133" fill="transparent"/>
+    const size = mediaSizes.active.round;
+    const halfSize = size.width / 2;
+    const strokeWidth = 3.5;
+    const radius = halfSize - (strokeWidth * 2);
+    divRound.innerHTML = `<svg class="progress-ring" width="${size.width}" height="${size.width}" style="transform: rotate(-90deg);">
+      <circle class="progress-ring__circle" stroke="white" stroke-opacity="0.3" stroke-width="${strokeWidth}" cx="${halfSize}" cy="${halfSize}" r="${radius}" fill="transparent"/>
     </svg>`;
 
-    const circle = divRound.querySelector('.progress-ring__circle') as SVGCircleElement;
-    const radius = circle.r.baseVal.value;
-    const circumference = 2 * Math.PI * radius;
-    circle.style.strokeDasharray = circumference + ' ' + circumference;
-    circle.style.strokeDashoffset = '' + circumference;
+    const circle = divRound.firstElementChild.firstElementChild as SVGCircleElement;
+    if(!roundVideoCircumference) {
+      roundVideoCircumference = 2 * Math.PI * radius;
+    }
+    circle.style.strokeDasharray = roundVideoCircumference + ' ' + roundVideoCircumference;
+    circle.style.strokeDashoffset = '' + roundVideoCircumference;
     
     spanTime.classList.add('tgico');
 
@@ -185,7 +213,7 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
     const onFrame = () => {
       ctx.drawImage(globalVideo, 0, 0);
 
-      const offset = circumference - globalVideo.currentTime / globalVideo.duration * circumference;
+      const offset = roundVideoCircumference - globalVideo.currentTime / globalVideo.duration * roundVideoCircumference;
       circle.style.strokeDashoffset = '' + offset;
 
       return !globalVideo.paused;

@@ -99,6 +99,7 @@ $chat-input-inner-padding-handhelds: .25rem;
   @include respond-to(handhelds) {
     --right-column-width: 100vw;
     --esg-sticker-size: 68px;
+    --round-video-size: 200px;
 
     --chat-input-size: #{$chat-input-handhelds-size};
     --chat-input-padding: #{$chat-padding-handhelds};

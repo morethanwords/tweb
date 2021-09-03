@@ -2467,7 +2467,9 @@ export default class ChatBubbles {
 
     const isOut = our && (!message.fwd_from || this.peerId !== rootScope.myId);
     let nameContainer: HTMLElement = bubbleContainer;
-    
+
+    let isStandaloneMedia = false;
+
     // media
     if(messageMedia/*  && messageMedia._ === 'messageMediaPhoto' */) {
       let attachmentDiv = document.createElement('div');
@@ -2488,7 +2490,11 @@ export default class ChatBubbles {
             canHaveTail = false;
           }
           
-          bubble.classList.add('hide-name', 'photo');
+          if(!message.viaBotId) {
+            bubble.classList.add('hide-name');  
+          }
+
+          bubble.classList.add('photo');
           
           const storage = this.appMessagesManager.groupedMessagesStorage[message.grouped_id];
           if(message.grouped_id && Object.keys(storage).length !== 1 && albumMustBeRenderedFull) {
@@ -2671,13 +2677,14 @@ export default class ChatBubbles {
         }
         
         case 'messageMediaDocument': {
-          let doc = messageMedia.document;
+          const doc = messageMedia.document;
 
           //this.log('messageMediaDocument', doc, bubble);
           
           if(doc.sticker/*  && doc.size <= 1e6 */) {
             bubble.classList.add('sticker');
             canHaveTail = false;
+            isStandaloneMedia = true;
             
             if(doc.animated) {
               bubble.classList.add('sticker-animated');
@@ -2703,16 +2710,23 @@ export default class ChatBubbles {
               withThumb: true,
               loadPromises
             });
-
-            break;
           } else if(doc.type === 'video' || doc.type === 'gif' || doc.type === 'round'/*  && doc.size <= 20e6 */) {
             //this.log('never get free 2', doc);
 
-            if(doc.type === 'round' || !messageMessage) {
+            const isRound = doc.type === 'round';
+            if(isRound) {
+              isStandaloneMedia = true;
+            }
+
+            if(isRound || !messageMessage) {
               canHaveTail = false;
             }
+
+            if(!message.viaBotId) {
+              bubble.classList.add('hide-name');
+            }
             
-            bubble.classList.add('hide-name', doc.type === 'round' ? 'round' : 'video');
+            bubble.classList.add(isRound ? 'round' : 'video');
             const storage = this.appMessagesManager.groupedMessagesStorage[message.grouped_id];
             if(message.grouped_id && Object.keys(storage).length !== 1 && albumMustBeRenderedFull) {
               bubble.classList.add('is-album', 'is-grouped');
@@ -2728,7 +2742,7 @@ export default class ChatBubbles {
                 noAutoDownload: this.chat.noAutoDownloadMedia,
               });
             } else {
-              const withTail = !isAndroid && !isApple && doc.type !== 'round' && canHaveTail && !withReplies && USE_MEDIA_TAILS;
+              const withTail = !isAndroid && !isApple && !isRound && canHaveTail && !withReplies && USE_MEDIA_TAILS;
               if(withTail) bubble.classList.add('with-media-tail');
               wrapVideo({
                 doc, 
@@ -2745,8 +2759,6 @@ export default class ChatBubbles {
                 noAutoDownload: this.chat.noAutoDownloadMedia,
               });
             }
-            
-            break;
           } else {
             const newNameContainer = wrapGroupedDocuments({
               albumMustBeRenderedFull,
@@ -2769,8 +2781,6 @@ export default class ChatBubbles {
             bubble.classList.remove('is-message-empty');
             messageDiv.classList.add((!(['photo', 'pdf'] as MyDocument['type'][]).includes(doc.type) ? doc.type || 'document' : 'document') + '-message');
             processingWebPage = true;
-            
-            break;
           }
 
           break;
@@ -2841,6 +2851,10 @@ export default class ChatBubbles {
       } */
     }
 
+    if(isStandaloneMedia) {
+      bubble.classList.add('just-media');
+    }
+
     if(this.chat.selection.isSelecting) {
       this.chat.selection.toggleBubbleCheckbox(bubble, true);
     }
@@ -2849,7 +2863,7 @@ export default class ChatBubbles {
     
     const needName = ((peerId < 0 && (peerId !== message.fromId || our)) && message.fromId !== rootScope.myId) || message.viaBotId;
     if(needName || message.fwd_from || message.reply_to_mid) { // chat
-      let title: HTMLSpanElement;
+      let title: HTMLElement | DocumentFragment;
 
       const isForwardFromChannel = message.from_id && message.from_id._ === 'peerChannel' && message.fromId === message.fwdFromId;
       
@@ -2857,6 +2871,7 @@ export default class ChatBubbles {
       if(message.viaBotId) {
         title = document.createElement('span');
         title.innerText = '@' + this.appUsersManager.getUser(message.viaBotId).username;
+        title.classList.add('peer-title');
       } else if(isHidden) {
         ///////this.log('message to render hidden', message);
         title = document.createElement('span');
@@ -2871,15 +2886,15 @@ export default class ChatBubbles {
       //this.log(title);
       
       if(message.viaBotId) {
-        if(!bubble.classList.contains('sticker')) {
+        //if(!bubble.classList.contains('sticker') || true) {
           let nameDiv = document.createElement('div');
           nameDiv.classList.add('name', 'is-via');
           nameDiv.dataset.peerId = message.viaBotId;
           nameDiv.append(i18n('ViaBot'), ' ', title);
           nameContainer.append(nameDiv);
-        } else {
-          bubble.classList.add('hide-name');
-        }
+        // } else {
+        //   bubble.classList.add('hide-name');
+        // }
       } else if((message.fwdFromId || message.fwd_from)) {
         if(this.peerId !== rootScope.myId && !isForwardFromChannel) {
           bubble.classList.add('forwarded');
@@ -2889,17 +2904,23 @@ export default class ChatBubbles {
           savedFrom = message.savedFrom;
         }
         
-        if(!bubble.classList.contains('sticker')) {
+        //if(!bubble.classList.contains('sticker') || true) {
           let nameDiv = document.createElement('div');
           nameDiv.classList.add('name');
           nameDiv.dataset.peerId = message.fwdFromId;
 
-          if(this.peerId === rootScope.myId || this.peerId === REPLIES_PEER_ID || isForwardFromChannel) {
+          if((this.peerId === rootScope.myId || this.peerId === REPLIES_PEER_ID || isForwardFromChannel) && !isStandaloneMedia) {
             nameDiv.style.color = this.appPeersManager.getPeerColorById(message.fwdFromId, false);
             nameDiv.append(title);
           } else {
             /* const fromTitle = message.fromId === this.myID || appPeersManager.isBroadcast(message.fwdFromId || message.fromId) ? '' : `<div class="name" data-peer-id="${message.fromId}" style="color: ${appPeersManager.getPeerColorByID(message.fromId, false)};">${appPeersManager.getPeerTitle(message.fromId)}</div>`;
             nameDiv.innerHTML = fromTitle + 'Forwarded from ' + title; */
+            if(isStandaloneMedia) {
+              const fragment = document.createDocumentFragment();
+              fragment.append(document.createElement('br'));
+              fragment.append(title);
+              title = fragment;
+            }
             nameDiv.append(i18n('ForwardedFrom', [title]));
 
             if(savedFrom) {
@@ -2908,9 +2929,9 @@ export default class ChatBubbles {
           }
           
           nameContainer.append(nameDiv);
-        }
+        //}
       } else {
-        if(!bubble.classList.contains('sticker') && needName) {
+        if(!isStandaloneMedia && needName) {
           let nameDiv = document.createElement('div');
           nameDiv.classList.add('name');
           nameDiv.append(title);
