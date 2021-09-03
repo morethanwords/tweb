@@ -803,7 +803,7 @@ export default class AppSearchSuper {
           }
         }),
   
-        appMessagesManager.getConversations(query, 0, 20, 0)
+        appMessagesManager.getConversations(query, 0, 20, 0).promise
         .then(onLoad)
         .then(value => {
           if(value) {

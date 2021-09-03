@@ -1639,7 +1639,7 @@ export class AppMessagesManager {
     for(; folderId < 2; ++folderId) {
       let offsetIndex = 0;
       for(;;) {
-        const {dialogs} = await appMessagesManager.getConversations(query, offsetIndex, limit, folderId);
+        const {dialogs} = await appMessagesManager.getConversations(query, offsetIndex, limit, folderId).promise;
   
         if(dialogs.length) {
           outDialogs.push(...dialogs);
@@ -2508,9 +2508,9 @@ export class AppMessagesManager {
     message.totalEntities = RichTextProcessor.mergeEntities(apiEntities, myEntities); // ! only in this order, otherwise bold and emoji formatting won't work
   }
 
-  public wrapMessageForReply(message: any, text: string, usingMids: number[], plain: true, highlightWord?: string): string;
-  public wrapMessageForReply(message: any, text?: string, usingMids?: number[], plain?: false, highlightWord?: string): DocumentFragment;
-  public wrapMessageForReply(message: any, text: string = message.message, usingMids?: number[], plain?: boolean, highlightWord?: string): DocumentFragment | string {
+  public wrapMessageForReply(message: any, text: string, usingMids: number[], plain: true, highlightWord?: string, withoutMediaType?: boolean): string;
+  public wrapMessageForReply(message: any, text?: string, usingMids?: number[], plain?: false, highlightWord?: string, withoutMediaType?: boolean): DocumentFragment;
+  public wrapMessageForReply(message: any, text: string = message.message, usingMids?: number[], plain?: boolean, highlightWord?: string, withoutMediaType?: boolean): DocumentFragment | string {
     const parts: (HTMLElement | string)[] = [];
 
     const addPart = (langKey: LangPackKey, part?: string | HTMLElement, text?: string) => {
@@ -2557,7 +2557,7 @@ export class AppMessagesManager {
         usingFullAlbum = false;
       }
 
-      if(!usingFullAlbum) {
+      if(!usingFullAlbum && !withoutMediaType) {
         const media = message.media;
         switch(media._) {
           case 'messageMediaPhoto':

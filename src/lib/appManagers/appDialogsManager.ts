@@ -4,6 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import type DialogsStorage from "../storages/dialogs";
+import type {MyDialogFilter as DialogFilter, MyDialogFilter} from "../storages/filters";
+import type { LazyLoadQueueIntersector } from "../../components/lazyLoadQueue";
 import AvatarElement from "../../components/avatar";
 import DialogsContextMenu from "../../components/dialogsContextMenu";
 import { horizontalMenu } from "../../components/horizontalMenu";
@@ -20,7 +23,6 @@ import apiUpdatesManager from "./apiUpdatesManager";
 import appPeersManager from './appPeersManager';
 import appImManager from "./appImManager";
 import appMessagesManager, { Dialog } from "./appMessagesManager";
-import {MyDialogFilter as DialogFilter, MyDialogFilter} from "../storages/filters";
 import appStateManager, { State } from "./appStateManager";
 import appUsersManager from "./appUsersManager";
 import Button from "../../components/button";
@@ -31,7 +33,6 @@ import appNotificationsManager from "./appNotificationsManager";
 import PeerTitle from "../../components/peerTitle";
 import I18n, { FormatterArguments, i18n, LangPackKey, _i18n } from "../langPack";
 import findUpTag from "../../helpers/dom/findUpTag";
-import { LazyLoadQueueIntersector } from "../../components/lazyLoadQueue";
 import lottieLoader from "../lottieLoader";
 import { wrapLocalSticker, wrapPhoto } from "../../components/wrappers";
 import AppEditFolderTab from "../../components/sidebarLeft/tabs/editFolder";
@@ -48,8 +49,8 @@ import { isTouchSupported } from "../../helpers/touchSupport";
 import handleTabSwipe from "../../helpers/dom/handleTabSwipe";
 import windowSize from "../../helpers/windowSize";
 import isInDOM from "../../helpers/dom/isInDOM";
-import appPhotosManager from "./appPhotosManager";
-import DialogsStorage from "../storages/dialogs";
+import appPhotosManager, { MyPhoto } from "./appPhotosManager";
+import { MyDocument } from "./appDocsManager";
 
 export type DialogDom = {
   avatarEl: AvatarElement,
@@ -515,7 +516,7 @@ export class AppDialogsManager {
 
     if(this.isDialogMustBeInViewport(dialog)) {
       if(!this.doms.hasOwnProperty(dialog.peerId)) {
-        const ret = this.addDialogNew({dialog});
+        const ret = this.addListDialog({dialog});
         if(ret) {
           const idx = appMessagesManager.getDialogByPeerId(dialog.peerId)[1];
           positionElementByIndex(ret.dom.listEl, this.chatList, idx);
@@ -749,11 +750,12 @@ export class AppDialogsManager {
       try {
         //console.time('getDialogs time');
   
-        const getConversationPromise = (this.filterId > 1 ? appUsersManager.getContacts() as Promise<any> : Promise.resolve()).then(() => {
-          return appMessagesManager.getConversations('', offsetIndex, loadCount, filterId, true);
-        });
+        const getConversationsResult = appMessagesManager.getConversations('', offsetIndex, loadCount, filterId, true);
+        if(getConversationsResult.cached) {
+          this.chatsPreloader.remove();
+        }
   
-        const result = await getConversationPromise;
+        const result = await getConversationsResult.promise;
   
         if(this.loadDialogsPromise !== promise) {
           return;
@@ -779,12 +781,26 @@ export class AppDialogsManager {
         if(result.dialogs.length) {
           const dialogs = side === 'top' ? result.dialogs.slice().reverse() : result.dialogs;
   
+          const container = document.createDocumentFragment();
+          const loadPromises: Promise<any>[] = [];
+          const append = side === 'bottom';
           dialogs.forEach((dialog) => {
-            this.addDialogNew({
+            this.addListDialog({
               dialog,
-              append: side === 'bottom'
+              container,
+              append,
+              loadPromises,
+              isBatch: true
             });
           });
+
+          if(container.childElementCount) {
+            if(loadPromises.length) {
+              await Promise.all(loadPromises).finally();
+            }
+
+            this.scroll[append ? 'append' : 'prepend'](container);
+          }
         }
 
         const offsetDialog = result.dialogs[side === 'top' ? 0 : result.dialogs.length - 1];
@@ -1215,11 +1231,28 @@ export class AppDialogsManager {
   private reorderDialogs() {
     //const perf = performance.now();
     if(this.reorderDialogsTimeout) {
-      window.cancelAnimationFrame(this.reorderDialogsTimeout);
+      return;
+    }
+
+    if(this.loadDialogsPromise) {
+      this.loadDialogsPromise.then(() => {
+        this.reorderDialogs();
+      });
+      
+      return;
     }
     
     this.reorderDialogsTimeout = window.requestAnimationFrame(() => {
       this.reorderDialogsTimeout = 0;
+
+      if(this.loadDialogsPromise) {
+        this.loadDialogsPromise.then(() => {
+          this.reorderDialogs();
+        });
+
+        return;
+      }
+
       const dialogs = appMessagesManager.dialogsStorage.getFolder(this.filterId);
 
       const currentOrder = (Array.from(this.chatList.children) as HTMLElement[]).map(el => +el.dataset.peerId);
@@ -1253,7 +1286,14 @@ export class AppDialogsManager {
     });
   }
 
-  public setLastMessage(dialog: Dialog, lastMessage?: any, dom?: DialogDom, highlightWord?: string) {
+  public setLastMessage(
+    dialog: Dialog, 
+    lastMessage?: any, 
+    dom?: DialogDom, 
+    highlightWord?: string, 
+    loadPromises?: Promise<any>[],
+    isBatch = false
+  ) {
     ///////console.log('setlastMessage:', lastMessage);
     if(!dom) {
       dom = this.getDialogDom(dialog.peerId);
@@ -1280,7 +1320,6 @@ export class AppDialogsManager {
       return;
     }
 
-    const peer = dialog.peer;
     const peerId = dialog.peerId;
     //let peerId = appMessagesManager.getMessagePeer(lastMessage);
 
@@ -1288,35 +1327,49 @@ export class AppDialogsManager {
 
     /* if(!dom.lastMessageSpan.classList.contains('user-typing')) */ {
 
+      let mediaContainer: HTMLElement;
+      if(!lastMessage.deleted && !draftMessage) {
+        const media: MyDocument | MyPhoto = appMessagesManager.getMediaFromMessage(lastMessage);
+        if(media && (media._ === 'photo' || (['video', 'gif'] as MyDocument['type'][]).includes(media.type))) {
+          const size = appPhotosManager.choosePhotoSize(media, 20, 20);
+
+          if(size._ !== 'photoSizeEmpty') {
+            mediaContainer = document.createElement('div');
+            mediaContainer.classList.add('dialog-subtitle-media');
+            
+            wrapPhoto({
+              photo: media,
+              message: lastMessage,
+              container: mediaContainer,
+              withoutPreloader: true,
+              size,
+              loadPromises
+            });
+
+            if((media as MyDocument).type === 'video') {
+              const playIcon = document.createElement('span');
+              playIcon.classList.add('tgico-play');
+
+              mediaContainer.append(playIcon);
+            }
+          }
+        }
+      }
+
+      const withoutMediaType = !!mediaContainer && !!lastMessage?.message;
+
       let fragment: DocumentFragment;
       if(highlightWord && lastMessage.message) {
-        fragment = appMessagesManager.wrapMessageForReply(lastMessage, undefined, undefined, false, highlightWord);
+        fragment = appMessagesManager.wrapMessageForReply(lastMessage, undefined, undefined, false, highlightWord, withoutMediaType);
       } else if(draftMessage) {
         fragment = appMessagesManager.wrapMessageForReply(draftMessage);
       } else if(!lastMessage.deleted) {
-        fragment = appMessagesManager.wrapMessageForReply(lastMessage);
+        fragment = appMessagesManager.wrapMessageForReply(lastMessage, undefined, undefined, false, undefined, withoutMediaType);
       }
 
-      /* if(!lastMessage.deleted && !draftMessage) {
-        const photo = lastMessage.media?.photo;
-        if(photo) {
-          const div = document.createElement('div');
-          div.classList.add('dialog-subtitle-media');
-          
-          const size = appPhotosManager.choosePhotoSize(photo, 20, 20);
-          
-          wrapPhoto({
-            photo,
-            message: lastMessage,
-            container: div,
-            withoutPreloader: true,
-            size
-          });
-          
-          fragment.prepend(div);
-          // dom.subtitleEl.prepend(div);
-        }
-      } */
+      if(mediaContainer) {
+        fragment.prepend(mediaContainer);
+      }
 
       replaceContent(dom.lastMessageSpan, fragment);
   
@@ -1326,7 +1379,7 @@ export class AppDialogsManager {
         bold.classList.add('danger');
         bold.append(i18n('Draft'), ': ');
         dom.lastMessageSpan.prepend(bold);
-      } else if(peer._ !== 'peerUser' && peerId !== lastMessage.fromId && !lastMessage.action) {
+      } else if(peerId < 0 && peerId !== lastMessage.fromId && !lastMessage.action) {
         const sender = appPeersManager.getPeer(lastMessage.fromId);
         if(sender && sender.id) {
           const senderBold = document.createElement('b');
@@ -1354,13 +1407,13 @@ export class AppDialogsManager {
     } else dom.lastTimeSpan.textContent = '';
 
     if(this.doms[peerId] === dom) {
-      this.setUnreadMessages(dialog);
+      this.setUnreadMessages(dialog, isBatch);
     } else { // means search
       dom.listEl.dataset.mid = lastMessage.mid;
     }
   }
 
-  private setUnreadMessages(dialog: Dialog) {
+  private setUnreadMessages(dialog: Dialog, isBatch = false) {
     const dom = this.getDialogDom(dialog.peerId);
 
     if(dialog.folder_id === 1) {
@@ -1372,10 +1425,12 @@ export class AppDialogsManager {
       return;
     }
 
-    const isMuted = appNotificationsManager.isPeerLocalMuted(dialog.peerId, true);
-    const wasMuted = dom.listEl.classList.contains('is-muted');
-    if(isMuted !== wasMuted) {
-      SetTransition(dom.listEl, 'is-muted', isMuted, 200);
+    if(!isBatch) {
+      const isMuted = appNotificationsManager.isPeerLocalMuted(dialog.peerId, true);
+      const wasMuted = dom.listEl.classList.contains('is-muted');
+      if(isMuted !== wasMuted) {
+        SetTransition(dom.listEl, 'is-muted', isMuted, 200);
+      }
     }
 
     const lastMessage = dialog.draft?._ === 'draftMessage' ? 
@@ -1422,12 +1477,14 @@ export class AppDialogsManager {
       }
     }
 
-    SetTransition(dom.unreadBadge, 'is-visible', hasUnreadBadge, 200, hasUnreadBadge ? undefined : () => {
+    const transitionDuration = isBatch ? 0 : 200;
+
+    SetTransition(dom.unreadBadge, 'is-visible', hasUnreadBadge, transitionDuration, hasUnreadBadge ? undefined : () => {
       dom.unreadBadge.remove();
     }, !isUnreadBadgeMounted ? 2 : 0);
 
     if(dom.mentionsBadge) {
-      SetTransition(dom.mentionsBadge, 'is-visible', hasMentionsBadge, 200, hasMentionsBadge ? undefined : () => {
+      SetTransition(dom.mentionsBadge, 'is-visible', hasMentionsBadge, transitionDuration, hasMentionsBadge ? undefined : () => {
         dom.mentionsBadge.remove();
         delete dom.mentionsBadge;
       }, !isMentionBadgeMounted ? 2 : 0);
@@ -1474,9 +1531,55 @@ export class AppDialogsManager {
     return this.doms[peerId];
   }
 
+  private getDialog(dialog: Dialog | number): Dialog {
+    if(typeof(dialog) === 'number') {
+      const originalDialog = appMessagesManager.getDialogOnly(dialog);
+      if(!originalDialog) {
+        return {
+          peerId: dialog,
+          peer: appPeersManager.getOutputPeer(dialog),
+          pFlags: {}
+        } as any;
+      }
+
+      return originalDialog;
+    }
+    
+    return dialog;
+  }
+
+  private addListDialog(options: Parameters<AppDialogsManager['addDialogNew']>[0] & {isBatch?: boolean}) {
+    const dialog = this.getDialog(options.dialog);
+
+    const filter = appMessagesManager.filtersStorage.getFilter(this.filterId);
+    if((filter && !appMessagesManager.filtersStorage.testDialogForFilter(dialog, filter)) || 
+      (!filter && this.filterId !== dialog.folder_id)) {
+      return;
+    }
+
+    if(!options.container) {
+      options.container = this.scroll;
+    }
+
+    const ret = this.addDialogNew(options);
+
+    if(ret) {
+      this.doms[dialog.peerId] = ret.dom;
+
+      const isMuted = appNotificationsManager.isPeerLocalMuted(dialog.peerId, true);
+      if(isMuted) {
+        ret.dom.listEl.classList.add('is-muted');
+      }
+
+      this.setLastMessage(dialog, undefined, undefined, undefined, options.loadPromises, options.isBatch);
+    }
+
+    return ret;
+  }
+
   public addDialogNew(options: {
     dialog: Dialog | number,
-    container?: HTMLUListElement | Scrollable | false,
+    container?: Parameters<AppDialogsManager['addDialog']>[1],
     drawStatus?: boolean,
     rippleEnabled?: boolean,
     onlyFirstName?: boolean,
@@ -1485,60 +1588,40 @@ export class AppDialogsManager {
     avatarSize?: number,
     autonomous?: boolean,
     lazyLoadQueue?: LazyLoadQueueIntersector,
+    loadPromises?: Promise<any>[]
   }) {
-    return this.addDialog(options.dialog, options.container, options.drawStatus, options.rippleEnabled, options.onlyFirstName, options.meAsSaved, options.append, options.avatarSize, options.autonomous, options.lazyLoadQueue);
+    return this.addDialog(options.dialog, options.container, options.drawStatus, options.rippleEnabled, options.onlyFirstName, options.meAsSaved, options.append, options.avatarSize, options.autonomous, options.lazyLoadQueue, options.loadPromises);
   }
 
-  public addDialog(_dialog: Dialog | number, container?: HTMLUListElement | Scrollable | false, drawStatus = true, rippleEnabled = true, onlyFirstName = false, meAsSaved = true, append = true, avatarSize = 54, autonomous = !!container, lazyLoadQueue?: LazyLoadQueueIntersector) {
-    let dialog: Dialog;
-    
-    if(typeof(_dialog) === 'number') {
-      let originalDialog = appMessagesManager.getDialogOnly(_dialog);
-      if(!originalDialog) {
-        originalDialog = {
-          peerId: _dialog,
-          peer: appPeersManager.getOutputPeer(_dialog),
-          pFlags: {}
-        } as any;
-      }
-
-      dialog = originalDialog;
-    } else {
-      dialog = _dialog;
-    }
-
-    const peerId: number = dialog.peerId;
-
-    if(container === undefined) {
-      if(this.doms[peerId] || dialog.migratedTo !== undefined) return;
-
-      const filter = appMessagesManager.filtersStorage.getFilter(this.filterId);
-      if((filter && !appMessagesManager.filtersStorage.testDialogForFilter(dialog, filter)) || (!filter && this.filterId !== dialog.folder_id)) {
-        return;
-      }
-    }
+  public addDialog(_dialog: Dialog | number, 
+    container?: HTMLElement | Scrollable | DocumentFragment | false, 
+    drawStatus = true, 
+    rippleEnabled = true, 
+    onlyFirstName = false, 
+    meAsSaved = true, 
+    append = true, 
+    avatarSize = 54, 
+    autonomous = !!container, 
+    lazyLoadQueue?: LazyLoadQueueIntersector,
+    loadPromises?: Promise<any>[]) {
+    const dialog = this.getDialog(_dialog);
+    const peerId = dialog.peerId;
 
     const avatarEl = new AvatarElement();
+    avatarEl.loadPromises = loadPromises;
     avatarEl.lazyLoadQueue = lazyLoadQueue;
     avatarEl.setAttribute('dialog', meAsSaved ? '1' : '0');
     avatarEl.setAttribute('peer', '' + peerId);
     avatarEl.classList.add('dialog-avatar', 'avatar-' + avatarSize);
 
-    if(drawStatus && peerId !== rootScope.myId && dialog.peer) {
-      const peer = dialog.peer;
-      
-      switch(peer._) {
-        case 'peerUser':
-          const user = appUsersManager.getUser(peerId);
-          //console.log('found user', user);
-  
-          if(user.status && user.status._ === 'userStatusOnline') {
-            avatarEl.classList.add('is-online');
-          }
-  
-          break;
-        default:
-          break;
+    if(drawStatus && peerId !== rootScope.myId) {
+      if(peerId > 0) {
+        const user = appUsersManager.getUser(peerId);
+        //console.log('found user', user);
+
+        if(user.status && user.status._ === 'userStatusOnline') {
+          avatarEl.classList.add('is-online');
+        }
       }
     }
 
@@ -1629,23 +1712,8 @@ export class AppDialogsManager {
         good = true;
       }
     } */
-    const method: 'append' | 'prepend' = append ? 'append' : 'prepend';
-    if(container === undefined/*  || good */) {
-      this.scroll[method](li);
-
-      this.doms[dialog.peerId] = dom;
-
-      /* if(container) {
-        container.append(li);
-      } */
-
-      const isMuted = appNotificationsManager.isPeerLocalMuted(dialog.peerId, true);
-      if(isMuted) {
-        li.classList.add('is-muted');
-      }
-
-      this.setLastMessage(dialog);
-    } else if(container) {
+    if(container) {
+      const method = append ? 'append' : 'prepend';
       container[method](li);
     }
 

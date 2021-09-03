@@ -307,6 +307,17 @@ ul.chatlist {
         display: inline-block;
         vertical-align: middle;
 
+        .tgico-play {
+          position: absolute;
+          z-index: 1;
+          color: #fff;
+          left: 50%;
+          top: 50%;
+          transform: translate(-50%, -50%);
+          line-height: 1;
+          font-size: .625rem;
+        }
+
         .media-photo {
           width: inherit;
           height: inherit;
