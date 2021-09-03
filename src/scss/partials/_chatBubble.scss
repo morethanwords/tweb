@@ -54,7 +54,9 @@ $bubble-margin: .25rem;
   flex-wrap: wrap;
   //flex-direction: column; // fix 'Unread messages', still need to refactor it
 
-  &.is-highlighted, &.is-selected, /* .bubbles.is-selecting */ & {
+  &.is-highlighted, 
+  &.is-selected, 
+  /* .bubbles.is-selecting */ & {
     &:after {
       position: absolute;
       left: -50%;
@@ -141,13 +143,15 @@ $bubble-margin: .25rem;
   }
 
   //&.is-highlighted:after, &.is-first-unread:before, &.is-selected:after {
-  &:after, &:before {
+  &:after, 
+  &:before {
     width: 200%;
     display: block;
   }
 
   &.is-multiple-documents {
-    &:before, &:after {
+    &:before, 
+    &:after {
       display: none;
     }
 
@@ -206,14 +210,18 @@ $bubble-margin: .25rem;
   }
 
   .bubbles.is-selecting &:not(.is-album) {
-    .audio, .document, .attachment, poll-element {
+    .audio, 
+    .document, 
+    .attachment, 
+    poll-element {
       pointer-events: none !important;
     }
   }
 
   // ! hide context menu for media on android
   .bubbles.is-selecting & {
-    img, video {
+    img, 
+    video {
       pointer-events: none;
     }
   }
@@ -378,7 +386,8 @@ $bubble-margin: .25rem;
 
   &:not(.forwarded) {
     &:not(.is-group-first) {
-      .bubble-content > .name, .document-wrapper > .name {
+      .bubble-content > .name, 
+      .document-wrapper > .name {
         display: none;
       }
 
@@ -402,7 +411,8 @@ $bubble-margin: .25rem;
     opacity: 1;
   } */
 
-  &.photo, &.video {
+  &.photo, 
+  &.video {
     .bubble-content {
       width: min-content;
     }
@@ -451,8 +461,6 @@ $bubble-margin: .25rem;
     font-size: 0;
 
     .bubble-content {
-      background: none!important;
-      box-shadow: none;
       line-height: 1;
       user-select: none;
     }
@@ -502,7 +510,7 @@ $bubble-margin: .25rem;
     }
   }
   
-  &.sticker, &.round, &.emoji-big {
+  &.just-media {
     .bubble-content {
       cursor: pointer;
       background: none!important;
@@ -548,7 +556,8 @@ $bubble-margin: .25rem;
       width: var(--round-video-size) !important;
       height: var(--round-video-size) !important;
 
-      .media-photo, .media-video {
+      .media-photo, 
+      .media-video {
         border-radius: 50%;
         pointer-events: none;
       }
@@ -578,7 +587,8 @@ $bubble-margin: .25rem;
     position: relative;
     cursor: pointer;
     
-    img, video {
+    img, 
+    video {
       max-width: 100%;
     }
 
@@ -601,7 +611,8 @@ $bubble-margin: .25rem;
       }
     }
 
-    .download, .preloader-container {
+    .download, 
+    .preloader-container {
       & ~ .video-play {
         display: none;
       }
@@ -637,7 +648,8 @@ $bubble-margin: .25rem;
     }
   }
 
-  img:not(.emoji), video {
+  img:not(.emoji), 
+  video {
     /* object-fit: contain; */
     object-fit: cover;
     width: 100%;
@@ -645,7 +657,8 @@ $bubble-margin: .25rem;
   }
 
   html.is-safari &:not(.round) {
-    img:not(.emoji), video {
+    img:not(.emoji), 
+    video {
       border-radius: inherit;
     }
   }
@@ -916,7 +929,8 @@ $bubble-margin: .25rem;
     }
   }
   
-  .web, .reply {
+  .web, 
+  .reply {
     font-size: var(--messages-secondary-text-size);
   }
 
@@ -971,42 +985,77 @@ $bubble-margin: .25rem;
       max-width: calc(100% - 1.5rem);
       height: auto;
       min-height: 32px;
-    }
-  }
-
-  &.is-reply {
-    &.emoji-big, &.sticker {
-      .reply {
-        padding: 10px;
-        border-radius: 12px;
-        background-color: var(--message-background-color);
-        border: 1px solid var(--border-color);
-        max-width: 300px;
-        height: 54px;
-        max-height: 54px;
-        white-space: nowrap;
-        position: absolute;
-        top: 0;
-        margin-bottom: 0;
-
-        @include respond-to(handhelds) {
-          padding: 8px 6px 8px 8px;
-          max-width: 94px;
-        }
-
-        .reply-content {
-          margin-top: 0;
-        }
-      }
-    }
-
-    .reply-content {
       white-space: nowrap;
       text-overflow: ellipsis;
       overflow: hidden;
     }
   }
-  
+
+  &.just-media {
+    .reply, 
+    .name {
+      padding: 10px;
+      border-radius: 12px;
+      position: absolute;
+      top: 0;
+      margin-bottom: 0;
+      background-color: var(--message-highlightning-color);
+      white-space: nowrap;
+    }
+
+    .name {
+      color: #fff !important;
+      padding: .3125rem .625rem;
+      line-height: var(--line-height);
+
+      .peer-title {
+        font-weight: 400 !important;
+        pointer-events: none;
+      }
+    }
+
+    .reply {
+      max-width: 300px;
+      height: 54px;
+      max-height: 54px;
+
+      @include respond-to(handhelds) {
+        padding: 8px 6px 8px 8px;
+        max-width: 94px;
+      }
+
+      &-content {
+        margin-top: 0;
+      }
+
+      &-title, 
+      i {
+        color: #fff;
+      }
+
+      &-border {
+        background: #fff;
+      }
+    }
+  }
+
+  /* &.photo, &.video {
+    &:not(.hide-name) {
+      .attachment {
+        border-top-left-radius: 0;
+        border-top-right-radius: 0;
+      }
+    }
+  } */
+
+  &.forwarded .attachment,
+  &.is-reply .attachment,
+  &:not(.hide-name).is-message-empty .attachment/* ,
+  &:not(.hide-name):not(.sticker) .attachment */ {
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+  }
+
   .message {
     font-size: var(--messages-text-size);
     padding: 0 .5rem .375rem .625rem;
@@ -1023,7 +1072,8 @@ $bubble-margin: .25rem;
   }
 
   @include respond-to(handhelds) {
-    .document, .audio {
+    .document, 
+    .audio {
       &-ico, &-download {
         height: 2.25rem;
         width: 2.25rem;
@@ -1071,7 +1121,8 @@ $bubble-margin: .25rem;
     }
   }
 
-  .message.audio-message, .message.voice-message {
+  .message.audio-message, 
+  .message.voice-message {
     padding: 8px !important;
     //padding: 4px 6px 4px 8px !important;
   }
@@ -1335,7 +1386,11 @@ $bubble-margin: .25rem;
   }
 
   .message {
-    &.document-message, &.audio-message, &.voice-message, &.poll-message, &.contact-message {
+    &.document-message, 
+    &.audio-message, 
+    &.voice-message, 
+    &.poll-message, 
+    &.contact-message {
       .time {
         position: absolute;
         right: 0;
@@ -1512,7 +1567,8 @@ $bubble-margin: .25rem;
     z-index: 1;
   }
 
-  &:not(.forwarded).hide-name, &.emoji-big {
+  &:not(.forwarded).hide-name, 
+  &.emoji-big {
     .name {
       display: none;
     }
@@ -1523,7 +1579,8 @@ $bubble-margin: .25rem;
     user-select: none;
   }
   
-  &-content > .name, .document-wrapper > .name {
+  &-content > .name, 
+  .document-wrapper > .name {
     /* padding: .2675rem 9px 0 9px; */
     /* padding: .32rem 9px 0 9px; */
     padding: 5px 9px 0 9px;
@@ -1544,7 +1601,8 @@ $bubble-margin: .25rem;
   }
   
   &:not(.webpage) {
-    &.photo, &.video {
+    &.photo, 
+    &.video {
       .bubble-content > .name {
         //padding-bottom: .2675rem;
         padding-bottom: 6px;
@@ -1567,7 +1625,8 @@ $bubble-margin: .25rem;
   }
 
   &:not(.sticker):not(.emoji-big) {
-    &.hide-name, &:not(.is-group-first)/* , &.is-out */ {
+    &.hide-name, 
+    &:not(.is-group-first)/* , &.is-out */ {
       .reply {
         margin-top: 6px;
       }
@@ -1594,7 +1653,8 @@ $bubble-margin: .25rem;
     transform: translateY(1px);
   }
 
-  &.photo, &.video {
+  &.photo, 
+  &.video {
     &.is-message-empty.is-group-last:not(.with-replies) {
       //.bubble-content:after {
       .bubble-tail {
@@ -1619,7 +1679,8 @@ $bubble-margin: .25rem;
     border-radius: inherit;
   }
 
-  audio-element, poll-element {
+  audio-element, 
+  poll-element {
     white-space: normal; // * fix due to .message white-space prewrap
   }
 
@@ -1669,7 +1730,8 @@ $bubble-margin: .25rem;
       color: var(--primary-color);
       min-width: 15rem;
   
-      .tgico-comments, .tgico-next {
+      .tgico-comments, 
+      .tgico-next {
         font-size: 1.4375rem;
       }
   
@@ -1834,7 +1896,8 @@ $bubble-margin: .25rem;
       color: #fff;
     }
 
-    a, .peer-title {
+    a, 
+    .peer-title {
       &:hover {
         text-decoration: underline;
       }
@@ -1853,20 +1916,23 @@ $bubble-margin: .25rem;
 
 .bubble.is-in {
   .bubble-content {
-    &, .poll-footer-button {
+    &, 
+    .poll-footer-button {
       border-radius: 6px 12px 12px 6px;
     }
   }
     
   &.is-group-first {
-    .bubble-content, .poll-footer-button {
+    .bubble-content, 
+    .poll-footer-button {
       border-top-left-radius: 12px;
     }
   }
 
   &.is-group-last {
     &.can-have-tail {
-      .bubble-content, .poll-footer-button {
+      .bubble-content, 
+      .poll-footer-button {
         border-bottom-left-radius: 0;
       }
 
@@ -1881,29 +1947,19 @@ $bubble-margin: .25rem;
     }
 
     &:not(.can-have-tail) {
-      .bubble-content, .poll-footer-button {
+      .bubble-content, 
+      .poll-footer-button {
         border-bottom-left-radius: 12px;
       }
     }
   }
 
-  &.forwarded .attachment,
-  &.is-reply .attachment,
-  &:not(.hide-name).is-message-empty .attachment/* ,
-  &:not(.hide-name):not(.sticker) .attachment */ {
-    border-top-left-radius: 0;
-    border-top-right-radius: 0;
-  }
+  &.just-media {
+    .reply, .name {
+      left: calc(100% + 10px);
 
-  &.is-reply {
-    &.emoji-big, &.sticker {
-      .reply {
-        left: calc(100% + 10px);
-        background-color: var(--message-background-color);
-
-        @include respond-to(handhelds) {
-          left: calc(100% + 1px);
-        }
+      @include respond-to(handhelds) {
+        left: calc(100% + 1px);
       }
     }
   }
@@ -1944,7 +2000,9 @@ $bubble-margin: .25rem;
     }
   }
 
-  .audio-subtitle, .contact-number, .audio-time {
+  .audio-subtitle, 
+  .contact-number, 
+  .audio-time {
     color: var(--secondary-text-color) !important;
   }
 
@@ -1965,7 +2023,8 @@ $bubble-margin: .25rem;
   --link-color: var(--message-out-link-color);
 
   .bubble-content {
-    &, .poll-footer-button {
+    &, 
+    .poll-footer-button {
       border-radius: 12px 6px 6px 12px;
     }
 
@@ -2006,14 +2065,16 @@ $bubble-margin: .25rem;
   } */
     
   &.is-group-first {
-    .bubble-content, .poll-footer-button {
+    .bubble-content, 
+    .poll-footer-button {
       border-top-right-radius: 12px;
     }
   }
     
   &.is-group-last {
     &.can-have-tail {
-      .bubble-content, .poll-footer-button {
+      .bubble-content, 
+      .poll-footer-button {
         border-bottom-right-radius: 0;
       }
 
@@ -2029,22 +2090,28 @@ $bubble-margin: .25rem;
     }
 
     &:not(.can-have-tail) {
-      .bubble-content, .poll-footer-button {
+      .bubble-content, 
+      .poll-footer-button {
         border-bottom-right-radius: 12px;
       }
     }
   }
-    
-  &.forwarded .attachment,
-  &.is-reply .attachment {
-    border-top-left-radius: 0;
-    border-top-right-radius: 0;
+
+  &.just-media {
+    .reply, .name {
+      right: calc(100% + 10px);
+    }
   }
 
-  &.is-reply {
-    &.emoji-big, &.sticker {
-      .web, .reply {
-        right: calc(100% + 10px);
+  &:not(.just-media) {
+    .reply {
+      &-border {
+        background-color: var(--message-out-primary-color);
+      }
+
+      &-title,
+      i {
+        color: var(--message-out-primary-color);
       }
     }
   }
@@ -2057,12 +2124,11 @@ $bubble-margin: .25rem;
     }
   }
 
-  .reply-border, 
   .quote:before {
     background-color: var(--message-out-primary-color);
   }
 
-  .quote .webpage-name, .reply-title, .reply i {
+  .quote .webpage-name {
     color: var(--message-out-primary-color);
   }
   
@@ -2075,7 +2141,8 @@ $bubble-margin: .25rem;
       bottom: 4px;
     }
 
-    &:after, .inner:after {
+    &:after, 
+    .inner:after {
       font-size: 19px;
       //vertical-align: middle;
       margin-left: 1px;
@@ -2099,19 +2166,22 @@ $bubble-margin: .25rem;
   }
   
   &.is-read {
-    .time:after, .time .inner:after {
+    .time:after, 
+    .time .inner:after {
       content: $tgico-checks;
     }
   }
   
   &.is-sent {
-    .time:after, .time .inner:after {
+    .time:after, 
+    .time .inner:after {
       content: $tgico-check;
     }
   }
 
   &.is-sending {
-    .time:after, .time .inner:after {
+    .time:after, 
+    .time .inner:after {
       content: $tgico-sending;
     }
   }
@@ -2136,11 +2206,13 @@ $bubble-margin: .25rem;
       }
     }
 
-    &-time, &-subtitle {
+    &-time, 
+    &-subtitle {
       color: var(--message-out-status-color);
     }
 
-    &-toggle, &-download {
+    &-toggle, 
+    &-download {
       background-color: var(--message-out-primary-color);
     }
 
@@ -2185,13 +2257,15 @@ $bubble-margin: .25rem;
     }
   }
 
-  .contact-number, .document-size {
+  .contact-number, 
+  .document-size {
     color: var(--message-out-status-color);
   }
 
   poll-element {
     .poll {
-      &-desc, &-votes-count {
+      &-desc, 
+      &-votes-count {
         color: var(--message-out-primary-color);
       }
 
@@ -2211,7 +2285,8 @@ $bubble-margin: .25rem;
         }
       }
 
-      &-footer-button, &-hint {
+      &-footer-button, 
+      &-hint {
         color: var(--message-out-primary-color);
       }
     }
@@ -2234,7 +2309,8 @@ $bubble-margin: .25rem;
     .progress-line {
       --color: var(--message-out-primary-color);
 
-      &:before, &__loaded {
+      &:before, 
+      &__loaded {
         background-color: var(--message-out-primary-color);
       }
     }
