@@ -66,6 +66,8 @@ $chat-input-inner-padding-handhelds: .25rem;
   //--layer-transition: .3s cubic-bezier(.33, 1, .68, 1);
   //--layer-transition: none;
   --btn-corner-transition: .2s cubic-bezier(.34, 1.56, .64, 1);
+  --chatlist-badge-transition-in: .2s cubic-bezier(.35,.35,.47,1); // 1.34
+  --chatlist-badge-transition-out: .2s cubic-bezier(.35,.35,.7,1);
   --message-handhelds-margin: 5.5625rem;
   --message-beside-button-margin: 2.875rem;
   --message-time-background: rgba(0, 0, 0, .35);
