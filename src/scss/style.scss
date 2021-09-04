@@ -1152,7 +1152,11 @@ middle-ellipsis-element {
   fill: rgba(0, 0, 0, .08);
 }
 
-.media-photo, .media-video, .media-sticker, .media-round, .media-poster {
+.media-photo, 
+.media-video, 
+.media-sticker, 
+.media-round, 
+.media-poster {
   position: absolute;
   top: 0;
   right: 0;
