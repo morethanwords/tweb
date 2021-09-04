@@ -251,6 +251,10 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
       
       video.currentTime = 0;
       spanTime.innerText = ('' + globalVideo.duration).toHHMMSS(false);
+
+      if(globalVideo.currentTime) {
+        globalVideo.currentTime = 0;
+      }
     };
 
     globalVideo.addEventListener('play', onPlay);
@@ -265,10 +269,11 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
       if(preloader && !preloader.detached) {
         preloader.onClick();
       }
-
-      if(globalVideo.readyState < 2) {
+      
+      // ! can't use it here. on Safari iOS video won't start.
+      /* if(globalVideo.readyState < 2) {
         return;
-      }
+      } */
 
       if(globalVideo.paused) {
         globalVideo.play();

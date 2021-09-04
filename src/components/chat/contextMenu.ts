@@ -329,7 +329,7 @@ export default class ChatContextMenu {
       onClick: () => {
         new PopupReportMessages(this.peerId, [this.mid]);
       },
-      verify: () => !this.message.pFlags.out && !this.message.pFlags.is_outgoing && this.appPeersManager.isChannel(this.peerId),
+      verify: () => !this.message.pFlags.out && this.message._ === 'message' && !this.message.pFlags.is_outgoing && this.appPeersManager.isChannel(this.peerId),
       notDirect: () => true,
       withSelection: true
     }, {
