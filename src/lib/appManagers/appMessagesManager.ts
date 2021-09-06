@@ -2551,7 +2551,10 @@ export class AppMessagesManager {
 
         if(usingFullAlbum) {
           text = this.getAlbumText(message.grouped_id).message;
-          addPart('AttachAlbum', undefined, text);
+
+          if(!withoutMediaType) {
+            addPart('AttachAlbum', undefined, text);
+          }
         }
       } else {
         usingFullAlbum = false;
