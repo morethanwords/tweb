@@ -439,6 +439,7 @@ export default class ChatBubbles {
       });
     });
 
+    // attachClickEvent(this.bubblesContainer, this.onBubblesClick, {listenerSetter: this.listenerSetter});
     this.listenerSetter.add(this.bubblesContainer)('click', this.onBubblesClick/* , {capture: true, passive: false} */);
 
     if(DEBUG) {
@@ -865,7 +866,7 @@ export default class ChatBubbles {
     }
 
     if(!isTouchSupported && findUpClassName(target, 'time')) {
-      this.chat.selection.toggleByBubble(bubble);
+      this.chat.selection.toggleByElement(bubble);
       return;
     }
 
@@ -884,7 +885,7 @@ export default class ChatBubbles {
       }
 
       //this.chatSelection.toggleByBubble(bubble);
-      this.chat.selection.toggleByBubble(findUpClassName(target, 'grouped-item') || bubble);
+      this.chat.selection.toggleByElement(findUpClassName(target, 'grouped-item') || bubble);
       return;
     }
 
@@ -1076,7 +1077,9 @@ export default class ChatBubbles {
       } else if(target.classList.contains('forward')) {
         const mid = +bubble.dataset.mid;
         const message = this.appMessagesManager.getMessageByPeer(this.peerId, mid);
-        new PopupForward(this.peerId, this.appMessagesManager.getMidsByMessage(message));
+        new PopupForward({
+          [this.peerId]: this.appMessagesManager.getMidsByMessage(message)
+        });
         //appSidebarRight.forwardTab.open([mid]);
         return;
       }
@@ -1390,7 +1393,7 @@ export default class ChatBubbles {
     });
 
     if(permanent && this.chat.selection.isSelecting) {
-      this.chat.selection.deleteSelectedMids(mids);
+      this.chat.selection.deleteSelectedMids(this.peerId, mids);
     }
     
     animationIntersector.checkAnimations(false, CHAT_ANIMATION_GROUP);
@@ -2213,6 +2216,7 @@ export default class ChatBubbles {
     // ! reset due to album edit or delete item
     this.bubbles[+message.mid] = bubble;
     bubble.dataset.mid = message.mid;
+    bubble.dataset.peerId = '' + message.peerId;
     bubble.dataset.timestamp = message.date;
 
     const loadPromises: Promise<any>[] = [];
@@ -2281,7 +2285,7 @@ export default class ChatBubbles {
     });
 
     let canHaveTail = true;
-    
+    let isStandaloneMedia = false;
     let needToSetHTML = true;
     if(totalEntities && !messageMedia) {
       let emojiEntities = totalEntities.filter((e) => e._ === 'messageEntityEmoji');
@@ -2308,6 +2312,7 @@ export default class ChatBubbles {
           }
 
           bubble.classList.add('is-message-empty', 'emoji-big');
+          isStandaloneMedia = true;
           canHaveTail = false;
           needToSetHTML = false;
         }
@@ -2391,7 +2396,9 @@ export default class ChatBubbles {
                   }
                   
                   return new Promise<number>((resolve, reject) => {
-                    new PopupForward(this.peerId, [], (peerId) => {
+                    new PopupForward({
+                      [this.peerId]: []
+                    }, (peerId) => {
                       resolve(peerId);
                     }, () => {
                       reject();
@@ -2467,8 +2474,6 @@ export default class ChatBubbles {
 
     const isOut = our && (!message.fwd_from || this.peerId !== rootScope.myId);
     let nameContainer: HTMLElement = bubbleContainer;
-
-    let isStandaloneMedia = false;
 
     // media
     if(messageMedia/*  && messageMedia._ === 'messageMediaPhoto' */) {
@@ -2856,7 +2861,7 @@ export default class ChatBubbles {
     }
 
     if(this.chat.selection.isSelecting) {
-      this.chat.selection.toggleBubbleCheckbox(bubble, true);
+      this.chat.selection.toggleElementCheckbox(bubble, true);
     }
 
     let savedFrom = '';

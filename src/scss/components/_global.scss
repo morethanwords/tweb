@@ -155,6 +155,11 @@ Utility Classes
   border-radius: 0 !important;
 }
 
+.disable-hover/* ,
+.disable-hover * */ {
+  pointer-events: none !important;
+}
+
 /* .flex-grow {
   flex-grow: 1;
 }

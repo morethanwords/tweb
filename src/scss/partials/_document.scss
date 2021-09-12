@@ -10,6 +10,10 @@
   padding-left: 4.25rem;
   height: 70px;
 
+  .media-photo {
+    border-radius: inherit;
+  }
+
   &-ico {
     background-color: var(--background-color);
     border-radius: $border-radius;

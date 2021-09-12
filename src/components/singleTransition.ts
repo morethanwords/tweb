@@ -26,6 +26,10 @@ const SetTransition = (
     }
   }
 
+  // if(forwards && className && element.classList.contains(className) && !element.classList.contains('animating')) {
+  //   return;
+  // }
+
   if(useRafs && rootScope.settings.animationsEnabled && duration) {
     element.dataset.raf = '' + window.requestAnimationFrame(() => {
       delete element.dataset.raf;

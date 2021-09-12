@@ -56,7 +56,7 @@ if(IS_STICKY_INPUT_BUGGED) {
   // let hasFocus = false;
   let lastFocusOutTimeStamp = 0;
   document.addEventListener('focusin', (e) => {
-    if((e.timeStamp - lastFocusOutTimeStamp) < 50/*  && document.activeElement === input */) {
+    if(!(e.target as HTMLElement).classList.contains('is-sticky-input-bugged') || (e.timeStamp - lastFocusOutTimeStamp) < 50/*  && document.activeElement === input */) {
       return;
     }
 

@@ -52,7 +52,7 @@ export function wrapReplyDivAndCaption(options: {
       media = media.webpage;
     }
     
-    if(media.photo || (media.document && ['video', 'sticker', 'gif', 'round'].indexOf(media.document.type) !== -1)) {
+    if(media.photo || (media.document && ['video', 'sticker', 'gif', 'round', 'photo'].indexOf(media.document.type) !== -1)) {
       middleware = appImManager.chat.bubbles.getMiddleware();
       const lazyLoadQueue = appImManager.chat.bubbles.lazyLoadQueue;
 

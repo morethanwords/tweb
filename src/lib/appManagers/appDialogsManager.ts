@@ -22,7 +22,7 @@ import rootScope from "../rootScope";
 import apiUpdatesManager from "./apiUpdatesManager";
 import appPeersManager from './appPeersManager';
 import appImManager from "./appImManager";
-import appMessagesManager, { Dialog } from "./appMessagesManager";
+import appMessagesManager, { Dialog, MyMessage } from "./appMessagesManager";
 import appStateManager, { State } from "./appStateManager";
 import appUsersManager from "./appUsersManager";
 import Button from "../../components/button";
@@ -51,6 +51,7 @@ import windowSize from "../../helpers/windowSize";
 import isInDOM from "../../helpers/dom/isInDOM";
 import appPhotosManager, { MyPhoto } from "./appPhotosManager";
 import { MyDocument } from "./appDocsManager";
+import { setSendingStatus } from "../../components/sendingStatus";
 
 export type DialogDom = {
   avatarEl: AvatarElement,
@@ -440,6 +441,7 @@ export class AppDialogsManager {
   public setFilterId(filterId: number) {
     this.filterId = filterId;
     this.indexKey = appMessagesManager.dialogsStorage ? appMessagesManager.dialogsStorage.getDialogIndexKey(this.filterId) : 'index';
+    rootScope.filterId = filterId;
   }
 
   private async onStateLoaded(state: State) {
@@ -1433,22 +1435,15 @@ export class AppDialogsManager {
       }
     }
 
-    const lastMessage = dialog.draft?._ === 'draftMessage' ? 
-      dialog.draft : 
-      appMessagesManager.getMessageByPeer(dialog.peerId, dialog.top_message);
-    if(!lastMessage.deleted && lastMessage.pFlags.out && lastMessage.peerId !== rootScope.myId/*  && 
-      dialog.read_outbox_max_id */) { // maybe comment, 06.20.2020
-      const isUnread = !!lastMessage.pFlags?.unread
-        /*  && dialog.read_outbox_max_id !== 0 */; // maybe uncomment, 31.01.2020
-
-      if(isUnread) {
-        dom.statusSpan.classList.remove('tgico-checks');
-        dom.statusSpan.classList.add('tgico-check');
-      } else {
-        dom.statusSpan.classList.remove('tgico-check');
-        dom.statusSpan.classList.add('tgico-checks');
+    let setStatusMessage: MyMessage;
+    if(dialog.draft?._ !== 'draftMessage') {
+      const lastMessage: MyMessage = appMessagesManager.getMessageByPeer(dialog.peerId, dialog.top_message);
+      if(!lastMessage.deleted && lastMessage.pFlags.out && lastMessage.peerId !== rootScope.myId) {
+        setStatusMessage = lastMessage;
       }
-    } else dom.statusSpan.classList.remove('tgico-check', 'tgico-checks');
+    }
+
+    setSendingStatus(dom.statusSpan, setStatusMessage, true);
 
     const filter = appMessagesManager.filtersStorage.getFilter(this.filterId);
     let isPinned: boolean;
@@ -1672,7 +1667,7 @@ export class AppDialogsManager {
     li.dataset.peerId = '' + peerId;
 
     const statusSpan = document.createElement('span');
-    statusSpan.classList.add('message-status');
+    statusSpan.classList.add('message-status', 'sending-status'/* , 'transition', 'reveal' */);
 
     const lastTimeSpan = document.createElement('span');
     lastTimeSpan.classList.add('message-time');

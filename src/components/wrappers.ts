@@ -550,7 +550,7 @@ export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showS
   icoDiv.classList.add('document-ico');
 
   const cacheContext = appDownloadManager.getCacheContext(doc);
-  if(doc.thumbs?.length || (message.pFlags.is_outgoing && cacheContext.url && doc.type === 'photo')) {
+  if((doc.thumbs?.length || (message.pFlags.is_outgoing && cacheContext.url && doc.type === 'photo')) && doc.mime_type !== 'image/gif') {
     docDiv.classList.add('document-with-thumb');
 
     let imgs: HTMLImageElement[] = [];
@@ -1564,6 +1564,7 @@ export function wrapGroupedDocuments({albumMustBeRenderedFull, message, bubble, 
     const container = document.createElement('div');
     container.classList.add('document-container');
     container.dataset.mid = '' + mid;
+    container.dataset.peerId = '' + message.peerId;
 
     const wrapper = document.createElement('div');
     wrapper.classList.add('document-wrapper');

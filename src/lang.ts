@@ -793,6 +793,7 @@ const lang = {
   "Message.Context.Select": "Select",
   "Message.Context.Pin": "Pin",
   "Message.Context.Unpin": "Unpin",
+  "Message.Context.Goto": "Show Message",
   "MessageContext.CopyMessageLink1": "Copy Message Link",
   "NewPoll.Anonymous": "Anonymous Voting",
   "NewPoll.Explanation.Placeholder": "Add a Comment (Optional)",

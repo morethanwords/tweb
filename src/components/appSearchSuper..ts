@@ -21,7 +21,7 @@ import AppMediaViewer from "./appMediaViewer";
 import { SearchGroup, SearchGroupType } from "./appSearch";
 import { horizontalMenu } from "./horizontalMenu";
 import LazyLoadQueue from "./lazyLoadQueue";
-import { putPreloader } from "./misc";
+import { attachContextMenuListener, openBtnMenu, positionMenu, putPreloader } from "./misc";
 import { ripple } from "./ripple";
 import Scrollable, { ScrollableX } from "./scrollable";
 import { wrapDocument, wrapPhoto, wrapVideo } from "./wrappers";
@@ -42,6 +42,14 @@ import { isTouchSupported } from "../helpers/touchSupport";
 import handleTabSwipe from "../helpers/dom/handleTabSwipe";
 import windowSize from "../helpers/windowSize";
 import { formatPhoneNumber } from "../helpers/formatPhoneNumber";
+import ButtonMenu, { ButtonMenuItemOptions } from "./buttonMenu";
+import PopupForward from "./popups/forward";
+import PopupDeleteMessages from "./popups/deleteMessages";
+import Row from "./row";
+import htmlToDocumentFragment from "../helpers/dom/htmlToDocumentFragment";
+import { SearchSelection } from "./chat/selection";
+import { cancelEvent } from "../helpers/dom/cancelEvent";
+import { attachClickEvent, simulateClickEvent } from "../helpers/dom/clickEvent";
 
 //const testScroll = false;
 
@@ -69,6 +77,149 @@ export type SearchSuperMediaTab = {
   scroll?: {scrollTop: number, scrollHeight: number}
 };
 
+class SearchContextMenu {
+  private buttons: (ButtonMenuItemOptions & {verify?: () => boolean, withSelection?: true})[];
+  private element: HTMLElement;
+  private target: HTMLElement;
+  private peerId: number;
+  private mid: number;
+  private isSelected: boolean;
+
+  constructor(
+    private attachTo: HTMLElement,
+    private searchSuper: AppSearchSuper
+  ) {
+    const onContextMenu = (e: MouseEvent) => {
+      if(this.init) {
+        this.init();
+        this.init = null;
+      }
+
+      let item: HTMLElement;
+      try {
+        item = findUpClassName(e.target, 'search-super-item');
+      } catch(e) {}
+
+      if(!item) return;
+
+      if(e instanceof MouseEvent) e.preventDefault();
+      if(this.element.classList.contains('active')) {
+        return false;
+      }
+      if(e instanceof MouseEvent) e.cancelBubble = true;
+
+      this.target = item;
+      this.peerId = +item.dataset.peerId;
+      this.mid = +item.dataset.mid;
+      this.isSelected = searchSuper.selection.isMidSelected(this.peerId, this.mid);
+
+      this.buttons.forEach(button => {
+        let good: boolean;
+
+        if(this.isSelected && !button.withSelection) {
+          good = false;
+        } else {
+          good = button.verify ? button.verify() : true;
+        }
+
+        button.element.classList.toggle('hide', !good);
+      });
+
+      item.classList.add('menu-open');
+
+      positionMenu(e, this.element);
+      openBtnMenu(this.element, () => {
+        item.classList.remove('menu-open');
+      });
+    };
+
+    if(isTouchSupported) {
+
+    } else {
+      attachContextMenuListener(attachTo, onContextMenu as any);
+    }
+  }
+
+  private init() {
+    this.buttons = [{
+      icon: 'forward',
+      text: 'Forward',
+      onClick: this.onForwardClick
+    }, {
+      icon: 'forward',
+      text: 'Message.Context.Selection.Forward',
+      onClick: this.onForwardClick,
+      verify: () => this.isSelected && 
+        !this.searchSuper.selection.selectionForwardBtn.classList.contains('hide'),
+      withSelection: true
+    }, {
+      icon: 'message',
+      text: 'Message.Context.Goto',
+      onClick: this.onGotoClick,
+      withSelection: true
+    }, {
+      icon: 'select',
+      text: 'Message.Context.Select',
+      onClick: this.onSelectClick
+    }, {
+      icon: 'select',
+      text: 'Message.Context.Selection.Clear',
+      onClick: this.onClearSelectionClick,
+      verify: () => this.isSelected,
+      withSelection: true
+    }, {
+      icon: 'delete danger',
+      text: 'Delete',
+      onClick: this.onDeleteClick,
+      verify: () => appMessagesManager.canDeleteMessage(appMessagesManager.getMessageByPeer(this.peerId, this.mid))
+    }, {
+      icon: 'delete danger',
+      text: 'Message.Context.Selection.Delete',
+      onClick: this.onDeleteClick,
+      verify: () => this.isSelected && !this.searchSuper.selection.selectionDeleteBtn.classList.contains('hide'),
+      withSelection: true
+    }];
+
+    this.element = ButtonMenu(this.buttons);
+    this.element.classList.add('search-contextmenu', 'contextmenu');
+    document.getElementById('page-chats').append(this.element);
+  }
+
+  private onGotoClick = () => {
+    rootScope.dispatchEvent('history_focus', {
+      peerId: this.peerId,
+      mid: this.mid,
+      threadId: this.searchSuper.searchContext.threadId
+    });
+  };
+
+  private onForwardClick = () => {
+    if(this.searchSuper.selection.isSelecting) {
+      simulateClickEvent(this.searchSuper.selection.selectionForwardBtn);
+    } else {
+      new PopupForward({
+        [this.peerId]: [this.mid]
+      });
+    }
+  };
+
+  private onSelectClick = () => {
+    this.searchSuper.selection.toggleByElement(this.target);
+  };
+
+  private onClearSelectionClick = () => {
+    this.searchSuper.selection.cancelSelection();
+  };
+
+  private onDeleteClick = () => {
+    if(this.searchSuper.selection.isSelecting) {
+      simulateClickEvent(this.searchSuper.selection.selectionDeleteBtn);
+    } else {
+      new PopupDeleteMessages(this.peerId, [this.mid], 'chat');
+    }
+  };
+}
+
 export default class AppSearchSuper {
   public tabs: {[t in SearchSuperType]: HTMLDivElement} = {} as any;
 
@@ -76,8 +227,9 @@ export default class AppSearchSuper {
 
   public container: HTMLElement;
   public nav: HTMLElement;
-  private navScrollableContainer: HTMLDivElement;
-  private tabsContainer: HTMLElement;
+  public navScrollableContainer: HTMLDivElement;
+  public tabsContainer: HTMLElement;
+  public navScrollable: ScrollableX;
   private tabsMenu: HTMLElement;
   private prevTabId = -1;
   
@@ -88,7 +240,7 @@ export default class AppSearchSuper {
   public usedFromHistory: Partial<{[type in SearchSuperType]: number}> = {};
   public urlsToRevoke: string[] = [];
 
-  private searchContext: SearchSuperContext;
+  public searchContext: SearchSuperContext;
   public loadMutex: Promise<any> = Promise.resolve();
 
   private nextRates: Partial<{[type in SearchSuperType]: number}> = {};
@@ -127,16 +279,23 @@ export default class AppSearchSuper {
   public onChangeTab?: (mediaTab: SearchSuperMediaTab) => void;
   public showSender? = false;
 
+  private searchContextMenu: SearchContextMenu;
+  public selection: SearchSelection;
+
   constructor(options: Pick<AppSearchSuper, 'mediaTabs' | 'scrollable' | 'searchGroups' | 'asChatList' | 'groupByMonth' | 'hideEmptyTabs' | 'onChangeTab' | 'showSender'>) {
     safeAssign(this, options);
 
     this.container = document.createElement('div');
     this.container.classList.add('search-super');
 
+    this.searchContextMenu = new SearchContextMenu(this.container, this);
+    this.selection = new SearchSelection(this, appMessagesManager);
+
     const navScrollableContainer = this.navScrollableContainer = document.createElement('div');
     navScrollableContainer.classList.add('search-super-tabs-scrollable', 'menu-horizontal-scrollable', 'sticky');
 
-    const navScrollable = new ScrollableX(navScrollableContainer);
+    const navScrollable = this.navScrollable = new ScrollableX(navScrollableContainer);
+    navScrollable.container.classList.add('search-super-nav-scrollable');
 
     const nav = this.nav = document.createElement('nav');
     nav.classList.add('search-super-tabs', 'menu-horizontal-div');
@@ -284,6 +443,13 @@ export default class AppSearchSuper {
 
       this.onTransitionEnd();
     }, undefined, navScrollable);
+
+    attachClickEvent(this.tabsContainer, (e) => {
+      if(this.selection.isSelecting) {
+        cancelEvent(e);
+        this.selection.toggleByElement(findUpClassName(e.target, 'search-super-item'));
+      }
+    }, {capture: true, passive: false});
     
     const onMediaClick = (className: string, targetClassName: string, inputFilter: MyInputMessagesFilter, e: MouseEvent) => {
       const target = findUpClassName(e.target as HTMLDivElement, className);
@@ -314,8 +480,20 @@ export default class AppSearchSuper {
       .openMedia(message, targets[idx].element, 0, false, targets.slice(0, idx), targets.slice(idx + 1));
     };
 
-    this.tabs.inputMessagesFilterPhotoVideo.addEventListener('click', onMediaClick.bind(null, 'grid-item', 'grid-item', 'inputMessagesFilterPhotoVideo'));
-    this.tabs.inputMessagesFilterDocument.addEventListener('click', onMediaClick.bind(null, 'document-with-thumb', 'media-container', 'inputMessagesFilterDocument'));
+    attachClickEvent(this.tabs.inputMessagesFilterPhotoVideo, onMediaClick.bind(null, 'grid-item', 'grid-item', 'inputMessagesFilterPhotoVideo'));
+    attachClickEvent(this.tabs.inputMessagesFilterDocument, onMediaClick.bind(null, 'document-with-thumb', 'media-container', 'inputMessagesFilterDocument'));
+
+    attachClickEvent(this.tabs.inputMessagesFilterUrl, (e) => {
+      const target = e.target as HTMLElement;
+      if(target.tagName === 'A') {
+        return;
+      }
+
+      try {
+        const a = findUpClassName(target, 'row').querySelector('.anchor-url:last-child') as HTMLAnchorElement;
+        a.click();
+      } catch(err) {}
+    });
 
     this.mediaTab = this.mediaTabs[0];
 
@@ -593,7 +771,7 @@ export default class AppSearchSuper {
           let div = document.createElement('div');
           
           let previewDiv = document.createElement('div');
-          previewDiv.classList.add('preview');
+          previewDiv.classList.add('preview', 'row-media');
           
           //this.log('wrapping webpage', webpage);
           
@@ -618,7 +796,19 @@ export default class AppSearchSuper {
           
           let title = webpage.rTitle || '';
           let subtitle = webpage.rDescription || '';
-          let url = RichTextProcessor.wrapRichText(webpage.url || '');
+
+          const subtitleFragment = htmlToDocumentFragment(subtitle);
+          const aFragment = htmlToDocumentFragment(RichTextProcessor.wrapRichText(webpage.url || ''));
+          const a = aFragment.firstElementChild;
+          if(a instanceof HTMLAnchorElement) {
+            a.innerText = decodeURIComponent(a.href);
+          }
+
+          if(subtitleFragment.firstChild) {
+            subtitleFragment.append('\n');
+          }
+
+          subtitleFragment.append(a);
           
           if(!title) {
             //title = new URL(webpage.url).hostname;
@@ -632,18 +822,32 @@ export default class AppSearchSuper {
             titleAdditionHTML = `<div class="sent-time">${formatDateAccordingToToday(new Date(message.date * 1000))}</div>`;
           }
 
+          const row = new Row({
+            title,
+            titleRight: titleAdditionHTML,
+            subtitle: subtitleFragment,
+            havePadding: true,
+            clickable: true,
+            noRipple: true
+          });
+
+          /* const mediaDiv = document.createElement('div');
+          mediaDiv.classList.add('row-media'); */
+
+          row.container.append(previewDiv);
+          
+          /* ripple(div);
           div.append(previewDiv);
           div.insertAdjacentHTML('beforeend', `
           <div class="title">${title}${titleAdditionHTML}</div>
           <div class="subtitle">${subtitle}</div>
           <div class="url">${url}</div>
           ${sender}
-          `);
+          `); */
           
-          if(div.innerText.trim().length) {
-            elemsToAppend.push({element: div, message});
+          if(row.container.innerText.trim().length) {
+            elemsToAppend.push({element: row.container, message});
           }
-          
         }
         
         break;
@@ -675,6 +879,10 @@ export default class AppSearchSuper {
         element.dataset.mid = '' + message.mid;
         element.dataset.peerId = '' + message.peerId;
         monthContainer.items[method](element);
+
+        if(this.selection.isSelecting) {
+          this.selection.toggleElementCheckbox(element, true);
+        }
       });
     }
     
@@ -1244,6 +1452,10 @@ export default class AppSearchSuper {
     this.mediaTabs.forEach(mediaTab => {
       this.usedFromHistory[mediaTab.inputFilter] = -1;
     });
+
+    if(this.selection.isSelecting) {
+      this.selection.cancelSelection();
+    }
 
     // * must go to first tab (это костыль)
     /* const membersTab = this.mediaTabsMap.get('members');

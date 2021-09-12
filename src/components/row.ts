@@ -11,6 +11,7 @@ import { SliderSuperTab } from "./slider";
 import RadioForm from "./radioForm";
 import { i18n, LangPackKey } from "../lib/langPack";
 import replaceContent from "../helpers/dom/replaceContent";
+import setInnerHTML from "../helpers/dom/setInnerHTML";
 
 export default class Row {
   public container: HTMLElement;
@@ -24,7 +25,7 @@ export default class Row {
 
   constructor(options: Partial<{
     icon: string,
-    subtitle: string,
+    subtitle: string | HTMLElement | DocumentFragment,
     subtitleLangKey: LangPackKey,
     subtitleLangArgs: any[],
     radioField: Row['radioField'],
@@ -35,7 +36,8 @@ export default class Row {
     titleRight: string | HTMLElement,
     clickable: boolean | ((e: Event) => void),
     navigationTab: SliderSuperTab,
-    havePadding: boolean
+    havePadding: boolean,
+    noRipple: boolean
   }> = {}) {
     this.container = document.createElement(options.radioField || options.checkboxField ? 'label' : 'div');
     this.container.classList.add('row');
@@ -44,7 +46,11 @@ export default class Row {
     this.subtitle.classList.add('row-subtitle');
     this.subtitle.setAttribute('dir', 'auto');
     if(options.subtitle) {
-      this.subtitle.innerHTML = options.subtitle;
+      if(typeof(options.subtitle) === 'string') {
+        setInnerHTML(this.subtitle, options.subtitle);
+      } else {
+        this.subtitle.append(options.subtitle);
+      }
     } else if(options.subtitleLangKey) {
       this.subtitle.append(i18n(options.subtitleLangKey, options.subtitleLangArgs));
     }
@@ -137,7 +143,10 @@ export default class Row {
       }
 
       this.container.classList.add('row-clickable', 'hover-effect');
-      ripple(this.container, undefined, undefined, true);
+
+      if(!options.noRipple) {
+        ripple(this.container, undefined, undefined, true);
+      }
 
       /* if(options.radioField || options.checkboxField) {
         this.container.prepend(this.container.lastElementChild);

@@ -406,6 +406,10 @@ html.is-ios {
   //&, body {
     position: fixed; // fix iOS fullscreen scroll
   //}
+
+  // disable image longtapping
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 @supports(padding: unquote('max(0px)')) {
@@ -488,11 +492,6 @@ input, textarea, button, select, a, div {
   //@include respond-to(not-handhelds) {
     height: 100%;
   //}
-}
-
-.disable-hover/* ,
-.disable-hover * */ {
-  pointer-events: none !important;
 }
 
 @include respond-to(not-handhelds) {
@@ -1357,5 +1356,22 @@ middle-ellipsis-element {
 
   &.w:before {
     content: "W";
+  }
+}
+
+.sending-status {
+  &:empty {
+    display: none;
+  }
+
+  /* &.animating {
+    .sending-status-icon {
+      background: var(--background);
+    }
+  } */
+
+  &-icon {
+    position: absolute;
+    line-height: 1 !important;
   }
 }
