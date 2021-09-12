@@ -77,6 +77,7 @@ import PeerTitle from '../peerTitle';
 import { fastRaf } from '../../helpers/schedulers';
 import PopupDeleteMessages from '../popups/deleteMessages';
 import fixSafariStickyInputFocusing, { IS_STICKY_INPUT_BUGGED } from '../../helpers/dom/fixSafariStickyInputFocusing';
+import { copy } from '../../helpers/object';
 
 const RECORD_MIN_TIME = 500;
 const POSTING_MEDIA_NOT_ALLOWED = 'Posting media content isn\'t allowed in this group.';
@@ -117,8 +118,7 @@ export default class ChatInput {
 
   private getWebPagePromise: Promise<void>;
   private willSendWebPage: WebPage = null;
-  private forwardingMids: number[] = [];
-  private forwardingFromPeerId: number = 0;
+  private forwarding: {[fromPeerId: number]: number[]};
   public replyToMsgId: number;
   public editMsgId: number;
   private noWebPage: true;
@@ -1402,7 +1402,7 @@ export default class ChatInput {
   private onBtnSendClick = (e: Event) => {
     cancelEvent(e);
 
-    if(!this.recorder || this.recording || !this.isInputEmpty() || this.forwardingMids.length || this.editMsgId) {
+    if(!this.recorder || this.recording || !this.isInputEmpty() || this.forwarding || this.editMsgId) {
       if(this.recording) {
         if((Date.now() - this.recordStartTime) < RECORD_MIN_TIME) {
           this.onCancelRecordClick();
@@ -1526,13 +1526,11 @@ export default class ChatInput {
       if(this.helperWaitingForward) return;
       this.helperWaitingForward = true;
 
-      const fromId = this.forwardingFromPeerId;
-      const mids = this.forwardingMids.slice();
       const helperFunc = this.helperFunc;
       this.clearHelper();
       this.updateSendBtn();
       let selected = false;
-      new PopupForward(fromId, mids, () => {
+      new PopupForward(copy(this.forwarding), () => {
         selected = true;
       }, () => {
         this.helperWaitingForward = false;
@@ -1593,7 +1591,7 @@ export default class ChatInput {
     const isInputEmpty = this.isInputEmpty();
 
     if(this.editMsgId) icon = 'edit';
-    else if(!this.recorder || this.recording || !isInputEmpty || this.forwardingMids.length) icon = this.chat.type === 'scheduled' ? 'schedule' : 'send';
+    else if(!this.recorder || this.recording || !isInputEmpty || this.forwarding) icon = this.chat.type === 'scheduled' ? 'schedule' : 'send';
     else icon = 'record';
 
     ['send', 'record', 'edit', 'schedule'].forEach(i => {
@@ -1673,17 +1671,18 @@ export default class ChatInput {
     }
 
     // * wait for sendText set messageId for invokeAfterMsg
-    if(this.forwardingMids.length) {
-      const mids = this.forwardingMids.slice();
-      const fromPeerId = this.forwardingFromPeerId;
+    if(this.forwarding) {
+      const forwarding = copy(this.forwarding);
       const peerId = this.chat.peerId;
       const silent = this.sendSilent;
       const scheduleDate = this.scheduleDate;
       setTimeout(() => {
-        this.appMessagesManager.forwardMessages(peerId, fromPeerId, mids, {
-          silent,
-          scheduleDate: scheduleDate
-        });
+        for(const fromPeerId in forwarding) {
+          this.appMessagesManager.forwardMessages(peerId, +fromPeerId, forwarding[fromPeerId], {
+            silent,
+            scheduleDate: scheduleDate
+          });
+        }
       }, 0);
     }
 
@@ -1751,17 +1750,26 @@ export default class ChatInput {
     f();
   }
 
-  public initMessagesForward(fromPeerId: number, mids: number[]) {
+  public initMessagesForward(fromPeerIdsMids: {[fromPeerId: number]: number[]}) {
     const f = () => {
       //const peerTitles: string[]
-      const smth: Set<string | number> = new Set(mids.map(mid => {
-        const message = this.appMessagesManager.getMessageByPeer(fromPeerId, mid);
-        if(message.fwd_from && message.fwd_from.from_name && !message.fromId && !message.fwdFromId) {
-          return message.fwd_from.from_name;
-        } else {
-          return message.fromId;
-        }
-      }));
+      const fromPeerIds = Object.keys(fromPeerIdsMids).map(str => +str);
+      const smth: Set<string | number> = new Set();
+      let length = 0;
+
+      fromPeerIds.forEach(fromPeerId => {
+        const mids = fromPeerIdsMids[fromPeerId];
+        mids.forEach(mid => {
+          const message = this.appMessagesManager.getMessageByPeer(fromPeerId, mid);
+          if(message.fwd_from?.from_name && !message.fromId && !message.fwdFromId) {
+            smth.add(message.fwd_from.from_name);
+          } else {
+            smth.add(message.fromId);
+          }
+        });
+
+        length += mids.length;
+      });
 
       const onlyFirstName = smth.size > 2;
       const peerTitles = [...smth].map(smth => {
@@ -1776,26 +1784,31 @@ export default class ChatInput {
       } else {
         title.append(peerTitles[0], i18n('AndOther', [peerTitles.length - 1]));
       }
-
-      const firstMessage = this.appMessagesManager.getMessageByPeer(fromPeerId, mids[0]);
-
-      let usingFullAlbum = !!firstMessage.grouped_id;
-      if(firstMessage.grouped_id) {
-        const albumMids = this.appMessagesManager.getMidsByMessage(firstMessage);
-        if(albumMids.length !== mids.length || albumMids.find(mid => !mids.includes(mid))) {
-          usingFullAlbum = false;
+      
+      let firstMessage: any, usingFullAlbum: boolean;
+      if(fromPeerIds.length === 1) {
+        const fromPeerId = fromPeerIds[0];
+        const mids = fromPeerIdsMids[fromPeerId];
+        firstMessage = this.appMessagesManager.getMessageByPeer(fromPeerId, mids[0]);
+  
+        usingFullAlbum = !!firstMessage.grouped_id;
+        if(usingFullAlbum) {
+          const albumMids = this.appMessagesManager.getMidsByMessage(firstMessage);
+          if(albumMids.length !== length || albumMids.find(mid => !mids.includes(mid))) {
+            usingFullAlbum = false;
+          }
         }
       }
-
-      const replyFragment = this.appMessagesManager.wrapMessageForReply(firstMessage, undefined, mids);
-      if(usingFullAlbum || mids.length === 1) {
+  
+      if(usingFullAlbum || length === 1) {
+        const mids = fromPeerIdsMids[fromPeerIds[0]];
+        const replyFragment = this.appMessagesManager.wrapMessageForReply(firstMessage, undefined, mids);
         this.setTopInfo('forward', f, title, replyFragment);
       } else {
-        this.setTopInfo('forward', f, title, i18n('ForwardedMessageCount', [mids.length]));
+        this.setTopInfo('forward', f, title, i18n('ForwardedMessageCount', [length]));
       }
 
-      this.forwardingMids = mids.slice();
-      this.forwardingFromPeerId = fromPeerId;
+      this.forwarding = fromPeerIdsMids;
     };
     
     f();
@@ -1845,8 +1858,7 @@ export default class ChatInput {
     }
     
     this.replyToMsgId = undefined;
-    this.forwardingMids.length = 0;
-    this.forwardingFromPeerId = 0;
+    this.forwarding = undefined;
     this.editMsgId = undefined;
     this.helperType = this.helperFunc = undefined;
 

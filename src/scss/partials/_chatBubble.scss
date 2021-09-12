@@ -221,7 +221,8 @@ $bubble-margin: .25rem;
   // ! hide context menu for media on android
   .bubbles.is-selecting & {
     img, 
-    video {
+    video,
+    a {
       pointer-events: none;
     }
   }
@@ -1031,7 +1032,7 @@ $bubble-margin: .25rem;
       &-title,
       &-subtitle, 
       i {
-        color: #fff;
+        color: #fff !important;
       }
 
       &-border {
@@ -1412,31 +1413,31 @@ $bubble-margin: .25rem;
       position: absolute;
       /* position: relative;
       width: max-content; */
-      bottom: .1rem;
-      right: .2rem;
-      border-radius: 12px;
+      bottom: .1875rem;
+      right: .1875rem;
+      border-radius: .75rem;
       background-color: var(--message-time-background);
-      padding: 0 .2rem;
+      padding: 0 .3125rem;
       z-index: 2;
       
       .time {
         margin-left: 0;
-        color: #fff;
-        visibility: visible;
         display: flex;
         align-items: center;
-        padding: 0 2.5px;
-        line-height: 18px;
-        pointer-events: all; // show title
+        padding: 0;
+        margin: 0;
         white-space: nowrap;
         height: 18px;
 
-        &:after {
-          color: #fff;
-        }
-
         .inner {
-          display: none;
+          right: unset;
+          bottom: unset;
+          color: #fff;
+          margin: inherit;
+
+          &:after {
+            color: #fff;
+          }
         }
       }
     }
@@ -2102,6 +2103,10 @@ $bubble-margin: .25rem;
     .reply, .name {
       right: calc(100% + 10px);
     }
+
+    .message {
+      right: 0;
+    }
   }
 
   &:not(.just-media) {
@@ -2114,14 +2119,6 @@ $bubble-margin: .25rem;
       i {
         color: var(--message-out-primary-color);
       }
-    }
-  }
-
-  &.sticker, 
-  &.round, 
-  &.emoji-big {
-    .message {
-      right: 0;
     }
   }
 
@@ -2150,10 +2147,6 @@ $bubble-margin: .25rem;
       line-height: 16px; // of message
       color: var(--message-out-primary-color);
     }
-  }
-
-  &.is-message-empty .time .inner {
-    color: var(--message-out-primary-color);
   }
 
   /* &.is-message-empty .time:after {

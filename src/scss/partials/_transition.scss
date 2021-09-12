@@ -1,14 +1,7 @@
-/*
- * https://github.com/morethanwords/tweb
- * Copyright (C) 2019-2021 Eduard Kuzmenko
- * https://github.com/morethanwords/tweb/blob/master/LICENSE
- */
+// * Jolly Cobra's transition
 
 .transition {
-  --easeOutSine: cubic-bezier(.39, .575, .565, 1);
-  --easeInSine: cubic-bezier(.47, 0, .745, .715);
-
-  .transition-item {
+  > .transition-item {
     position: absolute;
     top: 0;
     left: 0;
@@ -71,6 +64,8 @@
    * slide-fade
    */
   &.slide-fade {
+    --easeOutSine: cubic-bezier(.39, .575, .565, 1);
+    --easeInSine: cubic-bezier(.47, 0, .745, .715);
     position: relative;
 
     > .from {
@@ -117,6 +112,18 @@
       }
     }
   }
+
+  /* &.reveal {
+    > .to {
+      clip-path: inset(0 100% 0 0);
+    }
+
+    &.animating {
+      > .to {
+        animation: reveal-in 350ms ease-in;
+      }
+    }
+  } */
 }
 
 /*
@@ -187,6 +194,15 @@
     transform: translateX(0);
   }
 }
+
+ /* @keyframes reveal-in {
+  0% {
+    clip-path: inset(0 100% 0 0);
+  }
+  100% {
+    clip-path: inset(0 0 0 0);
+  }
+} */
 
 /* .zoom-fade {
   transition: .15s ease-in-out opacity, .15s ease-in-out transform;

@@ -56,10 +56,12 @@
     }
 
     &-background {
-      top: -15%;
+      // it is needed for circle scale animation
+      top: -15%; 
       right: -15%;
       bottom: -15%;
       left: -15%;
+      
       background-color: var(--primary-color);
       transform: scale(1);
       border-radius: 50%;
@@ -138,6 +140,14 @@
 
   .checkbox-box {
     border-radius: 50%;
+    overflow: auto;
+
+    &-background {
+      top: 0;
+      right: 0;
+      bottom: 0;
+      left: 0;
+    }
 
     &-border {
       border: 2px solid var(--secondary-color);
@@ -146,6 +156,10 @@
 
     &-check {
       --offset: calc(var(--size) - (var(--size) / 2 + .125rem));
+    }
+
+    html.is-safari & {
+      -webkit-mask-image: none;
     }
   }
 }

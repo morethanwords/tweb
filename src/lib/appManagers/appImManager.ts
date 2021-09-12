@@ -806,6 +806,16 @@ export class AppImManager {
 
       if(e.code === 'KeyC' && (e.ctrlKey || e.metaKey) && target.tagName !== 'INPUT') {
         return;
+      } else if(e.altKey && (e.code === 'ArrowUp' || e.code === 'ArrowDown') && rootScope.peerId) {
+        const folder = appMessagesManager.dialogsStorage.getFolder(rootScope.filterId, true);
+        const idx = folder.findIndex(dialog => dialog.peerId === rootScope.peerId);
+        if(idx !== -1) {
+          const nextIndex = e.code === 'ArrowUp' ? idx - 1 : idx + 1;
+          const nextDialog = folder[nextIndex];
+          if(nextDialog) {
+            this.setPeer(nextDialog.peerId);
+          }
+        }
       } else if(e.code === 'ArrowUp') {
         if(!chat.input.editMsgId && chat.input.isInputEmpty()) {
           const historyStorage = appMessagesManager.getHistoryStorage(chat.peerId, chat.threadId);
@@ -854,23 +864,18 @@ export class AppImManager {
     
     document.body.addEventListener('keydown', onKeyDown);
 
-    rootScope.addEventListener('history_multiappend', (e) => {
-      const msgIdsByPeer = e;
-
+    rootScope.addEventListener('history_multiappend', (msgIdsByPeer) => {
       for(const peerId in msgIdsByPeer) {
         appSidebarRight.sharedMediaTab.renderNewMessages(+peerId, Array.from(msgIdsByPeer[peerId]));
       }
     });
     
-    rootScope.addEventListener('history_delete', (e) => {
-      const {peerId, msgs} = e;
-
+    rootScope.addEventListener('history_delete', ({peerId, msgs}) => {
       appSidebarRight.sharedMediaTab.deleteDeletedMessages(peerId, Array.from(msgs));
     });
 
     // Calls when message successfully sent and we have an id
-    rootScope.addEventListener('message_sent', (e) => {
-      const {storage, tempId, mid} = e;
+    rootScope.addEventListener('message_sent', ({storage, tempId, mid}) => {
       const message = appMessagesManager.getMessageFromStorage(storage, mid);
       appSidebarRight.sharedMediaTab.renderNewMessages(message.peerId, [mid]);
     });

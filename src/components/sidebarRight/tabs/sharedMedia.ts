@@ -245,7 +245,8 @@ class PeerProfileAvatars {
 
       const rect = this.container.getBoundingClientRect();
 
-      const e = (_e as TouchEvent).touches ? (_e as TouchEvent).touches[0] : _e as MouseEvent;
+      // const e = (_e as TouchEvent).touches ? (_e as TouchEvent).touches[0] : _e as MouseEvent;
+      const e = _e;
       const x = e.pageX;
 
       const clickX = x - rect.left;
@@ -1055,16 +1056,15 @@ export default class AppSharedMediaTab extends SliderSuperTab {
       const inputFilter = mediaTab.inputFilter;
       const filtered = this.searchSuper.filterMessagesByType(mids.map(mid => appMessagesManager.getMessageByPeer(peerId, mid)), inputFilter);
       if(filtered.length) {
-        if(this.historiesStorage[peerId][inputFilter]) {
-          this.historiesStorage[peerId][inputFilter].unshift(...filtered.map(message => ({mid: message.mid, peerId: message.peerId})));
+        const history = this.historiesStorage[peerId][inputFilter];
+        if(history) {
+          history.unshift(...filtered.map(message => ({mid: message.mid, peerId: message.peerId})));
         }
 
         if(this.peerId === peerId && this.searchSuper.usedFromHistory[inputFilter] !== -1) {
           this.searchSuper.usedFromHistory[inputFilter] += filtered.length;
           this.searchSuper.performSearchResult(filtered, mediaTab, false);
         }
-
-        break;
       }
     }
   }
@@ -1078,17 +1078,21 @@ export default class AppSharedMediaTab extends SliderSuperTab {
       for(const type of this.searchSuper.mediaTabs) {
         const inputFilter = type.inputFilter;
 
-        if(!this.historiesStorage[peerId][inputFilter]) continue;
-
         const history = this.historiesStorage[peerId][inputFilter];
+        if(!history) continue;
+
         const idx = history.findIndex(m => m.mid === mid);
         if(idx !== -1) {
           history.splice(idx, 1);
 
           if(this.peerId === peerId) {
             const container = this.searchSuper.tabs[inputFilter];
-            const div = container.querySelector(`div[data-mid="${mid}"][data-peer-id="${peerId}"]`);
+            const div = container.querySelector(`div[data-mid="${mid}"][data-peer-id="${peerId}"]`) as HTMLElement;
             if(div) {
+              if(this.searchSuper.selection.isSelecting) {
+                this.searchSuper.selection.toggleByElement(div);
+              }
+
               div.remove();
             }
   

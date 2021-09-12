@@ -19,11 +19,10 @@ import PopupPinMessage from "../popups/unpinMessage";
 import { copyTextToClipboard } from "../../helpers/clipboard";
 import PopupSendNow from "../popups/sendNow";
 import { toast } from "../toast";
-import I18n, { i18n, LangPackKey } from "../../lib/langPack";
+import I18n, { LangPackKey } from "../../lib/langPack";
 import findUpClassName from "../../helpers/dom/findUpClassName";
 import { cancelEvent } from "../../helpers/dom/cancelEvent";
-import cancelSelection from "../../helpers/dom/cancelSelection";
-import { attachClickEvent } from "../../helpers/dom/clickEvent";
+import { attachClickEvent, simulateClickEvent } from "../../helpers/dom/clickEvent";
 import isSelectionEmpty from "../../helpers/dom/isSelectionEmpty";
 import { Message } from "../../layer";
 import PopupReportMessages from "../popups/reportMessages";
@@ -33,6 +32,7 @@ export default class ChatContextMenu {
   private element: HTMLElement;
 
   private isSelectable: boolean;
+  private isSelected: boolean;
   private target: HTMLElement;
   private isTargetAGroupedItem: boolean;
   private isTextSelected: boolean;
@@ -75,17 +75,6 @@ export default class ChatContextMenu {
       let mid = +bubble.dataset.mid;
       if(!mid) return;
 
-      // * если открыть контекстное меню для альбома не по бабблу, и последний элемент не выбран, чтобы показать остальные пункты
-      if(chat.selection.isSelecting && !contentWrapper) {
-        const mids = this.chat.getMidsByMid(mid);
-        if(mids.length > 1) {
-          const selectedMid = chat.selection.selectedMids.has(mid) ? mid : mids.find(mid => chat.selection.selectedMids.has(mid));
-          if(selectedMid) {
-            mid = selectedMid;
-          }
-        }
-      }
-
       this.isSelectable = this.chat.selection.canSelectBubble(bubble);
       this.peerId = this.chat.peerId;
       //this.msgID = msgID;
@@ -97,6 +86,19 @@ export default class ChatContextMenu {
       );
       this.isUsernameTarget = this.target.tagName === 'A' && this.target.classList.contains('mention');
 
+      // * если открыть контекстное меню для альбома не по бабблу, и последний элемент не выбран, чтобы показать остальные пункты
+      if(chat.selection.isSelecting && !contentWrapper) {
+        const mids = this.chat.getMidsByMid(mid);
+        if(mids.length > 1) {
+          const selectedMid = this.chat.selection.isMidSelected(this.peerId, mid) ? 
+            mid : 
+            mids.find(mid => this.chat.selection.isMidSelected(this.peerId, mid));
+          if(selectedMid) {
+            mid = selectedMid;
+          }
+        }
+      }
+
       const groupedItem = findUpClassName(this.target, 'grouped-item');
       this.isTargetAGroupedItem = !!groupedItem;
       if(groupedItem) {
@@ -105,6 +107,7 @@ export default class ChatContextMenu {
         this.mid = mid;
       }
 
+      this.isSelected = this.chat.selection.isMidSelected(this.peerId, this.mid);
       this.message = this.chat.getMessage(this.mid);
 
       this.buttons.forEach(button => {
@@ -147,29 +150,10 @@ export default class ChatContextMenu {
         if(good) {
           cancelEvent(e);
           //onContextMenu((e as TouchEvent).changedTouches[0]);
-          onContextMenu((e as TouchEvent).changedTouches ? (e as TouchEvent).changedTouches[0] : e as MouseEvent);
+          // onContextMenu((e as TouchEvent).changedTouches ? (e as TouchEvent).changedTouches[0] : e as MouseEvent);
+          onContextMenu(e);
         }
       }, {listenerSetter: this.chat.bubbles.listenerSetter});
-
-      attachContextMenuListener(attachTo, (e) => {
-        if(chat.selection.isSelecting) return;
-
-        // * these two lines will fix instant text selection on iOS Safari
-        document.body.classList.add('no-select'); // * need no-select on body because chat-input transforms in channels
-        attachTo.addEventListener('touchend', (e) => {
-          cancelEvent(e); // ! this one will fix propagation to document loader button, etc
-          document.body.classList.remove('no-select');
-
-          //this.chat.bubbles.onBubblesClick(e);
-        }, {once: true, capture: true});
-
-        cancelSelection();
-        //cancelEvent(e as any);
-        const bubble = findUpClassName(e.target, 'grouped-item') || findUpClassName(e.target, 'bubble');
-        if(bubble) {
-          chat.selection.toggleByBubble(bubble);
-        }
-      }, this.chat.bubbles.listenerSetter);
     } else attachContextMenuListener(attachTo, onContextMenu, this.chat.bubbles.listenerSetter);
   }
 
@@ -183,7 +167,7 @@ export default class ChatContextMenu {
       icon: 'send2',
       text: 'Message.Context.Selection.SendNow',
       onClick: this.onSendScheduledClick,
-      verify: () => this.chat.type === 'scheduled' && this.chat.selection.selectedMids.has(this.mid) && !this.chat.selection.selectionSendNowBtn.hasAttribute('disabled'),
+      verify: () => this.chat.type === 'scheduled' && this.isSelected && !this.chat.selection.selectionSendNowBtn.hasAttribute('disabled'),
       notDirect: () => true,
       withSelection: true
     }, {
@@ -228,7 +212,21 @@ export default class ChatContextMenu {
       icon: 'copy',
       text: 'Message.Context.Selection.Copy',
       onClick: this.onCopyClick,
-      verify: () => this.chat.selection.selectedMids.has(this.mid) && !![...this.chat.selection.selectedMids].find(mid => !!this.chat.getMessage(mid).message),
+      verify: () => {
+        if(!this.isSelected) {
+          return false;
+        }
+
+        for(const [peerId, mids] of this.chat.selection.selectedMids) {
+          for(const mid of mids) {
+            if(!!this.appMessagesManager.getMessageByPeer(peerId, mid).message) {
+              return true;
+            }
+          }
+        }
+
+        return false;
+      },
       notDirect: () => true,
       withSelection: true
     }, {
@@ -319,7 +317,7 @@ export default class ChatContextMenu {
       text: 'Message.Context.Selection.Forward',
       onClick: this.onForwardClick,
       verify: () => this.chat.selection.selectionForwardBtn && 
-        this.chat.selection.selectedMids.has(this.mid) && 
+        this.isSelected && 
         !this.chat.selection.selectionForwardBtn.hasAttribute('disabled'),
       notDirect: () => true,
       withSelection: true
@@ -336,14 +334,14 @@ export default class ChatContextMenu {
       icon: 'select',
       text: 'Message.Context.Select',
       onClick: this.onSelectClick,
-      verify: () => !this.message.action && !this.chat.selection.selectedMids.has(this.mid) && this.isSelectable,
+      verify: () => !this.message.action && !this.isSelected && this.isSelectable,
       notDirect: () => true,
       withSelection: true
     }, {
       icon: 'select',
       text: 'Message.Context.Selection.Clear',
       onClick: this.onClearSelectionClick,
-      verify: () => this.chat.selection.selectedMids.has(this.mid),
+      verify: () => this.isSelected,
       notDirect: () => true,
       withSelection: true
     }, {
@@ -355,7 +353,7 @@ export default class ChatContextMenu {
       icon: 'delete danger',
       text: 'Message.Context.Selection.Delete',
       onClick: this.onDeleteClick,
-      verify: () => this.chat.selection.selectedMids.has(this.mid) && !this.chat.selection.selectionDeleteBtn.hasAttribute('disabled'),
+      verify: () => this.isSelected && !this.chat.selection.selectionDeleteBtn.hasAttribute('disabled'),
       notDirect: () => true,
       withSelection: true
     }];
@@ -364,11 +362,11 @@ export default class ChatContextMenu {
     this.element.id = 'bubble-contextmenu';
     this.element.classList.add('contextmenu');
     this.chat.container.append(this.element);
-  };
+  }
 
   private onSendScheduledClick = () => {
     if(this.chat.selection.isSelecting) {
-      this.chat.selection.selectionSendNowBtn.click();
+      simulateClickEvent(this.chat.selection.selectionSendNowBtn);
     } else {
       new PopupSendNow(this.peerId, this.chat.getMidsByMid(this.mid));
     }
@@ -384,11 +382,15 @@ export default class ChatContextMenu {
 
   private onCopyClick = () => {
     if(isSelectionEmpty()) {
-      const mids = this.chat.selection.isSelecting ? [...this.chat.selection.selectedMids].sort((a, b) => a - b) : [this.mid];
+      const mids = this.chat.selection.isSelecting ? 
+        [...this.chat.selection.selectedMids.get(this.peerId)].sort((a, b) => a - b) : 
+        [this.mid];
+
       const str = mids.reduce((acc, mid) => {
         const message = this.chat.getMessage(mid);
         return acc + (message?.message ? message.message + '\n' : '');
       }, '').trim();
+
       copyTextToClipboard(str);
     } else {
       document.execCommand('copy');
@@ -443,14 +445,17 @@ export default class ChatContextMenu {
 
   private onForwardClick = () => {
     if(this.chat.selection.isSelecting) {
-      this.chat.selection.selectionForwardBtn.click();
+      simulateClickEvent(this.chat.selection.selectionForwardBtn);
     } else {
-      new PopupForward(this.peerId, this.isTargetAGroupedItem ? [this.mid] : this.chat.getMidsByMid(this.mid));
+      const mids = this.isTargetAGroupedItem ? [this.mid] : this.chat.getMidsByMid(this.mid);
+      new PopupForward({
+        [this.peerId]: mids
+      });
     }
   };
 
   private onSelectClick = () => {
-    this.chat.selection.toggleByBubble(findUpClassName(this.target, 'grouped-item') || findUpClassName(this.target, 'bubble'));
+    this.chat.selection.toggleByElement(findUpClassName(this.target, 'grouped-item') || findUpClassName(this.target, 'bubble'));
   };
 
   private onClearSelectionClick = () => {
@@ -459,7 +464,7 @@ export default class ChatContextMenu {
 
   private onDeleteClick = () => {
     if(this.chat.selection.isSelecting) {
-      this.chat.selection.selectionDeleteBtn.click();
+      simulateClickEvent(this.chat.selection.selectionDeleteBtn);
     } else {
       new PopupDeleteMessages(this.peerId, this.isTargetAGroupedItem ? [this.mid] : this.chat.getMidsByMid(this.mid), this.chat.type);
     }

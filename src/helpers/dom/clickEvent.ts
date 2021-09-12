@@ -8,9 +8,9 @@ import type ListenerSetter from "../listenerSetter";
 import { isTouchSupported } from "../touchSupport";
 import simulateEvent from "./dispatchEvent";
 
-export const CLICK_EVENT_NAME: 'mousedown' | 'touchend' | 'click' = (isTouchSupported ? 'mousedown' : 'click') as any;
+export const CLICK_EVENT_NAME: 'mousedown' /* | 'touchend' */ | 'click' = (isTouchSupported ? 'mousedown' : 'click') as any;
 export type AttachClickOptions = AddEventListenerOptions & Partial<{listenerSetter: ListenerSetter, touchMouseDown: true}>;
-export function attachClickEvent(elem: HTMLElement, callback: (e: TouchEvent | MouseEvent) => void, options: AttachClickOptions = {}) {
+export function attachClickEvent(elem: HTMLElement | Window, callback: (e: /* TouchEvent |  */MouseEvent) => void, options: AttachClickOptions = {}) {
   const add = options.listenerSetter ? options.listenerSetter.add(elem) : elem.addEventListener.bind(elem);
   // const remove = options.listenerSetter ? options.listenerSetter.removeManual.bind(options.listenerSetter, elem) : elem.removeEventListener.bind(elem);
 
@@ -46,11 +46,11 @@ export function attachClickEvent(elem: HTMLElement, callback: (e: TouchEvent | M
 }
 
 export function detachClickEvent(elem: HTMLElement, callback: (e: TouchEvent | MouseEvent) => void, options?: AddEventListenerOptions) {
-  if(CLICK_EVENT_NAME === 'touchend') {
-    elem.removeEventListener('touchstart', callback, options);
-  } else {
+  // if(CLICK_EVENT_NAME === 'touchend') {
+  //   elem.removeEventListener('touchstart', callback, options);
+  // } else {
     elem.removeEventListener(CLICK_EVENT_NAME, callback, options);
-  }
+  // }
 }
 
 export function simulateClickEvent(elem: HTMLElement) {

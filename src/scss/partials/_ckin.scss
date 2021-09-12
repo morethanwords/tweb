@@ -287,6 +287,9 @@ video::-webkit-media-controls-enclosure {
     margin: 0;
     outline: none;
     caret-color: var(--color);
+    position: absolute;
+    top: -.5rem;
+    bottom: -.5rem;
 
     &:focus {
       outline: none;
@@ -348,9 +351,17 @@ video::-webkit-media-controls-enclosure {
         position: absolute;
         right: 0;
         top: 50%;
-        transform: translate(calc(var(--thumb-size) / 2), -50%);
+        transform: translate(calc(var(--thumb-size) / 2), -50%) scale(1);
+
+        @include animation-level(2) {
+          transition: transform .125s ease-in-out;
+        }
       }
     }
+  }
+
+  &.is-focused .progress-line__filled:not(.progress-line__loaded):after {
+    transform: translate(calc(var(--thumb-size) / 2), -50%) scale(1.25);
   }
 
   &__loaded, &:before {
@@ -358,7 +369,6 @@ video::-webkit-media-controls-enclosure {
     background-color: var(--secondary-color);
   }
 
-  &__seek, 
   &__filled, 
   &__loaded {
     border-radius: var(--border-radius);

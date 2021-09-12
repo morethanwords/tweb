@@ -147,6 +147,7 @@ export class RootScope extends EventListenerBase<{
   public connectionStatus: {[name: string]: ConnectionStatusChange} = {};
   public settings: State['settings'];
   public peerId = 0;
+  public filterId = 0;
   public systemTheme: Theme['name'];
   public config: Partial<Config.config> = {
     forwarded_count_max: 100,

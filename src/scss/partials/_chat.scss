@@ -1147,11 +1147,6 @@ $chat-helper-size: 36px;
 
 	@include respond-to(handhelds) {
     padding: 0 $chat-padding-handhelds;
-
-    html.is-ios & {
-      -webkit-user-select: none;
-      -webkit-touch-callout: none;
-    }
 	}
 
 	&.is-chat {

@@ -109,6 +109,7 @@ ul.chatlist {
   } */
 
   li {
+    --background: unset;
     //height: var(--height);
     height: 72px;
     //max-height: var(--height);
@@ -124,12 +125,14 @@ ul.chatlist {
     padding-right: 8.5px;
     padding-left: 8.5px; */
     overflow: hidden;
+    background: var(--background);
 
     @include respond-to(handhelds) {
       border-radius: 0;
     }
 
-    @include hover-background-effect();
+    //@include hover-background-effect();
+    @include hover(gray, --background, false);
 
     &.is-muted {
       .user-title {
@@ -183,13 +186,13 @@ ul.chatlist {
     } */
 
     &.menu-open {
-      background: var(--light-secondary-text-color);
+      --background: var(--light-secondary-text-color);
     }
 
     @include respond-to(not-handhelds) {
       &.active {
+        --background: var(--primary-color) !important;
         //background: var(--light-secondary-text-color);
-        background: var(--primary-color) !important;
 
         .user-caption,
         .tgico-chatspinned:before,
@@ -405,25 +408,25 @@ ul.chatlist {
   }
 
   .message-status {
-    margin-right: .1rem;
-    //margin-top: .3rem;
-    margin-top: -.3rem;
+    margin-right: 0.125rem;
     display: inline-block;
     vertical-align: middle;
-
-    &[class*=" tgico-"] {
-      color: var(--chatlist-status-color);
-      font-size: 1.25rem;
-    }
+    color: var(--chatlist-status-color);
+    line-height: 1;
+    width: 1.25rem;
+    height: 1.25rem;
+    font-size: 1.25rem;
+    position: relative;
+    margin-top: -.0625rem;
 
     &:before {
       vertical-align: middle;
     }
   }
 
-  .message-time {
+  /* .message-time {
     vertical-align: middle;
-  }
+  } */
 
   .tgico-chatspinned {
     background: transparent;

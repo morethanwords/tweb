@@ -10,6 +10,7 @@ import { dispatchHeavyAnimationEvent } from "../hooks/useHeavyAnimationCheck";
 import whichChild from "../helpers/dom/whichChild";
 import findUpClassName from "../helpers/dom/findUpClassName";
 import { isSafari } from "../helpers/userAgent";
+import { cancelEvent } from "../helpers/dom/cancelEvent";
 
 function slideNavigation(tabContent: HTMLElement, prevTabContent: HTMLElement, toRight: boolean) {
   const width = prevTabContent.getBoundingClientRect().width;
@@ -80,7 +81,13 @@ function slideTabs(tabContent: HTMLElement, prevTabContent: HTMLElement, toRight
   };
 }
 
-export const TransitionSlider = (content: HTMLElement, type: 'tabs' | 'navigation' | 'zoom-fade' | 'slide-fade' | 'none'/*  | 'counter' */, transitionTime: number, onTransitionEnd?: (id: number) => void, isHeavy = true) => {
+export const TransitionSlider = (
+  content: HTMLElement, 
+  type: 'tabs' | 'navigation' | 'zoom-fade' | 'slide-fade' | 'none'/*  | 'counter' */, 
+  transitionTime: number, 
+  onTransitionEnd?: (id: number) => void, 
+  isHeavy = true
+) => {
   let animationFunction: TransitionFunction = null;
 
   switch(type) {
@@ -101,62 +108,94 @@ export const TransitionSlider = (content: HTMLElement, type: 'tabs' | 'navigatio
 
 type TransitionFunction = (tabContent: HTMLElement, prevTabContent: HTMLElement, toRight: boolean) => void | (() => void);
 
-const Transition = (content: HTMLElement, animationFunction: TransitionFunction, transitionTime: number, onTransitionEnd?: (id: number) => void, isHeavy = true) => {
+const Transition = (
+  content: HTMLElement, 
+  animationFunction: TransitionFunction, 
+  transitionTime: number, 
+  onTransitionEnd?: (id: number) => void, 
+  isHeavy = true,
+  once = false,
+  withAnimationListener = true
+) => {
   const onTransitionEndCallbacks: Map<HTMLElement, Function> = new Map();
   let animationDeferred: CancellablePromise<void>;
-  let animationStarted = 0;
+  // let animationStarted = 0;
   let from: HTMLElement = null;
 
-  // TODO: check for transition type (transform, etc) using by animationFunction
-  content.addEventListener(animationFunction ? 'transitionend' : 'animationend', (e) => {
-    if((e.target as HTMLElement).parentElement !== content) {
-      return;
+  if(withAnimationListener) {
+    const listenerName = animationFunction ? 'transitionend' : 'animationend';
+
+    const onEndEvent = (e: TransitionEvent | AnimationEvent) => {
+      cancelEvent(e);
+  
+      if((e.target as HTMLElement).parentElement !== content) {
+        return;
+      }
+      
+      //console.log('Transition: transitionend', /* content, */ e, selectTab.prevId, performance.now() - animationStarted);
+  
+      const callback = onTransitionEndCallbacks.get(e.target as HTMLElement);
+      if(callback) callback();
+  
+      if(e.target !== from) {
+        return;
+      }
+  
+      if(!animationDeferred && isHeavy) return;
+  
+      if(animationDeferred) {
+        animationDeferred.resolve();
+        animationDeferred = undefined;
+      }
+  
+      if(onTransitionEnd) {
+        onTransitionEnd(selectTab.prevId());
+      }
+  
+      content.classList.remove('animating', 'backwards', 'disable-hover');
+  
+      if(once) {
+        content.removeEventListener(listenerName, onEndEvent/* , {capture: false} */);
+        from = animationDeferred = undefined;
+        onTransitionEndCallbacks.clear();
+      }
+    };
+  
+    // TODO: check for transition type (transform, etc) using by animationFunction
+    content.addEventListener(listenerName, onEndEvent/* , {passive: true, capture: false} */);
+  }
+
+  function selectTab(id: number | HTMLElement, animate = true, overrideFrom?: typeof from) {
+    if(overrideFrom) {
+      from = overrideFrom;
     }
-    
-    //console.log('Transition: transitionend', /* content, */ e, selectTab.prevId, performance.now() - animationStarted);
-
-    const callback = onTransitionEndCallbacks.get(e.target as HTMLElement);
-    if(callback) callback();
-
-    if(e.target !== from) {
-      return;
-    }
-
-    if(!animationDeferred && isHeavy) return;
-
-    if(animationDeferred) {
-      animationDeferred.resolve();
-      animationDeferred = undefined;
-    }
-
-    if(onTransitionEnd) {
-      onTransitionEnd(selectTab.prevId());
-    }
-
-    content.classList.remove('animating', 'backwards', 'disable-hover');
-  });
-
-  function selectTab(id: number | HTMLElement, animate = true) {
-    const self = selectTab;
 
     if(id instanceof HTMLElement) {
       id = whichChild(id);
     }
     
-    const prevId = self.prevId();
+    const prevId = selectTab.prevId();
     if(id === prevId) return false;
 
     //console.log('selectTab id:', id);
 
-    const _from = from;
     const to = content.children[id] as HTMLElement;
 
     if(!rootScope.settings.animationsEnabled || prevId === -1) {
       animate = false;
     }
 
+    if(!withAnimationListener) {
+      const timeout = content.dataset.timeout;
+      if(timeout !== undefined) {
+        clearTimeout(+timeout);
+      }
+
+      delete content.dataset.timeout;
+    }
+
     if(!animate) {
-      if(_from) _from.classList.remove('active', 'to', 'from');  
+      if(from) from.classList.remove('active', 'to', 'from');  
       if(to) {
         to.classList.remove('to', 'from');
         to.classList.add('active');
@@ -170,12 +209,21 @@ const Transition = (content: HTMLElement, animationFunction: TransitionFunction,
       return;
     }
 
+    if(!withAnimationListener) {
+      content.dataset.timeout = '' + window.setTimeout(() => {
+        to.classList.remove('to');
+        from && from.classList.remove('from');
+        content.classList.remove('animating', 'backwards', 'disable-hover');
+        delete content.dataset.timeout;
+      }, transitionTime);
+    }
+
     if(from) {
       from.classList.remove('to');
       from.classList.add('from');
     }
 
-    content.classList.add('animating', 'disable-hover');
+    content.classList.add('animating'/* , 'disable-hover' */);
     const toRight = prevId < id;
     content.classList.toggle('backwards', !toRight);
 
@@ -200,7 +248,8 @@ const Transition = (content: HTMLElement, animationFunction: TransitionFunction,
       });
     }
 
-    if(_from/*  && false */) {
+    if(from/*  && false */) {
+      const _from = from;
       const callback = () => {
         _from.classList.remove('active', 'from');
 
@@ -223,7 +272,7 @@ const Transition = (content: HTMLElement, animationFunction: TransitionFunction,
       if(isHeavy) {
         if(!animationDeferred) {
           animationDeferred = deferredPromise<void>();
-          animationStarted = performance.now();
+          // animationStarted = performance.now();
         }
   
         dispatchHeavyAnimationEvent(animationDeferred, transitionTime * 2);

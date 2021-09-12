@@ -249,13 +249,13 @@ export default class ChatTopbar {
             return;
           }
 
-          const original = selection.toggleByBubble.bind(selection);
-          selection.toggleByBubble = (bubble) => {
+          const original = selection.toggleByElement.bind(selection);
+          selection.toggleByElement = (bubble) => {
             appStateManager.pushToState('chatContextMenuHintWasShown', true);
             toast(i18n('Chat.Menu.Hint'));
 
-            selection.toggleByBubble = original;
-            selection.toggleByBubble(bubble);
+            selection.toggleByElement = original;
+            selection.toggleByElement(bubble);
           };
         });
       },

@@ -115,4 +115,8 @@
     margin: 0 !important;
     left: .5rem;
   }
+
+  &.menu-open {
+    background-color: var(--light-secondary-text-color);
+  }
 }

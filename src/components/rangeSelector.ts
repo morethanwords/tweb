@@ -73,11 +73,13 @@ export default class RangeSelector {
     this.rect = this.container.getBoundingClientRect();
     this.mousedown = true;
     this.scrub(event);
+    this.container.classList.add('is-focused');
     this.events?.onMouseDown && this.events.onMouseDown(event);
   };
 
   protected onMouseUp = (event: GrabEvent) => {
     this.mousedown = false;
+    this.container.classList.remove('is-focused');
     this.events?.onMouseUp && this.events.onMouseUp(event);
   };
 

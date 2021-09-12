@@ -8,7 +8,12 @@ import appImManager from "../../lib/appManagers/appImManager";
 import PopupPickUser from "./pickUser";
 
 export default class PopupForward extends PopupPickUser {
-  constructor(fromPeerId: number, mids: number[], onSelect?: (peerId: number) => Promise<void> | void, onClose?: () => void, overrideOnSelect = false) {
+  constructor(
+    peerIdMids: {[fromPeerId: number]: number[]}, 
+    onSelect?: (peerId: number) => Promise<void> | void, 
+    onClose?: () => void, 
+    overrideOnSelect = false
+  ) {
     super({
       peerTypes: ['dialogs', 'contacts'],
       onSelect: overrideOnSelect ? onSelect : async(peerId) => {
@@ -20,7 +25,7 @@ export default class PopupForward extends PopupPickUser {
         }
 
         appImManager.setInnerPeer(peerId);
-        appImManager.chat.input.initMessagesForward(fromPeerId, mids.slice());
+        appImManager.chat.input.initMessagesForward(peerIdMids);
       },
       onClose,
       placeholder: 'ShareModal.Search.ForwardPlaceholder',

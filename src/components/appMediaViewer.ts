@@ -1684,7 +1684,9 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
   onForwardClick = () => {
     if(this.currentMessageId) {
       //appSidebarRight.forwardTab.open([this.currentMessageId]);
-      new PopupForward(this.currentPeerId, [this.currentMessageId], () => {
+      new PopupForward({
+        [this.currentPeerId]: [this.currentMessageId]
+      }, () => {
         return this.close();
       });
     }

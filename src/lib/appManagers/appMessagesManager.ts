@@ -2171,7 +2171,7 @@ export class AppMessagesManager {
     //return Object.keys(this.groupedMessagesStorage[grouped_id]).map(id => +id).sort((a, b) => a - b);
   }
 
-  public getMidsByMessage(message: any) {
+  public getMidsByMessage(message: Message.message) {
     if(message?.grouped_id) return this.getMidsByAlbum(message.grouped_id);
     else return [message.mid];
   }
