@@ -292,7 +292,7 @@ export default class EmojiTab implements EmoticonsTab {
     const messageInput = appImManager.chat.input.messageInput;
     let inputHTML = messageInput.innerHTML;
 
-    const html = RichTextProcessor.wrapEmojiText(emoji);
+    const html = RichTextProcessor.wrapEmojiText(emoji, true);
     let inserted = false;
     if(window.getSelection) {
       const savedRange = isTouchSupported ? undefined : emoticonsDropdown.getSavedRange();
