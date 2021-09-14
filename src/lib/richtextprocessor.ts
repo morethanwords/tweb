@@ -446,7 +446,7 @@ namespace RichTextProcessor {
     noLinks: true,
     noLinebreaks: true,
     noCommands: true,
-    wrappingDraft: true,
+    wrappingDraft: boolean,
     //mustWrapEmoji: boolean,
     fromBot: boolean,
     noTextFormat: true,
@@ -581,6 +581,8 @@ namespace RichTextProcessor {
           //} else if(options.mustWrapEmoji) {
           } else if(!options.wrappingDraft) {
             insertPart(entity, '<span class="emoji">', '</span>');
+          } else if(!isSafari) {
+            insertPart(entity, '<span class="emoji" contenteditable="false">', '</span>');
           }
           /* if(!emojiSupported) {
             insertPart(entity, `<img src="assets/img/emoji/${entity.unicode}.png" alt="`, `" class="emoji">`);
@@ -825,11 +827,11 @@ namespace RichTextProcessor {
     return arr.join('');
   }
 
-  export function wrapEmojiText(text: string) {
+  export function wrapEmojiText(text: string, isDraft = false) {
     if(!text) return '';
   
     let entities = parseEntities(text).filter(e => e._ === 'messageEntityEmoji');
-    return wrapRichText(text, {entities});
+    return wrapRichText(text, {entities, wrappingDraft: isDraft});
   }
 
   export function wrapUrl(url: string, unsafe?: number | boolean): {url: string, onclick: string} {
