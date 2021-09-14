@@ -132,9 +132,14 @@ export default class AppSearch {
     this.searchPromise = null;
   }
 
-  public beginSearch(peerId = 0, threadId = 0) {
+  public beginSearch(peerId = 0, threadId = 0, query = '') {
     this.peerId = peerId;
     this.threadId = threadId;
+
+    if(this.query !== query) {
+      this.searchInput.inputField.value = query;
+    }
+
     this.searchInput.input.focus();
   }
 

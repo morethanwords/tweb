@@ -19,10 +19,11 @@ export default class AppPrivateSearchTab extends SliderSuperTab {
 
   private peerId = 0;
   private threadId = 0;
+  private query = '';
   private onDatePick: (timestamp: number) => void;
 
   onOpenAfterTimeout() {
-    this.appSearch.beginSearch(this.peerId, this.threadId);
+    this.appSearch.beginSearch(this.peerId, this.threadId, this.query);
   }
 
   protected init() {
@@ -44,30 +45,27 @@ export default class AppPrivateSearchTab extends SliderSuperTab {
 
   open(peerId: number, threadId?: number, onDatePick?: AppPrivateSearchTab['onDatePick'], query?: string) {
     const ret = super.open();
-    if(this.init) {
-      this.init();
-      this.init = null;
+
+    if(!this.peerId) {
+      this.query = query;
+      this.peerId = peerId;
+      this.threadId = threadId;
+      this.onDatePick = onDatePick;
+  
+      this.btnPickDate.classList.toggle('hide', !this.onDatePick);
+      if(this.onDatePick) {
+        attachClickEvent(this.btnPickDate, () => {
+          new PopupDatePicker(new Date(), this.onDatePick).show();
+        });
+      }
+
+      query && this.appSearch.searchInput.inputField.setValueSilently(query);
+  
+      appSidebarRight.toggleSidebar(true);
+    } else {
+      this.appSearch.beginSearch(this.peerId, this.threadId, query);
     }
 
-    query && (this.inputSearch.inputField.value = query);
-
-    if(this.peerId !== 0) {
-      this.appSearch.beginSearch(this.peerId, this.threadId);
-      return ret;
-    }
-
-    this.peerId = peerId;
-    this.threadId = threadId;
-    this.onDatePick = onDatePick;
-
-    this.btnPickDate.classList.toggle('hide', !this.onDatePick);
-    if(this.onDatePick) {
-      attachClickEvent(this.btnPickDate, () => {
-        new PopupDatePicker(new Date(), this.onDatePick).show();
-      });
-    }
-
-    appSidebarRight.toggleSidebar(true);
     return ret;
   }
 }
