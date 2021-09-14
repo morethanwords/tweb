@@ -147,7 +147,7 @@
       font-size: 1rem;
       border-radius: $border-radius-medium;
 
-      &:not(:focus):empty ~ label {
+      &[data-placeholder]:not(:focus):empty ~ label {
         opacity: 0;
       }
     }
@@ -187,5 +187,26 @@
   .popup-album + .popup-album, 
   .popup-container:not(.is-album) .popup-item-media + .popup-item-media {
     margin-top: .5rem;
+  }
+}
+
+.popup-create-contact {
+  .name-fields {
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    padding-left: 116px;
+    margin-top: 1rem;
+
+    .input-field:first-child {
+      margin-top: 0;
+    }
+  }
+
+  .avatar-placeholder {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
   }
 }

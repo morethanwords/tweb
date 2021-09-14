@@ -17,7 +17,7 @@ import cleanUsername from "../../helpers/cleanUsername";
 import { tsNow } from "../../helpers/date";
 import { formatPhoneNumber } from "../../helpers/formatPhoneNumber";
 import { safeReplaceObject, isObject } from "../../helpers/object";
-import { Chat, InputUser, User as MTUser, UserProfilePhoto, UserStatus } from "../../layer";
+import { Chat, InputContact, InputUser, User as MTUser, UserProfilePhoto, UserStatus } from "../../layer";
 import I18n, { i18n, LangPackKey } from "../langPack";
 //import apiManager from '../mtproto/apiManager';
 import apiManager from '../mtproto/mtprotoworker';
@@ -680,75 +680,50 @@ export class AppUsersManager {
     }
   }
 
-  /* function importContact (phone, firstName, lastName) {
-      return MtpApiManager.invokeApi('contacts.importContacts', {
-        contacts: [{
-          _: 'inputPhoneContact',
-          client_id: '1',
-          phone: phone,
-          first_name: firstName,
-          last_name: lastName
-        }],
-        replace: false
-      }).then(function (importedContactsResult) {
-        saveApiUsers(importedContactsResult.users)
+  public importContact(first_name: string, last_name: string, phone: string) {
+    return this.importContacts([{
+      first_name,
+      last_name,
+      phones: [phone]
+    }]).then(userIds => {
+      if(!userIds.length) {
+        const error = new Error();
+        (error as any).type = 'NO_USER';
+        throw error;
+      }
 
-        var foundUserID = false
-        angular.forEach(importedContactsResult.imported, function (importedContact) {
-          onContactUpdated(foundUserID = importedContact.user_id, true)
-        })
-
-        return foundUserID || false
-      })
+      return userIds[0];
+    });
   }
 
-  function importContacts (contacts) {
-    var inputContacts = [],
-      i
-    var j
+  public importContacts(contacts: {phones: string[], first_name: string, last_name: string}[]) {
+    const inputContacts: InputContact[] = [];
 
-    for (i = 0; i < contacts.length; i++) {
-      for (j = 0; j < contacts[i].phones.length; j++) {
+    for(let i = 0; i < contacts.length; ++i) {
+      for(let j = 0; j < contacts[i].phones.length; ++j) {
         inputContacts.push({
           _: 'inputPhoneContact',
           client_id: (i << 16 | j).toString(10),
           phone: contacts[i].phones[j],
           first_name: contacts[i].first_name,
           last_name: contacts[i].last_name
-        })
+        });
       }
     }
 
-    return MtpApiManager.invokeApi('contacts.importContacts', {
-      contacts: inputContacts,
-      replace: false
-    }).then(function (importedContactsResult) {
-      saveApiUsers(importedContactsResult.users)
+    return apiManager.invokeApi('contacts.importContacts', {
+      contacts: inputContacts
+    }).then((importedContactsResult) => {
+      this.saveApiUsers(importedContactsResult.users);
 
-      var result = []
-      angular.forEach(importedContactsResult.imported, function (importedContact) {
-        onContactUpdated(importedContact.user_id, true)
-        result.push(importedContact.user_id)
-      })
-
-      return result
-    })
-  } */
-
-  /* public deleteContacts(userIds: number[]) {
-    var ids: any[] = [];
-    userIds.forEach((userId) => {
-      ids.push(this.getUserInput(userId));
-    })
-
-    return apiManager.invokeApi('contacts.deleteContacts', {
-      id: ids
-    }).then(() => {
-      userIds.forEach((userId) => {
-        this.onContactUpdated(userId, false);
+      const userIds = importedContactsResult.imported.map((importedContact) => {
+        this.onContactUpdated(importedContact.user_id, true);
+        return importedContact.user_id;
       });
+
+      return userIds;
     });
-  } */
+  }
 
   public getTopPeers(type: TopPeerType) {
     if(this.getTopPeersPromises[type]) return this.getTopPeersPromises[type];
@@ -889,6 +864,14 @@ export class AppUsersManager {
   }
 
   public addContact(userId: number, first_name: string, last_name: string, phone: string, showPhone?: true) {
+    /* if(!userId) {
+      return this.importContacts([{
+        first_name,
+        last_name,
+        phones: [phone]
+      }]);
+    } */
+
     return apiManager.invokeApi('contacts.addContact', {
       id: this.getUserInput(userId),
       first_name,
