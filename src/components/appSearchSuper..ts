@@ -483,7 +483,7 @@ export default class AppSearchSuper {
     attachClickEvent(this.tabs.inputMessagesFilterPhotoVideo, onMediaClick.bind(null, 'grid-item', 'grid-item', 'inputMessagesFilterPhotoVideo'));
     attachClickEvent(this.tabs.inputMessagesFilterDocument, onMediaClick.bind(null, 'document-with-thumb', 'media-container', 'inputMessagesFilterDocument'));
 
-    attachClickEvent(this.tabs.inputMessagesFilterUrl, (e) => {
+    /* attachClickEvent(this.tabs.inputMessagesFilterUrl, (e) => {
       const target = e.target as HTMLElement;
       if(target.tagName === 'A') {
         return;
@@ -493,7 +493,7 @@ export default class AppSearchSuper {
         const a = findUpClassName(target, 'row').querySelector('.anchor-url:last-child') as HTMLAnchorElement;
         a.click();
       } catch(err) {}
-    });
+    }); */
 
     this.mediaTab = this.mediaTabs[0];
 
