@@ -23,6 +23,7 @@ const lang = {
   "StartMessaging": "Start Messaging",
 
   // * macos
+  "Contacts.PhoneNumber.Placeholder": "Phone Number",
   "Login.Next": "Next",
   "Login.ContinueOnLanguage": "Continue in English",
   "Login.QR.Title": "Log in to Telegram by QR Code",

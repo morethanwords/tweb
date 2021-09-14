@@ -570,6 +570,7 @@ const lang = {
   "Alert.UserDoesntExists": "Sorry, this user doesn't seem to exist.",
   "Appearance.Reset": "Reset to Defaults",
   "Bio.Description": "Any details such as age, occupation or city.\nExample: 23 y.o. designer from San Francisco",
+  "Contacts.PhoneNumber.NotRegistred": "The person with this phone number is not registered on Telegram yet.",
   "Channel.UsernameAboutChannel": "People can share this link with others and can find your channel using Telegram search.",
   "Channel.UsernameAboutGroup": "People can share this link with others and find your group using Telegram search.",
   "Chat.CopySelectedText": "Copy Selected Text",

@@ -40,6 +40,7 @@ import { getCountryEmoji } from "../vendor/emoji";
 import simulateEvent from "../helpers/dom/dispatchEvent";
 import stateStorage from "../lib/stateStorage";
 import rootScope from "../lib/rootScope";
+import TelInputField from "../components/telInputField";
 
 //import _countries from '../countries_pretty.json';
 let btnNext: HTMLButtonElement = null, btnQr: HTMLButtonElement;
@@ -163,7 +164,7 @@ let onFirstMount = () => {
     lastCountrySelected = countries.find(c => c.default_name === defaultName);
     lastCountryCodeSelected = lastCountrySelected.country_codes.find(_countryCode => _countryCode.country_code === countryCode);
     
-    telInputField.value = lastValue = phoneCode;
+    telInputField.value = telInputField.lastValue = phoneCode;
     hidePicker();
     setTimeout(() => {
       telEl.focus();
@@ -269,114 +270,41 @@ let onFirstMount = () => {
     else countryInput.focus();
   });
 
-  let pasted = false;
-  let lastValue = '';
-  
-  const telInputField = new InputField({
-    label: 'Login.PhoneLabel',
-    //plainText: true,
-    name: 'phone'
-  });
+  const telInputField = new TelInputField({
+    onInput: (formatted) => {
+      lottieLoader.loadLottieWorkers();
 
-  telInputField.container.classList.add('input-field-phone');
-
-  let telEl = telInputField.input;
-  if(telEl instanceof HTMLInputElement) {
-    telEl.type = 'tel';
-    telEl.autocomplete = 'rr55RandomRR55';
-  } else {
-    telEl.inputMode = 'decimal';
-
-    const pixelRatio = window.devicePixelRatio;
-    if(pixelRatio > 1) {
-      let letterSpacing: number;
-      if(isApple) {
-        letterSpacing = pixelRatio * -.16;
-      } else if(isAndroid) {
-        letterSpacing = 0;
-      }
-
-      telEl.style.setProperty('--letter-spacing', letterSpacing + 'px');
-    }
-
-    const originalFunc = telInputField.setValueSilently.bind(telInputField);
-    telInputField.setValueSilently = (value) => {
-      originalFunc(value);
-      placeCaretAtEnd(telInputField.input, true);
-    };
-  }
-  
-  telEl.addEventListener('input', () => {
-    //console.log('input', this.value);
-    telEl.classList.remove('error');
-
-    lottieLoader.loadLottieWorkers();
-
-    const value = telInputField.value;
-    const diff = Math.abs(value.length - lastValue.length);
-    if(diff > 1 && !pasted && isAppleMobile) {
-      telInputField.setValueSilently(lastValue + value);
-    }
-
-    pasted = false;
-
-    telInputField.setLabel();
-
-    let formatted: string, country: HelpCountry, countryCode: HelpCountryCode, leftPattern = '';
-    if(telInputField.value.replace(/\++/, '+') === '+') {
-      telInputField.setValueSilently('+');
-    } else {
-      const o = formatPhoneNumber(telInputField.value);
-      formatted = o.formatted;
-      country = o.country;
-      leftPattern = o.leftPattern;
-      countryCode = o.code;
-      telInputField.setValueSilently(lastValue = formatted ? '+' + formatted : '');
-    }
-
-    telEl.dataset.leftPattern = leftPattern/* .replace(/X/g, '0') */;
-
-    //console.log(formatted, country);
-
-    let countryName = country ? country.name || country.default_name : ''/* 'Unknown' */;
-    if(countryName !== countryInputField.value && (
-        !lastCountrySelected || 
-        !country ||
-        !countryCode || (
-          lastCountrySelected !== country && 
-          lastCountryCodeSelected.country_code !== countryCode.country_code
+      const {country, code} = formatted;
+      let countryName = country ? country.name || country.default_name : ''/* 'Unknown' */;
+      if(countryName !== countryInputField.value && (
+          !lastCountrySelected || 
+          !country ||
+          !code || (
+            lastCountrySelected !== country && 
+            lastCountryCodeSelected.country_code !== code.country_code
+          )
         )
-      )
-    ) {
-      replaceContent(countryInput, country ? i18n(country.default_name as any) : countryName);
-      lastCountrySelected = country;
-      lastCountryCodeSelected = countryCode;
-    }
-
-    //if(country && (telInputField.value.length - 1) >= (country.pattern ? country.pattern.length : 9)) {
-    if(country || (telInputField.value.length - 1) > 1) {
-      btnNext.style.visibility = '';
-    } else {
-      btnNext.style.visibility = 'hidden';
+      ) {
+        replaceContent(countryInput, country ? i18n(country.default_name as any) : countryName);
+        lastCountrySelected = country;
+        lastCountryCodeSelected = code;
+      }
+  
+      //if(country && (telInputField.value.length - 1) >= (country.pattern ? country.pattern.length : 9)) {
+      if(country || (telInputField.value.length - 1) > 1) {
+        btnNext.style.visibility = '';
+      } else {
+        btnNext.style.visibility = 'hidden';
+      }
     }
   });
 
-  telEl.addEventListener('paste', () => {
-    pasted = true;
-    //console.log('paste', telEl.value);
-  });
-
-  /* telEl.addEventListener('change', (e) => {
-    console.log('change', telEl.value);
-  }); */
+  const telEl = telInputField.input;
 
   telEl.addEventListener('keypress', (e) => {
     //console.log('keypress', this.value);
     if(!btnNext.style.visibility &&/* this.value.length >= 9 && */ e.key === 'Enter') {
       return onSubmit();
-    } else if(/\D/.test(e.key) && !(e.metaKey || e.ctrlKey) && e.key !== 'Backspace' && !(e.key === '+' && e.shiftKey/*  && !this.value */)) {
-      e.preventDefault();
-      return false;
     }
   });
 

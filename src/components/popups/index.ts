@@ -11,6 +11,7 @@ import appNavigationController, { NavigationItem } from "../appNavigationControl
 import { i18n, LangPackKey } from "../../lib/langPack";
 import findUpClassName from "../../helpers/dom/findUpClassName";
 import blurActiveElement from "../../helpers/dom/blurActiveElement";
+import ListenerSetter from "../../helpers/listenerSetter";
 
 export type PopupButton = {
   text?: string,
@@ -34,7 +35,7 @@ export default class PopupElement {
   protected header = document.createElement('div');
   protected title = document.createElement('div');
   protected btnClose: HTMLElement;
-  protected btnConfirm: HTMLElement;
+  protected btnConfirm: HTMLButtonElement;
   protected body: HTMLElement;
   protected buttons: HTMLElement;
 
@@ -43,6 +44,8 @@ export default class PopupElement {
   protected onEscape: () => boolean = () => true;
 
   protected navigationItem: NavigationItem;
+
+  protected listenerSetter: ListenerSetter;
 
   constructor(className: string, buttons?: Array<PopupButton>, options: PopupOptions = {}) {
     this.element.classList.add('popup');
@@ -53,6 +56,8 @@ export default class PopupElement {
     this.title.classList.add('popup-title');
 
     this.header.append(this.title);
+
+    this.listenerSetter = new ListenerSetter();
 
     if(options.closable) {
       this.btnClose = document.createElement('span');
@@ -157,6 +162,7 @@ export default class PopupElement {
     this.onClose && this.onClose();
     this.element.classList.add('hiding');
     this.element.classList.remove('active');
+    this.listenerSetter.removeAll();
 
     if(this.btnClose) this.btnClose.removeEventListener('click', this.hide);
     rootScope.isOverlayActive = false;

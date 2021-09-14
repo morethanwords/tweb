@@ -75,7 +75,9 @@ export type InputFieldOptions = {
   maxLength?: number, 
   showLengthOn?: number,
   plainText?: true,
-  animate?: true
+  animate?: true,
+  required?: boolean,
+  validate?: () => boolean
 };
 
 class InputField {
@@ -86,6 +88,9 @@ class InputField {
 
   public originalValue: string;
 
+  public required: boolean;
+  public validate: () => boolean;
+
   //public onLengthChange: (length: number, isOverflow: boolean) => void;
   protected wasInputFakeClientHeight: number;
   // protected showScrollDebounced: () => void;
@@ -93,6 +98,13 @@ class InputField {
   constructor(public options: InputFieldOptions = {}) {
     this.container = document.createElement('div');
     this.container.classList.add('input-field');
+
+    this.required = options.required;
+    this.validate = options.validate;
+
+    if(this.required) {
+      this.originalValue = '';
+    }
 
     if(options.maxLength) {
       options.showLengthOn = Math.min(40, Math.round(options.maxLength / 3));
@@ -259,8 +271,12 @@ class InputField {
     }
   }
 
+  public isChanged() {
+    return this.value !== this.originalValue;
+  }
+
   public isValid() {
-    return !this.input.classList.contains('error') && this.value !== this.originalValue;
+    return !this.input.classList.contains('error') && this.isChanged() && (!this.validate || this.validate());
   }
 
   public setOriginalValue(value: InputField['originalValue'] = '', silent = false) {

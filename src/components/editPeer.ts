@@ -24,37 +24,94 @@ export default class EditPeer {
 
   private peerId: number;
 
+  private _disabled = false;
+  private avatarSize = 120;
+
   constructor(options: {
-    peerId: number,
+    peerId?: number,
     inputFields: EditPeer['inputFields'],
     listenerSetter: ListenerSetter,
     doNotEditAvatar?: boolean,
+    withoutAvatar?: boolean,
+    nextBtn?: HTMLButtonElement,
+    avatarSize?: number
   }) {
     safeAssign(this, options);
 
-    this.nextBtn = ButtonCorner({icon: 'check'});
+    if(!this.nextBtn) {
+      this.nextBtn = ButtonCorner({icon: 'check'});
+    } else if(!this.nextBtn.classList.contains('btn-corner')) {
+      this.handleChange = () => {
+        this.nextBtn.toggleAttribute('disabled', !this.isChanged() || this.disabled);
+      };
+    }
 
-    this.avatarElem = document.createElement('avatar-element') as AvatarElement;
-    this.avatarElem.classList.add('avatar-placeholder', 'avatar-120');
-    this.avatarElem.setAttribute('peer', '' + this.peerId);
-
-    if(!options.doNotEditAvatar) {
-      this.avatarEdit = new AvatarEdit((_upload) => {
-        this.uploadAvatar = _upload;
-        this.handleChange();
-        this.avatarElem.remove();
-      });
-
-      this.avatarEdit.container.append(this.avatarElem);
+    if(!options.withoutAvatar) {
+      this.avatarElem = document.createElement('avatar-element') as AvatarElement;
+      this.avatarElem.classList.add('avatar-placeholder', 'avatar-' + this.avatarSize);
+      this.avatarElem.setAttribute('peer', '' + this.peerId);
+  
+      if(!options.doNotEditAvatar) {
+        this.avatarEdit = new AvatarEdit((_upload) => {
+          this.uploadAvatar = _upload;
+          this.handleChange();
+          this.avatarElem.remove();
+        });
+  
+        this.avatarEdit.container.append(this.avatarElem);
+      }
     }
 
     this.inputFields.forEach(inputField => {
       this.listenerSetter.add(inputField.input)('input', this.handleChange);
     });
+
+    this.handleChange();
+  }
+
+  public get disabled() {
+    return this._disabled;
+  }
+
+  public set disabled(value) {
+    this._disabled = value;
+    this.inputFields.forEach(inputField => inputField.input.toggleAttribute('disabled', value));
+    this.handleChange();
+  }
+
+  public lockWithPromise(promise: Promise<any>, unlockOnSuccess = false) {
+    this.disabled = true;
+    promise.then(() => {
+      if(unlockOnSuccess) {
+        this.disabled = false;
+      }
+    }, () => {
+      this.disabled = false;
+    });
   }
 
   public isChanged = () => {
-    return !!this.uploadAvatar || !!this.inputFields.find(inputField => inputField.isValid());
+    if(this.uploadAvatar) {
+      return true;
+    }
+
+    let validLength = 0, requiredLength = 0, requiredValidLength = 0;
+    this.inputFields.forEach(inputField => {
+      const isValid = inputField.isValid();
+      if(isValid) {
+        ++validLength;
+
+        if(inputField.required) {
+          ++requiredValidLength;
+        }
+      }
+
+      if(inputField.required) {
+        ++requiredLength;
+      }
+    });
+
+    return requiredLength === requiredValidLength && validLength > 0;
   };
 
   public handleChange = () => {

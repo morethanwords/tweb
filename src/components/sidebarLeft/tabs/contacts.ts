@@ -7,11 +7,13 @@
 import { SliderSuperTab } from "../../slider";
 import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
 import appUsersManager from "../../../lib/appManagers/appUsersManager";
-import appPhotosManager from "../../../lib/appManagers/appPhotosManager";
 import InputSearch from "../../inputSearch";
 import { isMobile } from "../../../helpers/userAgent";
 import { canFocus } from "../../../helpers/dom/canFocus";
 import windowSize from "../../../helpers/windowSize";
+import ButtonCorner from "../../buttonCorner";
+import { attachClickEvent } from "../../../helpers/dom/clickEvent";
+import PopupCreateContact from "../../popups/createContact";
 
 // TODO: поиск по людям глобальный, если не нашло в контактах никого
 
@@ -29,8 +31,15 @@ export default class AppContactsTab extends SliderSuperTab {
     this.list.id = 'contacts';
     this.list.classList.add('contacts-container');
 
+    const btnAdd = ButtonCorner({icon: 'add', className: 'is-visible'});
+    this.content.append(btnAdd);
+
+    attachClickEvent(btnAdd, () => {
+      new PopupCreateContact();
+    }, {listenerSetter: this.listenerSetter});
+
     appDialogsManager.setListClickListener(this.list, () => {
-      (this.container.querySelector('.sidebar-close-button') as HTMLElement).click();
+      this.close();
     }, undefined, true);
 
     this.inputSearch = new InputSearch('Search', (value) => {

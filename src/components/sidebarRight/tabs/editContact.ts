@@ -31,7 +31,7 @@ export default class AppEditContactTab extends SliderSuperTab {
 
   protected init() {
     this.container.classList.add('edit-peer-container', 'edit-contact-container');
-    this.setTitle('Edit');
+    this.setTitle(this.peerId ? 'Edit' : 'AddContactTitle');
 
     {
       const section = new SettingSection({noDelimiter: true});
@@ -50,14 +50,15 @@ export default class AppEditContactTab extends SliderSuperTab {
         name: 'contact-lastname',
         maxLength: 70
       });
+
+      if(this.peerId) {
+        const user = appUsersManager.getUser(this.peerId);
+
+        this.nameInputField.setOriginalValue(user.first_name);
+        this.lastNameInputField.setOriginalValue(user.last_name);
+      }
       
-      const user = appUsersManager.getUser(this.peerId);
-
-      this.nameInputField.setOriginalValue(user.first_name);
-      this.lastNameInputField.setOriginalValue(user.last_name);
-
       inputWrapper.append(this.nameInputField.container, this.lastNameInputField.container);
-      
       inputFields.push(this.nameInputField, this.lastNameInputField);
 
       this.editPeer = new EditPeer({
@@ -68,52 +69,56 @@ export default class AppEditContactTab extends SliderSuperTab {
       });
       this.content.append(this.editPeer.nextBtn);
 
-      const div = document.createElement('div');
-      div.classList.add('avatar-edit');
-      div.append(this.editPeer.avatarElem);
-
-      const notificationsCheckboxField = new CheckboxField({
-        text: 'Notifications'
-      });
-
-      notificationsCheckboxField.input.addEventListener('change', (e) => {
-        if(!e.isTrusted) {
-          return;
-        }
-
-        appMessagesManager.mutePeer(this.peerId);
-      });
-
-      this.listenerSetter.add(rootScope)('notify_settings', (update) => {
-        if(update.peer._ !== 'notifyPeer') return;
-        const peerId = appPeersManager.getPeerId(update.peer.peer);
-        if(this.peerId === peerId) {
-          const enabled = !appNotificationsManager.isMuted(update.notify_settings);
-          if(enabled !== notificationsCheckboxField.checked) {
-            notificationsCheckboxField.checked = enabled;
+      if(this.peerId) {
+        const div = document.createElement('div');
+        div.classList.add('avatar-edit');
+        div.append(this.editPeer.avatarElem);
+  
+        const notificationsCheckboxField = new CheckboxField({
+          text: 'Notifications'
+        });
+  
+        notificationsCheckboxField.input.addEventListener('change', (e) => {
+          if(!e.isTrusted) {
+            return;
           }
-        }
-      });
+  
+          appMessagesManager.mutePeer(this.peerId);
+        });
+  
+        this.listenerSetter.add(rootScope)('notify_settings', (update) => {
+          if(update.peer._ !== 'notifyPeer') return;
+          const peerId = appPeersManager.getPeerId(update.peer.peer);
+          if(this.peerId === peerId) {
+            const enabled = !appNotificationsManager.isMuted(update.notify_settings);
+            if(enabled !== notificationsCheckboxField.checked) {
+              notificationsCheckboxField.checked = enabled;
+            }
+          }
+        });
+  
+        const notificationsRow = new Row({
+          checkboxField: notificationsCheckboxField
+        });
+  
+        const enabled = !appNotificationsManager.isPeerLocalMuted(this.peerId, false);
+        notificationsCheckboxField.checked = enabled;
+  
+        const profileNameDiv = document.createElement('div');
+        profileNameDiv.classList.add('profile-name');
+        profileNameDiv.append(new PeerTitle({
+          peerId: this.peerId
+        }).element);
+        //profileNameDiv.innerHTML = 'Karen Stanford';
+  
+        const profileSubtitleDiv = document.createElement('div');
+        profileSubtitleDiv.classList.add('profile-subtitle');
+        profileSubtitleDiv.append(i18n('EditContact.OriginalName'));
 
-      const notificationsRow = new Row({
-        checkboxField: notificationsCheckboxField
-      });
-
-      const enabled = !appNotificationsManager.isPeerLocalMuted(this.peerId, false);
-      notificationsCheckboxField.checked = enabled;
-
-      const profileNameDiv = document.createElement('div');
-      profileNameDiv.classList.add('profile-name');
-      profileNameDiv.append(new PeerTitle({
-        peerId: this.peerId
-      }).element);
-      //profileNameDiv.innerHTML = 'Karen Stanford';
-
-      const profileSubtitleDiv = document.createElement('div');
-      profileSubtitleDiv.classList.add('profile-subtitle');
-      profileSubtitleDiv.append(i18n('EditContact.OriginalName'));
-
-      section.content.append(div, profileNameDiv, profileSubtitleDiv, inputWrapper, notificationsRow.container);
+        section.content.append(div, profileNameDiv, profileSubtitleDiv, inputWrapper, notificationsRow.container);
+      } else {
+        section.content.append(inputWrapper);
+      }
 
       this.scrollable.append(section.container);
 
@@ -128,7 +133,7 @@ export default class AppEditContactTab extends SliderSuperTab {
       }, {listenerSetter: this.listenerSetter});
     }
 
-    {
+    if(this.peerId) {
       const section = new SettingSection({
         
       });
