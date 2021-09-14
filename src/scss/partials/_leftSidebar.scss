@@ -212,7 +212,8 @@
       }
     }
     
-    .search-super-tabs-scrollable { 
+    .search-super-tabs-scrollable {
+      flex: 0 0 auto; 
       position: relative !important; 
 
       &:before {
@@ -514,6 +515,7 @@
 
   .scrollable-y {
     position: relative;
+    flex: 1 1 auto;
   }
 }
 
