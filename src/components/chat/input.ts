@@ -355,7 +355,8 @@ export default class ChatInput {
         appendTo: this.rowsWrapper,
         listenerSetter: this.listenerSetter,
         appMessagesManager: this.appMessagesManager,
-        btnHover: this.btnToggleReplyMarkup
+        btnHover: this.btnToggleReplyMarkup,
+        chatInput: this
       });
       this.listenerSetter.add(this.replyKeyboard)('open', () => this.btnToggleReplyMarkup.classList.add('active'));
       this.listenerSetter.add(this.replyKeyboard)('close', () => this.btnToggleReplyMarkup.classList.remove('active'));

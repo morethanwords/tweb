@@ -4055,6 +4055,7 @@ export namespace ReplyMarkup {
 			single_use?: true,
 			selective?: true,
 			hidden?: true,
+			used?: true,
 		}>,
 		placeholder?: string,
 		mid?: number,
