@@ -35,6 +35,7 @@ import isInDOM from "../../helpers/dom/isInDOM";
 import { randomLong } from "../../helpers/random";
 import { attachContextMenuListener } from "../misc";
 import { attachClickEvent, AttachClickOptions } from "../../helpers/dom/clickEvent";
+import findUpAsChild from "../../helpers/dom/findUpAsChild";
 
 const accumulateMapSet = (map: Map<number, Set<number>>) => {
   return [...map.values()].reduce((acc, v) => acc + v.size, 0);
@@ -136,6 +137,8 @@ class AppSelection {
 
       const slice = elements.slice(firstIndex + 1, lastIndex);
 
+      console.log('getElementsBetween', first, last, slice, firstIndex, lastIndex, isHigher);
+
       return slice;
     };
 
@@ -190,8 +193,16 @@ class AppSelection {
           seenSet.add(mid);
 
           if((selecting && !isSelected) || (!selecting && isSelected)) {
+            const seenLength = accumulateMapSet(seen);
             if(this.toggleByElement && checkBetween) {
+              if(seenLength < 2) {
+                if(findUpAsChild(element, firstTarget)) {
+                  firstTarget = element;
+                }
+              }
+              
               const elementsBetween = getElementsBetween(firstTarget, element);
+              console.log(elementsBetween);
               if(elementsBetween.length) {
                 elementsBetween.forEach(element => {
                   processElement(element, false);
@@ -200,7 +211,7 @@ class AppSelection {
             }
 
             if(!this.selectedMids.size) {
-              if(accumulateMapSet(seen) === 2 && this.toggleByMid) {
+              if(seenLength === 2 && this.toggleByMid) {
                 for(const [peerId, mids] of seen) {
                   for(const mid of mids) {
                     this.toggleByMid(peerId, mid);

@@ -288,26 +288,42 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
       };
 
       let exceptionsCount = 0;
-      const LOAD_COUNT = 50;
-      const loader = new ScrollableLoader({
-        scrollable: this.scrollable,
-        getPromise: () => {
-          return appProfileManager.getChannelParticipants(this.chatId, {_: 'channelParticipantsBanned', q: ''}, LOAD_COUNT, list.childElementCount).then(res => {
-            for(const participant of res.participants) {
-              add(participant as ChannelParticipant.channelParticipantBanned, true);
-            }
+      let loader: ScrollableLoader;
+      const setLoader = () => {
+        const LOAD_COUNT = 50;
+        loader = new ScrollableLoader({
+          scrollable: this.scrollable,
+          getPromise: () => {
+            return appProfileManager.getChannelParticipants(this.chatId, {_: 'channelParticipantsBanned', q: ''}, LOAD_COUNT, list.childElementCount).then(res => {
+              for(const participant of res.participants) {
+                add(participant as ChannelParticipant.channelParticipantBanned, true);
+              }
+  
+              exceptionsCount = res.count;
+              setLength();
+  
+              return res.participants.length < LOAD_COUNT || res.count === list.childElementCount;
+            });
+          }
+        });
 
-            exceptionsCount = res.count;
-            setLength();
-
-            return res.participants.length < LOAD_COUNT || res.count === list.childElementCount;
-          });
-        }
-      });
+        return loader.load();
+      };
 
       this.scrollable.append(section.container);
 
-      await loader.load();
+      if(appChatsManager.isChannel(this.chatId)) {
+        await setLoader();
+      } else {
+        setLength();
+        
+        this.listenerSetter.add(rootScope)('dialog_migrate', ({migrateFrom, migrateTo}) => {
+          if(this.chatId === migrateFrom) {
+            this.chatId = migrateTo;
+            setLoader();
+          }
+        });
+      }
     }
   }
 
