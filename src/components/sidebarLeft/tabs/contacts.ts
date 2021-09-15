@@ -14,22 +14,22 @@ import windowSize from "../../../helpers/windowSize";
 import ButtonCorner from "../../buttonCorner";
 import { attachClickEvent } from "../../../helpers/dom/clickEvent";
 import PopupCreateContact from "../../popups/createContact";
+import SortedUserList from "../../sortedUserList";
+import { getMiddleware } from "../../../helpers/middleware";
+import replaceContent from "../../../helpers/dom/replaceContent";
+import rootScope from "../../../lib/rootScope";
 
 // TODO: поиск по людям глобальный, если не нашло в контактах никого
 
 export default class AppContactsTab extends SliderSuperTab {
-  private list: HTMLUListElement;
-  private promise: Promise<void>;
-
   private inputSearch: InputSearch;
-  private alive = true;
+  private middleware: ReturnType<typeof getMiddleware>;
+  private sortedUserList: SortedUserList;
   
-  init() {
+  protected init() {
     this.container.id = 'contacts-container';
 
-    this.list = appDialogsManager.createChatList(/* {avatarSize: 48, handheldsSize: 66} */);
-    this.list.id = 'contacts';
-    this.list.classList.add('contacts-container');
+    // this.list = appDialogsManager.createChatList(/* {avatarSize: 48, handheldsSize: 66} */);
 
     const btnAdd = ButtonCorner({icon: 'add', className: 'is-visible'});
     this.content.append(btnAdd);
@@ -38,31 +38,43 @@ export default class AppContactsTab extends SliderSuperTab {
       new PopupCreateContact();
     }, {listenerSetter: this.listenerSetter});
 
-    appDialogsManager.setListClickListener(this.list, () => {
-      this.close();
-    }, undefined, true);
-
     this.inputSearch = new InputSearch('Search', (value) => {
-      this.list.innerHTML = '';
       this.openContacts(value);
+    });
+
+    this.listenerSetter.add(rootScope)('contacts_update', (userId) => {
+      const isContact = appUsersManager.isContact(userId);
+      if(isContact) this.sortedUserList.add(userId);
+      else this.sortedUserList.delete(userId);
     });
 
     this.title.replaceWith(this.inputSearch.container);
 
-    this.scrollable.append(this.list);
+    this.middleware = getMiddleware();
 
     // preload contacts
     // appUsersManager.getContacts();
   }
 
-  onClose() {
-    this.alive = false;
+  protected createList() {
+    const sortedUserList = new SortedUserList();
+    const list = sortedUserList.list;
+    list.id = 'contacts';
+    list.classList.add('contacts-container');
+    appDialogsManager.setListClickListener(list, () => {
+      this.close();
+    }, undefined, true);
+    return sortedUserList;
+  }
+
+  protected onClose() {
+    this.middleware.clean();
     /* // need to clear, and left 1 page for smooth slide
     let pageCount = appPhotosManager.windowH / 72 * 1.25 | 0;
     (Array.from(this.list.children) as HTMLElement[]).slice(pageCount).forEach(el => el.remove()); */
   }
 
-  onOpenAfterTimeout() {
+  protected onOpenAfterTimeout() {
     if(isMobile || !canFocus(true)) return;
     this.inputSearch.input.focus();
   }
@@ -73,36 +85,29 @@ export default class AppContactsTab extends SliderSuperTab {
       this.init = null;
     }
 
-    if(this.promise) return this.promise;
+    this.middleware.clean();
+    const middleware = this.middleware.get();
     this.scrollable.onScrolledBottom = null;
+    this.scrollable.container.textContent = '';
 
-    this.promise = appUsersManager.getContacts(query, undefined, 'online').then(contacts => {
-      this.promise = null;
-
-      if(!this.alive) {
-        //console.warn('user closed contacts before it\'s loaded');
+    appUsersManager.getContacts(query, undefined, 'online').then(contacts => {
+      if(!middleware()) {
         return;
       }
+
+      const sortedUserList = this.sortedUserList = this.createList();
 
       let renderPage = () => {
         const pageCount = windowSize.windowH / 72 * 1.25 | 0;
         const arr = contacts.splice(0, pageCount); // надо splice!
 
         arr.forEach((peerId) => {
-          const {dom} = appDialogsManager.addDialogNew({
-            dialog: peerId,
-            container: this.list,
-            drawStatus: false,
-            avatarSize: 48,
-            autonomous: true
-          });
-  
-          const status = appUsersManager.getUserStatusString(peerId);
-          dom.lastMessageSpan.append(status);
+          sortedUserList.add(peerId);
         });
 
         if(!contacts.length) {
           renderPage = undefined;
+          this.scrollable.onScrolledBottom = null;
         }
       };
 
@@ -114,6 +119,8 @@ export default class AppContactsTab extends SliderSuperTab {
           this.scrollable.onScrolledBottom = null;
         }
       };
+
+      replaceContent(this.scrollable.container, sortedUserList.list);
     });
   }
 

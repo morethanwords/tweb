@@ -21,7 +21,7 @@ import { Chat, InputContact, InputUser, User as MTUser, UserProfilePhoto, UserSt
 import I18n, { i18n, LangPackKey } from "../langPack";
 //import apiManager from '../mtproto/apiManager';
 import apiManager from '../mtproto/mtprotoworker';
-import { REPLIES_PEER_ID } from "../mtproto/mtproto_config";
+import { REPLIES_PEER_ID, SERVICE_PEER_ID } from "../mtproto/mtproto_config";
 import serverTimeManager from "../mtproto/serverTimeManager";
 import { RichTextProcessor } from "../richtextprocessor";
 import rootScope from "../rootScope";
@@ -371,15 +371,31 @@ export class AppUsersManager {
     // * exclude from state
     // defineNotNumerableProperties(user, ['initials', 'num', 'rFirstName', 'rFullName', 'rPhone', 'sortName', 'sortStatus']);
 
-    const fullName = user.first_name + ' ' + (user.last_name || '');
-    if(user.username) {
-      const searchUsername = cleanUsername(user.username);
-      this.usernames[searchUsername] = userId;
+    if(!oldUser || oldUser.username !== user.username) {
+      if(oldUser?.username) {
+        const oldSearchUsername = cleanUsername(oldUser.username);
+        delete this.usernames[oldSearchUsername];
+      }
+
+      if(user.username) {
+        const searchUsername = cleanUsername(user.username);
+        this.usernames[searchUsername] = userId;
+      }
     }
 
-    user.sortName = user.pFlags.deleted ? '' : cleanSearchText(fullName, false);
+    if(!oldUser 
+      || oldUser.initials === undefined 
+      || oldUser.sortName === undefined 
+      || oldUser.first_name !== user.first_name 
+      || oldUser.last_name !== user.last_name) {
+      const fullName = user.first_name + ' ' + (user.last_name || '');
 
-    user.initials = RichTextProcessor.getAbbreviation(fullName);
+      user.sortName = user.pFlags.deleted ? '' : cleanSearchText(fullName, false);  
+      user.initials = RichTextProcessor.getAbbreviation(fullName);
+    } else {
+      user.sortName = oldUser.sortName;
+      user.initials = oldUser.initials;
+    }
 
     if(user.status) {
       if((user.status as UserStatus.userStatusOnline).expires) {
@@ -413,8 +429,15 @@ export class AppUsersManager {
         
       } */
 
+      const wasContact = !!oldUser.pFlags.contact;
+      const newContact = !!user.pFlags.contact;
+
       safeReplaceObject(oldUser, user);
       rootScope.dispatchEvent('user_update', userId);
+
+      if(wasContact !== newContact) {
+        this.onContactUpdated(userId, newContact, wasContact);
+      }
     }
 
     if(changedPhoto) {
@@ -497,7 +520,7 @@ export class AppUsersManager {
       case REPLIES_PEER_ID:
         key = 'Peer.RepliesNotifications';
         break;
-      case 777000:
+      case SERVICE_PEER_ID:
         key = 'Peer.ServiceNotifications';
         break;
       default: {
@@ -599,7 +622,7 @@ export class AppUsersManager {
 
   public canSendToUser(id: number) {
     const user = this.getUser(id);
-    return !user.pFlags.deleted && user.username !== 'replies';
+    return !user.pFlags.deleted && user.id !== REPLIES_PEER_ID;
   }
 
   public getUserPhoto(id: number) {
@@ -632,18 +655,21 @@ export class AppUsersManager {
     const timestampNow = tsNow(true);
     for(const i in this.users) {
       const user = this.users[i];
-
-      if(user.status &&
-        user.status._ === 'userStatusOnline' &&
-        user.status.expires < timestampNow) {
-
-        user.status = {_: 'userStatusOffline', was_online: user.status.expires};
-        rootScope.dispatchEvent('user_update', user.id);
-
-        this.setUserToStateIfNeeded(user);
-      }
+      this.updateUserStatus(user, timestampNow);
     }
   };
+
+  public updateUserStatus(user: MTUser.user, timestampNow = tsNow(true)) {
+    if(user.status &&
+      user.status._ === 'userStatusOnline' &&
+      user.status.expires < timestampNow) {
+
+      user.status = {_: 'userStatusOffline', was_online: user.status.expires};
+      rootScope.dispatchEvent('user_update', user.id);
+
+      this.setUserToStateIfNeeded(user);
+    }
+  }
 
   public forceUserOnline(id: number, eventTimestamp?: number) {
     if(this.isBot(id)) {
@@ -819,8 +845,7 @@ export class AppUsersManager {
     });
   }
 
-  private onContactUpdated(userId: number, isContact: boolean) {
-    const curIsContact = this.isContact(userId);
+  private onContactUpdated(userId: number, isContact: boolean, curIsContact = this.isContact(userId)) {
     if(isContact !== curIsContact) {
       if(isContact) {
         this.pushContact(userId);

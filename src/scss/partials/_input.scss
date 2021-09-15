@@ -58,6 +58,7 @@
     pointer-events: none;
     margin-top: calc((var(--height) - 1.5rem) / 2); // * Center of first line
     user-select: none;
+    white-space: nowrap;
 
     @include animation-level(2) {
       transition: .2s transform, .2s padding, .1s opacity, font-weight 0s .1s;

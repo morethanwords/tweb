@@ -591,9 +591,7 @@ class PeerProfile {
       }
     });
 
-    rootScope.addEventListener('peer_typings', (e) => {
-      const {peerId} = e;
-
+    rootScope.addEventListener('peer_typings', ({peerId}) => {
       if(this.peerId === peerId) {
         this.setPeerStatus();
       }
@@ -605,11 +603,22 @@ class PeerProfile {
       }
     });
 
-    rootScope.addEventListener('user_update', (e) => {
-      const userId = e;
-
+    rootScope.addEventListener('user_update', (userId) => {
       if(this.peerId === userId) {
         this.setPeerStatus();
+      }
+    });
+
+    rootScope.addEventListener('contacts_update', (userId) => {
+      if(this.peerId === userId) {
+        const user = appUsersManager.getUser(userId);
+        if(!user.pFlags.self) {
+          if(user.phone) {
+            setText(appUsersManager.formatUserPhone(user.phone), this.phone);
+          } else {
+            this.phone.container.style.display = 'none';
+          }
+        }
       }
     });
 
@@ -692,7 +701,7 @@ class PeerProfile {
       const muted = appNotificationsManager.isPeerLocalMuted(peerId, false);
       this.notifications.checkboxField.checked = !muted;
     } else {
-      window.requestAnimationFrame(() => {
+      fastRaf(() => {
         this.notifications.container.style.display = 'none';
       });
     }
@@ -898,6 +907,12 @@ export default class AppSharedMediaTab extends SliderSuperTab {
         }
         
         tab.open();
+      }
+    });
+
+    rootScope.addEventListener('contacts_update', (userId) => {
+      if(this.peerId === userId && rootScope.myId !== userId) {
+        this.editBtn.classList.toggle('hide', !appUsersManager.isContact(userId));
       }
     });
 
@@ -1113,7 +1128,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     // const perf = performance.now();
     this.profile.cleanupHTML();
     
-    this.editBtn.style.display = 'none';
+    this.editBtn.classList.add('hide');
 
     this.searchSuper.cleanupHTML(true);
 
@@ -1162,12 +1177,12 @@ export default class AppSharedMediaTab extends SliderSuperTab {
 
     if(this.peerId > 0) {
       if(this.peerId !== rootScope.myId && appUsersManager.isContact(this.peerId)) {
-        this.editBtn.style.display = '';
+        this.editBtn.classList.remove('hide');
       }
     } else {
       const chat: Chat = appChatsManager.getChat(-this.peerId);
       if((chat._ === 'chat' || (chat as Chat.channel).admin_rights) && !(chat as Chat.chat).pFlags.deactivated) {
-        this.editBtn.style.display = '';
+        this.editBtn.classList.remove('hide');
       }
     }
   }

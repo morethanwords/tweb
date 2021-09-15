@@ -25,7 +25,11 @@ const onAvatarUpdate = (peerId: number) => {
 };
 
 rootScope.addEventListener('avatar_update', onAvatarUpdate);
-rootScope.addEventListener('peer_title_edit', onAvatarUpdate);
+rootScope.addEventListener('peer_title_edit', (peerId) => {
+  if(!appAvatarsManager.isAvatarCached(peerId)) {
+    onAvatarUpdate(peerId);
+  }
+});
 
 export async function openAvatarViewer(target: HTMLElement, peerId: number, middleware: () => boolean, message?: any, prevTargets?: {element: HTMLElement, item: string | Message.messageService}[], nextTargets?: typeof prevTargets) {
   let photo = await appProfileManager.getFullPhoto(peerId);

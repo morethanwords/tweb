@@ -51,7 +51,7 @@ import PeerTitle from "../../components/peerTitle";
 import { forEachReverse } from "../../helpers/array";
 import htmlToDocumentFragment from "../../helpers/dom/htmlToDocumentFragment";
 import htmlToSpan from "../../helpers/dom/htmlToSpan";
-import { REPLIES_PEER_ID } from "../mtproto/mtproto_config";
+import { REPLIES_PEER_ID, SERVICE_PEER_ID } from "../mtproto/mtproto_config";
 import formatCallDuration from "../../helpers/formatCallDuration";
 import appAvatarsManager from "./appAvatarsManager";
 import telegramMeWebManager from "../mtproto/telegramMeWebManager";
@@ -4443,7 +4443,7 @@ export class AppMessagesManager {
 
   private onUpdateServiceNotification = (update: Update.updateServiceNotification) => {
     //this.log('updateServiceNotification', update);
-    const fromId = 777000;
+    const fromId = SERVICE_PEER_ID;
     const peerId = fromId;
     const messageId = this.generateTempMessageId(peerId);
     const message: any = {

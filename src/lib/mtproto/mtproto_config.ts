@@ -10,3 +10,4 @@
 export type UserAuth = {dcID: number | string, date: number, id: number};
 
 export const REPLIES_PEER_ID = 1271266957;
+export const SERVICE_PEER_ID = 777000;

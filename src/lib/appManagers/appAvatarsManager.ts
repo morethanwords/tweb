@@ -23,6 +23,10 @@ export class AppAvatarsManager {
       [size in PeerPhotoSize]?: string | Promise<string>
     }
   } = {};
+
+  public isAvatarCached(peerId: number) {
+    return !!this.savedAvatarURLs[peerId];
+  }
   
   public removeFromAvatarsCache(peerId: number) {
     if(this.savedAvatarURLs[peerId]) {

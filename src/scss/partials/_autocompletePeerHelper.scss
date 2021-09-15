@@ -17,7 +17,7 @@
       height: 3.125rem;
       display: flex;
       // padding: 0 .75rem;
-      padding: 0 2.125rem 0px 0.75rem;
+      padding: 0 2.125rem 0 0.75rem;
       align-items: center;
       cursor: pointer;
       user-select: none;
@@ -34,6 +34,10 @@
       &-description {
         margin-left: .5625rem;
         color: var(--secondary-text-color);
+      }
+
+      &-avatar {
+        flex: 0 0 auto;
       }
     }
   }
