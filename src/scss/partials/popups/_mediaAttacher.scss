@@ -52,6 +52,10 @@
           }
         }
       }
+
+      img, video {
+        border-radius: inherit;
+      }
     }
 
     &-header {
