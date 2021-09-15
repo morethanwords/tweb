@@ -5,6 +5,7 @@
  */
 
 import type { AppMessagesManager } from "../../lib/appManagers/appMessagesManager";
+import type ChatInput from "./input";
 import DropdownHover from "../../helpers/dropdownHover";
 import { ReplyMarkup } from "../../layer";
 import RichTextProcessor from "../../lib/richtextprocessor";
@@ -15,6 +16,7 @@ import findUpClassName from "../../helpers/dom/findUpClassName";
 import { isTouchSupported } from "../../helpers/touchSupport";
 import findUpAsChild from "../../helpers/dom/findUpAsChild";
 import { cancelEvent } from "../../helpers/dom/cancelEvent";
+import { getHeavyAnimationPromise } from "../../hooks/useHeavyAnimationCheck";
 
 export default class ReplyKeyboard extends DropdownHover {
   private static BASE_CLASS = 'reply-keyboard';
@@ -24,12 +26,14 @@ export default class ReplyKeyboard extends DropdownHover {
   private btnHover: HTMLElement;
   private peerId: number;
   private touchListener: Listener;
+  private chatInput: ChatInput;
 
   constructor(options: {
     listenerSetter: ListenerSetter,
     appMessagesManager: AppMessagesManager,
     appendTo: HTMLElement,
-    btnHover: HTMLElement
+    btnHover: HTMLElement,
+    chatInput: ChatInput
   }) {
     super({
       element: document.createElement('div')
@@ -42,8 +46,14 @@ export default class ReplyKeyboard extends DropdownHover {
 
     this.attachButtonListener(this.btnHover, this.listenerSetter);
     this.listenerSetter.add(rootScope)('history_reply_markup', ({peerId}) => {
-      if(this.peerId === peerId && this.checkAvailability() && this.isActive()) {
-        this.render();
+      if(this.peerId === peerId) {
+        if(this.checkAvailability() && this.isActive()) {
+          this.render();
+        }
+
+        getHeavyAnimationPromise().then(() => {
+          this.checkForceReply();
+        });
       }
     });
   }
@@ -83,6 +93,16 @@ export default class ReplyKeyboard extends DropdownHover {
     }
   };
 
+  public checkForceReply() {
+    const replyMarkup = this.getReplyMarkup();
+    if(replyMarkup._ === 'replyKeyboardForceReply' &&
+      !replyMarkup.pFlags.hidden && 
+      !replyMarkup.pFlags.used) {
+      replyMarkup.pFlags.used = true;
+      this.chatInput.initMessageReply(replyMarkup.mid);
+    }
+  }
+
   private getReplyMarkup(): ReplyMarkup {
     return this.appMessagesManager.getHistoryStorage(this.peerId).replyMarkup ?? {
       _: 'replyKeyboardHide'
@@ -109,7 +129,7 @@ export default class ReplyKeyboard extends DropdownHover {
   }
 
   public checkAvailability(replyMarkup: ReplyMarkup = this.getReplyMarkup()) {
-    const hide = replyMarkup._ === 'replyKeyboardHide';
+    const hide = replyMarkup._ === 'replyKeyboardHide' || !(replyMarkup as ReplyMarkup.replyInlineMarkup).rows?.length;
     this.btnHover.classList.toggle('hide', hide);
 
     if(hide) {
@@ -123,5 +143,6 @@ export default class ReplyKeyboard extends DropdownHover {
     this.peerId = peerId;
 
     this.checkAvailability();
+    this.checkForceReply();
   }
 }

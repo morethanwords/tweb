@@ -296,6 +296,11 @@
     {"name": "fromId", "type": "number"}
   ]
 }, {
+  "predicate": "replyKeyboardForceReply",
+  "params": [
+    {"name": "used", "type": "true"}
+  ]
+}, {
   "predicate": "inputDocumentFileLocation",
   "params": [
     {"name": "checkedReference", "type": "boolean"}
