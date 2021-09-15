@@ -707,6 +707,26 @@ export class AppChatsManager {
       this.saveApiChats(messagesChats.chats);
     });
   }
+
+  public togglePreHistoryHidden(id: number, enabled: boolean) {
+    return this.migrateChat(id).then(channelId => {
+      return apiManager.invokeApi('channels.togglePreHistoryHidden', {
+        channel: this.getChannelInput(channelId),
+        enabled
+      });
+    }).then(updates => {
+      apiUpdatesManager.processUpdateMessage(updates);
+    });
+  }
+
+  public toggleSignatures(id: number, enabled: boolean) {
+    return apiManager.invokeApi('channels.toggleSignatures', {
+      channel: this.getChannelInput(id),
+      enabled
+    }).then(updates => {
+      apiUpdatesManager.processUpdateMessage(updates);
+    });
+  }
 }
 
 const appChatsManager = new AppChatsManager();
