@@ -5438,6 +5438,16 @@ export class AppMessagesManager {
         )
       );
   }
+
+  public isMentionUnread(message: MyMessage) {
+    const doc = ((message as Message.message).media as MessageMedia.messageMediaDocument)?.document as MyDocument;
+    return message.pFlags.media_unread && 
+      message.pFlags.mentioned && 
+      (
+        !doc || 
+        !(['voice', 'round'] as MyDocument['type'][]).includes(doc.type)
+      );
+  }
 }
 
 const appMessagesManager = new AppMessagesManager();

@@ -776,7 +776,7 @@ export default class ChatBubbles {
       const readContents: number[] = [];
       for(const mid of this.unreadedSeen) {
         const message: MyMessage = this.chat.getMessage(mid);
-        if(message.pFlags.media_unread) {
+        if(this.appMessagesManager.isMentionUnread(message)) {
           readContents.push(mid);
         }
       }
@@ -2170,7 +2170,7 @@ export default class ChatBubbles {
       if(!our && !message.pFlags.out && this.unreadedObserver) {
         //this.log('not our message', message, message.pFlags.unread);
         const isUnread = message.pFlags.unread || 
-          (message.pFlags.media_unread && message.pFlags.mentioned) || 
+          this.appMessagesManager.isMentionUnread(message) || 
           (this.historyStorage.readMaxId !== undefined && this.historyStorage.readMaxId < message.mid);
         if(isUnread) {
           this.unreadedObserver.observe(bubble); 
