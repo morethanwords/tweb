@@ -137,7 +137,7 @@ class AppSelection {
 
       const slice = elements.slice(firstIndex + 1, lastIndex);
 
-      console.log('getElementsBetween', first, last, slice, firstIndex, lastIndex, isHigher);
+      // console.log('getElementsBetween', first, last, slice, firstIndex, lastIndex, isHigher);
 
       return slice;
     };
@@ -200,9 +200,9 @@ class AppSelection {
                   firstTarget = element;
                 }
               }
-              
+
               const elementsBetween = getElementsBetween(firstTarget, element);
-              console.log(elementsBetween);
+              // console.log(elementsBetween);
               if(elementsBetween.length) {
                 elementsBetween.forEach(element => {
                   processElement(element, false);
