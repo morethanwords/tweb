@@ -388,7 +388,7 @@ export class AppUsersManager {
       || oldUser.sortName === undefined 
       || oldUser.first_name !== user.first_name 
       || oldUser.last_name !== user.last_name) {
-      const fullName = user.first_name + ' ' + (user.last_name || '');
+      const fullName = user.first_name + (user.last_name ? ' ' + user.last_name : '');
 
       user.sortName = user.pFlags.deleted ? '' : cleanSearchText(fullName, false);  
       user.initials = RichTextProcessor.getAbbreviation(fullName);

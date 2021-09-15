@@ -561,6 +561,7 @@ const lang = {
   "ReportInfo": "Please enter any additional details relevant to your report.",
   "ReportSentInfo": "Telegram moderators will review your report.\nThank you for your cooperation!",
   "ReportHint": "Additional details...",
+  "ChatHistory": "Chat history for new members",
 
   // * macos
   "AccountSettings.Filters": "Chat Folders",

@@ -1415,11 +1415,23 @@ export class AppMessagesManager {
       options.replyToMsgId = options.threadId;
     }
 
+    let postAuthor: string;
+    const isBroadcast = appPeersManager.isBroadcast(peerId);
+    if(isBroadcast) {
+      const chat = appPeersManager.getPeer(peerId) as Chat.channel;
+      if(chat.pFlags.signatures) {
+        const user = appUsersManager.getSelf();
+        const fullName = user.first_name + (user.last_name ? ' ' + user.last_name : '');
+        postAuthor = fullName;
+      }
+    }
+
     const message: Message.message = {
       _: 'message',
       id: this.generateTempMessageId(peerId),
       from_id: this.generateFromId(peerId),
       peer_id: appPeersManager.getOutputPeer(peerId),
+      post_author: postAuthor, 
       pFlags: this.generateFlags(peerId),
       date: options.scheduleDate || (tsNow(true) + serverTimeManager.serverTimeOffset),
       message: '',
@@ -1429,7 +1441,7 @@ export class AppMessagesManager {
       via_bot_id: options.viaBotId,
       reply_markup: options.replyMarkup,
       replies: this.generateReplies(peerId),
-      views: appPeersManager.isBroadcast(peerId) && 1,
+      views: isBroadcast && 1,
       pending: true,
     };
 
