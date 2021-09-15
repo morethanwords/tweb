@@ -10,6 +10,7 @@ import type { AppMessagesManager } from "../../lib/appManagers/appMessagesManage
 import type { AppPeersManager } from "../../lib/appManagers/appPeersManager";
 import type { AppSidebarRight } from "../sidebarRight";
 import type { AppProfileManager } from "../../lib/appManagers/appProfileManager";
+import type { AppUsersManager } from "../../lib/appManagers/appUsersManager";
 import type Chat from "./chat";
 import { RIGHT_COLUMN_ACTIVE_CLASSNAME } from "../sidebarRight";
 import mediaSizes, { ScreenSize } from "../../helpers/mediaSizes";
@@ -37,6 +38,8 @@ import findUpTag from "../../helpers/dom/findUpTag";
 import { toast } from "../toast";
 import replaceContent from "../../helpers/dom/replaceContent";
 import { ChatFull } from "../../layer";
+import PopupPickUser from "../popups/pickUser";
+import PopupPeer from "../popups/peer";
 
 export default class ChatTopbar {
   public container: HTMLDivElement;
@@ -70,7 +73,8 @@ export default class ChatTopbar {
     private appPeersManager: AppPeersManager, 
     private appChatsManager: AppChatsManager, 
     private appNotificationsManager: AppNotificationsManager,
-    private appProfileManager: AppProfileManager
+    private appProfileManager: AppProfileManager,
+    private appUsersManager: AppUsersManager
   ) {
     this.listenerSetter = new ListenerSetter();
   }
@@ -211,6 +215,45 @@ export default class ChatTopbar {
       onClick: () => this.openPinned(false),
       verify: () => mediaSizes.isMobile
     }, */ {
+      icon: 'forward',
+      text: 'ShareContact',
+      onClick: () => {
+        const contactPeerId = this.peerId;
+        new PopupPickUser({
+          peerTypes: ['dialogs', 'contacts'],
+          onSelect: (peerId) => {
+            return new Promise((resolve, reject) => {
+              new PopupPeer('', {
+                titleLangKey: 'SendMessageTitle',
+                descriptionLangKey: 'SendContactToGroupText',
+                descriptionLangArgs: [new PeerTitle({peerId, dialog: true}).element],
+                buttons: [{
+                  langKey: 'Send',
+                  callback: () => {
+                    resolve();
+
+                    this.appMessagesManager.sendOther(peerId, this.appUsersManager.getContactMediaInput(contactPeerId));
+                    this.chat.appImManager.setInnerPeer(peerId);
+                  }
+                }, {
+                  langKey: 'Cancel',
+                  callback: () => {
+                    reject();
+                  },
+                  isCancel: true,
+                }],
+                peerId,
+                overlayClosable: true
+              }).show();
+            });
+          },
+          placeholder: 'ShareModal.Search.Placeholder',
+          chatRightsAction: 'send_messages',
+          selfPresence: 'ChatYourSelf'
+        });
+      },
+      verify: () => rootScope.myId !== this.peerId && this.peerId > 0 && this.appUsersManager.isContact(this.peerId)
+    }, {
       icon: 'mute',
       text: 'ChatList.Context.Mute',
       onClick: () => {

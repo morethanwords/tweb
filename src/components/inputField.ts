@@ -102,10 +102,6 @@ class InputField {
     this.required = options.required;
     this.validate = options.validate;
 
-    if(this.required) {
-      this.originalValue = '';
-    }
-
     if(options.maxLength) {
       options.showLengthOn = Math.min(40, Math.round(options.maxLength / 3));
     }
@@ -276,7 +272,10 @@ class InputField {
   }
 
   public isValid() {
-    return !this.input.classList.contains('error') && this.isChanged() && (!this.validate || this.validate());
+    return !this.input.classList.contains('error') && 
+      this.isChanged() && 
+      (!this.validate || this.validate()) && 
+      (!this.required || !isInputEmpty(this.input));
   }
 
   public setOriginalValue(value: InputField['originalValue'] = '', silent = false) {

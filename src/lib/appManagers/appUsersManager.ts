@@ -17,7 +17,7 @@ import cleanUsername from "../../helpers/cleanUsername";
 import { tsNow } from "../../helpers/date";
 import { formatPhoneNumber } from "../../helpers/formatPhoneNumber";
 import { safeReplaceObject, isObject } from "../../helpers/object";
-import { Chat, InputContact, InputUser, User as MTUser, UserProfilePhoto, UserStatus } from "../../layer";
+import { Chat, InputContact, InputMedia, InputUser, User as MTUser, UserProfilePhoto, UserStatus } from "../../layer";
 import I18n, { i18n, LangPackKey } from "../langPack";
 //import apiManager from '../mtproto/apiManager';
 import apiManager from '../mtproto/mtprotoworker';
@@ -648,6 +648,19 @@ export class AppUsersManager {
       _: 'inputUser',
       user_id: id,
       access_hash: user.access_hash
+    };
+  }
+
+  public getContactMediaInput(id: number): InputMedia.inputMediaContact {
+    const user = this.getUser(id);
+
+    return {
+      _: 'inputMediaContact',
+      first_name: user.first_name,
+      last_name: user.last_name,
+      phone_number: user.phone,
+      vcard: '',
+      user_id: id
     };
   }
 

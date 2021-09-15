@@ -311,4 +311,9 @@
     {"name": "rTitle", "type": "string"},
     {"name": "rDescription", "type": "string"}
   ]
+}, {
+  "predicate": "inputMediaContact",
+  "params": [
+    {"name": "user_id", "type": "number"}
+  ]
 }]
