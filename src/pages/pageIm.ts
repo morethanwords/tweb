@@ -32,26 +32,28 @@ let onFirstMount = () => {
   return loadFonts().then(() => {
     return new Promise<void>((resolve) => {
       window.requestAnimationFrame(() => {
-        const promise = import('../lib/appManagers/appDialogsManager');
-        promise.finally(async() => {
-          //alert('pageIm!');
-          resolve();
-      
-          //AudioContext && global.navigator && global.navigator.mediaDevices && global.navigator.mediaDevices.getUserMedia && global.WebAssembly;
-      
-          /* // @ts-ignore
-          var AudioContext = globalThis.AudioContext || globalThis.webkitAudioContext;
-          alert('AudioContext:' + typeof(AudioContext));
-          // @ts-ignore
-          alert('global.navigator:' + typeof(navigator));
-          alert('navigator.mediaDevices:' + typeof(navigator.mediaDevices));
-          alert('navigator.mediaDevices.getUserMedia:' + typeof(navigator.mediaDevices?.getUserMedia));
-          alert('global.WebAssembly:' + typeof(WebAssembly)); */
-      
-          //(Array.from(document.getElementsByClassName('rp')) as HTMLElement[]).forEach(el => ripple(el));
-        });
+        // setTimeout(() => {
+          const promise = import('../lib/appManagers/appDialogsManager');
+          promise.finally(async() => {
+            //alert('pageIm!');
+            resolve();
+        
+            //AudioContext && global.navigator && global.navigator.mediaDevices && global.navigator.mediaDevices.getUserMedia && global.WebAssembly;
+        
+            /* // @ts-ignore
+            var AudioContext = globalThis.AudioContext || globalThis.webkitAudioContext;
+            alert('AudioContext:' + typeof(AudioContext));
+            // @ts-ignore
+            alert('global.navigator:' + typeof(navigator));
+            alert('navigator.mediaDevices:' + typeof(navigator.mediaDevices));
+            alert('navigator.mediaDevices.getUserMedia:' + typeof(navigator.mediaDevices?.getUserMedia));
+            alert('global.WebAssembly:' + typeof(WebAssembly)); */
+        
+            //(Array.from(document.getElementsByClassName('rp')) as HTMLElement[]).forEach(el => ripple(el));
+          });
+        // }, 5e3);
       });
-    });
+    })
   });
 
   //let promise = /* Promise.resolve() */.then(() => {//import('../lib/services').then(services => {

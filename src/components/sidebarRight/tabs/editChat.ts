@@ -255,8 +255,7 @@ export default class AppEditChatTab extends SliderSuperTab {
       if(!isBroadcast && appChatsManager.hasRights(this.chatId, 'change_permissions')) {
         const showChatHistoryCheckboxField = new CheckboxField({
           text: 'ChatHistory',
-          withRipple: true,
-          checked: !(chatFull as ChatFull.channelFull).pFlags.hidden_prehistory
+          withRipple: true
         });
 
         this.listenerSetter.add(showChatHistoryCheckboxField.input)('change', () => {
@@ -266,9 +265,12 @@ export default class AppEditChatTab extends SliderSuperTab {
           });
         });
 
-        addChatUpdateListener(() => {
-          showChatHistoryCheckboxField.setValueSilently(!(chatFull as ChatFull.channelFull).pFlags.hidden_prehistory);
-        });
+        const onChatUpdate = () => {
+          showChatHistoryCheckboxField.setValueSilently(isChannel && !(chatFull as ChatFull.channelFull).pFlags.hidden_prehistory);
+        };
+
+        onChatUpdate();
+        addChatUpdateListener(onChatUpdate);
   
         section.content.append(showChatHistoryCheckboxField.label);
       }
