@@ -1224,7 +1224,7 @@ export class AppMessagesManager {
           phone_number: inputMedia.phone_number,
           first_name: inputMedia.first_name,
           last_name: inputMedia.last_name,
-          user_id: 0,
+          user_id: inputMedia.user_id ?? 0,
           vcard: inputMedia.vcard
         };
         break;

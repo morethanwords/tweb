@@ -562,6 +562,9 @@ const lang = {
   "ReportSentInfo": "Telegram moderators will review your report.\nThank you for your cooperation!",
   "ReportHint": "Additional details...",
   "ChatHistory": "Chat history for new members",
+  "ShareContact": "Share contact",
+  "SendMessageTitle": "Send message",
+  "SendContactToGroupText": "Do you want to send this contact to **%1$s**?",
 
   // * macos
   "AccountSettings.Filters": "Chat Folders",
@@ -694,6 +697,7 @@ const lang = {
   "Stickers.SearchAdd": "Add",
   "Stickers.SearchAdded": "Added",
   "Stickers.SuggestStickers": "Suggest Stickers by Emoji",
+  "ShareModal.Search.Placeholder": "Share to...",
   "ShareModal.Search.ForwardPlaceholder": "Forward to...",
   "InstalledStickers.LoopAnimated": "Loop Animated Stickers",
   "Peer.Activity.User.PlayingGame": "playing a game",

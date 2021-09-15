@@ -28,17 +28,21 @@ export default class PopupPickUser extends PopupElement {
     this.selector = new AppSelectPeers({
       appendTo: this.body, 
       onChange: async() => {
-        const peerId = this.selector.getSelected()[0];
-        
-        this.selector = null;
+        const selected = this.selector.getSelected();
+        const peerId = selected[selected.length - 1];
         
         if(options.onSelect) {
           const res = options.onSelect(peerId);
           if(res instanceof Promise) {
-            await res;
+            try {
+              await res;
+            } catch(err) {
+              return;
+            }
           }
         }
-        
+
+        this.selector = null;
         this.hide();
       }, 
       peerType: options.peerTypes, 
