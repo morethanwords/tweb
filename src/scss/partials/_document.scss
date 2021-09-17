@@ -12,6 +12,10 @@
 
   .media-photo {
     border-radius: inherit;
+
+    &.thumbnail {
+      left: 0;
+    }
   }
 
   &-ico {

@@ -149,7 +149,7 @@ export default class ChatBubbles {
   private replyFollowHistory: number[] = [];
 
   private isHeavyAnimationInProgress = false;
-  private scrollingToNewBubble: HTMLElement;
+  private scrollingToBubble: HTMLElement;
 
   private isFirstLoad = true;
   private needReflowScroll: boolean;
@@ -225,7 +225,7 @@ export default class ChatBubbles {
         this.setBubblePosition(bubble, message, false);
         //this.log('history_update', this.bubbles[mid], mid, message);
 
-        if(this.scrollingToNewBubble) {
+        if(this.scrollingToBubble) {
           this.scrollToBubbleEnd();
         }
 
@@ -1420,6 +1420,12 @@ export default class ChatBubbles {
       return;
     } */
 
+    if(!scrolledDown) {
+      if(this.scrollingToBubble && this.scrollingToBubble === this.getLastBubble()) {
+        scrolledDown = true;
+      }
+    }
+
     const promise = this.performHistoryResult(mids, false, true);
     if(scrolledDown) {
       promise.then(() => {
@@ -1434,6 +1440,13 @@ export default class ChatBubbles {
           this.log('messagesQueuePromise afterafter:', this.chatInner.childElementCount, this.scrollable.scrollHeight);
         }, 10); */
       });
+    }
+  }
+
+  public getLastBubble() {
+    const lastDateGroup = this.getLastDateGroup();
+    if(lastDateGroup) {
+      return lastDateGroup.lastElementChild as HTMLElement;
     }
   }
 
@@ -1458,21 +1471,17 @@ export default class ChatBubbles {
     return this.scrollable.scrollIntoViewNew(element, position, 4, undefined, forceDirection, forceDuration);
   }
 
-  public scrollToBubbleEnd(bubble?: HTMLElement) {
-    if(!bubble) {
-      const lastDateGroup = this.getLastDateGroup();
-      if(lastDateGroup) {
-        bubble = lastDateGroup.lastElementChild as HTMLElement;
-      }
-    }
+  public scrollToBubbleEnd(bubble = this.getLastBubble()) {
     /* if(DEBUG) {
       this.log('scrollToNewLastBubble: will scroll into view:', bubble);
     } */
 
     if(bubble) {
-      this.scrollingToNewBubble = bubble;
+      this.scrollingToBubble = bubble;
+      const middleware = this.getMiddleware();
       this.scrollToBubble(bubble, 'end').then(() => {
-        this.scrollingToNewBubble = null;
+        if(!middleware()) return;
+        this.scrollingToBubble = undefined;
       });
     }
   }
@@ -1517,7 +1526,7 @@ export default class ChatBubbles {
     const date = new Date(message.date * 1000);
     date.setHours(0, 0, 0);
     const dateTimestamp = date.getTime();
-    if(!(dateTimestamp in this.dateMessages)) {
+    if(!this.dateMessages[dateTimestamp]) {
       let dateElement: HTMLElement;
       
       const today = new Date();
@@ -1549,8 +1558,8 @@ export default class ChatBubbles {
         }
       }
       
-      const div = document.createElement('div');
-      div.className = 'bubble service is-date';
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble service is-date';
       const bubbleContent = document.createElement('div');
       bubbleContent.classList.add('bubble-content');
       const serviceMsg = document.createElement('div');
@@ -1559,36 +1568,38 @@ export default class ChatBubbles {
       serviceMsg.append(dateElement);
 
       bubbleContent.append(serviceMsg);
-      div.append(bubbleContent);
+      bubble.append(bubbleContent);
       ////////this.log('need to render date message', dateTimestamp, str);
 
       const container = document.createElement('div');
       container.className = 'bubbles-date-group';
+      container.append(bubble);
 
-      const haveTimestamps = getObjectKeysAndSort(this.dateMessages, 'asc');
-      let i = 0;
-      for(; i < haveTimestamps.length; ++i) {
-        const t = haveTimestamps[i];
-        if(dateTimestamp < t) {
-          break;
-        }
-      }
-      
       this.dateMessages[dateTimestamp] = {
-        div,
+        div: bubble,
         container,
         firstTimestamp: date.getTime()
       };
 
-      container.append(div);
+      const haveTimestamps = getObjectKeysAndSort(this.dateMessages, 'asc');
+      let i = 0, length = haveTimestamps.length, insertBefore: HTMLElement; // there can be 'first bubble' (e.g. bot description) so can't insert by index
+      for(; i < haveTimestamps.length; ++i) {
+        const t = haveTimestamps[i];
+        insertBefore = this.dateMessages[t].container;
+        if(dateTimestamp < t) {
+          break;
+        }
+      }
 
-      positionElementByIndex(container, this.chatInner, i);
+      if(i === length && insertBefore) {
+        insertBefore = insertBefore.nextElementSibling as HTMLElement;
+      }
 
-      /* if(reverse) {
-        this.chatInner.prepend(container);
-      } else {
+      if(!insertBefore) {
         this.chatInner.append(container);
-      } */
+      } else {
+        this.chatInner.insertBefore(container, insertBefore);
+      }
 
       if(this.stickyIntersector) {
         this.stickyIntersector.observeStickyHeaderChanges(container);
@@ -1676,6 +1687,8 @@ export default class ChatBubbles {
     this.onAnimateLadder = undefined;
     this.resolveLadderAnimation = undefined;
     this.emptyPlaceholderMid = undefined;
+
+    this.scrollingToBubble = undefined;
     ////console.timeEnd('appImManager cleanup');
   }
 

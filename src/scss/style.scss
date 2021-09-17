@@ -931,6 +931,15 @@ img.emoji {
   }
 }
 
+/* .fade-in-new {
+  opacity: 1;
+  transition: opacity .2s ease-in-out;
+
+  &.not-yet {
+    opacity: 0;
+  }
+} */
+
 .show-more {
   padding-top: 13px;
   padding-bottom: 13px;
@@ -1169,12 +1178,6 @@ middle-ellipsis-element {
 .media-sticker, 
 .media-round, 
 .media-poster {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 0;
-
   @include animation-level(2) {
     &.fade-in {
       animation: fade-in-opacity .2s ease-in-out forwards;
@@ -1184,14 +1187,14 @@ middle-ellipsis-element {
       animation: fade-out-opacity .2s ease-in-out forwards;
     }
   }
-}
 
-.media-photo.thumbnail {
-  @include animation-level(2) {
-    &.fade-in {
-      animation: thumbnail-fade-in-opacity .2s ease-in-out forwards;
-    }
-  }
+  // & ~ & {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+  // }
 }
 
 .media-video {

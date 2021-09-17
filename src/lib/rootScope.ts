@@ -43,6 +43,7 @@ export type BroadcastEvents = {
   'dialog_migrate': {migrateFrom: number, migrateTo: number},
   //'dialog_top': Dialog,
   'dialog_notify_settings': Dialog,
+  // 'dialog_order': {dialog: Dialog, pos: number},
   'dialogs_multiupdate': {[peerId: string]: Dialog},
   'dialogs_archived_unread': {count: number},
   

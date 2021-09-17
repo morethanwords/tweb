@@ -632,6 +632,10 @@ $bubble-margin: .25rem;
 
       > .thumbnail {
         opacity: .8;
+
+        &.fade-in {
+          animation: thumbnail-fade-in-opacity .2s ease-in-out forwards;
+        }
       }
     }
   }

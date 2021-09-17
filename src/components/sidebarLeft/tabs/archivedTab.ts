@@ -15,7 +15,7 @@ export default class AppArchivedTab extends SliderSuperTab {
     this.container.id = 'chats-archived-container';
     this.setTitle('ArchivedChats');
 
-    if(!appDialogsManager.chatLists[AppArchivedTab.filterId]) {
+    if(!appDialogsManager.sortedLists[AppArchivedTab.filterId]) {
       const chatList = appDialogsManager.createChatList();
       appDialogsManager.generateScrollable(chatList, AppArchivedTab.filterId).container.append(chatList);
       appDialogsManager.setListClickListener(chatList, null, true);
@@ -40,7 +40,7 @@ export default class AppArchivedTab extends SliderSuperTab {
 
   // вообще, так делать нельзя, но нет времени чтобы переделать главный чатлист на слайд...
   onOpenAfterTimeout() {
-    appDialogsManager.chatLists[this.wasFilterId].innerHTML = '';
+    appDialogsManager.sortedLists[this.wasFilterId].clear();
   }
 
   onClose() {
@@ -49,7 +49,7 @@ export default class AppArchivedTab extends SliderSuperTab {
   }
 
   onCloseAfterTimeout() {
-    appDialogsManager.chatLists[AppArchivedTab.filterId].innerHTML = '';
+    appDialogsManager.sortedLists[AppArchivedTab.filterId].clear();
     return super.onCloseAfterTimeout();
   }
 }
