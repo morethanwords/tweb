@@ -63,6 +63,27 @@ export function fastRaf(callback: NoneToVoidFunction) {
   }
 }
 
+let fastRafConventionalCallbacks: NoneToVoidFunction[] | undefined, processing = false;
+export function fastRafConventional(callback: NoneToVoidFunction) {
+  if(!fastRafConventionalCallbacks) {
+    fastRafConventionalCallbacks = [callback];
+
+    requestAnimationFrame(() => {
+      processing = true;
+      for(let i = 0; i < fastRafConventionalCallbacks.length; ++i) {
+        fastRafConventionalCallbacks[i]();
+      }
+
+      fastRafConventionalCallbacks = undefined;
+      processing = false;
+    });
+  } else if(processing) {
+    callback();
+  } else {
+    fastRafConventionalCallbacks.push(callback);
+  }
+}
+
 let rafPromise: Promise<DOMHighResTimeStamp>;
 export function fastRafPromise() {
   if(rafPromise) return rafPromise;

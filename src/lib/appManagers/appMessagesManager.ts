@@ -51,7 +51,7 @@ import PeerTitle from "../../components/peerTitle";
 import { forEachReverse } from "../../helpers/array";
 import htmlToDocumentFragment from "../../helpers/dom/htmlToDocumentFragment";
 import htmlToSpan from "../../helpers/dom/htmlToSpan";
-import { REPLIES_PEER_ID, SERVICE_PEER_ID } from "../mtproto/mtproto_config";
+import { MUTE_UNTIL, REPLIES_PEER_ID, SERVICE_PEER_ID } from "../mtproto/mtproto_config";
 import formatCallDuration from "../../helpers/formatCallDuration";
 import appAvatarsManager from "./appAvatarsManager";
 import telegramMeWebManager from "../mtproto/telegramMeWebManager";
@@ -1379,8 +1379,8 @@ export class AppMessagesManager {
 
       //if(!options.isGroupedItem) {
       this.saveMessages([message], {storage, isOutgoing: true});
+      this.setDialogTopMessage(message);
       setTimeout(() => {
-        this.setDialogTopMessage(message);
         rootScope.dispatchEvent('history_append', {storage, peerId, mid: messageId});
       }, 0);
     }
@@ -3096,7 +3096,7 @@ export class AppMessagesManager {
     return true;
   }
 
-  public canDeleteMessage(message: any) {
+  public canDeleteMessage(message: MyMessage) {
     return message && (
       message.peerId > 0 
       || message.fromId === rootScope.myId 
@@ -3553,7 +3553,7 @@ export class AppMessagesManager {
     }
   }
 
-  handleNewMessages = () => {
+  private handleNewMessages = () => {
     clearTimeout(this.newMessagesHandleTimeout);
     this.newMessagesHandleTimeout = 0;
 
@@ -3561,7 +3561,7 @@ export class AppMessagesManager {
     this.newMessagesToHandle = {};
   };
 
-  handleNewDialogs = () => {
+  private handleNewDialogs = () => {
     let newMaxSeenId = 0;
     const obj = this.newDialogsToHandle;
     for(const peerId in obj) {
@@ -3593,8 +3593,9 @@ export class AppMessagesManager {
     }
 
     if(this.newDialogsHandlePromise) return this.newDialogsHandlePromise;
-    return this.newDialogsHandlePromise = new Promise((resolve) => {
+    return this.newDialogsHandlePromise = new Promise<void>((resolve) => {
       setTimeout(() => {
+        resolve();
         this.newDialogsHandlePromise = undefined;
         this.handleNewDialogs();
       }, 0);
@@ -4113,7 +4114,7 @@ export class AppMessagesManager {
       }
 
       if((message as Message.message).fwd_from) {
-        notifyPeerToHandle.fwdCount++;
+        ++notifyPeerToHandle.fwdCount;
       }
 
       notifyPeerToHandle.topMessage = message;
@@ -4322,17 +4323,10 @@ export class AppMessagesManager {
   };
 
   private onUpdateChannelAvailableMessages = (update: Update.updateChannelAvailableMessages) => {
-    const channelId: number = update.channel_id;
-    const messages: number[] = [];
-    const peerId: number = -channelId;
+    const peerId: number = -update.channel_id;
     const history = this.getHistoryStorage(peerId).history.slice;
-    if(history.length) {
-      history.forEach((msgId: number) => {
-        if(!update.available_min_id || msgId <= update.available_min_id) {
-          messages.push(msgId);
-        }
-      });
-    }
+    const availableMinId = appMessagesIdsManager.generateMessageId(update.available_min_id);
+    const messages = history.filter(mid => mid <= availableMinId);
 
     (update as any as Update.updateDeleteChannelMessages).messages = messages;
     this.onUpdateDeleteMessages(update as any as Update.updateDeleteChannelMessages);
@@ -4368,17 +4362,14 @@ export class AppMessagesManager {
       return this.getHistoryStorage(+splitted[0], +splitted[1]);
     });
 
-    [this.getHistoryStorage(peerId)].concat(threadsStorages).forEach(historyStorage => {
-      for(const mid in historyUpdated.msgs) {
-        historyStorage.history.delete(+mid);
+    const historyStorage = this.getHistoryStorage(peerId);
+    [historyStorage].concat(threadsStorages).forEach(historyStorage => {
+      for(const mid of historyUpdated.msgs) {
+        historyStorage.history.delete(mid);
       }
-      if(historyUpdated.count &&
-        historyStorage.count !== null &&
-        historyStorage.count > 0) {
-        historyStorage.count -= historyUpdated.count;
-        if(historyStorage.count < 0) {
-          historyStorage.count = 0;
-        }
+      
+      if(historyUpdated.count && historyStorage.count) {
+        historyStorage.count = Math.max(0, historyStorage.count - historyUpdated.count);
       }
     });
 
@@ -4392,12 +4383,21 @@ export class AppMessagesManager {
 
       if(historyUpdated.unread) {
         foundDialog.unread_count -= historyUpdated.unread;
+      }
 
+      if(historyUpdated.unreadMentions || historyUpdated.unread) {
         rootScope.dispatchEvent('dialog_unread', {peerId});
       }
 
       if(historyUpdated.msgs.has(foundDialog.top_message)) {
-        this.reloadConversation(peerId);
+        const slice = historyStorage.history.first;
+        if(slice.isEnd(SliceEnd.Bottom) && slice.length) {
+          const mid = slice[0];
+          const message = this.getMessageByPeer(peerId, mid);
+          this.setDialogTopMessage(message, foundDialog);
+        } else {
+          this.reloadConversation(peerId);
+        }
       }
     }
   };
@@ -4420,7 +4420,7 @@ export class AppMessagesManager {
     const dialog = this.getDialogOnly(peerId);
     if(!!dialog !== needDialog) {
       if(needDialog) {
-        this.reloadConversation(-channelId);
+        this.reloadConversation(peerId);
       } else {
         if(dialog) {
           this.dialogsStorage.dropDialog(peerId);
@@ -4431,13 +4431,12 @@ export class AppMessagesManager {
   };
 
   private onUpdateChannelReload = (update: Update.updateChannelReload) => {
-    const channelId = update.channel_id;
-    const peerId = -channelId;
+    const peerId = update.channel_id;
 
     this.dialogsStorage.dropDialog(peerId);
 
     delete this.historiesStorage[peerId];
-    this.reloadConversation(-channelId).then(() => {
+    this.reloadConversation(peerId).then(() => {
       rootScope.dispatchEvent('history_reload', peerId);
     });
   };
@@ -4447,7 +4446,7 @@ export class AppMessagesManager {
     const peerId = -update.channel_id;
     const mid = appMessagesIdsManager.generateMessageId(update.id);
     const message: Message.message = this.getMessageByPeer(peerId, mid);
-    if(!message.deleted && message.views && message.views < views) {
+    if(!message.deleted && message.views !== undefined && message.views < views) {
       message.views = views;
       rootScope.dispatchEvent('message_views', {peerId, mid, views});
     }
@@ -4458,7 +4457,7 @@ export class AppMessagesManager {
     const fromId = SERVICE_PEER_ID;
     const peerId = fromId;
     const messageId = this.generateTempMessageId(peerId);
-    const message: any = {
+    const message: Message.message = {
       _: 'message',
       id: messageId,
       from_id: appPeersManager.getOutputPeer(fromId),
@@ -4474,7 +4473,7 @@ export class AppMessagesManager {
         _: 'user',
         id: fromId,
         pFlags: {verified: true},
-        access_hash: 0,
+        access_hash: '0',
         first_name: 'Telegram',
         phone: '42777'
       }]);
@@ -4595,7 +4594,7 @@ export class AppMessagesManager {
     }
   };
 
-  public setDialogToStateIfMessageIsTop(message: any) {
+  public setDialogToStateIfMessageIsTop(message: MyMessage) {
     const dialog = this.getDialogOnly(message.peerId);
     if(dialog && dialog.top_message === message.mid) {
       this.dialogsStorage.setDialogToState(dialog);
@@ -4642,9 +4641,9 @@ export class AppMessagesManager {
     return promise;
   }
 
-  private checkPendingMessage(message: any) {
+  private checkPendingMessage(message: MyMessage) {
     const randomId = this.pendingByMessageId[message.mid];
-    let pendingMessage: any;
+    let pendingMessage: ReturnType<AppMessagesManager['finalizePendingMessage']>;
     if(randomId) {
       const pendingData = this.pendingByRandomId[randomId];
       if(pendingMessage = this.finalizePendingMessage(randomId, message)) {
@@ -4666,7 +4665,7 @@ export class AppMessagesManager {
       mute = !appNotificationsManager.isPeerLocalMuted(peerId, false);
     }
     
-    settings.mute_until = mute ? 0x7FFFFFFF : 0;
+    settings.mute_until = mute ? MUTE_UNTIL : 0;
 
     return appNotificationsManager.updateNotifySettings({
       _: 'inputNotifyPeer',
@@ -4684,7 +4683,7 @@ export class AppMessagesManager {
     }
   }
 
-  public finalizePendingMessage(randomId: string, finalMessage: any) {
+  public finalizePendingMessage(randomId: string, finalMessage: MyMessage) {
     const pendingData = this.pendingByRandomId[randomId];
     // this.log('pdata', randomID, pendingData)
 
@@ -4699,7 +4698,7 @@ export class AppMessagesManager {
 
       // this.log('pending', randomID, historyStorage.pending)
 
-      const message = this.getMessageFromStorage(storage, tempId);
+      const message: Message.message = this.getMessageFromStorage(storage, tempId);
       if(!message.deleted) {
         delete message.pFlags.is_outgoing;
         delete message.pending;
@@ -5382,17 +5381,18 @@ export class AppMessagesManager {
 
       message.deleted = true;
 
-      if(message._ !== 'messageService' && message.grouped_id) {
-        const groupedStorage = this.groupedMessagesStorage[message.grouped_id];
+      const groupedId = (message as Message.message).grouped_id;
+      if(groupedId) {
+        const groupedStorage = this.groupedMessagesStorage[groupedId];
         if(groupedStorage) {
           delete groupedStorage[mid];
 
           if(!history.albums) history.albums = {};
-          (history.albums[message.grouped_id] || (history.albums[message.grouped_id] = new Set())).add(mid);
+          (history.albums[groupedId] || (history.albums[groupedId] = new Set())).add(mid);
 
           if(!Object.keys(groupedStorage).length) {
             delete history.albums;
-            delete this.groupedMessagesStorage[message.grouped_id];
+            delete this.groupedMessagesStorage[groupedId];
           }
         }
       }

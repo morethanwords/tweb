@@ -1005,6 +1005,59 @@ export function renderImageWithFadeIn(container: HTMLElement,
   });
 }
 
+// export function renderImageWithFadeIn(container: HTMLElement, 
+//   image: HTMLImageElement, 
+//   url: string, 
+//   needFadeIn: boolean, 
+//   aspecter = container,
+//   thumbImage?: HTMLImageElement
+// ) {
+//   if(needFadeIn) {
+//     // image.classList.add('fade-in-new', 'not-yet');
+//     image.classList.add('fade-in');
+//   }
+
+//   return new Promise<void>((resolve) => {
+//     /* if(photo._ === 'document') {
+//       console.error('wrapPhoto: will render document', photo, size, cacheContext);
+//       return resolve();
+//     } */
+
+//     renderImageFromUrl(image, url, () => {
+//       sequentialDom.mutateElement(container, () => {
+//         aspecter.append(image);
+//         // (needFadeIn ? getHeavyAnimationPromise() : Promise.resolve()).then(() => {
+
+//         // fastRaf(() => {
+//           resolve();
+//         // });
+
+//         if(needFadeIn) {
+//           fastRaf(() => {
+//             /* if(!image.isConnected) {
+//               alert('aaaa');
+//             } */
+//             // fastRaf(() => {
+//               image.classList.remove('not-yet');
+//             // });
+//           });
+
+//           image.addEventListener('transitionend', () => {
+//             sequentialDom.mutate(() => {
+//               image.classList.remove('fade-in-new');
+  
+//               if(thumbImage) {
+//                 thumbImage.remove();
+//               }
+//             });
+//           }, {once: true});
+//         }
+//       // });
+//       });
+//     });
+//   });
+// }
+
 export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, onlyThumb, emoji, width, height, withThumb, loop, loadPromises, needFadeIn}: {
   doc: MyDocument, 
   div: HTMLElement, 

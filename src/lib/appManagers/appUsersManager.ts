@@ -344,7 +344,7 @@ export class AppUsersManager {
     });
   }
 
-  public saveApiUsers(apiUsers: any[], override?: boolean) {
+  public saveApiUsers(apiUsers: MTUser[], override?: boolean) {
     apiUsers.forEach((user) => this.saveApiUser(user, override));
   }
 

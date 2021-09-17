@@ -17,7 +17,9 @@ export default function positionElementByIndex(element: HTMLElement, container: 
     pos += 1;
   }
 
-  if(container.childElementCount > pos) {
+  if(!pos) {
+    container.prepend(element);
+  } else if(container.childElementCount > pos) {
     container.insertBefore(element, container.children[pos]);
   } else {
     container.append(element);

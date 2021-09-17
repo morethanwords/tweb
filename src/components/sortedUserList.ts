@@ -8,21 +8,19 @@ import type { LazyLoadQueueIntersector } from "./lazyLoadQueue";
 import appDialogsManager, { DialogDom } from "../lib/appManagers/appDialogsManager";
 import { getHeavyAnimationPromise } from "../hooks/useHeavyAnimationCheck";
 import appUsersManager from "../lib/appManagers/appUsersManager";
-import { insertInDescendSortedArray } from "../helpers/array";
 import isInDOM from "../helpers/dom/isInDOM";
 import positionElementByIndex from "../helpers/dom/positionElementByIndex";
 import replaceContent from "../helpers/dom/replaceContent";
 import { safeAssign } from "../helpers/object";
+import { fastRaf } from "../helpers/schedulers";
+import SortedList, { SortedElementBase } from "../helpers/sortedList";
 
-type SortedUser = {
-  peerId: number, 
-  status: number, 
+interface SortedUser extends SortedElementBase {
   dom: DialogDom
-};
-export default class SortedUserList {
+}
+
+export default class SortedUserList extends SortedList<SortedUser> {
   protected static SORT_INTERVAL = 30e3;
-  protected users: Map<number, SortedUser>;
-  protected sorted: Array<SortedUser>;
   public list: HTMLUListElement;
   
   protected lazyLoadQueue: LazyLoadQueueIntersector;
@@ -35,17 +33,53 @@ export default class SortedUserList {
     rippleEnabled: SortedUserList['rippleEnabled'],
     new: boolean
   }> = {}) {
+    super({
+      getIndex: (id) => appUsersManager.getUserStatusForSort(id),
+      onDelete: (element) => element.dom.listEl.remove(),
+      onUpdate: (element) => {
+        const status = appUsersManager.getUserStatusString(element.id);
+        replaceContent(element.dom.lastMessageSpan, status);
+      },
+      onSort: (element, idx) => positionElementByIndex(element.dom.listEl, this.list, idx),
+      onElementCreate: (base) => {
+        const {dom} = appDialogsManager.addDialogNew({
+          dialog: base.id,
+          container: false,
+          drawStatus: false,
+          avatarSize: this.avatarSize,
+          autonomous: true,
+          meAsSaved: false,
+          rippleEnabled: this.rippleEnabled,
+          lazyLoadQueue: this.lazyLoadQueue
+        });
+
+        (base as SortedUser).dom = dom;
+        return base as SortedUser;
+      },
+      updateElementWith: fastRaf,
+      updateListWith: async(callback) => {
+        if(!isInDOM(this.list)) {
+          return callback(false);
+        }
+    
+        await getHeavyAnimationPromise();
+    
+        if(!isInDOM(this.list)) {
+          return callback(false);
+        }
+
+        callback(true);
+      }
+    });
+
     safeAssign(this, options);
 
     this.list = appDialogsManager.createChatList({new: options.new});
 
-    this.users = new Map();
-    this.sorted = [];
-
     let timeout: number;
     const doTimeout = () => {
       timeout = window.setTimeout(() => {
-        this.updateList().then((good) => {
+        this.updateList((good) => {
           if(good) {
             doTimeout();
           }
@@ -54,84 +88,5 @@ export default class SortedUserList {
     };
 
     doTimeout();
-  }
-
-  public async updateList() {
-    if(!isInDOM(this.list)) {
-      return false;
-    }
-
-    await getHeavyAnimationPromise();
-
-    if(!isInDOM(this.list)) {
-      return false;
-    }
-
-    this.users.forEach(user => {
-      this.update(user.peerId, true);
-    });
-
-    this.sorted.forEach((sortedUser, idx) => {
-      positionElementByIndex(sortedUser.dom.listEl, this.list, idx);
-    });
-
-    return true;
-  }
-
-  public has(peerId: number) {
-    return this.users.has(peerId);
-  }
-
-  public add(peerId: number) {
-    if(this.has(peerId)) {
-      return;
-    }
-
-    const {dom} = appDialogsManager.addDialogNew({
-      dialog: peerId,
-      container: false,
-      drawStatus: false,
-      avatarSize: this.avatarSize,
-      autonomous: true,
-      meAsSaved: false,
-      rippleEnabled: this.rippleEnabled,
-      lazyLoadQueue: this.lazyLoadQueue
-    });
-
-    const sortedUser: SortedUser = {
-      peerId,
-      status: appUsersManager.getUserStatusForSort(peerId),
-      dom
-    };
-
-    this.users.set(peerId, sortedUser);
-    this.update(peerId);
-  }
-
-  public delete(peerId: number) {
-    const user = this.users.get(peerId);
-    if(!user) {
-      return;
-    }
-    
-    user.dom.listEl.remove();
-    this.users.delete(peerId);
-    
-    const idx = this.sorted.indexOf(user);
-    if(idx !== -1) {
-      this.sorted.splice(idx, 1);
-    }
-  }
-
-  public update(peerId: number, batch = false) {
-    const sortedUser = this.users.get(peerId);
-    sortedUser.status = appUsersManager.getUserStatusForSort(peerId);
-    const status = appUsersManager.getUserStatusString(peerId);
-    replaceContent(sortedUser.dom.lastMessageSpan, status);
-
-    const idx = insertInDescendSortedArray(this.sorted, sortedUser, 'status');
-    if(!batch) {
-      positionElementByIndex(sortedUser.dom.listEl, this.list, idx);
-    }
   }
 }
