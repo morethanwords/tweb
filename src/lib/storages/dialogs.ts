@@ -98,10 +98,7 @@ export default class DialogsStorage {
 
       const peerId = -chatId;
       if(chat.pFlags.left && this.getDialogOnly(peerId)) {
-        const dropped = this.dropDialog(peerId);
-        if(dropped.length) {
-          rootScope.dispatchEvent('dialog_drop', {peerId, dialog: dropped[0]});
-        }
+        this.dropDialogWithEvent(peerId);
       }
     });
 
@@ -450,6 +447,13 @@ export default class DialogsStorage {
     return foundDialog;
   }
 
+  public dropDialogWithEvent(peerId: number) {
+    const dropped = this.dropDialog(peerId);
+    if(dropped.length) {
+      rootScope.dispatchEvent('dialog_drop', {peerId, dialog: dropped[0]});
+    }
+  }
+
   public applyDialogs(dialogsResult: MessagesPeerDialogs.messagesPeerDialogs) {
     // * В эту функцию попадут только те диалоги, в которых есть read_inbox_max_id и read_outbox_max_id, в отличие от тех, что будут в getTopMessages
 
@@ -489,10 +493,7 @@ export default class DialogsStorage {
         this.saveDialog(dialog);
         updatedDialogs[peerId] = dialog;
       } else {
-        const dropped = this.dropDialog(peerId);
-        if(dropped.length) {
-          rootScope.dispatchEvent('dialog_drop', {peerId, dialog: dropped[0]});
-        }
+        this.dropDialogWithEvent(peerId);
       }
 
       const updates = this.appMessagesManager.newUpdatesAfterReloadToHandle[peerId];

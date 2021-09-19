@@ -24,16 +24,22 @@
       position: relative;
       line-height: var(--line-height);
 
+      @include respond-to(handhelds) {
+        padding-right: .75rem;
+      }
+
       @include hover();
     
       &-name {
         margin-left: .875rem;
         font-weight: 500;
+        flex: 0 0 auto;
       }
     
       &-description {
         margin-left: .5625rem;
         color: var(--secondary-text-color);
+        @include text-overflow();
       }
 
       &-avatar {

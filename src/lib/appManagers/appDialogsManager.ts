@@ -558,7 +558,10 @@ export class AppDialogsManager {
 
   private updateDialog(dialog: Dialog) {
     if(this.isDialogMustBeInViewport(dialog)) {
-      this.sortedList.add(dialog.peerId);
+      if(!this.sortedList.has(dialog.peerId)) {
+        this.sortedList.add(dialog.peerId);
+        return;
+      }
     } else {
       this.deleteDialog(dialog.peerId);
       return;
@@ -1286,6 +1289,11 @@ export class AppDialogsManager {
       dom.lastMessageSpan.innerHTML = '';
       dom.lastTimeSpan.innerHTML = '';
       delete dom.listEl.dataset.mid;
+
+      if(setUnread) {
+        this.setUnreadMessages(dialog, dom, isBatch);
+      }
+
       return;
     }
 
@@ -1334,6 +1342,8 @@ export class AppDialogsManager {
         fragment = appMessagesManager.wrapMessageForReply(draftMessage);
       } else if(!lastMessage.deleted) {
         fragment = appMessagesManager.wrapMessageForReply(lastMessage, undefined, undefined, false, undefined, withoutMediaType);
+      } else { // rare case
+        fragment = document.createDocumentFragment();
       }
 
       if(mediaContainer) {

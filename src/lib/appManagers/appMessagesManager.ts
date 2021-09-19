@@ -295,16 +295,24 @@ export class AppMessagesManager {
       if(threadId) return;
 
       const dialog = this.getDialogOnly(peerId);
-      if(dialog && !threadId) {
-        dialog.draft = draft;
-        this.dialogsStorage.generateIndexForDialog(dialog);
-        this.dialogsStorage.pushDialog(dialog);
+      if(dialog) {
+        if(!threadId) {
+          dialog.draft = draft;
 
-        rootScope.dispatchEvent('dialog_draft', {
-          peerId,
-          draft,
-          index: dialog.index
-        });
+          if(!draft && !appMessagesIdsManager.getServerMessageId(dialog.top_message)) {
+            this.dialogsStorage.dropDialogWithEvent(peerId);
+            return;
+          }
+
+          this.dialogsStorage.generateIndexForDialog(dialog);
+          this.dialogsStorage.pushDialog(dialog);
+
+          rootScope.dispatchEvent('dialog_draft', {
+            peerId,
+            draft,
+            index: dialog.index
+          });
+        }
       } else {
         this.reloadConversation(peerId);
       }
