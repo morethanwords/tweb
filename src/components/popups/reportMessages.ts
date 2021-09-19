@@ -4,6 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import { attachClickEvent } from "../../helpers/dom/clickEvent";
 import findUpClassName from "../../helpers/dom/findUpClassName";
 import whichChild from "../../helpers/dom/whichChild";
 import { ReportReason } from "../../layer";
@@ -35,7 +36,7 @@ export default class PopupReportMessages extends PopupPeer {
 
     const preloadStickerPromise = appStickersManager.preloadAnimatedEmojiSticker(PopupReportMessagesConfirm.STICKER_EMOJI);
 
-    this.body.addEventListener('click', (e) => {
+    attachClickEvent(this.body, (e) => {
       const target = findUpClassName(e.target, 'btn-primary');
       const reason = buttons[whichChild(target)][1];
 
@@ -44,7 +45,7 @@ export default class PopupReportMessages extends PopupPeer {
 
         new PopupReportMessagesConfirm(peerId, mids, reason, onConfirm);
       });
-    });
+    }, {listenerSetter: this.listenerSetter});
     
     this.body.style.margin = '0 -1rem';
     this.buttons.style.marginTop = '.5rem';

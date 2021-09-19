@@ -19,6 +19,7 @@ import { i18n } from "../../lib/langPack";
 import Button from "../button";
 import findUpClassName from "../../helpers/dom/findUpClassName";
 import toggleDisability from "../../helpers/dom/toggleDisability";
+import { attachClickEvent } from "../../helpers/dom/clickEvent";
 
 const ANIMATION_GROUP = 'STICKERS-POPUP';
 
@@ -39,8 +40,6 @@ export default class PopupStickers extends PopupElement {
 
     this.onClose = () => {
       animationIntersector.setOnlyOnePlayableGroup('');
-      this.stickersFooter.removeEventListener('click', this.onFooterClick);
-      this.stickersDiv.removeEventListener('click', this.onStickersClick);
     };
 
     const div = document.createElement('div');
@@ -48,6 +47,8 @@ export default class PopupStickers extends PopupElement {
 
     this.stickersDiv = document.createElement('div');
     this.stickersDiv.classList.add('sticker-set-stickers', 'is-loading');
+
+    attachClickEvent(this.stickersDiv, this.onStickersClick, {listenerSetter: this.listenerSetter});
 
     putPreloader(this.stickersDiv, true);
 
@@ -71,17 +72,7 @@ export default class PopupStickers extends PopupElement {
     this.loadStickerSet();
   }
 
-  onFooterClick = () => {
-    const toggle = toggleDisability([this.stickersFooter], true);
-
-    appStickersManager.toggleStickerSet(this.set).then(() => {
-      this.hide();
-    }).catch(() => {
-      toggle();
-    });
-  };
-
-  onStickersClick = (e: MouseEvent) => {
+  private onStickersClick = (e: MouseEvent) => {
     const target = findUpClassName(e.target, 'sticker-set-sticker');
     if(!target) return;
 
@@ -116,11 +107,15 @@ export default class PopupStickers extends PopupElement {
       this.stickersFooter.textContent = '';
       this.stickersFooter.append(button);
 
-      button.addEventListener('click', this.onFooterClick);
+      attachClickEvent(button, () => {
+        const toggle = toggleDisability([button], true);
 
-      if(set.documents.length) {
-        this.stickersDiv.addEventListener('click', this.onStickersClick);
-      }
+        appStickersManager.toggleStickerSet(this.set).then(() => {
+          this.hide();
+        }).catch(() => {
+          toggle();
+        });
+      });
 
       const lazyLoadQueue = new LazyLoadQueue();
       

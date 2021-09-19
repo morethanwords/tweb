@@ -93,6 +93,18 @@ export default class DialogsStorage {
       }
     });
 
+    rootScope.addEventListener('chat_update', (chatId) => {
+      const chat: Chat.chat = this.appChatsManager.getChat(chatId);
+
+      const peerId = -chatId;
+      if(chat.pFlags.left && this.getDialogOnly(peerId)) {
+        const dropped = this.dropDialog(peerId);
+        if(dropped.length) {
+          rootScope.dispatchEvent('dialog_drop', {peerId, dialog: dropped[0]});
+        }
+      }
+    });
+
     rootScope.addMultipleEventsListeners({
       updateFolderPeers: this.onUpdateFolderPeers,
 

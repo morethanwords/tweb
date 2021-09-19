@@ -18,7 +18,6 @@ import rootScope from "../../../lib/rootScope";
 import AppGroupPermissionsTab from "./groupPermissions";
 import { i18n, LangPackKey } from "../../../lib/langPack";
 import PopupDeleteDialog from "../../popups/deleteDialog";
-import { addCancelButton } from "../../popups";
 import PopupPeer from "../../popups/peer";
 import { attachClickEvent } from "../../../helpers/dom/clickEvent";
 import toggleDisability from "../../../helpers/dom/toggleDisability";
@@ -63,7 +62,7 @@ export default class AppEditChatTab extends SliderSuperTab {
       inputWrapper.classList.add('input-wrapper');
   
       this.chatNameInputField = new InputField({
-        label: isBroadcast ? 'Channel.ChannelNameHolder' : 'CreateGroup.NameHolder',
+        label: isBroadcast ? 'EnterChannelName' : 'CreateGroup.NameHolder',
         name: 'chat-name',
         maxLength: 255,
         required: true
@@ -281,45 +280,17 @@ export default class AppEditChatTab extends SliderSuperTab {
     if(appChatsManager.hasRights(this.chatId, 'delete_chat')) {
       const section = new SettingSection({});
 
-      const btnDelete = Button('btn-primary btn-transparent danger', {icon: 'delete', text: isBroadcast ? 'PeerInfo.DeleteChannel' : 'DeleteMega'});
+      const btnDelete = Button('btn-primary btn-transparent danger', {icon: 'delete', text: isBroadcast ? 'PeerInfo.DeleteChannel' : 'DeleteAndExitButton'});
 
       attachClickEvent(btnDelete, () => {
-        if(isBroadcast) {
-          new PopupPeer('popup-delete-channel', {
-            peerId: -this.chatId,
-            titleLangKey: 'ChannelDeleteMenu',
-            descriptionLangKey: 'AreYouSureDeleteAndExitChannel',
-            buttons: addCancelButton([{
-              langKey: 'ChannelDeleteMenu',
-              callback: () => {
-                const toggle = toggleDisability([btnDelete], true);
-  
-              },
-              isDanger: true
-            }, {
-              langKey: 'DeleteChannelForAll',
-              callback: () => {
-                const toggle = toggleDisability([btnDelete], true);
-  
-                appChatsManager.deleteChannel(this.chatId).then(() => {
-                  this.close();
-                }, () => {
-                  toggle();
-                });
-              },
-              isDanger: true
-            }])
-          }).show();
-        } else {
-          new PopupDeleteDialog(-this.chatId, undefined, (promise) => {
-            const toggle = toggleDisability([btnDelete], true);
-            promise.then(() => {
-              this.close();
-            }, () => {
-              toggle();
-            });
+        new PopupDeleteDialog(-this.chatId/* , 'delete' */, undefined, (promise) => {
+          const toggle = toggleDisability([btnDelete], true);
+          promise.then(() => {
+            this.close();
+          }, () => {
+            toggle();
           });
-        }
+        });
       }, {listenerSetter: this.listenerSetter});
 
       section.content.append(btnDelete);

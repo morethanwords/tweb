@@ -206,23 +206,24 @@ export class AppChatsManager {
     return rights;
   }
 
+  // * creator can still send messages to left channel. so this function shows server rights. see canSendToPeer for local rights in messages manager.
   public hasRights(id: number, action: ChatRights, rights?: ChatAdminRights | ChatBannedRights, isThread?: boolean) {
     const chat: Chat = this.getChat(id);
     if(chat._ === 'chatEmpty') return false;
+
+    if((chat as Chat.chat).pFlags.deactivated && action !== 'view_messages') {
+      return false;
+    }
+
+    if((chat as Chat.chat).pFlags.creator && rights === undefined) {
+      return true;
+    }
 
     if(chat._ === 'chatForbidden' ||
         chat._ === 'channelForbidden' ||
         (chat as Chat.chat).pFlags.kicked ||
         (chat.pFlags.left && !(chat as Chat.channel).pFlags.megagroup)) {
       return false;
-    }
-
-    if((chat as Chat.chat).pFlags.deactivated && action !== 'view_messages') {
-      return false;
-    }
-
-    if(chat.pFlags.creator && rights === undefined) {
-      return true;
     }
 
     if(!rights) {

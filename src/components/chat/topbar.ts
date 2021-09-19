@@ -314,7 +314,7 @@ export default class ChatTopbar {
       icon: 'delete danger',
       text: 'Delete',
       onClick: () => {
-        new PopupDeleteDialog(this.peerId);
+        new PopupDeleteDialog(this.peerId/* , 'leave' */);
       },
       verify: () => this.chat.type === 'chat' && !!this.appMessagesManager.getDialogOnly(this.peerId)
     }];
@@ -377,8 +377,7 @@ export default class ChatTopbar {
       });
     }, {listenerSetter: this.listenerSetter});
 
-    this.listenerSetter.add(rootScope)('chat_update', (e) => {
-      const chatId: number = e;
+    this.listenerSetter.add(rootScope)('chat_update', (chatId) => {
       if(this.peerId === -chatId) {
         const chat = this.appChatsManager.getChat(chatId) as Channel/*  | Chat */;
         

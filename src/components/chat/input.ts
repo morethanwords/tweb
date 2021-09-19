@@ -107,7 +107,7 @@ export default class ChatInput {
   private replyKeyboard: ReplyKeyboard;
 
   private attachMenu: HTMLButtonElement;
-  private attachMenuButtons: (ButtonMenuItemOptions & {verify: (peerId: number) => boolean})[];
+  private attachMenuButtons: (ButtonMenuItemOptions & {verify: (peerId: number, threadId: number) => boolean})[];
 
   private sendMenu: SendMenu;
 
@@ -371,7 +371,7 @@ export default class ChatInput {
         this.willAttachType = 'media';
         this.fileInput.click();
       },
-      verify: (peerId: number) => peerId > 0 || this.appChatsManager.hasRights(peerId, 'send_media')
+      verify: (peerId, threadId) => this.appMessagesManager.canSendToPeer(peerId, threadId, 'send_media')
     }, {
       icon: 'document',
       text: 'Chat.Input.Attach.Document',
@@ -381,14 +381,14 @@ export default class ChatInput {
         this.willAttachType = 'document';
         this.fileInput.click();
       },
-      verify: (peerId: number) => peerId > 0 || this.appChatsManager.hasRights(peerId, 'send_media')
+      verify: (peerId, threadId) => this.appMessagesManager.canSendToPeer(peerId, threadId, 'send_media')
     }, {
       icon: 'poll',
       text: 'Poll',
       onClick: () => {
         new PopupCreatePoll(this.chat).show();
       },
-      verify: (peerId: number) => peerId < 0 && this.appChatsManager.hasRights(peerId, 'send_polls')
+      verify: (peerId, threadId) => this.appMessagesManager.canSendToPeer(peerId, threadId, 'send_polls')
     }];
 
     this.attachMenu = ButtonMenuToggle({noRipple: true, listenerSetter: this.listenerSetter}, 'top-left', this.attachMenuButtons);
@@ -814,14 +814,14 @@ export default class ChatInput {
   }
 
   public updateMessageInput() {
-    const canWrite = this.appMessagesManager.canWriteToPeer(this.chat.peerId, this.chat.threadId);
+    const canWrite = this.appMessagesManager.canSendToPeer(this.chat.peerId, this.chat.threadId);
     this.chatInput.classList.add('no-transition');
     this.chatInput.classList.toggle('is-hidden', !canWrite);
     void this.chatInput.offsetLeft; // reflow
     this.chatInput.classList.remove('no-transition');
 
     const visible = this.attachMenuButtons.filter(button => {
-      const good = button.verify(this.chat.peerId);
+      const good = button.verify(this.chat.peerId, this.chat.threadId);
       button.element.classList.toggle('hide', !good);
       return good;
     });
@@ -1328,7 +1328,7 @@ export default class ChatInput {
 
       if(this.stickersHelper && 
         rootScope.settings.stickers.suggest && 
-        (this.chat.peerId > 0 || this.appChatsManager.hasRights(this.chat.peerId, 'send_stickers')) &&
+        this.appMessagesManager.canSendToPeer(this.chat.peerId, this.chat.threadId, 'send_stickers') &&
         entity?._ === 'messageEntityEmoji' && entity.length === value.length && !entity.offset) {
         foundHelper = this.stickersHelper;
         this.stickersHelper.checkEmoticon(value);
@@ -1414,7 +1414,7 @@ export default class ChatInput {
         this.sendMessage();
       }
     } else {
-      if(this.chat.peerId < 0 && !this.appChatsManager.hasRights(this.chat.peerId, 'send_media')) {
+      if(this.chat.peerId < 0 && !this.appMessagesManager.canSendToPeer(this.chat.peerId, this.chat.threadId, 'send_media')) {
         toast(POSTING_MEDIA_NOT_ALLOWED);
         return;
       }
@@ -1694,7 +1694,7 @@ export default class ChatInput {
     document = this.appDocsManager.getDoc(document);
 
     const flag = document.type === 'sticker' ? 'send_stickers' : (document.type === 'gif' ? 'send_gifs' : 'send_media');
-    if(this.chat.peerId < 0 && !this.appChatsManager.hasRights(this.chat.peerId, flag)) {
+    if(this.chat.peerId < 0 && !this.appMessagesManager.canSendToPeer(this.chat.peerId, this.chat.threadId, flag)) {
       toast(POSTING_MEDIA_NOT_ALLOWED);
       return false;
     }

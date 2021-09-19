@@ -18,6 +18,7 @@ import { cancelEvent } from "../../helpers/dom/cancelEvent";
 import getRichValue from "../../helpers/dom/getRichValue";
 import isInputEmpty from "../../helpers/dom/isInputEmpty";
 import whichChild from "../../helpers/dom/whichChild";
+import { attachClickEvent } from "../../helpers/dom/clickEvent";
 
 const MAX_LENGTH_QUESTION = 255;
 const MAX_LENGTH_OPTION = 100;
@@ -49,7 +50,7 @@ export default class PopupCreatePoll extends PopupElement {
       maxLength: MAX_LENGTH_QUESTION
     });
 
-    this.questionInputField.input.addEventListener('input', () => {
+    this.listenerSetter.add(this.questionInputField.input)('input', () => {
       this.handleChange();
     });
 
@@ -110,12 +111,12 @@ export default class PopupCreatePoll extends PopupElement {
       name: 'quiz'
     });
 
-    this.multipleCheckboxField.input.addEventListener('change', () => {
+    this.listenerSetter.add(this.multipleCheckboxField.input)('change', () => {
       const checked = this.multipleCheckboxField.input.checked;
       this.quizCheckboxField.input.toggleAttribute('disabled', checked);
     });
 
-    this.quizCheckboxField.input.addEventListener('change', () => {
+    this.listenerSetter.add(this.quizCheckboxField.input)('change', () => {
       const checked = this.quizCheckboxField.input.checked;
 
       (Array.from(this.questions.children) as HTMLElement[]).map(el => {
@@ -153,7 +154,7 @@ export default class PopupCreatePoll extends PopupElement {
       maxLength: MAX_LENGTH_SOLUTION
     });
 
-    this.questionInputField.input.addEventListener('input', () => {
+    this.listenerSetter.add(this.questionInputField.input)('input', () => {
       this.handleChange();
     });
 
@@ -169,7 +170,7 @@ export default class PopupCreatePoll extends PopupElement {
     this.body.parentElement.insertBefore(hr, this.body);
     this.body.append(d, this.questions, document.createElement('hr'), settingsCaption, dd, ...quizElements);
 
-    this.btnConfirm.addEventListener('click', this.onSubmitClick);
+    attachClickEvent(this.btnConfirm, this.onSubmitClick, {listenerSetter: this.listenerSetter});
 
     this.scrollable = new Scrollable(this.body);
     this.appendMoreField();
@@ -246,8 +247,7 @@ export default class PopupCreatePoll extends PopupElement {
       return;
     }
 
-    this.btnClose.click();
-    this.btnConfirm.removeEventListener('click', this.onSubmitClick);
+    this.hide();
 
     //const randomID = [nextRandomInt(0xFFFFFFFF), nextRandomInt(0xFFFFFFFF)];
     //const randomIDS = bigint(randomID[0]).shiftLeft(32).add(bigint(randomID[1])).toString();
@@ -350,20 +350,20 @@ export default class PopupCreatePoll extends PopupElement {
       name: 'question-' + tempId, 
       maxLength: MAX_LENGTH_OPTION
     });
-    questionField.input.addEventListener('input', this.onInput);
+    this.listenerSetter.add(questionField.input)('input', this.onInput);
 
     const radioField = new RadioField({
       text: '', 
       name: 'question'
     });
     radioField.main.append(questionField.container);
-    questionField.input.addEventListener('click', cancelEvent);
+    attachClickEvent(questionField.input, cancelEvent, {listenerSetter: this.listenerSetter});
     radioField.label.classList.add('hidden-widget');
     radioField.input.disabled = true;
     if(!this.quizCheckboxField.input.checked) {
       radioField.label.classList.remove('radio-field');
     }
-    radioField.input.addEventListener('change', () => {
+    this.listenerSetter.add(radioField.input)('change', () => {
       const checked = radioField.input.checked;
       if(checked) {
         const idx = whichChild(radioField.label);
@@ -376,7 +376,7 @@ export default class PopupCreatePoll extends PopupElement {
     deleteBtn.classList.add('btn-icon', 'tgico-close');
     questionField.container.append(deleteBtn);
   
-    deleteBtn.addEventListener('click', this.onDeleteClick, {once: true});
+    attachClickEvent(deleteBtn, this.onDeleteClick, {listenerSetter: this.listenerSetter, once: true});
 
     this.questions.append(radioField.label);
 

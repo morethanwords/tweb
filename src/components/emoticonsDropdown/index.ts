@@ -5,7 +5,6 @@
  */
 
 import { isTouchSupported } from "../../helpers/touchSupport";
-import appChatsManager from "../../lib/appManagers/appChatsManager";
 import appImManager from "../../lib/appManagers/appImManager";
 import rootScope from "../../lib/rootScope";
 import animationIntersector from "../animationIntersector";
@@ -27,6 +26,7 @@ import whichChild from "../../helpers/dom/whichChild";
 import { cancelEvent } from "../../helpers/dom/cancelEvent";
 import DropdownHover from "../../helpers/dropdownHover";
 import { pause } from "../../helpers/schedulers/pause";
+import appMessagesManager from "../../lib/appManagers/appMessagesManager";
 
 export const EMOTICONSSTICKERGROUP = 'emoticons-dropdown';
 
@@ -188,14 +188,14 @@ export class EmoticonsDropdown extends DropdownHover {
   };
 
   private checkRights = () => {
-    const peerId = appImManager.chat.peerId;
+    const {peerId, threadId} = appImManager.chat;
     const children = this.tabsEl.children;
     const tabsElements = Array.from(children) as HTMLElement[];
 
-    const canSendStickers = peerId > 0 || appChatsManager.hasRights(peerId, 'send_stickers');
+    const canSendStickers = appMessagesManager.canSendToPeer(peerId, threadId, 'send_stickers');
     tabsElements[2].toggleAttribute('disabled', !canSendStickers);
 
-    const canSendGifs = peerId > 0 || appChatsManager.hasRights(peerId, 'send_gifs');
+    const canSendGifs = appMessagesManager.canSendToPeer(peerId, threadId, 'send_gifs');
     tabsElements[3].toggleAttribute('disabled', !canSendGifs);
 
     const active = this.tabsEl.querySelector('.active');

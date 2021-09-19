@@ -7,14 +7,13 @@
 import appDownloadManager from "../../lib/appManagers/appDownloadManager";
 import resizeableImage from "../../lib/cropper";
 import PopupElement from ".";
-import { ripple } from "../ripple";
 import { _i18n } from "../../lib/langPack";
 import { readBlobAsDataURL } from "../../helpers/blob";
+import { attachClickEvent } from "../../helpers/dom/clickEvent";
 
 export default class PopupAvatar extends PopupElement {
   private cropContainer: HTMLElement;
   private input: HTMLInputElement;
-  private btnSubmit: HTMLElement;
   private h6: HTMLElement;
 
   private image = new Image();
@@ -29,7 +28,7 @@ export default class PopupAvatar extends PopupElement {
   private onCrop: (upload: () => ReturnType<typeof appDownloadManager.upload>) => void;
 
   constructor() {
-    super('popup-avatar', null, {closable: true});
+    super('popup-avatar', null, {closable: true, withConfirm: true});
 
     this.h6 = document.createElement('h6');
     _i18n(this.h6, 'Popup.Avatar.Title');
@@ -45,7 +44,7 @@ export default class PopupAvatar extends PopupElement {
     this.input = document.createElement('input');
     this.input.type = 'file';
     this.input.style.display = 'none';
-    this.input.addEventListener('change', (e: any) => {
+    this.listenerSetter.add(this.input)('change', (e: any) => {
       const file = e.target.files[0];
       if(!file) {
         return;
@@ -68,21 +67,19 @@ export default class PopupAvatar extends PopupElement {
       });
     }, false);
 
-    this.btnSubmit = document.createElement('button');
-    this.btnSubmit.className = 'btn-primary btn-color-primary btn-circle btn-crop btn-icon tgico-check z-depth-1';
-    ripple(this.btnSubmit);
-    this.btnSubmit.addEventListener('click', () => {
+    this.btnConfirm.className = 'btn-primary btn-color-primary btn-circle btn-crop btn-icon tgico-check z-depth-1';
+    attachClickEvent(this.btnConfirm, () => {
       this.cropper.crop();
-      this.btnClose.click();
+      this.hide();
 
       this.canvas.toBlob(blob => {
         this.blob = blob; // save blob to send after reg
         this.darkenCanvas();
         this.resolve();
       }, 'image/jpeg', 1);
-    });
+    }, {listenerSetter: this.listenerSetter});
 
-    this.container.append(this.cropContainer, this.btnSubmit, this.input);
+    this.container.append(this.cropContainer, this.btnConfirm, this.input);
 
     this.onCloseAfterTimeout = () => {
       this.cropper.removeHandlers();

@@ -17,11 +17,11 @@ import { MyDocument } from "../../lib/appManagers/appDocsManager";
 import I18n, { i18n, LangPackKey } from "../../lib/langPack";
 import appDownloadManager from "../../lib/appManagers/appDownloadManager";
 import calcImageInBox from "../../helpers/calcImageInBox";
-import isSendShortcutPressed from "../../helpers/dom/isSendShortcutPressed";
 import placeCaretAtEnd from "../../helpers/dom/placeCaretAtEnd";
 import rootScope from "../../lib/rootScope";
 import RichTextProcessor from "../../lib/richtextprocessor";
 import { MediaSize } from "../../helpers/mediaSizes";
+import { attachClickEvent } from "../../helpers/dom/clickEvent";
 
 type SendFileParams = Partial<{
   file: File,
@@ -57,11 +57,11 @@ export default class PopupNewMedia extends PopupElement {
   private inputField: InputField;
 
   constructor(private chat: Chat, files: File[], willAttachType: PopupNewMedia['willAttach']['type']) {
-    super('popup-send-photo popup-new-media', null, {closable: true, withConfirm: 'Modal.Send'});
+    super('popup-send-photo popup-new-media', null, {closable: true, withConfirm: 'Modal.Send', confirmShortcutIsSendShortcut: true});
 
     this.willAttach.type = willAttachType;
 
-    this.btnConfirm.addEventListener('click', () => this.send());
+    attachClickEvent(this.btnConfirm, () => this.send(), {listenerSetter: this.listenerSetter});
 
     if(this.chat.type !== 'scheduled') {
       const sendMenu = new SendContextMenu({
@@ -76,6 +76,7 @@ export default class PopupNewMedia extends PopupElement {
         },
         openSide: 'bottom-left',
         onContextElement: this.btnConfirm,
+        listenerSetter: this.listenerSetter
       });
 
       sendMenu.setPeerId(this.chat.peerId);
@@ -112,7 +113,7 @@ export default class PopupNewMedia extends PopupElement {
       this.groupCheckboxField.input.checked = true;
       this.willAttach.group = true;
 
-      this.groupCheckboxField.input.addEventListener('change', () => {
+      this.listenerSetter.add(this.groupCheckboxField.input)('change', () => {
         const checked = this.groupCheckboxField.input.checked;
   
         this.willAttach.group = checked;
@@ -138,10 +139,6 @@ export default class PopupNewMedia extends PopupElement {
 
       this.input.focus();
       placeCaretAtEnd(this.input);
-    }
-    
-    if(isSendShortcutPressed(e)) {
-      this.btnConfirm.click();
     }
   };
 
@@ -455,13 +452,11 @@ export default class PopupNewMedia extends PopupElement {
 
       // show now
       if(!this.element.classList.contains('active')) {
-        document.body.addEventListener('keydown', this.onKeyDown);
+        this.listenerSetter.add(document.body)('keydown', this.onKeyDown);
         this.onClose = () => {
           if(this.wasInputValue) {
             this.chat.input.messageInputField.value = this.wasInputValue;
           }
-
-          document.body.removeEventListener('keydown', this.onKeyDown);
         };
         this.show();
       }
