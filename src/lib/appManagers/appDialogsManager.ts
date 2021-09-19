@@ -301,14 +301,15 @@ export class AppDialogsManager {
       this.setUnreadMessages(dialog); // возможно это не нужно, но нужно менять is-muted
     });
 
-    rootScope.addEventListener('dialog_draft', ({peerId}) => {
-      const dialog = appMessagesManager.getDialogOnly(peerId);
-      if(dialog) {
+    rootScope.addEventListener('dialog_draft', ({dialog, drop, peerId}) => {
+      if(drop) {
+        this.sortedList.delete(peerId);
+      } else {
         this.updateDialog(dialog);
+      }
 
-        if(this.processContact) {
-          this.processContact(peerId);
-        }
+      if(this.processContact) {
+        this.processContact(peerId);
       }
     });
 

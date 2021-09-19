@@ -299,16 +299,19 @@ export class AppMessagesManager {
         if(!threadId) {
           dialog.draft = draft;
 
+          let drop = false;
           if(!draft && !appMessagesIdsManager.getServerMessageId(dialog.top_message)) {
-            this.dialogsStorage.dropDialogWithEvent(peerId);
-            return;
+            this.dialogsStorage.dropDialog(peerId);
+            drop = true;
+          } else {
+            this.dialogsStorage.generateIndexForDialog(dialog);
+            this.dialogsStorage.pushDialog(dialog);
           }
-
-          this.dialogsStorage.generateIndexForDialog(dialog);
-          this.dialogsStorage.pushDialog(dialog);
 
           rootScope.dispatchEvent('dialog_draft', {
             peerId,
+            dialog,
+            drop,
             draft,
             index: dialog.index
           });

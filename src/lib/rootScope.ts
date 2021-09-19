@@ -36,7 +36,7 @@ export type BroadcastEvents = {
   'filter_update': MyDialogFilter,
   'filter_order': number[],
   
-  'dialog_draft': {peerId: number, draft: MyDraftMessage | undefined, index: number},
+  'dialog_draft': {peerId: number, dialog: Dialog, drop: boolean, draft: MyDraftMessage | undefined, index: number},
   'dialog_unread': {peerId: number},
   'dialog_flush': {peerId: number},
   'dialog_drop': {peerId: number, dialog?: Dialog},
