@@ -40,6 +40,7 @@ import replaceContent from "../../helpers/dom/replaceContent";
 import { ChatFull } from "../../layer";
 import PopupPickUser from "../popups/pickUser";
 import PopupPeer from "../popups/peer";
+import generateVerifiedIcon from "../generateVerifiedIcon";
 
 export default class ChatTopbar {
   public container: HTMLDivElement;
@@ -600,8 +601,14 @@ export default class ChatTopbar {
       }).element;
     }
     
-    this.title.textContent = '';
-    this.title.append(titleEl);
+    replaceContent(this.title, titleEl);
+
+    if(this.chat.type === 'chat') {
+      const peer = this.appPeersManager.getPeer(this.peerId);
+      if(peer?.pFlags?.verified) {
+        this.title.append(generateVerifiedIcon());
+      }
+    }
   }
 
   public setMutedState() {

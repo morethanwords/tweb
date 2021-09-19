@@ -82,24 +82,18 @@
 	.user-title {
 		cursor: pointer;
 		font-size: 1rem;
-		line-height: 24px;
+		line-height: 1.5rem;
 		max-width: calc(100% - 1.5rem);
-	
-		/* @include respond-to(handhelds) {
-			text-overflow: ellipsis;
-			white-space: nowrap;
-			overflow: hidden;
-		} */
+		display: flex;
+		align-items: center;
 	
 		span.emoji {
 			vertical-align: inherit;
 		}
 	}
 	
-	.user-title, .info {
-		white-space: nowrap;
-		text-overflow: ellipsis;
-		overflow: hidden;
+	.peer-title, .info {
+		@include text-overflow();
 		line-height: var(--line-height);
 	}
 

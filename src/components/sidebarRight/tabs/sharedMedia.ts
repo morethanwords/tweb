@@ -49,6 +49,7 @@ import { cancelEvent } from "../../../helpers/dom/cancelEvent";
 import { attachClickEvent } from "../../../helpers/dom/clickEvent";
 import replaceContent from "../../../helpers/dom/replaceContent";
 import appAvatarsManager from "../../../lib/appManagers/appAvatarsManager";
+import generateVerifiedIcon from "../../generateVerifiedIcon";
 
 let setText = (text: string, row: Row) => {
   //fastRaf(() => {
@@ -722,8 +723,13 @@ class PeerProfile {
 
     replaceContent(this.name, new PeerTitle({
       peerId,
-      dialog: true
+      dialog: true,
     }).element);
+
+    const peer = appPeersManager.getPeer(peerId);
+    if(peer?.pFlags?.verified) {
+      this.name.append(generateVerifiedIcon());
+    }
 
     this.setPeerStatus(true);
   }
