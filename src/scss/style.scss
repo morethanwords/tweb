@@ -860,8 +860,14 @@ not screen and (     -o-min-device-pixel-ratio: 2/1),
 not screen and (        min-device-pixel-ratio: 2),
 not screen and (                min-resolution: 192dpi),
 not screen and (                min-resolution: 2dppx) {
-  span.emoji {
-    margin-right: 5px;
+  html:not(.is-safari) {
+    span.emoji {
+      margin-right: 5px;
+    }
+
+    avatar-element span.emoji {
+      margin-right: 0;
+    }
   }
 }
 
