@@ -142,7 +142,7 @@ export default class PopupDatePicker extends PopupElement {
       
       this.timeDiv.append(this.hoursInputField.container, delimiter, this.minutesInputField.container);
 
-      attachClickEvent(this.btnClose, () => {
+      attachClickEvent(this.btnConfirm, () => {
         if(this.onPick) {
           this.selectedDate.setHours(+this.hoursInputField.value || 0, +this.minutesInputField.value || 0, 0, 0);
           this.onPick(this.selectedDate.getTime() / 1000 | 0);
