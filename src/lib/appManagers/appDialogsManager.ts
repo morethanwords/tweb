@@ -817,6 +817,8 @@ export class AppDialogsManager {
           await Promise.all(loadPromises).finally();
 
           callbacks.forEach(callback => callback());
+        } else {
+          this.onListLengthChange();
         }
 
         const offsetDialog = result.dialogs[side === 'top' ? 0 : result.dialogs.length - 1];
