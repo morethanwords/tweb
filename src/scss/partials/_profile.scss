@@ -258,26 +258,34 @@
 
   &-name {
     text-align: center;
-    font-size: 20px;
-    line-height: 1.3125;
+    font-size: 1.25rem;
+    line-height: var(--line-height);
     font-weight: 500;
-    text-overflow: ellipsis;
 	  overflow: hidden;
-    word-break: break-word;
-    max-width: 340px;
+    max-width: 21.25rem;
     margin: 0 auto;
     color: var(--primary-text-color);
+    display: flex;
+    align-items: flex-end;
 
     span.emoji {
       vertical-align: inherit;
       min-width: min-content;
+    }
+
+    .peer-title {
+      @include text-overflow(false);
+    }
+
+    .verified-icon {
+      margin-bottom: 3px;
     }
   }
 
   &-subtitle {
     text-align: center;
     color: var(--secondary-text-color);
-    font-size: 14px;
+    font-size: .875rem;
     margin-bottom: .875rem;
     margin-top: 1px;
 
