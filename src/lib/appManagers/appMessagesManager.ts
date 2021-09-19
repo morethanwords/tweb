@@ -32,7 +32,7 @@ import DialogsStorage from "../storages/dialogs";
 import FiltersStorage from "../storages/filters";
 //import { telegramMeWebService } from "../mtproto/mtproto";
 import apiUpdatesManager from "./apiUpdatesManager";
-import appChatsManager from "./appChatsManager";
+import appChatsManager, { ChatRights } from "./appChatsManager";
 import appDocsManager, { MyDocument } from "./appDocsManager";
 import appDownloadManager from "./appDownloadManager";
 import appPeersManager from "./appPeersManager";
@@ -4673,11 +4673,12 @@ export class AppMessagesManager {
     }, settings);
   }
 
-  public canWriteToPeer(peerId: number, threadId?: number) {
+  public canSendToPeer(peerId: number, threadId?: number, action: ChatRights = 'send_messages') {
     if(peerId < 0) {
       //const isChannel = appPeersManager.isChannel(peerId);
-      const hasRights = /* isChannel &&  */appChatsManager.hasRights(-peerId, 'send_messages', undefined, !!threadId); 
-      return /* !isChannel ||  */hasRights;
+      const chat: Chat.chat = appChatsManager.getChat(-peerId);
+      const hasRights = /* isChannel &&  */appChatsManager.hasRights(-peerId, action, undefined, !!threadId); 
+      return /* !isChannel ||  */hasRights && (!chat.pFlags.left || !!threadId);
     } else {
       return appUsersManager.canSendToUser(peerId);
     }
@@ -4875,7 +4876,7 @@ export class AppMessagesManager {
   }
 
   public getScheduledMessages(peerId: number): Promise<number[]> {
-    if(!this.canWriteToPeer(peerId)) return Promise.resolve([]);
+    if(!this.canSendToPeer(peerId)) return Promise.resolve([]);
 
     const storage = this.getScheduledMessagesStorage(peerId);
     if(Object.keys(storage).length) {
@@ -5299,7 +5300,7 @@ export class AppMessagesManager {
     let typing = this.typings[peerId];
     if(!rootScope.myId || 
       !peerId || 
-      !this.canWriteToPeer(peerId) || 
+      !this.canSendToPeer(peerId) || 
       peerId === rootScope.myId ||
       typing?.type === action._
     ) {

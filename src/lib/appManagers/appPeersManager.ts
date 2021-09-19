@@ -288,13 +288,11 @@ export class AppPeersManager {
   public getDeleteButtonText(peerId: number): LangPackKey {
     switch(this.getDialogType(peerId)) {
       case 'channel':
-        return 'ChatList.Context.LeaveChannel';
+        return appChatsManager.hasRights(-peerId, 'delete_chat') ? 'ChannelDelete' : 'ChatList.Context.LeaveChannel';
 
       case 'megagroup':
-        return 'ChatList.Context.LeaveGroup';
-
       case 'group':
-        return 'ChatList.Context.DeleteAndExit';
+        return appChatsManager.hasRights(-peerId, 'delete_chat') ? 'DeleteMega' : 'ChatList.Context.LeaveGroup';
       
       default:
         return 'ChatList.Context.DeleteChat';

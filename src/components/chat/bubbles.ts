@@ -456,7 +456,7 @@ export default class ChatBubbles {
     if(!isMobile) {
       this.listenerSetter.add(this.bubblesContainer)('dblclick', (e) => {
         if(this.chat.selection.isSelecting || 
-          !this.appMessagesManager.canWriteToPeer(this.peerId, this.chat.threadId)) {
+          !this.appMessagesManager.canSendToPeer(this.peerId, this.chat.threadId)) {
           return;
         }
         
@@ -559,7 +559,7 @@ export default class ChatBubbles {
       const chatId: number = e;
       if(this.peerId === -chatId) {
         const hadRights = this.chatInner.classList.contains('has-rights');
-        const hasRights = this.appMessagesManager.canWriteToPeer(this.peerId, this.chat.threadId);
+        const hasRights = this.appMessagesManager.canSendToPeer(this.peerId, this.chat.threadId);
 
         if(hadRights !== hasRights) {
           this.finishPeerChange();
@@ -2007,7 +2007,7 @@ export default class ChatBubbles {
   public finishPeerChange() {
     const peerId = this.peerId;
     const isChannel = this.appPeersManager.isChannel(peerId);
-    const canWrite = this.appMessagesManager.canWriteToPeer(peerId, this.chat.threadId);
+    const canWrite = this.appMessagesManager.canSendToPeer(peerId, this.chat.threadId);
     
     this.chatInner.classList.toggle('has-rights', canWrite);
     this.bubblesContainer.classList.toggle('is-chat-input-hidden', !canWrite);
@@ -3495,7 +3495,7 @@ export default class ChatBubbles {
       this.renderEmptyPlaceholder('group', bubble, message, elements);
     } else if(rootScope.myId === this.peerId) {
       this.renderEmptyPlaceholder('saved', bubble, message, elements);
-    } else if(this.peerId > 0 && !isBot && this.appMessagesManager.canWriteToPeer(this.peerId) && this.chat.type === 'chat') {
+    } else if(this.peerId > 0 && !isBot && this.appMessagesManager.canSendToPeer(this.peerId) && this.chat.type === 'chat') {
       this.renderEmptyPlaceholder('greeting', bubble, message, elements);
     } else if(this.chat.type === 'scheduled') {
       this.renderEmptyPlaceholder('noScheduledMessages', bubble, message, elements);

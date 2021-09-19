@@ -12,6 +12,9 @@ import { i18n, LangPackKey } from "../../lib/langPack";
 import findUpClassName from "../../helpers/dom/findUpClassName";
 import blurActiveElement from "../../helpers/dom/blurActiveElement";
 import ListenerSetter from "../../helpers/listenerSetter";
+import { attachClickEvent, simulateClickEvent } from "../../helpers/dom/clickEvent";
+import isSendShortcutPressed from "../../helpers/dom/isSendShortcutPressed";
+import { cancelEvent } from "../../helpers/dom/cancelEvent";
 
 export type PopupButton = {
   text?: string,
@@ -19,14 +22,16 @@ export type PopupButton = {
   langKey?: LangPackKey,
   langArgs?: any[],
   isDanger?: true,
-  isCancel?: true
+  isCancel?: true,
+  element?: HTMLButtonElement
 };
 
 export type PopupOptions = Partial<{
   closable: true, 
   overlayClosable: true, 
   withConfirm: LangPackKey | true, 
-  body: true
+  body: true,
+  confirmShortcutIsSendShortcut: boolean
 }>;
 
 export default class PopupElement {
@@ -47,6 +52,9 @@ export default class PopupElement {
 
   protected listenerSetter: ListenerSetter;
 
+  protected confirmShortcutIsSendShortcut: boolean;
+  protected btnConfirmOnEnter: HTMLButtonElement;
+
   constructor(className: string, buttons?: Array<PopupButton>, options: PopupOptions = {}) {
     this.element.classList.add('popup');
     this.element.className = 'popup' + (className ? ' ' + className : '');
@@ -59,24 +67,23 @@ export default class PopupElement {
 
     this.listenerSetter = new ListenerSetter();
 
+    this.confirmShortcutIsSendShortcut = options.confirmShortcutIsSendShortcut;
+
     if(options.closable) {
       this.btnClose = document.createElement('span');
       this.btnClose.classList.add('btn-icon', 'popup-close', 'tgico-close');
       //ripple(this.closeBtn);
       this.header.prepend(this.btnClose);
 
-      this.btnClose.addEventListener('click', this.hide, {once: true});
+      attachClickEvent(this.btnClose, this.hide, {listenerSetter: this.listenerSetter, once: true});
     }
 
     if(options.overlayClosable) {
-      const onOverlayClick = (e: MouseEvent) => {
+      attachClickEvent(this.element, (e: MouseEvent) => {
         if(!findUpClassName(e.target, 'popup-container')) {
           this.hide();
-          this.element.removeEventListener('click', onOverlayClick);
         }
-      };
-  
-      this.element.addEventListener('click', onOverlayClick);
+      }, {listenerSetter: this.listenerSetter});
     }
 
     if(options.withConfirm) {
@@ -96,6 +103,7 @@ export default class PopupElement {
       this.container.append(this.body);
     }
 
+    let btnConfirmOnEnter = this.btnConfirm;
     if(buttons && buttons.length) {
       const buttonsDiv = this.buttons = document.createElement('div');
       buttonsDiv.classList.add('popup-buttons');
@@ -103,11 +111,11 @@ export default class PopupElement {
       if(buttons.length === 2) {
         buttonsDiv.classList.add('popup-buttons-row');
       }
-  
+      
       const buttonsElements = buttons.map(b => {
         const button = document.createElement('button');
         button.className = 'btn' + (b.isDanger ? ' danger' : ' primary');
-
+        
         ripple(button);
         
         if(b.text) {
@@ -115,24 +123,27 @@ export default class PopupElement {
         } else {
           button.append(i18n(b.langKey, b.langArgs));
         }
-  
-        if(b.callback) {
-          button.addEventListener('click', () => {
-            b.callback();
-            this.destroy();
-          }, {once: true});
-        } else if(b.isCancel) {
-          button.addEventListener('click', () => {
-            this.destroy();
-          }, {once: true});
-        }
-  
-        return button;
+        
+        attachClickEvent(button, () => {
+          b.callback && b.callback();
+          this.destroy();
+        }, {listenerSetter: this.listenerSetter, once: true});
+        
+        return b.element = button;
       });
-  
+      
+      if(!btnConfirmOnEnter && buttons.length === 2) {
+        const button = buttons.find(button => !button.isCancel);
+        if(button) {
+          btnConfirmOnEnter = button.element;
+        }
+      }
+
       buttonsDiv.append(...buttonsElements);
       this.container.append(buttonsDiv);
     }
+
+    this.btnConfirmOnEnter = btnConfirmOnEnter;
 
     this.element.append(this.container);
   }
@@ -152,6 +163,13 @@ export default class PopupElement {
     this.element.classList.add('active');
     rootScope.isOverlayActive = true;
     animationIntersector.checkAnimations(true);
+
+    this.listenerSetter.add(document.body)('keydown', (e) => {
+      if(this.confirmShortcutIsSendShortcut ? isSendShortcutPressed(e) : e.key === 'Enter') {
+        simulateClickEvent(this.btnConfirmOnEnter);
+        cancelEvent(e);
+      }
+    });
   }
 
   public hide = () => {
@@ -164,7 +182,6 @@ export default class PopupElement {
     this.element.classList.remove('active');
     this.listenerSetter.removeAll();
 
-    if(this.btnClose) this.btnClose.removeEventListener('click', this.hide);
     rootScope.isOverlayActive = false;
 
     appNavigationController.removeItem(this.navigationItem);

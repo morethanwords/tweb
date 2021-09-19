@@ -35,12 +35,12 @@ export default class AppNewChannelTab extends SliderSuperTab {
     inputWrapper.classList.add('input-wrapper');
 
     this.channelNameInputField = new InputField({
-      label: 'Channel.ChannelNameHolder',
+      label: 'EnterChannelName',
       maxLength: 128
     });
 
     this.channelDescriptionInputField = new InputField({
-      label: 'Channel.DescriptionPlaceholder',
+      label: 'DescriptionOptionalPlaceholder',
       maxLength: 255
     });
 

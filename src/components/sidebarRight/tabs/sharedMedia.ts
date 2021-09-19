@@ -810,7 +810,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
   private searchSuper: AppSearchSuper;
 
   private profile: PeerProfile;
-  peerChanged: boolean;
+  private peerChanged: boolean;
 
   constructor(slider: SidebarSlider) {
     super(slider, false);
@@ -911,8 +911,14 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     });
 
     rootScope.addEventListener('contacts_update', (userId) => {
-      if(this.peerId === userId && rootScope.myId !== userId) {
-        this.editBtn.classList.toggle('hide', !appUsersManager.isContact(userId));
+      if(this.peerId === userId) {
+        this.toggleEditBtn();
+      }
+    });
+
+    rootScope.addEventListener('chat_update', (chatId) => {
+      if(this.peerId === -chatId) {
+        this.toggleEditBtn();
       }
     });
 
@@ -1175,16 +1181,18 @@ export default class AppSharedMediaTab extends SliderSuperTab {
 
     this.profile.fillProfileElements();
 
+    this.toggleEditBtn();
+  }
+
+  private toggleEditBtn() {
+    let show: boolean;
     if(this.peerId > 0) {
-      if(this.peerId !== rootScope.myId && appUsersManager.isContact(this.peerId)) {
-        this.editBtn.classList.remove('hide');
-      }
+      show = this.peerId !== rootScope.myId && appUsersManager.isContact(this.peerId);
     } else {
-      const chat: Chat = appChatsManager.getChat(-this.peerId);
-      if((chat._ === 'chat' || (chat as Chat.channel).admin_rights) && !(chat as Chat.chat).pFlags.deactivated) {
-        this.editBtn.classList.remove('hide');
-      }
+      show = appChatsManager.hasRights(-this.peerId, 'change_info');
     }
+
+    this.editBtn.classList.toggle('hide', !show);
   }
 
   public loadSidebarMedia(single: boolean, justLoad = false) {

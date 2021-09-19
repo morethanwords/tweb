@@ -5,6 +5,7 @@
  */
 
 import PopupElement, { PopupOptions } from ".";
+import { attachClickEvent } from "../../helpers/dom/clickEvent";
 import mediaSizes from "../../helpers/mediaSizes";
 import I18n, { i18n, LangPackKey } from "../../lib/langPack";
 import InputField from "../inputField";
@@ -62,11 +63,11 @@ export default class PopupDatePicker extends PopupElement {
 
     this.prevBtn = document.createElement('button');
     this.prevBtn.classList.add('btn-icon', 'tgico-down', 'date-picker-prev');
-    this.prevBtn.addEventListener('click', this.onPrevClick);
+    attachClickEvent(this.prevBtn, this.onPrevClick, {listenerSetter: this.listenerSetter});
 
     this.nextBtn = document.createElement('button');
     this.nextBtn.classList.add('btn-icon', 'tgico-down', 'date-picker-next');
-    this.nextBtn.addEventListener('click', this.onNextClick);
+    attachClickEvent(this.nextBtn, this.onNextClick, {listenerSetter: this.listenerSetter});
     
     this.monthTitle = document.createElement('div');
     this.monthTitle.classList.add('date-picker-month-title');
@@ -76,7 +77,7 @@ export default class PopupDatePicker extends PopupElement {
     // Month
     this.monthsContainer = document.createElement('div');
     this.monthsContainer.classList.add('date-picker-months');
-    this.monthsContainer.addEventListener('click', this.onDateClick);
+    attachClickEvent(this.monthsContainer, this.onDateClick, {listenerSetter: this.listenerSetter});
 
     this.body.append(this.controlsDiv, this.monthsContainer);
 
@@ -91,7 +92,7 @@ export default class PopupDatePicker extends PopupElement {
 
       const handleTimeInput = (max: number, inputField: InputField, onInput: (length: number) => void, onOverflow?: (number: number) => void) => {
         const maxString = '' + max;
-        inputField.input.addEventListener('input', (e) => {
+        this.listenerSetter.add(inputField.input)('input', (e) => {
           let value = inputField.value.replace(/\D/g, '');
           if(value.length > 2) {
             value = value.slice(0, 2);
@@ -141,14 +142,14 @@ export default class PopupDatePicker extends PopupElement {
       
       this.timeDiv.append(this.hoursInputField.container, delimiter, this.minutesInputField.container);
 
-      this.btnConfirm.addEventListener('click', () => {
+      attachClickEvent(this.btnClose, () => {
         if(this.onPick) {
           this.selectedDate.setHours(+this.hoursInputField.value || 0, +this.minutesInputField.value || 0, 0, 0);
           this.onPick(this.selectedDate.getTime() / 1000 | 0);
         }
 
         this.hide();
-      }, {once: true});
+      }, {listenerSetter: this.listenerSetter});
 
       this.body.append(this.timeDiv);
 

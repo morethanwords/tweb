@@ -149,7 +149,7 @@ export default class DialogsContextMenu {
   };
 
   private onDeleteClick = () => {
-    new PopupDeleteDialog(this.selectedId);
+    new PopupDeleteDialog(this.selectedId/* , 'delete' */);
   };
 
   onContextMenu = (e: MouseEvent | Touch) => {

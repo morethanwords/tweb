@@ -7,7 +7,6 @@
 import appChatsManager, { ChatRights } from "../lib/appManagers/appChatsManager";
 import appDialogsManager from "../lib/appManagers/appDialogsManager";
 import appMessagesManager, { Dialog } from "../lib/appManagers/appMessagesManager";
-import appPhotosManager from "../lib/appManagers/appPhotosManager";
 import appUsersManager from "../lib/appManagers/appUsersManager";
 import rootScope from "../lib/rootScope";
 import Scrollable from "./scrollable";
