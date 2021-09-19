@@ -33,4 +33,8 @@
 			}
 		}
 	}
+
+	@media only screen and (max-width: 319px) { 
+		max-width: calc(100vw - var(--padding-horizontal) * 4);
+	}
 }
