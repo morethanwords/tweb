@@ -64,6 +64,7 @@ class AppSelection {
   protected getElementFromTarget: (target: HTMLElement) => HTMLElement;
   protected verifyTarget: (e: MouseEvent, target: HTMLElement) => boolean;
   protected verifyMouseMoveTarget: (e: MouseEvent, element: HTMLElement, selecting: boolean) => boolean;
+  protected verifyTouchLongPress: () => boolean;
   protected targetLookupClassName: string;
   protected lookupBetweenParentClassName: string;
   protected lookupBetweenElementsQuery: string;
@@ -75,6 +76,7 @@ class AppSelection {
     getElementFromTarget: AppSelection['getElementFromTarget'],
     verifyTarget?: AppSelection['verifyTarget'],
     verifyMouseMoveTarget?: AppSelection['verifyMouseMoveTarget'],
+    verifyTouchLongPress?: AppSelection['verifyTouchLongPress'],
     targetLookupClassName: string,
     lookupBetweenParentClassName: string,
     lookupBetweenElementsQuery: string
@@ -90,7 +92,7 @@ class AppSelection {
       });
 
       attachContextMenuListener(this.listenElement, (e) => {
-        if(this.isSelecting) return;
+        if(this.isSelecting || (this.verifyTouchLongPress && !this.verifyTouchLongPress())) return;
 
         // * these two lines will fix instant text selection on iOS Safari
         document.body.classList.add('no-select'); // * need no-select on body because chat-input transforms in channels
@@ -685,6 +687,7 @@ export default class ChatSelection extends AppSelection {
           !this.selectedMids.size;
         return !bad;
       },
+      verifyTouchLongPress: () => !this.chat.input.recording,
       targetLookupClassName: 'bubble',
       lookupBetweenParentClassName: 'bubbles-inner',
       lookupBetweenElementsQuery: '.bubble:not(.is-multiple-documents), .grouped-item'
