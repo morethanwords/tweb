@@ -45,7 +45,7 @@ import PopupPinMessage from '../popups/unpinMessage';
 import { tsNow } from '../../helpers/date';
 import appNavigationController from '../appNavigationController';
 import { isMobile, isMobileSafari } from '../../helpers/userAgent';
-import { i18n, join } from '../../lib/langPack';
+import I18n, { i18n, join, LangPackKey } from '../../lib/langPack';
 import { generateTail } from './bubbles';
 import findUpClassName from '../../helpers/dom/findUpClassName';
 import ButtonCorner from '../buttonCorner';
@@ -816,14 +816,34 @@ export default class ChatInput {
   }
 
   public updateMessageInput() {
-    const canWrite = this.appMessagesManager.canSendToPeer(this.chat.peerId, this.chat.threadId);
+    const {peerId, threadId} = this.chat;
+    const canWrite = this.appMessagesManager.canSendToPeer(peerId, threadId);
     this.chatInput.classList.add('no-transition');
     this.chatInput.classList.toggle('is-hidden', !canWrite);
     void this.chatInput.offsetLeft; // reflow
     this.chatInput.classList.remove('no-transition');
 
+    const i = I18n.weakMap.get(this.messageInput) as I18n.IntlElement;
+    if(i) {
+      let key: LangPackKey;
+      if(threadId) {
+        key = 'Comment';
+      } else if(this.appPeersManager.isBroadcast(peerId)) {
+        key = 'ChannelBroadcast';
+      } else if(this.appMessagesManager.isAnonymousSending(peerId)) {
+        key = 'SendAnonymously';
+      } else {
+        key = 'Message';
+      }
+
+      if(i.key !== key) {
+        i.key = key;
+        i.update();
+      }
+    }
+
     const visible = this.attachMenuButtons.filter(button => {
-      const good = button.verify(this.chat.peerId, this.chat.threadId);
+      const good = button.verify(peerId, threadId);
       button.element.classList.toggle('hide', !good);
       return good;
     });

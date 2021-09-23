@@ -1509,7 +1509,7 @@ export class AppMessagesManager {
    * Generate correct from_id according to anonymous or broadcast
    */
   private generateFromId(peerId: number) {
-    if(peerId < 0 && (appPeersManager.isBroadcast(peerId) || appPeersManager.getPeer(peerId).admin_rights?.pFlags?.anonymous)) {
+    if(peerId < 0 && (appPeersManager.isBroadcast(peerId) || this.isAnonymousSending(peerId))) {
       return undefined;
     } else {
       return appPeersManager.getOutputPeer(appUsersManager.getSelf().id);
@@ -1588,6 +1588,10 @@ export class AppMessagesManager {
 
     this.getMessagesStorage(peerId)[maxId] = message;
     return message;
+  }
+
+  public isAnonymousSending(peerId: number): boolean {
+    return peerId < 0 && appPeersManager.getPeer(peerId).admin_rights?.pFlags?.anonymous;
   }
 
   public setDialogTopMessage(message: MyMessage, dialog: MTDialog.dialog = this.getDialogOnly(message.peerId)) {
