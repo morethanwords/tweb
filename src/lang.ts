@@ -568,6 +568,10 @@ const lang = {
   "ShareContact": "Share contact",
   "SendMessageTitle": "Send message",
   "SendContactToGroupText": "Do you want to send this contact to **%1$s**?",
+  "ChannelBroadcast": "Broadcast",
+  "ChannelSilentBroadcast": "Silent Broadcast",
+  "Comment": "Comment",
+  "SendAnonymously": "Send anonymously",
 
   // * macos
   "AccountSettings.Filters": "Chat Folders",
