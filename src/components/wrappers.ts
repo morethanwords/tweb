@@ -70,7 +70,7 @@ mediaSizes.addEventListener('changeScreen', (from, to) => {
   }
 });
 
-export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTail, isOut, middleware, lazyLoadQueue, noInfo, group, onlyPreview, withoutPreloader, loadPromises, noPlayButton, noAutoDownload, size}: {
+export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTail, isOut, middleware, lazyLoadQueue, noInfo, group, onlyPreview, withoutPreloader, loadPromises, noPlayButton, noAutoDownload, size, searchContext}: {
   doc: MyDocument, 
   container?: HTMLElement, 
   message?: any, 
@@ -87,7 +87,8 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
   withoutPreloader?: boolean,
   loadPromises?: Promise<any>[],
   noAutoDownload?: boolean,
-  size?: PhotoSize
+  size?: PhotoSize,
+  searchContext?: SearchSuperContext
 }) {
   const isAlbumItem = !(boxWidth && boxHeight);
   const canAutoplay = (doc.type !== 'video' || (doc.size <= MAX_VIDEO_AUTOPLAY_SIZE && !isAlbumItem)) 
@@ -276,6 +277,7 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
       } */
 
       if(globalVideo.paused) {
+        appMediaPlaybackController.setSearchContext(searchContext);
         globalVideo.play();
       } else {
         globalVideo.pause();
@@ -525,6 +527,8 @@ export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showS
     audioElement.withTime = withTime;
     audioElement.message = message;
     audioElement.noAutoDownload = noAutoDownload;
+    audioElement.lazyLoadQueue = lazyLoadQueue;
+    audioElement.loadPromises = loadPromises;
     
     if(voiceAsMusic) audioElement.voiceAsMusic = voiceAsMusic;
     if(searchContext) audioElement.searchContext = searchContext;
@@ -1588,7 +1592,7 @@ export function wrapAlbum({groupId, attachmentDiv, middleware, uploading, lazyLo
   });
 }
 
-export function wrapGroupedDocuments({albumMustBeRenderedFull, message, bubble, messageDiv, chat, loadPromises, noAutoDownload, lazyLoadQueue}: {
+export function wrapGroupedDocuments({albumMustBeRenderedFull, message, bubble, messageDiv, chat, loadPromises, noAutoDownload, lazyLoadQueue, searchContext}: {
   albumMustBeRenderedFull: boolean,
   message: any,
   messageDiv: HTMLElement,
@@ -1597,7 +1601,8 @@ export function wrapGroupedDocuments({albumMustBeRenderedFull, message, bubble, 
   chat: Chat,
   loadPromises?: Promise<any>[],
   noAutoDownload?: boolean,
-  lazyLoadQueue?: LazyLoadQueue
+  lazyLoadQueue?: LazyLoadQueue,
+  searchContext?: SearchSuperContext
 }) {
   let nameContainer: HTMLElement;
   const mids = albumMustBeRenderedFull ? chat.getMidsByMid(message.mid) : [message.mid];
@@ -1611,7 +1616,8 @@ export function wrapGroupedDocuments({albumMustBeRenderedFull, message, bubble, 
       message,
       loadPromises,
       noAutoDownload,
-      lazyLoadQueue
+      lazyLoadQueue,
+      searchContext
     });
 
     const container = document.createElement('div');

@@ -862,11 +862,11 @@ not screen and (                min-resolution: 192dpi),
 not screen and (                min-resolution: 2dppx) {
   html:not(.is-safari) {
     span.emoji {
-      margin-right: 5px;
+      margin-right: 5px !important;
     }
 
     avatar-element span.emoji {
-      margin-right: 0;
+      margin-right: 0 !important;
     }
   }
 }

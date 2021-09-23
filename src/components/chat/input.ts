@@ -388,7 +388,7 @@ export default class ChatInput {
       onClick: () => {
         new PopupCreatePoll(this.chat).show();
       },
-      verify: (peerId, threadId) => this.appMessagesManager.canSendToPeer(peerId, threadId, 'send_polls')
+      verify: (peerId, threadId) => this.appMessagesManager.canSendToPeer(peerId, threadId, 'send_polls') && peerId < 0
     }];
 
     this.attachMenu = ButtonMenuToggle({noRipple: true, listenerSetter: this.listenerSetter}, 'top-left', this.attachMenuButtons);
@@ -576,6 +576,9 @@ export default class ChatInput {
   
       this.recorder.ondataavailable = (typedArray: Uint8Array) => {
         if(this.recordCanceled) return;
+
+        const {peerId, threadId} = this.chat;
+        const replyToMsgId = this.replyToMsgId;
   
         const duration = (Date.now() - this.recordStartTime) / 1000 | 0;
         const dataBlob = new Blob([typedArray], {type: 'audio/ogg'});
@@ -588,7 +591,6 @@ export default class ChatInput {
   
           opusDecodeController.setKeepAlive(false);
   
-          let peerId = this.chat.peerId;
           // тут objectURL ставится уже с audio/wav
           this.appMessagesManager.sendFile(peerId, dataBlob, {
             isVoiceMessage: true,
@@ -596,8 +598,8 @@ export default class ChatInput {
             duration,
             waveform: result.waveform,
             objectURL: result.url,
-            replyToMsgId: this.replyToMsgId,
-            threadId: this.chat.threadId,
+            replyToMsgId,
+            threadId,
             clearDraft: true
           });
 
@@ -1464,7 +1466,7 @@ export default class ChatInput {
 
           this.recordTimeEl.innerText = formatted;
 
-          window.requestAnimationFrame(r);
+          fastRaf(r);
         };
 
         r();

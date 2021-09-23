@@ -16,7 +16,7 @@ const TRANSITION_TIME = 200;
 
 export default class ProgressivePreloader {
   public preloader: HTMLDivElement;
-  private circle: SVGCircleElement;
+  public circle: SVGCircleElement;
   private cancelSvg: SVGSVGElement;
   private downloadSvg: HTMLElement;
   
@@ -33,7 +33,7 @@ export default class ProgressivePreloader {
 
   public loadFunc: (e?: Event) => {download: CancellablePromise<any>};
 
-  private totalLength: number;
+  public totalLength: number;
 
   constructor(options?: Partial<{
     isUpload: ProgressivePreloader['isUpload'],
@@ -84,6 +84,12 @@ export default class ProgressivePreloader {
     <circle class="preloader-path-new" cx="${this.streamable ? '50' : '54'}" cy="${this.streamable ? '50' : '54'}" r="${this.streamable ? 19 : 24}" fill="none" stroke-miterlimit="10"/>
     </svg>
     </div>`;
+
+    if(this.streamable) {
+      this.totalLength = 118.61124420166016;
+    } else {
+      this.totalLength = 149.82473754882812;
+    }
 
     if(this.cancelable) {
       this.preloader.innerHTML += `
@@ -147,7 +153,7 @@ export default class ProgressivePreloader {
     const startTime = Date.now();
 
     const onEnd = (err: Error) => {
-      promise.notify = null;
+      promise.notify = promise.notifyAll = null;
 
       if(tempId !== this.tempId) {
         return;
@@ -205,10 +211,6 @@ export default class ProgressivePreloader {
   }
 
   public attach(elem: Element, reset = false, promise?: CancellablePromise<any>) {
-    if(promise/*  && false */) {
-      this.attachPromise(promise);
-    }
-
     //return;
 
     this.detached = false;
@@ -224,19 +226,24 @@ export default class ProgressivePreloader {
         this.preloader.classList.remove('manual');
       }
 
+      const useRafs = isInDOM(this.preloader) ? 1 : 2;
       if(this.preloader.parentElement !== elem) {
         elem[this.attachMethod](this.preloader);
       }
 
-      fastRaf(() => {
+      if(promise/*  && false */) {
+        this.attachPromise(promise);
+      }
+
+      // fastRaf(() => {
         //console.log('[PP]: attach after rAF', this.detached, performance.now());
 
-        if(this.detached) {
-          return;
-        }
+        // if(this.detached) {
+        //   return;
+        // }
 
-        SetTransition(this.preloader, 'is-visible', true, TRANSITION_TIME);
-      });
+        SetTransition(this.preloader, 'is-visible', true, TRANSITION_TIME, undefined, useRafs);
+      // });
 
       if(this.cancelable && reset) {
         this.setProgress(0);
@@ -272,7 +279,7 @@ export default class ProgressivePreloader {
   }
   
   public setProgress(percents: number) {
-    if(!isInDOM(this.circle)) {
+    if(!this.totalLength && !isInDOM(this.circle)) {
       return;
     }
     

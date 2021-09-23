@@ -82,7 +82,7 @@ export async function openAvatarViewer(target: HTMLElement, peerId: number, midd
       new AppMediaViewer()
       .setSearchContext({
         peerId,
-        inputFilter,
+        inputFilter: {_: inputFilter},
       })
       .openMedia(message, getTarget(), undefined, undefined, prevTargets ? f(prevTargets) : undefined, nextTargets ? f(nextTargets) : undefined);
 
