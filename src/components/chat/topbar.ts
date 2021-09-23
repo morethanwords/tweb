@@ -41,6 +41,7 @@ import { ChatFull } from "../../layer";
 import PopupPickUser from "../popups/pickUser";
 import PopupPeer from "../popups/peer";
 import generateVerifiedIcon from "../generateVerifiedIcon";
+import { fastRaf } from "../../helpers/schedulers";
 
 export default class ChatTopbar {
   public container: HTMLDivElement;
@@ -215,46 +216,7 @@ export default class ChatTopbar {
       text: 'Pinned Messages',
       onClick: () => this.openPinned(false),
       verify: () => mediaSizes.isMobile
-    }, */ {
-      icon: 'forward',
-      text: 'ShareContact',
-      onClick: () => {
-        const contactPeerId = this.peerId;
-        new PopupPickUser({
-          peerTypes: ['dialogs', 'contacts'],
-          onSelect: (peerId) => {
-            return new Promise((resolve, reject) => {
-              new PopupPeer('', {
-                titleLangKey: 'SendMessageTitle',
-                descriptionLangKey: 'SendContactToGroupText',
-                descriptionLangArgs: [new PeerTitle({peerId, dialog: true}).element],
-                buttons: [{
-                  langKey: 'Send',
-                  callback: () => {
-                    resolve();
-
-                    this.appMessagesManager.sendOther(peerId, this.appUsersManager.getContactMediaInput(contactPeerId));
-                    this.chat.appImManager.setInnerPeer(peerId);
-                  }
-                }, {
-                  langKey: 'Cancel',
-                  callback: () => {
-                    reject();
-                  },
-                  isCancel: true,
-                }],
-                peerId,
-                overlayClosable: true
-              }).show();
-            });
-          },
-          placeholder: 'ShareModal.Search.Placeholder',
-          chatRightsAction: 'send_messages',
-          selfPresence: 'ChatYourSelf'
-        });
-      },
-      verify: () => rootScope.myId !== this.peerId && this.peerId > 0 && this.appUsersManager.isContact(this.peerId)
-    }, {
+    }, */{
       icon: 'mute',
       text: 'ChatList.Context.Mute',
       onClick: () => {
@@ -311,6 +273,45 @@ export default class ChatTopbar {
         this.chat.selection.cancelSelection();
       },
       verify: () => this.chat.selection.isSelecting
+    }, {
+      icon: 'forward',
+      text: 'ShareContact',
+      onClick: () => {
+        const contactPeerId = this.peerId;
+        new PopupPickUser({
+          peerTypes: ['dialogs', 'contacts'],
+          onSelect: (peerId) => {
+            return new Promise((resolve, reject) => {
+              new PopupPeer('', {
+                titleLangKey: 'SendMessageTitle',
+                descriptionLangKey: 'SendContactToGroupText',
+                descriptionLangArgs: [new PeerTitle({peerId, dialog: true}).element],
+                buttons: [{
+                  langKey: 'Send',
+                  callback: () => {
+                    resolve();
+
+                    this.appMessagesManager.sendOther(peerId, this.appUsersManager.getContactMediaInput(contactPeerId));
+                    this.chat.appImManager.setInnerPeer(peerId);
+                  }
+                }, {
+                  langKey: 'Cancel',
+                  callback: () => {
+                    reject();
+                  },
+                  isCancel: true,
+                }],
+                peerId,
+                overlayClosable: true
+              }).show();
+            });
+          },
+          placeholder: 'ShareModal.Search.Placeholder',
+          chatRightsAction: 'send_messages',
+          selfPresence: 'ChatYourSelf'
+        });
+      },
+      verify: () => rootScope.myId !== this.peerId && this.peerId > 0 && this.appUsersManager.isContact(this.peerId)
     }, {
       icon: 'delete danger',
       text: 'Delete',
@@ -506,7 +507,7 @@ export default class ChatTopbar {
     const middleware = this.chat.bubbles.getMiddleware();
     if(this.pinnedMessage) { // * replace with new one
       if(this.chat.type === 'chat') {
-        if(this.wasPeerId) { // * change
+        if(this.wasPeerId !== undefined) { // * change
           const newPinnedMessage = new ChatPinnedMessage(this, this.chat, this.appMessagesManager, this.appPeersManager);
           this.pinnedMessage.pinnedMessageContainer.divAndCaption.container.replaceWith(newPinnedMessage.pinnedMessageContainer.divAndCaption.container);
           this.pinnedMessage.destroy();
@@ -531,7 +532,7 @@ export default class ChatTopbar {
       }
     }
 
-    window.requestAnimationFrame(() => {
+    fastRaf(() => {
       this.setTitle();
       this.setPeerStatus(true);
       this.setMutedState();
