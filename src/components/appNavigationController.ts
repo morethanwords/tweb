@@ -13,7 +13,7 @@ import { cancelEvent } from "../helpers/dom/cancelEvent";
 
 export type NavigationItem = {
   type: 'left' | 'right' | 'im' | 'chat' | 'popup' | 'media' | 'menu' | 
-    'esg' | 'multiselect' | 'input-helper' | 'autocomplete-helper' | 'markup' | 'global-search',
+    'esg' | 'multiselect' | 'input-helper' | 'autocomplete-helper' | 'markup' | 'global-search' | 'voice',
   onPop: (canAnimate: boolean) => boolean | void,
   onEscape?: () => boolean,
   noHistory?: boolean,

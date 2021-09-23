@@ -43,7 +43,7 @@ import SendMenu from './sendContextMenu';
 import rootScope from '../../lib/rootScope';
 import PopupPinMessage from '../popups/unpinMessage';
 import { tsNow } from '../../helpers/date';
-import appNavigationController from '../appNavigationController';
+import appNavigationController, { NavigationItem } from '../appNavigationController';
 import { isMobile, isMobileSafari } from '../../helpers/userAgent';
 import I18n, { i18n, join, LangPackKey } from '../../lib/langPack';
 import { generateTail } from './bubbles';
@@ -132,6 +132,8 @@ export default class ChatInput {
   private recordTimeEl: HTMLElement;
   private recordRippleEl: HTMLElement;
   private recordStartTime = 0;
+  private recordingOverlayListener: Listener;
+  private recordingNavigationItem: NavigationItem;
 
   // private scrollTop = 0;
   // private scrollOffsetTop = 0;
@@ -173,8 +175,6 @@ export default class ChatInput {
   private fakePinnedControlBtn: HTMLElement;
 
   private previousQuery: string;
-
-  private recordingOverlayListener: Listener;
 
   constructor(private chat: Chat, 
     private appMessagesManager: AppMessagesManager, 
@@ -581,6 +581,11 @@ export default class ChatInput {
         if(this.recordingOverlayListener) {
           this.listenerSetter.remove(this.recordingOverlayListener);
           this.recordingOverlayListener = undefined;
+        }
+
+        if(this.recordingNavigationItem) {
+          appNavigationController.removeItem(this.recordingNavigationItem);
+          this.recordingNavigationItem = undefined;
         }
 
         if(this.recordCanceled) {
@@ -1460,25 +1465,40 @@ export default class ChatInput {
         this.recording = true;
         this.updateSendBtn();
         opusDecodeController.setKeepAlive(true);
+        
+        const showDiscardPopup = () => {
+          new PopupPeer('popup-cancel-record', {
+            titleLangKey: 'DiscardVoiceMessageTitle',
+            descriptionLangKey: 'DiscardVoiceMessageDescription',
+            buttons: [{
+              langKey: 'DiscardVoiceMessageAction',
+              callback: () => {
+                simulateClickEvent(this.btnCancelRecord);
+              }
+            }, {
+              langKey: 'Continue',
+              isCancel: true
+            }]
+          }).show();
+        };
 
         this.recordingOverlayListener = this.listenerSetter.add(document.body)('mousedown', (e) => {
           if(!findUpClassName(e.target, 'chat-input') && !findUpClassName(e.target, 'popup-cancel-record')) {
             cancelEvent(e);
-            new PopupPeer('popup-cancel-record', {
-              titleLangKey: 'DiscardVoiceMessageTitle',
-              descriptionLangKey: 'DiscardVoiceMessageDescription',
-              buttons: [{
-                langKey: 'DiscardVoiceMessageAction',
-                callback: () => {
-                  simulateClickEvent(this.btnCancelRecord);
-                }
-              }, {
-                langKey: 'Continue',
-                isCancel: true
-              }]
-            }).show();
+            showDiscardPopup();
           }
         }, {capture: true, passive: false}) as any;
+
+        appNavigationController.pushItem(this.recordingNavigationItem = {
+          type: 'voice',
+          onPop: () => {
+            setTimeout(() => {
+              showDiscardPopup();
+            }, 0);
+
+            return false;
+          }
+        });
 
         this.recordStartTime = Date.now();
 
