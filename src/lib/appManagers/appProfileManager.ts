@@ -488,6 +488,17 @@ export class AppProfileManager {
     });
   }
 
+  public deletePhotos(photoIds: string[]) {
+    return apiManager.invokeApiSingle('photos.deletePhotos', {
+      id: photoIds.map(photoId => {
+        const photo = appPhotosManager.getPhoto(photoId);
+        return appPhotosManager.getInput(photo);
+      })
+    }).then((deletedList) => {
+      
+    });
+  }
+
   public getChatMembersString(id: number) {
     const chat: Chat = appChatsManager.getChat(id);
     if(chat._ === 'chatForbidden') {
