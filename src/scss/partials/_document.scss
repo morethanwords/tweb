@@ -56,12 +56,14 @@
     }
   }
   
-  &-ico, &-download {
+  &-ico, 
+  &-download {
     font-size: 1.125rem;
     background-size: contain;
   }
 
-  &-ico, &-name {
+  &-ico, 
+  &-name {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -129,7 +131,8 @@
     overflow: hidden;
   }
 
-  &-name, &-size {
+  &-name, 
+  &-size {
     line-height: var(--line-height);
   }
 
@@ -152,7 +155,8 @@
   }
 }
 
-.document, .audio {
+.document, 
+.audio {
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -160,7 +164,8 @@
   position: relative;
   user-select: none;
 
-  &-ico, &-download {
+  &-ico, 
+  &-download {
     position: absolute;
     left: 0;
     width: 3.375rem;
@@ -185,7 +190,7 @@
     }
   }
 
-  .preloader-container:not(.preloader-streamable) {
+  &:not(.corner-download) .preloader-container:not(.preloader-streamable) {
     transform: scale(1) !important;
   }
 }

@@ -56,7 +56,7 @@ import { attachClickEvent, simulateClickEvent } from "../helpers/dom/clickEvent"
 export type SearchSuperType = MyInputMessagesFilter/*  | 'members' */;
 export type SearchSuperContext = {
   peerId: number,
-  inputFilter: MyInputMessagesFilter,
+  inputFilter: {_: MyInputMessagesFilter},
   query?: string,
   maxId?: number,
   folderId?: number,
@@ -453,6 +453,7 @@ export default class AppSearchSuper {
     
     const onMediaClick = (className: string, targetClassName: string, inputFilter: MyInputMessagesFilter, e: MouseEvent) => {
       const target = findUpClassName(e.target as HTMLDivElement, className);
+      if(!target) return;
       
       const mid = +target.dataset.mid;
       if(!mid) {
@@ -1240,16 +1241,11 @@ export default class AppSearchSuper {
     
     //let loadCount = history.length ? 50 : 15;
     return this.loadPromises[type] = appMessagesManager.getSearch({
-      peerId: this.searchContext.peerId, 
-      query: this.searchContext.query,
+      ...this.searchContext,
       inputFilter: {_: type},
       maxId, 
       limit: loadCount,
-      nextRate: this.nextRates[type] ?? (this.nextRates[type] = 0),
-      threadId: this.searchContext.threadId,
-      folderId: this.searchContext.folderId,
-      minDate: this.searchContext.minDate,
-      maxDate: this.searchContext.maxDate
+      nextRate: this.nextRates[type] ?? (this.nextRates[type] = 0)
     }).then(value => {
       history.push(...value.history.map(m => ({mid: m.mid, peerId: m.peerId})));
       
@@ -1541,7 +1537,7 @@ export default class AppSearchSuper {
 
   private copySearchContext(newInputFilter: MyInputMessagesFilter) {
     const context = copy(this.searchContext);
-    context.inputFilter = newInputFilter;
+    context.inputFilter = {_: newInputFilter};
     context.nextRate = this.nextRates[newInputFilter];
     return context;
   }
@@ -1558,7 +1554,7 @@ export default class AppSearchSuper {
     this.searchContext = {
       peerId: peerId || 0,
       query: query || '',
-      inputFilter: this.mediaTab.inputFilter,
+      inputFilter: {_: this.mediaTab.inputFilter},
       threadId,
       folderId,
       minDate,

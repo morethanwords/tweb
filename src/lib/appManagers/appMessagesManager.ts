@@ -320,6 +320,18 @@ export class AppMessagesManager {
         this.reloadConversation(peerId);
       }
     });
+
+    rootScope.addEventListener('poll_update', ({poll}) => {
+      const set = appPollsManager.pollToMessages[poll.id];
+      if(set) {
+        for(const key of set) {
+          const [peerId, mid] = key.split('_');
+
+          const message = this.getMessageByPeer(+peerId, +mid);
+          this.setDialogToStateIfMessageIsTop(message);
+        }
+      }
+    });
     
     appStateManager.getState().then(state => {
       if(state.maxSeenMsgId) {
@@ -2359,7 +2371,9 @@ export class AppMessagesManager {
             
             break;
           case 'messageMediaPoll':
-            message.media.poll = appPollsManager.savePoll(message.media.poll, message.media.results);
+            const result = appPollsManager.savePoll(message.media.poll, message.media.results, message);
+            message.media.poll = result.poll;
+            message.media.results = result.results;
             break;
           case 'messageMediaDocument':
             if(message.media.ttl_seconds) {
@@ -2616,7 +2630,7 @@ export class AppMessagesManager {
             break;
           }
           case 'messageMediaDocument': {
-            const document = media.document;
+            const document = media.document as MyDocument;
   
             if(document.type === 'video') {
               addPart('AttachVideo', undefined, message.message);
@@ -2630,6 +2644,10 @@ export class AppMessagesManager {
               addPart(undefined, ((plain ? document.stickerEmojiRaw : document.stickerEmoji) || ''));
               addPart('AttachSticker');
               text = '';
+            } else if(document.type === 'audio') {
+              const attribute = document.attributes.find(attribute => attribute._ === 'documentAttributeAudio' && (attribute.title || attribute.performer)) as DocumentAttribute.documentAttributeAudio;
+              const f = '🎵' + ' ' + (attribute ? [attribute.title, attribute.performer].filter(Boolean).join(' - ') : document.file_name);
+              addPart(undefined, plain ? f : RichTextProcessor.wrapEmojiText(f), message.message);
             } else {
               addPart(undefined, plain ? document.file_name : RichTextProcessor.wrapEmojiText(document.file_name), message.message);
             }
@@ -5352,6 +5370,10 @@ export class AppMessagesManager {
         const isScheduled = this.getScheduledMessagesStorage(message.peerId) === storage;
         const messageKey = appWebPagesManager.getMessageKeyForPendingWebPage(message.peerId, message.mid, isScheduled);
         appWebPagesManager.deleteWebPageFromPending(media.webpage, messageKey);
+      }
+
+      if((media as MessageMedia.messageMediaPoll).poll) {
+        appPollsManager.updatePollToMessage(message as Message.message, false);
       }
     }
   }

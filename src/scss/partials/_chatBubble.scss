@@ -1079,7 +1079,8 @@ $bubble-margin: .25rem;
   @include respond-to(handhelds) {
     .document, 
     .audio {
-      &-ico, &-download {
+      &-ico, 
+      &-download {
         height: 2.25rem;
         width: 2.25rem;
       }
@@ -1087,8 +1088,6 @@ $bubble-margin: .25rem;
   }
 
   .audio {
-    padding-right: 2px;
-    
     $parent: ".audio";
     #{$parent} {
       &-title {
@@ -2209,7 +2208,8 @@ $bubble-margin: .25rem;
     }
 
     &-toggle, 
-    &-download {
+    &-download,
+    &.corner-download .preloader-container {
       background-color: var(--message-out-primary-color);
     }
 

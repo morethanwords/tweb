@@ -640,6 +640,10 @@ namespace RichTextProcessor {
               onclick = 'showMaskedAlert';
             }
 
+            if(options.wrappingDraft) {
+              onclick = undefined;
+            }
+
             const href = (currentContext || typeof electronHelpers === 'undefined') 
               ? encodeEntities(url)
               : `javascript:electronHelpers.openExternal('${encodeEntities(url)}');`;

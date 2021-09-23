@@ -516,7 +516,7 @@ export class SearchSelection extends AppSelection {
       appMessagesManager,
       listenElement: searchSuper.container,
       listenerSetter: new ListenerSetter(),
-      verifyTarget: (e, target) => !!target,
+      verifyTarget: (e, target) => !!target && this.isSelecting,
       getElementFromTarget: (target) => findUpClassName(target, 'search-super-item'),
       targetLookupClassName: 'search-super-item',
       lookupBetweenParentClassName: 'tabs-tab',
@@ -558,6 +558,11 @@ export class SearchSelection extends AppSelection {
     }
 
     this.updateElementSelection(element, this.isMidSelected(peerId, mid));
+  };
+
+  public toggleByMid = (peerId: number, mid: number) => {
+    const element = this.searchSuper.mediaTab.contentTab.querySelector(`.search-super-item[data-peer-id="${peerId}"][data-mid="${mid}"]`) as HTMLElement;
+    this.toggleByElement(element);
   };
 
   protected onUpdateContainer = (cantForward: boolean, cantDelete: boolean, cantSend: boolean) => {

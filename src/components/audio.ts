@@ -6,7 +6,7 @@
 
 import appDocsManager, {MyDocument} from "../lib/appManagers/appDocsManager";
 import { RichTextProcessor } from "../lib/richtextprocessor";
-import { formatDate } from "./wrappers";
+import { formatDate, wrapPhoto } from "./wrappers";
 import ProgressivePreloader from "./preloader";
 import { MediaProgressLine } from "../lib/mediaPlayer";
 import appMediaPlaybackController from "./appMediaPlaybackController";
@@ -20,13 +20,14 @@ import { SearchSuperContext } from "./appSearchSuper.";
 import { formatDateAccordingToToday } from "../helpers/date";
 import { cancelEvent } from "../helpers/dom/cancelEvent";
 import { attachClickEvent, detachClickEvent } from "../helpers/dom/clickEvent";
+import LazyLoadQueue from "./lazyLoadQueue";
+import { deferredPromise } from "../helpers/cancellablePromise";
+import ListenerSetter, { Listener } from "../helpers/listenerSetter";
+import noop from "../helpers/noop";
 
-rootScope.addEventListener('messages_media_read', e => {
-  const {mids, peerId} = e;
-
+rootScope.addEventListener('messages_media_read', ({mids, peerId}) => {
   mids.forEach(mid => {
-    (Array.from(document.querySelectorAll('audio-element[message-id="' + mid + '"][peer-id="' + peerId + '"]')) as AudioElement[]).forEach(elem => {
-      //console.log('updating avatar:', elem);
+    (Array.from(document.querySelectorAll('audio-element[message-id="' + mid + '"][peer-id="' + peerId + '"].is-unread')) as AudioElement[]).forEach(elem => {
       elem.classList.remove('is-unread');
     });
   });
@@ -182,7 +183,7 @@ function wrapVoiceMessage(audioEl: AudioElement) {
       start();
     }
 
-    audioEl.addAudioListener('playing', () => {
+    audioEl.addAudioListener('play', () => {
       if(isUnread && !isOut && audioEl.classList.contains('is-unread')) {
         audioEl.classList.remove('is-unread');
         appMessagesManager.readMessages(audioEl.message.peerId, [audioEl.message.mid]);
@@ -319,7 +320,7 @@ function wrapAudio(audioEl: AudioElement) {
       launched = false;
     });
 
-    const onPlaying = () => {
+    const onPlay = () => {
       if(!launched) {
         audioEl.classList.add('audio-show-progress');
         launched = true;
@@ -330,10 +331,10 @@ function wrapAudio(audioEl: AudioElement) {
       }
     };
 
-    audioEl.addAudioListener('playing', onPlaying);
+    audioEl.addAudioListener('play', onPlay);
 
     if(!audioEl.audio.paused || audioEl.audio.currentTime > 0) {
-      onPlaying();
+      onPlay();
     }
 
     return () => {
@@ -346,6 +347,15 @@ function wrapAudio(audioEl: AudioElement) {
   return onLoad;
 }
 
+function constructDownloadPreloader(tryAgainOnFail = true) {
+  const preloader = new ProgressivePreloader({cancelable: true, tryAgainOnFail});
+  preloader.construct();
+  preloader.circle.setAttributeNS(null, 'r', '23');
+  preloader.totalLength = 143.58203125;
+
+  return preloader;
+}
+
 export default class AudioElement extends HTMLElement {
   public audio: HTMLAudioElement;
   public preloader: ProgressivePreloader;
@@ -355,20 +365,18 @@ export default class AudioElement extends HTMLElement {
   public searchContext: SearchSuperContext;
   public showSender = false;
   public noAutoDownload: boolean;
+  public lazyLoadQueue: LazyLoadQueue;
+  public loadPromises: Promise<any>[];
 
-  private attachedHandlers: {[name: string]: any[]} = {};
+  private listenerSetter = new ListenerSetter();
   private onTypeDisconnect: () => void;
   public onLoad: (autoload?: boolean) => void;
-
-  constructor() {
-    super();
-    // элемент создан
-  }
+  readyPromise: import("/Users/kuzmenko/Documents/projects/tweb/src/helpers/cancellablePromise").CancellablePromise<void>;
 
   public render() {
     this.classList.add('audio');
 
-    const doc = this.message.media.document || this.message.media.webpage.document;
+    const doc: MyDocument = this.message.media.document || this.message.media.webpage.document;
     const isRealVoice = doc.type === 'voice';
     const isVoice = !this.voiceAsMusic && isRealVoice;
     const isOutgoing = this.message.pFlags.is_outgoing;
@@ -376,15 +384,21 @@ export default class AudioElement extends HTMLElement {
 
     const durationStr = String(doc.duration | 0).toHHMMSS();
 
-    this.innerHTML = `<div class="audio-toggle audio-ico">    
-                         <div class="part one" x="0" y="0" fill="#fff"></div>
-                         <div class="part two" x="0" y="0" fill="#fff"></div>
-                      </div>`;
+    this.innerHTML = `
+    <div class="audio-toggle audio-ico">
+      <div class="audio-play-icon">
+        <div class="part one" x="0" y="0" fill="#fff"></div>
+        <div class="part two" x="0" y="0" fill="#fff"></div>
+      </div>
+    </div>`;
+
+    const toggle = this.firstElementChild as HTMLElement;
 
     const downloadDiv = document.createElement('div');
     downloadDiv.classList.add('audio-download');
 
     if(uploading) {
+      this.classList.add('is-outgoing');
       this.append(downloadDiv);
     }
 
@@ -400,31 +414,37 @@ export default class AudioElement extends HTMLElement {
 
       this.onTypeDisconnect = onTypeLoad();
       
-      const toggle = this.querySelector('.audio-toggle') as HTMLDivElement;
-
       const getTimeStr = () => String(audio.currentTime | 0).toHHMMSS() + (isVoice ? (' / ' + durationStr) : '');
 
-      const onPlaying = () => {
+      const onPlay = () => {
         audioTimeDiv.innerText = getTimeStr();
         toggle.classList.toggle('playing', !audio.paused);
       };
 
       if(!audio.paused || (audio.currentTime > 0 && audio.currentTime !== audio.duration)) {
-        onPlaying();
+        onPlay();
       }
 
-      attachClickEvent(toggle, (e) => {
-        cancelEvent(e);
-        if(audio.paused) audio.play().catch(() => {});
-        else audio.pause();
-      });
+      const togglePlay = (e?: Event, paused = audio.paused) => {
+        e && cancelEvent(e);
+
+        if(paused) {
+          appMediaPlaybackController.setSearchContext(this.searchContext);
+          audio.play().catch(() => {});
+        } else {
+          audio.pause();
+        }
+      };
+
+      attachClickEvent(toggle, (e) => togglePlay(e), {listenerSetter: this.listenerSetter});
 
       this.addAudioListener('ended', () => {
         toggle.classList.remove('playing');
+        audioTimeDiv.innerText = durationStr;
       });
 
       this.addAudioListener('timeupdate', () => {
-        if(appMediaPlaybackController.isSafariBuffering(audio)) return;
+        if(appMediaPlaybackController.playingMedia !== audio || appMediaPlaybackController.isSafariBuffering(audio)) return;
         audioTimeDiv.innerText = getTimeStr();
       });
 
@@ -432,7 +452,9 @@ export default class AudioElement extends HTMLElement {
         toggle.classList.remove('playing');
       });
 
-      this.addAudioListener('playing', onPlaying);
+      this.addAudioListener('play', onPlay);
+
+      return togglePlay;
     };
 
     if(!isOutgoing) {
@@ -442,9 +464,7 @@ export default class AudioElement extends HTMLElement {
 
       if(isRealVoice) {
         if(!preloader) {
-          preloader = new ProgressivePreloader({
-            cancelable: true
-          });
+          preloader = constructDownloadPreloader();
         }
 
         const load = () => {
@@ -468,7 +488,7 @@ export default class AudioElement extends HTMLElement {
           return {download};
         };
 
-        preloader.construct();
+        // preloader.construct();
         preloader.setManual();
         preloader.attach(downloadDiv);
         preloader.setDownloadFunction(load);
@@ -487,35 +507,89 @@ export default class AudioElement extends HTMLElement {
           onLoad(false);
         }
 
+        if(doc.thumbs) {
+          const imgs: HTMLImageElement[] = [];
+          const wrapped = wrapPhoto({
+            photo: doc, 
+            message: null, 
+            container: toggle, 
+            boxWidth: 48, 
+            boxHeight: 48,
+            loadPromises: this.loadPromises,
+            withoutPreloader: true,
+            lazyLoadQueue: this.lazyLoadQueue
+          });
+          toggle.style.width = toggle.style.height = '';
+          if(wrapped.images.thumb) imgs.push(wrapped.images.thumb);
+          if(wrapped.images.full) imgs.push(wrapped.images.full);
+
+          this.classList.add('audio-with-thumb');
+          imgs.forEach(img => img.classList.add('audio-thumb'));
+        }
+
         //if(appMediaPlaybackController.mediaExists(mid)) { // чтобы показать прогресс, если аудио уже было скачано
           //onLoad();
         //} else {
           const r = (e: Event) => {
             if(!this.audio) {
-              onLoad(false);
+              const togglePlay = onLoad(false);
             }
 
             if(this.audio.src) {
               return;
             }
-            //onLoad();
-            //cancelEvent(e);
+            
             appMediaPlaybackController.resolveWaitingForLoadMedia(this.message.peerId, this.message.mid);
-  
             appMediaPlaybackController.willBePlayed(this.audio); // prepare for loading audio
-  
+
+            if(isSafari) {
+              this.audio.autoplay = true;
+            }
+
+            // togglePlay(undefined, true);
+
+            this.readyPromise = deferredPromise<void>();
+            if(this.audio.readyState >= 2) this.readyPromise.resolve();
+            else {
+              this.addAudioListener('canplay', () => this.readyPromise.resolve(), {once: true});
+            }
+
             if(!preloader) {
               if(doc.supportsStreaming) {
-                preloader = new ProgressivePreloader({
-                  cancelable: false
-                });
+                this.classList.add('corner-download');
 
-                preloader.attach(downloadDiv, false);
+                let pauseListener: Listener;
+                const onPlay = () => {
+                  const preloader = constructDownloadPreloader(false);
+                  const deferred = deferredPromise<void>();
+                  deferred.notifyAll({done: 75, total: 100});
+                  deferred.catch(() => {
+                    this.audio.pause();
+                    appMediaPlaybackController.willBePlayed(undefined);
+                  });
+                  deferred.cancel = () => {
+                    deferred.cancel = noop;
+                    const err = new Error();
+                    (err as any).type = 'CANCELED';
+                    deferred.reject(err);
+                  };
+                  preloader.attach(downloadDiv, false, deferred);
+
+                  pauseListener = this.addAudioListener('pause', () => {
+                    deferred.cancel();
+                  }, {once: true}) as any;
+                };
+
+                /* if(!this.audio.paused) {
+                  onPlay();
+                } */
+
+                const playListener: any = this.addAudioListener('play', onPlay);
+                this.readyPromise.then(() => {
+                  this.listenerSetter.remove(playListener);
+                  this.listenerSetter.remove(pauseListener);
+                });
               } else {
-                preloader = new ProgressivePreloader({
-                  cancelable: true
-                });
-
                 const load = () => {
                   const download = getDownloadPromise();
                   preloader.attach(downloadDiv, false, download);
@@ -527,17 +601,9 @@ export default class AudioElement extends HTMLElement {
               }
             }
 
-            if(isSafari) {
-              this.audio.autoplay = true;
-              this.audio.play().catch(() => {});
-            }
-
             this.append(downloadDiv);
-    
-            new Promise<void>((resolve) => {
-              if(this.audio.readyState >= 2) resolve();
-              else this.addAudioListener('canplay', resolve);
-            }).then(() => {
+
+            this.readyPromise.then(() => {
               downloadDiv.classList.add('downloaded');
               setTimeout(() => {
                 downloadDiv.remove();
@@ -547,14 +613,14 @@ export default class AudioElement extends HTMLElement {
                 // release loaded audio
                 if(appMediaPlaybackController.willBePlayedMedia === this.audio) {
                   this.audio.play();
-                  appMediaPlaybackController.willBePlayedMedia = null;
+                  appMediaPlaybackController.willBePlayed(undefined);
                 }
               //}, 10e3);
             });
           };
 
           if(!this.audio?.src) {
-            attachClickEvent(this, r, {once: true, capture: true, passive: false});
+            attachClickEvent(toggle, r, {once: true, capture: true, passive: false});
           }
         //}
       }
@@ -564,15 +630,8 @@ export default class AudioElement extends HTMLElement {
     }
   }
 
-  /* connectedCallback() {
-    // браузер вызывает этот метод при добавлении элемента в документ
-    // (может вызываться много раз, если элемент многократно добавляется/удаляется)
-  } */
-
-  public addAudioListener(name: string, callback: any) {
-    if(!this.attachedHandlers[name]) this.attachedHandlers[name] = [];
-    this.attachedHandlers[name].push(callback);
-    this.audio.addEventListener(name, callback);
+  get addAudioListener() {
+    return this.listenerSetter.add(this.audio);
   }
 
   disconnectedCallback() {
@@ -580,20 +639,17 @@ export default class AudioElement extends HTMLElement {
       return;
     }
     
-    // браузер вызывает этот метод при удалении элемента из документа
-    // (может вызываться много раз, если элемент многократно добавляется/удаляется)
     if(this.onTypeDisconnect) {
       this.onTypeDisconnect();
       this.onTypeDisconnect = null;
     }
 
-    for(let name in this.attachedHandlers) {
-      for(let callback of this.attachedHandlers[name]) {
-        this.audio.removeEventListener(name, callback);
-      }
-      
-      delete this.attachedHandlers[name];
+    if(this.readyPromise) {
+      this.readyPromise.reject();
     }
+
+    this.listenerSetter.removeAll();
+    this.listenerSetter = null;
 
     this.preloader = null;
   }

@@ -944,7 +944,7 @@ export default class ChatBubbles {
     }
 
     //this.log('chatInner click:', target);
-    const isVideoComponentElement = target.tagName === 'SPAN';
+    const isVideoComponentElement = target.tagName === 'SPAN' && !target.classList.contains('emoji');
     /* if(isVideoComponentElement) {
       const video = target.parentElement.querySelector('video') as HTMLElement;
       if(video) {
@@ -1054,7 +1054,7 @@ export default class ChatBubbles {
       .setSearchContext({
         threadId: this.chat.threadId,
         peerId: this.peerId,
-        inputFilter: documentDiv ? 'inputMessagesFilterDocument' : 'inputMessagesFilterPhotoVideo'
+        inputFilter: {_: documentDiv ? 'inputMessagesFilterDocument' : 'inputMessagesFilterPhotoVideo'}
       })
       .openMedia(message, targets[idx].element, 0, true, targets.slice(0, idx), targets.slice(idx + 1));
       
@@ -2775,6 +2775,11 @@ export default class ChatBubbles {
                 group: CHAT_ANIMATION_GROUP,
                 loadPromises,
                 noAutoDownload: this.chat.noAutoDownloadMedia,
+                searchContext: isRound ? {
+                  peerId: this.peerId,
+                  inputFilter: {_: 'inputMessagesFilterRoundVoice'},
+                  threadId: this.chat.threadId
+                } : undefined
               });
             }
           } else {
@@ -2786,7 +2791,12 @@ export default class ChatBubbles {
               chat: this.chat,
               loadPromises,
               noAutoDownload: this.chat.noAutoDownloadMedia,
-              lazyLoadQueue: this.lazyLoadQueue
+              lazyLoadQueue: this.lazyLoadQueue,
+              searchContext: doc.type === 'voice' || doc.type === 'audio' ? {
+                peerId: this.peerId,
+                inputFilter: {_: doc.type === 'voice' ? 'inputMessagesFilterRoundVoice' : 'inputMessagesFilterMusic'},
+                threadId: this.chat.threadId
+              } : undefined
             });
 
             if(newNameContainer) {
@@ -2879,7 +2889,8 @@ export default class ChatBubbles {
 
     let savedFrom = '';
     
-    const needName = ((peerId < 0 && (peerId !== message.fromId || our)) && message.fromId !== rootScope.myId) || message.viaBotId;
+    // const needName = ((peerId < 0 && (peerId !== message.fromId || our)) && message.fromId !== rootScope.myId) || message.viaBotId;
+    const needName = (message.fromId !== rootScope.myId && peerId < 0 && !this.appPeersManager.isBroadcast(peerId)) || message.viaBotId;
     if(needName || message.fwd_from || message.reply_to_mid) { // chat
       let title: HTMLElement | DocumentFragment;
 

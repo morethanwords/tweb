@@ -430,9 +430,12 @@ export default class PollElement extends HTMLElement {
     // const width = mediaSizes.active.poll.width;
     // this.maxLength = width + tailLength + this.maxOffset + -13.7; // 13 - position left
 
-    if(poll.chosenIndexes.length || this.isClosed) {
+    const canVote = !(poll.chosenIndexes.length || this.isClosed);
+    if(!canVote || this.isPublic) {
       this.performResults(results, poll.chosenIndexes, false);
-    } else if(!this.isClosed) {
+    }
+
+    if(canVote) {
       this.setVotersCount(results);
       attachClickEvent(this, this.clickHandler);
     }

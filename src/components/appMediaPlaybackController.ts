@@ -11,6 +11,9 @@ import { CancellablePromise, deferredPromise } from "../helpers/cancellablePromi
 import { isSafari } from "../helpers/userAgent";
 import { MOUNT_CLASS_TO } from "../config/debug";
 import appDownloadManager from "../lib/appManagers/appDownloadManager";
+import simulateEvent from "../helpers/dom/dispatchEvent";
+import type { SearchSuperContext } from "./appSearchSuper.";
+import { copy, deepEqual } from "../helpers/object";
 
 // TODO: если удалить сообщение, и при этом аудио будет играть - оно не остановится, и можно будет по нему перейти вникуда
 
@@ -18,9 +21,17 @@ import appDownloadManager from "../lib/appManagers/appDownloadManager";
 // TODO: Safari: попробовать замаскировать подгрузку последнего чанка
 // TODO: Safari: пофиксить момент, когда заканчивается песня и пытаешься включить её заново - прогресс сразу в конце
 
+type MediaItem = {mid: number, peerId: number};
+
 type HTMLMediaElement = HTMLAudioElement | HTMLVideoElement;
 
-type MediaType = 'voice' | 'audio' | 'round';
+const SHOULD_USE_SAFARI_FIX = (() => {
+  try {
+    return isSafari && +navigator.userAgent.match(/ Version\/(\d+)/)[1] < 14;
+  } catch(err) {
+    return false;
+  }
+})();
 
 class AppMediaPlaybackController {
   private container: HTMLElement;
@@ -29,7 +40,7 @@ class AppMediaPlaybackController {
       [mid: string]: HTMLMediaElement
     }
   } = {};
-  private playingMedia: HTMLMediaElement;
+  public playingMedia: HTMLMediaElement;
 
   private waitingMediaForLoad: {
     [peerId: string]: {
@@ -38,10 +49,14 @@ class AppMediaPlaybackController {
   } = {};
   
   public willBePlayedMedia: HTMLMediaElement;
+  public searchContext: SearchSuperContext;
 
   private currentPeerId: number;
   private prevMid: number;
   private nextMid: number;
+
+  private prev: MediaItem[] = [];
+  private next: MediaItem[] = [];
 
   constructor() {
     this.container = document.createElement('div');
@@ -63,6 +78,7 @@ class AppMediaPlaybackController {
       //media.muted = true;
     }
 
+    media.dataset.peerId = '' + peerId;
     media.dataset.mid = '' + mid;
     media.dataset.type = doc.type;
     
@@ -72,30 +88,11 @@ class AppMediaPlaybackController {
 
     this.container.append(media);
 
-    media.addEventListener('playing', () => {
-      this.currentPeerId = peerId;
-
-      //console.log('appMediaPlaybackController: video playing', this.currentPeerId, this.playingMedia, media);
-
-      if(this.playingMedia !== media) {
-        if(this.playingMedia && !this.playingMedia.paused) {
-          this.playingMedia.pause();
-        }
-  
-        this.playingMedia = media;
-        this.loadSiblingsMedia(peerId, doc.type as MediaType, mid);
-      }
-
-      // audio_pause не успеет сработать без таймаута
-      setTimeout(() => {
-        rootScope.dispatchEvent('audio_play', {peerId, doc, mid});
-      }, 0);
-    });
-
+    media.addEventListener('play', this.onPlay);
     media.addEventListener('pause', this.onPause);
     media.addEventListener('ended', this.onEnded);
     
-    const onError = (e: Event) => {
+    /* const onError = (e: Event) => {
       //console.log('appMediaPlaybackController: video onError', e);
 
       if(this.nextMid === mid) {
@@ -107,7 +104,7 @@ class AppMediaPlaybackController {
       }
     };
 
-    media.addEventListener('error', onError);
+    media.addEventListener('error', onError); */
 
     const deferred = deferredPromise<void>();
     if(autoload) {
@@ -122,14 +119,16 @@ class AppMediaPlaybackController {
       //console.log('will set media url:', media, doc, doc.type, doc.url);
 
       ((!doc.supportsStreaming ? appDocsManager.downloadDoc(doc) : Promise.resolve()) as Promise<any>).then(() => {
-        if(doc.type === 'audio' && doc.supportsStreaming && isSafari) {
+        if(doc.type === 'audio' && doc.supportsStreaming && SHOULD_USE_SAFARI_FIX) {
           this.handleSafariStreamable(media);
         }
   
+        // setTimeout(() => {
         const cacheContext = appDownloadManager.getCacheContext(doc);
         media.src = cacheContext.url;
+        // }, doc.supportsStreaming ? 500e3 : 0);
       });
-    }, onError);
+    }/* , onError */);
     
     return storage[mid] = media;
   }
@@ -163,7 +162,11 @@ class AppMediaPlaybackController {
   }
 
   public resolveWaitingForLoadMedia(peerId: number, mid: number) {
-    const storage = this.waitingMediaForLoad[peerId] ?? (this.waitingMediaForLoad[peerId] = {});
+    const storage = this.waitingMediaForLoad[peerId];
+    if(!storage) {
+      return;
+    }
+
     const promise = storage[mid];
     if(promise) {
       promise.resolve();
@@ -184,6 +187,37 @@ class AppMediaPlaybackController {
     media.safariBuffering = value;
   }
 
+  onPlay = (e?: Event) => {
+    const media = e.target as HTMLMediaElement;
+    const peerId = +media.dataset.peerId;
+    const mid = +media.dataset.mid;
+    this.currentPeerId = peerId;
+
+    //console.log('appMediaPlaybackController: video playing', this.currentPeerId, this.playingMedia, media);
+
+    const previousMedia = this.playingMedia;
+    if(previousMedia !== media) {
+      if(previousMedia) {
+        if(!previousMedia.paused) {
+          previousMedia.pause();
+        }
+
+        // reset media
+        previousMedia.currentTime = 0;
+        simulateEvent(previousMedia, 'ended');
+      }
+
+      this.playingMedia = media;
+      this.loadSiblingsMedia(peerId, mid);
+    }
+
+    // audio_pause не успеет сработать без таймаута
+    setTimeout(() => {
+      const message = appMessagesManager.getMessageByPeer(peerId, mid);
+      rootScope.dispatchEvent('audio_play', {peerId, doc: message.media.document, mid});
+    }, 0);
+  };
+
   onPause = (e?: Event) => {
     /* const target = e.target as HTMLMediaElement;
     if(!isInDOM(target)) {
@@ -196,6 +230,10 @@ class AppMediaPlaybackController {
   };
 
   onEnded = (e?: Event) => {
+    if(!e.isTrusted) {
+      return;
+    }
+
     this.onPause(e);
 
     //console.log('on media end');
@@ -215,35 +253,28 @@ class AppMediaPlaybackController {
     }
   };
 
-  private loadSiblingsMedia(peerId: number, type: MediaType, mid: number) {
-    const media = this.playingMedia;
-    this.prevMid = this.nextMid = 0;
+  private loadSiblingsMedia(offsetPeerId: number, offsetMid: number) {
+    const {playingMedia, searchContext} = this;
+    if(!searchContext) {
+      return;
+    }
 
     return appMessagesManager.getSearch({
-      peerId, 
-      query: '', 
-      inputFilter: {
-        //_: type === 'audio' ? 'inputMessagesFilterMusic' : (type === 'round' ? 'inputMessagesFilterRoundVideo' : 'inputMessagesFilterVoice')
-        _: type === 'audio' ? 'inputMessagesFilterMusic' : 'inputMessagesFilterRoundVoice'
-      },
-      maxId: mid,
+      ...searchContext,
+      maxId: offsetMid,
       limit: 3,
-      backLimit: 2
+      backLimit: 2,
     }).then(value => {
-      if(this.playingMedia !== media) {
+      if(this.playingMedia !== playingMedia || this.searchContext !== searchContext) {
         return;
       }
  
-      for(const {mid: m} of value.history) {
-        if(m > mid) {
-          this.nextMid = m;
-        } else if(m < mid) {
-          this.prevMid = m;
-          break;
-        }
-      }
+      const idx = Math.max(0, value.history.findIndex(message => message.peerId === offsetPeerId && message.mid === offsetMid));
+      const prev = value.history.slice(Math.max(0, idx));
+      const next = value.history.slice(0, idx);
 
       [this.prevMid, this.nextMid].filter(Boolean).forEach(mid => {
+        const peerId = searchContext.peerId;
         const message = appMessagesManager.getMessageByPeer(peerId, mid);
         this.addMedia(peerId, message.media.document, mid, false);
       });
@@ -269,6 +300,16 @@ class AppMediaPlaybackController {
 
   public willBePlayed(media: HTMLMediaElement) {
     this.willBePlayedMedia = media;
+  }
+
+  public setSearchContext(context: SearchSuperContext) {
+    if(deepEqual(this.searchContext, context)) {
+      return;
+    }
+
+    this.searchContext = copy(context); // {_: type === 'audio' ? 'inputMessagesFilterMusic' : 'inputMessagesFilterRoundVoice'}
+    this.prev.length = 0;
+    this.next.length = 0;
   }
 }
 
