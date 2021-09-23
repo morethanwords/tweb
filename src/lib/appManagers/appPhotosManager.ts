@@ -15,7 +15,7 @@ import { CancellablePromise } from "../../helpers/cancellablePromise";
 import { getFileNameByLocation } from "../../helpers/fileName";
 import { safeReplaceArrayInObject, isObject } from "../../helpers/object";
 import { isSafari } from "../../helpers/userAgent";
-import { InputFileLocation, InputMedia, Photo, PhotoSize, PhotosPhotos } from "../../layer";
+import { InputFileLocation, InputMedia, InputPhoto, Photo, PhotoSize, PhotosPhotos } from "../../layer";
 import apiManager from "../mtproto/mtprotoworker";
 import referenceDatabase, { ReferenceContext } from "../mtproto/referenceDatabase";
 import { MyDocument } from "./appDocsManager";
@@ -383,15 +383,19 @@ export class AppPhotosManager {
     return isObject(photoId) ? photoId as MyPhoto : this.photos[photoId as any as string];
   }
 
+  public getInput(photo: MyPhoto): InputPhoto.inputPhoto {
+    return {
+      _: 'inputPhoto',
+      id: photo.id,
+      access_hash: photo.access_hash,
+      file_reference: photo.file_reference
+    };
+  }
+
   public getMediaInput(photo: MyPhoto): InputMedia.inputMediaPhoto {
     return {
       _: 'inputMediaPhoto',
-      id: {
-        _: 'inputPhoto',
-        id: photo.id,
-        access_hash: photo.access_hash,
-        file_reference: photo.file_reference
-      },
+      id: this.getInput(photo),
       ttl_seconds: 0
     };
   }
