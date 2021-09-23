@@ -572,6 +572,9 @@ const lang = {
   "ChannelSilentBroadcast": "Silent Broadcast",
   "Comment": "Comment",
   "SendAnonymously": "Send anonymously",
+  "DiscardVoiceMessageTitle": "Discard Voice Message",
+  "DiscardVoiceMessageDescription": "Are you sure you want to stop recording and discard your voice message?",
+  "DiscardVoiceMessageAction": "Discard",
 
   // * macos
   "AccountSettings.Filters": "Chat Folders",

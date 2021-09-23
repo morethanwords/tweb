@@ -36,7 +36,7 @@ import { MessageEntity, DraftMessage, WebPage, Message } from '../../layer';
 import StickersHelper from './stickersHelper';
 import ButtonIcon from '../buttonIcon';
 import ButtonMenuToggle from '../buttonMenuToggle';
-import ListenerSetter from '../../helpers/listenerSetter';
+import ListenerSetter, { Listener } from '../../helpers/listenerSetter';
 import Button from '../button';
 import PopupSchedule from '../popups/schedule';
 import SendMenu from './sendContextMenu';
@@ -52,7 +52,7 @@ import ButtonCorner from '../buttonCorner';
 import blurActiveElement from '../../helpers/dom/blurActiveElement';
 import { cancelEvent } from '../../helpers/dom/cancelEvent';
 import cancelSelection from '../../helpers/dom/cancelSelection';
-import { attachClickEvent } from '../../helpers/dom/clickEvent';
+import { attachClickEvent, simulateClickEvent } from '../../helpers/dom/clickEvent';
 import getRichValue from '../../helpers/dom/getRichValue';
 import isInputEmpty from '../../helpers/dom/isInputEmpty';
 import isSendShortcutPressed from '../../helpers/dom/isSendShortcutPressed';
@@ -78,6 +78,7 @@ import { fastRaf } from '../../helpers/schedulers';
 import PopupDeleteMessages from '../popups/deleteMessages';
 import fixSafariStickyInputFocusing, { IS_STICKY_INPUT_BUGGED } from '../../helpers/dom/fixSafariStickyInputFocusing';
 import { copy } from '../../helpers/object';
+import PopupPeer from '../popups/peer';
 
 const RECORD_MIN_TIME = 500;
 const POSTING_MEDIA_NOT_ALLOWED = 'Posting media content isn\'t allowed in this group.';
@@ -172,6 +173,8 @@ export default class ChatInput {
   private fakePinnedControlBtn: HTMLElement;
 
   private previousQuery: string;
+
+  private recordingOverlayListener: Listener;
 
   constructor(private chat: Chat, 
     private appMessagesManager: AppMessagesManager, 
@@ -575,7 +578,14 @@ export default class ChatInput {
       };
   
       this.recorder.ondataavailable = (typedArray: Uint8Array) => {
-        if(this.recordCanceled) return;
+        if(this.recordingOverlayListener) {
+          this.listenerSetter.remove(this.recordingOverlayListener);
+          this.recordingOverlayListener = undefined;
+        }
+
+        if(this.recordCanceled) {
+          return;
+        }
 
         const {peerId, threadId} = this.chat;
         const replyToMsgId = this.replyToMsgId;
@@ -1450,6 +1460,25 @@ export default class ChatInput {
         this.recording = true;
         this.updateSendBtn();
         opusDecodeController.setKeepAlive(true);
+
+        this.recordingOverlayListener = this.listenerSetter.add(document.body)('mousedown', (e) => {
+          if(!findUpClassName(e.target, 'chat-input') && !findUpClassName(e.target, 'popup-cancel-record')) {
+            cancelEvent(e);
+            new PopupPeer('popup-cancel-record', {
+              titleLangKey: 'DiscardVoiceMessageTitle',
+              descriptionLangKey: 'DiscardVoiceMessageDescription',
+              buttons: [{
+                langKey: 'DiscardVoiceMessageAction',
+                callback: () => {
+                  simulateClickEvent(this.btnCancelRecord);
+                }
+              }, {
+                langKey: 'Continue',
+                isCancel: true
+              }]
+            }).show();
+          }
+        }, {capture: true, passive: false}) as any;
 
         this.recordStartTime = Date.now();
 
