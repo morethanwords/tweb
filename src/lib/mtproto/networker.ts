@@ -1262,7 +1262,7 @@ export default class MTPNetworker {
               try {
                 result.body = deserializer.fetchObject('Object', field + '[body]');
               } catch(e) {
-                this.log.error('parse error', e.message, e.stack);
+                this.log.error('parse error', (e as Error).message, (e as Error).stack);
                 result.body = {
                   _: 'parse_error',
                   error: e

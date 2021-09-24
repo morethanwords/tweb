@@ -87,7 +87,7 @@ export class LazyLoadQueueBase {
       //await item.load(item.div);
       await this.loadItem(item);
     } catch(err) {
-      if(!['NO_ENTRY_FOUND', 'STORAGE_OFFLINE'].includes(err)) {
+      if(!['NO_ENTRY_FOUND', 'STORAGE_OFFLINE'].includes(err as string)) {
         this.log.error('loadMediaQueue error:', err/* , item */);
       }
     }

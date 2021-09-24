@@ -194,7 +194,7 @@ export class Authorizer {
       rsaKeysManager.prepare();
       deserializer = await promise;
     } catch(error) {
-      this.log.error('req_pq error', error.message);
+      this.log.error('req_pq error', (error as Error).message);
       throw error;
     }
     

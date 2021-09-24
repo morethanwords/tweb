@@ -277,7 +277,10 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
       } */
 
       if(globalVideo.paused) {
-        appMediaPlaybackController.setSearchContext(searchContext);
+        if(appMediaPlaybackController.setSearchContext(searchContext)) {
+          appMediaPlaybackController.setTargets({peerId: message.peerId, mid: message.mid});
+        }
+        
         globalVideo.play();
       } else {
         globalVideo.pause();
@@ -522,8 +525,8 @@ export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showS
   const uploading = message.pFlags.is_outgoing && message.media?.preloader;
   if(doc.type === 'audio' || doc.type === 'voice') {
     const audioElement = new AudioElement();
-    audioElement.setAttribute('message-id', '' + message.mid);
-    audioElement.setAttribute('peer-id', '' + message.peerId);
+    audioElement.dataset.mid = '' + message.mid;
+    audioElement.dataset.peerId = '' + message.peerId;
     audioElement.withTime = withTime;
     audioElement.message = message;
     audioElement.noAutoDownload = noAutoDownload;
