@@ -30,11 +30,9 @@ import appSidebarRight from "./sidebarRight";
 import SwipeHandler from "./swipeHandler";
 import { ONE_DAY } from "../helpers/date";
 import { SearchSuperContext } from "./appSearchSuper.";
-import DEBUG from "../config/debug";
 import appNavigationController from "./appNavigationController";
 import { Message } from "../layer";
-import { forEachReverse } from "../helpers/array";
-import AppSharedMediaTab from "./sidebarRight/tabs/sharedMedia";
+import AppSharedMediaTab, { filterChatPhotosMessages } from "./sidebarRight/tabs/sharedMedia";
 import findUpClassName from "../helpers/dom/findUpClassName";
 import renderImageFromUrl, { renderImageFromUrlPromise } from "../helpers/dom/renderImageFromUrl";
 import getVisibleRect from "../helpers/dom/getVisibleRect";
@@ -53,7 +51,7 @@ import { attachClickEvent } from "../helpers/dom/clickEvent";
 import PopupDeleteMessages from "./popups/deleteMessages";
 import RangeSelector from "./rangeSelector";
 import windowSize from "../helpers/windowSize";
-import { safeAssign } from "../helpers/object";
+import ListLoader, { ListLoaderOptions } from "../helpers/listLoader";
 
 const ZOOM_STEP = 0.5;
 const ZOOM_INITIAL_VALUE = 1;
@@ -66,129 +64,22 @@ const ZOOM_MAX_VALUE = 4;
 
 const MEDIA_VIEWER_CLASSNAME = 'media-viewer';
 
-type MediaQueueLoaderOptions<Item extends {}> = {
-  prevTargets?: MediaQueueLoader<Item>['prevTargets'],
-  nextTargets?: MediaQueueLoader<Item>['nextTargets'],
-  onLoadedMore?: MediaQueueLoader<Item>['onLoadedMore'],
-  generateItem?: MediaQueueLoader<Item>['generateItem'],
-  getLoadPromise?: MediaQueueLoader<Item>['getLoadPromise'],
-  reverse?: MediaQueueLoader<Item>['reverse']
-};
-
-class MediaQueueLoader<Item extends {}> {
-  public target: Item = false as any;
-  public prevTargets: Item[] = [];
-  public nextTargets: Item[] = [];
-
-  public loadMediaPromiseUp: Promise<void> = null;
-  public loadMediaPromiseDown: Promise<void> = null;
-  public loadedAllMediaUp = false;
-  public loadedAllMediaDown = false;
-
-  public reverse = false; // reverse means next = higher msgid
-
-  protected generateItem: (item: Item) => Item = (item) => item;
-  protected getLoadPromise: (older: boolean, anchor: Item, loadCount: number) => Promise<Item[]>;
-  protected onLoadedMore: () => void;
-
-  constructor(options: MediaQueueLoaderOptions<Item> = {}) {
-    safeAssign(this, options);
-  }
-
-  public setTargets(prevTargets: Item[], nextTargets: Item[], reverse: boolean) {
-    this.prevTargets = prevTargets;
-    this.nextTargets = nextTargets;
-    this.reverse = reverse;
-    this.loadedAllMediaUp = this.loadedAllMediaDown = false;
-    this.loadMediaPromiseUp = this.loadMediaPromiseDown = null;
-  }
-
-  public reset() {
-    this.prevTargets = [];
-    this.nextTargets = [];
-    this.loadedAllMediaUp = this.loadedAllMediaDown = false;
-    this.loadMediaPromiseUp = this.loadMediaPromiseDown = null;
-  }
-
-  // нет смысла делать проверку для reverse и loadMediaPromise
-  public loadMoreMedia = (older = true) => {
-    //if(!older && this.reverse) return;
-
-    if(older && this.loadedAllMediaDown) return Promise.resolve();
-    else if(!older && this.loadedAllMediaUp) return Promise.resolve();
-
-    if(older && this.loadMediaPromiseDown) return this.loadMediaPromiseDown;
-    else if(!older && this.loadMediaPromiseUp) return this.loadMediaPromiseUp;
-
-    const loadCount = 50;
-
-    let anchor: Item;
-    if(older) {
-      anchor = this.reverse ? this.prevTargets[0] : this.nextTargets[this.nextTargets.length - 1];
-    } else {
-      anchor = this.reverse ? this.nextTargets[this.nextTargets.length - 1] : this.prevTargets[0];
-    }
-
-    const promise = this.getLoadPromise(older, anchor, loadCount).then(items => {
-      if((older && this.loadMediaPromiseDown !== promise) || (!older && this.loadMediaPromiseUp !== promise)) {
-        return;
-      }
-
-      if(items.length < loadCount) {
-        /* if(this.reverse) {
-          if(older) this.loadedAllMediaUp = true;
-          else this.loadedAllMediaDown = true;
-        } else { */
-          if(older) this.loadedAllMediaDown = true;
-          else this.loadedAllMediaUp = true;
-        //}
-      }
-
-      const method: any = older ? items.forEach.bind(items) : forEachReverse.bind(null, items);
-      method((item: Item) => {
-        const t = this.generateItem(item);
-        if(!t) {
-          return;
-        }
-
-        if(older) {
-          if(this.reverse) this.prevTargets.unshift(t);
-          else this.nextTargets.push(t);
-        } else {
-          if(this.reverse) this.nextTargets.push(t);
-          else this.prevTargets.unshift(t);
-        }
-      });
-
-      this.onLoadedMore && this.onLoadedMore();
-    }, () => {}).then(() => {
-      if(older) this.loadMediaPromiseDown = null;
-      else this.loadMediaPromiseUp = null;
-    });
-
-    if(older) this.loadMediaPromiseDown = promise;
-    else this.loadMediaPromiseUp = promise;
-
-    return promise;
-  };
-}
-
-class MediaSearchQueueLoader<Item extends {mid: number, peerId: number}> extends MediaQueueLoader<Item> {
+export class SearchListLoader<Item extends {mid: number, peerId: number}> extends ListLoader<Item> {
   public searchContext: SearchSuperContext;
 
-  constructor(options: Omit<MediaQueueLoaderOptions<Item>, 'getLoadPromise'> = {}) {
+  constructor(options: Omit<ListLoaderOptions<Item>, 'loadMore'> = {}) {
     super({
       ...options,
-      getLoadPromise: (older, anchor, loadCount) => {
+      loadMore: (anchor, older, loadCount) => {
         const backLimit = older ? 0 : loadCount;
-        let maxId = this.target?.mid;
+        let maxId = this.current?.mid;
 
         if(anchor) maxId = anchor.mid;
         if(!older) maxId = appMessagesIdsManager.incrementMessageId(maxId, 1);
 
         return appMessagesManager.getSearch({
           ...this.searchContext,
-          peerId: anchor?.peerId,
+          peerId: this.searchContext.peerId || anchor?.peerId,
           maxId,
           limit: backLimit ? 0 : loadCount,
           backLimit
@@ -197,11 +88,15 @@ class MediaSearchQueueLoader<Item extends {mid: number, peerId: number}> extends
             this.log('loaded more media by maxId:', maxId, value, older, this.reverse);
           } */
 
+          if(this.searchContext.inputFilter._ === 'inputMessagesFilterChatPhotos') {
+            filterChatPhotosMessages(value);
+          }
+
           if(value.next_rate) {
             this.searchContext.nextRate = value.next_rate;
           }
 
-          return value.history as any;
+          return {count: value.count, items: value.history};
         });
       }
     });
@@ -211,37 +106,45 @@ class MediaSearchQueueLoader<Item extends {mid: number, peerId: number}> extends
     this.searchContext = context;
 
     if(this.searchContext.folderId !== undefined) {
-      this.loadedAllMediaUp = true;
+      this.loadedAllUp = true;
 
       if(this.searchContext.nextRate === undefined) {
-        this.loadedAllMediaDown = true;
+        this.loadedAllDown = true;
       }
     }
+
+    if(this.searchContext.inputFilter._ === 'inputMessagesFilterChatPhotos') {
+      this.loadedAllUp = true;
+    }
+  }
+
+  public reset() {
+    super.reset();
+    this.searchContext = undefined;
   }
 }
 
-class MediaAvatarQueueLoader<Item extends {photoId: string}> extends MediaQueueLoader<Item> {
+class AvatarListLoader<Item extends {photoId: string}> extends ListLoader<Item> {
   private peerId: number;
 
-  constructor(options: Omit<MediaQueueLoaderOptions<Item>, 'getLoadPromise'> & {peerId: number}) {
+  constructor(options: Omit<ListLoaderOptions<Item>, 'loadMore'> & {peerId: number}) {
     super({
       ...options,
-      getLoadPromise: (older, anchor, loadCount) => {
-        if(this.peerId < 0) return Promise.resolve([]); // ! это значит, что открыло аватар чата, но следующих фотографий нет.
+      loadMore: (anchor, older, loadCount) => {
+        if(this.peerId < 0 || !older) return Promise.resolve({count: 0, items: []}); // ! это значит, что открыло аватар чата, но следующих фотографий нет.
 
-        return appPhotosManager.getUserPhotos(this.peerId, anchor?.photoId, loadCount).then(value => {
-          const idx = value.photos.indexOf(this.target.photoId);
-          if(idx !== -1) {
-            value.photos.splice(idx, 1);
-          }
-
-          return value.photos.map(photoId => {
+        const maxId = anchor?.photoId;
+        return appPhotosManager.getUserPhotos(this.peerId, maxId, loadCount).then(value => {
+          const items = value.photos.map(photoId => {
             return {element: null as HTMLElement, photoId} as any;
           });
+
+          return {count: value.count, items};
         });
       }
     });
 
+    this.loadedAllUp = true;
     this.peerId = options.peerId;
   }
 }
@@ -259,8 +162,6 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
   protected preloader: ProgressivePreloader = null;
   protected preloaderStreamable: ProgressivePreloader = null;
 
-  protected prevTargets: TargetType[] = [];
-  protected nextTargets: TargetType[] = [];
   //protected targetContainer: HTMLElement = null;
   //protected loadMore: () => void = null;
 
@@ -268,8 +169,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
 
   protected isFirstOpen = true;
 
-  protected reverse = false; // reverse means next = higher msgid
-  protected needLoadMore = true;
+  // protected needLoadMore = true;
 
   protected pageEl = document.getElementById('page-chats') as HTMLDivElement;
 
@@ -302,14 +202,14 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
   protected ctrlKeyDown: boolean;
 
   get target() {
-    return this.queueLoader.target;
+    return this.listLoader.current;
   }
 
   set target(value) {
-    this.queueLoader.target = value;
+    this.listLoader.current = value;
   }
 
-  constructor(protected queueLoader: MediaQueueLoader<TargetType>, 
+  constructor(protected listLoader: ListLoader<TargetType>, 
     topButtons: Array<keyof AppMediaViewerBase<ContentAdditionType, ButtonsAdditionType, TargetType>['buttons']>) {
     this.log = logger('AMV');
     this.preloader = new ProgressivePreloader();
@@ -432,30 +332,13 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
       el.addEventListener('click', this.close.bind(this));
     });
 
-    this.buttons.prev.addEventListener('click', (e) => {
-      cancelEvent(e);
-      if(this.setMoverPromise) return;
-
-      const target = this.prevTargets.pop();
-      if(target) {
-        this.nextTargets.unshift(this.target);
-        this.onPrevClick(target);
-      } else {
-        this.buttons.prev.style.display = 'none';
-      }
-    });
-    
-    this.buttons.next.addEventListener('click', (e) => {
-      cancelEvent(e);
-      if(this.setMoverPromise) return;
-
-      let target = this.nextTargets.shift();
-      if(target) {
-        this.prevTargets.push(this.target);
-        this.onNextClick(target);
-      } else {
-        this.buttons.next.style.display = 'none';
-      }
+    ([[-1, this.buttons.prev], [1, this.buttons.next]] as [number, HTMLElement][]).forEach(([moveLength, button]) => {
+      button.addEventListener('click', (e) => {
+        cancelEvent(e);
+        if(this.setMoverPromise) return;
+  
+        this.listLoader.go(moveLength);
+      });
     });
 
     this.buttons.zoom.addEventListener('click', () => {
@@ -466,6 +349,11 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     });
 
     this.wholeDiv.addEventListener('click', this.onClick);
+
+    this.listLoader.onJump = (item, older) => {
+      if(older) this.onNextClick(item);
+      else this.onPrevClick(item);
+    };
 
     if(isTouchSupported) {
       const swipeHandler = new SwipeHandler({
@@ -606,9 +494,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
 
     const promise = this.setMoverToTarget(this.target?.element, true).then(({onAnimationEnd}) => onAnimationEnd);
 
-    this.target = false as any;
-    this.prevTargets.length = 0;
-    this.nextTargets.length = 0;
+    this.listLoader.reset();
     this.setMoverPromise = null;
     this.tempId = -1;
     (window as any).appMediaViewer = undefined;
@@ -1353,7 +1239,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
   }
   
   protected async _openMedia(media: any, timestamp: number, fromId: number, fromRight: number, target?: HTMLElement, reverse = false, 
-    prevTargets: TargetType[] = [], nextTargets: TargetType[] = [], needLoadMore = true) {
+    prevTargets: TargetType[] = [], nextTargets: TargetType[] = []/* , needLoadMore = true */) {
     if(this.setMoverPromise) return this.setMoverPromise;
 
     /* if(DEBUG) {
@@ -1367,12 +1253,9 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
 
     if(this.isFirstOpen) {
       //this.targetContainer = targetContainer;
-      this.prevTargets = prevTargets;
-      this.nextTargets = nextTargets;
-      this.reverse = reverse;
-      this.needLoadMore = needLoadMore;
+      // this.needLoadMore = needLoadMore;
       this.isFirstOpen = false;
-      this.queueLoader.setTargets(this.prevTargets, this.nextTargets, this.reverse);
+      this.listLoader.setTargets(prevTargets, nextTargets, reverse);
       (window as any).appMediaViewer = this;
       //this.loadMore = loadMore;
 
@@ -1389,8 +1272,8 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     //if(prevTarget && (!prevTarget.parentElement || !this.isElementVisible(this.targetContainer, prevTarget))) prevTarget = null;
     //if(nextTarget && (!nextTarget.parentElement || !this.isElementVisible(this.targetContainer, nextTarget))) nextTarget = null;
 
-    this.buttons.prev.classList.toggle('hide', !this.prevTargets.length);
-    this.buttons.next.classList.toggle('hide', !this.nextTargets.length);
+    this.buttons.prev.classList.toggle('hide', !this.listLoader.previous.length);
+    this.buttons.next.classList.toggle('hide', !this.listLoader.next.length);
     
     const container = this.content.media;
     const useContainerAsTarget = !target || target === container;
@@ -1399,16 +1282,6 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     this.target = {element: target} as any;
     const tempId = ++this.tempId;
 
-    if(this.needLoadMore) {
-      if(this.nextTargets.length < 20) {
-        this.queueLoader.loadMoreMedia(!this.reverse);
-      }
-  
-      if(this.prevTargets.length < 20) {
-        this.queueLoader.loadMoreMedia(this.reverse);
-      }
-    }
-    
     if(container.firstElementChild) {
       container.innerHTML = '';
     }
@@ -1746,16 +1619,15 @@ type AppMediaViewerTargetType = {
 };
 export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delete' | 'forward', AppMediaViewerTargetType> {
   protected btnMenuDelete: HTMLElement;
-
-  protected queueLoader: MediaSearchQueueLoader<AppMediaViewerTargetType>;
+  protected listLoader: SearchListLoader<AppMediaViewerTargetType>;
 
   get searchContext() {
-    return this.queueLoader.searchContext;
+    return this.listLoader.searchContext;
   }
 
   constructor() {
-    super(new MediaSearchQueueLoader({
-      generateItem: (item) => {
+    super(new SearchListLoader({
+      processItem: (item) => {
         const isForDocument = this.searchContext.inputFilter._ === 'inputMessagesFilterDocument';
         const {mid, peerId} = item;
         const media: MyPhoto | MyDocument = appMessagesManager.getMediaFromMessage(item);
@@ -1950,13 +1822,13 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
   }
 
   public setSearchContext(context: SearchSuperContext) {
-    this.queueLoader.setSearchContext(context);
+    this.listLoader.setSearchContext(context);
 
     return this;
   }
 
   public async openMedia(message: any, target?: HTMLElement, fromRight = 0, reverse = false, 
-    prevTargets: AppMediaViewer['prevTargets'] = [], nextTargets: AppMediaViewer['prevTargets'] = [], needLoadMore = true) {
+    prevTargets: AppMediaViewerTargetType[] = [], nextTargets: AppMediaViewerTargetType[] = []/* , needLoadMore = true */) {
     if(this.setMoverPromise) return this.setMoverPromise;
 
     const mid = message.mid;
@@ -1971,7 +1843,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     });
 
     this.setCaption(message);
-    const promise = super._openMedia(media, message.date, fromId, fromRight, target, reverse, prevTargets, nextTargets, needLoadMore);
+    const promise = super._openMedia(media, message.date, fromId, fromRight, target, reverse, prevTargets, nextTargets/* , needLoadMore */);
     this.target.mid = mid;
     this.target.peerId = message.peerId;
 
@@ -1988,7 +1860,7 @@ export class AppMediaViewerAvatar extends AppMediaViewerBase<'', 'delete', AppMe
   public peerId: number;
 
   constructor(peerId: number) {
-    super(new MediaAvatarQueueLoader({peerId}), [/* 'delete' */]);
+    super(new AvatarListLoader({peerId}), [/* 'delete' */]);
 
     this.peerId = peerId;
 

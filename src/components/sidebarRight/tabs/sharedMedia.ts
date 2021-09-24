@@ -5,7 +5,7 @@
  */
 
 import appImManager from "../../../lib/appManagers/appImManager";
-import appMessagesManager, { AppMessagesManager } from "../../../lib/appManagers/appMessagesManager";
+import appMessagesManager, { AppMessagesManager, MyMessage } from "../../../lib/appManagers/appMessagesManager";
 import appPeersManager from "../../../lib/appManagers/appPeersManager";
 import appProfileManager from "../../../lib/appManagers/appProfileManager";
 import appUsersManager, { User } from "../../../lib/appManagers/appUsersManager";
@@ -31,8 +31,6 @@ import Row from "../../row";
 import { copyTextToClipboard } from "../../../helpers/clipboard";
 import { toast, toastNew } from "../../toast";
 import { fastRaf } from "../../../helpers/schedulers";
-import { safeAssign } from "../../../helpers/object";
-import { forEachReverse } from "../../../helpers/array";
 import appPhotosManager from "../../../lib/appManagers/appPhotosManager";
 import renderImageFromUrl from "../../../helpers/dom/renderImageFromUrl";
 import SwipeHandler from "../../swipeHandler";
@@ -50,6 +48,8 @@ import { attachClickEvent } from "../../../helpers/dom/clickEvent";
 import replaceContent from "../../../helpers/dom/replaceContent";
 import appAvatarsManager from "../../../lib/appManagers/appAvatarsManager";
 import generateVerifiedIcon from "../../generateVerifiedIcon";
+import ListLoader from "../../../helpers/listLoader";
+import { forEachReverse } from "../../../helpers/array";
 
 let setText = (text: string, row: Row) => {
   //fastRaf(() => {
@@ -60,115 +60,20 @@ let setText = (text: string, row: Row) => {
 
 const PARALLAX_SUPPORTED = !isFirefox;
 
-type ListLoaderResult<T> = {count: number, items: any[]};
-class ListLoader<T> {
-  public current: T;
-  public previous: T[] = [];
-  public next: T[] = [];
-  public count: number;
-
-  public tempId = 0;
-  public loadMore: (anchor: T, older: boolean) => Promise<ListLoaderResult<T>>;
-  public processItem: (item: any) => false | T;
-  public onJump: (item: T, older: boolean) => void;
-  public loadCount = 50;
-  public reverse = false; // reverse means next = higher msgid
-
-  public loadedAllUp = false;
-  public loadedAllDown = false;
-  public loadPromiseUp: Promise<void>;
-  public loadPromiseDown: Promise<void>;
-
-  constructor(options: {
-    loadMore: ListLoader<T>['loadMore'],
-    loadCount: ListLoader<T>['loadCount'],
-    processItem?: ListLoader<T>['processItem'],
-    onJump: ListLoader<T>['onJump'],
-  }) {
-    safeAssign(this, options);
-
-
-  }
-
-  get index() {
-    return this.count !== undefined ? this.previous.length : -1;
-  }
-
-  public go(length: number) {
-    let items: T[], item: T;
-    if(length > 0) {
-      items = this.next.splice(0, length);
-      item = items.pop();
-      if(!item) {
-        return;
+export function filterChatPhotosMessages(value: {
+  count: number;
+  next_rate: number;
+  offset_id_offset: number;
+  history: MyMessage[];
+}) {
+  forEachReverse(value.history, (message, idx, arr) => {
+    if(!((message as Message.messageService).action as MessageAction.messageActionChatEditPhoto).photo) {
+      arr.splice(idx, 1);
+      if(value.count !== undefined) {
+        --value.count;
       }
-
-      this.previous.push(this.current, ...items);
-    } else {
-      items = this.previous.splice(this.previous.length + length, -length);
-      item = items.shift();
-      if(!item) {
-        return;
-      }
-
-      this.next.unshift(...items, this.current);
     }
-
-    this.current = item;
-    this.onJump(item, length > 0);
-  }
-
-  public load(older: boolean) {
-    if(older && this.loadedAllDown) return Promise.resolve();
-    else if(!older && this.loadedAllUp) return Promise.resolve();
-
-    if(older && this.loadPromiseDown) return this.loadPromiseDown;
-    else if(!older && this.loadPromiseUp) return this.loadPromiseUp;
-
-    /* const loadCount = 50;
-    const backLimit = older ? 0 : loadCount; */
-  
-    let anchor: T;
-    if(older) {
-      anchor = this.reverse ? this.previous[0] : this.next[this.next.length - 1];
-    } else {
-      anchor = this.reverse ? this.next[this.next.length - 1] : this.previous[0];
-    }
-
-    const promise = this.loadMore(anchor, older).then(result => {
-      if(result.items.length < this.loadCount) {
-        if(older) this.loadedAllDown = true;
-        else this.loadedAllUp = true;
-      }
-
-      if(this.count === undefined) {
-        this.count = result.count || result.items.length;
-      }
-
-      const method = older ? result.items.forEach.bind(result.items) : forEachReverse.bind(null, result.items);
-      method((item: any) => {
-        const processed = this.processItem ? this.processItem(item) : item;
-
-        if(!processed) return;
-
-        if(older) {
-          if(this.reverse) this.previous.unshift(processed);
-          else this.next.push(processed);
-        } else {
-          if(this.reverse) this.next.push(processed);
-          else this.previous.unshift(processed);
-        }
-      });
-    }, () => {}).then(() => {
-      if(older) this.loadPromiseDown = null;
-      else this.loadPromiseUp = null;
-    });
-
-    if(older) this.loadPromiseDown = promise;
-    else this.loadPromiseUp = promise;
-
-    return promise;
-  }
+  });
 }
 
 class PeerProfileAvatars {
@@ -361,15 +266,17 @@ class PeerProfileAvatars {
       return;
     }
 
-    const loadCount = 50;
     const listLoader: PeerProfileAvatars['listLoader'] = this.listLoader = new ListLoader<string | Message.messageService>({
-      loadCount,
-      loadMore: (anchor, older) => {
+      loadCount: 50,
+      loadMore: (anchor, older, loadCount) => {
+        if(!older) return Promise.resolve({count: undefined, items: []});
+
         if(peerId > 0) {
-          return appPhotosManager.getUserPhotos(peerId, (anchor || listLoader.current) as any, loadCount).then(result => {
+          const maxId: string = (anchor || listLoader.current) as any;
+          return appPhotosManager.getUserPhotos(peerId, maxId, loadCount).then(value => {
             return {
-              count: result.count,
-              items: result.photos
+              count: value.count,
+              items: value.photos
             };
           });
         } else {
@@ -390,6 +297,8 @@ class PeerProfileAvatars {
 
           return Promise.all(promises).then((result) => {
             const value = result.pop() as typeof result[1];
+
+            filterChatPhotosMessages(value);
 
             if(!listLoader.current) {
               const chatFull = result[0];
@@ -429,6 +338,7 @@ class PeerProfileAvatars {
 
     this.processItem(listLoader.current);
 
+    // listLoader.loaded
     listLoader.load(true);
   }
 

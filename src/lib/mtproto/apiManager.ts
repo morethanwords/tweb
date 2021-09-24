@@ -275,7 +275,7 @@ export class ApiManager {
           
           networker = networkerFactory.getNetworker(dcId, auth.authKey, auth.authKeyId, auth.serverSalt, transport, options);
         } catch(error) {
-          this.log('Get networker error', error, error.stack);
+          this.log('Get networker error', error, (error as Error).stack);
           delete this.gettingNetworkers[getKey];
           throw error;
         }

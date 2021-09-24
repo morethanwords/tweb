@@ -8,7 +8,7 @@ import { attachClickEvent } from "../../../helpers/dom/clickEvent";
 import findUpTag from "../../../helpers/dom/findUpTag";
 import replaceContent from "../../../helpers/dom/replaceContent";
 import ListenerSetter from "../../../helpers/listenerSetter";
-import ScrollableLoader from "../../../helpers/listLoader";
+import ScrollableLoader from "../../../helpers/scrollableLoader";
 import { ChannelParticipant, Chat, ChatBannedRights, Update } from "../../../layer";
 import appChatsManager, { ChatRights } from "../../../lib/appManagers/appChatsManager";
 import appDialogsManager from "../../../lib/appManagers/appDialogsManager";

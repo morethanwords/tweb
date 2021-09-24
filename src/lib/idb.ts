@@ -141,7 +141,7 @@ export default class IDBStorage<T extends Database<any>> {
         return Promise.reject();
       }
     } catch(error) {
-      this.log.error('error opening db', error.message)
+      this.log.error('error opening db', (error as Error).message);
       this.storageIsAvailable = false;
       return Promise.reject(error);
     }

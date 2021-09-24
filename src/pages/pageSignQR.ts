@@ -5,6 +5,7 @@
  */
 
 import type { DcId } from '../types';
+import type { ApiError } from '../lib/mtproto/apiManager';
 import apiManager from '../lib/mtproto/mtprotoworker';
 import Page from './page';
 import serverTimeManager from '../lib/mtproto/serverTimeManager';
@@ -200,10 +201,10 @@ let onFirstMount = async() => {
         await pause(diff > FETCH_INTERVAL ? 1e3 * FETCH_INTERVAL : 1e3 * diff | 0);
       }
     } catch(err) {
-      switch(err.type) {
+      switch((err as ApiError).type) {
         case 'SESSION_PASSWORD_NEEDED':
           console.warn('pageSignQR: SESSION_PASSWORD_NEEDED');
-          err.handled = true;
+          (err as ApiError).handled = true;
           import('./pagePassword').then(m => m.default.mount());
           stop = true;
           cachedPromise = null;

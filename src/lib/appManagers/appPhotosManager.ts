@@ -137,9 +137,17 @@ export class AppPhotosManager {
         photosResult.photos[idx] = this.savePhoto(photo, {type: 'profilePhoto', peerId: userId});
         return photo.id;
       });
+
+      // ! WARNING !
+      if(maxId !== '0' && maxId) {
+        const idx = photoIds.indexOf(maxId);
+        if(idx !== -1) {
+          photoIds.splice(idx, 1);
+        }
+      }
       
       return {
-        count: (photosResult as PhotosPhotos.photosPhotosSlice).count || photosResult.photos.length,
+        count: (photosResult as PhotosPhotos.photosPhotosSlice).count || photoIds.length,
         photos: photoIds
       };
     });

@@ -9,7 +9,7 @@ import { RichTextProcessor } from "../lib/richtextprocessor";
 import { formatDate, wrapPhoto } from "./wrappers";
 import ProgressivePreloader from "./preloader";
 import { MediaProgressLine } from "../lib/mediaPlayer";
-import appMediaPlaybackController from "./appMediaPlaybackController";
+import appMediaPlaybackController, { MediaItem } from "./appMediaPlaybackController";
 import { DocumentAttribute } from "../layer";
 import mediaSizes from "../helpers/mediaSizes";
 import { isSafari } from "../helpers/userAgent";
@@ -21,13 +21,14 @@ import { formatDateAccordingToToday } from "../helpers/date";
 import { cancelEvent } from "../helpers/dom/cancelEvent";
 import { attachClickEvent, detachClickEvent } from "../helpers/dom/clickEvent";
 import LazyLoadQueue from "./lazyLoadQueue";
-import { deferredPromise } from "../helpers/cancellablePromise";
+import { CancellablePromise, deferredPromise } from "../helpers/cancellablePromise";
 import ListenerSetter, { Listener } from "../helpers/listenerSetter";
 import noop from "../helpers/noop";
+import findUpClassName from "../helpers/dom/findUpClassName";
 
 rootScope.addEventListener('messages_media_read', ({mids, peerId}) => {
   mids.forEach(mid => {
-    (Array.from(document.querySelectorAll('audio-element[message-id="' + mid + '"][peer-id="' + peerId + '"].is-unread')) as AudioElement[]).forEach(elem => {
+    (Array.from(document.querySelectorAll('audio-element[data-mid="' + mid + '"][data-peer-id="' + peerId + '"].is-unread')) as AudioElement[]).forEach(elem => {
       elem.classList.remove('is-unread');
     });
   });
@@ -371,7 +372,7 @@ export default class AudioElement extends HTMLElement {
   private listenerSetter = new ListenerSetter();
   private onTypeDisconnect: () => void;
   public onLoad: (autoload?: boolean) => void;
-  readyPromise: import("/Users/kuzmenko/Documents/projects/tweb/src/helpers/cancellablePromise").CancellablePromise<void>;
+  private readyPromise: CancellablePromise<void>;
 
   public render() {
     this.classList.add('audio');
@@ -429,7 +430,22 @@ export default class AudioElement extends HTMLElement {
         e && cancelEvent(e);
 
         if(paused) {
-          appMediaPlaybackController.setSearchContext(this.searchContext);
+          if(appMediaPlaybackController.setSearchContext(this.searchContext)) {
+            let prev: MediaItem[], next: MediaItem[];
+            const container = findUpClassName(this, this.classList.contains('search-super-item') ? 'tabs-tab' : 'bubbles-inner');
+            if(container) {
+              const elements = Array.from(container.querySelectorAll('.audio' + (isVoice ? '.is-voice' : ''))) as AudioElement[];
+              const idx = elements.indexOf(this);
+
+              const mediaItems: MediaItem[] = elements.map(element => ({peerId: +element.dataset.peerId, mid: +element.dataset.mid}));
+
+              prev = mediaItems.slice(0, idx);
+              next = mediaItems.slice(idx + 1);
+            }
+
+            appMediaPlaybackController.setTargets({peerId: this.message.peerId, mid: this.message.mid}, prev, next);
+          }
+
           audio.play().catch(() => {});
         } else {
           audio.pause();
@@ -444,7 +460,7 @@ export default class AudioElement extends HTMLElement {
       });
 
       this.addAudioListener('timeupdate', () => {
-        if(appMediaPlaybackController.playingMedia !== audio || appMediaPlaybackController.isSafariBuffering(audio)) return;
+        if((!audio.currentTime && audio.paused) || appMediaPlaybackController.isSafariBuffering(audio)) return;
         audioTimeDiv.innerText = getTimeStr();
       });
 
