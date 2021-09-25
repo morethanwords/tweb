@@ -12,6 +12,7 @@ import PopupPeer, { PopupPeerButtonCallbackCheckboxes, PopupPeerOptions } from "
 import { ChatType } from "../chat/chat";
 import { i18n, LangPackKey } from "../../lib/langPack";
 import PeerTitle from "../peerTitle";
+import appPeersManager from "../../lib/appManagers/appPeersManager";
 
 export default class PopupDeleteMessages {
   constructor(peerId: number, mids: number[], type: ChatType, onConfirm?: () => void) {
@@ -35,7 +36,11 @@ export default class PopupDeleteMessages {
       titleArgs = [i18n('messages', [mids.length])];
     }
     
-    description = mids.length === 1 ? 'AreYouSureDeleteSingleMessage' : 'AreYouSureDeleteFewMessages';
+    if(appPeersManager.isMegagroup(peerId)) {
+      description = mids.length === 1 ? 'AreYouSureDeleteSingleMessageMega' : 'AreYouSureDeleteFewMessagesMega';
+    } else {
+      description = mids.length === 1 ? 'AreYouSureDeleteSingleMessage' : 'AreYouSureDeleteFewMessages';
+    }
 
     buttons = [{
       langKey: 'Delete',

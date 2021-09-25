@@ -2036,7 +2036,7 @@ $bubble-margin: .25rem;
       color: var(--message-out-primary-color);
     }
 
-    &-wrapper {
+    /* html:not(.is-firefox) */ &-wrapper {
       @include respond-to(medium-screens) {
         transform: scale(1) translateX(calc((var(--chat-input-size) + #{$btn-send-margin}) * -1));
 

@@ -28,7 +28,7 @@ $chat-helper-size: 36px;
 	flex: 0 0 auto;
 	position: relative;
 	transition: transform var(--transition-standard-out);
-	transform: translateY(var(--translateY));
+	transform: translate3d(0, var(--translateY), 0);
 
 	/* body.is-keyboard-opened & {
 		--bottom: var(--padding-bottom);
@@ -1001,7 +1001,7 @@ $chat-helper-size: 36px;
 	flex: 1 1 auto;
 	position: relative;
 
-	transform: translateY(var(--translateY));
+	transform: translate3d(0, var(--translateY), 0);
 	transition: transform var(--transition-standard-out);
 	
 	@include animation-level(0) {

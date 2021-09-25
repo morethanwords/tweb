@@ -193,7 +193,14 @@ const Transition = (
     }
 
     if(!animate) {
-      if(from) from.classList.remove('active', 'to', 'from');  
+      if(from) from.classList.remove('active', 'to', 'from');
+      else if(to) { // fix instant opening back from closed slider (e.g. instant closening and opening right sidebar)
+        const callback = onTransitionEndCallbacks.get(to);
+        if(callback) {
+          callback();
+        }
+      }
+
       if(to) {
         to.classList.remove('to', 'from');
         to.classList.add('active');
@@ -264,6 +271,7 @@ const Transition = (
         const timeout = window.setTimeout(callback, transitionTime);
         onTransitionEndCallbacks.set(_from, () => {
           clearTimeout(timeout);
+          onTransitionEndCallbacks.delete(_from);
         });
       }
 
