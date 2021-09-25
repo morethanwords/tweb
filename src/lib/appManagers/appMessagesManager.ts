@@ -2645,7 +2645,10 @@ export class AppMessagesManager {
             } else if(document.type === 'round') {
               addPart('AttachRound', undefined, message.message);
             } else if(document.type === 'sticker') {
-              addPart(undefined, ((plain ? document.stickerEmojiRaw : document.stickerEmoji) || ''));
+              if(document.stickerEmojiRaw) {
+                addPart(undefined, (plain ? document.stickerEmojiRaw : document.stickerEmoji) + ' ');
+              }
+              
               addPart('AttachSticker');
               text = '';
             } else if(document.type === 'audio') {
