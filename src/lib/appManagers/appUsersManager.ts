@@ -31,8 +31,6 @@ import appChatsManager from "./appChatsManager";
 import appPeersManager from "./appPeersManager";
 import appStateManager from "./appStateManager";
 
-// TODO: updateUserBlocked
-
 export type User = MTUser.user;
 export type TopPeerType = 'correspondents' | 'bots_inline';
 export type MyTopPeer = {id: number, rating: number};

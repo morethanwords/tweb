@@ -35,13 +35,14 @@ import blurActiveElement from "../../helpers/dom/blurActiveElement";
 import { cancelEvent } from "../../helpers/dom/cancelEvent";
 import { attachClickEvent } from "../../helpers/dom/clickEvent";
 import findUpTag from "../../helpers/dom/findUpTag";
-import { toast } from "../toast";
+import { toast, toastNew } from "../toast";
 import replaceContent from "../../helpers/dom/replaceContent";
 import { ChatFull } from "../../layer";
 import PopupPickUser from "../popups/pickUser";
 import PopupPeer from "../popups/peer";
 import generateVerifiedIcon from "../generateVerifiedIcon";
 import { fastRaf } from "../../helpers/schedulers";
+import AppEditContactTab from "../sidebarRight/tabs/editContact";
 
 export default class ChatTopbar {
   public container: HTMLDivElement;
@@ -274,6 +275,15 @@ export default class ChatTopbar {
       },
       verify: () => this.chat.selection.isSelecting
     }, {
+      icon: 'adduser',
+      text: 'AddContact',
+      onClick: () => {
+        const tab = new AppEditContactTab(this.appSidebarRight);
+        tab.peerId = this.peerId;
+        tab.open();
+      },
+      verify: () => this.peerId > 0 && !this.appUsersManager.isContact(this.peerId)
+    }, {
       icon: 'forward',
       text: 'ShareContact',
       onClick: () => {
@@ -312,6 +322,46 @@ export default class ChatTopbar {
         });
       },
       verify: () => rootScope.myId !== this.peerId && this.peerId > 0 && this.appUsersManager.isContact(this.peerId)
+    }, {
+      icon: 'lock',
+      text: 'BlockUser',
+      onClick: () => {
+        new PopupPeer('', {
+          peerId: this.peerId,
+          titleLangKey: 'BlockUser',
+          descriptionLangKey: 'AreYouSureBlockContact2',
+          descriptionLangArgs: [new PeerTitle({peerId: this.peerId}).element],
+          buttons: [{
+            langKey: 'BlockUser',
+            isDanger: true,
+            callback: () => {
+              this.appUsersManager.toggleBlock(this.peerId, true).then(value => {
+                if(value) {
+                  toastNew({langPackKey: 'UserBlocked'});
+                }
+              });
+            }
+          }]
+        }).show();
+      },
+      verify: () => {
+        const userFull = this.appProfileManager.usersFull[this.peerId];
+        return this.peerId > 0 && userFull && !userFull.pFlags?.blocked;
+      }
+    }, {
+      icon: 'lockoff',
+      text: 'Unblock',
+      onClick: () => {
+        this.appUsersManager.toggleBlock(this.peerId, false).then(value => {
+          if(value) {
+            toastNew({langPackKey: 'UserUnblocked'});
+          }
+        });
+      },
+      verify: () => {
+        const userFull = this.appProfileManager.usersFull[this.peerId];
+        return this.peerId > 0 && !!userFull?.pFlags?.blocked;
+      }
     }, {
       icon: 'delete danger',
       text: 'Delete',

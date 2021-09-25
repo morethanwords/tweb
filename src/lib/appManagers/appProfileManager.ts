@@ -31,7 +31,7 @@ export type UserTyping = Partial<{userId: number, action: SendMessageAction, tim
 
 export class AppProfileManager {
   //private botInfos: any = {};
-  private usersFull: {[id: string]: UserFull.userFull} = {};
+  public usersFull: {[id: string]: UserFull.userFull} = {};
   public chatsFull: {[id: string]: ChatFull} = {};
   private fullPromises: {[peerId: string]: Promise<ChatFull.chatFull | ChatFull.channelFull | UserFull>} = {};
 
@@ -94,7 +94,9 @@ export class AppProfileManager {
 
       updateUserTyping: this.onUpdateUserTyping,
       updateChatUserTyping: this.onUpdateUserTyping,
-      updateChannelUserTyping: this.onUpdateUserTyping
+      updateChannelUserTyping: this.onUpdateUserTyping,
+
+      updatePeerBlocked: this.onUpdatePeerBlocked
     });
 
     rootScope.addEventListener('chat_update', (chatId) => {
@@ -637,6 +639,19 @@ export class AppProfileManager {
     if(hasUser) {
       rootScope.dispatchEvent('peer_typings', {peerId, typings});
     }
+  };
+
+  private onUpdatePeerBlocked = (update: Update.updatePeerBlocked) => {
+    const peerId = appPeersManager.getPeerId(update.peer_id);
+    if(peerId > 0) {
+      const userFull = this.usersFull[peerId];
+      if(userFull) {
+        if(update.blocked) userFull.pFlags.blocked = true;
+        else delete userFull.pFlags.blocked;
+      }
+    }
+
+    rootScope.dispatchEvent('peer_block', {peerId, blocked: update.blocked});
   };
 
   public getPeerTypings(peerId: number) {

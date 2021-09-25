@@ -80,14 +80,14 @@ html:not(.is-safari):not(.is-ios) {
 
   &.scrollable-x {
     overflow-x: auto;
-    scrollbar-width: none;
+    scrollbar-width: thin; // Firefox only
     -ms-overflow-style: none;
   }
 
   &.scrollable-y {
     overflow-y: auto;
     overflow-y: overlay;
-    scrollbar-width: none;
+    scrollbar-width: thin; // Firefox only
     -ms-overflow-style: none;
 
     /* html.is-safari & {
