@@ -58,7 +58,7 @@ let setText = (text: string, row: Row) => {
   //});
 };
 
-const PARALLAX_SUPPORTED = !isFirefox;
+const PARALLAX_SUPPORTED = !isFirefox && false;
 
 export function filterChatPhotosMessages(value: {
   count: number;
