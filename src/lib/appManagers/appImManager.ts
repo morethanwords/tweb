@@ -43,7 +43,7 @@ import appNavigationController from '../../components/appNavigationController';
 import appNotificationsManager from './appNotificationsManager';
 import AppPrivateSearchTab from '../../components/sidebarRight/tabs/search';
 import { i18n, LangPackKey } from '../langPack';
-import { ChatInvite, SendMessageAction } from '../../layer';
+import { ChatInvite, Dialog, SendMessageAction } from '../../layer';
 import { hslaStringToHex } from '../../helpers/color';
 import { copy, getObjectKeysAndSort } from '../../helpers/object';
 import { getFilesFromEvent } from '../../helpers/files';
@@ -422,6 +422,89 @@ export class AppImManager {
     });
 
     this.onHashChange();
+    this.attachKeydownListener();
+  }
+
+  private attachKeydownListener() {
+    const IGNORE_KEYS = new Set(['PageUp', 'PageDown', 'Meta', 'Control']);
+    const onKeyDown = (e: KeyboardEvent) => {
+      if(rootScope.isOverlayActive || IGNORE_KEYS.has(e.key)) return;
+      
+      const target = e.target as HTMLElement;
+      
+      //if(target.tagName === 'INPUT') return;
+      
+      //this.log('onkeydown', e, document.activeElement);
+
+      const chat = this.chat;
+
+      if(e.code === 'KeyC' && (e.ctrlKey || e.metaKey) && target.tagName !== 'INPUT') {
+        return;
+      } else if(e.altKey && (e.code === 'ArrowUp' || e.code === 'ArrowDown')) {
+        const folder = appMessagesManager.dialogsStorage.getFolder(rootScope.filterId, true);
+        let nextDialog: Dialog.dialog;
+        if(!rootScope.peerId) {
+          if(e.code === 'ArrowDown') {
+            nextDialog = folder[0];
+          }
+        } else {
+          const idx = folder.findIndex(dialog => dialog.peerId === rootScope.peerId);
+          if(idx !== -1) {
+            const nextIndex = e.code === 'ArrowUp' ? idx - 1 : idx + 1;
+            nextDialog = folder[nextIndex];
+          }
+        }
+        
+        if(nextDialog) {
+          this.setPeer(nextDialog.peerId);
+        }
+      } else if(e.code === 'ArrowUp') {
+        if(!chat.input.editMsgId && chat.input.isInputEmpty()) {
+          const historyStorage = appMessagesManager.getHistoryStorage(chat.peerId, chat.threadId);
+          const slice = historyStorage.history.slice;
+          if(slice.isEnd(SliceEnd.Bottom) && slice.length) {
+            let goodMid: number;
+            for(const mid of slice) {
+              const message = chat.getMessage(mid);
+              const good = this.myId === chat.peerId ? message.fromId === this.myId : message.pFlags.out;
+
+              if(good) {
+                if(appMessagesManager.canEditMessage(chat.getMessage(mid), 'text')) {
+                  goodMid = mid;
+                  break;
+                }
+
+                // * this check will allow editing only last message
+                //break;
+              }
+            }
+  
+            if(goodMid) {
+              chat.input.initMessageEditing(goodMid);
+              cancelEvent(e); // * prevent from scrolling
+            }
+          }
+        } else {
+          return;
+        }
+      } else if(e.code === 'ArrowDown') {
+        return;
+      }
+      
+      if(chat.input.messageInput && 
+        e.target !== chat.input.messageInput && 
+        target.tagName !== 'INPUT' && 
+        !target.hasAttribute('contenteditable') && 
+        !isTouchSupported && 
+        (!mediaSizes.isMobile || this.tabId === 1) && 
+        !this.chat.selection.isSelecting && 
+        !this.chat.input.recording) {
+        chat.input.messageInput.focus();
+        placeCaretAtEnd(chat.input.messageInput);
+      }
+    };
+    
+    document.body.addEventListener('keydown', onKeyDown);
   }
 
   private makeLink<T extends INTERNAL_LINK_TYPE>(type: T, uriParams: Omit<InternalLinkTypeMap[T], '_'>) {
@@ -792,78 +875,6 @@ export class AppImManager {
   private init() {
     document.addEventListener('paste', this.onDocumentPaste, true);
     
-    const IGNORE_KEYS = new Set(['PageUp', 'PageDown', 'Meta', 'Control']);
-    const onKeyDown = (e: KeyboardEvent) => {
-      if(rootScope.isOverlayActive || IGNORE_KEYS.has(e.key)) return;
-      
-      const target = e.target as HTMLElement;
-      
-      //if(target.tagName === 'INPUT') return;
-      
-      //this.log('onkeydown', e, document.activeElement);
-
-      const chat = this.chat;
-
-      if(e.code === 'KeyC' && (e.ctrlKey || e.metaKey) && target.tagName !== 'INPUT') {
-        return;
-      } else if(e.altKey && (e.code === 'ArrowUp' || e.code === 'ArrowDown') && rootScope.peerId) {
-        const folder = appMessagesManager.dialogsStorage.getFolder(rootScope.filterId, true);
-        const idx = folder.findIndex(dialog => dialog.peerId === rootScope.peerId);
-        if(idx !== -1) {
-          const nextIndex = e.code === 'ArrowUp' ? idx - 1 : idx + 1;
-          const nextDialog = folder[nextIndex];
-          if(nextDialog) {
-            this.setPeer(nextDialog.peerId);
-          }
-        }
-      } else if(e.code === 'ArrowUp') {
-        if(!chat.input.editMsgId && chat.input.isInputEmpty()) {
-          const historyStorage = appMessagesManager.getHistoryStorage(chat.peerId, chat.threadId);
-          const slice = historyStorage.history.slice;
-          if(slice.isEnd(SliceEnd.Bottom) && slice.length) {
-            let goodMid: number;
-            for(const mid of slice) {
-              const message = chat.getMessage(mid);
-              const good = this.myId === chat.peerId ? message.fromId === this.myId : message.pFlags.out;
-
-              if(good) {
-                if(appMessagesManager.canEditMessage(chat.getMessage(mid), 'text')) {
-                  goodMid = mid;
-                  break;
-                }
-
-                // * this check will allow editing only last message
-                //break;
-              }
-            }
-  
-            if(goodMid) {
-              chat.input.initMessageEditing(goodMid);
-              cancelEvent(e); // * prevent from scrolling
-            }
-          }
-        } else {
-          return;
-        }
-      } else if(e.code === 'ArrowDown') {
-        return;
-      }
-      
-      if(chat.input.messageInput && 
-        e.target !== chat.input.messageInput && 
-        target.tagName !== 'INPUT' && 
-        !target.hasAttribute('contenteditable') && 
-        !isTouchSupported && 
-        (!mediaSizes.isMobile || this.tabId === 1) && 
-        !this.chat.selection.isSelecting && 
-        !this.chat.input.recording) {
-        chat.input.messageInput.focus();
-        placeCaretAtEnd(chat.input.messageInput);
-      }
-    };
-    
-    document.body.addEventListener('keydown', onKeyDown);
-
     rootScope.addEventListener('history_multiappend', (msgIdsByPeer) => {
       for(const peerId in msgIdsByPeer) {
         appSidebarRight.sharedMediaTab.renderNewMessages(+peerId, Array.from(msgIdsByPeer[peerId]));
