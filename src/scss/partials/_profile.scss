@@ -223,10 +223,6 @@
       //margin-bottom: .75rem;
       //box-shadow: 0px 1px 5px -1px rgba(0, 0, 0, .16);
 
-      &-content > .profile-name {
-        justify-content: center;
-      }
-
       .profile-subtitle {
         .peer-typing-container {
           justify-content: center;
@@ -283,6 +279,10 @@
 
     .verified-icon {
       margin-bottom: 3px;
+    }
+
+    .sidebar-left-section-content > & {
+      justify-content: center;
     }
   }
 

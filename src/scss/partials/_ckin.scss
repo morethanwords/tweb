@@ -309,6 +309,8 @@ video::-webkit-media-controls-enclosure {
 
     &::-moz-range-thumb {
       display: none;
+      width: 0;
+      height: 0;
     }
 
     &::-moz-range-track {
