@@ -278,9 +278,13 @@ export default class ChatTopbar {
       icon: 'adduser',
       text: 'AddContact',
       onClick: () => {
-        const tab = new AppEditContactTab(this.appSidebarRight);
-        tab.peerId = this.peerId;
-        tab.open();
+        if(!this.appSidebarRight.isTabExists(AppEditContactTab)) {
+          const tab = new AppEditContactTab(this.appSidebarRight);
+          tab.peerId = this.peerId;
+          tab.open();
+
+          this.appSidebarRight.toggleSidebar(true);
+        }
       },
       verify: () => this.peerId > 0 && !this.appUsersManager.isContact(this.peerId)
     }, {
