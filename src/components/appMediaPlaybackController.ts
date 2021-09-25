@@ -69,31 +69,47 @@ class AppMediaPlaybackController {
     document.body.append(this.container);
 
     if(navigator.mediaSession) {
-      navigator.mediaSession.setActionHandler('play', this.play);
-      navigator.mediaSession.setActionHandler('pause', this.pause);
-      navigator.mediaSession.setActionHandler('stop', this.stop);
-      navigator.mediaSession.setActionHandler('seekbackward', (details) => {
-        const media = this.playingMedia
-        if(media) {
-          media.currentTime = Math.max(0, media.currentTime - (details.seekOffset || SEEK_OFFSET));
+      const actions: {[action in MediaSessionAction]?: MediaSessionActionHandler} = {
+        play: this.play,
+        pause: this.pause,
+        stop: this.stop,
+        seekbackward: this.seekBackward,
+        seekforward: this.seekForward,
+        seekto: this.seekTo,
+        previoustrack: this.previous,
+        nexttrack: this.next
+      };
+
+      for(const action in actions) {
+        try {
+          navigator.mediaSession.setActionHandler(action as MediaSessionAction, actions[action as MediaSessionAction]);
+        } catch(err) {
+          console.warn('MediaSession action is not supported:', action);
         }
-      });
-      navigator.mediaSession.setActionHandler('seekforward', (details) => {
-        const media = this.playingMedia
-        if(media) {
-          media.currentTime = Math.min(media.duration, media.currentTime + (details.seekOffset || SEEK_OFFSET));
-        }
-      });
-      navigator.mediaSession.setActionHandler('seekto', (details) => {
-        const media = this.playingMedia
-        if(media) {
-          media.currentTime = details.seekTime;
-        }
-      });
-      navigator.mediaSession.setActionHandler('previoustrack', this.previous);
-      navigator.mediaSession.setActionHandler('nexttrack', this.next);
+      }
     }
   }
+
+  public seekBackward = (details: MediaSessionActionDetails) => {
+    const media = this.playingMedia
+    if(media) {
+      media.currentTime = Math.max(0, media.currentTime - (details.seekOffset || SEEK_OFFSET));
+    }
+  };
+
+  public seekForward = (details: MediaSessionActionDetails) => {
+    const media = this.playingMedia
+    if(media) {
+      media.currentTime = Math.min(media.duration, media.currentTime + (details.seekOffset || SEEK_OFFSET));
+    }
+  };
+
+  public seekTo = (details: MediaSessionActionDetails) => {
+    const media = this.playingMedia
+    if(media) {
+      media.currentTime = details.seekTime;
+    }
+  };
 
   public addMedia(peerId: number, doc: MyDocument, mid: number, autoload = true): HTMLMediaElement {
     const storage = this.media[peerId] ?? (this.media[peerId] = {});
