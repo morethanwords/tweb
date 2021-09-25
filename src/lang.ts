@@ -575,6 +575,15 @@ const lang = {
   "DiscardVoiceMessageTitle": "Discard Voice Message",
   "DiscardVoiceMessageDescription": "Are you sure you want to stop recording and discard your voice message?",
   "DiscardVoiceMessageAction": "Discard",
+  "AddContact": "Add to contacts",
+  "BlockUser": "Block user",
+  "MobileHidden": "Mobile hidden",
+  "MobileHiddenExceptionInfo": "Phone number will be visible once %1$s adds you as a contact.",
+  "FirstName": "First name (required)",
+  "LastName": "Last name (optional)",
+  "AreYouSureBlockContact2": "Are you sure you want to block **%1$s**?",
+  "UserBlocked": "User blocked",
+  "UserUnblocked": "User unblocked",
 
   // * macos
   "AccountSettings.Filters": "Chat Folders",

@@ -8,6 +8,7 @@ import simulateEvent from "../helpers/dom/dispatchEvent";
 import findUpAttribute from "../helpers/dom/findUpAttribute";
 import getRichValue from "../helpers/dom/getRichValue";
 import isInputEmpty from "../helpers/dom/isInputEmpty";
+import selectElementContents from "../helpers/dom/selectElementContents";
 import { i18n, LangPackKey, _i18n } from "../lib/langPack";
 import RichTextProcessor from "../lib/richtextprocessor";
 
@@ -215,8 +216,14 @@ class InputField {
   }
 
   public select() {
-    if((this.input as HTMLInputElement).value) { // * avoid selecting whole empty field on iOS devices
+    if(!this.value) { // * avoid selecting whole empty field on iOS devices
+      return;
+    }
+
+    if(this.options.plainText) {
       (this.input as HTMLInputElement).select(); // * select text
+    } else {
+      selectElementContents(this.input);
     }
   }
 
@@ -278,9 +285,7 @@ class InputField {
       (!this.required || !isInputEmpty(this.input));
   }
 
-  public setOriginalValue(value: InputField['originalValue'] = '', silent = false) {
-    this.originalValue = value;
-
+  public setDraftValue(value = '', silent = false) {
     if(!this.options.plainText) {
       value = RichTextProcessor.wrapDraftText(value);
     }
@@ -290,6 +295,11 @@ class InputField {
     } else {
       this.value = value;
     }
+  }
+
+  public setOriginalValue(value: InputField['originalValue'] = '', silent = false) {
+    this.originalValue = value;
+    this.setDraftValue(value, silent);
   }
 
   public setState(state: InputState, label?: LangPackKey) {
