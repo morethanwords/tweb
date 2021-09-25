@@ -450,7 +450,7 @@ $bubble-margin: .25rem;
   img.emoji {
     height: 18px;
     width: 18px;
-    margin: 0 .05rem;
+    // margin: 0 .05rem;
     vertical-align: bottom;
   }
 
@@ -2437,8 +2437,8 @@ $bubble-margin: .25rem;
       width: .875rem;
     }
 
-    img.emoji {
+    /* img.emoji {
       margin: 0 .125rem;
-    }
+    } */
   }
 }
