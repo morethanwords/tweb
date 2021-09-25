@@ -164,6 +164,10 @@ console.timeEnd('get storage1'); */
       }
     });
 
+    if(userAgent.isFirefox) {
+      document.documentElement.classList.add('is-firefox');
+    }
+
     if(userAgent.isApple) {
       if(userAgent.isSafari) {
         document.documentElement.classList.add('is-safari');

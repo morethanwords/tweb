@@ -1040,16 +1040,17 @@ export class AppImManager {
 
     this.log('selectTab', id, prevTabId);
 
-    let animationPromise: Promise<any> = doubleRaf();
+    let animationPromise: Promise<any> = rootScope.settings.animationsEnabled ? doubleRaf() : Promise.resolve();
     if(prevTabId !== -1 && prevTabId !== id && rootScope.settings.animationsEnabled && animate !== false) {
       const transitionTime = (mediaSizes.isMobile ? 250 : 200) + 100; // * cause transition time could be > 250ms
       animationPromise = pause(transitionTime);
       dispatchHeavyAnimationEvent(animationPromise, transitionTime);
 
-      this.columnEl.classList.add('disable-hover');
+      // ! it's very heavy operation. will blink in firefox
+      /* this.columnEl.classList.add('disable-hover');
       animationPromise.finally(() => {
         this.columnEl.classList.remove('disable-hover');
-      });
+      }); */
     }
 
     this.tabId = id;
