@@ -12,7 +12,7 @@ import { MediaProgressLine } from "../lib/mediaPlayer";
 import appMediaPlaybackController, { MediaItem } from "./appMediaPlaybackController";
 import { DocumentAttribute } from "../layer";
 import mediaSizes from "../helpers/mediaSizes";
-import { isSafari } from "../helpers/userAgent";
+import { IS_SAFARI } from "../environment/userAgent";
 import appMessagesManager from "../lib/appManagers/appMessagesManager";
 import rootScope from "../lib/rootScope";
 import './middleEllipsis';
@@ -558,7 +558,7 @@ export default class AudioElement extends HTMLElement {
             appMediaPlaybackController.resolveWaitingForLoadMedia(this.message.peerId, this.message.mid);
             appMediaPlaybackController.willBePlayed(this.audio); // prepare for loading audio
 
-            if(isSafari) {
+            if(IS_SAFARI) {
               this.audio.autoplay = true;
             }
 

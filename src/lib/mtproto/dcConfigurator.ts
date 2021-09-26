@@ -19,7 +19,7 @@ import HTTP from './transports/http';
 /// #if !MTPROTO_HTTP
 import Socket from './transports/websocket';
 import TcpObfuscated from './transports/tcpObfuscated';
-import { isSafari } from '../../helpers/userAgent';
+import { IS_SAFARI } from '../../environment/userAgent';
 import { isWebWorker } from '../../helpers/context';
 import SocketProxied from './transports/socketProxied';
 import App from '../../config/app';
@@ -64,7 +64,7 @@ export class DcConfigurator {
 
     const retryTimeout = connectionType === 'client' ? 10000 : 10000;
 
-    const oooohLetMeLive: MTConnectionConstructable = (isSafari && isWebWorker && typeof(SocketProxied) !== 'undefined') /* || true */ ? SocketProxied : Socket;
+    const oooohLetMeLive: MTConnectionConstructable = (IS_SAFARI && isWebWorker && typeof(SocketProxied) !== 'undefined') /* || true */ ? SocketProxied : Socket;
 
     return new TcpObfuscated(oooohLetMeLive, dcId, chosenServer, logSuffix, retryTimeout);
   };

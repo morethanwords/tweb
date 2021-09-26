@@ -2294,7 +2294,10 @@ $bubble-margin: .25rem;
 
     .c-ripple__circle {
       background-color: var(--message-out-primary-color);
-      opacity: .08;
+
+      &:not(.hiding) {
+        opacity: .08;
+      }
     }
   }
 

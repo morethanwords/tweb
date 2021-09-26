@@ -13,9 +13,9 @@ import Page from "./page";
 import InputField from "../components/inputField";
 import CheckboxField from "../components/checkboxField";
 import Button from "../components/button";
-import { isAndroid, isApple, isAppleMobile } from "../helpers/userAgent";
+import { IS_ANDROID, IS_APPLE, IS_APPLE_MOBILE } from "../environment/userAgent";
 import fastSmoothScroll from "../helpers/fastSmoothScroll";
-import { isTouchSupported } from "../helpers/touchSupport";
+import { IS_TOUCH_SUPPORTED } from "../environment/touchSupport";
 import App from "../config/app";
 import I18n, { _i18n, i18n } from "../lib/langPack";
 import lottieLoader from "../lib/lottieLoader";
@@ -41,6 +41,7 @@ import simulateEvent from "../helpers/dom/dispatchEvent";
 import stateStorage from "../lib/stateStorage";
 import rootScope from "../lib/rootScope";
 import TelInputField from "../components/telInputField";
+import IS_EMOJI_SUPPORTED from "../environment/emojiSupport";
 
 //import _countries from '../countries_pretty.json';
 let btnNext: HTMLButtonElement = null, btnQr: HTMLButtonElement;
@@ -117,7 +118,7 @@ let onFirstMount = () => {
         const li = document.createElement('li');
 
         let wrapped = RichTextProcessor.wrapEmojiText(emoji);
-        if(RichTextProcessor.emojiSupported) {
+        if(IS_EMOJI_SUPPORTED) {
           const spanEmoji = document.createElement('span');
           spanEmoji.innerHTML = wrapped;
           li.append(spanEmoji);
@@ -477,7 +478,7 @@ let onFirstMount = () => {
     })//.catch(tryAgain);
   };
 
-  if(!isTouchSupported) {
+  if(!IS_TOUCH_SUPPORTED) {
     setTimeout(() => {
       telEl.focus();
     }, 0);

@@ -15,7 +15,7 @@ import { CancellablePromise, deferredPromise } from "../../helpers/cancellablePr
 import { tsNow } from "../../helpers/date";
 import { deepEqual } from "../../helpers/object";
 import { convertInputKeyToKey } from "../../helpers/string";
-import { isMobile } from "../../helpers/userAgent";
+import { IS_MOBILE } from "../../environment/userAgent";
 import { InputNotifyPeer, InputPeerNotifySettings, NotifyPeer, PeerNotifySettings, Update } from "../../layer";
 import I18n from "../langPack";
 import apiManager from "../mtproto/mtprotoworker";
@@ -209,7 +209,7 @@ export class AppNotificationsManager {
   }
 
   private toggleToggler(enable = rootScope.idle.isIDLE) {
-    if(isMobile) return;
+    if(IS_MOBILE) return;
 
     const resetTitle = () => {
       this.titleChanged = false;
@@ -616,7 +616,7 @@ export class AppNotificationsManager {
     }
     this.notificationsShown[key] = notification;
 
-    if(!isMobile) {
+    if(!IS_MOBILE) {
       setTimeout(() => {
         this.hide(key);
       }, 8000);

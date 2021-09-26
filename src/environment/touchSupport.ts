@@ -5,4 +5,4 @@
  */
 
 // @ts-ignore
-export const isTouchSupported = ('ontouchstart' in window) || (window.DocumentTouch && document instanceof DocumentTouch)/*  || true */;
+export const IS_TOUCH_SUPPORTED = ('ontouchstart' in window) || (window.DocumentTouch && document instanceof DocumentTouch)/*  || true */;

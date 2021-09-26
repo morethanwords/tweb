@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { isMobileSafari } from "../userAgent";
+import { IS_MOBILE_SAFARI } from "../../environment/userAgent";
 
 export function canFocus(isFirstInput: boolean) {
-  return !isMobileSafari || !isFirstInput;
+  return !IS_MOBILE_SAFARI || !isFirstInput;
 }

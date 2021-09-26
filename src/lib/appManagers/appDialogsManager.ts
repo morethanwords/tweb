@@ -15,7 +15,7 @@ import { ripple } from "../../components/ripple";
 //import Scrollable from "../../components/scrollable";
 import Scrollable, { ScrollableX, SliceSides } from "../../components/scrollable";
 import { formatDateAccordingToTodayNew } from "../../helpers/date";
-import { isSafari } from "../../helpers/userAgent";
+import { IS_SAFARI } from "../../environment/userAgent";
 import { logger, LogTypes } from "../logger";
 import { RichTextProcessor } from "../richtextprocessor";
 import rootScope from "../rootScope";
@@ -45,7 +45,7 @@ import appChatsManager from "./appChatsManager";
 import { renderImageFromUrlPromise } from "../../helpers/dom/renderImageFromUrl";
 import { fastRaf, fastRafConventional, fastRafPromise } from "../../helpers/schedulers";
 import SortedUserList from "../../components/sortedUserList";
-import { isTouchSupported } from "../../helpers/touchSupport";
+import { IS_TOUCH_SUPPORTED } from "../../environment/touchSupport";
 import handleTabSwipe from "../../helpers/dom/handleTabSwipe";
 import windowSize from "../../helpers/windowSize";
 import isInDOM from "../../helpers/dom/isInDOM";
@@ -202,7 +202,7 @@ export class AppDialogsManager {
       });
     } */
 
-    if(isTouchSupported) {
+    if(IS_TOUCH_SUPPORTED) {
       handleTabSwipe(this.folders.container, (next) => {
         const prevId = selectTab.prevId();
         selectTab(next ? prevId + 1 : prevId - 1);
@@ -1100,7 +1100,7 @@ export class AppDialogsManager {
 
       const saveLength = 10;
 
-      const sliceFromStart = isSafari ? [] : children.slice(0, Math.max(0, firstIndex - saveLength));
+      const sliceFromStart = IS_SAFARI ? [] : children.slice(0, Math.max(0, firstIndex - saveLength));
       const sliceFromEnd = children.slice(lastIndex + saveLength);
 
       /* if(sliceFromStart.length !== sliceFromEnd.length) {

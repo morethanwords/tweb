@@ -5,10 +5,10 @@
  */
 
 import type ListenerSetter from "../listenerSetter";
-import { isTouchSupported } from "../touchSupport";
+import { IS_TOUCH_SUPPORTED } from "../../environment/touchSupport";
 
 export default function handleScrollSideEvent(elem: HTMLElement, side: 'top' | 'bottom', callback: () => void, listenerSetter: ListenerSetter) {
-  if(isTouchSupported) {
+  if(IS_TOUCH_SUPPORTED) {
     let lastY: number;
     const options = {passive: true};
     listenerSetter.add(elem)('touchstart', (e) => {

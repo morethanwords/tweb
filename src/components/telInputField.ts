@@ -6,7 +6,7 @@
 
 import placeCaretAtEnd from "../helpers/dom/placeCaretAtEnd";
 import { formatPhoneNumber } from "../helpers/formatPhoneNumber";
-import { isApple, isAndroid, isAppleMobile } from "../helpers/userAgent";
+import { IS_APPLE, IS_ANDROID, IS_APPLE_MOBILE } from "../environment/userAgent";
 import { HelpCountry, HelpCountryCode } from "../layer";
 import InputField, { InputFieldOptions } from "./inputField";
 
@@ -36,9 +36,9 @@ export default class TelInputField extends InputField {
       const pixelRatio = window.devicePixelRatio;
       if(pixelRatio > 1) {
         let letterSpacing: number;
-        if(isApple) {
+        if(IS_APPLE) {
           letterSpacing = pixelRatio * -.16;
-        } else if(isAndroid) {
+        } else if(IS_ANDROID) {
           letterSpacing = 0;
         }
 
@@ -58,7 +58,7 @@ export default class TelInputField extends InputField {
   
       const value = this.value;
       const diff = Math.abs(value.length - this.lastValue.length);
-      if(diff > 1 && !this.pasted && isAppleMobile) {
+      if(diff > 1 && !this.pasted && IS_APPLE_MOBILE) {
         this.setValueSilently(this.lastValue + value);
       }
   

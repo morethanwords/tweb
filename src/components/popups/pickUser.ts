@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { isTouchSupported } from "../../helpers/touchSupport";
+import { IS_TOUCH_SUPPORTED } from "../../environment/touchSupport";
 import AppSelectPeers from "../appSelectPeers";
 import PopupElement from ".";
 import { LangPackKey, _i18n } from "../../lib/langPack";
@@ -50,7 +50,7 @@ export default class PopupPickUser extends PopupElement {
         this.show();
         this.selector.checkForTriggers(); // ! due to zero height before mounting
 
-        if(!isTouchSupported) {
+        if(!IS_TOUCH_SUPPORTED) {
           this.selector.input.focus();
         }
       }, 

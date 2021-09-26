@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { isTouchSupported } from "../../helpers/touchSupport";
+import { IS_TOUCH_SUPPORTED } from "../../environment/touchSupport";
 import appImManager from "../../lib/appManagers/appImManager";
 import rootScope from "../../lib/rootScope";
 import animationIntersector from "../animationIntersector";
@@ -61,7 +61,7 @@ export class EmoticonsDropdown extends DropdownHover {
     });
 
     this.addEventListener('open', async() => {
-      if(isTouchSupported) {
+      if(IS_TOUCH_SUPPORTED) {
         //appImManager.chat.input.saveScroll();
         if(blurActiveElement()) {
           await pause(100);

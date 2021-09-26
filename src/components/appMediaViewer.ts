@@ -6,8 +6,8 @@
 
 import { deferredPromise } from "../helpers/cancellablePromise";
 import mediaSizes from "../helpers/mediaSizes";
-import { isTouchSupported } from "../helpers/touchSupport";
-import { isMobileSafari, isSafari } from "../helpers/userAgent";
+import { IS_TOUCH_SUPPORTED } from "../environment/touchSupport";
+import { IS_MOBILE_SAFARI, IS_SAFARI } from "../environment/userAgent";
 import appDocsManager, { MyDocument } from "../lib/appManagers/appDocsManager";
 import appImManager from "../lib/appManagers/appImManager";
 import appMessagesManager from "../lib/appManagers/appMessagesManager";
@@ -52,6 +52,7 @@ import PopupDeleteMessages from "./popups/deleteMessages";
 import RangeSelector from "./rangeSelector";
 import windowSize from "../helpers/windowSize";
 import ListLoader, { ListLoaderOptions } from "../helpers/listLoader";
+import MEDIA_MIME_TYPES_SUPPORTED from "../environment/mediaMimeTypesSupport";
 
 const ZOOM_STEP = 0.5;
 const ZOOM_INITIAL_VALUE = 1;
@@ -355,7 +356,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
       else this.onPrevClick(item);
     };
 
-    if(isTouchSupported) {
+    if(IS_TOUCH_SUPPORTED) {
       const swipeHandler = new SwipeHandler({
         element: this.wholeDiv, 
         onSwipe: (xDiff, yDiff) => {
@@ -530,7 +531,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     if(target.tagName === 'A') return;
     cancelEvent(e);
 
-    if(isTouchSupported) {
+    if(IS_TOUCH_SUPPORTED) {
       if(this.highlightSwitchersTimeout) {
         clearTimeout(this.highlightSwitchersTimeout);
       } else {
@@ -1295,7 +1296,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
     } else {
       window.addEventListener('keydown', this.onKeyDown);
       window.addEventListener('keyup', this.onKeyUp);
-      if(!isTouchSupported) window.addEventListener('wheel', this.onWheel, {passive: false, capture: true});
+      if(!IS_TOUCH_SUPPORTED) window.addEventListener('wheel', this.onWheel, {passive: false, capture: true});
       const mainColumns = this.pageEl.querySelector('#main-columns');
       this.pageEl.insertBefore(this.wholeDiv, mainColumns);
       void this.wholeDiv.offsetLeft; // reflow
@@ -1303,7 +1304,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
       rootScope.isOverlayActive = true;
       animationIntersector.checkAnimations(true);
 
-      if(!isMobileSafari) {
+      if(!IS_MOBILE_SAFARI) {
         appNavigationController.pushItem({
           type: 'media',
           onPop: (canAnimate) => {
@@ -1401,7 +1402,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
           }
         }, {once: true});
   
-        if(isSafari) {
+        if(IS_SAFARI) {
           // test stream
           // video.controls = true;
           video.autoplay = true;
@@ -1851,7 +1852,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
   }
 
   public static isMediaCompatibleForDocumentViewer(media: MyPhoto | MyDocument) {
-    return media._ === 'photo' || (['photo', 'video', 'gif'].includes(media.type) || media.mime_type.indexOf('video/') === 0);
+    return media._ === 'photo' || MEDIA_MIME_TYPES_SUPPORTED.has(media.mime_type);
   }
 }
 

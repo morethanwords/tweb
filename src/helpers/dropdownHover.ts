@@ -9,7 +9,7 @@ import findUpAsChild from "./dom/findUpAsChild";
 import EventListenerBase from "./eventListenerBase";
 import ListenerSetter from "./listenerSetter";
 import { safeAssign } from "./object";
-import { isTouchSupported } from "./touchSupport";
+import { IS_TOUCH_SUPPORTED } from "../environment/touchSupport";
 
 const KEEP_OPEN = false;
 const TOGGLE_TIMEOUT = 200;
@@ -35,7 +35,7 @@ export default class DropdownHover extends EventListenerBase<{
 
   public attachButtonListener(button: HTMLElement, listenerSetter: ListenerSetter) {
     let firstTime = true;
-    if(isTouchSupported) {
+    if(IS_TOUCH_SUPPORTED) {
       attachClickEvent(button, () => {
         if(firstTime) {
           firstTime = false;
@@ -76,7 +76,7 @@ export default class DropdownHover extends EventListenerBase<{
   };
 
   protected init() {
-    if(!isTouchSupported) {
+    if(!IS_TOUCH_SUPPORTED) {
       this.element.onmouseout = this.onMouseOut;
       this.element.onmouseover = (e) => {
         if(this.forceClose) {
@@ -117,7 +117,7 @@ export default class DropdownHover extends EventListenerBase<{
       this.displayTimeout = window.setTimeout(() => {
         this.forceClose = false;
         this.dispatchEvent('opened');
-      }, isTouchSupported ? 0 : ANIMATION_DURATION);
+      }, IS_TOUCH_SUPPORTED ? 0 : ANIMATION_DURATION);
 
       // ! can't use together with resizeObserver
       /* if(isTouchSupported) {
@@ -139,7 +139,7 @@ export default class DropdownHover extends EventListenerBase<{
         this.element.style.display = 'none';
         this.forceClose = false;
         this.dispatchEvent('closed');
-      }, isTouchSupported ? 0 : ANIMATION_DURATION);
+      }, IS_TOUCH_SUPPORTED ? 0 : ANIMATION_DURATION);
 
       /* if(isTouchSupported) {
         const scrollHeight = this.container.scrollHeight;

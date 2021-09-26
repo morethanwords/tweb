@@ -10,7 +10,7 @@ import type { AppPollsManager, Poll } from "../../lib/appManagers/appPollsManage
 import type { AppDocsManager, MyDocument } from "../../lib/appManagers/appDocsManager";
 import type { AppMessagesIdsManager } from "../../lib/appManagers/appMessagesIdsManager";
 import type Chat from "./chat";
-import { isTouchSupported } from "../../helpers/touchSupport";
+import { IS_TOUCH_SUPPORTED } from "../../environment/touchSupport";
 import ButtonMenu, { ButtonMenuItemOptions } from "../buttonMenu";
 import { attachContextMenuListener, openBtnMenu, positionMenu } from "../misc";
 import PopupDeleteMessages from "../popups/deleteMessages";
@@ -117,7 +117,7 @@ export default class ChatContextMenu {
         if(chat.selection.isSelecting && !button.withSelection) {
           good = false;
         } else {
-          good = contentWrapper || isTouchSupported || true ? 
+          good = contentWrapper || IS_TOUCH_SUPPORTED || true ? 
             button.verify() : 
             button.notDirect && button.verify() && button.notDirect();
         }
@@ -135,7 +135,7 @@ export default class ChatContextMenu {
       });
     };
 
-    if(isTouchSupported/*  && false */) {
+    if(IS_TOUCH_SUPPORTED/*  && false */) {
       attachClickEvent(attachTo, (e) => {
         if(chat.selection.isSelecting) {
           return;
@@ -284,7 +284,7 @@ export default class ChatContextMenu {
         const doc: MyDocument = this.message.media?.document;
         if(!doc) return false;
         
-        let hasTarget = !!isTouchSupported;
+        let hasTarget = !!IS_TOUCH_SUPPORTED;
         const isGoodType = !doc.type || !(['gif', 'video', 'sticker'] as MyDocument['type'][]).includes(doc.type);
         if(isGoodType) hasTarget = hasTarget || !!findUpClassName(this.target, 'document') || !!findUpClassName(this.target, 'audio');
         return isGoodType && hasTarget;

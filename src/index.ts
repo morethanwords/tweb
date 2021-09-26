@@ -9,8 +9,8 @@ import blurActiveElement from './helpers/dom/blurActiveElement';
 import { cancelEvent } from './helpers/dom/cancelEvent';
 import { IS_STICKY_INPUT_BUGGED } from './helpers/dom/fixSafariStickyInputFocusing';
 import loadFonts from './helpers/dom/loadFonts';
-import IS_EMOJI_SUPPORTED from './helpers/emojiSupport';
-import { isMobileSafari } from './helpers/userAgent';
+import IS_EMOJI_SUPPORTED from './environment/emojiSupport';
+import { IS_MOBILE_SAFARI } from './environment/userAgent';
 import './materialize.scss';
 import './scss/style.scss';
 import './scss/tgico.scss';
@@ -67,7 +67,7 @@ console.timeEnd('get storage1'); */
       const vh = (setViewportVH && !rootScope.default.isOverlayActive ? w.height || w.innerHeight : window.innerHeight) * 0.01;
       if(lastVH === vh) {
         return;
-      } else if(touchSupport.isTouchSupported && lastVH < vh && (vh - lastVH) > 1) {
+      } else if(touchSupport.IS_TOUCH_SUPPORTED && lastVH < vh && (vh - lastVH) > 1) {
         blurActiveElement(); // (Android) fix blurring inputs when keyboard is being closed (e.g. closing keyboard by back arrow and touching a bubble)
       }
 
@@ -101,8 +101,8 @@ console.timeEnd('get storage1'); */
 
     const [_, touchSupport, userAgent, rootScope, appStateManager, I18n] = await Promise.all([
       import('./lib/polyfill'),
-      import('./helpers/touchSupport'),
-      import('./helpers/userAgent'),
+      import('./environment/touchSupport'),
+      import('./environment/userAgent'),
       import('./lib/rootScope'),
       import('./lib/appManagers/appStateManager'),
       import('./lib/langPack'),
@@ -146,7 +146,7 @@ console.timeEnd('get storage1'); */
       });
     }
 
-    if(userAgent.isFirefox && !IS_EMOJI_SUPPORTED) {
+    if(userAgent.IS_FIREFOX && !IS_EMOJI_SUPPORTED) {
       document.addEventListener('dragstart', (e) => {
         const target = e.target as HTMLElement;
         if(target.tagName === 'IMG' && target.classList.contains('emoji')) {
@@ -164,23 +164,23 @@ console.timeEnd('get storage1'); */
       }
     });
 
-    if(userAgent.isFirefox) {
+    if(userAgent.IS_FIREFOX) {
       document.documentElement.classList.add('is-firefox');
     }
 
-    if(userAgent.isApple) {
-      if(userAgent.isSafari) {
+    if(userAgent.IS_APPLE) {
+      if(userAgent.IS_SAFARI) {
         document.documentElement.classList.add('is-safari');
       }
       
       document.documentElement.classList.add('emoji-supported');
 
-      if(userAgent.isAppleMobile) {
+      if(userAgent.IS_APPLE_MOBILE) {
         document.documentElement.classList.add('is-ios');
       } else {
         document.documentElement.classList.add('is-mac');
       }
-    } else if(userAgent.isAndroid) {
+    } else if(userAgent.IS_ANDROID) {
       document.documentElement.classList.add('is-android');
 
       /* document.addEventListener('focusin', (e) => {
@@ -193,7 +193,7 @@ console.timeEnd('get storage1'); */
       }, {passive: true}); */
     }
 
-    if(!touchSupport.isTouchSupported) {
+    if(!touchSupport.IS_TOUCH_SUPPORTED) {
       document.documentElement.classList.add('no-touch');
     } else {
       document.documentElement.classList.add('is-touch');
@@ -257,7 +257,7 @@ console.timeEnd('get storage1'); */
       let scrollable: HTMLElement;
       if(el) {
         scrollable = el.querySelector('.scrollable') as HTMLElement;
-        if((!touchSupport.isTouchSupported || isMobileSafari)) {
+        if((!touchSupport.IS_TOUCH_SUPPORTED || IS_MOBILE_SAFARI)) {
           scrollable.classList.add('no-scrollbar');
         }
 

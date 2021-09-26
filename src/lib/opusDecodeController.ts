@@ -5,7 +5,7 @@
  */
 
 import { MOUNT_CLASS_TO } from "../config/debug";
-import { isSafari } from "../helpers/userAgent";
+import { IS_SAFARI } from "../environment/userAgent";
 import { logger, LogTypes } from "./logger";
 
 type Result = {
@@ -72,7 +72,7 @@ export class OpusDecodeController {
         this.wavWorker.postMessage({
           command: 'encode',
           buffers: e.data
-        }, isSafari ? undefined : data.map((typedArray: Uint8Array) => typedArray.buffer));
+        }, IS_SAFARI ? undefined : data.map((typedArray: Uint8Array) => typedArray.buffer));
       }
     });
   }
@@ -136,7 +136,7 @@ export class OpusDecodeController {
         command: 'decode',
         pages: task.pages,
         waveform: task.withWaveform
-      }, isSafari ? undefined : [task.pages.buffer]);
+      }, IS_SAFARI ? undefined : [task.pages.buffer]);
     //}, 1e3);
 
     task.timeout = window.setTimeout(() => {

@@ -9,8 +9,8 @@ import { cancelEvent } from "../helpers/dom/cancelEvent";
 import { CLICK_EVENT_NAME } from "../helpers/dom/clickEvent";
 import ListenerSetter from "../helpers/listenerSetter";
 import mediaSizes from "../helpers/mediaSizes";
-import { isTouchSupported } from "../helpers/touchSupport";
-import { isApple, isMobileSafari } from "../helpers/userAgent";
+import { IS_TOUCH_SUPPORTED } from "../environment/touchSupport";
+import { IS_APPLE, IS_MOBILE_SAFARI } from "../environment/userAgent";
 import rootScope from "../lib/rootScope";
 import appNavigationController from "./appNavigationController";
 
@@ -101,7 +101,7 @@ export const closeBtnMenu = () => {
     openedMenuOnClose = null;
   }
 
-  if(!isTouchSupported) {
+  if(!IS_TOUCH_SUPPORTED) {
     window.removeEventListener('mousemove', onMouseMove);
     //window.removeEventListener('keydown', onKeyDown, {capture: true});
     window.removeEventListener('contextmenu', onClick);
@@ -109,7 +109,7 @@ export const closeBtnMenu = () => {
 
   document.removeEventListener(CLICK_EVENT_NAME, onClick);
 
-  if(!isMobileSafari) {
+  if(!IS_MOBILE_SAFARI) {
     appNavigationController.removeByType('menu');
   }
 };
@@ -131,7 +131,7 @@ let openedMenu: HTMLElement = null, openedMenuOnClose: () => void = null, menuOv
 export function openBtnMenu(menuElement: HTMLElement, onClose?: () => void) {
   closeBtnMenu();
 
-  if(!isMobileSafari) {
+  if(!IS_MOBILE_SAFARI) {
     appNavigationController.pushItem({
       type: 'menu',
       onPop: (canAnimate) => {
@@ -161,7 +161,7 @@ export function openBtnMenu(menuElement: HTMLElement, onClose?: () => void) {
   
   openedMenuOnClose = onClose;
 
-  if(!isTouchSupported) {
+  if(!IS_TOUCH_SUPPORTED) {
     window.addEventListener('mousemove', onMouseMove);
     //window.addEventListener('keydown', onKeyDown, {capture: true});
     window.addEventListener('contextmenu', onClick, {once: true});
@@ -297,7 +297,7 @@ export function attachContextMenuListener(element: HTMLElement, callback: (e: To
   const add = listenerSetter ? listenerSetter.add(element) : element.addEventListener.bind(element);
   const remove = listenerSetter ? listenerSetter.removeManual.bind(listenerSetter, element) : element.removeEventListener.bind(element);
 
-  if(isApple && isTouchSupported) {
+  if(IS_APPLE && IS_TOUCH_SUPPORTED) {
     let timeout: number;
 
     const options: EventListenerOptions = {capture: true};
@@ -343,7 +343,7 @@ export function attachContextMenuListener(element: HTMLElement, callback: (e: To
       }, {passive: false, capture: true});
     } */
   } else {
-    add('contextmenu', isTouchSupported ? (e: any) => {
+    add('contextmenu', IS_TOUCH_SUPPORTED ? (e: any) => {
       callback(e);
 
       if(openedMenu) {

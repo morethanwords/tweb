@@ -39,8 +39,8 @@ import AppAddMembersTab from "../../sidebarLeft/tabs/addMembers";
 import PopupPickUser from "../../popups/pickUser";
 import PopupPeer, { PopupPeerButtonCallbackCheckboxes, PopupPeerCheckboxOptions } from "../../popups/peer";
 import Scrollable from "../../scrollable";
-import { isTouchSupported } from "../../../helpers/touchSupport";
-import { isFirefox } from "../../../helpers/userAgent";
+import { IS_TOUCH_SUPPORTED } from "../../../environment/touchSupport";
+import { IS_FIREFOX } from "../../../environment/userAgent";
 import appDownloadManager from "../../../lib/appManagers/appDownloadManager";
 import ButtonCorner from "../../buttonCorner";
 import { cancelEvent } from "../../../helpers/dom/cancelEvent";
@@ -58,7 +58,7 @@ let setText = (text: string, row: Row) => {
   //});
 };
 
-const PARALLAX_SUPPORTED = !isFirefox && false;
+const PARALLAX_SUPPORTED = !IS_FIREFOX && false;
 
 export function filterChatPhotosMessages(value: {
   count: number;
@@ -199,7 +199,7 @@ class PeerProfileAvatars {
 
     const cancelNextClick = () => {
       cancel = true;
-      document.body.addEventListener(isTouchSupported ? 'touchend' : 'click', (e) => {
+      document.body.addEventListener(IS_TOUCH_SUPPORTED ? 'touchend' : 'click', (e) => {
         cancel = false;
       }, {once: true});
     };

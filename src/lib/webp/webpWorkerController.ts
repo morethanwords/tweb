@@ -20,9 +20,8 @@ export type WebpConvertTask = {
 export class WebpWorkerController {
   private worker: Worker;
   private convertPromises: {[fileName: string]: CancellablePromise<Uint8Array>} = {};
-  private isWebpSupportedCache: boolean;
   
-  init() {
+  private init() {
     this.worker = new WebpWorker();
     this.worker.addEventListener('message', (e) => {
       const payload = (e.data as WebpConvertTask).payload;
@@ -39,7 +38,7 @@ export class WebpWorkerController {
     });
   }
 
-  postMessage(data: WebpConvertTask) {
+  public postMessage(data: WebpConvertTask) {
     if(this.init) {
       this.init();
       this.init = null;
@@ -48,15 +47,7 @@ export class WebpWorkerController {
     this.worker.postMessage(data);
   }
 
-  isWebpSupported() {
-    if(this.isWebpSupportedCache === undefined) {
-      this.isWebpSupportedCache = document.createElement('canvas').toDataURL('image/webp').startsWith('data:image/webp');
-    }
-
-    return this.isWebpSupportedCache;
-  }
-
-  convert(fileName: string, bytes: Uint8Array) {
+  public convert(fileName: string, bytes: Uint8Array) {
     fileName = 'main-' + fileName;
 
     if(this.convertPromises.hasOwnProperty(fileName)) {

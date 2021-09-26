@@ -15,9 +15,9 @@ import emojiRegExp from '../vendor/emoji/regex';
 import { encodeEmoji, toCodePoints } from '../vendor/emoji';
 import { MessageEntity } from '../layer';
 import { encodeEntities } from '../helpers/string';
-import { isSafari } from '../helpers/userAgent';
+import { IS_SAFARI } from '../environment/userAgent';
 import { MOUNT_CLASS_TO } from '../config/debug';
-import IS_EMOJI_SUPPORTED from '../helpers/emojiSupport';
+import IS_EMOJI_SUPPORTED from '../environment/emojiSupport';
 
 const EmojiHelper = {
   emojiMap: (code: string) => { return code; },
@@ -115,8 +115,6 @@ for(let i in markdownEntities) {
 }
 
 namespace RichTextProcessor {
-  export const emojiSupported = IS_EMOJI_SUPPORTED;
-
   export function getEmojiSpritesheetCoords(emojiCode: string) {
     let unified = encodeEmoji(emojiCode).replace(/-?fe0f/g, '');
   
@@ -406,7 +404,7 @@ namespace RichTextProcessor {
     currentEntities.push(...filtered);
     currentEntities.sort((a, b) => a.offset - b.offset);
 
-    if(!emojiSupported) { // fix splitted emoji. messageEntityTextUrl can split the emoji if starts before its end (e.g. on fe0f)
+    if(!IS_EMOJI_SUPPORTED) { // fix splitted emoji. messageEntityTextUrl can split the emoji if starts before its end (e.g. on fe0f)
       for(let i = 0; i < currentEntities.length; ++i) {
         const entity = currentEntities[i];
         if(entity._ === 'messageEntityEmoji') {
@@ -507,7 +505,7 @@ namespace RichTextProcessor {
 
         case 'messageEntityStrike': {
           if(options.wrappingDraft) {
-            const styleName = isSafari ? 'text-decoration' : 'text-decoration-line';
+            const styleName = IS_SAFARI ? 'text-decoration' : 'text-decoration-line';
             insertPart(entity, `<span style="${styleName}: line-through;">`, '</span>');
           } else {
             insertPart(entity, '<del>', '</del>');
@@ -518,7 +516,7 @@ namespace RichTextProcessor {
 
         case 'messageEntityUnderline': {
           if(options.wrappingDraft) {
-            const styleName = isSafari ? 'text-decoration' : 'text-decoration-line';
+            const styleName = IS_SAFARI ? 'text-decoration' : 'text-decoration-line';
             insertPart(entity, `<span style="${styleName}: underline;">`, '</span>');
           } else {
             insertPart(entity, '<u>', '</u>');
@@ -571,9 +569,9 @@ namespace RichTextProcessor {
         }
 
         case 'messageEntityEmoji': {
-          //if(!(options.wrappingDraft && emojiSupported)) { // * fix safari emoji
-          if(!emojiSupported) { // no wrapping needed
-            // if(emojiSupported) { // ! contenteditable="false" нужен для поля ввода, иначе там будет меняться шрифт в Safari, или же рендерить смайлик напрямую, без контейнера
+          //if(!(options.wrappingDraft && IS_EMOJI_SUPPORTED)) { // * fix safari emoji
+          if(!IS_EMOJI_SUPPORTED) { // no wrapping needed
+            // if(IS_EMOJI_SUPPORTED) { // ! contenteditable="false" нужен для поля ввода, иначе там будет меняться шрифт в Safari, или же рендерить смайлик напрямую, без контейнера
             //   insertPart(entity, '<span class="emoji">', '</span>');
             // } else {
               insertPart(entity, `<img src="assets/img/emoji/${entity.unicode}.png" alt="`, `" class="emoji">`);
@@ -581,10 +579,10 @@ namespace RichTextProcessor {
           //} else if(options.mustWrapEmoji) {
           } else if(!options.wrappingDraft) {
             insertPart(entity, '<span class="emoji">', '</span>');
-          } else if(!isSafari) {
+          } else if(!IS_SAFARI) {
             insertPart(entity, '<span class="emoji" contenteditable="false">', '</span>');
           }
-          /* if(!emojiSupported) {
+          /* if(!IS_EMOJI_SUPPORTED) {
             insertPart(entity, `<img src="assets/img/emoji/${entity.unicode}.png" alt="`, `" class="emoji">`);
           } */
 
@@ -723,7 +721,7 @@ namespace RichTextProcessor {
   }
 
   export function fixEmoji(text: string, entities?: MessageEntity[]) {
-    /* if(!emojiSupported) {
+    /* if(!IS_EMOJI_SUPPORTED) {
       return text;
     } */
     // '$`\ufe0f'
@@ -795,7 +793,7 @@ namespace RichTextProcessor {
   }
   
   export function wrapPlainText(text: string) {
-    if(emojiSupported) {
+    if(IS_EMOJI_SUPPORTED) {
       return text;
     }
   

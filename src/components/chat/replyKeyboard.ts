@@ -13,7 +13,7 @@ import rootScope from "../../lib/rootScope";
 import { safeAssign } from "../../helpers/object";
 import ListenerSetter, { Listener } from "../../helpers/listenerSetter";
 import findUpClassName from "../../helpers/dom/findUpClassName";
-import { isTouchSupported } from "../../helpers/touchSupport";
+import { IS_TOUCH_SUPPORTED } from "../../environment/touchSupport";
 import findUpAsChild from "../../helpers/dom/findUpAsChild";
 import { cancelEvent } from "../../helpers/dom/cancelEvent";
 import { getHeavyAnimationPromise } from "../../hooks/useHeavyAnimationCheck";
@@ -64,7 +64,7 @@ export default class ReplyKeyboard extends DropdownHover {
     this.listenerSetter.add(this)('open', () => {
       this.render();
 
-      if(isTouchSupported) {
+      if(IS_TOUCH_SUPPORTED) {
         this.touchListener = this.listenerSetter.add(document.body)('touchstart', this.onBodyTouchStart, {passive: false, capture: true}) as any as Listener;
         this.listenerSetter.add(this)('close', () => {
           this.listenerSetter.remove(this.touchListener);

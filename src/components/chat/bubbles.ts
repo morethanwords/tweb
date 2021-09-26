@@ -18,7 +18,7 @@ import type { AppMessagesIdsManager } from "../../lib/appManagers/appMessagesIds
 import type Chat from "./chat";
 import { CHAT_ANIMATION_GROUP } from "../../lib/appManagers/appImManager";
 import { getObjectKeysAndSort } from "../../helpers/object";
-import { isTouchSupported } from "../../helpers/touchSupport";
+import { IS_TOUCH_SUPPORTED } from "../../environment/touchSupport";
 import { logger } from "../../lib/logger";
 import rootScope, { BroadcastEvents } from "../../lib/rootScope";
 import AppMediaViewer from "../appMediaViewer";
@@ -32,7 +32,7 @@ import StickyIntersector from "../stickyIntersector";
 import animationIntersector from "../animationIntersector";
 import RichTextProcessor from "../../lib/richtextprocessor";
 import mediaSizes from "../../helpers/mediaSizes";
-import { isAndroid, isApple, isMobile, isSafari } from "../../helpers/userAgent";
+import { IS_ANDROID, IS_APPLE, IS_MOBILE, IS_SAFARI } from "../../environment/userAgent";
 import I18n, { i18n, langPack } from "../../lib/langPack";
 import AvatarElement from "../avatar";
 import { ripple } from "../ripple";
@@ -452,7 +452,7 @@ export default class ChatBubbles {
       });
     }
 
-    if(!isMobile) {
+    if(!IS_MOBILE) {
       this.listenerSetter.add(this.bubblesContainer)('dblclick', (e) => {
         if(this.chat.selection.isSelecting || 
           !this.appMessagesManager.canSendToPeer(this.peerId, this.chat.threadId)) {
@@ -864,7 +864,7 @@ export default class ChatBubbles {
       return;
     }
 
-    if(!isTouchSupported && findUpClassName(target, 'time')) {
+    if(!IS_TOUCH_SUPPORTED && findUpClassName(target, 'time')) {
       this.chat.selection.toggleByElement(bubble);
       return;
     }
@@ -878,7 +878,7 @@ export default class ChatBubbles {
       cancelEvent(e);
       //console.log('bubble click', e);
 
-      if(isTouchSupported && this.chat.selection.selectedText) {
+      if(IS_TOUCH_SUPPORTED && this.chat.selection.selectedText) {
         this.chat.selection.selectedText = undefined;
         return;
       }
@@ -1264,7 +1264,7 @@ export default class ChatBubbles {
     if(this.isHeavyAnimationInProgress && this.scrolledDown) return;
       //lottieLoader.checkAnimations(false, 'chat');
 
-    if(!isTouchSupported) {
+    if(!IS_TOUCH_SUPPORTED) {
       if(this.isScrollingTimeout) {
         clearTimeout(this.isScrollingTimeout);
       } else if(!this.chatInner.classList.contains('is-scrolling')) {
@@ -1313,7 +1313,7 @@ export default class ChatBubbles {
     this.scrollable.onScrolledBottom = () => this.loadMoreHistory(false);
     //this.scrollable.attachSentinels(undefined, 300);
 
-    if(isTouchSupported) {
+    if(IS_TOUCH_SUPPORTED) {
       this.scrollable.container.addEventListener('touchmove', () => {
         if(this.isScrollingTimeout) {
           clearTimeout(this.isScrollingTimeout);
@@ -2530,7 +2530,7 @@ export default class ChatBubbles {
             break;
           }
           
-          const withTail = !isAndroid && canHaveTail && !withReplies && USE_MEDIA_TAILS;
+          const withTail = !IS_ANDROID && canHaveTail && !withReplies && USE_MEDIA_TAILS;
           if(withTail) bubble.classList.add('with-media-tail');
           wrapPhoto({
             photo, 
@@ -2759,7 +2759,7 @@ export default class ChatBubbles {
                 noAutoDownload: this.chat.noAutoDownloadMedia,
               });
             } else {
-              const withTail = !isAndroid && !isApple && !isRound && canHaveTail && !withReplies && USE_MEDIA_TAILS;
+              const withTail = !IS_ANDROID && !IS_APPLE && !isRound && canHaveTail && !withReplies && USE_MEDIA_TAILS;
               if(withTail) bubble.classList.add('with-media-tail');
               wrapVideo({
                 doc, 
@@ -3198,7 +3198,7 @@ export default class ChatBubbles {
       //this.scrollable.scrollTop = this.scrollable.scrollHeight;
       //isTouchSupported && isApple && (this.scrollable.container.style.overflow = '');
 
-      if(isSafari/*  && !isAppleMobile */) { // * fix blinking and jumping
+      if(IS_SAFARI/*  && !isAppleMobile */) { // * fix blinking and jumping
         reflowScrollableElement(this.scrollable.container);
       }
 
@@ -3376,7 +3376,7 @@ export default class ChatBubbles {
 
         // ! в хроме, каким-то образом из-за zoom-fade класса начинает прыгать скролл при подгрузке сообщений вверх, 
         // ! т.е. скролл не ставится, так же, как в сафари при translateZ на блок выше scrollable
-        if(!isSafari) {
+        if(!IS_SAFARI) {
           this.needReflowScroll = true;
         }
       });

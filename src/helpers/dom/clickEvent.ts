@@ -5,10 +5,10 @@
  */
 
 import type ListenerSetter from "../listenerSetter";
-import { isTouchSupported } from "../touchSupport";
+import { IS_TOUCH_SUPPORTED } from "../../environment/touchSupport";
 import simulateEvent from "./dispatchEvent";
 
-export const CLICK_EVENT_NAME: 'mousedown' /* | 'touchend' */ | 'click' = (isTouchSupported ? 'mousedown' : 'click') as any;
+export const CLICK_EVENT_NAME: 'mousedown' /* | 'touchend' */ | 'click' = (IS_TOUCH_SUPPORTED ? 'mousedown' : 'click') as any;
 export type AttachClickOptions = AddEventListenerOptions & Partial<{listenerSetter: ListenerSetter, touchMouseDown: true}>;
 export function attachClickEvent(elem: HTMLElement | Window, callback: (e: /* TouchEvent |  */MouseEvent) => void, options: AttachClickOptions = {}) {
   const add = options.listenerSetter ? options.listenerSetter.add(elem) : elem.addEventListener.bind(elem);

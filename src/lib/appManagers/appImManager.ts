@@ -26,7 +26,7 @@ import appStickersManager from './appStickersManager';
 import appWebPagesManager from './appWebPagesManager';
 import PopupNewMedia from '../../components/popups/newMedia';
 import MarkupTooltip from '../../components/chat/markupTooltip';
-import { isTouchSupported } from '../../helpers/touchSupport';
+import { IS_TOUCH_SUPPORTED } from '../../environment/touchSupport';
 import appPollsManager from './appPollsManager';
 import SetTransition from '../../components/singleTransition';
 import ChatDragAndDrop from '../../components/chat/dragAndDrop';
@@ -67,13 +67,14 @@ import { pause } from '../../helpers/schedulers/pause';
 import appMessagesIdsManager from './appMessagesIdsManager';
 import { InternalLink, InternalLinkTypeMap, INTERNAL_LINK_TYPE } from './internalLink';
 import RichTextProcessor from '../richtextprocessor';
+import MEDIA_MIME_TYPES_SUPPORTED from '../../environment/mediaMimeTypesSupport';
 
 //console.log('appImManager included33!');
 
 appSidebarLeft; // just to include
 
 export const CHAT_ANIMATION_GROUP = 'chat';
-const FOCUS_EVENT_NAME = isTouchSupported ? 'touchstart' : 'mousemove';
+const FOCUS_EVENT_NAME = IS_TOUCH_SUPPORTED ? 'touchstart' : 'mousemove';
 
 export type ChatSavedPosition = {
   mids: number[], 
@@ -495,7 +496,7 @@ export class AppImManager {
         e.target !== chat.input.messageInput && 
         target.tagName !== 'INPUT' && 
         !target.hasAttribute('contenteditable') && 
-        !isTouchSupported && 
+        !IS_TOUCH_SUPPORTED && 
         (!mediaSizes.isMobile || this.tabId === 1) && 
         !this.chat.selection.isSelecting && 
         !this.chat.input.recording) {
@@ -891,7 +892,7 @@ export class AppImManager {
       appSidebarRight.sharedMediaTab.renderNewMessages(message.peerId, [mid]);
     });
 
-    if(!isTouchSupported) {
+    if(!IS_TOUCH_SUPPORTED) {
       this.attachDragAndDropListeners();
     }
 
@@ -917,10 +918,10 @@ export class AppImManager {
       }
 
       if(mount && !drops.length) {
-        const types: string[] = await getFilesFromEvent(e, true)
+        const types: string[] = await getFilesFromEvent(e, true);
         const force = isFiles && !types.length; // * can't get file items not from 'drop' on Safari
         
-        const foundMedia = types.filter(t => ['image', 'video'].includes(t.split('/')[0])).length;
+        const foundMedia = types.filter(t => MEDIA_MIME_TYPES_SUPPORTED.has(t)).length;
         const foundDocuments = types.length - foundMedia;
   
         this.log('drag files', types);
@@ -1029,12 +1030,12 @@ export class AppImManager {
     
     getFilesFromEvent(e).then((files: File[]) => {
       if(files.length) {
-        if(attachType === 'media' && files.find(file => !['image', 'video'].includes(file.type.split('/')[0]))) {
+        if(/* attachType === 'media' &&  */files.find(file => !MEDIA_MIME_TYPES_SUPPORTED.has(file.type))) {
           attachType = 'document';
         }
   
         const chatInput = this.chat.input;
-        chatInput.willAttachType = attachType || (files[0].type.indexOf('image/') === 0 ? 'media' : "document");
+        chatInput.willAttachType = attachType || (MEDIA_MIME_TYPES_SUPPORTED.has(files[0].type) ? 'media' : "document");
         new PopupNewMedia(this.chat, files, chatInput.willAttachType);
       }
     });

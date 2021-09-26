@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { isTouchSupported } from "../helpers/touchSupport";
+import { IS_TOUCH_SUPPORTED } from "../environment/touchSupport";
 import { logger, LogTypes } from "../lib/logger";
 import fastSmoothScroll, { FocusDirection } from "../helpers/fastSmoothScroll";
 import useHeavyAnimationCheck from "../hooks/useHeavyAnimationCheck";
@@ -248,7 +248,7 @@ export class ScrollableX extends ScrollableBase {
 
     this.container.classList.add('scrollable-x');
 
-    if(!isTouchSupported) {
+    if(!IS_TOUCH_SUPPORTED) {
       const scrollHorizontally = (e: any) => {
         if(!e.deltaX && this.container.scrollWidth > this.container.clientWidth) {
           this.container.scrollLeft += e.deltaY / 4;

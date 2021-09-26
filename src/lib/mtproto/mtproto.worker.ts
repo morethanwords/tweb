@@ -15,12 +15,12 @@ import apiManager from "./apiManager";
 import cryptoWorker from "../crypto/cryptoworker";
 import networkerFactory from "./networkerFactory";
 import apiFileManager from './apiFileManager';
-import { ctx } from '../../helpers/userAgent';
 import { notifyAll } from '../../helpers/context';
 import CacheStorageController from '../cacheStorage';
 import sessionStorage from '../sessionStorage';
 import { socketsProxied } from './transports/socketProxied';
 import { bytesToHex } from '../../helpers/bytes';
+import ctx from '../../environment/ctx';
 
 let webpSupported = false;
 export const isWebpSupported = () => {

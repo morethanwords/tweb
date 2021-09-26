@@ -6,7 +6,7 @@
 
 import { RLottiePlayer } from "../lib/lottieLoader";
 import rootScope from "../lib/rootScope";
-import { isSafari } from "../helpers/userAgent";
+import { IS_SAFARI } from "../environment/userAgent";
 import { MOUNT_CLASS_TO } from "../config/debug";
 import isInDOM from "../helpers/dom/isInDOM";
 
@@ -93,7 +93,7 @@ export class AnimationIntersector {
     const {el, animation} = player;
     animation.remove();
 
-    if(animation instanceof HTMLVideoElement && isSafari) {
+    if(animation instanceof HTMLVideoElement && IS_SAFARI) {
       setTimeout(() => { // TODO: очистка по очереди, а не все вместе с этим таймаутом
         animation.src = '';
         animation.load();
