@@ -28,7 +28,7 @@ import ProgressivePreloader from "./preloader";
 import Scrollable from "./scrollable";
 import appSidebarRight from "./sidebarRight";
 import SwipeHandler from "./swipeHandler";
-import { ONE_DAY } from "../helpers/date";
+import { formatFullSentTime, formatTime, ONE_DAY } from "../helpers/date";
 import { SearchSuperContext } from "./appSearchSuper.";
 import appNavigationController from "./appNavigationController";
 import { Message } from "../layer";
@@ -1185,46 +1185,7 @@ class AppMediaViewerBase<ContentAdditionType extends string, ButtonsAdditionType
   }
 
   protected setAuthorInfo(fromId: number, timestamp: number) {
-    const date = new Date();
-    const time = new Date(timestamp * 1000);
-    const now = date.getTime() / 1000;
-
-    const timeEl = new I18n.IntlDateElement({
-      date: time,
-      options: {
-        hour: '2-digit',
-        minute: '2-digit'
-      }
-    }).element;
-
-    let dateEl: Node | string;
-    if((now - timestamp) < ONE_DAY && date.getDate() === time.getDate()) { // if the same day
-      dateEl = i18n('Date.Today');
-    } else if((now - timestamp) < (ONE_DAY * 2) && (date.getDate() - 1) === time.getDate()) { // yesterday
-      dateEl = capitalizeFirstLetter(I18n.format('Yesterday', true));
-    } else if(date.getFullYear() !== time.getFullYear()) { // different year
-      dateEl = new I18n.IntlDateElement({
-        date: time,
-        options: {
-          month: 'short',
-          day: 'numeric',
-          year: 'numeric'
-        }
-      }).element;
-      // dateStr = months[time.getMonth()].slice(0, 3) + ' ' + time.getDate() + ', ' + time.getFullYear();
-    } else {
-      dateEl = new I18n.IntlDateElement({
-        date: time,
-        options: {
-          month: 'short',
-          day: 'numeric'
-        }
-      }).element;
-      // dateStr = months[time.getMonth()].slice(0, 3) + ' ' + time.getDate();
-    }
-
-    this.author.date.innerHTML = '';
-    this.author.date.append(dateEl, ' ', i18n('ScheduleController.at'), ' ', timeEl);
+    this.author.date.append(formatFullSentTime(timestamp));
 
     replaceContent(this.author.nameEl, new PeerTitle({
       peerId: fromId,

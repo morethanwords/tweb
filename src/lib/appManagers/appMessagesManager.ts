@@ -12,7 +12,7 @@
 import { LazyLoadQueueBase } from "../../components/lazyLoadQueue";
 import ProgressivePreloader from "../../components/preloader";
 import { CancellablePromise, deferredPromise } from "../../helpers/cancellablePromise";
-import { formatTime, tsNow } from "../../helpers/date";
+import { formatDateAccordingToTodayNew, formatTime, tsNow } from "../../helpers/date";
 import { createPosterForVideo } from "../../helpers/files";
 import { copy, getObjectKeysAndSort } from "../../helpers/object";
 import { randomLong } from "../../helpers/random";
@@ -2721,19 +2721,34 @@ export class AppMessagesManager {
     }
   }
 
-  public getSenderToPeerText(message: MyMessage) {
-    let senderTitle = '', peerTitle: string;
+  public wrapSenderToPeer(message: MyMessage) {
+    const senderTitle: HTMLElement = document.createElement('span');
+    senderTitle.classList.add('sender-title');
     
-    senderTitle = message.pFlags.out ? 'You' : appPeersManager.getPeerTitle(message.fromId, false, false);
-    peerTitle = appPeersManager.isAnyGroup(message.peerId) || (message.pFlags.out && message.peerId !== rootScope.myId) ? 
-      appPeersManager.getPeerTitle(message.peerId, false, false) : 
-      '';
+    const fromMe = message.fromId === rootScope.myId && message.peerId !== rootScope.myId;
+    senderTitle.append(
+      fromMe ? 
+        i18n('FromYou') : 
+        new PeerTitle({
+          peerId: message.fromId, 
+          dialog: message.peerId === rootScope.myId
+        }).element
+      );
 
-    if(peerTitle) {
-      senderTitle += ' ➝ ' + peerTitle;
+    if(appPeersManager.isAnyGroup(message.peerId) || fromMe) {
+      const peerTitle = new PeerTitle({peerId: message.peerId}).element;
+      senderTitle.append(' ➝ ', peerTitle);
     }
 
     return senderTitle;
+  }
+
+  public wrapSentTime(message: MyMessage) {
+    const el: HTMLElement = document.createElement('span');
+    el.classList.add('sent-time');
+    el.append(formatDateAccordingToTodayNew(new Date(message.date * 1000)));
+
+    return el;
   }
 
   public wrapMessageActionTextNew(message: any, plain: true): string;

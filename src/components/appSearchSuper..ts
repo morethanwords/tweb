@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { formatDateAccordingToToday, months } from "../helpers/date";
+import { months } from "../helpers/date";
 import { copy, getObjectKeysAndSort, safeAssign } from "../helpers/object";
 import { escapeRegExp, limitSymbols } from "../helpers/string";
 import appChatsManager from "../lib/appManagers/appChatsManager";
@@ -26,7 +26,7 @@ import { ripple } from "./ripple";
 import Scrollable, { ScrollableX } from "./scrollable";
 import { wrapDocument, wrapPhoto, wrapVideo } from "./wrappers";
 import useHeavyAnimationCheck, { getHeavyAnimationPromise } from "../hooks/useHeavyAnimationCheck";
-import { LangPackKey, i18n } from "../lib/langPack";
+import I18n, { LangPackKey, i18n } from "../lib/langPack";
 import findUpClassName from "../helpers/dom/findUpClassName";
 import { getMiddleware } from "../helpers/middleware";
 import appProfileManager from "../lib/appManagers/appProfileManager";
@@ -50,6 +50,7 @@ import htmlToDocumentFragment from "../helpers/dom/htmlToDocumentFragment";
 import { SearchSelection } from "./chat/selection";
 import { cancelEvent } from "../helpers/dom/cancelEvent";
 import { attachClickEvent, simulateClickEvent } from "../helpers/dom/clickEvent";
+import { MyDocument } from "../lib/appManagers/appDocsManager";
 
 //const testScroll = false;
 
@@ -599,6 +600,18 @@ export default class AppSearchSuper {
         break;
       }
 
+      case 'inputMessagesFilterRoundVoice': {
+        for(let message of messages) {
+          if(!message.media.document || !(['voice', 'round'] as MyDocument['type'][]).includes(message.media.document.type)) {
+            continue;
+          }
+
+          filtered.push(message);
+        }
+
+        break;
+      }
+
       default:
         break;
     }
@@ -695,21 +708,22 @@ export default class AppSearchSuper {
       }
       
       case 'inputMessagesFilterVoice':
+      case 'inputMessagesFilterRoundVoice':
       case 'inputMessagesFilterMusic':
       case 'inputMessagesFilterDocument': {
         for(const message of messages) {
-          const showSender = this.showSender || message.media.document.type === 'voice';
+          const showSender = this.showSender || (['voice', 'round'] as MyDocument['type'][]).includes(message.media.document.type);
           const div = wrapDocument({
             message,
             withTime: !showSender,
             fontWeight: 400,
             voiceAsMusic: true,
-            showSender: showSender,
+            showSender,
             searchContext: this.copySearchContext(inputFilter),
             lazyLoadQueue: this.lazyLoadQueue
           });
 
-          if(['audio', 'voice'].includes(message.media.document.type)) {
+          if((['audio', 'voice', 'round'] as MyDocument['type'][]).includes(message.media.document.type)) {
             div.classList.add('audio-48');
           }
 
@@ -810,22 +824,19 @@ export default class AppSearchSuper {
           }
 
           subtitleFragment.append(a);
+
+          if(this.showSender) {
+            subtitleFragment.append('\n', appMessagesManager.wrapSenderToPeer(message));
+          }
           
           if(!title) {
             //title = new URL(webpage.url).hostname;
             title = RichTextProcessor.wrapPlainText(webpage.display_url.split('/', 1)[0]);
           }
 
-          let sender = this.showSender ? `<div class="subtitle sender">${appMessagesManager.getSenderToPeerText(message)}</div>` : '';
-
-          let titleAdditionHTML = '';
-          if(this.showSender) {
-            titleAdditionHTML = `<div class="sent-time">${formatDateAccordingToToday(new Date(message.date * 1000))}</div>`;
-          }
-
           const row = new Row({
             title,
-            titleRight: titleAdditionHTML,
+            titleRight: appMessagesManager.wrapSentTime(message),
             subtitle: subtitleFragment,
             havePadding: true,
             clickable: true,
@@ -1257,7 +1268,7 @@ export default class AppSearchSuper {
       }
 
       // ! Фикс случая, когда не загружаются документы при открытой панели разработчиков (происходит из-за того, что не совпадают критерии отбора документов в getSearch)
-      if(value.history.length < loadCount) {
+      if(value.history.length < loadCount || (this.searchContext.folderId !== undefined && !value.next_rate) || value.history.length === value.count) {
       //if((value.count || history.length === value.count) && history.length >= value.count) {
         //this.log(logStr + 'loaded all media', value, loadCount);
         this.loaded[type] = true;
@@ -1401,14 +1412,26 @@ export default class AppSearchSuper {
     const dateTimestamp = date.getTime();
     const containers = this.monthContainers[type] ?? (this.monthContainers[type] = {});
     if(!(dateTimestamp in containers)) {
-      const str = months[date.getMonth()] + ' ' + date.getFullYear();
-      
       const container = document.createElement('div');
       container.className = 'search-super-month';
 
       const name = document.createElement('div');
       name.classList.add('search-super-month-name');
-      name.innerText = str;
+
+      const options: Intl.DateTimeFormatOptions = {
+        month: 'long'
+      };
+
+      if(date.getFullYear() !== new Date().getFullYear()) {
+        options.year = 'numeric';
+      }
+
+      const dateElement = new I18n.IntlDateElement({
+        date,
+        options
+      }).element;
+      name.append(dateElement);
+
       container.append(name);
 
       const items = document.createElement('div');

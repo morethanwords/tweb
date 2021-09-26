@@ -5,8 +5,7 @@
  */
 
 import appDocsManager, {MyDocument} from "../lib/appManagers/appDocsManager";
-import { RichTextProcessor } from "../lib/richtextprocessor";
-import { formatDate, wrapPhoto } from "./wrappers";
+import { wrapPhoto } from "./wrappers";
 import ProgressivePreloader from "./preloader";
 import { MediaProgressLine } from "../lib/mediaPlayer";
 import appMediaPlaybackController, { MediaItem } from "./appMediaPlaybackController";
@@ -17,7 +16,6 @@ import appMessagesManager from "../lib/appManagers/appMessagesManager";
 import rootScope from "../lib/rootScope";
 import './middleEllipsis';
 import { SearchSuperContext } from "./appSearchSuper.";
-import { formatDateAccordingToToday } from "../helpers/date";
 import { cancelEvent } from "../helpers/dom/cancelEvent";
 import { attachClickEvent, detachClickEvent } from "../helpers/dom/clickEvent";
 import LazyLoadQueue from "./lazyLoadQueue";
@@ -25,6 +23,11 @@ import { CancellablePromise, deferredPromise } from "../helpers/cancellablePromi
 import ListenerSetter, { Listener } from "../helpers/listenerSetter";
 import noop from "../helpers/noop";
 import findUpClassName from "../helpers/dom/findUpClassName";
+import { joinElementsWith } from "../lib/langPack";
+import { MiddleEllipsisElement } from "./middleEllipsis";
+import htmlToSpan from "../helpers/dom/htmlToSpan";
+import { formatFullSentTime } from "../helpers/date";
+import { formatBytes } from "../helpers/number";
 
 rootScope.addEventListener('messages_media_read', ({mids, peerId}) => {
   mids.forEach(mid => {
@@ -273,43 +276,56 @@ function wrapAudio(audioEl: AudioElement) {
   const message = audioEl.message;
   const doc: MyDocument = message.media.document || message.media.webpage.document;
 
-  const senderTitle = audioEl.showSender ? appMessagesManager.getSenderToPeerText(message) : '';
-
-  let title = doc.type === 'voice' ? senderTitle : (doc.audioTitle || doc.fileName);
-  let subtitle: string;
+  const isVoice = doc.type === 'voice' || doc.type === 'round';
+  const descriptionEl = document.createElement('div');
+  descriptionEl.classList.add('audio-description');
   
-  if(doc.type === 'voice') {
-    subtitle = '';
-  } else {
-    subtitle = doc.audioPerformer ? RichTextProcessor.wrapPlainText(doc.audioPerformer) : '';
+  if(!isVoice) {
+    const parts: (Node | string)[] = [];
+    if(doc.audioPerformer) {
+      parts.push(htmlToSpan(doc.audioPerformer));
+    }
+
     if(withTime) {
-      subtitle += (subtitle ? ' • ' : '') + formatDate(doc.date);
-    } else if(!subtitle) {
-      subtitle = 'Unknown Artist';
+      parts.push(formatFullSentTime(doc.date));
+    } else if(!parts.length) {
+      parts.push(formatBytes(doc.size));
     }
 
     if(audioEl.showSender) {
-      subtitle += ' • ' + senderTitle;
-    } else {
-      subtitle = ' • ' + subtitle;
+      parts.push(appMessagesManager.wrapSenderToPeer(message));
     }
-  }
 
-  let titleAdditionHTML = '';
-  if(audioEl.showSender) {
-    titleAdditionHTML = `<div class="sent-time">${formatDateAccordingToToday(new Date(message.date * 1000))}</div>`;
+    descriptionEl.append(...joinElementsWith(parts, ' • '));
   }
 
   const html = `
   <div class="audio-details">
-    <div class="audio-title"><middle-ellipsis-element data-font-weight="${audioEl.dataset.fontWeight}">${title}</middle-ellipsis-element>${titleAdditionHTML}</div>
-    <div class="audio-subtitle"><div class="audio-time"></div>${subtitle || '<div></div>'}</div>
+    <div class="audio-title"></div>
+    <div class="audio-subtitle"><div class="audio-time"></div></div>
   </div>`;
-  
   audioEl.insertAdjacentHTML('beforeend', html);
 
+  const titleEl = audioEl.querySelector('.audio-title') as HTMLElement;
+
+  const middleEllipsisEl = new MiddleEllipsisElement();
+  middleEllipsisEl.dataset.fontWeight = audioEl.dataset.fontWeight;
+  if(isVoice) {
+    middleEllipsisEl.append(appMessagesManager.wrapSenderToPeer(message));
+  } else {
+    middleEllipsisEl.innerHTML = doc.audioTitle || doc.fileName;
+  }
+
+  titleEl.append(middleEllipsisEl);
+
+  if(audioEl.showSender) {
+    titleEl.append(appMessagesManager.wrapSentTime(message));
+  }
+  
+  const subtitleDiv = audioEl.querySelector('.audio-subtitle') as HTMLDivElement;
+  subtitleDiv.append(descriptionEl);
+
   const onLoad = () => {
-    const subtitleDiv = audioEl.querySelector('.audio-subtitle') as HTMLDivElement;
     let launched = false;
 
     let progressLine = new MediaProgressLine(audioEl.audio, doc.supportsStreaming);
@@ -317,7 +333,7 @@ function wrapAudio(audioEl: AudioElement) {
     audioEl.addAudioListener('ended', () => {
       audioEl.classList.remove('audio-show-progress');
       // Reset subtitle
-      subtitleDiv.lastChild.replaceWith(subtitle);
+      subtitleDiv.lastChild.replaceWith(descriptionEl);
       launched = false;
     });
 
@@ -519,9 +535,9 @@ export default class AudioElement extends HTMLElement {
           onClick();
         }
       } else {
-        if(doc.supportsStreaming) {
+        // if(doc.supportsStreaming) {
           onLoad(false);
-        }
+        // }
 
         if(doc.thumbs) {
           const imgs: HTMLImageElement[] = [];
@@ -606,6 +622,8 @@ export default class AudioElement extends HTMLElement {
                   this.listenerSetter.remove(pauseListener);
                 });
               } else {
+                preloader = constructDownloadPreloader();
+
                 const load = () => {
                   const download = getDownloadPromise();
                   preloader.attach(downloadDiv, false, download);
@@ -619,7 +637,10 @@ export default class AudioElement extends HTMLElement {
 
             this.append(downloadDiv);
 
+            this.classList.add('downloading');
+
             this.readyPromise.then(() => {
+              this.classList.remove('downloading');
               downloadDiv.classList.add('downloaded');
               setTimeout(() => {
                 downloadDiv.remove();

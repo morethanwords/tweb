@@ -454,14 +454,17 @@
   &-subtitle {
     font-size: .875rem;
     color: var(--secondary-text-color);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
     display: flex;
 
     @include respond-to(handhelds) {
       font-size: .75rem;
     }
+  }
+
+  &-title,
+  &-time, 
+  &-subtitle {
+    @include text-overflow();
   }
 
   // * for audio
@@ -483,12 +486,9 @@
   // * for audio
   &-title, 
   &:not(.audio-show-progress) &-subtitle {
-    white-space: nowrap;
-		overflow: hidden;
 		max-width: 100%;
-		text-overflow: ellipsis;
   }
-  
+
   &.is-voice {
     .audio-time {
       line-height: 1;
@@ -535,9 +535,10 @@
     .audio-play-icon {
       z-index: 1;
       background-color: transparent;
+      opacity: 1;
 
       @include animation-level(2) {
-        transition: transform .25 ease-in-out, background-color .2s ease-in-out;
+        transition: transform .25s ease-in-out, background-color .2s ease-in-out, opacity .2s ease-in-out;
       }
 
       .part {
@@ -554,6 +555,18 @@
       object-fit: cover;
       width: inherit;
       height: inherit;
+    }
+
+    &:not(.corner-download) {
+      .audio-download {
+        background-color: rgba(0, 0, 0, .3);
+      }
+
+      &.downloading {
+        .audio-play-icon {
+          opacity: 0;
+        }
+      }
     }
   }
 }

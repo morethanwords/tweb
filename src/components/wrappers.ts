@@ -8,7 +8,7 @@ import type Chat from './chat/chat';
 import { getEmojiToneIndex } from '../vendor/emoji';
 import { readBlobAsText } from '../helpers/blob';
 import { deferredPromise } from '../helpers/cancellablePromise';
-import { formatDateAccordingToToday, months } from '../helpers/date';
+import { formatFullSentTime } from '../helpers/date';
 import mediaSizes, { ScreenSize } from '../helpers/mediaSizes';
 import { formatBytes } from '../helpers/number';
 import { IS_SAFARI } from '../environment/userAgent';
@@ -46,6 +46,8 @@ import { clearBadCharsAndTrim } from '../helpers/cleanSearchText';
 import blur from '../helpers/blur';
 import IS_WEBP_SUPPORTED from '../environment/webpSupport';
 import MEDIA_MIME_TYPES_SUPPORTED from '../environment/mediaMimeTypesSupport';
+import { MiddleEllipsisElement } from './middleEllipsis';
+import { joinElementsWith } from '../lib/langPack';
 
 const MAX_VIDEO_AUTOPLAY_SIZE = 50 * 1024 * 1024; // 50 MB
 
@@ -487,20 +489,6 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
   return res;
 }
 
-export const formatDate = (timestamp: number, monthShort = false, withYear = true) => {
-  const date = new Date(timestamp * 1000);
-  
-  let month = months[date.getMonth()];
-  if(monthShort) month = month.slice(0, 3);
-
-  let str = month + ' ' + date.getDate();
-  if(withYear) {
-    str += ', ' + date.getFullYear();
-  }
-  
-  return str + ' at ' + date.getHours() + ':' + ('0' + date.getMinutes()).slice(-2);
-};
-
 rootScope.addEventListener('download_start', (docId) => {
   const elements = Array.from(document.querySelectorAll(`.document[data-doc-id="${docId}"]`)) as HTMLElement[];
   elements.forEach(element => {
@@ -525,7 +513,7 @@ export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showS
 
   const doc = (message.media.document || message.media.webpage.document) as MyDocument;
   const uploading = message.pFlags.is_outgoing && message.media?.preloader;
-  if(doc.type === 'audio' || doc.type === 'voice') {
+  if(doc.type === 'audio' || doc.type === 'voice' || doc.type === 'round') {
     const audioElement = new AudioElement();
     audioElement.dataset.mid = '' + message.mid;
     audioElement.dataset.peerId = '' + message.peerId;
@@ -589,26 +577,37 @@ export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showS
 
   //let fileName = stringMiddleOverflow(doc.file_name || 'Unknown.file', 26);
   let fileName = doc.fileName || 'Unknown.file';
-  let size = formatBytes(doc.size);
+  const descriptionEl = document.createElement('div');
+  descriptionEl.classList.add('document-description');
+  const descriptionParts: (HTMLElement | string | DocumentFragment)[] = [formatBytes(doc.size)];
   
   if(withTime) {
-    size += ' · ' + formatDate(doc.date);
+    descriptionParts.push(formatFullSentTime(doc.date));
   }
 
   if(showSender) {
-    size += ' · ' + appMessagesManager.getSenderToPeerText(message);
+    descriptionParts.push(appMessagesManager.wrapSenderToPeer(message));
   }
 
-  let titleAdditionHTML = '';
-  if(showSender) {
-    titleAdditionHTML = `<div class="sent-time">${formatDateAccordingToToday(new Date(message.date * 1000))}</div>`;
-  }
-  
   docDiv.innerHTML = `
   ${cacheContext.downloaded && !uploading ? '' : `<div class="document-download"></div>`}
-  <div class="document-name"><middle-ellipsis-element data-font-weight="${fontWeight}">${fileName}</middle-ellipsis-element>${titleAdditionHTML}</div>
-  <div class="document-size">${size}</div>
+  <div class="document-name"></div>
+  <div class="document-size"></div>
   `;
+
+  const nameDiv = docDiv.querySelector('.document-name') as HTMLElement;
+  const middleEllipsisEl = new MiddleEllipsisElement();
+  middleEllipsisEl.dataset.fontWeight = '' + fontWeight;
+  middleEllipsisEl.innerHTML = fileName;
+
+  nameDiv.append(middleEllipsisEl);
+
+  if(showSender) {
+    nameDiv.append(appMessagesManager.wrapSentTime(message));
+  }
+
+  const sizeDiv = docDiv.querySelector('.document-size') as HTMLElement;
+  sizeDiv.append(...joinElementsWith(descriptionParts, ' · '));
 
   docDiv.prepend(icoDiv);
 

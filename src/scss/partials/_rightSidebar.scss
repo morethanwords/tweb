@@ -514,14 +514,15 @@
       white-space: pre-wrap;
       text-overflow: ellipsis;
       word-break: break-word;
-
-      &.sender {
-        margin-top: .125rem;
-      }
     }
 
     .sent-time {
       margin: 1px 0 0;
+    }
+
+    .sender-title {
+      display: block;
+      margin-top: .25rem;
     }
 
     .checkbox-field {
