@@ -267,22 +267,24 @@ class AppMediaPlaybackController {
     } else if(isVoice) {
       const peerId = message.fromId || message.peerId;
       const peerPhoto = appPeersManager.getPeerPhoto(peerId);
-      const result = appAvatarsManager.loadAvatar(peerId, peerPhoto, 'photo_small');
-      if(result.cached) {
-        const url = await result.loadPromise;
-        artwork.push({
-          src: url,
-          sizes: '160x160',
-          type: 'image/jpeg'
-        });
-      } else {
-        result.loadPromise.then((url) => {
-          if(this.playingMedia !== playingMedia || !url) {
-            return;
-          }
-
-          this.setNewMediadata(message);
-        });
+      if(peerPhoto) {
+        const result = appAvatarsManager.loadAvatar(peerId, peerPhoto, 'photo_small');
+        if(result.cached) {
+          const url = await result.loadPromise;
+          artwork.push({
+            src: url,
+            sizes: '160x160',
+            type: 'image/jpeg'
+          });
+        } else {
+          result.loadPromise.then((url) => {
+            if(this.playingMedia !== playingMedia || !url) {
+              return;
+            }
+  
+            this.setNewMediadata(message);
+          });
+        }
       }
 
       title = appPeersManager.getPeerTitle(peerId, true, false);

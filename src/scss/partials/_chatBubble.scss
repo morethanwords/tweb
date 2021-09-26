@@ -1691,6 +1691,10 @@ $bubble-margin: .25rem;
   .replies {
     user-select: none;
 
+    .c-ripple__circle {
+      background-color: var(--light-primary-color);
+    }
+
     .rp {
       width: 100%;
       height: 100%;

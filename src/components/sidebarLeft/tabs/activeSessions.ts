@@ -9,7 +9,7 @@ import { SettingSection } from "..";
 import Button from "../../button";
 import Row from "../../row";
 import { Authorization } from "../../../layer";
-import { formatDateAccordingToToday } from "../../../helpers/date";
+import { formatDateAccordingToTodayNew } from "../../../helpers/date";
 import { attachContextMenuListener, openBtnMenu, positionMenu } from "../../misc";
 import ButtonMenu from "../../buttonMenu";
 import apiManager from "../../../lib/mtproto/mtprotoworker";
@@ -35,7 +35,7 @@ export default class AppActiveSessionsTab extends SliderSuperTab {
         title: [auth.app_name, auth.app_version].join(' '),
         subtitle: [auth.ip, auth.country].join(' - '),
         clickable: true,
-        titleRight: auth.pFlags.current ? undefined : formatDateAccordingToToday(new Date(Math.max(auth.date_active, auth.date_created) * 1000))
+        titleRight: auth.pFlags.current ? undefined : formatDateAccordingToTodayNew(new Date(Math.max(auth.date_active, auth.date_created) * 1000))
       });
 
       row.container.dataset.hash = auth.hash;

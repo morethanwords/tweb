@@ -584,6 +584,8 @@ const lang = {
   "AreYouSureBlockContact2": "Are you sure you want to block **%1$s**?",
   "UserBlocked": "User blocked",
   "UserUnblocked": "User unblocked",
+  "AudioUnknownArtist": "Unknown artist",
+  "AudioUnknownTitle": "Unknown title",
 
   // * macos
   "AccountSettings.Filters": "Chat Folders",

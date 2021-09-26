@@ -189,6 +189,10 @@
       //transform: scale(0);
     }
   }
+  
+  &-description {
+    @include text-overflow();
+  }
 
   &:not(.corner-download) .preloader-container:not(.preloader-streamable) {
     transform: scale(1) !important;

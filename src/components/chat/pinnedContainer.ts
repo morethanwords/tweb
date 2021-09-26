@@ -22,7 +22,14 @@ export default class PinnedContainer {
   private close: HTMLElement;
   protected wrapper: HTMLElement;
 
-  constructor(protected topbar: ChatTopbar, protected chat: Chat, public listenerSetter: ListenerSetter, protected className: string, public divAndCaption: DivAndCaption<(title: string | HTMLElement, subtitle: string | HTMLElement, message?: any) => void>, onClose?: () => void | Promise<boolean>) {
+  constructor(
+    protected topbar: ChatTopbar, 
+    protected chat: Chat, 
+    public listenerSetter: ListenerSetter, 
+    protected className: string, 
+    public divAndCaption: DivAndCaption<(title: string | HTMLElement | DocumentFragment, subtitle: string | HTMLElement | DocumentFragment, message?: any) => void>, 
+    onClose?: () => void | Promise<boolean>
+  ) {
     /* const prev = this.divAndCaption.fill;
     this.divAndCaption.fill = (mid, title, subtitle) => {
       this.divAndCaption.container.dataset.mid = '' + mid;
@@ -87,7 +94,7 @@ export default class PinnedContainer {
     this.topbar.setUtilsWidth();
   }
 
-  public fill(title: string | HTMLElement, subtitle: string | HTMLElement, message: any) {
+  public fill(title: string | HTMLElement | DocumentFragment, subtitle: string | HTMLElement | DocumentFragment, message: any) {
     this.divAndCaption.container.dataset.peerId = '' + message.peerId;
     this.divAndCaption.container.dataset.mid = '' + message.mid;
     this.divAndCaption.fill(title, subtitle, message);

@@ -297,7 +297,7 @@ export class AppSidebarLeft extends SidebarSlider {
         name: 'SharedMusicTab2',
         type: 'music'
       }, {
-        inputFilter: 'inputMessagesFilterVoice',
+        inputFilter: 'inputMessagesFilterRoundVoice',
         name: 'SharedVoiceTab2',
         type: 'voice'
       }], 

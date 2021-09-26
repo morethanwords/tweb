@@ -862,7 +862,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
         name: 'SharedMusicTab2',
         type: 'music'
       }, {
-        inputFilter: 'inputMessagesFilterVoice',
+        inputFilter: 'inputMessagesFilterRoundVoice',
         name: 'SharedVoiceTab2',
         type: 'voice'
       }], 
