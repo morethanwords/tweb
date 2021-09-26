@@ -8,7 +8,7 @@ import { SliderSuperTab } from "../../slider";
 import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
 import appUsersManager from "../../../lib/appManagers/appUsersManager";
 import InputSearch from "../../inputSearch";
-import { isMobile } from "../../../helpers/userAgent";
+import { IS_MOBILE } from "../../../environment/userAgent";
 import { canFocus } from "../../../helpers/dom/canFocus";
 import windowSize from "../../../helpers/windowSize";
 import ButtonCorner from "../../buttonCorner";
@@ -75,7 +75,7 @@ export default class AppContactsTab extends SliderSuperTab {
   }
 
   protected onOpenAfterTimeout() {
-    if(isMobile || !canFocus(true)) return;
+    if(IS_MOBILE || !canFocus(true)) return;
     this.inputSearch.input.focus();
   }
 

@@ -8,7 +8,7 @@ import rootScope from "../lib/rootScope";
 import appMessagesManager from "../lib/appManagers/appMessagesManager";
 import appDocsManager, {MyDocument} from "../lib/appManagers/appDocsManager";
 import { CancellablePromise, deferredPromise } from "../helpers/cancellablePromise";
-import { isApple, isSafari } from "../helpers/userAgent";
+import { IS_APPLE, IS_SAFARI } from "../environment/userAgent";
 import { MOUNT_CLASS_TO } from "../config/debug";
 import appDownloadManager from "../lib/appManagers/appDownloadManager";
 import simulateEvent from "../helpers/dom/dispatchEvent";
@@ -16,7 +16,7 @@ import type { SearchSuperContext } from "./appSearchSuper.";
 import { copy, deepEqual } from "../helpers/object";
 import { DocumentAttribute, Message, MessageMedia, PhotoSize } from "../layer";
 import appPhotosManager from "../lib/appManagers/appPhotosManager";
-import { isTouchSupported } from "../helpers/touchSupport";
+import { IS_TOUCH_SUPPORTED } from "../environment/touchSupport";
 import appAvatarsManager from "../lib/appManagers/appAvatarsManager";
 import appPeersManager from "../lib/appManagers/appPeersManager";
 import I18n from "../lib/langPack";
@@ -34,7 +34,7 @@ type HTMLMediaElement = HTMLAudioElement | HTMLVideoElement;
 
 const SHOULD_USE_SAFARI_FIX = (() => {
   try {
-    return isSafari && +navigator.userAgent.match(/ Version\/(\d+)/)[1] < 14;
+    return IS_SAFARI && +navigator.userAgent.match(/ Version\/(\d+)/)[1] < 14;
   } catch(err) {
     return false;
   }
@@ -296,8 +296,8 @@ class AppMediaPlaybackController {
     }
 
     if(!artwork.length) {
-      if(isApple) {
-        if(isTouchSupported) {
+      if(IS_APPLE) {
+        if(IS_TOUCH_SUPPORTED) {
           artwork.push({
             src: `assets/img/apple-touch-icon-precomposed.png`,
             sizes: '180x180',

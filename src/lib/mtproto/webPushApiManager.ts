@@ -17,7 +17,7 @@ import rootScope from "../rootScope";
 import { ServiceWorkerNotificationsClearTask, ServiceWorkerPingTask, ServiceWorkerPushClickTask } from "../serviceWorker/index.service";
 import apiManager from "./mtprotoworker";
 import I18n, { LangPackKey } from "../langPack";
-import { isMobile } from "../../helpers/userAgent";
+import { IS_MOBILE } from "../../environment/userAgent";
 import appRuntimeManager from "../appManagers/appRuntimeManager";
 
 export type PushSubscriptionNotifyType = 'init' | 'subscribe' | 'unsubscribe';
@@ -163,8 +163,8 @@ export class WebPushApiManager {
 
     const lang: ServiceWorkerPingTask['payload']['lang'] = {} as any;
     const ACTIONS_LANG_MAP: Record<keyof ServiceWorkerPingTask['payload']['lang'], LangPackKey> = {
-      push_action_mute1d: isMobile ? 'PushNotification.Action.Mute1d.Mobile' : 'PushNotification.Action.Mute1d',
-      push_action_settings: isMobile ? 'PushNotification.Action.Settings.Mobile' : 'PushNotification.Action.Settings',
+      push_action_mute1d: IS_MOBILE ? 'PushNotification.Action.Mute1d.Mobile' : 'PushNotification.Action.Mute1d',
+      push_action_settings: IS_MOBILE ? 'PushNotification.Action.Settings.Mobile' : 'PushNotification.Action.Settings',
       push_message_nopreview: 'PushNotification.Message.NoPreview'
     };
 

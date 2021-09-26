@@ -9,7 +9,7 @@ import { cancelEvent } from "../../../helpers/dom/cancelEvent";
 import findUpClassName from "../../../helpers/dom/findUpClassName";
 import { fastRaf } from "../../../helpers/schedulers";
 import { pause } from "../../../helpers/schedulers/pause";
-import { isTouchSupported } from "../../../helpers/touchSupport";
+import { IS_TOUCH_SUPPORTED } from "../../../environment/touchSupport";
 import appEmojiManager from "../../../lib/appManagers/appEmojiManager";
 import appImManager from "../../../lib/appManagers/appImManager";
 import Config from "../../../lib/config";
@@ -20,6 +20,7 @@ import { emojiFromCodePoints } from "../../../vendor/emoji";
 import { putPreloader } from "../../misc";
 import Scrollable from "../../scrollable";
 import StickyIntersector from "../../stickyIntersector";
+import IS_EMOJI_SUPPORTED from "../../../environment/emojiSupport";
 
 const loadedURLs: Set<string> = new Set();
 export function appendEmoji(emoji: string, container: HTMLElement, prepend = false, unify = false) {
@@ -31,7 +32,7 @@ export function appendEmoji(emoji: string, container: HTMLElement, prepend = fal
   spanEmoji.classList.add('super-emoji');
 
   let kek: string;
-  if(unify && !RichTextProcessor.emojiSupported) {
+  if(unify && !IS_EMOJI_SUPPORTED) {
     kek = RichTextProcessor.wrapSingleEmoji(emoji);
   } else {
     emoji = RichTextProcessor.fixEmoji(emoji);
@@ -53,7 +54,7 @@ export function appendEmoji(emoji: string, container: HTMLElement, prepend = fal
     spanEmoji.append(first);
   }
 
-  if(spanEmoji.firstElementChild && !RichTextProcessor.emojiSupported) {
+  if(spanEmoji.firstElementChild && !IS_EMOJI_SUPPORTED) {
     const image = spanEmoji.firstElementChild as HTMLImageElement;
     
     const url = image.src;
@@ -295,7 +296,7 @@ export default class EmojiTab implements EmoticonsTab {
     const html = RichTextProcessor.wrapEmojiText(emoji, true);
     let inserted = false;
     if(window.getSelection) {
-      const savedRange = isTouchSupported ? undefined : emoticonsDropdown.getSavedRange();
+      const savedRange = IS_TOUCH_SUPPORTED ? undefined : emoticonsDropdown.getSavedRange();
       let sel = window.getSelection();
       if(savedRange) {
         sel.removeAllRanges();

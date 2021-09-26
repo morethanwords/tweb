@@ -11,7 +11,7 @@ import { deferredPromise } from '../helpers/cancellablePromise';
 import { formatDateAccordingToToday, months } from '../helpers/date';
 import mediaSizes, { ScreenSize } from '../helpers/mediaSizes';
 import { formatBytes } from '../helpers/number';
-import { isSafari } from '../helpers/userAgent';
+import { IS_SAFARI } from '../environment/userAgent';
 import { PhotoSize, StickerSet } from '../layer';
 import appDocsManager, { MyDocument } from "../lib/appManagers/appDocsManager";
 import appMessagesManager from '../lib/appManagers/appMessagesManager';
@@ -44,6 +44,8 @@ import isInDOM from '../helpers/dom/isInDOM';
 import lottieLoader from '../lib/lottieLoader';
 import { clearBadCharsAndTrim } from '../helpers/cleanSearchText';
 import blur from '../helpers/blur';
+import IS_WEBP_SUPPORTED from '../environment/webpSupport';
+import MEDIA_MIME_TYPES_SUPPORTED from '../environment/mediaMimeTypesSupport';
 
 const MAX_VIDEO_AUTOPLAY_SIZE = 50 * 1024 * 1024; // 50 MB
 
@@ -382,7 +384,7 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
           loadPromise = Promise.reject();
         } else if(!cacheContext.downloaded) { // * check for uploading video
           preloader.attach(container, false, null);
-          video.addEventListener(isSafari ? 'timeupdate' : 'canplay', () => {
+          video.addEventListener(IS_SAFARI ? 'timeupdate' : 'canplay', () => {
             preloader.detach();
           }, {once: true});
         }
@@ -640,10 +642,12 @@ export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showS
     } else if(doc.type === 'pdf') {
       download = appDocsManager.downloadDoc(doc, queueId);
       download.then(() => {
-        const cacheContext = appDownloadManager.getCacheContext(doc);
-        window.open(cacheContext.url);
+        setTimeout(() => { // wait for preloader animation end
+          const url = appDownloadManager.getCacheContext(doc).url;
+          window.open(url);
+        }, rootScope.settings.animationsEnabled ? 250 : 0);
       });
-    } else if(doc.type === 'photo' || doc.type === 'video' || doc.mime_type.indexOf('video/') === 0) {
+    } else if(MEDIA_MIME_TYPES_SUPPORTED.has(doc.mime_type)) {
       download = appDocsManager.downloadDoc(doc, queueId);
     } else {
       download = appDocsManager.saveDocFile(doc, queueId);
@@ -1149,7 +1153,7 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
       if(thumb && thumb._ !== 'photoPathSize' && toneIndex <= 0) {
         thumbImage = new Image();
 
-        if((webpWorkerController.isWebpSupported() || doc.pFlags.stickerThumbConverted || cacheContext.url)/*  && false */) {
+        if((IS_WEBP_SUPPORTED || doc.pFlags.stickerThumbConverted || cacheContext.url)/*  && false */) {
           renderImageFromUrl(thumbImage, appPhotosManager.getPreviewURLFromThumb(doc, thumb as PhotoSize.photoStrippedSize, true), afterRender);
           haveThumbCached = true;
         } else {

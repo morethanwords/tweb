@@ -19,7 +19,7 @@ import type { AppInlineBotsManager } from '../../lib/appManagers/appInlineBotsMa
 import type { AppMessagesIdsManager } from '../../lib/appManagers/appMessagesIdsManager';
 import type Chat from './chat';
 import Recorder from '../../../public/recorder.min';
-import { isTouchSupported } from "../../helpers/touchSupport";
+import { IS_TOUCH_SUPPORTED } from "../../environment/touchSupport";
 import apiManager from "../../lib/mtproto/mtprotoworker";
 //import Recorder from '../opus-recorder/dist/recorder.min';
 import opusDecodeController from "../../lib/opusDecodeController";
@@ -44,7 +44,7 @@ import rootScope from '../../lib/rootScope';
 import PopupPinMessage from '../popups/unpinMessage';
 import { tsNow } from '../../helpers/date';
 import appNavigationController, { NavigationItem } from '../appNavigationController';
-import { isMobile, isMobileSafari } from '../../helpers/userAgent';
+import { IS_MOBILE, IS_MOBILE_SAFARI } from '../../environment/userAgent';
 import I18n, { i18n, join, LangPackKey } from '../../lib/langPack';
 import { generateTail } from './bubbles';
 import findUpClassName from '../../helpers/dom/findUpClassName';
@@ -79,6 +79,7 @@ import PopupDeleteMessages from '../popups/deleteMessages';
 import fixSafariStickyInputFocusing, { IS_STICKY_INPUT_BUGGED } from '../../helpers/dom/fixSafariStickyInputFocusing';
 import { copy } from '../../helpers/object';
 import PopupPeer from '../popups/peer';
+import MEDIA_MIME_TYPES_SUPPORTED from '../../environment/mediaMimeTypesSupport';
 
 const RECORD_MIN_TIME = 500;
 const POSTING_MEDIA_NOT_ALLOWED = 'Posting media content isn\'t allowed in this group.';
@@ -331,9 +332,7 @@ export default class ChatInput {
         this.appImManager.openScheduled(this.chat.peerId);
       }, {listenerSetter: this.listenerSetter});
 
-      this.listenerSetter.add(rootScope)('scheduled_new', (e) => {
-        const peerId = e.peerId;
-
+      this.listenerSetter.add(rootScope)('scheduled_new', ({peerId}) => {
         if(this.chat.peerId !== peerId) {
           return;
         }
@@ -341,9 +340,7 @@ export default class ChatInput {
         this.btnScheduled.classList.remove('hide');
       });
 
-      this.listenerSetter.add(rootScope)('scheduled_delete', (e) => {
-        const peerId = e.peerId;
-
+      this.listenerSetter.add(rootScope)('scheduled_delete', ({peerId}) => {
         if(this.chat.peerId !== peerId) {
           return;
         }
@@ -370,7 +367,8 @@ export default class ChatInput {
       text: 'Chat.Input.Attach.PhotoOrVideo',
       onClick: () => {
         this.fileInput.value = '';
-        this.fileInput.setAttribute('accept', 'image/*, video/*');
+        const accept = [...MEDIA_MIME_TYPES_SUPPORTED].join(', ');
+        this.fileInput.setAttribute('accept', accept);
         this.willAttachType = 'media';
         this.fileInput.click();
       },
@@ -391,7 +389,7 @@ export default class ChatInput {
       onClick: () => {
         new PopupCreatePoll(this.chat).show();
       },
-      verify: (peerId, threadId) => this.appMessagesManager.canSendToPeer(peerId, threadId, 'send_polls') && peerId < 0
+      verify: (peerId, threadId) => peerId < 0 && this.appMessagesManager.canSendToPeer(peerId, threadId, 'send_polls')
     }];
 
     this.attachMenu = ButtonMenuToggle({noRipple: true, listenerSetter: this.listenerSetter}, 'top-left', this.attachMenuButtons);
@@ -491,8 +489,7 @@ export default class ChatInput {
       }
     });
 
-    this.listenerSetter.add(rootScope)('draft_updated', (e) => {
-      const {peerId, threadId, draft, force} = e;
+    this.listenerSetter.add(rootScope)('draft_updated', ({peerId, threadId, draft, force}) => {
       if(this.chat.threadId !== threadId || this.chat.peerId !== peerId) return;
       this.setDraft(draft, true, force);
     });
@@ -671,12 +668,12 @@ export default class ChatInput {
   };
 
   private onEmoticonsOpen = () => {
-    const toggleClass = isTouchSupported ? 'flip-icon' : 'active';
+    const toggleClass = IS_TOUCH_SUPPORTED ? 'flip-icon' : 'active';
     this.btnToggleEmoticons.classList.toggle(toggleClass, true);
   };
 
   private onEmoticonsClose = () => {
-    const toggleClass = isTouchSupported ? 'flip-icon' : 'active';
+    const toggleClass = IS_TOUCH_SUPPORTED ? 'flip-icon' : 'active';
     this.btnToggleEmoticons.classList.toggle(toggleClass, false);
   };
 
@@ -929,7 +926,7 @@ export default class ChatInput {
       }
     });
 
-    if(isTouchSupported) {
+    if(IS_TOUCH_SUPPORTED) {
       attachClickEvent(this.messageInput, (e) => {
         this.appImManager.selectTab(1); // * set chat tab for album orientation
         //this.saveScroll();
@@ -1619,7 +1616,7 @@ export default class ChatInput {
   };
 
   public clearInput(canSetDraft = true, fireEvent = true, clearValue = '') {
-    if(document.activeElement === this.messageInput && isMobileSafari) { // fix first char uppercase
+    if(document.activeElement === this.messageInput && IS_MOBILE_SAFARI) { // fix first char uppercase
       const i = document.createElement('input');
       document.body.append(i);
       fixSafariStickyInput(i);
@@ -1630,7 +1627,7 @@ export default class ChatInput {
       this.messageInputField.setValueSilently(clearValue);
     }
 
-    if(isTouchSupported) {
+    if(IS_TOUCH_SUPPORTED) {
       //this.messageInput.innerText = '';
     } else {
       //this.attachMessageInputField();
@@ -1978,7 +1975,7 @@ export default class ChatInput {
       scroll.scrollTo(scroll.scrollHeight, 'top', true, true, 200);
     } */
 
-    if(!isMobile) {
+    if(!IS_MOBILE) {
       appNavigationController.pushItem({
         type: 'input-helper',
         onPop: () => {

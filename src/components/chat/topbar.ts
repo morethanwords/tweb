@@ -14,7 +14,7 @@ import type { AppUsersManager } from "../../lib/appManagers/appUsersManager";
 import type Chat from "./chat";
 import { RIGHT_COLUMN_ACTIVE_CLASSNAME } from "../sidebarRight";
 import mediaSizes, { ScreenSize } from "../../helpers/mediaSizes";
-import { isSafari } from "../../helpers/userAgent";
+import { IS_SAFARI } from "../../environment/userAgent";
 import rootScope from "../../lib/rootScope";
 import AvatarElement from "../avatar";
 import Button from "../button";
@@ -685,7 +685,7 @@ export default class ChatTopbar {
     //return;
     if(this.setUtilsRAF) window.cancelAnimationFrame(this.setUtilsRAF);
 
-    if(isSafari && resize) {
+    if(IS_SAFARI && resize) {
       this.chatUtils.classList.add('hide');
     }
 
@@ -695,7 +695,7 @@ export default class ChatTopbar {
       //mutationRAF = window.requestAnimationFrame(() => {
         
         //setTimeout(() => {
-          if(isSafari && resize) {
+          if(IS_SAFARI && resize) {
             this.chatUtils.classList.remove('hide');
           }
           /* this.chatInfo.style.removeProperty('--utils-width');

@@ -28,7 +28,7 @@ import AppAddMembersTab from "./tabs/addMembers";
 import { i18n_, LangPackKey } from "../../lib/langPack";
 import { ButtonMenuItemOptions } from "../buttonMenu";
 import CheckboxField from "../checkboxField";
-import { isMobileSafari } from "../../helpers/userAgent";
+import { IS_MOBILE_SAFARI } from "../../environment/userAgent";
 import appNavigationController from "../appNavigationController";
 import findUpClassName from "../../helpers/dom/findUpClassName";
 import findUpTag from "../../helpers/dom/findUpTag";
@@ -531,7 +531,7 @@ export class AppSidebarLeft extends SidebarSlider {
       this.newBtnMenu.classList.add('is-hidden');
       this.toolsBtn.parentElement.firstElementChild.classList.toggle('state-back', true);
 
-      if(!isMobileSafari && !appNavigationController.findItemByType('global-search')) {
+      if(!IS_MOBILE_SAFARI && !appNavigationController.findItemByType('global-search')) {
         appNavigationController.pushItem({
           onPop: () => {
             close();

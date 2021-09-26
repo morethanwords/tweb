@@ -5,7 +5,7 @@
  */
 
 import mediaSizes from "../helpers/mediaSizes";
-import { isTouchSupported } from "../helpers/touchSupport";
+import { IS_TOUCH_SUPPORTED } from "../environment/touchSupport";
 import appImManager from "../lib/appManagers/appImManager";
 import appPollsManager, { Poll, PollResults } from "../lib/appManagers/appPollsManager";
 import serverTimeManager from "../lib/mtproto/serverTimeManager";
@@ -161,7 +161,7 @@ const setQuizHint = (solution: string, solution_entities: any[], onHide: () => v
   prevQuizHintOnHide = onHide;
   prevQuizHintTimeout = window.setTimeout(() => {
     hideQuizHint(element, onHide, prevQuizHintTimeout);
-  }, isTouchSupported ? 5000 : 7000);
+  }, IS_TOUCH_SUPPORTED ? 5000 : 7000);
 };
 
 export default class PollElement extends HTMLElement {

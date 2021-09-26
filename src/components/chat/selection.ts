@@ -8,7 +8,7 @@ import type { AppMessagesManager } from "../../lib/appManagers/appMessagesManage
 import type ChatBubbles from "./bubbles";
 import type ChatInput from "./input";
 import type Chat from "./chat";
-import { isTouchSupported } from "../../helpers/touchSupport";
+import { IS_TOUCH_SUPPORTED } from "../../environment/touchSupport";
 import Button from "../button";
 import ButtonIcon from "../buttonIcon";
 import CheckboxField from "../checkboxField";
@@ -19,7 +19,7 @@ import SetTransition from "../singleTransition";
 import ListenerSetter from "../../helpers/listenerSetter";
 import PopupSendNow from "../popups/sendNow";
 import appNavigationController, { NavigationItem } from "../appNavigationController";
-import { isMobileSafari } from "../../helpers/userAgent";
+import { IS_MOBILE_SAFARI } from "../../environment/userAgent";
 import I18n, { i18n, _i18n } from "../../lib/langPack";
 import findUpClassName from "../../helpers/dom/findUpClassName";
 import blurActiveElement from "../../helpers/dom/blurActiveElement";
@@ -85,7 +85,7 @@ class AppSelection {
 
     this.navigationType = 'multiselect-' + randomLong() as any;
 
-    if(isTouchSupported) {
+    if(IS_TOUCH_SUPPORTED) {
       this.listenerSetter.add(this.listenElement)('touchend', () => {
         if(!this.isSelecting) return;
         this.selectedText = getSelectedText();
@@ -367,7 +367,7 @@ class AppSelection {
       }
     } */
 
-    if(!isTouchSupported) {
+    if(!IS_TOUCH_SUPPORTED) {
       this.listenElement.classList.toggle('no-select', this.isSelecting);
 
       if(wasSelecting) {
@@ -390,7 +390,7 @@ class AppSelection {
     const forwards = !!size || forceSelection;
     this.onToggleSelection && this.onToggleSelection(forwards);
 
-    if(!isMobileSafari) {
+    if(!IS_MOBILE_SAFARI) {
       if(forwards) {
         appNavigationController.pushItem({
           type: this.navigationType,

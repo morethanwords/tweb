@@ -11,7 +11,7 @@ import EventListenerBase from "../helpers/eventListenerBase";
 import mediaSizes from "../helpers/mediaSizes";
 import { clamp } from '../helpers/number';
 import { pause } from '../helpers/schedulers/pause';
-import { isAndroid, isApple, isAppleMobile, isSafari } from "../helpers/userAgent";
+import { IS_ANDROID, IS_APPLE, IS_APPLE_MOBILE, IS_SAFARI } from "../environment/userAgent";
 import { logger, LogTypes } from "./logger";
 import apiManager from "./mtproto/mtprotoworker";
 
@@ -107,7 +107,7 @@ export class RLottiePlayer extends EventListenerBase<{
     // * Skip ratio (30fps)
     let skipRatio: number;
     if(options.skipRatio !== undefined) skipRatio = options.skipRatio;
-    else if((isAndroid || isAppleMobile || (isApple && !isSafari)) && this.width < 100 && this.height < 100) {
+    else if((IS_ANDROID || IS_APPLE_MOBILE || (IS_APPLE && !IS_SAFARI)) && this.width < 100 && this.height < 100) {
       skipRatio = 0.5;
     }
 
@@ -125,7 +125,7 @@ export class RLottiePlayer extends EventListenerBase<{
         this.height = Math.round(this.height * pixelRatio);
       } else if(pixelRatio > 1) {
         if(this.width > 100 && this.height > 100) {
-          if(isApple || !mediaSizes.isMobile) {
+          if(IS_APPLE || !mediaSizes.isMobile) {
             /* this.width = Math.round(this.width * (pixelRatio - 1));
             this.height = Math.round(this.height * (pixelRatio - 1)); */
             this.width = Math.round(this.width * pixelRatio);
@@ -146,7 +146,7 @@ export class RLottiePlayer extends EventListenerBase<{
     // * Cache frames params
     if(!options.noCache/*  && false */) {
       // проверка на размер уже после скейлинга, сделано для попапа и сайдбара, где стикеры 80х80 и 68х68, туда нужно 75%
-      if(isApple && this.width > 100 && this.height > 100) {
+      if(IS_APPLE && this.width > 100 && this.height > 100) {
         this.cachingDelta = 2; //2 // 50%
       } else if(this.width < 100 && this.height < 100) {
         this.cachingDelta = Infinity; // 100%
@@ -303,7 +303,7 @@ export class RLottiePlayer extends EventListenerBase<{
   public requestFrame(frameNo: number) {
     if(this.frames[frameNo]) {
       this.renderFrame(this.frames[frameNo], frameNo);
-    } else if(isSafari) {
+    } else if(IS_SAFARI) {
       this.sendQuery('renderFrame', frameNo);
     } else {
       if(!this.clamped.length) { // fix detached
@@ -480,7 +480,7 @@ class QueryableWorker extends EventListenerBase<any> {
   }
 
   public sendQuery(queryMethod: string, ...args: any[]) {
-    if(isSafari) {
+    if(IS_SAFARI) {
       this.worker.postMessage({
         'queryMethod': queryMethod,
         'queryMethodArguments': args

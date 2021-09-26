@@ -7,7 +7,7 @@
 import attachListNavigation from "../../helpers/dom/attachListNavigation";
 import EventListenerBase from "../../helpers/eventListenerBase";
 import { safeAssign } from "../../helpers/object";
-import { isMobile } from "../../helpers/userAgent";
+import { IS_MOBILE } from "../../environment/userAgent";
 import rootScope from "../../lib/rootScope";
 import appNavigationController, { NavigationItem } from "../appNavigationController";
 import SetTransition from "../singleTransition";
@@ -68,7 +68,7 @@ export default class AutocompleteHelper extends EventListenerBase<{
 
     this.detach = detach;
     this.resetTarget = resetTarget;
-    if(!isMobile && !this.navigationItem) {
+    if(!IS_MOBILE && !this.navigationItem) {
       this.navigationItem = {
         type: 'autocomplete-helper',
         onPop: () => {

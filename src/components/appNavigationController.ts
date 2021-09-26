@@ -5,7 +5,7 @@
  */
 
 import { MOUNT_CLASS_TO } from "../config/debug";
-import { isMobileSafari } from "../helpers/userAgent";
+import { IS_MOBILE_SAFARI } from "../environment/userAgent";
 import { logger } from "../lib/logger";
 import { doubleRaf } from "../helpers/schedulers";
 import blurActiveElement from "../helpers/dom/blurActiveElement";
@@ -67,7 +67,7 @@ export class AppNavigationController {
       }
     }, {capture: true, passive: false});
 
-    if(isMobileSafari) {
+    if(IS_MOBILE_SAFARI) {
       const options = {passive: true};
       window.addEventListener('touchstart', (e) => {
         if(e.touches.length > 1) return;

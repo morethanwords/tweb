@@ -30,6 +30,7 @@ import { SocketProxyTask } from './transports/socketProxied';
 import telegramMeWebManager from './telegramMeWebManager';
 import { CacheStorageDbName } from '../cacheStorage';
 import { pause } from '../../helpers/schedulers/pause';
+import IS_WEBP_SUPPORTED from '../../environment/webpSupport';
 
 type Task = {
   taskId: number,
@@ -318,7 +319,7 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
       this.postMessagesWaiting.forEach(args => this.postMessage(...args));
       this.postMessagesWaiting.length = 0;
 
-      const isWebpSupported = webpWorkerController.isWebpSupported();
+      const isWebpSupported = IS_WEBP_SUPPORTED;
       this.log('WebP supported:', isWebpSupported);
       this.postMessage({type: 'webpSupport', payload: isWebpSupported});
       this.postMessage({type: 'userAgent', payload: navigator.userAgent});

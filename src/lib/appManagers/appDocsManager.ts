@@ -15,7 +15,6 @@ import { Document, InputFileLocation, InputMedia, PhotoSize } from '../../layer'
 import referenceDatabase, { ReferenceContext } from '../mtproto/referenceDatabase';
 import opusDecodeController from '../opusDecodeController';
 import { RichTextProcessor } from '../richtextprocessor';
-import webpWorkerController from '../webp/webpWorkerController';
 import appDownloadManager, { DownloadBlob } from './appDownloadManager';
 import appPhotosManager from './appPhotosManager';
 import blur from '../../helpers/blur';
@@ -23,10 +22,15 @@ import apiManager from '../mtproto/mtprotoworker';
 import { MOUNT_CLASS_TO } from '../../config/debug';
 import { getFullDate } from '../../helpers/date';
 import rootScope from '../rootScope';
+import IS_WEBP_SUPPORTED from '../../environment/webpSupport';
 
 export type MyDocument = Document.document;
 
 // TODO: если залить картинку файлом, а потом перезайти в диалог - превьюшка заново скачается
+
+const EXTENSION_MIME_TYPE_MAP: {[key: string]: string} = {
+  mov: 'video/quicktime'
+};
 
 export class AppDocsManager {
   private docs: {[docId: string]: MyDocument} = {};
@@ -135,7 +139,7 @@ export class AppDocsManager {
           }
 
           // * there can be no thumbs, then it is a document
-          if(/* apiDoc.thumbs &&  */doc.mime_type === 'image/webp' && (doc.thumbs || webpWorkerController.isWebpSupported())) {
+          if(/* apiDoc.thumbs &&  */doc.mime_type === 'image/webp' && (doc.thumbs || IS_WEBP_SUPPORTED)) {
             doc.type = 'sticker';
             doc.sticker = 1;
           }
@@ -158,28 +162,32 @@ export class AppDocsManager {
     });
     
     if(!doc.mime_type) {
-      switch(doc.type) {
-        case 'gif':
-        case 'video':
-        case 'round':
-          doc.mime_type = 'video/mp4';
-          break;
-        case 'sticker':
-          doc.mime_type = 'image/webp';
-          break;
-        case 'audio':
-          doc.mime_type = 'audio/mpeg';
-          break;
-        case 'voice':
-          doc.mime_type = 'audio/ogg';
-          break;
-        default:
-          doc.mime_type = 'application/octet-stream';
-          break;
+      const ext = (doc.file_name || '').split('.').pop();
+      const mappedMimeType = ext && EXTENSION_MIME_TYPE_MAP[ext.toLowerCase()];
+      if(mappedMimeType) {
+        doc.mime_type = mappedMimeType;
+      } else {
+        switch(doc.type) {
+          case 'gif':
+          case 'video':
+          case 'round':
+            doc.mime_type = 'video/mp4';
+            break;
+          case 'sticker':
+            doc.mime_type = 'image/webp';
+            break;
+          case 'audio':
+            doc.mime_type = 'audio/mpeg';
+            break;
+          case 'voice':
+            doc.mime_type = 'audio/ogg';
+            break;
+          default:
+            doc.mime_type = 'application/octet-stream';
+            break;
+        }
       }
-    }
-
-    if(doc.mime_type === 'application/pdf') {
+    } else if(doc.mime_type === 'application/pdf') {
       doc.type = 'pdf';
     }
 

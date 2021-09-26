@@ -9,10 +9,10 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import { isTouchSupported } from "../touchSupport";
+import { IS_TOUCH_SUPPORTED } from "../../environment/touchSupport";
 
 export default function placeCaretAtEnd(el: HTMLElement, ignoreTouchCheck = false) {
-  if(isTouchSupported && (!ignoreTouchCheck || document.activeElement !== el)) {
+  if(IS_TOUCH_SUPPORTED && (!ignoreTouchCheck || document.activeElement !== el)) {
     return;
   }
   

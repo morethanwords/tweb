@@ -6,7 +6,7 @@
 
 import { cancelEvent } from "../helpers/dom/cancelEvent";
 import { safeAssign } from "../helpers/object";
-import { isTouchSupported } from "../helpers/touchSupport";
+import { IS_TOUCH_SUPPORTED } from "../environment/touchSupport";
 import rootScope from "../lib/rootScope";
 
 const getEvent = (e: TouchEvent | MouseEvent) => {
@@ -48,7 +48,7 @@ export default class SwipeHandler {
   }
 
   public setListeners() {
-    if(!isTouchSupported) {
+    if(!IS_TOUCH_SUPPORTED) {
       this.element.addEventListener('mousedown', this.handleStart, false);
       attachGlobalListenerTo.addEventListener('mouseup', this.reset);
     } else {
@@ -58,7 +58,7 @@ export default class SwipeHandler {
   }
 
   public removeListeners() {
-    if(!isTouchSupported) {
+    if(!IS_TOUCH_SUPPORTED) {
       this.element.removeEventListener('mousedown', this.handleStart, false);
       attachGlobalListenerTo.removeEventListener('mouseup', this.reset);
     } else {
@@ -72,7 +72,7 @@ export default class SwipeHandler {
       cancelEvent(e);
     } */
 
-    if(isTouchSupported) {
+    if(IS_TOUCH_SUPPORTED) {
       attachGlobalListenerTo.removeEventListener('touchmove', this.handleMove, {capture: true});
     } else {
       attachGlobalListenerTo.removeEventListener('mousemove', this.handleMove);
@@ -96,7 +96,7 @@ export default class SwipeHandler {
     this.xDown = e.clientX;
     this.yDown = e.clientY;
 
-    if(isTouchSupported) {
+    if(IS_TOUCH_SUPPORTED) {
       attachGlobalListenerTo.addEventListener('touchmove', this.handleMove, {passive: false, capture: true});
     } else {
       attachGlobalListenerTo.addEventListener('mousemove', this.handleMove, false);
@@ -127,7 +127,7 @@ export default class SwipeHandler {
 
       this.hadMove = true;
 
-      if(!isTouchSupported) {
+      if(!IS_TOUCH_SUPPORTED) {
         this.element.style.setProperty('cursor', this.cursor, 'important');
       }
 

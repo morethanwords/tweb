@@ -22,6 +22,7 @@ import rootScope from "../../lib/rootScope";
 import RichTextProcessor from "../../lib/richtextprocessor";
 import { MediaSize } from "../../helpers/mediaSizes";
 import { attachClickEvent } from "../../helpers/dom/clickEvent";
+import MEDIA_MIME_TYPES_SUPPORTED from '../../environment/mediaMimeTypesSupport';
 
 type SendFileParams = Partial<{
   file: File,
@@ -368,13 +369,11 @@ export default class PopupNewMedia extends PopupElement {
       willAttach.type = 'document';
     } */
 
-    files = files.filter(file => {
-      if(willAttach.type === 'media') {
-        return ['image/', 'video/'].find(s => file.type.indexOf(s) === 0);
-      } else {
-        return true;
-      }
-    });
+    if(willAttach.type === 'media') {
+      files = files.filter(file => MEDIA_MIME_TYPES_SUPPORTED.has(file.type));
+    } else {
+      files = files.slice();
+    }
 
     Promise.all(files.map(this.attachFile)).then(results => {
       this.container.classList.remove('is-media', 'is-document', 'is-album');

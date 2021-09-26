@@ -5,10 +5,10 @@
  */
 
 import rootScope from "../../lib/rootScope";
-import { isMobile, isApple } from "../userAgent";
+import { IS_MOBILE, IS_APPLE } from "../../environment/userAgent";
 
 export default function isSendShortcutPressed(e: KeyboardEvent) {
-  if(e.key === 'Enter' && !isMobile && !e.isComposing) {
+  if(e.key === 'Enter' && !IS_MOBILE && !e.isComposing) {
     /* if(e.ctrlKey || e.metaKey) {
       this.messageInput.innerHTML += '<br>';
       placeCaretAtEnd(this.message)
@@ -22,8 +22,8 @@ export default function isSendShortcutPressed(e: KeyboardEvent) {
 
       return true;
     } else {
-      const secondaryKey = isApple ? e.metaKey : e.ctrlKey;
-      if(e.shiftKey || (isApple ? e.ctrlKey : e.metaKey)) {
+      const secondaryKey = IS_APPLE ? e.metaKey : e.ctrlKey;
+      if(e.shiftKey || (IS_APPLE ? e.ctrlKey : e.metaKey)) {
         return;
       }
 

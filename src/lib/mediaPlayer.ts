@@ -5,8 +5,8 @@
  */
 
 import appMediaPlaybackController from "../components/appMediaPlaybackController";
-import { isAppleMobile } from "../helpers/userAgent";
-import { isTouchSupported } from "../helpers/touchSupport";
+import { IS_APPLE_MOBILE } from "../environment/userAgent";
+import { IS_TOUCH_SUPPORTED } from "../environment/touchSupport";
 import RangeSelector from "../components/rangeSelector";
 import { onVideoLoad } from "../helpers/files";
 import { cancelEvent } from "../helpers/dom/cancelEvent";
@@ -314,12 +314,12 @@ export default class VideoPlayer extends EventListenerBase<{
       });
 
       this.listenerSetter.add(video)('click', () => {
-        if(!isTouchSupported) {
+        if(!IS_TOUCH_SUPPORTED) {
           this.togglePlay();
         }
       });
 
-      if(isTouchSupported) {
+      if(IS_TOUCH_SUPPORTED) {
         this.listenerSetter.add(player)('click', () => {
           this.toggleControls();
         });
@@ -390,7 +390,7 @@ export default class VideoPlayer extends EventListenerBase<{
       }); */
 
       this.listenerSetter.add(video)('dblclick', () => {
-        if(!isTouchSupported) {
+        if(!IS_TOUCH_SUPPORTED) {
           this.toggleFullScreen(fullScreenButton);
         }
       });
@@ -537,7 +537,7 @@ export default class VideoPlayer extends EventListenerBase<{
     const player = this.wrapper;
 
     // * https://caniuse.com/#feat=fullscreen
-    if(isAppleMobile) {
+    if(IS_APPLE_MOBILE) {
       const video = this.video as any;
       video.webkitEnterFullscreen();
       video.enterFullscreen();

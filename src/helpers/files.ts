@@ -6,7 +6,7 @@
 
 import { makeMediaSize, MediaSize } from "./mediaSizes";
 import { pause } from "./schedulers/pause";
-import { isAppleMobile } from "./userAgent";
+import { IS_APPLE_MOBILE } from "../environment/userAgent";
 
 export function scaleMediaElement(options: {
   media: CanvasImageSource, 
@@ -76,7 +76,7 @@ export function onVideoLoad(video: HTMLVideoElement) {
       return;
     }
 
-    video.addEventListener(isAppleMobile ? 'loadeddata' : 'canplay', () => resolve(), {once: true});
+    video.addEventListener(IS_APPLE_MOBILE ? 'loadeddata' : 'canplay', () => resolve(), {once: true});
   });
 }
 

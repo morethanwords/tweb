@@ -38,7 +38,7 @@ import mediaSizes from "../helpers/mediaSizes";
 import appImManager from "../lib/appManagers/appImManager";
 import positionElementByIndex from "../helpers/dom/positionElementByIndex";
 import cleanSearchText from "../helpers/cleanSearchText";
-import { isTouchSupported } from "../helpers/touchSupport";
+import { IS_TOUCH_SUPPORTED } from "../environment/touchSupport";
 import handleTabSwipe from "../helpers/dom/handleTabSwipe";
 import windowSize from "../helpers/windowSize";
 import { formatPhoneNumber } from "../helpers/formatPhoneNumber";
@@ -133,7 +133,7 @@ class SearchContextMenu {
       });
     };
 
-    if(isTouchSupported) {
+    if(IS_TOUCH_SUPPORTED) {
 
     } else {
       attachContextMenuListener(attachTo, onContextMenu as any);
@@ -326,7 +326,7 @@ export default class AppSearchSuper {
     this.tabsContainer = document.createElement('div');
     this.tabsContainer.classList.add('search-super-tabs-container', 'tabs-container');
 
-    if(isTouchSupported) {
+    if(IS_TOUCH_SUPPORTED) {
       handleTabSwipe(this.tabsContainer, (next) => {
         const prevId = this.selectTab.prevId();
         this.selectTab(next ? prevId + 1 : prevId - 1);

@@ -4,12 +4,12 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { isTouchSupported } from "../touchSupport";
-import { isMobile, isSafari } from "../userAgent";
+import { IS_TOUCH_SUPPORTED } from "../../environment/touchSupport";
+import { IS_MOBILE, IS_SAFARI } from "../../environment/userAgent";
 import findUpClassName from "./findUpClassName";
 import fixSafariStickyInput from "./fixSafariStickyInput";
 
-export const IS_STICKY_INPUT_BUGGED = isSafari && isMobile && isTouchSupported;
+export const IS_STICKY_INPUT_BUGGED = IS_SAFARI && IS_MOBILE && IS_TOUCH_SUPPORTED;
 
 if(IS_STICKY_INPUT_BUGGED) {
   let key: 'clientY' | 'pageY' = 'clientY';

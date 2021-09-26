@@ -14,7 +14,7 @@ import { bytesFromHex } from "../../helpers/bytes";
 import { CancellablePromise } from "../../helpers/cancellablePromise";
 import { getFileNameByLocation } from "../../helpers/fileName";
 import { safeReplaceArrayInObject, isObject } from "../../helpers/object";
-import { isSafari } from "../../helpers/userAgent";
+import { IS_SAFARI } from "../../environment/userAgent";
 import { InputFileLocation, InputMedia, InputPhoto, Photo, PhotoSize, PhotosPhotos } from "../../layer";
 import apiManager from "../mtproto/mtprotoworker";
 import referenceDatabase, { ReferenceContext } from "../mtproto/referenceDatabase";
@@ -165,7 +165,7 @@ export class AppPhotosManager {
 
     let mimeType: string;
     if(isSticker) {
-      mimeType = isSafari ? 'image/png' : 'image/webp';
+      mimeType = IS_SAFARI ? 'image/png' : 'image/webp';
     } else {
       mimeType = 'image/jpeg';
     }

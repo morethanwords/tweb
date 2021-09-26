@@ -6,7 +6,7 @@
 
 import findUpClassName from "../helpers/dom/findUpClassName";
 import sequentialDom from "../helpers/sequentialDom";
-import {isTouchSupported} from "../helpers/touchSupport";
+import {IS_TOUCH_SUPPORTED} from "../environment/touchSupport";
 import rootScope from "../lib/rootScope";
 
 let rippleClickId = 0;
@@ -63,7 +63,7 @@ export function ripple(elem: HTMLElement, callback: (id: number) => Promise<bool
         setTimeout(cb, duration / 2);
       }
 
-      if(!isTouchSupported) {
+      if(!IS_TOUCH_SUPPORTED) {
         window.removeEventListener('contextmenu', handler);
       }
 
@@ -136,7 +136,7 @@ export function ripple(elem: HTMLElement, callback: (id: number) => Promise<bool
 
   // TODO: rename this variable
   let touchStartFired = false;
-  if(isTouchSupported) {
+  if(IS_TOUCH_SUPPORTED) {
     let touchEnd = () => {
       handler && handler();
     };

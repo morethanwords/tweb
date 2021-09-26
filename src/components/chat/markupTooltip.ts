@@ -8,8 +8,8 @@ import type { AppImManager } from "../../lib/appManagers/appImManager";
 import RichTextProcessor from "../../lib/richtextprocessor";
 import ButtonIcon from "../buttonIcon";
 import { clamp } from "../../helpers/number";
-import { isTouchSupported } from "../../helpers/touchSupport";
-import { isApple, isMobile } from "../../helpers/userAgent";
+import { IS_TOUCH_SUPPORTED } from "../../environment/touchSupport";
+import { IS_APPLE, IS_MOBILE } from "../../environment/userAgent";
 import appNavigationController from "../appNavigationController";
 import { _i18n } from "../../lib/langPack";
 import { cancelEvent } from "../../helpers/dom/cancelEvent";
@@ -313,7 +313,7 @@ export default class MarkupTooltip {
     
     this.container.classList.add('is-visible');
 
-    if(!isMobile) {
+    if(!IS_MOBILE) {
       appNavigationController.pushItem({
         type: 'markup',
         onPop: () => {
@@ -337,7 +337,7 @@ export default class MarkupTooltip {
     //this.log('onMouseUpSingle');
     this.waitingForMouseUp = false;
 
-    if(isTouchSupported) {
+    if(IS_TOUCH_SUPPORTED) {
       cancelEvent(e);
       if(this.mouseUpCounter++ === 0) {
         this.resetSelection(this.savedRange);
@@ -362,7 +362,7 @@ export default class MarkupTooltip {
   }
 
   public cancelClosening() {
-    if(isTouchSupported && !isApple) {
+    if(IS_TOUCH_SUPPORTED && !IS_APPLE) {
       document.removeEventListener('mouseup', this.onMouseUpSingle);
       document.addEventListener('mouseup', (e) => {
         cancelEvent(e);
@@ -394,8 +394,8 @@ export default class MarkupTooltip {
         return;
       }
 
-      if(isTouchSupported) {
-        if(isApple) {
+      if(IS_TOUCH_SUPPORTED) {
+        if(IS_APPLE) {
           this.show();
           this.setTooltipPosition(); // * because can skip this in .show();
         } else {

@@ -19,7 +19,7 @@ import App from '../../config/app';
 import DEBUG, { MOUNT_CLASS_TO } from '../../config/debug';
 import AppStorage from '../storage';
 import { Chat } from '../../layer';
-import { isMobile } from '../../helpers/userAgent';
+import { IS_MOBILE } from '../../environment/userAgent';
 import DATABASE_STATE from '../../config/databases/state';
 import sessionStorage from '../sessionStorage';
 import { nextRandomUint } from '../../helpers/random';
@@ -112,7 +112,7 @@ export const STATE_INIT: State = {
   recentSearch: [],
   version: STATE_VERSION,
   authState: {
-    _: isMobile ? 'authStateSignIn' : 'authStateSignQr'
+    _: IS_MOBILE ? 'authStateSignIn' : 'authStateSignQr'
   },
   hiddenPinnedMessages: {},
   settings: {

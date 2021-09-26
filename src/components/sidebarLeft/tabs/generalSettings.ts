@@ -12,7 +12,7 @@ import CheckboxField from "../../checkboxField";
 import RadioField from "../../radioField";
 import appStateManager from "../../../lib/appManagers/appStateManager";
 import rootScope from "../../../lib/rootScope";
-import { isApple } from "../../../helpers/userAgent";
+import { IS_APPLE } from "../../../environment/userAgent";
 import Row from "../../row";
 import AppBackgroundTab from "./background";
 import { LangPackKey, _i18n } from "../../../lib/langPack";
@@ -120,7 +120,7 @@ export default class AppGeneralSettingsTab extends SliderSuperTab {
         }),
         subtitleLangKey: 'General.SendShortcut.NewLine.Enter'
       });
-      _i18n(ctrlEnterRow.radioField.main, 'General.SendShortcut.CtrlEnter', [isApple ? '⌘' : 'Ctrl']);
+      _i18n(ctrlEnterRow.radioField.main, 'General.SendShortcut.CtrlEnter', [IS_APPLE ? '⌘' : 'Ctrl']);
       
       form.append(enterRow.container, ctrlEnterRow.container);
       container.append(form);

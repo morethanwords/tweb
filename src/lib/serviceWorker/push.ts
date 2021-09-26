@@ -11,7 +11,7 @@
 
 import { Database } from "../../config/databases";
 import DATABASE_STATE from "../../config/databases/state";
-import { isFirefox } from "../../helpers/userAgent";
+import { IS_FIREFOX } from "../../environment/userAgent";
 import IDBStorage from "../idb";
 import { log, ServiceWorkerPingTask, ServiceWorkerPushClickTask } from "./index.service";
 
@@ -256,7 +256,7 @@ export function closeAllNotifications() {
 }
 
 function userInvisibleIsSupported() {
-  return isFirefox;
+  return IS_FIREFOX;
 }
 
 function fireNotification(obj: PushNotificationObject, settings: PushStorage['push_settings'], lang: PushStorage['push_lang']) {

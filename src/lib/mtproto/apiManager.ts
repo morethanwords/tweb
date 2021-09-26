@@ -23,11 +23,12 @@ import type { MethodDeclMap } from '../../layer';
 import { CancellablePromise, deferredPromise } from '../../helpers/cancellablePromise';
 import { bytesFromHex, bytesToHex } from '../../helpers/bytes';
 //import { clamp } from '../../helpers/number';
-import { ctx, isSafari } from '../../helpers/userAgent';
+import { IS_SAFARI } from '../../environment/userAgent';
 import App from '../../config/app';
 import { MOUNT_CLASS_TO } from '../../config/debug';
 import IDBStorage from '../idb';
 import CryptoWorker from "../crypto/cryptoworker";
+import ctx from '../../environment/ctx';
 
 /// #if !MTPROTO_WORKER
 import rootScope from '../rootScope';
@@ -203,7 +204,7 @@ export class ApiManager {
 
     /// #if MTPROTO_HTTP_UPLOAD
     // @ts-ignore
-    const transportType: TransportType = connectionType === 'upload' && isSafari ? 'https' : 'websocket';
+    const transportType: TransportType = connectionType === 'upload' && IS_SAFARI ? 'https' : 'websocket';
     //const transportType: TransportType = connectionType !== 'client' ? 'https' : 'websocket';
     /// #else
     // @ts-ignore
