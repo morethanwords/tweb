@@ -17,7 +17,7 @@ import rootScope from "../lib/rootScope";
 import './middleEllipsis';
 import { SearchSuperContext } from "./appSearchSuper.";
 import { cancelEvent } from "../helpers/dom/cancelEvent";
-import { attachClickEvent, detachClickEvent } from "../helpers/dom/clickEvent";
+import { attachClickEvent } from "../helpers/dom/clickEvent";
 import LazyLoadQueue from "./lazyLoadQueue";
 import { CancellablePromise, deferredPromise } from "../helpers/cancellablePromise";
 import ListenerSetter, { Listener } from "../helpers/listenerSetter";
@@ -28,10 +28,12 @@ import { MiddleEllipsisElement } from "./middleEllipsis";
 import htmlToSpan from "../helpers/dom/htmlToSpan";
 import { formatFullSentTime } from "../helpers/date";
 import { formatBytes } from "../helpers/number";
+import throttleWithRaf from "../helpers/schedulers/throttleWithRaf";
 
 rootScope.addEventListener('messages_media_read', ({mids, peerId}) => {
   mids.forEach(mid => {
-    (Array.from(document.querySelectorAll('audio-element[data-mid="' + mid + '"][data-peer-id="' + peerId + '"].is-unread')) as AudioElement[]).forEach(elem => {
+    const attr = `[data-mid="${mid}"][data-peer-id="${peerId}"]`;
+    (Array.from(document.querySelectorAll(`audio-element.is-unread${attr}, .media-round.is-unread${attr}`)) as AudioElement[]).forEach(elem => {
       elem.classList.remove('is-unread');
     });
   });
@@ -80,11 +82,6 @@ function wrapVoiceMessage(audioEl: AudioElement) {
 
   const message = audioEl.message;
   const doc = (message.media.document || message.media.webpage.document) as MyDocument;
-  const isOut = message.fromId === rootScope.myId && message.peerId !== rootScope.myId;
-  let isUnread = message && message.pFlags.media_unread;
-  if(isUnread) {
-    audioEl.classList.add('is-unread');
-  }
 
   if(message.pFlags.out) {
     audioEl.classList.add('is-out');
@@ -154,113 +151,76 @@ function wrapVoiceMessage(audioEl: AudioElement) {
   let progress = audioEl.querySelector('.audio-waveform') as HTMLDivElement;
   
   const onLoad = () => {
-    let interval = 0;
-    let lastIndex = 0;
-
     let audio = audioEl.audio;
 
-    if(!audio.paused || (audio.currentTime > 0 && audio.currentTime !== audio.duration)) {
-      lastIndex = Math.round(audio.currentTime / audio.duration * barCount);
-      rects.slice(0, lastIndex + 1).forEach(node => node.classList.add('active'));
-    }
-
-    let start = () => {
-      clearInterval(interval);
-      interval = window.setInterval(() => {
-        if(lastIndex > svg.childElementCount || isNaN(audio.duration) || audio.paused) {
-          clearInterval(interval);
-          return;
-        }
-
-        lastIndex = Math.round(audio.currentTime / audio.duration * barCount);
+    const onTimeUpdate = () => {
+      const lastIndex = audio.currentTime === audio.duration ? 0 : Math.ceil(audio.currentTime / audio.duration * barCount);
         
-        //svg.children[lastIndex].setAttributeNS(null, 'fill', '#000');
-        //svg.children[lastIndex].classList.add('active'); #Иногда пропускает полоски..
-        rects.slice(0, lastIndex + 1).forEach(node => node.classList.add('active'));
-        //++lastIndex;
-        //console.log('lastIndex:', lastIndex, audio.currentTime);
-        //}, duration * 1000 / svg.childElementCount | 0/* 63 * duration / 10 */);
-      }, 20);
+      //svg.children[lastIndex].setAttributeNS(null, 'fill', '#000');
+      //svg.children[lastIndex].classList.add('active'); #Иногда пропускает полоски..
+      rects.forEach((node, idx) => node.classList.toggle('active', idx < lastIndex));
+      //++lastIndex;
+      //console.log('lastIndex:', lastIndex, audio.currentTime);
+      //}, duration * 1000 / svg.childElementCount | 0/* 63 * duration / 10 */);
     };
 
-    if(!audio.paused) {
-      start();
+    if(!audio.paused || (audio.currentTime > 0 && audio.currentTime !== audio.duration)) {
+      onTimeUpdate();
     }
 
-    audioEl.addAudioListener('play', () => {
-      if(isUnread && !isOut && audioEl.classList.contains('is-unread')) {
-        audioEl.classList.remove('is-unread');
-        appMessagesManager.readMessages(audioEl.message.peerId, [audioEl.message.mid]);
-        isUnread = false;
-      }
+    const throttledTimeUpdate = throttleWithRaf(onTimeUpdate);
+    audioEl.addAudioListener('timeupdate', throttledTimeUpdate);
+    audioEl.addAudioListener('ended', throttledTimeUpdate);
 
-      //rects.forEach(node => node.classList.remove('active'));
-      start();
-    });
-
-    audioEl.addAudioListener('pause', () => {
-      clearInterval(interval);
-    });
-    
-    audioEl.addAudioListener('ended', () => {
-      clearInterval(interval);
-      rects.forEach(node => node.classList.remove('active'));
-    });
-    
-    let mousedown = false, mousemove = false;
-    progress.addEventListener('mouseleave', (e) => {
-      if(mousedown) {
-        audio.play();
-        mousedown = false;
-      }
-      mousemove = false;
-    })
-    progress.addEventListener('mousemove', (e) => {
-      mousemove = true;
-      if(mousedown) scrub(e);
-    });
-    progress.addEventListener('mousedown', (e) => {
-      e.preventDefault();
-      if(e.button !== 1) return;
-      if(!audio.paused) {
-        audio.pause();
-      }
+    audioEl.readyPromise.then(() => {
+      let mousedown = false, mousemove = false;
+      progress.addEventListener('mouseleave', (e) => {
+        if(mousedown) {
+          audio.play();
+          mousedown = false;
+        }
+        mousemove = false;
+      })
+      progress.addEventListener('mousemove', (e) => {
+        mousemove = true;
+        if(mousedown) scrub(e);
+      });
+      progress.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        if(e.button !== 0) return;
+        if(!audio.paused) {
+          audio.pause();
+        }
+        
+        scrub(e);
+        mousedown = true;
+      });
+      progress.addEventListener('mouseup', (e) => {
+        if(mousemove && mousedown) {
+          audio.play();
+          mousedown = false;
+        }
+      });
+      attachClickEvent(progress, (e) => {
+        cancelEvent(e);
+        if(!audio.paused) scrub(e);
+      });
       
-      scrub(e);
-      mousedown = true;
-    });
-    progress.addEventListener('mouseup', (e) => {
-      if (mousemove && mousedown) {
-        audio.play();
-        mousedown = false;
+      function scrub(e: MouseEvent | TouchEvent) {
+        let offsetX: number;
+        if(e instanceof MouseEvent) {
+          offsetX = e.offsetX;
+        } else { // touch
+          const rect = (e.target as HTMLElement).getBoundingClientRect();
+          offsetX = e.targetTouches[0].pageX - rect.left;
+        }
+        
+        const scrubTime = offsetX / availW /* width */ * audio.duration;
+        audio.currentTime = scrubTime;
       }
     });
-    attachClickEvent(progress, (e) => {
-      cancelEvent(e);
-      if(!audio.paused) scrub(e);
-    });
-    
-    function scrub(e: MouseEvent | TouchEvent) {
-      let offsetX: number;
-      if(e instanceof MouseEvent) {
-        offsetX = e.offsetX;
-      } else { // touch
-        const rect = (e.target as HTMLElement).getBoundingClientRect();
-        offsetX = e.targetTouches[0].pageX - rect.left;
-      }
-      
-      const scrubTime = offsetX / availW /* width */ * audio.duration;
-      lastIndex = Math.round(scrubTime / audio.duration * barCount);
-      
-      rects.slice(0, lastIndex + 1).forEach(node => node.classList.add('active'));
-      for(let i = lastIndex + 1; i < rects.length; ++i) {
-        rects[i].classList.remove('active')
-      }
-      audio.currentTime = scrubTime;
-    }
     
     return () => {
-      clearInterval(interval);
       progress.remove();
       progress = null;
       audio = null;
@@ -367,8 +327,11 @@ function wrapAudio(audioEl: AudioElement) {
 function constructDownloadPreloader(tryAgainOnFail = true) {
   const preloader = new ProgressivePreloader({cancelable: true, tryAgainOnFail});
   preloader.construct();
-  preloader.circle.setAttributeNS(null, 'r', '23');
-  preloader.totalLength = 143.58203125;
+
+  if(!tryAgainOnFail) {
+    preloader.circle.setAttributeNS(null, 'r', '23');
+    preloader.totalLength = 143.58203125;
+  }
 
   return preloader;
 }
@@ -388,7 +351,7 @@ export default class AudioElement extends HTMLElement {
   private listenerSetter = new ListenerSetter();
   private onTypeDisconnect: () => void;
   public onLoad: (autoload?: boolean) => void;
-  private readyPromise: CancellablePromise<void>;
+  public readyPromise: CancellablePromise<void>;
 
   public render() {
     this.classList.add('audio');
@@ -414,6 +377,11 @@ export default class AudioElement extends HTMLElement {
     const downloadDiv = document.createElement('div');
     downloadDiv.classList.add('audio-download');
 
+    const isUnread = doc.type !== 'audio' && this.message && this.message.pFlags.media_unread;
+    if(isUnread) {
+      this.classList.add('is-unread');
+    }
+
     if(uploading) {
       this.classList.add('is-outgoing');
       this.append(downloadDiv);
@@ -424,10 +392,16 @@ export default class AudioElement extends HTMLElement {
     const audioTimeDiv = this.querySelector('.audio-time') as HTMLDivElement;
     audioTimeDiv.innerHTML = durationStr;
 
-    const onLoad = this.onLoad = (autoload = true) => {
+    const onLoad = this.onLoad = (autoload: boolean) => {
       this.onLoad = undefined;
 
       const audio = this.audio = appMediaPlaybackController.addMedia(this.message.peerId, this.message.media.document || this.message.media.webpage.document, this.message.mid, autoload);
+
+      this.readyPromise = deferredPromise<void>();
+      if(this.audio.readyState >= 2) this.readyPromise.resolve();
+      else {
+        this.addAudioListener('canplay', () => this.readyPromise.resolve(), {once: true});
+      }
 
       this.onTypeDisconnect = onTypeLoad();
       
@@ -492,174 +466,129 @@ export default class AudioElement extends HTMLElement {
     if(!isOutgoing) {
       let preloader: ProgressivePreloader = this.preloader;
 
-      const getDownloadPromise = () => appDocsManager.downloadDoc(doc);
+      onLoad(doc.type !== 'audio' && !this.noAutoDownload);
 
-      if(isRealVoice) {
-        if(!preloader) {
-          preloader = constructDownloadPreloader();
+      if(doc.thumbs) {
+        const imgs: HTMLImageElement[] = [];
+        const wrapped = wrapPhoto({
+          photo: doc, 
+          message: null, 
+          container: toggle, 
+          boxWidth: 48, 
+          boxHeight: 48,
+          loadPromises: this.loadPromises,
+          withoutPreloader: true,
+          lazyLoadQueue: this.lazyLoadQueue
+        });
+        toggle.style.width = toggle.style.height = '';
+        if(wrapped.images.thumb) imgs.push(wrapped.images.thumb);
+        if(wrapped.images.full) imgs.push(wrapped.images.full);
+
+        this.classList.add('audio-with-thumb');
+        imgs.forEach(img => img.classList.add('audio-thumb'));
+      }
+
+      const r = (shouldPlay: boolean) => {
+        if(this.audio.src) {
+          return;
         }
 
-        const load = () => {
-          const download = getDownloadPromise();
-          preloader.attach(downloadDiv, false, download);
+        appMediaPlaybackController.resolveWaitingForLoadMedia(this.message.peerId, this.message.mid);
 
-          if(!downloadDiv.parentElement) {
-            this.append(downloadDiv);
-          }
-
-          (download as Promise<any>).then(() => {
-            detachClickEvent(this, onClick);
-            onLoad();
-
-            downloadDiv.classList.add('downloaded');
-            setTimeout(() => {
-              downloadDiv.remove();
-            }, 200);
-          });
-
-          return {download};
-        };
-
-        // preloader.construct();
-        preloader.setManual();
-        preloader.attach(downloadDiv);
-        preloader.setDownloadFunction(load);
-
-        const onClick = (e?: Event) => {
-          preloader.onClick(e);
-        };
-    
-        attachClickEvent(this, onClick);
-
-        if(!this.noAutoDownload) {
-          onClick();
-        }
-      } else {
-        // if(doc.supportsStreaming) {
-          onLoad(false);
-        // }
-
-        if(doc.thumbs) {
-          const imgs: HTMLImageElement[] = [];
-          const wrapped = wrapPhoto({
-            photo: doc, 
-            message: null, 
-            container: toggle, 
-            boxWidth: 48, 
-            boxHeight: 48,
-            loadPromises: this.loadPromises,
-            withoutPreloader: true,
-            lazyLoadQueue: this.lazyLoadQueue
-          });
-          toggle.style.width = toggle.style.height = '';
-          if(wrapped.images.thumb) imgs.push(wrapped.images.thumb);
-          if(wrapped.images.full) imgs.push(wrapped.images.full);
-
-          this.classList.add('audio-with-thumb');
-          imgs.forEach(img => img.classList.add('audio-thumb'));
-        }
-
-        //if(appMediaPlaybackController.mediaExists(mid)) { // чтобы показать прогресс, если аудио уже было скачано
-          //onLoad();
-        //} else {
-          const r = (e: Event) => {
-            if(!this.audio) {
-              const togglePlay = onLoad(false);
-            }
-
-            if(this.audio.src) {
-              return;
-            }
-            
-            appMediaPlaybackController.resolveWaitingForLoadMedia(this.message.peerId, this.message.mid);
+        const onDownloadInit = () => {
+          if(shouldPlay) {
             appMediaPlaybackController.willBePlayed(this.audio); // prepare for loading audio
-
-            if(IS_SAFARI) {
+  
+            if(IS_SAFARI && !this.audio.autoplay) {
               this.audio.autoplay = true;
             }
-
-            // togglePlay(undefined, true);
-
-            this.readyPromise = deferredPromise<void>();
-            if(this.audio.readyState >= 2) this.readyPromise.resolve();
-            else {
-              this.addAudioListener('canplay', () => this.readyPromise.resolve(), {once: true});
-            }
-
-            if(!preloader) {
-              if(doc.supportsStreaming) {
-                this.classList.add('corner-download');
-
-                let pauseListener: Listener;
-                const onPlay = () => {
-                  const preloader = constructDownloadPreloader(false);
-                  const deferred = deferredPromise<void>();
-                  deferred.notifyAll({done: 75, total: 100});
-                  deferred.catch(() => {
-                    this.audio.pause();
-                    appMediaPlaybackController.willBePlayed(undefined);
-                  });
-                  deferred.cancel = () => {
-                    deferred.cancel = noop;
-                    const err = new Error();
-                    (err as any).type = 'CANCELED';
-                    deferred.reject(err);
-                  };
-                  preloader.attach(downloadDiv, false, deferred);
-
-                  pauseListener = this.addAudioListener('pause', () => {
-                    deferred.cancel();
-                  }, {once: true}) as any;
-                };
-
-                /* if(!this.audio.paused) {
-                  onPlay();
-                } */
-
-                const playListener: any = this.addAudioListener('play', onPlay);
-                this.readyPromise.then(() => {
-                  this.listenerSetter.remove(playListener);
-                  this.listenerSetter.remove(pauseListener);
-                });
-              } else {
-                preloader = constructDownloadPreloader();
-
-                const load = () => {
-                  const download = getDownloadPromise();
-                  preloader.attach(downloadDiv, false, download);
-                  return {download};
-                };
-
-                preloader.setDownloadFunction(load);
-                load();
-              }
-            }
-
-            this.append(downloadDiv);
-
-            this.classList.add('downloading');
-
-            this.readyPromise.then(() => {
-              this.classList.remove('downloading');
-              downloadDiv.classList.add('downloaded');
-              setTimeout(() => {
-                downloadDiv.remove();
-              }, 200);
-  
-              //setTimeout(() => {
-                // release loaded audio
-                if(appMediaPlaybackController.willBePlayedMedia === this.audio) {
-                  this.audio.play();
-                  appMediaPlaybackController.willBePlayed(undefined);
-                }
-              //}, 10e3);
-            });
-          };
-
-          if(!this.audio?.src) {
-            attachClickEvent(toggle, r, {once: true, capture: true, passive: false});
           }
-        //}
+        };
+
+        onDownloadInit();
+
+        if(!preloader) {
+          if(doc.supportsStreaming) {
+            this.classList.add('corner-download');
+
+            let pauseListener: Listener;
+            const onPlay = () => {
+              const preloader = constructDownloadPreloader(false);
+              const deferred = deferredPromise<void>();
+              deferred.notifyAll({done: 75, total: 100});
+              deferred.catch(() => {
+                this.audio.pause();
+                appMediaPlaybackController.willBePlayed(undefined);
+              });
+              deferred.cancel = () => {
+                deferred.cancel = noop;
+                const err = new Error();
+                (err as any).type = 'CANCELED';
+                deferred.reject(err);
+              };
+              preloader.attach(downloadDiv, false, deferred);
+
+              pauseListener = this.addAudioListener('pause', () => {
+                deferred.cancel();
+              }, {once: true}) as any;
+
+              onDownloadInit();
+            };
+
+            /* if(!this.audio.paused) {
+              onPlay();
+            } */
+
+            const playListener: any = this.addAudioListener('play', onPlay);
+            this.readyPromise.then(() => {
+              this.listenerSetter.remove(playListener);
+              this.listenerSetter.remove(pauseListener);
+            });
+          } else {
+            preloader = constructDownloadPreloader();
+
+            const load = () => {
+              onDownloadInit();
+
+              const download = appDocsManager.downloadDoc(doc);
+              preloader.attach(downloadDiv, false, download);
+              return {download};
+            };
+
+            preloader.setDownloadFunction(load);
+            load();
+          }
+        }
+
+        this.append(downloadDiv);
+
+        this.classList.add('downloading');
+
+        this.readyPromise.then(() => {
+          this.classList.remove('downloading');
+          downloadDiv.classList.add('downloaded');
+          setTimeout(() => {
+            downloadDiv.remove();
+          }, 200);
+  
+          //setTimeout(() => {
+            // release loaded audio
+            if(appMediaPlaybackController.willBePlayedMedia === this.audio) {
+              this.audio.play();
+              appMediaPlaybackController.willBePlayed(undefined);
+            }
+          //}, 10e3);
+        });
+      };
+
+      if(!this.audio?.src) {
+        if(doc.type !== 'audio' && !this.noAutoDownload) {
+          r(false);
+        } else {
+          attachClickEvent(toggle, () => {
+            r(true);
+          }, {once: true, capture: true, passive: false, listenerSetter: this.listenerSetter});
+        }
       }
     } else if(uploading) {
       this.preloader.attach(downloadDiv, false);

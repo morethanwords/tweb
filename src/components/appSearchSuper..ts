@@ -720,7 +720,8 @@ export default class AppSearchSuper {
             voiceAsMusic: true,
             showSender,
             searchContext: this.copySearchContext(inputFilter),
-            lazyLoadQueue: this.lazyLoadQueue
+            lazyLoadQueue: this.lazyLoadQueue,
+            noAutoDownload: true
           });
 
           if((['audio', 'voice', 'round'] as MyDocument['type'][]).includes(message.media.document.type)) {

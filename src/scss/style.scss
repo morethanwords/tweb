@@ -1244,15 +1244,30 @@ middle-ellipsis-element {
   .video-time {
     padding: 0 .375rem;
     background-color: var(--message-highlightning-color) !important;
+
+    &:before, &:after {
+      margin-left: .25rem;
+    }
+  }
+
+  &.is-unread .video-time {
+    &:before {
+      order: 1;
+      width: .5rem;
+      height: .5rem;
+      background-color: #fff;
+      border-radius: 50%;
+      content: " ";
+    }
   }
 
   &.is-paused .video-time {
     &:after {
       content: $tgico-nosound;
-      padding-left: .25rem;
       display: flex;
       align-items: center;
       font-size: 1.125rem;
+      order: 2;
     }
   }
 }

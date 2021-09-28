@@ -402,7 +402,7 @@
       }
 
       &.active, 
-      .audio.is-unread:not(.is-out) & {
+      .audio.is-unread:not(.is-out) .audio-toggle:not(.playing) + & {
         opacity: 1;
       }
     }

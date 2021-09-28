@@ -69,14 +69,14 @@ export async function createPosterForVideo(url: string) {
   ]);
 }
 
-export function onVideoLoad(video: HTMLVideoElement) {
+export function onMediaLoad(media: HTMLMediaElement, readyState = media.HAVE_METADATA, useCanplayOnIos?: boolean) {
   return new Promise<void>((resolve) => {
-    if(video.readyState >= video.HAVE_METADATA) {
+    if(media.readyState >= readyState) {
       resolve();
       return;
     }
 
-    video.addEventListener(IS_APPLE_MOBILE ? 'loadeddata' : 'canplay', () => resolve(), {once: true});
+    media.addEventListener(IS_APPLE_MOBILE && !useCanplayOnIos ? 'loadeddata' : 'canplay', () => resolve(), {once: true});
   });
 }
 

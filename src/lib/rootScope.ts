@@ -128,6 +128,7 @@ export type BroadcastEvents = {
   
   'download_start': string,
   'download_progress': any,
+  'document_downloaded': MyDocument,
 
   'context_menu_toggle': boolean
 };

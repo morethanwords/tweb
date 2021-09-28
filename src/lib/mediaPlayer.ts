@@ -8,7 +8,7 @@ import appMediaPlaybackController from "../components/appMediaPlaybackController
 import { IS_APPLE_MOBILE } from "../environment/userAgent";
 import { IS_TOUCH_SUPPORTED } from "../environment/touchSupport";
 import RangeSelector from "../components/rangeSelector";
-import { onVideoLoad } from "../helpers/files";
+import { onMediaLoad } from "../helpers/files";
 import { cancelEvent } from "../helpers/dom/cancelEvent";
 import ListenerSetter from "../helpers/listenerSetter";
 import ButtonMenu from "../components/buttonMenu";
@@ -427,7 +427,7 @@ export default class VideoPlayer extends EventListenerBase<{
     if(video.duration || initDuration) {
       timeDuration.innerHTML = String(Math.round(video.duration || initDuration)).toHHMMSS();
     } else {
-      onVideoLoad(video).then(() => {
+      onMediaLoad(video).then(() => {
         timeDuration.innerHTML = String(Math.round(video.duration)).toHHMMSS();
       });
     }
