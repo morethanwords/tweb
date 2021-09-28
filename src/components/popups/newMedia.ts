@@ -12,7 +12,7 @@ import { toast } from "../toast";
 import { prepareAlbum, wrapDocument } from "../wrappers";
 import CheckboxField from "../checkboxField";
 import SendContextMenu from "../chat/sendContextMenu";
-import { createPosterFromVideo, onVideoLoad } from "../../helpers/files";
+import { createPosterFromVideo, onMediaLoad } from "../../helpers/files";
 import { MyDocument } from "../../lib/appManagers/appDocsManager";
 import I18n, { i18n, LangPackKey } from "../../lib/langPack";
 import appDownloadManager from "../../lib/appManagers/appDownloadManager";
@@ -262,7 +262,7 @@ export default class PopupNewMedia extends PopupElement {
               video.pause();
             }, {once: true});
 
-            onVideoLoad(video).then(() => {
+            onMediaLoad(video).then(() => {
               params.width = video.videoWidth;
               params.height = video.videoHeight;
               params.duration = Math.floor(video.duration);

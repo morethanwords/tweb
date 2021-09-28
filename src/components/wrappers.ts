@@ -12,7 +12,7 @@ import { formatFullSentTime } from '../helpers/date';
 import mediaSizes, { ScreenSize } from '../helpers/mediaSizes';
 import { formatBytes } from '../helpers/number';
 import { IS_SAFARI } from '../environment/userAgent';
-import { PhotoSize, StickerSet } from '../layer';
+import { Message, PhotoSize, StickerSet } from '../layer';
 import appDocsManager, { MyDocument } from "../lib/appManagers/appDocsManager";
 import appMessagesManager from '../lib/appManagers/appMessagesManager';
 import appPhotosManager, { MyPhoto } from '../lib/appManagers/appPhotosManager';
@@ -31,7 +31,7 @@ import RichTextProcessor from '../lib/richtextprocessor';
 import appImManager from '../lib/appManagers/appImManager';
 import { SearchSuperContext } from './appSearchSuper.';
 import rootScope from '../lib/rootScope';
-import { onVideoLoad } from '../helpers/files';
+import { onMediaLoad } from '../helpers/files';
 import { animateSingle } from '../helpers/animation';
 import renderImageFromUrl from '../helpers/dom/renderImageFromUrl';
 import sequentialDom from '../helpers/sequentialDom';
@@ -77,7 +77,7 @@ mediaSizes.addEventListener('changeScreen', (from, to) => {
 export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTail, isOut, middleware, lazyLoadQueue, noInfo, group, onlyPreview, withoutPreloader, loadPromises, noPlayButton, noAutoDownload, size, searchContext}: {
   doc: MyDocument, 
   container?: HTMLElement, 
-  message?: any, 
+  message?: Message.message, 
   boxWidth?: number, 
   boxHeight?: number, 
   withTail?: boolean, 
@@ -172,6 +172,8 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
  
     const divRound = document.createElement('div');
     divRound.classList.add('media-round', 'z-depth-1');
+    divRound.dataset.mid = '' + message.mid;
+    divRound.dataset.peerId = '' + message.peerId;
 
     const size = mediaSizes.active.round;
     const halfSize = size.width / 2;
@@ -189,6 +191,11 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
     circle.style.strokeDashoffset = '' + roundVideoCircumference;
     
     spanTime.classList.add('tgico');
+
+    const isUnread = message.pFlags.media_unread;
+    if(isUnread) {
+      divRound.classList.add('is-unread');
+    }
 
     const canvas = document.createElement('canvas');
     canvas.width = canvas.height = doc.w/*  * window.devicePixelRatio */;
@@ -239,6 +246,10 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
       video.classList.add('hide');
       divRound.classList.remove('is-paused');
       animateSingle(onFrame, canvas);
+
+      if(preloader && preloader.preloader && preloader.preloader.classList.contains('manual')) {
+        preloader.onClick();
+      }
     };
 
     const onPaused = () => {
@@ -352,10 +363,10 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
 
   const cacheContext = appDownloadManager.getCacheContext(doc);
 
-  const isUpload = !!message?.media?.preloader;
+  const isUpload = !!(message?.media as any)?.preloader;
   let preloader: ProgressivePreloader;
   if(isUpload) { // means upload
-    preloader = message.media.preloader as ProgressivePreloader;
+    preloader = (message.media as any).preloader as ProgressivePreloader;
     preloader.attach(container, false);
     noAutoDownload = undefined;
   } else if(!cacheContext.downloaded && !doc.supportsStreaming) {
@@ -368,6 +379,44 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
       attachMethod: 'prepend'
     });
   }
+
+  const renderDeferred = deferredPromise<void>();
+  video.addEventListener('error', (e) => {
+    if(video.error.code !== 4) {
+      console.error("Error " + video.error.code + "; details: " + video.error.message);
+    }
+    
+    if(preloader && !isUpload) {
+      preloader.detach();
+    }
+
+    if(!renderDeferred.isFulfilled) {
+      renderDeferred.resolve();
+    }
+  }, {once: true});
+
+  onMediaLoad(video).then(() => {
+    if(group) {
+      animationIntersector.addAnimation(video, group);
+    }
+
+    if(preloader && !isUpload) {
+      preloader.detach();
+    }
+
+    renderDeferred.resolve();
+  });
+
+  if(doc.type === 'video') {
+    video.addEventListener('timeupdate', () => {
+      spanTime.innerText = (video.duration - video.currentTime + '').toHHMMSS(false);
+    });
+  }
+
+  video.muted = true;
+  video.loop = true;
+  //video.play();
+  video.autoplay = true;
 
   let loadPhotoThumbFunc = noAutoDownload && photoRes?.preloader?.loadFunc;
   const load = () => {
@@ -393,20 +442,6 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
       }
     }
 
-    video.addEventListener('error', (e) => {
-      if(video.error.code !== 4) {
-        console.error("Error " + video.error.code + "; details: " + video.error.message);
-      }
-      
-      if(preloader && !isUpload) {
-        preloader.detach();
-      }
-
-      if(!deferred.isFulfilled) {
-        deferred.resolve();
-      }
-    }, {once: true});
-
     if(!noAutoDownload && loadPhotoThumbFunc) {
       loadPhotoThumbFunc();
       loadPhotoThumbFunc = null;
@@ -414,10 +449,9 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
 
     noAutoDownload = undefined;
 
-    const deferred = deferredPromise<void>();
     loadPromise.then(() => {
       if(middleware && !middleware()) {
-        deferred.resolve();
+        renderDeferred.resolve();
         return;
       }
 
@@ -425,33 +459,10 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
         appMediaPlaybackController.resolveWaitingForLoadMedia(message.peerId, message.mid);
       }
 
-      onVideoLoad(video).then(() => {
-        if(group) {
-          animationIntersector.addAnimation(video, group);
-        }
-
-        if(preloader && !isUpload) {
-          preloader.detach();
-        }
-  
-        deferred.resolve();
-      });
-  
-      if(doc.type === 'video') {
-        video.addEventListener('timeupdate', () => {
-          spanTime.innerText = (video.duration - video.currentTime + '').toHHMMSS(false);
-        });
-      }
-
-      video.muted = true;
-      video.loop = true;
-      //video.play();
-      video.autoplay = true;
-
       renderImageFromUrl(video, cacheContext.url);
     }, () => {});
 
-    return {download: loadPromise, render: deferred};
+    return {download: loadPromise, render: renderDeferred};
   };
 
   if(preloader && !isUpload) {

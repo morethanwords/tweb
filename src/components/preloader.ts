@@ -179,7 +179,7 @@ export default class ProgressivePreloader {
         }
       } else {
         if(this.tryAgainOnFail) {
-          SetTransition(this.preloader, '', true, TRANSITION_TIME);
+          this.attach(this.preloader.parentElement);
           fastRaf(() => {
             this.setManual();
           });
@@ -211,47 +211,38 @@ export default class ProgressivePreloader {
   }
 
   public attach(elem: Element, reset = false, promise?: CancellablePromise<any>) {
-    //return;
+    if(this.construct) {
+      this.construct();
+    }
+
+    if(this.preloader.parentElement) {
+      this.preloader.classList.remove('manual');
+    }
 
     this.detached = false;
-    /* fastRaf(() => {
-      if(this.detached) return;
-      this.detached = false; */
 
-      if(this.construct) {
-        this.construct();
-      }
+    if(promise/*  && false */) {
+      this.attachPromise(promise);
+    }
 
-      if(this.preloader.parentElement) {
-        this.preloader.classList.remove('manual');
-      }
-
+    if(this.detached || this.preloader.parentElement !== elem) {
       const useRafs = isInDOM(this.preloader) ? 1 : 2;
       if(this.preloader.parentElement !== elem) {
         elem[this.attachMethod](this.preloader);
       }
 
-      if(promise/*  && false */) {
-        this.attachPromise(promise);
-      }
+      SetTransition(this.preloader, 'is-visible', true, TRANSITION_TIME, undefined, useRafs);
+    }
 
-      // fastRaf(() => {
-        //console.log('[PP]: attach after rAF', this.detached, performance.now());
-
-        // if(this.detached) {
-        //   return;
-        // }
-
-        SetTransition(this.preloader, 'is-visible', true, TRANSITION_TIME, undefined, useRafs);
-      // });
-
-      if(this.cancelable && reset) {
-        this.setProgress(0);
-      }
-    //});
+    if(this.cancelable && reset) {
+      this.setProgress(0);
+    }
   }
   
   public detach() {
+    if(this.detached) {
+      return;
+    }
     //return;
 
     this.detached = true;
@@ -263,17 +254,17 @@ export default class ProgressivePreloader {
         /* if(!this.detached) return;
         this.detached = true; */
 
-        fastRaf(() => {
+        // fastRaf(() => {
           //console.log('[PP]: detach after rAF', this.detached, performance.now());
 
-          if(!this.detached || !this.preloader.parentElement) {
-            return;
-          }
+          // if(!this.detached || !this.preloader.parentElement) {
+          //   return;
+          // }
 
           SetTransition(this.preloader, 'is-visible', false, TRANSITION_TIME, () => {
             this.preloader.remove();
-          });
-        });
+          }, 1);
+        // });
       //})/* , 5e3) */;
     }
   }

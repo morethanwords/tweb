@@ -7,37 +7,13 @@
 // * Jolly Cobra's schedulers
 import { NoneToVoidFunction } from "../types";
 
-//type Scheduler = typeof requestAnimationFrame | typeof onTickEnd | typeof runNow;
-
-/* export function throttleWithRaf<F extends AnyToVoidFunction>(fn: F) {
-  return throttleWith(fastRaf, fn);
-}
-
+/*
 export function throttleWithTickEnd<F extends AnyToVoidFunction>(fn: F) {
   return throttleWith(onTickEnd, fn);
 }
 
 export function throttleWithNow<F extends AnyToVoidFunction>(fn: F) {
   return throttleWith(runNow, fn);
-}
-
-export function throttleWith<F extends AnyToVoidFunction>(schedulerFn: Scheduler, fn: F) {
-  let waiting = false;
-  let args: Parameters<F>;
-
-  return (..._args: Parameters<F>) => {
-    args = _args;
-
-    if (!waiting) {
-      waiting = true;
-
-      schedulerFn(() => {
-        waiting = false;
-        // @ts-ignore
-        fn(...args);
-      });
-    }
-  };
 }
 
 export function onTickEnd(cb: NoneToVoidFunction) {

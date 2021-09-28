@@ -369,6 +369,10 @@ export class AppDocsManager {
       });
     }
 
+    download.then(() => {
+      rootScope.dispatchEvent('document_downloaded', doc);
+    });
+
     return download;
   }
 

@@ -56,6 +56,7 @@ class AppMediaPlaybackController {
       [mid: string]: CancellablePromise<void>
     }
   } = {};
+  private waitingDocumentsForLoad: {[docId: string]: Set<HTMLMediaElement>} = {};
   
   public willBePlayedMedia: HTMLMediaElement;
   private searchContext: SearchSuperContext;
@@ -88,6 +89,15 @@ class AppMediaPlaybackController {
         }
       }
     }
+
+    rootScope.addEventListener('document_downloaded', (doc) => {
+      const set = this.waitingDocumentsForLoad[doc.id];
+      if(set) {
+        for(const media of set) {
+          this.onMediaDocumentLoad(media);
+        }
+      }
+    });
   }
 
   public seekBackward = (details: MediaSessionActionDetails) => {
@@ -124,6 +134,7 @@ class AppMediaPlaybackController {
       //media.muted = true;
     }
 
+    media.dataset.docId = '' + doc.id;
     media.dataset.peerId = '' + peerId;
     media.dataset.mid = '' + mid;
     media.dataset.type = doc.type;
@@ -137,6 +148,13 @@ class AppMediaPlaybackController {
     media.addEventListener('play', this.onPlay);
     media.addEventListener('pause', this.onPause);
     media.addEventListener('ended', this.onEnded);
+
+    const message: Message.message = appMessagesManager.getMessageByPeer(peerId, mid);
+    if(doc.type !== 'audio' && message?.pFlags.media_unread && message.fromId !== rootScope.myId) {
+      media.addEventListener('timeupdate', () => {
+        appMessagesManager.readMessages(peerId, [mid]);
+      }, {once: true});
+    }
     
     /* const onError = (e: Event) => {
       //console.log('appMediaPlaybackController: video onError', e);
@@ -164,20 +182,43 @@ class AppMediaPlaybackController {
       //media.autoplay = true;
       //console.log('will set media url:', media, doc, doc.type, doc.url);
 
-      ((!doc.supportsStreaming ? appDocsManager.downloadDoc(doc) : Promise.resolve()) as Promise<any>).then(() => {
-        if(doc.type === 'audio' && doc.supportsStreaming && SHOULD_USE_SAFARI_FIX) {
-          this.handleSafariStreamable(media);
+      const cacheContext = appDownloadManager.getCacheContext(doc);
+      if(doc.supportsStreaming || cacheContext.url) {
+        this.onMediaDocumentLoad(media);
+      } else {
+        let set = this.waitingDocumentsForLoad[doc.id];
+        if(!set) {
+          set = this.waitingDocumentsForLoad[doc.id] = new Set();
         }
-  
-        // setTimeout(() => {
-        const cacheContext = appDownloadManager.getCacheContext(doc);
-        media.src = cacheContext.url;
-        // }, doc.supportsStreaming ? 500e3 : 0);
-      });
+
+        set.add(media);
+        appDocsManager.downloadDoc(doc);
+      }
     }/* , onError */);
     
     return storage[mid] = media;
   }
+
+  private onMediaDocumentLoad = (media: HTMLMediaElement) => {
+    const doc = appDocsManager.getDoc(media.dataset.docId);
+    if(doc.type === 'audio' && doc.supportsStreaming && SHOULD_USE_SAFARI_FIX) {
+      this.handleSafariStreamable(media);
+    }
+
+    // setTimeout(() => {
+    const cacheContext = appDownloadManager.getCacheContext(doc);
+    media.src = cacheContext.url;
+    // }, doc.supportsStreaming ? 500e3 : 0);
+
+    const set = this.waitingDocumentsForLoad[doc.id];
+    if(set) {
+      set.delete(media);
+
+      if(!set.size) {
+        delete this.waitingDocumentsForLoad[doc.id];
+      }
+    }
+  };
 
   // safari подгрузит последний чанк и песня включится,
   // при этом этот чанк нельзя руками отдать из SW, потому что браузер тогда теряется
@@ -432,10 +473,10 @@ class AppMediaPlaybackController {
       media.autoplay = true;
     } */
 
-    this.resolveWaitingForLoadMedia(peerId, mid);
-
+    media.play();
+    
     setTimeout(() => {
-      media.play()//.catch(() => {});
+      this.resolveWaitingForLoadMedia(peerId, mid);
     }, 0);
   };
 
