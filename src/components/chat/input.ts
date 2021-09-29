@@ -1716,8 +1716,9 @@ export default class ChatInput {
 
     //return;
     if(this.editMsgId) {
-      if(!!value.trim()) {
-        this.appMessagesManager.editMessage(this.chat.getMessage(this.editMsgId), value, {
+      const message = this.chat.getMessage(this.editMsgId);
+      if(!!value.trim() || message.media) {
+        this.appMessagesManager.editMessage(message, value, {
           entities,
           noWebPage: this.noWebPage
         });
