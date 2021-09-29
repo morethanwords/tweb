@@ -208,9 +208,7 @@ export default class ChatBubbles {
     // * events
 
     // will call when sent for update pos
-    this.listenerSetter.add(rootScope)('history_update', (e) => {
-      const {storage, peerId, mid} = e;
-      
+    this.listenerSetter.add(rootScope)('history_update', ({storage, peerId, mid}) => {
       if(mid && peerId === this.peerId && this.chat.getMessagesStorage() === storage) {
         const bubble = this.bubbles[mid];
         if(!bubble) return;
@@ -235,8 +233,7 @@ export default class ChatBubbles {
 
     //this.listenerSetter.add(rootScope)('')
 
-    this.listenerSetter.add(rootScope)('dialog_flush', (e) => {
-      let peerId: number = e.peerId;
+    this.listenerSetter.add(rootScope)('dialog_flush', ({peerId}) => {
       if(this.peerId === peerId) {
         this.deleteMessagesByIds(Object.keys(this.bubbles).map(m => +m));
       }
@@ -295,9 +292,11 @@ export default class ChatBubbles {
         }
 
         if(message.media?.document) {
-          const element = bubble.querySelector(`audio-element[data-mid="${tempId}"], .document[data-doc-id="${tempId}"]`) as HTMLElement;
+          const element = bubble.querySelector(`audio-element[data-mid="${tempId}"], .document[data-doc-id="${tempId}"], .media-round[data-mid="${tempId}"]`) as HTMLElement;
           if(element) {
-            if(element instanceof AudioElement) {
+            if(element.classList.contains('media-round')) {
+              element.dataset.mid = '' + mid;
+            } else if(element instanceof AudioElement) {
               element.dataset.mid = '' + mid;
               element.message = message;
               element.onLoad(true);
@@ -362,12 +361,11 @@ export default class ChatBubbles {
       }
     });
 
-    this.listenerSetter.add(rootScope)('message_edit', (e) => {
+    this.listenerSetter.add(rootScope)('message_edit', ({storage, peerId, mid}) => {
       // fastRaf(() => {
-        const {storage, peerId, mid} = e;
-      
         if(peerId !== this.peerId || storage !== this.chat.getMessagesStorage()) return;
-        const mounted = this.getMountedBubble(mid);
+        const message = this.chat.getMessage(mid);
+        const mounted = message.grouped_id ? this.getGroupedBubble(message.grouped_id) : this.getMountedBubble(mid);
         if(!mounted) return;
 
         const updatePosition = this.chat.type === 'scheduled';
@@ -385,10 +383,8 @@ export default class ChatBubbles {
       // });
     });
 
-    this.listenerSetter.add(rootScope)('album_edit', (e) => {
+    this.listenerSetter.add(rootScope)('album_edit', ({peerId, groupId, deletedMids}) => {
       //fastRaf(() => { // ! can't use delayed smth here, need original bubble to be edited
-        const {peerId, groupId, deletedMids} = e;
-      
         if(peerId !== this.peerId) return;
         const mids = this.appMessagesManager.getMidsByAlbum(groupId);
         const renderedId = mids.concat(deletedMids).find(mid => this.bubbles[mid]);
@@ -400,9 +396,7 @@ export default class ChatBubbles {
       //});
     });
 
-    this.listenerSetter.add(rootScope)('messages_downloaded', (e) => {
-      const {peerId, mids} = e;
-
+    this.listenerSetter.add(rootScope)('messages_downloaded', ({peerId, mids}) => {
       const middleware = this.getMiddleware();
       getHeavyAnimationPromise().then(() => {
         if(!middleware()) return;
