@@ -24,6 +24,7 @@ import serverTimeManager from '../mtproto/serverTimeManager';
 import assumeType from '../../helpers/assumeType';
 import noop from '../../helpers/noop';
 import RichTextProcessor from '../richtextprocessor';
+import App from '../../config/app';
 
 type UpdatesState = {
   pendingPtsUpdates: (Update & {pts: number, pts_count: number})[],
@@ -689,7 +690,7 @@ export class ApiUpdatesManager {
           fetch('changelogs/' + newVersion + '.md')
           .then(res => res.text())
           .then(text => {
-            const pre = `**Telegram was updated to version alpha ${newVersion}**\n\n`;
+            const pre = `**Telegram Web${App.suffix} was updated to version alpha ${newVersion}**\n\n`;
 
             text = pre + text;
 
