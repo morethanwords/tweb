@@ -364,7 +364,7 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
 
   /// #if !MTPROTO_SW
   private registerWorker() {
-    //return;
+    // return;
 
     const worker = new MTProtoWorker();
     //const worker = window;

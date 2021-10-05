@@ -876,22 +876,6 @@ export class AppImManager {
   private init() {
     document.addEventListener('paste', this.onDocumentPaste, true);
     
-    rootScope.addEventListener('history_multiappend', (msgIdsByPeer) => {
-      for(const peerId in msgIdsByPeer) {
-        appSidebarRight.sharedMediaTab.renderNewMessages(+peerId, Array.from(msgIdsByPeer[peerId]));
-      }
-    });
-    
-    rootScope.addEventListener('history_delete', ({peerId, msgs}) => {
-      appSidebarRight.sharedMediaTab.deleteDeletedMessages(peerId, Array.from(msgs));
-    });
-
-    // Calls when message successfully sent and we have an id
-    rootScope.addEventListener('message_sent', ({storage, tempId, mid}) => {
-      const message = appMessagesManager.getMessageFromStorage(storage, mid);
-      appSidebarRight.sharedMediaTab.renderNewMessages(message.peerId, [mid]);
-    });
-
     if(!IS_TOUCH_SUPPORTED) {
       this.attachDragAndDropListeners();
     }

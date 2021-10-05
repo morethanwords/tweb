@@ -830,6 +830,7 @@ export namespace Message {
 			pinned?: true,
 			unread?: true,
 			is_outgoing?: true,
+			is_scheduled?: true,
 		}>,
 		id: number,
 		from_id?: Peer,

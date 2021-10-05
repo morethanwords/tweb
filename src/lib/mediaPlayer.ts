@@ -16,67 +16,77 @@ import { ButtonMenuToggleHandler } from "../components/buttonMenuToggle";
 import EventListenerBase from "../helpers/eventListenerBase";
 import rootScope from "./rootScope";
 import findUpClassName from "../helpers/dom/findUpClassName";
+import { GrabEvent } from "../helpers/dom/attachGrabListeners";
+import { attachClickEvent } from "../helpers/dom/clickEvent";
 
 export class MediaProgressLine extends RangeSelector {
-  private filledLoad: HTMLDivElement;
-  
-  private stopAndScrubTimeout = 0;
-  private progressRAF = 0;
+  protected filledLoad: HTMLDivElement;
 
-  constructor(private media: HTMLAudioElement | HTMLVideoElement, private streamable = false) {
-    super(1000 / 60 / 1000, 0, 0, 1);
+  protected progressRAF = 0;
 
-    if(streamable) {
+  protected media: HTMLMediaElement;
+  protected streamable: boolean;
+
+  constructor(media?: HTMLAudioElement | HTMLVideoElement, streamable?: boolean, withTransition?: boolean, useTransform?: boolean) {
+    super({
+      step: 1000 / 60 / 1000, 
+      min: 0, 
+      max: 1, 
+      withTransition, 
+      useTransform
+    }, 0);
+
+    if(media) {
+      this.setMedia(media, streamable);
+    }
+  }
+
+  public setMedia(media: HTMLMediaElement, streamable = false) {
+    if(this.media) {
+      this.removeListeners();
+    }
+
+    if(streamable && !this.filledLoad) {
       this.filledLoad = document.createElement('div');
       this.filledLoad.classList.add('progress-line__filled', 'progress-line__loaded');
       this.container.prepend(this.filledLoad);
       //this.setLoadProgress();
+    } else if(this.filledLoad) {
+      this.filledLoad.classList.toggle('hide', !streamable);
     }
 
+    this.media = media;
+    this.streamable = streamable;
     if(!media.paused || media.currentTime > 0) {
       this.onPlay();
     }
 
+    let wasPlaying = false;
     this.setSeekMax();
     this.setListeners();
     this.setHandlers({
       onMouseDown: () => {
-        //super.onMouseDown(e);
-    
-        //Таймер для того, чтобы стопать видео, если зажал мышку и не отпустил клик
-        if(this.stopAndScrubTimeout) { // возможно лишнее
-          clearTimeout(this.stopAndScrubTimeout);
-        }
-    
-        this.stopAndScrubTimeout = window.setTimeout(() => {
-          !this.media.paused && this.media.pause();
-          this.stopAndScrubTimeout = 0;
-        }, 150);
+        wasPlaying = !this.media.paused;
+        wasPlaying && this.media.pause();
       },
 
-      onMouseUp: () => {
-        //super.onMouseUp(e);
-    
-        if(this.stopAndScrubTimeout) {
-          clearTimeout(this.stopAndScrubTimeout);
-          this.stopAndScrubTimeout = 0;
-        }
-    
-        this.media.paused && this.media.play();
+      onMouseUp: (e) => {
+        cancelEvent(e.event);
+        wasPlaying && this.media.play();
       }
-    })
+    });
   }
 
-  onLoadedData = () => {
+  protected onLoadedData = () => {
     this.max = this.media.duration;
     this.seek.setAttribute('max', '' + this.max);
   };
 
-  onEnded = () => {
+  protected onEnded = () => {
     this.setProgress();
   };
 
-  onPlay = () => {
+  protected onPlay = () => {
     let r = () => {
       this.setProgress();
 
@@ -94,11 +104,21 @@ export class MediaProgressLine extends RangeSelector {
     this.progressRAF = window.requestAnimationFrame(r);
   };
 
-  onProgress = (e: Event) => {
+  protected onTimeUpdate = () => {
+    if(this.media.paused) {
+      this.setProgress();
+
+      if(this.streamable) {
+        this.setLoadProgress();
+      }
+    }
+  };
+
+  protected onProgress = (e: Event) => {
     this.setLoadProgress();
   };
 
-  protected scrub(e: MouseEvent) {
+  protected scrub(e: GrabEvent) {
     const scrubTime = super.scrub(e);
     this.media.currentTime = scrubTime;
     return scrubTime;
@@ -148,6 +168,7 @@ export class MediaProgressLine extends RangeSelector {
     super.setListeners();
     this.media.addEventListener('ended', this.onEnded);
     this.media.addEventListener('play', this.onPlay);
+    this.media.addEventListener('timeupdate', this.onTimeUpdate);
     this.streamable && this.media.addEventListener('progress', this.onProgress);
   }
 
@@ -157,19 +178,90 @@ export class MediaProgressLine extends RangeSelector {
     this.media.removeEventListener('loadeddata', this.onLoadedData);
     this.media.removeEventListener('ended', this.onEnded);
     this.media.removeEventListener('play', this.onPlay);
+    this.media.removeEventListener('timeupdate', this.onTimeUpdate);
     this.streamable && this.media.removeEventListener('progress', this.onProgress);
-
-    if(this.stopAndScrubTimeout) {
-      clearTimeout(this.stopAndScrubTimeout);
-    }
 
     if(this.progressRAF) {
       window.cancelAnimationFrame(this.progressRAF);
+      this.progressRAF = 0;
     }
   }
 }
 
-let lastVolume = 1, muted = !lastVolume;
+export class VolumeSelector extends RangeSelector {
+  public btn: HTMLElement;
+  protected volumeSvg: HTMLElement;
+
+  constructor(protected listenerSetter: ListenerSetter, protected vertical = false) {
+    super({
+      step: 0.01, 
+      min: 0, 
+      max: 1,
+      vertical
+    }, 1);
+
+    this.setListeners();
+    this.setHandlers({
+      onScrub: currentTime => {
+        const value = Math.max(Math.min(currentTime, 1), 0);
+
+        //console.log('volume scrub:', currentTime, value);
+
+        appMediaPlaybackController.muted = false;
+        appMediaPlaybackController.volume = value;
+      },
+
+      onMouseUp: (e) => {
+        cancelEvent(e.event);
+      }
+    });
+
+    this.btn = document.createElement('div');
+    this.btn.classList.add('player-volume');
+
+    this.btn.innerHTML = `
+    <svg class="player-volume__icon" focusable="false" viewBox="0 0 24 24" aria-hidden="true"></svg>
+    `;
+    this.btn.classList.add('btn-icon');
+    this.volumeSvg = this.btn.firstElementChild as HTMLElement;
+
+    this.btn.append(this.container);
+
+    attachClickEvent(this.volumeSvg, this.onMuteClick, {listenerSetter: this.listenerSetter});
+    this.listenerSetter.add(rootScope)('media_playback_params', this.setVolume);
+
+    this.setVolume();
+  }
+
+  private onMuteClick = (e?: Event) => {
+    e && cancelEvent(e);
+    appMediaPlaybackController.muted = !appMediaPlaybackController.muted;
+  };
+
+  private setVolume = () => {
+    // const volume = video.volume;
+    const {volume, muted} = appMediaPlaybackController;
+    let d: string;
+    if(!volume || muted) {
+      d = `M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z`;
+    } else if(volume > .5) {
+      d = `M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z`;
+    } else if(volume > 0 && volume < .25) {
+      d = `M7 9v6h4l5 5V4l-5 5H7z`;
+    } else {
+      d = `M18.5 12c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM5 9v6h4l5 5V4L9 9H5z`;
+    }
+
+    try {
+      this.volumeSvg.innerHTML = `<path d="${d}"></path>`;
+    } catch(err) {}
+
+    if(!this.mousedown) {
+      this.setProgress(muted ? 0 : volume);
+    }
+  };
+}
+
 export default class VideoPlayer extends EventListenerBase<{
   toggleControls: (show: boolean) => void
 }> {
@@ -239,73 +331,10 @@ export default class VideoPlayer extends EventListenerBase<{
       timeDuration = player.querySelector('#time-duration') as HTMLElement;
       timeDuration.innerHTML = String(video.duration | 0).toHHMMSS();
 
-      const volumeDiv = document.createElement('div');
-      volumeDiv.classList.add('player-volume');
-
-      volumeDiv.innerHTML = `
-      <svg class="player-volume__icon" focusable="false" viewBox="0 0 24 24" aria-hidden="true"></svg>
-      `;
-      const volumeSvg = volumeDiv.firstElementChild as SVGSVGElement;
-
-      const onMuteClick = (e?: Event) => {
-        e && cancelEvent(e);
-        video.muted = !video.muted;
-      };
-
-      this.listenerSetter.add(volumeSvg)('click', onMuteClick);
-
-      const volumeProgress = new RangeSelector(0.01, 1, 0, 1);
-      volumeProgress.setListeners();
-      volumeProgress.setHandlers({
-        onScrub: currentTime => {
-          const value = Math.max(Math.min(currentTime, 1), 0);
-
-          //console.log('volume scrub:', currentTime, value);
-
-          video.muted = false;
-          video.volume = value;
-        }
-      });
-      volumeDiv.append(volumeProgress.container);
-
-      const setVolume = () => {
-        const volume = video.volume;
-        let d: string;
-        if(!volume || video.muted) {
-          d = `M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z`;
-        } else if(volume > .5) {
-          d = `M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z`;
-        } else if(volume > 0 && volume < .25) {
-          d = `M7 9v6h4l5 5V4l-5 5H7z`;
-        } else {
-          d = `M18.5 12c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM5 9v6h4l5 5V4L9 9H5z`;
-        }
-
-        try {
-          volumeSvg.innerHTML = `<path d="${d}"></path>`;
-        } catch(err) {}
-
-        if(!volumeProgress.mousedown) {
-          volumeProgress.setProgress(video.muted ? 0 : volume);
-        }
-      };
-      
-      // не вызовется повторно если на 1 установить 1
-      this.listenerSetter.add(video)('volumechange', () => {
-        muted = video.muted;
-        lastVolume = video.volume;
-        setVolume();
-      });
-
-      video.volume = lastVolume;
-      video.muted = muted;
-
-      setVolume();
-
-      // volume end
+      const volumeSelector = new VolumeSelector(this.listenerSetter);
 
       const leftControls = player.querySelector('.left-controls');
-      leftControls.insertBefore(volumeDiv, timeElapsed.parentElement);
+      leftControls.insertBefore(volumeSelector.btn, timeElapsed.parentElement);
 
       Array.from(toggle).forEach((button) => {
         this.listenerSetter.add(button)('click', () => {
@@ -360,13 +389,13 @@ export default class VideoPlayer extends EventListenerBase<{
           if(e.code === 'KeyF') {
             this.toggleFullScreen(fullScreenButton);
           } else if(e.code === 'KeyM') {
-            onMuteClick();
+            appMediaPlaybackController.muted = !appMediaPlaybackController.muted;
           } else if(e.code === 'Space') {
             this.togglePlay();
           } else if(e.altKey && e.code === 'Equal') {
-            this.video.playbackRate += 0.25;
+            appMediaPlaybackController.playbackRate += .25;
           } else if(e.altKey && e.code === 'Minus') {
-            this.video.playbackRate -= 0.25;
+            appMediaPlaybackController.playbackRate -= .25;
           } else {
             good = false;
           }

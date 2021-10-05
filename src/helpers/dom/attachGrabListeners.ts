@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-export type GrabEvent = {x: number, y: number, isTouch?: boolean};
+export type GrabEvent = {x: number, y: number, isTouch?: boolean, event: TouchEvent | MouseEvent};
 
 export default function attachGrabListeners(element: HTMLElement, 
   onStart: (position: GrabEvent) => void, 
@@ -12,13 +12,13 @@ export default function attachGrabListeners(element: HTMLElement,
   onEnd?: (position: GrabEvent) => void) {
   // * Mouse
   const onMouseMove = (event: MouseEvent) => {
-    onMove({x: event.pageX, y: event.pageY});
+    onMove({x: event.pageX, y: event.pageY, event});
   };
 
   const onMouseUp = (event: MouseEvent) => {
     document.removeEventListener('mousemove', onMouseMove);
     element.addEventListener('mousedown', onMouseDown, {once: true});
-    onEnd && onEnd({x: event.pageX, y: event.pageY});
+    onEnd && onEnd({x: event.pageX, y: event.pageY, event});
   };
 
   const onMouseDown = (event: MouseEvent) => {
@@ -27,7 +27,7 @@ export default function attachGrabListeners(element: HTMLElement,
       return;
     }
 
-    onStart({x: event.pageX, y: event.pageY});
+    onStart({x: event.pageX, y: event.pageY, event});
     onMouseMove(event);
 
     document.addEventListener('mousemove', onMouseMove);
@@ -39,17 +39,17 @@ export default function attachGrabListeners(element: HTMLElement,
   // * Touch
   const onTouchMove = (event: TouchEvent) => {
     event.preventDefault();
-    onMove({x: event.touches[0].clientX, y: event.touches[0].clientY, isTouch: true});
+    onMove({x: event.touches[0].clientX, y: event.touches[0].clientY, isTouch: true, event});
   };
 
   const onTouchEnd = (event: TouchEvent) => {
     document.removeEventListener('touchmove', onTouchMove);
     element.addEventListener('touchstart', onTouchStart, {passive: false, once: true});
-    onEnd && onEnd({x: event.touches[0].clientX, y: event.touches[0].clientY, isTouch: true});
+    onEnd && onEnd({x: event.touches[0].clientX, y: event.touches[0].clientY, isTouch: true, event});
   };
 
   const onTouchStart = (event: TouchEvent) => {
-    onStart({x: event.touches[0].clientX, y: event.touches[0].clientY, isTouch: true});
+    onStart({x: event.touches[0].clientX, y: event.touches[0].clientY, isTouch: true, event});
     onTouchMove(event);
 
     document.addEventListener('touchmove', onTouchMove, {passive: false});

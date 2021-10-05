@@ -13,7 +13,8 @@
     "profile": "webpack --profile --json > stats.json --config webpack.prod.js",
     "profile:dev": "webpack --profile --json > stats.json --config webpack.dev.js",
     "whybundled": "npm run profile && whybundled stats.json",
-    "generate-mtproto-types": "node ./src/scripts/generate_mtproto_types.js src/"
+    "generate-mtproto-types": "node ./src/scripts/generate_mtproto_types.js src/",
+    "generate-changelog": "node ./src/scripts/generate_changelog.js"
   },
   "author": "",
   "license": "GPL-3.0-only",

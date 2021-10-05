@@ -664,8 +664,11 @@
 
 #search-container {
   .search-super-content-music {
-    .audio:not(.audio-show-progress) .audio-time {
-      display: none;
+    .audio:not(.audio-show-progress) {
+      .audio-time, 
+      .audio-description:before {
+        display: none;
+      }
     }
   }
   

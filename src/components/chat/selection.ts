@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type { AppMessagesManager } from "../../lib/appManagers/appMessagesManager";
+import type { AppMessagesManager, MessagesStorage } from "../../lib/appManagers/appMessagesManager";
 import type ChatBubbles from "./bubbles";
 import type ChatInput from "./input";
 import type Chat from "./chat";
@@ -51,6 +51,7 @@ class AppSelection {
 
   protected listenerSetter: ListenerSetter;
   protected appMessagesManager: AppMessagesManager;
+  protected isScheduled: boolean;
   protected listenElement: HTMLElement;
 
   protected onToggleSelection: (forwards: boolean) => void;
@@ -79,7 +80,8 @@ class AppSelection {
     verifyTouchLongPress?: AppSelection['verifyTouchLongPress'],
     targetLookupClassName: string,
     lookupBetweenParentClassName: string,
-    lookupBetweenElementsQuery: string
+    lookupBetweenElementsQuery: string,
+    isScheduled?: AppSelection['isScheduled']
   }) {
     safeAssign(this, options);
 
@@ -326,8 +328,9 @@ class AppSelection {
       cantDelete = !size, 
       cantSend = !size;
     for(const [peerId, mids] of this.selectedMids) {
+      const storage = this.isScheduled ? this.appMessagesManager.getScheduledMessagesStorage(peerId) : this.appMessagesManager.getMessagesStorage(peerId);
       for(const mid of mids) {
-        const message = this.appMessagesManager.getMessageByPeer(peerId, mid);
+        const message = this.appMessagesManager.getMessageFromStorage(storage, mid);
         if(!cantForward) {
           if(message.action) {
             cantForward = true;
@@ -690,7 +693,8 @@ export default class ChatSelection extends AppSelection {
       verifyTouchLongPress: () => !this.chat.input.recording,
       targetLookupClassName: 'bubble',
       lookupBetweenParentClassName: 'bubbles-inner',
-      lookupBetweenElementsQuery: '.bubble:not(.is-multiple-documents), .grouped-item'
+      lookupBetweenElementsQuery: '.bubble:not(.is-multiple-documents), .grouped-item',
+      isScheduled: chat.type === 'scheduled'
     });
   }
 

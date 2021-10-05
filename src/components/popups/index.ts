@@ -164,12 +164,15 @@ export default class PopupElement {
     rootScope.isOverlayActive = true;
     animationIntersector.checkAnimations(true);
 
-    this.listenerSetter.add(document.body)('keydown', (e) => {
-      if(this.confirmShortcutIsSendShortcut ? isSendShortcutPressed(e) : e.key === 'Enter') {
-        simulateClickEvent(this.btnConfirmOnEnter);
-        cancelEvent(e);
-      }
-    });
+    // cannot add event instantly because keydown propagation will fire it
+    setTimeout(() => {
+      this.listenerSetter.add(document.body)('keydown', (e) => {
+        if(this.confirmShortcutIsSendShortcut ? isSendShortcutPressed(e) : e.key === 'Enter') {
+          simulateClickEvent(this.btnConfirmOnEnter);
+          cancelEvent(e);
+        }
+      });
+    }, 0);
   }
 
   public hide = () => {

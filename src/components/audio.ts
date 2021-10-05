@@ -8,14 +8,13 @@ import appDocsManager, {MyDocument} from "../lib/appManagers/appDocsManager";
 import { wrapPhoto } from "./wrappers";
 import ProgressivePreloader from "./preloader";
 import { MediaProgressLine } from "../lib/mediaPlayer";
-import appMediaPlaybackController, { MediaItem } from "./appMediaPlaybackController";
-import { DocumentAttribute } from "../layer";
+import appMediaPlaybackController, { MediaItem, MediaSearchContext } from "./appMediaPlaybackController";
+import { DocumentAttribute, Message } from "../layer";
 import mediaSizes from "../helpers/mediaSizes";
 import { IS_SAFARI } from "../environment/userAgent";
 import appMessagesManager from "../lib/appManagers/appMessagesManager";
 import rootScope from "../lib/rootScope";
 import './middleEllipsis';
-import { SearchSuperContext } from "./appSearchSuper.";
 import { cancelEvent } from "../helpers/dom/cancelEvent";
 import { attachClickEvent } from "../helpers/dom/clickEvent";
 import LazyLoadQueue from "./lazyLoadQueue";
@@ -81,7 +80,7 @@ function wrapVoiceMessage(audioEl: AudioElement) {
   audioEl.classList.add('is-voice');
 
   const message = audioEl.message;
-  const doc = (message.media.document || message.media.webpage.document) as MyDocument;
+  const doc = appMessagesManager.getMediaFromMessage(message) as MyDocument;
 
   if(message.pFlags.out) {
     audioEl.classList.add('is-out');
@@ -218,7 +217,7 @@ function wrapVoiceMessage(audioEl: AudioElement) {
         const scrubTime = offsetX / availW /* width */ * audio.duration;
         audio.currentTime = scrubTime;
       }
-    });
+    }, noop);
     
     return () => {
       progress.remove();
@@ -234,7 +233,7 @@ function wrapAudio(audioEl: AudioElement) {
   const withTime = audioEl.withTime;
 
   const message = audioEl.message;
-  const doc: MyDocument = message.media.document || message.media.webpage.document;
+  const doc: MyDocument = appMessagesManager.getMediaFromMessage(message);
 
   const isVoice = doc.type === 'voice' || doc.type === 'round';
   const descriptionEl = document.createElement('div');
@@ -336,13 +335,40 @@ function constructDownloadPreloader(tryAgainOnFail = true) {
   return preloader;
 }
 
+export const findAudioTargets = (anchor: HTMLElement, useSearch: boolean) => {
+  let prev: MediaItem[], next: MediaItem[];
+  // if(anchor.classList.contains('search-super-item') || !useSearch) {
+    const container = findUpClassName(anchor, anchor.classList.contains('search-super-item') ? 'tabs-tab' : 'bubbles-inner');
+    if(container) {
+      const attr = `:not([data-is-outgoing="1"])`;
+      const justAudioSelector = `.audio:not(.is-voice)${attr}`;
+      let selector: string;
+      if(!anchor.matches(justAudioSelector)) {
+        selector = `.audio.is-voice${attr}, .media-round${attr}`;
+      } else {
+        selector = justAudioSelector;
+      }
+
+      const elements = Array.from(container.querySelectorAll(selector)) as HTMLElement[];
+      const idx = elements.indexOf(anchor);
+
+      const mediaItems: MediaItem[] = elements.map(element => ({peerId: +element.dataset.peerId, mid: +element.dataset.mid}));
+
+      prev = mediaItems.slice(0, idx);
+      next = mediaItems.slice(idx + 1);
+    }
+  // }
+
+  return [prev, next];
+};
+
 export default class AudioElement extends HTMLElement {
   public audio: HTMLAudioElement;
   public preloader: ProgressivePreloader;
-  public message: any;
+  public message: Message.message;
   public withTime = false;
   public voiceAsMusic = false;
-  public searchContext: SearchSuperContext;
+  public searchContext: MediaSearchContext;
   public showSender = false;
   public noAutoDownload: boolean;
   public lazyLoadQueue: LazyLoadQueue;
@@ -356,7 +382,10 @@ export default class AudioElement extends HTMLElement {
   public render() {
     this.classList.add('audio');
 
-    const doc: MyDocument = this.message.media.document || this.message.media.webpage.document;
+    this.dataset.mid = '' + this.message.mid;
+    this.dataset.peerId = '' + this.message.peerId;
+
+    const doc: MyDocument = appMessagesManager.getMediaFromMessage(this.message);
     const isRealVoice = doc.type === 'voice';
     const isVoice = !this.voiceAsMusic && isRealVoice;
     const isOutgoing = this.message.pFlags.is_outgoing;
@@ -395,7 +424,7 @@ export default class AudioElement extends HTMLElement {
     const onLoad = this.onLoad = (autoload: boolean) => {
       this.onLoad = undefined;
 
-      const audio = this.audio = appMediaPlaybackController.addMedia(this.message.peerId, this.message.media.document || this.message.media.webpage.document, this.message.mid, autoload);
+      const audio = this.audio = appMediaPlaybackController.addMedia(this.message, autoload);
 
       this.readyPromise = deferredPromise<void>();
       if(this.audio.readyState >= 2) this.readyPromise.resolve();
@@ -421,18 +450,7 @@ export default class AudioElement extends HTMLElement {
 
         if(paused) {
           if(appMediaPlaybackController.setSearchContext(this.searchContext)) {
-            let prev: MediaItem[], next: MediaItem[];
-            const container = findUpClassName(this, this.classList.contains('search-super-item') ? 'tabs-tab' : 'bubbles-inner');
-            if(container) {
-              const elements = Array.from(container.querySelectorAll('.audio' + (isVoice ? '.is-voice' : ''))) as AudioElement[];
-              const idx = elements.indexOf(this);
-
-              const mediaItems: MediaItem[] = elements.map(element => ({peerId: +element.dataset.peerId, mid: +element.dataset.mid}));
-
-              prev = mediaItems.slice(0, idx);
-              next = mediaItems.slice(idx + 1);
-            }
-
+            const [prev, next] = findAudioTargets(this, this.searchContext.useSearch);
             appMediaPlaybackController.setTargets({peerId: this.message.peerId, mid: this.message.mid}, prev, next);
           }
 
@@ -493,7 +511,7 @@ export default class AudioElement extends HTMLElement {
           return;
         }
 
-        appMediaPlaybackController.resolveWaitingForLoadMedia(this.message.peerId, this.message.mid);
+        appMediaPlaybackController.resolveWaitingForLoadMedia(this.message.peerId, this.message.mid, this.message.pFlags.is_scheduled);
 
         const onDownloadInit = () => {
           if(shouldPlay) {
@@ -591,6 +609,7 @@ export default class AudioElement extends HTMLElement {
         }
       }
     } else if(uploading) {
+      this.dataset.isOutgoing = '1';
       this.preloader.attach(downloadDiv, false);
       //onLoad();
     }

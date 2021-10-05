@@ -69,6 +69,7 @@
     {"name": "random_id", "type": "string"},
     {"name": "unread", "type": "true"},
     {"name": "is_outgoing", "type": "true"},
+    {"name": "is_scheduled", "type": "true"},
     {"name": "rReply", "type": "string"},
     {"name": "viaBotId", "type": "number"},
     {"name": "clear_history", "type": "boolean"},
