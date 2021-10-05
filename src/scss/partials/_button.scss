@@ -27,13 +27,17 @@
   border: none;
   padding: .5rem;
   position: relative;
-  overflow: hidden;
+  // overflow: hidden;
   transition: color .15s ease-in-out, opacity .15s ease-in-out, background-color .15s ease-in-out;
   
   /* kostil */
   display: flex;
   align-items: center;
   justify-content: center;
+
+  &.rp {
+    overflow: hidden;
+  }
 
   &.active {
     color: var(--primary-color);

@@ -4,7 +4,6 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { months } from "../helpers/date";
 import { copy, getObjectKeysAndSort, safeAssign } from "../helpers/object";
 import { escapeRegExp, limitSymbols } from "../helpers/string";
 import appChatsManager from "../lib/appManagers/appChatsManager";
@@ -17,7 +16,6 @@ import appUsersManager from "../lib/appManagers/appUsersManager";
 import { logger } from "../lib/logger";
 import RichTextProcessor from "../lib/richtextprocessor";
 import rootScope from "../lib/rootScope";
-import AppMediaViewer from "./appMediaViewer";
 import { SearchGroup, SearchGroupType } from "./appSearch";
 import { horizontalMenu } from "./horizontalMenu";
 import LazyLoadQueue from "./lazyLoadQueue";
@@ -51,6 +49,7 @@ import { SearchSelection } from "./chat/selection";
 import { cancelEvent } from "../helpers/dom/cancelEvent";
 import { attachClickEvent, simulateClickEvent } from "../helpers/dom/clickEvent";
 import { MyDocument } from "../lib/appManagers/appDocsManager";
+import AppMediaViewer from "./appMediaViewer";
 
 //const testScroll = false;
 

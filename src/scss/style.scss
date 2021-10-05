@@ -232,6 +232,7 @@ html.night {
 @import "partials/autocompleteHelper";
 @import "partials/autocompletePeerHelper";
 @import "partials/badge";
+@import "partials/ckin";
 @import "partials/checkbox";
 @import "partials/chatlist";
 @import "partials/chat";
@@ -251,7 +252,6 @@ html.night {
 @import "partials/leftSidebar";
 @import "partials/rightSidebar";
 @import "partials/mediaViewer";
-@import "partials/ckin";
 @import "partials/emojiDropdown";
 @import "partials/scrollable";
 @import "partials/selector";
@@ -740,6 +740,15 @@ hr {
     width: 100%;
     height: 100%;
     filter: brightness(0.7);
+  }
+}
+
+.missing-icon {
+  width: 1.5rem;
+  height: 1.5rem;
+
+  &-path {
+    fill: currentColor;
   }
 }
 

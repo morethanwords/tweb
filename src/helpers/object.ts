@@ -59,9 +59,9 @@ export function defineNotNumerableProperties(obj: {[key: string]: any}, names: s
   //console.log('defineNotNumerableProperties time:', performance.now() - perf);
 }
 
-export function getObjectKeysAndSort(object: any, sort: 'asc' | 'desc' = 'asc') {
+export function getObjectKeysAndSort(object: {[key: string]: any}, sort: 'asc' | 'desc' = 'asc') {
   if(!object) return [];
-  const ids = Object.keys(object).map(i => +i);
+  const ids = object instanceof Map ? [...object.keys()] : Object.keys(object).map(i => +i);
   if(sort === 'asc') return ids.sort((a, b) => a - b);
   else return ids.sort((a, b) => b - a);
 }

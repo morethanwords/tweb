@@ -120,7 +120,9 @@ export default class DialogsStorage {
         for(let i = 0, length = dialogs.length; i < length; ++i) {
           const dialog = dialogs[i];
           if(dialog) {
-            dialog.top_message = this.appMessagesIdsManager.getServerMessageId(dialog.top_message); // * fix outgoing message to avoid copying dialog
+            // if(dialog.peerId !== SERVICE_PEER_ID) {
+              dialog.top_message = this.appMessagesIdsManager.getServerMessageId(dialog.top_message); // * fix outgoing message to avoid copying dialog
+            // }
 
             if(dialog.topMessage) {
               this.appMessagesManager.saveMessages([dialog.topMessage]);
@@ -358,19 +360,20 @@ export default class DialogsStorage {
   } */
 
   public setDialogToState(dialog: Dialog) {
-    const historyStorage = this.appMessagesManager.getHistoryStorage(dialog.peerId);
-    const messagesStorage = this.appMessagesManager.getMessagesStorage(dialog.peerId);
+    const {peerId, pts} = dialog;
+    const historyStorage = this.appMessagesManager.getHistoryStorage(peerId);
+    const messagesStorage = this.appMessagesManager.getMessagesStorage(peerId);
     const history = historyStorage.history.slice;
-    let incomingMessage: any;
+    let incomingMessage: MyMessage;
     for(let i = 0, length = history.length; i < length; ++i) {
       const mid = history[i];
       const message: MyMessage = this.appMessagesManager.getMessageFromStorage(messagesStorage, mid);
-      if(!message.pFlags.is_outgoing) {
+      if(!message.pFlags.is_outgoing/*  || peerId === SERVICE_PEER_ID */) {
         incomingMessage = message;
   
         const fromId = message.viaBotId || message.fromId;
-        if(fromId !== dialog.peerId) {
-          this.appStateManager.requestPeer(fromId, 'topMessage_' + dialog.peerId, 1);
+        if(fromId !== peerId) {
+          this.appStateManager.requestPeer(fromId, 'topMessage_' + peerId, 1);
         }
   
         break;
@@ -379,16 +382,26 @@ export default class DialogsStorage {
 
     dialog.topMessage = incomingMessage;
 
-    if(dialog.peerId < 0 && dialog.pts) {
-      const newPts = this.apiUpdatesManager.getChannelState(-dialog.peerId, dialog.pts).pts;
+    // DO NOT TOUCH THESE LINES, SOME REAL MAGIC HERE.
+    // * Read service chat when refreshing page with outgoing & getting new service outgoing message
+    if(incomingMessage && dialog.read_inbox_max_id >= dialog.top_message) {
+      dialog.unread_count = 0;
+    }
+
+    dialog.read_inbox_max_id = this.appMessagesIdsManager.clearMessageId(dialog.read_inbox_max_id);
+    dialog.read_outbox_max_id = this.appMessagesIdsManager.clearMessageId(dialog.read_outbox_max_id);
+    // CAN TOUCH NOW
+
+    if(peerId < 0 && pts) {
+      const newPts = this.apiUpdatesManager.getChannelState(-peerId, pts).pts;
       dialog.pts = newPts;
     }
 
     this.storage.set({
-      [dialog.peerId]: dialog
+      [peerId]: dialog
     });
 
-    this.appStateManager.requestPeer(dialog.peerId, 'dialog_' + dialog.peerId, 1);
+    this.appStateManager.requestPeer(peerId, 'dialog_' + peerId, 1);
 
     /* for(let id in this.appMessagesManager.filtersStorage.filters) {
       const filter = this.appMessagesManager.filtersStorage.filters[id];
@@ -538,9 +551,16 @@ export default class DialogsStorage {
     const peerText = this.appPeersManager.getPeerSearchText(peerId);
     this.dialogsIndex.indexObject(peerId, peerText);
 
-    let mid: number, message;
+    const wasDialogBefore = this.getDialogOnly(peerId);
+
+    let mid: number, message: MyMessage;
     if(dialog.top_message) {
-      mid = this.appMessagesIdsManager.generateMessageId(dialog.top_message);//dialog.top_message;
+      if(wasDialogBefore?.top_message && !this.appMessagesManager.getMessageByPeer(peerId, wasDialogBefore.top_message).deleted) {
+        mid = wasDialogBefore.top_message;
+      } else {
+        mid = this.appMessagesIdsManager.generateMessageId(dialog.top_message);//dialog.top_message;
+      }
+
       message = this.appMessagesManager.getMessageByPeer(peerId, mid);
     } else {
       mid = this.appMessagesManager.generateTempMessageId(peerId);
@@ -573,9 +593,8 @@ export default class DialogsStorage {
       }
     }
 
-    const wasDialogBefore = this.getDialogOnly(peerId);
-
     dialog.top_message = mid;
+    dialog.unread_count = wasDialogBefore && dialog.read_inbox_max_id === this.appMessagesIdsManager.getServerMessageId(wasDialogBefore.read_inbox_max_id) ? wasDialogBefore.unread_count : dialog.unread_count;
     dialog.read_inbox_max_id = this.appMessagesIdsManager.generateMessageId(wasDialogBefore && !dialog.read_inbox_max_id ? wasDialogBefore.read_inbox_max_id : dialog.read_inbox_max_id);
     dialog.read_outbox_max_id = this.appMessagesIdsManager.generateMessageId(wasDialogBefore && !dialog.read_outbox_max_id ? wasDialogBefore.read_outbox_max_id : dialog.read_outbox_max_id);
 

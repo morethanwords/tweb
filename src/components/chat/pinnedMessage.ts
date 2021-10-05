@@ -257,40 +257,49 @@ export default class ChatPinnedMessage {
   constructor(private topbar: ChatTopbar, private chat: Chat, private appMessagesManager: AppMessagesManager, private appPeersManager: AppPeersManager) {
     this.listenerSetter = new ListenerSetter();
 
-    this.pinnedMessageContainer = new PinnedContainer(topbar, chat, this.listenerSetter, 'message', new ReplyContainer('pinned-message'), async() => {
-      if(appPeersManager.canPinMessage(this.topbar.peerId)) {
-        new PopupPinMessage(this.topbar.peerId, this.pinnedMid, true);
-      } else {
-        new PopupPinMessage(this.topbar.peerId, 0, true);
-      }
+    const dAC = new ReplyContainer('pinned-message');
+    this.pinnedMessageContainer = new PinnedContainer({
+      topbar, 
+      chat, 
+      listenerSetter: this.listenerSetter, 
+      className: 'message', 
+      divAndCaption: dAC, 
+      onClose: async() => {
+        if(appPeersManager.canPinMessage(this.topbar.peerId)) {
+          new PopupPinMessage(this.topbar.peerId, this.pinnedMid, true);
+        } else {
+          new PopupPinMessage(this.topbar.peerId, 0, true);
+        }
 
-      return false;
+        return false;
+      }
     });
 
     this.pinnedMessageBorder = new PinnedMessageBorder();
-    this.pinnedMessageContainer.divAndCaption.border.replaceWith(this.pinnedMessageBorder.render(1, 0));
+    dAC.border.replaceWith(this.pinnedMessageBorder.render(1, 0));
 
     this.animatedSubtitle = new AnimatedSuper();
-    this.pinnedMessageContainer.divAndCaption.subtitle.append(this.animatedSubtitle.container);
+    dAC.subtitle.append(this.animatedSubtitle.container);
 
     this.animatedMedia = new AnimatedSuper();
     this.animatedMedia.container.classList.add('pinned-message-media-container');
-    this.pinnedMessageContainer.divAndCaption.content.prepend(this.animatedMedia.container);
+    dAC.content.prepend(this.animatedMedia.container);
 
     this.animatedCounter = new AnimatedCounter(true);
-    this.pinnedMessageContainer.divAndCaption.title.append(i18n('PinnedMessage'), ' ', this.animatedCounter.container);
+    dAC.title.append(i18n('PinnedMessage'), ' ', this.animatedCounter.container);
+
+    dAC.container.prepend(this.pinnedMessageContainer.btnClose);
 
     this.btnOpen = ButtonIcon('pinlist pinned-container-close pinned-message-pinlist', {noRipple: true});
-    this.pinnedMessageContainer.divAndCaption.container.prepend(this.btnOpen);
+
+    this.pinnedMessageContainer.wrapperUtils.prepend(this.btnOpen);
 
     attachClickEvent(this.btnOpen, (e) => {
       cancelEvent(e);
       this.topbar.openPinned(true);
     }, {listenerSetter: this.listenerSetter});
 
-    this.listenerSetter.add(rootScope)('peer_pinned_messages', (e) => {
-      const peerId = e.peerId;
-
+    this.listenerSetter.add(rootScope)('peer_pinned_messages', ({peerId}) => {
       if(peerId === this.topbar.peerId) {
         //this.wasPinnedIndex = 0;
         //setTimeout(() => {
@@ -310,9 +319,7 @@ export default class ChatPinnedMessage {
       }
     });
 
-    this.listenerSetter.add(rootScope)('peer_pinned_hidden', (e) => {
-      const {peerId, maxId} = e;
-
+    this.listenerSetter.add(rootScope)('peer_pinned_hidden', ({peerId}) => {
       if(peerId === this.topbar.peerId) {
         this.pinnedMessageContainer.toggle(this.hidden = true);
       }

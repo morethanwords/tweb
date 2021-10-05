@@ -20,9 +20,8 @@ import { IS_TOUCH_SUPPORTED } from "../environment/touchSupport";
 import appAvatarsManager from "../lib/appManagers/appAvatarsManager";
 import appPeersManager from "../lib/appManagers/appPeersManager";
 import I18n from "../lib/langPack";
-import { SearchListLoader } from "./appMediaViewer";
-
-// TODO: если удалить сообщение, и при этом аудио будет играть - оно не остановится, и можно будет по нему перейти вникуда
+import SearchListLoader from "../helpers/searchListLoader";
+import { onMediaLoad } from "../helpers/files";
 
 // TODO: Safari: проверить стрим, включить его и сразу попробовать включить видео или другую песню
 // TODO: Safari: попробовать замаскировать подгрузку последнего чанка
@@ -42,26 +41,43 @@ const SHOULD_USE_SAFARI_FIX = (() => {
 
 const SEEK_OFFSET = 10;
 
+export type MediaSearchContext = SearchSuperContext & Partial<{
+  isScheduled: boolean,
+  useSearch: boolean
+}>;
+
+type MediaDetails = {
+  peerId: number, 
+  mid: number, 
+  docId: string, 
+  clean?: boolean,
+  isScheduled?: boolean, 
+  isSingle?: boolean
+};
+
 class AppMediaPlaybackController {
   private container: HTMLElement;
-  private media: {
-    [peerId: string]: {
-      [mid: string]: HTMLMediaElement
-    }
-  } = {};
+  private media: Map<number, Map<number, HTMLMediaElement>> = new Map();
+  private scheduled: AppMediaPlaybackController['media'] = new Map();
+  private mediaDetails: Map<HTMLMediaElement, MediaDetails> = new Map();
   private playingMedia: HTMLMediaElement;
 
-  private waitingMediaForLoad: {
-    [peerId: string]: {
-      [mid: string]: CancellablePromise<void>
-    }
-  } = {};
+  private waitingMediaForLoad: Map<number, Map<number, CancellablePromise<void>>> = new Map();
+  private waitingScheduledMediaForLoad: AppMediaPlaybackController['waitingMediaForLoad'] = new Map();
   private waitingDocumentsForLoad: {[docId: string]: Set<HTMLMediaElement>} = {};
   
   public willBePlayedMedia: HTMLMediaElement;
-  private searchContext: SearchSuperContext;
+  private searchContext: MediaSearchContext;
 
   private listLoader: SearchListLoader<MediaItem>;
+
+  public volume: number;
+  public muted: boolean;
+  public playbackRate: number;
+  private _volume = 1;
+  private _muted = false;
+  private _playbackRate = 1;
+  private lockedSwitchers: boolean;
 
   constructor() {
     this.container = document.createElement('div');
@@ -98,34 +114,81 @@ class AppMediaPlaybackController {
         }
       }
     });
+
+    const properties: {[key: PropertyKey]: PropertyDescriptor} = {};
+    const keys = [
+      'volume' as const, 
+      'muted' as const, 
+      'playbackRate' as const
+    ];
+    keys.forEach(key => {
+      const _key = ('_' + key) as `_${typeof key}`;
+      properties[key] = {
+        get: () => this[_key],
+        set: (value: number | boolean) => {
+          if(this[_key] === value) {
+            return;
+          }
+
+          // @ts-ignore
+          this[_key] = value;
+          if(this.playingMedia) {
+            // @ts-ignore
+            this.playingMedia[key] = value;
+          }
+
+          this.dispatchPlaybackParams();
+        }
+      };
+    });
+    Object.defineProperties(this, properties);
+  }
+
+  private dispatchPlaybackParams() {
+    const {volume, muted, playbackRate} = this;
+    rootScope.dispatchEvent('media_playback_params', {
+      volume, muted, playbackRate
+    });
   }
 
   public seekBackward = (details: MediaSessionActionDetails) => {
-    const media = this.playingMedia
+    const media = this.playingMedia;
     if(media) {
       media.currentTime = Math.max(0, media.currentTime - (details.seekOffset || SEEK_OFFSET));
     }
   };
 
   public seekForward = (details: MediaSessionActionDetails) => {
-    const media = this.playingMedia
+    const media = this.playingMedia;
     if(media) {
       media.currentTime = Math.min(media.duration, media.currentTime + (details.seekOffset || SEEK_OFFSET));
     }
   };
 
   public seekTo = (details: MediaSessionActionDetails) => {
-    const media = this.playingMedia
+    const media = this.playingMedia;
     if(media) {
       media.currentTime = details.seekTime;
     }
   };
 
-  public addMedia(peerId: number, doc: MyDocument, mid: number, autoload = true): HTMLMediaElement {
-    const storage = this.media[peerId] ?? (this.media[peerId] = {});
-    if(storage[mid]) return storage[mid];
+  public addMedia(message: Message.message, autoload: boolean, clean?: boolean): HTMLMediaElement {
+    const {peerId, mid} = message;
 
-    const media = document.createElement(doc.type === 'round' ? 'video' : 'audio');
+    const isScheduled = !!message.pFlags.is_scheduled;
+    const s = isScheduled ? this.scheduled : this.media;
+    let storage = s.get(message.peerId);
+    if(!storage) {
+      s.set(message.peerId, storage = new Map());
+    }
+
+    let media = storage.get(mid);
+    if(media) {
+      return media;
+    }
+
+    const doc: MyDocument = appMessagesManager.getMediaFromMessage(message);
+    storage.set(mid, media = document.createElement(doc.type === 'round' || doc.type === 'video' ? 'video' : 'audio'));
     //const source = document.createElement('source');
     //source.type = doc.type === 'voice' && !opusDecodeController.isPlaySupported() ? 'audio/wav' : doc.mime_type;
 
@@ -134,11 +197,16 @@ class AppMediaPlaybackController {
       //media.muted = true;
     }
 
-    media.dataset.docId = '' + doc.id;
-    media.dataset.peerId = '' + peerId;
-    media.dataset.mid = '' + mid;
-    media.dataset.type = doc.type;
-    
+    const details: MediaDetails = {
+      peerId,
+      mid,
+      docId: doc.id,
+      clean,
+      isScheduled: message.pFlags.is_scheduled
+    };
+
+    this.mediaDetails.set(media, details);
+
     //media.autoplay = true;
     media.volume = 1;
     //media.append(source);
@@ -149,7 +217,6 @@ class AppMediaPlaybackController {
     media.addEventListener('pause', this.onPause);
     media.addEventListener('ended', this.onEnded);
 
-    const message: Message.message = appMessagesManager.getMessageByPeer(peerId, mid);
     if(doc.type !== 'audio' && message?.pFlags.media_unread && message.fromId !== rootScope.myId) {
       media.addEventListener('timeupdate', () => {
         appMessagesManager.readMessages(peerId, [mid]);
@@ -174,8 +241,13 @@ class AppMediaPlaybackController {
     if(autoload) {
       deferred.resolve();
     } else {
-      const waitingStorage = this.waitingMediaForLoad[peerId] ?? (this.waitingMediaForLoad[peerId] = {});
-      waitingStorage[mid] = deferred;
+      const w = message.pFlags.is_scheduled ? this.waitingScheduledMediaForLoad : this.waitingMediaForLoad;
+      let waitingStorage = w.get(peerId);
+      if(!waitingStorage) {
+        w.set(peerId, waitingStorage = new Map());
+      }
+
+      waitingStorage.set(mid, deferred);
     }
 
     deferred.then(() => {
@@ -196,11 +268,17 @@ class AppMediaPlaybackController {
       }
     }/* , onError */);
     
-    return storage[mid] = media;
+    return media;
+  }
+
+  public getMedia(peerId: number, mid: number, isScheduled?: boolean) {
+    const s = (isScheduled ? this.scheduled : this.media).get(peerId);
+    return s?.get(mid);
   }
 
   private onMediaDocumentLoad = (media: HTMLMediaElement) => {
-    const doc = appDocsManager.getDoc(media.dataset.docId);
+    const details = this.mediaDetails.get(media);
+    const doc = appDocsManager.getDoc(details.docId);
     if(doc.type === 'audio' && doc.supportsStreaming && SHOULD_USE_SAFARI_FIX) {
       this.handleSafariStreamable(media);
     }
@@ -248,16 +326,21 @@ class AppMediaPlaybackController {
     }/* , {once: true} */);
   }
 
-  public resolveWaitingForLoadMedia(peerId: number, mid: number) {
-    const storage = this.waitingMediaForLoad[peerId];
+  public resolveWaitingForLoadMedia(peerId: number, mid: number, isScheduled?: boolean) {
+    const w = isScheduled ? this.waitingScheduledMediaForLoad : this.waitingMediaForLoad;
+    const storage = w.get(peerId);
     if(!storage) {
       return;
     }
 
-    const promise = storage[mid];
+    const promise = storage.get(mid);
     if(promise) {
       promise.resolve();
-      delete storage[mid];
+      storage.delete(mid);
+
+      if(!storage.size) {
+        w.delete(peerId);
+      }
     }
   }
   
@@ -274,8 +357,9 @@ class AppMediaPlaybackController {
     media.safariBuffering = value;
   }
 
-  private async setNewMediadata(message: Message.message) {
-    const playingMedia = this.playingMedia; 
+  private async setNewMediadata(message: Message.message, playingMedia = this.playingMedia) {
+    await onMediaLoad(playingMedia, undefined, false); // have to wait for load, otherwise on macOS won't set
+
     const doc = (message.media as MessageMedia.messageMediaDocument).document as MyDocument;
     
     const artwork: MediaImage[] = [];
@@ -374,33 +458,58 @@ class AppMediaPlaybackController {
     navigator.mediaSession.metadata = metadata;
   }
 
-  onPlay = (e?: Event) => {
+  private getMessageByMedia(media: HTMLMediaElement) {
+    const details = this.mediaDetails.get(media);
+    const {peerId, mid} = details;
+    const message = details.isScheduled ? appMessagesManager.getScheduledMessageByPeer(peerId, mid) : appMessagesManager.getMessageByPeer(peerId, mid);
+    return message;
+  }
+
+  private onPlay = (e?: Event) => {
     const media = e.target as HTMLMediaElement;
-    const peerId = +media.dataset.peerId;
-    const mid = +media.dataset.mid;
+    const details = this.mediaDetails.get(media);
+    const {peerId, mid} = details;
 
     //console.log('appMediaPlaybackController: video playing', this.currentPeerId, this.playingMedia, media);
 
-    const message = appMessagesManager.getMessageByPeer(peerId, mid);
+    const message = this.getMessageByMedia(media);
 
     const previousMedia = this.playingMedia;
     if(previousMedia !== media) {
       this.stop();
 
-      this.playingMedia = media;
-
-      if('mediaSession' in navigator) {
-        this.setNewMediadata(message);
+      const verify = (element: MediaItem) => element.mid === mid && element.peerId === peerId;
+      if(!this.listLoader.current || !verify(this.listLoader.current)) {
+        let idx = this.listLoader.previous.findIndex(verify);
+        let jumpLength: number;
+        if(idx !== -1) {
+          jumpLength = -(this.listLoader.previous.length - idx);
+        } else {
+          idx = this.listLoader.next.findIndex(verify);
+          if(idx !== -1) {
+            jumpLength = idx + 1;
+          }
+        }
+  
+        if(idx !== -1) {
+          if(jumpLength) {
+            this.listLoader.go(jumpLength, false);
+          }
+        } else {
+          this.setTargets({peerId, mid});
+        }
       }
+
+      this.setMedia(media, message);
     }
 
     // audio_pause не успеет сработать без таймаута
     setTimeout(() => {
-      rootScope.dispatchEvent('audio_play', {peerId, doc: message.media.document, mid});
+      rootScope.dispatchEvent('media_play', {doc: appMessagesManager.getMediaFromMessage(message), message, media});
     }, 0);
   };
 
-  onPause = (e?: Event) => {
+  private onPause = (e?: Event) => {
     /* const target = e.target as HTMLMediaElement;
     if(!isInDOM(target)) {
       this.container.append(target);
@@ -408,10 +517,10 @@ class AppMediaPlaybackController {
       return;
     } */
 
-    rootScope.dispatchEvent('audio_pause');
+    rootScope.dispatchEvent('media_pause');
   };
 
-  onEnded = (e?: Event) => {
+  private onEnded = (e?: Event) => {
     if(!e.isTrusted) {
       return;
     }
@@ -425,7 +534,7 @@ class AppMediaPlaybackController {
 
   public toggle(play?: boolean) {
     if(!this.playingMedia) {
-      return;
+      return false;
     }
 
     if(play === undefined) {
@@ -433,7 +542,7 @@ class AppMediaPlaybackController {
     }
 
     if(this.playingMedia.paused !== play) {
-      return;
+      return false;
     }
 
     if(play) {
@@ -441,6 +550,8 @@ class AppMediaPlaybackController {
     } else {
       this.playingMedia.pause();
     }
+
+    return true;
   }
 
   public play = () => {
@@ -453,21 +564,45 @@ class AppMediaPlaybackController {
 
   public stop = () => {
     const media = this.playingMedia;
-    if(media) {
-      if(!media.paused) {
-        media.pause();
-      }
-
-      media.currentTime = 0;
-      simulateEvent(media, 'ended');
-
-      // this.playingMedia = undefined;
+    if(!media) {
+      return false;
     }
+
+    if(!media.paused) {
+      media.pause();
+    }
+
+    media.currentTime = 0;
+    simulateEvent(media, 'ended');
+
+    const details = this.mediaDetails.get(media);
+    if(details?.clean) {
+      media.src = '';
+      const peerId = details.peerId;
+      const s = details.isScheduled ? this.scheduled : this.media;
+      const storage = s.get(peerId);
+      if(storage) {
+        storage.delete(details.mid);
+  
+        if(!storage.size) {
+          s.delete(peerId);
+        }
+      }
+  
+      media.remove();
+
+      this.mediaDetails.delete(media);
+    }
+
+    this.playingMedia = undefined;
+
+    return true;
   };
 
   public playItem = (item: MediaItem) => {
     const {peerId, mid} = item;
-    const media = this.media[peerId][mid];
+    const isScheduled = this.searchContext.isScheduled;
+    const media = this.getMedia(peerId, mid, isScheduled);
 
     /* if(isSafari) {
       media.autoplay = true;
@@ -476,12 +611,12 @@ class AppMediaPlaybackController {
     media.play();
     
     setTimeout(() => {
-      this.resolveWaitingForLoadMedia(peerId, mid);
+      this.resolveWaitingForLoadMedia(peerId, mid, isScheduled);
     }, 0);
   };
 
   public next = () => {
-    this.listLoader.go(1);
+    return !this.lockedSwitchers && this.listLoader.go(1);
   };
 
   public previous = () => {
@@ -492,14 +627,14 @@ class AppMediaPlaybackController {
       return;
     }
 
-    this.listLoader.go(-1);
+    return !this.lockedSwitchers && this.listLoader.go(-1);
   };
 
   public willBePlayed(media: HTMLMediaElement) {
     this.willBePlayedMedia = media;
   }
 
-  public setSearchContext(context: SearchSuperContext) {
+  public setSearchContext(context: MediaSearchContext) {
     if(deepEqual(this.searchContext, context)) {
       return false;
     }
@@ -508,20 +643,25 @@ class AppMediaPlaybackController {
     return true;
   }
 
+  public getSearchContext() {
+    return this.searchContext;
+  }
+
   public setTargets(current: MediaItem, prev?: MediaItem[], next?: MediaItem[]) {
     if(!this.listLoader) {
       this.listLoader = new SearchListLoader({
         loadCount: 10,
         loadWhenLeft: 5,
-        processItem: (item: Message.message) => {
-          const {peerId, mid} = item;
-          this.addMedia(peerId, (item.media as MessageMedia.messageMediaDocument).document as MyDocument, mid, false);
-          return {peerId, mid};
+        processItem: (message: Message.message) => {
+          this.addMedia(message, false);
+          return {peerId: message.peerId, mid: message.mid};
         },
         onJump: (item, older) => {
           this.playItem(item);
         }
       });
+
+      this.listLoader.onEmptied = this.stop;
     } else {
       this.listLoader.reset();
     }
@@ -538,6 +678,49 @@ class AppMediaPlaybackController {
 
     this.listLoader.load(true);
     this.listLoader.load(false);
+  }
+
+  public setMedia(media: HTMLMediaElement, message: Message.message) {
+    this.playingMedia = media;
+    this.playingMedia.volume = this.volume;
+    this.playingMedia.muted = this.muted;
+    this.playingMedia.playbackRate = this.playbackRate;
+
+    if('mediaSession' in navigator) {
+      this.setNewMediadata(message);
+    }
+  }
+
+  public setSingleMedia(media: HTMLMediaElement, message: Message.message) {
+    const playingMedia = this.playingMedia;
+
+    const wasPlaying = this.pause();
+
+    this.willBePlayed(undefined);
+    this.setMedia(media, message);
+    this.toggleSwitchers(false);
+
+    return () => {
+      this.toggleSwitchers(true);
+
+      if(this.mediaDetails.get(playingMedia)) {
+        this.setMedia(playingMedia, this.getMessageByMedia(playingMedia));
+      } else {
+        this.next() || this.previous();
+      }
+
+      if(this.playingMedia === media) {
+        this.stop();
+      }
+
+      if(wasPlaying) {
+        this.play();
+      }
+    };
+  }
+
+  public toggleSwitchers(enabled: boolean) {
+    this.lockedSwitchers = !enabled;
   }
 }
 

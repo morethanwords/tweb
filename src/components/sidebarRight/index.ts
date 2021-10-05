@@ -14,6 +14,7 @@ export const RIGHT_COLUMN_ACTIVE_CLASSNAME = 'is-right-column-shown';
 
 export class AppSidebarRight extends SidebarSlider {
   public sharedMediaTab: AppSharedMediaTab;
+  private isColumnProportionSet = false;
 
   constructor() {
     super({
@@ -26,6 +27,10 @@ export class AppSidebarRight extends SidebarSlider {
       if(to === ScreenSize.medium && from !== ScreenSize.mobile) {
         this.toggleSidebar(false);
       }
+    });
+
+    mediaSizes.addEventListener('resize', () => {
+      this.setColumnProportion();
     });
 
     this.sharedMediaTab = new AppSharedMediaTab(this);
@@ -49,6 +54,11 @@ export class AppSidebarRight extends SidebarSlider {
     return res;
   } */
 
+  private setColumnProportion() {
+    const proportion = this.sidebarEl.scrollWidth / this.sidebarEl.previousElementSibling.scrollWidth;
+    document.documentElement.style.setProperty('--right-column-proportion', '' + proportion);
+  }
+
   public toggleSidebar(enable?: boolean, animate?: boolean) {
     /////this.log('sidebarEl', this.sidebarEl, enable, isElementInViewport(this.sidebarEl));
 
@@ -71,6 +81,11 @@ export class AppSidebarRight extends SidebarSlider {
     if(!active && !this.historyTabIds.length) {
       this.sharedMediaTab.open();
       //this.selectTab(this.sharedMediaTab);
+    }
+
+    if(!this.isColumnProportionSet) {
+      this.setColumnProportion();
+      this.isColumnProportionSet = true;
     }
 
     const animationPromise = appImManager.selectTab(active ? 1 : 2, animate);

@@ -174,7 +174,7 @@ const REFRESH_KEYS = ['contactsList', 'stateCreatedTime',
 export class AppStateManager extends EventListenerBase<{
   save: (state: State) => Promise<void>,
   peerNeeded: (peerId: number) => void,
-  peerUnneeded: (peerId: number) => void,
+  peerUnneeded: (peerId: number) => void
 }> {
   public static STATE_INIT = STATE_INIT;
   private loaded: Promise<State>;
@@ -198,6 +198,8 @@ export class AppStateManager extends EventListenerBase<{
   } = {} as any;
 
   public storage = stateStorage;
+
+  public newVersion: string;
 
   constructor() {
     super();
@@ -409,6 +411,7 @@ export class AppStateManager extends EventListenerBase<{
 
         if(state.version !== STATE_VERSION) {
           this.pushToState('version', STATE_VERSION);
+          this.newVersion = STATE_VERSION;
         }
 
         // ! probably there is better place for it

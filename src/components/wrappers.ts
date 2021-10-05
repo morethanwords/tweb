@@ -19,8 +19,8 @@ import appPhotosManager, { MyPhoto } from '../lib/appManagers/appPhotosManager';
 import LottieLoader from '../lib/lottieLoader';
 import webpWorkerController from '../lib/webp/webpWorkerController';
 import animationIntersector from './animationIntersector';
-import appMediaPlaybackController from './appMediaPlaybackController';
-import AudioElement from './audio';
+import appMediaPlaybackController, { MediaSearchContext } from './appMediaPlaybackController';
+import AudioElement, { findAudioTargets as findMediaTargets } from './audio';
 import ReplyContainer from './chat/replyContainer';
 import { Layouter, RectPart } from './groupedLayout';
 import LazyLoadQueue from './lazyLoadQueue';
@@ -48,6 +48,7 @@ import IS_WEBP_SUPPORTED from '../environment/webpSupport';
 import MEDIA_MIME_TYPES_SUPPORTED from '../environment/mediaMimeTypesSupport';
 import { MiddleEllipsisElement } from './middleEllipsis';
 import { joinElementsWith } from '../lib/langPack';
+import throttleWithRaf from '../helpers/schedulers/throttleWithRaf';
 
 const MAX_VIDEO_AUTOPLAY_SIZE = 50 * 1024 * 1024; // 50 MB
 
@@ -92,7 +93,7 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
   loadPromises?: Promise<any>[],
   noAutoDownload?: boolean,
   size?: PhotoSize,
-  searchContext?: SearchSuperContext
+  searchContext?: MediaSearchContext,
 }) {
   const isAlbumItem = !(boxWidth && boxHeight);
   const canAutoplay = (doc.type !== 'video' || (doc.size <= MAX_VIDEO_AUTOPLAY_SIZE && !isAlbumItem)) 
@@ -168,12 +169,11 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
   video.setAttribute('playsinline', 'true');
   video.muted = true;
   if(doc.type === 'round') {
-    const globalVideo = appMediaPlaybackController.addMedia(message.peerId, doc, message.mid, !noAutoDownload) as HTMLVideoElement;
- 
     const divRound = document.createElement('div');
     divRound.classList.add('media-round', 'z-depth-1');
     divRound.dataset.mid = '' + message.mid;
     divRound.dataset.peerId = '' + message.peerId;
+    (divRound as any).message = message;
 
     const size = mediaSizes.active.round;
     const halfSize = size.width / 2;
@@ -209,109 +209,129 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
     ctx.arc(canvas.width / 2, canvas.height / 2, canvas.width / 2, 0, Math.PI * 2);
     ctx.clip(); */
 
-    const clear = () => {
-      (appImManager.chat.setPeerPromise || Promise.resolve()).finally(() => {
-        if(isInDOM(globalVideo)) {
+    const onLoad = () => {
+      const message: Message.message = (divRound as any).message;
+      const globalVideo = appMediaPlaybackController.addMedia(message, !noAutoDownload) as HTMLVideoElement;
+      const clear = () => {
+        (appImManager.chat.setPeerPromise || Promise.resolve()).finally(() => {
+          if(isInDOM(globalVideo)) {
+            return;
+          }
+  
+          globalVideo.removeEventListener('play', onPlay);
+          globalVideo.removeEventListener('timeupdate', throttledTimeUpdate);
+          globalVideo.removeEventListener('pause', onPaused);
+          globalVideo.removeEventListener('ended', onEnded);
+        });
+      };
+  
+      const onFrame = () => {
+        ctx.drawImage(globalVideo, 0, 0);
+  
+        const offset = roundVideoCircumference - globalVideo.currentTime / globalVideo.duration * roundVideoCircumference;
+        circle.style.strokeDashoffset = '' + offset;
+  
+        return !globalVideo.paused;
+      };
+
+      const onTimeUpdate = () => {
+        if(!globalVideo.duration) {
+          return;
+        }
+  
+        if(!isInDOM(globalVideo)) {
+          clear();
           return;
         }
 
-        globalVideo.removeEventListener('play', onPlay);
-        globalVideo.removeEventListener('timeupdate', onTimeUpdate);
-        globalVideo.removeEventListener('pause', onPaused);
-        globalVideo.removeEventListener('ended', onEnded);
-      });
-    };
+        if(globalVideo.paused) {
+          onFrame();
+        }
+  
+        spanTime.innerText = (globalVideo.duration - globalVideo.currentTime + '').toHHMMSS(false);
+      };
 
-    const onFrame = () => {
-      ctx.drawImage(globalVideo, 0, 0);
-
-      const offset = roundVideoCircumference - globalVideo.currentTime / globalVideo.duration * roundVideoCircumference;
-      circle.style.strokeDashoffset = '' + offset;
-
-      return !globalVideo.paused;
-    };
-
-    const onTimeUpdate = () => {
-      if(!globalVideo.duration) return;
-
-      if(!isInDOM(globalVideo)) {
-        clear();
-        return;
-      }
-
-      spanTime.innerText = (globalVideo.duration - globalVideo.currentTime + '').toHHMMSS(false);
-    };
-
-    const onPlay = () => {
-      video.classList.add('hide');
-      divRound.classList.remove('is-paused');
-      animateSingle(onFrame, canvas);
-
-      if(preloader && preloader.preloader && preloader.preloader.classList.contains('manual')) {
-        preloader.onClick();
-      }
-    };
-
-    const onPaused = () => {
-      if(!isInDOM(globalVideo)) {
-        clear();
-        return;
-      }
-
-      divRound.classList.add('is-paused');
-    };
-
-    const onEnded = () => {
-      video.classList.remove('hide');
-      divRound.classList.add('is-paused');
-      
-      video.currentTime = 0;
-      spanTime.innerText = ('' + globalVideo.duration).toHHMMSS(false);
-
-      if(globalVideo.currentTime) {
-        globalVideo.currentTime = 0;
-      }
-    };
-
-    globalVideo.addEventListener('play', onPlay);
-    globalVideo.addEventListener('timeupdate', onTimeUpdate);
-    globalVideo.addEventListener('pause', onPaused);
-    globalVideo.addEventListener('ended', onEnded);
-
-    attachClickEvent(canvas, (e) => {
-      cancelEvent(e);
-
-      // ! костыль
-      if(preloader && !preloader.detached) {
-        preloader.onClick();
-      }
-      
-      // ! can't use it here. on Safari iOS video won't start.
-      /* if(globalVideo.readyState < 2) {
-        return;
-      } */
-
-      if(globalVideo.paused) {
-        if(appMediaPlaybackController.setSearchContext(searchContext)) {
-          appMediaPlaybackController.setTargets({peerId: message.peerId, mid: message.mid});
+      const throttledTimeUpdate = throttleWithRaf(onTimeUpdate);
+  
+      const onPlay = () => {
+        video.classList.add('hide');
+        divRound.classList.remove('is-paused');
+        animateSingle(onFrame, canvas);
+  
+        if(preloader && preloader.preloader && preloader.preloader.classList.contains('manual')) {
+          preloader.onClick();
+        }
+      };
+  
+      const onPaused = () => {
+        if(!isInDOM(globalVideo)) {
+          clear();
+          return;
+        }
+  
+        divRound.classList.add('is-paused');
+      };
+  
+      const onEnded = () => {
+        video.classList.remove('hide');
+        divRound.classList.add('is-paused');
+        
+        video.currentTime = 0;
+        spanTime.innerText = ('' + globalVideo.duration).toHHMMSS(false);
+  
+        if(globalVideo.currentTime) {
+          globalVideo.currentTime = 0;
+        }
+      };
+  
+      globalVideo.addEventListener('play', onPlay);
+      globalVideo.addEventListener('timeupdate', throttledTimeUpdate);
+      globalVideo.addEventListener('pause', onPaused);
+      globalVideo.addEventListener('ended', onEnded);
+  
+      attachClickEvent(canvas, (e) => {
+        cancelEvent(e);
+  
+        // ! костыль
+        if(preloader && !preloader.detached) {
+          preloader.onClick();
         }
         
-        globalVideo.play();
+        // ! can't use it here. on Safari iOS video won't start.
+        /* if(globalVideo.readyState < 2) {
+          return;
+        } */
+  
+        if(globalVideo.paused) {
+          if(appMediaPlaybackController.setSearchContext(searchContext)) {
+            const [prev, next] = findMediaTargets(divRound, searchContext.useSearch);
+            appMediaPlaybackController.setTargets({peerId: message.peerId, mid: message.mid}, prev, next);
+          }
+          
+          globalVideo.play();
+        } else {
+          globalVideo.pause();
+        }
+      });
+  
+      if(globalVideo.paused) {
+        if(globalVideo.duration && globalVideo.currentTime !== globalVideo.duration && globalVideo.currentTime > 0) {
+          onFrame();
+          onTimeUpdate();
+          video.classList.add('hide');
+        } else {
+          onPaused();
+        }
       } else {
-        globalVideo.pause();
+        onPlay();
       }
-    });
+    };
 
-    if(globalVideo.paused) {
-      if(globalVideo.duration && globalVideo.currentTime !== globalVideo.duration && globalVideo.currentTime > 0) {
-        onFrame();
-        onTimeUpdate();
-        video.classList.add('hide');
-      } else {
-        onPaused();
-      }
+    if(message.pFlags.is_outgoing) {
+      (divRound as any).onLoad = onLoad;
+      divRound.dataset.isOutgoing = '1';
     } else {
-      onPlay();
+      onLoad();
     }
   } else {
     video.autoplay = true; // для safari
@@ -456,7 +476,7 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
       }
 
       if(doc.type === 'round') {
-        appMediaPlaybackController.resolveWaitingForLoadMedia(message.peerId, message.mid);
+        appMediaPlaybackController.resolveWaitingForLoadMedia(message.peerId, message.mid, message.pFlags.is_scheduled);
       }
 
       renderImageFromUrl(video, cacheContext.url);
@@ -515,7 +535,7 @@ export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showS
   fontWeight?: number,
   voiceAsMusic?: boolean,
   showSender?: boolean,
-  searchContext?: SearchSuperContext,
+  searchContext?: MediaSearchContext,
   loadPromises?: Promise<any>[],
   noAutoDownload?: boolean,
   lazyLoadQueue?: LazyLoadQueue
@@ -526,8 +546,6 @@ export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showS
   const uploading = message.pFlags.is_outgoing && message.media?.preloader;
   if(doc.type === 'audio' || doc.type === 'voice' || doc.type === 'round') {
     const audioElement = new AudioElement();
-    audioElement.dataset.mid = '' + message.mid;
-    audioElement.dataset.peerId = '' + message.peerId;
     audioElement.withTime = withTime;
     audioElement.message = message;
     audioElement.noAutoDownload = noAutoDownload;
@@ -1609,7 +1627,7 @@ export function wrapAlbum({groupId, attachmentDiv, middleware, uploading, lazyLo
   });
 }
 
-export function wrapGroupedDocuments({albumMustBeRenderedFull, message, bubble, messageDiv, chat, loadPromises, noAutoDownload, lazyLoadQueue, searchContext}: {
+export function wrapGroupedDocuments({albumMustBeRenderedFull, message, bubble, messageDiv, chat, loadPromises, noAutoDownload, lazyLoadQueue, searchContext, useSearch}: {
   albumMustBeRenderedFull: boolean,
   message: any,
   messageDiv: HTMLElement,
@@ -1619,7 +1637,8 @@ export function wrapGroupedDocuments({albumMustBeRenderedFull, message, bubble, 
   loadPromises?: Promise<any>[],
   noAutoDownload?: boolean,
   lazyLoadQueue?: LazyLoadQueue,
-  searchContext?: SearchSuperContext
+  searchContext?: MediaSearchContext,
+  useSearch?: boolean,
 }) {
   let nameContainer: HTMLElement;
   const mids = albumMustBeRenderedFull ? chat.getMidsByMid(message.mid) : [message.mid];

@@ -7,17 +7,17 @@
 import { forEachReverse } from "./array";
 import { safeAssign } from "./object";
 
-export type ListLoaderOptions<T extends {}> = {
-  loadMore: ListLoader<T>['loadMore'],
-  loadCount?: ListLoader<T>['loadCount'],
-  loadWhenLeft?: ListLoader<T>['loadWhenLeft'],
-  processItem?: ListLoader<T>['processItem'],
-  onJump?: ListLoader<T>['onJump'],
-  onLoadedMore?: ListLoader<T>['onLoadedMore']
+export type ListLoaderOptions<T extends {}, P extends {}> = {
+  loadMore: ListLoader<T, P>['loadMore'],
+  loadCount?: ListLoader<T, P>['loadCount'],
+  loadWhenLeft?: ListLoader<T, P>['loadWhenLeft'],
+  processItem?: ListLoader<T, P>['processItem'],
+  onJump?: ListLoader<T, P>['onJump'],
+  onLoadedMore?: ListLoader<T, P>['onLoadedMore']
 };
 
 export type ListLoaderResult<T extends {}> = {count: number, items: any[]};
-export default class ListLoader<T extends {}> {
+export default class ListLoader<T extends {}, P extends {}> {
   public current: T;
   public previous: T[] = [];
   public next: T[] = [];
@@ -25,7 +25,7 @@ export default class ListLoader<T extends {}> {
   public reverse = false; // reverse means next = higher msgid
 
   protected loadMore: (anchor: T, older: boolean, loadCount: number) => Promise<ListLoaderResult<T>>;
-  protected processItem: (item: any) => T;
+  protected processItem: (item: P) => T;
   protected loadCount = 50;
   protected loadWhenLeft = 20;
   
@@ -37,7 +37,7 @@ export default class ListLoader<T extends {}> {
   protected loadPromiseUp: Promise<void>;
   protected loadPromiseDown: Promise<void>;
 
-  constructor(options: ListLoaderOptions<T>) {
+  constructor(options: ListLoaderOptions<T, P>) {
     safeAssign(this, options);
   }
 
@@ -51,15 +51,15 @@ export default class ListLoader<T extends {}> {
     return this.count !== undefined ? this.previous.length : -1;
   }
 
-  public reset() {
+  public reset(loadedAll = false) {
     this.current = undefined;
     this.previous = [];
     this.next = [];
-    this.loadedAllUp = this.loadedAllDown = false;
+    this.loadedAllUp = this.loadedAllDown = loadedAll;
     this.loadPromiseUp = this.loadPromiseDown = null;
   }
 
-  public go(length: number) {
+  public go(length: number, dispatchJump = true) {
     let items: T[], item: T;
     if(length > 0) {
       items = this.next.splice(0, length);
@@ -88,7 +88,8 @@ export default class ListLoader<T extends {}> {
     }
 
     this.current = item;
-    this.onJump && this.onJump(item, length > 0);
+    dispatchJump && this.onJump && this.onJump(item, length > 0);
+    return this.current;
   }
 
   // нет смысла делать проверку для reverse и loadMediaPromise

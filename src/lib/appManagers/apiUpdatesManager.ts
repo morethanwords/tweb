@@ -11,7 +11,7 @@
 
 //import apiManager from '../mtproto/apiManager';
 import DEBUG, { MOUNT_CLASS_TO } from '../../config/debug';
-import { Message, MessageFwdHeader, Peer, Update, Updates } from '../../layer';
+import { Message, MessageEntity, MessageFwdHeader, Peer, Update, Updates } from '../../layer';
 import { logger, LogTypes } from '../logger';
 import apiManager from '../mtproto/mtprotoworker';
 import rootScope from '../rootScope';
@@ -22,6 +22,8 @@ import appPeersManager from "./appPeersManager";
 import appStateManager from './appStateManager';
 import serverTimeManager from '../mtproto/serverTimeManager';
 import assumeType from '../../helpers/assumeType';
+import noop from '../../helpers/noop';
+import RichTextProcessor from '../richtextprocessor';
 
 type UpdatesState = {
   pendingPtsUpdates: (Update & {pts: number, pts_count: number})[],
@@ -633,6 +635,8 @@ export class ApiUpdatesManager {
     appStateManager.getState().then(_state => {
       const state = _state.updates;
 
+      const newVersion = appStateManager.newVersion/*  || '0.8.6' */;
+
       //rootScope.broadcast('state_synchronizing');
       if(!state || !state.pts || !state.date || !state.seq) {
         this.log('will get new state');
@@ -679,6 +683,33 @@ export class ApiUpdatesManager {
       // this.updatesState.syncLoading.then(() => {
         this.setProxy();
       // });
+
+      if(newVersion) {
+        this.updatesState.syncLoading.then(() => {
+          fetch('changelogs/' + newVersion + '.md')
+          .then(res => res.text())
+          .then(text => {
+            const pre = `**Telegram was updated to version alpha ${newVersion}**\n\n`;
+
+            text = pre + text;
+
+            const entities: MessageEntity[] = [];
+            const message = RichTextProcessor.parseMarkdown(text, entities);
+
+            const update: Update.updateServiceNotification = {
+              _: 'updateServiceNotification',
+              entities,
+              message,
+              type: 'local',
+              pFlags: {},
+              inbox_date: Date.now() / 1000 | 0,
+              media: undefined
+            };
+            this.processLocalUpdate(update);
+          })
+          .catch(noop);
+        });
+      }
     });
   }
 }

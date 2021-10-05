@@ -43,6 +43,7 @@ import PopupPeer from "../popups/peer";
 import generateVerifiedIcon from "../generateVerifiedIcon";
 import { fastRaf } from "../../helpers/schedulers";
 import AppEditContactTab from "../sidebarRight/tabs/editContact";
+import appMediaPlaybackController from "../appMediaPlaybackController";
 
 export default class ChatTopbar {
   public container: HTMLDivElement;
@@ -87,6 +88,7 @@ export default class ChatTopbar {
 
     this.container = document.createElement('div');
     this.container.classList.add('sidebar-header', 'topbar');
+    this.container.dataset.floating = '0';
 
     this.btnBack = ButtonIcon('left sidebar-close-button', {noRipple: true});
 
@@ -141,22 +143,38 @@ export default class ChatTopbar {
       });
     }
 
-    this.chatUtils.append(...[this.chatAudio ? this.chatAudio.divAndCaption.container : null, this.pinnedMessage ? this.pinnedMessage.pinnedMessageContainer.divAndCaption.container : null, this.btnJoin, this.btnPinned, this.btnMute, this.btnSearch, this.btnMore].filter(Boolean));
+    this.chatUtils.append(...[
+      // this.chatAudio ? this.chatAudio.divAndCaption.container : null, 
+      this.pinnedMessage ? this.pinnedMessage.pinnedMessageContainer.divAndCaption.container : null, 
+      this.btnJoin, 
+      this.btnPinned, 
+      this.btnMute, 
+      this.btnSearch, 
+      this.btnMore
+    ].filter(Boolean));
 
     this.container.append(this.btnBack, this.chatInfo, this.chatUtils);
+
+    if(this.chatAudio) {
+      this.container.append(this.chatAudio.divAndCaption.container, this.chatUtils);
+    }
 
     // * construction end
 
     // * fix topbar overflow section
 
     this.listenerSetter.add(window)('resize', this.onResize);
-    mediaSizes.addEventListener('changeScreen', this.onChangeScreen);
+    this.listenerSetter.add(mediaSizes)('changeScreen', this.onChangeScreen);
 
     attachClickEvent(this.container, (e) => {
       const container: HTMLElement = findUpClassName(e.target, 'pinned-container');
       blurActiveElement();
       if(container) {
         cancelEvent(e);
+
+        if(findUpClassName(e.target, 'progress-line')) {
+          return;
+        }
         
         const mid = +container.dataset.mid;
         const peerId = +container.dataset.peerId;
@@ -165,7 +183,13 @@ export default class ChatTopbar {
             this.pinnedMessage.followPinnedMessage(mid);
           //}
         } else {
-          this.chat.appImManager.setInnerPeer(peerId, mid);
+          const searchContext = appMediaPlaybackController.getSearchContext();
+          this.chat.appImManager.setInnerPeer(
+            peerId, 
+            mid, 
+            searchContext.isScheduled ? 'scheduled' : (searchContext.threadId ? 'discussion' : undefined), 
+            searchContext.threadId
+          );
         }
       } else {
         if(mediaSizes.activeScreen === ScreenSize.medium && document.body.classList.contains(LEFT_COLUMN_ACTIVE_CLASSNAME)) {
@@ -350,7 +374,7 @@ export default class ChatTopbar {
       },
       verify: () => {
         const userFull = this.appProfileManager.usersFull[this.peerId];
-        return this.peerId > 0 && userFull && !userFull.pFlags?.blocked;
+        return this.peerId > 0 && this.peerId !== rootScope.myId && userFull && !userFull.pFlags?.blocked;
       }
     }, {
       icon: 'lockoff',
@@ -448,17 +472,13 @@ export default class ChatTopbar {
       }
     });
 
-    this.listenerSetter.add(rootScope)('peer_typings', (e) => {
-      const {peerId} = e;
-
+    this.listenerSetter.add(rootScope)('peer_typings', ({peerId}) => {
       if(this.peerId === peerId) {
         this.setPeerStatus();
       }
     });
 
-    this.listenerSetter.add(rootScope)('user_update', (e) => {
-      const userId = e;
-
+    this.listenerSetter.add(rootScope)('user_update', (userId) => {
       if(this.peerId === userId) {
         this.setPeerStatus();
       }
@@ -510,20 +530,20 @@ export default class ChatTopbar {
 
   private onResize = () => {
     this.setUtilsWidth(true);
+    this.setFloating();
   };
 
   private onChangeScreen = (from: ScreenSize, to: ScreenSize) => {
     this.container.classList.toggle('is-pinned-floating', mediaSizes.isMobile);
-    this.chatAudio && this.chatAudio.divAndCaption.container.classList.toggle('is-floating', to === ScreenSize.mobile);
+    // this.chatAudio && this.chatAudio.divAndCaption.container.classList.toggle('is-floating', to === ScreenSize.mobile);
     this.pinnedMessage && this.pinnedMessage.pinnedMessageContainer.divAndCaption.container.classList.toggle('is-floating', to === ScreenSize.mobile);
-    this.setUtilsWidth(true);
+    this.onResize();
   };
 
   public destroy() {
     //this.chat.log.error('Topbar destroying');
 
     this.listenerSetter.removeAll();
-    mediaSizes.removeEventListener('changeScreen', this.onChangeScreen);
     window.clearInterval(this.setPeerStatusInterval);
     
     if(this.pinnedMessage) {
@@ -711,6 +731,16 @@ export default class ChatTopbar {
         //mutationObserver.observe(chatUtils, observeOptions);
       //});
     });
+  };
+
+  public setFloating = () => {
+    const containers = [this.chatAudio, this.pinnedMessage && this.pinnedMessage.pinnedMessageContainer].filter(Boolean);
+    const count = containers.reduce((acc, container) => {
+      const isFloating = container.divAndCaption.container.classList.contains('is-floating');
+      this.container.classList.toggle(`is-pinned-${container.className}-floating`, isFloating);
+      return acc + +isFloating;
+    }, 0);
+    this.container.dataset.floating = '' + count;
   };
 
   public setPeerStatus = (needClear = false) => {

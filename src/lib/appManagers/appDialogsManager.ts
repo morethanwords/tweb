@@ -461,7 +461,7 @@ export class AppDialogsManager {
     appStateManager.getState().then((state) => {
       return this.onStateLoaded(state);
     }).then(() => {
-      //return;
+      // return;
       
       const isLoadedMain = appMessagesManager.dialogsStorage.isDialogsLoaded(0);
       const isLoadedArchive = appMessagesManager.dialogsStorage.isDialogsLoaded(1);

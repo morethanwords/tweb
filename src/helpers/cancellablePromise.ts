@@ -4,6 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import noop from "./noop";
+
 export interface CancellablePromise<T> extends Promise<T> {
   resolve?: (value: T) => void,
   reject?: (...args: any[]) => void,
@@ -62,7 +64,7 @@ export function deferredPromise<T>() {
     
   }; */
 
-  deferred.finally(() => {
+  deferred.catch(noop).finally(() => {
     deferred.notify = deferred.notifyAll = deferred.lastNotify = null;
     deferred.listeners.length = 0;
 

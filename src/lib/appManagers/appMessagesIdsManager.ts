@@ -30,6 +30,10 @@ export class AppMessagesIdsManager {
    * * will ignore outgoing offset
    */
   public getServerMessageId(messageId: number) {
+    return this.clearMessageId(messageId, true);
+  }
+
+  public clearMessageId(messageId: number, toServer?: boolean) {
     const q = AppMessagesIdsManager.MESSAGE_ID_OFFSET;
     if(messageId < q) { // id 0 -> mid 0xFFFFFFFF, so 0xFFFFFFFF must convert to 0
       return messageId;
@@ -41,11 +45,11 @@ export class AppMessagesIdsManager {
       messageId -= used + 1;
     }
 
-    return (messageId - q) / AppMessagesIdsManager.MESSAGE_ID_INCREMENT;
+    return toServer ? (messageId - q) / AppMessagesIdsManager.MESSAGE_ID_INCREMENT : messageId;
   }
 
   public incrementMessageId(messageId: number, increment: number) {
-    return this.generateMessageId(appMessagesIdsManager.getServerMessageId(messageId) + increment);
+    return this.generateMessageId(this.getServerMessageId(messageId) + increment);
   }
 }
 

@@ -4,31 +4,67 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-.topbar {
-	width: 100%;
-	background-color: #fff;
-	user-select: none;
-	box-shadow: 0px 1px 5px -1px rgba(0, 0, 0, .21);
-	z-index: 1;
-	min-height: 3.5rem;
-	max-height: 3.5rem;
+@mixin sidebar-transform() {
+	@include respond-to(medium-screens) {
+		transition: transform var(--transition-standard-out);
 
-	&.is-pinned-floating {
-		&.is-pinned-audio-shown, &.is-pinned-message-shown:not(.hide-pinned) {
-			margin-bottom: 52px;
-			/* & + .bubbles {
-				margin-top: 52px;
-			} */
-
-			& ~ .drops-container {
-				--pinned-floating-height: 52px;
-			}
+		body.is-right-column-shown & {
+			transform: translate3d(calc(var(--right-column-width) * -1), 0, 0);
+			transition: transform var(--transition-standard-in);
 		}
 
-		&.is-pinned-message-shown:not(.hide-pinned):not(.is-pinned-audio-shown) {
-			.pinned-message {
-				display: flex;
+		body.animation-level-0 & {
+			transition: none;
+		}
+
+		@content;
+	}
+}
+
+.topbar {
+	--topbar-height: 3.5rem;
+	--pinned-floating-height: 0px;
+	--pinned-audio-height: 52px;
+	--pinned-message-height: 52px;
+	width: 100%;
+	z-index: 1;
+	min-height: var(--height);
+	max-height: var(--height);
+	margin-bottom: var(--pinned-floating-height);
+	position: relative;
+
+	&:before {
+		content: " ";
+		position: absolute;
+		height: calc(var(--topbar-height) + var(--pinned-floating-height));
+		top: 0;
+		right: 0;
+		left: 0;
+		box-shadow: 0px 1px 5px -1px rgba(0, 0, 0, .21);
+		pointer-events: none;
+	}
+
+	&.is-pinned-audio-floating {
+		--pinned-floating-height: var(--pinned-audio-height);
+	}
+
+	&.is-pinned-message-floating {
+		--pinned-floating-height: var(--pinned-message-height);
+	}
+
+	&.is-pinned-audio-floating.is-pinned-message-floating {
+		--pinned-floating-height: calc(var(--pinned-audio-height) + var(--pinned-message-height));
+
+		.pinned-message {
+			top: calc(var(--topbar-height) + var(--pinned-audio-height));
+
+			&:before {
+				border-top: none;
 			}
+
+			/* &:before {
+				box-shadow: none;
+			} */
 		}
 	}
 
@@ -54,6 +90,10 @@
 				padding-left: .1875rem;
 			}
 		}
+	}
+
+	.pinned-container-wrapper-utils {
+		@include sidebar-transform();
 	}
 
 	.sidebar-close-button {
@@ -92,7 +132,8 @@
 		}
 	}
 	
-	.peer-title, .info {
+	.peer-title, 
+	.info {
 		@include text-overflow();
 		line-height: var(--line-height);
 	}
@@ -145,18 +186,7 @@
     right: 0px;
     padding-right: inherit; */
 
-		@include respond-to(medium-screens) {
-			transition: transform var(--transition-standard-out);
-	
-			body.is-right-column-shown & {
-				transform: translate3d(calc(var(--right-column-width) * -1), 0, 0);
-				transition: transform var(--transition-standard-in);
-			}
-
-			body.animation-level-0 & {
-				transition: none;
-			}
-		}
+		@include sidebar-transform();
 
 		@include respond-to(handhelds) {
 			> .btn-icon:not(.btn-menu-toggle) {

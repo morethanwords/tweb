@@ -335,7 +335,7 @@ video::-webkit-media-controls-enclosure {
   }
 
   &__filled {
-    padding-right: 1px; // * need because there is border-radius
+    // padding-right: 1px; // * need because there is border-radius
     max-width: 100%;
 
     &:not(.progress-line__loaded) {
@@ -380,8 +380,17 @@ video::-webkit-media-controls-enclosure {
   }
 
   @include animation-level(2) {
-    &.with-transition .progress-line__filled {
-      transition: width .2s;
+    &.with-transition {
+      .progress-line__filled {
+        transition: width .2s;
+      }
+    }
+  }
+
+  &.use-transform {
+    .progress-line__filled {
+      width: 100%;
+      transform-origin: left center;
     }
   }
 }

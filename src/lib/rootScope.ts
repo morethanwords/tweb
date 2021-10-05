@@ -59,7 +59,7 @@ export type BroadcastEvents = {
   
   'message_edit': {storage: MessagesStorage, peerId: number, mid: number},
   'message_views': {peerId: number, mid: number, views: number},
-  'message_sent': {storage: MessagesStorage, tempId: number, tempMessage: any, mid: number},
+  'message_sent': {storage: MessagesStorage, tempId: number, tempMessage: any, mid: number, message: Message.message},
   'messages_pending': void,
   'messages_read': void,
   'messages_downloaded': {peerId: number, mids: number[]},
@@ -75,8 +75,9 @@ export type BroadcastEvents = {
   'stickers_installed': StickerSet.stickerSet,
   'stickers_deleted': StickerSet.stickerSet,
 
-  'audio_play': {doc: MyDocument, mid: number, peerId: number},
-  'audio_pause': void,
+  'media_play': {doc: MyDocument, message: Message.message, media: HTMLMediaElement},
+  'media_pause': void,
+  'media_playback_params': {volume: number, muted: boolean, playbackRate: number},
   
   'state_cleared': void,
   'state_synchronized': number | void,

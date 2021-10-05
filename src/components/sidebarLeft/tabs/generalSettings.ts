@@ -49,7 +49,11 @@ export class RangeSettingSelector {
 
     details.append(nameDiv, valueDiv);
 
-    this.range = new RangeSelector(step, initialValue, minValue, maxValue);
+    this.range = new RangeSelector({
+      step, 
+      min: minValue, 
+      max: maxValue
+    }, initialValue);
     this.range.setListeners();
     this.range.setHandlers({
       onScrub: value => {

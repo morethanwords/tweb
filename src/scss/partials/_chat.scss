@@ -227,6 +227,10 @@ $chat-helper-size: 36px;
 		@include animation-level(2) {
 			animation: grow-icon .4s forwards ease-in-out !important;
 		}
+
+		@include respond-to(esg-bottom-new) {
+			margin-right: .125rem !important;
+		}
 	}
 
 	&:not(.is-recording) {

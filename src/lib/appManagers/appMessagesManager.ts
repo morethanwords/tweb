@@ -109,10 +109,7 @@ export type PinnedStorage = Partial<{
   count: number,
   maxId: number
 }>;
-export type MessagesStorage = {
-  //generateIndex: (message: any) => void
-  [mid: string]: any
-};
+export type MessagesStorage = Map<number, any>;
 
 export type MyMessageActionType = Message.messageService['action']['_'];
 
@@ -1586,7 +1583,7 @@ export class AppMessagesManager {
       fromId: peerId
     } as Message.messageService;
 
-    this.getMessagesStorage(peerId)[maxId] = message;
+    this.getMessagesStorage(peerId).set(maxId, message);
     return message;
   }
 
@@ -1628,7 +1625,7 @@ export class AppMessagesManager {
       historyStorage.history.delete(tempId);
 
       delete this.pendingByRandomId[randomId];
-      delete storage[tempId];
+      storage.delete(tempId);
 
       return true;
     }
@@ -1936,17 +1933,17 @@ export class AppMessagesManager {
     return promise;
   }
 
-  public getMessageFromStorage(storage: MessagesStorage, messageId: number) {
-    return storage && storage[messageId] || {
+  public getMessageFromStorage(storage: MessagesStorage, mid: number) {
+    return storage && storage.get(mid) || {
       _: 'messageEmpty',
-      id: messageId,
+      id: mid,
       deleted: true,
       pFlags: {}
     };
   }
 
   private createMessageStorage() {
-    const storage: MessagesStorage = {} as any;
+    const storage: MessagesStorage = new Map();
     
     /* let num = 0;
     Object.defineProperty(storage, 'num', {
@@ -1977,7 +1974,7 @@ export class AppMessagesManager {
         continue;
       }
 
-      const message = this.messagesStorageByPeerId[peerId][messageId];
+      const message = this.messagesStorageByPeerId[peerId].get(messageId);
       if(message) {
         return message;
       }
@@ -2085,15 +2082,27 @@ export class AppMessagesManager {
     }
 
     return this.doFlushHistory(appPeersManager.getInputPeerById(peerId), justClear, revoke).then(() => {
-      delete this.historiesStorage[peerId];
-      delete this.messagesStorageByPeerId[peerId];
-      delete this.scheduledMessagesStorage[peerId];
-      delete this.threadsStorage[peerId];
-      delete this.searchesStorage[peerId];
-      delete this.pinnedMessages[peerId];
-      delete this.pendingAfterMsgs[peerId];
-      delete this.pendingTopMsgs[peerId];
-      delete this.needSingleMessages[peerId];
+      [
+        this.historiesStorage, 
+        this.threadsStorage, 
+        this.searchesStorage, 
+        this.pinnedMessages,
+        this.pendingAfterMsgs,
+        this.pendingTopMsgs,
+        this.needSingleMessages
+      ].forEach(s => {
+        delete s[peerId];
+      });
+
+      [
+        this.messagesStorageByPeerId,
+        this.scheduledMessagesStorage
+      ].forEach(s => {
+        const ss = s[peerId];
+        if(ss) {
+          ss.clear();
+        }
+      });
       
       if(justClear) {
         rootScope.dispatchEvent('dialog_flush', {peerId});
@@ -2166,12 +2175,11 @@ export class AppMessagesManager {
 
       if(!affectedHistory.offset) {
         const storage = this.getMessagesStorage(peerId);
-        for(const mid in storage) {
-          const message = storage[mid];
+        storage.forEach((message) => {
           if(message.pFlags.pinned) {
             delete message.pFlags.pinned;
           }
-        }
+        });
 
         rootScope.dispatchEvent('peer_pinned_messages', {peerId, unpinAll: true});
         delete this.pinnedMessages[peerId];
@@ -2186,8 +2194,7 @@ export class AppMessagesManager {
   public getAlbumText(grouped_id: string) {
     const group = this.groupedMessagesStorage[grouped_id];
     let foundMessages = 0, message: string, totalEntities: MessageEntity[], entities: MessageEntity[];
-    for(const i in group) {
-      const m = group[i];
+    for(const [mid, m] of group) {
       if(m.message) {
         if(++foundMessages > 1) break;
         message = m.message;
@@ -2219,8 +2226,7 @@ export class AppMessagesManager {
     const out: MyMessage[] = [];
     if(message.grouped_id) {
       const storage = this.groupedMessagesStorage[message.grouped_id];
-      for(const mid in storage) {
-        const message = storage[mid];
+      for(const [mid, message] of storage) {
         if(verify(message)) {
           out.push(message);
         }
@@ -2276,8 +2282,8 @@ export class AppMessagesManager {
       message.mid = mid;
 
       if(message.grouped_id) {
-        const storage = this.groupedMessagesStorage[message.grouped_id] ?? (this.groupedMessagesStorage[message.grouped_id] = {});
-        storage[mid] = message;
+        const storage = this.groupedMessagesStorage[message.grouped_id] ?? (this.groupedMessagesStorage[message.grouped_id] = new Map());
+        storage.set(mid, message);
       }
 
       const dialog = this.getDialogOnly(peerId);
@@ -2527,7 +2533,7 @@ export class AppMessagesManager {
         this.wrapMessageEntities(message);  
       }
 
-      storage[mid] = message;
+      storage.set(mid, message);
     });
 
     /* if(groups) {
@@ -3253,6 +3259,140 @@ export class AppMessagesManager {
     });
   }
 
+  public filterMessagesByInputFilter(inputFilter: MyInputMessagesFilter, history: number[], storage: MessagesStorage, limit: number) {
+    const foundMsgs: MyMessage[] = [];
+    if(!history.length) {
+      return foundMsgs;
+    }
+
+    let filtering = true;
+    const neededContents: Partial<{
+      [messageMediaType in MessageMedia['_']]: boolean
+    }> & Partial<{
+      avatar: boolean,
+      url: boolean
+    }> = {},
+      neededDocTypes: MyDocument['type'][] = [], 
+      excludeDocTypes: MyDocument['type'][] = []/* ,
+      neededFlags: string[] = [] */;
+
+    switch(inputFilter) {
+      case 'inputMessagesFilterPhotos':
+        neededContents['messageMediaPhoto'] = true;
+        break;
+
+      case 'inputMessagesFilterPhotoVideo':
+        neededContents['messageMediaPhoto'] = true;
+        neededContents['messageMediaDocument'] = true;
+        neededDocTypes.push('video');
+        break;
+
+      case 'inputMessagesFilterVideo':
+        neededContents['messageMediaDocument'] = true;
+        neededDocTypes.push('video');
+        break;
+
+      case 'inputMessagesFilterDocument':
+        neededContents['messageMediaDocument'] = true;
+        excludeDocTypes.push('video');
+        break;
+
+      case 'inputMessagesFilterVoice':
+        neededContents['messageMediaDocument'] = true;
+        neededDocTypes.push('voice');
+        break;
+
+      case 'inputMessagesFilterRoundVoice':
+        neededContents['messageMediaDocument'] = true;
+        neededDocTypes.push('round', 'voice');
+        break;
+
+      case 'inputMessagesFilterRoundVideo':
+        neededContents['messageMediaDocument'] = true;
+        neededDocTypes.push('round');
+        break;
+
+      case 'inputMessagesFilterMusic':
+        neededContents['messageMediaDocument'] = true;
+        neededDocTypes.push('audio');
+        break;
+
+      case 'inputMessagesFilterUrl':
+        neededContents['url'] = true;
+        break;
+
+      case 'inputMessagesFilterChatPhotos':
+        neededContents['avatar'] = true;
+        break;
+
+      /* case 'inputMessagesFilterPinned':
+        neededFlags.push('pinned');
+        break; */
+
+      /* case 'inputMessagesFilterMyMentions':
+        neededContents['mentioned'] = true;
+        break; */
+
+      default:
+        filtering = false;
+        break;
+        /* return Promise.resolve({
+          count: 0,
+          next_rate: 0,
+          history: [] as number[]
+        }); */
+    }
+
+    if(!filtering) {
+      return foundMsgs;
+    }
+
+    for(let i = 0, length = history.length; i < length; ++i) {
+      const message: Message.message | Message.messageService = storage.get(history[i]);
+      if(!message) continue;
+  
+      //|| (neededContents['mentioned'] && message.totalEntities.find((e: any) => e._ === 'messageEntityMention'));
+  
+      let found = false;
+      if(message._ === 'message') {
+        if(message.media && neededContents[message.media._]/*  && !message.fwd_from */) {
+          const doc = (message.media as MessageMedia.messageMediaDocument).document as MyDocument;
+          if((neededDocTypes.length && !neededDocTypes.includes(doc.type)) 
+            || excludeDocTypes.includes(doc.type)) {
+            continue;
+          }
+  
+          found = true;
+        } else if(neededContents['url'] && message.message) {
+          const goodEntities = ['messageEntityTextUrl', 'messageEntityUrl'];
+          if((message.totalEntities as MessageEntity[]).find(e => goodEntities.includes(e._)) || RichTextProcessor.matchUrl(message.message)) {
+            found = true;
+          }
+        }
+      } else if(neededContents['avatar'] && 
+        message.action && 
+        ([
+          'messageActionChannelEditPhoto' as const, 
+          'messageActionChatEditPhoto' as const, 
+          'messageActionChannelEditVideo' as const, 
+          'messageActionChatEditVideo' as const
+        ] as MessageAction['_'][]).includes(message.action._)) {
+        found = true;
+      }/*  else if(neededFlags.find(flag => message.pFlags[flag])) {
+        found = true;
+      } */
+  
+      if(found) {
+        foundMsgs.push(message);
+        if(foundMsgs.length >= limit) {
+          break;
+        }
+      }
+    }
+
+    return foundMsgs;
+  }
+
   public getSearch({peerId, query, inputFilter, maxId, limit, nextRate, backLimit, threadId, folderId, minDate, maxDate}: {
     peerId?: number,
     maxId?: number,
@@ -3283,7 +3423,7 @@ export class AppMessagesManager {
     minDate = minDate ? minDate / 1000 | 0 : 0;
     maxDate = maxDate ? maxDate / 1000 | 0 : 0;
 
-    const foundMsgs: Message.message[] = [];
+    let foundMsgs: MyMessage[] = [];
 
     //this.log('search', maxId);
 
@@ -3304,124 +3444,7 @@ export class AppMessagesManager {
       storage = beta ? 
         this.getSearchStorage(peerId, inputFilter._) as any : 
         this.getHistoryStorage(peerId);
-      let filtering = true;
-
-      const history = /* maxId ? storage.history.slice(storage.history.indexOf(maxId) + 1) :  */storage.history;
-
-      if(storage !== undefined && history.length) {
-        const neededContents: {
-          [messageMediaType: string]: boolean
-        } = {},
-          neededDocTypes: string[] = [], 
-          excludeDocTypes: string[] = []/* ,
-          neededFlags: string[] = [] */;
-
-        switch(inputFilter._) {
-          case 'inputMessagesFilterPhotos':
-            neededContents['messageMediaPhoto'] = true;
-            break;
-
-          case 'inputMessagesFilterPhotoVideo':
-            neededContents['messageMediaPhoto'] = true;
-            neededContents['messageMediaDocument'] = true;
-            neededDocTypes.push('video');
-            break;
-
-          case 'inputMessagesFilterVideo':
-            neededContents['messageMediaDocument'] = true;
-            neededDocTypes.push('video');
-            break;
-
-          case 'inputMessagesFilterDocument':
-            neededContents['messageMediaDocument'] = true;
-            excludeDocTypes.push('video');
-            break;
-
-          case 'inputMessagesFilterVoice':
-            neededContents['messageMediaDocument'] = true;
-            neededDocTypes.push('voice');
-            break;
-
-          case 'inputMessagesFilterRoundVoice':
-            neededContents['messageMediaDocument'] = true;
-            neededDocTypes.push('round', 'voice');
-            break;
-
-          case 'inputMessagesFilterRoundVideo':
-            neededContents['messageMediaDocument'] = true;
-            neededDocTypes.push('round');
-            break;
-
-          case 'inputMessagesFilterMusic':
-            neededContents['messageMediaDocument'] = true;
-            neededDocTypes.push('audio');
-            break;
-
-          case 'inputMessagesFilterUrl':
-            neededContents['url'] = true;
-            break;
-
-          case 'inputMessagesFilterChatPhotos':
-            neededContents['avatar'] = true;
-            break;
-
-          /* case 'inputMessagesFilterPinned':
-            neededFlags.push('pinned');
-            break; */
-
-          /* case 'inputMessagesFilterMyMentions':
-            neededContents['mentioned'] = true;
-            break; */
-
-          default:
-            filtering = false;
-            break;
-            /* return Promise.resolve({
-              count: 0,
-              next_rate: 0,
-              history: [] as number[]
-            }); */
-        }
-
-        if(filtering) {
-          const storage = this.getMessagesStorage(peerId);
-          for(let i = 0, length = history.length; i < length; i++) {
-            const message = storage[history.slice[i]];
-
-            if(!message) continue;
-  
-            //|| (neededContents['mentioned'] && message.totalEntities.find((e: any) => e._ === 'messageEntityMention'));
-  
-            let found = false;
-            if(message.media && neededContents[message.media._] && !message.fwd_from) {
-              if(message.media._ === 'messageMediaDocument') {
-                if((neededDocTypes.length && !neededDocTypes.includes(message.media.document.type)) 
-                  || excludeDocTypes.includes(message.media.document.type)) {
-                  continue;
-                }
-              }
-  
-              found = true;
-            } else if(neededContents['url'] && message.message) {
-              const goodEntities = ['messageEntityTextUrl', 'messageEntityUrl'];
-              if((message.totalEntities as MessageEntity[]).find(e => goodEntities.includes(e._)) || RichTextProcessor.matchUrl(message.message)) {
-                found = true;
-              }
-            } else if(neededContents['avatar'] && message.action && ['messageActionChannelEditPhoto', 'messageActionChatEditPhoto', 'messageActionChannelEditVideo', 'messageActionChatEditVideo'].includes(message.action._)) {
-              found = true;
-            }/*  else if(neededFlags.find(flag => message.pFlags[flag])) {
-              found = true;
-            } */
-  
-            if(found) {
-              foundMsgs.push(message);
-              if(foundMsgs.length >= limit) {
-                break;
-              }
-            }
-          }
-        }
-      }
+      foundMsgs = this.filterMessagesByInputFilter(inputFilter._, storage.history.slice, this.getMessagesStorage(peerId), limit);
     }
 
     if(foundMsgs.length) {
@@ -3789,10 +3812,11 @@ export class AppMessagesManager {
     apiPromise.finally(() => {
       delete historyStorage.readPromise;
 
-      this.log('readHistory: promise finally', maxId, historyStorage.readMaxId);
+      const {readMaxId} = historyStorage;
+      this.log('readHistory: promise finally', maxId, readMaxId);
 
-      if(historyStorage.readMaxId > maxId) {
-        this.readHistory(peerId, historyStorage.readMaxId, threadId, true);
+      if(readMaxId > maxId) {
+        this.readHistory(peerId, readMaxId, threadId, true);
       }
     });
 
@@ -4011,7 +4035,7 @@ export class AppMessagesManager {
     const isLocalThreadUpdate = update._ === 'updateNewDiscussionMessage';
 
     // * temporary save the message for info (peerId, reply mids...)
-    this.saveMessages([message], {storage: {}});
+    this.saveMessages([message], {storage: new Map()});
 
     const threadKey = this.getThreadKey(message);
     const threadId = threadKey ? +threadKey.split('_')[1] : undefined;
@@ -4200,7 +4224,7 @@ export class AppMessagesManager {
     const peerId = this.getMessagePeer(message);
     const mid = appMessagesIdsManager.generateMessageId(message.id);
     const storage = this.getMessagesStorage(peerId);
-    if(storage[mid] === undefined) {
+    if(!storage.has(mid)) {
       return;
     }
 
@@ -4269,12 +4293,12 @@ export class AppMessagesManager {
     }
 
     for(let i = 0, length = history.length; i < length; i++) {
-      const messageId = history[i];
-      if(messageId > maxId) {
+      const mid = history[i];
+      if(mid > maxId) {
         continue;
       }
       
-      const message: MyMessage = storage[messageId];
+      const message: MyMessage = storage.get(mid);
 
       if(message.pFlags.out !== isOut) {
         continue;
@@ -4309,7 +4333,7 @@ export class AppMessagesManager {
           }
         }
         
-        appNotificationsManager.cancel('msg' + messageId);
+        appNotificationsManager.cancel('msg' + mid);
       }
     }
 
@@ -4557,14 +4581,14 @@ export class AppMessagesManager {
     const messages = update.messages.map(id => appMessagesIdsManager.generateMessageId(id)); 
 
     const storage = this.getMessagesStorage(peerId);
-    const missingMessages = messages.filter(mid => !storage[mid]);
+    const missingMessages = messages.filter(mid => !storage.has(mid));
     const getMissingPromise = missingMessages.length ? Promise.all(missingMessages.map(mid => this.wrapSingleMessage(peerId, mid))) : Promise.resolve();
     getMissingPromise.finally(() => {
       const werePinned = update.pFlags?.pinned;
       if(werePinned) {
         for(const mid of messages) {
           //storage.history.push(mid);
-          const message = storage[mid];
+          const message = storage.get(mid);
           message.pFlags.pinned = true;
         }
 
@@ -4577,7 +4601,7 @@ export class AppMessagesManager {
       } else {
         for(const mid of messages) {
           //storage.history.findAndSplice(_mid => _mid === mid);
-          const message = storage[mid];
+          const message = storage.get(mid);
           delete message.pFlags.pinned;
         }
       }
@@ -4772,7 +4796,7 @@ export class AppMessagesManager {
   }
 
   public finalizePendingMessageCallbacks(storage: MessagesStorage, tempId: number, mid: number) {
-    const message = this.getMessageFromStorage(storage, mid);
+    const message: Message.message = this.getMessageFromStorage(storage, mid);
     const callbacks = this.tempFinalizeCallbacks[tempId];
     //this.log.warn(callbacks, tempId);
     if(callbacks !== undefined) {
@@ -4787,10 +4811,10 @@ export class AppMessagesManager {
 
     // set cached url to media
     if(message.media) {
-      if(message.media.photo) {
+      const {photo: newPhoto, document: newDoc} = message.media as any;
+      if(newPhoto) {
         const photo = appPhotosManager.getPhoto('' + tempId);
         if(/* photo._ !== 'photoEmpty' */photo) {
-          const newPhoto = message.media.photo as MyPhoto;
           const newPhotoSize = newPhoto.sizes[newPhoto.sizes.length - 1];
           const cacheContext = appDownloadManager.getCacheContext(newPhoto, newPhotoSize.type);
           const oldCacheContext = appDownloadManager.getCacheContext(photo, 'full');
@@ -4802,11 +4826,10 @@ export class AppMessagesManager {
           const fileName = getFileNameByLocation(downloadOptions.location);
           appDownloadManager.fakeDownload(fileName, oldCacheContext.url);
         }
-      } else if(message.media.document) {
+      } else if(newDoc) {
         const doc = appDocsManager.getDoc('' + tempId);
         if(doc) {
           if(/* doc._ !== 'documentEmpty' &&  */doc.type && doc.type !== 'sticker') {
-            const newDoc = message.media.document;
             const cacheContext = appDownloadManager.getCacheContext(newDoc);
             const oldCacheContext = appDownloadManager.getCacheContext(doc);
             Object.assign(cacheContext, oldCacheContext);
@@ -4815,18 +4838,18 @@ export class AppMessagesManager {
             appDownloadManager.fakeDownload(fileName, oldCacheContext.url);
           }
         }
-      } else if(message.media.poll) {
+      } else if((message.media as MessageMedia.messageMediaPoll).poll) {
         delete appPollsManager.polls[tempId];
         delete appPollsManager.results[tempId];
       }
     }
 
     const tempMessage = this.getMessageFromStorage(storage, tempId);
-    delete storage[tempId];
+    storage.delete(tempId);
     
     this.handleReleasingMessage(tempMessage, storage);
 
-    rootScope.dispatchEvent('message_sent', {storage, tempId, tempMessage, mid});
+    rootScope.dispatchEvent('message_sent', {storage, tempId, tempMessage, mid, message});
   }
 
   public incrementMaxSeenId(maxId: number) {
@@ -4926,12 +4949,16 @@ export class AppMessagesManager {
     return this.scheduledMessagesStorage[peerId] ?? (this.scheduledMessagesStorage[peerId] = this.createMessageStorage());
   }
 
+  public getScheduledMessageByPeer(peerId: number, mid: number) {
+    return this.getMessageFromStorage(this.getScheduledMessagesStorage(peerId), mid);
+  }
+
   public getScheduledMessages(peerId: number): Promise<number[]> {
     if(!this.canSendToPeer(peerId)) return Promise.resolve([]);
 
     const storage = this.getScheduledMessagesStorage(peerId);
-    if(Object.keys(storage).length) {
-      return Promise.resolve(Object.keys(storage).map(id => +id));
+    if(storage.size) {
+      return Promise.resolve([...storage.keys()]);
     }
 
     return apiManager.invokeApiSingle('messages.getScheduledHistory', {
@@ -4944,7 +4971,7 @@ export class AppMessagesManager {
         
         const storage = this.getScheduledMessagesStorage(peerId);
         this.saveMessages(historyResult.messages, {storage, isScheduled: true});
-        return Object.keys(storage).map(id => +id);
+        return [...storage.keys()];
       }
       
       return [];
@@ -5441,19 +5468,19 @@ export class AppMessagesManager {
       if(groupedId) {
         const groupedStorage = this.groupedMessagesStorage[groupedId];
         if(groupedStorage) {
-          delete groupedStorage[mid];
+          groupedStorage.delete(mid);
 
           if(!history.albums) history.albums = {};
           (history.albums[groupedId] || (history.albums[groupedId] = new Set())).add(mid);
 
-          if(!Object.keys(groupedStorage).length) {
+          if(!groupedStorage.size) {
             delete history.albums;
             delete this.groupedMessagesStorage[groupedId];
           }
         }
       }
 
-      delete storage[mid];
+      storage.delete(mid);
 
       const peerMessagesToHandle = this.newMessagesToHandle[peerId];
       if(peerMessagesToHandle && peerMessagesToHandle.has(mid)) {
