@@ -246,7 +246,7 @@ function wrapAudio(audioEl: AudioElement) {
     }
 
     if(withTime) {
-      parts.push(formatFullSentTime(doc.date));
+      parts.push(formatFullSentTime(message.date));
     } else if(!parts.length) {
       parts.push(formatBytes(doc.size));
     }

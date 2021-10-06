@@ -271,6 +271,7 @@
       height: 100%;
       border-radius: 0;
       z-index: 0;
+      max-width: 100%;
 
       @include respond-to(handhelds) {
         padding: 0 .5rem;
@@ -332,10 +333,6 @@
     justify-content: center;
     // z-index: 1;
     flex: 0 0 auto;
-  }
-
-  &-close {
-    display: none;
   }
 
   &-wrapper {
@@ -421,7 +418,11 @@
       margin-right: 2.25rem;
     } */
 
-    .pinned-message-close {
+    .pinned-container-wrapper-utils {
+      display: none;
+    }
+
+    > .pinned-message-close {
       display: flex;
       margin-right: .75rem;
       order: 0;
@@ -582,6 +583,7 @@
 
   &.is-floating {
     --container-height: var(--pinned-audio-height);
+    z-index: 1; // fix z-index for volume selector
   }
 
   &:not(.is-floating) {

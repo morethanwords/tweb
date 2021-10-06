@@ -288,7 +288,9 @@ export default class ChatPinnedMessage {
     this.animatedCounter = new AnimatedCounter(true);
     dAC.title.append(i18n('PinnedMessage'), ' ', this.animatedCounter.container);
 
-    dAC.container.prepend(this.pinnedMessageContainer.btnClose);
+    const btnClose = this.pinnedMessageContainer.btnClose.cloneNode(true) as HTMLElement;
+    this.pinnedMessageContainer.attachOnCloseEvent(btnClose);
+    dAC.container.prepend(btnClose);
 
     this.btnOpen = ButtonIcon('pinlist pinned-container-close pinned-message-pinlist', {noRipple: true});
 
