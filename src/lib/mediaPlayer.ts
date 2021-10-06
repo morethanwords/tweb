@@ -71,7 +71,7 @@ export class MediaProgressLine extends RangeSelector {
       },
 
       onMouseUp: (e) => {
-        cancelEvent(e.event);
+        // cancelEvent(e.event);
         wasPlaying && this.media.play();
       }
     });
@@ -211,9 +211,9 @@ export class VolumeSelector extends RangeSelector {
         appMediaPlaybackController.volume = value;
       },
 
-      onMouseUp: (e) => {
+      /* onMouseUp: (e) => {
         cancelEvent(e.event);
-      }
+      } */
     });
 
     this.btn = document.createElement('div');

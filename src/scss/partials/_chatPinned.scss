@@ -673,15 +673,21 @@
       --translateY: 0;
     }
 
-    .progress-line__filled {
-      &:after {
-        display: none !important;
+    .progress-line {
+      &__filled {
+        &:after {
+          display: none !important;
+        }
+      }
+
+      &__seek {
+        top: -1rem;
       }
     }
 
     &-wrapper {
       position: absolute;
-      height: var(--progress-height);
+      height: .5rem;
       right: 0;
       bottom: 0;
       left: 0;

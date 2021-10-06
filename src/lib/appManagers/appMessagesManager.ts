@@ -3357,8 +3357,8 @@ export class AppMessagesManager {
       if(message._ === 'message') {
         if(message.media && neededContents[message.media._]/*  && !message.fwd_from */) {
           const doc = (message.media as MessageMedia.messageMediaDocument).document as MyDocument;
-          if((neededDocTypes.length && !neededDocTypes.includes(doc.type)) 
-            || excludeDocTypes.includes(doc.type)) {
+          if(doc && ((neededDocTypes.length && !neededDocTypes.includes(doc.type)) 
+            || excludeDocTypes.includes(doc.type))) {
             continue;
           }
   

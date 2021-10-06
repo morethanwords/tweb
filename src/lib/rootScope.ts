@@ -161,6 +161,9 @@ export class RootScope extends EventListenerBase<{
     caption_length_max: 1024,
   };
 
+  public themeColor: string;
+  private _themeColorElem: Element;
+
   constructor() {
     super();
 
@@ -186,6 +189,25 @@ export class RootScope extends EventListenerBase<{
         this.idle.focusResolve();
       }
     });
+  }
+
+  get themeColorElem() {
+    if(this._themeColorElem !== undefined) {
+      return this._themeColorElem;
+    }
+
+    return this._themeColorElem = document.head.querySelector('[name="theme-color"]') as Element || null;
+  }
+
+  public setThemeColor(color = this.themeColor) {
+    if(!color) {
+      color = this.isNight() ? '#212121' : '#ffffff';
+    }
+
+    const themeColorElem = this.themeColorElem;
+    if(themeColorElem) {
+      themeColorElem.setAttribute('content', color);
+    }
   }
 
   public setThemeListener() {
@@ -216,13 +238,14 @@ export class RootScope extends EventListenerBase<{
   }
 
   public setTheme() {
-    const isNight = this.getTheme().name === 'night';
+    const isNight = this.isNight();
     const colorScheme = document.head.querySelector('[name="color-scheme"]');
     if(colorScheme) {
       colorScheme.setAttribute('content', isNight ? 'dark' : 'light');
     }
 
     document.documentElement.classList.toggle('night', isNight);
+    this.setThemeColor();
   }
 
   get isOverlayActive() {
@@ -232,6 +255,10 @@ export class RootScope extends EventListenerBase<{
   set isOverlayActive(value: boolean) {
     this.overlaysActive += value ? 1 : -1;
     this.dispatchEvent('overlay_toggle', this.isOverlayActive);
+  }
+
+  public isNight() {
+    return this.getTheme().name === 'night';
   }
 
   public getTheme(name: Theme['name'] = this.settings.theme === 'system' ? this.systemTheme : this.settings.theme) {
