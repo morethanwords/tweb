@@ -611,7 +611,7 @@ export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showS
   const descriptionParts: (HTMLElement | string | DocumentFragment)[] = [formatBytes(doc.size)];
   
   if(withTime) {
-    descriptionParts.push(formatFullSentTime(doc.date));
+    descriptionParts.push(formatFullSentTime(message.date));
   }
 
   if(showSender) {

@@ -32,7 +32,7 @@ export default class PinnedContainer {
   
   protected floating = false;
 
-  protected onClose?: () => void | Promise<boolean>;
+  public onClose?: () => void | Promise<boolean>;
 
   constructor(options: {
     topbar: PinnedContainer['topbar'],
@@ -45,7 +45,7 @@ export default class PinnedContainer {
   }) {
     safeAssign(this, options);
 
-    const {divAndCaption, className, onClose} = this;
+    const {divAndCaption, className} = this;
     divAndCaption.container.classList.add(CLASSNAME_BASE, 'hide');
     divAndCaption.title.classList.add(CLASSNAME_BASE + '-title');
     divAndCaption.subtitle.classList.add(CLASSNAME_BASE + '-subtitle');
@@ -66,10 +66,14 @@ export default class PinnedContainer {
 
     divAndCaption.container.append(this.wrapper/* , this.close */);
 
-    attachClickEvent(this.btnClose, (e) => {
+    this.attachOnCloseEvent(this.btnClose);
+  }
+
+  public attachOnCloseEvent(elem: HTMLElement) {
+    attachClickEvent(elem, (e) => {
       cancelEvent(e);
 
-      ((onClose ? onClose() : null) || Promise.resolve(true)).then(needClose => {
+      ((this.onClose ? this.onClose() : null) || Promise.resolve(true)).then(needClose => {
         if(needClose) {
           this.toggle(true);
         }

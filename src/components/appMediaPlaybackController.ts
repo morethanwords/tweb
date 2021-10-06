@@ -703,10 +703,12 @@ class AppMediaPlaybackController {
     return () => {
       this.toggleSwitchers(true);
 
-      if(this.mediaDetails.get(playingMedia)) {
-        this.setMedia(playingMedia, this.getMessageByMedia(playingMedia));
-      } else {
-        this.next() || this.previous();
+      if(playingMedia) {
+        if(this.mediaDetails.get(playingMedia)) {
+          this.setMedia(playingMedia, this.getMessageByMedia(playingMedia));
+        } else {
+          this.next() || this.previous();
+        }
       }
 
       if(this.playingMedia === media) {
