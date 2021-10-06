@@ -99,7 +99,6 @@ export class AppImManager {
   private chatsSelectTabDebounced: () => void;
   
   public markupTooltip: MarkupTooltip;
-  private themeColorElem: Element;
   private backgroundPromises: {[slug: string]: Promise<string>} = {};
 
   get myId() {
@@ -786,17 +785,8 @@ export class AppImManager {
       document.documentElement.style.removeProperty('--message-highlightning-color');
     }
 
-    let themeColor = '#ffffff';
-    if(hsla) {
-      themeColor = hslaStringToHex(hsla);
-    }
-
-    if(this.themeColorElem === undefined) {
-      this.themeColorElem = document.head.querySelector('[name="theme-color"]') as Element || null;
-    }
-
-    if(this.themeColorElem) {
-      this.themeColorElem.setAttribute('content', themeColor);
+    if(!IS_TOUCH_SUPPORTED && hsla) {
+      rootScope.themeColor = hslaStringToHex(hsla);
     }
   }
 

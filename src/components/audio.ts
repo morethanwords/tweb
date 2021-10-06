@@ -426,10 +426,10 @@ export default class AudioElement extends HTMLElement {
 
       const audio = this.audio = appMediaPlaybackController.addMedia(this.message, autoload);
 
-      this.readyPromise = deferredPromise<void>();
-      if(this.audio.readyState >= 2) this.readyPromise.resolve();
+      const readyPromise = this.readyPromise = deferredPromise<void>();
+      if(this.audio.readyState >= this.audio.HAVE_CURRENT_DATA) readyPromise.resolve();
       else {
-        this.addAudioListener('canplay', () => this.readyPromise.resolve(), {once: true});
+        this.addAudioListener('canplay', () => readyPromise.resolve(), {once: true});
       }
 
       this.onTypeDisconnect = onTypeLoad();
@@ -565,10 +565,21 @@ export default class AudioElement extends HTMLElement {
           } else {
             preloader = constructDownloadPreloader();
 
+            if(!shouldPlay) {
+              this.readyPromise = deferredPromise();
+            }
+
             const load = () => {
               onDownloadInit();
 
               const download = appDocsManager.downloadDoc(doc);
+              
+              if(!shouldPlay) {
+                download.then(() => {
+                  this.readyPromise.resolve();
+                });
+              }
+
               preloader.attach(downloadDiv, false, download);
               return {download};
             };

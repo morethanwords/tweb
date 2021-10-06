@@ -32,6 +32,7 @@
 	max-height: var(--height);
 	margin-bottom: var(--pinned-floating-height);
 	position: relative;
+	cursor: pointer !important;
 
 	&:before {
 		content: " ";
@@ -120,7 +121,6 @@
 	} */
 
 	.user-title {
-		cursor: pointer;
 		font-size: 1rem;
 		line-height: 1.5rem;
 		max-width: calc(100% - 1.5rem);
@@ -218,7 +218,6 @@
 	.person {
 		display: flex;
 		align-items: center;
-		cursor: pointer;
 
 		&-avatar {
 			flex: 0 0 auto;
