@@ -245,7 +245,8 @@
     border-bottom-left-radius: inherit;
     border-bottom-right-radius: inherit;
     font-size: .875rem;
-    cursor: default;
+    color: currentColor;
+    // cursor: default;
 
     /* &-text {
       margin-top: -.125rem;

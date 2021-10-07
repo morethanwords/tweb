@@ -37,6 +37,8 @@ import App from "../../config/app";
 import ButtonMenuToggle from "../buttonMenuToggle";
 import replaceContent from "../../helpers/dom/replaceContent";
 import sessionStorage from "../../lib/sessionStorage";
+import { CLICK_EVENT_NAME } from "../../helpers/dom/clickEvent";
+import { closeBtnMenu } from "../misc";
 
 export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
 
@@ -200,11 +202,18 @@ export class AppSidebarLeft extends SidebarSlider {
 
     const btnMenu = this.toolsBtn.querySelector('.btn-menu') as HTMLElement;
 
-    const btnMenuFooter = document.createElement('div');
+    const btnMenuFooter = document.createElement('a');
+    btnMenuFooter.href = 'https://github.com/morethanwords/tweb/blob/master/CHANGELOG.md';
+    btnMenuFooter.target = '_blank';
+    btnMenuFooter.rel = 'noopener noreferrer';
     btnMenuFooter.classList.add('btn-menu-footer');
+    btnMenuFooter.addEventListener(CLICK_EVENT_NAME, (e) => {
+      e.stopPropagation();
+      closeBtnMenu();
+    });
     const t = document.createElement('span');
     t.classList.add('btn-menu-footer-text');
-    t.innerHTML = 'Telegram Web' + App.suffix + ' alpha ' + App.version;
+    t.innerHTML = 'Telegram Web' + App.suffix + ' alpha ' + App.versionFull;
     btnMenuFooter.append(t); 
     btnMenu.classList.add('has-footer');
     btnMenu.append(btnMenuFooter);

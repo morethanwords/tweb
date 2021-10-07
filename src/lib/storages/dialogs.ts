@@ -384,12 +384,12 @@ export default class DialogsStorage {
 
     // DO NOT TOUCH THESE LINES, SOME REAL MAGIC HERE.
     // * Read service chat when refreshing page with outgoing & getting new service outgoing message
-    if(incomingMessage && dialog.read_inbox_max_id >= dialog.top_message) {
+    /* if(incomingMessage && dialog.read_inbox_max_id >= dialog.top_message) {
       dialog.unread_count = 0;
     }
 
     dialog.read_inbox_max_id = this.appMessagesIdsManager.clearMessageId(dialog.read_inbox_max_id);
-    dialog.read_outbox_max_id = this.appMessagesIdsManager.clearMessageId(dialog.read_outbox_max_id);
+    dialog.read_outbox_max_id = this.appMessagesIdsManager.clearMessageId(dialog.read_outbox_max_id); */
     // CAN TOUCH NOW
 
     if(peerId < 0 && pts) {
@@ -555,10 +555,9 @@ export default class DialogsStorage {
 
     let mid: number, message: MyMessage;
     if(dialog.top_message) {
-      if(wasDialogBefore?.top_message && !this.appMessagesManager.getMessageByPeer(peerId, wasDialogBefore.top_message).deleted) {
+      mid = this.appMessagesIdsManager.generateMessageId(dialog.top_message);//dialog.top_message;
+      if(wasDialogBefore?.top_message && !this.appMessagesManager.getMessageByPeer(peerId, wasDialogBefore.top_message).deleted && wasDialogBefore.top_message >= mid) {
         mid = wasDialogBefore.top_message;
-      } else {
-        mid = this.appMessagesIdsManager.generateMessageId(dialog.top_message);//dialog.top_message;
       }
 
       message = this.appMessagesManager.getMessageByPeer(peerId, mid);
@@ -594,7 +593,7 @@ export default class DialogsStorage {
     }
 
     dialog.top_message = mid;
-    dialog.unread_count = wasDialogBefore && dialog.read_inbox_max_id === this.appMessagesIdsManager.getServerMessageId(wasDialogBefore.read_inbox_max_id) ? wasDialogBefore.unread_count : dialog.unread_count;
+    // dialog.unread_count = wasDialogBefore && dialog.read_inbox_max_id === this.appMessagesIdsManager.getServerMessageId(wasDialogBefore.read_inbox_max_id) ? wasDialogBefore.unread_count : dialog.unread_count;
     dialog.read_inbox_max_id = this.appMessagesIdsManager.generateMessageId(wasDialogBefore && !dialog.read_inbox_max_id ? wasDialogBefore.read_inbox_max_id : dialog.read_inbox_max_id);
     dialog.read_outbox_max_id = this.appMessagesIdsManager.generateMessageId(wasDialogBefore && !dialog.read_outbox_max_id ? wasDialogBefore.read_outbox_max_id : dialog.read_outbox_max_id);
 
@@ -612,8 +611,16 @@ export default class DialogsStorage {
 
     // Because we saved message without dialog present
     if(message.pFlags.is_outgoing) {
-      if(mid > dialog[message.pFlags.out ? 'read_outbox_max_id' : 'read_inbox_max_id']) message.pFlags.unread = true;
-      else delete message.pFlags.unread;
+      const isOut = message.pFlags.out;
+      if(mid > dialog[isOut ? 'read_outbox_max_id' : 'read_inbox_max_id']) {
+        message.pFlags.unread = true;
+
+        if(!dialog.unread_count && !isOut) {
+          ++dialog.unread_count;
+        }
+      } else {
+        delete message.pFlags.unread;
+      }
     }
 
     const historyStorage = this.appMessagesManager.getHistoryStorage(peerId);

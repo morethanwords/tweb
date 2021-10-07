@@ -14,9 +14,10 @@ import type { DcId } from "../types";
 export const MAIN_DOMAIN = 'web.telegram.org';
 
 const App = {
-  id: 1025907,
-  hash: '452b0359b988148995f22ff0f4229750',
-  version: '0.8.6',
+  id: +process.env.API_ID,
+  hash: process.env.API_HASH,
+  version: process.env.VERSION,
+  versionFull: process.env.VERSION_FULL,
   langPackVersion: '0.3.3',
   langPack: 'macos',
   langPackCode: 'en',
