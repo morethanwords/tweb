@@ -692,7 +692,7 @@ export class ApiUpdatesManager {
       if(newVersion) {
         this.updatesState.syncLoading.then(() => {
           fetch('changelogs/' + newVersion + '.md')
-          .then(res => res.text())
+          .then(res => (res.status === 200 && res.ok && res.text()) || Promise.reject())
           .then(text => {
             const pre = `**Telegram Web${App.suffix} was updated to version alpha ${newVersion}**\n\n`;
 
