@@ -85,11 +85,11 @@ export default class SearchListLoader<Item extends {mid: number, peerId: number}
     forEachReverse(this.next, filter);
 
     if(this.current && shouldBeDeleted(this.current)) {
-      if(this.go(1)) {
+      /* if(this.go(1)) {
         this.previous.splice(this.previous.length - 1, 1);
       } else if(this.go(-1)) {
         this.next.splice(0, 1);
-      } else if(this.onEmptied) {
+      } else  */if(this.onEmptied) {
         this.onEmptied();
       }
     }

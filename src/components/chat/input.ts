@@ -80,6 +80,7 @@ import fixSafariStickyInputFocusing, { IS_STICKY_INPUT_BUGGED } from '../../help
 import { copy } from '../../helpers/object';
 import PopupPeer from '../popups/peer';
 import MEDIA_MIME_TYPES_SUPPORTED from '../../environment/mediaMimeTypesSupport';
+import appMediaPlaybackController from '../appMediaPlaybackController';
 
 const RECORD_MIN_TIME = 500;
 const POSTING_MEDIA_NOT_ALLOWED = 'Posting media content isn\'t allowed in this group.';
@@ -176,6 +177,8 @@ export default class ChatInput {
   private fakePinnedControlBtn: HTMLElement;
 
   private previousQuery: string;
+  
+  private releaseMediaPlayback: () => void;
 
   constructor(private chat: Chat, 
     private appMessagesManager: AppMessagesManager, 
@@ -575,6 +578,11 @@ export default class ChatInput {
       };
   
       this.recorder.ondataavailable = (typedArray: Uint8Array) => {
+        if(this.releaseMediaPlayback) {
+          this.releaseMediaPlayback();
+          this.releaseMediaPlayback = undefined;
+        }
+
         if(this.recordingOverlayListener) {
           this.listenerSetter.remove(this.recordingOverlayListener);
           this.recordingOverlayListener = undefined;
@@ -1455,7 +1463,9 @@ export default class ChatInput {
 
       this.chatInput.classList.add('is-locked');
       blurActiveElement();
+
       this.recorder.start().then(() => {
+        this.releaseMediaPlayback = appMediaPlaybackController.setSingleMedia();
         this.recordCanceled = false;
         
         this.chatInput.classList.add('is-recording');

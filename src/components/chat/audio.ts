@@ -115,5 +115,9 @@ export default class ChatAudio extends PinnedContainer {
     this.topbar.listenerSetter.add(rootScope)('media_pause', () => {
       this.toggleEl.classList.remove('flip-icon');
     });
+
+    this.topbar.listenerSetter.add(rootScope)('media_stop', () => {
+      this.toggle(true);
+    });
   }
 }
