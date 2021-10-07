@@ -529,7 +529,10 @@ class AppMediaPlaybackController {
 
     //console.log('on media end');
 
-    this.next();
+    if(!this.next()) {
+      this.stop();
+      rootScope.dispatchEvent('media_stop');
+    }
   };
 
   public toggle(play?: boolean) {
@@ -658,10 +661,12 @@ class AppMediaPlaybackController {
         },
         onJump: (item, older) => {
           this.playItem(item);
+        },
+        onEmptied: () => {
+          rootScope.dispatchEvent('media_stop');
+          this.stop();
         }
       });
-
-      this.listLoader.onEmptied = this.stop;
     } else {
       this.listLoader.reset();
     }
@@ -691,13 +696,14 @@ class AppMediaPlaybackController {
     }
   }
 
-  public setSingleMedia(media: HTMLMediaElement, message: Message.message) {
+  public setSingleMedia(media?: HTMLMediaElement, message?: Message.message) {
     const playingMedia = this.playingMedia;
 
     const wasPlaying = this.pause();
 
     this.willBePlayed(undefined);
-    this.setMedia(media, message);
+    if(media) this.setMedia(media, message);
+    else this.playingMedia = undefined;
     this.toggleSwitchers(false);
 
     return () => {
@@ -711,7 +717,7 @@ class AppMediaPlaybackController {
         }
       }
 
-      if(this.playingMedia === media) {
+      if(media && this.playingMedia === media) {
         this.stop();
       }
 

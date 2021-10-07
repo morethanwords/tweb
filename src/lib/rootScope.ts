@@ -78,6 +78,7 @@ export type BroadcastEvents = {
   'media_play': {doc: MyDocument, message: Message.message, media: HTMLMediaElement},
   'media_pause': void,
   'media_playback_params': {volume: number, muted: boolean, playbackRate: number},
+  'media_stop': void,
   
   'state_cleared': void,
   'state_synchronized': number | void,
