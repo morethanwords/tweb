@@ -26,7 +26,7 @@ import { nextRandomUint } from '../../helpers/random';
 
 const REFRESH_EVERY = 24 * 60 * 60 * 1000; // 1 day
 //const REFRESH_EVERY_WEEK = 24 * 60 * 60 * 1000 * 7; // 7 days
-const STATE_VERSION = App.version;
+const STATE_VERSION = App.versionFull;
 
 export type Background = {
   type: 'color' | 'image' | 'default',

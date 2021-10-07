@@ -17,7 +17,7 @@ import { createPosterForVideo } from "../../helpers/files";
 import { copy, getObjectKeysAndSort } from "../../helpers/object";
 import { randomLong } from "../../helpers/random";
 import { splitStringByLength, limitSymbols, escapeRegExp } from "../../helpers/string";
-import { Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup, InputPeer, InputPhoto, InputDocument, InputGeoPoint, WebPage, GeoPoint, ReportReason } from "../../layer";
+import { Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup, InputPeer, InputPhoto, InputDocument, InputGeoPoint, WebPage, GeoPoint, ReportReason, MessagesGetDialogs } from "../../layer";
 import { InvokeApiOptions } from "../../types";
 import I18n, { i18n, join, langPack, LangPackKey, _i18n } from "../langPack";
 import { logger, LogTypes } from "../logger";
@@ -1728,14 +1728,16 @@ export class AppMessagesManager {
     // ! ВНИМАНИЕ: ОЧЕНЬ СЛОЖНАЯ ЛОГИКА:
     // ! если делать запрос сначала по папке 0, потом по папке 1, по индексу 0 в массиве будет один и тот же диалог, с dialog.pFlags.pinned, ЛОЛ???
     // ! т.е., с запросом folder_id: 1, и exclude_pinned: 0, в результате будут ещё и закреплённые с папки 0
-    return apiManager.invokeApiSingle('messages.getDialogs', {
+    const params: MessagesGetDialogs = {
       folder_id: folderId,
       offset_date: offsetDate,
       offset_id: offsetId,
       offset_peer: appPeersManager.getInputPeerById(offsetPeerId),
       limit,
       hash: 0
-    }, {
+    };
+
+    return apiManager.invokeApiSingle('messages.getDialogs', params, {
       //timeout: APITIMEOUT,
       noErrorBox: true
     }).then((dialogsResult) => {
@@ -1798,7 +1800,7 @@ export class AppMessagesManager {
         if(!appMessagesIdsManager.getServerMessageId(dialog.read_inbox_max_id) && !appMessagesIdsManager.getServerMessageId(dialog.read_outbox_max_id)) {
           noIdsDialogs[dialog.peerId] = dialog;
 
-          this.log.error('noIdsDialogs', dialog);
+          this.log.error('noIdsDialogs', dialog, params);
 
           /* if(dialog.peerId === -1213511294) {
             this.log.error('lun bot', folderId);

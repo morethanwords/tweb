@@ -648,7 +648,8 @@ export class AppDialogsManager {
   }
 
   public testDialogForFilter(dialog: Dialog, filter = appMessagesManager.filtersStorage.getFilter(this.filterId)) {
-    if((filter && !appMessagesManager.filtersStorage.testDialogForFilter(dialog, filter)) || 
+    if(!dialog || 
+      (filter && !appMessagesManager.filtersStorage.testDialogForFilter(dialog, filter)) || 
       (!filter && this.filterId !== dialog.folder_id)) {
       return false;
     }

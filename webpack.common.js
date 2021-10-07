@@ -6,11 +6,12 @@ const postcssPresetEnv = require('postcss-preset-env');
 const ServiceWorkerWebpackPlugin = require('serviceworker-webpack-plugin');
 const { RetryChunkLoadPlugin } = require('webpack-retry-chunk-load-plugin');
 const fs = require('fs');
+const Dotenv = require('dotenv-webpack');
 
 const allowedIPs = ['127.0.0.1'];
 const devMode = process.env.NODE_ENV !== 'production';
 const useLocal = true;
-const useLocalNotLocal = false;
+const useLocalNotLocal = true;
 
 if(devMode) {
   console.log('DEVMODE IS ON!');
@@ -29,7 +30,7 @@ const opts = {
 };
 
 const domain = 'yourdomain.com';
-const localIp = '192.168.93.209';
+const localIp = '192.168.93.183';
 
 module.exports = {
   module: {
@@ -141,6 +142,8 @@ module.exports = {
   },
 
   plugins: [
+    new Dotenv(),
+    
     new ServiceWorkerWebpackPlugin({
       entry: path.join(__dirname, 'src/lib/serviceWorker/index.service.ts'),
       filename: 'sw.js',
