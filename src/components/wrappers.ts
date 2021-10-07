@@ -675,7 +675,7 @@ export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showS
           window.open(url);
         }, rootScope.settings.animationsEnabled ? 250 : 0);
       });
-    } else if(MEDIA_MIME_TYPES_SUPPORTED.has(doc.mime_type)) {
+    } else if(MEDIA_MIME_TYPES_SUPPORTED.has(doc.mime_type) && doc.thumbs?.length) {
       download = appDocsManager.downloadDoc(doc, queueId);
     } else {
       download = appDocsManager.saveDocFile(doc, queueId);
