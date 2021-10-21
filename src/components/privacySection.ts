@@ -6,7 +6,6 @@
 
 import { randomLong } from "../helpers/random";
 import { InputPrivacyKey, InputPrivacyRule } from "../layer";
-import appChatsManager from "../lib/appManagers/appChatsManager";
 import appPrivacyManager, { PrivacyType } from "../lib/appManagers/appPrivacyManager";
 import appUsersManager from "../lib/appManagers/appUsersManager";
 import { i18n, join, LangPackKey, _i18n } from "../lib/langPack";
@@ -150,11 +149,11 @@ export default class PrivacySection {
 
       if(this.exceptions) {
         this.peerIds = {};
-        (['allow', 'disallow'] as ('allow' | 'disallow')[]).forEach(k => {
+        ['allow' as const, 'disallow' as const].forEach(k => {
           const arr = [];
           const from = k === 'allow' ? details.allowPeers : details.disallowPeers;
           arr.push(...from.users.map(id => id.toPeerId()));
-          arr.push(...from.chats.map(id => id.toPeerId(false)));
+          arr.push(...from.chats.map(id => id.toPeerId(true)));
           this.peerIds[k] = arr;
           const s = this.exceptions.get(k).row.subtitle;
           s.innerHTML = '';
@@ -194,7 +193,7 @@ export default class PrivacySection {
             if(_peerIds) {
               const splitted = this.splitPeersByType(_peerIds);
               if(splitted.chats.length) {
-                rules.push({_: chatKey, chats: splitted.chats.map(peerId => peerId.toChatId())});
+                rules.push({_: chatKey, chats: splitted.chats});
               }
   
               if(splitted.users.length) {

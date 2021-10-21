@@ -124,7 +124,7 @@ export default class ChatInput {
 
   private getWebPagePromise: Promise<void>;
   private willSendWebPage: WebPage = null;
-  private forwarding: {[frompeerId: PeerId]: number[]};
+  private forwarding: {[fromPeerId: PeerId]: number[]};
   public replyToMsgId: number;
   public editMsgId: number;
   public editMessage: Message.message;
