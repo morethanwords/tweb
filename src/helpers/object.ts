@@ -51,7 +51,7 @@ export function defineNotNumerableProperties<T extends any>(obj: T, names: (keyo
   const props = {writable: true, configurable: true};
   const out: {[name in keyof T]?: typeof props} = {};
   names.forEach(name => {
-    if(obj[name] === undefined) {
+    if(!obj.hasOwnProperty(name)) {
       out[name] = props;
     }
   });
