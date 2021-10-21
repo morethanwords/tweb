@@ -46,7 +46,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
     {
       const section = new SettingSection({noDelimiter: true});
 
-      let blockedPeerIds: number[];
+      let blockedPeerIds: PeerId[];
       const blockedUsersRow = new Row({
         icon: 'deleteuser',
         titleLangKey: 'BlockedUsers',

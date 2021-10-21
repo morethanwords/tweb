@@ -1,0 +1,50 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
+import SwipeHandler, { SwipeHandlerOptions } from "../../components/swipeHandler";
+import { IS_APPLE_MOBILE, IS_SAFARI } from "../../environment/userAgent";
+import { cancelEvent } from "./cancelEvent";
+import findUpClassName from "./findUpClassName";
+import isSwipingBackSafari from "./isSwipingBackSafari";
+
+export type SwipeHandlerHorizontalOptions = SwipeHandlerOptions & {
+  // xThreshold?: number
+};
+
+export default function handleHorizontalSwipe(options: SwipeHandlerHorizontalOptions) {
+  let cancelY = false;
+  return new SwipeHandler({
+    ...options,
+    verifyTouchTarget: (e) => {
+      return !findUpClassName(e.target, 'progress-line') && 
+        !isSwipingBackSafari(e) && 
+        (options.verifyTouchTarget ? options.verifyTouchTarget(e) : true);
+    },
+    onSwipe: (xDiff, yDiff, e) => {
+      if(!cancelY && Math.abs(yDiff) > 20) {
+        return true;
+      }
+
+      if(Math.abs(xDiff) > Math.abs(yDiff)) {
+        cancelEvent(e);
+        cancelY = true;
+      } else if(!cancelY && Math.abs(yDiff) > Math.abs(xDiff)/*  || Math.abs(yDiff) > 20 */) {
+        return true;
+      }
+
+      /* if(!cancelY && options.xThreshold !== undefined && xDiff >= options.xThreshold) {
+        cancelY = true;
+      } */
+
+      return options.onSwipe(xDiff, yDiff, e);
+    },
+    onReset: () => {
+      cancelY = false;
+      options.onReset && options.onReset();
+    },
+    cancelEvent: true
+  });
+}

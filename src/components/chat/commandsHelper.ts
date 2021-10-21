@@ -31,7 +31,7 @@ export default class CommandsHelper extends AutocompletePeerHelper {
     );
   }
 
-  public checkQuery(query: string, peerId: number) {
+  public checkQuery(query: string, peerId: PeerId) {
     if(!this.appUsersManager.isBot(peerId)) {
       return false;
     }
@@ -47,12 +47,12 @@ export default class CommandsHelper extends AutocompletePeerHelper {
         ignoreCase: true
       });
       
-      const commands: Map<string, {peerId: number, name: string, description: string}> = new Map();
+      const commands: Map<string, {peerId: PeerId, name: string, description: string}> = new Map();
       botInfos.forEach(botInfo => {
         botInfo.commands.forEach(botCommand => {
           const c = '/' + botCommand.command;
           commands.set(botCommand.command, {
-            peerId: botInfo.user_id, 
+            peerId: botInfo.user_id.toPeerId(false), 
             name: c, 
             description: botCommand.description
           });

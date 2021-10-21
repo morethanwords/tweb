@@ -443,7 +443,7 @@ class TLSerialization {
   }
 }
 
-class TLDeserialization {
+class TLDeserialization<FetchLongAs extends Long> {
   private offset = 0; // in bytes
   private override: {[key: string]: (result: any, field: string) => void};
 
@@ -469,8 +469,8 @@ class TLDeserialization {
 
     //console.log(this.intView);
 
-    this.override = 'override' in options ? options.override : {};
-    this.mtproto = 'mtproto' in options ? options.mtproto : false;
+    this.override = options.override || {};
+    this.mtproto = !!options.mtproto;
     this.debug = options.debug !== undefined ? options.debug : /* Modes.debug */false;
   }
 
@@ -509,13 +509,22 @@ class TLDeserialization {
     return doubleView[0];
   }
   
-  public fetchLong(field?: string): string {
+  public fetchLong(field?: string): FetchLongAs {
     const iLow = this.readInt((field || '') + ':long[low]');
     const iHigh = this.readInt((field || '') + ':long[high]');
   
     //const longDec = bigint(iHigh).shiftLeft(32).add(bigint(iLow)).toString();
     const longDec = longFromInts(iHigh, iLow);
+
+    if(!this.mtproto) {
+      const num = +longDec;
+      if(Number.isSafeInteger(num)) {
+        // @ts-ignore
+        return num;
+      }
+    }
   
+    // @ts-ignore
     return longDec;
   }
   
@@ -700,7 +709,7 @@ class TLDeserialization {
       if(constructorCmp === gzipPacked) { // Gzip packed
         const compressed = this.fetchBytes(field + '[packed_string]');
         const uncompressed = gzipUncompress(compressed) as Uint8Array;
-        const newDeserializer = new TLDeserialization(uncompressed);
+        const newDeserializer = new TLDeserialization(uncompressed); // rpc_result is packed here
   
         return newDeserializer.fetchObject(type, field);
       }

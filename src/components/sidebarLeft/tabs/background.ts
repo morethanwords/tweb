@@ -35,7 +35,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
   private grid: HTMLElement;
   private tempId = 0;
   private theme: Theme;
-  private clicked: Set<string> = new Set();
+  private clicked: Set<DocId> = new Set();
   private blurCheckboxField: CheckboxField;
 
   init() {
@@ -162,7 +162,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
           wallpaper = _wallpaper as WallPaper.wallPaper;
           wallpaper.document = appDocsManager.saveDoc(wallpaper.document);
 
-          container.dataset.docId = wallpaper.document.id;
+          container.dataset.docId = '' + wallpaper.document.id;
           container.dataset.slug = wallpaper.slug;
           
           this.setBackgroundDocument(wallpaper.slug, wallpaper.document).then(deferred.resolve, deferred.reject);
@@ -223,7 +223,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
       size: appPhotosManager.choosePhotoSize(wallpaper.document, 200, 200)
     });
 
-    container.dataset.docId = wallpaper.document.id;
+    container.dataset.docId = '' + wallpaper.document.id;
     container.dataset.slug = wallpaper.slug;
 
     if(this.theme.background.type === 'image' && this.theme.background.slug === wallpaper.slug) {

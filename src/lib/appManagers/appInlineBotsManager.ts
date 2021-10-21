@@ -10,7 +10,7 @@
  */
 
 import { toast } from "../../components/toast";
-import { BotInlineResult, GeoPoint, InputGeoPoint, InputMedia, MessageEntity, ReplyMarkup } from "../../layer";
+import { BotInlineResult, GeoPoint, InputGeoPoint, InputMedia, MessageEntity, MessagesBotResults, ReplyMarkup } from "../../layer";
 import appPeersManager from "./appPeersManager";
 import apiManagerProxy from "../mtproto/mtprotoworker";
 import { RichTextProcessor } from "../richtextprocessor";
@@ -28,8 +28,8 @@ import appStateManager from "./appStateManager";
 export class AppInlineBotsManager {
   private inlineResults: {[queryAndResultIds: string]: BotInlineResult} = {};
   private setHash: {
-    [botId: string]: {
-      peerId: number, 
+    [botId: UserId]: {
+      peerId: PeerId, 
       time: number
     }
   } = {};
@@ -45,7 +45,7 @@ export class AppInlineBotsManager {
     };
   }
 
-  public getInlineResults(peerId: number, botId: number, query = '', offset = '', geo?: GeoPoint) {
+  public getInlineResults(peerId: PeerId, botId: BotId, query = '', offset = '', geo?: GeoPoint) {
     return apiManagerProxy.invokeApi('messages.getInlineBotResults', {
       bot: appUsersManager.getUserInput(botId),
       peer: appPeersManager.getInputPeerById(peerId),
@@ -77,19 +77,20 @@ export class AppInlineBotsManager {
     });
   }
 
-  public generateQId(queryId: string, resultId: string) {
+  public generateQId(queryId: MessagesBotResults.messagesBotResults['query_id'], resultId: string) {
     return queryId + '_' + resultId;
   }
 
-  private pushPopularBot(botId: number) {
+  private pushPopularBot(botId: BotId) {
     appUsersManager.getTopPeers('bots_inline').then((topPeers) => {
-      const index = topPeers.findIndex(topPeer => topPeer.id);
+      const botPeerId = botId.toPeerId();
+      const index = topPeers.findIndex(topPeer => topPeer.id === botPeerId);
       let topPeer: MyTopPeer;
       if(index !== -1) {
         topPeer = topPeers[index];
       } else {
         topPeer = {
-          id: botId,
+          id: botPeerId,
           rating: 0
         };
       }
@@ -103,16 +104,16 @@ export class AppInlineBotsManager {
     });
   }
 
-  public switchToPM(fromPeerId: number, botId: number, startParam: string) {
+  public switchToPM(fromPeerId: PeerId, botId: BotId, startParam: string) {
     this.setHash[botId] = {peerId: fromPeerId, time: Date.now()};
-    rootScope.dispatchEvent('history_focus', {peerId: botId});
-    return appMessagesManager.startBot(botId, 0, startParam);
+    rootScope.dispatchEvent('history_focus', {peerId: botId.toPeerId()});
+    return appMessagesManager.startBot(botId, '0', startParam);
   }
   
   /*
   function resolveInlineMention (username) {
     return AppPeersManager.resolveUsername(username).then(function (peerId) {
-      if (peerId > 0) {
+      if (peerId.isUser()) {
         var bot = AppUsersManager.getUser(peerId)
         if (bot.pFlags.bot && bot.bot_inline_placeholder !== undefined) {
           var resolvedBot = {
@@ -216,7 +217,7 @@ export class AppInlineBotsManager {
         })
       } */
 
-  public async checkSwitchReturn(botId: number) {
+  public async checkSwitchReturn(botId: BotId) {
     const bot = appUsersManager.getUser(botId);
     if(!bot || !bot.pFlags.bot || !bot.bot_inline_placeholder) {
       return;
@@ -231,12 +232,12 @@ export class AppInlineBotsManager {
     }
   }
 
-  public switchInlineQuery(peerId: number, threadId: number, botId: number, query: string) {
+  public switchInlineQuery(peerId: PeerId, threadId: number, botId: BotId, query: string) {
     rootScope.dispatchEvent('history_focus', {peerId, threadId});
     appDraftsManager.setDraft(peerId, threadId, '@' + appUsersManager.getUser(botId).username + ' ' + query);
   }
 
-  public callbackButtonClick(peerId: number, mid: number, button: any) {
+  public callbackButtonClick(peerId: PeerId, mid: number, button: any) {
     return apiManagerProxy.invokeApi('messages.getBotCallbackAnswer', {
       peer: appPeersManager.getInputPeerById(peerId),
       msg_id: appMessagesIdsManager.getServerMessageId(mid),
@@ -268,8 +269,8 @@ export class AppInlineBotsManager {
     })
   } */
 
-  public sendInlineResult(peerId: number, botId: number, queryAndResultIds: string, options: Partial<{
-    viaBotId: number,
+  public sendInlineResult(peerId: PeerId, botId: BotId, queryAndResultIds: string, options: Partial<{
+    viaBotId: BotId,
     queryId: string,
     resultId: string,
     replyMarkup: ReplyMarkup,

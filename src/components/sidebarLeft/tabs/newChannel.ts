@@ -75,13 +75,12 @@ export default class AppNewChannelTab extends SliderSuperTab {
         
         appSidebarLeft.removeTabFromHistory(this);
         new AppAddMembersTab(this.slider).open({
-          peerId: channelId,
           type: 'channel',
           skippable: true,
           title: 'GroupAddMembers',
           placeholder: 'SendMessageTo',
           takeOut: (peerIds) => {
-            return appChatsManager.inviteToChannel(Math.abs(channelId), peerIds);
+            return appChatsManager.inviteToChannel(channelId, peerIds);
           }
         });
       });

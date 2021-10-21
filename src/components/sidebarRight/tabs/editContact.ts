@@ -27,7 +27,7 @@ export default class AppEditContactTab extends SliderSuperTab {
   private nameInputField: InputField;
   private lastNameInputField: InputField;
   private editPeer: EditPeer;
-  public peerId: number;
+  public peerId: PeerId;
 
   protected init() {
     this.container.classList.add('edit-peer-container', 'edit-contact-container');

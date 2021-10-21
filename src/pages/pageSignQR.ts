@@ -92,7 +92,7 @@ let onFirstMount = async() => {
 
       if(loginToken._ === 'auth.loginTokenSuccess') {
         const authorization = loginToken.authorization as any as AuthAuthorization.authAuthorization;
-        apiManager.setUserAuth(authorization.user.id);
+        apiManager.setUser(authorization.user);
         import('./pageIm').then(m => m.default.mount());
         return true;
       }

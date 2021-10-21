@@ -52,7 +52,7 @@ export default class PeerProfile {
   private setBioTimeout: number;
   private setPeerStatusInterval: number;
 
-  private peerId = 0;
+  private peerId: PeerId;
   private threadId: number;
 
   constructor(public scrollable: Scrollable) {
@@ -264,7 +264,7 @@ export default class PeerProfile {
     }
     
     //let membersLi = this.profileTabs.firstElementChild.children[0] as HTMLLIElement;
-    if(peerId > 0) {
+    if(peerId.isUser()) {
       //membersLi.style.display = 'none';
 
       let user = appUsersManager.getUser(peerId);
@@ -304,7 +304,7 @@ export default class PeerProfile {
     }
 
     let promise: Promise<boolean>;
-    if(peerId > 0) {
+    if(peerId.isUser()) {
       promise = appProfileManager.getProfile(peerId, override).then(userFull => {
         if(this.peerId !== peerId || this.threadId !== threadId) {
           //this.log.warn('peer changed');
@@ -319,7 +319,7 @@ export default class PeerProfile {
         return true;
       });
     } else {
-      promise = appProfileManager.getChatFull(-peerId, override).then((chatFull) => {
+      promise = appProfileManager.getChatFull(peerId.toChatId(), override).then((chatFull) => {
         if(this.peerId !== peerId || this.threadId !== threadId) {
           //this.log.warn('peer changed');
           return false;
@@ -342,8 +342,8 @@ export default class PeerProfile {
     });
   }
 
-  public setPeer(peerId: number, threadId = 0) {
-    if(this.peerId === peerId && this.threadId === peerId) return;
+  public setPeer(peerId: PeerId, threadId = 0) {
+    if(this.peerId === peerId && this.threadId === threadId) return;
 
     if(this.init) {
       this.init();

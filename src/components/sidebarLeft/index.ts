@@ -39,6 +39,7 @@ import replaceContent from "../../helpers/dom/replaceContent";
 import sessionStorage from "../../lib/sessionStorage";
 import { CLICK_EVENT_NAME } from "../../helpers/dom/clickEvent";
 import { closeBtnMenu } from "../misc";
+import { indexOfAndSplice } from "../../helpers/array";
 
 export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
 
@@ -71,7 +72,6 @@ export class AppSidebarLeft extends SidebarSlider {
 
     const onNewGroupClick = () => {
       new AppAddMembersTab(this).open({
-        peerId: 0,
         type: 'chat',
         skippable: false,
         takeOut: (peerIds) => {
@@ -96,8 +96,8 @@ export class AppSidebarLeft extends SidebarSlider {
         new AppArchivedTab(this).open();
       },
       verify: () => {
-        const folder = appMessagesManager.dialogsStorage.getFolder(1);
-        return !!folder.length;
+        const folder = appMessagesManager.dialogsStorage.getFolderDialogs(1, false);
+        return !!folder.length || !appMessagesManager.dialogsStorage.isDialogsLoaded(1);
       }
     };
 
@@ -174,7 +174,10 @@ export class AppSidebarLeft extends SidebarSlider {
       icon: 'char z',
       text: 'ChatList.Menu.SwitchTo.Z',
       onClick: () => {
-        sessionStorage.set({kz_version: 'Z'}).then(() => {
+        Promise.all([
+          sessionStorage.set({kz_version: 'Z'}),
+          sessionStorage.delete('tgme_sync')
+        ]).then(() => {
           location.href = 'https://web.telegram.org/z/';
         });
       },
@@ -183,7 +186,9 @@ export class AppSidebarLeft extends SidebarSlider {
       icon: 'char w',
       text: 'ChatList.Menu.SwitchTo.Webogram',
       onClick: () => {
-        location.href = 'https://web.telegram.org/?legacy=1';
+        sessionStorage.delete('tgme_sync').then(() => {
+          location.href = 'https://web.telegram.org/?legacy=1';
+        });
       },
       verify: () => App.isMainDomain
     }];
@@ -250,9 +255,13 @@ export class AppSidebarLeft extends SidebarSlider {
 
     btnArchive.element.append(this.archivedCount);
 
-    rootScope.addEventListener('dialogs_archived_unread', (e) => {
-      this.archivedCount.innerText = '' + formatNumber(e.count, 1);
-      this.archivedCount.classList.toggle('hide', !e.count);
+    rootScope.addEventListener('folder_unread', (folder) => {
+      if(folder.id === 1) {
+        // const count = folder.unreadMessagesCount;
+        const count = folder.unreadDialogsCount;
+        this.archivedCount.innerText = '' + formatNumber(count, 1);
+        this.archivedCount.classList.toggle('hide', !count);
+      }
     });
 
     appUsersManager.getTopPeers('correspondents');
@@ -322,7 +331,7 @@ export class AppSidebarLeft extends SidebarSlider {
 
     const resetSearch = () => {
       searchSuper.setQuery({
-        peerId: 0, 
+        peerId: ''.toPeerId(), 
         folderId: 0
       });
       searchSuper.selectTab(0);
@@ -332,7 +341,7 @@ export class AppSidebarLeft extends SidebarSlider {
     resetSearch();
 
     let pickedElements: HTMLElement[] = [];
-    let selectedPeerId = 0;
+    let selectedPeerId: PeerId = ''.toPeerId();
     let selectedMinDate = 0;
     let selectedMaxDate = 0;
     const updatePicked = () => {
@@ -361,7 +370,7 @@ export class AppSidebarLeft extends SidebarSlider {
         selectedMinDate = +minDate;
         selectedMaxDate = +maxDate;
       } else {
-        selectedPeerId = +key;
+        selectedPeerId = key.toPeerId();
       }
 
       target.addEventListener('click', () => {
@@ -376,7 +385,7 @@ export class AppSidebarLeft extends SidebarSlider {
 
     searchSuper.nav.parentElement.append(helper);
 
-    const renderEntity = (peerId: any, title?: string | HTMLElement) => {
+    const renderEntity = (key: PeerId | string, title?: string | HTMLElement) => {
       const div = document.createElement('div');
       div.classList.add('selector-user'/* , 'scale-in' */);
 
@@ -385,13 +394,13 @@ export class AppSidebarLeft extends SidebarSlider {
       avatarEl.setAttribute('dialog', '1');
       avatarEl.classList.add('avatar-30');
 
-      div.dataset.key = '' + peerId;
-      if(typeof(peerId) === 'number') {
+      div.dataset.key = '' + key;
+      if(key.isPeerId()) {
         if(title === undefined) {
-          title = new PeerTitle({peerId}).element;
+          title = new PeerTitle({peerId: key.toPeerId()}).element;
         }
 
-        avatarEl.setAttribute('peer', '' + peerId);
+        avatarEl.setAttribute('peer', '' + key);
       } else {
         avatarEl.classList.add('tgico-calendarfilter');
       }
@@ -415,11 +424,11 @@ export class AppSidebarLeft extends SidebarSlider {
       if(key.indexOf('date_') === 0) {
         selectedMinDate = selectedMaxDate = 0;
       } else {
-        selectedPeerId = 0;
+        selectedPeerId = ''.toPeerId();
       }
       
       target.remove();
-      pickedElements.findAndSplice(t => t === target);
+      indexOfAndSplice(pickedElements, target);
 
       setTimeout(() => {
         updatePicked();
@@ -452,8 +461,9 @@ export class AppSidebarLeft extends SidebarSlider {
       if(!selectedPeerId && value.trim()) {
         const middleware = searchSuper.middleware.get();
         Promise.all([
-          appMessagesManager.getConversationsAll(value).then(dialogs => dialogs.map(d => d.peerId)),
-          appUsersManager.getContacts(value, true)
+          // appMessagesManager.getConversationsAll(value).then(dialogs => dialogs.map(d => d.peerId)),
+          appMessagesManager.getConversations(value).promise.then(({dialogs}) => dialogs.map(d => d.peerId)),
+          appUsersManager.getContactsPeerIds(value, true)
         ]).then(results => {
           if(!middleware()) return;
           const peerIds = new Set(results[0].concat(results[1]));
@@ -489,11 +499,11 @@ export class AppSidebarLeft extends SidebarSlider {
         return;
       }
 
-      const peerId = +target.getAttribute('data-peer-id');
+      const peerId = target.getAttribute('data-peer-id').toPeerId();
       appStateManager.getState().then(state => {
         const recentSearch = state.recentSearch || [];
         if(recentSearch[0] !== peerId) {
-          recentSearch.findAndSplice(p => p === peerId);
+          indexOfAndSplice(recentSearch, peerId);
           recentSearch.unshift(peerId);
           if(recentSearch.length > 20) {
             recentSearch.length = 20;

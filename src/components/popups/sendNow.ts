@@ -9,7 +9,7 @@ import { PopupButton } from ".";
 import PopupPeer from "./peer";
 
 export default class PopupSendNow {
-  constructor(peerId: number, mids: number[], onConfirm?: () => void) {
+  constructor(peerId: PeerId, mids: number[], onConfirm?: () => void) {
     let title: string, description: string, buttons: PopupButton[] = [];
 
     title = `Send Message${mids.length > 1 ? 's' : ''} Now`;

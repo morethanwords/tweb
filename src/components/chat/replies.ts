@@ -14,6 +14,7 @@ import { ripple } from "../ripple";
 import AvatarElement from "../avatar";
 import { i18n } from "../../lib/langPack";
 import replaceContent from "../../helpers/dom/replaceContent";
+import appChatsManager from "../../lib/appManagers/appChatsManager";
 
 const TAG_NAME = 'replies-element';
 
@@ -117,7 +118,7 @@ export default class RepliesElement extends HTMLElement {
       }
 
       if(replies) {
-        const historyStorage = appMessagesManager.getHistoryStorage(-replies.channel_id);
+        const historyStorage = appMessagesManager.getHistoryStorage(replies.channel_id.toPeerId(true));
         let isUnread = false;
         if(replies.replies) {
           if(replies.read_max_id !== undefined && replies.max_id !== undefined) {

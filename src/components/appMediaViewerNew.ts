@@ -1080,7 +1080,7 @@
 // type AppMediaViewerTargetType = {
 //   element: HTMLElement,
 //   mid: number,
-//   peerId: number
+//   peerId: PeerId
 // };
 // export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delete' | 'forward', AppMediaViewerTargetType> {
 //   public currentMessageId = 0;
@@ -1336,9 +1336,9 @@
 // type AppMediaViewerAvatarTargetType = {element: HTMLElement, photoId: string};
 // export class AppMediaViewerAvatar extends AppMediaViewerBase<'', 'delete', AppMediaViewerAvatarTargetType> {
 //   public currentPhotoId: string;
-//   public peerId: number;
+//   public peerId: PeerId;
 
-//   constructor(peerId: number) {
+//   constructor(peerId: PeerId) {
 //     super(['delete']);
 
 //     this.peerId = peerId;
@@ -1373,7 +1373,7 @@
 //   };
 
 //   protected loadMoreMedia = (older = true) => {
-//     if(this.peerId < 0) return Promise.resolve(); // ! это значит, что открыло аватар чата, но следующих фотографий нет.
+//     if(this.peerId.isAnyChat()) return Promise.resolve(); // ! это значит, что открыло аватар чата, но следующих фотографий нет.
 //     if(this.loadedAllMediaDown) return Promise.resolve();
 //     if(this.loadMediaPromiseDown) return this.loadMediaPromiseDown;
 

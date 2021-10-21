@@ -23,10 +23,12 @@ import { IS_MOBILE } from '../../environment/userAgent';
 import DATABASE_STATE from '../../config/databases/state';
 import sessionStorage from '../sessionStorage';
 import { nextRandomUint } from '../../helpers/random';
+import compareVersion from '../../helpers/compareVersion';
 
 const REFRESH_EVERY = 24 * 60 * 60 * 1000; // 1 day
 //const REFRESH_EVERY_WEEK = 24 * 60 * 60 * 1000 * 7; // 7 days
 const STATE_VERSION = App.versionFull;
+const BUILD = App.build;
 
 export type Background = {
   type: 'color' | 'image' | 'default',
@@ -44,7 +46,7 @@ export type Theme = {
 export type State = {
   allDialogsLoaded: DialogsStorage['allDialogsLoaded'],
   pinnedOrders: DialogsStorage['pinnedOrders'],
-  contactsList: number[],
+  contactsList: UserId[],
   updates: Partial<{
     seq: number,
     pts: number,
@@ -60,10 +62,11 @@ export type State = {
       cachedTime: number
     }
   },
-  recentSearch: number[],
+  recentSearch: PeerId[],
   version: typeof STATE_VERSION,
+  build: typeof BUILD,
   authState: AuthState,
-  hiddenPinnedMessages: {[peerId: string]: number},
+  hiddenPinnedMessages: {[peerId: PeerId]: number},
   settings: {
     messagesTextSize: number,
     sendShortcut: 'enter' | 'ctrlEnter',
@@ -111,6 +114,7 @@ export const STATE_INIT: State = {
   topPeersCache: {},
   recentSearch: [],
   version: STATE_VERSION,
+  build: BUILD,
   authState: {
     _: IS_MOBILE ? 'authStateSignIn' : 'authStateSignQr'
   },
@@ -173,8 +177,8 @@ const REFRESH_KEYS = ['contactsList', 'stateCreatedTime',
 
 export class AppStateManager extends EventListenerBase<{
   save: (state: State) => Promise<void>,
-  peerNeeded: (peerId: number) => void,
-  peerUnneeded: (peerId: number) => void
+  peerNeeded: (peerId: PeerId) => void,
+  peerUnneeded: (peerId: PeerId) => void
 }> {
   public static STATE_INIT = STATE_INIT;
   private loaded: Promise<State>;
@@ -182,13 +186,13 @@ export class AppStateManager extends EventListenerBase<{
 
   private state: State;
 
-  private neededPeers: Map<number, Set<string>> = new Map();
-  private singlePeerMap: Map<string, number> = new Map();
+  private neededPeers: Map<PeerId, Set<string>> = new Map();
+  private singlePeerMap: Map<string, PeerId> = new Map();
 
   public storages = {
-    users: new AppStorage<Record<number, User>, typeof DATABASE_STATE>(DATABASE_STATE, 'users'),
-    chats: new AppStorage<Record<number, Chat>, typeof DATABASE_STATE>(DATABASE_STATE, 'chats'),
-    dialogs: new AppStorage<Record<number, Dialog>, typeof DATABASE_STATE>(DATABASE_STATE, 'dialogs')
+    users: new AppStorage<Record<UserId, User>, typeof DATABASE_STATE>(DATABASE_STATE, 'users'),
+    chats: new AppStorage<Record<ChatId, Chat>, typeof DATABASE_STATE>(DATABASE_STATE, 'chats'),
+    dialogs: new AppStorage<Record<PeerId, Dialog>, typeof DATABASE_STATE>(DATABASE_STATE, 'dialogs')
   };
 
   public storagesResults: {
@@ -219,6 +223,7 @@ export class AppStateManager extends EventListenerBase<{
       .concat(storagesPromises);
 
       Promise.all(promises).then(async(arr) => {
+        // await new Promise((resolve) => setTimeout(resolve, 3e3));
         /* const self = this;
         const skipHandleKeys = new Set(['isProxy', 'filters', 'drafts']);
         const getHandler = (path?: string) => {
@@ -280,7 +285,7 @@ export class AppStateManager extends EventListenerBase<{
 
           const values = await Promise.all(keys.map(key => stateStorage.get(key as any)));
           keys.push('user_auth');
-          values.push(typeof(auth) === 'number' ? {dcID: values[0] || App.baseDcId, date: Date.now() / 1000 | 0, id: auth} as UserAuth : auth);
+          values.push(typeof(auth) === 'number' || typeof(auth) === 'string' ? {dcID: values[0] || App.baseDcId, date: Date.now() / 1000 | 0, id: auth.toPeerId(false)} as UserAuth : auth);
 
           let obj: any = {};
           keys.forEach((key, idx) => {
@@ -317,7 +322,9 @@ export class AppStateManager extends EventListenerBase<{
         if(auth) {
           // ! Warning ! DON'T delete this
           state.authState = {_: 'authStateSignedIn'};
-          rootScope.dispatchEvent('user_auth', typeof(auth) === 'number' ? {dcID: 0, date: Date.now() / 1000 | 0, id: auth} : auth); // * support old version
+          rootScope.dispatchEvent('user_auth', typeof(auth) === 'number' || typeof(auth) === 'string' ? 
+            {dcID: 0, date: Date.now() / 1000 | 0, id: auth.toPeerId(false)} : 
+            auth); // * support old version
         }
 
         // * Read storages
@@ -409,9 +416,19 @@ export class AppStateManager extends EventListenerBase<{
           this.pushToState(missingKey, state[missingKey]);
         });
 
-        if(state.version !== STATE_VERSION) {
-          this.pushToState('version', STATE_VERSION);
-          this.newVersion = STATE_VERSION;
+        if(state.version !== STATE_VERSION/*  || true */) {
+          // reset filters and dialogs if version is older
+          if(compareVersion(state.version, '0.8.7') === -1) {
+            this.state.allDialogsLoaded = copy(STATE_INIT.allDialogsLoaded);
+            this.state.filters = copy(STATE_INIT.filters);
+            const result = this.storagesResults.dialogs;
+            if(result?.length) {
+              result.length = 0;
+            }
+          }
+
+          this.pushToState('version', this.newVersion = STATE_VERSION);
+          this.pushToState('build', BUILD);
         }
 
         // ! probably there is better place for it
@@ -458,7 +475,7 @@ export class AppStateManager extends EventListenerBase<{
     });
   }
 
-  public requestPeer(peerId: number, type: string, limit?: number) {
+  public requestPeer(peerId: PeerId, type: string, limit?: number) {
     let set = this.neededPeers.get(peerId);
     if(set && set.has(type)) {
       return;
@@ -470,6 +487,7 @@ export class AppStateManager extends EventListenerBase<{
     }
 
     set.add(type);
+
     this.dispatchEvent('peerNeeded', peerId);
 
     if(limit !== undefined) {
@@ -477,11 +495,11 @@ export class AppStateManager extends EventListenerBase<{
     }
   }
 
-  public isPeerNeeded(peerId: number) {
+  public isPeerNeeded(peerId: PeerId) {
     return this.neededPeers.has(peerId);
   }
 
-  public keepPeerSingle(peerId: number, type: string) {
+  public keepPeerSingle(peerId: PeerId, type: string) {
     const existsPeerId = this.singlePeerMap.get(type);
     if(existsPeerId && existsPeerId !== peerId && this.neededPeers.has(existsPeerId)) {
       const set = this.neededPeers.get(existsPeerId);

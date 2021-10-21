@@ -64,7 +64,7 @@ setInterval(() => {
 }, 120e3);
 
 type StreamRange = [number, number];
-type StreamId = string;
+type StreamId = DocId;
 const streams: Map<StreamId, Stream> = new Map();
 class Stream {
   private destroyDebounced: () => void;

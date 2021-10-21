@@ -6,6 +6,7 @@
 
 import App from "../../config/app";
 import { MOUNT_CLASS_TO } from "../../config/debug";
+import { indexOfAndSplice } from "../../helpers/array";
 import { validateInitObject } from "../../helpers/object";
 import I18n from "../langPack";
 import { isObject } from "../mtproto/bin_utils";
@@ -222,7 +223,7 @@ export class AppEmojiManager {
   public pushRecentEmoji(emoji: string) {
     emoji = RichTextProcessor.fixEmoji(emoji);
     this.getRecentEmojis().then(recent => {
-      recent.findAndSplice(e => e === emoji);
+      indexOfAndSplice(recent, emoji);
       recent.unshift(emoji);
       if(recent.length > RECENT_MAX_LENGTH) {
         recent.length = RECENT_MAX_LENGTH;

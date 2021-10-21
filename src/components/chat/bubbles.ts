@@ -20,7 +20,7 @@ import { CHAT_ANIMATION_GROUP } from "../../lib/appManagers/appImManager";
 import { getObjectKeysAndSort } from "../../helpers/object";
 import { IS_TOUCH_SUPPORTED } from "../../environment/touchSupport";
 import { logger } from "../../lib/logger";
-import rootScope, { BroadcastEvents } from "../../lib/rootScope";
+import rootScope from "../../lib/rootScope";
 import BubbleGroups from "./bubbleGroups";
 import PopupDatePicker from "../popups/datePicker";
 import PopupForward from "../popups/forward";
@@ -75,6 +75,9 @@ import { SEND_WHEN_ONLINE_TIMESTAMP } from "../../lib/mtproto/constants";
 import windowSize from "../../helpers/windowSize";
 import { formatPhoneNumber } from "../../helpers/formatPhoneNumber";
 import AppMediaViewer from "../appMediaViewer";
+import SetTransition from "../singleTransition";
+import handleHorizontalSwipe from "../../helpers/dom/handleHorizontalSwipe";
+import { cancelContextMenuOpening } from "../misc";
 
 const USE_MEDIA_TAILS = false;
 const IGNORE_ACTIONS: Set<Message.messageService['action']['_']> = new Set([
@@ -98,11 +101,11 @@ export default class ChatBubbles {
   private getHistoryTopPromise: Promise<boolean>;
   private getHistoryBottomPromise: Promise<boolean>;
 
-  public peerId = 0;
+  public peerId: PeerId;
   //public messagesCount: number = -1;
 
   private unreadOut = new Set<number>();
-  public needUpdate: {replyToPeerId: number, replyMid: number, mid: number}[] = []; // if need wrapSingleMessage
+  public needUpdate: {replyToPeerId: PeerId, replyMid: number, mid: number}[] = []; // if need wrapSingleMessage
 
   public bubbles: {[mid: string]: HTMLDivElement} = {};
   public skippedMids: Set<number> = new Set();
@@ -170,7 +173,8 @@ export default class ChatBubbles {
   private viewsMids: Set<number> = new Set();
   private sendViewCountersDebounced: () => Promise<void>;
 
-  constructor(private chat: Chat, 
+  constructor(
+    private chat: Chat, 
     private appMessagesManager: AppMessagesManager, 
     private appStickersManager: AppStickersManager, 
     private appUsersManager: AppUsersManager, 
@@ -216,7 +220,7 @@ export default class ChatBubbles {
         const message = this.chat.getMessage(mid);
         
         if(+bubble.dataset.timestamp >= (message.date + serverTimeManager.serverTimeOffset - 1)) {
-          //this.bubbleGroups.addBubble(bubble, message, false); // ! TEMP COMMENTED
+          this.bubbleGroups.changeBubbleMid(bubble, mid);
           return;
         }
 
@@ -266,10 +270,18 @@ export default class ChatBubbles {
           }
         }
 
-        if(message.media?.document && !message.media.document.type) {
+        if(message.media?.document) {
           const div = bubble.querySelector(`.document-container[data-mid="${tempId}"] .document`);
           if(div) {
-            div.replaceWith(wrapDocument({message}));
+            const container = findUpClassName(div, 'document-container');
+
+            if(!tempMessage.media?.document?.thumbs?.length && message.media.document.thumbs?.length) {
+              div.replaceWith(wrapDocument({message}));
+            }
+
+            if(container) {
+              container.dataset.mid = '' + mid;
+            }
           }
         }
 
@@ -434,6 +446,74 @@ export default class ChatBubbles {
     // attachClickEvent(this.bubblesContainer, this.onBubblesClick, {listenerSetter: this.listenerSetter});
     this.listenerSetter.add(this.bubblesContainer)('click', this.onBubblesClick/* , {capture: true, passive: false} */);
 
+    if(IS_TOUCH_SUPPORTED) {
+      const className = 'is-gesturing-reply';
+      const MAX = 64;
+      const replyAfter = MAX * .75;
+      let shouldReply = false;
+      let target: HTMLElement;
+      let icon: HTMLElement;
+      handleHorizontalSwipe({
+        element: this.bubblesContainer,
+        verifyTouchTarget: (e) => {
+          if(this.chat.selection.isSelecting || !this.appMessagesManager.canSendToPeer(this.peerId, this.chat.threadId)) {
+            return false;
+          }
+
+          // cancelEvent(e);
+          target = findUpClassName(e.target, 'bubble');
+          if(target) {
+            SetTransition(target, className, true, 250);
+            void target.offsetLeft; // reflow
+
+            if(!icon) {
+              icon = document.createElement('span');
+              icon.classList.add('tgico-reply_filled', 'bubble-gesture-reply-icon');
+            } else {
+              icon.classList.remove('is-visible');
+              icon.style.opacity = '';
+            }
+
+            target/* .querySelector('.bubble-content') */.append(icon);
+          }
+
+          return !!target;
+        },
+        onSwipe: (xDiff, yDiff) => {
+          shouldReply = xDiff >= replyAfter;
+
+          if(shouldReply && !icon.classList.contains('is-visible')) {
+            icon.classList.add('is-visible');
+          }
+          icon.style.opacity = '' + Math.min(1, xDiff / replyAfter);
+
+          const x = -Math.max(0, Math.min(MAX, xDiff));
+          target.style.transform = `translateX(${x}px)`;
+          cancelContextMenuOpening();
+        },
+        onReset: () => {
+          const _target = target;
+          SetTransition(_target, className, false, 250, () => {
+            if(icon.parentElement === _target) {
+              icon.classList.remove('is-visible');
+              icon.remove();
+            }
+          });
+
+          fastRaf(() => {
+            _target.style.transform = ``;
+
+            if(shouldReply) {
+              const {mid} = _target.dataset;
+              this.chat.input.initMessageReply(+mid);
+              shouldReply = false;
+            }
+          });
+        },
+        listenerOptions: {capture: true}
+      });
+    }
+
     if(DEBUG) {
       this.listenerSetter.add(this.bubblesContainer)('dblclick', (e) => {
         const bubble = findUpClassName(e.target, 'grouped-item') || findUpClassName(e.target, 'bubble');
@@ -540,7 +620,7 @@ export default class ChatBubbles {
     });
 
     this.listenerSetter.add(rootScope)('chat_update', (chatId) => {
-      if(this.peerId === -chatId) {
+      if(this.peerId === chatId.toPeerId(true)) {
         const hadRights = this.chatInner.classList.contains('has-rights');
         const hasRights = this.appMessagesManager.canSendToPeer(this.peerId, this.chat.threadId);
 
@@ -551,7 +631,7 @@ export default class ChatBubbles {
       }
     });
 
-    this.listenerSetter.add(rootScope)('settings_updated', (e: BroadcastEvents['settings_updated']) => {
+    this.listenerSetter.add(rootScope)('settings_updated', (e) => {
       if(e.key === 'settings.emoji.big') {
         const isScrolledDown = this.scrollable.isScrolledDown;
         if(!isScrolledDown) {
@@ -872,7 +952,7 @@ export default class ChatBubbles {
 
     const contactDiv: HTMLElement = findUpClassName(target, 'contact');
     if(contactDiv) {
-      this.chat.appImManager.setInnerPeer(+contactDiv.dataset.peerId);
+      this.chat.appImManager.setInnerPeer(contactDiv.dataset.peerId.toPeerId());
       return;
     }
 
@@ -890,7 +970,7 @@ export default class ChatBubbles {
         const replies = message.replies;
         if(replies) {
           this.appMessagesManager.getDiscussionMessage(this.peerId, message.mid).then(message => {
-            this.chat.appImManager.setInnerPeer(-replies.channel_id, undefined, 'discussion', (message as MyMessage).mid);
+            this.chat.appImManager.setInnerPeer(replies.channel_id.toPeerId(true), undefined, 'discussion', (message as MyMessage).mid);
           });
         }
       }
@@ -901,21 +981,19 @@ export default class ChatBubbles {
     const nameDiv = findUpClassName(target, 'peer-title') || findUpClassName(target, 'name') || findUpTag(target, 'AVATAR-ELEMENT');
     if(nameDiv) {
       target = nameDiv || target;
-      const peerId = +(target.dataset.peerId || target.getAttribute('peer'));
+      const peerId = (target.dataset.peerId || target.getAttribute('peer'));
       const savedFrom = target.dataset.savedFrom;
       if(nameDiv.classList.contains('is-via')) {
         const message = '@' + this.appUsersManager.getUser(peerId).username + ' ';
         this.appDraftsManager.setDraft(this.peerId, this.chat.threadId, message);
         cancelEvent(e);
       } else if(savedFrom) {
-        const splitted = savedFrom.split('_');
-        const peerId = +splitted[0];
-        const msgId = +splitted[1];
+        const [peerId, mid] = savedFrom.split('_');
 
-        this.chat.appImManager.setInnerPeer(peerId, msgId);
+        this.chat.appImManager.setInnerPeer(peerId.toPeerId(), +mid);
       } else {
         if(peerId) {
-          this.chat.appImManager.setInnerPeer(peerId);
+          this.chat.appImManager.setInnerPeer(peerId.toPeerId());
         } else {
           toast(I18n.format('HidAccount', true));
         }
@@ -967,7 +1045,7 @@ export default class ChatBubbles {
         return media._ === 'photo' || ['video', 'gif'].includes(media.type);
       };
 
-      const targets: {element: HTMLElement, mid: number, peerId: number}[] = [];
+      const targets: {element: HTMLElement, mid: number, peerId: PeerId}[] = [];
       const ids = Object.keys(this.bubbles).map(k => +k).filter(id => {
         //if(!this.scrollable.visibleElements.find(e => e.element === this.bubbles[id])) return false;
 
@@ -1051,11 +1129,9 @@ export default class ChatBubbles {
     if(['DIV', 'SPAN'].indexOf(target.tagName) !== -1/*  || target.tagName === 'A' */) {
       if(target.classList.contains('goto-original')) {
         const savedFrom = bubble.dataset.savedFrom;
-        const splitted = savedFrom.split('_');
-        const peerId = +splitted[0];
-        const msgId = +splitted[1];
+        const [peerId, mid] = savedFrom.split('_');
         ////this.log('savedFrom', peerId, msgID);
-        this.chat.appImManager.setInnerPeer(peerId, msgId);
+        this.chat.appImManager.setInnerPeer(peerId.toPeerId(), +mid);
         return;
       } else if(target.classList.contains('forward')) {
         const mid = +bubble.dataset.mid;
@@ -1681,13 +1757,13 @@ export default class ChatBubbles {
     ////console.timeEnd('appImManager cleanup');
   }
 
-  public setPeer(peerId: number, lastMsgId?: number): {cached?: boolean, promise: Chat['setPeerPromise']} {
+  public setPeer(peerId: PeerId, lastMsgId?: number): {cached?: boolean, promise: Chat['setPeerPromise']} {
     //console.time('appImManager setPeer');
     //console.time('appImManager setPeer pre promise');
     ////console.time('appImManager: pre render start');
     if(!peerId) {
       this.cleanup(true);
-      this.peerId = 0;
+      this.peerId = peerId;
       return null;
     }
 
@@ -2186,6 +2262,10 @@ export default class ChatBubbles {
       bubble.className = classNames.join(' ');
 
       contentWrapper = bubble.lastElementChild as HTMLElement;
+      if(!contentWrapper.classList.contains('bubble-content-wrapper')) {
+        contentWrapper = bubble.querySelector('.bubble-content-wrapper');
+      }
+      
       bubbleContainer = contentWrapper.firstElementChild as HTMLDivElement;
       bubbleContainer.innerHTML = '';
       bubbleContainer.style.cssText = '';
@@ -2242,9 +2322,9 @@ export default class ChatBubbles {
       s.classList.add('service-msg');
       if(action) {
         if(action._ === 'messageActionChannelMigrateFrom') {
-          s.append(i18n('ChatMigration.From', [new PeerTitle({peerId: -action.chat_id}).element]));
+          s.append(i18n('ChatMigration.From', [new PeerTitle({peerId: action.chat_id.toPeerId(true)}).element]));
         } else if(action._ === 'messageActionChatMigrateTo') {
-          s.append(i18n('ChatMigration.To', [new PeerTitle({peerId: -action.channel_id}).element]));
+          s.append(i18n('ChatMigration.To', [new PeerTitle({peerId: action.channel_id.toPeerId(true)}).element]));
         } else {
           s.append(this.appMessagesManager.wrapMessageActionTextNew(message));
         }
@@ -2376,28 +2456,19 @@ export default class ChatBubbles {
 
             case 'keyboardButtonSwitchInline': {
               buttonEl = document.createElement('button');
-              buttonEl.classList.add('is-switch-inline'/* , 'tgico' */);
-              const i = document.createElement('i');
-              i.classList.add('forward-icon');
-              i.innerHTML = `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" preserveAspectRatio="xMidYMid meet" viewBox="0 0 24 24">
-                <defs>
-                  <path d="M13.55 3.24L13.64 3.25L13.73 3.27L13.81 3.29L13.9 3.32L13.98 3.35L14.06 3.39L14.14 3.43L14.22 3.48L14.29 3.53L14.36 3.59L14.43 3.64L22.23 10.85L22.36 10.99L22.48 11.15L22.57 11.31L22.64 11.48L22.69 11.66L22.72 11.85L22.73 12.04L22.71 12.22L22.67 12.41L22.61 12.59L22.53 12.76L22.42 12.93L22.29 13.09L22.23 13.15L14.43 20.36L14.28 20.48L14.12 20.58L13.95 20.66L13.77 20.72L13.58 20.76L13.4 20.77L13.22 20.76L13.03 20.73L12.85 20.68L12.68 20.61L12.52 20.52L12.36 20.4L12.22 20.27L12.16 20.2L12.1 20.13L12.05 20.05L12.01 19.98L11.96 19.9L11.93 19.82L11.89 19.73L11.87 19.65L11.84 19.56L11.83 19.47L11.81 19.39L11.81 19.3L11.8 19.2L11.8 16.42L11 16.49L10.23 16.58L9.51 16.71L8.82 16.88L8.18 17.09L7.57 17.33L7.01 17.6L6.48 17.91L5.99 18.26L5.55 18.64L5.14 19.05L4.77 19.51L4.43 19.99L4.29 20.23L4.21 20.35L4.11 20.47L4 20.57L3.88 20.65L3.75 20.72L3.62 20.78L3.48 20.82L3.33 20.84L3.19 20.84L3.04 20.83L2.9 20.79L2.75 20.74L2.62 20.68L2.53 20.62L2.45 20.56L2.38 20.5L2.31 20.43L2.25 20.36L2.2 20.28L2.15 20.19L2.11 20.11L2.07 20.02L2.04 19.92L2.02 19.83L2.01 19.73L2 19.63L2.04 17.99L2.19 16.46L2.46 15.05L2.85 13.75L3.35 12.58L3.97 11.53L4.7 10.6L5.55 9.8L6.51 9.12L7.59 8.56L8.77 8.13L10.07 7.83L11.48 7.65L11.8 7.63L11.8 4.8L11.91 4.56L12.02 4.35L12.14 4.16L12.25 3.98L12.37 3.82L12.48 3.68L12.61 3.56L12.73 3.46L12.85 3.38L12.98 3.31L13.11 3.27L13.24 3.24L13.37 3.23L13.46 3.23L13.55 3.24Z" id="b13RmHDQtl"></path>
-                </defs>
-                <use xlink:href="#b13RmHDQtl" opacity="1" fill="#fff" fill-opacity="1"></use>
-              </svg>`;
-              buttonEl.append(i);
+              buttonEl.classList.add('is-switch-inline', 'tgico');
               attachClickEvent(buttonEl, (e) => {
                 cancelEvent(e);
 
                 const botId = message.viaBotId || message.fromId;
-                let promise: Promise<number>;
+                let promise: Promise<PeerId>;
                 if(button.pFlags.same_peer) promise = Promise.resolve(this.peerId);
                 else promise = this.appInlineBotsManager.checkSwitchReturn(botId).then(peerId => {
                   if(peerId) {
                     return peerId;
                   }
                   
-                  return new Promise<number>((resolve, reject) => {
+                  return new Promise<PeerId>((resolve, reject) => {
                     new PopupForward({
                       [this.peerId]: []
                     }, (peerId) => {
@@ -2883,8 +2954,8 @@ export default class ChatBubbles {
 
     let savedFrom = '';
     
-    // const needName = ((peerId < 0 && (peerId !== message.fromId || our)) && message.fromId !== rootScope.myId) || message.viaBotId;
-    const needName = (message.fromId !== rootScope.myId && peerId < 0 && !this.appPeersManager.isBroadcast(peerId)) || message.viaBotId;
+    // const needName = ((peerId.isAnyChat() && (peerId !== message.fromId || our)) && message.fromId !== rootScope.myId) || message.viaBotId;
+    const needName = (message.fromId !== rootScope.myId && this.appPeersManager.isAnyChat(peerId) && !this.appPeersManager.isBroadcast(peerId)) || message.viaBotId;
     if(needName || message.fwd_from || message.reply_to_mid) { // chat
       let title: HTMLElement | DocumentFragment;
 
@@ -3498,12 +3569,12 @@ export default class ChatBubbles {
       elements.push(b, '\n\n');
     } else if(this.appPeersManager.isAnyGroup(this.peerId) && this.appPeersManager.getPeer(this.peerId).pFlags.creator) {
       this.renderEmptyPlaceholder('group', bubble, message, elements);
-    } else if(rootScope.myId === this.peerId) {
-      this.renderEmptyPlaceholder('saved', bubble, message, elements);
-    } else if(this.peerId > 0 && !isBot && this.appMessagesManager.canSendToPeer(this.peerId) && this.chat.type === 'chat') {
-      this.renderEmptyPlaceholder('greeting', bubble, message, elements);
     } else if(this.chat.type === 'scheduled') {
       this.renderEmptyPlaceholder('noScheduledMessages', bubble, message, elements);
+    } else if(rootScope.myId === this.peerId) {
+      this.renderEmptyPlaceholder('saved', bubble, message, elements);
+    } else if(this.appPeersManager.isUser(this.peerId) && !isBot && this.appMessagesManager.canSendToPeer(this.peerId) && this.chat.type === 'chat') {
+      this.renderEmptyPlaceholder('greeting', bubble, message, elements);
     } else {
       this.renderEmptyPlaceholder('noMessages', bubble, message, elements);
     }
@@ -3537,7 +3608,7 @@ export default class ChatBubbles {
     const message: Omit<Message.message | Message.messageService, 'message'> & {message?: string} = {
       _: service ? 'messageService' : 'message',
       date: 0,
-      id: -(this.peerId + offset),
+      id: -(+this.peerId + offset),
       peer_id: this.appPeersManager.getOutputPeer(this.peerId),
       pFlags: {}
     };
@@ -3566,11 +3637,11 @@ export default class ChatBubbles {
       return;
     } */
 
-    if(side === 'top' && value && this.appUsersManager.isBot(this.peerId)) {
+    if(side === 'top' && value && this.appPeersManager.isBot(this.peerId)) {
       this.log('inject bot description');
 
       const middleware = this.getMiddleware();
-      return this.appProfileManager.getProfile(this.peerId).then(userFull => {
+      return this.appProfileManager.getProfile(this.peerId.toUserId()).then(userFull => {
         if(!middleware()) {
           return;
         }

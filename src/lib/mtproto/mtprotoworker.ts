@@ -7,7 +7,7 @@
 import type { LocalStorageProxyTask, LocalStorageProxyTaskResponse } from '../localStorage';
 //import type { LocalStorageProxyDeleteTask, LocalStorageProxySetTask } from '../storage';
 import type { Awaited, InvokeApiOptions, WorkerTaskVoidTemplate } from '../../types';
-import type { Config, InputFile, MethodDeclMap } from '../../layer';
+import type { Config, InputFile, MethodDeclMap, User } from '../../layer';
 import MTProtoWorker from 'worker-loader!./mtproto.worker';
 //import './mtproto.worker';
 import { isObject } from '../../helpers/object';
@@ -31,6 +31,7 @@ import telegramMeWebManager from './telegramMeWebManager';
 import { CacheStorageDbName } from '../cacheStorage';
 import { pause } from '../../helpers/schedulers/pause';
 import IS_WEBP_SUPPORTED from '../../environment/webpSupport';
+import appUsersManager from '../appManagers/appUsersManager';
 
 type Task = {
   taskId: number,
@@ -553,13 +554,18 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
     return this.performTaskWorker('setQueueId', queueId);
   }
 
-  public setUserAuth(userAuth: UserAuth | number) {
-    if(typeof(userAuth) === 'number') {
-      userAuth = {dcID: 0, date: Date.now() / 1000 | 0, id: userAuth};
+  public setUserAuth(userAuth: UserAuth | UserId) {
+    if(typeof(userAuth) === 'string' || typeof(userAuth) === 'number') {
+      userAuth = {dcID: 0, date: Date.now() / 1000 | 0, id: userAuth.toPeerId(false)};
     }
     
     rootScope.dispatchEvent('user_auth', userAuth);
     return this.performTaskWorker('setUserAuth', userAuth);
+  }
+
+  public setUser(user: User) {
+    // appUsersManager.saveApiUser(user);
+    return this.setUserAuth(user.id);
   }
 
   public getNetworker(dc_id: number, options?: InvokeApiOptions) {

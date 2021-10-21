@@ -43,11 +43,11 @@ export class AppDraftsManager {
     });
   }
 
-  private getKey(peerId: number, threadId?: number) {
+  private getKey(peerId: PeerId, threadId?: number) {
     return '' + peerId + (threadId ? '_' + threadId : '');
   }
 
-  public getDraft(peerId: number, threadId?: number) {
+  public getDraft(peerId: PeerId, threadId?: number) {
     return this.drafts[this.getKey(peerId, threadId)];
   }
 
@@ -58,7 +58,7 @@ export class AppDraftsManager {
           continue;
         }
 
-        const peerId = +key;
+        const peerId = key.toPeerId();
         const dialog = appMessagesManager.getDialogOnly(peerId);
         if(!dialog) {
           appMessagesManager.reloadConversation(peerId);
@@ -84,7 +84,7 @@ export class AppDraftsManager {
     );
   }
 
-  public saveDraft(peerId: number, threadId: number, apiDraft: DraftMessage, options: Partial<{
+  public saveDraft(peerId: PeerId, threadId: number, apiDraft: DraftMessage, options: Partial<{
     notify: boolean,
     force: boolean
   }> = {}) {
@@ -182,7 +182,7 @@ export class AppDraftsManager {
     return draft;
   }
 
-  public async syncDraft(peerId: number, threadId: number, localDraft?: MyDraftMessage, saveOnServer = true, force = false) {
+  public async syncDraft(peerId: PeerId, threadId: number, localDraft?: MyDraftMessage, saveOnServer = true, force = false) {
     // console.warn(dT(), 'sync draft', peerID)
     const serverDraft = this.getDraft(peerId, threadId);
     if(this.draftsAreEqual(serverDraft, localDraft)) {
@@ -236,11 +236,10 @@ export class AppDraftsManager {
         return;
       }
 
-      for(const peerId in this.drafts) {
-        const splitted = peerId.split('_');
-        const threadId = splitted[1];
+      for(const combined in this.drafts) {
+        const [peerId, threadId] = combined.split('_');
         rootScope.dispatchEvent('draft_updated', {
-          peerId: +splitted[0],
+          peerId: peerId.toPeerId(),
           threadId: threadId ? +threadId : undefined,
           draft: undefined
         });
@@ -248,7 +247,7 @@ export class AppDraftsManager {
     });
   }
 
-  public clearDraft(peerId: number, threadId: number) {
+  public clearDraft(peerId: PeerId, threadId: number) {
     if(threadId) {
       this.syncDraft(peerId, threadId);
     } else {
@@ -256,7 +255,7 @@ export class AppDraftsManager {
     }
   }
 
-  public setDraft(peerId: number, threadId: number, message: string, entities?: MessageEntity[]) {
+  public setDraft(peerId: PeerId, threadId: number, message: string, entities?: MessageEntity[]) {
     const draft: DraftMessage.draftMessage = {
       _: 'draftMessage',
       date: Date.now() / 1000 | 0,

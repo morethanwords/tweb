@@ -33,7 +33,7 @@ import ChatContextMenu from "./contextMenu";
 import ChatInput from "./input";
 import ChatSelection from "./selection";
 import ChatTopbar from "./topbar";
-import { REPLIES_PEER_ID } from "../../lib/mtproto/mtproto_config";
+import { NULL_PEER_ID, REPLIES_PEER_ID } from "../../lib/mtproto/mtproto_config";
 import SetTransition from "../singleTransition";
 import { fastRaf } from "../../helpers/schedulers";
 import AppPrivateSearchTab from "../sidebarRight/tabs/search";
@@ -57,7 +57,7 @@ export default class Chat extends EventListenerBase<{
 
   public wasAlreadyUsed = false;
   // public initPeerId = 0;
-  public peerId = 0;
+  public peerId: PeerId;
   public threadId: number;
   public setPeerPromise: Promise<void>;
   public peerChanged: boolean;
@@ -170,7 +170,7 @@ export default class Chat extends EventListenerBase<{
     }
   }
 
-  public init(/* peerId: number */) {
+  public init(/* peerId: PeerId */) {
     // this.initPeerId = peerId;
 
     this.topbar = new ChatTopbar(this, appSidebarRight, this.appMessagesManager, this.appPeersManager, this.appChatsManager, this.appNotificationsManager, this.appProfileManager, this.appUsersManager);
@@ -217,7 +217,7 @@ export default class Chat extends EventListenerBase<{
 
     this.bubbles.listenerSetter.add(rootScope)('dialog_drop', (e) => {
       if(e.peerId === this.peerId) {
-        this.appImManager.setPeer(0);
+        this.appImManager.setPeer(NULL_PEER_ID);
       }
     });
   }
@@ -249,7 +249,7 @@ export default class Chat extends EventListenerBase<{
     this.selection.cleanup();
   }
 
-  public setPeer(peerId: number, lastMsgId?: number) {
+  public setPeer(peerId: PeerId, lastMsgId?: number) {
     if(!peerId) {
       this.inited = false;
     } else if(!this.inited) {
@@ -324,15 +324,21 @@ export default class Chat extends EventListenerBase<{
   }
 
   public setAutoDownloadMedia() {
+    const peerId = this.peerId;
+    if(!peerId) {
+      return;
+    }
+
     let type: keyof State['settings']['autoDownload'];
-    if(this.peerId < 0) {
-      if(this.appPeersManager.isBroadcast(this.peerId)) {
+
+    if(!peerId.isUser()) {
+      if(peerId.isBroadcast()) {
         type = 'channels';
       } else {
         type = 'groups';
       }
     } else {
-      if(this.appUsersManager.isContact(this.peerId)) {
+      if(peerId.isContact()) {
         type = 'contacts';
       } else {
         type = 'private';

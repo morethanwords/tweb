@@ -134,6 +134,7 @@ const lang = {
 	"PushNotification.Action.Mute1d.Mobile": "Mute for 24H",
 	"PushNotification.Action.Settings.Mobile": "Alerts settings",
 	"PushNotification.Message.NoPreview": "You have a new message",
+  "LogOut.Description": "Are you sure you want to log out?\n\nNote that you can seamlessly use Telegram on all your devices at once.",
 	//"PushNotification.Action.Mute1d.Success": "Notification settings were successfully saved.",
 
   // * android
@@ -586,6 +587,7 @@ const lang = {
   "UserUnblocked": "User unblocked",
   "AudioUnknownArtist": "Unknown artist",
   "AudioUnknownTitle": "Unknown title",
+  "LogOut": "Log out",
 
   // * macos
   "AccountSettings.Filters": "Chat Folders",
@@ -593,6 +595,7 @@ const lang = {
   "AccountSettings.PrivacyAndSecurity": "Privacy and Security",
   "AccountSettings.Language": "Language",
   "Alert.UserDoesntExists": "Sorry, this user doesn't seem to exist.",
+  "Alert.Confirm.Discard": "Discard",
   "Appearance.Reset": "Reset to Defaults",
   "Bio.Description": "Any details such as age, occupation or city.\nExample: 23 y.o. designer from San Francisco",
   "Contacts.PhoneNumber.NotRegistred": "The person with this phone number is not registered on Telegram yet.",
@@ -605,6 +608,7 @@ const lang = {
   "Chat.DropTitle": "Drop files here to send them",
   "Chat.DropQuickDesc": "in a quick way",
   "Chat.DropAsFilesDesc": "without compression",
+  "Chat.Edit.Cancel.Text": "Are you sure you want to discard all changes?",
   "Chat.Service.PeerJoinedTelegram": "%@ joined Telegram",
   "Chat.Service.Channel.UpdatedTitle": "Channel renamed to \"%@\"",
   "Chat.Service.Channel.UpdatedPhoto": "Channel photo updated",

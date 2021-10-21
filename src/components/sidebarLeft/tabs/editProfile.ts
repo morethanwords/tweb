@@ -12,6 +12,7 @@ import EditPeer from "../../editPeer";
 import { UsernameInputField } from "../../usernameInputField";
 import { i18n, i18n_ } from "../../../lib/langPack";
 import { attachClickEvent } from "../../../helpers/dom/clickEvent";
+import rootScope from "../../../lib/rootScope";
 
 // TODO: аватарка не поменяется в этой вкладке после изменения почему-то (если поставить в другом клиенте, и потом тут проверить, для этого ещё вышел в чатлист)
 
@@ -65,7 +66,7 @@ export default class AppEditProfileTab extends SliderSuperTab {
     this.scrollable.append(document.createElement('hr'));
 
     this.editPeer = new EditPeer({
-      peerId: appUsersManager.getSelf().id,
+      peerId: rootScope.myId,
       inputFields,
       listenerSetter: this.listenerSetter
     });
@@ -81,7 +82,6 @@ export default class AppEditProfileTab extends SliderSuperTab {
       inputWrapper.classList.add('input-wrapper');
 
       this.usernameInputField = new UsernameInputField({
-        peerId: 0,
         label: 'EditProfile.Username.Label',
         name: 'username',
         plainText: true,

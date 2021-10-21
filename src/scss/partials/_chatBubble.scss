@@ -5,6 +5,7 @@
  */
 
 $bubble-margin: .25rem;
+$bubble-beside-button-width: 38px;
 
 @keyframes bubbleSelected {
   0% {
@@ -53,6 +54,46 @@ $bubble-margin: .25rem;
   display: flex;
   flex-wrap: wrap;
   //flex-direction: column; // fix 'Unread messages', still need to refactor it
+
+  &.is-gesturing-reply {
+    transform: translateX(0);
+    
+    &.animating.backwards {
+      transition: transform var(--transition-standard-out);
+    }
+
+    .bubble-gesture-reply-icon {
+      width: var(--message-beside-button-size);
+      height: var(--message-beside-button-size);
+      position: absolute;
+      top: 50%;
+      right: var(--message-beside-button-margin);
+      transform: translateY(-50%);
+      color: #fff;
+      border-radius: 50%;
+      background-color: var(--message-highlightning-color);
+      opacity: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transform: translateY(-50%) scale(0.6);
+      visibility: hidden;
+
+      &:before {
+        font-size: 1.125rem !important;
+      }
+
+      @include animation-level(2) {
+        transition: transform .1s ease-in-out;
+      }
+
+      &.is-visible {
+        visibility: visible;
+        // opacity: 1;
+        transform: translateY(-50%) scale(1);
+      }
+    }
+  }
 
   &.is-highlighted, 
   &.is-selected, 
@@ -321,10 +362,10 @@ $bubble-margin: .25rem;
     //opacity: 0;
     //transition: .2s opacity;
     position: absolute;
-    right: -46px;
+    right: var(--message-beside-button-margin);
     bottom: 0;
-    width: 38px;
-    height: 38px;
+    width: var(--message-beside-button-size);
+    height: var(--message-beside-button-size);
     font-size: 1.5rem;
     align-items: center;
     display: flex;
@@ -972,10 +1013,10 @@ $bubble-margin: .25rem;
   } */
 
   .reply {
-    padding: 4px;
-    margin: 0 4px 6px 6px;
+    padding: .25rem;
+    margin: 0 .25rem .375rem .375rem;
     cursor: pointer;
-    border-radius: 4px;
+    border-radius: .25rem;
     min-width: 10rem;
     width: auto;
 
@@ -986,13 +1027,22 @@ $bubble-margin: .25rem;
     &-content {
       //max-width: 300px;
       position: absolute;
-      max-width: calc(100% - 1.5rem);
+      max-width: calc(100% - 1.875rem);
       height: auto;
       min-height: 32px;
       white-space: nowrap;
       text-overflow: ellipsis;
       overflow: hidden;
     }
+
+    &.is-media .reply-content {
+      max-width: calc(100% - 1.5rem);
+    }
+  }
+
+  &:not(.just-media):not(.is-message-empty) .reply {
+    // margin-bottom: .125rem; // ! JS2 mockup
+    margin-bottom: 0; // ! same margin as between name and message
   }
 
   &.just-media {
@@ -2331,7 +2381,7 @@ $bubble-margin: .25rem;
 
   .bubble-beside-button {
     right: auto;
-    left: -46px;
+    left: var(--message-beside-button-margin);
     //transform: scaleX(-1);
 
     &.goto-original {
@@ -2441,16 +2491,8 @@ $bubble-margin: .25rem;
       transform: rotate(-45deg);
     }
 
-    /* &.is-switch-inline:before {
-      content: $tgico-forward;
-    } */
-
-    .forward-icon {
-      width: .875rem;
+    &.is-switch-inline:before {
+      content: $tgico-forward_filled;
     }
-
-    /* img.emoji {
-      margin: 0 .125rem;
-    } */
   }
 }

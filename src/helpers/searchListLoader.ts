@@ -8,13 +8,13 @@ import type { MediaSearchContext } from "../components/appMediaPlaybackControlle
 import type { SearchSuperContext } from "../components/appSearchSuper.";
 import type { Message } from "../layer";
 import appMessagesIdsManager from "../lib/appManagers/appMessagesIdsManager";
-import appMessagesManager from "../lib/appManagers/appMessagesManager";
+import appMessagesManager, { MyMessage } from "../lib/appManagers/appMessagesManager";
 import rootScope from "../lib/rootScope";
 import { forEachReverse } from "./array";
 import filterChatPhotosMessages from "./filterChatPhotosMessages";
 import ListLoader, { ListLoaderOptions } from "./listLoader";
 
-export default class SearchListLoader<Item extends {mid: number, peerId: number}> extends ListLoader<Item, Message.message> {
+export default class SearchListLoader<Item extends {mid: number, peerId: PeerId}> extends ListLoader<Item, Message.message> {
   public searchContext: MediaSearchContext;
   public onEmptied: () => void;
 
@@ -73,7 +73,7 @@ export default class SearchListLoader<Item extends {mid: number, peerId: number}
      return filtered;
   }
 
-  protected onHistoryDelete = ({peerId, msgs}: {peerId: number, msgs: Set<number>}) => {
+  protected onHistoryDelete = ({peerId, msgs}: {peerId: PeerId, msgs: Set<number>}) => {
     const shouldBeDeleted = (item: Item) => item.peerId === peerId && msgs.has(item.mid);
     const filter = (item: Item, idx: number, arr: Item[]) => {
       if(shouldBeDeleted(item)) {
@@ -120,7 +120,7 @@ export default class SearchListLoader<Item extends {mid: number, peerId: number}
     }
   };
 
-  protected onMessageSent = ({message}: {message: Message.message}) => {
+  protected onMessageSent = ({message}: {message: MyMessage}) => {
     this.onHistoryMultiappend({
       [message.peerId]: new Set([message.mid])
     });

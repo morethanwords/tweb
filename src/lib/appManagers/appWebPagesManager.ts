@@ -21,12 +21,14 @@ import { MOUNT_CLASS_TO } from "../../config/debug";
 
 const photoTypeSet = new Set(['photo', 'video', 'gif', 'document']);
 
+type WebPageMessageKey = `${PeerId}_${number}`;
+
 export class AppWebPagesManager {
   private webpages: {
     [webPageId: string]: WebPage
   } = {};
   private pendingWebPages: {
-    [webPageId: string]: Set<string>
+    [webPageId: string]: Set<WebPageMessageKey>
   } = {};
   
   constructor() {
@@ -37,7 +39,7 @@ export class AppWebPagesManager {
     });
   }
   
-  public saveWebPage(apiWebPage: WebPage, messageKey?: string, mediaContext?: ReferenceContext) {
+  public saveWebPage(apiWebPage: WebPage, messageKey?: WebPageMessageKey, mediaContext?: ReferenceContext) {
     if(apiWebPage._ === 'webPageNotModified') return;
     const {id} = apiWebPage;
 
@@ -102,13 +104,13 @@ export class AppWebPagesManager {
     }
     
     if(!messageKey && pendingSet !== undefined) {
-      const msgs: {peerId: number, mid: number, isScheduled: boolean}[] = [];
+      const msgs: {peerId: PeerId, mid: number, isScheduled: boolean}[] = [];
       pendingSet.forEach((value) => {
-        const splitted = value.split('_');
+        const [peerId, mid, isScheduled] = value.split('_');
         msgs.push({
-          peerId: +splitted[0], 
-          mid: +splitted[1], 
-          isScheduled: !!splitted[2]
+          peerId: peerId.toPeerId(), 
+          mid: +mid, 
+          isScheduled: !!isScheduled
         });
       });
 
@@ -121,11 +123,11 @@ export class AppWebPagesManager {
     return apiWebPage;
   }
 
-  public getMessageKeyForPendingWebPage(peerId: number, mid: number, isScheduled = false) {
-    return peerId + '_' + mid + (isScheduled ? '_s' : '');
+  public getMessageKeyForPendingWebPage(peerId: PeerId, mid: number, isScheduled?: boolean): WebPageMessageKey {
+    return peerId + '_' + mid + (isScheduled ? '_s' : '') as any;
   }
 
-  public deleteWebPageFromPending(webPage: WebPage, messageKey: string) {
+  public deleteWebPageFromPending(webPage: WebPage, messageKey: WebPageMessageKey) {
     const id = (webPage as WebPage.webPage).id;
     if(!id) return;
 
@@ -139,7 +141,7 @@ export class AppWebPagesManager {
     }
   }
 
-  public getWebPage(id: string) {
+  public getWebPage(id: WebPage.webPage['id']) {
     return this.webpages[id];
   }
 }

@@ -24,7 +24,7 @@ import { attachClickEvent } from "../../../helpers/dom/clickEvent";
 import toggleDisability from "../../../helpers/dom/toggleDisability";
 
 export default class AppChatTypeTab extends SliderSuperTabEventable {
-  public chatId: number;
+  public chatId: ChatId;
   public chatFull: ChatFull;
 
   protected init() {
@@ -130,7 +130,7 @@ export default class AppChatTypeTab extends SliderSuperTabEventable {
       invalidText: 'Link.Invalid',
       takenText: 'Link.Taken',
       onChange: onChange,
-      peerId: -this.chatId,
+      peerId: this.chatId.toPeerId(true),
       head: placeholder
     });
 

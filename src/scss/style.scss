@@ -69,7 +69,8 @@ $chat-input-inner-padding-handhelds: .25rem;
   --chatlist-badge-transition-in: .2s cubic-bezier(.35,.35,.47,1); // 1.34
   --chatlist-badge-transition-out: .2s cubic-bezier(.35,.35,.7,1);
   --message-handhelds-margin: 5.5625rem;
-  --message-beside-button-margin: 2.875rem;
+  --message-beside-button-size: 2.375rem;
+  --message-beside-button-margin: calc((var(--message-beside-button-size) + .5rem) * -1);
   --message-time-background: rgba(0, 0, 0, .35);
   --message-highlightning-color: hsla(85.5319, 36.9171%, 40.402%, .4);//rgba(77, 142, 80, .4);
   --messages-container-width: #{$messages-container-width};
@@ -1306,7 +1307,9 @@ middle-ellipsis-element {
 .tgico-admin:before,
 .tgico-message:before,
 .tgico-fontsize:before,
-.tgico-forward:before {
+.tgico-forward:before,
+.tgico-reply_filled:before,
+.tgico-forward_filled:before {
   font-size: 20px !important;
   padding: 0 2px;
 }

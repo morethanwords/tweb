@@ -23,7 +23,7 @@ export default class GifsTab implements EmoticonsTab {
     const masonry = new GifsMasonry(gifsContainer, EMOTICONSSTICKERGROUP, scroll);
     const preloader = putPreloader(this.content, true);
 
-    apiManager.invokeApi('messages.getSavedGifs', {hash: 0}).then((res) => {
+    apiManager.invokeApi('messages.getSavedGifs', {hash: '0'}).then((res) => {
       //console.log('getSavedGifs res:', res);
 
       if(res._ === 'messages.savedGifs') {

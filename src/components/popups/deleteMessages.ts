@@ -15,7 +15,7 @@ import PeerTitle from "../peerTitle";
 import appPeersManager from "../../lib/appManagers/appPeersManager";
 
 export default class PopupDeleteMessages {
-  constructor(peerId: number, mids: number[], type: ChatType, onConfirm?: () => void) {
+  constructor(peerId: PeerId, mids: number[], type: ChatType, onConfirm?: () => void) {
     const peerTitleElement = new PeerTitle({peerId}).element;
 
     mids = mids.slice();
@@ -51,15 +51,15 @@ export default class PopupDeleteMessages {
     if(peerId === rootScope.myId || type === 'scheduled') {
       
     } else {
-      if(peerId > 0) {
+      if(peerId.isUser()) {
         checkboxes.push({
           text: 'DeleteMessagesOptionAlso',
           textArgs: [peerTitleElement]
         });
       } else {
-        const chat = appChatsManager.getChat(-peerId);
+        const chat = appChatsManager.getChat(peerId.toChatId());
 
-        const hasRights = appChatsManager.hasRights(-peerId, 'delete_messages');
+        const hasRights = appChatsManager.hasRights(peerId.toChatId(), 'delete_messages');
         if(chat._ === 'chat') {
           const canRevoke = hasRights ? mids.slice() : mids.filter(mid => {
             const message = appMessagesManager.getMessageByPeer(peerId, mid);

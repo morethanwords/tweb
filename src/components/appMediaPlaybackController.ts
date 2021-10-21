@@ -27,7 +27,7 @@ import { onMediaLoad } from "../helpers/files";
 // TODO: Safari: попробовать замаскировать подгрузку последнего чанка
 // TODO: Safari: пофиксить момент, когда заканчивается песня и пытаешься включить её заново - прогресс сразу в конце
 
-export type MediaItem = {mid: number, peerId: number};
+export type MediaItem = {mid: number, peerId: PeerId};
 
 type HTMLMediaElement = HTMLAudioElement | HTMLVideoElement;
 
@@ -47,9 +47,9 @@ export type MediaSearchContext = SearchSuperContext & Partial<{
 }>;
 
 type MediaDetails = {
-  peerId: number, 
+  peerId: PeerId, 
   mid: number, 
-  docId: string, 
+  docId: DocId, 
   clean?: boolean,
   isScheduled?: boolean, 
   isSingle?: boolean
@@ -57,12 +57,12 @@ type MediaDetails = {
 
 class AppMediaPlaybackController {
   private container: HTMLElement;
-  private media: Map<number, Map<number, HTMLMediaElement>> = new Map();
+  private media: Map<PeerId, Map<number, HTMLMediaElement>> = new Map();
   private scheduled: AppMediaPlaybackController['media'] = new Map();
   private mediaDetails: Map<HTMLMediaElement, MediaDetails> = new Map();
   private playingMedia: HTMLMediaElement;
 
-  private waitingMediaForLoad: Map<number, Map<number, CancellablePromise<void>>> = new Map();
+  private waitingMediaForLoad: Map<PeerId, Map<number, CancellablePromise<void>>> = new Map();
   private waitingScheduledMediaForLoad: AppMediaPlaybackController['waitingMediaForLoad'] = new Map();
   private waitingDocumentsForLoad: {[docId: string]: Set<HTMLMediaElement>} = {};
   
@@ -271,7 +271,7 @@ class AppMediaPlaybackController {
     return media;
   }
 
-  public getMedia(peerId: number, mid: number, isScheduled?: boolean) {
+  public getMedia(peerId: PeerId, mid: number, isScheduled?: boolean) {
     const s = (isScheduled ? this.scheduled : this.media).get(peerId);
     return s?.get(mid);
   }
@@ -326,7 +326,7 @@ class AppMediaPlaybackController {
     }/* , {once: true} */);
   }
 
-  public resolveWaitingForLoadMedia(peerId: number, mid: number, isScheduled?: boolean) {
+  public resolveWaitingForLoadMedia(peerId: PeerId, mid: number, isScheduled?: boolean) {
     const w = isScheduled ? this.waitingScheduledMediaForLoad : this.waitingMediaForLoad;
     const storage = w.get(peerId);
     if(!storage) {

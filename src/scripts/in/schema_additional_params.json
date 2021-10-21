@@ -40,22 +40,22 @@
     {"name": "index_8", "type": "number"},
     {"name": "index_9", "type": "number"},
     {"name": "index_10", "type": "number"},
-    {"name": "peerId", "type": "number"},
+    {"name": "peerId", "type": "PeerId"},
     {"name": "topMessage", "type": "any"},
-    {"name": "migratedTo", "type": "number"}
+    {"name": "migratedTo", "type": "PeerId"}
   ]
 }, {
   "predicate": "dialogFolder",
   "params": [
     {"name": "index", "type": "number"},
-    {"name": "peerId", "type": "number"},
+    {"name": "peerId", "type": "PeerId"},
     {"name": "folder_id", "type": "number"}
   ]
 }, {
   "predicate": "dialogFilter",
   "params": [
     {"name": "orderIndex", "type": "0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10"},
-    {"name": "peerId", "type": "number"},
+    {"name": "peerId", "type": "PeerId"},
     {"name": "folder_id", "type": "number"}
   ]
 }, {
@@ -63,15 +63,16 @@
   "params": [
     {"name": "mid", "type": "number"},
     {"name": "deleted", "type": "boolean"},
-    {"name": "peerId", "type": "number"},
-    {"name": "fromId", "type": "number"},
+    {"name": "peerId", "type": "PeerId"},
+    {"name": "fromId", "type": "PeerId"},
+    {"name": "fwdFromId", "type": "PeerId"},
     {"name": "grouped_id", "type": "string"},
     {"name": "random_id", "type": "string"},
     {"name": "unread", "type": "true"},
     {"name": "is_outgoing", "type": "true"},
     {"name": "is_scheduled", "type": "true"},
     {"name": "rReply", "type": "string"},
-    {"name": "viaBotId", "type": "number"},
+    {"name": "viaBotId", "type": "PeerId"},
     {"name": "clear_history", "type": "boolean"},
     {"name": "pending", "type": "boolean"},
     {"name": "error", "type": "any"},
@@ -83,13 +84,17 @@
   "params": [
     {"name": "mid", "type": "number"},
     {"name": "deleted", "type": "boolean"},
-    {"name": "peerId", "type": "number"},
-    {"name": "fromId", "type": "number"},
+    {"name": "peerId", "type": "PeerId"},
+    {"name": "fromId", "type": "PeerId"},
     {"name": "unread", "type": "true"},
     {"name": "is_outgoing", "type": "true"},
     {"name": "rReply", "type": "string"},
-    {"name": "viaBotId", "type": "number"},
-    {"name": "is_single", "type": "true"}
+    {"name": "viaBotId", "type": "PeerId"},
+    {"name": "is_single", "type": "true"},
+    {"name": "pending", "type": "boolean"},
+    {"name": "error", "type": "any"},
+    {"name": "send", "type": "() => Promise<any>"},
+    {"name": "random_id", "type": "string"}
   ]
 }, {
   "predicate": "messageEmpty",
@@ -179,7 +184,7 @@
 }, {
   "predicate": "messageActionChatLeave",
   "params": [
-    {"name": "user_id", "type": "number"}
+    {"name": "user_id", "type": "UserId"}
   ],
   "type": "MessageAction"
 }, {
@@ -213,31 +218,31 @@
 }, {
   "predicate": "messageActionChatAddUsers",
   "params": [
-    {"name": "users", "type": "Array<number>"}
+    {"name": "users", "type": "Array<UserId>"}
   ],
   "type": "MessageAction"
 }, {
   "predicate": "messageActionChatJoined",
   "params": [
-    {"name": "users", "type": "Array<number>"}
+    {"name": "users", "type": "Array<UserId>"}
   ],
   "type": "MessageAction"
 }, {
   "predicate": "messageActionChatReturn",
   "params": [
-    {"name": "users", "type": "Array<number>"}
+    {"name": "users", "type": "Array<UserId>"}
   ],
   "type": "MessageAction"
 }, {
   "predicate": "messageActionChatJoinedYou",
   "params": [
-    {"name": "users", "type": "Array<number>"}
+    {"name": "users", "type": "Array<UserId>"}
   ],
   "type": "MessageAction"
 }, {
   "predicate": "messageActionChatReturnYou",
   "params": [
-    {"name": "users", "type": "Array<number>"}
+    {"name": "users", "type": "Array<UserId>"}
   ],
   "type": "MessageAction"
 }, {
@@ -257,7 +262,7 @@
   "predicate": "updateDeleteDiscussionMessages",
   "params": [
     {"name": "messages", "type": "number[]"},
-    {"name": "channel_id", "type": "number"}
+    {"name": "channel_id", "type": "ChatId"}
   ],
   "type": "Update"
 }, {
@@ -269,7 +274,7 @@
 }, {
   "predicate": "updateChannelReload",
   "params": [
-    {"name": "channel_id", "type": "number"}
+    {"name": "channel_id", "type": "ChatId"}
   ],
   "type": "Update"
 }, {
@@ -287,14 +292,14 @@
   "params": [
     {"name": "mid", "type": "number"},
     {"name": "hidden", "type": "true"},
-    {"name": "fromId", "type": "number"}
+    {"name": "fromId", "type": "PeerId"}
   ]
 }, {
   "predicate": "replyKeyboardMarkup",
   "params": [
     {"name": "mid", "type": "number"},
     {"name": "hidden", "type": "true"},
-    {"name": "fromId", "type": "number"}
+    {"name": "fromId", "type": "PeerId"}
   ]
 }, {
   "predicate": "replyKeyboardForceReply",
@@ -315,6 +320,13 @@
 }, {
   "predicate": "inputMediaContact",
   "params": [
-    {"name": "user_id", "type": "number"}
+    {"name": "user_id", "type": "UserId"}
+  ]
+}, {
+  "predicate": "poll",
+  "params": [
+    {"name": "rQuestion", "type": "string"},
+    {"name": "rReply", "type": "string"},
+    {"name": "chosenIndexes", "type": "number[]"}
   ]
 }]

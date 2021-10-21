@@ -1096,7 +1096,7 @@ export default class AppMediaViewerBase<
     } */
   }
 
-  protected setAuthorInfo(fromId: number, timestamp: number) {
+  protected setAuthorInfo(fromId: PeerId, timestamp: number) {
     replaceContent(this.author.date, formatFullSentTime(timestamp));
 
     replaceContent(this.author.nameEl, new PeerTitle({
@@ -1115,7 +1115,7 @@ export default class AppMediaViewerBase<
   protected async _openMedia(
     media: MyDocument | MyPhoto, 
     timestamp: number, 
-    fromId: number, 
+    fromId: PeerId, 
     fromRight: number, 
     target?: HTMLElement, 
     reverse = false, 

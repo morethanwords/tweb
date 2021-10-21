@@ -28,6 +28,7 @@ import { isWebpSupported } from "./mtproto.worker";
 import { bytesToHex } from "../../helpers/bytes";
 import assumeType from "../../helpers/assumeType";
 import ctx from "../../environment/ctx";
+import noop from "../../helpers/noop";
 
 type Delayed = {
   offset: number, 
@@ -292,7 +293,7 @@ export class ApiFileManager {
         }, 60000)
       };
 
-      deferred.finally(() => {
+      deferred.catch(noop).finally(() => {
         clearTimeout(r.timeout);
       });
 
@@ -363,10 +364,11 @@ export class ApiFileManager {
     const deferred = deferredPromise<Blob>();
     const mimeType = options.mimeType || 'image/jpeg';
 
-    let canceled = false;
+    let error: Error;
     let resolved = false;
     let cacheFileWriter: ReturnType<typeof FileManager['getFakeFileWriter']>;
-    let errorHandler = (error: any) => {
+    let errorHandler = (_error: Error) => {
+      error = _error;
       delete this.cachedDownloadPromises[fileName];
       deferred.reject(error);
       errorHandler = () => {};
@@ -434,6 +436,8 @@ export class ApiFileManager {
 
           const {offset, writeFilePromise, writeFileDeferred} = delayed.shift();
           try {
+            checkCancel();
+
             // @ts-ignore
             const result = await r(dcId, location as any, offset, limit, id, options.queueId, checkCancel);
 
@@ -471,7 +475,7 @@ export class ApiFileManager {
               deferred.resolve(fileWriter.finalize(size < MAX_FILE_SAVE_SIZE));
             }
           } catch(err) {
-            errorHandler(err);
+            errorHandler(err as Error);
           }
         };
 
@@ -486,19 +490,16 @@ export class ApiFileManager {
     });
 
     const checkCancel = () => {
-      if(canceled) {
-        const error = new Error('Canceled');
-        // @ts-ignore
-        error.type = 'DOWNLOAD_CANCELED';
+      if(error) {
         throw error;
       }
     };
 
     deferred.cancel = () => {
-      if(!canceled && !resolved) {
-        canceled = true;
-        delete this.cachedDownloadPromises[fileName];
-        errorHandler({type: 'DOWNLOAD_CANCELED'});
+      if(!error && !resolved) {
+        const error = new Error('Canceled');
+        error.type = 'DOWNLOAD_CANCELED';
+        errorHandler(error);
       }
     };
 
@@ -508,7 +509,7 @@ export class ApiFileManager {
 
     this.cachedDownloadPromises[fileName] = deferred;
 
-    deferred.finally(() => {
+    deferred.safeFinally(() => {
       delete this.cachedDownloadPromises[fileName];
     });
 

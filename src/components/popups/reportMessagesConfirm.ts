@@ -14,7 +14,7 @@ import PopupPeer from "./peer";
 
 export default class PopupReportMessagesConfirm extends PopupPeer {
   public static STICKER_EMOJI = '👮‍♀️';
-  constructor(peerId: number, mids: number[], reason: ReportReason['_'], onConfirm?: () => void) {
+  constructor(peerId: PeerId, mids: number[], reason: ReportReason['_'], onConfirm?: () => void) {
     super('popup-report-messages-confirm', {
       noTitle: true, 
       descriptionLangKey: 'ReportInfo', 

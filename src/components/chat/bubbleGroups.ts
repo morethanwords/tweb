@@ -8,9 +8,10 @@ import rootScope from "../../lib/rootScope";
 //import { generatePathData } from "../../helpers/dom";
 import { MyMessage } from "../../lib/appManagers/appMessagesManager";
 import type Chat from "./chat";
+import { indexOfAndSplice } from "../../helpers/array";
 
 type Group = {bubble: HTMLElement, mid: number, timestamp: number}[];
-type BubbleGroup = {timestamp: number, fromId: number, mid: number, group: Group};
+type BubbleGroup = {timestamp: number, fromId: PeerId, mid: number, group: Group};
 export default class BubbleGroups {
   private bubbles: Array<BubbleGroup> = []; // map to group
   private detailsMap: Map<HTMLElement, BubbleGroup> = new Map();
@@ -28,13 +29,20 @@ export default class BubbleGroups {
       if(details.group.length) {
         details.group.findAndSplice(d => d.bubble === bubble);
         if(!details.group.length) {
-          this.groups.findAndSplice(g => g === details.group);
+          indexOfAndSplice(this.groups, details.group);
         } else {
           this.updateGroup(details.group);
         }
       }
       
       this.detailsMap.delete(bubble);
+    }
+  }
+
+  changeBubbleMid(bubble: HTMLElement, mid: number) {
+    const details = this.detailsMap.get(bubble);
+    if(details) {
+      details.mid = mid;
     }
   }
   
@@ -48,7 +56,7 @@ export default class BubbleGroups {
 
     // fix for saved messages forward to self
     if(fromId === rootScope.myId && message.peerId === rootScope.myId && (message as any).fwdFromId === fromId) {
-      fromId = -fromId;
+      fromId = fromId.toPeerId(true);
     }
     
     // try to find added

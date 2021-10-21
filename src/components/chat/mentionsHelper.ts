@@ -21,7 +21,7 @@ export default class MentionsHelper extends AutocompletePeerHelper {
       controller,
       'mentions-helper',
       (target) => {
-        const user = appUsersManager.getUser(+(target as HTMLElement).dataset.peerId);
+        const user = appUsersManager.getUser((target as HTMLElement).dataset.peerId);
         let str = '', entity: MessageEntity;
         if(user.username) {
           str = '@' + user.username;
@@ -41,12 +41,12 @@ export default class MentionsHelper extends AutocompletePeerHelper {
     );
   }
 
-  public checkQuery(query: string, peerId: number, topMsgId: number) {
+  public checkQuery(query: string, peerId: PeerId, topMsgId: number) {
     const trimmed = query.trim(); // check that there is no whitespace
     if(query.length !== trimmed.length) return false;
 
     const middleware = this.controller.getMiddleware();
-    this.appProfileManager.getMentions(peerId ? -peerId : 0, trimmed, topMsgId).then(peerIds => {
+    this.appProfileManager.getMentions(peerId && peerId.toChatId(), trimmed, topMsgId).then(peerIds => {
       if(!middleware()) return;
       
       const username = trimmed.slice(1).toLowerCase();

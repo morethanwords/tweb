@@ -7,7 +7,7 @@
 import mediaSizes from "../helpers/mediaSizes";
 import { IS_TOUCH_SUPPORTED } from "../environment/touchSupport";
 import appImManager from "../lib/appManagers/appImManager";
-import appPollsManager, { Poll, PollResults } from "../lib/appManagers/appPollsManager";
+import appPollsManager from "../lib/appManagers/appPollsManager";
 import serverTimeManager from "../lib/mtproto/serverTimeManager";
 import { RichTextProcessor } from "../lib/richtextprocessor";
 import rootScope from "../lib/rootScope";
@@ -22,6 +22,7 @@ import { cancelEvent } from "../helpers/dom/cancelEvent";
 import { attachClickEvent, detachClickEvent } from "../helpers/dom/clickEvent";
 import replaceContent from "../helpers/dom/replaceContent";
 import windowSize from "../helpers/windowSize";
+import { Poll, PollResults } from "../layer";
 
 let lineTotalLength = 0;
 const tailLength = 9;
@@ -92,9 +93,7 @@ rootScope.on('poll_update', (e) => {
   }
 }); */
 
-rootScope.addEventListener('poll_update', (e) => {
-  const {poll, results} = e as {poll: Poll, results: PollResults};
-
+rootScope.addEventListener('poll_update', ({poll, results}) => {
   const pollElements = Array.from(document.querySelectorAll(`poll-element[poll-id="${poll.id}"]`)) as PollElement[];
   pollElements.forEach(pollElement => {
     //console.log('poll_update', poll, results);

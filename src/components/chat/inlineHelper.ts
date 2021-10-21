@@ -35,7 +35,7 @@ export default class InlineHelper extends AutocompleteHelper {
   private gifsMasonry: GifsMasonry;
   private superStickerRenderer: SuperStickerRenderer;
   private onChangeScreen: () => void;
-  public checkQuery: (peerId: number, username: string, query: string) => ReturnType<InlineHelper['_checkQuery']>;
+  public checkQuery: (peerId: PeerId, username: string, query: string) => ReturnType<InlineHelper['_checkQuery']>;
 
   constructor(appendTo: HTMLElement, 
     controller: AutocompleteHelperController,
@@ -50,7 +50,7 @@ export default class InlineHelper extends AutocompleteHelper {
         const {peerId, botId, queryId} = this.list.dataset;
         return this.chat.input.getReadyToSend(() => {
           const queryAndResultIds = this.appInlineBotsManager.generateQId(queryId, (target as HTMLElement).dataset.resultId);
-          this.appInlineBotsManager.sendInlineResult(+peerId, +botId, queryAndResultIds, {
+          this.appInlineBotsManager.sendInlineResult(peerId.toPeerId(), botId, queryAndResultIds, {
             clearDraft: true,
             scheduleDate: this.chat.input.scheduleDate,
             silent: this.chat.input.sendSilent,
@@ -80,7 +80,7 @@ export default class InlineHelper extends AutocompleteHelper {
     });
   }
 
-  public _checkQuery = async(peerId: number, username: string, query: string) => {
+  public _checkQuery = async(peerId: PeerId, username: string, query: string) => {
     const middleware = this.controller.getMiddleware();
 
     const peer = await this.appUsersManager.resolveUsername(username);
@@ -105,7 +105,7 @@ export default class InlineHelper extends AutocompleteHelper {
       const list = this.list.cloneNode() as HTMLElement;
       list.dataset.peerId = '' + peerId;
       list.dataset.botId = '' + peer.id;
-      list.dataset.queryId = botResults.query_id;
+      list.dataset.queryId = '' + botResults.query_id;
 
       const gifsMasonry = new GifsMasonry(null, ANIMATION_GROUP, this.scrollable, false);
 

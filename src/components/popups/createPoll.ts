@@ -4,7 +4,6 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type { Poll } from "../../lib/appManagers/appPollsManager";
 import type Chat from "../chat/chat";
 import PopupElement from ".";
 import CheckboxField from "../checkboxField";
@@ -19,6 +18,7 @@ import getRichValue from "../../helpers/dom/getRichValue";
 import isInputEmpty from "../../helpers/dom/isInputEmpty";
 import whichChild from "../../helpers/dom/whichChild";
 import { attachClickEvent } from "../../helpers/dom/clickEvent";
+import { Poll } from "../../layer";
 
 const MAX_LENGTH_QUESTION = 255;
 const MAX_LENGTH_OPTION = 100;

@@ -20,7 +20,7 @@ export default class AppNewGroupTab extends SliderSuperTab {
   private searchGroup = new SearchGroup(true, 'contacts', true, 'new-group-members disable-hover', false);
   private avatarEdit: AvatarEdit;
   private uploadAvatar: () => Promise<InputFile> = null;
-  private userIds: number[];
+  private peerIds: PeerId[];
   private nextBtn: HTMLButtonElement;
   private groupNameInputField: InputField;
 
@@ -53,7 +53,7 @@ export default class AppNewGroupTab extends SliderSuperTab {
       const title = this.groupNameInputField.value;
 
       this.nextBtn.disabled = true;
-      appChatsManager.createChat(title, this.userIds).then((chatId) => {
+      appChatsManager.createChat(title, this.peerIds).then((chatId) => {
         if(this.uploadAvatar) {
           this.uploadAvatar().then((inputFile) => {
             appChatsManager.editPhoto(chatId, inputFile);
@@ -81,12 +81,12 @@ export default class AppNewGroupTab extends SliderSuperTab {
     this.nextBtn.disabled = false;
   }
 
-  public open(userIds: number[]) {
+  public open(userIds: PeerId[]) {
     const result = super.open();
     result.then(() => {
-      this.userIds = userIds;
+      this.peerIds = userIds;
 
-      this.userIds.forEach(userId => {
+      this.peerIds.forEach(userId => {
         let {dom} = appDialogsManager.addDialogNew({
           dialog: userId,
           container: this.searchGroup.list,
@@ -99,7 +99,7 @@ export default class AppNewGroupTab extends SliderSuperTab {
       });
 
       this.searchGroup.nameEl.textContent = '';
-      this.searchGroup.nameEl.append(i18n('Members', [this.userIds.length]));
+      this.searchGroup.nameEl.append(i18n('Members', [this.peerIds.length]));
       this.searchGroup.setActive();
     });
     

@@ -17,7 +17,7 @@ import ButtonCorner from "../../buttonCorner";
 import { attachClickEvent } from "../../../helpers/dom/clickEvent";
 
 export default class AppBlockedUsersTab extends SliderSuperTab {
-  public peerIds: number[];
+  public peerIds: PeerId[];
   private menuElement: HTMLElement;
   
   protected init() {
@@ -50,7 +50,7 @@ export default class AppBlockedUsersTab extends SliderSuperTab {
     this.scrollable.container.classList.add('chatlist-container');
     this.scrollable.append(list);
 
-    const add = (peerId: number, append: boolean) => {
+    const add = (peerId: PeerId, append: boolean) => {
       const {dom} = appDialogsManager.addDialogNew({
         dialog: peerId,
         container: list,
@@ -78,7 +78,7 @@ export default class AppBlockedUsersTab extends SliderSuperTab {
 
     let target: HTMLElement;
     const onUnblock = () => {
-      const peerId = +target.dataset.peerId;
+      const peerId = target.dataset.peerId.toPeerId();
       appUsersManager.toggleBlock(peerId, false);
     };
 

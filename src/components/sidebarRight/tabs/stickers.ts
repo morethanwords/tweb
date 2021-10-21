@@ -181,8 +181,8 @@ export default class AppStickersTab extends SliderSuperTab {
 
     div.addEventListener('mouseover', onMouseOver, {once: true}); */
 
-    div.dataset.stickerSet = set.id;
-    div.dataset.access_hash = set.access_hash;
+    div.dataset.stickerSet = '' + set.id;
+    div.dataset.access_hash = '' + set.access_hash;
     div.dataset.title = set.title;
 
     div.append(header, stickersDiv);

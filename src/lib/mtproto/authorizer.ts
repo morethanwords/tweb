@@ -21,6 +21,7 @@ import { bytesCmp, bytesToHex, bytesFromHex, bytesXor } from "../../helpers/byte
 import DEBUG from "../../config/debug";
 import { cmp, int2bigInt, one, pow, str2bigInt, sub } from "../../vendor/leemon";
 import { addPadding } from "./bin_utils";
+import { Awaited } from "../../types";
 
 /* let fNewNonce: any = bytesFromHex('8761970c24cb2329b5b2459752c502f3057cb7e8dbab200e526e8767fdc73b3c').reverse();
 let fNonce: any = bytesFromHex('b597720d11faa5914ef485c529cde414').reverse();
@@ -145,7 +146,7 @@ export class Authorizer {
         /* result = fResult ? fResult : result;
         fResult = new Uint8Array(0); */
         
-        const deserializer = new TLDeserialization(result, {mtproto: true});
+        const deserializer = new TLDeserialization<MTLong>(result, {mtproto: true});
 
         if(result.length === 4) {
           const errorCode = deserializer.fetchInt();
@@ -188,7 +189,7 @@ export class Authorizer {
       this.log('Send req_pq', auth.nonce.hex);
     }
 
-    let deserializer: TLDeserialization;
+    let deserializer: Awaited<ReturnType<Authorizer['sendPlainRequest']>>;
     try {
       const promise = this.sendPlainRequest(auth.dcId, request.getBytes(true));
       rsaKeysManager.prepare();
@@ -313,7 +314,7 @@ export class Authorizer {
       this.log('Send req_DH_params', req_DH_params/* , requestBytes.hex */);
     }
     
-    let deserializer: TLDeserialization;
+    let deserializer: Awaited<ReturnType<Authorizer['sendPlainRequest']>>;
     try {
       deserializer = await this.sendPlainRequest(auth.dcId, requestBytes);
     } catch(error) {
@@ -376,7 +377,7 @@ export class Authorizer {
     const hash = answerWithHash.slice(0, 20);
     const answerWithPadding = answerWithHash.slice(20);
 
-    const deserializer = new TLDeserialization(answerWithPadding, {mtproto: true});
+    const deserializer = new TLDeserialization<MTLong>(answerWithPadding, {mtproto: true});
     const response = deserializer.fetchObject('Server_DH_inner_data');
     
     if(response._ !== 'server_DH_inner_data') {
@@ -494,7 +495,7 @@ export class Authorizer {
       this.log('Send set_client_DH_params');
     }
     
-    let deserializer: TLDeserialization;
+    let deserializer: Awaited<ReturnType<Authorizer['sendPlainRequest']>>;
     try {
       deserializer = await this.sendPlainRequest(auth.dcId, request.getBytes(true));
     } catch(err) {

@@ -44,6 +44,7 @@ import generateVerifiedIcon from "../generateVerifiedIcon";
 import { fastRaf } from "../../helpers/schedulers";
 import AppEditContactTab from "../sidebarRight/tabs/editContact";
 import appMediaPlaybackController from "../appMediaPlaybackController";
+import { NULL_PEER_ID } from "../../lib/mtproto/mtproto_config";
 
 export default class ChatTopbar {
   public container: HTMLDivElement;
@@ -63,8 +64,8 @@ export default class ChatTopbar {
   public pinnedMessage: ChatPinnedMessage;
 
   private setUtilsRAF: number;
-  public peerId: number;
-  private wasPeerId: number;
+  public peerId: PeerId;
+  private wasPeerId: PeerId;
   private setPeerStatusInterval: number;
 
   public listenerSetter: ListenerSetter;
@@ -156,7 +157,8 @@ export default class ChatTopbar {
     this.container.append(this.btnBack, this.chatInfo, this.chatUtils);
 
     if(this.chatAudio) {
-      this.container.append(this.chatAudio.divAndCaption.container, this.chatUtils);
+      // this.container.append(this.chatAudio.divAndCaption.container, this.chatUtils);
+      this.container.append(this.chatAudio.divAndCaption.container);
     }
 
     // * construction end
@@ -177,12 +179,12 @@ export default class ChatTopbar {
         }
         
         const mid = +container.dataset.mid;
-        const peerId = +container.dataset.peerId;
         if(container.classList.contains('pinned-message')) {
           //if(!this.pinnedMessage.locked) {
             this.pinnedMessage.followPinnedMessage(mid);
           //}
         } else {
+          const peerId = container.dataset.peerId.toPeerId();
           const searchContext = appMediaPlaybackController.getSearchContext();
           this.chat.appImManager.setInnerPeer(
             peerId, 
@@ -214,14 +216,14 @@ export default class ChatTopbar {
       } else {
         const isFirstChat = this.chat.appImManager.chats.indexOf(this.chat) === 0;
         appNavigationController.back(isFirstChat ? 'im' : 'chat');
-        return;
+        /* return;
 
         if(mediaSizes.activeScreen === ScreenSize.medium && !appNavigationController.findItemByType('chat')) {
           this.chat.appImManager.setPeer(0);
           blurActiveElement();
         } else {
           appNavigationController.back('chat');
-        }
+        } */
       }
     };
 
@@ -259,14 +261,14 @@ export default class ChatTopbar {
       icon: 'comments',
       text: 'ViewDiscussion',
       onClick: () => {
-        this.appProfileManager.getChannelFull(-this.peerId).then(channelFull => {
+        this.appProfileManager.getChannelFull(this.peerId.toChatId()).then(channelFull => {
           if(channelFull.linked_chat_id) {
-            this.chat.appImManager.setInnerPeer(-channelFull.linked_chat_id);
+            this.chat.appImManager.setInnerPeer(channelFull.linked_chat_id.toPeerId(true));
           }
         });
       },
       verify: () => {
-        const chatFull = this.appProfileManager.chatsFull[-this.peerId];
+        const chatFull = this.appProfileManager.chatsFull[this.peerId.toChatId()];
         return this.chat.type === 'chat' && this.appPeersManager.isBroadcast(this.peerId) && !!(chatFull as ChatFull.channelFull)?.linked_chat_id;
       }
     }, {
@@ -310,7 +312,7 @@ export default class ChatTopbar {
           this.appSidebarRight.toggleSidebar(true);
         }
       },
-      verify: () => this.peerId > 0 && !this.appUsersManager.isContact(this.peerId)
+      verify: () => this.appPeersManager.isContact(this.peerId)
     }, {
       icon: 'forward',
       text: 'ShareContact',
@@ -349,7 +351,7 @@ export default class ChatTopbar {
           selfPresence: 'ChatYourSelf'
         });
       },
-      verify: () => rootScope.myId !== this.peerId && this.peerId > 0 && this.appUsersManager.isContact(this.peerId)
+      verify: () => rootScope.myId !== this.peerId && this.appPeersManager.isContact(this.peerId)
     }, {
       icon: 'lock',
       text: 'BlockUser',
@@ -373,8 +375,9 @@ export default class ChatTopbar {
         }).show();
       },
       verify: () => {
-        const userFull = this.appProfileManager.usersFull[this.peerId];
-        return this.peerId > 0 && this.peerId !== rootScope.myId && userFull && !userFull.pFlags?.blocked;
+        const userId = this.peerId.toUserId();
+        const userFull = this.appProfileManager.usersFull[userId];
+        return this.appPeersManager.isUser(this.peerId) && this.peerId !== rootScope.myId && userFull && !userFull.pFlags?.blocked;
       }
     }, {
       icon: 'lockoff',
@@ -387,8 +390,8 @@ export default class ChatTopbar {
         });
       },
       verify: () => {
-        const userFull = this.appProfileManager.usersFull[this.peerId];
-        return this.peerId > 0 && !!userFull?.pFlags?.blocked;
+        const userFull = this.appProfileManager.usersFull[this.peerId.toUserId()];
+        return this.appPeersManager.isUser(this.peerId) && !!userFull?.pFlags?.blocked;
       }
     }, {
       icon: 'delete danger',
@@ -440,7 +443,7 @@ export default class ChatTopbar {
       const middleware = this.chat.bubbles.getMiddleware();
       this.btnJoin.setAttribute('disabled', 'true');
 
-      const chatId = -this.peerId;
+      const chatId = this.peerId.toChatId();
       let promise: Promise<any>;
       if(this.appChatsManager.isChannel(chatId)) {
         promise = this.appChatsManager.joinChannel(chatId);
@@ -458,7 +461,7 @@ export default class ChatTopbar {
     }, {listenerSetter: this.listenerSetter});
 
     this.listenerSetter.add(rootScope)('chat_update', (chatId) => {
-      if(this.peerId === -chatId) {
+      if(this.peerId === chatId.toPeerId(true)) {
         const chat = this.appChatsManager.getChat(chatId) as Channel/*  | Chat */;
         
         this.btnJoin.classList.toggle('hide', !(chat as Channel)?.pFlags?.left);
@@ -554,7 +557,7 @@ export default class ChatTopbar {
     delete this.pinnedMessage;
   }
 
-  public setPeer(peerId: number) {
+  public setPeer(peerId: PeerId) {
     this.wasPeerId = this.peerId;
     this.peerId = peerId;
 
@@ -570,12 +573,15 @@ export default class ChatTopbar {
     }
 
     const isBroadcast = this.appPeersManager.isBroadcast(peerId);
-
     this.btnMute && this.btnMute.classList.toggle('hide', !isBroadcast);
-    if(this.btnJoin) {
-      replaceContent(this.btnJoin, i18n(this.appChatsManager.isChannel(-peerId) ? 'Chat.Subscribe' : 'ChannelJoin'));
-      this.btnJoin.classList.toggle('hide', !this.appChatsManager.getChat(-peerId)?.pFlags?.left);
+    if(this.appPeersManager.isAnyChat(peerId)) {
+      if(this.btnJoin) {
+        const chatId = peerId.toChatId();
+        replaceContent(this.btnJoin, i18n(this.appChatsManager.isChannel(chatId) ? 'Chat.Subscribe' : 'ChannelJoin'));
+        this.btnJoin.classList.toggle('hide', !this.appChatsManager.getChat(chatId)?.pFlags?.left);
+      }
     }
+    
     this.setUtilsWidth();
 
     const middleware = this.chat.bubbles.getMiddleware();
@@ -626,7 +632,7 @@ export default class ChatTopbar {
 
           // ! костыль х2, это нужно делать в другом месте
           if(!count) {
-            this.chat.appImManager.setPeer(0); // * close tab
+            this.chat.appImManager.setPeer(NULL_PEER_ID); // * close tab
 
             // ! костыль, это скроет закреплённые сообщения сразу, вместо того, чтобы ждать пока анимация перехода закончится
             const originalChat = this.chat.appImManager.chat;

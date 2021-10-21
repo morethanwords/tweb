@@ -18,12 +18,12 @@ export type ReferenceContext = ReferenceContext.referenceContextProfilePhoto | R
 export namespace ReferenceContext {
   export type referenceContextProfilePhoto = {
     type: 'profilePhoto',
-    peerId: number
+    peerId: PeerId
   };
 
   export type referenceContextMessage = {
     type: 'message',
-    peerId: number,
+    peerId: PeerId,
     messageId: number
   };
 }
@@ -146,6 +146,8 @@ class ReferenceDatabase {
       if(newContext) {
         return this.refreshReference(reference, newContext[0]);
       }
+
+      this.log.error('refreshReference: no new context, reference before:', hex, 'after:', newHex, context);
 
       throw 'NO_NEW_CONTEXT';
     });

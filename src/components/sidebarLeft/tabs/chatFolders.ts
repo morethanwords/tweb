@@ -11,7 +11,6 @@ import { toast } from "../../toast";
 import type { MyDialogFilter } from "../../../lib/storages/filters";
 import type { DialogFilterSuggested, DialogFilter } from "../../../layer";
 import type _rootScope from "../../../lib/rootScope";
-import type { BroadcastEvents } from "../../../lib/rootScope";
 import Button from "../../button";
 import appMessagesManager from "../../../lib/appManagers/appMessagesManager";
 import appPeersManager from "../../../lib/appManagers/appPeersManager";
@@ -65,7 +64,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
       }
       
       if(!d.length) {
-        const folder = appMessagesManager.dialogsStorage.getFolder(filter.id);
+        const folder = appMessagesManager.dialogsStorage.getFolderDialogs(filter.id);
         let chats = 0, channels = 0, groups = 0;
         for(const dialog of folder) {
           if(appPeersManager.isAnyGroup(dialog.peerId)) groups++;
@@ -170,8 +169,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
       onFiltersContainerUpdate();
     });
 
-    this.listenerSetter.add(rootScope)('filter_update', (e) => {
-      const filter = e;
+    this.listenerSetter.add(rootScope)('filter_update', (filter) => {
       if(this.filtersRendered.hasOwnProperty(filter.id)) {
         this.renderFolder(filter, null, this.filtersRendered[filter.id]);
       } else {
@@ -183,8 +181,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
       this.getSuggestedFilters();
     });
 
-    this.listenerSetter.add(rootScope)('filter_delete', (e) => {
-      const filter = e;
+    this.listenerSetter.add(rootScope)('filter_delete', (filter) => {
       if(this.filtersRendered.hasOwnProperty(filter.id)) {
         /* for(const suggested of this.suggestedFilters) {
           if(deepEqual(suggested.filter, filter)) {
@@ -200,8 +197,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
       onFiltersContainerUpdate();
     });
 
-    this.listenerSetter.add(rootScope)('filter_order', (e: BroadcastEvents['filter_order']) => {
-      const order = e;
+    this.listenerSetter.add(rootScope)('filter_order', (order) => {
       order.forEach((filterId, idx) => {
         const container = this.filtersRendered[filterId].container;
         positionElementByIndex(container, container.parentElement, idx + 1); // ! + 1 due to header 

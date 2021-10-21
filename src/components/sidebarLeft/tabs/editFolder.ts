@@ -31,8 +31,8 @@ export default class AppEditFolderTab extends SliderSuperTab {
   private menuBtn: HTMLElement;
   private nameInputField: InputField;
 
-  private include_peers: SettingSection;
-  private exclude_peers: SettingSection;
+  private includePeerIds: SettingSection;
+  private excludePeerIds: SettingSection;
   private flags: {[k in 'contacts' | 'non_contacts' | 'groups' | 'broadcasts' | 'bots' | 'exclude_muted' | 'exclude_archived' | 'exclude_read']: HTMLElement} = {} as any;
 
   private animation: RLottiePlayer;
@@ -108,7 +108,7 @@ export default class AppEditFolderTab extends SliderSuperTab {
       return section;
     };
 
-    this.include_peers = generateList('folder-list-included', 'FilterInclude', [{
+    this.includePeerIds = generateList('folder-list-included', 'FilterInclude', [{
       icon: 'add primary',
       text: 'ChatList.Filter.Include.AddChat',
       withRipple: true
@@ -134,7 +134,7 @@ export default class AppEditFolderTab extends SliderSuperTab {
       name: 'bots'
     }], this.flags);
 
-    this.exclude_peers = generateList('folder-list-excluded', 'FilterExclude', [{
+    this.excludePeerIds = generateList('folder-list-excluded', 'FilterExclude', [{
       icon: 'minus primary',
       text: 'ChatList.Filter.Exclude.AddChat',
       withRipple: true
@@ -152,10 +152,10 @@ export default class AppEditFolderTab extends SliderSuperTab {
       name: 'exclude_read'
     }], this.flags);
 
-    this.scrollable.append(this.stickerContainer, this.caption, inputWrapper, this.include_peers.container, this.exclude_peers.container);
+    this.scrollable.append(this.stickerContainer, this.caption, inputWrapper, this.includePeerIds.container, this.excludePeerIds.container);
 
-    const includedFlagsContainer = this.include_peers.container.querySelector('.folder-categories');
-    const excludedFlagsContainer = this.exclude_peers.container.querySelector('.folder-categories');
+    const includedFlagsContainer = this.includePeerIds.container.querySelector('.folder-categories');
+    const excludedFlagsContainer = this.excludePeerIds.container.querySelector('.folder-categories');
 
     includedFlagsContainer.querySelector('.btn').addEventListener('click', () => {
       new AppIncludedChatsTab(this.slider).open(this.filter, 'included', this);
@@ -261,7 +261,7 @@ export default class AppEditFolderTab extends SliderSuperTab {
       this.flags[flag as keyof AppEditFolderTab['flags']].style.display = !!filter.pFlags[flag as keyof AppEditFolderTab['flags']] ? '' : 'none';
     }
 
-    (['include_peers', 'exclude_peers'] as ['include_peers', 'exclude_peers']).forEach(key => {
+    (['includePeerIds' as const, 'excludePeerIds' as const]).forEach(key => {
       const section = this[key];
       const ul = appDialogsManager.createChatList();
 
@@ -339,7 +339,10 @@ export default class AppEditFolderTab extends SliderSuperTab {
         pFlags: {},
         pinned_peers: [],
         include_peers: [],
-        exclude_peers: []
+        exclude_peers: [],
+        pinnedPeerIds: [],
+        includePeerIds: [],
+        excludePeerIds: []
       }, true);
       this.type = 'create';
       this.onCreateOpen();

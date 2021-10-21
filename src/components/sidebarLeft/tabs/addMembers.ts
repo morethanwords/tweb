@@ -14,7 +14,7 @@ export default class AppAddMembersTab extends SliderSuperTab {
   private nextBtn: HTMLButtonElement;
   private selector: AppSelectPeers;
   private peerType: 'channel' | 'chat' | 'privacy';
-  private takeOut: (peerIds: number[]) => Promise<any> | false | void;
+  private takeOut: (peerIds: PeerId[]) => Promise<any> | false | void;
   private skippable: boolean;
 
   protected init() {
@@ -23,7 +23,7 @@ export default class AppAddMembersTab extends SliderSuperTab {
     this.scrollable.container.remove();
     
     this.nextBtn.addEventListener('click', () => {
-      const peerIds = this.selector.getSelected();
+      const peerIds = this.selector.getSelected().map(sel => sel.toPeerId());
 
       if(this.skippable) {
         this.takeOut(peerIds);
@@ -53,11 +53,10 @@ export default class AppAddMembersTab extends SliderSuperTab {
   public open(options: {
     title: LangPackKey,
     placeholder: LangPackKey,
-    peerId?: number, 
     type: AppAddMembersTab['peerType'], 
     takeOut?: AppAddMembersTab['takeOut'],
     skippable: boolean,
-    selectedPeerIds?: number[]
+    selectedPeerIds?: PeerId[]
   }) {
     const ret = super.open();
 

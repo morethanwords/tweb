@@ -131,7 +131,7 @@ const onFirstMount = () => import('../lib/appManagers/appProfileManager').then(i
       
       switch(response._) {
         case 'auth.authorization': // success
-          apiManager.setUserAuth(response.user.id);
+          apiManager.setUser(response.user);
 
           sendAvatar().finally(() => {
             import('./pageIm').then(m => {

@@ -17,7 +17,7 @@ export default class AppPrivateSearchTab extends SliderSuperTab {
   private appSearch: AppSearch;
   private btnPickDate: HTMLElement;
 
-  private peerId = 0;
+  private peerId: PeerId;
   private threadId = 0;
   private query = '';
   private onDatePick: (timestamp: number) => void;
@@ -43,7 +43,7 @@ export default class AppPrivateSearchTab extends SliderSuperTab {
     });
   }
 
-  open(peerId: number, threadId?: number, onDatePick?: AppPrivateSearchTab['onDatePick'], query?: string) {
+  open(peerId: PeerId, threadId?: number, onDatePick?: AppPrivateSearchTab['onDatePick'], query?: string) {
     const ret = super.open();
 
     if(!this.peerId) {

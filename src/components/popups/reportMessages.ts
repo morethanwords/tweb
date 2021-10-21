@@ -15,7 +15,7 @@ import PopupPeer from "./peer";
 import PopupReportMessagesConfirm from "./reportMessagesConfirm";
 
 export default class PopupReportMessages extends PopupPeer {
-  constructor(peerId: number, mids: number[], onConfirm?: () => void) {
+  constructor(peerId: PeerId, mids: number[], onConfirm?: () => void) {
     super('popup-report-messages', {titleLangKey: 'ChatTitle.ReportMessages', buttons: [], body: true});
 
     mids = mids.slice();

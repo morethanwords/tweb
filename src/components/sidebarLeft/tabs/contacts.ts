@@ -44,8 +44,9 @@ export default class AppContactsTab extends SliderSuperTab {
 
     this.listenerSetter.add(rootScope)('contacts_update', (userId) => {
       const isContact = appUsersManager.isContact(userId);
-      if(isContact) this.sortedUserList.add(userId);
-      else this.sortedUserList.delete(userId);
+      const peerId = userId.toPeerId();
+      if(isContact) this.sortedUserList.add(peerId);
+      else this.sortedUserList.delete(peerId);
     });
 
     this.title.replaceWith(this.inputSearch.container);
@@ -90,7 +91,7 @@ export default class AppContactsTab extends SliderSuperTab {
     this.scrollable.onScrolledBottom = null;
     this.scrollable.container.textContent = '';
 
-    appUsersManager.getContacts(query, undefined, 'online').then(contacts => {
+    appUsersManager.getContactsPeerIds(query, undefined, 'online').then(contacts => {
       if(!middleware()) {
         return;
       }

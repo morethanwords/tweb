@@ -11,7 +11,6 @@
 
 import type { AccountPassword, AccountUpdatePasswordSettings, InputCheckPasswordSRP, PasswordKdfAlgo } from '../../layer';
 import { MOUNT_CLASS_TO } from '../../config/debug';
-import appUsersManager from '../appManagers/appUsersManager';
 import apiManager from './mtprotoworker';
 
 export class PasswordManager {
@@ -80,8 +79,7 @@ export class PasswordManager {
         password: inputCheckPassword as InputCheckPasswordSRP.inputCheckPasswordSRP
       }, options).then(auth => {
         if(auth._ === 'auth.authorization') {
-          appUsersManager.saveApiUser(auth.user);
-          apiManager.setUserAuth(auth.user.id);
+          apiManager.setUser(auth.user);
         }
 
         return auth;

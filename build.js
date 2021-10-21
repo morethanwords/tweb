@@ -3,7 +3,7 @@
 const { spawn } = require('child_process');
 
 const version = process.argv[2] || 'same';
-const changelog = '';
+const changelog = process.argv[3] || '';
 const child = spawn(`npm`, ['run', 'change-version', version, changelog].filter(Boolean));
 child.stdout.on('data', (chunk) => {
   console.log(chunk.toString());

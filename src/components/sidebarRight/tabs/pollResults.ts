@@ -77,7 +77,7 @@ export default class AppPollResultsTab extends SliderSuperTab {
         appPollsManager.getVotes(message, answer.option, offset, limit).then(votesList => {
           votesList.votes.forEach(vote => {
             const {dom} = appDialogsManager.addDialogNew({
-              dialog: vote.user_id,
+              dialog: vote.user_id.toPeerId(false),
               container: list,
               drawStatus: false,
               rippleEnabled: false, 

@@ -124,7 +124,7 @@ export class AppPhotosManager {
     return bestPhotoSize;
   }
   
-  public getUserPhotos(userId: number, maxId: string = '0', limit: number = 20) {
+  public getUserPhotos(userId: UserId, maxId: Photo.photo['id'] = '0', limit: number = 20) {
     const inputUser = appUsersManager.getUserInput(userId);
     return apiManager.invokeApiCacheable('photos.getUserPhotos', {
       user_id: inputUser,
@@ -133,8 +133,8 @@ export class AppPhotosManager {
       max_id: maxId
     }, {cacheSeconds: 60}).then((photosResult) => {
       appUsersManager.saveApiUsers(photosResult.users);
-      const photoIds: string[] = photosResult.photos.map((photo, idx) => {
-        photosResult.photos[idx] = this.savePhoto(photo, {type: 'profilePhoto', peerId: userId});
+      const photoIds = photosResult.photos.map((photo, idx) => {
+        photosResult.photos[idx] = this.savePhoto(photo, {type: 'profilePhoto', peerId: userId.toPeerId()});
         return photo.id;
       });
 

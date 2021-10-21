@@ -352,7 +352,7 @@ export const findAudioTargets = (anchor: HTMLElement, useSearch: boolean) => {
       const elements = Array.from(container.querySelectorAll(selector)) as HTMLElement[];
       const idx = elements.indexOf(anchor);
 
-      const mediaItems: MediaItem[] = elements.map(element => ({peerId: +element.dataset.peerId, mid: +element.dataset.mid}));
+      const mediaItems: MediaItem[] = elements.map(element => ({peerId: element.dataset.peerId.toPeerId(), mid: +element.dataset.mid}));
 
       prev = mediaItems.slice(0, idx);
       next = mediaItems.slice(idx + 1);
@@ -481,30 +481,30 @@ export default class AudioElement extends HTMLElement {
       return togglePlay;
     };
 
+    if(doc.thumbs?.length) {
+      const imgs: HTMLImageElement[] = [];
+      const wrapped = wrapPhoto({
+        photo: doc, 
+        message: null, 
+        container: toggle, 
+        boxWidth: 48, 
+        boxHeight: 48,
+        loadPromises: this.loadPromises,
+        withoutPreloader: true,
+        lazyLoadQueue: this.lazyLoadQueue
+      });
+      toggle.style.width = toggle.style.height = '';
+      if(wrapped.images.thumb) imgs.push(wrapped.images.thumb);
+      if(wrapped.images.full) imgs.push(wrapped.images.full);
+
+      this.classList.add('audio-with-thumb');
+      imgs.forEach(img => img.classList.add('audio-thumb'));
+    }
+
     if(!isOutgoing) {
       let preloader: ProgressivePreloader = this.preloader;
 
       onLoad(doc.type !== 'audio' && !this.noAutoDownload);
-
-      if(doc.thumbs) {
-        const imgs: HTMLImageElement[] = [];
-        const wrapped = wrapPhoto({
-          photo: doc, 
-          message: null, 
-          container: toggle, 
-          boxWidth: 48, 
-          boxHeight: 48,
-          loadPromises: this.loadPromises,
-          withoutPreloader: true,
-          lazyLoadQueue: this.lazyLoadQueue
-        });
-        toggle.style.width = toggle.style.height = '';
-        if(wrapped.images.thumb) imgs.push(wrapped.images.thumb);
-        if(wrapped.images.full) imgs.push(wrapped.images.full);
-
-        this.classList.add('audio-with-thumb');
-        imgs.forEach(img => img.classList.add('audio-thumb'));
-      }
 
       const r = (shouldPlay: boolean) => {
         if(this.audio.src) {

@@ -52,7 +52,7 @@ export class ApiUpdatesManager {
     syncLoading: null
   };
 
-  private channelStates: {[channelId: number]: UpdatesState} = {};
+  private channelStates: {[channelId: ChatId]: UpdatesState} = {};
   private attached = false;
 
   private log = logger('UPDATES', LogTypes.Error | LogTypes.Warn | LogTypes.Log/*  | LogTypes.Debug */);
@@ -113,7 +113,7 @@ export class ApiUpdatesManager {
     return true;
   }
 
-  private popPendingPtsUpdate(channelId: number) {
+  private popPendingPtsUpdate(channelId: ChatId) {
     const curState = channelId ? this.getChannelState(channelId) : this.updatesState;
     if(!curState.pendingPtsUpdates.length) {
       return false;
@@ -206,8 +206,8 @@ export class ApiUpdatesManager {
         const isOut = updateMessage.pFlags.out;
         const fromId = (updateMessage as Updates.updateShortChatMessage).from_id || (isOut ? rootScope.myId : (updateMessage as Updates.updateShortMessage).user_id);
         const toId = (updateMessage as Updates.updateShortChatMessage).chat_id
-          ? -(updateMessage as Updates.updateShortChatMessage).chat_id
-          : ((updateMessage as Updates.updateShortMessage).user_id || rootScope.myId);
+          ? (updateMessage as Updates.updateShortChatMessage).chat_id.toPeerId(true)
+          : ((updateMessage as Updates.updateShortMessage).user_id.toPeerId(false) || rootScope.myId);
   
         this.processUpdate({
           _: 'updateNewMessage',
@@ -215,7 +215,7 @@ export class ApiUpdatesManager {
             _: 'message',
             pFlags: updateMessage.pFlags,
             id: updateMessage.id,
-            from_id: appPeersManager.getOutputPeer(fromId),
+            from_id: appPeersManager.getOutputPeer(fromId.toPeerId()),
             peer_id: appPeersManager.getOutputPeer(toId),
             date: updateMessage.date,
             message: updateMessage.message,
@@ -340,7 +340,7 @@ export class ApiUpdatesManager {
     return promise;
   }
 
-  private getChannelDifference(channelId: number): Promise<void> {
+  private getChannelDifference(channelId: ChatId): Promise<void> {
     const channelState = this.getChannelState(channelId);
     const wasSyncing = channelState.syncLoading;
     if(!wasSyncing) {
@@ -411,7 +411,7 @@ export class ApiUpdatesManager {
     return promise;
   }
 
-  private justAName(state: UpdatesState, promise: UpdatesState['syncLoading'], channelId?: number) {
+  private justAName(state: UpdatesState, promise: UpdatesState['syncLoading'], channelId?: ChatId) {
     state.syncLoading = promise;
     rootScope.dispatchEvent('state_synchronizing', channelId);
 
@@ -423,7 +423,7 @@ export class ApiUpdatesManager {
     });
   }
   
-  public addChannelState(channelId: number, pts: number) {
+  public addChannelState(channelId: ChatId, pts: number) {
     if(!pts) {
       throw new Error('Add channel state without pts ' + channelId);
     }
@@ -442,7 +442,7 @@ export class ApiUpdatesManager {
     return false;
   }
 
-  public getChannelState(channelId: number, pts?: number) {
+  public getChannelState(channelId: ChatId, pts?: number) {
     if(this.channelStates[channelId] === undefined) {
       this.addChannelState(channelId, pts);
     }
@@ -456,11 +456,11 @@ export class ApiUpdatesManager {
     seqStart: number/* ,
     ignoreSyncLoading: boolean */
   }> = {}) {
-    let channelId = 0;
+    let channelId: ChatId;
     switch(update._) {
       case 'updateNewChannelMessage':
       case 'updateEditChannelMessage':
-        channelId = -appPeersManager.getPeerId(update.message.peer_id);
+        channelId = appPeersManager.getPeerId(update.message.peer_id).toChatId();
         break;
       /* case 'updateDeleteChannelMessages':
         channelId = update.channel_id;
@@ -507,8 +507,8 @@ export class ApiUpdatesManager {
       if(message.from_id && !appUsersManager.hasUser(appPeersManager.getPeerId(message.from_id), message.pFlags.post/* || channelId*/) && (reason = 'author') ||
           fwdHeader.from_id && !appUsersManager.hasUser(appPeersManager.getPeerId(fwdHeader.from_id), !!(fwdHeader.from_id as Peer.peerChannel).channel_id) && (reason = 'fwdAuthor') ||
           (fwdHeader.from_id as Peer.peerChannel)?.channel_id && !appChatsManager.hasChat((fwdHeader.from_id as Peer.peerChannel).channel_id, true) && (reason = 'fwdChannel') ||
-          toPeerId > 0 && !appUsersManager.hasUser(toPeerId) && (reason = 'toPeer User') ||
-          toPeerId < 0 && !appChatsManager.hasChat(-toPeerId) && (reason = 'toPeer Chat')) {
+          toPeerId.isUser() && !appUsersManager.hasUser(toPeerId) && (reason = 'toPeer User') ||
+          toPeerId.isAnyChat() && !appChatsManager.hasChat(toPeerId.toChatId()) && (reason = 'toPeer Chat')) {
         this.log.warn('Not enough data for message update', toPeerId, reason, message);
         if(channelId && appChatsManager.hasChat(channelId)) {
           this.getChannelDifference(channelId);
@@ -633,13 +633,11 @@ export class ApiUpdatesManager {
     
     this.attached = true;
 
-    appStateManager.getState().then(_state => {
-      const state = _state.updates;
-
+    appStateManager.getState().then(({updates: state}) => {
       const newVersion = appStateManager.newVersion/*  || '0.8.6' */;
 
       //rootScope.broadcast('state_synchronizing');
-      if(!state || !state.pts || !state.date || !state.seq) {
+      if(!state || !state.pts || !state.date/*  || !state.seq */) { // seq can be undefined because of updates.differenceTooLong
         this.log('will get new state');
 
         this.updatesState.syncLoading = new Promise((resolve) => {

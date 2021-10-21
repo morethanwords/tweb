@@ -18,8 +18,8 @@ import { ChatPermissions } from "./groupPermissions";
 
 export default class AppUserPermissionsTab extends SliderSuperTabEventable {
   public participant: ChannelParticipant;
-  public chatId: number;
-  public userId: number;
+  public chatId: ChatId;
+  public userId: UserId;
 
   protected init() {
     this.container.classList.add('edit-peer-container', 'user-permissions-container');
@@ -40,7 +40,7 @@ export default class AppUserPermissionsTab extends SliderSuperTabEventable {
       div.append(list);
 
       const {dom} = appDialogsManager.addDialogNew({
-        dialog: this.userId,
+        dialog: this.userId.toPeerId(false),
         container: list,
         drawStatus: false,
         rippleEnabled: true,

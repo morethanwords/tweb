@@ -6,7 +6,7 @@
 
 import type { AppMessagesManager } from "../../lib/appManagers/appMessagesManager";
 import type { AppPeersManager } from "../../lib/appManagers/appPeersManager";
-import type { AppPollsManager, Poll } from "../../lib/appManagers/appPollsManager";
+import type { AppPollsManager } from "../../lib/appManagers/appPollsManager";
 import type { AppDocsManager, MyDocument } from "../../lib/appManagers/appDocsManager";
 import type { AppMessagesIdsManager } from "../../lib/appManagers/appMessagesIdsManager";
 import type Chat from "./chat";
@@ -24,7 +24,7 @@ import findUpClassName from "../../helpers/dom/findUpClassName";
 import { cancelEvent } from "../../helpers/dom/cancelEvent";
 import { attachClickEvent, simulateClickEvent } from "../../helpers/dom/clickEvent";
 import isSelectionEmpty from "../../helpers/dom/isSelectionEmpty";
-import { Message } from "../../layer";
+import { Message, Poll } from "../../layer";
 import PopupReportMessages from "../popups/reportMessages";
 
 export default class ChatContextMenu {
@@ -38,7 +38,7 @@ export default class ChatContextMenu {
   private isTextSelected: boolean;
   private isAnchorTarget: boolean;
   private isUsernameTarget: boolean;
-  private peerId: number;
+  private peerId: PeerId;
   private mid: number;
   private message: any;
 
@@ -130,7 +130,8 @@ export default class ChatContextMenu {
       //appImManager.log('contextmenu', e, bubble, side);
       positionMenu((e as TouchEvent).touches ? (e as TouchEvent).touches[0] : e as MouseEvent, this.element, side);
       openBtnMenu(this.element, () => {
-        this.peerId = this.mid = 0;
+        this.mid = 0;
+        this.peerId = undefined;
         this.target = null;
       });
     };
@@ -417,7 +418,7 @@ export default class ChatContextMenu {
       if(threadMessage) url += '?comment=' + msgId;
       key = 'LinkCopied';
     } else {
-      url += 'c/' + Math.abs(this.peerId) + '/' + msgId;
+      url += 'c/' + this.peerId.toChatId() + '/' + msgId;
       if(threadMessage) url += '?thread=' + this.appMessagesIdsManager.getServerMessageId(threadMessage.mid);
       key = 'LinkCopiedPrivateInfo';
     }

@@ -13,7 +13,6 @@ import Page from "./page";
 import InputField from "../components/inputField";
 import CheckboxField from "../components/checkboxField";
 import Button from "../components/button";
-import { IS_ANDROID, IS_APPLE, IS_APPLE_MOBILE } from "../environment/userAgent";
 import fastSmoothScroll from "../helpers/fastSmoothScroll";
 import { IS_TOUCH_SUPPORTED } from "../environment/touchSupport";
 import App from "../config/app";
@@ -34,7 +33,6 @@ import toggleDisability from "../helpers/dom/toggleDisability";
 import sessionStorage from "../lib/sessionStorage";
 import { DcAuthKey } from "../types";
 import placeCaretAtEnd from "../helpers/dom/placeCaretAtEnd";
-import { formatPhoneNumber } from "../helpers/formatPhoneNumber";
 import { HelpCountry, HelpCountryCode } from "../layer";
 import { getCountryEmoji } from "../vendor/emoji";
 import simulateEvent from "../helpers/dom/dispatchEvent";
@@ -275,7 +273,7 @@ let onFirstMount = () => {
     onInput: (formatted) => {
       lottieLoader.loadLottieWorkers();
 
-      const {country, code} = formatted;
+      const {country, code} = formatted || {};
       let countryName = country ? country.name || country.default_name : ''/* 'Unknown' */;
       if(countryName !== countryInputField.value && (
           !lastCountrySelected || 
