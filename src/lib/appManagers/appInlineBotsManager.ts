@@ -107,7 +107,7 @@ export class AppInlineBotsManager {
   public switchToPM(fromPeerId: PeerId, botId: BotId, startParam: string) {
     this.setHash[botId] = {peerId: fromPeerId, time: Date.now()};
     rootScope.dispatchEvent('history_focus', {peerId: botId.toPeerId()});
-    return appMessagesManager.startBot(botId, '0', startParam);
+    return appMessagesManager.startBot(botId, undefined, startParam);
   }
   
   /*

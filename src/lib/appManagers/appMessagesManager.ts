@@ -3069,7 +3069,7 @@ export class AppMessagesManager {
     });
   }
 
-  public startBot(botId: BotId, chatId: ChatId, startParam: string) {
+  public startBot(botId: BotId, chatId?: ChatId, startParam?: string) {
     const peerId = chatId ? chatId.toPeerId(true) : botId.toPeerId();
     if(startParam) {
       const randomId = randomLong();

@@ -305,7 +305,7 @@ namespace RichTextProcessor {
       } else if(match[11]) { // custom mention
         entity = {
           _: 'messageEntityMentionName',
-          user_id: match[10],
+          user_id: match[10].toUserId(),
           offset: matchIndex,
           length: text.length
         };

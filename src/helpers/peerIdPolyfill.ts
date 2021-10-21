@@ -25,7 +25,7 @@ Number.prototype.toUserId = function() {
 };
 
 Number.prototype.toChatId = function() {
-  return -this;
+  return Math.abs(this as any);
 };
 
 Number.prototype.toPeerId = function(isChat?: boolean) {

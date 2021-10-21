@@ -31,7 +31,6 @@ import telegramMeWebManager from './telegramMeWebManager';
 import { CacheStorageDbName } from '../cacheStorage';
 import { pause } from '../../helpers/schedulers/pause';
 import IS_WEBP_SUPPORTED from '../../environment/webpSupport';
-import appUsersManager from '../appManagers/appUsersManager';
 
 type Task = {
   taskId: number,
