@@ -175,8 +175,8 @@ class AppSelection {
 
       const processElement = (element: HTMLElement, checkBetween = true) => {
         const mid = +element.dataset.mid;
-        const peerId = (element.dataset.peerId || '').toPeerId();
-        if(!mid || !peerId) return;
+        if(!mid || !element.dataset.peerId) return;
+        const peerId = element.dataset.peerId.toPeerId();
 
         if(!isInDOM(firstTarget)) {
           firstTarget = element;
@@ -620,7 +620,7 @@ export class SearchSelection extends AppSelection {
 
         this.selectionForwardBtn = ButtonIcon(`forward ${BASE_CLASS}-forward`);
         attachClickEvent(this.selectionForwardBtn, () => {
-          const obj: {[frompeerId: PeerId]: number[]} = {};
+          const obj: {[fromPeerId: PeerId]: number[]} = {};
           for(const [fromPeerId, mids] of this.selectedMids) {
             obj[fromPeerId] = Array.from(mids);
           }
@@ -895,7 +895,7 @@ export default class ChatSelection extends AppSelection {
           this.selectionForwardBtn = Button('btn-primary btn-transparent text-bold selection-container-forward', {icon: 'forward'});
           this.selectionForwardBtn.append(i18n('Forward'));
           attachClickEvent(this.selectionForwardBtn, () => {
-            const obj: {[frompeerId: PeerId]: number[]} = {};
+            const obj: {[fromPeerId: PeerId]: number[]} = {};
             for(const [fromPeerId, mids] of this.selectedMids) {
               obj[fromPeerId] = Array.from(mids);
             }

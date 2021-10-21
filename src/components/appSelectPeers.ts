@@ -23,8 +23,9 @@ import replaceContent from "../helpers/dom/replaceContent";
 import { filterUnique, indexOfAndSplice } from "../helpers/array";
 import debounce from "../helpers/schedulers/debounce";
 import windowSize from "../helpers/windowSize";
+import appPeersManager, { IsPeerType } from "../lib/appManagers/appPeersManager";
 
-type PeerType = 'contacts' | 'dialogs' | 'channelParticipants';
+type SelectSearchPeerType = 'contacts' | 'dialogs' | 'channelParticipants';
 
 // TODO: правильная сортировка для addMembers, т.е. для peerType: 'contacts', потому что там идут сначала контакты - потом неконтакты, а должно всё сортироваться по имени
 
@@ -59,12 +60,14 @@ export default class AppSelectPeers {
 
   private appendTo: HTMLElement;
   private onChange: (length: number) => void;
-  private peerType: PeerType[] = ['dialogs'];
+  private peerType: SelectSearchPeerType[] = ['dialogs'];
   private renderResultsFunc: (peerIds: PeerId[]) => void;
   private chatRightsAction: ChatRights;
   private multiSelect = true;
   private rippleEnabled = true;
   private avatarSize = 48;
+  private exceptSelf = false;
+  private filterPeerTypeBy: IsPeerType[];
 
   private tempIds: {[k in keyof AppSelectPeers['loadedWhat']]: number} = {};
   private peerId: PeerId;
@@ -79,22 +82,24 @@ export default class AppSelectPeers {
     appendTo: AppSelectPeers['appendTo'], 
     onChange?: AppSelectPeers['onChange'], 
     peerType?: AppSelectPeers['peerType'], 
-    peerId?: number,
+    peerId?: AppSelectPeers['peerId'],
     onFirstRender?: () => void, 
     renderResultsFunc?: AppSelectPeers['renderResultsFunc'], 
     chatRightsAction?: AppSelectPeers['chatRightsAction'], 
     multiSelect?: AppSelectPeers['multiSelect'],
-    rippleEnabled?: boolean,
+    rippleEnabled?: AppSelectPeers['rippleEnabled'],
     avatarSize?: AppSelectPeers['avatarSize'],
-    placeholder?: LangPackKey,
-    selfPresence?: LangPackKey
+    placeholder?: AppSelectPeers['placeholder'],
+    selfPresence?: AppSelectPeers['selfPresence'],
+    exceptSelf?: AppSelectPeers['exceptSelf'],
+    filterPeerTypeBy?: AppSelectPeers['filterPeerTypeBy']
   }) {
     safeAssign(this, options);
 
     this.container.classList.add('selector');
 
     const f = (this.renderResultsFunc || this.renderResults).bind(this);
-    this.renderResultsFunc = (peerIds: PeerId[]) => {
+    this.renderResultsFunc = (peerIds) => {
       if(this.needSwitchList) {
         this.scrollable.splitUp.replaceWith(this.list);
         this.scrollable.setVirtualContainer(this.list);
@@ -106,6 +111,19 @@ export default class AppSelectPeers {
         if(notRendered) this.renderedPeerIds.add(peerId);
         return notRendered;
       });
+
+      if(this.filterPeerTypeBy) {
+        peerIds = peerIds.filter(peerId => {
+          if(peerId.isPeerId()) {
+            const peer = appPeersManager.getPeer(peerId);
+            if(!peer.deleted) {
+              return this.filterPeerTypeBy.find(method => appPeersManager[method](peerId));
+            }
+          }
+
+          return true;
+        });
+      }
 
       return f(peerIds);
     };
@@ -235,7 +253,11 @@ export default class AppSelectPeers {
   };
 
   private renderSaved() {
-    if(!this.offsetIndex && this.folderId === 0 && this.peerType.includes('dialogs') && (!this.query || appUsersManager.testSelfSearch(this.query))) {
+    if(!this.exceptSelf && 
+      !this.offsetIndex && 
+      this.folderId === 0 && 
+      this.peerType.includes('dialogs') && 
+      (!this.query || appUsersManager.testSelfSearch(this.query))) {
       this.renderResultsFunc([rootScope.myId]);
     }
   }

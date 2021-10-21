@@ -65,13 +65,16 @@ export default class AppAddMembersTab extends SliderSuperTab {
     this.takeOut = options.takeOut;
     this.skippable = options.skippable;
 
+    const isPrivacy = this.peerType === 'privacy';
     this.selector = new AppSelectPeers({
       appendTo: this.content, 
       onChange: this.skippable ? null : (length) => {
         this.nextBtn.classList.toggle('is-visible', !!length);
       }, 
-      peerType: ['contacts'],
-      placeholder: options.placeholder
+      peerType: [isPrivacy ? 'dialogs' : 'contacts'],
+      placeholder: options.placeholder,
+      exceptSelf: isPrivacy,
+      filterPeerTypeBy: isPrivacy ? ['isAnyGroup', 'isUser'] : undefined
     });
 
     if(options.selectedPeerIds) {

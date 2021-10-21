@@ -9,7 +9,7 @@ import PopupPickUser from "./pickUser";
 
 export default class PopupForward extends PopupPickUser {
   constructor(
-    peerIdMids: {[frompeerId: PeerId]: number[]}, 
+    peerIdMids: {[fromPeerId: PeerId]: number[]}, 
     onSelect?: (peerId: PeerId) => Promise<void> | void, 
     onClose?: () => void, 
     overrideOnSelect = false

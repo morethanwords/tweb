@@ -308,6 +308,8 @@ export class AppPeersManager {
   }
 }
 
+export type IsPeerType = 'isChannel' | 'isMegagroup' | 'isAnyGroup' | 'isBroadcast' | 'isBot' | 'isContact' | 'isUser' | 'isAnyChat';
+
 [
   'isChannel',
   'isMegagroup',

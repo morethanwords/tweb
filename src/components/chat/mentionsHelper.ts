@@ -21,7 +21,7 @@ export default class MentionsHelper extends AutocompletePeerHelper {
       controller,
       'mentions-helper',
       (target) => {
-        const user = appUsersManager.getUser((target as HTMLElement).dataset.peerId);
+        const user = appUsersManager.getUser((target as HTMLElement).dataset.peerId.toUserId());
         let str = '', entity: MessageEntity;
         if(user.username) {
           str = '@' + user.username;
