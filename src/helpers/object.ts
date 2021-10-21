@@ -46,10 +46,10 @@ export function deepEqual(x: any, y: any): boolean {
   ) : (x === y);
 }
 
-export function defineNotNumerableProperties(obj: {[key: string]: any}, names: string[]) {
+export function defineNotNumerableProperties<T extends any>(obj: T, names: (keyof T)[]) {
   //const perf = performance.now();
   const props = {writable: true, configurable: true};
-  const out: {[name: string]: typeof props} = {};
+  const out: {[name in keyof T]?: typeof props} = {};
   names.forEach(name => {
     if(obj[name] === undefined) {
       out[name] = props;
@@ -108,7 +108,7 @@ export function safeReplaceArrayInObject<K>(key: K, wasObject: any, newObject: a
   }
 }
 
-export function isObject(object: any) {
+export function isObject<T extends Record<any, any>>(object: any): object is T {
   return typeof(object) === 'object' && object !== null;
 }
 

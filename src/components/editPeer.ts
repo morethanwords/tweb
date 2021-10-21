@@ -22,13 +22,13 @@ export default class EditPeer {
   private inputFields: InputField[];
   private listenerSetter: ListenerSetter;
 
-  private peerId: number;
+  private peerId: PeerId;
 
   private _disabled = false;
   private avatarSize = 120;
 
   constructor(options: {
-    peerId?: number,
+    peerId?: EditPeer['peerId'],
     inputFields: EditPeer['inputFields'],
     listenerSetter: ListenerSetter,
     doNotEditAvatar?: boolean,

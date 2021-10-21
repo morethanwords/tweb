@@ -6,6 +6,7 @@
 
 import appSidebarRight from "..";
 import appMessagesManager from "../../../lib/appManagers/appMessagesManager";
+import { NULL_PEER_ID } from "../../../lib/mtproto/mtproto_config";
 import AppSelectPeers from "../../appSelectPeers";
 import { putPreloader } from "../../misc";
 import { SliderTab } from "../../slider";
@@ -41,7 +42,7 @@ export default class AppForwardTab implements SliderTab {
     this.sendBtn = this.container.querySelector('.btn-circle') as HTMLButtonElement;
 
     this.sendBtn.addEventListener('click', () => {
-      let peerIds = this.selector.getSelected();
+      let peerIds = this.selector.getSelected().map(s => s.toPeerId());
       
       if(this.mids.length && peerIds.length) {
         this.sendBtn.classList.remove('tgico-send');
@@ -51,7 +52,7 @@ export default class AppForwardTab implements SliderTab {
 
         let s = () => {
           let promises = peerIds.splice(0, 3).map(peerId => {
-            return appMessagesManager.forwardMessages(peerId, 0, this.mids);
+            return appMessagesManager.forwardMessages(peerId, NULL_PEER_ID, this.mids);
           });
           
           Promise.all(promises).then(() => {

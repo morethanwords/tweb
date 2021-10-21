@@ -75,6 +75,10 @@ Promise.prototype.finally = Promise.prototype.finally || function<T>(this: Promi
   );
 };
 
+Promise.prototype.safeFinally = function<T>(this: Promise<T>, fn: () => any) {
+  return this.catch(() => {}).finally(fn);
+};
+
 declare global {
   interface Uint8Array {
     hex: string;
@@ -95,5 +99,6 @@ declare global {
 
   interface Promise<T> {
     finally: (onfinally?: () => void) => Promise<T>;
+    safeFinally: (onfinally?: () => void) => Promise<T>;
   }
 }

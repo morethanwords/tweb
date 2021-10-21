@@ -81,6 +81,8 @@ import { copy } from '../../helpers/object';
 import PopupPeer from '../popups/peer';
 import MEDIA_MIME_TYPES_SUPPORTED from '../../environment/mediaMimeTypesSupport';
 import appMediaPlaybackController from '../appMediaPlaybackController';
+import { NULL_PEER_ID } from '../../lib/mtproto/mtproto_config';
+import replaceContent from '../../helpers/dom/replaceContent';
 
 const RECORD_MIN_TIME = 500;
 const POSTING_MEDIA_NOT_ALLOWED = 'Posting media content isn\'t allowed in this group.';
@@ -110,20 +112,22 @@ export default class ChatInput {
   private replyKeyboard: ReplyKeyboard;
 
   private attachMenu: HTMLButtonElement;
-  private attachMenuButtons: (ButtonMenuItemOptions & {verify: (peerId: number, threadId: number) => boolean})[];
+  private attachMenuButtons: (ButtonMenuItemOptions & {verify: (peerId: PeerId, threadId: number) => boolean})[];
 
   private sendMenu: SendMenu;
 
   private replyElements: {
     container: HTMLElement,
-    cancelBtn: HTMLButtonElement
+    cancelBtn: HTMLButtonElement,
+    iconBtn: HTMLButtonElement
   } = {} as any;
 
   private getWebPagePromise: Promise<void>;
   private willSendWebPage: WebPage = null;
-  private forwarding: {[fromPeerId: number]: number[]};
+  private forwarding: {[frompeerId: PeerId]: number[]};
   public replyToMsgId: number;
   public editMsgId: number;
+  public editMessage: Message.message;
   private noWebPage: true;
   public scheduleDate: number;
   public sendSilent: true;
@@ -301,9 +305,10 @@ export default class ChatInput {
     this.replyElements.container = document.createElement('div');
     this.replyElements.container.classList.add('reply-wrapper');
 
-    this.replyElements.cancelBtn = ButtonIcon('close reply-cancel');
+    this.replyElements.iconBtn = ButtonIcon('');
+    this.replyElements.cancelBtn = ButtonIcon('close reply-cancel', {noRipple: true});
 
-    this.replyElements.container.append(this.replyElements.cancelBtn);
+    this.replyElements.container.append(this.replyElements.iconBtn, this.replyElements.cancelBtn);
 
     this.newMessageWrapper = document.createElement('div');
     this.newMessageWrapper.classList.add('new-message-wrapper');
@@ -392,7 +397,7 @@ export default class ChatInput {
       onClick: () => {
         new PopupCreatePoll(this.chat).show();
       },
-      verify: (peerId, threadId) => peerId < 0 && this.appMessagesManager.canSendToPeer(peerId, threadId, 'send_polls')
+      verify: (peerId, threadId) => peerId.isAnyChat() && this.appMessagesManager.canSendToPeer(peerId, threadId, 'send_polls')
     }];
 
     this.attachMenu = ButtonMenuToggle({noRipple: true, listenerSetter: this.listenerSetter}, 'top-left', this.attachMenuButtons);
@@ -649,7 +654,7 @@ export default class ChatInput {
       const peerId = this.chat.peerId;
 
       new PopupPinMessage(peerId, 0, true, () => {
-        this.chat.appImManager.setPeer(0); // * close tab
+        this.chat.appImManager.setPeer(NULL_PEER_ID); // * close tab
 
         // ! костыль, это скроет закреплённые сообщения сразу, вместо того, чтобы ждать пока анимация перехода закончится
         const originalChat = this.chat.appImManager.chat;
@@ -690,7 +695,7 @@ export default class ChatInput {
   }
 
   public scheduleSending = (callback: () => void = this.sendMessage.bind(this, true), initDate = new Date()) => {
-    const canSendWhenOnline = this.chat.peerId > 0 && this.appUsersManager.isUserOnlineVisible(this.chat.peerId);
+    const canSendWhenOnline = rootScope.myId !== this.chat.peerId && this.chat.peerId.isUser() && this.appUsersManager.isUserOnlineVisible(this.chat.peerId);
 
     new PopupSchedule(initDate, (timestamp) => {
       const minTimestamp = (Date.now() / 1000 | 0) + 10;
@@ -777,7 +782,10 @@ export default class ChatInput {
 
     if(this.messageInputField.value === draft.rMessage && this.replyToMsgId === draft.reply_to_msg_id) return false;
 
-    this.clearHelper();
+    if(fromUpdate) {
+      this.clearHelper();
+    }
+
     this.noWebPage = draft.pFlags.no_webpage;
     if(draft.reply_to_msg_id) {
       this.initMessageReply(draft.reply_to_msg_id);
@@ -1195,7 +1203,7 @@ export default class ChatInput {
       this.undoHistory.length = 0;
     }
 
-    const urlEntities: Array<MessageEntity.messageEntityUrl | MessageEntity.messageEntityTextUrl> = entities.filter(e => e._ === 'messageEntityUrl' || e._ === 'messageEntityTextUrl') as any;
+    const urlEntities: Array<MessageEntity.messageEntityUrl | MessageEntity.messageEntityTextUrl> = !this.editMessage?.media && entities.filter(e => e._ === 'messageEntityUrl' || e._ === 'messageEntityTextUrl') as any;
     if(urlEntities.length) {
       for(const entity of urlEntities) {
         let url: string;
@@ -1376,7 +1384,7 @@ export default class ChatInput {
         this.stickersHelper.checkEmoticon(value);
       } else if(firstChar === '@') { // mentions
         const topMsgId = this.chat.threadId ? this.appMessagesIdsManager.getServerMessageId(this.chat.threadId) : undefined;
-        if(this.mentionsHelper.checkQuery(query, this.chat.peerId > 0 ? 0 : this.chat.peerId, topMsgId)) {
+        if(this.mentionsHelper.checkQuery(query, this.chat.peerId.isUser() ? NULL_PEER_ID : this.chat.peerId, topMsgId)) {
           foundHelper = this.mentionsHelper;
         }
       } else if(!matches[1] && firstChar === '/') { // commands
@@ -1456,7 +1464,7 @@ export default class ChatInput {
         this.sendMessage();
       }
     } else {
-      if(this.chat.peerId < 0 && !this.appMessagesManager.canSendToPeer(this.chat.peerId, this.chat.threadId, 'send_media')) {
+      if(this.chat.peerId.isAnyChat() && !this.appMessagesManager.canSendToPeer(this.chat.peerId, this.chat.threadId, 'send_media')) {
         toast(POSTING_MEDIA_NOT_ALLOWED);
         return;
       }
@@ -1569,7 +1577,7 @@ export default class ChatInput {
     }
   };
 
-  private onHelperCancel = (e?: Event) => {
+  private onHelperCancel = (e?: Event, force?: boolean) => {
     if(e) {
       cancelEvent(e);
     }
@@ -1591,6 +1599,24 @@ export default class ChatInput {
       this.willSendWebPage = null;
 
       if(needReturn) return;
+    }
+
+    if(this.helperType === 'edit' && !force) {
+      const message = this.editMessage
+      const value = RichTextProcessor.parseMarkdown(this.messageInputField.value, []);
+      if(message.message !== value) {
+        new PopupPeer('discard-editing', {
+          buttons: [{
+            langKey: 'Alert.Confirm.Discard',
+            callback: () => {
+              this.onHelperCancel(undefined, true);
+            }
+          }],
+          descriptionLangKey: 'Chat.Edit.Cancel.Text'
+        }).show();
+
+        return;
+      }
     }
 
     this.clearHelper();
@@ -1726,7 +1752,7 @@ export default class ChatInput {
 
     //return;
     if(this.editMsgId) {
-      const message = this.chat.getMessage(this.editMsgId);
+      const message = this.editMessage;
       if(!!value.trim() || message.media) {
         this.appMessagesManager.editMessage(message, value, {
           entities,
@@ -1758,7 +1784,7 @@ export default class ChatInput {
       const scheduleDate = this.scheduleDate;
       setTimeout(() => {
         for(const fromPeerId in forwarding) {
-          this.appMessagesManager.forwardMessages(peerId, +fromPeerId, forwarding[fromPeerId], {
+          this.appMessagesManager.forwardMessages(peerId, fromPeerId.toPeerId(), forwarding[fromPeerId], {
             silent,
             scheduleDate: scheduleDate
           });
@@ -1773,7 +1799,7 @@ export default class ChatInput {
     document = this.appDocsManager.getDoc(document);
 
     const flag = document.type === 'sticker' ? 'send_stickers' : (document.type === 'gif' ? 'send_gifs' : 'send_media');
-    if(this.chat.peerId < 0 && !this.appMessagesManager.canSendToPeer(this.chat.peerId, this.chat.threadId, flag)) {
+    if(this.chat.peerId.isAnyChat() && !this.appMessagesManager.canSendToPeer(this.chat.peerId, this.chat.threadId, flag)) {
       toast(POSTING_MEDIA_NOT_ALLOWED);
       return false;
     }
@@ -1817,7 +1843,7 @@ export default class ChatInput {
   } */
 
   public initMessageEditing(mid: number) {
-    const message = this.chat.getMessage(mid);
+    const message: Message.message = this.chat.getMessage(mid);
 
     let input = RichTextProcessor.wrapDraftText(message.message, {entities: message.totalEntities});
     const f = () => {
@@ -1825,26 +1851,27 @@ export default class ChatInput {
       this.setTopInfo('edit', f, i18n('AccDescrEditing'), replyFragment, input, message);
 
       this.editMsgId = mid;
+      this.editMessage = message;
       input = undefined;
     };
     f();
   }
 
-  public initMessagesForward(fromPeerIdsMids: {[fromPeerId: number]: number[]}) {
+  public initMessagesForward(fromPeerIdsMids: {[fromPeerId: PeerId]: number[]}) {
     const f = () => {
       //const peerTitles: string[]
-      const fromPeerIds = Object.keys(fromPeerIdsMids).map(str => +str);
-      const smth: Set<string | number> = new Set();
+      const fromPeerIds = Object.keys(fromPeerIdsMids).map(fromPeerId => fromPeerId.toPeerId());
+      const smth: Set<string> = new Set();
       let length = 0;
 
       fromPeerIds.forEach(fromPeerId => {
         const mids = fromPeerIdsMids[fromPeerId];
         mids.forEach(mid => {
-          const message = this.appMessagesManager.getMessageByPeer(fromPeerId, mid);
+          const message: Message.message = this.appMessagesManager.getMessageByPeer(fromPeerId, mid);
           if(message.fwd_from?.from_name && !message.fromId && !message.fwdFromId) {
-            smth.add(message.fwd_from.from_name);
+            smth.add('N' + message.fwd_from.from_name);
           } else {
-            smth.add(message.fromId);
+            smth.add('P' + message.fromId);
           }
         });
 
@@ -1853,8 +1880,10 @@ export default class ChatInput {
 
       const onlyFirstName = smth.size > 2;
       const peerTitles = [...smth].map(smth => {
-        return typeof(smth) === 'number' ? 
-          new PeerTitle({peerId: smth, dialog: false, onlyFirstName}).element : 
+        const type = smth[0];
+        smth = smth.slice(1);
+        return type === 'P' ? 
+          new PeerTitle({peerId: smth.toPeerId(), dialog: false, onlyFirstName}).element : 
           (onlyFirstName ? smth.split(' ')[0] : smth);
       });
 
@@ -1895,6 +1924,10 @@ export default class ChatInput {
   }
 
   public initMessageReply(mid: number) {
+    if(this.replyToMsgId === mid) {
+      return;
+    }
+    
     let message: Message = this.chat.getMessage(mid);
     const f = () => {
       let peerTitleEl: HTMLElement;
@@ -1937,9 +1970,12 @@ export default class ChatInput {
       this.willSendWebPage = null;
     }
     
-    this.replyToMsgId = undefined;
-    this.forwarding = undefined;
-    this.editMsgId = undefined;
+    if(type !== 'reply') {
+      this.replyToMsgId = undefined;
+      this.forwarding = undefined;
+    }
+
+    this.editMsgId = this.editMessage = undefined;
     this.helperType = this.helperFunc = undefined;
 
     if(this.chat.container.classList.contains('is-helper-active')) {
@@ -1961,12 +1997,18 @@ export default class ChatInput {
     });
   }
 
-  public setTopInfo(type: ChatInputHelperType, 
+  public setTopInfo(
+    type: ChatInputHelperType, 
     callerFunc: () => void, 
     title: Parameters<typeof wrapReply>[0] = '', 
     subtitle: Parameters<typeof wrapReply>[1] = '', 
     input?: string, 
-    message?: any) {
+    message?: any
+  ) {
+    if(this.willSendWebPage && type === 'reply') {
+      return;
+    }
+
     if(type !== 'webpage') {
       this.clearHelper(type);
       this.helperType = type;
@@ -1978,6 +2020,7 @@ export default class ChatInput {
       replyParent.lastElementChild.remove();
     }
 
+    this.replyElements.iconBtn.replaceWith(this.replyElements.iconBtn = ButtonIcon((type === 'webpage' ? 'link' : type) + ' active reply-icon', {noRipple: true}));
     replyParent.append(wrapReply(title, subtitle, message));
 
     this.chat.container.classList.add('is-helper-active');

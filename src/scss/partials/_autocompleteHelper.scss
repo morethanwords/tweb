@@ -24,13 +24,23 @@
 		display: none;
 	}
 
+	&.is-visible {
+		visibility: hidden;
+	}
+
 	@include animation-level(2) {
 		&.is-visible {
 			animation: fade-out-opacity .2s ease-in-out forwards;
+			transition: visibility 0s .2s;
+		}
+	}
 
-			&:not(.backwards) {
-				animation-name: fade-in-opacity;
-			}
+	.bubbles:not(.is-selecting) ~ .chat-input &.is-visible:not(.backwards) {
+		visibility: visible;
+		
+		@include animation-level(2) {
+			animation-name: fade-in-opacity;
+			transition: visibility 0s 0s;
 		}
 	}
 

@@ -16,6 +16,7 @@ import type { MyDocument } from "../../../lib/appManagers/appDocsManager";
 import mediaSizes from "../../../helpers/mediaSizes";
 import findUpClassName from "../../../helpers/dom/findUpClassName";
 import { attachClickEvent } from "../../../helpers/dom/clickEvent";
+import { NULL_PEER_ID } from "../../../lib/mtproto/mtproto_config";
 
 const ANIMATIONGROUP = 'GIFS-SEARCH';
 
@@ -26,7 +27,7 @@ export default class AppGifsTab extends SliderSuperTab {
   private nextOffset = '';
   private loadedAll = false;
 
-  private gifBotPeerId: number;
+  private gifBotPeerId: PeerId;
   private masonry: GifsMasonry;
 
   private searchPromise: ReturnType<AppInlineBotsManager['getInlineResults']>;
@@ -100,11 +101,11 @@ export default class AppGifsTab extends SliderSuperTab {
     if(this.searchPromise || this.loadedAll) return;
 
     if(!this.gifBotPeerId) {
-      this.gifBotPeerId = (await appUsersManager.resolveUsername('gif')).id;
+      this.gifBotPeerId = (await appUsersManager.resolveUsername('gif')).id.toPeerId(false);
     }
 
     try {
-      this.searchPromise = appInlineBotsManager.getInlineResults(0, this.gifBotPeerId, query, this.nextOffset);
+      this.searchPromise = appInlineBotsManager.getInlineResults(NULL_PEER_ID, this.gifBotPeerId, query, this.nextOffset);
       const { results, next_offset } = await this.searchPromise;
 
       if(this.inputSearch.value !== query) {

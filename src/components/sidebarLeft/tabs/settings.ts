@@ -18,6 +18,7 @@ import AppNotificationsTab from "./notifications";
 import PeerTitle from "../../peerTitle";
 import AppLanguageTab from "./language";
 import lottieLoader from "../../../lib/lottieLoader";
+import PopupPeer from "../../popups/peer";
 //import AppMediaViewer from "../../appMediaViewerNew";
 
 export default class AppSettingsTab extends SliderSuperTab {
@@ -42,7 +43,17 @@ export default class AppSettingsTab extends SliderSuperTab {
       icon: 'logout',
       text: 'EditAccount.Logout',
       onClick: () => {
-        apiManager.logOut();
+        new PopupPeer('logout', {
+          titleLangKey: 'LogOut',
+          descriptionLangKey: 'LogOut.Description',
+          buttons: [{
+            langKey: 'LogOut',
+            callback: () => {
+              apiManager.logOut();
+            },
+            isDanger: true
+          }]
+        }).show();
       }
     }]);
 
@@ -149,10 +160,11 @@ export default class AppSettingsTab extends SliderSuperTab {
   }
 
   public fillElements() {
-    let user = appUsersManager.getSelf();
-    this.avatarElem.setAttribute('peer', '' + user.id);
+    const user = appUsersManager.getSelf();
+    const peerId = user.id.toPeerId(false);
+    this.avatarElem.setAttribute('peer', '' + peerId);
 
-    this.nameDiv.append(new PeerTitle({peerId: user.id}).element);
+    this.nameDiv.append(new PeerTitle({peerId: peerId}).element);
     this.phoneDiv.innerHTML = user.phone ? appUsersManager.formatUserPhone(user.phone) : '';
   }
 }

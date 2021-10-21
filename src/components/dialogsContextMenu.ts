@@ -23,7 +23,7 @@ export default class DialogsContextMenu {
   private element: HTMLElement;
   private buttons: (ButtonMenuItemOptions & {verify: () => boolean})[];
 
-  private selectedId: number;
+  private selectedId: PeerId;
   private filterId: number;
   private dialog: Dialog;
 
@@ -32,24 +32,18 @@ export default class DialogsContextMenu {
       icon: 'unread',
       text: 'MarkAsUnread',
       onClick: this.onUnreadClick,
-      verify: () => {
-        const isUnread = !!(this.dialog.pFlags?.unread_mark || this.dialog.unread_count);
-        return !isUnread;
-      }
+      verify: () => !appMessagesManager.isDialogUnread(this.dialog)
     }, {
       icon: 'readchats',
       text: 'MarkAsRead',
       onClick: this.onUnreadClick,
-      verify: () => { 
-        const isUnread = !!(this.dialog.pFlags?.unread_mark || this.dialog.unread_count);
-        return isUnread;
-      }
+      verify: () => appMessagesManager.isDialogUnread(this.dialog)
     }, {
       icon: 'pin',
       text: 'ChatList.Context.Pin',
       onClick: this.onPinClick,
       verify: () => {
-        const isPinned = this.filterId > 1 ? appMessagesManager.filtersStorage.getFilter(this.filterId).pinned_peers.includes(this.dialog.peerId) : !!this.dialog.pFlags?.pinned;
+        const isPinned = this.filterId > 1 ? appMessagesManager.filtersStorage.getFilter(this.filterId).pinnedPeerIds.includes(this.dialog.peerId) : !!this.dialog.pFlags?.pinned;
         return !isPinned;
       }
     }, {
@@ -57,7 +51,7 @@ export default class DialogsContextMenu {
       text: 'ChatList.Context.Unpin',
       onClick: this.onPinClick,
       verify: () => {
-        const isPinned = this.filterId > 1 ? appMessagesManager.filtersStorage.getFilter(this.filterId).pinned_peers.includes(this.dialog.peerId) : !!this.dialog.pFlags?.pinned;
+        const isPinned = this.filterId > 1 ? appMessagesManager.filtersStorage.getFilter(this.filterId).pinnedPeerIds.includes(this.dialog.peerId) : !!this.dialog.pFlags?.pinned;
         return isPinned;
       }
     }, {
@@ -174,7 +168,7 @@ export default class DialogsContextMenu {
 
     this.filterId = appDialogsManager.filterId;
 
-    this.selectedId = +li.dataset.peerId;
+    this.selectedId = li.dataset.peerId.toPeerId();
     this.dialog = appMessagesManager.getDialogOnly(this.selectedId);
 
     this.buttons.forEach(button => {

@@ -583,7 +583,7 @@
 
   &.is-floating {
     --container-height: var(--pinned-audio-height);
-    z-index: 1; // fix z-index for volume selector
+    // z-index: 1; // fix z-index for volume selector
   }
 
   &:not(.is-floating) {

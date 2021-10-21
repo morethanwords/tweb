@@ -69,8 +69,8 @@ function camelizeName(string, camelizeFirstLetterIfFound, camelizeFirstLetterIfN
   });
 }
 
-/** @type {(type: string, parseBooleanFlags: boolean) => any} */
-const processParamType = (type, parseBooleanFlags) => {
+/** @type {(type: string, parseBooleanFlags: boolean, overrideTypes?: {[type: string]: string}) => any} */
+const processParamType = (type, parseBooleanFlags, overrideTypes) => {
   const isAdditional = type.indexOf('flags.-1?') === 0;
   const isFlag = type.includes('?');
   if(isFlag) {
@@ -78,7 +78,12 @@ const processParamType = (type, parseBooleanFlags) => {
   }
 
   if(type.includes('Vector')) {
-    return `Array<${processParamType(type.slice(7, -1), parseBooleanFlags)}>`;
+    return `Array<${processParamType(type.slice(7, -1), parseBooleanFlags, overrideTypes)}>`;
+  }
+
+  const overridden = overrideTypes && overrideTypes[type];
+  if(overridden) {
+    return overridden;
   }
 
   switch(type) {
@@ -96,7 +101,7 @@ const processParamType = (type, parseBooleanFlags) => {
       return 'number';
 
     case 'long': 
-      return 'string';
+      return 'string | number';
 
     case 'bytes':
       return 'Uint8Array';
@@ -115,8 +120,8 @@ const processParamType = (type, parseBooleanFlags) => {
   }
 };
 
-/** @type {(params: {name: string, type: string}[], object: any, parseBooleanFlags: boolean) => any} */
-const processParams = (params, object = {}, parseBooleanFlags = true) => {
+/** @type {(params: {name: string, type: string}[], object: any, parseBooleanFlags: boolean, overrideTypes?: {[type: string]: string}) => any} */
+const processParams = (params, object = {}, parseBooleanFlags = true, overrideTypes) => {
   for(const param of params) {
     let {name, type} = param;
 
@@ -128,7 +133,7 @@ const processParams = (params, object = {}, parseBooleanFlags = true) => {
       type = replace[name];
     }
 
-    const processed = processParamType(type, parseBooleanFlags);
+    const processed = processParamType(type, parseBooleanFlags, overrideTypes);
     if(type.includes('?true') && parseBooleanFlags) {
       if(!object.pFlags) object.pFlags = {};
       object.pFlags[name] = processed;
@@ -238,16 +243,19 @@ out += `}\n\n`;
 
 /** @type {{[method: string]: {req: string, res: string}}} */
 const methodsMap = {};
+// const overrideMethodTypes = {
+//   long: 'string | number'
+// };
 mtproto.methods.forEach((_method) => {
   const {method, type, params} = _method;
 
   const camelizedMethod = camelizeName(method, true, true);
 
-  methodsMap[method] = {req: camelizedMethod, res: processParamType(type, false)};
+  methodsMap[method] = {req: camelizedMethod, res: processParamType(type, false/* , overrideMethodTypes */)};
 
   let str = `export type ${camelizedMethod} = {\n`;
 
-  const object = processParams(params, {}, false);
+  const object = processParams(params, {}, false/* , overrideMethodTypes */);
 
   const serialized = serializeObject(object, [], '\t');
 

@@ -14,7 +14,7 @@ export default class PopupPickUser extends PopupElement {
   
   constructor(options: {
     peerTypes: AppSelectPeers['peerType'], 
-    onSelect?: (peerId: number) => Promise<void> | void, 
+    onSelect?: (peerId: PeerId) => Promise<void> | void, 
     onClose?: () => void,
     placeholder: LangPackKey,
     chatRightsAction?: AppSelectPeers['chatRightsAction'],
@@ -29,7 +29,7 @@ export default class PopupPickUser extends PopupElement {
       appendTo: this.body, 
       onChange: async() => {
         const selected = this.selector.getSelected();
-        const peerId = selected[selected.length - 1];
+        const peerId = selected[selected.length - 1].toPeerId();
         
         if(options.onSelect) {
           const res = options.onSelect(peerId);

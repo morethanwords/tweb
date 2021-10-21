@@ -53,6 +53,13 @@
 		--pinned-floating-height: var(--pinned-message-height);
 	}
 
+	&:not(.is-pinned-message-floating) {
+		.chat-utils {
+			position: relative;
+			z-index: 1;
+		}
+	}
+
 	&.is-pinned-audio-floating.is-pinned-message-floating {
 		--pinned-floating-height: calc(var(--pinned-audio-height) + var(--pinned-message-height));
 

@@ -24,7 +24,7 @@ export default class ReplyKeyboard extends DropdownHover {
   private listenerSetter: ListenerSetter;
   private appMessagesManager: AppMessagesManager;
   private btnHover: HTMLElement;
-  private peerId: number;
+  private peerId: PeerId;
   private touchListener: Listener;
   private chatInput: ChatInput;
 
@@ -139,7 +139,7 @@ export default class ReplyKeyboard extends DropdownHover {
     return !hide;
   }
 
-  public setPeer(peerId: number) {
+  public setPeer(peerId: PeerId) {
     this.peerId = peerId;
 
     this.checkAvailability();

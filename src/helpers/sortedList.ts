@@ -8,16 +8,17 @@ import { insertInDescendSortedArray } from "./array";
 import { getMiddleware } from "./middleware";
 import { safeAssign } from "./object";
 
+export type SortedElementId = PeerId;
 export type SortedElementBase = {
-  id: number, 
+  id: SortedElementId, 
   index: number
 };
 
 export default class SortedList<SortedElement extends SortedElementBase> {
-  protected elements: Map<number, SortedElement>;
+  protected elements: Map<SortedElementId, SortedElement>;
   protected sorted: Array<SortedElement>;
 
-  protected getIndex: (id: number) => number;
+  protected getIndex: (id: SortedElementId) => number;
   protected onDelete: (element: SortedElement) => void;
   protected onUpdate: (element: SortedElement) => void;
   protected onSort: (element: SortedElement, idx: number) => void;
@@ -75,11 +76,11 @@ export default class SortedList<SortedElement extends SortedElementBase> {
     });
   }
 
-  public has(id: number) {
+  public has(id: SortedElementId) {
     return this.elements.has(id);
   }
 
-  public get(id: number) {
+  public get(id: SortedElementId) {
     return this.elements.get(id);
   }
 
@@ -87,7 +88,7 @@ export default class SortedList<SortedElement extends SortedElementBase> {
     return this.elements;
   }
 
-  public add(id: number, batch = false, updateElementWith?: SortedList<SortedElement>['updateElementWith'], updateBatch = batch) {
+  public add(id: SortedElementId, batch = false, updateElementWith?: SortedList<SortedElement>['updateElementWith'], updateBatch = batch) {
     let element = this.get(id);
     if(element) {
       return element;
@@ -105,7 +106,7 @@ export default class SortedList<SortedElement extends SortedElementBase> {
     return element;
   }
 
-  public delete(id: number, noScheduler?: boolean) {
+  public delete(id: SortedElementId, noScheduler?: boolean) {
     const element = this.elements.get(id);
     if(!element) {
       return false;
@@ -136,7 +137,7 @@ export default class SortedList<SortedElement extends SortedElementBase> {
     return true;
   }
 
-  public update(id: number, batch = false, element = this.get(id), updateElementWith?: SortedList<SortedElement>['updateElementWith']) {
+  public update(id: SortedElementId, batch = false, element = this.get(id), updateElementWith?: SortedList<SortedElement>['updateElementWith']) {
     if(!element) {
       return;
     }

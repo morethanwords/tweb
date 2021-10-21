@@ -42,7 +42,7 @@ export default class AutocompletePeerHelper extends AutocompleteHelper {
     });
   }
 
-  public render(data: {peerId: number, name?: string, description?: string}[]) {
+  public render(data: {peerId: PeerId, name?: string, description?: string}[]) {
     if(this.init) {
       if(!data.length) {
         return;
@@ -71,7 +71,7 @@ export default class AutocompletePeerHelper extends AutocompleteHelper {
 
   public static listElement(options: {
     className: string,
-    peerId: number,
+    peerId: PeerId,
     name?: string,
     description?: string
   }) {

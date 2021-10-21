@@ -5,52 +5,18 @@
  */
 
 import { cancelContextMenuOpening } from "../../components/misc";
-import SwipeHandler from "../../components/swipeHandler";
-import { cancelEvent } from "./cancelEvent";
+import handleHorizontalSwipe, { SwipeHandlerHorizontalOptions } from "./handleHorizontalSwipe";
 
-export default function handleTabSwipe(container: HTMLElement, onSwipe: (next: boolean) => void) {
-  /* let hadScroll = false;
-  const onScroll = () => {
-    swipeHandler.reset();
-  };
-  let firstSwipeChecked = false; */
-  return new SwipeHandler({
-    element: container, 
-    /* onFirstSwipe: () => {
-      this.scroll.container.addEventListener('scroll', onScroll, {passive: true});
-    }, */
+export default function handleTabSwipe(options: SwipeHandlerHorizontalOptions) {
+  return handleHorizontalSwipe({
+    ...options,
     onSwipe: (xDiff, yDiff, e) => {
-      /* if(!firstSwipeChecked) {
-        firstSwipeChecked = true;
-        if(yDiff !== 0) {
-          return true;
-        }
-      }
-
-      cancelEvent(e); */
-
-      if(Math.abs(yDiff) > 20) {
-        return true;
-      }
-
-      if(Math.abs(xDiff) > Math.abs(yDiff)) {
-        cancelEvent(e);
-      } else if(Math.abs(yDiff) > Math.abs(xDiff)/*  || Math.abs(yDiff) > 20 */) {
-        return true;
-      }
-
       if(Math.abs(xDiff) > 50) {
-        onSwipe(xDiff > 0);
+        options.onSwipe(xDiff, yDiff, e);
         cancelContextMenuOpening();
 
         return true;
       }
-    },
-    /* onReset: () => {
-      hadScroll = false;
-      firstSwipeChecked = false;
-      this.scroll.container.removeEventListener('scroll', onScroll);
-    }, */
-    cancelEvent: false
+    }
   });
 }

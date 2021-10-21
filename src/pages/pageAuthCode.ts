@@ -67,7 +67,7 @@ let onFirstMount = (): Promise<any> => {
       
       switch(response._) {
         case 'auth.authorization':
-          apiManager.setUserAuth(response.user.id);
+          apiManager.setUser(response.user);
 
           import('./pageIm').then(m => {
             m.default.mount();

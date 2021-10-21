@@ -99,13 +99,14 @@ console.timeEnd('get storage1'); */
     const workerProxy = new Proxy(Worker, workerHandler);
     Worker = workerProxy;
 
-    const [_, touchSupport, userAgent, rootScope, appStateManager, I18n] = await Promise.all([
+    const [_, touchSupport, userAgent, rootScope, appStateManager, I18n, __] = await Promise.all([
       import('./lib/polyfill'),
       import('./environment/touchSupport'),
       import('./environment/userAgent'),
       import('./lib/rootScope'),
       import('./lib/appManagers/appStateManager'),
       import('./lib/langPack'),
+      import('./helpers/peerIdPolyfill'),
     ]);
 
     //console.timeEnd('get storage');

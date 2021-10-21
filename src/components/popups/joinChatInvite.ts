@@ -8,9 +8,11 @@ import PopupElement, { addCancelButton } from ".";
 import { ChatInvite, Updates } from "../../layer";
 import apiUpdatesManager from "../../lib/appManagers/apiUpdatesManager";
 import appAvatarsManager from "../../lib/appManagers/appAvatarsManager";
+import appChatsManager from "../../lib/appManagers/appChatsManager";
 import appPhotosManager from "../../lib/appManagers/appPhotosManager";
 import { i18n } from "../../lib/langPack";
 import apiManager from "../../lib/mtproto/mtprotoworker";
+import { NULL_PEER_ID } from "../../lib/mtproto/mtproto_config";
 import RichTextProcessor from "../../lib/richtextprocessor";
 import rootScope from "../../lib/rootScope";
 import AvatarElement from "../avatar";
@@ -27,7 +29,7 @@ export default class PopupJoinChatInvite extends PopupElement {
         .then((updates) => {
           apiUpdatesManager.processUpdateMessage(updates);
           const chat = (updates as Updates.updates).chats[0];
-          const peerId = -chat.id;
+          const peerId = chat.id.toPeerId(true);
           rootScope.dispatchEvent('history_focus', {peerId});
         });
       }
@@ -63,7 +65,7 @@ export default class PopupJoinChatInvite extends PopupElement {
       });
       avatarElem.style.width = avatarElem.style.height = '';
     } else {
-      appAvatarsManager.putPhoto(avatarElem, -0, false, chatInvite.title);
+      appAvatarsManager.putPhoto(avatarElem, NULL_PEER_ID, false, chatInvite.title);
     }
 
     const title = document.createElement('div');

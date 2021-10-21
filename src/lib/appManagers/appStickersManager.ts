@@ -17,14 +17,14 @@ import DATABASE_STATE from '../../config/databases/state';
 const CACHE_TIME = 3600e3;
 
 export type MyStickerSetInput = {
-  id: string,
-  access_hash?: string
+  id: StickerSet.stickerSet['id'],
+  access_hash?: StickerSet.stickerSet['access_hash']
 };
 
 export class AppStickersManager {
-  private storage = new AppStorage<Record<string, MessagesStickerSet>, typeof DATABASE_STATE>(DATABASE_STATE, 'stickerSets');
+  private storage = new AppStorage<Record<Long, MessagesStickerSet>, typeof DATABASE_STATE>(DATABASE_STATE, 'stickerSets');
 
-  private getStickerSetPromises: {[setId: string]: Promise<MessagesStickerSet>} = {};
+  private getStickerSetPromises: {[setId: Long]: Promise<MessagesStickerSet>} = {};
   private getStickersByEmoticonsPromises: {[emoticon: string]: Promise<Document[]>} = {};
 
   private greetingStickers: Document.document[];
@@ -153,7 +153,7 @@ export class AppStickersManager {
     });
   }
   
-  public saveStickerSet(res: Omit<MessagesStickerSet.messagesStickerSet, '_'>, id: string) {
+  public saveStickerSet(res: Omit<MessagesStickerSet.messagesStickerSet, '_'>, id: DocId) {
     //console.log('stickers save set', res);w
 
     const newSet: MessagesStickerSet = {
@@ -220,7 +220,7 @@ export class AppStickersManager {
     } else if(!set.access_hash) {
       return {
         _: 'inputStickerSetShortName',
-        short_name: set.id
+        short_name: '' + set.id
       };
     } else {
       return {

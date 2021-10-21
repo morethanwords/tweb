@@ -38,7 +38,7 @@ export default class AppActiveSessionsTab extends SliderSuperTab {
         titleRight: auth.pFlags.current ? undefined : formatDateAccordingToTodayNew(new Date(Math.max(auth.date_active, auth.date_created) * 1000))
       });
 
-      row.container.dataset.hash = auth.hash;
+      row.container.dataset.hash = '' + auth.hash;
 
       const midtitle = document.createElement('div');
       midtitle.classList.add('row-midtitle');

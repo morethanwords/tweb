@@ -4,17 +4,18 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import { Photo } from "../layer";
 import appPhotosManager from "../lib/appManagers/appPhotosManager";
 import ListLoader, { ListLoaderOptions } from "./listLoader";
 
-export default class AvatarListLoader<Item extends {photoId: string}> extends ListLoader<Item, any> {
-  private peerId: number;
+export default class AvatarListLoader<Item extends {photoId: Photo.photo['id']}> extends ListLoader<Item, any> {
+  private peerId: PeerId;
 
-  constructor(options: Omit<ListLoaderOptions<Item, any>, 'loadMore'> & {peerId: number}) {
+  constructor(options: Omit<ListLoaderOptions<Item, any>, 'loadMore'> & {peerId: PeerId}) {
     super({
       ...options,
       loadMore: (anchor, older, loadCount) => {
-        if(this.peerId < 0 || !older) return Promise.resolve({count: 0, items: []}); // ! это значит, что открыло аватар чата, но следующих фотографий нет.
+        if(this.peerId.isAnyChat() || !older) return Promise.resolve({count: 0, items: []}); // ! это значит, что открыло аватар чата, но следующих фотографий нет.
 
         const maxId = anchor?.photoId;
         return appPhotosManager.getUserPhotos(this.peerId, maxId, loadCount).then(value => {

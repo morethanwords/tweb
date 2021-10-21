@@ -25,6 +25,7 @@ import { nextRandomUint, randomLong } from '../../helpers/random';
 import App from '../../config/app';
 import DEBUG from '../../config/debug';
 import Modes from '../../config/modes';
+import noop from '../../helpers/noop';
 
 /// #if MTPROTO_HTTP_UPLOAD || MTPROTO_HTTP
 import HTTP from './transports/http';
@@ -43,11 +44,11 @@ export type MTMessageOptions = InvokeApiOptions & Partial<{
   
   notContentRelated: true, // ACK
   noSchedule: true,
-  messageId: string,
+  messageId: MTLong,
 }>;
 
 export type MTMessage = InvokeApiOptions & MTMessageOptions & {
-  msg_id: string,
+  msg_id: MTLong,
   seq_no: number,
   body?: Uint8Array | number[],
   isAPI?: boolean,
@@ -61,7 +62,7 @@ export type MTMessage = InvokeApiOptions & MTMessageOptions & {
   },
 
   container?: boolean,
-  inner?: string[],
+  inner?: MTLong[],
 
   // below - options
 
@@ -85,15 +86,15 @@ export default class MTPNetworker {
   private isFileUpload: boolean;
   private isFileDownload: boolean;
 
-  private lastServerMessages: Array<string> = [];
+  private lastServerMessages: Array<MTLong> = [];
 
   private sentMessages: {
-    [msgId: string]: MTMessage
+    [msgId: MTLong]: MTMessage
   } = {};
 
-  private pendingMessages: {[msgId: string]: number} = {};
-  private pendingAcks: Array<string> = [];
-  private pendingResends: Array<string> = [];
+  private pendingMessages: {[msgId: MTLong]: number} = {};
+  private pendingAcks: Array<MTLong> = [];
+  private pendingResends: Array<MTLong> = [];
   public connectionInited = false;
 
   private nextReqTimeout: number;
@@ -114,8 +115,8 @@ export default class MTPNetworker {
   private serverSalt: Uint8Array;
 
   private lastResendReq: {
-    req_msg_id: string,
-    resend_msg_ids: Array<string>
+    req_msg_id: MTLong,
+    resend_msg_ids: Array<MTLong>
   } | null = null;
 
   private name: string;
@@ -711,7 +712,7 @@ export default class MTPNetworker {
         }); */
       }, CONNECTION_TIMEOUT);
   
-      promise.finally(() => {
+      promise.catch(noop).finally(() => {
         clearTimeout(timeout);
         this.setConnectionStatus(ConnectionStatus.Connected);
 
@@ -851,7 +852,7 @@ export default class MTPNetworker {
     }
 
     if(this.pendingAcks.length) {
-      const ackMsgIds: Array<string> = this.pendingAcks.slice();
+      const ackMsgIds = this.pendingAcks.slice();
 
       // this.log('acking messages', ackMsgIDs)
       this.wrapMtpMessage({
@@ -864,7 +865,7 @@ export default class MTPNetworker {
     }
   
     if(this.pendingResends.length) {
-      const resendMsgIds: Array<string> = this.pendingResends.slice();
+      const resendMsgIds = this.pendingResends.slice();
       const resendOpts: MTMessageOptions = {
         noSchedule: true,
         notContentRelated: true,
@@ -1213,7 +1214,7 @@ export default class MTPNetworker {
         }
         // this.log('after msgKey check')
   
-        let deserializer = new TLDeserialization(dataWithPadding, {mtproto: true});
+        let deserializer = new TLDeserialization<MTLong>(dataWithPadding, {mtproto: true});
   
         /* const salt =  */deserializer.fetchIntBytes(64, true, 'salt'); // need
         const sessionId = deserializer.fetchIntBytes(64, true, 'session_id');
@@ -1247,7 +1248,7 @@ export default class MTPNetworker {
         }
   
         //let buffer = bytesToArrayBuffer(messageBody);
-        deserializer = new TLDeserialization(/* buffer */messageBody, {
+        deserializer = new TLDeserialization<MTLong>(/* buffer */messageBody, {
           mtproto: true, 
           override: {
             mt_message: (result: any, field: string) => {
@@ -1376,7 +1377,7 @@ export default class MTPNetworker {
     }
   }
 
-  private ackMessage(msgId: string) {
+  private ackMessage(msgId: MTLong) {
     // this.log('ack message', msgID)
     this.pendingAcks.push(msgId);
 
@@ -1387,7 +1388,7 @@ export default class MTPNetworker {
     /// #endif
   }
   
-  private reqResendMessage(msgId: string) {
+  private reqResendMessage(msgId: MTLong) {
     if(this.debug) {
       this.log.debug('Req resend', msgId);
     }
@@ -1424,7 +1425,7 @@ export default class MTPNetworker {
     return !notEmpty;
   }
 
-  private processMessageAck(messageId: string) {
+  private processMessageAck(messageId: Long) {
     const sentMessage = this.sentMessages[messageId];
     if(sentMessage && !sentMessage.acked) {
       //delete sentMessage.body;
@@ -1477,11 +1478,13 @@ export default class MTPNetworker {
   } */
 
   // * https://core.telegram.org/mtproto/service_messages_about_messages#notice-of-ignored-error-message
-  public processMessage(message: any, messageId: string, sessionId: Uint8Array | number[]) {
+  public processMessage(message: any, messageId: MTLong, sessionId: Uint8Array | number[]) {
     if(message._ === 'messageEmpty') {
       this.log.warn('processMessage: messageEmpty', message, messageId);
       return;
     }
+
+    // messageId = messageId.toString();
 
     const msgidInt = parseInt(messageId.substr(0, -10), 10);
     if(msgidInt % 2) {

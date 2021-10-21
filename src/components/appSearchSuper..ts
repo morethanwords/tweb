@@ -50,12 +50,13 @@ import { cancelEvent } from "../helpers/dom/cancelEvent";
 import { attachClickEvent, simulateClickEvent } from "../helpers/dom/clickEvent";
 import { MyDocument } from "../lib/appManagers/appDocsManager";
 import AppMediaViewer from "./appMediaViewer";
+import lockTouchScroll from "../helpers/dom/lockTouchScroll";
 
 //const testScroll = false;
 
 export type SearchSuperType = MyInputMessagesFilter/*  | 'members' */;
 export type SearchSuperContext = {
-  peerId: number,
+  peerId: PeerId,
   inputFilter: {_: MyInputMessagesFilter},
   query?: string,
   maxId?: number,
@@ -81,7 +82,7 @@ class SearchContextMenu {
   private buttons: (ButtonMenuItemOptions & {verify?: () => boolean, withSelection?: true})[];
   private element: HTMLElement;
   private target: HTMLElement;
-  private peerId: number;
+  private peerId: PeerId;
   private mid: number;
   private isSelected: boolean;
 
@@ -109,7 +110,7 @@ class SearchContextMenu {
       if(e instanceof MouseEvent) e.cancelBubble = true;
 
       this.target = item;
-      this.peerId = +item.dataset.peerId;
+      this.peerId = item.dataset.peerId.toPeerId();
       this.mid = +item.dataset.mid;
       this.isSelected = searchSuper.selection.isMidSelected(this.peerId, this.mid);
 
@@ -236,7 +237,7 @@ export default class AppSearchSuper {
   private lazyLoadQueue = new LazyLoadQueue();
   public middleware = getMiddleware();
 
-  public historyStorage: Partial<{[type in SearchSuperType]: {mid: number, peerId: number}[]}> = {};
+  public historyStorage: Partial<{[type in SearchSuperType]: {mid: number, peerId: PeerId}[]}> = {};
   public usedFromHistory: Partial<{[type in SearchSuperType]: number}> = {};
   public urlsToRevoke: string[] = [];
 
@@ -326,10 +327,35 @@ export default class AppSearchSuper {
     this.tabsContainer = document.createElement('div');
     this.tabsContainer.classList.add('search-super-tabs-container', 'tabs-container');
 
+    let unlockScroll: ReturnType<typeof lockTouchScroll>;
     if(IS_TOUCH_SUPPORTED) {
-      handleTabSwipe(this.tabsContainer, (next) => {
-        const prevId = this.selectTab.prevId();
-        this.selectTab(next ? prevId + 1 : prevId - 1);
+      handleTabSwipe({
+        element: this.tabsContainer, 
+        onSwipe: (xDiff, yDiff, e) => {
+          const prevId = this.selectTab.prevId();
+          const children = Array.from(this.tabsMenu.children) as HTMLElement[];
+          let idx: number;
+          if(xDiff > 0) {
+            for(let i = prevId + 1; i < children.length; ++i) {
+              if(!children[i].classList.contains('hide')) {
+                idx = i;
+                break;
+              }
+            }
+          } else {
+            for(let i = prevId - 1; i >= 0; --i) {
+              if(!children[i].classList.contains('hide')) {
+                idx = i;
+                break;
+              }
+            }
+          }
+
+          if(idx !== undefined) {
+            unlockScroll = lockTouchScroll(this.tabsContainer);
+            this.selectTab(idx);
+          }
+        }
       });
     }
 
@@ -441,6 +467,11 @@ export default class AppSearchSuper {
         this.scrollable.scrollTop = this.mediaTab.scroll.scrollTop;
       }
 
+      if(unlockScroll) {
+        unlockScroll();
+        unlockScroll = undefined;
+      }
+
       this.onTransitionEnd();
     }, undefined, navScrollable);
 
@@ -461,14 +492,14 @@ export default class AppSearchSuper {
         return;
       }
 
-      const peerId = +target.dataset.peerId;
+      const peerId = target.dataset.peerId.toPeerId();
 
       const targets = (Array.from(this.tabs[inputFilter].querySelectorAll('.' + targetClassName)) as HTMLElement[]).map(el => {
         const containerEl = findUpClassName(el, className);
         return {
           element: el, 
           mid: +containerEl.dataset.mid, 
-          peerId: +containerEl.dataset.peerId
+          peerId: containerEl.dataset.peerId.toPeerId()
         };
       });
 
@@ -923,7 +954,7 @@ export default class AppSearchSuper {
   }
 
   private loadChats() {
-    const renderedPeerIds: Set<number> = new Set();
+    const renderedPeerIds: Set<PeerId> = new Set();
     const middleware = this.middleware.get();
 
     for(let i in this.searchGroups) {
@@ -934,7 +965,7 @@ export default class AppSearchSuper {
 
     const query = this.searchContext.query;
     if(query) {
-      const setResults = (results: number[], group: SearchGroup, showMembersCount = false) => {
+      const setResults = (results: PeerId[], group: SearchGroup, showMembersCount = false) => {
         results.forEach((peerId) => {
           if(renderedPeerIds.has(peerId)) {
             return;
@@ -957,7 +988,7 @@ export default class AppSearchSuper {
           if(showMembersCount && (peer.participants_count || peer.participants)) {
             const regExp = new RegExp(`(${escapeRegExp(query)}|${escapeRegExp(cleanSearchText(query))})`, 'gi');
             dom.titleSpan.innerHTML = dom.titleSpan.innerHTML.replace(regExp, '<i>$1</i>');
-            dom.lastMessageSpan.append(appProfileManager.getChatMembersString(-peerId));
+            dom.lastMessageSpan.append(appProfileManager.getChatMembersString(peerId.toChatId()));
           } else if(peerId === rootScope.myId) {
             dom.lastMessageSpan.append(i18n('Presence.YourChat'));
           } else {
@@ -989,7 +1020,7 @@ export default class AppSearchSuper {
       };
   
       return Promise.all([
-        appUsersManager.getContacts(query, true)
+        appUsersManager.getContactsPeerIds(query, true)
         .then(onLoad)
         .then((contacts) => {
           if(contacts) {
@@ -1050,7 +1081,7 @@ export default class AppSearchSuper {
               autonomous: true
             });
     
-            dom.lastMessageSpan.append(peerId > 0 ? appUsersManager.getUserStatusString(peerId) : appProfileManager.getChatMembersString(-peerId));
+            dom.lastMessageSpan.append(peerId.isUser() ? appUsersManager.getUserStatusString(peerId) : appProfileManager.getChatMembersString(peerId.toChatId()));
           });
     
           if(!state.recentSearch.length) {
@@ -1093,7 +1124,7 @@ export default class AppSearchSuper {
   }
 
   private loadMembers(mediaTab: SearchSuperMediaTab) {
-    const id = -this.searchContext.peerId;
+    const id = this.searchContext.peerId.toChatId();
     const middleware = this.middleware.get();
     let promise: Promise<void>;
 
@@ -1114,7 +1145,7 @@ export default class AppSearchSuper {
             return;
           }
 
-          const peerId = +li.dataset.peerId;
+          const peerId = li.dataset.peerId.toPeerId();
           let promise: Promise<any> = Promise.resolve();
           if(mediaSizes.isMobile) {
             promise = appSidebarRight.toggleSidebar(false);
@@ -1130,7 +1161,7 @@ export default class AppSearchSuper {
 
       participants.forEach(participant => {
         const peerId = appChatsManager.getParticipantPeerId(participant);
-        if(peerId < 0) {
+        if(peerId.isAnyChat()) {
           return;
         }
 
@@ -1386,7 +1417,7 @@ export default class AppSearchSuper {
       return !this.loaded[inputFilter] || (this.historyStorage[inputFilter] && this.usedFromHistory[inputFilter] < this.historyStorage[inputFilter].length);
     });
 
-    if(peerId > 0) {
+    if(peerId.isUser()) {
       toLoad.findAndSplice(mediaTab => mediaTab.type === 'members');
     }
 
@@ -1456,7 +1487,7 @@ export default class AppSearchSuper {
   }
 
   public canViewMembers() {
-    return this.searchContext.peerId < 0 && !appChatsManager.isBroadcast(-this.searchContext.peerId) && appChatsManager.hasRights(-this.searchContext.peerId, 'view_participants');
+    return this.searchContext.peerId.isAnyChat() && !appChatsManager.isBroadcast(this.searchContext.peerId.toChatId()) && appChatsManager.hasRights(this.searchContext.peerId.toChatId(), 'view_participants');
   }
 
   public cleanup() {
@@ -1566,7 +1597,7 @@ export default class AppSearchSuper {
   }
 
   public setQuery({peerId, query, threadId, historyStorage, folderId, minDate, maxDate}: {
-    peerId: number, 
+    peerId: PeerId, 
     query?: string, 
     threadId?: number, 
     historyStorage?: AppSearchSuper['historyStorage'], 
@@ -1575,7 +1606,7 @@ export default class AppSearchSuper {
     maxDate?: number
   }) {
     this.searchContext = {
-      peerId: peerId || 0,
+      peerId,
       query: query || '',
       inputFilter: {_: this.mediaTab.inputFilter},
       threadId,

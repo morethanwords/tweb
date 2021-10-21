@@ -198,7 +198,7 @@ export default class GifsMasonry {
     div.style.width = size.width + 'px';
     div.style.opacity = '0';
     //div.style.height = h + 'px';
-    div.dataset.docId = doc.id;
+    div.dataset.docId = '' + doc.id;
 
     appendTo.append(div);
 

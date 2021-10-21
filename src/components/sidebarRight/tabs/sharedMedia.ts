@@ -29,12 +29,12 @@ import PeerProfile from "../../peerProfile";
 export default class AppSharedMediaTab extends SliderSuperTab {
   private editBtn: HTMLElement;
 
-  private peerId = 0;
+  private peerId: PeerId;
   private threadId = 0;
 
   private historiesStorage: {
-    [peerId: number]: Partial<{
-      [type in SearchSuperType]: {mid: number, peerId: number}[]
+    [peerId: PeerId]: Partial<{
+      [type in SearchSuperType]: {mid: number, peerId: PeerId}[]
     }>
   } = {};
 
@@ -124,7 +124,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
 
     attachClickEvent(this.editBtn, (e) => {
       let tab: AppEditChatTab | AppEditContactTab;
-      if(this.peerId < 0) {
+      if(this.peerId.isAnyChat()) {
         tab = new AppEditChatTab(this.slider);
       } else {
         tab = new AppEditContactTab(this.slider);
@@ -132,7 +132,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
 
       if(tab) {
         if(tab instanceof AppEditChatTab) {
-          tab.chatId = -this.peerId;
+          tab.chatId = this.peerId.toChatId();
         } else {
           tab.peerId = this.peerId;
         }
@@ -148,14 +148,14 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     });
 
     rootScope.addEventListener('chat_update', (chatId) => {
-      if(this.peerId === -chatId) {
+      if(this.peerId === chatId.toPeerId(true)) {
         this.toggleEditBtn();
       }
     });
 
     rootScope.addEventListener('history_multiappend', (msgIdsByPeer) => {
       for(const peerId in msgIdsByPeer) {
-        this.renderNewMessages(+peerId, Array.from(msgIdsByPeer[peerId]));
+        this.renderNewMessages(peerId.toPeerId(), Array.from(msgIdsByPeer[peerId]));
       }
     });
     
@@ -211,10 +211,11 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     this.content.append(btnAddMembers);
 
     btnAddMembers.addEventListener('click', () => {
-      const id = -this.peerId;
+      const peerId = this.peerId;
+      const id = this.peerId.toChatId();
       const isChannel = appChatsManager.isChannel(id);
 
-      const showConfirmation = (peerIds: number[], callback: (checked: PopupPeerButtonCallbackCheckboxes) => void) => {
+      const showConfirmation = (peerIds: PeerId[], callback: (checked: PopupPeerButtonCallbackCheckboxes) => void) => {
         let titleLangKey: LangPackKey, titleLangArgs: any[],
           descriptionLangKey: LangPackKey, descriptionLangArgs: any[],
           checkboxes: PopupPeerCheckboxOptions[];
@@ -254,11 +255,11 @@ export default class AppSharedMediaTab extends SliderSuperTab {
         }
 
         descriptionLangArgs.push(new PeerTitle({
-          peerId: -id
+          peerId
         }).element);
 
         new PopupPeer('popup-add-members', {
-          peerId: -id,
+          peerId,
           titleLangKey,
           descriptionLangKey,
           descriptionLangArgs,
@@ -279,7 +280,6 @@ export default class AppSharedMediaTab extends SliderSuperTab {
       if(isChannel) {
         const tab = new AppAddMembersTab(this.slider);
         tab.open({
-          peerId: this.peerId,
           type: 'channel',
           skippable: false,
           takeOut: (peerIds) => {
@@ -313,7 +313,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     //console.log('construct shared media time:', performance.now() - perf);
   }
 
-  public renderNewMessages(peerId: number, mids: number[]) {
+  public renderNewMessages(peerId: PeerId, mids: number[]) {
     if(this.init) return; // * not inited yet
 
     if(!this.historiesStorage[peerId]) return;
@@ -336,7 +336,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     }
   }
 
-  public deleteDeletedMessages(peerId: number, mids: number[]) {
+  public deleteDeletedMessages(peerId: PeerId, mids: number[]) {
     if(this.init) return; // * not inited yet
 
     if(!this.historiesStorage[peerId]) return;
@@ -384,7 +384,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
 
     this.searchSuper.cleanupHTML(true);
 
-    this.container.classList.toggle('can-add-members', this.searchSuper.canViewMembers() && appChatsManager.hasRights(-this.peerId, 'invite_users'));
+    this.container.classList.toggle('can-add-members', this.searchSuper.canViewMembers() && appChatsManager.hasRights(this.peerId.toChatId(), 'invite_users'));
 
     // console.log('cleanupHTML shared media time:', performance.now() - perf);
   }
@@ -393,7 +393,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     this.searchSuper.loadMutex = promise;
   }
 
-  public setPeer(peerId: number, threadId = 0) {
+  public setPeer(peerId: PeerId, threadId = 0) {
     if(this.peerId === peerId && this.threadId === threadId) return false;
 
     this.peerId = peerId;
@@ -432,10 +432,10 @@ export default class AppSharedMediaTab extends SliderSuperTab {
 
   private toggleEditBtn() {
     let show: boolean;
-    if(this.peerId > 0) {
+    if(this.peerId.isUser()) {
       show = this.peerId !== rootScope.myId && appUsersManager.isContact(this.peerId);
     } else {
-      show = appChatsManager.hasRights(-this.peerId, 'change_info');
+      show = appChatsManager.hasRights(this.peerId.toChatId(), 'change_info');
     }
 
     this.editBtn.classList.toggle('hide', !show);

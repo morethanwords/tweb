@@ -21,6 +21,12 @@ export function listMergeSorted(list1: any[] = [], list2: any[] = []) {
 
 export const accumulate = (arr: number[], initialValue: number) => arr.reduce((acc, value) => acc + value, initialValue);
 
+export function indexOfAndSplice<T>(array: Array<T>, item: T) {
+  const idx = array.indexOf(item);
+  const spliced = idx !== -1 && array.splice(idx, 1);
+  return spliced && spliced[0];
+}
+
 export function findAndSpliceAll<T>(array: Array<T>, verify: (value: T, index: number, arr: typeof array) => boolean) {
   const out: typeof array = [];
   let idx = -1;

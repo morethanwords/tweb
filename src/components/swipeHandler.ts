@@ -20,6 +20,17 @@ rootScope.addEventListener('context_menu_toggle', (visible) => {
   RESET_GLOBAL = visible;
 });
 
+export type SwipeHandlerOptions = {
+  element: SwipeHandler['element'],
+  onSwipe: SwipeHandler['onSwipe'],
+  verifyTouchTarget?: SwipeHandler['verifyTouchTarget'],
+  onFirstSwipe?: SwipeHandler['onFirstSwipe'],
+  onReset?: SwipeHandler['onReset'],
+  cursor?: SwipeHandler['cursor'],
+  cancelEvent?: SwipeHandler['cancelEvent'],
+  listenerOptions?: SwipeHandler['listenerOptions']
+};
+
 export default class SwipeHandler {
   private element: HTMLElement;
   private onSwipe: (xDiff: number, yDiff: number, e: TouchEvent | MouseEvent) => boolean | void;
@@ -28,20 +39,13 @@ export default class SwipeHandler {
   private onReset: () => void;
   private cursor: 'grabbing' | 'move' = 'grabbing';
   private cancelEvent = true;
+  private listenerOptions: boolean | AddEventListenerOptions = false;
 
   private hadMove = false;
   private xDown: number = null;
   private yDown: number = null;
 
-  constructor(options: {
-    element: SwipeHandler['element'],
-    onSwipe: SwipeHandler['onSwipe'],
-    verifyTouchTarget?: SwipeHandler['verifyTouchTarget'],
-    onFirstSwipe?: SwipeHandler['onFirstSwipe'],
-    onReset?: SwipeHandler['onReset'],
-    cursor?: SwipeHandler['cursor'],
-    cancelEvent?: SwipeHandler['cancelEvent']
-  }) {
+  constructor(options: SwipeHandlerOptions) {
     safeAssign(this, options);
 
     this.setListeners();
@@ -49,20 +53,20 @@ export default class SwipeHandler {
 
   public setListeners() {
     if(!IS_TOUCH_SUPPORTED) {
-      this.element.addEventListener('mousedown', this.handleStart, false);
+      this.element.addEventListener('mousedown', this.handleStart, this.listenerOptions);
       attachGlobalListenerTo.addEventListener('mouseup', this.reset);
     } else {
-      this.element.addEventListener('touchstart', this.handleStart, false);
+      this.element.addEventListener('touchstart', this.handleStart, this.listenerOptions);
       attachGlobalListenerTo.addEventListener('touchend', this.reset);
     }
   }
 
   public removeListeners() {
     if(!IS_TOUCH_SUPPORTED) {
-      this.element.removeEventListener('mousedown', this.handleStart, false);
+      this.element.removeEventListener('mousedown', this.handleStart, this.listenerOptions);
       attachGlobalListenerTo.removeEventListener('mouseup', this.reset);
     } else {
-      this.element.removeEventListener('touchstart', this.handleStart, false);
+      this.element.removeEventListener('touchstart', this.handleStart, this.listenerOptions);
       attachGlobalListenerTo.removeEventListener('touchend', this.reset);
     }
   }

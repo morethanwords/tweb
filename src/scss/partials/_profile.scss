@@ -154,11 +154,16 @@
       bottom: 0;
       width: calc(100% / 3);
       opacity: 0;
-      background-image: url(assets/img/avatarprevious.svg);
-      background-position: 1.125rem 50%;
-      background-repeat: no-repeat;
-      background-size: 1.25rem;
-      
+
+      &:before {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 2.1875rem;
+        color: #fff;
+        left: .625rem;
+      }
+
       @include animation-level(2) {
         transition: opacity .2s ease-in-out;
       }
@@ -179,8 +184,11 @@
       &-next {
         left: auto;
         right: 0;
-        background-image: url(assets/img/avatarnext.svg);
-        background-position: calc(100% - 1.125rem) 50%;
+        
+        &:before {
+          left: auto;
+          right: .625rem;
+        }
       }
     }
   }

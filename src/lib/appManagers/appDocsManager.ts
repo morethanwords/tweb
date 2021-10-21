@@ -33,9 +33,9 @@ const EXTENSION_MIME_TYPE_MAP: {[key: string]: string} = {
 };
 
 export class AppDocsManager {
-  private docs: {[docId: string]: MyDocument} = {};
-  private savingLottiePreview: {[docId: string]: true} = {};
-  public downloading: Map<string, DownloadBlob> = new Map();
+  private docs: {[docId: DocId]: MyDocument} = {};
+  private savingLottiePreview: {[docId: DocId]: true} = {};
+  public downloading: Map<DocId, DownloadBlob> = new Map();
 
   constructor() {
     apiManager.onServiceWorkerFail = this.onServiceWorkerFail;
@@ -232,8 +232,8 @@ export class AppDocsManager {
     return doc;
   }
   
-  public getDoc(docId: string | MyDocument): MyDocument {
-    return isObject(docId) && typeof(docId) !== 'string' ? docId as any : this.docs[docId as string] as any;
+  public getDoc(docId: DocId | MyDocument): MyDocument {
+    return isObject<MyDocument>(docId) ? docId : this.docs[docId];
   }
 
   public getMediaInput(doc: MyDocument): InputMedia.inputMediaDocument {

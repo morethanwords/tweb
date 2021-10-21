@@ -7,7 +7,7 @@
 import appMessagesManager from "../lib/appManagers/appMessagesManager";
 import appProfileManager from "../lib/appManagers/appProfileManager";
 import rootScope from "../lib/rootScope";
-import { Message } from "../layer";
+import { Message, Photo } from "../layer";
 import appPeersManager from "../lib/appManagers/appPeersManager";
 import appPhotosManager from "../lib/appManagers/appPhotosManager";
 import type { LazyLoadQueueIntersector } from "./lazyLoadQueue";
@@ -16,8 +16,9 @@ import { cancelEvent } from "../helpers/dom/cancelEvent";
 import appAvatarsManager from "../lib/appManagers/appAvatarsManager";
 import AppMediaViewer from "./appMediaViewer";
 import AppMediaViewerAvatar from "./appMediaViewerAvatar";
+import { NULL_PEER_ID } from "../lib/mtproto/mtproto_config";
 
-const onAvatarUpdate = (peerId: number) => {
+const onAvatarUpdate = (peerId: PeerId) => {
   appAvatarsManager.removeFromAvatarsCache(peerId);
   (Array.from(document.querySelectorAll('avatar-element[peer="' + peerId + '"]')) as AvatarElement[]).forEach(elem => {
     //console.log('updating avatar:', elem);
@@ -32,7 +33,14 @@ rootScope.addEventListener('peer_title_edit', (peerId) => {
   }
 });
 
-export async function openAvatarViewer(target: HTMLElement, peerId: number, middleware: () => boolean, message?: any, prevTargets?: {element: HTMLElement, item: string | Message.messageService}[], nextTargets?: typeof prevTargets) {
+export async function openAvatarViewer(
+  target: HTMLElement, 
+  peerId: PeerId, 
+  middleware: () => boolean, 
+  message?: any, 
+  prevTargets?: {element: HTMLElement, item: Photo.photo['id'] | Message.messageService}[], 
+  nextTargets?: typeof prevTargets
+) {
   let photo = await appProfileManager.getFullPhoto(peerId);
   if(!middleware() || !photo) {
     return;
@@ -43,7 +51,7 @@ export async function openAvatarViewer(target: HTMLElement, peerId: number, midd
     return good ? target : null;
   };
 
-  if(peerId < 0) {
+  if(peerId.isAnyChat()) {
     const hadMessage = !!message;
     const inputFilter = 'inputMessagesFilterChatPhotos';
     if(!message) {
@@ -105,11 +113,11 @@ export async function openAvatarViewer(target: HTMLElement, peerId: number, midd
   }
 }
 
-const believeMe: Map<number, Set<AvatarElement>> = new Map();
-const seen: Set<number> = new Set();
+const believeMe: Map<PeerId, Set<AvatarElement>> = new Map();
+const seen: Set<PeerId> = new Set();
 
 export default class AvatarElement extends HTMLElement {
-  private peerId: number;
+  private peerId: PeerId;
   private isDialog = false;
   private peerTitle: string;
   public loadPromises: Promise<any>[];
@@ -160,13 +168,14 @@ export default class AvatarElement extends HTMLElement {
     //console.log('avatar changed attribute:', name, oldValue, newValue);
     // вызывается при изменении одного из перечисленных выше атрибутов
     if(name === 'peer') {
-      if(this.peerId === +newValue) {
+      const newPeerId = (newValue || '').toPeerId() || NULL_PEER_ID;
+      if(this.peerId === newPeerId) {
         return;
       }
       
-      this.peerId = appPeersManager.getPeerMigratedTo(+newValue) || +newValue;
+      this.peerId = appPeersManager.getPeerMigratedTo(newPeerId) || newPeerId;
 
-      const wasPeerId = +oldValue;
+      const wasPeerId = (oldValue || '').toPeerId() || NULL_PEER_ID;
       if(wasPeerId) {
         const set = believeMe.get(wasPeerId);
         if(set) {

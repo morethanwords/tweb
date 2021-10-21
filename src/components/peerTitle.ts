@@ -12,7 +12,7 @@ import replaceContent from "../helpers/dom/replaceContent";
 import appUsersManager from "../lib/appManagers/appUsersManager";
 
 export type PeerTitleOptions = {
-  peerId: number,
+  peerId: PeerId,
   plainText?: boolean,
   onlyFirstName?: boolean,
   dialog?: boolean
@@ -36,7 +36,7 @@ rootScope.addEventListener('peer_title_edit', (peerId) => {
 
 export default class PeerTitle {
   public element: HTMLElement;
-  public peerId: number;
+  public peerId: PeerId;
   public plainText = false;
   public onlyFirstName = false;
   public dialog = false;
@@ -61,7 +61,7 @@ export default class PeerTitle {
     }
 
     if(this.peerId !== rootScope.myId || !this.dialog) {
-      if(this.peerId > 0 && appUsersManager.getUser(this.peerId).pFlags.deleted) {
+      if(this.peerId.isUser() && appUsersManager.getUser(this.peerId).pFlags.deleted) {
         replaceContent(this.element, i18n(this.onlyFirstName ? 'Deleted' : 'HiddenName'));
       } else {
         this.element.innerHTML = appPeersManager.getPeerTitle(this.peerId, this.plainText, this.onlyFirstName);

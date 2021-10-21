@@ -198,8 +198,8 @@ export default class StickersTab implements EmoticonsTab {
   async renderStickerSet(set: StickerSet.stickerSet, prepend = false) {
     const categoryDiv = document.createElement('div');
     categoryDiv.classList.add('sticker-category');
-    categoryDiv.dataset.id = set.id;
-    categoryDiv.dataset.access_hash = set.access_hash;
+    categoryDiv.dataset.id = '' + set.id;
+    categoryDiv.dataset.access_hash = '' + set.access_hash;
 
     const button = document.createElement('button');
     button.classList.add('btn-icon', 'menu-horizontal-div-item');

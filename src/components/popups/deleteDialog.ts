@@ -13,7 +13,7 @@ import PopupPeer, { PopupPeerButtonCallbackCheckboxes, PopupPeerOptions } from "
 
 export default class PopupDeleteDialog {
   constructor(
-    peerId: number, 
+    peerId: PeerId, 
     // actionType: 'leave' | 'delete', 
     peerType: PeerType = appPeersManager.getDialogType(peerId), 
     onSelect?: (promise: Promise<any>) => void
@@ -26,7 +26,7 @@ export default class PopupDeleteDialog {
     }; */
 
     const callbackLeave = (checked: PopupPeerButtonCallbackCheckboxes, flush = checkboxes && !!checked.size) => {
-      let promise = appChatsManager.leave(-peerId);
+      let promise = appChatsManager.leave(peerId.toChatId());
       
       if(flush) {
         promise = promise.finally(() => {
@@ -40,11 +40,11 @@ export default class PopupDeleteDialog {
     const callbackDelete = (checked: PopupPeerButtonCallbackCheckboxes) => {
       let promise: Promise<any>;
 
-      if(peerId > 0) {
+      if(peerId.isUser()) {
         promise = appMessagesManager.flushHistory(peerId, false, checkboxes ? !!checked.size : undefined);
       } else {
         if(checked.size) {
-          promise = appChatsManager.delete(-peerId);
+          promise = appChatsManager.delete(peerId.toChatId());
         } else {
           return callbackLeave(checked);
         }
@@ -56,7 +56,7 @@ export default class PopupDeleteDialog {
     let title: LangPackKey, description: LangPackKey, descriptionArgs: any[], buttons: PopupPeerOptions['buttons'], checkboxes: PopupPeerOptions['checkboxes'];
     switch(peerType) {
       case 'channel': {
-        if(/* actionType === 'delete' &&  */appChatsManager.hasRights(-peerId, 'delete_chat')) {
+        if(/* actionType === 'delete' &&  */appChatsManager.hasRights(peerId.toChatId(), 'delete_chat')) {
           appChatsManager.deleteChannel
           title = 'ChannelDeleteMenu';
           description = 'AreYouSureDeleteAndExitChannel';
@@ -130,7 +130,7 @@ export default class PopupDeleteDialog {
 
       case 'megagroup':
       case 'group': {
-        if(/* actionType === 'delete' &&  */appChatsManager.hasRights(-peerId, 'delete_chat')) {
+        if(/* actionType === 'delete' &&  */appChatsManager.hasRights(peerId.toChatId(), 'delete_chat')) {
           title = 'DeleteMegaMenu';
           description = 'AreYouSureDeleteAndExit';
           buttons = [{

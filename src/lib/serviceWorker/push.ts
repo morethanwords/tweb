@@ -263,15 +263,15 @@ function fireNotification(obj: PushNotificationObject, settings: PushStorage['pu
   const icon = 'assets/img/logo_filled_rounded.png';
   let title = obj.title || 'Telegram';
   let body = obj.description || '';
-  let peerId: number;
+  let peerId: string;
 
   if(obj.custom) {
     if(obj.custom.channel_id) {
-      peerId = -obj.custom.channel_id;
+      peerId = '' + -obj.custom.channel_id;
     } else if(obj.custom.chat_id) {
-      peerId = -obj.custom.chat_id;
+      peerId = '' + -obj.custom.chat_id;
     } else {
-      peerId = +obj.custom.from_id || 0;
+      peerId = obj.custom.from_id || '';
     }
   }
 

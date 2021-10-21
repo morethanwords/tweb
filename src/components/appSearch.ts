@@ -74,7 +74,7 @@ export default class AppSearch {
 
   private listsContainer: HTMLDivElement = null;
 
-  private peerId = 0; // 0 - means global
+  private peerId: PeerId; // 0 - means global
   private threadId = 0;
 
   private scrollable: Scrollable;
@@ -117,7 +117,7 @@ export default class AppSearch {
     if(all) {
       this.searchInput.value = '';
       this.query = '';
-      this.peerId = 0;
+      this.peerId = undefined;
       this.threadId = 0;
     }
 
@@ -132,7 +132,7 @@ export default class AppSearch {
     this.searchPromise = null;
   }
 
-  public beginSearch(peerId = 0, threadId = 0, query = '') {
+  public beginSearch(peerId?: PeerId, threadId = 0, query = '') {
     this.peerId = peerId;
     this.threadId = threadId;
 

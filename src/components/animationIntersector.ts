@@ -9,6 +9,7 @@ import rootScope from "../lib/rootScope";
 import { IS_SAFARI } from "../environment/userAgent";
 import { MOUNT_CLASS_TO } from "../config/debug";
 import isInDOM from "../helpers/dom/isInDOM";
+import { indexOfAndSplice } from "../helpers/array";
 
 export interface AnimationItem {
   el: HTMLElement,
@@ -101,7 +102,7 @@ export class AnimationIntersector {
     }
 
     for(const group in this.byGroups) {
-      this.byGroups[group].findAndSplice(p => p === player);
+      indexOfAndSplice(this.byGroups[group], player);
     }
   
     this.observer.unobserve(el);

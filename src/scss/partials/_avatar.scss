@@ -69,6 +69,10 @@ avatar-element {
     font-size: calc(21px / var(--multiplier)) !important; // ! IMPORTANT IS TEMPORARY
   }
 
+  &.tgico-reply_filled:before {
+    font-size: calc(28px / var(--multiplier)) !important; // ! IMPORTANT IS TEMPORARY
+  }
+
   /* &.tgico-savedmessages:before {
     font-size: calc(25px / var(--multiplier));
   } */

@@ -289,8 +289,12 @@ $chat-helper-size: 36px;
 		&.edit .tgico-check,
 		&.schedule .tgico-schedule {
 			visibility: visible !important;
-			
-			
+		}
+
+		&:not(.record) {
+			.c-ripple__circle {
+				background-color: var(--light-primary-color);
+			}
 		}
 
 		@include animation-level(2) {
@@ -942,13 +946,26 @@ $chat-helper-size: 36px;
 		} */
 		
 		.reply {
-			width: 100%;
+			order: 1;
+			flex: 1 1 auto;
 			margin: 0 .625rem;
 			// min-height: 35px;
 
 			/* &-content {
 				margin-left: .5rem;
 			} */
+
+			&-icon {
+				order: 0;
+				pointer-events: none;
+
+				display: none;
+			}
+
+			&-cancel {
+				// order: 2;
+				order: 0;
+			}
 		}
 
 		/* span.emoji {
@@ -1174,7 +1191,7 @@ $chat-helper-size: 36px;
 			}
 
 			&.with-beside-button .bubble-content-wrapper {
-				max-width: calc(100% - var(--message-beside-button-margin)) !important;
+				max-width: calc(100% - var(--message-beside-button-margin) * -1) !important;
 			}
 		}
 	}

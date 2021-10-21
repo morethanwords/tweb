@@ -37,14 +37,14 @@ import { attachContextMenuListener } from "../misc";
 import { attachClickEvent, AttachClickOptions } from "../../helpers/dom/clickEvent";
 import findUpAsChild from "../../helpers/dom/findUpAsChild";
 
-const accumulateMapSet = (map: Map<number, Set<number>>) => {
+const accumulateMapSet = (map: Map<any, Set<number>>) => {
   return [...map.values()].reduce((acc, v) => acc + v.size, 0);
 };
 
 //const MIN_CLICK_MOVE = 32; // minimum bubble height
 
 class AppSelection {
-  public selectedMids: Map<number, Set<number>> = new Map();
+  public selectedMids: Map<PeerId, Set<number>> = new Map();
   public isSelecting = false;
 
   public selectedText: string;
@@ -57,7 +57,7 @@ class AppSelection {
   protected onToggleSelection: (forwards: boolean) => void;
   protected onUpdateContainer: (cantForward: boolean, cantDelete: boolean, cantSend: boolean) => void;
   protected onCancelSelection: () => void;
-  protected toggleByMid: (peerId: number, mid: number) => void;
+  protected toggleByMid: (peerId: PeerId, mid: number) => void;
   protected toggleByElement: (bubble: HTMLElement) => void;
 
   protected navigationType: NavigationItem['type'];
@@ -157,7 +157,7 @@ class AppSelection {
         return;
       }
       
-      const seen: Map<number, Set<number>> = new Map();
+      const seen: AppSelection['selectedMids'] = new Map();
       let selecting: boolean;
 
       /* let good = false;
@@ -175,7 +175,7 @@ class AppSelection {
 
       const processElement = (element: HTMLElement, checkBetween = true) => {
         const mid = +element.dataset.mid;
-        const peerId = +element.dataset.peerId;
+        const peerId = (element.dataset.peerId || '').toPeerId();
         if(!mid || !peerId) return;
 
         if(!isInDOM(firstTarget)) {
@@ -280,7 +280,7 @@ class AppSelection {
   }
 
   protected isElementShouldBeSelected(element: HTMLElement) {
-    return this.isMidSelected(+element.dataset.peerId, +element.dataset.mid);
+    return this.isMidSelected(element.dataset.peerId.toPeerId(), +element.dataset.mid);
   }
 
   protected appendCheckbox(element: HTMLElement, checkboxField: CheckboxField) {
@@ -435,7 +435,7 @@ class AppSelection {
     SetTransition(element, 'is-selected', isSelected, 200);
   }
 
-  public isMidSelected(peerId: number, mid: number) {
+  public isMidSelected(peerId: PeerId, mid: number) {
     const set = this.selectedMids.get(peerId);
     return set?.has(mid);
   }
@@ -444,7 +444,7 @@ class AppSelection {
     return accumulateMapSet(this.selectedMids);
   }
 
-  protected toggleMid(peerId: number, mid: number, unselect?: boolean) {
+  protected toggleMid(peerId: PeerId, mid: number, unselect?: boolean) {
     let set = this.selectedMids.get(peerId);
     if(unselect || (unselect === undefined && set?.has(mid))) {
       if(set) {
@@ -488,7 +488,7 @@ class AppSelection {
   /**
    * ! Call this method only to handle deleted messages
    */
-  public deleteSelectedMids(peerId: number, mids: number[]) {
+  public deleteSelectedMids(peerId: PeerId, mids: number[]) {
     const set = this.selectedMids.get(peerId);
     if(!set) {
       return;
@@ -556,7 +556,7 @@ export class SearchSelection extends AppSelection {
 
   public toggleByElement = (element: HTMLElement) => {
     const mid = +element.dataset.mid;
-    const peerId = +element.dataset.peerId;
+    const peerId = element.dataset.peerId.toPeerId();
 
     if(!this.toggleMid(peerId, mid)) {
       return;
@@ -565,7 +565,7 @@ export class SearchSelection extends AppSelection {
     this.updateElementSelection(element, this.isMidSelected(peerId, mid));
   };
 
-  public toggleByMid = (peerId: number, mid: number) => {
+  public toggleByMid = (peerId: PeerId, mid: number) => {
     const element = this.searchSuper.mediaTab.contentTab.querySelector(`.search-super-item[data-peer-id="${peerId}"][data-mid="${mid}"]`) as HTMLElement;
     this.toggleByElement(element);
   };
@@ -620,7 +620,7 @@ export class SearchSelection extends AppSelection {
 
         this.selectionForwardBtn = ButtonIcon(`forward ${BASE_CLASS}-forward`);
         attachClickEvent(this.selectionForwardBtn, () => {
-          const obj: {[fromPeerId: number]: number[]} = {};
+          const obj: {[frompeerId: PeerId]: number[]} = {};
           for(const [fromPeerId, mids] of this.selectedMids) {
             obj[fromPeerId] = Array.from(mids);
           }
@@ -773,7 +773,7 @@ export default class ChatSelection extends AppSelection {
     this.updateElementSelection(bubble, this.isMidSelected(this.bubbles.peerId, mid));
   };
 
-  protected toggleByMid = (peerId: number, mid: number) => {
+  protected toggleByMid = (peerId: PeerId, mid: number) => {
     const mounted = this.bubbles.getMountedBubble(mid);
     if(mounted) {
       this.toggleByElement(mounted.bubble);
@@ -895,7 +895,7 @@ export default class ChatSelection extends AppSelection {
           this.selectionForwardBtn = Button('btn-primary btn-transparent text-bold selection-container-forward', {icon: 'forward'});
           this.selectionForwardBtn.append(i18n('Forward'));
           attachClickEvent(this.selectionForwardBtn, () => {
-            const obj: {[fromPeerId: number]: number[]} = {};
+            const obj: {[frompeerId: PeerId]: number[]} = {};
             for(const [fromPeerId, mids] of this.selectedMids) {
               obj[fromPeerId] = Array.from(mids);
             }

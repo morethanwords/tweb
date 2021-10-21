@@ -77,7 +77,7 @@ export default function getRichElementValue(node: HTMLElement, lines: string[], 
                 _: tag.entityName,
                 offset: offset.offset,
                 length: nodeValue.length,
-                user_id: +parentElement.dataset.follow
+                user_id: parentElement.dataset.follow
               });
             } else {
               entities.push({

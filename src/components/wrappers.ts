@@ -570,7 +570,7 @@ export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showS
 
   let docDiv = document.createElement('div');
   docDiv.classList.add('document', `ext-${ext}`);
-  docDiv.dataset.docId = doc.id;
+  docDiv.dataset.docId = '' + doc.id;
 
   const icoDiv = document.createElement('div');
   icoDiv.classList.add('document-ico');
@@ -580,7 +580,7 @@ export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showS
     docDiv.classList.add('document-with-thumb');
 
     let imgs: HTMLImageElement[] = [];
-    if(message.pFlags.is_outgoing) {
+    if(uploading) {
       icoDiv.innerHTML = `<img src="${cacheContext.url}">`;
       imgs.push(icoDiv.firstElementChild as HTMLImageElement);
     } else {
@@ -640,9 +640,9 @@ export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showS
 
   docDiv.prepend(icoDiv);
 
-  if(!uploading && message.pFlags.is_outgoing) {
+  /* if(!uploading && message.pFlags.is_outgoing) {
     return docDiv;
-  }
+  } */
 
   let downloadDiv: HTMLElement, preloader: ProgressivePreloader = null;
   const onLoad = () => {
@@ -1133,7 +1133,7 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
     throw new Error('wrong doc for wrapSticker!');
   }
 
-  div.dataset.docId = doc.id;
+  div.dataset.docId = '' + doc.id;
   div.classList.add('media-sticker-wrapper');
   
   //console.log('wrap sticker', doc, div, onlyThumb);
@@ -1185,7 +1185,7 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
           renderImageFromUrl(thumbImage, appPhotosManager.getPreviewURLFromThumb(doc, thumb as PhotoSize.photoStrippedSize, true), afterRender);
           haveThumbCached = true;
         } else {
-          webpWorkerController.convert(doc.id, (thumb as PhotoSize.photoStrippedSize).bytes as Uint8Array).then(bytes => {
+          webpWorkerController.convert('' + doc.id, (thumb as PhotoSize.photoStrippedSize).bytes as Uint8Array).then(bytes => {
             (thumb as PhotoSize.photoStrippedSize).bytes = bytes;
             doc.pFlags.stickerThumbConverted = true;
             
@@ -1594,6 +1594,7 @@ export function wrapAlbum({groupId, attachmentDiv, middleware, uploading, lazyLo
 
     const div = attachmentDiv.children[idx] as HTMLElement;
     div.dataset.mid = '' + message.mid;
+    div.dataset.peerId = '' + message.peerId;
     const mediaDiv = div.firstElementChild as HTMLElement;
     if(media._ === 'photo') {
       wrapPhoto({

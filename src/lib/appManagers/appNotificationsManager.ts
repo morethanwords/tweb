@@ -56,7 +56,7 @@ export type NotificationSettings = {
 type ImSadAboutIt = Promise<PeerNotifySettings> | PeerNotifySettings;
 export class AppNotificationsManager {
   private notificationsUiSupport: boolean;
-  private notificationsShown: {[key: string]: MyNotification} = {};
+  private notificationsShown: {[key: string]: MyNotification | true} = {};
   private notificationIndex = 0;
   private notificationsCount = 0;
   private soundsPlayed: {[tag: string]: number} = {};
@@ -64,7 +64,7 @@ export class AppNotificationsManager {
   private nextSoundAt: number;
   private prevSoundVolume: number;
   private peerSettings = {
-    notifyPeer: {} as {[peerId: number]: ImSadAboutIt},
+    notifyPeer: {} as {[peerId: PeerId]: ImSadAboutIt},
     notifyUsers: null as ImSadAboutIt,
     notifyChats: null as ImSadAboutIt,
     notifyBroadcasts: null as ImSadAboutIt
@@ -126,7 +126,13 @@ export class AppNotificationsManager {
 
     rootScope.addMultipleEventsListeners({
       updateNotifySettings: (update) => {
-        this.savePeerSettings(update.peer._ === 'notifyPeer' ? appPeersManager.getPeerId(update.peer.peer) : update.peer._, update.notify_settings);
+        const peerId = update.peer._ === 'notifyPeer' && appPeersManager.getPeerId(update.peer.peer);
+        const key = update.peer._ !== 'notifyPeer' ? update.peer._ : undefined;
+        this.savePeerSettings({
+          key,
+          peerId, 
+          settings: update.notify_settings
+        });
         rootScope.dispatchEvent('notify_settings', update);
       }
     });
@@ -186,16 +192,16 @@ export class AppNotificationsManager {
         return;
       }
 
-      const peerId = notificationData.custom && +notificationData.custom.peerId;
+      const peerId = notificationData.custom && notificationData.custom.peerId.toPeerId();
       console.log('click', notificationData, peerId);
       if(peerId) {
         this.topMessagesDeferred.then(() => {
           if(notificationData.custom.channel_id &&
-              !appChatsManager.hasChat(+notificationData.custom.channel_id)) {
+              !appChatsManager.hasChat(notificationData.custom.channel_id)) {
             return;
           }
 
-          if(peerId > 0 && !appUsersManager.hasUser(peerId)) {
+          if(peerId.isUser() && !appUsersManager.hasUser(peerId)) {
             return;
           }
 
@@ -224,13 +230,14 @@ export class AppNotificationsManager {
       resetTitle();
     } else {
       this.titleInterval = window.setInterval(() => {
-        if(!this.notificationsCount) {
+        const count = this.notificationsCount;
+        if(!count) {
           this.toggleToggler(false);
         } else if(this.titleChanged) {
           resetTitle();
         } else {
           this.titleChanged = true;
-          document.title = I18n.format('Notifications.Count', true, [this.notificationsCount]);
+          document.title = I18n.format('Notifications.Count', true, [count]);
           //this.setFavicon('assets/img/favicon_unread.ico');
 
           // fetch('assets/img/favicon.ico')
@@ -250,10 +257,10 @@ export class AppNotificationsManager {
             ctx.fill();
 
             let fontSize = 24;
-            let str = '' + this.notificationsCount;
-            if(this.notificationsCount < 10) {
+            let str = '' + count;
+            if(count < 10) {
               fontSize = 22;
-            } else if(this.notificationsCount < 100) {
+            } else if(count < 100) {
               fontSize = 20;
             } else {
               str = '99+';
@@ -315,8 +322,9 @@ export class AppNotificationsManager {
     let key: any = convertInputKeyToKey(peer._);
     let obj: any = this.peerSettings[key as NotifyPeer['_']];
 
+    let peerId: PeerId;
     if(peer._ === 'inputNotifyPeer') {
-      key = appPeersManager.getPeerId(peer.peer);
+      peerId = key = appPeersManager.getPeerId(peer.peer);
       obj = obj[key];
     }
 
@@ -326,7 +334,12 @@ export class AppNotificationsManager {
 
     return (obj || this.peerSettings)[key] = apiManager.invokeApi('account.getNotifySettings', {peer})
     .then(settings => {
-      this.savePeerSettings(key, settings);
+      this.savePeerSettings({
+        key,
+        peerId, 
+        settings
+      });
+      
       return settings;
     });
   }
@@ -400,15 +413,20 @@ export class AppNotificationsManager {
     this.prevFavicon = href;
   }
 
-  public savePeerSettings(key: number | Exclude<NotifyPeer['_'], 'notifyPeer'>, settings: PeerNotifySettings) {
+  public savePeerSettings({key, peerId, settings}: {
+    key?: Exclude<NotifyPeer['_'], 'notifyPeer'>,
+    peerId?: PeerId, 
+    settings: PeerNotifySettings
+  }) {
     let obj: any;
-    if(typeof(key) === 'number') {
+    if(peerId) {
+      key = peerId as any;
       obj = this.peerSettings['notifyPeer'];
     }
     
     (obj || this.peerSettings)[key] = settings;
 
-    if(typeof(key) !== 'number') {
+    if(!peerId) {
       rootScope.dispatchEvent('notify_peer_type_settings', {key, settings});
     }
 
@@ -420,13 +438,13 @@ export class AppNotificationsManager {
       ((peerNotifySettings.mute_until * 1000) > tsNow() || peerNotifySettings.silent);
   }
 
-  public getPeerMuted(peerId: number) {
+  public getPeerMuted(peerId: PeerId) {
     const ret = this.getNotifySettings({_: 'inputNotifyPeer', peer: appPeersManager.getInputPeerById(peerId)});
     return (ret instanceof Promise ? ret : Promise.resolve(ret))
     .then((peerNotifySettings) => this.isMuted(peerNotifySettings));
   }
 
-  public getPeerLocalSettings(peerId: number, respectType = true): PeerNotifySettings {
+  public getPeerLocalSettings(peerId: PeerId, respectType = true): PeerNotifySettings {
     const n: PeerNotifySettings = {
       _: 'peerNotifySettings'
     };
@@ -455,7 +473,7 @@ export class AppNotificationsManager {
     return n;
   }
 
-  public isPeerLocalMuted(peerId: number, respectType = true) {
+  public isPeerLocalMuted(peerId: PeerId, respectType = true) {
     if(peerId === rootScope.myId) return false;
 
     const notifySettings = this.getPeerLocalSettings(peerId, respectType);
@@ -527,6 +545,10 @@ export class AppNotificationsManager {
       this.toggleToggler();
     }
 
+    const idx = ++this.notificationIndex;
+    const key = data.key || 'k' + idx;
+    this.notificationsShown[key] = true;
+
     const now = tsNow();
     if(this.settings.volume > 0 && !this.settings.nosound/* &&
       (
@@ -553,8 +575,6 @@ export class AppNotificationsManager {
       return;
     }
 
-    const idx = ++this.notificationIndex;
-    const key = data.key || 'k' + idx;
     let notification: MyNotification;
 
     if('Notification' in window) {
@@ -562,8 +582,7 @@ export class AppNotificationsManager {
         if(data.tag) {
           for(let i in this.notificationsShown) {
             const notification = this.notificationsShown[i];
-            if(notification &&
-                notification.tag === data.tag) {
+            if(typeof(notification) !== 'boolean' && notification.tag === data.tag) {
               notification.hidden = true;
             }
           }
@@ -651,18 +670,18 @@ export class AppNotificationsManager {
     const notification = this.notificationsShown[key];
     if(notification) {
       if(this.notificationsCount > 0) {
-        this.notificationsCount--;
+        --this.notificationsCount;
       }
 
       try {
-        if(notification.close) {
+        if(typeof(notification) !== 'boolean' && notification.close) {
           notification.hidden = true;
           notification.close();
         }/*  else if(notificationsMsSiteMode &&
           notification.index === notificationIndex) {
           window.external.msSiteModeClearIconOverlay()
         } */
-      } catch (e) {}
+      } catch(e) {}
 
       delete this.notificationsShown[key];
     }
@@ -670,13 +689,13 @@ export class AppNotificationsManager {
 
   private hide(key: string) {
     const notification = this.notificationsShown[key];
-    if(notification) {
+    if(notification && typeof(notification) !== 'boolean') {
       try {
         if(notification.close) {
           notification.hidden = true;
           notification.close();
         }
-      } catch (e) {}
+      } catch(e) {}
     }
   }
 
@@ -688,13 +707,13 @@ export class AppNotificationsManager {
     /* if(notificationsMsSiteMode) {
       window.external.msSiteModeClearIconOverlay()
     } else { */
-      for(let i in this.notificationsShown) {
+      for(const i in this.notificationsShown) {
         const notification = this.notificationsShown[i];
         try {
-          if(notification.close) {
+          if(typeof(notification) !== 'boolean' && notification.close) {
             notification.close();
           }
-        } catch (e) {}
+        } catch(e) {}
       }
     /* } */
     this.notificationsShown = {};

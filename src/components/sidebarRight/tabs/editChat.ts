@@ -18,7 +18,6 @@ import rootScope from "../../../lib/rootScope";
 import AppGroupPermissionsTab from "./groupPermissions";
 import { i18n, LangPackKey } from "../../../lib/langPack";
 import PopupDeleteDialog from "../../popups/deleteDialog";
-import PopupPeer from "../../popups/peer";
 import { attachClickEvent } from "../../../helpers/dom/clickEvent";
 import toggleDisability from "../../../helpers/dom/toggleDisability";
 import CheckboxField from "../../checkboxField";
@@ -27,7 +26,7 @@ export default class AppEditChatTab extends SliderSuperTab {
   private chatNameInputField: InputField;
   private descriptionInputField: InputField;
   private editPeer: EditPeer;
-  public chatId: number;
+  public chatId: ChatId;
 
   protected async _init() {
     // * cleanup prev
@@ -53,6 +52,8 @@ export default class AppEditChatTab extends SliderSuperTab {
         chatUpdateListeners.forEach(callback => callback());
       }
     });
+
+    const peerId = this.chatId.toPeerId(true);
 
     {
       const section = new SettingSection({noDelimiter: true});
@@ -81,7 +82,7 @@ export default class AppEditChatTab extends SliderSuperTab {
       inputFields.push(this.chatNameInputField, this.descriptionInputField);
 
       this.editPeer = new EditPeer({
-        peerId: -this.chatId,
+        peerId,
         inputFields,
         listenerSetter: this.listenerSetter
       });
@@ -283,7 +284,7 @@ export default class AppEditChatTab extends SliderSuperTab {
       const btnDelete = Button('btn-primary btn-transparent danger', {icon: 'delete', text: isBroadcast ? 'PeerInfo.DeleteChannel' : 'DeleteAndExitButton'});
 
       attachClickEvent(btnDelete, () => {
-        new PopupDeleteDialog(-this.chatId/* , 'delete' */, undefined, (promise) => {
+        new PopupDeleteDialog(peerId/* , 'delete' */, undefined, (promise) => {
           const toggle = toggleDisability([btnDelete], true);
           promise.then(() => {
             this.close();
@@ -301,8 +302,8 @@ export default class AppEditChatTab extends SliderSuperTab {
     if(!isChannel) {
       // ! this one will fire earlier than tab's closeAfterTimeout (destroy) event and listeners will be erased, so destroy won't fire
       this.listenerSetter.add(rootScope)('dialog_migrate', ({migrateFrom, migrateTo}) => {
-        if(-this.chatId === migrateFrom) {
-          this.chatId = -migrateTo;
+        if(peerId === migrateFrom) {
+          this.chatId = migrateTo.toChatId();
           this._init();
         }
       });

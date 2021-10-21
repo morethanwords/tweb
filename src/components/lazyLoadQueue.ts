@@ -6,7 +6,7 @@
 
 import { logger, LogTypes } from "../lib/logger";
 import VisibilityIntersector, { OnVisibilityChange } from "./visibilityIntersector";
-import { findAndSpliceAll } from "../helpers/array";
+import { findAndSpliceAll, indexOfAndSplice } from "../helpers/array";
 import throttle from "../helpers/schedulers/throttle";
 
 type LazyLoadElementBase = {
@@ -121,7 +121,7 @@ export class LazyLoadQueueBase {
     let added = 0;
     do {
       if(item) {
-        this.queue.findAndSplice(i => i === item);
+        indexOfAndSplice(this.queue, item);
       } else {
         item = this.getItem();
       }

@@ -9,9 +9,9 @@
 @font-face {
   font-family: "#{$tgico-font-family}";
   src:
-    url('#{$tgico-font-path}/#{$tgico-font-family}.ttf?4vj0au') format('truetype'),
-    url('#{$tgico-font-path}/#{$tgico-font-family}.woff?4vj0au') format('woff'),
-    url('#{$tgico-font-path}/#{$tgico-font-family}.svg?4vj0au#tgico') format('svg');
+    url('#{$tgico-font-path}/#{$tgico-font-family}.ttf?vbev5x') format('truetype'),
+    url('#{$tgico-font-path}/#{$tgico-font-family}.woff?vbev5x') format('woff'),
+    url('#{$tgico-font-path}/#{$tgico-font-family}.svg?vbev5x#tgico') format('svg');
   font-weight: normal;
   font-style: normal;
   font-display: block;
@@ -37,6 +37,26 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+.tgico-avatarnext {
+  &:before {
+    content: $tgico-avatarnext; 
+  }
+}
+.tgico-avatarprevious {
+  &:before {
+    content: $tgico-avatarprevious; 
+  }
+}
+.tgico-forward_filled {
+  &:before {
+    content: $tgico-forward_filled; 
+  }
+}
+.tgico-reply_filled {
+  &:before {
+    content: $tgico-reply_filled; 
+  }
+}
 .tgico-check {
   &:before {
     content: $tgico-check; 
@@ -242,14 +262,14 @@
     content: $tgico-data; 
   }
 }
-.tgico-delete {
-  &:before {
-    content: $tgico-delete; 
-  }
-}
 .tgico-delete_filled {
   &:before {
     content: $tgico-delete_filled; 
+  }
+}
+.tgico-delete {
+  &:before {
+    content: $tgico-delete; 
   }
 }
 .tgico-deletedaccount {
@@ -730,6 +750,11 @@
 .tgico-tip {
   &:before {
     content: $tgico-tip; 
+  }
+}
+.tgico-tools {
+  &:before {
+    content: $tgico-tools; 
   }
 }
 .tgico-unarchive {

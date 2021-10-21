@@ -57,7 +57,7 @@ export default class SendMenu {
     }, options.listenerSetter);
   }
 
-  public setPeerId(peerId: number) {
+  public setPeerId(peerId: PeerId) {
     this.type = peerId === rootScope.myId ? 'reminder' : 'schedule';
   }
 };

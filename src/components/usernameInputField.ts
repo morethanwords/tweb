@@ -16,7 +16,7 @@ export class UsernameInputField extends InputField {
   private checkUsernamePromise: Promise<any>;
   private checkUsernameDebounced: (username: string) => void;
   public options: InputFieldOptions & {
-    peerId: number,
+    peerId?: PeerId,
     listenerSetter: ListenerSetter,
     onChange?: () => void,
     invalidText: LangPackKey,
@@ -68,7 +68,7 @@ export class UsernameInputField extends InputField {
 
     if(this.options.peerId) {
       this.checkUsernamePromise = apiManager.invokeApi('channels.checkUsername', {
-        channel: appChatsManager.getChannelInput(-this.options.peerId),
+        channel: appChatsManager.getChannelInput(this.options.peerId.toChatId()),
         username
       });
     } else {

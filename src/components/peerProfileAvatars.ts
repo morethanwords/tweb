@@ -28,8 +28,8 @@ export default class PeerProfileAvatars {
   public arrowPrevious: HTMLElement;
   public arrowNext: HTMLElement;
   private tabs: HTMLDivElement;
-  private listLoader: ListLoader<string | Message.messageService, string | Message.messageService>;
-  private peerId: number;
+  private listLoader: ListLoader<Photo.photo['id'] | Message.messageService, Photo.photo['id'] | Message.messageService>;
+  private peerId: PeerId;
 
   constructor(public scrollable: Scrollable) {
     this.container = document.createElement('div');
@@ -48,14 +48,14 @@ export default class PeerProfileAvatars {
     this.tabs.classList.add(PeerProfileAvatars.BASE_CLASS + '-tabs');
 
     this.arrowPrevious = document.createElement('div');
-    this.arrowPrevious.classList.add(PeerProfileAvatars.BASE_CLASS + '-arrow');
+    this.arrowPrevious.classList.add(PeerProfileAvatars.BASE_CLASS + '-arrow', 'tgico-avatarprevious');
 
     /* const previousIcon = document.createElement('i');
     previousIcon.classList.add(PeerProfileAvatars.BASE_CLASS + '-arrow-icon', 'tgico-previous');
     this.arrowBack.append(previousIcon); */
     
     this.arrowNext = document.createElement('div');
-    this.arrowNext.classList.add(PeerProfileAvatars.BASE_CLASS + '-arrow', PeerProfileAvatars.BASE_CLASS + '-arrow-next');
+    this.arrowNext.classList.add(PeerProfileAvatars.BASE_CLASS + '-arrow', PeerProfileAvatars.BASE_CLASS + '-arrow-next', 'tgico-avatarnext');
 
     /* const nextIcon = document.createElement('i');
     nextIcon.classList.add(PeerProfileAvatars.BASE_CLASS + '-arrow-icon', 'tgico-next');
@@ -101,7 +101,7 @@ export default class PeerProfileAvatars {
         || (clickX > (rect.width * SWITCH_ZONE) && clickX < (rect.width - rect.width * SWITCH_ZONE))) {
         const peerId = this.peerId;
 
-        const targets: {element: HTMLElement, item: string | Message.messageService}[] = [];
+        const targets: {element: HTMLElement, item: Photo.photo['id'] | Message.messageService}[] = [];
         this.listLoader.previous.concat(this.listLoader.current, this.listLoader.next).forEach((item, idx) => {
           targets.push({
             element: /* null */this.avatars.children[idx] as HTMLElement,
@@ -199,7 +199,7 @@ export default class PeerProfileAvatars {
     });
   }
 
-  public setPeer(peerId: number) {
+  public setPeer(peerId: PeerId) {
     this.peerId = peerId;
 
     const photo = appPeersManager.getPeerPhoto(peerId);
@@ -212,8 +212,8 @@ export default class PeerProfileAvatars {
       loadMore: (anchor, older, loadCount) => {
         if(!older) return Promise.resolve({count: undefined, items: []});
 
-        if(peerId > 0) {
-          const maxId: string = (anchor || listLoader.current) as any;
+        if(peerId.isUser()) {
+          const maxId: Photo.photo['id'] = (anchor || listLoader.current) as any;
           return appPhotosManager.getUserPhotos(peerId, maxId, loadCount).then(value => {
             return {
               count: value.count,
@@ -223,7 +223,7 @@ export default class PeerProfileAvatars {
         } else {
           const promises: [Promise<ChatFull>, ReturnType<AppMessagesManager['getSearch']>] = [] as any;
           if(!listLoader.current) {
-            promises.push(appProfileManager.getChatFull(-peerId));
+            promises.push(appProfileManager.getChatFull(peerId.toChatId()));
           }
           
           promises.push(appMessagesManager.getSearch({
@@ -295,13 +295,13 @@ export default class PeerProfileAvatars {
     this.container.classList.toggle('is-single', this.tabs.childElementCount <= 1);
   }
 
-  public processItem = (photoId: string | Message.messageService) => {
+  public processItem = (photoId: Photo.photo['id'] | Message.messageService) => {
     const avatar = document.createElement('div');
     avatar.classList.add(PeerProfileAvatars.BASE_CLASS + '-avatar');
 
     let photo: Photo.photo;
     if(photoId) {
-      photo = typeof(photoId) === 'string' ? 
+      photo = typeof(photoId) !== 'object' ? 
         appPhotosManager.getPhoto(photoId) : 
         (photoId.action as MessageAction.messageActionChannelEditPhoto).photo as Photo.photo;
     }

@@ -14,7 +14,7 @@ export type PopupPeerButtonCallback = (checkboxes?: PopupPeerButtonCallbackCheck
 export type PopupPeerCheckboxOptions = CheckboxFieldOptions & {checkboxField?: CheckboxField};
 
 export type PopupPeerOptions = PopupOptions & Partial<{
-  peerId: number,
+  peerId: PeerId,
   title: string,
   titleLangKey?: LangPackKey,
   titleLangArgs?: any[],

@@ -8,6 +8,7 @@ import { renderImageFromUrlPromise } from "../../helpers/dom/renderImageFromUrl"
 import replaceContent from "../../helpers/dom/replaceContent";
 import sequentialDom from "../../helpers/sequentialDom";
 import { UserProfilePhoto, ChatPhoto, InputFileLocation } from "../../layer";
+import { NULL_PEER_ID, REPLIES_PEER_ID } from "../mtproto/mtproto_config";
 import RichTextProcessor from "../richtextprocessor";
 import rootScope from "../rootScope";
 import appDownloadManager from "./appDownloadManager";
@@ -19,22 +20,22 @@ type PeerPhotoSize = 'photo_small' | 'photo_big';
 
 export class AppAvatarsManager {
   private savedAvatarURLs: {
-    [peerId: number]: {
+    [peerId: PeerId]: {
       [size in PeerPhotoSize]?: string | Promise<string>
     }
   } = {};
 
-  public isAvatarCached(peerId: number) {
+  public isAvatarCached(peerId: PeerId) {
     return !!this.savedAvatarURLs[peerId];
   }
   
-  public removeFromAvatarsCache(peerId: number) {
+  public removeFromAvatarsCache(peerId: PeerId) {
     if(this.savedAvatarURLs[peerId]) {
       delete this.savedAvatarURLs[peerId];
     }
   }
 
-  public loadAvatar(peerId: number, photo: UserProfilePhoto.userProfilePhoto | ChatPhoto.chatPhoto, size: PeerPhotoSize) {
+  public loadAvatar(peerId: PeerId, photo: UserProfilePhoto.userProfilePhoto | ChatPhoto.chatPhoto, size: PeerPhotoSize) {
     const inputPeer = appPeersManager.getInputPeerById(peerId);
 
     let cached = false;
@@ -83,7 +84,7 @@ export class AppAvatarsManager {
     return {cached, loadPromise: getAvatarPromise};
   }
 
-  public putAvatar(div: HTMLElement, peerId: number, photo: UserProfilePhoto.userProfilePhoto | ChatPhoto.chatPhoto, size: PeerPhotoSize, img = new Image(), onlyThumb = false) {
+  public putAvatar(div: HTMLElement, peerId: PeerId, photo: UserProfilePhoto.userProfilePhoto | ChatPhoto.chatPhoto, size: PeerPhotoSize, img = new Image(), onlyThumb = false) {
     let {cached, loadPromise} = this.loadAvatar(peerId, photo, size);
 
     let renderThumbPromise: Promise<void>;
@@ -144,45 +145,44 @@ export class AppAvatarsManager {
     return {cached, loadPromise: renderThumbPromise || renderPromise};
   }
 
+  public s(div: HTMLElement, innerHTML: string, color: string, icon: string) {
+    div.innerHTML = innerHTML;
+    div.dataset.color = color;
+    div.classList.remove('tgico-saved', 'tgico-deletedaccount', 'tgico-reply_filled');
+    icon && div.classList.add(icon);
+  }
+
   // peerId === peerId || title
-  public putPhoto(div: HTMLElement, peerId: number, isDialog = false, title = '', onlyThumb = false) {
-    const photo = appPeersManager.getPeerPhoto(peerId);
-
-    const size: PeerPhotoSize = 'photo_small';
-    const avatarAvailable = !!photo;
-    const avatarRendered = div.firstElementChild && !(div.firstElementChild as HTMLElement).classList.contains('emoji');
-    
+  public putPhoto(div: HTMLElement, peerId: PeerId, isDialog = false, title = '', onlyThumb = false) {
     const myId = rootScope.myId;
-
+    
     //console.log('loadDialogPhoto location:', location, inputPeer);
     if(peerId === myId && isDialog) {
-      div.innerText = '';
-      div.dataset.color = '';
-      div.classList.add('tgico-saved');
-      div.classList.remove('tgico-deletedaccount');
+      this.s(div, '', '', 'tgico-saved');
       return;
     }
-
-    if(peerId > 0) {
+    
+    if(peerId !== NULL_PEER_ID && peerId.isUser()) {
       const user = appUsersManager.getUser(peerId);
       if(user && user.pFlags && user.pFlags.deleted) {
-        div.innerText = '';
-        div.dataset.color = appPeersManager.getPeerColorById(peerId);
-        div.classList.add('tgico-deletedaccount');
-        div.classList.remove('tgico-saved');
+        this.s(div, '', appPeersManager.getPeerColorById(peerId), 'tgico-deletedaccount');
         return;
       }
     }
-
+    
+    const photo = appPeersManager.getPeerPhoto(peerId);
+    const avatarAvailable = !!photo;
+    const avatarRendered = !!div.firstElementChild && !(div.firstElementChild as HTMLElement).classList.contains('emoji');
     if(!avatarAvailable || !avatarRendered || !this.savedAvatarURLs[peerId]) {
       let color = '';
       if(peerId && (peerId !== myId || !isDialog)) {
         color = appPeersManager.getPeerColorById(peerId);
       }
-      
-      div.innerText = '';
-      div.classList.remove('tgico-saved', 'tgico-deletedaccount');
-      div.dataset.color = color;
+
+      if(peerId === REPLIES_PEER_ID) {
+        this.s(div, '', color, 'tgico-reply_filled');
+        return;
+      }
 
       let abbr: string;
       if(!title) {
@@ -192,11 +192,12 @@ export class AppAvatarsManager {
         abbr = RichTextProcessor.getAbbreviation(title);
       }
 
-      div.innerHTML = abbr;
+      this.s(div, abbr, color, '');
       //return Promise.resolve(true);
     }
 
     if(avatarAvailable/*  && false */) {
+      const size: PeerPhotoSize = 'photo_small';
       return this.putAvatar(div, peerId, photo, size, undefined, onlyThumb);
     }
   }

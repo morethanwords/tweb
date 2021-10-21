@@ -10,6 +10,8 @@ import { logger } from "../lib/logger";
 import { doubleRaf } from "../helpers/schedulers";
 import blurActiveElement from "../helpers/dom/blurActiveElement";
 import { cancelEvent } from "../helpers/dom/cancelEvent";
+import { indexOfAndSplice } from "../helpers/array";
+import isSwipingBackSafari from "../helpers/dom/isSwipingBackSafari";
 
 export type NavigationItem = {
   type: 'left' | 'right' | 'im' | 'chat' | 'popup' | 'media' | 'menu' | 
@@ -73,7 +75,17 @@ export class AppNavigationController {
         if(e.touches.length > 1) return;
         this.debug && this.log('touchstart');
 
-        const detach = () => {
+        if(isSwipingBackSafari(e)) {
+          isPossibleSwipe = true;
+
+          window.addEventListener('touchend', () => {
+            setTimeout(() => {
+              isPossibleSwipe = false;
+            }, 100);
+          }, {passive: true, once: true});
+        }
+
+        /* const detach = () => {
           window.removeEventListener('touchend', onTouchEnd);
           window.removeEventListener('touchmove', onTouchMove);
         };
@@ -105,7 +117,7 @@ export class AppNavigationController {
         };
 
         window.addEventListener('touchend', onTouchEnd, options);
-        window.addEventListener('touchmove', onTouchMove, options);
+        window.addEventListener('touchmove', onTouchMove, options); */
       }, options);
     }
 
@@ -171,7 +183,7 @@ export class AppNavigationController {
   }
 
   public removeItem(item: NavigationItem) {
-    this.navigations.findAndSplice(i => i === item);
+    indexOfAndSplice(this.navigations, item);
   }
 
   public removeByType(type: NavigationItem['type'], single = false) {

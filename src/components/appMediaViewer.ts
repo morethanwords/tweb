@@ -28,7 +28,7 @@ import AppSharedMediaTab from "./sidebarRight/tabs/sharedMedia";
 type AppMediaViewerTargetType = {
   element: HTMLElement,
   mid: number,
-  peerId: number
+  peerId: PeerId
 };
 export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delete' | 'forward', AppMediaViewerTargetType> {
   protected btnMenuDelete: HTMLElement;
@@ -157,7 +157,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     return promise;
   } */
 
-  protected getMessageByPeer(peerId: number, mid: number) {
+  protected getMessageByPeer(peerId: PeerId, mid: number) {
     return this.searchContext.isScheduled ? appMessagesManager.getScheduledMessageByPeer(peerId, mid) : appMessagesManager.getMessageByPeer(peerId, mid);
   }
 
@@ -193,6 +193,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     const {mid, peerId} = this.target;
     if(mid && mid !== Number.MAX_SAFE_INTEGER) {
       const threadId = this.searchContext.threadId;
+      const message = this.getMessageByPeer(peerId, mid);
       this.close(e)
       //.then(() => mediaSizes.isMobile ? appSidebarRight.sharedMediaTab.closeBtn.click() : Promise.resolve())
       .then(() => {
@@ -203,7 +204,6 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
           }
         }
 
-        const message = this.getMessageByPeer(peerId, mid);
         appImManager.setInnerPeer(message.peerId, mid, threadId ? 'discussion' : undefined, threadId);
       });
     }

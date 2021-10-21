@@ -87,7 +87,7 @@ export class AppPrivacyManager {
   public getPrivacyRulesDetails(rules: PrivacyRule[]) {
     const types: PrivacyType[] = [];
 
-    type peers = {users: number[], chats: number[]};
+    type peers = {users: UserId[], chats: ChatId[]};
     let allowPeers: peers = {users: [], chats: []}, disallowPeers: peers = {users: [], chats: []};
     rules.forEach(rule => {
       switch(rule._) {

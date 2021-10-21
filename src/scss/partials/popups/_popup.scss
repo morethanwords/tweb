@@ -24,6 +24,7 @@
   transition-timing-function: var(--popup-transition-function);
   overflow: auto;
   display: flex;
+  user-select: none;
 
   body.animation-level-0 & {
     transition: none;

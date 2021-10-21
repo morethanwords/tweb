@@ -34,7 +34,7 @@ export class ChatPermissions {
   private toggleWith: Partial<{[chatRight in ChatRights]: ChatRights[]}>;
 
   constructor(options: {
-    chatId: number,
+    chatId: ChatId,
     listenerSetter: ListenerSetter,
     appendTo: HTMLElement,
     participant?: ChannelParticipant.channelParticipantBanned
@@ -123,7 +123,7 @@ export class ChatPermissions {
 }
 
 export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
-  public chatId: number;
+  public chatId: ChatId;
 
   protected async init() {
     this.container.classList.add('edit-peer-container', 'group-permissions-container');
@@ -171,7 +171,7 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
         }
       });
 
-      const openPermissions = async(peerId: number) => {
+      const openPermissions = async(peerId: PeerId) => {
         let participant: AppUserPermissionsTab['participant'];
         try {
           participant = await appProfileManager.getChannelParticipant(this.chatId, peerId) as any;
@@ -208,7 +208,7 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
         const target = findUpTag(e.target, 'LI');
         if(!target) return;
 
-        const peerId = +target.dataset.peerId;
+        const peerId = target.dataset.peerId.toPeerId();
         openPermissions(peerId);
       }, {listenerSetter: this.listenerSetter});
 

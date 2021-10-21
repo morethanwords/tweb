@@ -29,6 +29,7 @@ import { MOUNT_CLASS_TO } from '../../config/debug';
 import IDBStorage from '../idb';
 import CryptoWorker from "../crypto/cryptoworker";
 import ctx from '../../environment/ctx';
+import noop from '../../helpers/noop';
 
 /// #if !MTPROTO_WORKER
 import rootScope from '../rootScope';
@@ -348,7 +349,7 @@ export class ApiManager {
         //this.cachedUploadNetworkers[2].requestMessageStatus();
       }, 5e3);
 
-      deferred.finally(() => {
+      deferred.catch(noop).finally(() => {
         clearInterval(interval);
       });
     }

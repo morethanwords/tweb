@@ -6,7 +6,7 @@
 
 import { MOUNT_CLASS_TO } from "../../config/debug";
 import { copy } from "../../helpers/object";
-import { InputMedia, Message, MessageEntity, MessageMedia } from "../../layer";
+import { InputMedia, Message, MessageEntity, MessageMedia, Poll, PollResults } from "../../layer";
 import { logger, LogTypes } from "../logger";
 import apiManager from "../mtproto/mtprotoworker";
 import { RichTextProcessor } from "../richtextprocessor";
@@ -16,66 +16,6 @@ import appMessagesIdsManager from "./appMessagesIdsManager";
 import appMessagesManager from './appMessagesManager';
 import appPeersManager from './appPeersManager';
 import appUsersManager from "./appUsersManager";
-
-export type PollAnswer = {
-  _: 'pollAnswer',
-  text: string,
-  option: Uint8Array
-};
-
-export type PollAnswerVoters = {
-  _: 'pollAnswerVoters',
-  flags: number,
-  option: Uint8Array,
-  voters: number,
-
-  pFlags: Partial<{
-    chosen: true,
-    correct: true
-  }>
-};
-
-export type PollResult = {
-  _: 'pollAnswerVoters',
-  flags: number,
-  option: Uint8Array,
-  voters: number,
-
-  pFlags?: Partial<{chosen: true, correct: true}>
-};
-
-export type PollResults = {
-  _: 'pollResults',
-  flags: number,
-  results?: Array<PollResult>,
-  total_voters?: number,
-  recent_voters?: number[],
-  solution?: string,
-  solution_entities?: any[],
-
-  pFlags: Partial<{
-    min: true
-  }>,
-};
-
-export type Poll = {
-  _: 'poll',
-  question: string,
-  id: string,
-  answers: Array<PollAnswer>,
-  close_period?: number,
-  close_date?: number
-
-  pFlags?: Partial<{
-    closed: true,
-    public_voters: true,
-    multiple_choice: true,
-    quiz: true
-  }>,
-  rQuestion?: string,
-  rReply?: string,
-  chosenIndexes?: number[]
-};
 
 export class AppPollsManager {
   public polls: {[id: string]: Poll} = {};

@@ -6,6 +6,7 @@
 
 import { randomLong } from "../helpers/random";
 import { InputPrivacyKey, InputPrivacyRule } from "../layer";
+import appChatsManager from "../lib/appManagers/appChatsManager";
 import appPrivacyManager, { PrivacyType } from "../lib/appManagers/appPrivacyManager";
 import appUsersManager from "../lib/appManagers/appUsersManager";
 import { i18n, join, LangPackKey, _i18n } from "../lib/langPack";
@@ -29,8 +30,8 @@ export default class PrivacySection {
     clickable: true
   }>;
   public peerIds: {
-    disallow?: number[],
-    allow?: number[]
+    disallow?: PeerId[],
+    allow?: PeerId[]
   };
   public type: PrivacyType;
 
@@ -152,8 +153,8 @@ export default class PrivacySection {
         (['allow', 'disallow'] as ('allow' | 'disallow')[]).forEach(k => {
           const arr = [];
           const from = k === 'allow' ? details.allowPeers : details.disallowPeers;
-          arr.push(...from.users);
-          arr.push(...from.chats.map(id => -id));
+          arr.push(...from.users.map(id => id.toPeerId()));
+          arr.push(...from.chats.map(id => id.toPeerId(false)));
           this.peerIds[k] = arr;
           const s = this.exceptions.get(k).row.subtitle;
           s.innerHTML = '';
@@ -189,12 +190,11 @@ export default class PrivacySection {
               return;
             }
 
-            const _peerIds: number[] = this.peerIds[k];
-            
+            const _peerIds = this.peerIds[k];
             if(_peerIds) {
               const splitted = this.splitPeersByType(_peerIds);
               if(splitted.chats.length) {
-                rules.push({_: chatKey, chats: splitted.chats.map(peerId => -peerId)});
+                rules.push({_: chatKey, chats: splitted.chats.map(peerId => peerId.toChatId())});
               }
   
               if(splitted.users.length) {
@@ -236,16 +236,16 @@ export default class PrivacySection {
     row.radioField.input.checked = true;
   }
   
-  private splitPeersByType(peerIds: number[]) {
-    const peers = {users: [] as number[], chats: [] as number[]};
+  private splitPeersByType(peerIds: PeerId[]) {
+    const peers = {users: [] as UserId[], chats: [] as ChatId[]};
     peerIds.forEach(peerId => {
-      peers[peerId < 0 ? 'chats' : 'users'].push(peerId < 0 ? -peerId : peerId);
+      peers[peerId.isAnyChat() ? 'chats' : 'users'].push(peerId.isAnyChat() ? peerId.toChatId() : peerId);
     });
 
     return peers;
   }
 
-  private generateStr(peers: {users: number[], chats: number[]}) {
+  private generateStr(peers: {users: UserId[], chats: ChatId[]}) {
     if(!peers.users.length && !peers.chats.length) {
       return [i18n('PrivacySettingsController.AddUsers')];
     }

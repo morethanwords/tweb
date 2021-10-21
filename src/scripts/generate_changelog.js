@@ -14,7 +14,7 @@ const writeTo = `./public/changelogs/{VERSION}.md`;
 const splitted = text.split('\n\n');
 splitted.forEach(text => {
   text = text.replace(/^\*/gm, '•');
-  const splitted = text.split('\n');
+  const splitted = text.split('\n').filter(line => !!line.trim());
   const firstLine = splitted.shift();
-  fs.writeFileSync(writeTo.replace('{VERSION}', firstLine.substr(4)), splitted.join('\n'));
+  fs.writeFileSync(writeTo.replace('{VERSION}', firstLine.substr(4)), splitted.join('\n') + '\n');
 });

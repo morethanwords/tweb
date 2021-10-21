@@ -14,7 +14,7 @@ import appChatsManager from "../../lib/appManagers/appChatsManager";
 import PeerTitle from "../peerTitle";
 
 export default class PopupPinMessage {
-  constructor(peerId: number, mid: number, unpin?: true, onConfirm?: () => void) {
+  constructor(peerId: PeerId, mid: number, unpin?: true, onConfirm?: () => void) {
     let title: LangPackKey, description: LangPackKey, descriptionArgs: FormatterArguments, 
       buttons: PopupPeerOptions['buttons'] = [], checkboxes: PopupPeerOptions['checkboxes'] = [];
 
@@ -65,13 +65,13 @@ export default class PopupPinMessage {
       title = 'PinMessageAlertTitle';
       const pinButtonText: LangPackKey = 'PinMessage';
       
-      if(peerId < 0) {
+      if(peerId.isAnyChat()) {
         buttons.push({
           langKey: pinButtonText,
           callback: (checked) => callback(checked, false, !checked.size)
         });
 
-        if(appChatsManager.isBroadcast(-peerId)) {
+        if(appChatsManager.isBroadcast(peerId.toChatId())) {
           description = 'PinMessageAlertChannel';
         } else {
           description = 'PinMessageAlert';
