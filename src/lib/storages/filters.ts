@@ -303,16 +303,19 @@ export default class FiltersStorage {
     filter.include_peers = filter.pinned_peers.concat(filter.include_peers);
     filter.includePeerIds = filter.pinnedPeerIds.concat(filter.includePeerIds);
 
-    if(this.filters[filter.id]) {
-      Object.assign(this.filters[filter.id], filter);
+    const oldFilter = this.filters[filter.id];
+    if(oldFilter) {
+      Object.assign(oldFilter, filter);
     } else {
       this.filters[filter.id] = filter;
     }
-
+    
     this.setOrderIndex(filter);
-
+    
     if(update) {
       this.rootScope.dispatchEvent('filter_update', filter);
+    } else if(!oldFilter) {
+      this.rootScope.dispatchEvent('filter_new', filter);
     }
   }
 

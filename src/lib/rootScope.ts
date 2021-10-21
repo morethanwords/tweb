@@ -34,6 +34,7 @@ export type BroadcastEvents = {
 
   'filter_delete': MyDialogFilter,
   'filter_update': MyDialogFilter,
+  'filter_new': MyDialogFilter,
   'filter_order': number[],
 
   'folder_unread': Folder,

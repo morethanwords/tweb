@@ -94,12 +94,15 @@ export default class DialogsStorage {
       }
     });
 
-    rootScope.addEventListener('filter_update', (filter) => {
+    const onFilterUpdate = (filter: MyDialogFilter) => {
       const dialogs = this.getCachedDialogs(false);
       for(let i = 0; i < dialogs.length; ++i) {
         this.processDialogForFilter(dialogs[i], filter);
       }
-    });
+    };
+
+    rootScope.addEventListener('filter_update', onFilterUpdate);
+    rootScope.addEventListener('filter_new', onFilterUpdate);
 
     rootScope.addEventListener('filter_delete', (filter) => {
       delete this.folders[filter.id];

@@ -26,6 +26,7 @@ import { nextRandomUint } from '../../helpers/random';
 import compareVersion from '../../helpers/compareVersion';
 
 const REFRESH_EVERY = 24 * 60 * 60 * 1000; // 1 day
+// const REFRESH_EVERY = 1e3;
 //const REFRESH_EVERY_WEEK = 24 * 60 * 60 * 1000 * 7; // 7 days
 const STATE_VERSION = App.versionFull;
 const BUILD = App.build;
