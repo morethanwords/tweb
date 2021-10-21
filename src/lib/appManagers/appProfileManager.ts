@@ -170,7 +170,7 @@ export class AppProfileManager {
       appUsersManager.saveApiUser(user, true);
 
       if(userFull.profile_photo) {
-        userFull.profile_photo = appPhotosManager.savePhoto(userFull.profile_photo, {type: 'profilePhoto', peerId: peerId});
+        userFull.profile_photo = appPhotosManager.savePhoto(userFull.profile_photo, {type: 'profilePhoto', peerId});
       }
 
       if(userFull.about !== undefined) {
@@ -262,7 +262,7 @@ export class AppProfileManager {
       appUsersManager.saveApiUsers(result.users);
       const fullChat = result.full_chat as ChatFull.chatFull;
       if(fullChat && fullChat.chat_photo && fullChat.chat_photo.id) {
-        fullChat.chat_photo = appPhotosManager.savePhoto(fullChat.chat_photo, {type: 'profilePhoto', peerId: peerId});
+        fullChat.chat_photo = appPhotosManager.savePhoto(fullChat.chat_photo, {type: 'profilePhoto', peerId});
       }
 
       //appMessagesManager.savePinnedMessage(peerId, fullChat.pinned_msg_id);

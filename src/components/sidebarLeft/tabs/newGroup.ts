@@ -53,7 +53,7 @@ export default class AppNewGroupTab extends SliderSuperTab {
       const title = this.groupNameInputField.value;
 
       this.nextBtn.disabled = true;
-      appChatsManager.createChat(title, this.peerIds).then((chatId) => {
+      appChatsManager.createChat(title, this.peerIds.map(peerId => peerId.toUserId())).then((chatId) => {
         if(this.uploadAvatar) {
           this.uploadAvatar().then((inputFile) => {
             appChatsManager.editPhoto(chatId, inputFile);
@@ -81,10 +81,10 @@ export default class AppNewGroupTab extends SliderSuperTab {
     this.nextBtn.disabled = false;
   }
 
-  public open(userIds: PeerId[]) {
+  public open(peerIds: PeerId[]) {
     const result = super.open();
     result.then(() => {
-      this.peerIds = userIds;
+      this.peerIds = peerIds;
 
       this.peerIds.forEach(userId => {
         let {dom} = appDialogsManager.addDialogNew({

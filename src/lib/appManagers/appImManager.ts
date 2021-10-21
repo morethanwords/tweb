@@ -535,8 +535,8 @@ export class AppImManager {
       }
 
       case INTERNAL_LINK_TYPE.PRIVATE_POST: {
-        const chatId: ChatId = link.channel;
-        const peerId = link.channel.toPeerId(true);
+        const chatId = link.channel.toChatId();
+        const peerId = chatId.toPeerId(true);
 
         const chat = appChatsManager.getChat(chatId);
         if(chat.deleted) {

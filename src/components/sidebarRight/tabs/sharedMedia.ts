@@ -433,7 +433,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
   private toggleEditBtn() {
     let show: boolean;
     if(this.peerId.isUser()) {
-      show = this.peerId !== rootScope.myId && appUsersManager.isContact(this.peerId);
+      show = this.peerId !== rootScope.myId && appUsersManager.isContact(this.peerId.toUserId());
     } else {
       show = appChatsManager.hasRights(this.peerId.toChatId(), 'change_info');
     }

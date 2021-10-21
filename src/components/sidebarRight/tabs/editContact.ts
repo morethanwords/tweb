@@ -31,7 +31,7 @@ export default class AppEditContactTab extends SliderSuperTab {
 
   protected init() {
     this.container.classList.add('edit-peer-container', 'edit-contact-container');
-    const isNew = !appUsersManager.isContact(this.peerId);
+    const isNew = !appUsersManager.isContact(this.peerId.toUserId());
     this.setTitle(isNew ? 'AddContactTitle' : 'Edit');
 
     {
