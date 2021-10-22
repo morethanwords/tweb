@@ -1548,12 +1548,12 @@ export default class ChatBubbles {
       ({rect}) => {
         let height = windowSize.windowH;
         height -= this.chat.topbar.container.getBoundingClientRect().height;
-        height -= 78;
+        height -= mediaSizes.isMobile ? 58 : 78; // TODO: change height to mobile when ESG is bottom
         return height;
 
-        const rowsWrapperHeight = this.chat.input.rowsWrapper.getBoundingClientRect().height;
+        /* const rowsWrapperHeight = this.chat.input.rowsWrapper.getBoundingClientRect().height;
         const diff = rowsWrapperHeight - 54;
-        return rect.height + diff;
+        return rect.height + diff; */
       }
     );
   }
