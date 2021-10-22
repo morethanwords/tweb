@@ -19,7 +19,6 @@ import { IS_SAFARI } from "../../environment/userAgent";
 import { logger, LogTypes } from "../logger";
 import { RichTextProcessor } from "../richtextprocessor";
 import rootScope from "../rootScope";
-import apiUpdatesManager from "./apiUpdatesManager";
 import appPeersManager from './appPeersManager';
 import appImManager from "./appImManager";
 import appMessagesManager, { Dialog, MyMessage } from "./appMessagesManager";
@@ -43,7 +42,7 @@ import replaceContent from "../../helpers/dom/replaceContent";
 import ConnectionStatusComponent from "../../components/connectionStatus";
 import appChatsManager from "./appChatsManager";
 import { renderImageFromUrlPromise } from "../../helpers/dom/renderImageFromUrl";
-import { fastRaf, fastRafConventional, fastRafPromise } from "../../helpers/schedulers";
+import { fastRafConventional, fastRafPromise } from "../../helpers/schedulers";
 import SortedUserList from "../../components/sortedUserList";
 import { IS_TOUCH_SUPPORTED } from "../../environment/touchSupport";
 import handleTabSwipe from "../../helpers/dom/handleTabSwipe";
@@ -78,19 +77,23 @@ interface SortedDialog extends SortedElementBase {
 }
 
 class SortedDialogList extends SortedList<SortedDialog> {
-  constructor(public list: HTMLUListElement, public indexKey: ReturnType<DialogsStorage['getDialogIndexKey']>) {
+  constructor(
+    public list: HTMLUListElement, 
+    public indexKey: ReturnType<DialogsStorage['getDialogIndexKey']>,
+    public onListLengthChange?: () => void
+  ) {
     super({
       getIndex: (id) => appMessagesManager.getDialogOnly(id)[this.indexKey],
       onDelete: (element) => {
         element.dom.listEl.remove();
-        appDialogsManager.onListLengthChange();
+        this.onListLengthChange && this.onListLengthChange();
       },
       onSort: (element, idx) => {
         const willChangeLength = element.dom.listEl.parentElement !== this.list;
         positionElementByIndex(element.dom.listEl, this.list, idx);
 
         if(willChangeLength) {
-          appDialogsManager.onListLengthChange();
+          this.onListLengthChange && this.onListLengthChange();
         }
       },
       onElementCreate: (base, batch) => {
@@ -166,7 +169,7 @@ export class AppDialogsManager {
 
   private initedListeners = false;
 
-  public onListLengthChange: () => Promise<void>;
+  private onListLengthChange: () => Promise<void>;
   private loadedDialogsAtLeastOnce = false;
 
   constructor() {
@@ -175,6 +178,8 @@ export class AppDialogsManager {
     this.allUnreadCount = this.folders.menu.querySelector('.badge');
     
     this.folders.menuScrollContainer = this.folders.menu.parentElement;
+
+    this.onListLengthChange = debounce(this._onListLengthChange, 100, false, true);
 
     const bottomPart = document.createElement('div');
     bottomPart.classList.add('connection-status-bottom');
@@ -322,8 +327,6 @@ export class AppDialogsManager {
     setTimeout(() => {
       lottieLoader.loadLottieWorkers();
     }, 200);
-
-    this.onListLengthChange = debounce(this._onListLengthChange, 100, false, true);
   }
 
   public get chatList() {
@@ -360,6 +363,10 @@ export class AppDialogsManager {
 
     rootScope.addEventListener('folder_unread', (folder) => {
       this.setFilterUnreadCount(folder.id);
+    });
+
+    rootScope.addEventListener('contacts_update', (userId) => {
+      this.processContact && this.processContact(userId.toPeerId());
     });
 
     rootScope.addEventListener('dialog_flush', ({peerId}) => {
@@ -665,7 +672,11 @@ export class AppDialogsManager {
     scrollable.onScrolledBottom = this.onChatsScroll;
     scrollable.setVirtualContainer(list);
 
-    const sortedDialogList = new SortedDialogList(list, appMessagesManager.dialogsStorage ? appMessagesManager.dialogsStorage.getDialogIndexKey(filterId) : 'index');
+    const sortedDialogList = new SortedDialogList(
+      list, 
+      appMessagesManager.dialogsStorage ? appMessagesManager.dialogsStorage.getDialogIndexKey(filterId) : 'index',
+      this.onListLengthChange
+    );
 
     this.scrollables[filterId] = scrollable;
     this.sortedLists[filterId] = sortedDialogList;
@@ -970,6 +981,16 @@ export class AppDialogsManager {
     part.classList.add('with-placeholder');
   }
 
+  private removeContactsPlaceholder() {
+    const chatList = this.chatList;
+    const parts = chatList.parentElement.parentElement;
+    const bottom = chatList.parentElement.nextElementSibling as HTMLElement;
+    parts.classList.remove('with-contacts');
+    bottom.innerHTML = '';
+    this.loadContacts = undefined;
+    this.processContact = undefined;
+  }
+
   private _onListLengthChange = () => {
     if(!this.loadedDialogsAtLeastOnce) {
       return;
@@ -987,10 +1008,7 @@ export class AppDialogsManager {
     const hasContacts = !!bottom.childElementCount;
     if(count >= 10) {
       if(hasContacts) {
-        parts.classList.remove('with-contacts');
-        bottom.innerHTML = '';
-        this.loadContacts = undefined;
-        this.processContact = undefined;
+        this.removeContactsPlaceholder();
       }
 
       return;
@@ -1007,10 +1025,23 @@ export class AppDialogsManager {
     section.container.classList.add('hide');
 
     appUsersManager.getContactsPeerIds(undefined, undefined, 'online').then(contacts => {
-      const sortedUserList = new SortedUserList({avatarSize: 42, new: true});
+      let ready = false;
+      const onListLengthChange = () => {
+        if(ready) {
+          section.container.classList.toggle('hide', !sortedUserList.list.childElementCount);
+        }
+      };
+
+      const sortedUserList = new SortedUserList({
+        avatarSize: 42, 
+        new: true, 
+        autonomous: false, 
+        onListLengthChange
+      });
+
       this.loadContacts = () => {
         const pageCount = windowSize.windowH / 60 | 0;
-        const arr = contacts.splice(0, pageCount).filter(this.verifyUserIdForContacts);
+        const arr = contacts.splice(0, pageCount).filter(this.verifyPeerIdForContacts);
 
         arr.forEach((peerId) => {
           sortedUserList.add(peerId);
@@ -1028,7 +1059,7 @@ export class AppDialogsManager {
           return;
         }
 
-        const good = this.verifyUserIdForContacts(peerId);
+        const good = this.verifyPeerIdForContacts(peerId);
         const added = sortedUserList.has(peerId);
         if(!added && good) sortedUserList.add(peerId);
         else if(added && !good) sortedUserList.delete(peerId);
@@ -1038,15 +1069,16 @@ export class AppDialogsManager {
       list.classList.add('chatlist-new');
       this.setListClickListener(list);
       section.content.append(list);
-      section.container.classList.remove('hide');
+
+      ready = true;
+      onListLengthChange();
     });
 
     bottom.append(section.container);
   };
 
-  private verifyUserIdForContacts = (peerId: PeerId) => {
-    const dialog = appMessagesManager.getDialogOnly(peerId);
-    return !dialog;
+  private verifyPeerIdForContacts = (peerId: PeerId) => {
+    return peerId.isContact() && !appMessagesManager.getDialogOnly(peerId);
   };
 
   public onChatsRegularScroll = () => {
