@@ -44,11 +44,9 @@ export class AppWebPagesManager {
     const {id} = apiWebPage;
 
     const oldWebPage = this.webpages[id];
-    if(oldWebPage && 
+    const isUpdated = oldWebPage && 
       oldWebPage._ === apiWebPage._ && 
-      (oldWebPage as WebPage.webPage).hash === (oldWebPage as WebPage.webPage).hash) {
-      return oldWebPage;
-    }
+      (oldWebPage as WebPage.webPage).hash === (oldWebPage as WebPage.webPage).hash;
 
     if(apiWebPage._ === 'webPage') {
       if(apiWebPage.photo?._ === 'photo') {
@@ -110,7 +108,7 @@ export class AppWebPagesManager {
       safeReplaceObject(oldWebPage, apiWebPage);
     }
     
-    if(!messageKey && pendingSet !== undefined) {
+    if(!messageKey && pendingSet !== undefined && isUpdated) {
       const msgs: {peerId: PeerId, mid: number, isScheduled: boolean}[] = [];
       pendingSet.forEach((value) => {
         const [peerId, mid, isScheduled] = value.split('_');
