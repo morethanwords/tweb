@@ -26,28 +26,43 @@ export default class SortedUserList extends SortedList<SortedUser> {
   protected lazyLoadQueue: LazyLoadQueueIntersector;
   protected avatarSize = 48;
   protected rippleEnabled = true;
+  protected autonomous = true;
+  protected new: boolean;
+  protected onListLengthChange: () => void;
 
   constructor(options: Partial<{
     lazyLoadQueue: SortedUserList['lazyLoadQueue'],
     avatarSize: SortedUserList['avatarSize'],
     rippleEnabled: SortedUserList['rippleEnabled'],
-    new: boolean
+    new: SortedUserList['new'],
+    autonomous: SortedUserList['autonomous'],
+    onListLengthChange: SortedUserList['onListLengthChange']
   }> = {}) {
     super({
       getIndex: (id) => appUsersManager.getUserStatusForSort(id),
-      onDelete: (element) => element.dom.listEl.remove(),
+      onDelete: (element) => {
+        element.dom.listEl.remove();
+        this.onListLengthChange && this.onListLengthChange();
+      },
       onUpdate: (element) => {
         const status = appUsersManager.getUserStatusString(element.id);
         replaceContent(element.dom.lastMessageSpan, status);
       },
-      onSort: (element, idx) => positionElementByIndex(element.dom.listEl, this.list, idx),
+      onSort: (element, idx) => {
+        const willChangeLength = element.dom.listEl.parentElement !== this.list;
+        positionElementByIndex(element.dom.listEl, this.list, idx);
+
+        if(willChangeLength && this.onListLengthChange) {
+          this.onListLengthChange();
+        }
+      },
       onElementCreate: (base) => {
         const {dom} = appDialogsManager.addDialogNew({
           dialog: base.id,
           container: false,
           drawStatus: false,
           avatarSize: this.avatarSize,
-          autonomous: true,
+          autonomous: this.autonomous,
           meAsSaved: false,
           rippleEnabled: this.rippleEnabled,
           lazyLoadQueue: this.lazyLoadQueue

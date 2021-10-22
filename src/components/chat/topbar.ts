@@ -312,7 +312,7 @@ export default class ChatTopbar {
           this.appSidebarRight.toggleSidebar(true);
         }
       },
-      verify: () => this.appPeersManager.isContact(this.peerId)
+      verify: () => this.peerId.isUser() && !this.appPeersManager.isContact(this.peerId)
     }, {
       icon: 'forward',
       text: 'ShareContact',
@@ -351,7 +351,7 @@ export default class ChatTopbar {
           selfPresence: 'ChatYourSelf'
         });
       },
-      verify: () => rootScope.myId !== this.peerId && this.appPeersManager.isContact(this.peerId)
+      verify: () => rootScope.myId !== this.peerId && this.peerId.isUser() && this.appPeersManager.isContact(this.peerId)
     }, {
       icon: 'lock',
       text: 'BlockUser',
