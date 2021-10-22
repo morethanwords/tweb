@@ -43,6 +43,13 @@ export class AppWebPagesManager {
     if(apiWebPage._ === 'webPageNotModified') return;
     const {id} = apiWebPage;
 
+    const oldWebPage = this.webpages[id];
+    if(oldWebPage && 
+      oldWebPage._ === apiWebPage._ && 
+      (oldWebPage as WebPage.webPage).hash === (oldWebPage as WebPage.webPage).hash) {
+      return oldWebPage;
+    }
+
     if(apiWebPage._ === 'webPage') {
       if(apiWebPage.photo?._ === 'photo') {
         apiWebPage.photo = appPhotosManager.savePhoto(apiWebPage.photo, mediaContext);
@@ -97,10 +104,10 @@ export class AppWebPagesManager {
       pendingSet.add(messageKey);
     }
     
-    if(this.webpages[id] === undefined) {
+    if(oldWebPage === undefined) {
       this.webpages[id] = apiWebPage;
     } else {
-      safeReplaceObject(this.webpages[id], apiWebPage);
+      safeReplaceObject(oldWebPage, apiWebPage);
     }
     
     if(!messageKey && pendingSet !== undefined) {

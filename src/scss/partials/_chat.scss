@@ -917,7 +917,8 @@ $chat-helper-size: 36px;
 		pointer-events: none;
 
 		@include animation-level(2) {
-			transition: height var(--layer-transition), opacity var(--layer-transition);
+			// transition: height var(--layer-transition), opacity var(--layer-transition);
+			transition: height .15s ease-out, opacity .15s ease-out;
 		}
 
 		@include respond-to(esg-bottom-new) {

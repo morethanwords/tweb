@@ -99,7 +99,9 @@
 }, {
   "predicate": "messageEmpty",
   "params": [
-    {"name": "deleted", "type": "boolean"}
+    {"name": "deleted", "type": "boolean"},
+    {"name": "mid", "type": "number"},
+    {"name": "pFlags", "type": "{}"}
   ]
 }, {
   "predicate": "userFull",

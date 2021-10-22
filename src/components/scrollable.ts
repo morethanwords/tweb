@@ -6,7 +6,7 @@
 
 import { IS_TOUCH_SUPPORTED } from "../environment/touchSupport";
 import { logger, LogTypes } from "../lib/logger";
-import fastSmoothScroll, { FocusDirection } from "../helpers/fastSmoothScroll";
+import fastSmoothScroll, { FocusDirection, ScrollGetNormalSizeCallback } from "../helpers/fastSmoothScroll";
 import useHeavyAnimationCheck from "../hooks/useHeavyAnimationCheck";
 import { cancelEvent } from "../helpers/dom/cancelEvent";
 /*
@@ -106,10 +106,11 @@ export class ScrollableBase {
     maxDistance?: number,
     forceDirection?: FocusDirection,
     forceDuration?: number,
-    axis?: 'x' | 'y'
+    axis?: 'x' | 'y',
+    getNormalSize?: ScrollGetNormalSizeCallback
   ) {
     //return Promise.resolve();
-    return fastSmoothScroll(this.container, element, position, margin, maxDistance, forceDirection, forceDuration, axis);
+    return fastSmoothScroll(this.container, element, position, margin, maxDistance, forceDirection, forceDuration, axis, getNormalSize);
   }
 }
 

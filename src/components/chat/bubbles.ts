@@ -133,7 +133,7 @@ export default class ChatBubbles {
   private loadedTopTimes = 0;
   private loadedBottomTimes = 0;
 
-  private messagesQueuePromise: Promise<void> = null;
+  public messagesQueuePromise: Promise<void> = null;
   private messagesQueue: {message: any, bubble: HTMLElement, reverse: boolean, promises: Promise<void>[]}[] = [];
   private messagesQueueOnRender: () => void = null;
   private messagesQueueOnRenderAdditional: () => void = null;
@@ -1409,6 +1409,10 @@ export default class ChatBubbles {
       if(msgId > 0 && msgId <= maxId) {
         const bubble = this.bubbles[msgId];
         if(bubble) {
+          if(bubble.classList.contains('is-sending')) {
+            continue;
+          }
+          
           bubble.classList.remove('is-sent', 'is-sending'); // is-sending can be when there are bulk of updates (e.g. sending command to Stickers bot)
           bubble.classList.add('is-read');
         }
@@ -1533,7 +1537,25 @@ export default class ChatBubbles {
       }
     }
 
-    return this.scrollable.scrollIntoViewNew(element, position, 4, undefined, forceDirection, forceDuration);
+    return this.scrollable.scrollIntoViewNew(
+      element, 
+      position, 
+      4, 
+      undefined, 
+      forceDirection, 
+      forceDuration, 
+      'y', 
+      ({rect}) => {
+        let height = windowSize.windowH;
+        height -= this.chat.topbar.container.getBoundingClientRect().height;
+        height -= 78;
+        return height;
+
+        const rowsWrapperHeight = this.chat.input.rowsWrapper.getBoundingClientRect().height;
+        const diff = rowsWrapperHeight - 54;
+        return rect.height + diff;
+      }
+    );
   }
 
   public scrollToBubbleEnd(bubble = this.getLastBubble()) {

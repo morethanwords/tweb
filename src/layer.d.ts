@@ -816,7 +816,9 @@ export namespace Message {
 		flags?: number,
 		id: number,
 		peer_id?: Peer,
-		deleted?: boolean
+		deleted?: boolean,
+		mid?: number,
+		pFlags?: {}
 	};
 
 	export type message = {

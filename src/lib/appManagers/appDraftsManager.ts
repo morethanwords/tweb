@@ -251,7 +251,7 @@ export class AppDraftsManager {
     if(threadId) {
       this.syncDraft(peerId, threadId);
     } else {
-      this.saveDraft(peerId, threadId, null, {notify: true/* , force: true */});  
+      this.saveDraft(peerId, threadId, null, {notify: true, force: true});  
     }
   }
 
