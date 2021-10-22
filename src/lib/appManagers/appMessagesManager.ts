@@ -1073,7 +1073,7 @@ export class AppMessagesManager {
 
     const messages = files.map((file, idx) => {
       const details = options.sendFileDetails[idx];
-      const o: any = {
+      const o: Parameters<AppMessagesManager['sendFile']>[2] = {
         isGroupedItem: true,
         isMedia: options.isMedia,
         scheduleDate: options.scheduleDate,
@@ -1094,7 +1094,9 @@ export class AppMessagesManager {
     });
 
     if(options.clearDraft) {
-      appDraftsManager.clearDraft(peerId, options.threadId);
+      setTimeout(() => {
+        appDraftsManager.clearDraft(peerId, options.threadId);
+      }, 0);
     }
     
     // * test pending
@@ -1407,10 +1409,6 @@ export class AppMessagesManager {
       }, 0);
     }
 
-    if(!options.isGroupedItem && options.clearDraft) {
-      appDraftsManager.clearDraft(peerId, options.threadId);
-    }
-    
     this.pendingByRandomId[message.random_id] = {
       peerId, 
       tempId: messageId, 
@@ -1419,9 +1417,13 @@ export class AppMessagesManager {
     };
 
     if(!options.isGroupedItem && message.send) {
-      setTimeout(message.send, 0);
-      //setTimeout(message.send, 4000);
-      //setTimeout(message.send, 7000);
+      setTimeout(() => {
+        if(options.clearDraft) {
+          appDraftsManager.clearDraft(peerId, options.threadId);
+        }
+
+        message.send();
+      }, 0);
     }
   }
 
@@ -1966,13 +1968,18 @@ export class AppMessagesManager {
     return promise;
   }
 
-  public getMessageFromStorage(storage: MessagesStorage, mid: number) {
-    return storage && storage.get(mid) || {
+  public generateEmptyMessage(mid: number): Message.messageEmpty {
+    return {
       _: 'messageEmpty',
-      id: mid,
+      id: appMessagesIdsManager.getServerMessageId(mid),
+      mid,
       deleted: true,
       pFlags: {}
     };
+  }
+
+  public getMessageFromStorage(storage: MessagesStorage, mid: number) {
+    return storage && storage.get(mid) || this.generateEmptyMessage(mid);
   }
 
   private createMessageStorage() {
@@ -5455,7 +5462,6 @@ export class AppMessagesManager {
         
         for(const [peerId, map] of this.needSingleMessages) {
           const mids = [...map.keys()];
-          const promises = [...map.values()];
           const msgIds: InputMessage[] = mids.map((mid) => {
             return {
               _: 'inputMessageID',
@@ -5483,8 +5489,17 @@ export class AppMessagesManager {
             this.saveMessages(getMessagesResult.messages);
 
             for(let i = 0; i < getMessagesResult.messages.length; ++i) {
-              const promise = promises[i];
+              const message = getMessagesResult.messages[i];
+              const mid = appMessagesIdsManager.generateMessageId(message.id);
+              const promise = map.get(mid);
               promise.resolve(getMessagesResult.messages[i]);
+              map.delete(mid);
+            }
+
+            if(map.size) {
+              for(const [mid, promise] of map) {
+                promise.resolve(this.generateEmptyMessage(mid));
+              }
             }
           }).finally(() => {
             rootScope.dispatchEvent('messages_downloaded', {peerId, mids});
@@ -5497,7 +5512,7 @@ export class AppMessagesManager {
 
         Promise.all(requestPromises).finally(() => {
           this.fetchSingleMessagesPromise = null;
-          if(Object.keys(this.needSingleMessages).length) this.fetchSingleMessages();
+          if(this.needSingleMessages.size) this.fetchSingleMessages();
           resolve();
         });
       }, 0);

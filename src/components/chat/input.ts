@@ -82,7 +82,6 @@ import PopupPeer from '../popups/peer';
 import MEDIA_MIME_TYPES_SUPPORTED from '../../environment/mediaMimeTypesSupport';
 import appMediaPlaybackController from '../appMediaPlaybackController';
 import { NULL_PEER_ID } from '../../lib/mtproto/mtproto_config';
-import replaceContent from '../../helpers/dom/replaceContent';
 
 const RECORD_MIN_TIME = 500;
 const POSTING_MEDIA_NOT_ALLOWED = 'Posting media content isn\'t allowed in this group.';
@@ -776,6 +775,14 @@ export default class ChatInput {
       draft = this.appDraftsManager.getDraft(this.chat.peerId, this.chat.threadId);
 
       if(!draft) {
+        if(force) { // this situation can only happen when sending message with clearDraft
+          ((this.chat.bubbles.messagesQueuePromise || Promise.resolve()) as Promise<any>).then(() => {
+            fastRaf(() => {
+              this.onMessageSent();
+            });
+          });
+        }
+        
         return false;
       }
     }
@@ -921,6 +928,7 @@ export default class ChatInput {
   private attachMessageInputListeners() {
     this.listenerSetter.add(this.messageInput)('keydown', (e: KeyboardEvent) => {
       if(isSendShortcutPressed(e)) {
+        cancelEvent(e);
         this.sendMessage();
       } else if(e.ctrlKey || e.metaKey) {
         this.handleMarkdownShortcut(e);
@@ -1758,6 +1766,8 @@ export default class ChatInput {
           entities,
           noWebPage: this.noWebPage
         });
+
+        this.onMessageSent();
       } else {
         new PopupDeleteMessages(this.chat.peerId, [this.editMsgId], this.chat.type);
 
@@ -1774,6 +1784,9 @@ export default class ChatInput {
         silent: this.sendSilent,
         clearDraft: true
       });
+
+      this.onMessageSent(false, false);
+      // this.onMessageSent();
     }
 
     // * wait for sendText set messageId for invokeAfterMsg
@@ -1792,7 +1805,7 @@ export default class ChatInput {
       }, 0);
     }
 
-    this.onMessageSent();
+    // this.onMessageSent();
   }
 
   public sendMessageWithDocument(document: MyDocument | string, force = false, clearDraft = false) {
@@ -1934,12 +1947,12 @@ export default class ChatInput {
       if(message._ === 'messageEmpty') { // load missing replying message
         peerTitleEl = i18n('Loading');
 
-        this.chat.appMessagesManager.wrapSingleMessage(this.chat.peerId, mid).then(() => {
+        this.chat.appMessagesManager.wrapSingleMessage(this.chat.peerId, mid).then((_message) => {
           if(this.replyToMsgId !== mid) {
             return;
           }
 
-          message = this.chat.getMessage(mid);
+          message = _message;
           if(message._ === 'messageEmpty') {
             this.clearHelper('reply');
           } else {

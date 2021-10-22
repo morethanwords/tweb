@@ -5,7 +5,6 @@
  */
 
 import SwipeHandler, { SwipeHandlerOptions } from "../../components/swipeHandler";
-import { IS_APPLE_MOBILE, IS_SAFARI } from "../../environment/userAgent";
 import { cancelEvent } from "./cancelEvent";
 import findUpClassName from "./findUpClassName";
 import isSwipingBackSafari from "./isSwipingBackSafari";
@@ -45,6 +44,6 @@ export default function handleHorizontalSwipe(options: SwipeHandlerHorizontalOpt
       cancelY = false;
       options.onReset && options.onReset();
     },
-    cancelEvent: true
+    cancelEvent: false // cannot use cancelEvent on Safari iOS because scroll will be canceled too
   });
 }

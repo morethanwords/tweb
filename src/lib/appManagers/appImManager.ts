@@ -501,16 +501,22 @@ export class AppImManager {
         return;
       }
       
-      if(chat.input.messageInput && 
+      if(
+        chat?.input?.messageInput && 
         e.target !== chat.input.messageInput && 
         target.tagName !== 'INPUT' && 
         !target.hasAttribute('contenteditable') && 
         !IS_TOUCH_SUPPORTED && 
         (!mediaSizes.isMobile || this.tabId === 1) && 
-        !this.chat.selection.isSelecting && 
-        !this.chat.input.recording) {
+        !chat.selection.isSelecting && 
+        !chat.input.recording
+      ) {
         chat.input.messageInput.focus();
         placeCaretAtEnd(chat.input.messageInput);
+
+        // clone and dispatch same event to new input. it is needed for sending message if input was blurred
+        const newEvent = new KeyboardEvent(e.type, e);
+        chat.input.messageInput.dispatchEvent(newEvent);
       }
     };
     

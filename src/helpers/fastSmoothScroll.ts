@@ -12,9 +12,10 @@ import { animateSingle, cancelAnimationByKey } from './animation';
 import rootScope from '../lib/rootScope';
 import isInDOM from './dom/isInDOM';
 
-const MAX_DISTANCE = 1500;
 const MIN_JS_DURATION = 250;
 const MAX_JS_DURATION = 600;
+const LONG_TRANSITION_MAX_DISTANCE = 1500;
+const SHORT_TRANSITION_MAX_DISTANCE = 500;
 
 export enum FocusDirection {
   Up,
@@ -22,15 +23,18 @@ export enum FocusDirection {
   Static,
 };
 
+export type ScrollGetNormalSizeCallback = (options: {rect: DOMRect}) => number;
+
 export default function fastSmoothScroll(
   container: HTMLElement,
   element: HTMLElement,
   position: ScrollLogicalPosition,
   margin = 0,
-  maxDistance = MAX_DISTANCE,
+  maxDistance = LONG_TRANSITION_MAX_DISTANCE,
   forceDirection?: FocusDirection,
   forceDuration?: number,
-  axis: 'x' | 'y' = 'y'
+  axis: 'x' | 'y' = 'y',
+  getNormalSize?: ScrollGetNormalSizeCallback
 ) {
   //return;
 
@@ -40,7 +44,7 @@ export default function fastSmoothScroll(
 
   if(forceDirection === FocusDirection.Static) {
     forceDuration = 0;
-    return scrollWithJs(container, element, position, margin, forceDuration, axis);
+    return scrollWithJs(container, element, position, margin, forceDuration, axis, getNormalSize);
     /* return Promise.resolve();
 
     element.scrollIntoView({ block: position });
@@ -82,9 +86,9 @@ export default function fastSmoothScroll(
     } */
   }
 
-  const promise = new Promise((resolve) => {
+  const promise = new Promise<void>((resolve) => {
     fastRaf(() => {
-      scrollWithJs(container, element, position, margin, forceDuration, axis)
+      scrollWithJs(container, element, position, margin, forceDuration, axis, getNormalSize)
       .then(resolve);
     });
   });
@@ -93,7 +97,13 @@ export default function fastSmoothScroll(
 }
 
 function scrollWithJs(
-  container: HTMLElement, element: HTMLElement, position: ScrollLogicalPosition, margin = 0, forceDuration?: number, axis: 'x' | 'y' = 'y'
+  container: HTMLElement, 
+  element: HTMLElement, 
+  position: ScrollLogicalPosition, 
+  margin = 0, 
+  forceDuration?: number, 
+  axis: 'x' | 'y' = 'y',
+  getNormalSize?: ScrollGetNormalSizeCallback
 ) {
   if(!isInDOM(element)) {
     cancelAnimationByKey(container);
@@ -115,7 +125,7 @@ function scrollWithJs(
   const elementPosition = elementRect[rectStartKey] - containerRect[rectStartKey];
   const elementSize = element[scrollSizeKey]; // margin is exclusive in DOMRect
 
-  const containerSize = containerRect[sizeKey];
+  const containerSize = getNormalSize ? getNormalSize({rect: containerRect}) : containerRect[sizeKey];
 
   const scrollPosition = container[scrollPositionKey];
   const scrollSize = container[scrollSizeKey];
@@ -177,8 +187,9 @@ function scrollWithJs(
   }
 
   const target = container[scrollPositionKey] + path;
+  const absPath = Math.abs(path);
   const duration = forceDuration ?? (
-    MIN_JS_DURATION + (Math.abs(path) / MAX_DISTANCE) * (MAX_JS_DURATION - MIN_JS_DURATION)
+    MIN_JS_DURATION + (absPath / LONG_TRANSITION_MAX_DISTANCE) * (MAX_JS_DURATION - MIN_JS_DURATION)
   );
   const startAt = Date.now();
 
@@ -222,6 +233,7 @@ function scrollWithJs(
   //transformable.style.minHeight = `${transformableHeight}px`;
   */
 
+  const transition = absPath < SHORT_TRANSITION_MAX_DISTANCE ? shortTransition : longTransition;
   const tick = () => {
     const t = duration ? Math.min((Date.now() - startAt) / duration, 1) : 1;
 
@@ -258,6 +270,10 @@ function scrollWithJs(
   return animateSingle(tick, container);
 }
 
-function transition(t: number) {
+function longTransition(t: number) {
+  return 1 - ((1 - t) ** 5);
+}
+
+function shortTransition(t: number) {
   return 1 - ((1 - t) ** 3.5);
 }

@@ -93,7 +93,7 @@ class InputField {
   public validate: () => boolean;
 
   //public onLengthChange: (length: number, isOverflow: boolean) => void;
-  protected wasInputFakeClientHeight: number;
+  // protected wasInputFakeClientHeight: number;
   // protected showScrollDebounced: () => void;
 
   constructor(public options: InputFieldOptions = {}) {
@@ -147,7 +147,7 @@ class InputField {
 
       if(options.animate) {
         input.classList.add('scrollable', 'scrollable-y');
-        this.wasInputFakeClientHeight = 0;
+        // this.wasInputFakeClientHeight = 0;
         // this.showScrollDebounced = debounce(() => this.input.classList.remove('no-scrollbar'), 150, false, true);
         this.inputFake = document.createElement('div');
         this.inputFake.setAttribute('contenteditable', 'true');
@@ -237,14 +237,21 @@ class InputField {
   }
 
   public onFakeInput() {
-    const {scrollHeight, clientHeight} = this.inputFake;
+    const {scrollHeight: newHeight/* , clientHeight */} = this.inputFake;
     /* if(this.wasInputFakeClientHeight && this.wasInputFakeClientHeight !== clientHeight) {
       this.input.classList.add('no-scrollbar'); // ! в сафари может вообще не появиться скролл после анимации, так как ему нужен полный reflow блока с overflow.
       this.showScrollDebounced();
     } */
 
-    this.wasInputFakeClientHeight = clientHeight;
-    this.input.style.height = scrollHeight ? scrollHeight + 'px' : '';
+    const TRANSITION_DURATION_FACTOR = 50;
+    const currentHeight = +this.input.style.height.replace('px', '');
+    const transitionDuration = Math.round(
+      TRANSITION_DURATION_FACTOR * Math.log(Math.abs(newHeight - currentHeight)),
+    );
+
+    // this.wasInputFakeClientHeight = clientHeight;
+    this.input.style.transitionDuration = `${transitionDuration}ms`;
+    this.input.style.height = newHeight ? newHeight + 'px' : '';
   }
 
   get value() {
