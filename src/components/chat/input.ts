@@ -24,7 +24,7 @@ import apiManager from "../../lib/mtproto/mtprotoworker";
 //import Recorder from '../opus-recorder/dist/recorder.min';
 import opusDecodeController from "../../lib/opusDecodeController";
 import RichTextProcessor from "../../lib/richtextprocessor";
-import { ButtonMenuItemOptions } from '../buttonMenu';
+import ButtonMenu, { ButtonMenuItemOptions } from '../buttonMenu';
 import emoticonsDropdown from "../emoticonsDropdown";
 import PopupCreatePoll from "../popups/createPoll";
 import PopupForward from '../popups/forward';
@@ -82,6 +82,7 @@ import PopupPeer from '../popups/peer';
 import MEDIA_MIME_TYPES_SUPPORTED from '../../environment/mediaMimeTypesSupport';
 import appMediaPlaybackController from '../appMediaPlaybackController';
 import { NULL_PEER_ID } from '../../lib/mtproto/mtproto_config';
+import CheckboxField from '../checkboxField';
 
 const RECORD_MIN_TIME = 500;
 const POSTING_MEDIA_NOT_ALLOWED = 'Posting media content isn\'t allowed in this group.';
@@ -120,6 +121,8 @@ export default class ChatInput {
     cancelBtn: HTMLButtonElement,
     iconBtn: HTMLButtonElement
   } = {} as any;
+
+  private forwardElements: {} = {} as any;
 
   private getWebPagePromise: Promise<void>;
   private willSendWebPage: WebPage = null;
@@ -308,6 +311,14 @@ export default class ChatInput {
     this.replyElements.cancelBtn = ButtonIcon('close reply-cancel', {noRipple: true});
 
     this.replyElements.container.append(this.replyElements.iconBtn, this.replyElements.cancelBtn);
+
+    const forwardBtnMenu = ButtonMenu([], this.listenerSetter);
+
+    this.forwardElements = {
+      container: forwardBtnMenu
+    } as any;
+
+    this.replyElements.container.append(forwardBtnMenu);
 
     this.newMessageWrapper = document.createElement('div');
     this.newMessageWrapper.classList.add('new-message-wrapper');
@@ -1802,6 +1813,10 @@ export default class ChatInput {
             scheduleDate: scheduleDate
           });
         }
+
+        if(!value) {
+          this.onMessageSent();
+        }
       }, 0);
     }
 
@@ -2027,14 +2042,18 @@ export default class ChatInput {
       this.helperType = type;
       this.helperFunc = callerFunc;
     }
-
+    
     const replyParent = this.replyElements.container;
-    if(replyParent.lastElementChild.tagName === 'DIV') {
-      replyParent.lastElementChild.remove();
-    }
+    const oldReply = replyParent.lastElementChild.previousElementSibling;
+    const haveReply = oldReply.classList.contains('reply');
 
     this.replyElements.iconBtn.replaceWith(this.replyElements.iconBtn = ButtonIcon((type === 'webpage' ? 'link' : type) + ' active reply-icon', {noRipple: true}));
-    replyParent.append(wrapReply(title, subtitle, message));
+    const newReply = wrapReply(title, subtitle, message);
+    if(haveReply) {
+      oldReply.replaceWith(newReply);
+    } else {
+      replyParent.insertBefore(newReply, replyParent.lastElementChild);
+    }
 
     this.chat.container.classList.add('is-helper-active');
     /* const scroll = appImManager.scrollable;

@@ -173,6 +173,8 @@ export default class ChatBubbles {
   private viewsMids: Set<number> = new Set();
   private sendViewCountersDebounced: () => Promise<void>;
 
+  private isTopPaddingSet = false;
+
   constructor(
     private chat: Chat, 
     private appMessagesManager: AppMessagesManager, 
@@ -1489,9 +1491,23 @@ export default class ChatBubbles {
       }
     }
 
+    const middleware = this.getMiddleware();
+    let isPaddingNeeded = false;
+    if(!this.isTopPaddingSet) {
+      const {scrollHeight} = this.scrollable;
+      const clientHeight = this.scrollable.container.clientHeight;
+      isPaddingNeeded = clientHeight === scrollHeight;
+      if(isPaddingNeeded) {
+        this.chatInner.style.paddingTop = clientHeight + 'px';
+        this.scrollable.scrollTop = scrollHeight;
+        this.isTopPaddingSet = true;
+      }
+    }
+
     const promise = this.performHistoryResult(mids, false, true);
     if(scrolledDown) {
       promise.then(() => {
+        if(!middleware()) return;
         //this.log('renderNewMessagesByIDs: messagesQueuePromise after', this.scrollable.isScrolledDown);
         //this.scrollable.scrollTo(this.scrollable.scrollHeight, 'top', true, true, 5000);
         //const bubble = this.bubbles[Math.max(...mids)];
@@ -1501,7 +1517,15 @@ export default class ChatBubbles {
           bubble = this.bubbles[Math.max(...mids)];
         }
 
-        this.scrollToBubbleEnd(bubble);
+        const promise = this.scrollToBubbleEnd(bubble, true) || Promise.resolve();
+        if(isPaddingNeeded) {
+          promise.then(() => { // it will be called only once even if was set multiple times (that won't happen)
+            if(middleware() && isPaddingNeeded) {
+              this.chatInner.style.paddingTop = '';
+              this.isTopPaddingSet = false;
+            }
+          });
+        }
 
         //this.scrollable.scrollIntoViewNew(this.chatInner, 'end');
 
@@ -1523,7 +1547,8 @@ export default class ChatBubbles {
     element: HTMLElement, 
     position: ScrollLogicalPosition,
     forceDirection?: FocusDirection,
-    forceDuration?: number
+    forceDuration?: number,
+    isNewMessage?: boolean
   ) {
     // * 4 = .25rem
     const bubble = findUpClassName(element, 'bubble');
@@ -1545,20 +1570,22 @@ export default class ChatBubbles {
       forceDirection, 
       forceDuration, 
       'y', 
-      ({rect}) => {
+      isNewMessage ? ({rect}) => {
+        // return rect.height;
+
         let height = windowSize.windowH;
         height -= this.chat.topbar.container.getBoundingClientRect().height;
-        height -= mediaSizes.isMobile ? 58 : 78; // TODO: change height to mobile when ESG is bottom
+        height -= mediaSizes.isMobile || windowSize.windowH < 570 ? 58 : 78;
         return height;
 
         /* const rowsWrapperHeight = this.chat.input.rowsWrapper.getBoundingClientRect().height;
         const diff = rowsWrapperHeight - 54;
         return rect.height + diff; */
-      }
+      } : undefined
     );
   }
 
-  public scrollToBubbleEnd(bubble = this.getLastBubble()) {
+  public scrollToBubbleEnd(bubble = this.getLastBubble(), isNewMessage?: boolean) {
     /* if(DEBUG) {
       this.log('scrollToNewLastBubble: will scroll into view:', bubble);
     } */
@@ -1566,7 +1593,7 @@ export default class ChatBubbles {
     if(bubble) {
       this.scrollingToBubble = bubble;
       const middleware = this.getMiddleware();
-      this.scrollToBubble(bubble, 'end').then(() => {
+      return this.scrollToBubble(bubble, 'end', undefined, undefined, isNewMessage).then(() => {
         if(!middleware()) return;
         this.scrollingToBubble = undefined;
       });
@@ -1777,6 +1804,8 @@ export default class ChatBubbles {
 
     this.scrollingToBubble = undefined;
     ////console.timeEnd('appImManager cleanup');
+
+    this.isTopPaddingSet = false;
   }
 
   public setPeer(peerId: PeerId, lastMsgId?: number): {cached?: boolean, promise: Chat['setPeerPromise']} {
