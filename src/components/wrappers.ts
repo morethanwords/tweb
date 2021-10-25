@@ -164,6 +164,8 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
     video.remove();
   } */
 
+  let preloader: ProgressivePreloader; // it must be here, otherwise will get error before initialization in round onPlay
+
   const video = document.createElement('video');
   video.classList.add('media-video');
   video.setAttribute('playsinline', 'true');
@@ -384,7 +386,6 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
   const cacheContext = appDownloadManager.getCacheContext(doc);
 
   const isUpload = !!(message?.media as any)?.preloader;
-  let preloader: ProgressivePreloader;
   if(isUpload) { // means upload
     preloader = (message.media as any).preloader as ProgressivePreloader;
     preloader.attach(container, false);
