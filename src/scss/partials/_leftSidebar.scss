@@ -300,6 +300,7 @@
     
     .btn-menu {
       width: 300px;
+      max-height: calc(100 * var(--vh) - 3.75rem);
   
       .archived-count {
         justify-self: flex-end;

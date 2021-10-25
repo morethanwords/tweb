@@ -15,6 +15,10 @@
     flex: 0 0 auto;
     user-select: none;
     cursor: default;
+    
+    .btn-menu {
+      overflow-y: overlay;
+    }
 
     @include respond-to(handhelds) {
       padding: 0 .5rem;
