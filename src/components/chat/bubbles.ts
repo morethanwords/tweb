@@ -1574,7 +1574,8 @@ export default class ChatBubbles {
         // return rect.height;
 
         let height = windowSize.windowH;
-        height -= this.chat.topbar.container.getBoundingClientRect().height;
+        // height -= this.chat.topbar.container.getBoundingClientRect().height;
+        height -= this.bubblesContainer.offsetTop;
         height -= mediaSizes.isMobile || windowSize.windowH < 570 ? 58 : 78;
         return height;
 
