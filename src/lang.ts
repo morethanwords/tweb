@@ -691,6 +691,8 @@ const lang = {
   "ChatList.Filter.Archive": "Archived",
   "ChatList.Filter.Include.LimitReached": "Sorry, you can only add up to 100 individual chats. Try using chat types.",
   "ChatList.Filter.Exclude.LimitReached": "Sorry, you can only add up to 100 individual chats. Try using chat types.",
+  "ChatList.Filter.Confirm.Remove.Header": "Remove Folder",
+  "ChatList.Filter.Confirm.Remove.Text": "Are you sure you want to remove this folder? Your chats will not be deleted.",
   "Channel.DescriptionHolderDescrpiton": "You can provide an optional description for your channel.",
   "CreateGroup.NameHolder": "Group Name",
   "Date.Today": "Today",

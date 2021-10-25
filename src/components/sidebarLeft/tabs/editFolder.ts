@@ -20,6 +20,7 @@ import Button from "../../button";
 import AppIncludedChatsTab from "./includedChats";
 import { i18n, i18n_, LangPackKey } from "../../../lib/langPack";
 import { SettingSection } from "..";
+import PopupPeer from "../../popups/peer";
 
 const MAX_FOLDER_NAME_LENGTH = 12;
 
@@ -55,14 +56,24 @@ export default class AppEditFolderTab extends SliderSuperTab {
       icon: 'delete danger',
       text: 'FilterMenuDelete',
       onClick: () => {
-        deleteFolderButton.element.setAttribute('disabled', 'true');
-        appMessagesManager.filtersStorage.updateDialogFilter(this.filter, true).then(bool => {
-          if(bool) {
-            this.close();
-          }
-        }).finally(() => {
-          deleteFolderButton.element.removeAttribute('disabled');
-        });
+        new PopupPeer('filter-delete', {
+          titleLangKey: 'ChatList.Filter.Confirm.Remove.Header',
+          descriptionLangKey: 'ChatList.Filter.Confirm.Remove.Text',
+          buttons: [{
+            langKey: 'Delete',
+            callback: () => {
+              deleteFolderButton.element.setAttribute('disabled', 'true');
+              appMessagesManager.filtersStorage.updateDialogFilter(this.filter, true).then(bool => {
+                if(bool) {
+                  this.close();
+                }
+              }).finally(() => {
+                deleteFolderButton.element.removeAttribute('disabled');
+              });
+            },
+            isDanger: true
+          }]
+        }).show();
       }
     };
     this.menuBtn = ButtonMenuToggle({}, 'bottom-left', [deleteFolderButton]);

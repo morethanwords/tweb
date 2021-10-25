@@ -152,8 +152,10 @@
 	.btn-menu-toggle {
 		.btn-menu {
 			top: calc(100% + 7px);
-
+			max-height: calc(100 * var(--vh) - 4.375rem);
+			
 			@include respond-to(handhelds) {
+				max-height: calc(100 * var(--vh) - 3.75rem);
 				top: 29px;
 			}
 		}
