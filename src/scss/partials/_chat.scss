@@ -897,7 +897,7 @@ $chat-helper-size: 36px;
 	
 	.reply-wrapper {
 		justify-content: flex-start;
-		overflow: hidden;
+		// overflow: hidden; // ! COMMENTED FOR TESTING
 		/* transition: transform var(--layer-transition), border-radius var(--layer-transition);
 		position: absolute;
 		left: 0;

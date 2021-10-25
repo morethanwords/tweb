@@ -43,7 +43,7 @@ export default class ConnectionStatusComponent {
     this.log = logger('CS');
   
     this.statusContainer = document.createElement('div');
-    this.statusContainer.classList.add('connection-status');
+    this.statusContainer.classList.add('connection-status'/* , 'hide' */);
 
     this.statusEl = Button('btn-primary bg-warning connection-status-button', {noRipple: true});
     this.statusPreloader = new ProgressivePreloader({cancelable: false});
