@@ -847,6 +847,12 @@ namespace RichTextProcessor {
       url = 'tg://unsafe_url?url=' + encodeURIComponent(url);
     } else  */if((tgMeMatch = url.match(/^(?:https?:\/\/)?t(?:elegram)?\.me\/(.+)/))) {
       const fullPath = tgMeMatch[1];
+
+      if(/^\W/.test(fullPath)) {
+        onclick = 'joinchat';
+        return {url, onclick};
+      }
+
       const path = fullPath.split('/');
       switch(path[0]) {
         case 'joinchat':

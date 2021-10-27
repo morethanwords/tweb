@@ -308,12 +308,13 @@ export class AppImManager {
       }
     });
 
+    // Support old t.me/joinchat/asd and new t.me/+asd
     this.addAnchorListener<{pathnameParams: ['joinchat', string]}>({
       name: 'joinchat', 
       callback: ({pathnameParams}) => {
         const link: InternalLink = {
           _: INTERNAL_LINK_TYPE.JOIN_CHAT,
-          invite: pathnameParams[1]
+          invite: pathnameParams[1] || decodeURIComponent(pathnameParams[0]).slice(1)
         };
 
         this.processInternalLink(link);
