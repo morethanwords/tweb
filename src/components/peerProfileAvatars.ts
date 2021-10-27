@@ -1,14 +1,18 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
 import PARALLAX_SUPPORTED from "../environment/parallaxSupport";
 import { IS_TOUCH_SUPPORTED } from "../environment/touchSupport";
 import { cancelEvent } from "../helpers/dom/cancelEvent";
 import { attachClickEvent } from "../helpers/dom/clickEvent";
-import renderImageFromUrl from "../helpers/dom/renderImageFromUrl";
 import filterChatPhotosMessages from "../helpers/filterChatPhotosMessages";
 import ListLoader from "../helpers/listLoader";
 import { fastRaf } from "../helpers/schedulers";
 import { Message, ChatFull, MessageAction, Photo } from "../layer";
 import appAvatarsManager from "../lib/appManagers/appAvatarsManager";
-import appDownloadManager from "../lib/appManagers/appDownloadManager";
 import appMessagesManager, { AppMessagesManager } from "../lib/appManagers/appMessagesManager";
 import appPeersManager from "../lib/appManagers/appPeersManager";
 import appPhotosManager from "../lib/appManagers/appPhotosManager";
@@ -16,6 +20,9 @@ import appProfileManager from "../lib/appManagers/appProfileManager";
 import { openAvatarViewer } from "./avatar";
 import Scrollable from "./scrollable";
 import SwipeHandler from "./swipeHandler";
+import { wrapPhoto } from "./wrappers";
+
+const LOAD_NEAREST = 3;
 
 export default class PeerProfileAvatars {
   private static BASE_CLASS = 'profile-avatars';
@@ -30,6 +37,8 @@ export default class PeerProfileAvatars {
   private tabs: HTMLDivElement;
   private listLoader: ListLoader<Photo.photo['id'] | Message.messageService, Photo.photo['id'] | Message.messageService>;
   private peerId: PeerId;
+  private intersectionObserver: IntersectionObserver;
+  private loadCallbacks: Map<Element, () => void> = new Map();
 
   constructor(public scrollable: Scrollable) {
     this.container = document.createElement('div');
@@ -197,6 +206,16 @@ export default class PeerProfileAvatars {
         });
       }
     });
+
+    this.intersectionObserver = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if(!entry.isIntersecting) {
+          return;
+        }
+
+        this.loadNearestToTarget(entry.target);
+      });
+    });
   }
 
   public setPeer(peerId: PeerId) {
@@ -270,6 +289,8 @@ export default class PeerProfileAvatars {
 
         const tab = this.tabs.children[id] as HTMLElement;
         tab.classList.add('active');
+
+        this.loadNearestToTarget(this.avatars.children[id]);
       }
     });
 
@@ -297,7 +318,7 @@ export default class PeerProfileAvatars {
 
   public processItem = (photoId: Photo.photo['id'] | Message.messageService) => {
     const avatar = document.createElement('div');
-    avatar.classList.add(PeerProfileAvatars.BASE_CLASS + '-avatar');
+    avatar.classList.add(PeerProfileAvatars.BASE_CLASS + '-avatar', 'media-container');
 
     let photo: Photo.photo;
     if(photoId) {
@@ -307,20 +328,32 @@ export default class PeerProfileAvatars {
     }
 
     const img = new Image();
-    img.classList.add(PeerProfileAvatars.BASE_CLASS + '-avatar-image');
+    img.classList.add('avatar-photo');
     img.draggable = false;
 
-    if(photo) {
-      const size = appPhotosManager.choosePhotoSize(photo, 420, 420, false);
-      appPhotosManager.preloadPhoto(photo, size).then(() => {
-        const cacheContext = appDownloadManager.getCacheContext(photo, size.type);
-        renderImageFromUrl(img, cacheContext.url, () => {
-          avatar.append(img);
+    const loadCallback = () => {
+      if(photo) {
+        const res = wrapPhoto({
+          container: avatar,
+          photo,
+          size: appPhotosManager.choosePhotoSize(photo, 420, 420, false),
+          withoutPreloader: true
         });
-      });
+  
+        [res.images.thumb, res.images.full].filter(Boolean).forEach(img => {
+          img.classList.add('avatar-photo');
+        });
+      } else {
+        const photo = appPeersManager.getPeerPhoto(this.peerId);
+        appAvatarsManager.putAvatar(avatar, this.peerId, photo, 'photo_big', img);
+      }
+    };
+
+    if(this.avatars.childElementCount <= LOAD_NEAREST) {
+      loadCallback();
     } else {
-      const photo = appPeersManager.getPeerPhoto(this.peerId);
-      appAvatarsManager.putAvatar(avatar, this.peerId, photo, 'photo_big', img);
+      this.intersectionObserver.observe(avatar);
+      this.loadCallbacks.set(avatar, loadCallback);
     }
 
     this.avatars.append(avatar);
@@ -329,4 +362,19 @@ export default class PeerProfileAvatars {
 
     return photoId;
   };
+
+  private loadNearestToTarget(target: Element) {
+    const children = Array.from(target.parentElement.children);
+    const idx = children.indexOf(target);
+    const slice = children.slice(Math.max(0, idx - LOAD_NEAREST), Math.min(children.length, idx + LOAD_NEAREST));
+
+    slice.forEach(target => {
+      const callback = this.loadCallbacks.get(target);
+      if(callback) {
+        callback();
+        this.loadCallbacks.delete(target);
+        this.intersectionObserver.unobserve(target);
+      }
+    });
+  }
 }

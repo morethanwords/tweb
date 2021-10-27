@@ -71,8 +71,9 @@
       min-height: 100%;
       display: flex;
       background-color: #000;
+      position: relative;
 
-      &-image {
+      .avatar-photo {
         width: 100%;
         height: 100%;
         object-fit: cover;
@@ -99,7 +100,8 @@
       bottom: .5625rem;
       pointer-events: none;
 
-      .profile-name, .profile-subtitle {
+      .profile-name, 
+      .profile-subtitle {
         color: #fff;
         margin: 0;
         text-align: left;
@@ -322,7 +324,9 @@
     }
   }
 
-  &-name, &-subtitle, &-avatar {
+  &-name, 
+  &-subtitle, 
+  &-avatar {
     flex: 0 0 auto;
   }
 }
