@@ -55,6 +55,7 @@ export default class StickersHelper extends AutocompleteHelper {
       this.lazyLoadQueue.clear();
     }
 
+    appStickersManager.preloadAnimatedEmojiSticker(emoticon);
     appStickersManager.getStickersByEmoticon(emoticon)
     .then((stickers) => {
       if(!middleware()) {

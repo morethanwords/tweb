@@ -13,6 +13,10 @@ import AppStorage from '../storage';
 import { MOUNT_CLASS_TO } from '../../config/debug';
 import { forEachReverse } from '../../helpers/array';
 import DATABASE_STATE from '../../config/databases/state';
+import { readBlobAsText } from '../../helpers/blob';
+import lottieLoader from '../lottieLoader';
+import mediaSizes from '../../helpers/mediaSizes';
+import { getEmojiToneIndex } from '../../vendor/emoji';
 
 const CACHE_TIME = 3600e3;
 
@@ -144,11 +148,27 @@ export class AppStickersManager {
     return pack ? appDocsManager.getDoc(pack.documents[0]) : undefined;
   }
 
-  public preloadAnimatedEmojiSticker(emoji: string) {
+  public preloadAnimatedEmojiSticker(emoji: string, width?: number, height?: number) {
     return this.getAnimatedEmojiStickerSet().then(() => {
       const doc = this.getAnimatedEmojiSticker(emoji);
       if(doc) {
-        return appDocsManager.downloadDoc(doc);
+        return appDocsManager.downloadDoc(doc)
+        .then(readBlobAsText)
+        .then(async(json) => {
+          const mediaSize = mediaSizes.active.emojiSticker;
+          const toneIndex = getEmojiToneIndex(emoji);
+          const animation = await lottieLoader.loadAnimationWorker({
+            container: undefined,
+            animationData: json,
+            width: width ?? mediaSize.width,
+            height: height ?? mediaSize.height
+          }, 'none', toneIndex);
+
+          animation.addEventListener('firstFrame', () => {
+            appDocsManager.saveLottiePreview(doc, animation.canvas, toneIndex);
+            animation.remove();
+          }, {once: true});
+        });
       }
     });
   }
