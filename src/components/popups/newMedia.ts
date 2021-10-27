@@ -12,7 +12,7 @@ import { toast } from "../toast";
 import { prepareAlbum, wrapDocument } from "../wrappers";
 import CheckboxField from "../checkboxField";
 import SendContextMenu from "../chat/sendContextMenu";
-import { createPosterFromVideo, onMediaLoad } from "../../helpers/files";
+import { createPosterFromMedia, createPosterFromVideo, onMediaLoad } from "../../helpers/files";
 import { MyDocument } from "../../lib/appManagers/appDocsManager";
 import I18n, { i18n, LangPackKey } from "../../lib/langPack";
 import appDownloadManager from "../../lib/appManagers/appDownloadManager";
@@ -23,6 +23,7 @@ import RichTextProcessor from "../../lib/richtextprocessor";
 import { MediaSize } from "../../helpers/mediaSizes";
 import { attachClickEvent } from "../../helpers/dom/clickEvent";
 import MEDIA_MIME_TYPES_SUPPORTED from '../../environment/mediaMimeTypesSupport';
+import getGifDuration from "../../helpers/getGifDuration";
 
 type SendFileParams = Partial<{
   file: File,
@@ -291,7 +292,27 @@ export default class PopupNewMedia extends PopupElement {
               params.height = img.naturalHeight;
 
               itemDiv.append(img);
-              resolve(itemDiv);
+
+              if(file.type === 'image/gif') {
+                params.noSound = true;
+                
+                Promise.all([
+                  getGifDuration(img).then(duration => {
+                    params.duration = Math.ceil(duration);
+                  }),
+
+                  createPosterFromMedia(img).then(thumb => {
+                    params.thumb = {
+                      url: URL.createObjectURL(thumb.blob),
+                      ...thumb
+                    };
+                  })
+                ]).then(() => {
+                  resolve(itemDiv);
+                });
+              } else {
+                resolve(itemDiv);
+              }
             };
           }
           

@@ -219,14 +219,19 @@ export class AppPhotosManager {
     return {image, loadPromise};
   }
   
-  public setAttachmentSize(photo: MyPhoto | MyDocument, 
+  public setAttachmentSize(
+    photo: MyPhoto | MyDocument, 
     element: HTMLElement | SVGForeignObjectElement, 
     boxWidth: number, 
     boxHeight: number, 
     noZoom = true, 
     message?: any,
-    pushDocumentSize?: boolean) {
-    const photoSize = this.choosePhotoSize(photo, boxWidth, boxHeight, undefined, pushDocumentSize);
+    pushDocumentSize?: boolean,
+    photoSize?: ReturnType<AppPhotosManager['choosePhotoSize']>
+  ) {
+    if(!photoSize) {
+      photoSize = this.choosePhotoSize(photo, boxWidth, boxHeight, undefined, pushDocumentSize);
+    }
     //console.log('setAttachmentSize', photo, photo.sizes[0].bytes, div);
     
     let size: MediaSize;

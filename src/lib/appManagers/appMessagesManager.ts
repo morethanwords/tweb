@@ -59,6 +59,8 @@ import { getMiddleware } from "../../helpers/middleware";
 import assumeType from "../../helpers/assumeType";
 import appMessagesIdsManager from "./appMessagesIdsManager";
 import type { MediaSize } from "../../helpers/mediaSizes";
+import IMAGE_MIME_TYPES_SUPPORTED from "../../environment/imageMimeTypesSupport";
+import VIDEO_MIME_TYPES_SUPPORTED from "../../environment/videoMimeTypesSupport";
 
 //console.trace('include');
 // TODO: если удалить диалог находясь в папке, то он не удалится из папки и будет виден в настройках
@@ -643,7 +645,7 @@ export class AppMessagesManager {
     const message = this.generateOutgoingMessage(peerId, options);
     const replyToMsgId = options.replyToMsgId ? appMessagesIdsManager.getServerMessageId(options.replyToMsgId) : undefined;
 
-    let attachType: string, apiFileName: string;
+    let attachType: 'document' | 'audio' | 'video' | 'voice' | 'photo', apiFileName: string;
 
     const fileType = 'mime_type' in file ? file.mime_type : file.type;
     const fileName = file instanceof File ? file.name : '';
@@ -659,7 +661,7 @@ export class AppMessagesManager {
 
     const attributes: DocumentAttribute[] = [];
 
-    const isPhoto = ['image/jpeg', 'image/png', 'image/bmp'].indexOf(fileType) >= 0;
+    const isPhoto = IMAGE_MIME_TYPES_SUPPORTED.has(fileType);
 
     let photo: MyPhoto, document: MyDocument;
 
@@ -718,7 +720,7 @@ export class AppMessagesManager {
       cacheContext.url = options.objectURL || '';
       
       photo = appPhotosManager.savePhoto(photo);
-    } else if(fileType.indexOf('video/') === 0) {
+    } else if(VIDEO_MIME_TYPES_SUPPORTED.has(fileType)) {
       attachType = 'video';
       apiFileName = 'video.mp4';
       actionName = 'sendMessageUploadVideoAction';
@@ -752,7 +754,7 @@ export class AppMessagesManager {
 
     attributes.push({_: 'documentAttributeFilename', file_name: fileName || apiFileName});
 
-    if(['document', 'video', 'audio', 'voice'].indexOf(attachType) !== -1 && !isDocument) {
+    if((['document', 'video', 'audio', 'voice'] as (typeof attachType)[]).indexOf(attachType) !== -1 && !isDocument) {
       const thumbs: PhotoSize[] = [];
       document = {
         _: 'document',
@@ -4972,7 +4974,7 @@ export class AppMessagesManager {
       } else if(newDoc) {
         const doc = appDocsManager.getDoc('' + tempId);
         if(doc) {
-          if(/* doc._ !== 'documentEmpty' &&  */doc.type && doc.type !== 'sticker') {
+          if(/* doc._ !== 'documentEmpty' &&  */doc.type && doc.type !== 'sticker' && doc.mime_type !== 'image/gif') {
             const cacheContext = appDownloadManager.getCacheContext(newDoc);
             const oldCacheContext = appDownloadManager.getCacheContext(doc);
             Object.assign(cacheContext, oldCacheContext);
