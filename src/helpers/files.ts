@@ -38,16 +38,29 @@ export function preloadVideo(url: string): Promise<HTMLVideoElement> {
   });
 }
 
+export function createPosterFromMedia(media: HTMLVideoElement | HTMLImageElement) {
+  let width: number, height: number;
+  if(media instanceof HTMLVideoElement) {
+    width = media.videoWidth;
+    height = media.videoHeight;
+  } else {
+    width = media.naturalWidth;
+    height = media.naturalHeight;
+  }
+
+  return scaleMediaElement({
+    media, 
+    mediaSize: makeMediaSize(width, height), 
+    boxSize: makeMediaSize(320, 240),
+    quality: .9
+  });
+}
+
 export function createPosterFromVideo(video: HTMLVideoElement): ReturnType<typeof scaleMediaElement> {
   return new Promise((resolve, reject) => {
     video.onseeked = () => {
       video.onseeked = () => {
-        scaleMediaElement({
-          media: video, 
-          mediaSize: makeMediaSize(video.videoWidth, video.videoHeight), 
-          boxSize: makeMediaSize(320, 240),
-          quality: .9
-        }).then(resolve);
+        createPosterFromMedia(video).then(resolve);
 
         video.onseeked = undefined;
       };

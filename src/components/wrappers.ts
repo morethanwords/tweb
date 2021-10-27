@@ -577,7 +577,7 @@ export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showS
   icoDiv.classList.add('document-ico');
 
   const cacheContext = appDownloadManager.getCacheContext(doc);
-  if((doc.thumbs?.length || (message.pFlags.is_outgoing && cacheContext.url && doc.type === 'photo')) && doc.mime_type !== 'image/gif') {
+  if((doc.thumbs?.length || (message.pFlags.is_outgoing && cacheContext.url && doc.type === 'photo'))/*  && doc.mime_type !== 'image/gif' */) {
     docDiv.classList.add('document-with-thumb');
 
     let imgs: HTMLImageElement[] = [];
@@ -593,7 +593,8 @@ export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showS
         boxHeight: 54,
         loadPromises,
         withoutPreloader: true,
-        lazyLoadQueue
+        lazyLoadQueue,
+        size: appPhotosManager.choosePhotoSize(doc, 54, 54, true)
       });
       icoDiv.style.width = icoDiv.style.height = '';
       if(wrapped.images.thumb) imgs.push(wrapped.images.thumb);
@@ -832,13 +833,20 @@ export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withT
   let thumbImage: HTMLImageElement;
   let image: HTMLImageElement;
   let cacheContext: ThumbCache;
+  const isGif = photo._ === 'document' && photo.mime_type === 'image/gif' && !size;
   // if(withTail) {
   //   image = wrapMediaWithTail(photo, message, container, boxWidth, boxHeight, isOut);
   // } else {
     image = new Image();
 
     if(boxWidth && boxHeight && !size) { // !album
-      const set = appPhotosManager.setAttachmentSize(photo, container, boxWidth, boxHeight, undefined, message);
+      const set = appPhotosManager.setAttachmentSize(photo, container, boxWidth, boxHeight, undefined, message, undefined, isGif ? {
+        _: 'photoSize',
+        w: photo.w,
+        h: photo.h,
+        size: photo.size,
+        type: 'full'
+      } : undefined);
       size = set.photoSize;
       isFit = set.isFit;
       cacheContext = appDownloadManager.getCacheContext(photo, size.type);
@@ -920,7 +928,7 @@ export function wrapPhoto({photo, message, container, boxWidth, boxHeight, withT
   }
 
   const getDownloadPromise = () => {
-    const promise = photo._ === 'document' && photo.mime_type === 'image/gif' ? 
+    const promise = isGif && !size ? 
       appDocsManager.downloadDoc(photo, /* undefined,  */lazyLoadQueue?.queueId) : 
       appPhotosManager.preloadPhoto(photo, size, lazyLoadQueue?.queueId, noAutoDownload);
 

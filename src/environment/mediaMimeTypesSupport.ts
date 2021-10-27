@@ -1,21 +1,8 @@
-import IS_MOV_SUPPORTED from "./movSupport";
-import IS_WEBP_SUPPORTED from "./webpSupport";
+import IMAGE_MIME_TYPES_SUPPORTED from "./imageMimeTypesSupport";
+import VIDEO_MIME_TYPES_SUPPORTED from "./videoMimeTypesSupport";
 
-const MEDIA_MIME_TYPES_SUPPORTED = new Set([
-  'image/jpeg',
-  'image/png',
-  'image/gif',
-  'image/bmp',
-  'video/mp4',
-  'video/webm'
-]);
+const arr = [...IMAGE_MIME_TYPES_SUPPORTED].concat([...VIDEO_MIME_TYPES_SUPPORTED]);
 
-if(IS_MOV_SUPPORTED) {
-  MEDIA_MIME_TYPES_SUPPORTED.add('video/quicktime');
-}
-
-if(IS_WEBP_SUPPORTED) {
-  MEDIA_MIME_TYPES_SUPPORTED.add('image/webp');
-}
+const MEDIA_MIME_TYPES_SUPPORTED = new Set(arr);
 
 export default MEDIA_MIME_TYPES_SUPPORTED;

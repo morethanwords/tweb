@@ -1066,8 +1066,8 @@ export default class AppMediaViewerBase<
   protected updateMediaSource(target: HTMLElement, url: string, tagName: 'video' | 'img') {
     //if(target instanceof SVGSVGElement) {
       const el = target.tagName.toLowerCase() === tagName ? target : target.querySelector(tagName) as HTMLElement;
-      if(el) {
-        if(!target.classList.contains('document-ico') && findUpClassName(target, 'attachment')) {
+      if(el && !findUpClassName(target, 'document')) {
+        if(findUpClassName(target, 'attachment')) {
           // two parentElements because element can be contained in aspecter
           const preloader = target.parentElement.parentElement.querySelector('.preloader-container') as HTMLElement;
           if(preloader) {
