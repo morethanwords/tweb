@@ -732,7 +732,10 @@ class LottieLoader {
     params.group = group;
 
     const player = this.initPlayer(params.container, params);
-    animationIntersector.addAnimation(player, group);
+
+    if(group !== 'none') {
+      animationIntersector.addAnimation(player, group);
+    }
 
     return player;
   }
