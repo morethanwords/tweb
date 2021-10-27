@@ -84,11 +84,21 @@ export class AppAvatarsManager {
     return {cached, loadPromise: getAvatarPromise};
   }
 
-  public putAvatar(div: HTMLElement, peerId: PeerId, photo: UserProfilePhoto.userProfilePhoto | ChatPhoto.chatPhoto, size: PeerPhotoSize, img = new Image(), onlyThumb = false) {
+  public putAvatar(
+    div: HTMLElement, 
+    peerId: PeerId, 
+    photo: UserProfilePhoto.userProfilePhoto | ChatPhoto.chatPhoto, 
+    size: PeerPhotoSize, 
+    img = new Image(), 
+    onlyThumb = false
+  ) {
     let {cached, loadPromise} = this.loadAvatar(peerId, photo, size);
+
+    img.classList.add('avatar-photo');
 
     let renderThumbPromise: Promise<void>;
     let callback: () => void;
+    let thumbImage: HTMLImageElement;
     if(cached) {
       // смотри в misc.ts: renderImageFromUrl
       callback = () => {
@@ -101,12 +111,14 @@ export class AppAvatarsManager {
         img.classList.add('fade-in');
       }
 
-      let thumbImage: HTMLImageElement;
-      if(photo.stripped_thumb) {
+      if(size === 'photo_big') { // let's load small photo first
+        const res = this.putAvatar(div, peerId, photo, 'photo_small');
+        renderThumbPromise = res.loadPromise;
+        thumbImage = res.thumbImage;
+      } else if(photo.stripped_thumb) {
         thumbImage = new Image();
         div.classList.add('avatar-relative');
         thumbImage.classList.add('avatar-photo', 'avatar-photo-thumbnail');
-        img.classList.add('avatar-photo');
         const url = appPhotosManager.getPreviewURLFromBytes(photo.stripped_thumb);
         renderThumbPromise = renderImageFromUrlPromise(thumbImage, url).then(() => {
           replaceContent(div, thumbImage);
@@ -114,7 +126,7 @@ export class AppAvatarsManager {
       }
 
       callback = () => {
-        if(photo.stripped_thumb) {
+        if(thumbImage) {
           div.append(img);
         } else {
           replaceContent(div, img);
@@ -140,9 +152,13 @@ export class AppAvatarsManager {
 
     const renderPromise = loadPromise
     .then((url) => renderImageFromUrlPromise(img, url/* , false */))
-    .then(() => callback());
+    .then(callback);
 
-    return {cached, loadPromise: renderThumbPromise || renderPromise};
+    return {
+      cached, 
+      loadPromise: renderThumbPromise || renderPromise,
+      thumbImage
+    };
   }
 
   public s(div: HTMLElement, innerHTML: string, color: string, icon: string) {

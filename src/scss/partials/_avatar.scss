@@ -212,8 +212,10 @@ avatar-element {
   }
 }
 
-.avatar-photo {
-  position: absolute;
-  top: 0;
-  left: 0;
+.avatar-relative {
+  .avatar-photo {
+    position: absolute;
+    top: 0;
+    left: 0;
+  }
 }
