@@ -2345,6 +2345,7 @@ export class AppMessagesManager {
       }
 
       if(message._ === 'messageEmpty') {
+        message.deleted = true;
         return;
       }
 
@@ -2977,17 +2978,37 @@ export class AppMessagesManager {
         }
 
         case 'messageActionPinMessage': {
-          const pinnedMessage = this.getMessageByPeer(message.peerId, message.reply_to_mid);
+          const peerId = message.peerId;
+          const pinnedMessage = this.getMessageByPeer(peerId, message.reply_to_mid);
 
           args = [
             getNameDivHTML(message.fromId, plain),
           ];
           
-          if(pinnedMessage.deleted || true) {
+          if(pinnedMessage.deleted/*  || true */) {
             langPackKey = 'ActionPinnedNoText';
+
+            if(message.reply_to_mid) { // refresh original message
+              this.fetchMessageReplyTo(message).then(originalMessage => {
+                if(!originalMessage.deleted && !message.deleted) {
+                  rootScope.dispatchEvent('message_edit', {
+                    storage: this.getMessagesStorage(peerId),
+                    peerId: peerId,
+                    mid: message.mid
+                  });
+
+                  if(this.isMessageIsTopMessage(message)) {
+                    rootScope.dispatchEvent('dialogs_multiupdate', {
+                      [peerId]: this.getDialogOnly(peerId)
+                    });
+                  }
+                }
+              });
+            }
           } else {
-            const a = document.createElement('a');
+            const a = document.createElement('i');
             a.dataset.savedFrom = pinnedMessage.peerId + '_' + pinnedMessage.mid;
+            a.dir = 'auto';
             a.append(this.wrapMessageForReply(pinnedMessage, undefined, undefined, plain as any));
             args.push(a);
           }
@@ -4836,10 +4857,14 @@ export class AppMessagesManager {
   };
 
   public setDialogToStateIfMessageIsTop(message: MyMessage) {
-    const dialog = this.getDialogOnly(message.peerId);
-    if(dialog && dialog.top_message === message.mid) {
-      this.dialogsStorage.setDialogToState(dialog);
+    if(this.isMessageIsTopMessage(message)) {
+      this.dialogsStorage.setDialogToState(this.getDialogOnly(message.peerId));
     }
+  }
+
+  public isMessageIsTopMessage(message: MyMessage) {
+    const dialog = this.getDialogOnly(message.peerId);
+    return dialog && dialog.top_message === message.mid;
   }
 
   private updateMessageRepliesIfNeeded(threadMessage: MyMessage) {
@@ -5560,6 +5585,18 @@ export class AppMessagesManager {
       this.fetchSingleMessages();
       return promise;
     }
+  }
+
+  public fetchMessageReplyTo(message: MyMessage): Promise<Message> {
+    if(!message.reply_to_mid) return Promise.resolve(this.generateEmptyMessage(0));
+    const replyToPeerId = message.reply_to.reply_to_peer_id ? appPeersManager.getPeerId(message.reply_to.reply_to_peer_id) : message.peerId;
+    return this.wrapSingleMessage(replyToPeerId, message.reply_to_mid).then(originalMessage => {
+      if(originalMessage.deleted) { // ! чтобы не пыталось бесконечно загрузить удалённое сообщение
+        delete message.reply_to_mid; // ! WARNING!
+      }
+
+      return originalMessage;
+    });
   }
 
   public setTyping(peerId: PeerId, action: SendMessageAction): Promise<boolean> {

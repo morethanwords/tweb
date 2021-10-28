@@ -1466,7 +1466,7 @@ export default class ChatBubbles {
     this.deleteEmptyDateGroups();
   }
   
-  public renderNewMessagesByIds(mids: number[], scrolledDown = this.scrolledDown) {
+  public renderNewMessagesByIds(mids: number[], scrolledDown?: boolean) {
     if(!this.scrollable.loadedAll.bottom) { // seems search active or sliced
       //this.log('renderNewMessagesByIds: seems search is active, skipping render:', mids);
       return;
@@ -1487,19 +1487,29 @@ export default class ChatBubbles {
     } */
 
     if(!scrolledDown) {
-      if(this.scrollingToBubble && this.scrollingToBubble === this.getLastBubble()) {
-        scrolledDown = true;
-      }
+      scrolledDown = this.scrolledDown && (!this.scrollingToBubble || this.scrollingToBubble === this.getLastBubble());
     }
 
     const middleware = this.getMiddleware();
     let isPaddingNeeded = false;
+    let setPaddingTo: HTMLElement;
     if(!this.isTopPaddingSet) {
-      const {scrollHeight} = this.scrollable;
-      const clientHeight = this.scrollable.container.clientHeight;
+      const {clientHeight, scrollHeight} = this.scrollable.container;
       isPaddingNeeded = clientHeight === scrollHeight;
+      /* const firstEl = this.chatInner.firstElementChild as HTMLElement;
+      if(this.chatInner.firstElementChild) {
+        const visibleRect = getVisibleRect(firstEl, this.scrollable.container);
+        isPaddingNeeded = !visibleRect.overflow.top && (visibleRect.rect.top - firstEl.offsetTop) !== this.scrollable.container.getBoundingClientRect().top;
+      } else {
+        isPaddingNeeded = true;
+      } */
+
       if(isPaddingNeeded) {
-        this.chatInner.style.paddingTop = clientHeight + 'px';
+        /* const add = clientHeight - scrollHeight;
+        this.chatInner.style.paddingTop = add + 'px';
+        this.scrollable.scrollTop += add; */
+        setPaddingTo = this.chatInner;
+        setPaddingTo.style.paddingTop = clientHeight + 'px';
         this.scrollable.scrollTop = scrollHeight;
         this.isTopPaddingSet = true;
       }
@@ -1522,7 +1532,7 @@ export default class ChatBubbles {
         if(isPaddingNeeded) {
           promise.then(() => { // it will be called only once even if was set multiple times (that won't happen)
             if(middleware() && isPaddingNeeded) {
-              this.chatInner.style.paddingTop = '';
+              setPaddingTo.style.paddingTop = '';
               this.isTopPaddingSet = false;
             }
           });
@@ -3029,6 +3039,15 @@ export default class ChatBubbles {
       } else {
         title = new PeerTitle({peerId: message.viaBotId || message.fwdFromId || message.fromId}).element;
       }
+
+      if(message.reply_to_mid && message.reply_to_mid !== this.chat.threadId) {
+        MessageRender.setReply({
+          chat: this.chat,
+          bubble,
+          bubbleContainer,
+          message
+        });
+      }
       
       //this.log(title);
       
@@ -3094,15 +3113,6 @@ export default class ChatBubbles {
         }
       }
 
-      if(message.reply_to_mid && message.reply_to_mid !== this.chat.threadId) {
-        MessageRender.setReply({
-          chat: this.chat,
-          bubble,
-          bubbleContainer,
-          message
-        });
-      }
-      
       const needAvatar = this.chat.isAnyGroup() && !isOut;
       if(needAvatar) {
         let avatarElem = new AvatarElement();
