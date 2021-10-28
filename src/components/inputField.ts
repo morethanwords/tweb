@@ -11,6 +11,7 @@ import isInputEmpty from "../helpers/dom/isInputEmpty";
 import selectElementContents from "../helpers/dom/selectElementContents";
 import { i18n, LangPackKey, _i18n } from "../lib/langPack";
 import RichTextProcessor from "../lib/richtextprocessor";
+import SetTransition from "./singleTransition";
 
 let init = () => {
   document.addEventListener('paste', (e) => {
@@ -236,22 +237,34 @@ class InputField {
     }
   }
 
-  public onFakeInput() {
+  public onFakeInput(setHeight = true) {
     const {scrollHeight: newHeight/* , clientHeight */} = this.inputFake;
     /* if(this.wasInputFakeClientHeight && this.wasInputFakeClientHeight !== clientHeight) {
       this.input.classList.add('no-scrollbar'); // ! в сафари может вообще не появиться скролл после анимации, так как ему нужен полный reflow блока с overflow.
       this.showScrollDebounced();
     } */
 
-    const TRANSITION_DURATION_FACTOR = 50;
     const currentHeight = +this.input.style.height.replace('px', '');
+    if(currentHeight === newHeight) {
+      return;
+    }
+
+    const TRANSITION_DURATION_FACTOR = 50;
     const transitionDuration = Math.round(
       TRANSITION_DURATION_FACTOR * Math.log(Math.abs(newHeight - currentHeight)),
     );
 
     // this.wasInputFakeClientHeight = clientHeight;
     this.input.style.transitionDuration = `${transitionDuration}ms`;
-    this.input.style.height = newHeight ? newHeight + 'px' : '';
+
+    if(setHeight) {
+      this.input.style.height = newHeight ? newHeight + 'px' : '';
+    }
+
+    const className = 'is-changing-height';
+    SetTransition(this.input, className, true, transitionDuration, () => {
+      this.input.classList.remove(className);
+    });
   }
 
   get value() {

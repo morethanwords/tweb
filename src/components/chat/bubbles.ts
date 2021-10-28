@@ -78,6 +78,7 @@ import AppMediaViewer from "../appMediaViewer";
 import SetTransition from "../singleTransition";
 import handleHorizontalSwipe from "../../helpers/dom/handleHorizontalSwipe";
 import { cancelContextMenuOpening } from "../misc";
+import findUpAttribute from "../../helpers/dom/findUpAttribute";
 
 const USE_MEDIA_TAILS = false;
 const IGNORE_ACTIONS: Set<Message.messageService['action']['_']> = new Set([
@@ -980,8 +981,8 @@ export default class ChatBubbles {
       return;
     }
 
-    const nameDiv = findUpClassName(target, 'peer-title') || findUpClassName(target, 'name') || findUpTag(target, 'AVATAR-ELEMENT');
-    if(nameDiv) {
+    const nameDiv = findUpClassName(target, 'peer-title') || findUpClassName(target, 'name') || findUpTag(target, 'AVATAR-ELEMENT') || findUpAttribute(target, 'data-saved-from');
+    if(nameDiv && nameDiv !== bubble) {
       target = nameDiv || target;
       const peerId = (target.dataset.peerId || target.getAttribute('peer'));
       const savedFrom = target.dataset.savedFrom;
@@ -1517,7 +1518,7 @@ export default class ChatBubbles {
           bubble = this.bubbles[Math.max(...mids)];
         }
 
-        const promise = this.scrollToBubbleEnd(bubble, true) || Promise.resolve();
+        const promise = this.scrollToBubbleEnd(bubble) || Promise.resolve();
         if(isPaddingNeeded) {
           promise.then(() => { // it will be called only once even if was set multiple times (that won't happen)
             if(middleware() && isPaddingNeeded) {
@@ -1547,8 +1548,7 @@ export default class ChatBubbles {
     element: HTMLElement, 
     position: ScrollLogicalPosition,
     forceDirection?: FocusDirection,
-    forceDuration?: number,
-    isNewMessage?: boolean
+    forceDuration?: number
   ) {
     // * 4 = .25rem
     const bubble = findUpClassName(element, 'bubble');
@@ -1562,6 +1562,7 @@ export default class ChatBubbles {
       }
     }
 
+    const isChangingHeight = this.chat.input.messageInput.classList.contains('is-changing-height') || this.chat.container.classList.contains('is-toggling-helper');
     return this.scrollable.scrollIntoViewNew(
       element, 
       position, 
@@ -1570,7 +1571,7 @@ export default class ChatBubbles {
       forceDirection, 
       forceDuration, 
       'y', 
-      isNewMessage ? ({rect}) => {
+      isChangingHeight ? ({rect}) => {
         // return rect.height;
 
         let height = windowSize.windowH;
@@ -1586,7 +1587,7 @@ export default class ChatBubbles {
     );
   }
 
-  public scrollToBubbleEnd(bubble = this.getLastBubble(), isNewMessage?: boolean) {
+  public scrollToBubbleEnd(bubble = this.getLastBubble()) {
     /* if(DEBUG) {
       this.log('scrollToNewLastBubble: will scroll into view:', bubble);
     } */
@@ -1594,7 +1595,7 @@ export default class ChatBubbles {
     if(bubble) {
       this.scrollingToBubble = bubble;
       const middleware = this.getMiddleware();
-      return this.scrollToBubble(bubble, 'end', undefined, undefined, isNewMessage).then(() => {
+      return this.scrollToBubble(bubble, 'end', undefined, undefined).then(() => {
         if(!middleware()) return;
         this.scrollingToBubble = undefined;
       });
