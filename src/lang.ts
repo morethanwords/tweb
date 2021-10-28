@@ -615,6 +615,7 @@ const lang = {
   "Chat.Service.Channel.RemovedPhoto": "Channel photo removed",
   "Chat.Service.Channel.UpdatedVideo": "Channel video updated",
   "Chat.Service.BotPermissionAllowed": "You allowed this bot to message you when you logged in on %@",
+  "Chat.Service.Group.UpdatedPinnedMessage": "%@ pinned \"%@\"",
   "Chat.Service.VoiceChatFinished": "%1$@ ended the voice chat (%2$@)",
   "Chat.Service.VoiceChatFinishedYou": "You ended the voice chat (%@)",
   //"Chat.Service.VoiceChatScheduled": "%1$@ scheduled a [voice chat](open) for %2$@",

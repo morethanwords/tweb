@@ -2976,7 +2976,25 @@ export class AppMessagesManager {
           break;
         }
 
-        case 'messageActionPinMessage':
+        case 'messageActionPinMessage': {
+          const pinnedMessage = this.getMessageByPeer(message.peerId, message.reply_to_mid);
+
+          args = [
+            getNameDivHTML(message.fromId, plain),
+          ];
+          
+          if(pinnedMessage.deleted || true) {
+            langPackKey = 'ActionPinnedNoText';
+          } else {
+            const a = document.createElement('a');
+            a.dataset.savedFrom = pinnedMessage.peerId + '_' + pinnedMessage.mid;
+            a.append(this.wrapMessageForReply(pinnedMessage, undefined, undefined, plain as any));
+            args.push(a);
+          }
+
+          break;
+        }
+
         case 'messageActionContactSignUp':
         case 'messageActionChatReturn':
         case 'messageActionChatLeave':

@@ -1963,6 +1963,7 @@ $bubble-beside-button-width: 38px;
     .peer-title {
       &:hover {
         text-decoration: underline;
+        cursor: pointer;
       }
     }
 

@@ -787,6 +787,16 @@ export default class ChatInput {
 
       if(!draft) {
         if(force) { // this situation can only happen when sending message with clearDraft
+          /* const height = this.chatInput.getBoundingClientRect().height;
+          const willChangeHeight = 78 - height;
+          this.willChangeHeight = willChangeHeight; */
+          if(this.chat.container.classList.contains('is-helper-active')) {
+            this.t();
+          }
+
+          this.messageInputField.inputFake.textContent = '';
+          this.messageInputField.onFakeInput(false);
+
           ((this.chat.bubbles.messagesQueuePromise || Promise.resolve()) as Promise<any>).then(() => {
             fastRaf(() => {
               this.onMessageSent();
@@ -2009,7 +2019,15 @@ export default class ChatInput {
     if(this.chat.container.classList.contains('is-helper-active')) {
       appNavigationController.removeByType('input-helper');
       this.chat.container.classList.remove('is-helper-active');
+      this.t();
     }
+  }
+
+  private t() {
+    const className = 'is-toggling-helper';
+    SetTransition(this.chat.container, className, true, 150, () => {
+      this.chat.container.classList.remove(className);
+    });
   }
 
   public setInputValue(value: string, clear = true, focus = true) {
@@ -2055,7 +2073,11 @@ export default class ChatInput {
       replyParent.insertBefore(newReply, replyParent.lastElementChild);
     }
 
-    this.chat.container.classList.add('is-helper-active');
+    if(!this.chat.container.classList.contains('is-helper-active')) {
+      this.chat.container.classList.add('is-helper-active');
+      this.t();
+    }
+
     /* const scroll = appImManager.scrollable;
     if(scroll.isScrolledDown && !scroll.scrollLocked && !appImManager.messagesQueuePromise && !appImManager.setPeerPromise) {
       scroll.scrollTo(scroll.scrollHeight, 'top', true, true, 200);
