@@ -396,6 +396,9 @@ export default class VideoPlayer extends EventListenerBase<{
             appMediaPlaybackController.playbackRate += .25;
           } else if(e.altKey && e.code === 'Minus') {
             appMediaPlaybackController.playbackRate -= .25;
+          } else if(this.wrapper.classList.contains('ckin__fullscreen') && (e.code === 'ArrowLeft' || e.code === 'ArrowRight')) {
+            if(e.code === 'ArrowLeft') appMediaPlaybackController.seekBackward({action: 'seekbackward'});
+            else appMediaPlaybackController.seekForward({action: 'seekforward'});
           } else {
             good = false;
           }
