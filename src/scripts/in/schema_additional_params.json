@@ -77,7 +77,8 @@
     {"name": "pending", "type": "boolean"},
     {"name": "error", "type": "any"},
     {"name": "send", "type": "() => Promise<any>"},
-    {"name": "totalEntities", "type": "MessageEntity[]"}
+    {"name": "totalEntities", "type": "MessageEntity[]"},
+    {"name": "reply_to_mid", "type": "number"}
   ]
 }, {
   "predicate": "messageService",
@@ -94,7 +95,8 @@
     {"name": "pending", "type": "boolean"},
     {"name": "error", "type": "any"},
     {"name": "send", "type": "() => Promise<any>"},
-    {"name": "random_id", "type": "string"}
+    {"name": "random_id", "type": "string"},
+    {"name": "reply_to_mid", "type": "number"}
   ]
 }, {
   "predicate": "messageEmpty",

@@ -869,7 +869,8 @@ export namespace Message {
 		pending?: boolean,
 		error?: any,
 		send?: () => Promise<any>,
-		totalEntities?: MessageEntity[]
+		totalEntities?: MessageEntity[],
+		reply_to_mid?: number
 	};
 
 	export type messageService = {
@@ -902,7 +903,8 @@ export namespace Message {
 		pending?: boolean,
 		error?: any,
 		send?: () => Promise<any>,
-		random_id?: string
+		random_id?: string,
+		reply_to_mid?: number
 	};
 }
 

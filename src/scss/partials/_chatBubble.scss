@@ -792,9 +792,12 @@ $bubble-beside-button-width: 38px;
     order: -1;
     margin-top: .5rem;
     justify-content: center;
-    flex: 1 1 auto;
     align-items: center;
     max-width: 100%;
+    
+    @include animation-level(0) {
+      flex: 1 1 auto;
+    }
 
     .bubble-content-wrapper {
       max-width: 100%;
@@ -1040,7 +1043,8 @@ $bubble-beside-button-width: 38px;
     }
   }
 
-  &:not(.just-media):not(.is-message-empty) .reply {
+  // &:not(.just-media):not(.is-message-empty) .reply {
+  .message + .reply {
     // margin-bottom: .125rem; // ! JS2 mockup
     margin-bottom: 0; // ! same margin as between name and message
   }
@@ -1293,7 +1297,8 @@ $bubble-beside-button-width: 38px;
         left: -75vw;
       }
 
-      &.is-highlighted, &.is-selected {
+      &.is-highlighted, 
+      &.is-selected {
         .document-wrapper {
           &:before {
             content: " ";
@@ -1314,7 +1319,8 @@ $bubble-beside-button-width: 38px;
         }
 
         body:not(.animation-level-0) & {
-          .document-selection, .document-wrapper:before {
+          .document-selection, 
+          .document-wrapper:before {
             animation: bubbleSelected 2s linear;
           }
         }
@@ -1326,12 +1332,14 @@ $bubble-beside-button-width: 38px;
         }
 
         body:not(.animation-level-0) & {
-          .document-selection, .document-wrapper:before {
+          .document-selection, 
+          .document-wrapper:before {
             animation: fade-in-opacity .2s linear forwards;
           }
   
           &.backwards {
-            .document-selection, .document-wrapper:before {
+            .document-selection, 
+            .document-wrapper:before {
               animation: fade-in-backwards-opacity .2s linear forwards;
             }
           }
@@ -1417,8 +1425,9 @@ $bubble-beside-button-width: 38px;
       padding: .25rem .5rem;
 
       > .name {
+        // padding: .0625rem 0 .375rem;
         padding: 0 0 .25rem 0;
-        margin-top: -.25rem;
+        margin-top: -.1875rem;
       }
     }
 
@@ -1649,7 +1658,7 @@ $bubble-beside-button-width: 38px;
     max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
-    order: 1;
+    // order: 1;
     //width: max-content;
     //white-space: nowrap;
   }
@@ -1933,6 +1942,11 @@ $bubble-beside-button-width: 38px;
   .bubble-content {
     background-color: transparent;
     border-radius: .875rem;
+
+    &-wrapper {
+      max-width: 100%;
+      padding: 0 2rem;
+    }
   }
   
   .service-msg {
@@ -1960,7 +1974,8 @@ $bubble-beside-button-width: 38px;
     }
 
     a, 
-    .peer-title {
+    .peer-title,
+    [data-saved-from] {
       &:hover {
         text-decoration: underline;
         cursor: pointer;
@@ -2019,7 +2034,8 @@ $bubble-beside-button-width: 38px;
   }
 
   &.just-media {
-    .reply, .name {
+    .reply, 
+    .name {
       left: calc(100% + 10px);
 
       @include respond-to(handhelds) {
