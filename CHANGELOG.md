@@ -1,3 +1,12 @@
+### 0.9.1 (17)
+* Added group members online counter.
+* Added description of pinned message in its service notification.
+* Improved profile avatar loading.
+* Supported adding chats to privacy exceptions.
+* Animated emoji starts to load when it's being typed.
+* Fixed sending GIF images as media.
+* Layout improvements.
+
 ### 0.9.0 (10)
 * Application has been updated to support new 64-bit identifiers.
 * Added Swipe-to-Reply on touchscreen devices
