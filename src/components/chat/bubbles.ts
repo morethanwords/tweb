@@ -2479,6 +2479,13 @@ export default class ChatBubbles {
     bubbleContainer.prepend(messageDiv);
     //bubble.prepend(timeSpan, messageDiv); // that's bad
 
+    if(message.views && !message.fwd_from?.saved_from_msg_id && this.chat.type !== 'pinned') {
+      const forward = document.createElement('div');
+      forward.classList.add('bubble-beside-button', 'forward', 'tgico-forward_filled');
+      bubbleContainer.prepend(forward);
+      bubble.classList.add('with-beside-button');
+    }
+
     if(message.views && !message.pFlags.is_outgoing && this.viewsObserver) {
       this.viewsObserver.observe(bubble);
     }

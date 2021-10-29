@@ -1183,6 +1183,12 @@ $bubble-beside-button-width: 38px;
     }
   }
 
+  .message.voice-message {
+    .document-message {
+      max-width: fit-content;
+    }
+  }
+
   .message.audio-message, 
   .message.voice-message {
     padding: 8px !important;
