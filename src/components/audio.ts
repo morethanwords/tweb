@@ -26,7 +26,7 @@ import { joinElementsWith } from "../lib/langPack";
 import { MiddleEllipsisElement } from "./middleEllipsis";
 import htmlToSpan from "../helpers/dom/htmlToSpan";
 import { formatFullSentTime } from "../helpers/date";
-import { formatBytes } from "../helpers/number";
+import { clamp, formatBytes } from "../helpers/number";
 import throttleWithRaf from "../helpers/schedulers/throttleWithRaf";
 
 rootScope.addEventListener('messages_media_read', ({mids, peerId}) => {
@@ -90,7 +90,12 @@ function wrapVoiceMessage(audioEl: AudioElement) {
   const barMargin = 2;      //mediaSizes.isMobile ? 2 : 1;
   const barHeightMin = 4;   //mediaSizes.isMobile ? 3 : 2;
   const barHeightMax = mediaSizes.isMobile ? 16 : 23;
-  const availW = 150;       //mediaSizes.isMobile ? 152 : 190;
+  // const availW = 150;       //mediaSizes.isMobile ? 152 : 190;
+
+  const minW = mediaSizes.isMobile ? 152 : 190;
+  const maxW = mediaSizes.isMobile ? 190 : 256;
+  const duration = doc.duration;
+  const availW = clamp(duration / 60 * maxW, minW, maxW); // mediaSizes.isMobile ? 152 : 224;
 
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   svg.classList.add('audio-waveform');

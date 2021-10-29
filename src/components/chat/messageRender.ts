@@ -28,13 +28,6 @@ export namespace MessageRender {
 
       bubble.classList.add('channel-post');
       time = '<span class="post-views">' + formatNumber(message.views, 1) + '</span> <i class="tgico-channelviews time-icon"></i> ' + (postAuthor ? RichTextProcessor.wrapEmojiText(postAuthor) + ', ' : '') + time;
-  
-      if(!message.fwd_from?.saved_from_msg_id && chat.type !== 'pinned') {
-        const forward = document.createElement('div');
-        forward.classList.add('bubble-beside-button', 'forward', 'tgico-forward_filled');
-        bubbleContainer.append(forward);
-        bubble.classList.add('with-beside-button');
-      }
     }
 
     if(message.edit_date && chat.type !== 'scheduled' && !message.pFlags.edit_hide) {
