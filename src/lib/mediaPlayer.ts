@@ -334,6 +334,7 @@ export default class VideoPlayer extends EventListenerBase<{
       const volumeSelector = new VolumeSelector(this.listenerSetter);
 
       const leftControls = player.querySelector('.left-controls');
+      volumeSelector.btn.classList.remove('btn-icon');
       leftControls.insertBefore(volumeSelector.btn, timeElapsed.parentElement);
 
       Array.from(toggle).forEach((button) => {
