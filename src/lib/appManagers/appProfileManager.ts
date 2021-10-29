@@ -12,7 +12,7 @@
 import { MOUNT_CLASS_TO } from "../../config/debug";
 import { tsNow } from "../../helpers/date";
 import { numberThousandSplitter } from "../../helpers/number";
-import { ChannelParticipantsFilter, ChannelsChannelParticipants, Chat, ChatFull, ChatParticipants, ChatPhoto, ExportedChatInvite, InputChannel, InputFile, InputFileLocation, PhotoSize, SendMessageAction, Update, UserFull, UserProfilePhoto } from "../../layer";
+import { ChannelParticipantsFilter, ChannelsChannelParticipants, ChannelParticipant, Chat, ChatFull, ChatParticipants, ChatPhoto, ExportedChatInvite, InputChannel, InputFile, InputFileLocation, PhotoSize, SendMessageAction, Update, UserFull, UserProfilePhoto } from "../../layer";
 import { LangPackKey, i18n } from "../langPack";
 //import apiManager from '../mtproto/apiManager';
 import apiManager from '../mtproto/mtprotoworker';
@@ -34,9 +34,6 @@ export class AppProfileManager {
   public usersFull: {[id: UserId]: UserFull.userFull} = {};
   public chatsFull: {[id: ChatId]: ChatFull} = {};
   private fullPromises: {[peerId: PeerId]: Promise<ChatFull.chatFull | ChatFull.channelFull | UserFull>} = {};
-
-  private megagroupOnlines: {[id: ChatId]: {timestamp: number, onlines: number}};
-
   private typingsInPeer: {[peerId: PeerId]: UserTyping[]};
 
   constructor() {
@@ -129,7 +126,6 @@ export class AppProfileManager {
       this.invalidateChannelParticipants(chatId);
     });
 
-    this.megagroupOnlines = {};
     this.typingsInPeer = {};
   }
 
@@ -404,7 +400,7 @@ export class AppProfileManager {
           break;
       }
 
-      return Promise.reject(error);
+      throw error;
     }) as any;
   }
 
@@ -461,7 +457,7 @@ export class AppProfileManager {
 
   public invalidateChannelParticipants(id: ChatId) {
     delete this.chatsFull[id];
-    delete this.fullPromises[-id];
+    delete this.fullPromises[id.toPeerId(true)];
     apiManager.clearCache('channels.getParticipants', (params) => (params.channel as InputChannel.inputChannel).channel_id === id);
     rootScope.dispatchEvent('chat_full_update', id);
   }
@@ -494,7 +490,7 @@ export class AppProfileManager {
         _: 'updateUserPhoto',
         user_id: myId,
         date: tsNow(true),
-        photo: appUsersManager.getUser(myId).photo,
+        photo: appUsersManager.getUser(myId.toUserId()).photo,
         previous: true
       });
     });
@@ -536,42 +532,43 @@ export class AppProfileManager {
     return i18n(key, [numberThousandSplitter(count)]);
   }
 
+  private verifyParticipantForOnlineCount(participant: {user_id: UserId}) {
+    const user = appUsersManager.getUser(participant.user_id);
+    return !!(user && user.status && user.status._ === 'userStatusOnline');
+  }
+
+  private reduceParticipantsForOnlineCount(participants: {user_id: UserId}[]) {
+    return participants.reduce((acc, participant) => {
+      return acc + +this.verifyParticipantForOnlineCount(participant);
+    }, 0);
+  }
+
   public async getOnlines(id: ChatId): Promise<number> {
+    const minOnline = 1;
+    if(appChatsManager.isBroadcast(id)) {
+      return minOnline;
+    }
+    
+    const chatInfo = await this.getChatFull(id);
     if(appChatsManager.isMegagroup(id)) {
-      const timestamp = Date.now() / 1000 | 0;
-      const cached = this.megagroupOnlines[id] ?? (this.megagroupOnlines[id] = {timestamp: 0, onlines: 1});
-      if((timestamp - cached.timestamp) < 60) {
-        return cached.onlines;
+      if((chatInfo as ChatFull.channelFull).participants_count <= 100) {
+        const channelParticipants = await this.getChannelParticipants(id, {_: 'channelParticipantsRecent'}, 100);
+        return this.reduceParticipantsForOnlineCount(channelParticipants.participants as ChannelParticipant.channelParticipant[]);
       }
 
-      const res = await apiManager.invokeApi('messages.getOnlines', {
+      const res = await apiManager.invokeApiCacheable('messages.getOnlines', {
         peer: appChatsManager.getChannelInputPeer(id)
-      });
+      }, {cacheSeconds: 60});
 
-      const onlines = res.onlines ?? 1;
-      cached.timestamp = timestamp;
-      cached.onlines = onlines;
-
+      const onlines = res.onlines ?? minOnline;
       return onlines;
-    } else if(appChatsManager.isBroadcast(id)) {
-      return 1;
     }
 
-    const chatInfo = await this.getChatFull(id);
     const _participants = (chatInfo as ChatFull.chatFull).participants as ChatParticipants.chatParticipants;
-    if(_participants && _participants.participants) {
-      const participants = _participants.participants;
-
-      return participants.reduce((acc: number, participant) => {
-        const user = appUsersManager.getUser(participant.user_id);
-        if(user && user.status && user.status._ === 'userStatusOnline') {
-          return acc + 1;
-        }
-
-        return acc;
-      }, 0);
+    if(_participants?.participants) {
+      return this.reduceParticipantsForOnlineCount(_participants.participants);
     } else {
-      return 1;
+      return minOnline;
     }
   }
 

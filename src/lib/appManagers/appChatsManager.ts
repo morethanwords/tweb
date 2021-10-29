@@ -111,6 +111,8 @@ export class AppChatsManager {
   }
 
   public saveApiChats(apiChats: any[], override?: boolean) {
+    if((apiChats as any).saved) return;
+    (apiChats as any).saved = true;
     apiChats.forEach(chat => this.saveApiChat(chat, override));
   }
 

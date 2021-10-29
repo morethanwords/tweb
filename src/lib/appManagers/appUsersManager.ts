@@ -360,6 +360,8 @@ export class AppUsersManager {
   }
 
   public saveApiUsers(apiUsers: MTUser[], override?: boolean) {
+    if((apiUsers as any).saved) return;
+    (apiUsers as any).saved = true;
     apiUsers.forEach((user) => this.saveApiUser(user, override));
   }
 
@@ -691,7 +693,6 @@ export class AppUsersManager {
     if(user.status &&
       user.status._ === 'userStatusOnline' &&
       user.status.expires < timestampNow) {
-
       user.status = {_: 'userStatusOffline', was_online: user.status.expires};
       rootScope.dispatchEvent('user_update', user.id);
 
@@ -902,17 +903,19 @@ export class AppUsersManager {
 
     const user = this.users[userId];
     if(user) {
-      const status: any = offline ? {
+      const status: UserStatus = offline ? {
         _: 'userStatusOffline',
         was_online: tsNow(true)
       } : {
         _: 'userStatusOnline',
-        expires: tsNow(true) + 500
+        expires: tsNow(true) + 50
       };
 
       user.status = status;
       //user.sortStatus = this.getUserStatusForSort(user.status);
       rootScope.dispatchEvent('user_update', userId);
+
+      this.setUserToStateIfNeeded(user);
     }
   }
 

@@ -588,6 +588,10 @@ const lang = {
   "AudioUnknownArtist": "Unknown artist",
   "AudioUnknownTitle": "Unknown title",
   "LogOut": "Log out",
+  "OnlineCount": {
+    "one_value": "%1$d online",
+    "other_value": "%1$d online"
+  },
 
   // * macos
   "AccountSettings.Filters": "Chat Folders",
