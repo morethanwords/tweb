@@ -19,7 +19,7 @@ import { randomLong } from "../../helpers/random";
 import { splitStringByLength, limitSymbols, escapeRegExp } from "../../helpers/string";
 import { Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup, InputPeer, InputPhoto, InputDocument, InputGeoPoint, WebPage, GeoPoint, ReportReason, MessagesGetDialogs, InputChannel, InputDialogPeer } from "../../layer";
 import { InvokeApiOptions } from "../../types";
-import I18n, { i18n, join, langPack, LangPackKey, _i18n } from "../langPack";
+import I18n, { FormatterArguments, i18n, join, langPack, LangPackKey, _i18n } from "../langPack";
 import { logger, LogTypes } from "../logger";
 import type { ApiFileManager } from '../mtproto/apiFileManager';
 //import apiManager from '../mtproto/apiManager';
@@ -41,7 +41,7 @@ import appPollsManager from "./appPollsManager";
 import appStateManager from "./appStateManager";
 import appUsersManager from "./appUsersManager";
 import appWebPagesManager from "./appWebPagesManager";
-import appDraftsManager from "./appDraftsManager";
+import appDraftsManager, { MyDraftMessage } from "./appDraftsManager";
 import { getFileNameByLocation } from "../../helpers/fileName";
 import appProfileManager from "./appProfileManager";
 import DEBUG, { MOUNT_CLASS_TO } from "../../config/debug";
@@ -2332,330 +2332,342 @@ export class AppMessagesManager {
     return appMessagesIdsManager.generateMessageId(dialog?.top_message || 0, true);
   }
 
+  public saveMessage(message: any, options: Partial<{
+    storage: MessagesStorage,
+    isScheduled: true,
+    isOutgoing: true,
+    //isNew: boolean, // * new - from update
+  }> = {}) {
+    if(message.pFlags === undefined) {
+      message.pFlags = {};
+    }
+
+    if(message._ === 'messageEmpty') {
+      message.deleted = true;
+      return;
+    }
+
+    // * exclude from state
+    // defineNotNumerableProperties(message, ['rReply', 'mid', 'savedFrom', 'fwdFromId', 'fromId', 'peerId', 'reply_to_mid', 'viaBotId']);
+
+    const peerId = this.getMessagePeer(message);
+    const storage = options.storage || this.getMessagesStorage(peerId);
+    const isChannel = message.peer_id._ === 'peerChannel';
+    const isBroadcast = isChannel && appChatsManager.isBroadcast(peerId.toChatId());
+
+    if(options.isScheduled) {
+      message.pFlags.is_scheduled = true;
+    }
+
+    if(options.isOutgoing) {
+      message.pFlags.is_outgoing = true;
+    }
+    
+    const mid = appMessagesIdsManager.generateMessageId(message.id);
+    message.mid = mid;
+
+    if(message.grouped_id) {
+      const storage = this.groupedMessagesStorage[message.grouped_id] ?? (this.groupedMessagesStorage[message.grouped_id] = new Map());
+      storage.set(mid, message);
+    }
+
+    const dialog = this.getDialogOnly(peerId);
+    if(dialog && mid) {
+      if(mid > dialog[message.pFlags.out
+        ? 'read_outbox_max_id'
+        : 'read_inbox_max_id']) {
+        message.pFlags.unread = true;
+      }
+    }
+    // this.log(dT(), 'msg unread', mid, apiMessage.pFlags.out, dialog && dialog[apiMessage.pFlags.out ? 'read_outbox_max_id' : 'read_inbox_max_id'])
+
+    if(message.reply_to) {
+      if(message.reply_to.reply_to_msg_id) {
+        message.reply_to.reply_to_msg_id = message.reply_to_mid = appMessagesIdsManager.generateMessageId(message.reply_to.reply_to_msg_id);
+      } 
+
+      if(message.reply_to.reply_to_top_id) message.reply_to.reply_to_top_id = appMessagesIdsManager.generateMessageId(message.reply_to.reply_to_top_id);
+    }
+
+    if(message.replies) {
+      if(message.replies.max_id) message.replies.max_id = appMessagesIdsManager.generateMessageId(message.replies.max_id);
+      if(message.replies.read_max_id) message.replies.read_max_id = appMessagesIdsManager.generateMessageId(message.replies.read_max_id);
+    }
+
+    const overwriting = !!peerId;
+    if(!overwriting) {
+      message.date -= serverTimeManager.serverTimeOffset;
+    }
+    
+    //storage.generateIndex(message);
+    const myId = appUsersManager.getSelf().id;
+
+    message.peerId = peerId;
+    if(peerId === myId/*  && !message.from_id && !message.fwd_from */) {
+      message.fromId = message.fwd_from ? (message.fwd_from.from_id ? appPeersManager.getPeerId(message.fwd_from.from_id) : 0) : myId;
+    } else {
+      //message.fromId = message.pFlags.post || (!message.pFlags.out && !message.from_id) ? peerId : appPeersManager.getPeerId(message.from_id);
+      message.fromId = message.pFlags.post || !message.from_id ? peerId : appPeersManager.getPeerId(message.from_id);
+    }
+
+    const fwdHeader = message.fwd_from as MessageFwdHeader;
+    if(fwdHeader) {
+      //if(peerId === myID) {
+        if(fwdHeader.saved_from_msg_id) fwdHeader.saved_from_msg_id = appMessagesIdsManager.generateMessageId(fwdHeader.saved_from_msg_id);
+        if(fwdHeader.channel_post) fwdHeader.channel_post = appMessagesIdsManager.generateMessageId(fwdHeader.channel_post);
+
+        const peer = fwdHeader.saved_from_peer || fwdHeader.from_id;
+        const msgId = fwdHeader.saved_from_msg_id || fwdHeader.channel_post;
+        if(peer && msgId) {
+          const savedFromPeerId = appPeersManager.getPeerId(peer);
+          const savedFromMid = appMessagesIdsManager.generateMessageId(msgId);
+          message.savedFrom = savedFromPeerId + '_' + savedFromMid;
+        }
+
+        /* if(peerId.isAnyChat() || peerId === myID) {
+          message.fromId = appPeersManager.getPeerID(!message.from_id || deepEqual(message.from_id, fwdHeader.from_id) ? fwdHeader.from_id : message.from_id);
+        } */
+      /* } else {
+        apiMessage.fwdPostID = fwdHeader.channel_post;
+      } */
+
+      message.fwdFromId = appPeersManager.getPeerId(fwdHeader.from_id);
+
+      if(!overwriting) {
+        fwdHeader.date -= serverTimeManager.serverTimeOffset;
+      }
+    }
+
+    if(message.via_bot_id > 0) {
+      message.viaBotId = message.via_bot_id;
+    }
+
+    const mediaContext: ReferenceContext = {
+      type: 'message',
+      peerId,
+      messageId: mid
+    };
+
+    if(message.media) {
+      switch(message.media._) {
+        case 'messageMediaEmpty': {
+          delete message.media;
+          break;
+        }
+
+        case 'messageMediaPhoto': {
+          if(message.media.ttl_seconds) {
+            message.media = {_: 'messageMediaUnsupportedWeb'};
+          } else {
+            message.media.photo = appPhotosManager.savePhoto(message.media.photo, mediaContext);
+          }
+
+          if(!message.media.photo) { // * found this bug on test DC
+            delete message.media;
+          }
+          
+          break;
+        }
+          
+        case 'messageMediaPoll': {
+          const result = appPollsManager.savePoll(message.media.poll, message.media.results, message);
+          message.media.poll = result.poll;
+          message.media.results = result.results;
+          break;
+        }
+          
+        case 'messageMediaDocument': {
+          if(message.media.ttl_seconds) {
+            message.media = {_: 'messageMediaUnsupportedWeb'};
+          } else {
+            message.media.document = appDocsManager.saveDoc(message.media.document, mediaContext); // 11.04.2020 warning
+          }
+
+          break;
+        }
+          
+        case 'messageMediaWebPage': {
+          const messageKey = appWebPagesManager.getMessageKeyForPendingWebPage(peerId, mid, options.isScheduled);
+          message.media.webpage = appWebPagesManager.saveWebPage(message.media.webpage, messageKey, mediaContext);
+          break;
+        }
+          
+        /*case 'messageMediaGame':
+          AppGamesManager.saveGame(apiMessage.media.game, apiMessage.mid, mediaContext);
+          apiMessage.media.handleMessage = true;
+          break; */
+
+        case 'messageMediaInvoice': {
+          message.media = {_: 'messageMediaUnsupportedWeb'};
+          break;
+        }
+      }
+    }
+
+    if(message.action) {
+      const action = message.action as MessageAction;
+      let migrateFrom: PeerId;
+      let migrateTo: PeerId;
+      const suffix = message.fromId === appUsersManager.getSelf().id ? 'You' : '';
+
+      if((action as MessageAction.messageActionChatEditPhoto).photo) {
+        (action as MessageAction.messageActionChatEditPhoto).photo = appPhotosManager.savePhoto((action as MessageAction.messageActionChatEditPhoto).photo, mediaContext);
+      }
+
+      if((action as any).document) {
+        (action as any).document = appDocsManager.saveDoc((action as any).photo, mediaContext);
+      }
+
+      switch(action._) {
+        //case 'messageActionChannelEditPhoto':
+        case 'messageActionChatEditPhoto':
+          // action.photo = appPhotosManager.savePhoto(action.photo, mediaContext);
+          if((action.photo as Photo.photo)?.video_sizes) {
+            // @ts-ignore
+            action._ = isBroadcast ? 'messageActionChannelEditVideo' : 'messageActionChatEditVideo';
+          } else {
+            if(isBroadcast) { // ! messageActionChannelEditPhoto не существует в принципе, это используется для перевода.
+              // @ts-ignore
+              action._ = 'messageActionChannelEditPhoto';
+            }
+          }
+          break;
+        
+        case 'messageActionGroupCall': {
+          //assumeType<MessageAction.messageActionGroupCall>(action);
+
+          let type: string;
+          if(action.duration === undefined) {
+            type = 'started';
+            if(peerId !== message.fromId) {
+              type += '_by' + suffix;
+            }
+          } else {
+            type = 'ended_by' + suffix;
+          }
+
+          // @ts-ignore
+          action.type = type;
+
+          break;
+        }
+
+        case 'messageActionChatEditTitle':
+          /* if(options.isNew) {
+            const chat = appChatsManager.getChat(peerId.toChatId());
+            chat.title = action.title;
+            appChatsManager.saveApiChat(chat, true);
+          } */
+          
+          if(isBroadcast) {
+            // @ts-ignore
+            action._ = 'messageActionChannelEditTitle';
+          }
+          break;
+
+        case 'messageActionChatDeletePhoto':
+          if(isBroadcast) {
+            // @ts-ignore
+            action._ = 'messageActionChannelDeletePhoto';
+          }
+          break;
+
+        case 'messageActionChatAddUser':
+          if(action.users.length === 1) {
+            // @ts-ignore
+            action.user_id = action.users[0];
+            // @ts-ignore
+            if(message.fromId === action.user_id) {
+              if(isChannel) {
+                // @ts-ignore
+                action._ = 'messageActionChatJoined' + suffix;
+              } else {
+                // @ts-ignore
+                action._ = 'messageActionChatReturn' + suffix;
+              }
+            }
+          } else if(action.users.length > 1) {
+            // @ts-ignore
+            action._ = 'messageActionChatAddUsers';
+          }
+          break;
+
+        case 'messageActionChatDeleteUser':
+          if(message.fromId === action.user_id) {
+            // @ts-ignore
+            action._ = 'messageActionChatLeave' + suffix;
+          }
+          break;
+
+        case 'messageActionChannelMigrateFrom':
+          migrateFrom = action.chat_id.toPeerId(true);
+          migrateTo = peerId;
+          break
+
+        case 'messageActionChatMigrateTo':
+          migrateFrom = peerId;
+          migrateTo = action.channel_id.toPeerId(true);
+          break;
+
+        case 'messageActionHistoryClear':
+          //apiMessage.deleted = true;
+          message.clear_history = true;
+          delete message.pFlags.out;
+          delete message.pFlags.unread;
+          break;
+
+        case 'messageActionPhoneCall':
+          // @ts-ignore
+          action.type = 
+            (message.pFlags.out ? 'out_' : 'in_') +
+            (
+              action.reason._ === 'phoneCallDiscardReasonMissed' ||
+              action.reason._ === 'phoneCallDiscardReasonBusy'
+                 ? 'missed'
+                 : 'ok'
+            );
+          break;
+      }
+      
+      if(migrateFrom &&
+          migrateTo &&
+          !this.migratedFromTo[migrateFrom] &&
+          !this.migratedToFrom[migrateTo]) {
+        this.migrateChecks(migrateFrom, migrateTo);
+      }
+    }
+
+    /* if(message.grouped_id) {
+      if(!groups) {
+        groups = new Set();
+      }
+
+      groups.add(message.grouped_id);
+    } else {
+      message.rReply = this.getRichReplyText(message);
+    } */
+
+    if(message.message && message.message.length && !message.totalEntities) {
+      this.wrapMessageEntities(message);  
+    }
+
+    storage.set(mid, message);
+  }
+
   public saveMessages(messages: any[], options: Partial<{
     storage: MessagesStorage,
     isScheduled: true,
     isOutgoing: true,
     //isNew: boolean, // * new - from update
   }> = {}) {
-    //let groups: Set<string>;
+    if((messages as any).saved) return;
+    (messages as any).saved = true;
     messages.forEach((message) => {
-      if(message.pFlags === undefined) {
-        message.pFlags = {};
-      }
-
-      if(message._ === 'messageEmpty') {
-        message.deleted = true;
-        return;
-      }
-
-      // * exclude from state
-      // defineNotNumerableProperties(message, ['rReply', 'mid', 'savedFrom', 'fwdFromId', 'fromId', 'peerId', 'reply_to_mid', 'viaBotId']);
-
-      const peerId = this.getMessagePeer(message);
-      const storage = options.storage || this.getMessagesStorage(peerId);
-      const isChannel = message.peer_id._ === 'peerChannel';
-      const isBroadcast = isChannel && appChatsManager.isBroadcast(peerId.toChatId());
-
-      if(options.isScheduled) {
-        message.pFlags.is_scheduled = true;
-      }
-
-      if(options.isOutgoing) {
-        message.pFlags.is_outgoing = true;
-      }
-      
-      const mid = appMessagesIdsManager.generateMessageId(message.id);
-      message.mid = mid;
-
-      if(message.grouped_id) {
-        const storage = this.groupedMessagesStorage[message.grouped_id] ?? (this.groupedMessagesStorage[message.grouped_id] = new Map());
-        storage.set(mid, message);
-      }
-
-      const dialog = this.getDialogOnly(peerId);
-      if(dialog && mid) {
-        if(mid > dialog[message.pFlags.out
-          ? 'read_outbox_max_id'
-          : 'read_inbox_max_id']) {
-          message.pFlags.unread = true;
-        }
-      }
-      // this.log(dT(), 'msg unread', mid, apiMessage.pFlags.out, dialog && dialog[apiMessage.pFlags.out ? 'read_outbox_max_id' : 'read_inbox_max_id'])
-
-      if(message.reply_to) {
-        if(message.reply_to.reply_to_msg_id) {
-          message.reply_to.reply_to_msg_id = message.reply_to_mid = appMessagesIdsManager.generateMessageId(message.reply_to.reply_to_msg_id);
-        } 
-
-        if(message.reply_to.reply_to_top_id) message.reply_to.reply_to_top_id = appMessagesIdsManager.generateMessageId(message.reply_to.reply_to_top_id);
-      }
-
-      if(message.replies) {
-        if(message.replies.max_id) message.replies.max_id = appMessagesIdsManager.generateMessageId(message.replies.max_id);
-        if(message.replies.read_max_id) message.replies.read_max_id = appMessagesIdsManager.generateMessageId(message.replies.read_max_id);
-      }
-
-      const overwriting = !!peerId;
-      if(!overwriting) {
-        message.date -= serverTimeManager.serverTimeOffset;
-      }
-      
-      //storage.generateIndex(message);
-      const myId = appUsersManager.getSelf().id;
-
-      message.peerId = peerId;
-      if(peerId === myId/*  && !message.from_id && !message.fwd_from */) {
-        message.fromId = message.fwd_from ? (message.fwd_from.from_id ? appPeersManager.getPeerId(message.fwd_from.from_id) : 0) : myId;
-      } else {
-        //message.fromId = message.pFlags.post || (!message.pFlags.out && !message.from_id) ? peerId : appPeersManager.getPeerId(message.from_id);
-        message.fromId = message.pFlags.post || !message.from_id ? peerId : appPeersManager.getPeerId(message.from_id);
-      }
-
-      const fwdHeader = message.fwd_from as MessageFwdHeader;
-      if(fwdHeader) {
-        //if(peerId === myID) {
-          if(fwdHeader.saved_from_msg_id) fwdHeader.saved_from_msg_id = appMessagesIdsManager.generateMessageId(fwdHeader.saved_from_msg_id);
-          if(fwdHeader.channel_post) fwdHeader.channel_post = appMessagesIdsManager.generateMessageId(fwdHeader.channel_post);
-
-          const peer = fwdHeader.saved_from_peer || fwdHeader.from_id;
-          const msgId = fwdHeader.saved_from_msg_id || fwdHeader.channel_post;
-          if(peer && msgId) {
-            const savedFromPeerId = appPeersManager.getPeerId(peer);
-            const savedFromMid = appMessagesIdsManager.generateMessageId(msgId);
-            message.savedFrom = savedFromPeerId + '_' + savedFromMid;
-          }
-
-          /* if(peerId.isAnyChat() || peerId === myID) {
-            message.fromId = appPeersManager.getPeerID(!message.from_id || deepEqual(message.from_id, fwdHeader.from_id) ? fwdHeader.from_id : message.from_id);
-          } */
-        /* } else {
-          apiMessage.fwdPostID = fwdHeader.channel_post;
-        } */
-
-        message.fwdFromId = appPeersManager.getPeerId(fwdHeader.from_id);
-
-        if(!overwriting) {
-          fwdHeader.date -= serverTimeManager.serverTimeOffset;
-        }
-      }
-
-      if(message.via_bot_id > 0) {
-        message.viaBotId = message.via_bot_id;
-      }
-
-      const mediaContext: ReferenceContext = {
-        type: 'message',
-        peerId,
-        messageId: mid
-      };
-
-      if(message.media) {
-        switch(message.media._) {
-          case 'messageMediaEmpty':
-            delete message.media;
-            break;
-          case 'messageMediaPhoto':
-            if(message.media.ttl_seconds) {
-              message.media = {_: 'messageMediaUnsupportedWeb'};
-            } else {
-              message.media.photo = appPhotosManager.savePhoto(message.media.photo, mediaContext);
-            }
-
-            if(!message.media.photo) { // * found this bug on test DC
-              delete message.media;
-            }
-            
-            break;
-          case 'messageMediaPoll':
-            const result = appPollsManager.savePoll(message.media.poll, message.media.results, message);
-            message.media.poll = result.poll;
-            message.media.results = result.results;
-            break;
-          case 'messageMediaDocument':
-            if(message.media.ttl_seconds) {
-              message.media = {_: 'messageMediaUnsupportedWeb'};
-            } else {
-              message.media.document = appDocsManager.saveDoc(message.media.document, mediaContext); // 11.04.2020 warning
-            }
-
-            break;
-          case 'messageMediaWebPage':
-            const messageKey = appWebPagesManager.getMessageKeyForPendingWebPage(peerId, mid, options.isScheduled);
-            message.media.webpage = appWebPagesManager.saveWebPage(message.media.webpage, messageKey, mediaContext);
-            break;
-          /*case 'messageMediaGame':
-            AppGamesManager.saveGame(apiMessage.media.game, apiMessage.mid, mediaContext);
-            apiMessage.media.handleMessage = true;
-            break; */
-          case 'messageMediaInvoice':
-            message.media = {_: 'messageMediaUnsupportedWeb'};
-            break;
-        }
-      }
-
-      if(message.action) {
-        const action = message.action as MessageAction;
-        let migrateFrom: PeerId;
-        let migrateTo: PeerId;
-        const suffix = message.fromId === appUsersManager.getSelf().id ? 'You' : '';
-
-        if((action as MessageAction.messageActionChatEditPhoto).photo) {
-          (action as MessageAction.messageActionChatEditPhoto).photo = appPhotosManager.savePhoto((action as MessageAction.messageActionChatEditPhoto).photo, mediaContext);
-        }
-
-        if((action as any).document) {
-          (action as any).document = appDocsManager.saveDoc((action as any).photo, mediaContext);
-        }
-
-        switch(action._) {
-          //case 'messageActionChannelEditPhoto':
-          case 'messageActionChatEditPhoto':
-            // action.photo = appPhotosManager.savePhoto(action.photo, mediaContext);
-            if((action.photo as Photo.photo)?.video_sizes) {
-              // @ts-ignore
-              action._ = isBroadcast ? 'messageActionChannelEditVideo' : 'messageActionChatEditVideo';
-            } else {
-              if(isBroadcast) { // ! messageActionChannelEditPhoto не существует в принципе, это используется для перевода.
-                // @ts-ignore
-                action._ = 'messageActionChannelEditPhoto';
-              }
-            }
-            break;
-          
-          case 'messageActionGroupCall': {
-            //assumeType<MessageAction.messageActionGroupCall>(action);
-
-            let type: string;
-            if(action.duration === undefined) {
-              type = 'started';
-              if(peerId !== message.fromId) {
-                type += '_by' + suffix;
-              }
-            } else {
-              type = 'ended_by' + suffix;
-            }
-
-            // @ts-ignore
-            action.type = type;
-
-            break;
-          }
-
-          case 'messageActionChatEditTitle':
-            /* if(options.isNew) {
-              const chat = appChatsManager.getChat(peerId.toChatId());
-              chat.title = action.title;
-              appChatsManager.saveApiChat(chat, true);
-            } */
-            
-            if(isBroadcast) {
-              // @ts-ignore
-              action._ = 'messageActionChannelEditTitle';
-            }
-            break;
-
-          case 'messageActionChatDeletePhoto':
-            if(isBroadcast) {
-              // @ts-ignore
-              action._ = 'messageActionChannelDeletePhoto';
-            }
-            break;
-
-          case 'messageActionChatAddUser':
-            if(action.users.length === 1) {
-              // @ts-ignore
-              action.user_id = action.users[0];
-              // @ts-ignore
-              if(message.fromId === action.user_id) {
-                if(isChannel) {
-                  // @ts-ignore
-                  action._ = 'messageActionChatJoined' + suffix;
-                } else {
-                  // @ts-ignore
-                  action._ = 'messageActionChatReturn' + suffix;
-                }
-              }
-            } else if(action.users.length > 1) {
-              // @ts-ignore
-              action._ = 'messageActionChatAddUsers';
-            }
-            break;
-
-          case 'messageActionChatDeleteUser':
-            if(message.fromId === action.user_id) {
-              // @ts-ignore
-              action._ = 'messageActionChatLeave' + suffix;
-            }
-            break;
-
-          case 'messageActionChannelMigrateFrom':
-            migrateFrom = action.chat_id.toPeerId(true);
-            migrateTo = peerId;
-            break
-
-          case 'messageActionChatMigrateTo':
-            migrateFrom = peerId;
-            migrateTo = action.channel_id.toPeerId(true);
-            break;
-
-          case 'messageActionHistoryClear':
-            //apiMessage.deleted = true;
-            message.clear_history = true;
-            delete message.pFlags.out;
-            delete message.pFlags.unread;
-            break;
-
-          case 'messageActionPhoneCall':
-            // @ts-ignore
-            action.type = 
-              (message.pFlags.out ? 'out_' : 'in_') +
-              (
-                action.reason._ === 'phoneCallDiscardReasonMissed' ||
-                action.reason._ === 'phoneCallDiscardReasonBusy'
-                   ? 'missed'
-                   : 'ok'
-              );
-            break;
-        }
-        
-        if(migrateFrom &&
-            migrateTo &&
-            !this.migratedFromTo[migrateFrom] &&
-            !this.migratedToFrom[migrateTo]) {
-          this.migrateChecks(migrateFrom, migrateTo);
-        }
-      }
-
-      /* if(message.grouped_id) {
-        if(!groups) {
-          groups = new Set();
-        }
-
-        groups.add(message.grouped_id);
-      } else {
-        message.rReply = this.getRichReplyText(message);
-      } */
-
-      if(message.message && message.message.length && !message.totalEntities) {
-        this.wrapMessageEntities(message);  
-      }
-
-      storage.set(mid, message);
+      this.saveMessage(message, options);
     });
-
-    /* if(groups) {
-      for(const groupId of groups) {
-        const mids = this.groupedMessagesStorage[groupId];
-        for(const mid in mids) {
-          const message = this.groupedMessagesStorage[groupId][mid];
-          message.rReply = this.getRichReplyText(message);
-        }
-      }
-    } */
   }
 
-  private wrapMessageEntities(message: any) {
+  private wrapMessageEntities(message: Message.message) {
     const apiEntities = message.entities ? message.entities.slice() : [];
     message.message = RichTextProcessor.fixEmoji(message.message, apiEntities);
 
@@ -2663,9 +2675,9 @@ export class AppMessagesManager {
     message.totalEntities = RichTextProcessor.mergeEntities(apiEntities, myEntities); // ! only in this order, otherwise bold and emoji formatting won't work
   }
 
-  public wrapMessageForReply(message: any, text: string, usingMids: number[], plain: true, highlightWord?: string, withoutMediaType?: boolean): string;
-  public wrapMessageForReply(message: any, text?: string, usingMids?: number[], plain?: false, highlightWord?: string, withoutMediaType?: boolean): DocumentFragment;
-  public wrapMessageForReply(message: any, text: string = message.message, usingMids?: number[], plain?: boolean, highlightWord?: string, withoutMediaType?: boolean): DocumentFragment | string {
+  public wrapMessageForReply(message: MyMessage | MyDraftMessage, text: string, usingMids: number[], plain: true, highlightWord?: string, withoutMediaType?: boolean): string;
+  public wrapMessageForReply(message: MyMessage | MyDraftMessage, text?: string, usingMids?: number[], plain?: false, highlightWord?: string, withoutMediaType?: boolean): DocumentFragment;
+  public wrapMessageForReply(message: MyMessage | MyDraftMessage, text: string = (message as Message.message).message, usingMids?: number[], plain?: boolean, highlightWord?: string, withoutMediaType?: boolean): DocumentFragment | string {
     const parts: (HTMLElement | string)[] = [];
 
     const addPart = (langKey: LangPackKey, part?: string | HTMLElement, text?: string) => {
@@ -2687,7 +2699,7 @@ export class AppMessagesManager {
       }
     };
 
-    if(message.media) {
+    if('media' in message) {
       let usingFullAlbum = true;
       if(message.grouped_id) {
         if(usingMids) {
@@ -2784,7 +2796,7 @@ export class AppMessagesManager {
       } 
     }
 
-    if(message.action) {
+    if('action' in message) {
       const actionWrapped = this.wrapMessageActionTextNew(message, plain);
       if(actionWrapped) {
         addPart(undefined, actionWrapped);
@@ -2865,20 +2877,21 @@ export class AppMessagesManager {
     return el;
   }
 
-  public wrapMessageActionTextNew(message: any, plain: true): string;
-  public wrapMessageActionTextNew(message: any, plain?: false): HTMLElement;
-  public wrapMessageActionTextNew(message: any, plain: boolean): HTMLElement | string;
-  public wrapMessageActionTextNew(message: any, plain?: boolean): HTMLElement | string {
+  public wrapMessageActionTextNew(message: MyMessage, plain: true): string;
+  public wrapMessageActionTextNew(message: MyMessage, plain?: false): HTMLElement;
+  public wrapMessageActionTextNew(message: MyMessage, plain: boolean): HTMLElement | string;
+  public wrapMessageActionTextNew(message: MyMessage, plain?: boolean): HTMLElement | string {
     const element: HTMLElement = plain ? undefined : document.createElement('span');
-    const action = message.action as MessageAction;
+    const action = 'action' in message && message.action;
 
     // this.log('message action:', action);
 
     if((action as MessageAction.messageActionCustomAction).message) {
+      const unsafeMessage = (action as MessageAction.messageActionCustomAction).message;
       if(plain) {
-        return RichTextProcessor.wrapPlainText(message.message);
+        return RichTextProcessor.wrapPlainText(unsafeMessage);
       } else {
-        element.innerHTML = RichTextProcessor.wrapRichText((action as MessageAction.messageActionCustomAction).message, {noLinebreaks: true});
+        element.innerHTML = RichTextProcessor.wrapRichText(unsafeMessage, {noLinebreaks: true});
         return element;
       }
     } else {
@@ -2912,7 +2925,7 @@ export class AppMessagesManager {
         }
 
         case 'messageActionInviteToGroupCall': {
-          const peerIds = [message.fromId, action.users[0]];
+          const peerIds = [message.fromId, action.users[0].toPeerId()];
           let a = 'ActionGroupCall';
           const myId = appUsersManager.getSelf().id;
           if(peerIds[0] === myId) a += 'You';
@@ -2942,7 +2955,7 @@ export class AppMessagesManager {
             args.push(getNameDivHTML(message.fromId, plain));
           }
 
-          let k: LangPackKey, _args: any[] = [];
+          let k: LangPackKey, _args: FormatterArguments = [];
           if(daysToStart < 1 && date.getDate() === today.getDate()) {
             k = 'TodayAtFormattedWithToday';
           } else if(daysToStart < 2 && date.getDate() === tomorrowDate.getDate()) {

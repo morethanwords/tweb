@@ -42,7 +42,7 @@ import { MOUNT_CLASS_TO } from '../../config/debug';
 import appNavigationController from '../../components/appNavigationController';
 import appNotificationsManager from './appNotificationsManager';
 import AppPrivateSearchTab from '../../components/sidebarRight/tabs/search';
-import { i18n, LangPackKey } from '../langPack';
+import { i18n, join, LangPackKey } from '../langPack';
 import { ChatInvite, Dialog, SendMessageAction } from '../../layer';
 import { hslaStringToHex } from '../../helpers/color';
 import { copy, getObjectKeysAndSort } from '../../helpers/object';
@@ -71,6 +71,7 @@ import MEDIA_MIME_TYPES_SUPPORTED from '../../environment/mediaMimeTypesSupport'
 import { NULL_PEER_ID } from '../mtproto/mtproto_config';
 import telegramMeWebManager from '../mtproto/telegramMeWebManager';
 import { ONE_DAY } from '../../helpers/date';
+import { numberThousandSplitter } from '../../helpers/number';
 
 //console.log('appImManager included33!');
 
@@ -1423,7 +1424,7 @@ export class AppImManager {
 
   public async getPeerStatus(peerId: PeerId) {
     let subtitle: HTMLElement;
-    if(!peerId) return '';
+    if(!peerId) return;
 
     if(peerId.isAnyChat()) { // not human
       let span = this.getPeerTyping(peerId);
@@ -1431,18 +1432,25 @@ export class AppImManager {
         return span;
       }
 
-      const chatInfo = await appProfileManager.getChatFull(peerId.toChatId()) as any;
+      const chatId = peerId.toChatId();
+      const chatInfo = await appProfileManager.getChatFull(chatId) as any;
       this.chat.log('chatInfo res:', chatInfo);
 
       const participants_count = chatInfo.participants_count || (chatInfo.participants && chatInfo.participants.participants && chatInfo.participants.participants.length) || 1;
       //if(participants_count) {
-        subtitle = appProfileManager.getChatMembersString(peerId.toChatId());
+        subtitle = appProfileManager.getChatMembersString(chatId);
 
-        if(participants_count < 2) return subtitle;
-        /* const onlines = await appChatsManager.getOnlines(chat.id);
+        if(participants_count < 2) {
+          return subtitle;
+        }
+
+        const onlines = await appProfileManager.getOnlines(chatId);
         if(onlines > 1) {
-          subtitle += ', ' + numberThousandSplitter(onlines) + ' online';
-        } */
+          const span = document.createElement('span');
+          
+          span.append(...join([subtitle, i18n('OnlineCount', [numberThousandSplitter(onlines)])], false));
+          subtitle = span;
+        }
   
         return subtitle;
       //}
@@ -1450,7 +1458,7 @@ export class AppImManager {
       const user = appUsersManager.getUser(peerId);
       
       if(rootScope.myId === peerId) {
-        return '';
+        return;
       } else if(user) {
         subtitle = appUsersManager.getUserStatusString(user.id);
 
