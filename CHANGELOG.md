@@ -1,4 +1,4 @@
-### 0.9.1 (17)
+### 0.9.1 (18)
 * Added group members online counter.
 * Added description of pinned message in its service notification.
 * Improved profile avatar loading.

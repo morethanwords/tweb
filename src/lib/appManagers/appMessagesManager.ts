@@ -2699,7 +2699,8 @@ export class AppMessagesManager {
       }
     };
 
-    if('media' in message) {
+    if((message as Message.message).media) {
+      assumeType<Message.message>(message);
       let usingFullAlbum = true;
       if(message.grouped_id) {
         if(usingMids) {
@@ -2796,8 +2797,8 @@ export class AppMessagesManager {
       } 
     }
 
-    if('action' in message) {
-      const actionWrapped = this.wrapMessageActionTextNew(message, plain);
+    if((message as Message.messageService).action) {
+      const actionWrapped = this.wrapMessageActionTextNew((message as Message.messageService), plain);
       if(actionWrapped) {
         addPart(undefined, actionWrapped);
       }
@@ -5011,7 +5012,8 @@ export class AppMessagesManager {
     }
 
     // set cached url to media
-    if('media' in message) {
+    if((message as Message.message).media) {
+      assumeType<Message.message>(message);
       const {photo: newPhoto, document: newDoc} = message.media as any;
       if(newPhoto) {
         const photo = appPhotosManager.getPhoto('' + tempId);
@@ -5653,7 +5655,7 @@ export class AppMessagesManager {
         referenceDatabase.deleteContext(smth.file_reference, {type: 'message', peerId: message.peerId, messageId: message.mid});
       }
 
-      if('webpage' in media) {
+      if('webpage' in media && media.webpage) {
         const isScheduled = this.getScheduledMessagesStorage(message.peerId) === storage;
         const messageKey = appWebPagesManager.getMessageKeyForPendingWebPage(message.peerId, message.mid, isScheduled);
         appWebPagesManager.deleteWebPageFromPending(media.webpage, messageKey);
