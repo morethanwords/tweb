@@ -62,7 +62,7 @@ export const langPack: {[actionType: string]: LangPackKey} = {
 
 export type LangPackKey = /* string |  */keyof typeof lang | keyof typeof langSign;
 
-export type FormatterArgument = string | Node;
+export type FormatterArgument = string | number | Node | FormatterArgument[];
 export type FormatterArguments = FormatterArgument[];
 
 namespace I18n {
@@ -264,8 +264,8 @@ namespace I18n {
 		});
 	}
 
-	export function superFormatter(input: string, args?: FormatterArguments, indexHolder = {i: 0}) {
-		let out: FormatterArguments = [];
+	export function superFormatter(input: string, args?: FormatterArguments, indexHolder = {i: 0}): Exclude<FormatterArgument, FormatterArgument[]>[] {
+		let out: ReturnType<typeof superFormatter> = [];
 		const regExp = /(\*\*)(.+?)\1|(\n)|(\[.+?\]\(.*?\))|un\d|%\d\$.|%./g;
 
 		let lastIndex = 0;
@@ -279,7 +279,7 @@ namespace I18n {
 				switch(p1) {
 					case '**': {
 						const b = document.createElement('b');
-						b.append(...superFormatter(p2, args, indexHolder));
+						b.append(...superFormatter(p2, args, indexHolder) as any);
 						out.push(b);
 						break;
 					}
@@ -291,7 +291,7 @@ namespace I18n {
 
 				const idx = p4.lastIndexOf(']');
 				const text = p4.slice(1, idx);
-				a.append(...superFormatter(text, args, indexHolder));
+				a.append(...superFormatter(text, args, indexHolder) as any);
 
 				const url = p4.slice(idx + 2, p4.length - 1);
 				if(url) {
@@ -303,7 +303,12 @@ namespace I18n {
 
 				out.push(a);
 			} else if(args) {
-				out.push(args[indexHolder.i++]);
+				const arg = args[indexHolder.i++];
+				if(Array.isArray(arg)) {
+					out.push(...arg as any);
+				} else {
+					out.push(arg);
+				}
 			}
 
 			lastIndex = offset + match.length;
@@ -317,9 +322,9 @@ namespace I18n {
 		return out;
 	}
 	
-	export function format(key: LangPackKey, plain: true, args?: any[]): string;
-	export function format(key: LangPackKey, plain?: false, args?: any[]): FormatterArguments;
-	export function format(key: LangPackKey, plain = false, args?: any[]): FormatterArguments | string {
+	export function format(key: LangPackKey, plain: true, args?: FormatterArguments): string;
+	export function format(key: LangPackKey, plain?: false, args?: FormatterArguments): ReturnType<typeof superFormatter>;
+	export function format(key: LangPackKey, plain = false, args?: FormatterArguments): ReturnType<typeof superFormatter> | string {
 		const str = strings.get(key);
 		let input: string;
 		if(str) {
@@ -390,7 +395,7 @@ namespace I18n {
 	
 			if(this.property === 'innerHTML') {
 				this.element.textContent = '';
-				this.element.append(...format(this.key, false, this.args));
+				this.element.append(...format(this.key, false, this.args) as any);
 			} else {
 				// @ts-ignore
 				const v = this.element[this.property];
@@ -423,7 +428,7 @@ namespace I18n {
 		}
 	}
 
-	export function i18n(key: LangPackKey, args?: any[]) {
+	export function i18n(key: LangPackKey, args?: FormatterArguments) {
 		return new IntlElement({key, args}).element;
 	}
 	
@@ -431,7 +436,7 @@ namespace I18n {
 		return new IntlElement(options).element;
 	}
 
-	export function _i18n(element: HTMLElement, key: LangPackKey, args?: any[], property?: IntlElementOptions['property']) {
+	export function _i18n(element: HTMLElement, key: LangPackKey, args?: FormatterArguments, property?: IntlElementOptions['property']) {
 		return new IntlElement({element, key, args, property}).element;
 	}
 }

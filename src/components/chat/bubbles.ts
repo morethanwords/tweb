@@ -32,7 +32,7 @@ import animationIntersector from "../animationIntersector";
 import RichTextProcessor from "../../lib/richtextprocessor";
 import mediaSizes from "../../helpers/mediaSizes";
 import { IS_ANDROID, IS_APPLE, IS_MOBILE, IS_SAFARI } from "../../environment/userAgent";
-import I18n, { i18n, langPack } from "../../lib/langPack";
+import I18n, { FormatterArguments, i18n, langPack } from "../../lib/langPack";
 import AvatarElement from "../avatar";
 import { ripple } from "../ripple";
 import { wrapAlbum, wrapPhoto, wrapVideo, wrapDocument, wrapSticker, wrapPoll, wrapGroupedDocuments } from "../wrappers";
@@ -3088,13 +3088,11 @@ export default class ChatBubbles {
           } else {
             /* const fromTitle = message.fromId === this.myID || appPeersManager.isBroadcast(message.fwdFromId || message.fromId) ? '' : `<div class="name" data-peer-id="${message.fromId}" style="color: ${appPeersManager.getPeerColorByID(message.fromId, false)};">${appPeersManager.getPeerTitle(message.fromId)}</div>`;
             nameDiv.innerHTML = fromTitle + 'Forwarded from ' + title; */
+            const args: FormatterArguments = [title];
             if(isStandaloneMedia) {
-              const fragment = document.createDocumentFragment();
-              fragment.append(document.createElement('br'));
-              fragment.append(title);
-              title = fragment;
+              args.unshift(document.createElement('br'));
             }
-            nameDiv.append(i18n('ForwardedFrom', [title]));
+            nameDiv.append(i18n('ForwardedFrom', [args]));
 
             if(savedFrom) {
               nameDiv.dataset.savedFrom = savedFrom;
