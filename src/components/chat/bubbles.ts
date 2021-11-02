@@ -1572,7 +1572,7 @@ export default class ChatBubbles {
       }
     }
 
-    const isChangingHeight = this.chat.input.messageInput.classList.contains('is-changing-height') || this.chat.container.classList.contains('is-toggling-helper');
+    const isChangingHeight = (this.chat.input.messageInput && this.chat.input.messageInput.classList.contains('is-changing-height')) || this.chat.container.classList.contains('is-toggling-helper');
     return this.scrollable.scrollIntoViewNew(
       element, 
       position, 
