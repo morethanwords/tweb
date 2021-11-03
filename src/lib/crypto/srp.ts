@@ -44,55 +44,45 @@ export async function computeSRP(password: string, state: AccountPassword, isNew
   //console.log('computeSRP:', password, state, isNew, algo);
 
   const p = str2bigInt(bytesToHex(algo.p), 16);
-  const B = str2bigInt(bytesToHex(state.srp_B), 16);
   const g = int2bigInt(algo.g, 32, 256);
-
+  
   //log('p', bigInt2str(p, 16));
-  //log('B', bigInt2str(B, 16));
-
+  
   /* if(B.compareTo(BigInteger.ZERO) < 0) {
     console.error('srp_B < 0')
   }
-
+  
   if(B.compareTo(p) <= 0) {
     console.error('srp_B <= p');
   } */
-
+  
   /* let check_prime_and_good = (bytes: any, g: number) => {
     let good_prime = 'c71caeb9c6b1c9048e6c522f70f13f73980d40238e3e21c14934d037563d930f48198a0aa7c14058229493d22530f4dbfa336f6e0ac925139543aed44cce7c3720fd51f69458705ac68cd4fe6b6b13abdc9746512969328454f18faf8c595f642477fe96bb2a941d5bcd1d4ac8cc49880708fa9b378e3c4f3a9060bee67cf9a4a4a695811051907e162753b56b0f6b410dba74d8a84b2a14b3144e0ef1284754fd17ed950d5965b4b9dd46582db1178d169c6bc465b0d6ff9ca3928fef5b9ae4e418fc15e83ebea0f87fa9ff5eed70050ded2849f47bf959d956850ce929851f0d8115f635b105ee2e4e15d04b2454bf6f4fadf034b10403119cd8e3b92fcc5b';
     
     if(bytesToHex(bytes) === good_prime && [3, 4, 5, 7].indexOf(g) !== -1) {
       return true;
     }
-
+    
     // TO-DO check_prime_and_good_check
   }; */
-
+  
   //check_prime_and_good(algo.p, g);
-
+  
   const pw_hash = await makePasswordHash(password, algo.salt1, algo.salt2);
   const x = str2bigInt(bytesToHex(pw_hash), 16);
-
+  
   //log('computed pw_hash:', pw_hash, x, bytesToHex(new Uint8Array(pw_hash)));
-
+  
   const padArray = function(arr: number[] | Uint8Array, len: number) {
     if(!(arr instanceof Uint8Array)) {
       arr = convertToUint8Array(arr);
     }
-
+    
     return addPadding(arr, len, true, true, true);
   };
-
-  const pForHash = padArray(bytesFromHex(bigInt2str(p, 16)), 256);
-  const gForHash = padArray(bytesFromHex(bigInt2str(g, 16)), 256); // like uint8array
-  const b_for_hash = padArray(bytesFromHex(bigInt2str(B, 16)), 256);
-
-  /* log(bytesToHex(pForHash));
-  log(bytesToHex(gForHash));
-  log(bytesToHex(b_for_hash)); */
-
+  
   const v = powMod(g, x, p);
-
+  
   const flipper = (arr: Uint8Array | number[]) => {
     const out = new Uint8Array(arr.length);
     for(let i = 0; i < arr.length; i += 4) {
@@ -101,15 +91,25 @@ export async function computeSRP(password: string, state: AccountPassword, isNew
       out[i + 2] = arr[i + 1];
       out[i + 3] = arr[i];
     }
-  
+    
     return out;
   };
-
+  
   // * https://core.telegram.org/api/srp#setting-a-new-2fa-password
   if(isNew) {
     const bytes = bytesFromHex(bigInt2str(v, 16));
     return padArray(/* (isBigEndian ? bytes.reverse() : bytes) */bytes, 256);
   }
+  
+  const B = str2bigInt(bytesToHex(state.srp_B), 16);
+  //log('B', bigInt2str(B, 16));
+  
+  const pForHash = padArray(bytesFromHex(bigInt2str(p, 16)), 256);
+  const gForHash = padArray(bytesFromHex(bigInt2str(g, 16)), 256); // like uint8array
+  const b_for_hash = padArray(bytesFromHex(bigInt2str(B, 16)), 256);
+  /* log(bytesToHex(pForHash));
+  log(bytesToHex(gForHash));
+  log(bytesToHex(b_for_hash)); */
 
   //log('g_x', bigInt2str(g_x, 16));
 
