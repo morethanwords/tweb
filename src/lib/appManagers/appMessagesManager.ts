@@ -3696,7 +3696,7 @@ export class AppMessagesManager {
 
       const foundCount: number = searchResult.count || (foundMsgs.length + searchResult.messages.length);
 
-      searchResult.messages.forEach((message: any) => {
+      searchResult.messages.forEach((message: MyMessage) => {
         const peerId = this.getMessagePeer(message);
         if(peerId.isAnyChat()) {
           const chat: Chat.chat = appChatsManager.getChat(peerId.toChatId());

@@ -28,6 +28,7 @@ import htmlToSpan from "../helpers/dom/htmlToSpan";
 import { formatFullSentTime } from "../helpers/date";
 import { clamp, formatBytes } from "../helpers/number";
 import throttleWithRaf from "../helpers/schedulers/throttleWithRaf";
+import { NULL_PEER_ID } from "../lib/mtproto/mtproto_config";
 
 rootScope.addEventListener('messages_media_read', ({mids, peerId}) => {
   mids.forEach(mid => {
@@ -340,19 +341,27 @@ function constructDownloadPreloader(tryAgainOnFail = true) {
   return preloader;
 }
 
-export const findAudioTargets = (anchor: HTMLElement, useSearch: boolean) => {
+export const findMediaTargets = (anchor: HTMLElement/* , useSearch: boolean */) => {
   let prev: MediaItem[], next: MediaItem[];
   // if(anchor.classList.contains('search-super-item') || !useSearch) {
-    const container = findUpClassName(anchor, anchor.classList.contains('search-super-item') ? 'tabs-tab' : 'bubbles-inner');
+    const isBubbles = !anchor.classList.contains('search-super-item');
+    const container = findUpClassName(anchor, !isBubbles ? 'tabs-tab' : 'bubbles-inner');
     if(container) {
       const attr = `:not([data-is-outgoing="1"])`;
       const justAudioSelector = `.audio:not(.is-voice)${attr}`;
-      let selector: string;
+      let selectors: string[];
       if(!anchor.matches(justAudioSelector)) {
-        selector = `.audio.is-voice${attr}, .media-round${attr}`;
+        selectors = [`.audio.is-voice${attr}`, `.media-round${attr}`];
       } else {
-        selector = justAudioSelector;
+        selectors = [justAudioSelector];
       }
+
+      if(isBubbles) {
+        const prefix = '.bubble:not(.webpage) ';
+        selectors = selectors.map(s => prefix + s);
+      }
+
+      const selector = selectors.join(', ');
 
       const elements = Array.from(container.querySelectorAll(selector)) as HTMLElement[];
       const idx = elements.indexOf(anchor);
@@ -454,8 +463,13 @@ export default class AudioElement extends HTMLElement {
         e && cancelEvent(e);
 
         if(paused) {
-          if(appMediaPlaybackController.setSearchContext(this.searchContext)) {
-            const [prev, next] = findAudioTargets(this, this.searchContext.useSearch);
+          const hadSearchContext = !!this.searchContext;
+          if(appMediaPlaybackController.setSearchContext(this.searchContext || {
+            peerId: NULL_PEER_ID, 
+            inputFilter: {_: 'inputMessagesFilterEmpty'}, 
+            useSearch: false
+          })) {
+            const [prev, next] = !hadSearchContext ? [] : findMediaTargets(this/* , this.searchContext.useSearch */);
             appMediaPlaybackController.setTargets({peerId: this.message.peerId, mid: this.message.mid}, prev, next);
           }
 

@@ -1042,6 +1042,9 @@ export default class ChatBubbles {
         return;
       }
 
+      const SINGLE_MEDIA_CLASSNAME = 'webpage';
+      const isSingleMedia = bubble.classList.contains(SINGLE_MEDIA_CLASSNAME);
+
       const f = documentDiv ? (media: any) => {
         return AppMediaViewer.isMediaCompatibleForDocumentViewer(media);
       } : (media: any) => {
@@ -1049,7 +1052,10 @@ export default class ChatBubbles {
       };
 
       const targets: {element: HTMLElement, mid: number, peerId: PeerId}[] = [];
-      const ids = Object.keys(this.bubbles).map(k => +k).filter(id => {
+      const ids = isSingleMedia ? [messageId] : Object.keys(this.bubbles).map(k => +k).filter(id => {
+        /* if(isSingleMedia && !this.bubbles[id].classList.contains(SINGLE_MEDIA_CLASSNAME)) {
+          return false;
+        }  */
         //if(!this.scrollable.visibleElements.find(e => e.element === this.bubbles[id])) return false;
 
         const message = this.chat.getMessage(id);
@@ -1117,7 +1123,7 @@ export default class ChatBubbles {
         threadId: this.chat.threadId,
         peerId: this.peerId,
         inputFilter: {_: documentDiv ? 'inputMessagesFilterDocument' : 'inputMessagesFilterPhotoVideo'},
-        useSearch: this.chat.type !== 'scheduled',
+        useSearch: this.chat.type !== 'scheduled' && !isSingleMedia,
         isScheduled: this.chat.type === 'scheduled'
       })
       .openMedia(message, targets[idx].element, 0, true, targets.slice(0, idx), targets.slice(idx + 1));
@@ -2707,15 +2713,21 @@ export default class ChatBubbles {
           
           const doc = webpage.document as MyDocument;
           if(doc) {
-            if(doc.type === 'gif' || doc.type === 'video') {
+            if(doc.type === 'gif' || doc.type === 'video' || doc.type === 'round') {
               //if(doc.size <= 20e6) {
-              bubble.classList.add('video');
+              const mediaSize = doc.type === 'round' ? mediaSizes.active.round : mediaSizes.active.webpage;
+              if(doc.type === 'round') {
+                bubble.classList.add('round');
+                preview.classList.add('is-round');
+              } else {
+                bubble.classList.add('video');
+              }
               wrapVideo({
                 doc, 
                 container: preview, 
                 message, 
-                boxWidth: mediaSizes.active.webpage.width,
-                boxHeight: mediaSizes.active.webpage.height,
+                boxWidth: mediaSize.width,
+                boxHeight: mediaSize.height,
                 lazyLoadQueue: this.lazyLoadQueue,
                 middleware: this.getMiddleware(),
                 isOut,

@@ -360,7 +360,7 @@ class AppMediaPlaybackController {
   private async setNewMediadata(message: Message.message, playingMedia = this.playingMedia) {
     await onMediaLoad(playingMedia, undefined, false); // have to wait for load, otherwise on macOS won't set
 
-    const doc = (message.media as MessageMedia.messageMediaDocument).document as MyDocument;
+    const doc = appMessagesManager.getMediaFromMessage(message) as MyDocument;
     
     const artwork: MediaImage[] = [];
 
@@ -624,7 +624,7 @@ class AppMediaPlaybackController {
 
   public previous = () => {
     const media = this.playingMedia;
-    if(media && media.currentTime > 5) {
+    if(media && (media.currentTime > 5 || !this.listLoader.previous.length)) {
       media.currentTime = 0;
       this.toggle(true);
       return;

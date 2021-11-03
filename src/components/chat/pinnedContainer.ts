@@ -89,10 +89,10 @@ export default class PinnedContainer {
       return;
     }
 
-    const scrollable = this.chat.bubbles.scrollable;
+    // const scrollable = this.chat.bubbles.scrollable;
     
     const isFloating = (this.floating || mediaSizes.isMobile) && !hide;
-    const scrollTop = isFloating || this.divAndCaption.container.classList.contains('is-floating') ? scrollable.scrollTop : undefined;
+    // const scrollTop = isFloating || this.divAndCaption.container.classList.contains('is-floating') ? scrollable.scrollTop : undefined;
 
     this.divAndCaption.container.classList.toggle('is-floating', isFloating);
     this.divAndCaption.container.classList.toggle('hide', hide);
@@ -100,12 +100,13 @@ export default class PinnedContainer {
     this.topbar.container.classList.toggle('is-pinned-floating', isFloating);
     this.topbar.container.classList.toggle(`is-pinned-${this.className}-shown`, !hide);
     
-    const active = classNames.filter(className => this.topbar.container.classList.contains(className));
-    const maxActive = hide ? 0 : 1;
+    // const active = classNames.filter(className => this.topbar.container.classList.contains(className));
+    // const maxActive = hide ? 0 : 1;
     
-    if(scrollTop !== undefined && active.length <= maxActive/*  && !scrollable.isScrolledDown */) {
-      scrollable.scrollTop = scrollTop + ((hide ? -1 : 1) * HEIGHT);
-    }
+    // * not sure when it became unneeded
+    // if(scrollTop !== undefined && active.length <= maxActive/*  && !scrollable.isScrolledDown */) {
+    //   scrollable.scrollTop = scrollTop + ((hide ? -1 : 1) * HEIGHT);
+    // }
     
     this.topbar.setFloating();
     this.topbar.setUtilsWidth();

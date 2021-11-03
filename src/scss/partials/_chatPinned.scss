@@ -285,6 +285,12 @@
 
     .pinned-container-content {
       margin-right: .5rem;
+
+      @include respond-to(medium-screens) {
+				body.is-right-column-shown & {
+          padding-right: var(--right-column-width);
+        }
+      }
     }
 
     /* &:before {

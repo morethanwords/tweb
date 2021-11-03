@@ -20,7 +20,7 @@ import LottieLoader from '../lib/lottieLoader';
 import webpWorkerController from '../lib/webp/webpWorkerController';
 import animationIntersector from './animationIntersector';
 import appMediaPlaybackController, { MediaSearchContext } from './appMediaPlaybackController';
-import AudioElement, { findAudioTargets as findMediaTargets } from './audio';
+import AudioElement, { findMediaTargets } from './audio';
 import ReplyContainer from './chat/replyContainer';
 import { Layouter, RectPart } from './groupedLayout';
 import LazyLoadQueue from './lazyLoadQueue';
@@ -29,7 +29,6 @@ import ProgressivePreloader from './preloader';
 import './middleEllipsis';
 import RichTextProcessor from '../lib/richtextprocessor';
 import appImManager from '../lib/appManagers/appImManager';
-import { SearchSuperContext } from './appSearchSuper.';
 import rootScope from '../lib/rootScope';
 import { onMediaLoad } from '../helpers/files';
 import { animateSingle } from '../helpers/animation';
@@ -49,6 +48,7 @@ import MEDIA_MIME_TYPES_SUPPORTED from '../environment/mediaMimeTypesSupport';
 import { MiddleEllipsisElement } from './middleEllipsis';
 import { joinElementsWith } from '../lib/langPack';
 import throttleWithRaf from '../helpers/schedulers/throttleWithRaf';
+import { NULL_PEER_ID } from '../lib/mtproto/mtproto_config';
 
 const MAX_VIDEO_AUTOPLAY_SIZE = 50 * 1024 * 1024; // 50 MB
 
@@ -305,8 +305,13 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
         } */
   
         if(globalVideo.paused) {
-          if(appMediaPlaybackController.setSearchContext(searchContext)) {
-            const [prev, next] = findMediaTargets(divRound, searchContext.useSearch);
+          const hadSearchContext = !!searchContext;
+          if(appMediaPlaybackController.setSearchContext(searchContext || {
+            peerId: NULL_PEER_ID, 
+            inputFilter: {_: 'inputMessagesFilterEmpty'}, 
+            useSearch: false
+          })) {
+            const [prev, next] = !hadSearchContext ? [] : findMediaTargets(divRound/* , searchContext.useSearch */);
             appMediaPlaybackController.setTargets({peerId: message.peerId, mid: message.mid}, prev, next);
           }
           
