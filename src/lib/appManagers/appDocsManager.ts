@@ -28,8 +28,10 @@ export type MyDocument = Document.document;
 
 // TODO: если залить картинку файлом, а потом перезайти в диалог - превьюшка заново скачается
 
-const EXTENSION_MIME_TYPE_MAP: {[key: string]: string} = {
-  mov: 'video/quicktime'
+const EXTENSION_MIME_TYPE_MAP = {
+  mov: 'video/quicktime',
+  gif: 'image/gif',
+  pdf: 'application/pdf',
 };
 
 export class AppDocsManager {
@@ -163,6 +165,7 @@ export class AppDocsManager {
     
     if(!doc.mime_type) {
       const ext = (doc.file_name || '').split('.').pop();
+      // @ts-ignore
       const mappedMimeType = ext && EXTENSION_MIME_TYPE_MAP[ext.toLowerCase()];
       if(mappedMimeType) {
         doc.mime_type = mappedMimeType;
@@ -187,8 +190,10 @@ export class AppDocsManager {
             break;
         }
       }
-    } else if(doc.mime_type === 'application/pdf') {
+    } else if(doc.mime_type === EXTENSION_MIME_TYPE_MAP.pdf) {
       doc.type = 'pdf';
+    } else if(doc.mime_type === EXTENSION_MIME_TYPE_MAP.gif) {
+      doc.type = 'gif';
     }
 
     if(doc.type === 'voice' || doc.type === 'round') {

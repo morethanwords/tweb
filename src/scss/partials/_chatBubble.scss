@@ -597,12 +597,12 @@ $bubble-beside-button-width: 38px;
       max-height: var(--round-video-size) !important;
       width: var(--round-video-size) !important;
       height: var(--round-video-size) !important;
+    }
 
-      .media-photo, 
-      .media-video {
-        border-radius: 50%;
-        pointer-events: none;
-      }
+    .media-photo, 
+    .media-video {
+      border-radius: 50%;
+      pointer-events: none;
     }
   }
 
@@ -920,6 +920,13 @@ $bubble-beside-button-width: 38px;
           &:last-child {
             margin-bottom: 2px;
           }
+        }
+      }
+
+      &.is-round {
+        .media-photo,
+        .media-video {
+          border-radius: 50%;
         }
       }
     }

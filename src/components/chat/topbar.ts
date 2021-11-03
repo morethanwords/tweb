@@ -728,7 +728,7 @@ export default class ChatTopbar {
           void this.chatInfo.offsetLeft; // reflow */
           const width = /* chatUtils.scrollWidth */this.chatUtils.getBoundingClientRect().width;
           this.chat.log('utils width:', width);
-          this.chatInfo.style.setProperty('--utils-width', width + 'px');
+          this.container.style.setProperty('--utils-width', width + 'px');
           //this.chatInfo.classList.toggle('have-utils-width', !!width);
         //}, 0);
         
