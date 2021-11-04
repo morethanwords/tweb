@@ -9,6 +9,7 @@ import PopupElement, { addCancelButton, PopupButton, PopupOptions } from ".";
 import { i18n, LangPackKey } from "../../lib/langPack";
 import CheckboxField, { CheckboxFieldOptions } from "../checkboxField";
 
+export type PopupPeerButton = Omit<PopupButton, 'callback'> & Partial<{callback: PopupPeerButtonCallback}>;
 export type PopupPeerButtonCallbackCheckboxes = Set<LangPackKey>;
 export type PopupPeerButtonCallback = (checkboxes?: PopupPeerButtonCallbackCheckboxes) => void;
 export type PopupPeerCheckboxOptions = CheckboxFieldOptions & {checkboxField?: CheckboxField};
@@ -22,7 +23,7 @@ export type PopupPeerOptions = PopupOptions & Partial<{
   description: string,
   descriptionLangKey?: LangPackKey,
   descriptionLangArgs?: any[],
-  buttons?: Array<Omit<PopupButton, 'callback'> & Partial<{callback: PopupPeerButtonCallback}>>,
+  buttons?: Array<PopupPeerButton>,
   checkboxes: Array<PopupPeerCheckboxOptions>
 }>;
 export default class PopupPeer extends PopupElement {

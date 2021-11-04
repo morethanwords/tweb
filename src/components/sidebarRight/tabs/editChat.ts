@@ -174,11 +174,11 @@ export default class AppEditChatTab extends SliderSuperTab {
         let promises: Promise<any>[] = [];
 
         const id = this.chatId;
-        if(this.chatNameInputField.isValid()) {
+        if(this.chatNameInputField.isValidToChange()) {
           promises.push(appChatsManager.editTitle(id, this.chatNameInputField.value));
         }
 
-        if(this.descriptionInputField.isValid()) {
+        if(this.descriptionInputField.isValidToChange()) {
           promises.push(appChatsManager.editAbout(id, this.descriptionInputField.value));
         }
 

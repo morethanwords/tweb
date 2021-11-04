@@ -39,6 +39,9 @@ import RangeSelector from "./rangeSelector";
 import windowSize from "../helpers/windowSize";
 import ListLoader from "../helpers/listLoader";
 import EventListenerBase from "../helpers/eventListenerBase";
+import { MyMessage } from "../lib/appManagers/appMessagesManager";
+import RichTextProcessor from "../lib/richtextprocessor";
+import { NULL_PEER_ID } from "../lib/mtproto/mtproto_config";
 
 const ZOOM_STEP = 0.5;
 const ZOOM_INITIAL_VALUE = 1;
@@ -1096,32 +1099,50 @@ export default class AppMediaViewerBase<
     } */
   }
 
-  protected setAuthorInfo(fromId: PeerId, timestamp: number) {
+  protected setAuthorInfo(fromId: PeerId | string, timestamp: number) {
     replaceContent(this.author.date, formatFullSentTime(timestamp));
 
-    replaceContent(this.author.nameEl, new PeerTitle({
-      peerId: fromId,
-      dialog: false,
-      onlyFirstName: false,
-      plainText: false
-    }).element);
+    const isPeerId = fromId.isPeerId();
+    let title: HTMLElement;
+    if(isPeerId) {
+      title = new PeerTitle({
+        peerId: fromId as PeerId,
+        dialog: false,
+        onlyFirstName: false,
+        plainText: false
+      }).element;
+    } else {
+      title = document.createElement('span');
+      title.innerHTML = RichTextProcessor.wrapEmojiText(fromId);
+      title.classList.add('peer-title');
+    }
+
+    replaceContent(this.author.nameEl, title);
 
     let oldAvatar = this.author.avatarEl;
-    this.author.avatarEl = (this.author.avatarEl.cloneNode() as AvatarElement);
-    this.author.avatarEl.setAttribute('peer', '' + (fromId || rootScope.myId));
+    this.author.avatarEl = (oldAvatar.cloneNode() as AvatarElement);
+
+    if(!isPeerId) {
+      this.author.avatarEl.setAttribute('peer-title', '' + fromId);
+    } else {
+      this.author.avatarEl.removeAttribute('peer-title');
+    }
+
+    this.author.avatarEl.setAttribute('peer', '' + (fromId || NULL_PEER_ID));
+
     oldAvatar.parentElement.replaceChild(this.author.avatarEl, oldAvatar);
   }
   
   protected async _openMedia(
     media: MyDocument | MyPhoto, 
     timestamp: number, 
-    fromId: PeerId, 
+    fromId: PeerId | string, 
     fromRight: number, 
     target?: HTMLElement, 
     reverse = false, 
     prevTargets: TargetType[] = [], 
     nextTargets: TargetType[] = [], 
-    message?: Message.message
+    message?: MyMessage
     /* , needLoadMore = true */
   ) {
     if(this.setMoverPromise) return this.setMoverPromise;
@@ -1407,7 +1428,7 @@ export default class AppMediaViewerBase<
               }
 
               if(useController) {
-                const rollback = appMediaPlaybackController.setSingleMedia(video, message);
+                const rollback = appMediaPlaybackController.setSingleMedia(video, message as Message.message);
 
                 this.addEventListener('setMoverBefore', () => {
                   rollback();

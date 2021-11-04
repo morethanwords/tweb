@@ -300,9 +300,12 @@ class InputField {
 
   public isValid() {
     return !this.input.classList.contains('error') && 
-      this.isChanged() && 
       (!this.validate || this.validate()) && 
       (!this.required || !isInputEmpty(this.input));
+  }
+
+  public isValidToChange() {
+    return this.isValid() && this.isChanged();
   }
 
   public setDraftValue(value = '', silent = false) {

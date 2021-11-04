@@ -42,7 +42,7 @@ export default class PopupElement {
   protected btnClose: HTMLElement;
   protected btnConfirm: HTMLButtonElement;
   protected body: HTMLElement;
-  protected buttons: HTMLElement;
+  protected buttonsEl: HTMLElement;
 
   protected onClose: () => void;
   protected onCloseAfterTimeout: () => void;
@@ -55,7 +55,7 @@ export default class PopupElement {
   protected confirmShortcutIsSendShortcut: boolean;
   protected btnConfirmOnEnter: HTMLButtonElement;
 
-  constructor(className: string, buttons?: Array<PopupButton>, options: PopupOptions = {}) {
+  constructor(className: string, protected buttons?: Array<PopupButton>, options: PopupOptions = {}) {
     this.element.classList.add('popup');
     this.element.className = 'popup' + (className ? ' ' + className : '');
     this.container.classList.add('popup-container', 'z-depth-1');
@@ -105,7 +105,7 @@ export default class PopupElement {
 
     let btnConfirmOnEnter = this.btnConfirm;
     if(buttons && buttons.length) {
-      const buttonsDiv = this.buttons = document.createElement('div');
+      const buttonsDiv = this.buttonsEl = document.createElement('div');
       buttonsDiv.classList.add('popup-buttons');
 
       if(buttons.length === 2) {

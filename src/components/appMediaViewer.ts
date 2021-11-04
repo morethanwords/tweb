@@ -13,7 +13,7 @@ import SearchListLoader from "../helpers/searchListLoader";
 import { Message } from "../layer";
 import appDocsManager, { MyDocument } from "../lib/appManagers/appDocsManager";
 import appImManager from "../lib/appManagers/appImManager";
-import appMessagesManager from "../lib/appManagers/appMessagesManager";
+import appMessagesManager, { MyMessage } from "../lib/appManagers/appMessagesManager";
 import appPhotosManager, { MyPhoto } from "../lib/appManagers/appPhotosManager";
 import RichTextProcessor from "../lib/richtextprocessor";
 import { MediaSearchContext } from "./appMediaPlaybackController";
@@ -227,12 +227,12 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     }
   };
 
-  private setCaption(message: Message.message) {
-    const caption = message.message;
+  private setCaption(message: MyMessage) {
+    const caption = (message as Message.message).message;
     let html = '';
     if(caption) {
       html = RichTextProcessor.wrapRichText(caption, {
-        entities: message.totalEntities
+        entities: (message as Message.message).totalEntities
       });
     }
     
@@ -248,12 +248,12 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     return this;
   }
 
-  public async openMedia(message: any, target?: HTMLElement, fromRight = 0, reverse = false, 
+  public async openMedia(message: MyMessage, target?: HTMLElement, fromRight = 0, reverse = false, 
     prevTargets: AppMediaViewerTargetType[] = [], nextTargets: AppMediaViewerTargetType[] = []/* , needLoadMore = true */) {
     if(this.setMoverPromise) return this.setMoverPromise;
 
     const mid = message.mid;
-    const fromId = message.fromId;
+    const fromId = (message as Message.message).fwd_from && !message.fromId ? (message as Message.message).fwd_from.from_name : message.fromId;
     const media = appMessagesManager.getMediaFromMessage(message);
 
     this.buttons.forward.classList.toggle('hide', message._ === 'messageService');
