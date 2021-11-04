@@ -61,6 +61,10 @@ export default class PopupReportMessagesConfirm extends PopupPeer {
       placeholder: 'ReportChatDescription'
     });
 
+    inputField.input.addEventListener('input', () => {
+      this.buttons[0].element.toggleAttribute('disabled', !inputField.isValid());
+    });
+
     this.body.append(inputField.container);
   }
 }

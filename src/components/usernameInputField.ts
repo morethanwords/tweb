@@ -97,7 +97,7 @@ export class UsernameInputField extends InputField {
       this.options.onChange && this.options.onChange();
 
       const value = this.getValue();
-      if(value !== username && this.isValid() && RichTextProcessor.isUsernameValid(value)) {
+      if(value !== username && this.isValidToChange() && RichTextProcessor.isUsernameValid(value)) {
         this.checkUsername(value);
       }
     });

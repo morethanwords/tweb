@@ -95,11 +95,12 @@ export default class EditPeer {
       return true;
     }
 
-    let validLength = 0, requiredLength = 0, requiredValidLength = 0;
+    let changedLength = 0, requiredLength = 0, requiredValidLength = 0;
     this.inputFields.forEach(inputField => {
-      const isValid = inputField.isValid();
-      if(isValid) {
-        ++validLength;
+      if(inputField.isValid()) {
+        if(inputField.isChanged()) {
+          ++changedLength;
+        }
 
         if(inputField.required) {
           ++requiredValidLength;
@@ -111,7 +112,7 @@ export default class EditPeer {
       }
     });
 
-    return requiredLength === requiredValidLength && validLength > 0;
+    return requiredLength === requiredValidLength && changedLength > 0;
   };
 
   public handleChange = () => {

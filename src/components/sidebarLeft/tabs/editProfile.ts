@@ -135,7 +135,7 @@ export default class AppEditProfileTab extends SliderSuperTab {
         }));
       }
 
-      if(this.usernameInputField.isValid() && !this.usernameInputField.input.classList.contains('error')) {
+      if(this.usernameInputField.isValidToChange()) {
         promises.push(appUsersManager.updateUsername(this.usernameInputField.value));
       }
 

@@ -117,7 +117,7 @@ export default class AppChatTypeTab extends SliderSuperTabEventable {
 
     const onChange = () => {
       const changed = (privateRow.radioField.checked && (originalValue !== placeholder/*  || revoked */)) 
-        || (linkInputField.isValid() && linkInputField.input.classList.contains('valid'));
+        || (linkInputField.isValidToChange() && linkInputField.input.classList.contains('valid'));
       applyBtn.classList.toggle('is-visible', changed);
     };
 

@@ -48,7 +48,7 @@ export default class PopupReportMessages extends PopupPeer {
     }, {listenerSetter: this.listenerSetter});
     
     this.body.style.margin = '0 -1rem';
-    this.buttons.style.marginTop = '.5rem';
+    this.buttonsEl.style.marginTop = '.5rem';
 
     this.show();
   }

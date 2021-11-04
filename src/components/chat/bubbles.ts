@@ -42,7 +42,7 @@ import ListenerSetter from "../../helpers/listenerSetter";
 import PollElement from "../poll";
 import AudioElement from "../audio";
 import { Message, MessageEntity,  MessageReplyHeader, Photo, PhotoSize, ReplyMarkup, Update, WebPage } from "../../layer";
-import { REPLIES_PEER_ID } from "../../lib/mtproto/mtproto_config";
+import { NULL_PEER_ID, REPLIES_PEER_ID } from "../../lib/mtproto/mtproto_config";
 import { FocusDirection } from "../../helpers/fastSmoothScroll";
 import useHeavyAnimationCheck, { getHeavyAnimationPromise, dispatchHeavyAnimationEvent, interruptHeavyAnimation } from "../../hooks/useHeavyAnimationCheck";
 import { fastRaf, fastRafPromise } from "../../helpers/schedulers";
@@ -79,6 +79,7 @@ import SetTransition from "../singleTransition";
 import handleHorizontalSwipe from "../../helpers/dom/handleHorizontalSwipe";
 import { cancelContextMenuOpening } from "../misc";
 import findUpAttribute from "../../helpers/dom/findUpAttribute";
+import findUpAsChild from "../../helpers/dom/findUpAsChild";
 
 const USE_MEDIA_TAILS = false;
 const IGNORE_ACTIONS: Set<Message.messageService['action']['_']> = new Set([
@@ -981,24 +982,35 @@ export default class ChatBubbles {
       return;
     }
 
-    const nameDiv = findUpClassName(target, 'peer-title') || findUpClassName(target, 'name') || findUpTag(target, 'AVATAR-ELEMENT') || findUpAttribute(target, 'data-saved-from');
-    if(nameDiv && nameDiv !== bubble) {
-      target = nameDiv || target;
-      const peerId = (target.dataset.peerId || target.getAttribute('peer'));
-      const savedFrom = target.dataset.savedFrom;
-      if(nameDiv.classList.contains('is-via')) {
-        const message = '@' + this.appUsersManager.getUser(peerId).username + ' ';
+    const via = findUpClassName(target, 'is-via');
+    if(via) {
+      const el = via.querySelector('.peer-title') as HTMLElement;
+      if(target === el || findUpAsChild(target, el)) {
+        const message = el.innerText + ' ';
         this.appDraftsManager.setDraft(this.peerId, this.chat.threadId, message);
         cancelEvent(e);
-      } else if(savedFrom) {
-        const [peerId, mid] = savedFrom.split('_');
+        
+        return;
+      }
+    }
 
-        this.chat.appImManager.setInnerPeer(peerId.toPeerId(), +mid);
-      } else {
-        if(peerId) {
-          this.chat.appImManager.setInnerPeer(peerId.toPeerId());
+    const nameDiv = findUpClassName(target, 'peer-title') || findUpTag(target, 'AVATAR-ELEMENT') || findUpAttribute(target, 'data-saved-from');
+    if(nameDiv && nameDiv !== bubble) {
+      target = nameDiv || target;
+      const peerIdStr = target.dataset.peerId || target.getAttribute('peer');
+      if(typeof(peerIdStr) === 'string') {
+        const savedFrom = target.dataset.savedFrom;
+        if(savedFrom) {
+          const [peerId, mid] = savedFrom.split('_');
+  
+          this.chat.appImManager.setInnerPeer(peerId.toPeerId(), +mid);
         } else {
-          toast(I18n.format('HidAccount', true));
+          const peerId = peerIdStr.toPeerId();
+          if(peerId !== NULL_PEER_ID) {
+            this.chat.appImManager.setInnerPeer(peerId);
+          } else {
+            toast(I18n.format('HidAccount', true));
+          }
         }
       }
 
@@ -1006,7 +1018,7 @@ export default class ChatBubbles {
     }
 
     //this.log('chatInner click:', target);
-    const isVideoComponentElement = target.tagName === 'SPAN' && !target.classList.contains('emoji');
+    // const isVideoComponentElement = target.tagName === 'SPAN' && findUpClassName(target, 'media-container');
     /* if(isVideoComponentElement) {
       const video = target.parentElement.querySelector('video') as HTMLElement;
       if(video) {
@@ -1031,7 +1043,7 @@ export default class ChatBubbles {
     const documentDiv = findUpClassName(target, 'document-with-thumb');
     if((target.tagName === 'IMG' && !target.classList.contains('emoji') && !target.classList.contains('document-thumb')) 
       || target.classList.contains('album-item')
-      || isVideoComponentElement
+      // || isVideoComponentElement
       || (target.tagName === 'VIDEO' && !bubble.classList.contains('round'))
       || (documentDiv && !documentDiv.querySelector('.preloader-container'))) {
       const groupedItem = findUpClassName(target, 'album-item') || findUpClassName(target, 'document-container');
@@ -3040,15 +3052,19 @@ export default class ChatBubbles {
     const needName = (message.fromId !== rootScope.myId && this.appPeersManager.isAnyChat(peerId) && !this.appPeersManager.isBroadcast(peerId)) || message.viaBotId;
     if(needName || message.fwd_from || message.reply_to_mid) { // chat
       let title: HTMLElement | DocumentFragment;
+      let titleVia: typeof title;
 
       const isForwardFromChannel = message.from_id && message.from_id._ === 'peerChannel' && message.fromId === message.fwdFromId;
       
       let isHidden = message.fwd_from && !message.fwd_from.from_id && !message.fwd_from.channel_id;
       if(message.viaBotId) {
-        title = document.createElement('span');
-        title.innerText = '@' + this.appUsersManager.getUser(message.viaBotId).username;
-        title.classList.add('peer-title');
-      } else if(isHidden) {
+        titleVia = document.createElement('span');
+        titleVia.innerText = '@' + this.appUsersManager.getUser(message.viaBotId).username;
+        titleVia.classList.add('peer-title');
+        bubble.classList.add('must-have-name');
+      }
+      
+      if(isHidden) {
         ///////this.log('message to render hidden', message);
         title = document.createElement('span');
         title.innerHTML = RichTextProcessor.wrapEmojiText(message.fwd_from.from_name);
@@ -3056,7 +3072,7 @@ export default class ChatBubbles {
         //title = message.fwd_from.from_name;
         bubble.classList.add('hidden-profile');
       } else {
-        title = new PeerTitle({peerId: message.viaBotId || message.fwdFromId || message.fromId}).element;
+        title = new PeerTitle({peerId: message.fwdFromId || message.fromId}).element;
       }
 
       if(message.reply_to_mid && message.reply_to_mid !== this.chat.threadId) {
@@ -3070,53 +3086,35 @@ export default class ChatBubbles {
       
       //this.log(title);
       
-      if(message.viaBotId) {
-        //if(!bubble.classList.contains('sticker') || true) {
-          let nameDiv = document.createElement('div');
-          nameDiv.classList.add('name', 'is-via');
-          nameDiv.dataset.peerId = message.viaBotId;
-          nameDiv.append(i18n('ViaBot'), ' ', title);
-          nameContainer.append(nameDiv);
-        // } else {
-        //   bubble.classList.add('hide-name');
-        // }
-      } else if((message.fwdFromId || message.fwd_from)) {
+      let nameDiv: HTMLElement;
+      if((message.fwdFromId || message.fwd_from)) {
         if(this.peerId !== rootScope.myId && !isForwardFromChannel) {
           bubble.classList.add('forwarded');
         }
         
         if(message.savedFrom) {
           savedFrom = message.savedFrom;
+          title.dataset.savedFrom = savedFrom;
         }
         
-        //if(!bubble.classList.contains('sticker') || true) {
-          let nameDiv = document.createElement('div');
-          nameDiv.classList.add('name');
-          nameDiv.dataset.peerId = message.fwdFromId;
+        nameDiv = document.createElement('div');
+        title.dataset.peerId = message.fwdFromId;
 
-          if((this.peerId === rootScope.myId || this.peerId === REPLIES_PEER_ID || isForwardFromChannel) && !isStandaloneMedia) {
-            nameDiv.style.color = this.appPeersManager.getPeerColorById(message.fwdFromId, false);
-            nameDiv.append(title);
-          } else {
-            /* const fromTitle = message.fromId === this.myID || appPeersManager.isBroadcast(message.fwdFromId || message.fromId) ? '' : `<div class="name" data-peer-id="${message.fromId}" style="color: ${appPeersManager.getPeerColorByID(message.fromId, false)};">${appPeersManager.getPeerTitle(message.fromId)}</div>`;
-            nameDiv.innerHTML = fromTitle + 'Forwarded from ' + title; */
-            const args: FormatterArguments = [title];
-            if(isStandaloneMedia) {
-              args.unshift(document.createElement('br'));
-            }
-            nameDiv.append(i18n('ForwardedFrom', [args]));
-
-            if(savedFrom) {
-              nameDiv.dataset.savedFrom = savedFrom;
-            }
+        if((this.peerId === rootScope.myId || this.peerId === REPLIES_PEER_ID || isForwardFromChannel) && !isStandaloneMedia) {
+          nameDiv.style.color = this.appPeersManager.getPeerColorById(message.fwdFromId, false);
+          nameDiv.append(title);
+        } else {
+          /* const fromTitle = message.fromId === this.myID || appPeersManager.isBroadcast(message.fwdFromId || message.fromId) ? '' : `<div class="name" data-peer-id="${message.fromId}" style="color: ${appPeersManager.getPeerColorByID(message.fromId, false)};">${appPeersManager.getPeerTitle(message.fromId)}</div>`;
+          nameDiv.innerHTML = fromTitle + 'Forwarded from ' + title; */
+          const args: FormatterArguments = [title];
+          if(isStandaloneMedia) {
+            args.unshift(document.createElement('br'));
           }
-          
-          nameContainer.append(nameDiv);
-        //}
-      } else {
+          nameDiv.append(i18n('ForwardedFrom', [args]));
+        }
+      } else if(!message.viaBotId) {
         if(!isStandaloneMedia && needName) {
-          let nameDiv = document.createElement('div');
-          nameDiv.classList.add('name');
+          nameDiv = document.createElement('div');
           nameDiv.append(title);
 
           if(!our) {
@@ -3124,10 +3122,28 @@ export default class ChatBubbles {
           }
 
           nameDiv.dataset.peerId = message.fromId;
-          nameContainer.append(nameDiv);
         } else /* if(!message.reply_to_mid) */ {
           bubble.classList.add('hide-name');
         }
+      }
+
+      if(message.viaBotId) {
+        if(!nameDiv) {
+          nameDiv = document.createElement('div');
+        } else {
+          nameDiv.append(' ');
+        }
+
+        const span = document.createElement('span');
+        span.append(i18n('ViaBot'), ' ', titleVia);
+        span.classList.add('is-via');
+
+        nameDiv.append(span);
+      }
+
+      if(nameDiv) {
+        nameDiv.classList.add('name');
+        nameContainer.append(nameDiv);
       }
 
       const needAvatar = this.chat.isAnyGroup() && !isOut;
@@ -3141,7 +3157,7 @@ export default class ChatBubbles {
           avatarElem.setAttribute('peer-title', /* '🔥 FF 🔥' */message.fwd_from.from_name);
         }
 
-        avatarElem.setAttribute('peer', '' + (((message.fwd_from && (this.peerId === rootScope.myId || this.peerId === REPLIES_PEER_ID)) || isForwardFromChannel ? message.fwdFromId : message.fromId) || 0));
+        avatarElem.setAttribute('peer', '' + (((message.fwd_from && (this.peerId === rootScope.myId || this.peerId === REPLIES_PEER_ID)) || isForwardFromChannel ? message.fwdFromId : message.fromId) || NULL_PEER_ID));
         //avatarElem.update();
         
         //this.log('exec loadDialogPhoto', message);

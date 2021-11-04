@@ -15,6 +15,11 @@
   }
 
   @include btn-hoverable();
+
+  &:disabled {
+    pointer-events: none !important;
+    opacity: var(--disabled-opacity);
+  }
 }
 
 .btn-icon {
@@ -41,11 +46,6 @@
 
   &.active {
     color: var(--primary-color);
-  }
-
-  &:disabled {
-    pointer-events: none !important;
-    opacity: var(--disabled-opacity);
   }
 }
 

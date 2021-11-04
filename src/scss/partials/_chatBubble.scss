@@ -277,9 +277,7 @@ $bubble-beside-button-width: 38px;
     position: relative;
     display: flex;
     flex-direction: column-reverse;
-    /* font-size: 0; */
-    width: max-content;
-    height: fit-content;
+    // align-items: flex-start;
     z-index: 2;
     user-select: none;
     background-color: var(--message-background-color);
@@ -327,7 +325,8 @@ $bubble-beside-button-width: 38px;
     opacity: .99999; // for safari
     pointer-events: none;
 
-    &:before, &:after {
+    &:before, 
+    &:after {
       display: none;
     }
 
@@ -426,7 +425,7 @@ $bubble-beside-button-width: 38px;
     }
   }
 
-  &:not(.forwarded) {
+  &:not(.forwarded):not(.must-have-name) {
     &:not(.is-group-first) {
       .bubble-content > .name, 
       .document-wrapper > .name {
@@ -1116,7 +1115,7 @@ $bubble-beside-button-width: 38px;
 
   &.forwarded .attachment,
   &.is-reply .attachment,
-  &:not(.hide-name).is-message-empty .attachment/* ,
+  &:not(.hide-name)/* .is-message-empty */ .attachment/* ,
   &:not(.hide-name):not(.sticker) .attachment */ {
     border-top-left-radius: 0;
     border-top-right-radius: 0;
@@ -1596,6 +1595,11 @@ $bubble-beside-button-width: 38px;
     float: none;
   }
 
+  .video-time, 
+  .video-play {
+    pointer-events: none;
+  }
+
   .video-time {
     position: absolute;
     top: 3px;
@@ -1655,8 +1659,11 @@ $bubble-beside-button-width: 38px;
   }
   
   .name {
-    cursor: pointer;
     user-select: none;
+  }
+  
+  .peer-title {
+    cursor: pointer;
   }
   
   &-content > .name, 
@@ -1676,9 +1683,9 @@ $bubble-beside-button-width: 38px;
     //white-space: nowrap;
   }
 
-  &:not(.is-group-first) .bubble-content > .name .name {
+  /* &:not(.is-group-first) .bubble-content > .name .name {
     display: none;
-  }
+  } */
   
   &:not(.webpage) {
     &.photo, 
@@ -2191,7 +2198,8 @@ $bubble-beside-button-width: 38px;
   }
 
   &.just-media {
-    .reply, .name {
+    .reply, 
+    .name {
       right: calc(100% + 10px);
     }
 

@@ -21,7 +21,7 @@ let convert = (value: number) => {
 
 type RLottiePlayerListeners = 'enterFrame' | 'ready' | 'firstFrame' | 'cached';
 type RLottieOptions = {
-  container: HTMLElement, 
+  container?: HTMLElement, 
   autoplay?: boolean, 
   animationData: string, 
   loop?: boolean, 
@@ -83,15 +83,14 @@ export class RLottiePlayer extends EventListenerBase<{
   private currentMethod: RLottiePlayer['mainLoopForwards'] | RLottiePlayer['mainLoopBackwards'];
   private frameListener: () => void;
 
-  constructor({el, worker, options}: {
-    el: HTMLElement,
+  constructor({worker, options}: {
     worker: QueryableWorker,
     options: RLottieOptions
   }) {
     super(true);
 
     this.reqId = ++RLottiePlayer['reqId'];
-    this.el = el;
+    this.el = options.container;
     this.worker = worker;
 
     for(let i in options) {
@@ -416,7 +415,7 @@ export class RLottiePlayer extends EventListenerBase<{
     this.addEventListener('enterFrame', () => {
       this.dispatchEvent('firstFrame');
 
-      this.el.appendChild(this.canvas);
+      this.el && this.el.appendChild(this.canvas);
 
       //console.log('enterFrame firstFrame');
  
@@ -720,7 +719,7 @@ class LottieLoader {
       await this.loadLottieWorkers();
     }
 
-    if(!params.width || !params.height) {
+    if((!params.width || !params.height) && params.container) {
       params.width = parseInt(params.container.style.width);
       params.height = parseInt(params.container.style.height);
     }
@@ -731,7 +730,7 @@ class LottieLoader {
 
     params.group = group;
 
-    const player = this.initPlayer(params.container, params);
+    const player = this.initPlayer(params);
 
     if(group !== 'none') {
       animationIntersector.addAnimation(player, group);
@@ -790,9 +789,8 @@ class LottieLoader {
     this.workers.length = 0;
   }
 
-  private initPlayer(el: HTMLElement, options: RLottieOptions) {
+  private initPlayer(options: RLottieOptions) {
     const rlPlayer = new RLottiePlayer({
-      el, 
       worker: this.workers[this.curWorkerNum++],
       options
     });
