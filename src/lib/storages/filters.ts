@@ -226,14 +226,14 @@ export default class FiltersStorage {
     return this.updateDialogFilter(filter);
   }
 
-  public createDialogFilter(filter: MyDialogFilter) {
+  public createDialogFilter(filter: MyDialogFilter, prepend?: boolean) {
     const maxId = Math.max(1, ...Object.keys(this.filters).map(i => +i));
     filter = copy(filter);
     filter.id = maxId + 1;
-    return this.updateDialogFilter(filter);
+    return this.updateDialogFilter(filter, undefined, prepend);
   }
 
-  public updateDialogFilter(filter: MyDialogFilter, remove = false) {
+  public updateDialogFilter(filter: MyDialogFilter, remove = false, prepend = false) {
     const flags = remove ? 0 : 1;
 
     return apiManager.invokeApi('messages.updateDialogFilter', {
@@ -255,6 +255,23 @@ export default class FiltersStorage {
           id: filter.id,
           filter: remove ? undefined : filter as any
         });
+
+        if(prepend) {
+          const f: MyDialogFilter[] = [];
+          for(const filterId in this.filters) {
+            const filter = this.filters[filterId];
+            ++filter.orderIndex;
+            f.push(filter);
+          }
+
+          filter.orderIndex = START_ORDER_INDEX;
+
+          const order = f.sort((a, b) => a.orderIndex - b.orderIndex).map(filter => filter.id);
+          this.onUpdateDialogFilterOrder({
+            _: 'updateDialogFilterOrder',
+            order
+          });
+        }
       }
 
       return bool;
