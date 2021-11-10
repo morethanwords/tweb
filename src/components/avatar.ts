@@ -17,6 +17,7 @@ import appAvatarsManager from "../lib/appManagers/appAvatarsManager";
 import AppMediaViewer from "./appMediaViewer";
 import AppMediaViewerAvatar from "./appMediaViewerAvatar";
 import { NULL_PEER_ID } from "../lib/mtproto/mtproto_config";
+import { isObject } from "../helpers/object";
 
 const onAvatarUpdate = (peerId: PeerId) => {
   appAvatarsManager.removeFromAvatarsCache(peerId);
@@ -100,7 +101,7 @@ export async function openAvatarViewer(
   }
 
   if(photo) {
-    if(typeof(message) === 'string') {
+    if(!isObject(message)) {
       photo = appPhotosManager.getPhoto(message);
     }
     
