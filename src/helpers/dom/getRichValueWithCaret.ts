@@ -22,11 +22,21 @@ export default function getRichValueWithCaret(field: HTMLElement, withEntities =
   let selOffset: number;
   if(sel && sel.rangeCount) {
     const range = sel.getRangeAt(0);
-    if(range.startContainer &&
+    const startOffset = range.startOffset;
+    if(
+      range.startContainer &&
       range.startContainer == range.endContainer &&
-      range.startOffset == range.endOffset) {
-      selNode = range.startContainer;
-      selOffset = range.startOffset;
+      startOffset == range.endOffset
+    ) {
+      // * if focused on img
+      const possibleChildrenFocusOffset = startOffset - 1;
+      if(range.startContainer === field && field.childNodes[possibleChildrenFocusOffset]) {
+        selNode = field.childNodes[possibleChildrenFocusOffset];
+        selOffset = 1;
+      } else {
+        selNode = range.startContainer;
+        selOffset = startOffset;
+      }
     }
   }
 

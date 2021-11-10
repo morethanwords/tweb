@@ -403,13 +403,14 @@ namespace RichTextProcessor {
 
     currentEntities.push(...filtered);
     currentEntities.sort((a, b) => a.offset - b.offset);
+    // currentEntities.sort((a, b) => (a.offset - b.offset) || (a._ === 'messageEntityCaret' && -1));
 
     if(!IS_EMOJI_SUPPORTED) { // fix splitted emoji. messageEntityTextUrl can split the emoji if starts before its end (e.g. on fe0f)
       for(let i = 0; i < currentEntities.length; ++i) {
         const entity = currentEntities[i];
         if(entity._ === 'messageEntityEmoji') {
           const nextEntity = currentEntities[i + 1];
-          if(nextEntity && nextEntity.offset < (entity.offset + entity.length)) {
+          if(nextEntity /* && nextEntity._ !== 'messageEntityCaret' */ && nextEntity.offset < (entity.offset + entity.length)) {
             entity.length = nextEntity.offset - entity.offset;
           }
         }
@@ -460,7 +461,8 @@ namespace RichTextProcessor {
 
     const lol: {
       part: string,
-      offset: number
+      offset: number,
+      // priority: number
     }[] = [];
     const entities = options.entities || parseEntities(text);
 
@@ -468,13 +470,15 @@ namespace RichTextProcessor {
     const contextSite = options.contextSite || 'Telegram';
     const contextExternal = contextSite !== 'Telegram';
 
-    const insertPart = (entity: MessageEntity, startPart: string, endPart?: string) => {
-      lol.push({part: startPart, offset: entity.offset});
+    const insertPart = (entity: MessageEntity, startPart: string, endPart?: string/* , priority = 0 */) => {
+      lol.push({part: startPart, offset: entity.offset/* , priority */});
 
       if(endPart) {
-        lol.unshift({part: endPart, offset: entity.offset + entity.length});
+        lol.push({part: endPart, offset: entity.offset + entity.length/* , priority */});
       }
     };
+
+    const pushPartsAfterSort: typeof lol = [];
 
     for(let i = 0, length = entities.length; i < length; ++i) {
       const entity = entities[i];
@@ -579,9 +583,9 @@ namespace RichTextProcessor {
           //} else if(options.mustWrapEmoji) {
           } else if(!options.wrappingDraft) {
             insertPart(entity, '<span class="emoji">', '</span>');
-          } else if(!IS_SAFARI) {
+          }/*  else if(!IS_SAFARI) {
             insertPart(entity, '<span class="emoji" contenteditable="false">', '</span>');
-          }
+          } */
           /* if(!IS_EMOJI_SUPPORTED) {
             insertPart(entity, `<img src="assets/img/emoji/${entity.unicode}.png" alt="`, `" class="emoji">`);
           } */
@@ -590,7 +594,12 @@ namespace RichTextProcessor {
         }
         
         case 'messageEntityCaret': {
-          insertPart(entity, '<span class="composer-sel"></span>');
+          const html = '<span class="composer-sel"></span>';
+          // const html = '<span class="composer-sel" contenteditable="false"></span>';
+          // insertPart(entity, '<span class="composer-sel" contenteditable="true"></span>');
+          // insertPart(entity, '<span class="composer-sel"></span>');
+          pushPartsAfterSort.push({part: html, offset: entity.offset});
+          // insertPart(entity, html/* , undefined, 1 */);
           break;
         }
 
@@ -700,11 +709,28 @@ namespace RichTextProcessor {
       }
     }
 
-    lol.sort((a, b) => a.offset - b.offset);
+    // lol.sort((a, b) => (a.offset - b.offset) || (a.priority - b.priority));
+    lol.sort((a, b) => a.offset - b.offset); // have to sort because of nested entities
+
+    let partsLength = lol.length, partsAfterSortLength = pushPartsAfterSort.length;
+    for(let i = 0; i < partsAfterSortLength; ++i) {
+      const part = pushPartsAfterSort[i];
+      let insertAt = 0;
+      while(insertAt < partsLength) {
+        if(lol[insertAt++].offset >= part.offset) {
+          break;
+        }
+      }
+
+      lol.splice(insertAt, 0, part);
+    }
+
+    partsLength += partsAfterSortLength;
 
     const arr: string[] = [];
     let usedLength = 0;
-    for(const {part, offset} of lol) {
+    for(let i = 0; i < partsLength; ++i) {
+      const {part, offset} = lol[i];
       if(offset > usedLength) {
         arr.push(encodeEntities(text.slice(usedLength, offset)));
         usedLength = offset;

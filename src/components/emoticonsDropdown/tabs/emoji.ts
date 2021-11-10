@@ -9,7 +9,6 @@ import { cancelEvent } from "../../../helpers/dom/cancelEvent";
 import findUpClassName from "../../../helpers/dom/findUpClassName";
 import { fastRaf } from "../../../helpers/schedulers";
 import { pause } from "../../../helpers/schedulers/pause";
-import { IS_TOUCH_SUPPORTED } from "../../../environment/touchSupport";
 import appEmojiManager from "../../../lib/appManagers/appEmojiManager";
 import appImManager from "../../../lib/appManagers/appImManager";
 import Config from "../../../lib/config";
@@ -21,6 +20,8 @@ import { putPreloader } from "../../misc";
 import Scrollable from "../../scrollable";
 import StickyIntersector from "../../stickyIntersector";
 import IS_EMOJI_SUPPORTED from "../../../environment/emojiSupport";
+import { IS_TOUCH_SUPPORTED } from "../../../environment/touchSupport";
+import blurActiveElement from "../../../helpers/dom/blurActiveElement";
 
 const loadedURLs: Set<string> = new Set();
 export function appendEmoji(emoji: string, container: HTMLElement, prepend = false, unify = false) {
@@ -290,47 +291,10 @@ export default class EmojiTab implements EmoticonsTab {
       return;
     }
 
-    const messageInput = appImManager.chat.input.messageInput;
-    let inputHTML = messageInput.innerHTML;
-
-    const html = RichTextProcessor.wrapEmojiText(emoji, true);
-    let inserted = false;
-    if(window.getSelection) {
-      const savedRange = IS_TOUCH_SUPPORTED ? undefined : emoticonsDropdown.getSavedRange();
-      let sel = window.getSelection();
-      if(savedRange) {
-        sel.removeAllRanges();
-        sel.addRange(savedRange);
-      }
-
-      if(sel.getRangeAt && sel.rangeCount) {
-        var el = document.createElement('div');
-        el.innerHTML = html;
-        var node = el.firstChild;
-        var range = sel.getRangeAt(0);
-        range.deleteContents();
-        //range.insertNode(document.createTextNode(' '));
-        range.insertNode(node);
-        range.setStart(node, 0);
-        inserted = true;
-  
-        setTimeout(() => {
-          range = document.createRange();
-          range.setStartAfter(node);
-          range.collapse(true);
-          sel.removeAllRanges();
-          sel.addRange(range);
-        }, 0);
-      }
+    appImManager.chat.input.onEmojiSelected(emoji, false);
+    if(IS_TOUCH_SUPPORTED) {
+      blurActiveElement();
     }
-
-    if(!inserted || messageInput.innerHTML === inputHTML) {
-      messageInput.insertAdjacentHTML('beforeend', html);
-    }
-    
-    // Append to input
-    const event = new Event('input', {bubbles: true, cancelable: true});
-    messageInput.dispatchEvent(event);
   };
 
   onClose() {

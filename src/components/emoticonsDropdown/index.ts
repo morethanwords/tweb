@@ -27,6 +27,7 @@ import { cancelEvent } from "../../helpers/dom/cancelEvent";
 import DropdownHover from "../../helpers/dropdownHover";
 import { pause } from "../../helpers/schedulers/pause";
 import appMessagesManager from "../../lib/appManagers/appMessagesManager";
+import { IS_APPLE_MOBILE } from "../../environment/userAgent";
 
 export const EMOTICONSSTICKERGROUP = 'emoticons-dropdown';
 
@@ -163,10 +164,18 @@ export class EmoticonsDropdown extends DropdownHover {
 
       cancelEvent(e);
     });
+    
+    const HIDE_EMOJI_TAB = IS_APPLE_MOBILE;
 
-    (this.tabsEl.children[1] as HTMLLIElement).click(); // set emoji tab
-    if(this.tabs[0].init) {
-      this.tabs[0].init(); // onTransitionEnd не вызовется, т.к. это первая открытая вкладка
+    const INIT_TAB_ID = HIDE_EMOJI_TAB ? 1 : 0;
+
+    if(HIDE_EMOJI_TAB) {
+      (this.tabsEl.children[1] as HTMLElement).classList.add('hide');
+    }
+
+    (this.tabsEl.children[INIT_TAB_ID + 1] as HTMLLIElement).click(); // set emoji tab
+    if(this.tabs[INIT_TAB_ID].init) {
+      this.tabs[INIT_TAB_ID].init(); // onTransitionEnd не вызовется, т.к. это первая открытая вкладка
     }
 
     rootScope.addEventListener('peer_changed', this.checkRights);

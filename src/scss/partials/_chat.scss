@@ -159,8 +159,12 @@ $chat-helper-size: 36px;
 			content: $tgico-smile;
 		}
 
+    html.is-ios &:before {
+      content: $tgico-stickers;
+    }
+
 		&.flip-icon:before {
-			content: $tgico-keyboard;
+			content: $tgico-keyboard !important;
 		}
 	}
 

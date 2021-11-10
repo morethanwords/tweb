@@ -60,7 +60,6 @@ import placeCaretAtEnd from '../../helpers/dom/placeCaretAtEnd';
 import { MarkdownType, markdownTags } from '../../helpers/dom/getRichElementValue';
 import getRichValueWithCaret from '../../helpers/dom/getRichValueWithCaret';
 import EmojiHelper from './emojiHelper';
-import setRichFocus from '../../helpers/dom/setRichFocus';
 import CommandsHelper from './commandsHelper';
 import AutocompleteHelperController from './autocompleteHelperController';
 import AutocompleteHelper from './autocompleteHelper';
@@ -82,7 +81,7 @@ import PopupPeer from '../popups/peer';
 import MEDIA_MIME_TYPES_SUPPORTED from '../../environment/mediaMimeTypesSupport';
 import appMediaPlaybackController from '../appMediaPlaybackController';
 import { NULL_PEER_ID } from '../../lib/mtproto/mtproto_config';
-import CheckboxField from '../checkboxField';
+import setCaretAt from '../../helpers/dom/setCaretAt';
 
 const RECORD_MIN_TIME = 500;
 const POSTING_MEDIA_NOT_ALLOWED = 'Posting media content isn\'t allowed in this group.';
@@ -1332,14 +1331,8 @@ export default class ChatInput {
       insertEntity.offset = matchIndex;
     }
 
-    addEntities.push({
-      _: 'messageEntityCaret',
-      length: 0,
-      offset: matchIndex + insertLength
-    });
-    
     // add offset to entities next to emoji
-    const diff = insertLength - (matches ? matches[2].length : prefix.length);
+    const diff = matches ? insertLength - matches[2].length : insertLength;
     entities.forEach(entity => {
       if(entity.offset >= matchIndex) {
         entity.offset += diff;
@@ -1348,13 +1341,34 @@ export default class ChatInput {
 
     RichTextProcessor.mergeEntities(entities, addEntities);
 
+    if(/* caretPos !== -1 && caretPos !== fullValue.length */true) {
+      const caretEntity: MessageEntity.messageEntityCaret = {
+        _: 'messageEntityCaret',
+        offset: matchIndex + insertLength,
+        length: 0
+      };
+
+      let insertCaretAtIndex = 0;
+      for(let length = entities.length; insertCaretAtIndex < length; ++insertCaretAtIndex) {
+        const entity = entities[insertCaretAtIndex];
+        if(entity.offset > caretEntity.offset) {
+          break;
+        }
+      }
+
+      entities.splice(insertCaretAtIndex, 0, caretEntity);
+    }
+
     //const saveExecuted = this.prepareDocumentExecute();
     // can't exec .value here because it will instantly check for autocomplete
-    this.messageInputField.setValueSilently(RichTextProcessor.wrapDraftText(newValue, {entities}), true);
+    const value = RichTextProcessor.wrapDraftText(newValue, {entities});
+    this.messageInputField.setValueSilently(value, true);
 
     const caret = this.messageInput.querySelector('.composer-sel');
-    setRichFocus(this.messageInput, caret);
-    caret.remove();
+    if(caret) {
+      setCaretAt(caret);
+      caret.remove();
+    }
 
     // but it's needed to be checked only here
     this.onMessageInput();
@@ -1365,9 +1379,7 @@ export default class ChatInput {
   }
 
   public onEmojiSelected = (emoji: string, autocomplete: boolean) => {
-    if(autocomplete) {
-      this.insertAtCaret(emoji, RichTextProcessor.getEmojiEntityFromEmoji(emoji));
-    }
+    this.insertAtCaret(emoji, RichTextProcessor.getEmojiEntityFromEmoji(emoji), autocomplete);
   };
 
   private checkAutocomplete(value?: string, caretPos?: number, entities?: MessageEntity[]) {
