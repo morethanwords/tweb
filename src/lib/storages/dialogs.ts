@@ -101,10 +101,37 @@ export default class DialogsStorage {
       }
     };
 
+    rootScope.addEventListener('filter_order', () => {
+      const dialogs = this.getCachedDialogs(false);
+      for(const filterId in this.folders) {
+        if(+filterId > 1) {
+          delete this.folders[filterId];
+        }
+      }
+
+      for(let i = 0; i < dialogs.length; ++i) {
+        const dialog = dialogs[i];
+        for(let i = 0; i <= 10; ++i) {
+          const indexKey = `index_${i}` as ReturnType<DialogsStorage['getDialogIndexKey']>;
+          dialog[indexKey] = undefined;
+        }
+
+        this.processDialogForFilters(dialog);
+      }
+    });
+
     rootScope.addEventListener('filter_update', onFilterUpdate);
     rootScope.addEventListener('filter_new', onFilterUpdate);
 
     rootScope.addEventListener('filter_delete', (filter) => {
+      const dialogs = this.getCachedDialogs(false);
+
+      const indexKey = `index_${filter.orderIndex}` as const;
+      for(let i = 0; i < dialogs.length; ++i) {
+        const dialog = dialogs[i];
+        delete dialog[indexKey];
+      }
+
       delete this.folders[filter.id];
     });
 
