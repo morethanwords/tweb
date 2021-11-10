@@ -998,8 +998,8 @@ export default class ChatBubbles {
     if(nameDiv && nameDiv !== bubble) {
       target = nameDiv || target;
       const peerIdStr = target.dataset.peerId || target.getAttribute('peer');
-      if(typeof(peerIdStr) === 'string') {
-        const savedFrom = target.dataset.savedFrom;
+      const savedFrom = target.dataset.savedFrom;
+      if(typeof(peerIdStr) === 'string' || savedFrom) {
         if(savedFrom) {
           const [peerId, mid] = savedFrom.split('_');
   
