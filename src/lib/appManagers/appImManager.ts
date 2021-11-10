@@ -1247,6 +1247,10 @@ export class AppImManager {
   }
 
   public setInnerPeer(peerId: PeerId, lastMsgId?: number, type: ChatType = 'chat', threadId?: number) {
+    if(peerId === NULL_PEER_ID || !peerId) {
+      return;
+    }
+
     // * prevent opening already opened peer
     const existingIndex = this.chats.findIndex(chat => chat.peerId === peerId && chat.type === type);
     if(existingIndex !== -1) {
