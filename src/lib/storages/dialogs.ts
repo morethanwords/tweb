@@ -529,7 +529,7 @@ export default class DialogsStorage {
   
         const fromId = message.viaBotId || message.fromId;
         if(fromId !== peerId) {
-          this.appStateManager.requestPeer(fromId, 'topMessage_' + peerId, 1);
+          this.appStateManager.requestPeerSingle(fromId, 'topMessage', peerId);
         }
   
         break;
@@ -557,7 +557,7 @@ export default class DialogsStorage {
       [peerId]: dialog
     });
 
-    this.appStateManager.requestPeer(peerId, 'dialog_' + peerId, 1);
+    this.appStateManager.requestPeerSingle(peerId, 'dialog');
 
     /* for(let id in this.appMessagesManager.filtersStorage.filters) {
       const filter = this.appMessagesManager.filtersStorage.filters[id];
@@ -644,8 +644,8 @@ export default class DialogsStorage {
 
   public clearDialogFromState(dialog: Dialog, keepLocal: boolean) {
     const peerId = dialog.peerId;
-    this.appStateManager.keepPeerSingle(NULL_PEER_ID, 'topMessage_' + peerId);
-    this.appStateManager.keepPeerSingle(NULL_PEER_ID, 'dialog_' + peerId);
+    this.appStateManager.releaseSinglePeer(peerId, 'topMessage');
+    this.appStateManager.releaseSinglePeer(peerId, 'dialog');
     this.storage.delete(peerId, keepLocal);
   }
 

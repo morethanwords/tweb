@@ -5,7 +5,7 @@
  */
 
 import type { Dialog } from './appMessagesManager';
-import type { UserAuth } from '../mtproto/mtproto_config';
+import { NULL_PEER_ID, UserAuth } from '../mtproto/mtproto_config';
 import type { MyTopPeer, TopPeerType, User } from './appUsersManager';
 import type { AuthState } from '../../types';
 import type FiltersStorage from '../storages/filters';
@@ -173,6 +173,8 @@ const ALL_KEYS = Object.keys(STATE_INIT) as any as Array<keyof State>;
 
 const REFRESH_KEYS = ['contactsList', 'stateCreatedTime',
   'maxSeenMsgId', 'filters', 'topPeers'] as any as Array<keyof State>;
+
+export type StatePeerType = 'recentSearch' | 'topPeer' | 'dialog' | 'contact' | 'topMessage';
 
 //const REFRESH_KEYS_WEEK = ['dialogs', 'allDialogsLoaded', 'updates', 'pinnedOrders'] as any as Array<keyof State>;
 
@@ -476,7 +478,7 @@ export class AppStateManager extends EventListenerBase<{
     });
   }
 
-  public requestPeer(peerId: PeerId, type: string, limit?: number) {
+  public requestPeer(peerId: PeerId, type: StatePeerType, limit?: number) {
     let set = this.neededPeers.get(peerId);
     if(set && set.has(type)) {
       return;
@@ -496,11 +498,19 @@ export class AppStateManager extends EventListenerBase<{
     }
   }
 
+  public requestPeerSingle(peerId: PeerId, type: StatePeerType, keepPeerIdSingle: PeerId = peerId) {
+    return this.requestPeer(peerId, type + '_' + keepPeerIdSingle as any, 1);
+  }
+
+  public releaseSinglePeer(peerId: PeerId, type: StatePeerType) {
+    return this.keepPeerSingle(NULL_PEER_ID, type + '_' + peerId as any);
+  }
+
   public isPeerNeeded(peerId: PeerId) {
     return this.neededPeers.has(peerId);
   }
 
-  public keepPeerSingle(peerId: PeerId, type: string) {
+  public keepPeerSingle(peerId: PeerId, type: StatePeerType) {
     const existsPeerId = this.singlePeerMap.get(type);
     if(existsPeerId && existsPeerId !== peerId && this.neededPeers.has(existsPeerId)) {
       const set = this.neededPeers.get(existsPeerId);
