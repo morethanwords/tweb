@@ -595,13 +595,15 @@ export default class DialogsStorage {
     const foundDialog = this.getDialog(peerId, undefined, false);
     const [dialog, index] = foundDialog;
     if(dialog) {
+      delete this.dialogs[peerId];
+
       const folder = this.getFolder(dialog.folder_id);
       folder.dialogs.splice(index, 1);
+      const wasPinned = indexOfAndSplice(this.pinnedOrders[dialog.folder_id], peerId) !== undefined;
+      
       this.processDialogForFilters(dialog);
 
-      const wasPinned = indexOfAndSplice(this.pinnedOrders[dialog.folder_id], peerId) !== undefined;
       this.dialogsIndex.indexObject(peerId, '');
-      delete this.dialogs[peerId];
 
       if(wasPinned) {
         this.savePinnedOrders();

@@ -128,6 +128,11 @@ export default class FiltersStorage {
   public testDialogForFilter(dialog: Dialog, filter: MyDialogFilter) {
     const peerId = dialog.peerId;
 
+    // * check whether dialog exists
+    if(!this.appMessagesManager.getDialogOnly(peerId)) {
+      return false;
+    }
+
     // exclude_peers
     if(filter.excludePeerIds.includes(peerId)) {
       return false;
