@@ -333,7 +333,7 @@ export class AppChatsManager {
 
   public isChannel(id: ChatId) {
     const chat = this.chats[id];
-    return chat && (chat._ === 'channel' || chat._ === 'channelForbidden')/*  || this.channelAccess[id] */;
+    return !!(chat && (chat._ === 'channel' || chat._ === 'channelForbidden')/*  || this.channelAccess[id] */);
   }
 
   public isMegagroup(id: ChatId) {
@@ -341,8 +341,8 @@ export class AppChatsManager {
       return true;
     } */
 
-    const chat = this.chats[id];
-    return chat && chat._ === 'channel' && chat.pFlags.megagroup;
+    const chat: Chat = this.chats[id];
+    return !!(chat && chat._ === 'channel' && chat.pFlags.megagroup);
   }
 
   public isBroadcast(id: ChatId) {

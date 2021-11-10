@@ -261,7 +261,13 @@ export class AppUsersManager {
   public pushContact(id: UserId) {
     this.contactsList.add(id);
     this.contactsIndex.indexObject(id, this.getUserSearchText(id));
-    appStateManager.requestPeer(id.toPeerId(), 'contacts');
+    appStateManager.requestPeerSingle(id.toPeerId(), 'contact');
+  }
+
+  public popContact(id: UserId) {
+    this.contactsList.delete(id);
+    this.contactsIndex.indexObject(id, ''); // delete search index
+    appStateManager.releaseSinglePeer(id.toPeerId(), 'contact');
   }
 
   public getUserSearchText(id: UserId) {
@@ -616,11 +622,11 @@ export class AppUsersManager {
   }
 
   public isBot(id: UserId) {
-    return this.users[id] && this.users[id].pFlags.bot;
+    return this.users[id] && !!this.users[id].pFlags.bot;
   }
 
   public isContact(id: UserId) {
-    return this.contactsList.has(id) || (this.users[id] && this.users[id].pFlags.contact);
+    return this.contactsList.has(id) || !!(this.users[id] && this.users[id].pFlags.contact);
   }
   
   public isRegularUser(id: UserId) {
@@ -629,7 +635,7 @@ export class AppUsersManager {
   }
 
   public isNonContactUser(id: UserId) {
-    return this.isRegularUser(id) && !this.isContact(id) && id !== rootScope.myId;
+    return this.isRegularUser(id) && !this.isContact(id) && id.toPeerId() !== rootScope.myId;
   }
 
   public hasUser(id: UserId, allowMin?: boolean) {
@@ -639,7 +645,7 @@ export class AppUsersManager {
 
   public canSendToUser(id: UserId) {
     const user = this.getUser(id);
-    return !user.pFlags.deleted && user.id !== REPLIES_PEER_ID;
+    return !user.pFlags.deleted && user.id.toPeerId() !== REPLIES_PEER_ID;
   }
 
   public getUserPhoto(id: UserId) {
@@ -879,7 +885,7 @@ export class AppUsersManager {
       if(isContact) {
         this.pushContact(userId);
       } else {
-        this.contactsList.delete(userId);
+        this.popContact(userId);
       }
 
       this.onContactsModified();
