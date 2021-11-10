@@ -252,7 +252,12 @@ export default class AppChatFoldersTab extends SliderSuperTab {
 
           button.setAttribute('disabled', 'true');
 
-          appMessagesManager.filtersStorage.createDialogFilter(filter.filter as any).then(bool => {
+          const f = filter.filter as MyDialogFilter;
+          f.includePeerIds = [];
+          f.excludePeerIds = [];
+          f.pinnedPeerIds = [];
+
+          appMessagesManager.filtersStorage.createDialogFilter(f).then(bool => {
             if(bool) {
               div.remove();
             }
