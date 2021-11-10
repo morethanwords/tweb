@@ -827,6 +827,12 @@ export class AppDialogsManager {
           };
 
           dialogs.forEach((dialog) => {
+            // :(
+            const isBuggedDialog = !appMessagesManager.getDialogOnly(dialog.peerId);
+            if(isBuggedDialog) {
+              return;
+            }
+
             const element = this.sortedList.add(dialog.peerId, true, cccc, false);
             if(element.loadPromises) {
               loadPromises.push(...element.loadPromises);
