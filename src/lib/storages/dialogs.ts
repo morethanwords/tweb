@@ -907,16 +907,9 @@ export default class DialogsStorage {
         promises.push(fillContactsResult.promise);
       }
 
-      const filter = this.appMessagesManager.filtersStorage.getFilter(folderId);
-      const pinnedPeers = filter?.pinned_peers;
-      if(pinnedPeers?.length) {
-        const pinnedPeerIds = filter.pinnedPeerIds;
-        const reloadDialogs = pinnedPeers.filter((inputPeer, idx) => !this.getDialogOnly(pinnedPeerIds[idx]));
-        if(reloadDialogs.length) {
-          const reloadPromises = reloadDialogs.map(inputPeer => this.appMessagesManager.reloadConversation(inputPeer));
-          const reloadPromise = Promise.all(reloadPromises);
-          promises.push(reloadPromise);
-        }
+      const reloadMissingDialogsPromise = this.appMessagesManager.filtersStorage.reloadMissingPeerIds(folderId);
+      if(reloadMissingDialogsPromise) {
+        promises.push(reloadMissingDialogsPromise);
       }
 
       if(promises.length) {
