@@ -140,7 +140,7 @@ export default class DialogsStorage {
 
       const peerId = chatId.toPeerId(true);
       if(chat.pFlags.left && this.getDialogOnly(peerId)) {
-        this.dropDialogWithEvent(peerId);
+        this.dropDialogOnDeletion(peerId);
       }
     });
 
@@ -654,6 +654,16 @@ export default class DialogsStorage {
     if(dropped.length) {
       rootScope.dispatchEvent('dialog_drop', {peerId, dialog: dropped[0]});
     }
+
+    return dropped;
+  }
+
+  /**
+   * leaving chat, leaving channel, deleting private dialog
+   */
+  public dropDialogOnDeletion(peerId: PeerId) {
+    this.dropDialogWithEvent(peerId);
+    rootScope.dispatchEvent('peer_deleted', peerId);
   }
 
   public applyDialogs(dialogsResult: MessagesPeerDialogs.messagesPeerDialogs) {

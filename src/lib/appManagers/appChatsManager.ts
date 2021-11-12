@@ -644,8 +644,11 @@ export class AppChatsManager {
       peer: appPeersManager.getInputPeerById(peerId),
       about
     }).then(bool => {
-      //apiUpdatesManager.processUpdateMessage(updates);
-      rootScope.dispatchEvent('peer_bio_edit', peerId);
+      if(bool) {
+        rootScope.dispatchEvent('peer_bio_edit', peerId);
+      }
+
+      return bool;
     });
   }
 
