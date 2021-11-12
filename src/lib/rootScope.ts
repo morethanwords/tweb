@@ -31,6 +31,7 @@ export type BroadcastEvents = {
   'peer_block': {peerId: PeerId, blocked: boolean},
   'peer_title_edit': PeerId,
   'peer_bio_edit': PeerId,
+  'peer_deleted': PeerId, // left chat, deleted user dialog, left channel
 
   'filter_delete': MyDialogFilter,
   'filter_update': MyDialogFilter,

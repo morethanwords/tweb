@@ -2198,12 +2198,20 @@ export class AppMessagesManager {
       } else {
         delete this.notificationsToHandle[peerId];
         delete this.typings[peerId];
-        this.reloadConversationsPeers.delete(peerId);
+        
+        const c = this.reloadConversationsPeers.get(peerId);
+        if(c) {
+          this.reloadConversationsPeers.delete(peerId);
+          c.promise.resolve(undefined);
+        }
 
-        this.dialogsStorage.dropDialog(peerId);
-        rootScope.dispatchEvent('dialog_drop', {peerId});
+        this.dialogsStorage.dropDialogOnDeletion(peerId);
       }
     });
+  }
+
+  public onPeerDeleted(peerId: number) {
+
   }
 
   public hidePinnedMessages(peerId: PeerId) {
@@ -3255,10 +3263,7 @@ export class AppMessagesManager {
         //setTimeout(() => {
           rootScope.dispatchEvent('dialog_migrate', {migrateFrom, migrateTo});
 
-          const dropped = this.dialogsStorage.dropDialog(migrateFrom);
-          if(dropped.length) {
-            rootScope.dispatchEvent('dialog_drop', {peerId: migrateFrom, dialog: dropped[0]});
-          }
+          this.dialogsStorage.dropDialogWithEvent(migrateFrom);
         //}, 100);
       }
     }
@@ -4697,10 +4702,7 @@ export class AppMessagesManager {
       if(needDialog) {
         this.reloadConversation(peerId);
       } else {
-        if(dialog) {
-          this.dialogsStorage.dropDialog(peerId);
-          rootScope.dispatchEvent('dialog_drop', {peerId, dialog});
-        }
+        this.dialogsStorage.dropDialogOnDeletion(peerId);
       }
     }
   };
@@ -5350,7 +5352,8 @@ export class AppMessagesManager {
 
     // * add bound manually. 
     // * offset_id will be inclusive only if there is 'add_offset' <= -1 (-1 - will only include the 'offset_id')
-    if(offset_id && !mids.includes(offset_id) && offsetIdOffset < count) {
+    // * check that offset_id is not 0
+    if(offset_id && appMessagesIdsManager.getServerMessageId(offset_id) && !mids.includes(offset_id) && offsetIdOffset < count) {
       let i = 0;
       for(const length = mids.length; i < length; ++i) {
         if(offset_id > mids[i]) {

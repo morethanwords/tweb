@@ -89,6 +89,26 @@ export default class FiltersStorage {
 
       updateDialogFilterOrder: this.onUpdateDialogFilterOrder
     });
+
+    // delete peers when dialog is being dropped
+    /* rootScope.addEventListener('peer_deleted', (peerId) => {
+      for(const filterId in this.filters) {
+        const filter = this.filters[filterId];
+        let modified = false;
+        [filter.pinned_peers, filter.include_peers, filter.exclude_peers].forEach(arr => {
+          forEachReverse(arr, (inputPeer, idx) => {
+            if(this.appPeersManager.getPeerId(inputPeer) === peerId) {
+              arr.splice(idx, 1);
+              modified = true;
+            }
+          });
+        });
+
+        if(modified) {
+          this.saveDialogFilter(filter, true);
+        }
+      }
+    }); */
   }
 
   public clear(init = false) {
