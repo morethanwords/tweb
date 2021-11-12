@@ -39,6 +39,7 @@ const START_ORDER_INDEX = 1;
 export default class FiltersStorage {
   public filters: {[filterId: string]: MyDialogFilter};
   private orderIndex: number;
+  private reloadedPeerIds: Set<PeerId>;
 
   constructor(private appMessagesManager: AppMessagesManager,
     private appPeersManager: AppPeersManager, 
@@ -96,6 +97,7 @@ export default class FiltersStorage {
     }
 
     this.orderIndex = START_ORDER_INDEX;
+    this.reloadedPeerIds = new Set();
   }
 
   private onUpdateDialogFilter = (update: Update.updateDialogFilter) => {
@@ -296,6 +298,33 @@ export default class FiltersStorage {
         filter.includePeerIds.splice(idx, 1);
       }
     });
+  }
+
+  public reloadMissingPeerIds(filterId: number) {
+    const promises: Promise<any>[] = [];
+    const filter = this.getFilter(filterId);
+    const pinnedPeers = filter?.pinned_peers;
+    if(pinnedPeers?.length) {
+      const reloadDialogs = pinnedPeers.filter((inputPeer, idx) => {
+        const peerId = this.appPeersManager.getPeerId(inputPeer);
+        return !this.reloadedPeerIds.has(peerId) && !this.appMessagesManager.getDialogOnly(peerId);
+      });
+
+      if(reloadDialogs.length) {
+        const reloadPromises = reloadDialogs.map(inputPeer => {
+          const peerId = this.appPeersManager.getPeerId(inputPeer);
+          const promise = this.appMessagesManager.reloadConversation(inputPeer);
+          promise.then(() => {
+            this.reloadedPeerIds.add(peerId);
+          });
+          return promise;
+        });
+        const reloadPromise = Promise.all(reloadPromises);
+        promises.push(reloadPromise);
+      }
+    }
+
+    return promises.length ? Promise.all(promises) : undefined;
   }
 
   public async getDialogFilters(overwrite = false): Promise<MyDialogFilter[]> {

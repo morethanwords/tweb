@@ -2153,14 +2153,16 @@ export class AppMessagesManager {
       return apiManager.invokeApiSingle('channels.deleteHistory', {
         channel: appChatsManager.getChannelInput(channelId),
         max_id: appMessagesIdsManager.getServerMessageId(maxId)
-      }).then(() => {
-        apiUpdatesManager.processLocalUpdate({
-          _: 'updateChannelAvailableMessages',
-          channel_id: channelId,
-          available_min_id: maxId
-        });
+      }).then((bool) => {
+        if(bool) {
+          apiUpdatesManager.processLocalUpdate({
+            _: 'updateChannelAvailableMessages',
+            channel_id: channelId,
+            available_min_id: maxId
+          });
+        }
 
-        return true;
+        return bool;
       });
     }
 
