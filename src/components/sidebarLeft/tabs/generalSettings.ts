@@ -4,13 +4,12 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { SliderSuperTab } from "../../slider"
 import { generateSection } from "..";
 import RangeSelector from "../../rangeSelector";
 import Button from "../../button";
 import CheckboxField from "../../checkboxField";
 import RadioField from "../../radioField";
-import appStateManager from "../../../lib/appManagers/appStateManager";
+import appStateManager, { State } from "../../../lib/appManagers/appStateManager";
 import rootScope from "../../../lib/rootScope";
 import { IS_APPLE } from "../../../environment/userAgent";
 import Row from "../../row";
@@ -24,6 +23,8 @@ import RichTextProcessor from "../../../lib/richtextprocessor";
 import { wrapStickerSetThumb } from "../../wrappers";
 import LazyLoadQueue from "../../lazyLoadQueue";
 import PopupStickers from "../../popups/stickers";
+import eachMinute from "../../../helpers/eachMinute";
+import { SliderSuperTabEventable } from "../../sliderTab";
 
 export class RangeSettingSelector {
   public container: HTMLDivElement;
@@ -70,7 +71,7 @@ export class RangeSettingSelector {
   }
 }
 
-export default class AppGeneralSettingsTab extends SliderSuperTab {
+export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
   init() {
     this.container.classList.add('general-settings-container');
     this.setTitle('General');
@@ -106,27 +107,75 @@ export default class AppGeneralSettingsTab extends SliderSuperTab {
 
       const form = document.createElement('form');
 
+      const name = 'send-shortcut';
+      const stateKey = 'settings.sendShortcut';
+
       const enterRow = new Row({
         radioField: new RadioField({
           langKey: 'General.SendShortcut.Enter', 
-          name: 'send-shortcut', 
+          name, 
           value: 'enter', 
-          stateKey: 'settings.sendShortcut'
+          stateKey
         }),
         subtitleLangKey: 'General.SendShortcut.NewLine.ShiftEnter'
       });
 
       const ctrlEnterRow = new Row({
         radioField: new RadioField({
-          name: 'send-shortcut',
+          name,
           value: 'ctrlEnter', 
-          stateKey: 'settings.sendShortcut'
+          stateKey
         }),
         subtitleLangKey: 'General.SendShortcut.NewLine.Enter'
       });
       _i18n(ctrlEnterRow.radioField.main, 'General.SendShortcut.CtrlEnter', [IS_APPLE ? '⌘' : 'Ctrl']);
       
       form.append(enterRow.container, ctrlEnterRow.container);
+      container.append(form);
+    }
+
+    {
+      const container = section('General.TimeFormat');
+
+      const form = document.createElement('form');
+
+      const name = 'time-format';
+      const stateKey = 'settings.timeFormat';
+
+      const formats: [State['settings']['timeFormat'], LangPackKey][] = [
+        ['h12', 'General.TimeFormat.h12'], 
+        ['h23', 'General.TimeFormat.h23']
+      ];
+
+      const rows = formats.map(([format, langPackKey]) => {
+        const row = new Row({
+          radioField: new RadioField({
+            langKey: langPackKey, 
+            name, 
+            value: format, 
+            stateKey
+          })
+        });
+
+        return row;
+      });
+
+      const cancel = eachMinute(() => {
+        const date = new Date();
+
+        formats.forEach(([format], idx) => {
+          const str = date.toLocaleTimeString("en-us-u-hc-" + format, {
+            hour: '2-digit', 
+            minute: '2-digit'
+          });
+
+          rows[idx].subtitle.textContent = str;
+        });
+      });
+
+      this.eventListener.addEventListener('destroy', cancel);
+
+      form.append(...rows.map(row => row.container));
       container.append(form);
     }
 

@@ -9,6 +9,7 @@ import { safeAssign } from "../helpers/object";
 import { capitalizeFirstLetter } from "../helpers/string";
 import type lang from "../lang";
 import type langSign from "../langSign";
+import type { State } from "./appManagers/appStateManager";
 import { HelpCountriesList, HelpCountry, LangPackDifference, LangPackString } from "../layer";
 import apiManager from "./mtproto/mtprotoworker";
 import stateStorage from "./stateStorage";
@@ -74,6 +75,7 @@ namespace I18n {
 	export let lastRequestedLangCode: string;
 	export let lastAppliedLangCode: string;
 	export let requestedServerLanguage = false;
+  export let timeFormat: State['settings']['timeFormat'];
 	export function getCacheLangPack(): Promise<LangPackDifference> {
 		if(cacheLangPackPromise) return cacheLangPackPromise;
 		return cacheLangPackPromise = Promise.all([
@@ -98,6 +100,22 @@ namespace I18n {
 			cacheLangPackPromise = undefined;
 		});
 	}
+
+  export function setTimeFormat(format: State['settings']['timeFormat']) {
+    const haveToUpdate = !!timeFormat && timeFormat !== format;
+    timeFormat = format;
+
+    if(haveToUpdate) {
+      const elements = Array.from(document.querySelectorAll(`.i18n`)) as HTMLElement[];
+      elements.forEach(element => {
+        const instance = weakMap.get(element);
+
+        if(instance instanceof IntlDateElement) {
+          instance.update();
+        }
+      });
+    }
+  }
 
 	export function loadLocalLangPack() {
 		const defaultCode = App.langPackCode;
@@ -422,7 +440,7 @@ namespace I18n {
 			//var options = { month: 'long', day: 'numeric' };
 			
 			// * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/Locale/hourCycle#adding_an_hour_cycle_via_the_locale_string
-			const dateTimeFormat = new Intl.DateTimeFormat(lastRequestedLangCode + '-u-hc-h23', this.options);
+			const dateTimeFormat = new Intl.DateTimeFormat(lastRequestedLangCode + '-u-hc-' + timeFormat, this.options);
 			
 			(this.element as any)[this.property] = capitalizeFirstLetter(dateTimeFormat.format(this.date));
 		}

@@ -230,6 +230,8 @@ console.timeEnd('get storage1'); */
     //console.log('got auth:', auth);
     //console.timeEnd('get storage');
 
+    I18n.default.setTimeFormat(state.settings.timeFormat);
+
     rootScope.default.setThemeListener();
 
     if(langPack.appVersion !== App.langPackVersion) {

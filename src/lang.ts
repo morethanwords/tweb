@@ -68,6 +68,9 @@ const lang = {
   "General.SendShortcut.NewLine.ShiftEnter": "New line by Shift + Enter",
   "General.SendShortcut.NewLine.Enter": "New line by Enter",
   "General.AutoplayMedia": "Auto-Play Media",
+  "General.TimeFormat": "Time Format",
+  "General.TimeFormat.h12": "12-hour",
+  "General.TimeFormat.h23": "24-hour",
   "ChatBackground.UploadWallpaper": "Upload Wallpaper",
   "ChatBackground.Blur": "Blur Wallpaper Image",
   "Notifications.Sound": "Notification Sound",
@@ -592,6 +595,7 @@ const lang = {
     "one_value": "%1$d online",
     "other_value": "%1$d online"
   },
+  "EditedMessage": "edited",
 
   // * macos
   "AccountSettings.Filters": "Chat Folders",
