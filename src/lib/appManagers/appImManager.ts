@@ -42,7 +42,7 @@ import { MOUNT_CLASS_TO } from '../../config/debug';
 import appNavigationController from '../../components/appNavigationController';
 import appNotificationsManager from './appNotificationsManager';
 import AppPrivateSearchTab from '../../components/sidebarRight/tabs/search';
-import { i18n, join, LangPackKey } from '../langPack';
+import I18n, { i18n, join, LangPackKey } from '../langPack';
 import { ChatInvite, Dialog, SendMessageAction } from '../../layer';
 import { hslaStringToHex } from '../../helpers/color';
 import { copy, getObjectKeysAndSort } from '../../helpers/object';
@@ -843,6 +843,8 @@ export class AppImManager {
     for(const chat of this.chats) {
       chat.setAutoDownloadMedia();
     }
+    
+    I18n.setTimeFormat(rootScope.settings.timeFormat);
   };
 
   // * не могу использовать тут TransitionSlider, так как мне нужен отрисованный блок рядом 

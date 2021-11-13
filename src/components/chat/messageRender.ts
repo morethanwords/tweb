@@ -4,9 +4,10 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { getFullDate } from "../../helpers/date";
+import { formatTime, getFullDate } from "../../helpers/date";
 import { formatNumber } from "../../helpers/number";
-import { i18n } from "../../lib/langPack";
+import { Message } from "../../layer";
+import { i18n, _i18n } from "../../lib/langPack";
 import RichTextProcessor from "../../lib/richtextprocessor";
 import { LazyLoadQueueIntersector } from "../lazyLoadQueue";
 import PeerTitle from "../peerTitle";
@@ -19,26 +20,47 @@ export namespace MessageRender {
 
   }; */
 
-  export const setTime = (chat: Chat, message: any, bubble: HTMLElement, bubbleContainer: HTMLElement, messageDiv: HTMLElement) => {
+  export const setTime = (chat: Chat, message: Message.message, bubble: HTMLElement, bubbleContainer: HTMLElement, messageDiv: HTMLElement) => {
     const date = new Date(message.date * 1000);
-    let time = ('0' + date.getHours()).slice(-2) + ':' + ('0' + date.getMinutes()).slice(-2);
+    const args: (HTMLElement | string)[] = [];
+    let time = formatTime(date);
 
     if(message.views) {
       const postAuthor = message.post_author || message.fwd_from?.post_author;
 
       bubble.classList.add('channel-post');
-      time = '<span class="post-views">' + formatNumber(message.views, 1) + '</span> <i class="tgico-channelviews time-icon"></i> ' + (postAuthor ? RichTextProcessor.wrapEmojiText(postAuthor) + ', ' : '') + time;
+
+      const postViewsSpan = document.createElement('span');
+      postViewsSpan.classList.add('post-views');
+      postViewsSpan.innerText = formatNumber(message.views, 1);
+
+      const channelViews = document.createElement('i');
+      channelViews.classList.add('tgico-channelviews', 'time-icon');
+
+      args.push(postViewsSpan, ' ', channelViews);
+      if(postAuthor) {
+        args.push(RichTextProcessor.wrapEmojiText(postAuthor), ', ');
+      }
     }
 
     if(message.edit_date && chat.type !== 'scheduled' && !message.pFlags.edit_hide) {
       bubble.classList.add('is-edited');
-      time = '<i class="edited">edited</i> ' + time;
+
+      const edited = document.createElement('i');
+      edited.classList.add('edited');
+      _i18n(edited, 'EditedMessage');
+      args.unshift(edited);
     }
 
     if(chat.type !== 'pinned' && message.pFlags.pinned) {
       bubble.classList.add('is-pinned');
-      time = '<i class="tgico-pinnedchat time-icon"></i>' + time;
+
+      const i = document.createElement('i');
+      i.classList.add('tgico-pinnedchat', 'time-icon');
+      args.unshift(i);
     }
+    
+    args.push(time);
 
     const title = getFullDate(date) 
       + (message.edit_date ? `\nEdited: ${getFullDate(new Date(message.edit_date * 1000))}` : '')
@@ -47,7 +69,17 @@ export namespace MessageRender {
     const timeSpan = document.createElement('span');
     timeSpan.classList.add('time', 'tgico');
     timeSpan.title = title;
-    timeSpan.innerHTML = `${time}<div class="inner tgico" title="${title}">${time}</div>`;
+    timeSpan.append(...args);
+
+    const inner = document.createElement('div');
+    inner.classList.add('inner', 'tgico');
+    inner.title = title;
+
+    const clonedArgs = args.slice(0, -1).map(a => a instanceof HTMLElement ? a.cloneNode(true) : a);
+    clonedArgs.push(formatTime(date)); // clone time
+    inner.append(...clonedArgs);
+
+    timeSpan.append(inner);
 
     messageDiv.append(timeSpan);
 
@@ -57,7 +89,7 @@ export namespace MessageRender {
   export const renderReplies = ({bubble, bubbleContainer, message, messageDiv, loadPromises, lazyLoadQueue}: {
     bubble: HTMLElement,
     bubbleContainer: HTMLElement,
-    message: any,
+    message: Message.message,
     messageDiv: HTMLElement,
     loadPromises?: Promise<any>[],
     lazyLoadQueue?: LazyLoadQueueIntersector
@@ -77,7 +109,7 @@ export namespace MessageRender {
     chat: Chat,
     bubble: HTMLElement,
     bubbleContainer?: HTMLElement,
-    message: any
+    message: Message.message
   }) => {
     const isReplacing = !bubbleContainer;
     if(isReplacing) {

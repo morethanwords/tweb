@@ -97,6 +97,7 @@ export type State = {
       sound: boolean
     },
     nightTheme?: boolean, // ! DEPRECATED
+    timeFormat: 'h12' | 'h23'
   },
   keepSigned: boolean,
   chatContextMenuHintWasShown: boolean,
@@ -162,7 +163,8 @@ export const STATE_INIT: State = {
     theme: 'system',
     notifications: {
       sound: false
-    }
+    },
+    timeFormat: new Date().toLocaleString().match(/\s(AM|PM)/) ? 'h12' : 'h23'
   },
   keepSigned: true,
   chatContextMenuHintWasShown: false,
