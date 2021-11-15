@@ -105,8 +105,8 @@ export default function getRichElementValue(node: HTMLElement, lines: string[], 
   if(isBlock && line.length || node.tagName === 'BR') {
     lines.push(line.join(''));
     line.splice(0, line.length);
-  } else if(node.tagName === 'IMG') {
-    const alt = (node as HTMLImageElement).alt;
+  } else if(node instanceof HTMLImageElement) {
+    const alt = node.alt;
     if(alt) {
       line.push(alt);
       offset.offset += alt.length;
