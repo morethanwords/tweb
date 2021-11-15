@@ -15,6 +15,15 @@ import { wrapReply } from "../wrappers";
 import Chat from "./chat";
 import RepliesElement from "./replies";
 
+const NBSP = '&nbsp;';
+
+const makeEdited = () => {
+  const edited = document.createElement('i');
+  edited.classList.add('edited');
+  _i18n(edited, 'EditedMessage');
+  return edited;
+};
+
 export namespace MessageRender {
   /* export const setText = () => {
 
@@ -32,26 +41,24 @@ export namespace MessageRender {
 
       const postViewsSpan = document.createElement('span');
       postViewsSpan.classList.add('post-views');
-      postViewsSpan.innerText = formatNumber(message.views, 1);
+      postViewsSpan.innerHTML = formatNumber(message.views, 1);
 
       const channelViews = document.createElement('i');
       channelViews.classList.add('tgico-channelviews', 'time-icon');
 
-      args.push(postViewsSpan, ' ', channelViews);
+      args.push(postViewsSpan, channelViews);
       if(postAuthor) {
         const span = document.createElement('span');
-        span.innerHTML = RichTextProcessor.wrapEmojiText(postAuthor);
-        args.push(span, ', ');
+        span.innerHTML = RichTextProcessor.wrapEmojiText(postAuthor) + ',' + NBSP;
+        args.push(span);
       }
     }
 
+    let editedSpan: HTMLElement;
     if(message.edit_date && chat.type !== 'scheduled' && !message.pFlags.edit_hide) {
       bubble.classList.add('is-edited');
 
-      const edited = document.createElement('i');
-      edited.classList.add('edited');
-      _i18n(edited, 'EditedMessage');
-      args.unshift(edited);
+      args.unshift(editedSpan = makeEdited());
     }
 
     if(chat.type !== 'pinned' && message.pFlags.pinned) {
@@ -77,8 +84,12 @@ export namespace MessageRender {
     inner.classList.add('inner', 'tgico');
     inner.title = title;
 
-    const clonedArgs = args.slice(0, -1).map(a => a instanceof HTMLElement ? a.cloneNode(true) : a);
-    clonedArgs.push(formatTime(date)); // clone time
+    let clonedArgs = args;
+    if(editedSpan) {
+      clonedArgs[clonedArgs.indexOf(editedSpan)] = makeEdited();
+    }
+    clonedArgs = clonedArgs.map(a => a instanceof HTMLElement && !a.classList.contains('i18n') ? a.cloneNode(true) as HTMLElement : a);
+    clonedArgs[clonedArgs.length - 1] = formatTime(date); // clone time
     inner.append(...clonedArgs);
 
     timeSpan.append(inner);

@@ -1558,8 +1558,8 @@ $bubble-beside-button-width: 38px;
     cursor: pointer;
 
     i {
-      font-size: 1.15rem;
-      margin-right: .4rem;
+      font-size: 1.125rem;
+      margin-right: .375rem;
     }
 
     &-icon {
@@ -1569,7 +1569,7 @@ $bubble-beside-button-width: 38px;
 
     i.edited {
       overflow: visible;
-      font-size: .8rem;
+      font-size: inherit;
     }
     
     .inner {
