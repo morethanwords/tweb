@@ -39,7 +39,9 @@ export namespace MessageRender {
 
       args.push(postViewsSpan, ' ', channelViews);
       if(postAuthor) {
-        args.push(RichTextProcessor.wrapEmojiText(postAuthor), ', ');
+        const span = document.createElement('span');
+        span.innerHTML = RichTextProcessor.wrapEmojiText(postAuthor);
+        args.push(span, ', ');
       }
     }
 
