@@ -8,7 +8,7 @@ import { Document, InputFileLocation, InputStickerSet, MessagesAllStickers, Mess
 import { Modify } from '../../types';
 import apiManager from '../mtproto/mtprotoworker';
 import rootScope from '../rootScope';
-import appDocsManager from './appDocsManager';
+import appDocsManager, { MyDocument } from './appDocsManager';
 import AppStorage from '../storage';
 import { MOUNT_CLASS_TO } from '../../config/debug';
 import { forEachReverse } from '../../helpers/array';
@@ -17,6 +17,7 @@ import { readBlobAsText } from '../../helpers/blob';
 import lottieLoader from '../lottieLoader';
 import mediaSizes from '../../helpers/mediaSizes';
 import { getEmojiToneIndex } from '../../vendor/emoji';
+import RichTextProcessor from '../richtextprocessor';
 
 const CACHE_TIME = 3600e3;
 
@@ -324,7 +325,9 @@ export class AppStickersManager {
     });
   }
 
+  // TODO: detect "🤷" by "🤷‍♂️"
   public getStickersByEmoticon(emoticon: string, includeOurStickers = true) {
+    emoticon = RichTextProcessor.fixEmoji(emoticon);
     if(this.getStickersByEmoticonsPromises[emoticon]) return this.getStickersByEmoticonsPromises[emoticon];
 
     return this.getStickersByEmoticonsPromises[emoticon] = Promise.all([
@@ -332,7 +335,7 @@ export class AppStickersManager {
         emoticon
       }),
       includeOurStickers ? this.preloadStickerSets() : [],
-      includeOurStickers ? this.getRecentStickers().then(res => res.packs) : []
+      includeOurStickers ? this.getRecentStickers() : undefined
     ]).then(([messagesStickers, installedSets, recentStickers]) => {
       const foundStickers = (messagesStickers as MessagesStickers.messagesStickers).stickers.map(sticker => appDocsManager.saveDoc(sticker));
       const cachedStickersAnimated: Document.document[] = [], cachedStickersStatic: Document.document[] = [];
@@ -341,7 +344,8 @@ export class AppStickersManager {
 
       const iteratePacks = (packs: StickerPack.stickerPack[]) => {
         for(const pack of packs) {
-          if(pack.emoticon.includes(emoticon)) {
+          const packEmoticon = RichTextProcessor.fixEmoji(pack.emoticon);
+          if(packEmoticon.includes(emoticon)) {
             for(const docId of pack.documents) {
               const doc = appDocsManager.getDoc(docId);
               (doc.animated ? cachedStickersAnimated : cachedStickersStatic).push(doc);
@@ -350,16 +354,49 @@ export class AppStickersManager {
         }
       };
 
-      iteratePacks(recentStickers);
+      if(recentStickers) {
+        iteratePacks(recentStickers.packs);
+        const stickers = recentStickers.stickers;
+        [cachedStickersAnimated, cachedStickersStatic].forEach(s => {
+          s.sort((a, b) => stickers.indexOf(a) - stickers.indexOf(b));
+        });
+      }
 
       for(const set of installedSets) {
         iteratePacks(set.packs);
       }
 
+      /* const entities = RichTextProcessor.parseEntities(emoticon);
+      if(entities.length === 1) {
+        [cachedStickersAnimated, cachedStickersStatic].forEach(s => {
+          forEachReverse(s, (doc, idx) => {
+            const docEmoticon = RichTextProcessor.fixEmoji(doc.stickerEmojiRaw);
+            if(docEmoticon !== emoticon) {
+              s.splice(idx, 1);
+            }
+          });
+        });
+      } */
+
       const stickers = [...new Set(cachedStickersAnimated.concat(cachedStickersStatic, foundStickers))]/* .filter(doc => !doc.animated) */;
 
       return stickers;
     });
+  }
+
+  public pushRecentSticker(doc: MyDocument) {
+    const docEmoticon = RichTextProcessor.fixEmoji(doc.stickerEmojiRaw);
+    for(const emoticon in this.getStickersByEmoticonsPromises) {
+      const promise = this.getStickersByEmoticonsPromises[emoticon];
+      promise.then(stickers => {
+        const _doc = stickers.findAndSplice(_doc => _doc.id === doc.id);
+        if(_doc) {
+          stickers.unshift(_doc);
+        } else if(emoticon.includes(docEmoticon)) {
+          stickers.unshift(doc);
+        }
+      });
+    }
   }
 }
 
