@@ -347,6 +347,8 @@ export default class StickersTab implements EmoticonsTab {
   }
 
   pushRecentSticker(doc: MyDocument) {
+    appStickersManager.pushRecentSticker(doc);
+    
     if(!this.recentDiv?.parentElement) {
       return;
     }
