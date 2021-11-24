@@ -20,6 +20,7 @@ import PopupPeer from "../../../popups/peer";
 import { cancelEvent } from "../../../../helpers/dom/cancelEvent";
 import { canFocus } from "../../../../helpers/dom/canFocus";
 import { attachClickEvent } from "../../../../helpers/dom/clickEvent";
+import getKeyFromEvent from "../../../../helpers/dom/getKeyFromEvent";
 
 export default class AppTwoStepVerificationEmailTab extends SliderSuperTab {
   public inputField: InputField;
@@ -72,7 +73,7 @@ export default class AppTwoStepVerificationEmailTab extends SliderSuperTab {
     });
 
     inputField.input.addEventListener('keypress', (e) => {
-      if(e.key === 'Enter') {
+      if(getKeyFromEvent(e) === 'Enter') {
         cancelEvent(e);
         return onContinueClick();
       }

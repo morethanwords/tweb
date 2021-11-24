@@ -82,6 +82,8 @@ import MEDIA_MIME_TYPES_SUPPORTED from '../../environment/mediaMimeTypesSupport'
 import appMediaPlaybackController from '../appMediaPlaybackController';
 import { NULL_PEER_ID } from '../../lib/mtproto/mtproto_config';
 import setCaretAt from '../../helpers/dom/setCaretAt';
+import getKeyFromEvent from '../../helpers/dom/getKeyFromEvent';
+import getKeyFromEventCaseInsensitive from '../../helpers/dom/getKeyFromEventCaseInsensitive';
 
 const RECORD_MIN_TIME = 500;
 const POSTING_MEDIA_NOT_ALLOWED = 'Posting media content isn\'t allowed in this group.';
@@ -947,15 +949,16 @@ export default class ChatInput {
 
   private attachMessageInputListeners() {
     this.listenerSetter.add(this.messageInput)('keydown', (e: KeyboardEvent) => {
+      const key = getKeyFromEvent(e);
       if(isSendShortcutPressed(e)) {
         cancelEvent(e);
         this.sendMessage();
       } else if(e.ctrlKey || e.metaKey) {
         this.handleMarkdownShortcut(e);
-      } else if((e.key === 'PageUp' || e.key === 'PageDown') && !e.shiftKey) { // * fix pushing page to left (Chrome Windows)
+      } else if((key === 'PageUp' || key === 'PageDown') && !e.shiftKey) { // * fix pushing page to left (Chrome Windows)
         e.preventDefault();
 
-        if(e.key === 'PageUp') {
+        if(key === 'PageUp') {
           const range = document.createRange();
           const sel = window.getSelection();
           
@@ -1152,32 +1155,30 @@ export default class ChatInput {
       'I': 'italic',
       'U': 'underline',
       'S': 'strikethrough',
-      'M': 'monospace',
-      'K': 'link'
+      'M': 'monospace'
     };
 
+    if(this.appImManager.markupTooltip) {
+      formatKeys['K'] = 'link';
+    }
+
+    const key = getKeyFromEventCaseInsensitive(e);
+    const applyMarkdown = formatKeys[key];
+
     const selection = document.getSelection();
-    if(selection.toString().trim().length) {
-      for(const key in formatKeys) {
-        const good = e.code === ('Key' + key);
-  
-        if(good) {
-          // * костыльчик
-          if(key === 'K' && this.appImManager.markupTooltip) {
-            this.appImManager.markupTooltip.showLinkEditor();
-            cancelEvent(e);
-            break;
-          }
-  
-          this.applyMarkdown(formatKeys[key]);
-          cancelEvent(e); // cancel legacy event
-          break;
-        }
+    if(selection.toString().trim().length && applyMarkdown) {
+      // * костыльчик
+      if(key === 'K') {
+        this.appImManager.markupTooltip.showLinkEditor();
+      } else {
+        this.applyMarkdown(applyMarkdown);
       }
+  
+      cancelEvent(e); // cancel legacy event
     }
 
     //return;
-    if(e.code === 'KeyZ') {
+    if(key === 'Z') {
       let html = this.messageInput.innerHTML;
 
       if(e.shiftKey) {
