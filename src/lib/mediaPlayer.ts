@@ -18,6 +18,7 @@ import rootScope from "./rootScope";
 import findUpClassName from "../helpers/dom/findUpClassName";
 import { GrabEvent } from "../helpers/dom/attachGrabListeners";
 import { attachClickEvent } from "../helpers/dom/clickEvent";
+import getKeyFromEventCaseInsensitive from "../helpers/dom/getKeyFromEventCaseInsensitive";
 
 export class MediaProgressLine extends RangeSelector {
   protected filledLoad: HTMLDivElement;
@@ -386,19 +387,21 @@ export default class VideoPlayer extends EventListenerBase<{
             return;
           }
 
+          const key = getKeyFromEventCaseInsensitive(e);
+
           let good = true;
-          if(e.code === 'KeyF') {
+          if(key === 'F') {
             this.toggleFullScreen(fullScreenButton);
-          } else if(e.code === 'KeyM') {
+          } else if(key === 'M') {
             appMediaPlaybackController.muted = !appMediaPlaybackController.muted;
-          } else if(e.code === 'Space') {
+          } else if(key === ' ') {
             this.togglePlay();
-          } else if(e.altKey && e.code === 'Equal') {
+          } else if(e.altKey && key === '=') {
             appMediaPlaybackController.playbackRate += .25;
-          } else if(e.altKey && e.code === 'Minus') {
+          } else if(e.altKey && key === '-') {
             appMediaPlaybackController.playbackRate -= .25;
-          } else if(this.wrapper.classList.contains('ckin__fullscreen') && (e.code === 'ArrowLeft' || e.code === 'ArrowRight')) {
-            if(e.code === 'ArrowLeft') appMediaPlaybackController.seekBackward({action: 'seekbackward'});
+          } else if(this.wrapper.classList.contains('ckin__fullscreen') && (key === 'ArrowLeft' || key === 'ArrowRight')) {
+            if(key === 'ArrowLeft') appMediaPlaybackController.seekBackward({action: 'seekbackward'});
             else appMediaPlaybackController.seekForward({action: 'seekforward'});
           } else {
             good = false;

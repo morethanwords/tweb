@@ -6,9 +6,10 @@
 
 import rootScope from "../../lib/rootScope";
 import { IS_MOBILE, IS_APPLE } from "../../environment/userAgent";
+import getKeyFromEvent from "./getKeyFromEvent";
 
 export default function isSendShortcutPressed(e: KeyboardEvent) {
-  if(e.key === 'Enter' && !IS_MOBILE && !e.isComposing) {
+  if(getKeyFromEvent(e) === 'Enter' && !IS_MOBILE && !e.isComposing) {
     /* if(e.ctrlKey || e.metaKey) {
       this.messageInput.innerHTML += '<br>';
       placeCaretAtEnd(this.message)

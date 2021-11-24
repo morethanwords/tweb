@@ -42,6 +42,7 @@ import EventListenerBase from "../helpers/eventListenerBase";
 import { MyMessage } from "../lib/appManagers/appMessagesManager";
 import RichTextProcessor from "../lib/richtextprocessor";
 import { NULL_PEER_ID } from "../lib/mtproto/mtproto_config";
+import getKeyFromEventCaseInsensitive from "../helpers/dom/getKeyFromEventCaseInsensitive";
 
 const ZOOM_STEP = 0.5;
 const ZOOM_INITIAL_VALUE = 1;
@@ -491,15 +492,17 @@ export default class AppMediaViewerBase<
     if(rootScope.overlaysActive > 1) {
       return;
     }
+
+    const key = getKeyFromEventCaseInsensitive(e);
     
     let good = true;
-    if(e.key === 'ArrowRight') {
+    if(key === 'ArrowRight') {
       this.buttons.next.click();
-    } else if(e.key === 'ArrowLeft') {
+    } else if(key === 'ArrowLeft') {
       this.buttons.prev.click();
-    } else if(e.key === '-' || e.key === '=') {
+    } else if(key === '-' || key === '=') {
       if(this.ctrlKeyDown) {
-        this.changeZoom(e.key === '=');
+        this.changeZoom(key === '=');
       }
     } else {
       good = false;

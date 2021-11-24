@@ -17,6 +17,7 @@ import { attachClickEvent } from "../../helpers/dom/clickEvent";
 import getSelectedNodes from "../../helpers/dom/getSelectedNodes";
 import isSelectionEmpty from "../../helpers/dom/isSelectionEmpty";
 import { MarkdownType, markdownTags } from "../../helpers/dom/getRichElementValue";
+import getKeyFromEvent from "../../helpers/dom/getKeyFromEvent";
 //import { logger } from "../../lib/logger";
 
 export default class MarkupTooltip {
@@ -80,7 +81,7 @@ export default class MarkupTooltip {
     this.linkInput.addEventListener('keydown', (e) => {
       const valid = !this.linkInput.value.length || !!RichTextProcessor.matchUrl(this.linkInput.value);///^(http)|(https):\/\//i.test(this.linkInput.value);
 
-      if(e.code === 'Enter') {
+      if(getKeyFromEvent(e) === 'Enter') {
         if(!valid) {
           if(this.linkInput.classList.contains('error')) {
             this.linkInput.classList.remove('error');

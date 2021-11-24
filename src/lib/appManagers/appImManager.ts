@@ -72,6 +72,7 @@ import { NULL_PEER_ID } from '../mtproto/mtproto_config';
 import telegramMeWebManager from '../mtproto/telegramMeWebManager';
 import { ONE_DAY } from '../../helpers/date';
 import { numberThousandSplitter } from '../../helpers/number';
+import getKeyFromEventCaseInsensitive from '../../helpers/dom/getKeyFromEventCaseInsensitive';
 
 //console.log('appImManager included33!');
 
@@ -440,7 +441,8 @@ export class AppImManager {
   private attachKeydownListener() {
     const IGNORE_KEYS = new Set(['PageUp', 'PageDown', 'Meta', 'Control']);
     const onKeyDown = (e: KeyboardEvent) => {
-      if(rootScope.isOverlayActive || IGNORE_KEYS.has(e.key)) return;
+      const key = getKeyFromEventCaseInsensitive(e);
+      if(rootScope.isOverlayActive || IGNORE_KEYS.has(key)) return;
       
       const target = e.target as HTMLElement;
       
@@ -450,19 +452,19 @@ export class AppImManager {
 
       const chat = this.chat;
 
-      if(e.code === 'KeyC' && (e.ctrlKey || e.metaKey) && target.tagName !== 'INPUT') {
+      if(key === 'C' && (e.ctrlKey || e.metaKey) && target.tagName !== 'INPUT') {
         return;
-      } else if(e.altKey && (e.code === 'ArrowUp' || e.code === 'ArrowDown')) {
+      } else if(e.altKey && (key === 'ArrowUp' || key === 'ArrowDown')) {
         const folder = appMessagesManager.dialogsStorage.getFolderDialogs(rootScope.filterId, true);
         let nextDialog: Dialog.dialog;
         if(!rootScope.peerId) {
-          if(e.code === 'ArrowDown') {
+          if(key === 'ArrowDown') {
             nextDialog = folder[0];
           }
         } else {
           const idx = folder.findIndex(dialog => dialog.peerId === rootScope.peerId);
           if(idx !== -1) {
-            const nextIndex = e.code === 'ArrowUp' ? idx - 1 : idx + 1;
+            const nextIndex = key === 'ArrowUp' ? idx - 1 : idx + 1;
             nextDialog = folder[nextIndex];
           }
         }
@@ -470,7 +472,7 @@ export class AppImManager {
         if(nextDialog) {
           this.setPeer(nextDialog.peerId);
         }
-      } else if(e.code === 'ArrowUp') {
+      } else if(key === 'ArrowUp') {
         if(!chat.input.editMsgId && chat.input.isInputEmpty()) {
           const historyStorage = appMessagesManager.getHistoryStorage(chat.peerId, chat.threadId);
           const slice = historyStorage.history.slice;
@@ -499,7 +501,7 @@ export class AppImManager {
         } else {
           return;
         }
-      } else if(e.code === 'ArrowDown') {
+      } else if(key === 'ArrowDown') {
         return;
       }
       

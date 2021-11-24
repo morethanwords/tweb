@@ -12,6 +12,7 @@ import blurActiveElement from "../helpers/dom/blurActiveElement";
 import { cancelEvent } from "../helpers/dom/cancelEvent";
 import { indexOfAndSplice } from "../helpers/array";
 import isSwipingBackSafari from "../helpers/dom/isSwipingBackSafari";
+import getKeyFromEvent from "../helpers/dom/getKeyFromEvent";
 
 export type NavigationItem = {
   type: 'left' | 'right' | 'im' | 'chat' | 'popup' | 'media' | 'menu' | 
@@ -63,7 +64,7 @@ export class AppNavigationController {
     window.addEventListener('keydown', (e) => {
       const item = this.navigations[this.navigations.length - 1];
       if(!item) return;
-      if(e.key === 'Escape' && (item.onEscape ? item.onEscape() : true)) {
+      if(getKeyFromEvent(e) === 'Escape' && (item.onEscape ? item.onEscape() : true)) {
         cancelEvent(e);
         this.back(item.type);
       }

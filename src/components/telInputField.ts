@@ -9,6 +9,7 @@ import { formatPhoneNumber } from "../helpers/formatPhoneNumber";
 import { IS_APPLE, IS_ANDROID, IS_APPLE_MOBILE } from "../environment/userAgent";
 import { HelpCountry, HelpCountryCode } from "../layer";
 import InputField, { InputFieldOptions } from "./inputField";
+import getKeyFromEvent from "../helpers/dom/getKeyFromEvent";
 
 export default class TelInputField extends InputField {
   private pasted = false;
@@ -97,7 +98,8 @@ export default class TelInputField extends InputField {
   
     telEl.addEventListener('keypress', (e) => {
       //console.log('keypress', this.value);
-      if(/\D/.test(e.key) && !(e.metaKey || e.ctrlKey) && e.key !== 'Backspace' && !(e.key === '+' && e.shiftKey/*  && !this.value */)) {
+      const key = getKeyFromEvent(e);
+      if(/\D/.test(key) && !(e.metaKey || e.ctrlKey) && key !== 'Backspace' && !(key === '+' && e.shiftKey/*  && !this.value */)) {
         e.preventDefault();
         return false;
       }

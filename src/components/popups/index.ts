@@ -15,6 +15,7 @@ import ListenerSetter from "../../helpers/listenerSetter";
 import { attachClickEvent, simulateClickEvent } from "../../helpers/dom/clickEvent";
 import isSendShortcutPressed from "../../helpers/dom/isSendShortcutPressed";
 import { cancelEvent } from "../../helpers/dom/cancelEvent";
+import getKeyFromEvent from "../../helpers/dom/getKeyFromEvent";
 
 export type PopupButton = {
   text?: string,
@@ -167,7 +168,7 @@ export default class PopupElement {
     // cannot add event instantly because keydown propagation will fire it
     setTimeout(() => {
       this.listenerSetter.add(document.body)('keydown', (e) => {
-        if(this.confirmShortcutIsSendShortcut ? isSendShortcutPressed(e) : e.key === 'Enter') {
+        if(this.confirmShortcutIsSendShortcut ? isSendShortcutPressed(e) : getKeyFromEvent(e) === 'Enter') {
           simulateClickEvent(this.btnConfirmOnEnter);
           cancelEvent(e);
         }

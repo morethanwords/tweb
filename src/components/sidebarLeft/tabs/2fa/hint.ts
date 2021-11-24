@@ -16,6 +16,7 @@ import { toast } from "../../../toast";
 import I18n from "../../../../lib/langPack";
 import { cancelEvent } from "../../../../helpers/dom/cancelEvent";
 import { attachClickEvent } from "../../../../helpers/dom/clickEvent";
+import getKeyFromEvent from "../../../../helpers/dom/getKeyFromEvent";
 
 export default class AppTwoStepVerificationHintTab extends SliderSuperTab {
   public inputField: InputField;
@@ -62,7 +63,7 @@ export default class AppTwoStepVerificationHintTab extends SliderSuperTab {
     });
 
     inputField.input.addEventListener('keypress', (e) => {
-      if(e.key === 'Enter') {
+      if(getKeyFromEvent(e) === 'Enter') {
         cancelEvent(e);
         return inputField.value ? onContinueClick() : onSkipClick();
       }

@@ -14,6 +14,7 @@ import AppTwoStepVerificationHintTab from "./hint";
 import { InputState } from "../../../inputField";
 import { cancelEvent } from "../../../../helpers/dom/cancelEvent";
 import { attachClickEvent } from "../../../../helpers/dom/clickEvent";
+import getKeyFromEvent from "../../../../helpers/dom/getKeyFromEvent";
 
 export default class AppTwoStepVerificationReEnterPasswordTab extends SliderSuperTab {
   public state: AccountPassword;
@@ -51,7 +52,7 @@ export default class AppTwoStepVerificationReEnterPasswordTab extends SliderSupe
         passwordInputField.setState(InputState.Neutral);
       }
   
-      if(e.key === 'Enter') {
+      if(getKeyFromEvent(e) === 'Enter') {
         return onContinueClick();
       }
     });
