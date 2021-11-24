@@ -89,7 +89,7 @@ export default function attachListNavigation({list, type, onSelect, once, waitFo
 
   let onKeyDown = (e: KeyboardEvent) => {
     if(!keyNames.has(e.key as any)) {
-      if(e.key === 'Enter') {
+      if(e.key === 'Enter' || (type !== 'xy' && e.key === 'Tab')) {
         cancelEvent(e);
         fireSelect(getCurrentTarget());
       }
