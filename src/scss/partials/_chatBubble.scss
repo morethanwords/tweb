@@ -504,7 +504,6 @@ $bubble-beside-button-width: 38px;
 
     .bubble-content {
       line-height: 1;
-      user-select: none;
     }
     
     &:not(.sticker) .attachment {
@@ -512,16 +511,19 @@ $bubble-beside-button-width: 38px;
       padding-bottom: 1.5rem;
       //max-width: fit-content!important;
       max-height: fit-content!important;
+      cursor: text;
+      user-select: text;
       
       span.emoji {
         height: auto;
         width: auto;
       }
     }
-
+    
     &.sticker .bubble-content {
       max-width: 140px !important;
       max-height: 140px !important;
+      user-select: none !important;
     }
   }
   
@@ -554,7 +556,7 @@ $bubble-beside-button-width: 38px;
   
   &.just-media {
     .bubble-content {
-      cursor: pointer;
+      // cursor: pointer;
       background: none!important;
       box-shadow: none;
       /* max-width: 300px;
