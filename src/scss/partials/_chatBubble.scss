@@ -427,8 +427,9 @@ $bubble-beside-button-width: 38px;
 
   &:not(.forwarded):not(.must-have-name) {
     &:not(.is-group-first) {
-      .bubble-content > .name, 
-      .document-wrapper > .name {
+      .name {
+      // .bubble-content > .name, 
+      // .document-wrapper > .name {
         display: none;
       }
 
@@ -1065,6 +1066,11 @@ $bubble-beside-button-width: 38px;
       margin-bottom: 0;
       background-color: var(--message-highlightning-color);
       white-space: nowrap;
+      max-width: 300px;
+
+      @include respond-to(handhelds) {
+        max-width: calc(100vw - #{$chat-padding-handhelds * 2} - 10px - 100%);
+      }
     }
 
     .name {
@@ -1079,13 +1085,11 @@ $bubble-beside-button-width: 38px;
     }
 
     .reply {
-      max-width: 300px;
       height: 54px;
       max-height: 54px;
 
       @include respond-to(handhelds) {
         padding: 8px 6px 8px 8px;
-        max-width: 94px;
       }
 
       &-content {
@@ -1523,7 +1527,9 @@ $bubble-beside-button-width: 38px;
       bottom: 55px;
     }
 
-    &.sticker, &.with-replies.round, &.emoji-big {
+    &.sticker, 
+    &.with-replies.round, 
+    &.emoji-big {
       .message {
         bottom: 0;
       }
@@ -1651,8 +1657,7 @@ $bubble-beside-button-width: 38px;
     z-index: 1;
   }
 
-  &:not(.forwarded).hide-name, 
-  &.emoji-big {
+  &:not(.forwarded).hide-name {
     .name {
       display: none;
     }
@@ -1666,8 +1671,9 @@ $bubble-beside-button-width: 38px;
     cursor: pointer;
   }
   
-  &-content > .name, 
-  .document-wrapper > .name {
+  .name {
+  // &-content > .name, 
+  // .document-wrapper > .name {
     /* padding: .2675rem 9px 0 9px; */
     /* padding: .32rem 9px 0 9px; */
     padding: 5px 9px 0 9px;
