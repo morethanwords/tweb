@@ -791,7 +791,12 @@ const lang = {
     "other_value": "Show More (%d)"
   },
   //"PeerInfo.Confirm.DeleteGroupConfirmation": "Wait! Deleting this group will remove all members and all messages will be lost. Delete the group anyway?",
+  "Preview.Dragging.AddItems": {
+    "one_value": "Add Item",
+    "other_value": "Add Items"
+  },
   "PreviewSender.CaptionPlaceholder": "Add a caption...",
+  "PreviewSender.CompressFile": "Send compressed",
   "PreviewSender.SendFile": {
     "one_value": "Send File",
     "other_value": "Send %d Files"

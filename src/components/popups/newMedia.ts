@@ -14,7 +14,7 @@ import CheckboxField from "../checkboxField";
 import SendContextMenu from "../chat/sendContextMenu";
 import { createPosterFromMedia, createPosterFromVideo, onMediaLoad } from "../../helpers/files";
 import { MyDocument } from "../../lib/appManagers/appDocsManager";
-import I18n, { i18n, LangPackKey } from "../../lib/langPack";
+import I18n, { FormatterArguments, i18n, LangPackKey } from "../../lib/langPack";
 import appDownloadManager from "../../lib/appManagers/appDownloadManager";
 import calcImageInBox from "../../helpers/calcImageInBox";
 import placeCaretAtEnd from "../../helpers/dom/placeCaretAtEnd";
@@ -24,6 +24,7 @@ import { MediaSize } from "../../helpers/mediaSizes";
 import { attachClickEvent } from "../../helpers/dom/clickEvent";
 import MEDIA_MIME_TYPES_SUPPORTED from '../../environment/mediaMimeTypesSupport';
 import getGifDuration from "../../helpers/getGifDuration";
+import replaceContent from "../../helpers/dom/replaceContent";
 
 type SendFileParams = Partial<{
   file: File,
@@ -36,32 +37,39 @@ type SendFileParams = Partial<{
   width: number,
   height: number,
   duration: number,
-  noSound: boolean
+  noSound: boolean,
+  itemDiv: HTMLElement
 }>;
 
-// TODO: .gif upload as video
+let currentPopup: PopupNewMedia;
+
+export function getCurrentNewMediaPopup() {
+  return currentPopup;
+}
 
 export default class PopupNewMedia extends PopupElement {
   private input: HTMLElement;
   private mediaContainer: HTMLElement;
   private groupCheckboxField: CheckboxField;
-  private wasInputValue = '';
+  private mediaCheckboxField: CheckboxField;
+  private wasInputValue: string;
 
   private willAttach: Partial<{
     type: 'media' | 'document',
     isMedia: true,
     group: boolean,
     sendFileDetails: SendFileParams[]
-  }> = {
-    sendFileDetails: [],
-    group: false
-  };
+  }>;
   private inputField: InputField;
 
-  constructor(private chat: Chat, files: File[], willAttachType: PopupNewMedia['willAttach']['type']) {
-    super('popup-send-photo popup-new-media', null, {closable: true, withConfirm: 'Modal.Send', confirmShortcutIsSendShortcut: true});
+  constructor(private chat: Chat, private files: File[], willAttachType: PopupNewMedia['willAttach']['type']) {
+    super('popup-send-photo popup-new-media', null, {closable: true, withConfirm: 'Modal.Send', confirmShortcutIsSendShortcut: true, body: true});
 
-    this.willAttach.type = willAttachType;
+    this.willAttach = {
+      type: willAttachType,
+      sendFileDetails: [],
+      group: false
+    };
 
     attachClickEvent(this.btnConfirm, () => this.send(), {listenerSetter: this.listenerSetter});
 
@@ -95,41 +103,98 @@ export default class PopupNewMedia extends PopupElement {
       placeholder: 'PreviewSender.CaptionPlaceholder',
       label: 'Caption',
       name: 'photo-caption',
-      maxLength: rootScope.config.caption_length_max,
-      showLengthOn: 80
+      maxLength: rootScope.config.caption_length_max
     });
     this.input = this.inputField.input;
 
     this.inputField.value = this.wasInputValue = this.chat.input.messageInputField.input.innerHTML;
     this.chat.input.messageInputField.value = '';
 
-    this.container.append(scrollable.container);
+    this.body.append(scrollable.container);
+    this.container.append(this.inputField.container);
 
-    if(files.length > 1) {
+    this.attachFiles();
+
+    this.addEventListener('close', () => {
+      this.files = [];
+      currentPopup = undefined;
+    });
+
+    currentPopup = this;
+  }
+
+  public appendDrops(element: HTMLElement) {
+    this.body.append(element);
+  }
+
+  get type() {
+    return this.willAttach.type;
+  }
+
+  set type(type: PopupNewMedia['willAttach']['type']) {
+    this.willAttach.type = type;
+  }
+
+  private appendGroupCheckboxField() {
+    const good = this.files.length > 1;
+    if(good && !this.groupCheckboxField) {
       this.groupCheckboxField = new CheckboxField({
         text: 'PreviewSender.GroupItems', 
         name: 'group-items'
       });
-      this.container.append(this.groupCheckboxField.label, this.inputField.container);
+      this.container.append(...[this.groupCheckboxField.label, this.mediaCheckboxField?.label, this.inputField.container].filter(Boolean));
   
-      this.groupCheckboxField.input.checked = true;
       this.willAttach.group = true;
+      this.groupCheckboxField.setValueSilently(this.willAttach.group);
 
       this.listenerSetter.add(this.groupCheckboxField.input)('change', () => {
-        const checked = this.groupCheckboxField.input.checked;
+        const checked = this.groupCheckboxField.checked;
   
         this.willAttach.group = checked;
-        this.willAttach.sendFileDetails.length = 0;
 
-        //this.mediaContainer.innerHTML = '';
-        //this.container.classList.remove('is-media', 'is-document', 'is-album');
-        this.attachFiles(files);
+        this.attachFiles();
       });
+    } else if(this.groupCheckboxField) {
+      this.groupCheckboxField.label.classList.toggle('hide', !good);
     }
-    
-    this.container.append(this.inputField.container);
+  }
 
-    this.attachFiles(files);
+  private appendMediaCheckboxField() {
+    const good = !!this.files.find(file => MEDIA_MIME_TYPES_SUPPORTED.has(file.type));
+    if(good && !this.mediaCheckboxField) {
+      this.mediaCheckboxField = new CheckboxField({
+        text: 'PreviewSender.CompressFile',
+        name: 'compress-items'
+      });
+      this.container.append(...[this.groupCheckboxField?.label, this.mediaCheckboxField.label, this.inputField.container].filter(Boolean));
+
+      this.mediaCheckboxField.setValueSilently(this.willAttach.type === 'media');
+
+      this.listenerSetter.add(this.mediaCheckboxField.input)('change', () => {
+        const checked = this.mediaCheckboxField.checked;
+  
+        this.willAttach.type = checked ? 'media' : 'document';
+
+        this.attachFiles();
+      });
+    } else if(this.mediaCheckboxField) {
+      this.mediaCheckboxField.label.classList.toggle('hide', !good);
+    }
+  }
+
+  public addFiles(files: File[]) {
+    const toPush = files.filter(file => {
+      const found = this.files.find(_file => {
+        return _file.lastModified === file.lastModified && _file.name === file.name && _file.size === file.size;
+      });
+      
+      return !found;
+    });
+
+    if(toPush.length) {
+      this.files.push(...toPush);
+      this.attachFiles();
+    }
   }
 
   private onKeyDown = (e: KeyboardEvent) => {
@@ -144,7 +209,7 @@ export default class PopupNewMedia extends PopupElement {
     }
   };
 
-  public send(force = false) {
+  private send(force = false) {
     if(this.chat.type === 'scheduled' && !force) {
       this.chat.input.scheduleSending(() => {
         this.send(true);
@@ -162,324 +227,335 @@ export default class PopupNewMedia extends PopupElement {
     this.hide();
     const willAttach = this.willAttach;
     willAttach.isMedia = willAttach.type === 'media' ? true : undefined;
+    const {sendFileDetails, isMedia} = willAttach;
 
     //console.log('will send files with options:', willAttach);
 
-    const peerId = this.chat.peerId;
-    const input = this.chat.input;
-    const silent = input.sendSilent;
-    const scheduleDate = input.scheduleDate;
+    const {peerId, input} = this.chat;
+    const {sendSilent, scheduleDate} = input;
 
-    if(willAttach.sendFileDetails.length > 1 && willAttach.group) {
-      for(let i = 0; i < willAttach.sendFileDetails.length;) {
-        let firstType = willAttach.sendFileDetails[i].file.type.split('/')[0];
-        for(var k = 0; k < 10 && i < willAttach.sendFileDetails.length; ++i, ++k) {
-          const type = willAttach.sendFileDetails[i].file.type.split('/')[0];
-          if(firstType !== type) {
-            break;
-          }
-        }
+    sendFileDetails.forEach(d => {
+      d.itemDiv = undefined;
+    });
 
-        const w = {...willAttach};
-        w.sendFileDetails = willAttach.sendFileDetails.slice(i - k, i);
-
-        this.chat.appMessagesManager.sendAlbum(peerId, w.sendFileDetails.map(d => d.file), Object.assign({
-          caption,
-          replyToMsgId: input.replyToMsgId,
+    const {length} = sendFileDetails;
+    const replyToMsgId = input.replyToMsgId;
+    this.iterate((sendFileDetails) => {
+      if(caption && sendFileDetails.length !== length) {
+        this.chat.appMessagesManager.sendText(peerId, caption, {
+          replyToMsgId, 
           threadId: this.chat.threadId,
-          isMedia: willAttach.isMedia,
-          silent,
+          silent: sendSilent, 
           scheduleDate,
-          clearDraft: true as true
-        }, w));
+          clearDraft: true
+        });
 
         caption = undefined;
-        input.replyToMsgId = this.chat.threadId;
       }
-    } else {
-      if(caption) {
-        if(willAttach.sendFileDetails.length > 1) {
-          this.chat.appMessagesManager.sendText(peerId, caption, {
-            replyToMsgId: input.replyToMsgId, 
-            threadId: this.chat.threadId,
-            silent, 
-            scheduleDate,
-            clearDraft: true
-          });
-          caption = '';
-          //input.replyToMsgId = undefined;
-        }
-      }
-  
-      const promises = willAttach.sendFileDetails.map(params => {
-        const promise = this.chat.appMessagesManager.sendFile(peerId, params.file, Object.assign({
-          //isMedia: willAttach.isMedia, 
-          isMedia: willAttach.isMedia, 
-          caption,
-          replyToMsgId: input.replyToMsgId,
-          threadId: this.chat.threadId,
-          silent,
-          scheduleDate,
-          clearDraft: true as true
-        }, params));
 
-        caption = '';
-        return promise;
-      });
+      const w = {
+        ...willAttach,
+        sendFileDetails
+      };
 
-      input.replyToMsgId = this.chat.threadId;
-    }
+      this.chat.appMessagesManager.sendAlbum(peerId, w.sendFileDetails.map(d => d.file), Object.assign({
+        caption,
+        replyToMsgId,
+        threadId: this.chat.threadId,
+        isMedia: isMedia,
+        silent: sendSilent,
+        scheduleDate,
+        clearDraft: true as true
+      }, w));
 
-    //Promise.all(promises);
-
-    //appMessagesManager.sendFile(appImManager.peerId, willAttach.file, willAttach);
+      caption = undefined;
+    });
     
+    input.replyToMsgId = this.chat.threadId;
     input.onMessageSent();
   }
 
-  public attachFile = (file: File) => {
-    const willAttach = this.willAttach;
-    return new Promise<HTMLDivElement>((resolve) => {
-      const params: SendFileParams = {};
-      params.file = file;
-      //console.log('selected file:', file, typeof(file), willAttach);
-      const itemDiv = document.createElement('div');
-      switch(willAttach.type) {
-        case 'media': {
-          const isVideo = file.type.indexOf('video/') === 0;
+  private attachMedia(file: File, params: SendFileParams, itemDiv: HTMLElement) {
+    itemDiv.classList.add('popup-item-media');
 
-          itemDiv.classList.add('popup-item-media');
+    const isVideo = file.type.startsWith('video/');
 
-          if(isVideo) {
-            const video = document.createElement('video');
-            const source = document.createElement('source');
-            source.src = params.objectURL = URL.createObjectURL(file);
-            video.autoplay = true;
-            video.controls = false;
-            video.muted = true;
-            video.setAttribute('playsinline', 'true');
+    let promise: Promise<void>;
+    if(isVideo) {
+      const video = document.createElement('video');
+      const source = document.createElement('source');
+      source.src = params.objectURL = URL.createObjectURL(file);
+      video.autoplay = true;
+      video.controls = false;
+      video.muted = true;
+      video.setAttribute('playsinline', 'true');
 
-            video.addEventListener('timeupdate', () => {
-              video.pause();
-            }, {once: true});
+      video.addEventListener('timeupdate', () => {
+        video.pause();
+      }, {once: true});
 
-            onMediaLoad(video).then(() => {
-              params.width = video.videoWidth;
-              params.height = video.videoHeight;
-              params.duration = Math.floor(video.duration);
+      promise = onMediaLoad(video).then(() => {
+        params.width = video.videoWidth;
+        params.height = video.videoHeight;
+        params.duration = Math.floor(video.duration);
+        
+        const audioDecodedByteCount = (video as any).webkitAudioDecodedByteCount;
+        if(audioDecodedByteCount !== undefined) {
+          params.noSound = !audioDecodedByteCount;
+        }
+
+        itemDiv.append(video);
+        return createPosterFromVideo(video).then(thumb => {
+          params.thumb = {
+            url: URL.createObjectURL(thumb.blob),
+            ...thumb
+          };
+        });
+      });
+
+      video.append(source);
+    } else {
+      const img = new Image();
+      promise = new Promise<void>((resolve) => {
+        img.onload = () => {
+          params.width = img.naturalWidth;
+          params.height = img.naturalHeight;
+          
+          itemDiv.append(img);
+          
+          if(file.type === 'image/gif') {
+            params.noSound = true;
+            
+            Promise.all([
+              getGifDuration(img).then(duration => {
+                params.duration = Math.ceil(duration);
+              }),
               
-              const audioDecodedByteCount = (video as any).webkitAudioDecodedByteCount;
-              if(audioDecodedByteCount !== undefined) {
-                params.noSound = !audioDecodedByteCount;
-              }
-
-              itemDiv.append(video);
-              createPosterFromVideo(video).then(thumb => {
+              createPosterFromMedia(img).then(thumb => {
                 params.thumb = {
                   url: URL.createObjectURL(thumb.blob),
                   ...thumb
                 };
-                resolve(itemDiv);
-              });
+              })
+            ]).then(() => {
+              resolve();
             });
-
-            video.append(source);
           } else {
-            const img = new Image();
-            img.src = params.objectURL = URL.createObjectURL(file);
-            img.onload = () => {
-              params.width = img.naturalWidth;
-              params.height = img.naturalHeight;
-
-              itemDiv.append(img);
-
-              if(file.type === 'image/gif') {
-                params.noSound = true;
-                
-                Promise.all([
-                  getGifDuration(img).then(duration => {
-                    params.duration = Math.ceil(duration);
-                  }),
-
-                  createPosterFromMedia(img).then(thumb => {
-                    params.thumb = {
-                      url: URL.createObjectURL(thumb.blob),
-                      ...thumb
-                    };
-                  })
-                ]).then(() => {
-                  resolve(itemDiv);
-                });
-              } else {
-                resolve(itemDiv);
-              }
-            };
-          }
-          
-          break;
-        }
-
-        case 'document': {
-          const isPhoto = file.type.indexOf('image/') !== -1;
-          const isAudio = file.type.indexOf('audio/') !== -1;
-          if(isPhoto || isAudio) {
-            params.objectURL = URL.createObjectURL(file);
-          }
-
-          const doc = {
-            _: 'document',
-            file: file,
-            file_name: file.name || '',
-            fileName: file.name ? RichTextProcessor.wrapEmojiText(file.name) : '',
-            size: file.size,
-            type: isPhoto ? 'photo' : 'doc'
-          } as MyDocument;
-
-          const cacheContext = appDownloadManager.getCacheContext(doc);
-          cacheContext.url = params.objectURL;
-          cacheContext.downloaded = file.size;
-
-          const docDiv = wrapDocument({
-            message: {
-              _: 'message',
-              pFlags: {
-                is_outgoing: true
-              },
-              mid: 0,
-              peerId: 0,
-              media: {
-                _: 'messageMediaDocument',
-                document: doc
-              }
-            } as any
-          });
-
-          const finish = () => {
-            itemDiv.append(docDiv);
-            resolve(itemDiv);
-          };
-
-          if(isPhoto) {
-            const img = new Image();
-            img.src = params.objectURL;
-            img.onload = () => {
-              params.width = img.naturalWidth;
-              params.height = img.naturalHeight;
-
-              finish();
-            };
-
-            img.onerror = finish;
-          } else {
-            finish();
-          }
-
-          break;
-        }
-      }
-
-      willAttach.sendFileDetails.push(params);
-    });
-  };
-
-  public attachFiles(files: File[]) {
-    const container = this.container;
-    const willAttach = this.willAttach;
-
-    /* if(files.length > 10 && willAttach.type === 'media') {
-      willAttach.type = 'document';
-    } */
-
-    if(willAttach.type === 'media') {
-      files = files.filter(file => MEDIA_MIME_TYPES_SUPPORTED.has(file.type));
-    } else {
-      files = files.slice();
-    }
-
-    Promise.all(files.map(this.attachFile)).then(results => {
-      this.container.classList.remove('is-media', 'is-document', 'is-album');
-      this.mediaContainer.innerHTML = '';
-
-      if(files.length) {
-        let key: LangPackKey;
-        const args: any[] = [];
-        if(willAttach.type === 'document') {
-          key = 'PreviewSender.SendFile';
-          args.push(files.length);
-          container.classList.add('is-document');
-        } else {
-          container.classList.add('is-media');
-  
-          let foundPhotos = 0;
-          let foundVideos = 0;
-          files.forEach(file => {
-            if(file.type.indexOf('image/') === 0) ++foundPhotos;
-            else if(file.type.indexOf('video/') === 0) ++foundVideos;
-          });
-          
-          const sum = foundPhotos + foundVideos;
-          if(sum > 1 && willAttach.group) {
-            key = 'PreviewSender.SendAlbum';
-            const albumsLength = Math.ceil(sum / 10);
-            args.push(albumsLength);
-          } else if(foundPhotos) {
-            key = 'PreviewSender.SendPhoto';
-            args.push(foundPhotos);
-          } else if(foundVideos) {
-            key = 'PreviewSender.SendVideo';
-            args.push(foundVideos);
-          }
-        }
-
-        this.title.textContent = '';
-        this.title.append(i18n(key, args));
-      }
-
-      if(willAttach.type === 'media') {
-        if(willAttach.sendFileDetails.length > 1 && willAttach.group) {
-          container.classList.add('is-album');
-
-          for(let i = 0; i < results.length; i += 10) {
-            const albumContainer = document.createElement('div');
-            albumContainer.classList.add('popup-album');
-
-            albumContainer.append(...results.slice(i, i + 10));
-            prepareAlbum({
-              container: albumContainer,
-              items: willAttach.sendFileDetails.slice(i, i + 10).map(o => ({w: o.width, h: o.height})),
-              maxWidth: 380,
-              minWidth: 100,
-              spacing: 4
-            });
-
-            this.mediaContainer.append(albumContainer);
-          }
-
-          //console.log('chatInput album layout:', layout);
-        } else {
-          for(let i = 0; i < results.length; ++i) {
-            const params = willAttach.sendFileDetails[i];
-            const div = results[i];
-            const size = calcImageInBox(params.width, params.height, 380, 320);
-            div.style.width = size.width + 'px';
-            div.style.height = size.height + 'px';
-            this.mediaContainer.append(div);
-          }
-        }
-      } else {
-        this.mediaContainer.append(...results);
-      }
-
-      // show now
-      if(!this.element.classList.contains('active')) {
-        this.listenerSetter.add(document.body)('keydown', this.onKeyDown);
-        this.onClose = () => {
-          if(this.wasInputValue) {
-            this.chat.input.messageInputField.value = this.wasInputValue;
+            resolve();
           }
         };
-        this.show();
+      });
+      
+      img.src = params.objectURL = URL.createObjectURL(file);
+    }
+
+    return promise;
+  }
+
+  private attachDocument(file: File, params: SendFileParams, itemDiv: HTMLElement): ReturnType<PopupNewMedia['attachMedia']> {
+    itemDiv.classList.add('popup-item-document');
+
+    const isPhoto = file.type.startsWith('image/');
+    const isAudio = file.type.startsWith('audio/');
+    if(isPhoto || isAudio) {
+      params.objectURL = URL.createObjectURL(file);
+    }
+
+    const doc = {
+      _: 'document',
+      file: file,
+      file_name: file.name || '',
+      fileName: file.name ? RichTextProcessor.wrapEmojiText(file.name) : '',
+      size: file.size,
+      type: isPhoto ? 'photo' : 'doc'
+    } as MyDocument;
+
+    const cacheContext = appDownloadManager.getCacheContext(doc);
+    cacheContext.url = params.objectURL;
+    cacheContext.downloaded = file.size;
+
+    const docDiv = wrapDocument({
+      message: {
+        _: 'message',
+        pFlags: {
+          is_outgoing: true
+        },
+        mid: 0,
+        peerId: 0,
+        media: {
+          _: 'messageMediaDocument',
+          document: doc
+        }
+      } as any
+    });
+
+    const promise = new Promise<void>((resolve) => {
+      const finish = () => {
+        itemDiv.append(docDiv);
+        resolve();
+      };
+  
+      if(isPhoto) {
+        const img = new Image();
+        img.src = params.objectURL;
+        img.onload = () => {
+          params.width = img.naturalWidth;
+          params.height = img.naturalHeight;
+  
+          finish();
+        };
+  
+        img.onerror = finish;
+      } else {
+        finish();
       }
+    });
+
+    return promise;
+  }
+
+  private attachFile = (file: File) => {
+    const willAttach = this.willAttach;
+    const shouldCompress = this.shouldCompress(file.type);
+
+    const params: SendFileParams = {};
+    params.file = file;
+
+    const itemDiv = document.createElement('div');
+    itemDiv.classList.add('popup-item');
+
+    params.itemDiv = itemDiv;
+
+    const promise = shouldCompress ? this.attachMedia(file, params, itemDiv) : this.attachDocument(file, params, itemDiv);
+    willAttach.sendFileDetails.push(params);
+    return promise;
+  };
+  
+  private shouldCompress(mimeType: string) {
+    return this.willAttach.type === 'media' && MEDIA_MIME_TYPES_SUPPORTED.has(mimeType);
+  }
+
+  private onRender() {
+    // show now
+    if(!this.element.classList.contains('active')) {
+      this.listenerSetter.add(document.body)('keydown', this.onKeyDown);
+      this.addEventListener('close', () => {
+        if(this.wasInputValue) {
+          this.chat.input.messageInputField.value = this.wasInputValue;
+        }
+      });
+      this.show();
+    }
+  }
+
+  private setTitle() {
+    const {willAttach, title, files} = this;
+    let key: LangPackKey;
+    const args: FormatterArguments = [];
+    if(willAttach.type === 'document') {
+      key = 'PreviewSender.SendFile';
+      args.push(files.length);
+    } else {
+      let foundPhotos = 0, foundVideos = 0, foundFiles = 0;
+      files.forEach(file => {
+        if(file.type.startsWith('image/')) ++foundPhotos;
+        else if(file.type.startsWith('video/')) ++foundVideos;
+        else ++foundFiles;
+      });
+
+      if([foundPhotos, foundVideos, foundFiles].filter(n => n > 0).length > 1) {
+        key = 'PreviewSender.SendFile';
+        args.push(files.length);
+      } else 
+      
+      /* const sum = foundPhotos + foundVideos;
+      if(sum > 1 && willAttach.group) {
+        key = 'PreviewSender.SendAlbum';
+        const albumsLength = Math.ceil(sum / 10);
+        args.push(albumsLength);
+      } else  */if(foundPhotos) {
+        key = 'PreviewSender.SendPhoto';
+        args.push(foundPhotos);
+      } else if(foundVideos) {
+        key = 'PreviewSender.SendVideo';
+        args.push(foundVideos);
+      }
+    }
+
+    replaceContent(title, i18n(key, args));
+  }
+
+  private appendMediaToContainer(div: HTMLElement, params: SendFileParams) {
+    if(this.shouldCompress(params.file.type)) {
+      const size = calcImageInBox(params.width, params.height, 380, 320);
+      div.style.width = size.width + 'px';
+      div.style.height = size.height + 'px';
+    }
+
+    this.mediaContainer.append(div);
+  }
+
+  private iterate(cb: (sendFileDetails: SendFileParams[]) => void) {
+    const {sendFileDetails} = this.willAttach;
+    if(!this.willAttach.group) {
+      sendFileDetails.forEach(p => cb([p]));
+      return;
+    }
+
+    const length = sendFileDetails.length;
+    for(let i = 0; i < length;) {
+      const firstType = sendFileDetails[i].file.type;
+      let k = 0;
+      for(; k < 10 && i < length; ++i, ++k) {
+        const type = sendFileDetails[i].file.type;
+        if(this.shouldCompress(firstType) !== this.shouldCompress(type)) {
+          break;
+        }
+      }
+
+      cb(sendFileDetails.slice(i - k, i));
+    }
+  }
+
+  private attachFiles() {
+    const {files, willAttach, mediaContainer} = this;
+    willAttach.sendFileDetails.length = 0;
+
+    this.appendGroupCheckboxField();
+    this.appendMediaCheckboxField();
+
+    Promise.all(files.map(this.attachFile)).then(() => {
+      mediaContainer.innerHTML = '';
+
+      if(!files.length) {
+        return;
+      }
+
+      this.setTitle();
+
+      this.iterate((sendFileDetails) => {
+        if(this.shouldCompress(sendFileDetails[0].file.type) && sendFileDetails.length > 1) {
+          const albumContainer = document.createElement('div');
+          albumContainer.classList.add('popup-item-album', 'popup-item');
+          albumContainer.append(...sendFileDetails.map(s => s.itemDiv));
+
+          prepareAlbum({
+            container: albumContainer,
+            items: sendFileDetails.map(o => ({w: o.width, h: o.height})),
+            maxWidth: 380,
+            minWidth: 100,
+            spacing: 4
+          });
+
+          mediaContainer.append(albumContainer);
+        } else {
+          sendFileDetails.forEach((params) => {
+            this.appendMediaToContainer(params.itemDiv, params);
+          });
+        }
+      });
+    }).then(() => {
+      this.onRender();
     });
   }
 }

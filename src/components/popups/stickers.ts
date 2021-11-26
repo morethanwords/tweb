@@ -38,9 +38,9 @@ export default class PopupStickers extends PopupElement {
 
     this.header.append(this.h6);
 
-    this.onClose = () => {
+    this.addEventListener('close', () => {
       animationIntersector.setOnlyOnePlayableGroup('');
-    };
+    });
 
     const div = document.createElement('div');
     div.classList.add('sticker-set');

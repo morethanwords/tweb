@@ -81,12 +81,12 @@ export default class PopupAvatar extends PopupElement {
 
     this.container.append(this.cropContainer, this.btnConfirm, this.input);
 
-    this.onCloseAfterTimeout = () => {
+    this.addEventListener('closeAfterTimeout', () => {
       this.cropper.removeHandlers();
       if(this.image) {
         this.image.remove();
       }
-    };
+    });
   }
 
   private resolve() {

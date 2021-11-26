@@ -16,6 +16,7 @@ import { attachClickEvent, simulateClickEvent } from "../../helpers/dom/clickEve
 import isSendShortcutPressed from "../../helpers/dom/isSendShortcutPressed";
 import { cancelEvent } from "../../helpers/dom/cancelEvent";
 import getKeyFromEvent from "../../helpers/dom/getKeyFromEvent";
+import EventListenerBase from "../../helpers/eventListenerBase";
 
 export type PopupButton = {
   text?: string,
@@ -35,7 +36,10 @@ export type PopupOptions = Partial<{
   confirmShortcutIsSendShortcut: boolean
 }>;
 
-export default class PopupElement {
+export default class PopupElement extends EventListenerBase<{
+  close: () => void,
+  closeAfterTimeout: () => void
+}> {
   protected element = document.createElement('div');
   protected container = document.createElement('div');
   protected header = document.createElement('div');
@@ -45,8 +49,6 @@ export default class PopupElement {
   protected body: HTMLElement;
   protected buttonsEl: HTMLElement;
 
-  protected onClose: () => void;
-  protected onCloseAfterTimeout: () => void;
   protected onEscape: () => boolean = () => true;
 
   protected navigationItem: NavigationItem;
@@ -57,6 +59,8 @@ export default class PopupElement {
   protected btnConfirmOnEnter: HTMLButtonElement;
 
   constructor(className: string, protected buttons?: Array<PopupButton>, options: PopupOptions = {}) {
+    super(false);
+
     this.element.classList.add('popup');
     this.element.className = 'popup' + (className ? ' ' + className : '');
     this.container.classList.add('popup-container', 'z-depth-1');
@@ -181,7 +185,7 @@ export default class PopupElement {
   };
 
   private destroy = () => {
-    this.onClose && this.onClose();
+    this.dispatchEvent('close');
     this.element.classList.add('hiding');
     this.element.classList.remove('active');
     this.listenerSetter.removeAll();
@@ -193,7 +197,8 @@ export default class PopupElement {
 
     setTimeout(() => {
       this.element.remove();
-      this.onCloseAfterTimeout && this.onCloseAfterTimeout();
+      this.dispatchEvent('closeAfterTimeout');
+      this.cleanup();
       animationIntersector.checkAnimations(false);
     }, 150);
   };

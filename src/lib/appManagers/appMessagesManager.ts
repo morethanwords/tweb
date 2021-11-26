@@ -166,7 +166,7 @@ export class AppMessagesManager {
     }
   } = {};
   
-  private sendSmthLazyLoadQueue = new LazyLoadQueueBase(1);
+  private sendSmthLazyLoadQueue = new LazyLoadQueueBase(10);
 
   private needSingleMessages: Map<PeerId, Map<number, CancellablePromise<Message>>> = new Map();
   private fetchSingleMessagesPromise: Promise<void> = null;
@@ -1115,7 +1115,7 @@ export class AppMessagesManager {
     };
 
     const inputPeer = appPeersManager.getInputPeerById(peerId);
-    const invoke = (multiMedia: any[]) => {
+    const invoke = (multiMedia: InputSingleMedia[]) => {
       this.setTyping(peerId, {_: 'sendMessageCancelAction'});
 
       this.sendSmthLazyLoadQueue.push({
@@ -1136,15 +1136,15 @@ export class AppMessagesManager {
       });
     };
 
-    const promises: Promise<InputSingleMedia>[] = messages.map((message, idx) => {
-      return (message.send() as Promise<InputMedia>).then((inputMedia: InputMedia) => {
+    const promises: Promise<InputSingleMedia>[] = messages.map((message) => {
+      return (message.send() as Promise<InputMedia>).then((inputMedia) => {
         return apiManager.invokeApi('messages.uploadMedia', {
           peer: inputPeer,
           media: inputMedia
         });
       })
       .then(messageMedia => {
-        let inputMedia: any;
+        let inputMedia: InputMedia;
         if(messageMedia._ === 'messageMediaPhoto') {
           const photo = appPhotosManager.savePhoto(messageMedia.photo);
           inputMedia = appPhotosManager.getMediaInput(photo);

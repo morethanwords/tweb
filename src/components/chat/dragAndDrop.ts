@@ -5,7 +5,7 @@
  */
 
 import generatePathData from "../../helpers/generatePathData";
-import { i18n, LangPackKey } from "../../lib/langPack";
+import { FormatterArguments, i18n, LangPackKey } from "../../lib/langPack";
 
 export default class ChatDragAndDrop {
   container: HTMLDivElement;
@@ -14,9 +14,10 @@ export default class ChatDragAndDrop {
   path: SVGPathElement;
 
   constructor(appendTo: HTMLElement, private options: {
-    icon: string,
+    icon?: string,
     header: LangPackKey,
-    subtitle: LangPackKey,
+    headerArgs?: FormatterArguments,
+    subtitle?: LangPackKey,
     onDrop: (e: DragEvent) => void
   }) {
     this.container = document.createElement('div');
@@ -31,21 +32,27 @@ export default class ChatDragAndDrop {
     this.path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     this.path.classList.add('drop-outline-path');
 
-    const dropIcon = document.createElement('div');
-    dropIcon.classList.add('drop-icon', 'tgico-' + options.icon);
+    let dropIcon: HTMLElement;
+    if(options.icon) {
+      dropIcon = document.createElement('div');
+      dropIcon.classList.add('drop-icon', 'tgico-' + options.icon);
+    }
 
     const dropHeader = document.createElement('div');
     dropHeader.classList.add('drop-header');
-    dropHeader.append(i18n(options.header));
+    dropHeader.append(i18n(options.header, options.headerArgs));
 
-    const dropSubtitle = document.createElement('div');
-    dropSubtitle.classList.add('drop-subtitle');
-    dropSubtitle.append(i18n(options.subtitle));
+    let dropSubtitle: HTMLElement;
+    if(options.subtitle) {
+      dropSubtitle = document.createElement('div');
+      dropSubtitle.classList.add('drop-subtitle');
+      dropSubtitle.append(i18n(options.subtitle));
+    }
 
     this.svg.append(this.path);
     this.outlineWrapper.append(this.svg);
 
-    this.container.append(this.outlineWrapper, dropIcon, dropHeader, dropSubtitle);
+    this.container.append(...[this.outlineWrapper, dropIcon, dropHeader, dropSubtitle].filter(Boolean));
     appendTo.append(this.container);
 
     this.container.addEventListener('dragover', this.onDragOver);
