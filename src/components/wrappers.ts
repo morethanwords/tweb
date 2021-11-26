@@ -586,7 +586,7 @@ export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showS
     docDiv.classList.add('document-with-thumb');
 
     let imgs: HTMLImageElement[] = [];
-    if(uploading) {
+    if(message.pFlags.is_outgoing) {
       icoDiv.innerHTML = `<img src="${cacheContext.url}">`;
       imgs.push(icoDiv.firstElementChild as HTMLImageElement);
     } else {
@@ -647,9 +647,9 @@ export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showS
 
   docDiv.prepend(icoDiv);
 
-  /* if(!uploading && message.pFlags.is_outgoing) {
+  if(!uploading && message.pFlags.is_outgoing) {
     return docDiv;
-  } */
+  }
 
   let downloadDiv: HTMLElement, preloader: ProgressivePreloader = null;
   const onLoad = () => {
@@ -700,7 +700,7 @@ export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showS
     downloadDiv = docDiv.querySelector('.document-download');
     preloader = new ProgressivePreloader();
     preloader.attach(downloadDiv, false, appDocsManager.downloading.get(doc.id));
-  } else if(!(cacheContext.downloaded && !uploading)) {
+  } else if(!cacheContext.downloaded || uploading) {
     downloadDiv = docDiv.querySelector('.document-download');
     preloader = message.media.preloader as ProgressivePreloader;
 

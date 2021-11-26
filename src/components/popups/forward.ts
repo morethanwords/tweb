@@ -11,7 +11,6 @@ export default class PopupForward extends PopupPickUser {
   constructor(
     peerIdMids: {[fromPeerId: PeerId]: number[]}, 
     onSelect?: (peerId: PeerId) => Promise<void> | void, 
-    onClose?: () => void, 
     overrideOnSelect = false
   ) {
     super({
@@ -27,7 +26,6 @@ export default class PopupForward extends PopupPickUser {
         appImManager.setInnerPeer(peerId);
         appImManager.chat.input.initMessagesForward(peerIdMids);
       },
-      onClose,
       placeholder: 'ShareModal.Search.ForwardPlaceholder',
       chatRightsAction: 'send_messages',
       selfPresence: 'ChatYourSelf'

@@ -2557,13 +2557,15 @@ export default class ChatBubbles {
                   }
                   
                   return new Promise<PeerId>((resolve, reject) => {
-                    new PopupForward({
+                    const popup = new PopupForward({
                       [this.peerId]: []
                     }, (peerId) => {
                       resolve(peerId);
-                    }, () => {
-                      reject();
                     }, true);
+
+                    popup.addEventListener('close', () => {
+                      reject();
+                    });
                   });
                 });
                 

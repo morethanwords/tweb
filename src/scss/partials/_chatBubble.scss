@@ -1039,16 +1039,12 @@ $bubble-beside-button-width: 38px;
     &-content {
       //max-width: 300px;
       position: absolute;
-      max-width: calc(100% - 1.875rem);
+      max-width: calc(100% - 1.25rem);
       height: auto;
       min-height: 32px;
       white-space: nowrap;
       text-overflow: ellipsis;
       overflow: hidden;
-    }
-
-    &.is-media .reply-content {
-      max-width: calc(100% - 1.5rem);
     }
   }
 
@@ -1068,7 +1064,7 @@ $bubble-beside-button-width: 38px;
       margin-bottom: 0;
       background-color: var(--message-highlightning-color);
       white-space: nowrap;
-      max-width: 300px;
+      max-width: 15rem;
 
       @include respond-to(handhelds) {
         max-width: calc(100vw - #{$chat-padding-handhelds * 2} - 10px - 100%);
@@ -1096,6 +1092,8 @@ $bubble-beside-button-width: 38px;
 
       &-content {
         margin-top: 0;
+        position: relative;
+        max-width: none !important;
       }
 
       &-title,
@@ -1620,7 +1618,6 @@ $bubble-beside-button-width: 38px;
     color: white;
     display: flex;
     align-items: center;
-    cursor: pointer;
     user-select: none;
     height: 1.125rem;
 
@@ -1648,7 +1645,6 @@ $bubble-beside-button-width: 38px;
     color: #fff;
     text-align: center;
     font-size: 2.125rem;
-    cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;

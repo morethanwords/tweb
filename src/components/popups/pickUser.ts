@@ -15,15 +15,12 @@ export default class PopupPickUser extends PopupElement {
   constructor(options: {
     peerTypes: AppSelectPeers['peerType'], 
     onSelect?: (peerId: PeerId) => Promise<void> | void, 
-    onClose?: () => void,
     placeholder: LangPackKey,
     chatRightsAction?: AppSelectPeers['chatRightsAction'],
     peerId?: number,
     selfPresence?: LangPackKey
   }) {
     super('popup-forward', null, {closable: true, overlayClosable: true, body: true});
-
-    if(options.onClose) this.onClose = options.onClose;
 
     this.selector = new AppSelectPeers({
       appendTo: this.body, 

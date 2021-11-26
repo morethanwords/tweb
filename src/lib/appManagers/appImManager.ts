@@ -24,7 +24,7 @@ import appPhotosManager from './appPhotosManager';
 import appProfileManager from './appProfileManager';
 import appStickersManager from './appStickersManager';
 import appWebPagesManager from './appWebPagesManager';
-import PopupNewMedia from '../../components/popups/newMedia';
+import PopupNewMedia, { getCurrentNewMediaPopup } from '../../components/popups/newMedia';
 import MarkupTooltip from '../../components/chat/markupTooltip';
 import { IS_TOUCH_SUPPORTED } from '../../environment/touchSupport';
 import appPollsManager from './appPollsManager';
@@ -901,6 +901,7 @@ export class AppImManager {
 
   private attachDragAndDropListeners() {
     const drops: ChatDragAndDrop[] = [];
+    const mediaDrops: ChatDragAndDrop[] = [];
     let mounted = false;
     const toggle = async(e: DragEvent, mount: boolean) => {
       if(mount === mounted) return;
@@ -909,63 +910,84 @@ export class AppImManager {
       // @ts-ignore
       const isFiles = _types.contains ? _types.contains('Files') : _types.indexOf('Files') >= 0;
 
-      if(!isFiles || !this.canDrag()) { // * skip dragging text case
+      const newMediaPopup = getCurrentNewMediaPopup();
+      if(!isFiles || (!this.canDrag() && !newMediaPopup)) { // * skip dragging text case
         counter = 0;
         return;
       }
 
-      if(mount && !drops.length) {
+      const _dropsContainer = newMediaPopup ? mediaDropsContainer : dropsContainer;
+      const _drops = newMediaPopup ? mediaDrops : drops;
+
+      if(mount && !_drops.length) {
         const types: string[] = await getFilesFromEvent(e, true);
         const force = isFiles && !types.length; // * can't get file items not from 'drop' on Safari
         
         const foundMedia = types.filter(t => MEDIA_MIME_TYPES_SUPPORTED.has(t)).length;
-        const foundDocuments = types.length - foundMedia;
+        // const foundDocuments = types.length - foundMedia;
   
         this.log('drag files', types);
-        
-        if(types.length || force) {
-          drops.push(new ChatDragAndDrop(dropsContainer, {
-            icon: 'dragfiles',
-            header: 'Chat.DropTitle',
-            subtitle: 'Chat.DropAsFilesDesc',
-            onDrop: (e: DragEvent) => {
-              toggle(e, false);
-              appImManager.log('drop', e);
-              appImManager.onDocumentPaste(e, 'document');
-            }
-          }));
+
+        if(newMediaPopup) {
+          newMediaPopup.appendDrops(_dropsContainer);
+
+          if(types.length || force) {
+            _drops.push(new ChatDragAndDrop(_dropsContainer, {
+              header: 'Preview.Dragging.AddItems',
+              headerArgs: [types.length],
+              onDrop: (e: DragEvent) => {
+                toggle(e, false);
+                appImManager.log('drop', e);
+                appImManager.onDocumentPaste(e, 'document');
+              }
+            }));
+          }
+        } else {
+          if(types.length || force) {
+            _drops.push(new ChatDragAndDrop(_dropsContainer, {
+              icon: 'dragfiles',
+              header: 'Chat.DropTitle',
+              subtitle: 'Chat.DropAsFilesDesc',
+              onDrop: (e: DragEvent) => {
+                toggle(e, false);
+                appImManager.log('drop', e);
+                appImManager.onDocumentPaste(e, 'document');
+              }
+            }));
+          }
+    
+          // if((foundMedia && !foundDocuments) || force) {
+          if(foundMedia || force) {
+            _drops.push(new ChatDragAndDrop(_dropsContainer, {
+              icon: 'dragmedia',
+              header: 'Chat.DropTitle',
+              subtitle: 'Chat.DropQuickDesc',
+              onDrop: (e: DragEvent) => {
+                toggle(e, false);
+                appImManager.log('drop', e);
+                appImManager.onDocumentPaste(e, 'media');
+              }
+            }));
+          }
+
+          this.chat.container.append(_dropsContainer);
         }
-  
-        if((foundMedia && !foundDocuments) || force) {
-          drops.push(new ChatDragAndDrop(dropsContainer, {
-            icon: 'dragmedia',
-            header: 'Chat.DropTitle',
-            subtitle: 'Chat.DropQuickDesc',
-            onDrop: (e: DragEvent) => {
-              toggle(e, false);
-              appImManager.log('drop', e);
-              appImManager.onDocumentPaste(e, 'media');
-            }
-          }));
-        }
-  
-        this.chat.container.append(dropsContainer);
       }
 
       //if(!mount) return;
 
-      SetTransition(dropsContainer, 'is-visible', mount, 200, () => {
+      SetTransition(_dropsContainer, 'is-visible', mount, 200, () => {
         if(!mount) {
-          drops.forEach(drop => {
+          _drops.forEach(drop => {
             drop.destroy();
           });
 
-          drops.length = 0;
+          _drops.length = 0;
         }
       });
 
       if(mount) {
-        drops.forEach(drop => {
+        _drops.forEach(drop => {
           drop.setPath();
         });
       } else {
@@ -1003,6 +1025,8 @@ export class AppImManager {
 
     const dropsContainer = document.createElement('div');
     dropsContainer.classList.add('drops-container');
+
+    const mediaDropsContainer = dropsContainer.cloneNode(true) as HTMLElement;
   }
 
   private canDrag() {
@@ -1011,7 +1035,8 @@ export class AppImManager {
   }
 
   private onDocumentPaste = (e: ClipboardEvent | DragEvent, attachType?: 'media' | 'document') => {
-    if(!this.canDrag()) return;
+    const newMediaPopup = getCurrentNewMediaPopup();
+    if(!this.canDrag() && !newMediaPopup) return;
 
     //console.log('document paste');
     //console.log('item', event.clipboardData.getData());
@@ -1027,12 +1052,13 @@ export class AppImManager {
     
     getFilesFromEvent(e).then((files: File[]) => {
       if(files.length) {
-        if(/* attachType === 'media' &&  */files.find(file => !MEDIA_MIME_TYPES_SUPPORTED.has(file.type))) {
-          attachType = 'document';
+        if(newMediaPopup) {
+          newMediaPopup.addFiles(files);
+          return;
         }
-  
+    
         const chatInput = this.chat.input;
-        chatInput.willAttachType = attachType || (MEDIA_MIME_TYPES_SUPPORTED.has(files[0].type) ? 'media' : "document");
+        chatInput.willAttachType = attachType || (MEDIA_MIME_TYPES_SUPPORTED.has(files[0].type) ? 'media' : 'document');
         new PopupNewMedia(this.chat, files, chatInput.willAttachType);
       }
     });

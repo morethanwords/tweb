@@ -104,7 +104,7 @@ class InputField {
     this.required = options.required;
     this.validate = options.validate;
 
-    if(options.maxLength) {
+    if(options.maxLength !== undefined && options.showLengthOn === undefined) {
       options.showLengthOn = Math.min(40, Math.round(options.maxLength / 3));
     }
 

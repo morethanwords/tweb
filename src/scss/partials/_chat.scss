@@ -663,6 +663,30 @@ $chat-helper-size: 36px;
 			}
 		}
 	}
+
+  .drops-container {
+    --padding: 20px;
+    --pinned-floating-height: 0px;
+    top: calc(56px + var(--pinned-floating-height) + var(--padding));
+
+    @include respond-to(medium-screens) {
+      //transition: transform var(--layer-transition);
+  
+      body.is-right-column-shown & {
+        //left: calc(var(--right-column-width) / -2);
+        right: calc(var(--right-column-width));
+      }
+    }
+  
+    @include respond-to(handhelds) {
+      --padding: 10px;
+    }
+  }
+
+  .drop {
+    max-width: 696px;
+    --wrapper-padding: 15px;
+  }
 }
 
 .chat-input-wrapper {
