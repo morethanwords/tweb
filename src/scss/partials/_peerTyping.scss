@@ -20,7 +20,12 @@
     @include text-overflow();
   } */
 
-  &:not(.peer-typing-text) {
+  &-flex {
+    display: flex;
+    align-items: center;
+  }
+
+  &:not(.peer-typing-text):not(.peer-typing-choosing-sticker) {
     display: inline-block;
     vertical-align: middle;
     transform: translateY(-1px);
@@ -90,6 +95,41 @@
       border-radius: 50%;
       background-color: var(--color);
       animation: recordBlink 1.25s infinite;
+    }
+  }
+
+  &-choosing-sticker {
+    margin-right: .375rem;
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    height: 16px;
+
+    &-eye {
+      width: 8px;
+      height: 14px;
+      border-radius: 50%;
+      display: inline-block;
+      vertical-align: middle;
+      border: 1px solid var(--color);
+      margin: 0 .0625rem;
+      position: relative;
+      animation: eye 1.8s ease-in-out infinite;
+
+      &:before {
+        content: " ";
+        display: block;
+        width: .25rem;
+        height: .25rem;
+        background-color: var(--color);
+        border-radius: 50%;
+        position: absolute;
+        // left: 50%;
+        top: 50%;
+        // transform: translate(-50%, -50%);
+        animation: eye-move 1.8s ease-in-out infinite;
+        transform: translate(-1px, -50%);
+      }
     }
   }
 }
@@ -180,5 +220,57 @@ $opacity-min: $opacity-max - ($opacity-step * 2);
 
   100% {
     transform: translate(13px);
+  }
+}
+
+@keyframes eye {
+  0% {
+    transform: scale(1.1) translateX(-.75px);
+  }
+  
+  12.5% {
+    transform: scale(1) translateX(0px);
+  }
+
+  25% {
+    transform: scale(1.1) translateX(.375px);
+  }
+
+  50% {
+    transform: scale(1.1) translateX(.75px);
+  }
+  
+  62.5% {
+    transform: scale(1) translateX(0px);
+  }
+
+  75% {
+    transform: scale(1.1) translateX(-.375px);
+  }
+
+  100% {
+    transform: scale(1.1) translateX(-.75px);
+  }
+}
+
+@keyframes eye-move {
+  0% {
+    transform: translate(-1px, -50%);
+  }
+
+  25% {
+    transform: translate(3px, -50%);
+  }
+  
+  50% {
+    transform: translate(3px, -50%);
+  }
+
+  75% {
+    transform: translate(-1px, -50%);
+  }
+  
+  100% {
+    transform: translate(-1px, -50%);
   }
 }

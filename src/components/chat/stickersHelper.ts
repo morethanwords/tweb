@@ -8,6 +8,7 @@ import mediaSizes from "../../helpers/mediaSizes";
 import { MyDocument } from "../../lib/appManagers/appDocsManager";
 import { CHAT_ANIMATION_GROUP } from "../../lib/appManagers/appImManager";
 import appStickersManager from "../../lib/appManagers/appStickersManager";
+import rootScope from "../../lib/rootScope";
 import { EmoticonsDropdown } from "../emoticonsDropdown";
 import { SuperStickerRenderer } from "../emoticonsDropdown/tabs/stickers";
 import LazyLoadQueue from "../lazyLoadQueue";
@@ -38,6 +39,8 @@ export default class StickersHelper extends AutocompleteHelper {
       setTimeout(() => { // it is not rendered yet
         this.scrollable.container.scrollTop = 0;
       }, 0);
+
+      rootScope.dispatchEvent('choosing_sticker', true);
     });
 
     this.addEventListener('hidden', () => {
@@ -45,6 +48,8 @@ export default class StickersHelper extends AutocompleteHelper {
         mediaSizes.removeEventListener('changeScreen', this.onChangeScreen);
         this.onChangeScreen = undefined;
       }
+
+      rootScope.dispatchEvent('choosing_sticker', false);
     });
   }
 

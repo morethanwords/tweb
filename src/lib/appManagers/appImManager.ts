@@ -200,6 +200,10 @@ export class AppImManager {
       this.applyCurrentTheme();
     });
 
+    rootScope.addEventListener('choosing_sticker', (choosing) => {
+      this.setChoosingStickerTyping(!choosing);
+    });
+
     rootScope.addEventListener('instance_deactivated', () => {
       const popup = new PopupElement('popup-instance-deactivated', undefined, {overlayClosable: true});
       const c = document.createElement('div');
@@ -1312,13 +1316,13 @@ export class AppImManager {
 
   private getTypingElement(action: SendMessageAction) {
     const el = document.createElement('span');
-    el.classList.add('peer-typing');
+    let c = 'peer-typing';
+    el.classList.add(c);
     el.dataset.action = action._;
     switch(action._) {
       case 'sendMessageTypingAction': {
       //default: {
-        const c = 'peer-typing-text';
-        el.classList.add(c);
+        c += '-text';
         for(let i = 0; i < 3; ++i) {
           const dot = document.createElement('span');
           dot.className = c + '-dot';
@@ -1332,8 +1336,7 @@ export class AppImManager {
       case 'sendMessageUploadRoundAction':
       case 'sendMessageUploadVideoAction':
       case 'sendMessageUploadPhotoAction': {
-        const c = 'peer-typing-upload';
-        el.classList.add(c);
+        c += '-upload';
         /* const trail = document.createElement('span');
         trail.className = c + '-trail';
         el.append(trail); */
@@ -1343,11 +1346,22 @@ export class AppImManager {
       case 'sendMessageRecordAudioAction':
       case 'sendMessageRecordRoundAction':
       case 'sendMessageRecordVideoAction': {
-        const c = 'peer-typing-record';
-        el.classList.add(c);
+        c += '-record';
+        break;
+      }
+
+      case 'sendMessageChooseStickerAction': {
+        c += '-choosing-sticker';
+        for(let i = 0; i < 2; ++i) {
+          const eye = document.createElement('div');
+          eye.className = c + '-eye';
+          el.append(eye);
+        }
         break;
       }
     }
+
+    el.classList.add(c);
 
     return el;
   }
@@ -1374,7 +1388,8 @@ export class AppImManager {
           'sendMessageRecordVideoAction': 'Peer.Activity.User.RecordingVideo',
           'sendMessageRecordAudioAction': 'Peer.Activity.User.RecordingAudio',
           'sendMessageRecordRoundAction': 'Peer.Activity.User.RecordingVideo',
-          'sendMessageGamePlayAction': 'Peer.Activity.User.PlayingGame'
+          'sendMessageGamePlayAction': 'Peer.Activity.User.PlayingGame',
+          'sendMessageChooseStickerAction': 'Peer.Activity.User.ChoosingSticker'
         },
         chat: {
           'sendMessageTypingAction': 'Peer.Activity.Chat.TypingText',
@@ -1386,7 +1401,8 @@ export class AppImManager {
           'sendMessageRecordVideoAction': 'Peer.Activity.Chat.RecordingVideo',
           'sendMessageRecordAudioAction': 'Peer.Activity.Chat.RecordingAudio',
           'sendMessageRecordRoundAction': 'Peer.Activity.Chat.RecordingVideo',
-          'sendMessageGamePlayAction': 'Peer.Activity.Chat.PlayingGame'
+          'sendMessageGamePlayAction': 'Peer.Activity.Chat.PlayingGame',
+          'sendMessageChooseStickerAction': 'Peer.Activity.Chat.ChoosingSticker'
         },
         multi: {
           'sendMessageTypingAction': 'Peer.Activity.Chat.Multi.TypingText1',
@@ -1398,7 +1414,8 @@ export class AppImManager {
           'sendMessageRecordVideoAction': 'Peer.Activity.Chat.Multi.RecordingVideo1',
           'sendMessageRecordAudioAction': 'Peer.Activity.Chat.Multi.RecordingAudio1',
           'sendMessageRecordRoundAction': 'Peer.Activity.Chat.Multi.RecordingVideo1',
-          'sendMessageGamePlayAction': 'Peer.Activity.Chat.Multi.PlayingGame1'
+          'sendMessageGamePlayAction': 'Peer.Activity.Chat.Multi.PlayingGame1',
+          'sendMessageChooseStickerAction': 'Peer.Activity.Chat.Multi.ChoosingSticker1'
         }
       };
 
@@ -1428,6 +1445,10 @@ export class AppImManager {
       if(!container) {
         container = document.createElement('span');
         container.classList.add('online', 'peer-typing-container');
+      }
+
+      if(action._ === 'sendMessageChooseStickerAction') {
+        container.classList.add('peer-typing-flex');
       }
 
       let typingElement = container.firstElementChild as HTMLElement;
@@ -1532,6 +1553,10 @@ export class AppImManager {
 
       replaceContent(element, subtitle || (useWhitespace ? '‎' : ''));
     });
+  }
+
+  public setChoosingStickerTyping(cancel: boolean) {
+    appMessagesManager.setTyping(this.chat.peerId, {_: cancel ? 'sendMessageCancelAction' : 'sendMessageChooseStickerAction'});
   }
 }
 
