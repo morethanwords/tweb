@@ -135,7 +135,8 @@ export type BroadcastEvents = {
   'download_progress': any,
   'document_downloaded': MyDocument,
 
-  'context_menu_toggle': boolean
+  'context_menu_toggle': boolean,
+  'choosing_sticker': boolean
 };
 
 export class RootScope extends EventListenerBase<{

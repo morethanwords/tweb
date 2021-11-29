@@ -297,8 +297,23 @@ export default class StickersTab implements EmoticonsTab {
       EmoticonsDropdown.onMediaClick(e);
     });
 
+    const setTyping = (cancel = false) => {
+      rootScope.dispatchEvent('choosing_sticker', !cancel);
+    };
+
     this.scroll = new Scrollable(this.content, 'STICKERS');
     this.scroll.setVirtualContainer(this.stickersDiv);
+    this.scroll.onAdditionalScroll = () => {
+      setTyping();
+    };
+
+    emoticonsDropdown.addEventListener('closed', () => {
+      setTyping(true);
+    });
+
+    emoticonsDropdown.addEventListener('opened', () => {
+      setTyping();
+    });
 
     this.stickyIntersector = EmoticonsDropdown.menuOnClick(this.menu, this.scroll, menuScroll).stickyIntersector;
 
@@ -329,6 +344,7 @@ export default class StickersTab implements EmoticonsTab {
       })
     ]).finally(() => {
       this.mounted = true;
+      setTyping();
     });
 
     this.superStickerRenderer = new SuperStickerRenderer(EmoticonsDropdown.lazyLoadQueue, EMOTICONSSTICKERGROUP);
