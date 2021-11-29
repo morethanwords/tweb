@@ -44,7 +44,7 @@ export function wrapReplyDivAndCaption(options: {
   let middleware: () => boolean;
   if(media && mediaEl) {
     subtitleEl.textContent = '';
-    subtitleEl.append(appMessagesManager.wrapMessageForReply(message));
+    subtitleEl.append(appMessagesManager.wrapMessageForReply(message, undefined, undefined, undefined, undefined, true));
 
     //console.log('wrap reply', media);
 

@@ -87,6 +87,7 @@
         stroke-dasharray: 24.19, 24.19;
         stroke-dashoffset: 0;
         transition: stroke-dasharray .1s .15s ease-in-out, visibility 0s .15s;
+        visibility: visible; // fix blinking on parent's transform
         
         @include animation-level(0) {
           transition: none !important;
@@ -262,7 +263,7 @@
   position: absolute;
 }
 
-.checkbox-field [type="checkbox"] {
+.checkbox-field .checkbox-field-input {
   &:not(:checked) + .checkbox-box {
     .checkbox-box-check {
       use {

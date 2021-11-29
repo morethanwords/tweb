@@ -445,7 +445,7 @@ export class AppMessagesManager {
     scheduleDate: number,
     silent: true
   }> = {}) {
-    if(typeof(text) !== 'string' || !text.length) {
+    if(!text.trim()) {
       return;
     }
 
@@ -1538,7 +1538,7 @@ export class AppMessagesManager {
   }
 
   private generateForwardHeader(peerId: PeerId, originalMessage: Message.message) {
-    const myId = appUsersManager.getSelf().id;
+    const myId = appUsersManager.getSelf().id.toPeerId();
     if(originalMessage.fromId === myId && originalMessage.peerId === myId && !originalMessage.fwd_from) {
       return;
     }
@@ -1891,24 +1891,44 @@ export class AppMessagesManager {
   public forwardMessages(peerId: PeerId, fromPeerId: PeerId, mids: number[], options: Partial<{
     withMyScore: true,
     silent: true,
-    scheduleDate: number
+    scheduleDate: number,
+    dropAuthor: boolean,
+    dropCaptions: boolean
   }> = {}) {
     peerId = appPeersManager.getPeerMigratedTo(peerId) || peerId;
     mids = mids.slice().sort((a, b) => a - b);
 
+    if(options.dropCaptions) {
+      options.dropAuthor = true;
+    }
+
     const groups: {
       [groupId: string]: {
         tempId: string,
-        messages: any[]
+        messages: Message.message[]
       }
     } = {};
 
     const newMessages = mids.map(mid => {
       const originalMessage: Message.message = this.getMessageByPeer(fromPeerId, mid);
       const message: Message.message = this.generateOutgoingMessage(peerId, options);
-      message.fwd_from = this.generateForwardHeader(peerId, originalMessage);
 
-      (['entities', 'forwards', 'message', 'media', 'reply_markup', 'views'] as any as Array<keyof MyMessage>).forEach(key => {
+      const keys: Array<keyof Message.message> = [
+        'entities', 
+        'media', 
+        // 'reply_markup'
+      ];
+
+      if(!options.dropAuthor) {
+        message.fwd_from = this.generateForwardHeader(peerId, originalMessage);
+        keys.push('views', 'forwards');
+      }
+
+      if(!options.dropCaptions) {
+        keys.push('message');
+      }
+
+      keys.forEach(key => {
         // @ts-ignore
         message[key] = originalMessage[key];
       });
@@ -1956,7 +1976,9 @@ export class AppMessagesManager {
       to_peer: appPeersManager.getInputPeerById(peerId),
       with_my_score: options.withMyScore,
       silent: options.silent,
-      schedule_date: options.scheduleDate
+      schedule_date: options.scheduleDate,
+      drop_author: options.dropAuthor,
+      drop_media_captions: options.dropCaptions
     }, sentRequestOptions).then((updates) => {
       this.log('forwardMessages updates:', updates);
       apiUpdatesManager.processUpdateMessage(updates);
@@ -2738,7 +2760,7 @@ export class AppMessagesManager {
         usingFullAlbum = false;
       }
 
-      if(!usingFullAlbum && !withoutMediaType) {
+      if((!usingFullAlbum && !withoutMediaType) || !text) {
         const media = message.media;
         switch(media._) {
           case 'messageMediaPhoto':

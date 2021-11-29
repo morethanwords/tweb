@@ -155,6 +155,10 @@
     transform-origin: bottom left;
   }
 
+  &.top-center {
+    transform-origin: bottom center;
+  }
+
   &.center-left {
     transform-origin: center right;
   }
@@ -251,6 +255,11 @@
     /* &-text {
       margin-top: -.125rem;
     } */
+  }
+
+  hr {
+    padding: 0;
+    margin: .5rem 0;
   }
 }
 

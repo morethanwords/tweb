@@ -1854,12 +1854,18 @@ export default class ChatBubbles {
       return {cached: true, promise: this.chat.setPeerPromise};
     } */
 
+    const chatType = this.chat.type;
+
+    if(chatType === 'scheduled') {
+      lastMsgId = 0;
+    }
+
     this.historyStorage = this.appMessagesManager.getHistoryStorage(peerId, this.chat.threadId);
-    let topMessage = this.chat.type === 'pinned' ? this.appMessagesManager.pinnedMessages[peerId].maxId : this.historyStorage.maxId ?? 0;
+    let topMessage = chatType === 'pinned' ? this.appMessagesManager.pinnedMessages[peerId].maxId : this.historyStorage.maxId ?? 0;
     const isTarget = lastMsgId !== undefined;
 
     // * this one will fix topMessage for null message in history (e.g. channel comments with only 1 comment and it is a topMessage)
-    /* if(this.chat.type !== 'pinned' && topMessage && !historyStorage.history.slice.includes(topMessage)) {
+    /* if(chatType !== 'pinned' && topMessage && !historyStorage.history.slice.includes(topMessage)) {
       topMessage = 0;
     } */
 
@@ -1883,6 +1889,8 @@ export default class ChatBubbles {
     }
 
     const isJump = lastMsgId !== topMessage;
+
+    const {scrollable} = this;
     
     if(samePeer) {
       const mounted = this.getMountedBubble(lastMsgId);
@@ -1893,7 +1901,7 @@ export default class ChatBubbles {
           this.chat.dispatchEvent('setPeer', lastMsgId, false);
         } else if(topMessage && !isJump) {
           //this.log('will scroll down', this.scroll.scrollTop, this.scroll.scrollHeight);
-          this.scrollable.scrollTop = this.scrollable.scrollHeight;
+          scrollable.scrollTop = scrollable.scrollHeight;
           this.chat.dispatchEvent('setPeer', lastMsgId, true);
         }
         
@@ -1909,16 +1917,16 @@ export default class ChatBubbles {
       this.replyFollowHistory.length = 0;
 
       this.passEntities = {
-        messageEntityBotCommand: this.appPeersManager.isAnyGroup(this.peerId) || this.appUsersManager.isBot(this.peerId)
+        messageEntityBotCommand: this.appPeersManager.isAnyGroup(peerId) || this.appUsersManager.isBot(peerId)
       };
     }
 
     if(DEBUG) {
-      this.log('setPeer peerId:', this.peerId, this.historyStorage, lastMsgId, topMessage);
+      this.log('setPeer peerId:', peerId, this.historyStorage, lastMsgId, topMessage);
     }
 
     // add last message, bc in getHistory will load < max_id
-    const additionMsgId = isJump || this.chat.type === 'scheduled' ? 0 : topMessage;
+    const additionMsgId = isJump || chatType === 'scheduled' ? 0 : topMessage;
 
     /* this.setPeerPromise = null;
     this.preloader.detach();
@@ -1943,12 +1951,12 @@ export default class ChatBubbles {
 
     const oldChatInner = this.chatInner;
     this.cleanup();
-    this.chatInner = document.createElement('div');
+    const chatInner = this.chatInner = document.createElement('div');
     if(samePeer) {
-      this.chatInner.className = oldChatInner.className;
-      this.chatInner.classList.remove('disable-hover', 'is-scrolling');
+      chatInner.className = oldChatInner.className;
+      chatInner.classList.remove('disable-hover', 'is-scrolling');
     } else {
-      this.chatInner.classList.add('bubbles-inner');
+      chatInner.classList.add('bubbles-inner');
     }
 
     this.lazyLoadQueue.lock();
@@ -1970,7 +1978,7 @@ export default class ChatBubbles {
     // clear 
     if(!cached) {
       if(!samePeer) {
-        this.scrollable.container.textContent = '';
+        scrollable.container.textContent = '';
         //oldChatInner.remove();
         this.chat.finishPeerChange(isTarget, isJump, lastMsgId);
         this.preloader.attach(this.bubblesContainer);
@@ -2000,9 +2008,9 @@ export default class ChatBubbles {
 
       // this.ladderDeferred.resolve();
 
-      this.scrollable.lastScrollDirection = 0;
-      this.scrollable.lastScrollTop = 0;
-      replaceContent(this.scrollable.container, this.chatInner);
+      scrollable.lastScrollDirection = 0;
+      scrollable.lastScrollTop = 0;
+      replaceContent(scrollable.container, chatInner);
 
       animationIntersector.unlockGroup(CHAT_ANIMATION_GROUP);
       animationIntersector.checkAnimations(false, CHAT_ANIMATION_GROUP/* , true */);
@@ -2013,7 +2021,7 @@ export default class ChatBubbles {
 
       //if(dialog && lastMsgID && lastMsgID !== topMessage && (this.bubbles[lastMsgID] || this.firstUnreadBubble)) {
       if(savedPosition) {
-        this.scrollable.scrollTop = savedPosition.top;
+        scrollable.scrollTop = savedPosition.top;
         /* const mountedByLastMsgId = this.getMountedBubble(lastMsgId);
         let bubble: HTMLElement = mountedByLastMsgId?.bubble;
         if(!bubble?.parentElement) {
@@ -2023,15 +2031,15 @@ export default class ChatBubbles {
         if(bubble) {
           const top = bubble.getBoundingClientRect().top;
           const distance = savedPosition.top - top;
-          this.scrollable.scrollTop += distance;
+          scrollable.scrollTop += distance;
         } */
       } else if((topMessage && isJump) || isTarget) {
         const fromUp = maxBubbleId > 0 && (maxBubbleId < lastMsgId || lastMsgId < 0);
         const followingUnread = readMaxId === lastMsgId && !isTarget;
         if(!fromUp && samePeer) {
-          this.scrollable.scrollTop = 99999;
+          scrollable.scrollTop = 99999;
         } else if(fromUp/*  && (samePeer || forwardingUnread) */) {
-          this.scrollable.scrollTop = 0;
+          scrollable.scrollTop = 0;
         }
 
         const mountedByLastMsgId = this.getMountedBubble(lastMsgId);
@@ -2048,7 +2056,7 @@ export default class ChatBubbles {
           }
         }
       } else {
-        this.scrollable.scrollTop = 99999;
+        scrollable.scrollTop = 99999;
       }
 
       this.onScroll();
@@ -2056,7 +2064,7 @@ export default class ChatBubbles {
       const middleware = this.getMiddleware();
       const afterSetPromise = Promise.all([setPeerPromise, getHeavyAnimationPromise()]);
       afterSetPromise.then(() => { // check whether list isn't full
-        this.scrollable.checkForTriggers();
+        scrollable.checkForTriggers();
       });
 
       this.chat.dispatchEvent('setPeer', lastMsgId, !isJump);
@@ -2074,7 +2082,7 @@ export default class ChatBubbles {
             return;
           }
 
-          this.scrollable.checkForTriggers();
+          scrollable.checkForTriggers();
 
           if(needFetchInterval) {
             const f = () => {
@@ -2092,7 +2100,7 @@ export default class ChatBubbles {
   
                   const slice = historyStorage.history.slice;
                   const isBottomEnd = slice.isEnd(SliceEnd.Bottom);
-                  if(this.scrollable.loadedAll.bottom && this.scrollable.loadedAll.bottom !== isBottomEnd) {
+                  if(scrollable.loadedAll.bottom && scrollable.loadedAll.bottom !== isBottomEnd) {
                     this.setLoaded('bottom', isBottomEnd);
                     this.onScroll();
                   }
@@ -2114,14 +2122,14 @@ export default class ChatBubbles {
         });
       }
       
-      this.log('scrolledAllDown:', this.scrollable.loadedAll.bottom);
+      this.log('scrolledAllDown:', scrollable.loadedAll.bottom);
 
       //if(!this.unreaded.length && dialog) { // lol
-      if(this.scrollable.loadedAll.bottom && topMessage && !this.unreaded.size) { // lol
+      if(scrollable.loadedAll.bottom && topMessage && !this.unreaded.size) { // lol
         this.onScrolledAllDown();
       }
 
-      if(this.chat.type === 'chat') {
+      if(chatType === 'chat') {
         const dialog = this.appMessagesManager.getDialogOnly(peerId);
         if(dialog?.pFlags.unread_mark) {
           this.appMessagesManager.markDialogUnread(peerId, true);
@@ -2624,7 +2632,7 @@ export default class ChatBubbles {
       if(message.pFlags.unread || isOutgoing) this.unreadOut.add(message.mid);
       let status = '';
       if(isOutgoing) status = 'is-sending';
-      else status = message.pFlags.unread ? 'is-sent' : 'is-read';
+      else status = message.pFlags.unread || message.pFlags.is_scheduled ? 'is-sent' : 'is-read';
       bubble.classList.add(status);
     }
 

@@ -609,6 +609,33 @@ const lang = {
   "Contacts.PhoneNumber.NotRegistred": "The person with this phone number is not registered on Telegram yet.",
   "Channel.UsernameAboutChannel": "People can share this link with others and can find your channel using Telegram search.",
   "Channel.UsernameAboutGroup": "People can share this link with others and find your group using Telegram search.",
+  "Chat.Accessory.Forward": {
+    "one_value": "Forward Message",
+    "other_value": "Forward %d Messages"
+  },
+  "Chat.Accessory.Forward.You": "You",
+  "Chat.Accessory.Forward.From": "From",
+  "Chat.Accessory.Hidden": {
+    "one_value": "Forward Message (sender's name hidden)",
+    "other_value": "Forward %d Messages (senders' names hidden)"
+  },
+  "Chat.Alert.Forward.Action.Another": "Forward to Another Chat",
+  "Chat.Alert.Forward.Action.Hide1": {
+    "one_value": "Hide Sender's Name",
+    "other_value": "Hide Senders' Names"
+  },
+  "Chat.Alert.Forward.Action.Show1": {
+    "one_value": "Show Sender's Name",
+    "other_value": "Show Senders' Names"
+  },
+  "Chat.Alert.Forward.Action.ShowCaption": {
+    "one_value": "Show Caption",
+    "other_value": "Show Captions"
+  },
+  "Chat.Alert.Forward.Action.HideCaption": {
+    "one_value": "Hide Caption",
+    "other_value": "Hide Captions"
+  },
   "Chat.CopySelectedText": "Copy Selected Text",
   "Chat.Confirm.Unpin": "Would you like to unpin this message?",
   "Chat.Date.ScheduledFor": "Scheduled for %@",
