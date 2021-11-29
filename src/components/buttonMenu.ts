@@ -16,10 +16,12 @@ export type ButtonMenuItemOptions = {
   icon?: string, 
   text?: LangPackKey, 
   regularText?: string, 
-  onClick: (e: MouseEvent | TouchEvent) => void, 
+  onClick: (e: MouseEvent | TouchEvent) => void | boolean, 
   element?: HTMLElement,
+  textElement?: HTMLElement,
   options?: AttachClickOptions,
   checkboxField?: CheckboxField,
+  noCheckboxClickListener?: boolean,
   keepOpen?: boolean
   /* , cancelEvent?: true */
 };
@@ -27,34 +29,43 @@ export type ButtonMenuItemOptions = {
 const ButtonMenuItem = (options: ButtonMenuItemOptions) => {
   if(options.element) return options.element;
 
-  const {icon, text, onClick} = options;
+  const {icon, text, onClick, checkboxField, noCheckboxClickListener} = options;
   const el = document.createElement('div');
   el.className = 'btn-menu-item' + (icon ? ' tgico-' + icon : '');
   ripple(el);
 
-  const t = text ? i18n(text) : document.createElement('span');
-  if(options.regularText) t.innerHTML = options.regularText;
-  t.classList.add('btn-menu-item-text');
-  el.append(t);
-
-  if(options.checkboxField) {
-    el.append(options.checkboxField.label);
-    attachClickEvent(el, () => {
-      options.checkboxField.checked = !options.checkboxField.checked;
-    }, options.options);
+  let textElement = options.textElement;
+  if(!textElement) {
+    textElement = options.textElement = text ? i18n(text) : document.createElement('span');
+    if(options.regularText) textElement.innerHTML = options.regularText;
   }
+  
+  textElement.classList.add('btn-menu-item-text');
+  el.append(textElement);
 
-  const keepOpen = !!options.checkboxField || !!options.keepOpen;
+  const keepOpen = !!checkboxField || !!options.keepOpen;
 
   // * cancel mobile keyboard close
-  attachClickEvent(el, CLICK_EVENT_NAME !== 'click' || keepOpen ? (e) => {
+  attachClickEvent(el, /* CLICK_EVENT_NAME !== 'click' || keepOpen ? */ (e) => {
     cancelEvent(e);
-    onClick(e);
+    const result = onClick(e);
+
+    if(result === false) {
+      return;
+    }
 
     if(!keepOpen) {
       closeBtnMenu();
     }
-  } : onClick, options.options);
+
+    if(checkboxField && !noCheckboxClickListener/*  && result !== false */) {
+      checkboxField.checked = checkboxField.input.type === 'radio' ? true : !checkboxField.checked;
+    }
+  }/*  : onClick */, options.options);
+
+  if(checkboxField) {
+    el.append(checkboxField.label);
+  }
 
   return options.element = el;
 };

@@ -454,6 +454,8 @@ $chat-helper-size: 36px;
 
 		.reply-wrapper {
 			height: 0 !important;
+      opacity: 0;
+      pointer-events: none;
 		}
 
 		.btn-send {
@@ -988,14 +990,60 @@ $chat-helper-size: 36px;
 				order: 0;
 				pointer-events: none;
 
-				display: none;
+				// display: none;
 			}
 
 			&-cancel {
-				// order: 2;
-				order: 0;
+				order: 2;
+				// order: 0;
 			}
+
+      &-subtitle {
+        color: var(--secondary-text-color) !important;
+      }
+
+      .peer-title {
+        font-weight: 400;
+      }
 		}
+
+    .btn-menu {
+      top: auto;
+      bottom: calc(100% + 1.0625rem);
+      left: 3.125rem;
+      transform: scale(1) !important;
+
+      &-item {
+        padding-right: 1.5rem;
+
+        &-text {
+          order: 1;
+        }
+
+        .checkbox {
+          &-field {
+            --size: 1.5rem;
+            order: 0;
+            margin: 0 2rem 0 0;
+          }
+
+          &-box {
+            &-border,
+            &-background {
+              display: none;
+            }
+
+            &-check use {
+              stroke: var(--primary-color);
+            }
+          }
+        }
+      }
+
+      @include respond-to(handhelds) {
+        left: calc(var(--padding-horizontal) * -1);
+      }
+    }
 
 		/* span.emoji {
 			margin: 0 .125rem;

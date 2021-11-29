@@ -553,7 +553,9 @@ export default class VideoPlayer extends EventListenerBase<{
     const buttons: Parameters<typeof ButtonMenu>[0] = [0.25, 0.5, 1, 1.25, 1.5, 2].map((rate) => {
       return { 
         regularText: rate === 1 ? 'Normal' : '' + rate, 
-        onClick: () => this.video.playbackRate = rate
+        onClick: () => {
+          this.video.playbackRate = rate;
+        }
       };
     });
     const btnMenu = ButtonMenu(buttons);

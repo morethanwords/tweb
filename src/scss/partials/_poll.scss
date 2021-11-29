@@ -292,7 +292,10 @@ poll-element {
       font-size: 20px;
       line-height: 16px;
       animation: none;
-      transition: opacity .2s ease;
+
+      @include animation-level(2) {
+        transition: opacity .2s ease;
+      }
     }
   }
 

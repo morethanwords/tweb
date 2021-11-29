@@ -45,6 +45,7 @@ export default class CheckboxField {
     }
 
     const input = this.input = document.createElement('input');
+    input.classList.add('checkbox-field-input');
     input.type = 'checkbox';
     if(options.name) {
       input.id = 'input-' + options.name;

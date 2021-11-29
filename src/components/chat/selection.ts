@@ -622,7 +622,7 @@ export class SearchSelection extends AppSelection {
         attachClickEvent(this.selectionForwardBtn, () => {
           const obj: {[fromPeerId: PeerId]: number[]} = {};
           for(const [fromPeerId, mids] of this.selectedMids) {
-            obj[fromPeerId] = Array.from(mids);
+            obj[fromPeerId] = Array.from(mids).sort((a, b) => a - b);
           }
 
           new PopupForward(obj, () => {
@@ -897,7 +897,7 @@ export default class ChatSelection extends AppSelection {
           attachClickEvent(this.selectionForwardBtn, () => {
             const obj: {[fromPeerId: PeerId]: number[]} = {};
             for(const [fromPeerId, mids] of this.selectedMids) {
-              obj[fromPeerId] = Array.from(mids);
+              obj[fromPeerId] = Array.from(mids).sort((a, b) => a - b);
             }
 
             new PopupForward(obj, () => {
