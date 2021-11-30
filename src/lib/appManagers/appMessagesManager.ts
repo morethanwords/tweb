@@ -1924,7 +1924,7 @@ export class AppMessagesManager {
         keys.push('views', 'forwards');
       }
 
-      if(!options.dropCaptions) {
+      if(!options.dropCaptions || !originalMessage.media) {
         keys.push('message');
       }
 
