@@ -1981,7 +1981,7 @@ export default class ChatInput {
             silent: sendSilent,
             scheduleDate: scheduleDate,
             dropAuthor: this.forwardElements.hideSender.checkboxField.checked,
-            dropCaptions: this.forwardElements.hideCaption.checkboxField.checked
+            dropCaptions: this.isDroppingCaptions()
           });
         }
 
@@ -2033,6 +2033,10 @@ export default class ChatInput {
     const hideCaptionCheckboxField = this.forwardElements.hideCaption.checkboxField;
     return !hideCaptionCheckboxField.checked ||
       findUpTag(hideCaptionCheckboxField.label, 'FORM').classList.contains('hide');
+  }
+
+  private isDroppingCaptions() {
+    return !this.canToggleHideAuthor();
   }
 
   /* public sendSomething(callback: () => void, force = false) {
@@ -2099,6 +2103,15 @@ export default class ChatInput {
         }
       });
 
+      const form = findUpTag(this.forwardElements.showCaption.checkboxField.label, 'FORM');
+      form.classList.toggle('hide', !messagesWithCaptionsLength);
+      const hideCaption = this.forwardElements.hideCaption.checkboxField.checked;
+      if(messagesWithCaptionsLength && hideCaption) {
+        this.forwardElements.hideSender.checkboxField.setValueSilently(true);
+      } else if(this.forwardWasDroppingAuthor !== undefined) {
+        (this.forwardWasDroppingAuthor ? this.forwardElements.hideSender : this.forwardElements.showSender).checkboxField.setValueSilently(true);
+      }
+
       const titleKey: LangPackKey = this.forwardElements.showSender.checkboxField.checked ? 'Chat.Accessory.Forward' : 'Chat.Accessory.Hidden';
       const title = i18n(titleKey, [length]);
 
@@ -2150,15 +2163,6 @@ export default class ChatInput {
         intl.args = [idx < 2 ? fromPeerIds.length : messagesWithCaptionsLength];
         intl.update();
       });
-
-      const form = findUpTag(this.forwardElements.showCaption.checkboxField.label, 'FORM');
-      form.classList.toggle('hide', !messagesWithCaptionsLength);
-      const hideCaption = this.forwardElements.hideCaption.checkboxField.checked;
-      if(messagesWithCaptionsLength && hideCaption) {
-        this.forwardElements.hideSender.checkboxField.setValueSilently(true);
-      } else if(this.forwardWasDroppingAuthor !== undefined) {
-        (this.forwardWasDroppingAuthor ? this.forwardElements.hideSender : this.forwardElements.showSender).checkboxField.setValueSilently(true);
-      }
 
       if(this.forwardHover) {
         this.forwardHover.attachButtonListener(newReply, this.listenerSetter);
