@@ -82,8 +82,6 @@ import MEDIA_MIME_TYPES_SUPPORTED from '../../environment/mediaMimeTypesSupport'
 import appMediaPlaybackController from '../appMediaPlaybackController';
 import { NULL_PEER_ID } from '../../lib/mtproto/mtproto_config';
 import setCaretAt from '../../helpers/dom/setCaretAt';
-import getKeyFromEvent from '../../helpers/dom/getKeyFromEvent';
-import getKeyFromEventCaseInsensitive from '../../helpers/dom/getKeyFromEventCaseInsensitive';
 import CheckboxField from '../checkboxField';
 import DropdownHover from '../../helpers/dropdownHover';
 import RadioForm from '../radioForm';
@@ -1086,7 +1084,7 @@ export default class ChatInput {
 
   private attachMessageInputListeners() {
     this.listenerSetter.add(this.messageInput)('keydown', (e: KeyboardEvent) => {
-      const key = getKeyFromEvent(e);
+      const key = e.key;
       if(isSendShortcutPressed(e)) {
         cancelEvent(e);
         this.sendMessage();
@@ -1288,24 +1286,24 @@ export default class ChatInput {
   private handleMarkdownShortcut = (e: KeyboardEvent) => {
     // console.log('handleMarkdownShortcut', e);
     const formatKeys: {[key: string]: MarkdownType} = {
-      'B': 'bold',
-      'I': 'italic',
-      'U': 'underline',
-      'S': 'strikethrough',
-      'M': 'monospace'
+      'KeyB': 'bold',
+      'KeyI': 'italic',
+      'KeyU': 'underline',
+      'KeyS': 'strikethrough',
+      'KeyM': 'monospace'
     };
 
     if(this.appImManager.markupTooltip) {
-      formatKeys['K'] = 'link';
+      formatKeys['KeyK'] = 'link';
     }
 
-    const key = getKeyFromEventCaseInsensitive(e);
-    const applyMarkdown = formatKeys[key];
+    const code = e.code;
+    const applyMarkdown = formatKeys[code];
 
     const selection = document.getSelection();
     if(selection.toString().trim().length && applyMarkdown) {
       // * костыльчик
-      if(key === 'K') {
+      if(code === 'KeyK') {
         this.appImManager.markupTooltip.showLinkEditor();
       } else {
         this.applyMarkdown(applyMarkdown);
@@ -1315,7 +1313,7 @@ export default class ChatInput {
     }
 
     //return;
-    if(key === 'Z') {
+    if(code === 'KeyZ') {
       let html = this.messageInput.innerHTML;
 
       if(e.shiftKey) {

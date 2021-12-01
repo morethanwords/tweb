@@ -21,7 +21,6 @@ import { attachClickEvent } from '../helpers/dom/clickEvent';
 import htmlToSpan from '../helpers/dom/htmlToSpan';
 import replaceContent from '../helpers/dom/replaceContent';
 import toggleDisability from '../helpers/dom/toggleDisability';
-import getKeyFromEvent from '../helpers/dom/getKeyFromEvent';
 
 const TEST = false;
 let passwordInput: HTMLInputElement;
@@ -126,7 +125,7 @@ let onFirstMount = (): Promise<any> => {
     this.classList.remove('error');
     btnNextI18n.update({key: 'Login.Next'});
 
-    if(getKeyFromEvent(e) === 'Enter') {
+    if(e.key === 'Enter') {
       return onSubmit();
     }
   });

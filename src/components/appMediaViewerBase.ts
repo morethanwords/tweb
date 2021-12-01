@@ -42,7 +42,6 @@ import EventListenerBase from "../helpers/eventListenerBase";
 import { MyMessage } from "../lib/appManagers/appMessagesManager";
 import RichTextProcessor from "../lib/richtextprocessor";
 import { NULL_PEER_ID } from "../lib/mtproto/mtproto_config";
-import getKeyFromEventCaseInsensitive from "../helpers/dom/getKeyFromEventCaseInsensitive";
 
 const ZOOM_STEP = 0.5;
 const ZOOM_INITIAL_VALUE = 1;
@@ -493,7 +492,7 @@ export default class AppMediaViewerBase<
       return;
     }
 
-    const key = getKeyFromEventCaseInsensitive(e);
+    const key = e.key;
     
     let good = true;
     if(key === 'ArrowRight') {

@@ -5,7 +5,6 @@
  */
 
 import fastSmoothScroll from "../fastSmoothScroll";
-import getKeyFromEventCaseInsensitive from "./getKeyFromEventCaseInsensitive";
 import { cancelEvent } from "./cancelEvent";
 import { attachClickEvent, detachClickEvent } from "./clickEvent";
 import findUpAsChild from "./findUpAsChild";
@@ -89,7 +88,7 @@ export default function attachListNavigation({list, type, onSelect, once, waitFo
   }
 
   let onKeyDown = (e: KeyboardEvent) => {
-    const key = getKeyFromEventCaseInsensitive(e);
+    const key = e.key;
     if(!keyNames.has(key as any)) {
       if(key === 'Enter' || (type !== 'xy' && key === 'Tab')) {
         cancelEvent(e);
@@ -154,7 +153,7 @@ export default function attachListNavigation({list, type, onSelect, once, waitFo
   if(waitForKey) {
     const _onKeyDown = onKeyDown;
     onKeyDown = (e) => {
-      if(getKeyFromEventCaseInsensitive(e) === waitForKey) {
+      if(e.key === waitForKey) {
         cancelEvent(e);
 
         document.removeEventListener(HANDLE_EVENT, onKeyDown, {capture: true});

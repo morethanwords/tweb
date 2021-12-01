@@ -10,7 +10,6 @@ import { cancelEvent } from "../../../../helpers/dom/cancelEvent";
 import { canFocus } from "../../../../helpers/dom/canFocus";
 import { attachClickEvent } from "../../../../helpers/dom/clickEvent";
 import replaceContent from "../../../../helpers/dom/replaceContent";
-import getKeyFromEvent from "../../../../helpers/dom/getKeyFromEvent";
 import { AccountPassword } from "../../../../layer";
 import I18n, { i18n } from "../../../../lib/langPack";
 import passwordManager from "../../../../lib/mtproto/passwordManager";
@@ -65,7 +64,7 @@ export default class AppTwoStepVerificationEnterPasswordTab extends SliderSuperT
         textEl.update();
       }
   
-      if(getKeyFromEvent(e) === 'Enter') {
+      if(e.key === 'Enter') {
         return onContinueClick();
       }
     });
