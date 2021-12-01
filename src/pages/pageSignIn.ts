@@ -40,7 +40,6 @@ import stateStorage from "../lib/stateStorage";
 import rootScope from "../lib/rootScope";
 import TelInputField from "../components/telInputField";
 import IS_EMOJI_SUPPORTED from "../environment/emojiSupport";
-import getKeyFromEvent from "../helpers/dom/getKeyFromEvent";
 
 //import _countries from '../countries_pretty.json';
 let btnNext: HTMLButtonElement = null, btnQr: HTMLButtonElement;
@@ -233,7 +232,7 @@ let onFirstMount = () => {
   }, {capture: true}); */
 
   countryInput.addEventListener('keyup', (e) => {
-    const key = getKeyFromEvent(e);
+    const key = e.key;
     if(e.ctrlKey || key === 'Control') return false;
 
     //let i = new RegExp('^' + this.value, 'i');
@@ -304,7 +303,7 @@ let onFirstMount = () => {
 
   telEl.addEventListener('keypress', (e) => {
     //console.log('keypress', this.value);
-    if(!btnNext.style.visibility &&/* this.value.length >= 9 && */ getKeyFromEvent(e) === 'Enter') {
+    if(!btnNext.style.visibility &&/* this.value.length >= 9 && */ e.key === 'Enter') {
       return onSubmit();
     }
   });

@@ -72,7 +72,6 @@ import { NULL_PEER_ID } from '../mtproto/mtproto_config';
 import telegramMeWebManager from '../mtproto/telegramMeWebManager';
 import { ONE_DAY } from '../../helpers/date';
 import { numberThousandSplitter } from '../../helpers/number';
-import getKeyFromEventCaseInsensitive from '../../helpers/dom/getKeyFromEventCaseInsensitive';
 
 //console.log('appImManager included33!');
 
@@ -445,7 +444,7 @@ export class AppImManager {
   private attachKeydownListener() {
     const IGNORE_KEYS = new Set(['PageUp', 'PageDown', 'Meta', 'Control']);
     const onKeyDown = (e: KeyboardEvent) => {
-      const key = getKeyFromEventCaseInsensitive(e);
+      const key = e.key;
       if(rootScope.isOverlayActive || IGNORE_KEYS.has(key)) return;
       
       const target = e.target as HTMLElement;
@@ -456,7 +455,7 @@ export class AppImManager {
 
       const chat = this.chat;
 
-      if(key === 'C' && (e.ctrlKey || e.metaKey) && target.tagName !== 'INPUT') {
+      if(e.code === 'KeyC' && (e.ctrlKey || e.metaKey) && target.tagName !== 'INPUT') {
         return;
       } else if(e.altKey && (key === 'ArrowUp' || key === 'ArrowDown')) {
         const folder = appMessagesManager.dialogsStorage.getFolderDialogs(rootScope.filterId, true);

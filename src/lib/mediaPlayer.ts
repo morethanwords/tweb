@@ -18,7 +18,6 @@ import rootScope from "./rootScope";
 import findUpClassName from "../helpers/dom/findUpClassName";
 import { GrabEvent } from "../helpers/dom/attachGrabListeners";
 import { attachClickEvent } from "../helpers/dom/clickEvent";
-import getKeyFromEventCaseInsensitive from "../helpers/dom/getKeyFromEventCaseInsensitive";
 
 export class MediaProgressLine extends RangeSelector {
   protected filledLoad: HTMLDivElement;
@@ -387,18 +386,18 @@ export default class VideoPlayer extends EventListenerBase<{
             return;
           }
 
-          const key = getKeyFromEventCaseInsensitive(e);
+          const {key, code} = e;
 
           let good = true;
-          if(key === 'F') {
+          if(code === 'KeyF') {
             this.toggleFullScreen(fullScreenButton);
-          } else if(key === 'M') {
+          } else if(code === 'KeyM') {
             appMediaPlaybackController.muted = !appMediaPlaybackController.muted;
-          } else if(key === ' ') {
+          } else if(code === 'Space') {
             this.togglePlay();
-          } else if(e.altKey && key === '=') {
+          } else if(e.altKey && code === 'Equal') {
             appMediaPlaybackController.playbackRate += .25;
-          } else if(e.altKey && key === '-') {
+          } else if(e.altKey && code === 'Minus') {
             appMediaPlaybackController.playbackRate -= .25;
           } else if(this.wrapper.classList.contains('ckin__fullscreen') && (key === 'ArrowLeft' || key === 'ArrowRight')) {
             if(key === 'ArrowLeft') appMediaPlaybackController.seekBackward({action: 'seekbackward'});
