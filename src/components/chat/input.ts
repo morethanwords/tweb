@@ -133,7 +133,7 @@ export default class ChatInput {
     hideCaption: ButtonMenuItemOptions,
     container: HTMLElement,
     modifyArgs?: ButtonMenuItemOptions[]
-  } = {} as any;  
+  };  
   private forwardHover: DropdownHover;
   private forwardWasDroppingAuthor: boolean;
 
@@ -956,42 +956,43 @@ export default class ChatInput {
   public finishPeerChange() {
     const peerId = this.chat.peerId;
 
-    this.chatInput.style.display = '';
+    const {forwardElements, btnScheduled, replyKeyboard, sendMenu, goDownBtn, chatInput} = this;
+    chatInput.style.display = '';
     
     const isBroadcast = this.appPeersManager.isBroadcast(peerId);
-    this.goDownBtn.classList.toggle('is-broadcast', isBroadcast);
-    this.goDownBtn.classList.remove('hide');
+    goDownBtn.classList.toggle('is-broadcast', isBroadcast);
+    goDownBtn.classList.remove('hide');
 
     if(this.goDownUnreadBadge) {
       this.setUnreadCount();
     }
 
     if(this.chat.type === 'pinned') {
-      this.chatInput.classList.toggle('can-pin', this.appPeersManager.canPinMessage(peerId));
+      chatInput.classList.toggle('can-pin', this.appPeersManager.canPinMessage(peerId));
     }/*  else if(this.chat.type === 'chat') {
     } */
 
-    if(this.forwardElements) {
+    if(forwardElements) {
       this.forwardWasDroppingAuthor = false;
-      this.forwardElements.showCaption.checkboxField.setValueSilently(true);
-      this.forwardElements.showSender.checkboxField.setValueSilently(true);
+      forwardElements.showCaption.checkboxField.setValueSilently(true);
+      forwardElements.showSender.checkboxField.setValueSilently(true);
     }
 
-    if(this.btnScheduled) {
-      this.btnScheduled.classList.add('hide');
+    if(btnScheduled) {
+      btnScheduled.classList.add('hide');
       const middleware = this.chat.bubbles.getMiddleware();
       this.appMessagesManager.getScheduledMessages(peerId).then(mids => {
         if(!middleware()) return;
-        this.btnScheduled.classList.toggle('hide', !mids.length);
+        btnScheduled.classList.toggle('hide', !mids.length);
       });
     }
 
-    if(this.replyKeyboard) {
-      this.replyKeyboard.setPeer(peerId);
+    if(replyKeyboard) {
+      replyKeyboard.setPeer(peerId);
     }
 
-    if(this.sendMenu) {
-      this.sendMenu.setPeerId(peerId);
+    if(sendMenu) {
+      sendMenu.setPeerId(peerId);
     }
 
     if(this.messageInput) {
@@ -1008,14 +1009,15 @@ export default class ChatInput {
   }
 
   public updateMessageInput() {
+    const {chatInput, attachMenu, messageInput} = this;
     const {peerId, threadId} = this.chat;
     const canWrite = this.appMessagesManager.canSendToPeer(peerId, threadId);
-    this.chatInput.classList.add('no-transition');
-    this.chatInput.classList.toggle('is-hidden', !canWrite);
-    void this.chatInput.offsetLeft; // reflow
-    this.chatInput.classList.remove('no-transition');
+    chatInput.classList.add('no-transition');
+    chatInput.classList.toggle('is-hidden', !canWrite);
+    void chatInput.offsetLeft; // reflow
+    chatInput.classList.remove('no-transition');
 
-    const i = I18n.weakMap.get(this.messageInput) as I18n.IntlElement;
+    const i = I18n.weakMap.get(messageInput) as I18n.IntlElement;
     if(i) {
       let key: LangPackKey;
       if(threadId) {
@@ -1041,18 +1043,18 @@ export default class ChatInput {
     });
 
     if(!canWrite) {
-      this.messageInput.removeAttribute('contenteditable');
+      messageInput.removeAttribute('contenteditable');
     } else {
-      this.messageInput.setAttribute('contenteditable', 'true');
+      messageInput.setAttribute('contenteditable', 'true');
       this.setDraft(undefined, false);
 
-      if(!this.messageInput.innerHTML) {
+      if(!messageInput.innerHTML) {
         this.messageInputField.onFakeInput();
       }
     }
     
-    this.attachMenu.toggleAttribute('disabled', !visible.length);
-    this.attachMenu.classList.toggle('btn-disabled', !visible.length);
+    attachMenu.toggleAttribute('disabled', !visible.length);
+    attachMenu.classList.toggle('btn-disabled', !visible.length);
     this.updateSendBtn();
   }
 
@@ -1805,8 +1807,9 @@ export default class ChatInput {
       
     if(!findUpClassName(e.target, 'reply')) return;
     if(this.helperType === 'forward') {
-      if(IS_TOUCH_SUPPORTED && !this.forwardElements.container.classList.contains('active')) {
-        openBtnMenu(this.forwardElements.container);
+      const {forwardElements} = this;
+      if(forwardElements && IS_TOUCH_SUPPORTED && !forwardElements.container.classList.contains('active')) {
+        openBtnMenu(forwardElements.container);
       }
     } else if(this.helperType === 'reply') {
       this.chat.setMessageId(this.replyToMsgId);
@@ -1978,7 +1981,7 @@ export default class ChatInput {
           this.appMessagesManager.forwardMessages(peerId, fromPeerId.toPeerId(), forwarding[fromPeerId], {
             silent: sendSilent,
             scheduleDate: scheduleDate,
-            dropAuthor: this.forwardElements.hideSender.checkboxField.checked,
+            dropAuthor: this.forwardElements && this.forwardElements.hideSender.checkboxField.checked,
             dropCaptions: this.isDroppingCaptions()
           });
         }
@@ -2028,7 +2031,9 @@ export default class ChatInput {
   }
 
   private canToggleHideAuthor() {
-    const hideCaptionCheckboxField = this.forwardElements.hideCaption.checkboxField;
+    const {forwardElements} = this;
+    if(!forwardElements) return false;
+    const hideCaptionCheckboxField = forwardElements.hideCaption.checkboxField;
     return !hideCaptionCheckboxField.checked ||
       findUpTag(hideCaptionCheckboxField.label, 'FORM').classList.contains('hide');
   }
@@ -2101,16 +2106,17 @@ export default class ChatInput {
         }
       });
 
-      const form = findUpTag(this.forwardElements.showCaption.checkboxField.label, 'FORM');
+      const {forwardElements} = this;
+      const form = findUpTag(forwardElements.showCaption.checkboxField.label, 'FORM');
       form.classList.toggle('hide', !messagesWithCaptionsLength);
-      const hideCaption = this.forwardElements.hideCaption.checkboxField.checked;
+      const hideCaption = forwardElements.hideCaption.checkboxField.checked;
       if(messagesWithCaptionsLength && hideCaption) {
-        this.forwardElements.hideSender.checkboxField.setValueSilently(true);
+        forwardElements.hideSender.checkboxField.setValueSilently(true);
       } else if(this.forwardWasDroppingAuthor !== undefined) {
-        (this.forwardWasDroppingAuthor ? this.forwardElements.hideSender : this.forwardElements.showSender).checkboxField.setValueSilently(true);
+        (this.forwardWasDroppingAuthor ? forwardElements.hideSender : forwardElements.showSender).checkboxField.setValueSilently(true);
       }
 
-      const titleKey: LangPackKey = this.forwardElements.showSender.checkboxField.checked ? 'Chat.Accessory.Forward' : 'Chat.Accessory.Hidden';
+      const titleKey: LangPackKey = forwardElements.showSender.checkboxField.checked ? 'Chat.Accessory.Forward' : 'Chat.Accessory.Hidden';
       const title = i18n(titleKey, [length]);
 
       const senderTitles = document.createDocumentFragment();
@@ -2155,7 +2161,7 @@ export default class ChatInput {
   
       let newReply = this.setTopInfo('forward', f, title, subtitleFragment);
 
-      this.forwardElements.modifyArgs.forEach((b, idx) => {
+      forwardElements.modifyArgs.forEach((b, idx) => {
         const text = b.textElement;
         const intl: I18n.IntlElement = I18n.weakMap.get(text) as any;
         intl.args = [idx < 2 ? fromPeerIds.length : messagesWithCaptionsLength];
