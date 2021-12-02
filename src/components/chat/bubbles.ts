@@ -529,7 +529,7 @@ export default class ChatBubbles {
       });
     }
 
-    if(!IS_MOBILE) {
+    if(!IS_MOBILE && this.chat.type !== 'pinned') {
       this.listenerSetter.add(this.bubblesContainer)('dblclick', (e) => {
         if(this.chat.selection.isSelecting || 
           !this.appMessagesManager.canSendToPeer(this.peerId, this.chat.threadId)) {
