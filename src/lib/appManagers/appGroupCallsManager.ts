@@ -14,6 +14,7 @@ import constraintSupported, { MyMediaTrackSupportedConstraints } from "../../env
 import { IS_SAFARI } from "../../environment/userAgent";
 import { forEachReverse, indexOfAndSplice } from "../../helpers/array";
 import simulateEvent from "../../helpers/dom/dispatchEvent";
+import noop from "../../helpers/noop";
 import { safeAssign, safeReplaceObject } from "../../helpers/object";
 import { nextRandomUint } from "../../helpers/random";
 import throttle from "../../helpers/schedulers/throttle";
@@ -268,7 +269,7 @@ export class GroupCallInstance {
   private hadAutoPinnedSources: Set<GroupCallOutputSource>;
   private dispatchPinnedThrottled: () => void;
   private startVideoSharingPromise: Promise<void>;
-  startScreenSharingPromise: Promise<void>;
+  private startScreenSharingPromise: Promise<void>;
 
   constructor(options: {
     id: GroupCallInstance['id'],
@@ -303,6 +304,11 @@ export class GroupCallInstance {
     this.dispatchPinnedThrottled = throttle(() => {
       rootScope.dispatchEvent('group_call_pinned', {instance: this, source: this.pinnedSource});
     }, 0, false);
+
+    // possible Safari fix
+    const audio = new Audio();
+    audio.play().catch(noop);
+    this.elements.set('audio', audio);
   }
 
   get connectionState() {
