@@ -308,6 +308,9 @@ export class GroupCallInstance {
     // possible Safari fix
     const audio = new Audio();
     audio.play().catch(noop);
+    audio.autoplay = true;
+    audio.volume = 1.0;
+    this.player.append(audio);
     this.elements.set('audio', audio);
   }
 
@@ -638,9 +641,15 @@ export class GroupCallInstance {
       // audio.play();
 
       elements.set(elementEndpoint, element);
-    }/*  else {
-      element.srcObject = useStream;
-    } */
+    } else {
+      if(element.paused) {
+        element.play().catch(noop);
+      }
+
+      if(element.srcObject !== useStream) {
+        element.srcObject = useStream;
+      }
+    }
 
     if(isOutput) {
       const entry = description.getEntryBySource(+source);
