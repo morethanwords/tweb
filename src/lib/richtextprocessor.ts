@@ -883,6 +883,7 @@ namespace RichTextProcessor {
       switch(path[0]) {
         case 'joinchat':
         case 'addstickers':
+        case 'voicechat':
           onclick = path[0];
           break;
 
@@ -898,12 +899,13 @@ namespace RichTextProcessor {
       onclick = 'im';
     } else if((tgMatch = url.match(/tg:(?:\/\/)?(.+?)(?:\?|$)/))) {
       onclick = 'tg_' + tgMatch[1];
-      if(!(window as any)[onclick]) {
-        onclick = undefined;
-      }
     }/*  else if(unsafe) {
       url = 'tg://unsafe_url?url=' + encodeURIComponent(url);
     } */
+
+    if(!(window as any)[onclick]) {
+      onclick = undefined;
+    }
   
     return {url, onclick};
   }

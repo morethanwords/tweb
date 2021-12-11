@@ -14,7 +14,7 @@ import { MOUNT_CLASS_TO } from '../../config/debug';
 import { forEachReverse } from '../../helpers/array';
 import DATABASE_STATE from '../../config/databases/state';
 import { readBlobAsText } from '../../helpers/blob';
-import lottieLoader from '../lottieLoader';
+import lottieLoader from '../rlottie/lottieLoader';
 import mediaSizes from '../../helpers/mediaSizes';
 import { getEmojiToneIndex } from '../../vendor/emoji';
 import RichTextProcessor from '../richtextprocessor';
@@ -162,7 +162,10 @@ export class AppStickersManager {
             container: undefined,
             animationData: json,
             width: width ?? mediaSize.width,
-            height: height ?? mediaSize.height
+            height: height ?? mediaSize.height,
+            name: 'doc' + doc.id,
+            autoplay: false,
+            loop: false
           }, 'none', toneIndex);
 
           animation.addEventListener('firstFrame', () => {

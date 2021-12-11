@@ -4,11 +4,10 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-export const isWebWorker = typeof WorkerGlobalScope !== 'undefined' && self instanceof WorkerGlobalScope;
-export const isServiceWorker = typeof ServiceWorkerGlobalScope !== 'undefined' && self instanceof ServiceWorkerGlobalScope;
-export const isWorker = isWebWorker || isServiceWorker;
-
-// в SW может быть сразу две переменных TRUE, поэтому проверяю по последней
+// в SW может быть сразу две переменных TRUE
+export const IS_SERVICE_WORKER = typeof ServiceWorkerGlobalScope !== 'undefined' && self instanceof ServiceWorkerGlobalScope;
+export const IS_WEB_WORKER = typeof WorkerGlobalScope !== 'undefined' && self instanceof WorkerGlobalScope && !IS_SERVICE_WORKER;
+export const IS_WORKER = IS_WEB_WORKER || IS_SERVICE_WORKER;
 
 export const getWindowClients = () => {
   return (self as any as ServiceWorkerGlobalScope)
@@ -40,5 +39,5 @@ const notifyWorker = (...args: any[]) => {
 
 const noop = () => {};
 
-export const notifySomeone = isServiceWorker ? notifyServiceWorker.bind(null, false) : (isWebWorker ? notifyWorker : noop);
-export const notifyAll = isServiceWorker ? notifyServiceWorker.bind(null, true) : (isWebWorker ? notifyWorker : noop);
+export const notifySomeone = IS_SERVICE_WORKER ? notifyServiceWorker.bind(null, false) : (IS_WEB_WORKER ? notifyWorker : noop);
+export const notifyAll = IS_SERVICE_WORKER ? notifyServiceWorker.bind(null, true) : (IS_WEB_WORKER ? notifyWorker : noop);

@@ -51,10 +51,10 @@ export const langPack: {[actionType: string]: LangPackKey} = {
 	"messageActionPhoneCall.in_missed": "ChatList.Service.Call.Missed",
 	"messageActionPhoneCall.out_missed": "ChatList.Service.Call.Cancelled",
 
-	"messageActionGroupCall.started": "ActionGroupCallJustStarted",
-	"messageActionGroupCall.started_by": "ActionGroupCallStarted",
-	"messageActionGroupCall.started_byYou": "ActionGroupCallStartedByYou",
-	"messageActionGroupCall.ended": "ActionGroupCallEnded",
+	"messageActionGroupCall.started": "Chat.Service.VoiceChatStarted.Channel",
+	"messageActionGroupCall.started_by": "Chat.Service.VoiceChatStarted",
+	"messageActionGroupCall.started_byYou": "Chat.Service.VoiceChatStartedYou",
+	"messageActionGroupCall.ended": "Chat.Service.VoiceChatFinished.Channel",
 	"messageActionGroupCall.ended_by": "Chat.Service.VoiceChatFinished",
 	"messageActionGroupCall.ended_byYou": "Chat.Service.VoiceChatFinishedYou",
 
@@ -282,6 +282,15 @@ namespace I18n {
 		});
 	}
 
+  function pushNextArgument(out: ReturnType<typeof superFormatter>, args: FormatterArguments, indexHolder: {i: number}) {
+    const arg = args[indexHolder.i++];
+		if(Array.isArray(arg)) {
+			out.push(...arg as any);
+		} else {
+			out.push(arg);
+		}
+  }
+
 	export function superFormatter(input: string, args?: FormatterArguments, indexHolder = {i: 0}): Exclude<FormatterArgument, FormatterArgument[]>[] {
 		let out: ReturnType<typeof superFormatter> = [];
 		const regExp = /(\*\*)(.+?)\1|(\n)|(\[.+?\]\(.*?\))|un\d|%\d\$.|%./g;
@@ -305,28 +314,27 @@ namespace I18n {
 			} else if(p3) {
 				out.push(document.createElement('br'));
 			} else if(p4) {
-				const a = document.createElement('a');
-
-				const idx = p4.lastIndexOf(']');
+        const idx = p4.lastIndexOf(']');
 				const text = p4.slice(1, idx);
-				a.append(...superFormatter(text, args, indexHolder) as any);
-
+        
 				const url = p4.slice(idx + 2, p4.length - 1);
-				if(url) {
-					const wrappedUrl = RichTextProcessor.wrapUrl(url);
-					a.href = wrappedUrl.url;
-					if(wrappedUrl.onclick) a.setAttribute('onclick', wrappedUrl.onclick);
-					a.target = '_blank';
-				}
+        let a: HTMLAnchorElement;
+				if(url && RichTextProcessor.matchUrlProtocol(url)) {
+          a = document.createElement('a');
+          const wrappedUrl = RichTextProcessor.wrapUrl(url);
+          a.href = wrappedUrl.url;
+          if(wrappedUrl.onclick) a.setAttribute('onclick', wrappedUrl.onclick);
+          a.target = '_blank';
+				} else {
+          a = args[indexHolder.i++] as HTMLAnchorElement;
+          a.textContent = ''; // reset content
+        }
+
+        a.append(...superFormatter(text, args, indexHolder) as any);
 
 				out.push(a);
 			} else if(args) {
-				const arg = args[indexHolder.i++];
-				if(Array.isArray(arg)) {
-					out.push(...arg as any);
-				} else {
-					out.push(arg);
-				}
+        pushNextArgument(out, args, indexHolder);
 			}
 
 			lastIndex = offset + match.length;
@@ -362,8 +370,15 @@ namespace I18n {
 			//input = '[' + key + ']';
 			input = key;
 		}
+
+    const result = superFormatter(input, args);
+    if(plain) { // * let's try a hack now... (don't want to replace []() entity)
+      return result.map(item => item instanceof Node ? item.textContent : item).join('');
+    } else {
+      return result;
+    }
 		
-		if(plain) {
+		/* if(plain) {
 			if(args?.length) {
 				const regExp = /un\d|%\d\$.|%./g;
 				let i = 0;
@@ -375,7 +390,7 @@ namespace I18n {
 			return input;
 		} else {
 			return superFormatter(input, args);
-		}
+		} */
 	}
 
 	export const weakMap: WeakMap<HTMLElement, IntlElementBase<IntlElementBaseOptions>> = new WeakMap();
@@ -482,8 +497,17 @@ export function joinElementsWith(elements: (Node | string)[], joiner: typeof ele
 	return arr;
 }
 
-export function join(elements: (Node | string)[], useLast = true) {
-	return joinElementsWith(elements, (isLast) => i18n(isLast && useLast ? 'WordDelimiterLast' : 'WordDelimiter'));
+
+export function join(elements: (Node | string)[], useLast: boolean, plain: true): string;
+export function join(elements: (Node | string)[], useLast?: boolean, plain?: false): (string | Node)[];
+export function join(elements: (Node | string)[], useLast: boolean, plain: boolean): string | (string | Node)[];
+export function join(elements: (Node | string)[], useLast = true, plain?: boolean): string | (string | Node)[] {
+	const joined = joinElementsWith(elements, (isLast) => {
+    const langPackKey: LangPackKey = isLast && useLast ? 'WordDelimiterLast' : 'WordDelimiter';
+    return plain ? I18n.format(langPackKey, true) : i18n(langPackKey);
+  });
+
+  return plain ? joined.join('') : joined;
 }
 
 MOUNT_CLASS_TO.I18n = I18n;

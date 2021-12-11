@@ -11,6 +11,7 @@ import type { AppPeersManager } from "../../lib/appManagers/appPeersManager";
 import type { AppSidebarRight } from "../sidebarRight";
 import type { AppProfileManager } from "../../lib/appManagers/appProfileManager";
 import type { AppUsersManager } from "../../lib/appManagers/appUsersManager";
+import type { AppGroupCallsManager, MyGroupCall } from "../../lib/appManagers/appGroupCallsManager";
 import type Chat from "./chat";
 import { RIGHT_COLUMN_ACTIVE_CLASSNAME } from "../sidebarRight";
 import mediaSizes, { ScreenSize } from "../../helpers/mediaSizes";
@@ -37,7 +38,7 @@ import { attachClickEvent } from "../../helpers/dom/clickEvent";
 import findUpTag from "../../helpers/dom/findUpTag";
 import { toast, toastNew } from "../toast";
 import replaceContent from "../../helpers/dom/replaceContent";
-import { ChatFull } from "../../layer";
+import { ChatFull, Chat as MTChat, GroupCall } from "../../layer";
 import PopupPickUser from "../popups/pickUser";
 import PopupPeer from "../popups/peer";
 import generateVerifiedIcon from "../generateVerifiedIcon";
@@ -45,6 +46,9 @@ import { fastRaf } from "../../helpers/schedulers";
 import AppEditContactTab from "../sidebarRight/tabs/editContact";
 import appMediaPlaybackController from "../appMediaPlaybackController";
 import { NULL_PEER_ID } from "../../lib/mtproto/mtproto_config";
+import IS_GROUP_CALL_SUPPORTED from "../../environment/groupCallSupport";
+
+type ButtonToVerify = {element?: HTMLElement, verify: () => boolean};
 
 export default class ChatTopbar {
   public container: HTMLDivElement;
@@ -56,6 +60,7 @@ export default class ChatTopbar {
   private chatUtils: HTMLDivElement;
   private btnJoin: HTMLButtonElement;
   private btnPinned: HTMLButtonElement;
+  private btnGroupCall: HTMLButtonElement;
   private btnMute: HTMLButtonElement;
   private btnSearch: HTMLButtonElement;
   private btnMore: HTMLButtonElement;
@@ -70,18 +75,25 @@ export default class ChatTopbar {
 
   public listenerSetter: ListenerSetter;
 
-  private menuButtons: (ButtonMenuItemOptions & {verify: () => boolean})[] = [];
+  private menuButtons: (ButtonMenuItemOptions & {verify: () => boolean})[];
+  private buttonsToVerify: ButtonToVerify[];
+  private chatInfoContainer: HTMLDivElement;
 
-  constructor(private chat: Chat, 
+  constructor(
+    private chat: Chat, 
     private appSidebarRight: AppSidebarRight, 
     private appMessagesManager: AppMessagesManager, 
     private appPeersManager: AppPeersManager, 
     private appChatsManager: AppChatsManager, 
     private appNotificationsManager: AppNotificationsManager,
     private appProfileManager: AppProfileManager,
-    private appUsersManager: AppUsersManager
+    private appUsersManager: AppUsersManager,
+    private appGroupCallsManager: AppGroupCallsManager
   ) {
     this.listenerSetter = new ListenerSetter();
+
+    this.menuButtons = [];
+    this.buttonsToVerify = [];
   }
 
   public construct() {
@@ -94,6 +106,9 @@ export default class ChatTopbar {
     this.btnBack = ButtonIcon('left sidebar-close-button', {noRipple: true});
 
     // * chat info section
+    this.chatInfoContainer = document.createElement('div');
+    this.chatInfoContainer.classList.add('chat-info-container');
+
     this.chatInfo = document.createElement('div');
     this.chatInfo.classList.add('chat-info');
 
@@ -133,15 +148,7 @@ export default class ChatTopbar {
     this.chatAudio = new ChatAudio(this, this.chat, this.appMessagesManager);
 
     if(this.menuButtons.length) {
-      this.btnMore = ButtonMenuToggle({listenerSetter: this.listenerSetter}, 'bottom-left', this.menuButtons, (e) => {
-        cancelEvent(e);
-        this.menuButtons.forEach(button => {
-          button.element.classList.toggle('hide', !button.verify());
-        });
-
-        // delete button
-        this.menuButtons[this.menuButtons.length - 1].element.lastChild.replaceWith(i18n(this.appPeersManager.getDeleteButtonText(this.peerId)));
-      });
+      this.btnMore = ButtonMenuToggle({listenerSetter: this.listenerSetter}, 'bottom-left', this.menuButtons, this.verifyButtons);
     }
 
     this.chatUtils.append(...[
@@ -149,12 +156,16 @@ export default class ChatTopbar {
       this.pinnedMessage ? this.pinnedMessage.pinnedMessageContainer.divAndCaption.container : null, 
       this.btnJoin, 
       this.btnPinned, 
+      this.btnGroupCall, 
       this.btnMute, 
       this.btnSearch, 
       this.btnMore
     ].filter(Boolean));
 
-    this.container.append(this.btnBack, this.chatInfo, this.chatUtils);
+    this.pushButtonToVerify(this.btnGroupCall, this.verifyVideoChatButton);
+
+    this.chatInfoContainer.append(this.btnBack, this.chatInfo, this.chatUtils);
+    this.container.append(this.chatInfoContainer);
 
     if(this.chatAudio) {
       // this.container.append(this.chatAudio.divAndCaption.container, this.chatUtils);
@@ -169,7 +180,7 @@ export default class ChatTopbar {
     this.listenerSetter.add(mediaSizes)('changeScreen', this.onChangeScreen);
 
     attachClickEvent(this.container, (e) => {
-      const container: HTMLElement = findUpClassName(e.target, 'pinned-container');
+      const container = findUpClassName(e.target, 'pinned-container');
       blurActiveElement();
       if(container) {
         cancelEvent(e);
@@ -230,12 +241,61 @@ export default class ChatTopbar {
     attachClickEvent(this.btnBack, onBtnBackClick, {listenerSetter: this.listenerSetter});
   }
 
+  private pushButtonToVerify(element: HTMLElement, verify: () => boolean) {
+    if(!element) {
+      return;
+    }
+    
+    this.buttonsToVerify.push({element, verify});
+  }
+
+  private verifyButtons = (e?: Event) => {
+    const isMenuOpen = !!e || !!(this.btnMore && this.btnMore.classList.contains('menu-open'));
+
+    e && cancelEvent(e);
+
+    const verifyButtons = (buttons: ButtonToVerify[]) => {
+      buttons.forEach(button => {
+        button.element.classList.toggle('hide', !button.verify());
+      });
+    };
+
+    if(isMenuOpen) {
+      verifyButtons(this.menuButtons);
+
+      // delete button
+      this.menuButtons[this.menuButtons.length - 1].element.lastChild.replaceWith(i18n(this.appPeersManager.getDeleteButtonText(this.peerId)));
+    }
+
+    verifyButtons(this.buttonsToVerify);
+  };
+
+  private verifyVideoChatButton = (type?: 'group' | 'broadcast') => {
+    if(!IS_GROUP_CALL_SUPPORTED || this.peerId.isUser()) return false;
+
+    const currentGroupCall = this.appGroupCallsManager.groupCall;
+    const chatId = this.peerId.toChatId();
+    if(currentGroupCall?.chatId === chatId) {
+      return false;
+    }
+
+    if(type) {
+      if((this.peerId.isBroadcast() && type === 'group') || 
+        (this.peerId.isAnyGroup() && type === 'broadcast')) {
+        return false;
+      }
+    }
+
+    const chat = this.appChatsManager.getChatTyped(chatId);
+    return (chat as MTChat.chat).pFlags?.call_active || this.appChatsManager.hasRights(chatId, 'manage_call');
+  };
+
   public constructUtils() {
     this.menuButtons = [{
       icon: 'search',
       text: 'Search',
       onClick: () => {
-        this.chat.initSearch()
+        this.chat.initSearch();
       },
       verify: () => mediaSizes.isMobile
     }, /* {
@@ -261,16 +321,27 @@ export default class ChatTopbar {
       icon: 'comments',
       text: 'ViewDiscussion',
       onClick: () => {
+        const middleware = this.chat.bubbles.getMiddleware();
         this.appProfileManager.getChannelFull(this.peerId.toChatId()).then(channelFull => {
-          if(channelFull.linked_chat_id) {
+          if(middleware() && channelFull.linked_chat_id) {
             this.chat.appImManager.setInnerPeer(channelFull.linked_chat_id.toPeerId(true));
           }
         });
       },
       verify: () => {
-        const chatFull = this.appProfileManager.chatsFull[this.peerId.toChatId()];
-        return this.chat.type === 'chat' && this.appPeersManager.isBroadcast(this.peerId) && !!(chatFull as ChatFull.channelFull)?.linked_chat_id;
+        const chatFull = this.appProfileManager.getCachedFullChat(this.peerId.toChatId());
+        return this.chat.type === 'chat' && !!(chatFull as ChatFull.channelFull)?.linked_chat_id;
       }
+    }, {
+      icon: 'videochat',
+      text: 'PeerInfo.Action.LiveStream',
+      onClick: this.onJoinGroupCallClick,
+      verify: this.verifyVideoChatButton.bind(this, 'broadcast')
+    }, {
+      icon: 'videochat',
+      text: 'PeerInfo.Action.VoiceChat',
+      onClick: this.onJoinGroupCallClick,
+      verify: this.verifyVideoChatButton.bind(this, 'group')
     }, {
       icon: 'select',
       text: 'Chat.Menu.SelectMessages',
@@ -375,9 +446,9 @@ export default class ChatTopbar {
         }).show();
       },
       verify: () => {
-        const userId = this.peerId.toUserId();
-        const userFull = this.appProfileManager.usersFull[userId];
-        return this.appPeersManager.isUser(this.peerId) && this.peerId !== rootScope.myId && userFull && !userFull.pFlags?.blocked;
+        if(!this.peerId.isUser()) return false;
+        const userFull = this.appProfileManager.getCachedFullUser(this.peerId.toUserId());
+        return this.peerId !== rootScope.myId && userFull && !userFull.pFlags?.blocked;
       }
     }, {
       icon: 'lockoff',
@@ -390,8 +461,8 @@ export default class ChatTopbar {
         });
       },
       verify: () => {
-        const userFull = this.appProfileManager.usersFull[this.peerId.toUserId()];
-        return this.appPeersManager.isUser(this.peerId) && !!userFull?.pFlags?.blocked;
+        const userFull = this.appProfileManager.getCachedFullUser(this.peerId.toUserId());
+        return !!userFull?.pFlags?.blocked;
       }
     }, {
       icon: 'delete danger',
@@ -403,11 +474,22 @@ export default class ChatTopbar {
     }];
 
     this.btnSearch = ButtonIcon('search');
-    attachClickEvent(this.btnSearch, (e) => {
-      cancelEvent(e);
+    this.attachClickEvent(this.btnSearch, (e) => {
       this.chat.initSearch();
+    }, true);
+  }
+
+  public attachClickEvent(el: HTMLElement, cb: (e: MouseEvent) => void, noBlur?: boolean) {
+    attachClickEvent(el, (e) => {
+      cancelEvent(e);
+      !noBlur && blurActiveElement();
+      cb(e);
     }, {listenerSetter: this.listenerSetter});
   }
+
+  private onJoinGroupCallClick = () => {
+    this.chat.appImManager.joinGroupCall(this.peerId);
+  };
 
   public constructPeerHelpers() {
     this.avatarElement = new AvatarElement();
@@ -421,25 +503,21 @@ export default class ChatTopbar {
     this.pinnedMessage = new ChatPinnedMessage(this, this.chat, this.appMessagesManager, this.appPeersManager);
 
     this.btnJoin = Button('btn-primary btn-color-primary chat-join hide');
+    this.btnGroupCall = ButtonIcon('videochat');
     this.btnPinned = ButtonIcon('pinlist');
     this.btnMute = ButtonIcon('mute');
 
-    attachClickEvent(this.btnPinned, (e) => {
-      cancelEvent(e);
-      blurActiveElement();
+    this.attachClickEvent(this.btnGroupCall, this.onJoinGroupCallClick);
+
+    this.attachClickEvent(this.btnPinned, () => {
       this.openPinned(true);
-    }, {listenerSetter: this.listenerSetter});
+    });
 
-    attachClickEvent(this.btnMute, (e) => {
-      cancelEvent(e);
-      blurActiveElement();
+    this.attachClickEvent(this.btnMute, () => {
       this.appMessagesManager.mutePeer(this.peerId);
-    }, {listenerSetter: this.listenerSetter});
+    });
 
-    attachClickEvent(this.btnJoin, (e) => {
-      cancelEvent(e);
-
-      blurActiveElement();
+    this.attachClickEvent(this.btnJoin, () => {
       const middleware = this.chat.bubbles.getMiddleware();
       this.btnJoin.setAttribute('disabled', 'true');
 
@@ -458,7 +536,7 @@ export default class ChatTopbar {
 
         this.btnJoin.removeAttribute('disabled');
       });
-    }, {listenerSetter: this.listenerSetter});
+    });
 
     this.listenerSetter.add(rootScope)('chat_update', (chatId) => {
       if(this.peerId === chatId.toPeerId(true)) {
@@ -466,6 +544,7 @@ export default class ChatTopbar {
         
         this.btnJoin.classList.toggle('hide', !(chat as Channel)?.pFlags?.left);
         this.setUtilsWidth();
+        this.verifyButtons();
       }
     });
 
@@ -482,8 +561,14 @@ export default class ChatTopbar {
     });
 
     this.listenerSetter.add(rootScope)('user_update', (userId) => {
-      if(this.peerId === userId) {
+      if(this.peerId === userId.toPeerId()) {
         this.setPeerStatus();
+      }
+    });
+
+    this.listenerSetter.add(rootScope)('peer_full_update', (peerId) => {
+      if(this.peerId === peerId) {
+        this.verifyButtons();
       }
     });
 
@@ -512,9 +597,7 @@ export default class ChatTopbar {
   }
 
   public constructPinnedHelpers() {
-    this.listenerSetter.add(rootScope)('peer_pinned_messages', (e) => {
-      const {peerId, mids, pinned} = e;
-
+    this.listenerSetter.add(rootScope)('peer_pinned_messages', ({peerId, mids}) => {
       if(peerId !== this.peerId) return;
 
       if(mids) {
@@ -583,6 +666,8 @@ export default class ChatTopbar {
     }
     
     this.setUtilsWidth();
+
+    this.verifyButtons();
 
     const middleware = this.chat.bubbles.getMiddleware();
     if(this.pinnedMessage) { // * replace with new one

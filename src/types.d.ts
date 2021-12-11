@@ -67,6 +67,19 @@ type GrowExp<A extends Array<any>, N extends number, P extends Array<Array<any>>
 
 export type FixedSizeArray<T, N extends number> = N extends 0 ? [] : N extends 1 ? [T] : GrowExp<[T, T], N, [[T]]>;
 
+// taken somewhere from stackoverflow
+// First, define a type that, when passed a union of keys, creates an object which 
+// cannot have those properties. I couldn't find a way to use this type directly,
+// but it can be used with the below type.
+type Impossible<K extends keyof any> = {
+  [P in K]: never;
+};
+
+// The secret sauce! Provide it the type that contains only the properties you want,
+// and then a type that extends that type, based on what the caller provided
+// using generics.
+type NoExtraProperties<T, U extends T = T> = U & Impossible<Exclude<keyof U, keyof T>>;
+
 export type AuthState = AuthState.signIn | AuthState.signQr | AuthState.authCode | AuthState.password | AuthState.signUp | AuthState.signedIn;
 export namespace AuthState {
   export type signIn = {

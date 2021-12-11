@@ -16,6 +16,8 @@ import { attachClickEvent, simulateClickEvent } from "../../helpers/dom/clickEve
 import isSendShortcutPressed from "../../helpers/dom/isSendShortcutPressed";
 import { cancelEvent } from "../../helpers/dom/cancelEvent";
 import EventListenerBase from "../../helpers/eventListenerBase";
+import { indexOfAndSplice } from "../../helpers/array";
+import { addFullScreenListener, getFullScreenElement, isFullScreen } from "../../helpers/dom/fullScreen";
 
 export type PopupButton = {
   text?: string,
@@ -32,13 +34,29 @@ export type PopupOptions = Partial<{
   overlayClosable: true, 
   withConfirm: LangPackKey | true, 
   body: true,
-  confirmShortcutIsSendShortcut: boolean
+  confirmShortcutIsSendShortcut: boolean,
+  withoutOverlay: boolean
 }>;
+
+export interface PopupElementConstructable {
+  new(...args: any[]): PopupElement;
+}
+
+const DEFAULT_APPEND_TO = document.body;
+let appendPopupTo = DEFAULT_APPEND_TO;
+
+const onFullScreenChange = () => {
+  appendPopupTo = getFullScreenElement() || DEFAULT_APPEND_TO;
+  PopupElement.reAppend();
+};
+
+addFullScreenListener(DEFAULT_APPEND_TO, onFullScreenChange);
 
 export default class PopupElement extends EventListenerBase<{
   close: () => void,
   closeAfterTimeout: () => void
 }> {
+  private static POPUPS: PopupElement[] = [];
   protected element = document.createElement('div');
   protected container = document.createElement('div');
   protected header = document.createElement('div');
@@ -57,9 +75,10 @@ export default class PopupElement extends EventListenerBase<{
   protected confirmShortcutIsSendShortcut: boolean;
   protected btnConfirmOnEnter: HTMLButtonElement;
 
+  protected withoutOverlay: boolean;
+
   constructor(className: string, protected buttons?: Array<PopupButton>, options: PopupOptions = {}) {
     super(false);
-
     this.element.classList.add('popup');
     this.element.className = 'popup' + (className ? ' ' + className : '');
     this.container.classList.add('popup-container', 'z-depth-1');
@@ -81,6 +100,8 @@ export default class PopupElement extends EventListenerBase<{
 
       attachClickEvent(this.btnClose, this.hide, {listenerSetter: this.listenerSetter, once: true});
     }
+
+    this.withoutOverlay = options.withoutOverlay;
 
     if(options.overlayClosable) {
       attachClickEvent(this.element, (e: MouseEvent) => {
@@ -108,7 +129,7 @@ export default class PopupElement extends EventListenerBase<{
     }
 
     let btnConfirmOnEnter = this.btnConfirm;
-    if(buttons && buttons.length) {
+    if(buttons?.length) {
       const buttonsDiv = this.buttonsEl = document.createElement('div');
       buttonsDiv.classList.add('popup-buttons');
 
@@ -150,6 +171,8 @@ export default class PopupElement extends EventListenerBase<{
     this.btnConfirmOnEnter = btnConfirmOnEnter;
 
     this.element.append(this.container);
+
+    PopupElement.POPUPS.push(this);
   }
 
   public show() {
@@ -162,25 +185,30 @@ export default class PopupElement extends EventListenerBase<{
     appNavigationController.pushItem(this.navigationItem);
 
     blurActiveElement(); // * hide mobile keyboard
-    document.body.append(this.element);
+    appendPopupTo.append(this.element);
     void this.element.offsetWidth; // reflow
     this.element.classList.add('active');
-    rootScope.isOverlayActive = true;
-    animationIntersector.checkAnimations(true);
+
+    if(!this.withoutOverlay) {
+      rootScope.isOverlayActive = true;
+      animationIntersector.checkAnimations(true);
+    }
 
     // cannot add event instantly because keydown propagation will fire it
-    setTimeout(() => {
-      this.listenerSetter.add(document.body)('keydown', (e) => {
-        if(this.confirmShortcutIsSendShortcut ? isSendShortcutPressed(e) : e.key === 'Enter') {
-          simulateClickEvent(this.btnConfirmOnEnter);
-          cancelEvent(e);
-        }
-      });
-    }, 0);
+    if(this.btnConfirmOnEnter) {
+      setTimeout(() => {
+        this.listenerSetter.add(document.body)('keydown', (e) => {
+          if(this.confirmShortcutIsSendShortcut ? isSendShortcutPressed(e) : e.key === 'Enter') {
+            simulateClickEvent(this.btnConfirmOnEnter);
+            cancelEvent(e);
+          }
+        });
+      }, 0);
+    }
   }
 
   public hide = () => {
-    appNavigationController.back('popup');
+    appNavigationController.backByItem(this.navigationItem);
   };
 
   private destroy = () => {
@@ -189,18 +217,42 @@ export default class PopupElement extends EventListenerBase<{
     this.element.classList.remove('active');
     this.listenerSetter.removeAll();
 
-    rootScope.isOverlayActive = false;
+    if(!this.withoutOverlay) {
+      rootScope.isOverlayActive = false;
+    }
 
     appNavigationController.removeItem(this.navigationItem);
     this.navigationItem = undefined;
+
+    indexOfAndSplice(PopupElement.POPUPS, this);
+
+    // ! calm
+    onFullScreenChange();
 
     setTimeout(() => {
       this.element.remove();
       this.dispatchEvent('closeAfterTimeout');
       this.cleanup();
-      animationIntersector.checkAnimations(false);
+
+      if(!this.withoutOverlay) {
+        animationIntersector.checkAnimations(false);
+      }
     }, 150);
   };
+
+  public static reAppend() {
+    this.POPUPS.forEach(popup => {
+      const {element, container} = popup;
+      const parentElement = element.parentElement;
+      if(parentElement && parentElement !== appendPopupTo && appendPopupTo !== container) {
+        appendPopupTo.append(element);
+      }
+    });
+  }
+
+  public static getPopup(popupConstructor: PopupElementConstructable) {
+    return this.POPUPS.find(element => element instanceof popupConstructor);
+  }
 }
 
 export const addCancelButton = (buttons: PopupButton[]) => {

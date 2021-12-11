@@ -4,25 +4,32 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type { Message, StickerSet, Update, NotifyPeer, PeerNotifySettings, ConstructorDeclMap, Config, PollResults, Poll, WebPage } from "../layer";
+import type { Message, StickerSet, Update, NotifyPeer, PeerNotifySettings, ConstructorDeclMap, Config, PollResults, Poll, WebPage, GroupCall, GroupCallParticipant } from "../layer";
 import type { MyDocument } from "./appManagers/appDocsManager";
 import type { AppMessagesManager, Dialog, MessagesStorage, MyMessage } from "./appManagers/appMessagesManager";
 import type { MyDialogFilter } from "./storages/filters";
 import type { Folder } from "./storages/dialogs";
 import type { UserTyping } from "./appManagers/appProfileManager";
-import type Chat from "../components/chat/chat";
-import { NULL_PEER_ID, UserAuth } from "./mtproto/mtproto_config";
 import type { State, Theme } from "./appManagers/appStateManager";
 import type { MyDraftMessage } from "./appManagers/appDraftsManager";
 import type { PushSubscriptionNotify } from "./mtproto/webPushApiManager";
 import type { PushNotificationObject } from "./serviceWorker/push";
 import type { ConnectionStatusChange } from "./mtproto/connectionStatus";
+import type { GroupCallId, GroupCallInstance, GroupCallOutputSource } from "./appManagers/appGroupCallsManager";
+import type { StreamAmplitude } from "./calls/streamManager";
+import type Chat from "../components/chat/chat";
+import { NULL_PEER_ID, UserAuth } from "./mtproto/mtproto_config";
 import EventListenerBase from "../helpers/eventListenerBase";
 import { MOUNT_CLASS_TO } from "../config/debug";
 
 export type BroadcastEvents = {
+  'chat_full_update': ChatId,
+  'chat_update': ChatId,
+  
   'user_update': UserId,
   'user_auth': UserAuth,
+  'user_full_update': UserId,
+
   'peer_changed': PeerId,
   'peer_changing': Chat,
   'peer_pinned_messages': {peerId: PeerId, mids?: number[], pinned?: boolean, unpinAll?: true},
@@ -32,6 +39,7 @@ export type BroadcastEvents = {
   'peer_title_edit': PeerId,
   'peer_bio_edit': PeerId,
   'peer_deleted': PeerId, // left chat, deleted user dialog, left channel
+  'peer_full_update': PeerId,
 
   'filter_delete': MyDialogFilter,
   'filter_update': MyDialogFilter,
@@ -89,9 +97,7 @@ export type BroadcastEvents = {
   
   'contacts_update': UserId,
   'avatar_update': PeerId,
-  'chat_full_update': ChatId,
   'poll_update': {poll: Poll, results: PollResults},
-  'chat_update': ChatId,
   'invalidate_participants': ChatId,
   //'channel_settings': {channelId: number},
   'webpage_updated': {id: WebPage.webPage['id'], msgs: {peerId: PeerId, mid: number, isScheduled: boolean}[]},
@@ -137,6 +143,13 @@ export type BroadcastEvents = {
 
   'context_menu_toggle': boolean,
   'choosing_sticker': boolean
+
+  'group_call_state': GroupCallInstance,
+  'group_call_update': GroupCall,
+  'group_call_amplitude': {amplitudes: StreamAmplitude[], type: 'all' | 'input'},
+  'group_call_participant': {groupCallId: GroupCallId, participant: GroupCallParticipant},
+  // 'group_call_video_track_added': {instance: GroupCallInstance}
+  'group_call_pinned': {instance: GroupCallInstance, source?: GroupCallOutputSource}
 };
 
 export class RootScope extends EventListenerBase<{
@@ -174,6 +187,7 @@ export class RootScope extends EventListenerBase<{
 
     this.addEventListener('peer_changed', (peerId) => {
       this.peerId = peerId;
+      document.body.classList.toggle('has-chat', !!peerId);
     });
 
     this.addEventListener('user_auth', ({id}) => {

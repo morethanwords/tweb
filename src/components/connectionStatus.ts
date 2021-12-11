@@ -40,7 +40,7 @@ export default class ConnectionStatusComponent {
   private setStateTimeout: number;
 
   constructor(chatsContainer: HTMLElement) {
-    this.log = logger('CS');
+    this.log = logger('CS', undefined, undefined);
   
     this.statusContainer = document.createElement('div');
     this.statusContainer.classList.add('connection-status'/* , 'hide' */);
@@ -52,15 +52,13 @@ export default class ConnectionStatusComponent {
 
     chatsContainer.prepend(this.statusContainer);
 
-    rootScope.addEventListener('connection_status_change', (e) => {
-      const status = e;
+    rootScope.addEventListener('connection_status_change', (status) => {
       console.log(status);
 
       this.setConnectionStatus();
     });
 
-    rootScope.addEventListener('state_synchronizing', (e) => {
-      const channelId = e;
+    rootScope.addEventListener('state_synchronizing', (channelId) => {
       if(!channelId) {
         this.updating = true;
         DEBUG && this.log('updating', this.updating);
@@ -68,8 +66,7 @@ export default class ConnectionStatusComponent {
       }
     });
 
-    rootScope.addEventListener('state_synchronized', (e) => {
-      const channelId = e;
+    rootScope.addEventListener('state_synchronized', (channelId) => {
       DEBUG && this.log('state_synchronized', channelId);
       if(!channelId) {
         this.updating = false;

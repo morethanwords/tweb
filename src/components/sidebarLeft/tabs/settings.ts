@@ -17,7 +17,7 @@ import AppChatFoldersTab from "./chatFolders";
 import AppNotificationsTab from "./notifications";
 import PeerTitle from "../../peerTitle";
 import AppLanguageTab from "./language";
-import lottieLoader from "../../../lib/lottieLoader";
+import lottieLoader from "../../../lib/rlottie/lottieLoader";
 import PopupPeer from "../../popups/peer";
 //import AppMediaViewer from "../../appMediaViewerNew";
 

@@ -4,6 +4,72 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+@mixin dialog-badge-transition-reset() {
+  transition: none;
+  transform: scale(0);
+  opacity: 1;
+}
+
+@mixin dialog-badge-transition-visible() {
+  transform: scale(1);
+}
+
+@mixin dialog-badge-transition-backwards() {
+  opacity: 0;
+}
+
+@mixin dialog-badge-transition-animating() {
+  transition: background-color var(--chatlist-badge-transition-in), transform var(--chatlist-badge-transition-in);
+}
+
+@mixin dialog-badge-transition-animating-backwards() {
+  transition: background-color var(--chatlist-badge-transition-out), transform var(--chatlist-badge-transition-out), opacity var(--chatlist-badge-transition-out);
+}
+
+@mixin dialog-badge-transition($after: false) {
+  @include animation-level(2) {
+    @if $after {
+      &:after {
+        @include dialog-badge-transition-reset();
+      }
+
+      &.is-visible:not(.backwards):after {
+        @include dialog-badge-transition-visible();
+      }
+
+      &.backwards:after {
+        @include dialog-badge-transition-backwards();
+      }
+
+      &.animating:after {
+        @include dialog-badge-transition-animating();
+      }
+      
+      &.animating.backwards:after {
+        @include dialog-badge-transition-animating-backwards();
+      }
+    } @else {
+      @include dialog-badge-transition-reset();
+      
+      &.is-visible:not(.backwards) {
+        @include dialog-badge-transition-visible();
+      }
+
+      &.backwards {
+        @include dialog-badge-transition-backwards();
+      }
+
+      &.animating {
+        @include dialog-badge-transition-animating();
+        
+        &.backwards {
+          @include dialog-badge-transition-animating-backwards();
+        }
+      }
+    }
+  }
+}
+
 .chatlist-container {
   position: relative;
 
@@ -108,7 +174,7 @@ ul.chatlist {
     }
   } */
 
-  li {
+  &-chat {
     --background: unset;
     //height: var(--height);
     height: 72px;
@@ -219,7 +285,8 @@ ul.chatlist {
           fill: var(--primary-color) !important;
         }
 
-        .dialog-avatar.is-online:after {
+        .dialog-avatar.is-online:after,
+        .dialog-group-call-icon {
           background-color: #fff;
           border-color: var(--primary-color);
         }
@@ -277,28 +344,6 @@ ul.chatlist {
         margin-left: .5rem;
         flex: 0 0 auto;
 
-        @include animation-level(2) {
-          transition: none;
-          transform: scale(0);
-          opacity: 1;
-
-          &.is-visible:not(.backwards) {
-            transform: scale(1);
-          }
-
-          &.backwards {
-            opacity: 0;
-          }
-
-          &.animating {
-            transition: background-color var(--chatlist-badge-transition-in), transform var(--chatlist-badge-transition-in);
-            
-            &.backwards {
-              transition: background-color var(--chatlist-badge-transition-out), transform var(--chatlist-badge-transition-out), opacity var(--chatlist-badge-transition-out);
-            }
-          }
-        }
-
         /* &:not(:empty), &.tgico-pinnedchat {
           margin-left: .5rem;
         } */
@@ -337,6 +382,28 @@ ul.chatlist {
           border-radius: inherit;
         }
       }
+    }
+
+    &-group-call-icon {
+      position: absolute;
+      left: 45px;
+      top: 45px;
+      border: 2px solid var(--surface-color);
+      overflow: hidden;
+      border-radius: 50%;
+      background-color: var(--avatar-online-color);
+      width: 20px;
+      height: 20px;
+      z-index: 2;
+    }
+
+    &-subtitle-badge, 
+    &-group-call-icon {
+      @include dialog-badge-transition();
+    }
+
+    &-avatar {
+      @include dialog-badge-transition(true);
     }
   }
 
@@ -521,24 +588,12 @@ ul.chatlist {
     .chatlist-new {
       padding: 0;
       margin-top: -.5rem;
-
-      li {
-        height: 3.5rem;
-      }
-
-      .user-caption {
-        padding-left: 1.125rem;
-      }
-
-      .dialog-subtitle {
-        margin-top: .0625rem;
-      }
     }
   }
 
   // * supernew correct layout
   &-new {
-    li {
+    .chatlist-chat {
       height: 4.5rem;
       padding: 0 .75rem;
       align-items: center;
@@ -567,8 +622,9 @@ ul.chatlist {
 }
 
 // use together like class="chatlist-container contacts-container"
-.contacts-container, .search-group-contacts {
-  li {
+.contacts-container, 
+.search-group-contacts {
+  .chatlist-chat {
     padding: .75rem;
 
     @include respond-to(handhelds) {
@@ -586,7 +642,9 @@ ul.chatlist {
     }
   }
 
-  .user-title, b, .user-last-message b {
+  .user-title, 
+  b, 
+  .user-last-message b {
     font-weight: normal;
   }
 
@@ -600,5 +658,19 @@ ul.chatlist {
 
   span.user-last-message {
     font-size: 14px;
+  }
+}
+
+.chatlist-new.chatlist-48 {
+  .chatlist-chat {
+    height: 3.5rem;
+  }
+
+  .user-caption {
+    padding-left: 1.125rem;
+  }
+
+  .dialog-subtitle {
+    margin-top: .0625rem;
   }
 }

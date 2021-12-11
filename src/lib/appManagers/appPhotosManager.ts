@@ -357,8 +357,8 @@ export class AppPhotosManager {
     }
 
     if(!photoSize) {
-      const fullWidth = windowSize.windowW;
-      const fullHeight = windowSize.windowH;
+      const fullWidth = windowSize.width;
+      const fullHeight = windowSize.height;
       
       photoSize = this.choosePhotoSize(photo, fullWidth, fullHeight);
     }

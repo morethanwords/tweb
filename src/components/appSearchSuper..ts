@@ -1425,7 +1425,7 @@ export default class AppSearchSuper {
       return;
     }
 
-    const loadCount = justLoad ? 50 : Math.round((windowSize.windowH / 130 | 0) * 3 * 1.25); // that's good for all types
+    const loadCount = justLoad ? 50 : Math.round((windowSize.height / 130 | 0) * 3 * 1.25); // that's good for all types
 
     const promises: Promise<any>[] = toLoad.map(mediaTab => {
       return this.loadType(mediaTab, justLoad, loadCount, middleware)
