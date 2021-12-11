@@ -181,10 +181,12 @@
       &-icon {
         vertical-align: middle;
         margin-right: 6px;
-        margin-top: 2px;
+        // margin-top: 2px;
         line-height: 1;
         display: inline-block;
-        font-size: 18px;
+        font-size: 1.125rem;
+        width: 1.125rem;
+        height: 1.125rem;
       }
 
       &-container {
@@ -228,7 +230,9 @@
 
         .group-call-participant-status-icon {
           font-size: 1.25rem;
-          margin-top: 0;
+          // margin-top: 0;
+          width: 1.25rem;
+          height: 1.25rem;
         }
       }
 
@@ -282,9 +286,7 @@
         .group-call-participant-status-container {
           opacity: .6;
           // margin-top: -1px; // if no icon
-          
           margin-top: -1px; // if with icon
-          margin-bottom: -1px; // if with icon
         }
 
         &-left {

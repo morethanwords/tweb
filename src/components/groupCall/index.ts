@@ -33,9 +33,9 @@ import { IS_APPLE_MOBILE } from "../../environment/userAgent";
 import mediaSizes, { ScreenSize } from "../../helpers/mediaSizes";
 import toggleDisability from "../../helpers/dom/toggleDisability";
 import { ripple } from "../ripple";
-import debounce from "../../helpers/schedulers/debounce";
 import throttle from "../../helpers/schedulers/throttle";
 import IS_SCREEN_SHARING_SUPPORTED from "../../environment/screenSharingSupport";
+import ListenerSetter from "../../helpers/listenerSetter";
 
 export enum GROUP_CALL_PARTICIPANT_MUTED_STATE {
   UNMUTED,
@@ -116,6 +116,34 @@ let previousState: MovableState = {
   height: 640
 };
 
+const className = 'group-call';
+
+function makeButton(listenerSetter: ListenerSetter, options: {
+  text?: LangPackKey,
+  isDanger?: boolean,
+  noRipple?: boolean,
+  callback?: () => void,
+  listenerSetter?: ListenerSetter
+}) {
+  const _className = className + '-button';
+  const div = document.createElement('div');
+  div.classList.add(_className, 'rp-overflow');
+
+  if(!options.noRipple) {
+    ripple(div);
+  }
+
+  if(options.isDanger) {
+    div.classList.add(_className + '-red');
+  }
+
+  if(options.callback) {
+    attachClickEvent(div, options.callback, {listenerSetter: options.listenerSetter});
+  }
+
+  return div;
+}
+
 export default class PopupGroupCall extends PopupElement {
   private appGroupCallsManager: AppGroupCallsManager;
   private appPeersManager: AppPeersManager;
@@ -135,6 +163,8 @@ export default class PopupGroupCall extends PopupElement {
   private movable: MovableElement;
   private buttonsContainer: HTMLDivElement;
   private btnFullScreen2: HTMLButtonElement;
+  private btnVideo: HTMLDivElement;
+  private btnScreen: HTMLDivElement;
 
   constructor(options: {
     appGroupCallsManager: AppGroupCallsManager,
@@ -150,19 +180,18 @@ export default class PopupGroupCall extends PopupElement {
     safeAssign(this, options);
 
     this.videosCount = 0;
-    this.container.classList.add('group-call', 'night');
+    this.container.classList.add(className, 'night');
 
     const instance = this.instance = this.appGroupCallsManager.groupCall;
     const {listenerSetter} = this;
 
     if(!IS_APPLE_MOBILE) {
       const btnFullScreen = this.btnFullScreen = ButtonIcon('fullscreen');
-      const btnFullScreen2 = this.btnFullScreen2 = ButtonIcon('fullscreen group-call-cfs');
+      const btnFullScreen2 = this.btnFullScreen2 = ButtonIcon('fullscreen ' + className + '-cfs');
       const btnExitFullScreen = this.btnExitFullScreen = ButtonIcon('smallscreen');
   
-      attachClickEvent(btnFullScreen, () => {
-        requestFullScreen(this.container);
-      }, {listenerSetter});
+      attachClickEvent(btnFullScreen, this.onFullScreenClick, {listenerSetter});
+      attachClickEvent(btnFullScreen2, this.onFullScreenClick, {listenerSetter});
   
       attachClickEvent(btnExitFullScreen, () => {
         cancelFullScreen();
@@ -172,22 +201,22 @@ export default class PopupGroupCall extends PopupElement {
     }
 
     const btnInvite = this.btnInvite = ButtonIcon('adduser');
-    const btnShowColumn = this.btnShowColumn = ButtonIcon('rightpanel group-call-only-big');
+    const btnShowColumn = this.btnShowColumn = ButtonIcon('rightpanel ' + className + '-only-big');
     this.toggleMovable(!IS_TOUCH_SUPPORTED);
 
     attachClickEvent(btnShowColumn, this.toggleRightColumn, {listenerSetter});
 
     const headerInfo = document.createElement('div');
-    headerInfo.classList.add('group-call-header-info');
+    headerInfo.classList.add(className + '-header-info');
 
-    this.title.classList.add('group-call-header-title');
+    this.title.classList.add(className + '-header-title');
 
     const subtitle = document.createElement('div');
-    subtitle.classList.add('group-call-header-subtitle');
+    subtitle.classList.add(className + '-header-subtitle');
 
     headerInfo.append(this.title, subtitle);
 
-    this.header.classList.add('group-call-header');
+    this.header.classList.add(className + '-header');
     this.header.append(...[this.btnExitFullScreen, headerInfo/* , btnInvite */, this.btnFullScreen, btnShowColumn].filter(Boolean));
 
     const newHeader = this.header.cloneNode(false) as HTMLElement;
@@ -210,6 +239,8 @@ export default class PopupGroupCall extends PopupElement {
     this.groupCallTitle = new GroupCallTitleElement(this.title);
     this.groupCallDescription = new GroupCallDescriptionElement(subtitle);
     this.groupCallBodyHeaderDescription = new GroupCallDescriptionElement(newHeaderTitle);
+    this.constructButtons();
+
     this.groupCallParticipantsVideo = new GroupCallParticipantsVideoElement({
       appendTo: videosScrollable.container,
       instance,
@@ -228,127 +259,6 @@ export default class PopupGroupCall extends PopupElement {
       ...options
     });
 
-    const className = 'group-call';
-
-    {
-      const buttons = this.buttonsContainer = document.createElement('div');
-      buttons.classList.add(className + '-buttons');
-
-      this.listenerSetter.add(this.groupCallParticipantsVideo)('toggleControls', (show) => {
-        this.container.classList.toggle('show-controls', show);
-        buttons.classList.toggle('show-controls', show);
-      });
-
-      const b = (options: {
-        text?: LangPackKey,
-        isDanger?: boolean,
-        noRipple?: boolean
-      }) => {
-        const _className = className + '-button';
-        const div = document.createElement('div');
-        div.classList.add(_className, 'rp-overflow');
-
-        if(!options.noRipple) {
-          ripple(div);
-        }
-
-        if(options.isDanger) {
-          div.classList.add(_className + '-red');
-        }
-
-        return div;
-      };
-
-      const btnVideo = b({
-        text: 'VoiceChat.Video.Stream.Video'
-      });
-
-      btnVideo.classList.add('tgico-videocamera_filled');
-
-      attachClickEvent(btnVideo, () => {
-        const toggle = toggleDisability([btnVideo], true);
-        this.instance.toggleVideoSharing().finally(() => {
-          toggle();
-        });
-      }, {listenerSetter});
-
-      const btnScreen = b({
-        text: 'VoiceChat.Video.Stream.Screencast'
-      });
-
-      btnScreen.classList.add('tgico-sharescreen_filled');
-      btnScreen.classList.toggle('hide', !IS_SCREEN_SHARING_SUPPORTED);
-
-      attachClickEvent(btnScreen, () => {
-        const toggle = toggleDisability([btnScreen], true);
-        this.instance.toggleScreenSharing().finally(() => {
-          toggle();
-        });
-      }, {listenerSetter});
-
-      const btnMute = b({noRipple: true});
-      btnMute.classList.add('group-call-microphone-button');
-
-      const microphoneIcon = this.groupCallMicrophoneIcon = new GroupCallMicrophoneIcon();
-      btnMute.append(microphoneIcon.container);
-
-      const throttledMuteClick = throttle(() => {
-        const participant = this.instance.participant;
-        if(!participant.pFlags.can_self_unmute) {
-          if(participant.raise_hand_rating === undefined) {
-            this.instance.changeRaiseHand(true);
-          }
-        } else {
-          this.instance.toggleMuted();
-        }
-      }, 600, true);
-
-      attachClickEvent(btnMute, throttledMuteClick, {listenerSetter});
-
-      const btnMore = b({
-        text: 'VoiceChat.Video.Stream.More'
-      });
-
-      btnMore.classList.add('tgico-settings_filled', 'btn-disabled');
-      btnMore.classList.toggle('hide', !IS_SCREEN_SHARING_SUPPORTED);
-
-      const btnLeave = b({
-        text: 'VoiceChat.Leave',
-        isDanger: true
-      });
-
-      btnLeave.classList.add('tgico-close');
-
-      attachClickEvent(btnLeave, () => {
-        const hangUp = (discard: boolean) => {
-          this.instance.hangUp(discard);
-        };
-
-        if(this.appChatsManager.hasRights(this.instance.chatId, 'manage_call')) {
-          new PopupPeer('popup-end-video-chat', {
-            titleLangKey: 'VoiceChat.End.Title',
-            descriptionLangKey: 'VoiceChat.End.Text',
-            checkboxes: [{
-              text: 'VoiceChat.End.Third'
-            }],
-            buttons: [{
-              langKey: 'VoiceChat.End.OK',
-              callback: (checkboxes) => {
-                hangUp(!!checkboxes.size);
-              },
-              isDanger: true,
-            }]
-          }).show();
-        } else {
-          hangUp(false);
-        }
-      }, {listenerSetter});
-
-      buttons.append(btnVideo, btnScreen, btnMute, btnMore, btnLeave);
-
-      this.container.append(buttons);
-    }
-
     listenerSetter.add(rootScope)('group_call_state', (instance) => {
       if(this.instance === instance) {
         this.updateInstance();
@@ -366,6 +276,8 @@ export default class PopupGroupCall extends PopupElement {
         this.setHasPinned();
       }
     });
+
+    listenerSetter.add(this.groupCallParticipantsVideo)('toggleControls', this.onToggleControls);
 
     listenerSetter.add(mediaSizes)('changeScreen', (from, to) => {
       if(to === ScreenSize.mobile || from === ScreenSize.mobile) {
@@ -393,6 +305,115 @@ export default class PopupGroupCall extends PopupElement {
 
     this.updateInstance();
   }
+
+  private constructButtons() {
+    const buttons = this.buttonsContainer = document.createElement('div');
+    buttons.classList.add(className + '-buttons');
+
+    const _makeButton = makeButton.bind(null, this.listenerSetter);
+
+    const btnVideo = this.btnVideo = _makeButton({
+      text: 'VoiceChat.Video.Stream.Video',
+      callback: this.onVideoClick
+    });
+
+    btnVideo.classList.add('tgico-videocamera_filled');
+
+    const btnScreen = this.btnScreen = _makeButton({
+      text: 'VoiceChat.Video.Stream.Screencast',
+      callback: this.onScreenClick
+    });
+
+    btnScreen.classList.add('tgico-sharescreen_filled');
+    btnScreen.classList.toggle('hide', !IS_SCREEN_SHARING_SUPPORTED);
+
+    const btnMute = _makeButton({
+      noRipple: true,
+      callback: throttle(this.onMuteClick, 600, true)
+    });
+    btnMute.classList.add(className + '-microphone-button');
+
+    const microphoneIcon = this.groupCallMicrophoneIcon = new GroupCallMicrophoneIcon();
+    btnMute.append(microphoneIcon.container);
+
+    const btnMore = _makeButton({
+      text: 'VoiceChat.Video.Stream.More'
+    });
+
+    btnMore.classList.add('tgico-settings_filled', 'btn-disabled');
+    btnMore.classList.toggle('hide', !IS_SCREEN_SHARING_SUPPORTED);
+
+    const btnLeave = _makeButton({
+      text: 'VoiceChat.Leave',
+      isDanger: true,
+      callback: this.onLeaveClick
+    });
+
+    btnLeave.classList.add('tgico-close');
+
+    buttons.append(btnVideo, btnScreen, btnMute, btnMore, btnLeave);
+
+    this.container.append(buttons);
+  }
+
+  private onFullScreenClick = () => {
+    requestFullScreen(this.container);
+  };
+
+  private onToggleControls = (show: boolean) => {
+    this.container.classList.toggle('show-controls', show);
+    this.buttonsContainer.classList.toggle('show-controls', show);
+  };
+
+  private onVideoClick = () => {
+    const toggle = toggleDisability([this.btnVideo], true);
+    this.instance.toggleVideoSharing().finally(() => {
+      toggle();
+    });
+  };
+
+  private onScreenClick = () => {
+    const toggle = toggleDisability([this.btnScreen], true);
+    this.instance.toggleScreenSharing().finally(() => {
+      toggle();
+    });
+  };
+
+  private onMuteClick = () => {
+    const participant = this.instance.participant;
+    if(!participant.pFlags.can_self_unmute) {
+      if(participant.raise_hand_rating === undefined) {
+        this.instance.changeRaiseHand(true);
+      }
+    } else {
+      this.instance.toggleMuted();
+    }
+  };
+  
+  private onLeaveClick = () => {
+    const hangUp = (discard: boolean) => {
+      this.instance.hangUp(discard);
+    };
+
+    if(this.appChatsManager.hasRights(this.instance.chatId, 'manage_call')) {
+      new PopupPeer('popup-end-video-chat', {
+        titleLangKey: 'VoiceChat.End.Title',
+        descriptionLangKey: 'VoiceChat.End.Text',
+        checkboxes: [{
+          text: 'VoiceChat.End.Third'
+        }],
+        buttons: [{
+          langKey: 'VoiceChat.End.OK',
+          callback: (checkboxes) => {
+            hangUp(!!checkboxes.size);
+          },
+          isDanger: true,
+        }]
+      }).show();
+    } else {
+      hangUp(false);
+    }
+  };
 
   public getContainer() {
     return this.container;
