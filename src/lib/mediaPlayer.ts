@@ -13,11 +13,11 @@ import { cancelEvent } from "../helpers/dom/cancelEvent";
 import ListenerSetter from "../helpers/listenerSetter";
 import ButtonMenu from "../components/buttonMenu";
 import { ButtonMenuToggleHandler } from "../components/buttonMenuToggle";
-import EventListenerBase from "../helpers/eventListenerBase";
 import rootScope from "./rootScope";
-import findUpClassName from "../helpers/dom/findUpClassName";
 import { GrabEvent } from "../helpers/dom/attachGrabListeners";
 import { attachClickEvent } from "../helpers/dom/clickEvent";
+import ControlsHover from "../helpers/dom/controlsHover";
+import { addFullScreenListener, cancelFullScreen, isFullScreen, requestFullScreen } from "../helpers/dom/fullScreen";
 
 export class MediaProgressLine extends RangeSelector {
   protected filledLoad: HTMLDivElement;
@@ -262,29 +262,32 @@ export class VolumeSelector extends RangeSelector {
   };
 }
 
-export default class VideoPlayer extends EventListenerBase<{
-  toggleControls: (show: boolean) => void
-}> {
-  private wrapper: HTMLDivElement;
-  private progress: MediaProgressLine;
-  private skin: 'default';
+export default class VideoPlayer extends ControlsHover {
+  protected wrapper: HTMLDivElement;
+  protected progress: MediaProgressLine;
+  protected skin: 'default';
 
-  private listenerSetter: ListenerSetter;
+  protected listenerSetter: ListenerSetter;
 
-  private showControlsTimeout = 0;
+  /* protected videoParent: HTMLElement;
+  protected videoWhichChild: number; */
 
-  private controlsLocked: boolean;
-
-  /* private videoParent: HTMLElement;
-  private videoWhichChild: number; */
-
-  constructor(private video: HTMLVideoElement, play = false, streamable = false, duration?: number) {
-    super(false);
+  constructor(protected video: HTMLVideoElement, play = false, streamable = false, duration?: number) {
+    super();
 
     this.wrapper = document.createElement('div');
     this.wrapper.classList.add('ckin__player');
 
     this.listenerSetter = new ListenerSetter();
+
+    this.setup({
+      element: this.wrapper, 
+      listenerSetter: this.listenerSetter, 
+      canHideControls: () => {
+        return !this.video.paused;
+      },
+      showOnLeaveToClassName: 'media-viewer-caption'
+    });
 
     video.parentNode.insertBefore(this.wrapper, video);
     this.wrapper.appendChild(video);
@@ -316,72 +319,39 @@ export default class VideoPlayer extends EventListenerBase<{
   }
 
   private stylePlayer(initDuration: number) {
-    const {wrapper: player, video, skin} = this;
+    const {wrapper, video, skin, listenerSetter} = this;
 
-    player.classList.add(skin);
+    wrapper.classList.add(skin);
   
     const html = this.buildControls();
-    player.insertAdjacentHTML('beforeend', html);
+    wrapper.insertAdjacentHTML('beforeend', html);
     let timeDuration: HTMLElement;
   
     if(skin === 'default') {
-      const toggle = player.querySelectorAll('.toggle') as NodeListOf<HTMLElement>;
-      const fullScreenButton = player.querySelector('.fullscreen') as HTMLElement;
-      const timeElapsed = player.querySelector('#time-elapsed');
-      timeDuration = player.querySelector('#time-duration') as HTMLElement;
+      const toggle = wrapper.querySelectorAll('.toggle') as NodeListOf<HTMLElement>;
+      const fullScreenButton = wrapper.querySelector('.fullscreen') as HTMLElement;
+      const timeElapsed = wrapper.querySelector('#time-elapsed');
+      timeDuration = wrapper.querySelector('#time-duration') as HTMLElement;
       timeDuration.innerHTML = String(video.duration | 0).toHHMMSS();
 
-      const volumeSelector = new VolumeSelector(this.listenerSetter);
+      const volumeSelector = new VolumeSelector(listenerSetter);
 
-      const leftControls = player.querySelector('.left-controls');
+      const leftControls = wrapper.querySelector('.left-controls');
       volumeSelector.btn.classList.remove('btn-icon');
       leftControls.insertBefore(volumeSelector.btn, timeElapsed.parentElement);
 
       Array.from(toggle).forEach((button) => {
-        this.listenerSetter.add(button)('click', () => {
+        listenerSetter.add(button)('click', () => {
           this.togglePlay();
         });
       });
 
-      this.listenerSetter.add(video)('click', () => {
-        if(!IS_TOUCH_SUPPORTED) {
+      if(!IS_TOUCH_SUPPORTED) {
+        listenerSetter.add(video)('click', () => {
           this.togglePlay();
-        }
-      });
-
-      if(IS_TOUCH_SUPPORTED) {
-        this.listenerSetter.add(player)('click', () => {
-          this.toggleControls();
         });
 
-        /* this.listenerSetter.add(player)('touchstart', () => {
-          showControls(false);
-        });
-
-        this.listenerSetter.add(player)('touchend', () => {
-          if(player.classList.contains('is-playing')) {
-            showControls();
-          }
-        }); */
-      } else {
-        this.listenerSetter.add(this.wrapper)('mousemove', () => {
-          this.showControls();
-        });
-
-        this.listenerSetter.add(this.wrapper)('mouseenter', () => {
-          this.showControls(false);
-        });
-
-        this.listenerSetter.add(this.wrapper)('mouseleave', (e) => {
-          if(findUpClassName(e.relatedTarget, 'media-viewer-caption')) {
-            this.showControls(false);
-            return;
-          }
-          
-          this.hideControls();
-        });
-
-        this.listenerSetter.add(document)('keydown', (e: KeyboardEvent) => {
+        listenerSetter.add(document)('keydown', (e: KeyboardEvent) => {
           if(rootScope.overlaysActive > 1) { // forward popup is active, etc
             return;
           }
@@ -390,7 +360,7 @@ export default class VideoPlayer extends EventListenerBase<{
 
           let good = true;
           if(code === 'KeyF') {
-            this.toggleFullScreen(fullScreenButton);
+            this.toggleFullScreen();
           } else if(code === 'KeyM') {
             appMediaPlaybackController.muted = !appMediaPlaybackController.muted;
           } else if(code === 'Space') {
@@ -399,7 +369,7 @@ export default class VideoPlayer extends EventListenerBase<{
             appMediaPlaybackController.playbackRate += .25;
           } else if(e.altKey && code === 'Minus') {
             appMediaPlaybackController.playbackRate -= .25;
-          } else if(this.wrapper.classList.contains('ckin__fullscreen') && (key === 'ArrowLeft' || key === 'ArrowRight')) {
+          } else if(wrapper.classList.contains('ckin__fullscreen') && (key === 'ArrowLeft' || key === 'ArrowRight')) {
             if(key === 'ArrowLeft') appMediaPlaybackController.seekBackward({action: 'seekbackward'});
             else appMediaPlaybackController.seekForward({action: 'seekforward'});
           } else {
@@ -424,39 +394,37 @@ export default class VideoPlayer extends EventListenerBase<{
       /* video.addEventListener('play', () => {
       }); */
 
-      this.listenerSetter.add(video)('dblclick', () => {
+      listenerSetter.add(video)('dblclick', () => {
         if(!IS_TOUCH_SUPPORTED) {
-          this.toggleFullScreen(fullScreenButton);
+          this.toggleFullScreen();
         }
       });
 
-      this.listenerSetter.add(fullScreenButton)('click', (e) => {
-        this.toggleFullScreen(fullScreenButton);
+      listenerSetter.add(fullScreenButton)('click', () => {
+        this.toggleFullScreen();
       });
 
-      'webkitfullscreenchange mozfullscreenchange fullscreenchange MSFullscreenChange'.split(' ').forEach(eventName => {
-        this.listenerSetter.add(player)(eventName, this.onFullScreen, false);
-      });
+      addFullScreenListener(wrapper, this.onFullScreen.bind(this, fullScreenButton), listenerSetter);
 
-      this.listenerSetter.add(video)('timeupdate', () => {
+      listenerSetter.add(video)('timeupdate', () => {
         timeElapsed.innerHTML = String(video.currentTime | 0).toHHMMSS();
       });
 
-      this.listenerSetter.add(video)('play', () => {
-        this.wrapper.classList.add('played');
+      listenerSetter.add(video)('play', () => {
+        wrapper.classList.add('played');
       }, {once: true});
 
-      this.listenerSetter.add(video)('pause', () => {
+      listenerSetter.add(video)('pause', () => {
         this.showControls(false);
       });
     }
 
-    this.listenerSetter.add(video)('play', () => {
-      this.wrapper.classList.add('is-playing');
+    listenerSetter.add(video)('play', () => {
+      wrapper.classList.add('is-playing');
     });
 
-    this.listenerSetter.add(video)('pause', () => {
-      this.wrapper.classList.remove('is-playing');
+    listenerSetter.add(video)('pause', () => {
+      wrapper.classList.remove('is-playing');
     });
   
     if(video.duration || initDuration) {
@@ -466,57 +434,6 @@ export default class VideoPlayer extends EventListenerBase<{
         timeDuration.innerHTML = String(Math.round(video.duration)).toHHMMSS();
       });
     }
-  }
-
-  public hideControls = () => {
-    clearTimeout(this.showControlsTimeout);
-    this.showControlsTimeout = 0;
-
-    const isShown = this.wrapper.classList.contains('show-controls');
-    if(this.controlsLocked !== false) {
-      if(this.video.paused || !isShown || this.controlsLocked) {
-        return;
-      }
-    } else if(!isShown) {
-      return;
-    }
-    
-    this.dispatchEvent('toggleControls', false);
-    this.wrapper.classList.remove('show-controls');
-  };
-  
-  public showControls = (setHideTimeout = true) => {
-    if(this.showControlsTimeout) {
-      clearTimeout(this.showControlsTimeout);
-      this.showControlsTimeout = 0;
-    } else if(!this.wrapper.classList.contains('show-controls') && this.controlsLocked !== false) {
-      this.dispatchEvent('toggleControls', true);
-      this.wrapper.classList.add('show-controls');
-    }
-
-    if(!setHideTimeout || this.controlsLocked) {
-      return;
-    }
-
-    this.showControlsTimeout = window.setTimeout(this.hideControls, 3e3);
-  };
-
-  public toggleControls = (show?: boolean) => {
-    const isShown = this.wrapper.classList.contains('show-controls');
-
-    if(show === undefined) {
-      if(isShown) this.hideControls();
-      else this.showControls();
-    } else if(show === isShown) return;
-    else if(show === false) this.hideControls();
-    else this.showControls();
-  };
-
-  public lockControls(visible: boolean) {
-    this.controlsLocked = visible;
-
-    this.wrapper.classList.toggle('disable-hover', visible === false);
-    this.toggleControls(visible);
   }
 
   protected togglePlay() {
@@ -563,14 +480,8 @@ export default class VideoPlayer extends EventListenerBase<{
     ButtonMenuToggleHandler(settingsButton);
     settingsButton.append(btnMenu);
   }
-
-  public static isFullScreen(): boolean {
-    // @ts-ignore
-    return !!(document.fullscreenElement || document.mozFullScreenElement || document.webkitFullscreenElement || document.msFullscreenElement);
-  }
   
-  protected toggleFullScreen(fullScreenButton: HTMLElement) {
-    // alternative standard method
+  protected toggleFullScreen() {
     const player = this.wrapper;
 
     // * https://caniuse.com/#feat=fullscreen
@@ -581,9 +492,7 @@ export default class VideoPlayer extends EventListenerBase<{
       return;
     }
     
-    if(!VideoPlayer.isFullScreen()) {
-      player.classList.add('ckin__fullscreen');
-
+    if(!isFullScreen()) {
       /* const videoParent = this.video.parentElement;
       const videoWhichChild = whichChild(this.video);
       const needVideoRemount = videoParent !== player;
@@ -594,28 +503,8 @@ export default class VideoPlayer extends EventListenerBase<{
         player.prepend(this.video);
       } */
   
-      if(player.requestFullscreen) {
-        player.requestFullscreen();
-        // @ts-ignore
-      } else if(player.mozRequestFullScreen) {
-        // @ts-ignore
-        player.mozRequestFullScreen(); // Firefox
-        // @ts-ignore
-      } else if(player.webkitRequestFullscreen) {
-        // @ts-ignore
-        player.webkitRequestFullscreen(); // Chrome and Safari
-        // @ts-ignore
-      } else if(player.msRequestFullscreen) {
-        // @ts-ignore
-        player.msRequestFullscreen();
-      }
-  
-      fullScreenButton.classList.remove('tgico-fullscreen');
-      fullScreenButton.classList.add('tgico-smallscreen');
-      fullScreenButton.setAttribute('title', 'Exit Full Screen');
+      requestFullScreen(player);
     } else {
-      player.classList.remove('ckin__fullscreen');
-
       /* if(this.videoParent) {
         const {videoWhichChild, videoParent} = this;
         if(!videoWhichChild) {
@@ -628,37 +517,23 @@ export default class VideoPlayer extends EventListenerBase<{
         this.videoWhichChild = -1;
       } */
   
-      // @ts-ignore
-      if(document.cancelFullScreen) {
-        // @ts-ignore
-        document.cancelFullScreen();
-        // @ts-ignore
-      } else if(document.mozCancelFullScreen) {
-        // @ts-ignore
-        document.mozCancelFullScreen();
-        // @ts-ignore
-      } else if(document.webkitCancelFullScreen) {
-        // @ts-ignore
-        document.webkitCancelFullScreen();
-        // @ts-ignore
-      } else if(document.msExitFullscreen) {
-        // @ts-ignore
-        document.msExitFullscreen();
-      }
-  
-      fullScreenButton.classList.remove('tgico-smallscreen');
-      fullScreenButton.classList.add('tgico-fullscreen');
-      fullScreenButton.setAttribute('title', 'Full Screen');
+      cancelFullScreen();
     }
   }
   
-  protected onFullScreen = () => {
-    // @ts-ignore
-    const isFullscreenNow = document.webkitFullscreenElement !== null;
-    if(!isFullscreenNow) {
-      this.wrapper.classList.remove('ckin__fullscreen');
+  protected onFullScreen(fullScreenButton: HTMLElement) {
+    const isFull = isFullScreen();
+    this.wrapper.classList.toggle('ckin__fullscreen', isFull);
+    if(!isFull) {
+      fullScreenButton.classList.remove('tgico-smallscreen');
+      fullScreenButton.classList.add('tgico-fullscreen');
+      fullScreenButton.setAttribute('title', 'Full Screen');
+    } else {
+      fullScreenButton.classList.remove('tgico-fullscreen');
+      fullScreenButton.classList.add('tgico-smallscreen');
+      fullScreenButton.setAttribute('title', 'Exit Full Screen');
     }
-  };
+  }
 
   public removeListeners() {
     super.cleanup();

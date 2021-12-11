@@ -81,6 +81,10 @@ $chat-input-inner-padding-handhelds: .25rem;
   --disabled-opacity: .3;
   --round-video-size: 280px;
 
+  --topbar-floating-scaleX: 1;
+  --topbar-call-height: 3rem;
+  --topbar-floating-call-height: 0px;
+
   // https://github.com/overtake/TelegramSwift/blob/5cc7d2475fe4738a6aa0486c23eaf80a89d33b97/submodules/TGUIKit/TGUIKit/PresentationTheme.swift#L2054
   --peer-avatar-red-top: #ff885e;
   --peer-avatar-red-bottom: #ff516a;
@@ -178,10 +182,29 @@ $chat-input-inner-padding-handhelds: .25rem;
   --message-out-status-color: var(--message-out-primary-color);
   --message-out-audio-play-button-color: #fff;
 
+  --gc-background-color: #212121;
+  --gc-button-leave-color: rgba(255, 89, 90, .3);
+  --gc-button-unmuted-color: rgba(1, 200, 80, .2);
+  --gc-button-muted-color: rgba(60, 135, 247, .2);
+  --gc-button-hand-color: rgba(223, 68, 184, .2);
+  --gc-button-unmuted-fill-color: #195530;
+  --gc-button-muted-fill-color: #3C87F7;
+  --gc-green-color: #195530;
+  --gc-blue-color: #3C87F7;
+  --gc-red-color: #643333;
+
+  --gc-primary-text-color: #fff;
+  --gc-secondary-text-color: #aaaaaa;
+  --gc-green-text-color: #5CC85E;
+  --gc-blue-text-color: #3390ec;
+  --gc-red-text-color: #ff595a;
+
+  --gc-right-column-width: 26.25rem;
+
   // * Day theme end
 }
 
-html.night {
+.night {
 //:root {
   // * Night theme
   --body-background-color: #181818;
@@ -281,6 +304,7 @@ html.night {
 @import "partials/popups/instanceDeactivated";
 @import "partials/popups/joinChatInvite";
 @import "partials/popups/reportMessages";
+@import "partials/popups/groupCall";
 
 @import "partials/pages/pages";
 @import "partials/pages/authCode";
@@ -1180,7 +1204,8 @@ middle-ellipsis-element {
   }
 }
 
-.rlottie, .rlottie-vector {
+.rlottie, 
+.rlottie-vector {
   left: 0;
   top: 0;
   bottom: 0;
@@ -1190,6 +1215,10 @@ middle-ellipsis-element {
   max-height: 100%;
   width: 100%;
   height: 100%;
+}
+
+.rlottie-icon {
+  position: relative;
 }
 
 .rlottie.fade-in {
@@ -1443,4 +1472,85 @@ middle-ellipsis-element {
   width: 1.25rem;
   height: 1.25rem;
   margin-left: .125rem;
+}
+
+.movable-element {
+  --size: .5rem;
+  position: relative;
+
+  &-resize-handler {
+    position: absolute;
+
+    &-side-n,
+    &-side-s {
+      left: 0;
+      right: 0;
+      height: var(--size);
+      cursor: row-resize;
+    }
+
+    &-side-e,
+    &-side-w {
+      top: 0;
+      bottom: 0;
+      width: var(--size);
+      cursor: col-resize;
+    }
+
+    &-side-n {
+      top: 0;
+    }
+
+    &-side-e {
+      right: 0;
+    }
+
+    &-side-s {
+      bottom: 0;
+    }
+
+    &-side-w {
+      left: 0;
+    }
+
+    // corners
+    &-side-nw,
+    &-side-ne,
+    &-side-sw,
+    &-side-se {
+      width: var(--size);
+      height: var(--size);
+      z-index: 1;
+    }
+
+    &-side-ne,
+    &-side-sw {
+      cursor: nesw-resize;
+    }
+    
+    &-side-se,
+    &-side-nw {
+      cursor: nwse-resize;
+    }
+
+    &-side-ne {
+      top: 0;
+      right: 0;
+    }
+
+    &-side-se {
+      right: 0;
+      bottom: 0;
+    }
+
+    &-side-sw {
+      bottom: 0;
+      left: 0;
+    }
+
+    &-side-nw {
+      top: 0;
+      left: 0;
+    }
+  }
 }

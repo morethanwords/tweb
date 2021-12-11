@@ -9,9 +9,9 @@
 @font-face {
   font-family: "#{$tgico-font-family}";
   src:
-    url('#{$tgico-font-path}/#{$tgico-font-family}.ttf?vbev5x') format('truetype'),
-    url('#{$tgico-font-path}/#{$tgico-font-family}.woff?vbev5x') format('woff'),
-    url('#{$tgico-font-path}/#{$tgico-font-family}.svg?vbev5x#tgico') format('svg');
+    url('#{$tgico-font-path}/#{$tgico-font-family}.ttf?onwvlx') format('truetype'),
+    url('#{$tgico-font-path}/#{$tgico-font-family}.woff?onwvlx') format('woff'),
+    url('#{$tgico-font-path}/#{$tgico-font-family}.svg?onwvlx#tgico') format('svg');
   font-weight: normal;
   font-style: normal;
   font-display: block;
@@ -37,26 +37,6 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-.tgico-avatarnext {
-  &:before {
-    content: $tgico-avatarnext; 
-  }
-}
-.tgico-avatarprevious {
-  &:before {
-    content: $tgico-avatarprevious; 
-  }
-}
-.tgico-forward_filled {
-  &:before {
-    content: $tgico-forward_filled; 
-  }
-}
-.tgico-reply_filled {
-  &:before {
-    content: $tgico-reply_filled; 
-  }
-}
 .tgico-check {
   &:before {
     content: $tgico-check; 
@@ -120,6 +100,16 @@
 .tgico-attach {
   &:before {
     content: $tgico-attach; 
+  }
+}
+.tgico-avatarnext {
+  &:before {
+    content: $tgico-avatarnext; 
+  }
+}
+.tgico-avatarprevious {
+  &:before {
+    content: $tgico-avatarprevious; 
   }
 }
 .tgico-bold {
@@ -332,6 +322,11 @@
     content: $tgico-email; 
   }
 }
+.tgico-endcall_filled {
+  &:before {
+    content: $tgico-endcall_filled; 
+  }
+}
 .tgico-enter {
   &:before {
     content: $tgico-enter; 
@@ -367,6 +362,11 @@
     content: $tgico-fontsize; 
   }
 }
+.tgico-forward_filled {
+  &:before {
+    content: $tgico-forward_filled; 
+  }
+}
 .tgico-forward {
   &:before {
     content: $tgico-forward; 
@@ -375,6 +375,16 @@
 .tgico-fullscreen {
   &:before {
     content: $tgico-fullscreen; 
+  }
+}
+.tgico-gc_microphone {
+  &:before {
+    content: $tgico-gc_microphone; 
+  }
+}
+.tgico-gc_microphoneoff {
+  &:before {
+    content: $tgico-gc_microphoneoff; 
   }
 }
 .tgico-gifs {
@@ -445,6 +455,11 @@
 .tgico-link {
   &:before {
     content: $tgico-link; 
+  }
+}
+.tgico-listscreenshare {
+  &:before {
+    content: $tgico-listscreenshare; 
   }
 }
 .tgico-livelocation {
@@ -652,9 +667,19 @@
     content: $tgico-replace; 
   }
 }
+.tgico-reply_filled {
+  &:before {
+    content: $tgico-reply_filled; 
+  }
+}
 .tgico-reply {
   &:before {
     content: $tgico-reply; 
+  }
+}
+.tgico-rightpanel {
+  &:before {
+    content: $tgico-rightpanel; 
   }
 }
 .tgico-saved {
@@ -707,9 +732,19 @@
     content: $tgico-sendingerror; 
   }
 }
+.tgico-settings_filled {
+  &:before {
+    content: $tgico-settings_filled; 
+  }
+}
 .tgico-settings {
   &:before {
     content: $tgico-settings; 
+  }
+}
+.tgico-sharescreen_filled {
+  &:before {
+    content: $tgico-sharescreen_filled; 
   }
 }
 .tgico-smallscreen {
@@ -795,6 +830,21 @@
 .tgico-username {
   &:before {
     content: $tgico-username; 
+  }
+}
+.tgico-videocamera_filled {
+  &:before {
+    content: $tgico-videocamera_filled; 
+  }
+}
+.tgico-videocamera {
+  &:before {
+    content: $tgico-videocamera; 
+  }
+}
+.tgico-videochat {
+  &:before {
+    content: $tgico-videochat; 
   }
 }
 .tgico-zoomin {

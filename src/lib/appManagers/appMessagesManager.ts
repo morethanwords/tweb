@@ -61,6 +61,8 @@ import appMessagesIdsManager from "./appMessagesIdsManager";
 import type { MediaSize } from "../../helpers/mediaSizes";
 import IMAGE_MIME_TYPES_SUPPORTED from "../../environment/imageMimeTypesSupport";
 import VIDEO_MIME_TYPES_SUPPORTED from "../../environment/videoMimeTypesSupport";
+import './appGroupCallsManager';
+import appGroupCallsManager from "./appGroupCallsManager";
 
 //console.trace('include');
 // TODO: если удалить диалог находясь в папке, то он не удалится из папки и будет виден в настройках
@@ -2568,14 +2570,17 @@ export class AppMessagesManager {
         case 'messageActionGroupCall': {
           //assumeType<MessageAction.messageActionGroupCall>(action);
 
+          appGroupCallsManager.saveGroupCall(action.call);
+
           let type: string;
           if(action.duration === undefined) {
             type = 'started';
-            if(peerId !== message.fromId) {
-              type += '_by' + suffix;
-            }
           } else {
-            type = 'ended_by' + suffix;
+            type = 'ended'
+          }
+
+          if(!isBroadcast) {
+            type += '_by' + suffix;
           }
 
           // @ts-ignore
@@ -2934,14 +2939,14 @@ export class AppMessagesManager {
       let args: any[];
 
       const getNameDivHTML = (peerId: PeerId, plain: boolean) => {
-        return plain ? appPeersManager.getPeerTitle(peerId, plain) + ' ' : (new PeerTitle({peerId})).element;
+        return plain ? appPeersManager.getPeerTitle(peerId, plain) : (new PeerTitle({peerId})).element;
       };
 
       switch(action._) {
         case 'messageActionPhoneCall': {
           _ += '.' + (action as any).type;
 
-          args = [formatCallDuration(action.duration)];
+          args = [formatCallDuration(action.duration, plain)];
           break;
         }
 
@@ -2949,11 +2954,25 @@ export class AppMessagesManager {
           _ += '.' + (action as any).type;
 
           args = [];
-          if(!_.endsWith('You')) {
+          if(!_.endsWith('You') && !message.pFlags.post) {
             args.push(getNameDivHTML(message.fromId, plain));
           }
 
-          args.push(formatCallDuration(action.duration));
+          if(action.duration !== undefined) {
+            args.push(formatCallDuration(action.duration, plain));
+          } else {
+            const {onclick, url} = RichTextProcessor.wrapUrl(`tg://voicechat?chat_id=${message.peerId.toChatId()}&id=${action.call.id}&access_hash=${action.call.access_hash}`);
+            if(!onclick) {
+              args.push(document.createElement('span'));
+              break;
+            }
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.setAttribute('onclick', onclick + '(this)');
+            args.push(a);
+          }
+
           break;
         }
 
@@ -3096,16 +3115,17 @@ export class AppMessagesManager {
           args = [getNameDivHTML(message.fromId, plain)];
 
           if(users.length > 1) {
+            const joined = join(
+              users.map((userId: UserId) => (getNameDivHTML(userId.toPeerId(), plain) as string).trim()),
+              false,
+              plain
+            );
+            
             if(plain) {
-              args.push(...users.map((userId: UserId) => (getNameDivHTML(userId.toPeerId(), true) as string).trim()).join(', '));
+              args.push(...joined);
             } else {
               const fragment = document.createElement('span');
-              fragment.append(
-                ...join(
-                  users.map((userId: UserId) => getNameDivHTML(userId.toPeerId(), false)) as HTMLElement[],
-                  false
-                )
-              );
+              fragment.append(...joined);
               args.push(fragment);
             }
           } else {

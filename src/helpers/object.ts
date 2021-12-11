@@ -143,12 +143,15 @@ export function validateInitObject(initObject: any, currentObject: any, onReplac
   }
 }
 
-export function safeAssign(object: any, fromObject: any) {
-  if(!fromObject) return;
-  
-  for(let i in fromObject) {
-    if(fromObject[i] !== undefined) {
-      object[i] = fromObject[i];
+export function safeAssign<T>(object: T, fromObject: any) {
+  if(fromObject) {
+    for(let i in fromObject) {
+      if(fromObject[i] !== undefined) {
+        // @ts-ignore
+        object[i] = fromObject[i];
+      }
     }
   }
+
+  return object;
 }

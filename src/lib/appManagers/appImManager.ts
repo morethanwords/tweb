@@ -31,7 +31,7 @@ import appPollsManager from './appPollsManager';
 import SetTransition from '../../components/singleTransition';
 import ChatDragAndDrop from '../../components/chat/dragAndDrop';
 import { doubleRaf } from '../../helpers/schedulers';
-import lottieLoader from '../lottieLoader';
+import lottieLoader from '../rlottie/lottieLoader';
 import useHeavyAnimationCheck, { dispatchHeavyAnimationEvent } from '../../hooks/useHeavyAnimationCheck';
 import appDraftsManager from './appDraftsManager';
 import serverTimeManager from '../mtproto/serverTimeManager';
@@ -72,6 +72,10 @@ import { NULL_PEER_ID } from '../mtproto/mtproto_config';
 import telegramMeWebManager from '../mtproto/telegramMeWebManager';
 import { ONE_DAY } from '../../helpers/date';
 import { numberThousandSplitter } from '../../helpers/number';
+import appGroupCallsManager, { GroupCallId, MyGroupCall } from './appGroupCallsManager';
+import TopbarCall from '../../components/topbarCall';
+import confirmationPopup from '../../components/confirmationPopup';
+import IS_GROUP_CALL_SUPPORTED from '../../environment/groupCallSupport';
 
 //console.log('appImManager included33!');
 
@@ -104,6 +108,8 @@ export class AppImManager {
   
   public markupTooltip: MarkupTooltip;
   private backgroundPromises: {[slug: string]: Promise<string>} = {};
+  
+  private topbarCall: TopbarCall;
 
   get myId() {
     return rootScope.myId;
@@ -238,6 +244,8 @@ export class AppImManager {
       stateStorage.setToCache('chatPositions', c || {});
     });
 
+    this.topbarCall = new TopbarCall(appGroupCallsManager, appPeersManager, appChatsManager);
+
     // ! do not remove this line 
     // ! instance can be deactivated before the UI starts, because it waits in background for RAF that is delayed
     singleInstance.activateInstance();
@@ -325,6 +333,19 @@ export class AppImManager {
         this.processInternalLink(link);
       }
     });
+
+    if(IS_GROUP_CALL_SUPPORTED) {
+      this.addAnchorListener<{
+        uriParams: Omit<InternalLink.InternalLinkVoiceChat, '_'>
+      }>({
+        name: 'voicechat',
+        protocol: 'tg',
+        callback: ({uriParams}) => {
+          const link = this.makeLink(INTERNAL_LINK_TYPE.VOICE_CHAT, uriParams);
+          this.processInternalLink(link);
+        }
+      });
+    }
 
     this.addAnchorListener<{
     //   pathnameParams: ['c', string, string],
@@ -599,6 +620,14 @@ export class AppImManager {
         break;
       }
 
+      case INTERNAL_LINK_TYPE.VOICE_CHAT: {
+        if(IS_GROUP_CALL_SUPPORTED) {
+          this.joinGroupCall(link.chat_id.toPeerId(true), link.id);
+        }
+        
+        break;
+      }
+
       default: {
         this.log.warn('Not supported internal link:', link);
         break;
@@ -608,7 +637,7 @@ export class AppImManager {
 
   private addAnchorListener<Params extends {pathnameParams?: any, uriParams?: any}>(options: {
     name: 'showMaskedAlert' | 'execBotCommand' | 'searchByHashtag' | 'addstickers' | 'joinchat' | 'im' |
-          'resolve' | 'privatepost' | 'addstickers', 
+          'resolve' | 'privatepost' | 'addstickers' | 'voicechat', 
     protocol?: 'tg',
     callback: (params: Params, element?: HTMLAnchorElement) => boolean | any, 
     noPathnameParams?: boolean,
@@ -718,6 +747,67 @@ export class AppImManager {
       return this.openThread(message.peerId, commentId, message.mid);
     });
   }
+
+  public async joinGroupCall(peerId: PeerId, groupCallId?: GroupCallId) {
+    const chatId = peerId.toChatId();
+    const hasRights = appChatsManager.hasRights(chatId, 'manage_call');
+    const next = async() => {
+      const chatFull = await appProfileManager.getChatFull(chatId);
+      let call: MyGroupCall;
+      if(!chatFull.call) {
+        if(!hasRights) {
+          return;
+        }
+  
+        call = await appGroupCallsManager.createGroupCall(chatId);
+      } else {
+        call = appGroupCallsManager.saveGroupCall(chatFull.call, chatId);
+      }
+  
+      appGroupCallsManager.joinGroupCall(chatId, call.id, true, false);
+    };
+
+    if(groupCallId) {
+      const groupCall = await appGroupCallsManager.getGroupCallFull(groupCallId);
+      if(groupCall._ === 'groupCallDiscarded') {
+        if(!hasRights) {
+          toastNew({
+            langPackKey: 'VoiceChat.Chat.Ended'
+          });
+
+          return;
+        }
+
+        await confirmationPopup({
+          descriptionLangKey: 'VoiceChat.Chat.StartNew',
+          button: {
+            langKey: 'VoiceChat.Chat.StartNew.OK'
+          }
+        });
+      }
+    }
+
+    const currentGroupCall = appGroupCallsManager.groupCall;
+    if(currentGroupCall) {
+      await confirmationPopup({
+        titleLangKey: 'Call.Confirm.Discard.Voice.Header',
+        descriptionLangKey: 'Call.Confirm.Discard.Voice.ToVoice.Text',
+        descriptionLangArgs: [
+          new PeerTitle({peerId: currentGroupCall.chatId.toPeerId(true)}).element, 
+          new PeerTitle({peerId: peerId}).element
+        ],
+        button: {
+          langKey: 'OK'
+        }
+      });
+
+      if(appGroupCallsManager.groupCall === currentGroupCall) {
+        await currentGroupCall.hangUp();
+      }
+    }
+
+    next();
+  };
 
   public setCurrentBackground(broadcastEvent = false) {
     const theme = rootScope.getTheme();
@@ -1143,7 +1233,8 @@ export class AppImManager {
       stateStorage, 
       appNotificationsManager, 
       appEmojiManager,
-      appMessagesIdsManager
+      appMessagesIdsManager,
+      appGroupCallsManager
     );
 
     if(this.chats.length) {

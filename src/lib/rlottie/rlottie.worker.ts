@@ -11,16 +11,29 @@ const _Module = (self as any).Module as any;
 
 const DEFAULT_FPS = 60;
 
-export class RLottieItem {
-  private stringOnWasmHeap: any = null;
-  private handle: any = null;
-  private frameCount = 0;
+type LottieHandlePointer = number;
 
-  private dead = false;
+// throw new Error('test');
+
+export class RLottieItem {
+  private stringOnWasmHeap: number;
+  private handle: LottieHandlePointer;
+  private frameCount: number;
+
+  private dead: boolean;
   //private context: OffscreenCanvasRenderingContext2D;
 
-  constructor(private reqId: number, jsString: string, private width: number, private height: number, private fps: number/* , private canvas: OffscreenCanvas */) {
+  constructor(
+    private reqId: number, 
+    jsString: string, 
+    private width: number, 
+    private height: number, 
+    private fps: number/* , 
+    private canvas: OffscreenCanvas */
+  ) {
     this.fps = Math.max(1, Math.min(60, fps || DEFAULT_FPS));
+
+    this.frameCount = 0;
 
     //this.context = canvas.getContext('2d');
 
@@ -52,7 +65,7 @@ export class RLottieItem {
     }
   }
 
-  public render(frameNo: number, clamped: Uint8ClampedArray) {
+  public render(frameNo: number, clamped?: Uint8ClampedArray) {
     if(this.dead) return;
     //return;
   
@@ -63,9 +76,9 @@ export class RLottieItem {
     try {
       worker.Api.render(this.handle, frameNo);
   
-      var bufferPointer = worker.Api.buffer(this.handle);
+      const bufferPointer = worker.Api.buffer(this.handle);
   
-      var data = _Module.HEAPU8.subarray(bufferPointer, bufferPointer + (this.width * this.height * 4));
+      const data = _Module.HEAPU8.subarray(bufferPointer, bufferPointer + (this.width * this.height * 4));
   
       if(!clamped) {
         clamped = new Uint8ClampedArray(data);
@@ -91,7 +104,14 @@ export class RLottieItem {
 }
 
 class RLottieWorker {
-  public Api: any = {};
+  public Api: {
+    init: () => LottieHandlePointer,
+    destroy: (handle: LottieHandlePointer) => void,
+    resize: (handle: LottieHandlePointer, width: number, height: number) => void,
+    buffer: (handle: LottieHandlePointer) => number,
+    render: (handle: LottieHandlePointer, frameNo: number) => void,
+    loadFromData: (handle: LottieHandlePointer, bufferPointer: number) => number
+  } = {} as any;
 
   public initApi() {
     this.Api = {
@@ -141,23 +161,19 @@ const queryableFunctions = {
     }
   },
   destroy: function(reqId: number) {
-    if(!items.hasOwnProperty(reqId)) {
+    const item = items[reqId];
+    if(!item) {
       return;
     }
 
-    items[reqId].destroy();
+    item.destroy();
     delete items[reqId];
   },
-  renderFrame: function(reqId: number, frameNo: number, clamped: Uint8ClampedArray) {
+  renderFrame: function(reqId: number, frameNo: number, clamped?: Uint8ClampedArray) {
     //console.log('worker renderFrame', reqId, frameNo, clamped);
     items[reqId].render(frameNo, clamped);
   }
 };
-
-function defaultReply(message: any) {
-  // your default PUBLIC function executed only when main page calls the queryableWorker.postMessage() method directly
-  // do something
-}
 
 /**
  * Returns true when run in WebKit derived browsers.
@@ -189,34 +205,26 @@ function reply(...args: any[]) {
 
   //if(arguments[0] === 'frame') return;
 
-  var args = Array.prototype.slice.call(arguments, 1);
+  args = Array.prototype.slice.call(arguments, 1);
   if(isSafari(self)) {
-    postMessage({ 'queryMethodListener': arguments[0], 'queryMethodArguments': args });
+    postMessage({queryMethodListener: arguments[0], queryMethodArguments: args});
   } else {
-    var transfer = [];
-    for(var i = 0; i < args.length; i++) {
+    const transfer: ArrayBuffer[] = [];
+    for(let i = 0; i < args.length; ++i) {
       if(args[i] instanceof ArrayBuffer) {
         transfer.push(args[i]);
       }
   
       if(args[i].buffer && args[i].buffer instanceof ArrayBuffer) {
         transfer.push(args[i].buffer);
-        //args[i] = args[i].buffer;
       }
     }
 
-    postMessage({ 'queryMethodListener': arguments[0], 'queryMethodArguments': args }, transfer);
+    postMessage({queryMethodListener: arguments[0], queryMethodArguments: args}, transfer);
   }
-
-  //postMessage({ 'queryMethodListener': arguments[0], 'queryMethodArguments': Array.prototype.slice.call(arguments, 1) });
-  //console.error(transfer, args);
 }
 
-onmessage = function(oEvent) {
-  if(oEvent.data instanceof Object && oEvent.data.hasOwnProperty('queryMethod') && oEvent.data.hasOwnProperty('queryMethodArguments')) {
-    // @ts-ignore
-    queryableFunctions[oEvent.data.queryMethod].apply(self, oEvent.data.queryMethodArguments);
-  } else {
-    defaultReply(oEvent.data);
-  }
+onmessage = function(e) {
+  // @ts-ignore
+  queryableFunctions[e.data.queryMethod].apply(queryableFunctions, e.data.queryMethodArguments);
 };

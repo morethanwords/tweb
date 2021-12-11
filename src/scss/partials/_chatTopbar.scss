@@ -4,12 +4,19 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-@mixin sidebar-transform() {
+@mixin sidebar-transform($centered: false, $transform: true) {
 	@include respond-to(medium-screens) {
 		transition: transform var(--transition-standard-out);
 
 		body.is-right-column-shown & {
-			transform: translate3d(calc(var(--right-column-width) * -1), 0, 0);
+      @if $transform {
+        @if $centered {
+          transform: translate3d(calc(var(--right-column-width) * -.5), 0, 0);
+        } @else {
+          transform: translate3d(calc(var(--right-column-width) * -1), 0, 0);
+        }
+      }
+
 			transition: transform var(--transition-standard-in);
 		}
 
@@ -21,15 +28,57 @@
 	}
 }
 
+body.is-calling {
+  .topbar {
+    &, 
+    &-call-container {
+      transform: translateY(0);
+    }
+  }
+
+  &.animation-level-2 {
+    .topbar {
+      &,
+      &-call-container {
+        transition: transform var(--transition-standard-out);
+      }
+    }
+  }
+
+  &:not(.backwards) {
+    .topbar {
+      &, 
+      &-call-container {
+        transform: translateY(var(--topbar-call-height));
+      }
+    }
+
+    &:not(.animating) {
+      --topbar-floating-call-height: var(--topbar-call-height);
+    }
+  }
+}
+
+body.is-right-column-shown {
+  @include respond-to(medium-screens) {
+    --topbar-floating-scaleX: calc(1 - var(--right-column-proportion));
+  }
+}
+
 .topbar {
-	--topbar-height: 3.5rem;
-	--pinned-floating-height: 0px;
+  --topbar-height: 3.5rem;
+  
+  --pinned-floating-audio-height: 0px;
+  --pinned-floating-message-height: 0px;
+	--pinned-floating-height: calc(var(--pinned-floating-audio-height) + var(--pinned-floating-message-height) + var(--topbar-floating-call-height));
+  
 	--pinned-audio-height: 52px;
 	--pinned-message-height: 52px;
+
 	width: 100%;
 	z-index: 1;
-	min-height: var(--height);
-	max-height: var(--height);
+	min-height: var(--topbar-height) !important;
+	max-height: var(--topbar-height) !important;
 	margin-bottom: var(--pinned-floating-height);
 	position: relative;
 	cursor: pointer !important;
@@ -37,7 +86,7 @@
 	&:before {
 		content: " ";
 		position: absolute;
-		height: calc(var(--topbar-height) + var(--pinned-floating-height));
+		height: calc(var(--topbar-height) + var(--pinned-floating-height) - var(--topbar-floating-call-height));
 		top: 0;
 		right: 0;
 		left: 0;
@@ -46,11 +95,11 @@
 	}
 
 	&.is-pinned-audio-floating {
-		--pinned-floating-height: var(--pinned-audio-height);
+		--pinned-floating-audio-height: var(--pinned-audio-height);
 	}
 
 	&.is-pinned-message-floating {
-		--pinned-floating-height: var(--pinned-message-height);
+		--pinned-floating-message-height: var(--pinned-message-height);
 	}
 
 	&:not(.is-pinned-message-floating) {
@@ -61,8 +110,6 @@
 	}
 
 	&.is-pinned-audio-floating.is-pinned-message-floating {
-		--pinned-floating-height: calc(var(--pinned-audio-height) + var(--pinned-message-height));
-
 		.pinned-message {
 			top: calc(var(--topbar-height) + var(--pinned-audio-height));
 
@@ -184,6 +231,15 @@
 				}
 			}
 		//}
+
+    &-container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 3.5rem;
+      max-height: 3.5rem;
+      flex: 1 1 auto;
+    }
 	}
 
 	.chat-utils {
@@ -262,4 +318,94 @@
 			margin-top: 1px;
 		} */
 	}
+
+  &-call {
+    &-container {
+      height: var(--topbar-call-height) !important;
+      min-height: auto !important;
+      position: absolute;
+      top: calc(var(--topbar-call-height) * -1);
+      right: 0;
+      left: 1px; // because I have border-right on left sidebar that "pushes" the chat
+      color: #fff;
+      z-index: 2;
+      cursor: pointer !important;
+
+      body:not(.has-chat) & {
+        background: none !important;
+      }
+
+      @include respond-to(until-floating-left-sidebar) {
+        left: 0;
+      }
+
+      .btn-icon {
+        color: inherit;
+        width: 2.5rem;
+        height: 2.5rem;
+        padding: 0;
+      }
+
+      .peer-title {
+        font-weight: 500;
+        white-space: nowrap;
+      }
+
+      @media only screen and (max-width: 480px) {
+        .topbar-call-left,
+        .topbar-call-right {
+          width: auto;
+        }
+
+        .group-call-description {
+          display: none;
+        }
+      }
+    }
+
+    &-left, 
+    &-right {
+      flex: 0 0 auto;
+      width: 12rem;
+    }
+
+    &-left {
+      display: flex;
+      align-items: center;
+
+      .btn-icon {
+        margin-right: .375rem;
+      }
+    }
+
+    &-center {
+      @include sidebar-transform(true);
+      @include text-overflow();
+    }
+
+    &-right {
+      @include sidebar-transform();
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    &-weave {
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: -1.125rem;
+      left: 0;
+      z-index: -1;
+      transform: scale(var(--topbar-floating-scaleX), -1);
+      transform-origin: left center;
+      pointer-events: none;
+
+      @include sidebar-transform(false, false);
+
+      &-canvas {
+        width: 100%;
+        height: 100%;
+      }
+    }
+  }
 }

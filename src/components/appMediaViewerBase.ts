@@ -42,6 +42,7 @@ import EventListenerBase from "../helpers/eventListenerBase";
 import { MyMessage } from "../lib/appManagers/appMessagesManager";
 import RichTextProcessor from "../lib/richtextprocessor";
 import { NULL_PEER_ID } from "../lib/mtproto/mtproto_config";
+import { isFullScreen } from "../helpers/dom/fullScreen";
 
 const ZOOM_STEP = 0.5;
 const ZOOM_INITIAL_VALUE = 1;
@@ -280,12 +281,12 @@ export default class AppMediaViewerBase<
       const swipeHandler = new SwipeHandler({
         element: this.wholeDiv, 
         onSwipe: (xDiff, yDiff) => {
-          if(VideoPlayer.isFullScreen()) {
+          if(isFullScreen()) {
             return;
           }
           //console.log(xDiff, yDiff);
 
-          const percents = Math.abs(xDiff) / windowSize.windowW;
+          const percents = Math.abs(xDiff) / windowSize.width;
           if(percents > .2 || xDiff > 125) {
             //console.log('will swipe', xDiff);
 
@@ -298,7 +299,7 @@ export default class AppMediaViewerBase<
             return true;
           }
 
-          const percentsY = Math.abs(yDiff) / windowSize.windowH;
+          const percentsY = Math.abs(yDiff) / windowSize.height;
           if(percentsY > .2 || yDiff > 125) {
             this.buttons.close.click();
             return true;
@@ -622,7 +623,7 @@ export default class AppMediaViewerBase<
     let top: number;
 
     if(wasActive) {
-      left = fromRight === 1 ? windowSize.windowW : -containerRect.width;
+      left = fromRight === 1 ? windowSize.width : -containerRect.width;
       top = containerRect.top;
     } else {
       left = rect.left;
@@ -697,8 +698,8 @@ export default class AppMediaViewerBase<
     if(closing && zoomValue !== 1) {
       // const width = this.moversContainer.scrollWidth * scaleX;
       // const height = this.moversContainer.scrollHeight * scaleY;
-      const willBeLeft = windowSize.windowW / 2 - rect.width / 2;
-      const willBeTop = windowSize.windowH / 2 - rect.height / 2;
+      const willBeLeft = windowSize.width / 2 - rect.width / 2;
+      const willBeTop = windowSize.height / 2 - rect.height / 2;
       const left = rect.left - willBeLeft/*  + (width - rect.width) / 2 */;
       const top = rect.top - willBeTop/*  + (height - rect.height) / 2 */;
       this.moversContainer.style.transform = `matrix(${scaleX}, 0, 0, ${scaleY}, ${left}, ${top})`;
@@ -1025,7 +1026,7 @@ export default class AppMediaViewerBase<
   }
 
   protected moveTheMover(mover: HTMLElement, toLeft = true) {
-    const windowW = windowSize.windowW;
+    const windowW = windowSize.width;
 
     this.removeCenterFromMover(mover);
 
@@ -1228,11 +1229,11 @@ export default class AppMediaViewerBase<
 
     const mover = this.content.mover;
 
-    const maxWidth = windowSize.windowW;
+    const maxWidth = windowSize.width;
     //const maxWidth = this.pageEl.scrollWidth;
     // TODO: const maxHeight = mediaSizes.isMobile ? appPhotosManager.windowH : appPhotosManager.windowH - 100;
     let padding = 0;
-    const windowH = windowSize.windowH;
+    const windowH = windowSize.height;
     if(windowH < 1000000 && !mediaSizes.isMobile) {
       padding = 120;
     }

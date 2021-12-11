@@ -151,7 +151,7 @@ export default class MTPNetworker {
     const suffix = this.isFileUpload ? '-U' : this.isFileDownload ? '-D' : '';
     this.name = 'NET-' + dcId + suffix;
     //this.log = logger(this.name, this.upload && this.dcId === 2 ? LogLevels.debug | LogLevels.warn | LogLevels.log | LogLevels.error : LogLevels.error);
-    this.log = logger(this.name, LogTypes.Log | /* LogTypes.Debug |  */LogTypes.Error | LogTypes.Warn);
+    this.log = logger(this.name, LogTypes.Log | /* LogTypes.Debug |  */LogTypes.Error | LogTypes.Warn, undefined);
     this.log('constructor'/* , this.authKey, this.authKeyID, this.serverSalt */);
 
     // Test resend after bad_server_salt

@@ -1200,7 +1200,7 @@ export default class ChatBubbles {
         let bad = true;
         if(bubble) {
           const rect = bubble.getBoundingClientRect();
-          bad = (windowSize.windowH / 2) > rect.top;
+          bad = (windowSize.height / 2) > rect.top;
         } else {
           const message = this.chat.getMessage(mid);
           if(!message.deleted) {
@@ -1602,10 +1602,10 @@ export default class ChatBubbles {
       isChangingHeight ? ({rect}) => {
         // return rect.height;
 
-        let height = windowSize.windowH;
+        let height = windowSize.height;
         // height -= this.chat.topbar.container.getBoundingClientRect().height;
         height -= this.bubblesContainer.offsetTop;
-        height -= mediaSizes.isMobile || windowSize.windowH < 570 ? 58 : 78;
+        height -= mediaSizes.isMobile || windowSize.height < 570 ? 58 : 78;
         return height;
 
         /* const rowsWrapperHeight = this.chat.input.rowsWrapper.getBoundingClientRect().height;
@@ -3804,7 +3804,7 @@ export default class ChatBubbles {
     const peerId = this.peerId;
 
     //console.time('appImManager call getHistory');
-    const pageCount = Math.min(30, windowSize.windowH / 38/*  * 1.25 */ | 0);
+    const pageCount = Math.min(30, windowSize.height / 38/*  * 1.25 */ | 0);
     //const loadCount = Object.keys(this.bubbles).length > 0 ? 50 : pageCount;
     const realLoadCount = Object.keys(this.bubbles).length > 0/*  || additionMsgId */ ? Math.max(40, pageCount) : pageCount;//const realLoadCount = 50;
     //const realLoadCount = pageCount;//const realLoadCount = 50;

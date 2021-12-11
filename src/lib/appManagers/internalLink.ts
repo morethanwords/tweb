@@ -8,10 +8,11 @@ export enum INTERNAL_LINK_TYPE {
   MESSAGE,
   PRIVATE_POST,
   STICKER_SET,
-  JOIN_CHAT
+  JOIN_CHAT,
+  VOICE_CHAT
 };
 
-export type InternalLink = InternalLink.InternalLinkMessage | InternalLink.InternalLinkPrivatePost | InternalLink.InternalLinkStickerSet | InternalLink.InternalLinkJoinChat;
+export type InternalLink = InternalLink.InternalLinkMessage | InternalLink.InternalLinkPrivatePost | InternalLink.InternalLinkStickerSet | InternalLink.InternalLinkJoinChat | InternalLink.InternalLinkVoiceChat;
 
 export namespace InternalLink {
   export interface InternalLinkMessage {
@@ -38,11 +39,22 @@ export namespace InternalLink {
     _: INTERNAL_LINK_TYPE.JOIN_CHAT,
     invite: string
   }
+
+  /**
+   * LOCAL LINK
+   */
+  export interface InternalLinkVoiceChat {
+    _: INTERNAL_LINK_TYPE.VOICE_CHAT,
+    id: string,
+    access_hash: string,
+    chat_id: string
+  }
 }
 
 export type InternalLinkTypeMap = {
   [INTERNAL_LINK_TYPE.MESSAGE]: InternalLink.InternalLinkMessage,
   [INTERNAL_LINK_TYPE.PRIVATE_POST]: InternalLink.InternalLinkPrivatePost,
   [INTERNAL_LINK_TYPE.STICKER_SET]: InternalLink.InternalLinkStickerSet,
-  [INTERNAL_LINK_TYPE.JOIN_CHAT]: InternalLink.InternalLinkJoinChat
+  [INTERNAL_LINK_TYPE.JOIN_CHAT]: InternalLink.InternalLinkJoinChat,
+  [INTERNAL_LINK_TYPE.VOICE_CHAT]: InternalLink.InternalLinkVoiceChat
 };

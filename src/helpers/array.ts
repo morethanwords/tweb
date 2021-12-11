@@ -82,3 +82,7 @@ export function insertInDescendSortedArray<T extends {[smth in K]?: number}, K e
 export function filterUnique<T extends Array<any>>(arr: T): T {
   return [...new Set(arr)] as T;
 }
+
+export function flatten<T>(arr: T[][]): T[] {
+  return arr.reduce((acc, val) => (acc.push(...val), acc), []);
+}

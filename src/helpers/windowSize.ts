@@ -5,15 +5,15 @@
  */
 
 export class WindowSize {
-  public windowW = 0;
-  public windowH = 0;
+  public width = 0;
+  public height = 0;
 
   constructor() {
     // @ts-ignore
     const w: any = 'visualViewport' in window ? window.visualViewport : window;
     const set = () => {
-      this.windowW = w.width || w.innerWidth;
-      this.windowH = w.height || w.innerHeight;
+      this.width = w.width || w.innerWidth;
+      this.height = w.height || w.innerHeight;
     };
     w.addEventListener('resize', set);
     set();

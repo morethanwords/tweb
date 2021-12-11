@@ -4,14 +4,15 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import lottieLoader, { RLottiePlayer } from "../../lib/lottieLoader";
+import lottieLoader, { LottieLoader } from "../../lib/rlottie/lottieLoader";
+import RLottiePlayer from "../../lib/rlottie/rlottiePlayer";
 import PasswordInputField from "../passwordInputField";
 
 export default class PasswordMonkey {
   public container: HTMLElement;
   public animation: RLottiePlayer;
   public needFrame = 0;
-  protected loadPromise: Promise<void>;
+  protected loadPromise: ReturnType<LottieLoader['waitForFirstFrame']>;
 
   constructor(protected passwordInputField: PasswordInputField, protected size: number) {
     this.container = document.createElement('div');
@@ -20,7 +21,7 @@ export default class PasswordMonkey {
 
   public load() {
     if(this.loadPromise) return this.loadPromise;
-    return this.loadPromise = lottieLoader.loadAnimationFromURL({
+    return this.loadPromise = lottieLoader.loadAnimationAsAsset({
       container: this.container,
       loop: false,
       autoplay: false,
@@ -28,7 +29,7 @@ export default class PasswordMonkey {
       height: this.size,
       noCache: true
     //}, 'assets/img/TwoFactorSetupMonkeyClose.tgs').then(_animation => {
-    }, 'assets/img/TwoFactorSetupMonkeyPeek.tgs').then(_animation => {
+    }, 'TwoFactorSetupMonkeyPeek').then(_animation => {
       //return;
       this.animation = _animation;
       this.animation.addEventListener('enterFrame', currentFrame => {

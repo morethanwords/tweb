@@ -5,7 +5,7 @@
  */
 
 import type { LazyLoadQueueIntersector } from "./lazyLoadQueue";
-import appDialogsManager, { DialogDom } from "../lib/appManagers/appDialogsManager";
+import appDialogsManager, { AppDialogsManager, DialogDom } from "../lib/appManagers/appDialogsManager";
 import { getHeavyAnimationPromise } from "../hooks/useHeavyAnimationCheck";
 import appUsersManager from "../lib/appManagers/appUsersManager";
 import isInDOM from "../helpers/dom/isInDOM";
@@ -27,19 +27,19 @@ export default class SortedUserList extends SortedList<SortedUser> {
   protected avatarSize = 48;
   protected rippleEnabled = true;
   protected autonomous = true;
-  protected new: boolean;
+  protected createChatListOptions: Parameters<AppDialogsManager['createChatList']>[0];
   protected onListLengthChange: () => void;
 
   constructor(options: Partial<{
     lazyLoadQueue: SortedUserList['lazyLoadQueue'],
     avatarSize: SortedUserList['avatarSize'],
     rippleEnabled: SortedUserList['rippleEnabled'],
-    new: SortedUserList['new'],
+    createChatListOptions: SortedUserList['createChatListOptions'],
     autonomous: SortedUserList['autonomous'],
     onListLengthChange: SortedUserList['onListLengthChange']
   }> = {}) {
     super({
-      getIndex: (id) => appUsersManager.getUserStatusForSort(id),
+      getIndex: (element) => appUsersManager.getUserStatusForSort(element.id),
       onDelete: (element) => {
         element.dom.listEl.remove();
         this.onListLengthChange && this.onListLengthChange();
@@ -89,7 +89,7 @@ export default class SortedUserList extends SortedList<SortedUser> {
 
     safeAssign(this, options);
 
-    this.list = appDialogsManager.createChatList({new: options.new});
+    this.list = appDialogsManager.createChatList(this.createChatListOptions);
 
     let timeout: number;
     const doTimeout = () => {
