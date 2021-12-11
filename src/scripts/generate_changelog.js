@@ -11,10 +11,23 @@ const text = fs.readFileSync('./CHANGELOG.md').toString('utf-8');
 
 const writeTo = `./public/changelogs/{VERSION}.md`;
 
-const splitted = text.split('\n\n');
+const separator = '### ';
+const splitted = text.split(separator);
 splitted.forEach(text => {
+  if(!text.trim()) return;
+  text = separator + text;
   text = text.replace(/^\*/gm, '•');
-  const splitted = text.split('\n').filter(line => !!line.trim());
+  const splitted = text.split('\n');
+
+  for(let i = splitted.length - 1; i >= 0; --i) {
+    const line = splitted[i];
+    if(!line.trim()) {
+      splitted.splice(i, 1);
+    } else {
+      break;
+    }
+  }
+
   const firstLine = splitted.shift();
   fs.writeFileSync(writeTo.replace('{VERSION}', firstLine.substr(4)), splitted.join('\n') + '\n');
 });
