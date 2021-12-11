@@ -29,5 +29,6 @@ splitted.forEach(text => {
   }
 
   const firstLine = splitted.shift();
-  fs.writeFileSync(writeTo.replace('{VERSION}', firstLine.substr(4)), splitted.join('\n') + '\n');
+  const version = firstLine.split(' ')[1];
+  fs.writeFileSync(writeTo.replace('{VERSION}', version), splitted.join('\n') + '\n');
 });
