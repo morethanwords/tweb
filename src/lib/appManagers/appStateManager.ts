@@ -28,7 +28,7 @@ import compareVersion from '../../helpers/compareVersion';
 const REFRESH_EVERY = 24 * 60 * 60 * 1000; // 1 day
 // const REFRESH_EVERY = 1e3;
 //const REFRESH_EVERY_WEEK = 24 * 60 * 60 * 1000 * 7; // 7 days
-const STATE_VERSION = App.versionFull;
+const STATE_VERSION = App.version;
 const BUILD = App.build;
 
 export type Background = {
@@ -421,7 +421,7 @@ export class AppStateManager extends EventListenerBase<{
           this.pushToState(missingKey, state[missingKey]);
         });
 
-        if(state.version !== STATE_VERSION/*  || true */) {
+        if(state.version !== STATE_VERSION || state.build !== BUILD/*  || true */) {
           // reset filters and dialogs if version is older
           if(compareVersion(state.version, '0.8.7') === -1) {
             this.state.allDialogsLoaded = copy(STATE_INIT.allDialogsLoaded);
@@ -431,8 +431,12 @@ export class AppStateManager extends EventListenerBase<{
               result.length = 0;
             }
           }
+          
+          if(compareVersion(state.version, STATE_VERSION) !== 0) {
+            this.newVersion = STATE_VERSION;
+          }
 
-          this.pushToState('version', this.newVersion = STATE_VERSION);
+          this.pushToState('version', STATE_VERSION);
           this.pushToState('build', BUILD);
         }
 
