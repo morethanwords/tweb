@@ -311,8 +311,8 @@ export default class ChatContextMenu {
     }, {
       icon: 'forward',
       text: 'Forward',
-      onClick: this.onForwardClick,
-      verify: () => this.chat.type !== 'scheduled' && !this.message.pFlags.is_outgoing && this.message._ !== 'messageService'
+      onClick: this.onForwardClick, // let forward the message if it's outgoing but not ours (like a changelog)
+      verify: () => this.chat.type !== 'scheduled' && (!this.message.pFlags.is_outgoing || !this.message.pFlags.out) && this.message._ !== 'messageService'
     }, {
       icon: 'forward',
       text: 'Message.Context.Selection.Forward',
