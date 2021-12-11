@@ -37,9 +37,10 @@ export default class SwipeHandler {
   private verifyTouchTarget: (evt: TouchEvent | MouseEvent) => boolean;
   private onFirstSwipe: () => void;
   private onReset: () => void;
-  private cursor: 'grabbing' | 'move' = 'grabbing';
+  private cursor: 'grabbing' | 'move' | 'row-resize' | 'col-resize' | 'nesw-resize' | 'nwse-resize' | 'ne-resize' | 'se-resize' | 'sw-resize' | 'nw-resize' | 'n-resize' | 'e-resize' | 's-resize' | 'w-resize' | '' = 'grabbing';
   private cancelEvent = true;
   private listenerOptions: boolean | AddEventListenerOptions = false;
+  private setCursorTo: HTMLElement;
 
   private hadMove = false;
   private xDown: number = null;
@@ -47,6 +48,8 @@ export default class SwipeHandler {
 
   constructor(options: SwipeHandlerOptions) {
     safeAssign(this, options);
+    
+    this.setCursorTo = this.element;
 
     this.setListeners();
   }
@@ -71,6 +74,14 @@ export default class SwipeHandler {
     }
   }
 
+  public setCursor(cursor: SwipeHandler['cursor']) {
+    this.cursor = cursor;
+    
+    if(!IS_TOUCH_SUPPORTED && this.hadMove) {
+      this.setCursorTo.style.setProperty('cursor', this.cursor, 'important');
+    }
+  }
+
   reset = (e?: Event) => {
     /* if(e) {
       cancelEvent(e);
@@ -80,7 +91,7 @@ export default class SwipeHandler {
       attachGlobalListenerTo.removeEventListener('touchmove', this.handleMove, {capture: true});
     } else {
       attachGlobalListenerTo.removeEventListener('mousemove', this.handleMove);
-      this.element.style.cursor = '';
+      this.setCursorTo.style.cursor = '';
     }
 
     if(this.onReset && this.hadMove) {
@@ -132,7 +143,7 @@ export default class SwipeHandler {
       this.hadMove = true;
 
       if(!IS_TOUCH_SUPPORTED) {
-        this.element.style.setProperty('cursor', this.cursor, 'important');
+        this.setCursorTo.style.setProperty('cursor', this.cursor, 'important');
       }
 
       if(this.onFirstSwipe) {

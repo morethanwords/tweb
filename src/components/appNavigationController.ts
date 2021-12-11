@@ -151,17 +151,21 @@ export class AppNavigationController {
     if(type) {
       const ret = this.findItemByType(type);
       if(ret) {
-        this.manual = true;
-        // ! commented because 'popstate' event will be fired with delay
-        //if(ret.index !== (this.navigations.length - 1)) {
-          this.navigations.splice(ret.index, 1);
-          this.handleItem(ret.item);
-          return;
-        //}
+        this.backByItem(ret.item, ret.index);
+        return;
       }
     }
 
     history.back();
+  }
+
+  public backByItem(item: NavigationItem, index = this.navigations.indexOf(item)) {
+    this.manual = true;
+    // ! commented because 'popstate' event will be fired with delay
+    //if(index !== (this.navigations.length - 1)) {
+      this.navigations.splice(index, 1);
+      this.handleItem(item);
+    //}
   }
 
   public pushItem(item: NavigationItem) {

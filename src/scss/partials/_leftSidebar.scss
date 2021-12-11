@@ -330,7 +330,7 @@
       padding-bottom: 1px;
     }
 
-    li {
+    .chatlist-chat {
       height: 98px;
       border-radius: 10px;
       max-width: 78px;
@@ -703,7 +703,7 @@
 }
 
 .folder-list {
-  li {
+  .chatlist-chat {
     padding: 9px 12px;
     height: 50px;
   }
@@ -731,7 +731,7 @@
 .popup-forward, .included-chatlist-container {
   .selector {
     .chatlist {
-      li {
+      &-chat {
         padding: 7px .75rem !important;
         height: 3.75rem;
       }
@@ -793,7 +793,7 @@
   }
 
   @include respond-to(handhelds) {
-    li {
+    .chatlist-chat {
       height: 62px;
       padding-top: 7px;
       padding-bottom: 7px;
@@ -1084,7 +1084,7 @@
 }
 
 .blocked-users-container {
-  li {
+  .chatlist-chat {
     height: 66px;
     padding-top: 9px;
     padding-bottom: 9px;

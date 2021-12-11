@@ -5,7 +5,7 @@
  */
 
 import Page from "./page";
-import lottieLoader from "../lib/lottieLoader";
+import lottieLoader from "../lib/rlottie/lottieLoader";
 import { horizontalMenu } from "../components/horizontalMenu";
 import { MOUNT_CLASS_TO } from "../config/debug";
 import fastSmoothScroll from "../helpers/fastSmoothScroll";

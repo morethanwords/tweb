@@ -31,6 +31,7 @@ import telegramMeWebManager from './telegramMeWebManager';
 import { CacheStorageDbName } from '../cacheStorage';
 import { pause } from '../../helpers/schedulers/pause';
 import IS_WEBP_SUPPORTED from '../../environment/webpSupport';
+import type { ApiError } from './apiManager';
 
 type Task = {
   taskId: number,
@@ -72,6 +73,9 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
 
   private hashes: {[method: string]: HashOptions} = {};
 
+  private apiPromisesSingleProcess: {
+    [q: string]: Map<any, Promise<any>>
+  } = {};
   private apiPromisesSingle: {
     [q: string]: Promise<any>
   } = {};
@@ -476,13 +480,47 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
 
   public invokeApiSingle<T extends keyof MethodDeclMap>(method: T, params: MethodDeclMap[T]['req'] = {} as any, options: InvokeApiOptions = {}): Promise<MethodDeclMap[T]['res']> {
     const q = method + '-' + JSON.stringify(params);
-    if(this.apiPromisesSingle[q]) {
-      return this.apiPromisesSingle[q];
+    const cache = this.apiPromisesSingle;
+    if(cache[q]) {
+      return cache[q];
     }
 
-    return this.apiPromisesSingle[q] = this.invokeApi(method, params, options).finally(() => {
-      delete this.apiPromisesSingle[q];
+    return cache[q] = this.invokeApi(method, params, options).finally(() => {
+      delete cache[q];
     });
+  }
+
+  public invokeApiSingleProcess<T extends keyof MethodDeclMap, R>(o: {
+    method: T, 
+    processResult: (response: MethodDeclMap[T]['res']) => R, 
+    processError?: (error: ApiError) => any,
+    params?: MethodDeclMap[T]['req'], 
+    options?: InvokeApiOptions & {cacheKey?: string}
+  }): Promise<R> {
+    o.params ??= {};
+    o.options ??= {};
+
+    const {method, processResult, processError, params, options} = o;
+    const cache = this.apiPromisesSingleProcess;
+    const cacheKey = options.cacheKey || JSON.stringify(params);
+    const map = cache[method] ?? (cache[method] = new Map());
+    const oldPromise = map.get(cacheKey);
+    if(oldPromise) {
+      return oldPromise;
+    }
+    
+    const originalPromise = this.invokeApi(method, params, options);
+    const newPromise: Promise<R> = originalPromise.then(processResult, processError);
+
+    const p = newPromise.finally(() => {
+      map.delete(cacheKey);
+      if(!map.size) {
+        delete cache[method];
+      }
+    });
+
+    map.set(cacheKey, p);
+    return p;
   }
 
   public invokeApiCacheable<T extends keyof MethodDeclMap>(method: T, params: MethodDeclMap[T]['req'] = {} as any, options: InvokeApiOptions & Partial<{cacheSeconds: number, override: boolean}> = {}): Promise<MethodDeclMap[T]['res']> {
@@ -528,12 +566,16 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
     if(cache) {
       for(const queryJSON in cache) {
         const item = cache[queryJSON];
-        if(verify(item.params)) {
-          if(item.timeout) {
-            clearTimeout(item.timeout);
+        try {
+          if(verify(item.params)) {
+            if(item.timeout) {
+              clearTimeout(item.timeout);
+            }
+  
+            delete cache[queryJSON];
           }
-
-          delete cache[queryJSON];
+        } catch(err) {
+          this.log.error('clearCache error:', err, queryJSON, item);
         }
       }
     }

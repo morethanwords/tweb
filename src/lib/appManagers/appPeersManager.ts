@@ -18,6 +18,7 @@ import rootScope from "../rootScope";
 import appChatsManager from "./appChatsManager";
 import appUsersManager from "./appUsersManager";
 import I18n from '../langPack';
+import { NULL_PEER_ID } from "../mtproto/mtproto_config";
 
 // https://github.com/eelcohn/Telegram-API/wiki/Calculating-color-for-a-Telegram-user-on-IRC
 /*
@@ -61,7 +62,7 @@ export class AppPeersManager {
 
     const chat: Chat.chat = appChatsManager.getChat(peerId.toChatId());
     if(chat && chat.migrated_to && chat.pFlags.deactivated) {
-      return this.getPeerId(chat.migrated_to);
+      return this.getPeerId(chat.migrated_to as InputChannel.inputChannel);
     }
     
     return false;
@@ -122,17 +123,24 @@ export class AppPeersManager {
       : appChatsManager.getChat(peerId.toChatId());
   }
 
-  public getPeerId(peerId: Peer | InputPeer | InputChannel | Update.updateUserTyping | Update.updateChatUserTyping | Update.updateChannelUserTyping | PeerId | string): PeerId {
+  public getPeerId(peerId: {user_id: UserId} | {channel_id: ChatId} | {chat_id: ChatId} | InputPeer | PeerId | string): PeerId {
     if(peerId !== undefined && ((peerId as string).isPeerId ? (peerId as string).isPeerId() : false)) return peerId as PeerId;
     // if(typeof(peerId) === 'string' && /^[uc]/.test(peerId)) return peerId as PeerId;
     // if(typeof(peerId) === 'number') return peerId;
     else if(isObject(peerId)) {
-      return (peerId as Peer.peerUser).user_id !== undefined ? 
-        (peerId as Peer.peerUser).user_id.toPeerId() : 
-        ((peerId as Peer.peerChannel).channel_id || (peerId as Peer.peerChat).chat_id).toPeerId(true);
+      const userId = (peerId as Peer.peerUser).user_id;
+      if(userId !== undefined) {
+        return userId.toPeerId(false);
+      }
+
+      const chatId = (peerId as Peer.peerChannel).channel_id || (peerId as Peer.peerChat).chat_id;
+      if(chatId !== undefined) {
+        return chatId.toPeerId(true);
+      }
+
+      return rootScope.myId; // maybe it is an inputPeerSelf
     // } else if(!peerId) return 'u0';
-    } else if(!peerId) return 0;
-    // } else if(!peerId) return '0';
+    } else if(!peerId) return NULL_PEER_ID;
     
     const isUser = (peerId as string).charAt(0) === 'u';
     const peerParams = (peerId as string).substr(1).split('_');
@@ -247,11 +255,11 @@ export class AppPeersManager {
     }
 
     const userId = peerId.toUserId();
-    return {
-      _: 'inputPeerUser',
-      user_id: userId,
-      access_hash: appUsersManager.getUser(userId).access_hash
-    };
+    return appUsersManager.getUserInputPeer(userId);
+  }
+
+  public getInputPeerSelf(): InputPeer.inputPeerSelf {
+    return {_: 'inputPeerSelf'};
   }
 
   public getInputDialogPeerById(peerId: PeerId | InputPeer): InputDialogPeer {

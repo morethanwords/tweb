@@ -5,7 +5,8 @@
  */
 
 import InputField from "../inputField";
-import lottieLoader, { RLottiePlayer } from "../../lib/lottieLoader";
+import lottieLoader from "../../lib/rlottie/lottieLoader";
+import RLottiePlayer from "../../lib/rlottie/rlottiePlayer";
 
 export default class TrackingMonkey {
   public container: HTMLElement;
@@ -88,13 +89,13 @@ export default class TrackingMonkey {
   public load() {
     if(this.loadPromise) return this.loadPromise;
     return this.loadPromise = Promise.all([
-      lottieLoader.loadAnimationFromURL({
+      lottieLoader.loadAnimationAsAsset({
         container: this.container,
         loop: true,
         autoplay: true,
         width: this.size,
         height: this.size
-      }, 'assets/img/TwoFactorSetupMonkeyIdle.tgs').then(animation => {
+      }, 'TwoFactorSetupMonkeyIdle').then(animation => {
         this.idleAnimation = animation;
 
         // ! animationIntersector will stop animation instantly
@@ -105,13 +106,13 @@ export default class TrackingMonkey {
         return lottieLoader.waitForFirstFrame(animation);
       }),
 
-      lottieLoader.loadAnimationFromURL({
+      lottieLoader.loadAnimationAsAsset({
         container: this.container,
         loop: false,
         autoplay: false,
         width: this.size,
         height: this.size
-      }, 'assets/img/TwoFactorSetupMonkeyTracking.tgs').then(_animation => {
+      }, 'TwoFactorSetupMonkeyTracking').then(_animation => {
         this.animation = _animation;
 
         if(!this.inputField.value.length) {

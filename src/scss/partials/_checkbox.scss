@@ -105,7 +105,8 @@
     line-height: 26px;
     user-select: none;
     transition: .2s opacity;
-    color: var(--primary-text-color);
+    // color: var(--primary-text-color);
+    color: inherit;
 
     @include animation-level(0) {
       transition: none;
@@ -200,9 +201,11 @@
   .radio-field-main {
     padding-left: 3.5rem;
     position: relative;
-    color: var(--primary-text-color);
+    // color: var(--primary-text-color);
+    color: inherit;
 
-    &::before, &::after {
+    &::before, 
+    &::after {
       content: '';
       display: block;
       position: absolute;

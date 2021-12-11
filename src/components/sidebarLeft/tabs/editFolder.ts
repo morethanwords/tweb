@@ -7,7 +7,7 @@
 import { deepEqual, copy } from "../../../helpers/object";
 import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
 import { MyDialogFilter as DialogFilter } from "../../../lib/storages/filters";
-import lottieLoader, { RLottiePlayer } from "../../../lib/lottieLoader";
+import lottieLoader, { LottieLoader } from "../../../lib/rlottie/lottieLoader";
 import { SliderSuperTab } from "../../slider";
 import { toast } from "../../toast";
 import appMessagesManager from "../../../lib/appManagers/appMessagesManager";
@@ -21,6 +21,7 @@ import AppIncludedChatsTab from "./includedChats";
 import { i18n, i18n_, LangPackKey } from "../../../lib/langPack";
 import { SettingSection } from "..";
 import PopupPeer from "../../popups/peer";
+import RLottiePlayer from "../../../lib/rlottie/rlottiePlayer";
 
 const MAX_FOLDER_NAME_LENGTH = 12;
 
@@ -41,7 +42,7 @@ export default class AppEditFolderTab extends SliderSuperTab {
   private originalFilter: DialogFilter;
 
   private type: 'edit' | 'create';
-  private loadAnimationPromise: Promise<void>;
+  private loadAnimationPromise: ReturnType<LottieLoader['waitForFirstFrame']>;
 
   protected init() {
     this.container.classList.add('edit-folder-container');
@@ -223,13 +224,13 @@ export default class AppEditFolderTab extends SliderSuperTab {
       this.editCheckForChange();
     });
 
-    return this.loadAnimationPromise = lottieLoader.loadAnimationFromURL({
+    return this.loadAnimationPromise = lottieLoader.loadAnimationAsAsset({
       container: this.stickerContainer,
       loop: false,
       autoplay: false,
       width: 86,
       height: 86
-    }, 'assets/img/Folders_2.tgs').then(player => {
+    }, 'Folders_2').then(player => {
       this.animation = player;
 
       return lottieLoader.waitForFirstFrame(player);

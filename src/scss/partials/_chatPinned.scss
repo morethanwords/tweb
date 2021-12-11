@@ -639,27 +639,15 @@
   &-progress {
     --border-radius: 0;
     --height: var(--progress-height);
-    --scaleX: 1;
     --translateY: .125rem;
     position: absolute;
     right: 0;
     bottom: 0;
     left: 0;
-    transform: scaleX(var(--scaleX)) translateY(var(--translateY));
+    transform: scaleX(var(--topbar-floating-scaleX)) translateY(var(--translateY));
     transform-origin: left center;
-    transition: transform var(--transition-standard-out);
 
-    body.is-right-column-shown & {
-      @include respond-to(medium-screens) {
-        --scaleX: calc(1 - var(--right-column-proportion));
-      }
-      
-      transition: transform var(--transition-standard-in);
-    }
-
-    @include animation-level(0) {
-      transition: none !important;
-    }
+    @include sidebar-transform(false, false);
 
     &:before {
       @include animation-level(2) {

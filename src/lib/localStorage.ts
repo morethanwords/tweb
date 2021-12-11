@@ -10,7 +10,7 @@
  */
 
 import Modes from '../config/modes';
-import { notifySomeone, isWorker } from '../helpers/context';
+import { notifySomeone, IS_WORKER } from '../helpers/context';
 import { WorkerTaskTemplate } from '../types';
 //import { stringify } from '../helpers/json';
 
@@ -159,7 +159,7 @@ export default class LocalStorageController<Storage extends Record<string, any>>
   constructor(/* private preserveKeys: (keyof Storage)[] = [] */) {
     LocalStorageController.STORAGES.push(this);
 
-    if(!isWorker) {
+    if(!IS_WORKER) {
       this.storage = new LocalStorage(/* preserveKeys */);
     }
   }
@@ -178,7 +178,7 @@ export default class LocalStorageController<Storage extends Record<string, any>>
 
   private proxy<T>(type: LocalStorageProxyTask['payload']['type'], ...args: LocalStorageProxyTask['payload']['args']) {
     return new Promise<T>((resolve, reject) => {
-      if(isWorker) {
+      if(IS_WORKER) {
         const taskId = this.taskId++;
 
         this.tasks[taskId] = resolve;
