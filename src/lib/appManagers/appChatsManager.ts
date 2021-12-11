@@ -188,15 +188,11 @@ export class AppChatsManager {
   }
 
   public getChat(id: ChatId) {
-    if(id.isAnyChat()) {
-      console.error('chatId should be positive');
-
-      if(DEBUG) {
-        debugger;
-      }
-    }
-
     return this.chats[id] || {_: 'chatEmpty', id, deleted: true, access_hash: '', pFlags: {}/* this.channelAccess[id] */};
+  }
+
+  public getChatTyped(id: ChatId): Chat {
+    return this.getChat(id);
   }
 
   public combineParticipantBannedRights(id: ChatId, rights: ChatBannedRights) {
@@ -214,7 +210,14 @@ export class AppChatsManager {
     return rights;
   }
 
-  // * creator can still send messages to left channel. so this function shows server rights. see canSendToPeer for local rights in messages manager.
+  /**
+   * Check the user's ability to do an action in chat
+   * @param id 
+   * @param action creator can still send messages to left channel. so this function shows server rights. see canSendToPeer for local rights in messages manager.
+   * @param rights do not provide this parameter when checking rights for self
+   * @param isThread 
+   * @returns 
+   */
   public hasRights(id: ChatId, action: ChatRights, rights?: ChatAdminRights | ChatBannedRights, isThread?: boolean) {
     const chat: Chat = this.getChat(id);
     if(chat._ === 'chatEmpty') return false;
@@ -223,7 +226,8 @@ export class AppChatsManager {
       return false;
     }
 
-    if((chat as Chat.chat).pFlags.creator && rights === undefined) {
+    const isCheckingRightsForSelf = rights === undefined;
+    if((chat as Chat.chat).pFlags.creator && isCheckingRightsForSelf) {
       return true;
     }
 
@@ -233,6 +237,9 @@ export class AppChatsManager {
         (chat.pFlags.left && !(chat as Chat.channel).pFlags.megagroup)) {
       return false;
     }
+
+    // const adminRights = chat.admin_rights;
+    // const bannedRights = (chat as Chat.channel).banned_rights || chat.default_banned_rights;
 
     if(!rights) {
       rights = chat.admin_rights || (chat as Chat.channel).banned_rights || chat.default_banned_rights;
@@ -246,6 +253,9 @@ export class AppChatsManager {
     if(rights) {
       myFlags = rights.pFlags as any;
     }
+
+    // const adminFlags = adminRights?.pFlags || {};
+    // const bannedFlags = bannedRights?.pFlags || {};
 
     switch(action) {
       case 'embed_links':
@@ -274,16 +284,21 @@ export class AppChatsManager {
       }
 
       // * revoke foreign messages
-      case 'delete_messages': {
-        return !!myFlags.delete_messages;
+      case 'delete_messages':
+      case 'manage_call': {
+        return !!myFlags[action];
       }
 
       case 'pin_messages': {
         return rights._ === 'chatAdminRights' ? myFlags[action] || !!myFlags.post_messages : !myFlags[action];
       }
 
-      case 'invite_users':
-      case 'change_info': {
+      // case 'change_info': {
+        // return adminRights || isCheckingRightsForSelf ? adminFlags[action] : !myFlags[action];
+      // }
+
+      case 'change_info':
+      case 'invite_users': {
         return rights._ === 'chatAdminRights' ? myFlags[action] : !myFlags[action];
       }
 
@@ -293,8 +308,9 @@ export class AppChatsManager {
         return false;
       }
 
+      case 'ban_users':
       case 'change_permissions': {
-        return rights._ === 'chatAdminRights' && myFlags['ban_users'];
+        return rights._ === 'chatAdminRights' && !!myFlags['ban_users'];
       }
 
       case 'view_participants': {
@@ -704,6 +720,11 @@ export class AppChatsManager {
         view_messages: true
       }
     });
+  }
+
+  public kickFromChat(id: ChatId, participant: PeerId | ChannelParticipant) {
+    if(this.isChannel(id)) return this.kickFromChannel(id, participant);
+    else return this.deleteChatUser(id, (participant as PeerId).toUserId());
   }
 
   public resolveChannel(id: ChatId) {

@@ -204,7 +204,7 @@ export default class PollElement extends HTMLElement {
   }
 
   public static setMaxLength() {
-    const width = windowSize.windowW <= 360 ? windowSize.windowW - 120 : mediaSizes.active.poll.width;
+    const width = windowSize.width <= 360 ? windowSize.width - 120 : mediaSizes.active.poll.width;
     this.MAX_LENGTH = width + tailLength + this.MAX_OFFSET + -13.7; // 13 - position left
   }
 

@@ -17,7 +17,7 @@ import fastSmoothScroll from "../helpers/fastSmoothScroll";
 import { IS_TOUCH_SUPPORTED } from "../environment/touchSupport";
 import App from "../config/app";
 import I18n, { _i18n, i18n } from "../lib/langPack";
-import lottieLoader from "../lib/lottieLoader";
+import lottieLoader from "../lib/rlottie/lottieLoader";
 import { ripple } from "../components/ripple";
 import findUpTag from "../helpers/dom/findUpTag";
 import findUpClassName from "../helpers/dom/findUpClassName";

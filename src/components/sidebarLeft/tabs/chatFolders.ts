@@ -5,7 +5,7 @@
  */
 
 import { SliderSuperTab } from "../../slider";
-import lottieLoader, { RLottiePlayer } from "../../../lib/lottieLoader";
+import lottieLoader, { LottieLoader } from "../../../lib/rlottie/lottieLoader";
 import { RichTextProcessor } from "../../../lib/richtextprocessor";
 import { toast } from "../../toast";
 import type { MyDialogFilter } from "../../../lib/storages/filters";
@@ -23,6 +23,7 @@ import { i18n, i18n_, LangPackKey, join } from "../../../lib/langPack";
 import { cancelEvent } from "../../../helpers/dom/cancelEvent";
 import { attachClickEvent } from "../../../helpers/dom/clickEvent";
 import positionElementByIndex from "../../../helpers/dom/positionElementByIndex";
+import RLottiePlayer from "../../../lib/rlottie/rlottiePlayer";
 
 export default class AppChatFoldersTab extends SliderSuperTab {
   private createFolderBtn: HTMLElement;
@@ -32,7 +33,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
   private animation: RLottiePlayer;
 
   private filtersRendered: {[filterId: number]: Row} = {};
-  private loadAnimationPromise: Promise<void>;
+  private loadAnimationPromise: ReturnType<LottieLoader['waitForFirstFrame']>;
 
   private renderFolder(dialogFilter: DialogFilterSuggested | DialogFilter | MyDialogFilter, container?: HTMLElement, row?: Row) {
     let filter: DialogFilter | MyDialogFilter;
@@ -204,13 +205,13 @@ export default class AppChatFoldersTab extends SliderSuperTab {
       });
     });
 
-    this.loadAnimationPromise = lottieLoader.loadAnimationFromURL({
+    this.loadAnimationPromise = lottieLoader.loadAnimationAsAsset({
       container: this.stickerContainer,
       loop: false,
       autoplay: false,
       width: 86,
       height: 86
-    }, 'assets/img/Folders_1.tgs').then(player => {
+    }, 'Folders_1').then(player => {
       this.animation = player;
 
       return lottieLoader.waitForFirstFrame(player);

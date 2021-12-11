@@ -10,7 +10,7 @@ import { safeAssign } from "./object";
 export default class ScrollableLoader {
   public loading = false;
   private scrollable: Scrollable;
-  private getPromise: () => Promise<any>;
+  private getPromise: () => Promise<boolean>;
   private promise: Promise<any>;
   private loaded = false;
 

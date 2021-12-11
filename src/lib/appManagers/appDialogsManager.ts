@@ -32,7 +32,7 @@ import appNotificationsManager from "./appNotificationsManager";
 import PeerTitle from "../../components/peerTitle";
 import I18n, { FormatterArguments, i18n, LangPackKey, _i18n } from "../langPack";
 import findUpTag from "../../helpers/dom/findUpTag";
-import lottieLoader from "../lottieLoader";
+import lottieLoader from "../rlottie/lottieLoader";
 import { wrapLocalSticker, wrapPhoto } from "../../components/wrappers";
 import AppEditFolderTab from "../../components/sidebarLeft/tabs/editFolder";
 import appSidebarLeft, { SettingSection } from "../../components/sidebarLeft";
@@ -55,6 +55,9 @@ import SortedList, { SortedElementBase } from "../../helpers/sortedList";
 import debounce from "../../helpers/schedulers/debounce";
 import generateVerifiedIcon from "../../components/generateVerifiedIcon";
 import { NULL_PEER_ID } from "../mtproto/mtproto_config";
+import groupCallActiveIcon from "../../components/groupCallActiveIcon";
+import { Chat } from "../../layer";
+import IS_GROUP_CALL_SUPPORTED from "../../environment/groupCallSupport";
 
 export type DialogDom = {
   avatarEl: AvatarElement,
@@ -64,6 +67,7 @@ export type DialogDom = {
   statusSpan: HTMLSpanElement,
   lastTimeSpan: HTMLSpanElement,
   unreadBadge: HTMLElement,
+  callIcon?: ReturnType<typeof groupCallActiveIcon>,
   mentionsBadge?: HTMLElement,
   lastMessageSpan: HTMLSpanElement,
   containerEl: HTMLElement,
@@ -83,7 +87,7 @@ class SortedDialogList extends SortedList<SortedDialog> {
     public onListLengthChange?: () => void
   ) {
     super({
-      getIndex: (id) => appMessagesManager.getDialogOnly(id)[this.indexKey],
+      getIndex: (element) => appMessagesManager.getDialogOnly(element.id)[this.indexKey],
       onDelete: (element) => {
         element.dom.listEl.remove();
         this.onListLengthChange && this.onListLengthChange();
@@ -339,6 +343,15 @@ export class AppDialogsManager {
     rootScope.filterId = filterId;
   }
 
+  private setOnlineStatus(element: HTMLElement, online: boolean) {
+    const className = 'is-online';
+    const hasClassName = element.classList.contains(className);
+    !hasClassName && online && element.classList.add(className);
+    SetTransition(element, 'is-visible', online, 250, online ? undefined : () => {
+      element.classList.remove(className);
+    }, online && !hasClassName ? 2 : 0);
+  }
+
   private initListeners() {
     rootScope.addEventListener('user_update', (userId) => {
       //console.log('updating user:', user, dialog);
@@ -348,7 +361,15 @@ export class AppDialogsManager {
       if(dom && !appUsersManager.isBot(userId) && peerId !== rootScope.myId) {
         const user = appUsersManager.getUser(userId);
         const online = user.status?._ === 'userStatusOnline';
-        dom.avatarEl.classList.toggle('is-online', online);
+        this.setOnlineStatus(dom.avatarEl, online);
+      }
+    });
+
+    rootScope.addEventListener('chat_update', (chatId) => {
+      const peerId = chatId.toPeerId(true);
+      const dialog = appMessagesManager.getDialogOnly(peerId);
+      if(dialog) {
+        this.processDialogForCallStatus(dialog);
       }
     });
 
@@ -428,15 +449,13 @@ export class AppDialogsManager {
       //const perf = performance.now();
       for(const element of this.lastActiveElements) {
         if(element.dataset.peerId.toPeerId() !== peerId) {
-          element.classList.remove('active');
-          this.lastActiveElements.delete(element);
+          this.setDialogActive(element, false);
         }
       }
 
       const elements = Array.from(document.querySelectorAll(`[data-autonomous="0"] li[data-peer-id="${peerId}"]`)) as HTMLElement[];
       elements.forEach(element => {
-        element.classList.add('active');
-        this.lastActiveElements.add(element);
+        this.setDialogActive(element, true);
       });
       //this.log('peer_changed total time:', performance.now() - perf);
     });
@@ -509,6 +528,21 @@ export class AppDialogsManager {
         this.unsetTyping(dialog);
       }
     });
+  }
+
+  private setDialogActive(listEl: HTMLElement, active: boolean) {
+    // @ts-ignore
+    const dom = listEl.dialogDom as DialogDom;
+    listEl.classList.toggle('active', active);
+    if(active) {
+      this.lastActiveElements.add(listEl);
+    } else {
+      this.lastActiveElements.delete(listEl);
+    }
+
+    if(dom?.callIcon) {
+      dom.callIcon.setActive(active);
+    }
   }
 
   private async onStateLoaded(state: State) {
@@ -767,7 +801,7 @@ export class AppDialogsManager {
       //return;
   
       // let loadCount = 30/*this.chatsLoadCount */;
-      let loadCount = windowSize.windowH / 72 * 1.25 | 0;
+      let loadCount = windowSize.height / 72 * 1.25 | 0;
       let offsetIndex = 0;
       
       const {index: currentOffsetIndex} = this.getOffsetIndex(side);
@@ -1034,13 +1068,16 @@ export class AppDialogsManager {
 
       const sortedUserList = new SortedUserList({
         avatarSize: 42, 
-        new: true, 
+        createChatListOptions: {
+          dialogSize: 48,
+          new: true
+        },
         autonomous: false, 
         onListLengthChange
       });
 
       this.loadContacts = () => {
-        const pageCount = windowSize.windowH / 60 | 0;
+        const pageCount = windowSize.height / 60 | 0;
         const arr = contacts.splice(0, pageCount).filter(this.verifyPeerIdForContacts);
 
         arr.forEach((peerId) => {
@@ -1282,7 +1319,8 @@ export class AppDialogsManager {
     // avatarSize?: number,
     // handheldsSize?: number,
     // size?: number,
-    new?: boolean
+    new?: boolean,
+    dialogSize?: number
   } = {}) {
     const list = document.createElement('ul');
     list.classList.add('chatlist'/* , 
@@ -1290,6 +1328,10 @@ export class AppDialogsManager {
 
     if(options.new) {
       list.classList.add('chatlist-new');
+    }
+
+    if(options.dialogSize) {
+      list.classList.add('chatlist-' + options.dialogSize);
     }
 
     /* if(options.handheldsSize) {
@@ -1551,6 +1593,25 @@ export class AppDialogsManager {
     return dialog as Dialog;
   }
 
+  private setCallStatus(dom: DialogDom, visible: boolean) {
+    let {callIcon, listEl} = dom;
+    if(!callIcon && visible) {
+      const {canvas, startAnimation} = dom.callIcon = callIcon = groupCallActiveIcon(listEl.classList.contains('active'));
+      canvas.classList.add('dialog-group-call-icon');
+      listEl.append(canvas);
+      startAnimation();
+    }
+
+    if(!callIcon) {
+      return;
+    }
+
+    SetTransition(dom.callIcon.canvas, 'is-visible', visible, 200, visible ? undefined : () => {
+      dom.callIcon.canvas.remove();
+      dom.callIcon = undefined;
+    }, visible ? 2 : 0);
+  }
+
   public addListDialog(options: Parameters<AppDialogsManager['addDialogNew']>[0] & {isBatch?: boolean}) {
     const dialog = this.getDialog(options.dialog);
 
@@ -1559,15 +1620,32 @@ export class AppDialogsManager {
     const ret = this.addDialogNew(options);
 
     if(ret) {
-      const isMuted = appNotificationsManager.isPeerLocalMuted(dialog.peerId, true);
+      const {peerId} = dialog;
+      const isMuted = appNotificationsManager.isPeerLocalMuted(peerId, true);
       if(isMuted) {
         ret.dom.listEl.classList.add('is-muted');
+      }
+
+      if(!peerId.isUser()) {
+        this.processDialogForCallStatus(dialog, ret.dom);
       }
 
       this.setLastMessage(dialog, undefined, ret.dom, undefined, options.loadPromises, options.isBatch, true);
     }
 
     return ret;
+  }
+
+  private processDialogForCallStatus(dialog: Dialog, dom?: DialogDom) {
+    if(!IS_GROUP_CALL_SUPPORTED) {
+      return;
+    }
+
+    if(!dom) dom = this.getDialogDom(dialog.peerId);
+    if(!dom) return;
+    
+    const chat: Chat.chat | Chat.channel = appChatsManager.getChat(dialog.peerId.toChatId());
+    this.setCallStatus(dom, !!(chat.pFlags.call_active && chat.pFlags.call_not_empty));
   }
 
   public addDialogNew(options: {
@@ -1607,14 +1685,10 @@ export class AppDialogsManager {
     avatarEl.setAttribute('peer', '' + peerId);
     avatarEl.classList.add('dialog-avatar', 'avatar-' + avatarSize);
 
-    if(drawStatus && peerId !== rootScope.myId) {
-      if(peerId.isUser()) {
-        const user = appUsersManager.getUser(peerId);
-        //console.log('found user', user);
-
-        if(user.status && user.status._ === 'userStatusOnline') {
-          avatarEl.classList.add('is-online');
-        }
+    if(drawStatus && peerId !== rootScope.myId && peerId.isUser()) {
+      const user = appUsersManager.getUser(peerId);
+      if(user.status?._ === 'userStatusOnline') {
+        this.setOnlineStatus(avatarEl, true);
       }
     }
 
@@ -1654,6 +1728,7 @@ export class AppDialogsManager {
     //captionDiv.append(span);
 
     const li = document.createElement('li');
+    li.classList.add('chatlist-chat');
     if(rippleEnabled) {
       ripple(li);
     }
@@ -1709,9 +1784,13 @@ export class AppDialogsManager {
       container[method](li);
     }
 
-    if(!autonomous && appImManager.chat?.peerId === peerId) {
-      li.classList.add('active');
-      this.lastActiveElements.add(li);
+    if(!autonomous) {
+      // @ts-ignore
+      li.dialogDom = dom;
+
+      if(appImManager.chat?.peerId === peerId) {
+        this.setDialogActive(li, true);
+      }
     } 
     
     return {dom, dialog};

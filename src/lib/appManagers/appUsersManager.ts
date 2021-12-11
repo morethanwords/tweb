@@ -17,7 +17,7 @@ import cleanUsername from "../../helpers/cleanUsername";
 import { tsNow } from "../../helpers/date";
 import { formatPhoneNumber } from "../../helpers/formatPhoneNumber";
 import { safeReplaceObject, isObject } from "../../helpers/object";
-import { Chat, InputContact, InputMedia, InputUser, User as MTUser, UserProfilePhoto, UserStatus } from "../../layer";
+import { Chat, InputContact, InputMedia, InputPeer, InputUser, User as MTUser, UserProfilePhoto, UserStatus } from "../../layer";
 import I18n, { i18n, LangPackKey } from "../langPack";
 //import apiManager from '../mtproto/apiManager';
 import apiManager from '../mtproto/mtprotoworker';
@@ -663,6 +663,19 @@ export class AppUsersManager {
 
     return {
       _: 'inputUser',
+      user_id: id,
+      access_hash: user.access_hash
+    };
+  }
+
+  public getUserInputPeer(id: UserId): InputPeer.inputPeerSelf | InputPeer.inputPeerUser {
+    const user = this.getUser(id);
+    if(user.pFlags && user.pFlags.self) {
+      return {_: 'inputPeerSelf'};
+    }
+
+    return {
+      _: 'inputPeerUser',
       user_id: id,
       access_hash: user.access_hash
     };

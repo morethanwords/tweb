@@ -18,7 +18,7 @@ export default class SortedList<SortedElement extends SortedElementBase> {
   protected elements: Map<SortedElementId, SortedElement>;
   protected sorted: Array<SortedElement>;
 
-  protected getIndex: (id: SortedElementId) => number;
+  protected getIndex: (element: SortedElement) => number;
   protected onDelete: (element: SortedElement) => void;
   protected onUpdate: (element: SortedElement) => void;
   protected onSort: (element: SortedElement, idx: number) => void;
@@ -142,7 +142,7 @@ export default class SortedList<SortedElement extends SortedElementBase> {
       return;
     }
 
-    element.index = this.getIndex(id);
+    element.index = this.getIndex(element);
     this.onUpdate && this.onUpdate(element);
 
     const idx = insertInDescendSortedArray(this.sorted, element, 'index');

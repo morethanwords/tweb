@@ -16,7 +16,7 @@ import { Message, PhotoSize, StickerSet } from '../layer';
 import appDocsManager, { MyDocument } from "../lib/appManagers/appDocsManager";
 import appMessagesManager from '../lib/appManagers/appMessagesManager';
 import appPhotosManager, { MyPhoto } from '../lib/appManagers/appPhotosManager';
-import LottieLoader from '../lib/lottieLoader';
+import LottieLoader from '../lib/rlottie/lottieLoader';
 import webpWorkerController from '../lib/webp/webpWorkerController';
 import animationIntersector from './animationIntersector';
 import appMediaPlaybackController, { MediaSearchContext } from './appMediaPlaybackController';
@@ -41,7 +41,7 @@ import appStickersManager from '../lib/appManagers/appStickersManager';
 import { cancelEvent } from '../helpers/dom/cancelEvent';
 import { attachClickEvent, simulateClickEvent } from '../helpers/dom/clickEvent';
 import isInDOM from '../helpers/dom/isInDOM';
-import lottieLoader from '../lib/lottieLoader';
+import lottieLoader from '../lib/rlottie/lottieLoader';
 import { clearBadCharsAndTrim } from '../helpers/cleanSearchText';
 import blur from '../helpers/blur';
 import IS_WEBP_SUPPORTED from '../environment/webpSupport';
@@ -1132,7 +1132,7 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
     height = !emoji ? 200 : undefined;
   }
 
-  if(stickerType === 2 && !LottieLoader.loaded) {
+  if(stickerType === 2) {
     //LottieLoader.loadLottie();
     LottieLoader.loadLottieWorkers();
   }
@@ -1275,7 +1275,8 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
           autoplay: play,
           animationData: json,
           width,
-          height
+          height,
+          name: 'doc' + doc.id
         }, group, toneIndex);
 
         //const deferred = deferredPromise<void>();
@@ -1419,7 +1420,8 @@ export async function wrapStickerSetThumb({set, lazyLoadQueue, container, group,
               animationData: json,
               width,
               height,
-              needUpscale: true
+              needUpscale: true,
+              name: 'setThumb' + set.id
             }, group);
           });
         } else {

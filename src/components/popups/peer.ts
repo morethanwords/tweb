@@ -15,7 +15,7 @@ export type PopupPeerCheckboxOptions = CheckboxFieldOptions & {checkboxField?: C
 
 export type PopupPeerOptions = PopupOptions & Partial<{
   peerId: PeerId,
-  title: string,
+  title: string | HTMLElement,
   titleLangKey?: LangPackKey,
   titleLangArgs?: any[],
   noTitle?: boolean,
@@ -39,7 +39,9 @@ export default class PopupPeer extends PopupElement {
 
     if(!options.noTitle) {
       if(options.titleLangKey || !options.title) this.title.append(i18n(options.titleLangKey || 'AppName', options.titleLangArgs));
-      else this.title.innerText = options.title || '';
+      else if(options.title instanceof HTMLElement) {
+        this.title.append(options.title);
+      } else this.title.innerText = options.title || '';
     }
 
     const fragment = document.createDocumentFragment();
