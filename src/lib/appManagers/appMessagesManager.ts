@@ -1900,6 +1900,24 @@ export class AppMessagesManager {
     peerId = appPeersManager.getPeerMigratedTo(peerId) || peerId;
     mids = mids.slice().sort((a, b) => a - b);
 
+    for(let i = 0, length = mids.length; i < length; ++i) {
+      const mid = mids[i];
+      const originalMessage: Message.message = this.getMessageByPeer(fromPeerId, mid);
+      if(originalMessage.pFlags.is_outgoing) { // this can happen when forwarding a changelog
+        this.sendText(peerId, originalMessage.message, {
+          entities: originalMessage.entities,
+          scheduleDate: options.scheduleDate,
+          silent: options.silent
+        });
+
+        mids.splice(i--, 1);
+      }
+    }
+
+    if(!mids.length) {
+      return Promise.resolve();
+    }
+
     if(options.dropCaptions) {
       options.dropAuthor = true;
     }
