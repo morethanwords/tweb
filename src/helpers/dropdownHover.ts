@@ -106,7 +106,7 @@ export default class DropdownHover extends EventListenerBase<{
     }
     
     if((this.element.style.display && enable === undefined) || enable) {
-      const res = this.dispatchEvent('open');
+      const res = this.dispatchResultableEvent('open');
       await Promise.all(res);
 
       this.element.style.display = '';
