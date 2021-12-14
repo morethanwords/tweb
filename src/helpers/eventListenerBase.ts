@@ -107,16 +107,13 @@ export default class EventListenerBase<Listeners extends Record<string, Function
   }
 
   // * must be protected, but who cares
-  public dispatchEvent<T extends keyof Listeners>(name: T, ...args: ArgumentTypes<Listeners[T]>) {
+  private _dispatchEvent<T extends keyof Listeners>(name: T, collectResults: boolean, ...args: ArgumentTypes<Listeners[T]>) {
     if(this.reuseResults) {
       this.listenerResults[name] = args;
     }
 
-    const arr: Array<SuperReturnType<Listeners[typeof name]>> = [];
+    const arr: Array<SuperReturnType<Listeners[typeof name]>> = collectResults && [];
 
-    /* let a = e.wm.get(this)[name];
-    if(!a) return arr;
-    const listeners = [...a]; */
     const listeners = this.listeners[name];
     if(listeners) {
       // ! this one will guarantee execution even if delete another listener during setting
@@ -127,26 +124,33 @@ export default class EventListenerBase<Listeners extends Record<string, Function
           return;
         }
 
-        arr.push(listener.callback(...args));
+        let result: any;
+        try {
+          result = listener.callback(...args);
+        } catch(err) {
+          
+        }
+
+        if(arr) {
+          arr.push(result);
+        }
 
         if((listener.options as AddEventListenerOptions)?.once) {
           this.removeEventListener(name, listener.callback);
         }
       });
-
-      /* for(let i = 0, length = listeners.length; i < length; ++i) {
-        const listener = listeners[i];
-        arr.push(listener.callback(...args));
-
-        if(listener.once) {
-          listeners.splice(i, 1);
-          --i;
-          --length;
-        }
-      } */
     }
 
     return arr;
+  }
+
+  public dispatchResultableEvent<T extends keyof Listeners>(name: T, ...args: ArgumentTypes<Listeners[T]>) {
+    return this._dispatchEvent(name, true, ...args);
+  }
+
+  // * must be protected, but who cares
+  public dispatchEvent<T extends keyof Listeners>(name: T, ...args: ArgumentTypes<Listeners[T]>) {
+    this._dispatchEvent(name, false, ...args);
   }
 
   public cleanup() {

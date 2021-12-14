@@ -2933,10 +2933,7 @@ export class AppMessagesManager {
     return el;
   }
 
-  public wrapMessageActionTextNew(message: MyMessage, plain: true): string;
-  public wrapMessageActionTextNew(message: MyMessage, plain?: false): HTMLElement;
-  public wrapMessageActionTextNew(message: MyMessage, plain: boolean): HTMLElement | string;
-  public wrapMessageActionTextNew(message: MyMessage, plain?: boolean): HTMLElement | string {
+  private wrapMessageActionTextNewUnsafe(message: MyMessage, plain?: boolean) {
     const element: HTMLElement = plain ? undefined : document.createElement('span');
     const action = 'action' in message && message.action;
 
@@ -3134,7 +3131,7 @@ export class AppMessagesManager {
 
           if(users.length > 1) {
             const joined = join(
-              users.map((userId: UserId) => (getNameDivHTML(userId.toPeerId(), plain) as string).trim()),
+              users.map((userId: UserId) => getNameDivHTML(userId.toPeerId(), plain)),
               false,
               plain
             );
@@ -3187,6 +3184,18 @@ export class AppMessagesManager {
       }
 
       //str = !langPackKey || langPackKey[0].toUpperCase() === langPackKey[0] ? langPackKey : getNameDivHTML(message.fromId) + langPackKey + (suffix ? ' ' : '');
+    }
+  }
+
+  public wrapMessageActionTextNew(message: MyMessage, plain: true): string;
+  public wrapMessageActionTextNew(message: MyMessage, plain?: false): HTMLElement;
+  public wrapMessageActionTextNew(message: MyMessage, plain: boolean): HTMLElement | string;
+  public wrapMessageActionTextNew(message: MyMessage, plain?: boolean): HTMLElement | string {
+    try {
+      return this.wrapMessageActionTextNewUnsafe(message, plain);
+    } catch(err) {
+      this.log.error('wrapMessageActionTextNewUnsafe error:', err);
+      return plain ? '' : document.createElement('span');
     }
   }
 
