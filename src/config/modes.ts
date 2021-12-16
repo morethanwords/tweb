@@ -9,14 +9,29 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
+import type { TransportType } from "../lib/mtproto/dcConfigurator";
+
 const Modes = {
   test: location.search.indexOf('test=1') > 0/*  || true */,
   debug: location.search.indexOf('debug=1') > 0,
-  http: false, //location.search.indexOf('http=1') > 0,
+  http: false,
   ssl: true, // location.search.indexOf('ssl=1') > 0 || location.protocol === 'https:' && location.search.indexOf('ssl=0') === -1,
   multipleConnections: true,
-  asServiceWorker: false
+  asServiceWorker: false,
+  transport: 'https' as TransportType
 };
+
+/// #if MTPROTO_HAS_HTTP
+Modes.http = location.search.indexOf('http=1') > 0;
+/// #endif
+
+/// #if MTPROTO_HTTP || !MTPROTO_HAS_WS
+Modes.http = true;
+/// #endif
+
+if(Modes.http) {
+  Modes.transport = 'https';
+}
 
 /// #if MTPROTO_SW
 Modes.asServiceWorker = true;

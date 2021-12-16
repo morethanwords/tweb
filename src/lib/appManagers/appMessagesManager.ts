@@ -2933,6 +2933,20 @@ export class AppMessagesManager {
     return el;
   }
 
+  private wrapJoinVoiceChatAnchor(message: Message.messageService) {
+    const action = message.action as MessageAction.messageActionInviteToGroupCall;
+    const {onclick, url} = RichTextProcessor.wrapUrl(`tg://voicechat?chat_id=${message.peerId.toChatId()}&id=${action.call.id}&access_hash=${action.call.access_hash}`);
+    if(!onclick) {
+      return document.createElement('span');
+    }
+    
+    const a = document.createElement('a');
+    a.href = url;
+    a.setAttribute('onclick', onclick + '(this)');
+
+    return a;
+  }
+
   public wrapMessageActionTextNew(message: MyMessage, plain: true): string;
   public wrapMessageActionTextNew(message: MyMessage, plain?: false): HTMLElement;
   public wrapMessageActionTextNew(message: MyMessage, plain: boolean): HTMLElement | string;
@@ -2979,16 +2993,7 @@ export class AppMessagesManager {
           if(action.duration !== undefined) {
             args.push(formatCallDuration(action.duration, plain));
           } else {
-            const {onclick, url} = RichTextProcessor.wrapUrl(`tg://voicechat?chat_id=${message.peerId.toChatId()}&id=${action.call.id}&access_hash=${action.call.access_hash}`);
-            if(!onclick) {
-              args.push(document.createElement('span'));
-              break;
-            }
-            
-            const a = document.createElement('a');
-            a.href = url;
-            a.setAttribute('onclick', onclick + '(this)');
-            args.push(a);
+            args.push(this.wrapJoinVoiceChatAnchor(message as any));
           }
 
           break;
@@ -2996,15 +3001,15 @@ export class AppMessagesManager {
 
         case 'messageActionInviteToGroupCall': {
           const peerIds = [message.fromId, action.users[0].toPeerId()];
-          let a = 'ActionGroupCall';
+          let a = 'Chat.Service.VoiceChatInvitation';
           const myId = appUsersManager.getSelf().id;
-          if(peerIds[0] === myId) a += 'You';
-          a += 'Invited';
-          if(peerIds[1] === myId) a += 'You';
+          if(peerIds[0] === myId) a += 'ByYou';
+          else if(peerIds[1] === myId) a += 'ForYou';
           indexOfAndSplice(peerIds, myId);
 
           langPackKey = a as LangPackKey;
           args = peerIds.map(peerId => getNameDivHTML(peerId, plain));
+          args.push(this.wrapJoinVoiceChatAnchor(message as any));
           break;
         }
 
