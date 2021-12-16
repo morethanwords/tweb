@@ -245,6 +245,11 @@ export default class AppMediaViewerBase<
 
     // * constructing html end
 
+    this.listLoader.onLoadedMore = () => {
+      this.buttons.prev.classList.toggle('hide', !this.listLoader.previous.length);
+      this.buttons.next.classList.toggle('hide', !this.listLoader.next.length);
+    };
+
     this.setNewMover();
   }
 
@@ -1173,9 +1178,11 @@ export default class AppMediaViewerBase<
       } */
     }
 
-    /* if(this.nextTargets.length < 10 && this.loadMore) {
-      this.loadMore();
-    } */
+    if(this.listLoader.next.length < 10) {
+      setTimeout(() => {
+        this.listLoader.load(true);
+      }, 0);
+    }
 
     //if(prevTarget && (!prevTarget.parentElement || !this.isElementVisible(this.targetContainer, prevTarget))) prevTarget = null;
     //if(nextTarget && (!nextTarget.parentElement || !this.isElementVisible(this.targetContainer, nextTarget))) nextTarget = null;
