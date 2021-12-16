@@ -274,10 +274,6 @@ export default class TcpObfuscated implements MTTransport {
     let length = this.pending.length;
     //for(let i = length - 1; i >= 0; --i) {
     for(let i = 0; i < length; ++i) {
-      /* if(this.ws.bufferedAmount) {
-        break;
-      } */
-
       const pending = this.pending[i];
       const {body, bodySent} = pending;
       let encoded = pending.encoded;
@@ -286,25 +282,12 @@ export default class TcpObfuscated implements MTTransport {
         //this.debugPayloads.push({before: body.slice(), after: enc});
 
         this.debug && this.log.debug('-> body length to send:', body.length);
-        /* if(this.ws.bufferedAmount) {
-          this.log.error('bufferedAmount:', this.ws.bufferedAmount);
-        } */
-
-        /* if(this.ws.readyState !== this.ws.OPEN) {
-          this.log.error('ws is closed?');
-          this.connected = false;
-          break;
-        } */
 
         if(!encoded) {
           encoded = pending.encoded = this.encodeBody(body);
         }
 
-        //this.lol.push(body);
-        //setTimeout(() => {
-          this.connection.send(encoded);
-        //}, 100);
-        //this.dd();
+        this.connection.send(encoded);
         
         if(!pending.resolve) { // remove if no response needed
           this.pending.splice(i--, 1);

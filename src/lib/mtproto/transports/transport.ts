@@ -5,8 +5,10 @@
  */
 
 import type EventListenerBase from "../../../helpers/eventListenerBase";
+import type MTPNetworker from "../networker";
 
 export default interface MTTransport {
+  networker: MTPNetworker;
   send: (data: Uint8Array) => void;
 }
 

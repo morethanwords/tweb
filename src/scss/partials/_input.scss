@@ -393,6 +393,9 @@ input:focus, button:focus {
     &[type="password"] {
       font-size: 2.25rem;
       padding-left: calc(.875rem - var(--border-width));
+      line-height: 1;
+      padding-top: 0;
+      padding-bottom: 0;
   
       @media (-webkit-min-device-pixel-ratio: 2) { 
         font-size: 1.75rem;

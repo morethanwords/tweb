@@ -47,7 +47,9 @@ export function formatDateAccordingToTodayNew(time: Date) {
   }).element;
 }
 
-export function formatFullSentTime(timestamp: number) {
+export function formatFullSentTimeRaw(timestamp: number, options: {
+  capitalize?: boolean
+} = {}) {
   const date = new Date();
   const time = new Date(timestamp * 1000);
   const now = date.getTime() / 1000;
@@ -56,9 +58,13 @@ export function formatFullSentTime(timestamp: number) {
 
   let dateEl: Node | string;
   if((now - timestamp) < ONE_DAY && date.getDate() === time.getDate()) { // if the same day
-    dateEl = i18n('Date.Today');
+    dateEl = i18n(options.capitalize ? 'Date.Today' : 'Peer.Status.Today');
   } else if((now - timestamp) < (ONE_DAY * 2) && (date.getDate() - 1) === time.getDate()) { // yesterday
-    dateEl = capitalizeFirstLetter(I18n.format('Yesterday', true));
+    dateEl = i18n(options.capitalize ? 'Yesterday' : 'Peer.Status.Yesterday');
+
+    if(options.capitalize) {
+      (dateEl as HTMLElement).style.textTransform = 'capitalize';
+    }
   } else if(date.getFullYear() !== time.getFullYear()) { // different year
     dateEl = new I18n.IntlDateElement({
       date: time,
@@ -79,6 +85,14 @@ export function formatFullSentTime(timestamp: number) {
     }).element;
     // dateStr = months[time.getMonth()].slice(0, 3) + ' ' + time.getDate();
   }
+
+  return {dateEl, timeEl};
+}
+
+export function formatFullSentTime(timestamp: number) {
+  const {dateEl, timeEl} = formatFullSentTimeRaw(timestamp, {
+    capitalize: true
+  });
 
   const fragment = document.createDocumentFragment();
   fragment.append(dateEl, ' ', i18n('ScheduleController.at'), ' ', timeEl);

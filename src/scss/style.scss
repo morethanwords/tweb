@@ -555,6 +555,14 @@ input, textarea {
 	-webkit-appearance: none;
 }
 
+// Possible fix Safari's password autocomplete
+input::-webkit-contacts-auto-fill-button, 
+input::-webkit-credentials-auto-fill-button {
+  visibility: hidden;
+  position: absolute;
+  right: 0;
+}
+
 /* input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus,

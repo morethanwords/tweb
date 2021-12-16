@@ -11,18 +11,20 @@
 
 import MTTransport, { MTConnectionConstructable } from './transports/transport';
 import Modes from '../../config/modes';
+import { indexOfAndSplice } from '../../helpers/array';
+import App from '../../config/app';
 
-/// #if MTPROTO_HTTP || MTPROTO_HTTP_UPLOAD
+/// #if MTPROTO_HAS_HTTP
 import HTTP from './transports/http';
 /// #endif
 
-/// #if !MTPROTO_HTTP
+/// #if MTPROTO_HAS_WS
 import Socket from './transports/websocket';
 import TcpObfuscated from './transports/tcpObfuscated';
 import { IS_SAFARI } from '../../environment/userAgent';
 import { IS_WEB_WORKER } from '../../helpers/context';
 import SocketProxied from './transports/socketProxied';
-import App from '../../config/app';
+import { DcId } from '../../types';
 /// #endif
 
 export type TransportType = 'websocket' | 'https' | 'http';
@@ -30,7 +32,7 @@ export type ConnectionType = 'client' | 'download' | 'upload';
 type Servers = {
   [transportType in TransportType]: {
     [connectionType in ConnectionType]: {
-      [dcId: number]: MTTransport[]
+      [dcId: DcId]: MTTransport[]
     }
   }
 };
@@ -56,8 +58,8 @@ export class DcConfigurator {
 
   public chosenServers: Servers = {} as any;
 
-  /// #if !MTPROTO_HTTP
-  private transportSocket = (dcId: number, connectionType: ConnectionType, suffix: string) => {
+  /// #if MTPROTO_HAS_WS
+  private transportSocket = (dcId: DcId, connectionType: ConnectionType, suffix: string) => {
     const path = 'apiws' + TEST_SUFFIX;
     const chosenServer = `wss://${App.suffix.toLowerCase()}ws${dcId}${suffix}.web.telegram.org/${path}`;
     const logSuffix = connectionType === 'upload' ? '-U' : connectionType === 'download' ? '-D' : '';
@@ -70,25 +72,33 @@ export class DcConfigurator {
   };
   /// #endif
 
-  /// #if MTPROTO_HTTP_UPLOAD || MTPROTO_HTTP
-  private transportHTTP = (dcId: number, connectionType: ConnectionType, suffix: string) => {
+  /// #if MTPROTO_HAS_HTTP
+  private transportHTTP = (dcId: DcId, connectionType: ConnectionType, suffix: string) => {
+    let chosenServer: string;
     if(Modes.ssl || !Modes.http) {
       const subdomain = this.sslSubdomains[dcId - 1] + (connectionType !== 'client' ? '-1' : '');
       const path = Modes.test ? 'apiw_test1' : 'apiw1';
-      const chosenServer = 'https://' + subdomain + '.web.telegram.org/' + path;
-      return new HTTP(dcId, chosenServer);
+      chosenServer = 'https://' + subdomain + '.web.telegram.org/' + path;
     } else {
       for(let dcOption of this.dcOptions) {
         if(dcOption.id === dcId) {
-          const chosenServer = 'http://' + dcOption.host + (dcOption.port !== 80 ? ':' + dcOption.port : '') + '/apiw1';
-          return new HTTP(dcId, chosenServer);
+          chosenServer = 'http://' + dcOption.host + (dcOption.port !== 80 ? ':' + dcOption.port : '') + '/apiw1';
+          break;
         }
       }
     }
+
+    const logSuffix = connectionType === 'upload' ? '-U' : connectionType === 'download' ? '-D' : '';
+    return new HTTP(dcId, chosenServer, logSuffix);
   };
   /// #endif
 
-  public chooseServer(dcId: number, connectionType: ConnectionType = 'client', transportType: TransportType = 'websocket', reuse = true) {
+  public chooseServer(
+    dcId: DcId, 
+    connectionType: ConnectionType = 'client', 
+    transportType: TransportType = Modes.transport, 
+    reuse = true
+  ) {
     /* if(transportType === 'websocket' && !Modes.multipleConnections) {
       connectionType = 'client';
     } */
@@ -114,7 +124,7 @@ export class DcConfigurator {
 
       const suffix = connectionType === 'client' ? '' : '-1';
 
-      /// #if MTPROTO_HTTP_UPLOAD
+      /// #if MTPROTO_HAS_WS && MTPROTO_HAS_HTTP
       transport = (transportType === 'websocket' ? this.transportSocket : this.transportHTTP)(dcId, connectionType, suffix);
       /// #elif !MTPROTO_HTTP
       transport = this.transportSocket(dcId, connectionType, suffix);
@@ -145,10 +155,7 @@ export class DcConfigurator {
         for(const dcId in obj[transportType][connectionType]) {
           // @ts-ignore
           const transports: T[] = obj[transportType][connectionType][dcId];
-          const idx = transports.indexOf(transport);
-          if(idx !== -1) {
-            transports.splice(idx, 1);
-          }
+          indexOfAndSplice(transports, transport);
         }
       }
     }

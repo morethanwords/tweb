@@ -30,6 +30,7 @@ import IDBStorage from '../idb';
 import CryptoWorker from "../crypto/cryptoworker";
 import ctx from '../../environment/ctx';
 import noop from '../../helpers/noop';
+import Modes from '../../config/modes';
 
 /// #if !MTPROTO_WORKER
 import rootScope from '../rootScope';
@@ -73,25 +74,39 @@ export class ApiManager {
   private cachedNetworkers: {
     [transportType in TransportType]: {
       [connectionType in ConnectionType]: {
-        [dcId: number]: MTPNetworker[]
+        [dcId: DcId]: MTPNetworker[]
       }
     }
-  } = {} as any;
+  };
   
-  private cachedExportPromise: {[x: number]: Promise<unknown>} = {};
-  private gettingNetworkers: {[dcIdAndType: string]: Promise<MTPNetworker>} = {};
-  private baseDcId: DcId = 0 as DcId;
+  private cachedExportPromise: {[x: number]: Promise<unknown>};
+  private gettingNetworkers: {[dcIdAndType: string]: Promise<MTPNetworker>};
+  private baseDcId: DcId;
   
   //public telegramMeNotified = false;
 
-  private log: ReturnType<typeof logger> = logger('API');
+  private log: ReturnType<typeof logger>;
 
   private afterMessageTempIds: {
     [tempId: string]: {
       messageId: string,
       promise: Promise<any>
     }
-  } = {};
+  };
+
+  private transportType: TransportType;
+  
+  constructor() {
+    this.log = logger('API');
+
+    this.cachedNetworkers = {} as any;
+    this.cachedExportPromise = {};
+    this.gettingNetworkers = {};
+    this.baseDcId = 0;
+    this.afterMessageTempIds = {};
+
+    this.transportType = Modes.transport;
+  }
 
   //private lol = false;
   
@@ -111,6 +126,61 @@ export class ApiManager {
       //telegramMeWebService.setAuthorized(this.telegramMeNotified);
     }
   } */
+
+  private getTransportType(connectionType: ConnectionType) {
+    /// #if MTPROTO_HTTP_UPLOAD
+    // @ts-ignore
+    const transportType: TransportType = connectionType === 'upload' && IS_SAFARI ? 'https' : 'websocket';
+    //const transportType: TransportType = connectionType !== 'client' ? 'https' : 'websocket';
+    /// #else
+    // @ts-ignore
+    const transportType: TransportType = this.transportType;
+    /// #endif
+
+    return transportType;
+  }
+
+  private iterateNetworkers(callback: (o: {networker: MTPNetworker, dcId: DcId, connectionType: ConnectionType, transportType: TransportType, index: number, array: MTPNetworker[]}) => void) {
+    for(const transportType in this.cachedNetworkers) {
+      const connections = this.cachedNetworkers[transportType as TransportType];
+      for(const connectionType in connections) {
+        const dcs = connections[connectionType as ConnectionType];
+        for(const dcId in dcs) {
+          const networkers = dcs[dcId as any as DcId];
+          networkers.forEach((networker, idx, arr) => {
+            callback({
+              networker,
+              dcId: +dcId as DcId,
+              connectionType: connectionType as ConnectionType,
+              transportType: transportType as TransportType,
+              index: idx,
+              array: arr
+            });
+          });
+        }
+      }
+    }
+  }
+
+  private chooseServer(dcId: DcId, connectionType: ConnectionType, transportType: TransportType) {
+    return dcConfigurator.chooseServer(dcId, connectionType, transportType, connectionType === 'client');
+  }
+
+  public changeTransportType(transportType: TransportType) {
+    const oldTransportType = this.transportType;
+    const oldObject = this.cachedNetworkers[oldTransportType];
+    const newObject = this.cachedNetworkers[transportType];
+    this.cachedNetworkers[transportType] = oldObject;
+    this.cachedNetworkers[oldTransportType] = newObject;
+
+    this.transportType = transportType;
+
+    this.iterateNetworkers((info) => {
+      const transportType = this.getTransportType(info.connectionType);
+      const transport = this.chooseServer(info.dcId, info.connectionType, transportType);
+      info.networker.changeTransport(transport);
+    });
+  }
 
   public async getBaseDcId() {
     if(this.baseDcId) {
@@ -203,15 +273,7 @@ export class ApiManager {
     const connectionType: ConnectionType = options.fileDownload ? 'download' : (options.fileUpload ? 'upload' : 'client');
     //const connectionType: ConnectionType = 'client';
 
-    /// #if MTPROTO_HTTP_UPLOAD
-    // @ts-ignore
-    const transportType: TransportType = connectionType === 'upload' && IS_SAFARI ? 'https' : 'websocket';
-    //const transportType: TransportType = connectionType !== 'client' ? 'https' : 'websocket';
-    /// #else
-    // @ts-ignore
-    const transportType = 'websocket';
-    /// #endif
-
+    const transportType = this.getTransportType(connectionType);
     if(!this.cachedNetworkers.hasOwnProperty(transportType)) {
       this.cachedNetworkers[transportType] = {
         client: {},
@@ -250,9 +312,9 @@ export class ApiManager {
     const ak: DcAuthKey = `dc${dcId}_auth_key` as any;
     const ss: DcServerSalt = `dc${dcId}_server_salt` as any;
     
+    const transport = this.chooseServer(dcId, connectionType, transportType);
     return this.gettingNetworkers[getKey] = Promise.all([ak, ss].map(key => sessionStorage.get(key)))
     .then(async([authKeyHex, serverSaltHex]) => {
-      const transport = dcConfigurator.chooseServer(dcId, connectionType, transportType, connectionType === 'client');
       let networker: MTPNetworker;
       if(authKeyHex && authKeyHex.length === 512) {
         if(!serverSaltHex || serverSaltHex.length !== 16) {

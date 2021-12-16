@@ -35,6 +35,7 @@ let onFirstMount = () => {
         // setTimeout(() => {
           const promise = import('../lib/appManagers/appDialogsManager');
           promise.finally(async() => {
+            document.getElementById('auth-pages').remove();
             //alert('pageIm!');
             resolve();
         
