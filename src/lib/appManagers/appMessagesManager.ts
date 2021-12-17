@@ -4089,6 +4089,13 @@ export class AppMessagesManager {
     }
   }
 
+  private fixUnreadMentionsCountIfNeeded(peerId: PeerId, slicedArray: SlicedArray) {
+    const dialog = this.getDialogOnly(peerId);
+    if(!slicedArray.length && dialog?.unread_mentions_count) {
+      this.reloadConversation(peerId);
+    }
+  }
+
   public goToNextMention(peerId: PeerId) {
     /* this.getUnreadMentions(peerId, 1, 2, 0).then(messages => {
       console.log(messages);
@@ -4103,6 +4110,7 @@ export class AppMessagesManager {
     const length = slicedArray.length;
     const isTopEnd = slicedArray.first.isEnd(SliceEnd.Top);
     if(!length && isTopEnd) {
+      this.fixUnreadMentionsCountIfNeeded(peerId, slicedArray);
       return Promise.resolve();
     }
 
@@ -4117,6 +4125,8 @@ export class AppMessagesManager {
       if(mid) {
         slicedArray.delete(mid);
         rootScope.dispatchEvent('history_focus', {peerId, mid});
+      } else {
+        this.fixUnreadMentionsCountIfNeeded(peerId, slicedArray);
       }
     }).finally(() => {
       delete this.goToNextMentionPromises[peerId];
