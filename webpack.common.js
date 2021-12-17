@@ -17,8 +17,8 @@ if(devMode) {
   console.log('DEVMODE IS ON!');
 }
 
-const MTPROTO_HTTP = true;
-const MTPROTO_AUTO = false;
+const MTPROTO_HTTP = false;
+const MTPROTO_AUTO = true;
 
 const opts = {
   MTPROTO_WORKER: true,
