@@ -6,9 +6,14 @@
 
 import { pause } from '../../../helpers/schedulers/pause';
 import { DcId } from '../../../types';
-import { logger } from '../../logger';
+import { logger, LogTypes } from '../../logger';
 import type MTPNetworker from '../networker';
 import MTTransport from './transport';
+import Modes from '../../../config/modes';
+
+/// #if MTPROTO_AUTO
+import transportController from './controller';
+/// #endif
 
 export default class HTTP implements MTTransport {
   public networker: MTPNetworker;
@@ -20,14 +25,28 @@ export default class HTTP implements MTTransport {
     body: Uint8Array
   }> = [];
   private releasing: boolean;
+
+  public connected: boolean;
+  private destroyed: boolean;
+  private debug: boolean;
   
   constructor(protected dcId: DcId, protected url: string, logSuffix: string) {
-    this.log = logger(`HTTP-${dcId}` + logSuffix);
+    this.debug = Modes.debug && false;
+
+    let logTypes = LogTypes.Error | LogTypes.Log;
+    if(this.debug) logTypes |= LogTypes.Debug;
+    
+    this.log = logger(`HTTP-${dcId}` + logSuffix, logTypes);
+    this.log('constructor');
+
+    this.connected = false;
   }
 
-  private _send(body: Uint8Array) {
-    return fetch(this.url, {method: 'POST', body}).then(response => {
-      if(response.status !== 200) {
+  public _send(body: Uint8Array, mode?: RequestMode) {
+    this.debug && this.log.debug('-> body length to send:', body.length);
+
+    return fetch(this.url, {method: 'POST', body, mode}).then(response => {
+      if(response.status !== 200 && !mode) {
         response.arrayBuffer().then(buffer => {
           this.log.error('not 200', 
             new TextDecoder("utf-8").decode(new Uint8Array(buffer)));
@@ -35,6 +54,8 @@ export default class HTTP implements MTTransport {
 
         throw response;
       }
+
+      this.setConnected(true);
 
       // * test resending by dropping random request
       // if(Math.random() > .5) {
@@ -44,7 +65,29 @@ export default class HTTP implements MTTransport {
       return response.arrayBuffer().then(buffer => {
         return new Uint8Array(buffer);
       }); 
+    }, (err) => {
+      this.setConnected(false);
+      throw err;
     });
+  }
+
+  private setConnected(connected: boolean) {
+    if(this.connected === connected || this.destroyed) {
+      return;
+    }
+
+    this.connected = connected;
+
+    /// #if MTPROTO_AUTO
+    transportController.setTransportValue('https', connected);
+    /// #endif
+  }
+
+  public destroy() {
+    this.setConnected(false);
+    this.destroyed = true;
+    this.pending.forEach(pending => pending.reject());
+    this.pending.length = 0;
   }
 
   public send(body: Uint8Array) {

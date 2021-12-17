@@ -10,7 +10,7 @@
  */
 
 import { TLSerialization, TLDeserialization } from "./tl_utils";
-import dcConfigurator from "./dcConfigurator";
+import dcConfigurator, { TransportType } from "./dcConfigurator";
 import rsaKeysManager from "./rsaKeysManager";
 import timeManager from "./timeManager";
 
@@ -23,6 +23,10 @@ import { cmp, int2bigInt, one, pow, str2bigInt, sub } from "../../vendor/leemon"
 import { addPadding } from "./bin_utils";
 import { Awaited, DcId } from "../../types";
 import { ApiError } from "./apiManager";
+
+/// #if MTPROTO_AUTO
+import transportController from "./transports/controller";
+/// #endif
 
 /* let fNewNonce: any = bytesFromHex('8761970c24cb2329b5b2459752c502f3057cb7e8dbab200e526e8767fdc73b3c').reverse();
 let fNonce: any = bytesFromHex('b597720d11faa5914ef485c529cde414').reverse();
@@ -103,6 +107,12 @@ export class Authorizer {
   };
   
   private log: ReturnType<typeof logger>;
+
+  private transportType: TransportType;
+
+  /// #if MTPROTO_AUTO
+  private getTransportTypePromise: Promise<void>;
+  /// #endif
   
   constructor() {
     this.cached = {};
@@ -122,7 +132,7 @@ export class Authorizer {
     resultArray.set(headerArray);
     resultArray.set(requestArray, headerArray.length);
 
-    const transport = dcConfigurator.chooseServer(dcId);
+    const transport = dcConfigurator.chooseServer(dcId, 'client', this.transportType);
     const baseError = {
       code: 406,
       type: 'NETWORK_BAD_RESPONSE'
@@ -570,18 +580,27 @@ export class Authorizer {
       }
     }
   }
+
+  /// #if MTPROTO_AUTO
+  private getTransportType() {
+    if(this.getTransportTypePromise) return this.getTransportTypePromise;
+    return this.getTransportTypePromise = transportController.pingTransports().then(({websocket}) => {
+      this.transportType = websocket ? 'websocket' : 'https';
+    });
+  }
+  /// #endif
   
   public auth(dcId: DcId) {
     let promise = this.cached[dcId];
     if(promise) {
       return promise;
     }
-    
-    if(!dcConfigurator.chooseServer(dcId)) {
-      throw new Error('[MT] No server found for dc ' + dcId);
-    }
 
     promise = new Promise(async(resolve, reject) => {
+      /// #if MTPROTO_AUTO
+      await this.getTransportType();
+      /// #endif
+
       let error: ApiError;
       let _try = 1;
       while(_try++ <= 3) {

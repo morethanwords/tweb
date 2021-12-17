@@ -36,6 +36,7 @@ import { bigInt2str, rightShift_, str2bigInt } from '../../vendor/leemon';
 import { forEachReverse } from '../../helpers/array';
 import { ConnectionStatus } from './connectionStatus';
 import ctx from '../../environment/ctx';
+import dcConfigurator, { DcConfigurator } from './dcConfigurator';
 
 //console.error('networker included!', new Error().stack);
 
@@ -104,6 +105,7 @@ export default class MTPNetworker {
   /// #if MTPROTO_HAS_HTTP
   private longPollInterval: number;
   private longPollPending: number;
+  private checkConnectionRetryAt: number;
   private checkConnectionTimeout: number;
   private checkConnectionPeriod = 0;
   private sleepAfter: number;
@@ -148,7 +150,6 @@ export default class MTPNetworker {
     private authKey: Uint8Array, 
     private authKeyId: Uint8Array,
     serverSalt: Uint8Array, 
-    transport: MTTransport, 
     options: InvokeApiOptions = {}
   ) {
     this.authKeyUint8 = convertToUint8Array(this.authKey);
@@ -177,8 +178,6 @@ export default class MTPNetworker {
     //   /* rootScope.offline = true
     //   rootScope.offlineConnecting = true */
     // }
-
-    this.changeTransport(transport);
 
     // * handle outcoming dead socket, server will close the connection
     // if((this.transport as TcpObfuscated).networker) {
@@ -366,9 +365,9 @@ export default class MTPNetworker {
   public changeTransport(transport?: MTTransport) {
     const oldTransport = this.transport;
     if(oldTransport) {
-      if((oldTransport as TcpObfuscated).destroy) {
-        (oldTransport as TcpObfuscated).destroy();
-      }
+      oldTransport.destroy();
+
+      DcConfigurator.removeTransport(dcConfigurator.chosenServers, this.transport);
 
       if(this.nextReqTimeout) {
         clearTimeout(this.nextReqTimeout);
@@ -394,22 +393,25 @@ export default class MTPNetworker {
       return;
     }
 
+    transport.networker = this;
+
     /// #if MTPROTO_HAS_HTTP
     /// #if MTPROTO_HAS_WS
     if(transport instanceof HTTP) {
     /// #endif
       this.longPollInterval = ctx.setInterval(this.checkLongPoll, 10000);
       this.checkLongPoll();
+      this.checkConnection('changed transport');
     /// #if MTPROTO_HAS_WS
     }
     /// #endif
     /// #endif
 
-    transport.networker = this;
-
-    if((transport as TcpObfuscated).connected) {
+    if(transport.connected && (transport as TcpObfuscated).connection) {
       this.setConnectionStatus(ConnectionStatus.Connected);
     }
+
+    this.resend();
   }
 
   public destroy() {
@@ -419,12 +421,16 @@ export default class MTPNetworker {
   public forceReconnectTimeout() {
     if((this.transport as TcpObfuscated).reconnect) {
       (this.transport as TcpObfuscated).reconnect();
+    } else {
+      this.resend();
     }
   }
 
   public forceReconnect() {
     if((this.transport as TcpObfuscated).forceReconnect) {
       (this.transport as TcpObfuscated).forceReconnect();
+    } else {
+      this.checkConnection('force reconnect');
     }
   }
 
@@ -603,6 +609,10 @@ export default class MTPNetworker {
       body: serializer.getBytes(true)
     };
 
+    if(this.offline) {
+      this.setConnectionStatus(ConnectionStatus.Connecting);
+    }
+
     this.sendEncryptedRequest(pingMessage).then(() => {
       this.toggleOffline(false);
     }, () => {
@@ -612,91 +622,83 @@ export default class MTPNetworker {
     });
   };
 
-  private toggleOffline(enabled: boolean) {
-    // this.log('toggle ', enabled, this.dcId, this.iii)
-    if(this.offline !== undefined && this.offline === enabled) {
-      return false;
-    }
-  
-    this.offline = enabled;
+  private toggleOffline(offline: boolean) {
+    if(this.offline !== offline) {
+      this.offline = offline;
 
-    if(this.offline) {
-      clearTimeout(this.nextReqTimeout);
-      this.nextReqTimeout = 0;
-      this.nextReq = 0;
-  
-      if(this.checkConnectionPeriod < 1.5) {
-        this.checkConnectionPeriod = 0;
+      if(offline) {
+        clearTimeout(this.nextReqTimeout);
+        this.nextReqTimeout = 0;
+        this.nextReq = 0;
+        
+        if(this.checkConnectionPeriod < 1.5) {
+          this.checkConnectionPeriod = 0;
+        }
+        
+        const delay = this.checkConnectionPeriod * 1000 | 0;
+        this.checkConnectionRetryAt = Date.now() + delay;
+        this.setConnectionStatus(ConnectionStatus.Closed, this.checkConnectionRetryAt);
+        this.checkConnectionTimeout = ctx.setTimeout(this.checkConnection, delay);
+        this.checkConnectionPeriod = Math.min(30, (1 + this.checkConnectionPeriod) * 1.5);
+    
+        /// #if !MTPROTO_WORKER
+        document.body.addEventListener('online', this.checkConnection, false);
+        document.body.addEventListener('focus', this.checkConnection, false);
+        /// #endif
+      } else {
+        this.setConnectionStatus(ConnectionStatus.Connected);
+        this.checkLongPoll();
+
+        this.scheduleRequest();
+    
+        /// #if !MTPROTO_WORKER
+        document.body.removeEventListener('online', this.checkConnection);
+        document.body.removeEventListener('focus', this.checkConnection);
+        /// #endif
+
+        clearTimeout(this.checkConnectionTimeout);
+        this.checkConnectionTimeout = undefined;
       }
-  
-      this.checkConnectionTimeout = ctx.setTimeout(this.checkConnection, this.checkConnectionPeriod * 1000 | 0);
-      this.checkConnectionPeriod = Math.min(30, (1 + this.checkConnectionPeriod) * 1.5);
-  
-      /// #if !MTPROTO_WORKER
-      document.body.addEventListener('online', this.checkConnection, false);
-      document.body.addEventListener('focus', this.checkConnection, false);
-      /// #endif
-    } else {
-      this.checkLongPoll();
-
-      this.scheduleRequest();
-  
-      /// #if !MTPROTO_WORKER
-      document.body.removeEventListener('online', this.checkConnection);
-      document.body.removeEventListener('focus', this.checkConnection);
-      /// #endif
-
-      clearTimeout(this.checkConnectionTimeout);
-      this.checkConnectionTimeout = undefined;
     }
+
+    this.setConnectionStatus(offline ? ConnectionStatus.Closed : ConnectionStatus.Connected, offline ? this.checkConnectionRetryAt : undefined);
   }
 
   private handleSentEncryptedRequestHTTP(promise: ReturnType<MTPNetworker['sendEncryptedRequest']>, message: MTMessage, noResponseMsgs: string[]) {
+    // let timeout = setTimeout(() => {
+    //   this.log.error('handleSentEncryptedRequestHTTP timeout', promise, message, noResponseMsgs);
+    // }, 5e3);
+
     promise.then((result) => {
       this.toggleOffline(false);
       // this.log('parse for', message);
-      this.parseResponse(result).then((response) => {
-        if(Modes.debug) {
-          this.log.debug('Server response', response);
-        }
+      return this.parseResponse(result).then((response) => {
+        this.debug && this.log.debug('Server response', response);
   
         this.processMessage(response.response, response.messageId, response.sessionId);
-  
-        noResponseMsgs.forEach((msgId) => {
-          if(this.sentMessages[msgId]) {
-            const deferred = this.sentMessages[msgId].deferred;
-            delete this.sentMessages[msgId];
-            deferred.resolve();
-          }
-        });
 
         this.checkLongPoll();
-  
         this.checkConnectionPeriod = Math.max(1.1, Math.sqrt(this.checkConnectionPeriod));
+
+        return true;
       });
     }, (error) => {
       this.log.error('Encrypted request failed', error, message);
   
-      if(message.container) {
-        message.inner.forEach((msgId) => {
-          this.pendingMessages[msgId] = 0;
-        });
+      this.pushResend(message.msg_id);
+      this.toggleOffline(true);
 
-        delete this.sentMessages[message.msg_id];
-      } else {
-        this.pendingMessages[message.msg_id] = 0;
-      }
-  
+      return false;
+    }).then((shouldResolve) => {
+      // clearTimeout(timeout);
       noResponseMsgs.forEach((msgId) => {
         if(this.sentMessages[msgId]) {
           const deferred = this.sentMessages[msgId].deferred;
           delete this.sentMessages[msgId];
           delete this.pendingMessages[msgId];
-          deferred.reject();
+          shouldResolve ? deferred.resolve() : deferred.reject();
         }
       });
-  
-      this.toggleOffline(true);
     });
   }
   /// #endif
@@ -1187,37 +1189,40 @@ export default class MTPNetworker {
 
   private sendEncryptedRequest(message: MTMessage) {
     return this.getEncryptedOutput(message).then(requestData => {
-      this.debug && this.log.debug('sendEncryptedRequest: launching message into space:', message, [message.msg_id].concat(message.inner || []));
-
+      this.debug && this.log.debug('sendEncryptedRequest: launching message into space:', message, [message.msg_id].concat(message.inner || []), requestData.length);
       const promise: Promise<Uint8Array> = this.transport.send(requestData) as any;
-
+      // this.debug && this.log.debug('sendEncryptedRequest: launched message into space:', message, promise);
+      
       /// #if !MTPROTO_HAS_HTTP
       return promise;
       /// #else
-
+      
       /// #if MTPROTO_HAS_WS
       if(!(this.transport instanceof HTTP)) return promise;
       /// #endif
-
+      
       const baseError = {
         code: 406,
         type: 'NETWORK_BAD_RESPONSE',
         transport: this.transport
       };
+      
       return promise.then((result) => {
-        if(!result || !result.byteLength) {
-          return Promise.reject(baseError);
+        if(!result?.byteLength) {
+          throw baseError;
         }
-
+        
+        // this.debug && this.log.debug('sendEncryptedRequest: got response for:', message, [message.msg_id].concat(message.inner || []));
         return result;
       }, (error) => {
         if(!error.message && !error.type) {
           error = Object.assign(baseError, {
-          type: 'NETWORK_BAD_REQUEST',
-          originalError: error
+            type: 'NETWORK_BAD_REQUEST',
+            originalError: error
           });
         }
-        return Promise.reject(error);
+
+        throw error;
       });
       /// #endif
     });

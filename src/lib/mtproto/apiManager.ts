@@ -36,6 +36,10 @@ import Modes from '../../config/modes';
 import rootScope from '../rootScope';
 /// #endif
 
+/// #if MTPROTO_AUTO
+import transportController from './transports/controller';
+/// #endif
+
 /* var networker = apiManager.cachedNetworkers.websocket.upload[2];
 networker.wrapMtpMessage({
   _: 'msgs_state_req',
@@ -106,6 +110,12 @@ export class ApiManager {
     this.afterMessageTempIds = {};
 
     this.transportType = Modes.transport;
+
+    /// #if MTPROTO_AUTO
+    transportController.addEventListener('transport', (transportType) => {
+      this.changeTransportType(transportType);
+    });
+    /// #endif
   }
 
   //private lol = false;
@@ -168,6 +178,12 @@ export class ApiManager {
 
   public changeTransportType(transportType: TransportType) {
     const oldTransportType = this.transportType;
+    if(oldTransportType === transportType) {
+      return;
+    }
+
+    this.log('changing transport from', oldTransportType, 'to', transportType);
+
     const oldObject = this.cachedNetworkers[oldTransportType];
     const newObject = this.cachedNetworkers[transportType];
     this.cachedNetworkers[transportType] = oldObject;
@@ -274,7 +290,7 @@ export class ApiManager {
     //const connectionType: ConnectionType = 'client';
 
     const transportType = this.getTransportType(connectionType);
-    if(!this.cachedNetworkers.hasOwnProperty(transportType)) {
+    if(!this.cachedNetworkers[transportType]) {
       this.cachedNetworkers[transportType] = {
         client: {},
         download: {},
@@ -312,7 +328,7 @@ export class ApiManager {
     const ak: DcAuthKey = `dc${dcId}_auth_key` as any;
     const ss: DcServerSalt = `dc${dcId}_server_salt` as any;
     
-    const transport = this.chooseServer(dcId, connectionType, transportType);
+    let transport = this.chooseServer(dcId, connectionType, transportType);
     return this.gettingNetworkers[getKey] = Promise.all([ak, ss].map(key => sessionStorage.get(key)))
     .then(async([authKeyHex, serverSaltHex]) => {
       let networker: MTPNetworker;
@@ -325,25 +341,33 @@ export class ApiManager {
         const authKeyId = (await CryptoWorker.invokeCrypto('sha1-hash', authKey)).slice(-8);
         const serverSalt = bytesFromHex(serverSaltHex);
         
-        networker = networkerFactory.getNetworker(dcId, authKey, authKeyId, serverSalt, transport, options);
+        networker = networkerFactory.getNetworker(dcId, authKey, authKeyId, serverSalt, options);
       } else {
         try { // if no saved state
           const auth = await authorizer.auth(dcId);
   
-          const storeObj = {
+          sessionStorage.set({
             [ak]: bytesToHex(auth.authKey),
             [ss]: bytesToHex(auth.serverSalt)
-          };
+          });
           
-          sessionStorage.set(storeObj);
-          
-          networker = networkerFactory.getNetworker(dcId, auth.authKey, auth.authKeyId, auth.serverSalt, transport, options);
+          networker = networkerFactory.getNetworker(dcId, auth.authKey, auth.authKeyId, auth.serverSalt, options);
         } catch(error) {
           this.log('Get networker error', error, (error as Error).stack);
           delete this.gettingNetworkers[getKey];
           throw error;
         }
       }
+
+      // ! cannot get it before this promise because simultaneous changeTransport will change nothing
+      const newTransportType = this.getTransportType(connectionType);
+      if(newTransportType !== transportType) {
+        transport.destroy();
+        DcConfigurator.removeTransport(dcConfigurator.chosenServers, transport);
+        transport = this.chooseServer(dcId, connectionType, newTransportType);
+      }
+
+      networker.changeTransport(transport);
 
       /* networker.onConnectionStatusChange = (online) => {
         console.log('status:', online);
@@ -377,7 +401,6 @@ export class ApiManager {
           networker.destroy();
           networkerFactory.removeNetworker(networker);
           DcConfigurator.removeTransport(this.cachedNetworkers, networker);
-          DcConfigurator.removeTransport(dcConfigurator.chosenServers, networker.transport);
         };
 
         networker.setDrainTimeout();

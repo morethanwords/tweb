@@ -18,7 +18,7 @@ const Modes = {
   ssl: true, // location.search.indexOf('ssl=1') > 0 || location.protocol === 'https:' && location.search.indexOf('ssl=0') === -1,
   multipleConnections: true,
   asServiceWorker: false,
-  transport: 'https' as TransportType
+  transport: 'websocket' as TransportType
 };
 
 /// #if MTPROTO_HAS_HTTP
