@@ -4618,7 +4618,7 @@ export class AppMessagesManager {
           foundDialog.unread_count = setCount;
         }
 
-        if(newUnreadMentionsCount < 0) {
+        if(newUnreadMentionsCount < 0 || !foundDialog.unread_count) {
           foundDialog.unread_mentions_count = 0;
         }
       }
@@ -4730,12 +4730,12 @@ export class AppMessagesManager {
       const affected = historyUpdated.unreadMentions || historyUpdated.unread;
       const releaseUnreadCount = affected && this.dialogsStorage.prepareDialogUnreadCountModifying(foundDialog);
       
-      if(historyUpdated.unreadMentions) {
-        foundDialog.unread_mentions_count = Math.max(0, foundDialog.unread_mentions_count - historyUpdated.unreadMentions);
-      }
-
       if(historyUpdated.unread) {
         foundDialog.unread_count = Math.max(0, foundDialog.unread_count - historyUpdated.unread);
+      }
+
+      if(historyUpdated.unreadMentions) {
+        foundDialog.unread_mentions_count = !foundDialog.unread_count ? 0 : Math.max(0, foundDialog.unread_mentions_count - historyUpdated.unreadMentions);
       }
 
       if(affected) {

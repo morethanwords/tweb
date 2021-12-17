@@ -859,7 +859,7 @@ export default class ChatInput {
     this.goDownUnreadBadge.classList.toggle('badge-gray', this.appNotificationsManager.isPeerLocalMuted(this.chat.peerId, true));
 
     if(this.goMentionUnreadBadge && this.chat.type === 'chat') {
-      const hasMentions = !!dialog?.unread_mentions_count;
+      const hasMentions = !!(dialog?.unread_mentions_count && dialog.unread_count);
       this.goMentionUnreadBadge.innerText = hasMentions ? '' + (dialog.unread_mentions_count) : '';
       this.goMentionBtn.classList.toggle('is-visible', hasMentions);
     }
