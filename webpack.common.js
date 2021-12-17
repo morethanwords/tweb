@@ -17,8 +17,8 @@ if(devMode) {
   console.log('DEVMODE IS ON!');
 }
 
-const MTPROTO_HTTP = false;
-const MTPROTO_AUTO = true;
+const MTPROTO_HTTP = true;
+const MTPROTO_AUTO = false;
 
 const opts = {
   MTPROTO_WORKER: true,
@@ -26,7 +26,7 @@ const opts = {
   MTPROTO_HTTP: MTPROTO_HTTP,
   MTPROTO_HTTP_UPLOAD: false,
   MTPROTO_AUTO: MTPROTO_AUTO,       // use HTTPS when WS is unavailable
-  MTPROTO_HAS_HTTP: MTPROTO_AUTO,
+  MTPROTO_HAS_HTTP: MTPROTO_AUTO || MTPROTO_HTTP,
   MTPROTO_HAS_WS: MTPROTO_AUTO || !MTPROTO_HTTP,
   DEBUG: devMode,
   version: 3,
