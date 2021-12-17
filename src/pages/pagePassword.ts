@@ -84,6 +84,9 @@ let onFirstMount = (): Promise<any> => {
     btnNextI18n.update({key: 'PleaseWait'});
     const preloader = putPreloader(btnNext);
 
+    passwordInputField.setValueSilently('' + Math.random()); // prevent saving suggestion
+    passwordInputField.setValueSilently(value); // prevent saving suggestion
+
     passwordManager.check(value, state).then((response) => {
       //console.log('passwordManager response:', response);
         

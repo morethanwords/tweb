@@ -4,6 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+// import { IS_MOBILE_SAFARI, IS_SAFARI } from "../environment/userAgent";
 import { cancelEvent } from "../helpers/dom/cancelEvent";
 import InputField, { InputFieldOptions } from "./inputField";
 
@@ -21,12 +22,15 @@ export default class PasswordInputField extends InputField {
     const input = this.input as HTMLInputElement;
     input.type = 'password';
     input.setAttribute('required', '');
+    input.name = 'notsearch_password';
     input.autocomplete = 'off';
-    /* input.readOnly = true;
 
-    input.addEventListener('focus', () => {
-      input.removeAttribute('readonly');
-    }, {once: true}); */
+    /* if(IS_SAFARI && !IS_MOBILE_SAFARI) {
+      input.setAttribute('readonly', '');
+      input.addEventListener('focus', () => {
+        input.removeAttribute('readonly');
+      }, {once: true});
+    } */
 
     // * https://stackoverflow.com/a/35949954/6758968
     const stealthy = document.createElement('input');

@@ -14,7 +14,7 @@ import { filterUnique, indexOfAndSplice } from "../../helpers/array";
 import { CancellablePromise, deferredPromise } from "../../helpers/cancellablePromise";
 import cleanSearchText from "../../helpers/cleanSearchText";
 import cleanUsername from "../../helpers/cleanUsername";
-import { tsNow } from "../../helpers/date";
+import { formatFullSentTimeRaw, tsNow } from "../../helpers/date";
 import { formatPhoneNumber } from "../../helpers/formatPhoneNumber";
 import { safeReplaceObject, isObject } from "../../helpers/object";
 import { Chat, InputContact, InputMedia, InputPeer, InputUser, User as MTUser, UserProfilePhoto, UserStatus } from "../../layer";
@@ -581,23 +581,24 @@ export class AppUsersManager {
           
           case 'userStatusOffline': {
             const date = user.status.was_online;
-            const now = Date.now() / 1000;
+            const today = new Date();
+            const now = today.getTime() / 1000 | 0;
             
-            if((now - date) < 60) {
+            const diff = now - date;
+            if(diff < 60) {
               key = 'Peer.Status.justNow';
-            } else if((now - date) < 3600) {
+            } else if(diff < 3600) {
               key = 'Peer.Status.minAgo';
-              const c = (now - date) / 60 | 0;
+              const c = diff / 60 | 0;
               args = [c];
-            } else if(now - date < 86400) {
+            } else if(diff < 86400 && today.getDate() === new Date(date * 1000).getDate()) {
               key = 'LastSeen.HoursAgo';
-              const c = (now - date) / 3600 | 0;
+              const c = diff / 3600 | 0;
               args = [c];
             } else {
               key = 'Peer.Status.LastSeenAt';
-              const d = new Date(date * 1000);
-              args = [('0' + d.getDate()).slice(-2) + '.' + ('0' + (d.getMonth() + 1)).slice(-2), 
-                ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2)];
+              const {dateEl, timeEl} = formatFullSentTimeRaw(date);
+              args = [dateEl, timeEl];
             }
             
             break;

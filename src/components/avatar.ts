@@ -101,7 +101,7 @@ export async function openAvatarViewer(
   }
 
   if(photo) {
-    if(!isObject(message)) {
+    if(!isObject(message) && message) {
       photo = appPhotosManager.getPhoto(message);
     }
     
