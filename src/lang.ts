@@ -480,9 +480,6 @@ const lang = {
   "Emoji": "Emoji",
   "AddContactTitle": "Add Contact",
   "HiddenName": "Deleted Account",
-  "ActionGroupCallInvited": "un1 invited un2 to the voice chat",
-  "ActionGroupCallYouInvited": "You invited un2 to the voice chat",
-  "ActionGroupCallInvitedYou": "un1 invited you to the voice chat",
   "Seconds": {
     "one_value": "%1$d second",
     "other_value": "%1$d seconds"
@@ -655,6 +652,9 @@ const lang = {
   "Chat.Service.VoiceChatFinished": "%1$@ ended the video chat (%2$@)",
   "Chat.Service.VoiceChatFinishedYou": "You ended the video chat (%@)",
   "Chat.Service.VoiceChatFinished.Channel": "Live Stream ended (%1$@)",
+  "Chat.Service.VoiceChatInvitation": "%1$@ invited %2$@ to the [video chat](open)",
+  "Chat.Service.VoiceChatInvitationByYou": "You invited %1$@ to the [video chat](open)",
+  "Chat.Service.VoiceChatInvitationForYou": "%1$@ invited you to the [video chat](open)",
   "ChatList.Service.VoiceChatScheduled": "%1$@ scheduled a video chat for %2$@",
   "ChatList.Service.VoiceChatScheduledYou": "You scheduled a video chat for %2$@",
   "Chat.Poll.Unvote": "Retract Vote",

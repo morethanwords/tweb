@@ -9,6 +9,9 @@ import Modes from '../../../config/modes';
 import EventListenerBase from '../../../helpers/eventListenerBase';
 import { MTConnection } from './transport';
 
+// let closeSocketBefore = Date.now() + 30e3;
+// let closeSocketAfter = Date.now() + 10e3;
+
 export default class Socket extends EventListenerBase<{
   open: () => void,
   message: (buffer: ArrayBuffer) => any,
@@ -49,6 +52,11 @@ export default class Socket extends EventListenerBase<{
     this.ws.addEventListener('close', this.handleClose);
     this.ws.addEventListener('error', this.handleError);
     this.ws.addEventListener('message', this.handleMessage);
+
+    // if(Date.now() < closeSocketBefore) {
+    // if(Date.now() >= closeSocketAfter) {
+    //   this.ws.close();
+    // }
   }
 
   public close() {

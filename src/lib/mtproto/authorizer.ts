@@ -10,7 +10,7 @@
  */
 
 import { TLSerialization, TLDeserialization } from "./tl_utils";
-import dcConfigurator from "./dcConfigurator";
+import dcConfigurator, { TransportType } from "./dcConfigurator";
 import rsaKeysManager from "./rsaKeysManager";
 import timeManager from "./timeManager";
 
@@ -21,7 +21,12 @@ import { bytesCmp, bytesToHex, bytesFromHex, bytesXor } from "../../helpers/byte
 import DEBUG from "../../config/debug";
 import { cmp, int2bigInt, one, pow, str2bigInt, sub } from "../../vendor/leemon";
 import { addPadding } from "./bin_utils";
-import { Awaited } from "../../types";
+import { Awaited, DcId } from "../../types";
+import { ApiError } from "./apiManager";
+
+/// #if MTPROTO_AUTO
+import transportController from "./transports/controller";
+/// #endif
 
 /* let fNewNonce: any = bytesFromHex('8761970c24cb2329b5b2459752c502f3057cb7e8dbab200e526e8767fdc73b3c').reverse();
 let fNonce: any = bytesFromHex('b597720d11faa5914ef485c529cde414').reverse();
@@ -66,8 +71,6 @@ type AuthOptions = {
 
   localTime?: number,
   serverTime?: any,
-
-  localTry?: number
 };
 
 type ResPQ = {
@@ -100,16 +103,23 @@ type req_DH_params = {
 
 export class Authorizer {
   private cached: {
-    [dcId: number]: Promise<AuthOptions>
-  } = {};
+    [dcId: DcId]: Promise<AuthOptions>
+  };
   
   private log: ReturnType<typeof logger>;
+
+  private transportType: TransportType;
+
+  /// #if MTPROTO_AUTO
+  private getTransportTypePromise: Promise<void>;
+  /// #endif
   
   constructor() {
+    this.cached = {};
     this.log = logger(`AUTHORIZER`, LogTypes.Error | LogTypes.Log);
   }
   
-  private sendPlainRequest(dcId: number, requestArray: Uint8Array) {
+  private sendPlainRequest(dcId: DcId, requestArray: Uint8Array) {
     const requestLength = requestArray.byteLength;
     
     const header = new TLSerialization();
@@ -122,7 +132,7 @@ export class Authorizer {
     resultArray.set(headerArray);
     resultArray.set(requestArray, headerArray.length);
 
-    const transport = dcConfigurator.chooseServer(dcId);
+    const transport = dcConfigurator.chooseServer(dcId, 'client', this.transportType);
     const baseError = {
       code: 406,
       type: 'NETWORK_BAD_RESPONSE'
@@ -570,40 +580,48 @@ export class Authorizer {
       }
     }
   }
+
+  /// #if MTPROTO_AUTO
+  private getTransportType() {
+    if(this.getTransportTypePromise) return this.getTransportTypePromise;
+    return this.getTransportTypePromise = transportController.pingTransports().then(({websocket}) => {
+      this.transportType = websocket ? 'websocket' : 'https';
+    });
+  }
+  /// #endif
   
-  public async auth(dcId: number): Promise<AuthOptions> {
-    if(dcId in this.cached) {
-      return this.cached[dcId];
-    }
-    
-    const nonce = /* fNonce ? fNonce :  */new Uint8Array(16).randomize();
-    /* const nonce = new Array(16);
-    MTProto.secureRandom.nextBytes(nonce); */
-    
-    if(!dcConfigurator.chooseServer(dcId)) {
-      throw new Error('[MT] No server found for dc ' + dcId);
+  public auth(dcId: DcId) {
+    let promise = this.cached[dcId];
+    if(promise) {
+      return promise;
     }
 
-    // await new Promise((resolve) => setTimeout(resolve, 2e3));
+    promise = new Promise(async(resolve, reject) => {
+      /// #if MTPROTO_AUTO
+      await this.getTransportType();
+      /// #endif
 
-    const auth: AuthOptions = {dcId, nonce, localTry: 1};
-    
-    try {
-      const promise = this.sendReqPQ(auth);
-      this.cached[dcId] = promise;
-      return await promise;
-    } catch(err) {
-      if(/* err.originalError === -404 &&  */auth.localTry <= 3) {
-        return this.sendReqPQ({
-          dcId: auth.dcId, 
-          nonce: new Uint8Array(16).randomize(),
-          localTry: auth.localTry + 1
-        });
+      let error: ApiError;
+      let _try = 1;
+      while(_try++ <= 3) {
+        try {
+          const auth: AuthOptions = {
+            dcId, 
+            nonce: new Uint8Array(16).randomize()
+          };
+          
+          const promise = this.sendReqPQ(auth);
+          resolve(await promise);
+          return;
+        } catch(err) {
+          error = err;
+        }
       }
 
-      delete this.cached[dcId];
-      throw err;
-    }
+      reject(error);
+    });
+
+    return this.cached[dcId] = promise;
   }
 }
 
