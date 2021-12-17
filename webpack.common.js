@@ -17,11 +17,17 @@ if(devMode) {
   console.log('DEVMODE IS ON!');
 }
 
+const MTPROTO_HTTP = false;
+const MTPROTO_AUTO = true;
+
 const opts = {
   MTPROTO_WORKER: true,
   MTPROTO_SW: false,
-  MTPROTO_HTTP: false,
+  MTPROTO_HTTP: MTPROTO_HTTP,
   MTPROTO_HTTP_UPLOAD: false,
+  MTPROTO_AUTO: MTPROTO_AUTO,       // use HTTPS when WS is unavailable
+  MTPROTO_HAS_HTTP: MTPROTO_AUTO,
+  MTPROTO_HAS_WS: MTPROTO_AUTO || !MTPROTO_HTTP,
   DEBUG: devMode,
   version: 3,
   'ifdef-verbose': devMode,         // add this for verbose output

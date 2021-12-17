@@ -12,9 +12,9 @@
 import type { ConnectionStatusChange } from "./connectionStatus";
 import MTPNetworker from "./networker";
 import { InvokeApiOptions } from "../../types";
-import MTTransport from "./transports/transport";
 import App from "../../config/app";
 import { MOUNT_CLASS_TO } from "../../config/debug";
+import { indexOfAndSplice } from "../../helpers/array";
 
 export class NetworkerFactory {
   private networkers: MTPNetworker[] = [];
@@ -25,19 +25,16 @@ export class NetworkerFactory {
   public userAgent = navigator.userAgent;
 
   public removeNetworker(networker: MTPNetworker) {
-    const idx = this.networkers.indexOf(networker);
-    if(idx !== -1) {
-      this.networkers.splice(idx, 1);
-    }
+    indexOfAndSplice(this.networkers, networker);
   }
 
   public setUpdatesProcessor(callback: (obj: any) => void) {
     this.updatesProcessor = callback;
   }
 
-  public getNetworker(dcId: number, authKey: Uint8Array, authKeyId: Uint8Array, serverSalt: Uint8Array, transport: MTTransport, options: InvokeApiOptions) {
+  public getNetworker(dcId: number, authKey: Uint8Array, authKeyId: Uint8Array, serverSalt: Uint8Array, options: InvokeApiOptions) {
     //console.log('NetworkerFactory: creating new instance of MTPNetworker:', dcId, options);
-    const networker = new MTPNetworker(dcId, authKey, authKeyId, serverSalt, transport, options);
+    const networker = new MTPNetworker(dcId, authKey, authKeyId, serverSalt, options);
     this.networkers.push(networker);
     return networker;
   }

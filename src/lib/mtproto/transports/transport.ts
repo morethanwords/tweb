@@ -10,6 +10,8 @@ import type MTPNetworker from "../networker";
 export default interface MTTransport {
   networker: MTPNetworker;
   send: (data: Uint8Array) => void;
+  connected: boolean;
+  destroy: () => void;
 }
 
 export interface MTConnection extends EventListenerBase<{
@@ -17,7 +19,7 @@ export interface MTConnection extends EventListenerBase<{
   message: (buffer: ArrayBuffer) => any,
   close: () => void,
 }> {
-  send: (data: Uint8Array) => void;
+  send: MTTransport['send'];
   close: () => void;
 }
 

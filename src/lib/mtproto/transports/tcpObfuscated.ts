@@ -12,6 +12,10 @@ import MTTransport, { MTConnection, MTConnectionConstructable } from "./transpor
 import intermediatePacketCodec from './intermediate';
 import { ConnectionStatus } from "../connectionStatus";
 
+/// #if MTPROTO_AUTO
+import transportController from "./controller";
+/// #endif
+
 export default class TcpObfuscated implements MTTransport {
   private codec = intermediatePacketCodec;
   private obfuscation = new Obfuscation();
@@ -29,7 +33,7 @@ export default class TcpObfuscated implements MTTransport {
   private log: ReturnType<typeof logger>;
   public connected = false;
   private lastCloseTime: number;
-  private connection: MTConnection;
+  public connection: MTConnection;
 
   private autoReconnect = true;
   private reconnectTimeout: number;
@@ -52,6 +56,10 @@ export default class TcpObfuscated implements MTTransport {
 
   private onOpen = () => {
     this.connected = true;
+
+    /// #if MTPROTO_AUTO
+    transportController.setTransportOpened('websocket');
+    /// #endif
 
     const initPayload = this.obfuscation.init(this.codec);
 
@@ -136,6 +144,12 @@ export default class TcpObfuscated implements MTTransport {
   };
 
   public clear() {
+    /// #if MTPROTO_AUTO
+    if(this.connected) {
+      transportController.setTransportClosed('websocket');
+    }
+    /// #endif
+
     this.connected = false;
 
     if(this.connection) {
@@ -183,6 +197,13 @@ export default class TcpObfuscated implements MTTransport {
   public destroy() {
     this.setAutoReconnect(false);
     this.close();
+
+    this.pending.forEach(pending => {
+      if(pending.reject) {
+        pending.reject();
+      }
+    });
+    this.pending.length = 0;
   }
 
   public close() {
