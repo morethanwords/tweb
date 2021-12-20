@@ -49,7 +49,7 @@ export default class FiltersStorage {
     private apiUpdatesManager: ApiUpdatesManager, 
     /* private apiManager: ApiManagerProxy, */ 
     private rootScope: typeof _rootScope) {
-    this.clear();
+    this.clear(true);
     this.filters = {};
 
     this.appStateManager.getState().then((state) => {
@@ -114,10 +114,13 @@ export default class FiltersStorage {
   public clear(init = false) {
     if(!init) {
       safeReplaceObject(this.filters, {});
+      this.reloadedPeerIds.clear();
+    } else {
+      this.filters = {};
+      this.reloadedPeerIds = new Set();
     }
 
     this.orderIndex = START_ORDER_INDEX;
-    this.reloadedPeerIds = new Set();
   }
 
   private onUpdateDialogFilter = (update: Update.updateDialogFilter) => {
@@ -178,11 +181,8 @@ export default class FiltersStorage {
     }
 
     // exclude_muted
-    if(pFlags.exclude_muted) {
-      const isMuted = this.appNotificationsManager.isPeerLocalMuted(peerId);
-      if(isMuted) {
-        return false;
-      }
+    if(pFlags.exclude_muted && this.appNotificationsManager.isPeerLocalMuted(peerId) && !(dialog.unread_mentions_count && dialog.unread_count)) {
+      return false;
     }
 
     if(this.appPeersManager.isAnyChat(peerId)) {
@@ -320,12 +320,12 @@ export default class FiltersStorage {
     });
   }
 
-  public reloadMissingPeerIds(filterId: number) {
+  public reloadMissingPeerIds(filterId: number, type: 'pinned_peers' | 'include_peers' | 'exclude_peers' = 'pinned_peers') {
     const promises: Promise<any>[] = [];
     const filter = this.getFilter(filterId);
-    const pinnedPeers = filter?.pinned_peers;
-    if(pinnedPeers?.length) {
-      const reloadDialogs = pinnedPeers.filter((inputPeer, idx) => {
+    const peers = filter && filter[type];
+    if(peers?.length) {
+      const reloadDialogs = peers.filter((inputPeer, idx) => {
         const peerId = this.appPeersManager.getPeerId(inputPeer);
         return !this.reloadedPeerIds.has(peerId) && !this.appMessagesManager.getDialogOnly(peerId);
       });

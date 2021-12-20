@@ -2193,7 +2193,9 @@ export default class ChatBubbles {
         const queue = this.messagesQueue.slice();
         this.messagesQueue.length = 0;
 
-        const promises = queue.reduce((acc, {promises}) => acc.concat(promises), []);
+        const promises = queue.reduce((acc, {promises}) => (acc.push(...promises), acc), []);
+
+        // promises.push(pause(200));
 
         // * это нужно для того, чтобы если захочет подгрузить reply или какое-либо сообщение, то скролл не прервался
         // * если добавить этот промис - в таком случае нужно сделать, чтобы скроллило к последнему сообщению после рендера

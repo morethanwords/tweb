@@ -87,7 +87,7 @@ export default class SliderSuperTab implements SliderTab {
       }
     }
 
-    return this.slider.selectTab(this);
+    this.slider.selectTab(this);
   }
 
   protected init(): Promise<any> | any {

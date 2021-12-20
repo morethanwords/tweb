@@ -2733,9 +2733,9 @@ export class AppMessagesManager {
   public wrapMessageForReply(message: MyMessage | MyDraftMessage, text: string, usingMids: number[], plain: true, highlightWord?: string, withoutMediaType?: boolean): string;
   public wrapMessageForReply(message: MyMessage | MyDraftMessage, text?: string, usingMids?: number[], plain?: false, highlightWord?: string, withoutMediaType?: boolean): DocumentFragment;
   public wrapMessageForReply(message: MyMessage | MyDraftMessage, text: string = (message as Message.message).message, usingMids?: number[], plain?: boolean, highlightWord?: string, withoutMediaType?: boolean): DocumentFragment | string {
-    const parts: (HTMLElement | string)[] = [];
+    const parts: (Node | string)[] = [];
 
-    const addPart = (langKey: LangPackKey, part?: string | HTMLElement, text?: string) => {
+    const addPart = (langKey: LangPackKey, part?: string | HTMLElement) => {
       if(langKey) {
         part = plain ? I18n.format(langKey, true) : i18n(langKey);
       }
@@ -2747,10 +2747,6 @@ export class AppMessagesManager {
         if(typeof(part) === 'string') el.innerHTML = part;
         else el.append(part);
         parts.push(el);
-      }
-
-      if(text) {
-        parts.push(', ');
       }
     };
 
@@ -2776,7 +2772,7 @@ export class AppMessagesManager {
           text = this.getAlbumText(message.grouped_id).message;
 
           if(!withoutMediaType) {
-            addPart('AttachAlbum', undefined, text);
+            addPart('AttachAlbum');
           }
         }
       } else {
@@ -2787,15 +2783,14 @@ export class AppMessagesManager {
         const media = message.media;
         switch(media._) {
           case 'messageMediaPhoto':
-            addPart('AttachPhoto', undefined, message.message);
+            addPart('AttachPhoto');
             break;
           case 'messageMediaDice':
             addPart(undefined, plain ? media.emoticon : RichTextProcessor.wrapEmojiText(media.emoticon));
             break;
           case 'messageMediaVenue': {
-            const text = plain ? media.title : RichTextProcessor.wrapEmojiText(media.title);
-            addPart('AttachLocation', undefined, text);
-            parts.push(htmlToDocumentFragment(text) as any);
+            text = media.title;
+            addPart('AttachLocation');
             break;
           }
           case 'messageMediaGeo':
@@ -2812,20 +2807,20 @@ export class AppMessagesManager {
             break;
           case 'messageMediaGame': {
             const prefix = '🎮' + ' ';
-            addPart(undefined, plain ? prefix + media.game.title : RichTextProcessor.wrapEmojiText(prefix + media.game.title));
+            text = prefix + media.game.title;
             break;
           }
           case 'messageMediaDocument': {
             const document = media.document as MyDocument;
   
             if(document.type === 'video') {
-              addPart('AttachVideo', undefined, message.message);
+              addPart('AttachVideo');
             } else if(document.type === 'voice') {
-              addPart('AttachAudio', undefined, message.message);
+              addPart('AttachAudio');
             } else if(document.type === 'gif') {
-              addPart('AttachGif', undefined, message.message);
+              addPart('AttachGif');
             } else if(document.type === 'round') {
-              addPart('AttachRound', undefined, message.message);
+              addPart('AttachRound');
             } else if(document.type === 'sticker') {
               if(document.stickerEmojiRaw) {
                 addPart(undefined, (plain ? document.stickerEmojiRaw : document.stickerEmoji) + ' ');
@@ -2836,9 +2831,9 @@ export class AppMessagesManager {
             } else if(document.type === 'audio') {
               const attribute = document.attributes.find(attribute => attribute._ === 'documentAttributeAudio' && (attribute.title || attribute.performer)) as DocumentAttribute.documentAttributeAudio;
               const f = '🎵' + ' ' + (attribute ? [attribute.title, attribute.performer].filter(Boolean).join(' - ') : document.file_name);
-              addPart(undefined, plain ? f : RichTextProcessor.wrapEmojiText(f), message.message);
+              addPart(undefined, plain ? f : RichTextProcessor.wrapEmojiText(f));
             } else {
-              addPart(undefined, plain ? document.file_name : RichTextProcessor.wrapEmojiText(document.file_name), message.message);
+              addPart(undefined, plain ? document.file_name : RichTextProcessor.wrapEmojiText(document.file_name));
             }
   
             break;
@@ -2849,7 +2844,11 @@ export class AppMessagesManager {
             ///////this.log.warn('Got unknown media type!', message);
             break;
         }
-      } 
+      }
+
+      if(text && parts.length) {
+        parts.push(', ');
+      }
     }
 
     if((message as Message.messageService).action) {

@@ -224,17 +224,27 @@ export default class AppEditFolderTab extends SliderSuperTab {
       this.editCheckForChange();
     });
 
-    return this.loadAnimationPromise = lottieLoader.loadAnimationAsAsset({
-      container: this.stickerContainer,
-      loop: false,
-      autoplay: false,
-      width: 86,
-      height: 86
-    }, 'Folders_2').then(player => {
-      this.animation = player;
+    const reloadMissingPromises: Promise<any>[] = this.type === 'edit' ? [
+      appMessagesManager.filtersStorage.reloadMissingPeerIds(this.filter.id, 'pinned_peers'),
+      appMessagesManager.filtersStorage.reloadMissingPeerIds(this.filter.id, 'include_peers'),
+      appMessagesManager.filtersStorage.reloadMissingPeerIds(this.filter.id, 'exclude_peers')
+    ] : [];
 
-      return lottieLoader.waitForFirstFrame(player);
-    });
+    return Promise.all([
+      this.loadAnimationPromise = lottieLoader.loadAnimationAsAsset({
+        container: this.stickerContainer,
+        loop: false,
+        autoplay: false,
+        width: 86,
+        height: 86
+      }, 'Folders_2').then(player => {
+        this.animation = player;
+
+        return lottieLoader.waitForFirstFrame(player);
+      }),
+
+      ...reloadMissingPromises
+    ]);
   }
 
   onOpenAfterTimeout() {
@@ -327,8 +337,10 @@ export default class AppEditFolderTab extends SliderSuperTab {
   };
 
   setFilter(filter: DialogFilter, firstTime: boolean) {
-    // cleanup
-    Array.from(this.container.querySelectorAll('ul, .load-more')).forEach(el => el.remove());
+    if(this.container) {
+      // cleanup
+      Array.from(this.container.querySelectorAll('ul, .load-more')).forEach(el => el.remove());
+    }
 
     if(firstTime) {
       this.originalFilter = filter;
@@ -341,8 +353,6 @@ export default class AppEditFolderTab extends SliderSuperTab {
   }
 
   public open(filter?: DialogFilter) {
-    const ret = super.open();
-    
     if(filter === undefined) {
       this.setFilter({
         _: 'dialogFilter',
@@ -361,9 +371,11 @@ export default class AppEditFolderTab extends SliderSuperTab {
     } else {
       this.setFilter(filter, true);
       this.type = 'edit';
-      this.onEditOpen();
     }
 
-    return ret;
+    return super.open().then(() => {
+      if(this.type === 'edit') this.onEditOpen();
+      else this.onCreateOpen();
+    });
   }
 }
