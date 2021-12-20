@@ -26,10 +26,11 @@
 
 .menu-horizontal-div {
   --size: var(--scrollable-size, 3.5rem);
+  --padding-horizontal: 0px;
   width: 100%;
+  height: var(--size);
   display: flex;
   justify-content: space-around;
-  align-items: center;
   flex-direction: row;
   position: relative;
   z-index: 2;
@@ -38,8 +39,21 @@
   color: var(--secondary-text-color);
   border-bottom: 1px solid var(--border-color);
 
+  &:not(.no-stripe) {
+    &:before,
+    &:after {
+      content: " ";
+      width: var(--padding-horizontal);
+      flex: 0 0 auto;
+    }
+
+    .menu-horizontal-div-item {
+      border-radius: $border-radius-medium;
+    }
+  }
+
   &-item {
-    height: var(--size);
+    height: 100%;
     padding: 0 1rem;
     cursor: pointer;
     text-align: center;
@@ -84,7 +98,7 @@
 
   i {
     position: absolute;
-    bottom: calc(-.625rem - 7px);
+    bottom: calc(-.6875rem - 6px);
     left: 0;
     opacity: 0;
     background-color: var(--primary-color);

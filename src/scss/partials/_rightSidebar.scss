@@ -209,6 +209,8 @@
   &-tabs {
     width: auto;
     flex: 1 1 auto;
+    padding: .25rem 0;
+    --padding-horizontal: .25rem;
     
     //margin-top: 36px;
     /* i {
