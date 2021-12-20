@@ -923,6 +923,7 @@ namespace RichTextProcessor {
   }
 
   export function getAbbreviation(str: string, onlyFirst = false) {
+    if(!str) return '';
     const splitted = str.trim().split(' ');
     if(!splitted[0]) return '';
 
