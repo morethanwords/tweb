@@ -15,7 +15,8 @@ import isSwipingBackSafari from "../helpers/dom/isSwipingBackSafari";
 
 export type NavigationItem = {
   type: 'left' | 'right' | 'im' | 'chat' | 'popup' | 'media' | 'menu' | 
-    'esg' | 'multiselect' | 'input-helper' | 'autocomplete-helper' | 'markup' | 'global-search' | 'voice',
+    'esg' | 'multiselect' | 'input-helper' | 'autocomplete-helper' | 'markup' | 
+    'global-search' | 'voice' | 'mobile-search',
   onPop: (canAnimate: boolean) => boolean | void,
   onEscape?: () => boolean,
   noHistory?: boolean,
@@ -187,6 +188,10 @@ export class AppNavigationController {
   }
 
   public removeItem(item: NavigationItem) {
+    if(!item) {
+      return;
+    }
+    
     indexOfAndSplice(this.navigations, item);
   }
 
