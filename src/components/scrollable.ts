@@ -121,9 +121,9 @@ export default class Scrollable extends ScrollableBase {
   public splitUp: HTMLElement;
   public padding: HTMLElement;
   
-  public onAdditionalScroll: () => void = null;
-  public onScrolledTop: () => void = null;
-  public onScrolledBottom: () => void = null;
+  public onAdditionalScroll: () => void;
+  public onScrolledTop: () => void;
+  public onScrolledBottom: () => void;
   
   public lastScrollTop: number = 0;
   public lastScrollDirection: number = 0;

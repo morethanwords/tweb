@@ -657,14 +657,16 @@ export default class ChatTopbar {
 
     const isBroadcast = this.appPeersManager.isBroadcast(peerId);
     this.btnMute && this.btnMute.classList.toggle('hide', !isBroadcast);
-    if(this.appPeersManager.isAnyChat(peerId)) {
-      if(this.btnJoin) {
+    if(this.btnJoin) {
+      if(this.appPeersManager.isAnyChat(peerId)) {
         const chatId = peerId.toChatId();
         replaceContent(this.btnJoin, i18n(this.appChatsManager.isChannel(chatId) ? 'Chat.Subscribe' : 'ChannelJoin'));
         this.btnJoin.classList.toggle('hide', !this.appChatsManager.getChat(chatId)?.pFlags?.left);
+      } else {
+        this.btnJoin.classList.add('hide');
       }
     }
-    
+
     this.setUtilsWidth();
 
     this.verifyButtons();

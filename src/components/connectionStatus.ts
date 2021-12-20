@@ -79,12 +79,13 @@ export default class ConnectionStatusComponent {
 
     /* let bool = true;
     document.addEventListener('dblclick', () => {
+      const dcId = 2;
       rootScope.dispatchEvent('connection_status_change', {
-        dcId: 2,
+        dcId: dcId,
         isFileDownload: false,
         isFileNetworker: false,
         isFileUpload: false,
-        name: "NET-2",
+        name: "NET-" + dcId,
         status: bool ? (bool = false, ConnectionStatus.Closed) : (bool = true, ConnectionStatus.Connected),
         _: "networkerStatus"
       });

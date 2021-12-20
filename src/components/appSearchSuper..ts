@@ -1035,20 +1035,24 @@ export default class AppSearchSuper {
             setResults(contacts.my_results, this.searchGroups.contacts, true);
             setResults(contacts.results/* .concat(contacts.results, contacts.results, contacts.results) */, this.searchGroups.globalContacts);
 
-            if(this.searchGroups.globalContacts.nameEl.lastElementChild) {
+            this.searchGroups.globalContacts.container.classList.add('is-short');
+
+            if(this.searchGroups.globalContacts.nameEl.lastElementChild !== this.searchGroups.globalContacts.nameEl.firstElementChild) {
               this.searchGroups.globalContacts.nameEl.lastElementChild.remove();
             }
-
-            this.searchGroups.globalContacts.container.classList.add('is-short');
             
             if(this.searchGroups.globalContacts.list.childElementCount > 3) {
               const showMore = document.createElement('div');
               showMore.classList.add('search-group__show-more');
-              showMore.innerText = 'Show more';
+              const intlElement = new I18n.IntlElement({
+                key: 'Separator.ShowMore'
+              });
+              showMore.append(intlElement.element);
               this.searchGroups.globalContacts.nameEl.append(showMore);
               showMore.addEventListener('click', () => {
                 const isShort = this.searchGroups.globalContacts.container.classList.toggle('is-short');
-                showMore.innerText = isShort ? 'Show more' : 'Show less';
+                intlElement.key = isShort ? 'Separator.ShowMore' : 'Separator.ShowLess';
+                intlElement.update();
               });
             }
           }

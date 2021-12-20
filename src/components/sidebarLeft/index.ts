@@ -40,6 +40,8 @@ import sessionStorage from "../../lib/sessionStorage";
 import { CLICK_EVENT_NAME } from "../../helpers/dom/clickEvent";
 import { closeBtnMenu } from "../misc";
 import { indexOfAndSplice } from "../../helpers/array";
+import ButtonIcon from "../buttonIcon";
+import confirmationPopup from "../confirmationPopup";
 
 export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
 
@@ -286,9 +288,9 @@ export class AppSidebarLeft extends SidebarSlider {
     };
 
     this.searchGroups = {
-      contacts: new SearchGroup('Search.Chats', 'contacts', undefined, undefined, undefined, undefined, close),
-      globalContacts: new SearchGroup('Search.Global', 'contacts', undefined, undefined, undefined, undefined, close),
-      messages: new SearchGroup('Search.Messages', 'messages'),
+      contacts: new SearchGroup('SearchAllChatsShort', 'contacts', undefined, undefined, undefined, undefined, close),
+      globalContacts: new SearchGroup('GlobalSearch', 'contacts', undefined, undefined, undefined, undefined, close),
+      messages: new SearchGroup('SearchMessages', 'messages'),
       people: new SearchGroup(false, 'contacts', true, 'search-group-people', true, false, close),
       recent: new SearchGroup('Recent', 'contacts', true, 'search-group-recent', true, true, close)
     };
@@ -575,12 +577,27 @@ export class AppSidebarLeft extends SidebarSlider {
       transition(0);
     });
 
-    const clearRecentSearchBtn = document.createElement('button');
-    clearRecentSearchBtn.classList.add('btn-icon', 'tgico-close');
+    const clearRecentSearchBtn = ButtonIcon('close');
     this.searchGroups.recent.nameEl.append(clearRecentSearchBtn);
     clearRecentSearchBtn.addEventListener('click', () => {
-      this.searchGroups.recent.clear();
-      appStateManager.pushToState('recentSearch', []);
+      confirmationPopup({
+        descriptionLangKey: 'Search.Confirm.ClearHistory',
+        button: {
+          langKey: 'ClearButton',
+          isDanger: true
+        }
+      }).then(() => {
+        appStateManager.getState().then(state => {
+          this.searchGroups.recent.clear();
+          
+          const recentSearch = state.recentSearch || [];
+          for(const peerId of recentSearch) {
+            appStateManager.releaseSinglePeer(peerId, 'recentSearch');
+          }
+
+          appStateManager.pushToState('recentSearch', recentSearch);
+        });
+      });
     });
   }
 }

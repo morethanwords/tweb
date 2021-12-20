@@ -175,6 +175,7 @@ export class AppDialogsManager {
 
   private onListLengthChange: () => Promise<void>;
   private loadedDialogsAtLeastOnce = false;
+  private allChatsIntlElement: I18n.IntlElement;
 
   constructor() {
     this.chatsPreloader = putPreloader(null, true);
@@ -221,11 +222,14 @@ export class AppDialogsManager {
       });
     }
 
+    this.allChatsIntlElement = new I18n.IntlElement({
+      key: 'FilterAllChatsShort'
+    });
     this.setFilterId(0);
     this.addFilter({
       id: this.filterId,
       title: '',
-      titleEl: i18n('ChatList.Filter.AllChats'),
+      titleEl: this.allChatsIntlElement.element,
       orderIndex: 0
     });
 
@@ -492,9 +496,7 @@ export class AppDialogsManager {
       delete this.scrollables[filter.id];
       delete this.filtersRendered[filter.id];
 
-      if(Object.keys(this.filtersRendered).length <= 1) {
-        this.folders.menuScrollContainer.classList.add('hide');
-      }
+      this.onFiltersLengthChange();
     });
 
     rootScope.addEventListener('filter_order', (order) => {
@@ -774,18 +776,40 @@ export class AppDialogsManager {
       title: titleSpan
     };
 
-    if(!this.showFiltersPromise && Object.keys(this.filtersRendered).length > 1) {
+    this.onFiltersLengthChange();
+  }
+
+  private onFiltersLengthChange() {
+    if(!this.showFiltersPromise) {
       this.showFiltersPromise = new Promise<void>((resolve) => {
         window.setTimeout(() => {
-          this.showFiltersPromise = undefined;
-          if(Object.keys(this.filtersRendered).length > 1) {
-            this.folders.menuScrollContainer.classList.remove('hide');
-            this.setFiltersUnreadCount();
+          const length = Object.keys(this.filtersRendered).length;
+          const show = length > 1;
+          const wasShowing = !this.folders.menuScrollContainer.classList.contains('hide');
+
+          if(show !== wasShowing) {
+            this.folders.menuScrollContainer.classList.toggle('hide', !show);
+            if(show && !wasShowing) {
+              this.setFiltersUnreadCount();
+            }
+
+            this.chatsContainer.classList.toggle('has-filters', show);
           }
+
+          const scrollable = this.folders.menuScrollContainer.firstElementChild;
+          const key: LangPackKey = scrollable.scrollWidth > scrollable.clientWidth ? 'FilterAllChatsShort' : 'FilterAllChats';
+          if(this.allChatsIntlElement.key !== key) {
+            this.allChatsIntlElement.key = key;
+            this.allChatsIntlElement.update();
+          }
+
+          this.showFiltersPromise = undefined;
           resolve();
         }, 0);
       });
     }
+
+    return this.showFiltersPromise;
   }
 
   private loadDialogs(side: SliceSides) {
@@ -1247,7 +1271,7 @@ export class AppDialogsManager {
   }
 
   public onChatsScrollTop = () => {
-    this.onChatsScroll('top');
+    return this.onChatsScroll('top');
   };
   
   public onChatsScroll = (side: SliceSides = 'bottom') => {
@@ -1256,7 +1280,7 @@ export class AppDialogsManager {
         this.loadContacts();
       }
 
-      return;
+      return Promise.resolve();
     } else if(this.loadDialogsPromise) return this.loadDialogsPromise;
 
     this.log('onChatsScroll', side);

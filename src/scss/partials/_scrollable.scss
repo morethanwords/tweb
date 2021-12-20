@@ -66,7 +66,7 @@ html:not(.is-safari):not(.is-ios) {
   overflow-y: hidden;
   overflow-x: hidden;
   max-height: 100%;
-  transform: translateZ(0);
+  // transform: translateZ(0);
 
   //@include respond-to(not-handhelds) {
     position: absolute;
@@ -78,17 +78,18 @@ html:not(.is-safari):not(.is-ios) {
 
   -webkit-overflow-scrolling: touch;
 
-  &.scrollable-x {
+  &-x {
     overflow-x: auto;
     scrollbar-width: thin; // Firefox only
     -ms-overflow-style: none;
   }
 
-  &.scrollable-y {
+  &-y {
     overflow-y: auto;
     overflow-y: overlay;
     scrollbar-width: thin; // Firefox only
     -ms-overflow-style: none;
+    transform: translateZ(0);
 
     /* html.is-safari & {
       overflow-y: scroll;

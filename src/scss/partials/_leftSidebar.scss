@@ -74,71 +74,67 @@
   }
 
   .item-main {
-    --menu-size: 3rem;
+    --menu-size: 3.1875rem;
   }
 
-  .menu-horizontal-scrollable {
-    --scrollable-size: var(--menu-size);
-    z-index: 1;
-    background-color: var(--surface-color);
-    position: relative;
-    top: unset;
-    
-    @include respond-to(handhelds) {
-      box-shadow: 0px 1px 5px -1px rgba(0, 0, 0, .16);
-    }
-
-    .scrollable {
+  .menu-horizontal {
+    &-scrollable {
+      --scrollable-size: var(--menu-size);
+      z-index: 1;
+      background-color: var(--surface-color);
       position: relative;
+      top: unset;
+      
+      @include respond-to(handhelds) {
+        box-shadow: 0px 1px 5px -1px rgba(0, 0, 0, .16);
+      }
+  
+      .scrollable {
+        position: relative;
+      }
+
+      .badge {
+        margin-left: 5px;
+        //line-height: inherit !important;
+      }
+  
+      &:not(.hide) + #folders-container {
+        height: calc(100% - var(--menu-size));
+        position: relative;
+  
+        .scrollable {
+          padding-top: .5rem;
+        }
+  
+        /* .chatlist {
+          top: .5rem;
+        } */
+      }
     }
 
-    .menu-horizontal-div {
+    &-div {
       position: relative !important;
       justify-content: flex-start;
       z-index: 0;
+      padding: 0 0 5px; // 4px + 1px border
+      --padding-horizontal: .6875rem;
+
+      @include respond-to(handhelds) {
+        --padding-horizontal: .1875rem;
+      }
 
       &-item {
         flex: 0 0 auto;
         min-width: 3rem;
-        border-top-left-radius: 6px;
-        border-top-right-radius: 6px;
-
-        > span {
-          overflow: visible;
-
-          i {
-            bottom: calc(-.6875rem - 2px);
-            /* padding-right: 1rem !important;
-	          margin-left: -.5rem !important; */
-          }
-        }
       }
 
       &__stripe {
         display: none;
       }
     }
-
-    .badge {
-      margin-left: 5px;
-      //line-height: inherit !important;
-    }
-
-    &:not(.hide) + #folders-container {
-      height: calc(100% - var(--menu-size));
-      position: relative;
-
-      .scrollable {
-        padding-top: .5rem;
-      }
-
-      /* .chatlist {
-        top: .5rem;
-      } */
-    }
   }
 
-  .folders-tabs-scrollable {
+  /* .folders-tabs-scrollable {
     .menu-horizontal-div-item:first-child {
       margin-left: .6875rem;
   
@@ -146,7 +142,7 @@
         margin-left: .1875rem;
       }
     }
-  }
+  } */
 
   .item-main {
     .input-search {
@@ -236,9 +232,15 @@
 
   #chatlist-container {
     max-height: 100%;
-    overflow: hidden;
+    // overflow: hidden;
     position: relative;
     background-color: var(--surface-color);
+
+    &.has-filters {
+      .connection-status-bottom {
+        --offset-top: -3px;
+      }
+    }
   }
 
   #folders-container {
@@ -377,6 +379,8 @@
   }
 
   .item-main .sidebar-content {
+    overflow: visible;
+
     .btn-menu {
       bottom: calc(100% + 10px);
     }
@@ -430,7 +434,8 @@
 
     &.is-shown {
       &.animating {
-        .connection-status-button, & + .connection-status-bottom {
+        .connection-status-button, 
+        & + .connection-status-bottom {
           transition: transform var(--layer-transition);
         }
       }
@@ -441,13 +446,13 @@
         }
 
         & + .connection-status-bottom {
-          transform: translateY(64px);
+          transform: translateY(calc(64px + var(--offset-top)));
         }
       }
 
       &:not(.animating):not(.backwards) {
         & + .connection-status-bottom {
-          height: calc(100% - 64px);
+          height: calc(100% - 64px + var(--offset-top));
         }
       }
     }
@@ -481,6 +486,7 @@
     }
 
     &-bottom {
+      --offset-top: 0px;
       position: absolute;
       left: 0;
       top: 0;
@@ -489,7 +495,7 @@
       overflow: hidden;
       background-color: var(--surface-color);
 
-      transform: translateY(0);
+      transform: translateY(var(--offset-top));
       height: 100%;
 
       /* transform: translateY(64px);
@@ -513,6 +519,7 @@
 
 #search-container {
   display: flex;
+  top: -3px !important;
 
   .scrollable-y {
     position: relative;
