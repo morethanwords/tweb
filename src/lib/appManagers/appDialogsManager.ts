@@ -58,6 +58,7 @@ import { NULL_PEER_ID } from "../mtproto/mtproto_config";
 import groupCallActiveIcon from "../../components/groupCallActiveIcon";
 import { Chat } from "../../layer";
 import IS_GROUP_CALL_SUPPORTED from "../../environment/groupCallSupport";
+import mediaSizes from "../../helpers/mediaSizes";
 
 export type DialogDom = {
   avatarEl: AvatarElement,
@@ -328,6 +329,10 @@ export class AppDialogsManager {
         });
       });
     }) */;
+
+    mediaSizes.addEventListener('resize', () => {
+      this.changeFiltersAllChatsKey();
+    });
 
     new ConnectionStatusComponent(this.chatsContainer);
     this.chatsContainer.append(bottomPart);
@@ -779,6 +784,15 @@ export class AppDialogsManager {
     this.onFiltersLengthChange();
   }
 
+  private changeFiltersAllChatsKey() {
+    const scrollable = this.folders.menuScrollContainer.firstElementChild;
+    const key: LangPackKey = scrollable.scrollWidth > scrollable.clientWidth ? 'FilterAllChatsShort' : 'FilterAllChats';
+    if(this.allChatsIntlElement.key !== key) {
+      this.allChatsIntlElement.key = key;
+      this.allChatsIntlElement.update();
+    }
+  }
+
   private onFiltersLengthChange() {
     if(!this.showFiltersPromise) {
       this.showFiltersPromise = new Promise<void>((resolve) => {
@@ -796,12 +810,7 @@ export class AppDialogsManager {
             this.chatsContainer.classList.toggle('has-filters', show);
           }
 
-          const scrollable = this.folders.menuScrollContainer.firstElementChild;
-          const key: LangPackKey = scrollable.scrollWidth > scrollable.clientWidth ? 'FilterAllChatsShort' : 'FilterAllChats';
-          if(this.allChatsIntlElement.key !== key) {
-            this.allChatsIntlElement.key = key;
-            this.allChatsIntlElement.update();
-          }
+          this.changeFiltersAllChatsKey();
 
           this.showFiltersPromise = undefined;
           resolve();
