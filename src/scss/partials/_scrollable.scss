@@ -78,13 +78,13 @@ html:not(.is-safari):not(.is-ios) {
 
   -webkit-overflow-scrolling: touch;
 
-  &-x {
+  &.scrollable-x {
     overflow-x: auto;
     scrollbar-width: thin; // Firefox only
     -ms-overflow-style: none;
   }
 
-  &-y {
+  &.scrollable-y {
     overflow-y: auto;
     overflow-y: overlay;
     scrollbar-width: thin; // Firefox only
