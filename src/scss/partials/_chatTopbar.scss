@@ -299,11 +299,19 @@ body.is-right-column-shown {
 		}
 	}
 
-	&.hide-pinned + .bubbles {
-		.bubbles-inner {
-			margin-bottom: .25rem;
-		}
-	}
+	&.hide-pinned {
+    --pinned-floating-height: 0px;
+
+    .pinned-container {
+      display: none;
+    }
+
+    & + .bubbles {
+      .bubbles-inner {
+        margin-bottom: .25rem;
+      }
+    }
+  }
 
 	.chat:not(.type-chat) & {
 		.content {

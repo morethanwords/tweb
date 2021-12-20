@@ -55,6 +55,7 @@ export default class Chat extends EventListenerBase<{
   public input: ChatInput;
   public selection: ChatSelection;
   public contextMenu: ChatContextMenu;
+  public search: ChatSearch;
 
   public wasAlreadyUsed = false;
   // public initPeerId = 0;
@@ -396,7 +397,11 @@ export default class Chat extends EventListenerBase<{
     if(!this.peerId) return;
 
     if(mediaSizes.isMobile) {
-      new ChatSearch(this.topbar, this, query);
+      if(!this.search) {
+        this.search = new ChatSearch(this.topbar, this, query);
+      } else {
+        this.search.setQuery(query);
+      }
     } else {
       let tab = appSidebarRight.getTab(AppPrivateSearchTab);
       if(!tab) {
