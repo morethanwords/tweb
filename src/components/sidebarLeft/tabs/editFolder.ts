@@ -367,7 +367,6 @@ export default class AppEditFolderTab extends SliderSuperTab {
         excludePeerIds: []
       }, true);
       this.type = 'create';
-      this.onCreateOpen();
     } else {
       this.setFilter(filter, true);
       this.type = 'edit';
