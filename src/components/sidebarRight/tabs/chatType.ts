@@ -6,7 +6,7 @@
 
 import { copyTextToClipboard } from "../../../helpers/clipboard";
 import { randomLong } from "../../../helpers/random";
-import { Chat, ChatFull, ExportedChatInvite, ChannelLocation } from "../../../layer";
+import { Chat, ChatFull, ExportedChatInvite } from "../../../layer";
 import appChatsManager from "../../../lib/appManagers/appChatsManager";
 import appProfileManager from "../../../lib/appManagers/appProfileManager";
 import Button from "../../button";
@@ -80,8 +80,6 @@ export default class AppChatTypeTab extends SliderSuperTabEventable {
         toast(I18n.format('LinkCopied', true));
       }
     });
-
-    let uri = '';
 
     const btnRevoke = Button('btn-primary btn-transparent danger', {icon: 'delete', text: 'RevokeLink'});
 

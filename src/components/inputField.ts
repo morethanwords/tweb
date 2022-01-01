@@ -109,7 +109,7 @@ class InputField {
       options.showLengthOn = Math.min(40, Math.round(options.maxLength / 3));
     }
 
-    const {placeholder, maxLength, showLengthOn, name, plainText, canBeEdited} = options;
+    const {placeholder, maxLength, showLengthOn, name, plainText, canBeEdited = true} = options;
 
     let label = options.label || options.labelText;
 

@@ -42,7 +42,6 @@ import { closeBtnMenu } from "../misc";
 import { indexOfAndSplice } from "../../helpers/array";
 import ButtonIcon from "../buttonIcon";
 import confirmationPopup from "../confirmationPopup";
-import { InputFile } from "../../layer";
 
 export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
 
