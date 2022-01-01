@@ -1,4 +1,5 @@
 const lang = {
+  "GrantPermissions":"Grant me permissions",
   "Animations": "Animations",
   "AttachAlbum": "Album",
   "Appearance.Color.Hex": "HEX",
@@ -231,6 +232,7 @@ const lang = {
   "UsernameHelpLink": "This link opens a chat with you:\n%1$s",
   "NewChannel": "New Channel",
   "NewGroup": "New Group",
+  "NewGeoGroup": "New Geo-Group",
   "Contacts": "Contacts",
   "SavedMessages": "Saved Messages",
   "Settings": "Settings",
@@ -399,6 +401,7 @@ const lang = {
   "MegaPrivateInfo": "Private groups can only be joined if you were invited or have an invite link.",
   "ChannelPrivateLinkHelp": "People can join your channel by following this link. You can revoke the link any time.",
   "MegaPrivateLinkHelp": "People can join your group by following this link. You can revoke the link any time.",
+  "ChannelGeoGroupLocation":"Group location",
   "RevokeButton": "Revoke",
   "RevokeLink": "Revoke Link",
   "RevokeAlert": "Are you sure you want to revoke this link? Once the link is revoked, no one will be able to join using it.",

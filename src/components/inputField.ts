@@ -77,8 +77,9 @@ export type InputFieldOptions = {
   maxLength?: number, 
   showLengthOn?: number,
   plainText?: true,
-  animate?: true,
+  animate?: boolean,
   required?: boolean,
+  canBeEdited?: boolean,
   validate?: () => boolean
 };
 
@@ -108,7 +109,7 @@ class InputField {
       options.showLengthOn = Math.min(40, Math.round(options.maxLength / 3));
     }
 
-    const {placeholder, maxLength, showLengthOn, name, plainText} = options;
+    const {placeholder, maxLength, showLengthOn, name, plainText, canBeEdited} = options;
 
     let label = options.label || options.labelText;
 
@@ -119,7 +120,7 @@ class InputField {
       }
 
       this.container.innerHTML = `
-      <div contenteditable="true" class="input-field-input"></div>
+      <div contenteditable="${String(!!canBeEdited)}" class="input-field-input"></div>
       `;
 
       input = this.container.firstElementChild as HTMLElement;
