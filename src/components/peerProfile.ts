@@ -47,9 +47,10 @@ export default class PeerProfile {
   private username: Row;
   private phone: Row;
   private notifications: Row;
+  private location: Row;
   
   private cleaned: boolean;
-  private setBioTimeout: number;
+  private setMoreDetailsTimeout: number;
   private setPeerStatusInterval: number;
 
   private peerId: PeerId;
@@ -63,6 +64,7 @@ export default class PeerProfile {
 
   public init() {
     this.init = null;
+
 
     this.element = document.createElement('div');
     this.element.classList.add('profile-content');
@@ -122,13 +124,25 @@ export default class PeerProfile {
       }
     });
 
+    this.location = new Row({
+      title: ' ',
+      subtitleLangKey: 'AttachLocation',
+      icon: 'location'
+    });
+
     this.notifications = new Row({
       checkboxField: new CheckboxField({toggle: true}),
       titleLangKey: 'Notifications',
       icon: 'unmute'
     });
     
-    this.section.content.append(this.phone.container, this.username.container, this.bio.container, this.notifications.container);
+    this.section.content.append(
+      this.phone.container,
+      this.username.container,
+      this.location.container,
+      this.bio.container,
+      this.notifications.container
+    );
 
     this.element.append(this.section.container, generateDelimiter());
 
@@ -156,7 +170,7 @@ export default class PeerProfile {
 
     rootScope.addEventListener('peer_bio_edit', (peerId) => {
       if(peerId === this.peerId) {
-        this.setBio(true);
+        this.setMoreDetails(true);
       }
     });
 
@@ -193,11 +207,12 @@ export default class PeerProfile {
     this.bio.container.style.display = 'none';
     this.phone.container.style.display = 'none';
     this.username.container.style.display = 'none';
+    this.location.container.style.display = 'none';
     this.notifications.container.style.display = '';
     this.notifications.checkboxField.checked = true;
-    if(this.setBioTimeout) {
-      window.clearTimeout(this.setBioTimeout);
-      this.setBioTimeout = 0;
+    if(this.setMoreDetailsTimeout) {
+      window.clearTimeout(this.setMoreDetailsTimeout);
+      this.setMoreDetailsTimeout = 0;
     }
   }
 
@@ -275,7 +290,7 @@ export default class PeerProfile {
       //membersLi.style.display = appPeersManager.isBroadcast(peerId) ? 'none' : '';
     } */
 
-    this.setBio();
+    this.setMoreDetails();
 
     replaceContent(this.name, new PeerTitle({
       peerId,
@@ -290,10 +305,10 @@ export default class PeerProfile {
     this.setPeerStatus(true);
   }
 
-  public setBio(override?: true) {
-    if(this.setBioTimeout) {
-      window.clearTimeout(this.setBioTimeout);
-      this.setBioTimeout = 0;
+  public setMoreDetails(override?: true) {
+    if(this.setMoreDetailsTimeout) {
+      window.clearTimeout(this.setMoreDetailsTimeout);
+      this.setMoreDetailsTimeout = 0;
     }
 
     const peerId = this.peerId;
@@ -314,6 +329,8 @@ export default class PeerProfile {
         if(userFull.rAbout && peerId !== rootScope.myId) {
           setText(userFull.rAbout, this.bio);
         }
+
+        this.location.container.style.display = 'none';
         
         //this.log('userFull', userFull);
         return true;
@@ -331,13 +348,21 @@ export default class PeerProfile {
           setText(RichTextProcessor.wrapRichText(chatFull.about), this.bio);
         }
 
+        // @ts-ignore
+        if(chatFull?.location?._ == 'channelLocation') {
+          // @ts-ignore
+          setText(RichTextProcessor.wrapRichText(chatFull.location.address), this.location);
+        }else{
+          this.location.container.style.display = 'none';
+        }
+
         return true;
       });
     }
 
     promise.then((canSetNext) => {
       if(canSetNext) {
-        this.setBioTimeout = window.setTimeout(() => this.setBio(true), 60e3);
+        this.setMoreDetailsTimeout = window.setTimeout(() => this.setMoreDetails(true), 60e3);
       }
     });
   }

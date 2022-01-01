@@ -42,6 +42,7 @@ import { closeBtnMenu } from "../misc";
 import { indexOfAndSplice } from "../../helpers/array";
 import ButtonIcon from "../buttonIcon";
 import confirmationPopup from "../confirmationPopup";
+import { InputFile } from "../../layer";
 
 export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
 
@@ -78,6 +79,18 @@ export class AppSidebarLeft extends SidebarSlider {
         skippable: false,
         takeOut: (peerIds) => {
           new AppNewGroupTab(this).open(peerIds);
+        },
+        title: 'GroupAddMembers',
+        placeholder: 'SendMessageTo'
+      });
+    };
+
+    const onNewGeoGroupClick = () => {
+      new AppAddMembersTab(this).open({
+        type: 'chat',
+        skippable: true, // you can create geogroups without members
+        takeOut: (peerIds) => {
+          new AppNewGroupTab(this).open(peerIds, true);
         },
         title: 'GroupAddMembers',
         placeholder: 'SendMessageTo'
@@ -235,6 +248,10 @@ export class AppSidebarLeft extends SidebarSlider {
       icon: 'newgroup',
       text: 'NewGroup',
       onClick: onNewGroupClick
+    },{
+      icon: 'newgroup',
+      text: 'NewGeoGroup',
+      onClick: onNewGeoGroupClick
     }, {
       icon: 'newprivate',
       text: 'NewPrivateChat',

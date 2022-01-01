@@ -11,7 +11,7 @@
 
 import DEBUG, { MOUNT_CLASS_TO } from "../../config/debug";
 import { isObject, safeReplaceObject, copy, deepEqual } from "../../helpers/object";
-import { ChannelParticipant, Chat, ChatAdminRights, ChatBannedRights, ChatParticipant, ChatPhoto, InputChannel, InputChatPhoto, InputFile, InputPeer, Update, Updates } from "../../layer";
+import { InputGeoPoint, ChannelParticipant, Chat, ChatAdminRights, ChatBannedRights, ChatParticipant, ChatPhoto, InputChannel, InputChatPhoto, InputFile, InputPeer, Update, Updates } from "../../layer";
 import apiManagerProxy from "../mtproto/mtprotoworker";
 import apiManager from '../mtproto/mtprotoworker';
 import { RichTextProcessor } from "../richtextprocessor";
@@ -488,6 +488,33 @@ export class AppChatsManager {
       broadcast: true,
       title,
       about
+    }).then((updates) => {
+      apiUpdatesManager.processUpdateMessage(updates);
+
+      const channelId = (updates as any).chats[0].id;
+      rootScope.dispatchEvent('history_focus', {peerId: channelId.toPeerId(true)});
+
+      return channelId;
+    });
+  }
+
+  public createGeoChat(title: string, about: string, gpoint: {
+    lat: number,
+    long: number
+  }, address: string): Promise<ChatId> {
+    let geo_point = {
+      _: 'inputGeoPoint',
+      lat: gpoint['lat'],
+      long: gpoint['long']
+    } as InputGeoPoint;
+
+    // NON TOCCARE STO PEZZO MAI PIù NELLA VITA
+    return apiManager.invokeApi('channels.createChannel', {
+      megagroup: true,
+      title,
+      about,
+      geo_point,
+      address
     }).then((updates) => {
       apiUpdatesManager.processUpdateMessage(updates);
 
