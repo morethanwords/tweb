@@ -185,7 +185,7 @@ export default class AppPeopleNearby extends SliderSuperTab {
                   break;
                 }
               }
-              dom.lastMessageSpan.append(', '+i18n('Members', [participantsCount]));
+              dom.lastMessageSpan.append(', ', i18n('Members', [participantsCount]));
             }
           });
 
@@ -234,7 +234,7 @@ export default class AppPeopleNearby extends SliderSuperTab {
         const distanceCheck = this.calculateDistance(
           result.coords.latitude, result.coords.longitude,
           this.latestLocationSaved.latitude, this.latestLocationSaved.longitude
-        );
+        ) > 100;
         if((isLatitudeDifferent || isLongitudeDifferent) && distanceCheck){
           appUsersManager.getLocated(
             result.coords.latitude,
