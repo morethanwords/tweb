@@ -126,7 +126,7 @@ export default class PeerProfile {
 
     this.location = new Row({
       title: ' ',
-      subtitleLangKey: 'AttachLocation',
+      subtitleLangKey: 'ChatLocation',
       icon: 'location'
     });
 

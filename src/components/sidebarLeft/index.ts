@@ -43,7 +43,6 @@ import { closeBtnMenu } from "../misc";
 import { indexOfAndSplice } from "../../helpers/array";
 import ButtonIcon from "../buttonIcon";
 import confirmationPopup from "../confirmationPopup";
-import AppUsersManager from "../../lib/appManagers/appUsersManager";
 
 export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
 
@@ -255,10 +254,6 @@ export class AppSidebarLeft extends SidebarSlider {
       icon: 'newgroup',
       text: 'NewGroup',
       onClick: onNewGroupClick
-    },{
-      icon: 'newgroup',
-      text: 'NewGeoGroup',
-      onClick: onNewGeoGroupClick
     }, {
       icon: 'newprivate',
       text: 'NewPrivateChat',

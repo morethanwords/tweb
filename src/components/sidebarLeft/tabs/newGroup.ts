@@ -13,7 +13,7 @@ import { SearchGroup } from "../../appSearch";
 import InputField from "../../inputField";
 import { SliderSuperTab } from "../../slider";
 import AvatarEdit from "../../avatarEdit";
-import { i18n } from "../../../lib/langPack";
+import I18n, { i18n } from "../../../lib/langPack";
 import ButtonCorner from "../../buttonCorner";
 
 interface OpenStreetMapInterface {
@@ -57,7 +57,7 @@ export default class AppNewGroupTab extends SliderSuperTab {
     });
 
     this.groupLocationInputField = new InputField({
-      label: 'ChannelGeoGroupLocation',
+      label: 'ChatLocation',
       name: 'location',
       canBeEdited: false
     });
@@ -134,9 +134,9 @@ export default class AppNewGroupTab extends SliderSuperTab {
       this.peerIds = peerIds;
 
       if(isGeoChat){
-        this.setTitle('NewGeoGroup');
+        this.setTitle('NearbyCreateGroup');
         this.groupLocationInputField.container.classList.remove('hide');
-        this.groupLocationInputField.setValueSilently('Locating...');
+        this.groupLocationInputField.setValueSilently(I18n.format('Loading', true));
         this.startLocating();
       }else{
         this.groupLocationInputField.container.classList.add('hide');
@@ -156,14 +156,14 @@ export default class AppNewGroupTab extends SliderSuperTab {
 
       this.searchGroup.nameEl.textContent = '';
       this.searchGroup.nameEl.append(i18n('Members', [this.peerIds.length]));
-      this.searchGroup.setActive();
+      this.peerIds.length && this.searchGroup.setActive();
     });
     
     return result;
   }
 
   private startLocating(){
-    navigator.geolocation.getCurrentPosition(location => {
+    navigator.geolocation.getCurrentPosition((location) => {
       this.userLocationCoords = {
         lat: location.coords.latitude,
         long: location.coords.longitude
@@ -184,6 +184,12 @@ export default class AppNewGroupTab extends SliderSuperTab {
           this.groupLocationInputField.setValueSilently(response.display_name);
         }
       );
+    }, (error) => {
+      if(error instanceof GeolocationPositionError){
+        this.groupLocationInputField.setValueSilently('Location permission denied. Please retry later.');
+      }else{
+        this.groupLocationInputField.setValueSilently('An error has occurred. Please retry later.');
+      }
     });
   }
 }

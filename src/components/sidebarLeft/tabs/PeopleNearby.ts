@@ -19,7 +19,12 @@ import PeerTitle from "../../peerTitle";
 import lottieLoader from "../../../lib/rlottie/lottieLoader";
 import PopupPeer from "../../popups/peer";
 import AppNewGroupTab from "./newGroup";
+import { toast } from "../../toast";
+import { ButtonMenuItemOptions } from "../../buttonMenu";
+import { cancelEvent } from "../../../helpers/dom/cancelEvent";
 import type { LazyLoadQueueIntersector } from "../../lazyLoadQueue";
+import I18n, { i18n } from "../../../lib/langPack";
+import rootScope from '../../../lib/rootScope';
 
 export default class AppPeopleNearby extends SliderSuperTab {
   private usersCategory = new SearchGroup(true, 'contacts', true, 'people-nearby-users', false);
@@ -28,25 +33,38 @@ export default class AppPeopleNearby extends SliderSuperTab {
   private isLocationWatched: boolean = false;
   private errorCategory: HTMLElement;
   private retryBtn: HTMLButtonElement;
+  private btnOptions: HTMLButtonElement;
+  private menuButtons: (ButtonMenuItemOptions & {verify?: () => boolean})[];
 
   protected lazyLoadQueue: LazyLoadQueueIntersector;
 
   protected init() {
     this.container.classList.add('peoplenearby-container');
     this.setTitle('PeopleNearby');
-    
-    const btnMenu = ButtonMenuToggle({}, 'bottom-left', [{
+
+    this.menuButtons = [{
       icon: 'tip',
-      text: 'PeopleNearby.VisibilityYes',
-      onClick: this.startWatching
+      text: 'MakeMyselfVisible',
+      onClick: () => this.startWatching(),
+      verify: () => !this.isLocationWatched
     },
     {
       icon: 'tip',
-      text: 'PeopleNearby.VisibilityNo',
-      onClick: this.startWatching
-    }]);
+      text: 'StopShowingMe',
+      onClick: () => this.stopWatching(),
+      verify: () => this.isLocationWatched
+    },
+    {
+      icon: 'newgroup',
+      text: 'NearbyCreateGroup',
+      onClick: () => {
+        new AppNewGroupTab(this.slider).open([], true);
+      }
+    }];
+    
+    this.btnOptions = ButtonMenuToggle({}, 'bottom-left', this.menuButtons, () => this.verifyButtons());
 
-    this.header.append(btnMenu);
+    this.header.append(this.btnOptions);
 
     const locatingIcon = document.createElement('span');
     locatingIcon.classList.add('tgico', 'tgico-location');
@@ -65,7 +83,10 @@ export default class AppPeopleNearby extends SliderSuperTab {
     this.errorCategory.classList.add('text', 'hide', 'nearby-error');
 
     this.retryBtn = ButtonCorner({icon: 'check'});
-    //this.retryBtn.classList.remove('is-visible');
+
+    const textContainer = document.createElement('div');
+    textContainer.classList.add('text', 'nearby-description');
+    textContainer.appendChild(i18n('PeopleNearbyInfo2'));
 
     const chatsContainer = document.createElement('div');
     chatsContainer.classList.add('chatlist-container');
@@ -73,23 +94,57 @@ export default class AppPeopleNearby extends SliderSuperTab {
     chatsContainer.append(this.groupsCategory.container);
 
     this.content.append(this.retryBtn);
-    this.scrollable.append(locatingAnimation, this.errorCategory, chatsContainer);
+    this.scrollable.append(
+      locatingAnimation,
+      textContainer,
+      this.errorCategory,
+      chatsContainer
+    );
+  }
+
+  public onCloseAfterTimeout() {
+    this.usersCategory.clear();
+    this.groupsCategory.clear();
+  }
+
+  private verifyButtons(e?: Event){
+    const isMenuOpen = !!e || !!(this.btnOptions && this.btnOptions.classList.contains('menu-open'));
+    e && cancelEvent(e);
+
+    this.menuButtons.filter(button => button.verify).forEach(button => {
+      button.element.classList.toggle('hide', !button.verify());
+    });
   }
 
   private parseDistance(distance: number){
-    return (distance >= 1000 ? String(distance/1000)+' km' : String(distance)+' m');
+    if(rootScope.settings.distanceUnit == 'miles'){
+      if(distance > 1609.34) {
+        return i18n('MilesAway', [Math.round(distance / 1609)]);
+      }else{
+        return i18n('FootsAway', [Math.round(distance * 3.281)]);
+      }
+    }else{
+      if(distance >= 1000){
+        return i18n('KMetersAway2', [distance / 1000]);
+      }else{
+        return i18n('MetersAway2', [distance]);
+      }
+    }
   }
 
+  // @ts-ignore
   public open() {
     const result = super.open();
     result.then(() => {
       this.retryBtn.classList.remove('is-visible');
-      navigator.geolocation.getCurrentPosition(location => {
+      navigator.geolocation.getCurrentPosition((location) => {
         this.latestLocationSaved = {
           latitude: location.coords.latitude,
           longitude: location.coords.longitude,
           accuracy: location.coords.accuracy
         };
+
+        console.log(this.latestLocationSaved);
 
         appUsersManager.getLocated(
           location.coords.latitude,
@@ -130,16 +185,16 @@ export default class AppPeopleNearby extends SliderSuperTab {
                   break;
                 }
               }
-              dom.lastMessageSpan.append(', '+String(participantsCount)+' members');
+              dom.lastMessageSpan.append(', '+i18n('Members', [participantsCount]));
             }
           });
 
           this.usersCategory.nameEl.textContent = '';
-          this.usersCategory.nameEl.append('Users');
+          this.usersCategory.nameEl.append(i18n('PeopleNearbyHeader'));
           usersCounter && this.usersCategory.setActive();
 
           this.groupsCategory.nameEl.textContent = '';
-          this.groupsCategory.nameEl.append('Groups');
+          this.groupsCategory.nameEl.append(i18n('ChatsNearbyHeader'));
           groupsCounter && this.groupsCategory.setActive();
 
           this.errorCategory.classList.toggle('hide', (usersCounter || groupsCounter));
@@ -148,7 +203,7 @@ export default class AppPeopleNearby extends SliderSuperTab {
       }, (error) => {
         this.errorCategory.classList.remove('hide');
         this.retryBtn.classList.add('is-visible');
-        this.retryBtn.addEventListener('click', this.opeddn);
+        this.retryBtn.addEventListener('click', this.open);
         if(error instanceof GeolocationPositionError){
           this.errorCategory.innerHTML = "Location permission denied. Click below to retry.";
         }else{
@@ -162,12 +217,14 @@ export default class AppPeopleNearby extends SliderSuperTab {
     if(!this.latestLocationSaved || this.isLocationWatched) return;
     this.isLocationWatched = true;
 
+    toast('Your position is now being shared. Do not close the page or it will be suspended.');
+
     appUsersManager.getLocated(
       this.latestLocationSaved.latitude,
       this.latestLocationSaved.longitude,
       this.latestLocationSaved.accuracy,
       true, // background parameter
-      3600 // self_expires parameter
+      0x7fffffff // self_expires parameter
     );
 
     navigator.geolocation.watchPosition(
@@ -177,14 +234,14 @@ export default class AppPeopleNearby extends SliderSuperTab {
         const distanceCheck = this.calculateDistance(
           result.coords.latitude, result.coords.longitude,
           this.latestLocationSaved.latitude, this.latestLocationSaved.longitude
-        ) > 100;
+        );
         if((isLatitudeDifferent || isLongitudeDifferent) && distanceCheck){
           appUsersManager.getLocated(
             result.coords.latitude,
             result.coords.longitude,
             result.coords.accuracy,
             true, // background parameter
-            3600 // self_expires parameter
+            0x7fffffff // self_expires parameter
           );
           this.latestLocationSaved = {
             latitude: result.coords.latitude,
@@ -193,7 +250,20 @@ export default class AppPeopleNearby extends SliderSuperTab {
           }
         }
       }
-    )
+    );
+  }
+
+  private stopWatching(){
+    if(!this.isLocationWatched) return;
+    this.isLocationWatched = false;
+    toast('The sharing of your position has been stopped. You will no longer be visible to other users.');
+    appUsersManager.getLocated(
+      0, // latitude parameter
+      0, // longitude parameter
+      0, // accuracy parameter
+      false, // background parameter
+      0 // self_expires parameter
+    );
   }
 
   private calculateDistance(lat1: number, long1: number, lat2: number, long2: number){
