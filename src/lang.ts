@@ -1,4 +1,7 @@
 const lang = {
+  "PeopleNearby":"PeopleNearby",
+  "PeopleNearby.VisibilityYes":"Make me visible",
+  "PeopleNearby.VisibilityNo":"Disable visibility",
   "GrantPermissions":"Grant me permissions",
   "Animations": "Animations",
   "AttachAlbum": "Album",

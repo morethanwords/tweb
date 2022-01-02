@@ -25,6 +25,7 @@ import AppNewChannelTab from "./tabs/newChannel";
 import AppContactsTab from "./tabs/contacts";
 import AppArchivedTab from "./tabs/archivedTab";
 import AppAddMembersTab from "./tabs/addMembers";
+import AppPeopleNearby from "./tabs/PeopleNearby";
 import { i18n_, LangPackKey } from "../../lib/langPack";
 import { ButtonMenuItemOptions } from "../buttonMenu";
 import CheckboxField from "../checkboxField";
@@ -42,6 +43,7 @@ import { closeBtnMenu } from "../misc";
 import { indexOfAndSplice } from "../../helpers/array";
 import ButtonIcon from "../buttonIcon";
 import confirmationPopup from "../confirmationPopup";
+import AppUsersManager from "../../lib/appManagers/appUsersManager";
 
 export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
 
@@ -141,6 +143,12 @@ export class AppSidebarLeft extends SidebarSlider {
       icon: 'user',
       text: 'Contacts',
       onClick: onContactsClick
+    }, {
+      icon: 'group',
+      text: 'PeopleNearby',
+      onClick: () => {
+        new AppPeopleNearby(this).opeddn();
+      }
     }, {
       icon: 'settings',
       text: 'Settings',
