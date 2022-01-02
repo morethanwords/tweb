@@ -147,7 +147,7 @@ export class AppSidebarLeft extends SidebarSlider {
       icon: 'group',
       text: 'PeopleNearby',
       onClick: () => {
-        new AppPeopleNearby(this).opeddn();
+        new AppPeopleNearby(this).open();
       }
     }, {
       icon: 'settings',
