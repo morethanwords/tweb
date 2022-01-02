@@ -70,6 +70,7 @@ export type State = {
   hiddenPinnedMessages: {[peerId: PeerId]: number},
   settings: {
     messagesTextSize: number,
+    distanceUnit: 'kilometers' | 'miles',
     sendShortcut: 'enter' | 'ctrlEnter',
     animationsEnabled: boolean,
     autoDownload: {
@@ -123,6 +124,7 @@ export const STATE_INIT: State = {
   hiddenPinnedMessages: {},
   settings: {
     messagesTextSize: 16,
+    distanceUnit: 'kilometers',
     sendShortcut: 'enter',
     animationsEnabled: true,
     autoDownload: {
