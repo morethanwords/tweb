@@ -25,7 +25,7 @@ import AppNewChannelTab from "./tabs/newChannel";
 import AppContactsTab from "./tabs/contacts";
 import AppArchivedTab from "./tabs/archivedTab";
 import AppAddMembersTab from "./tabs/addMembers";
-import AppPeopleNearby from "./tabs/PeopleNearby";
+import AppPeopleNearby from "./tabs/peopleNearby";
 import { i18n_, LangPackKey } from "../../lib/langPack";
 import { ButtonMenuItemOptions } from "../buttonMenu";
 import CheckboxField from "../checkboxField";
