@@ -6,6 +6,7 @@
 
 import { SliderSuperTab } from "../../slider";
 import AvatarElement from "../../avatar";
+import ButtonCorner from "../../buttonCorner";
 import { InputUser } from "../../../layer";
 import apiManager from "../../../lib/mtproto/mtprotoworker";
 import appUsersManager from "../../../lib/appManagers/appUsersManager";
@@ -19,13 +20,14 @@ import lottieLoader from "../../../lib/rlottie/lottieLoader";
 import PopupPeer from "../../popups/peer";
 import AppNewGroupTab from "./newGroup";
 import type { LazyLoadQueueIntersector } from "../../lazyLoadQueue";
-//import AppMediaViewer from "../../appMediaViewerNew";
 
 export default class AppPeopleNearby extends SliderSuperTab {
   private usersCategory = new SearchGroup(true, 'contacts', true, 'people-nearby-users', false);
   private groupsCategory = new SearchGroup(true, 'contacts', true, 'people-nearby-groups', false);
   private latestLocationSaved: { latitude: number, longitude: number, accuracy: number };
   private isLocationWatched: boolean = false;
+  private errorCategory: HTMLElement;
+  private retryBtn: HTMLButtonElement;
 
   protected lazyLoadQueue: LazyLoadQueueIntersector;
 
@@ -59,21 +61,29 @@ export default class AppPeopleNearby extends SliderSuperTab {
       locatingAnimation.appendChild(animatingWaves);
     }
 
+    this.errorCategory = document.createElement('div');
+    this.errorCategory.classList.add('text', 'hide', 'nearby-error');
+
+    this.retryBtn = ButtonCorner({icon: 'check'});
+    //this.retryBtn.classList.remove('is-visible');
+
     const chatsContainer = document.createElement('div');
     chatsContainer.classList.add('chatlist-container');
     chatsContainer.append(this.usersCategory.container);
     chatsContainer.append(this.groupsCategory.container);
 
-    this.scrollable.append(locatingAnimation, chatsContainer);
+    this.content.append(this.retryBtn);
+    this.scrollable.append(locatingAnimation, this.errorCategory, chatsContainer);
   }
 
   private parseDistance(distance: number){
     return (distance >= 1000 ? String(distance/1000)+' km' : String(distance)+' m');
   }
 
-  public opeddn() {
+  public open() {
     const result = super.open();
     result.then(() => {
+      this.retryBtn.classList.remove('is-visible');
       navigator.geolocation.getCurrentPosition(location => {
         this.latestLocationSaved = {
           latitude: location.coords.latitude,
@@ -88,9 +98,13 @@ export default class AppPeopleNearby extends SliderSuperTab {
         ).then((response) => {
 
           // @ts-ignore
-          const orderedPeers = response.updates[0].peers.sort((a, b) => a.distance-b.distance);
+          const orderedPeers = response?.updates[0]?.peers.sort((a, b) => a.distance-b.distance);
           // @ts-ignore
-          orderedPeers.forEach(peer => {
+          const groupsCounter = response?.updates[0]?.peers.filter((e) => e.peer._ == 'peerChannel').length;
+          // @ts-ignore
+          const usersCounter = response?.updates[0]?.peers.filter((e) => e.peer._ != 'peerChannel').length;
+          // @ts-ignore
+          orderedPeers?.forEach(peer => {
             const isChannel = peer.peer._ == 'peerChannel';
             const peerId = (isChannel ? -peer.peer.channel_id : peer.peer.user_id);
 
@@ -122,12 +136,24 @@ export default class AppPeopleNearby extends SliderSuperTab {
 
           this.usersCategory.nameEl.textContent = '';
           this.usersCategory.nameEl.append('Users');
-          this.usersCategory.setActive();
+          usersCounter && this.usersCategory.setActive();
 
           this.groupsCategory.nameEl.textContent = '';
           this.groupsCategory.nameEl.append('Groups');
-          this.groupsCategory.setActive();
+          groupsCounter && this.groupsCategory.setActive();
+
+          this.errorCategory.classList.toggle('hide', (usersCounter || groupsCounter));
+          this.errorCategory.innerHTML = "No groups or channels found around you.";
         });
+      }, (error) => {
+        this.errorCategory.classList.remove('hide');
+        this.retryBtn.classList.add('is-visible');
+        this.retryBtn.addEventListener('click', this.opeddn);
+        if(error instanceof GeolocationPositionError){
+          this.errorCategory.innerHTML = "Location permission denied. Click below to retry.";
+        }else{
+          this.errorCategory.innerHTML = "An error has occurred. Please retry later clicking the button below.";
+        }
       });
     });
   }
@@ -157,7 +183,8 @@ export default class AppPeopleNearby extends SliderSuperTab {
             result.coords.latitude,
             result.coords.longitude,
             result.coords.accuracy,
-            true // background parameter
+            true, // background parameter
+            3600 // self_expires parameter
           );
           this.latestLocationSaved = {
             latitude: result.coords.latitude,
