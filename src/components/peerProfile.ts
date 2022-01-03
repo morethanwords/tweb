@@ -329,8 +329,6 @@ export default class PeerProfile {
         if(userFull.rAbout && peerId !== rootScope.myId) {
           setText(userFull.rAbout, this.bio);
         }
-
-        this.location.container.style.display = 'none';
         
         //this.log('userFull', userFull);
         return true;
@@ -351,9 +349,7 @@ export default class PeerProfile {
         // @ts-ignore
         if(chatFull?.location?._ == 'channelLocation') {
           // @ts-ignore
-          setText(RichTextProcessor.wrapRichText(chatFull.location.address), this.location);
-        }else{
-          this.location.container.style.display = 'none';
+          setText(chatFull.location.address, this.location);
         }
 
         return true;
