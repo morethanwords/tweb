@@ -85,18 +85,6 @@ export class AppSidebarLeft extends SidebarSlider {
       });
     };
 
-    const onNewGeoGroupClick = () => {
-      new AppAddMembersTab(this).open({
-        type: 'chat',
-        skippable: true, // you can create geogroups without members
-        takeOut: (peerIds) => {
-          new AppNewGroupTab(this).open(peerIds, true);
-        },
-        title: 'GroupAddMembers',
-        placeholder: 'SendMessageTo'
-      });
-    };
-
     const onContactsClick = () => {
       new AppContactsTab(this).open();
     };

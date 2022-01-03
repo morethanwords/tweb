@@ -507,8 +507,6 @@ export class AppChatsManager {
       lat: gpoint['lat'],
       long: gpoint['long']
     } as InputGeoPoint;
-
-    // NON TOCCARE STO PEZZO MAI PIù NELLA VITA
     return apiManager.invokeApi('channels.createChannel', {
       megagroup: true,
       title,
