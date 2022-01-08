@@ -2880,9 +2880,9 @@ export class AppMessagesManager {
       }
 
       const length = parts.length;
-      for(let i = 1; i < length; i += 2) {
+      /* for(let i = 1; i < length; i += 2) {
         parts.splice(i, 0, ', ');
-      }
+      } */
 
       if(text && length) {
         parts.push(', ');
