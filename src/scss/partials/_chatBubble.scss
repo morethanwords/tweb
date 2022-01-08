@@ -290,8 +290,8 @@ $bubble-beside-button-width: 38px;
     html.is-touch .bubbles.is-selecting:not(.no-select) & {
       user-select: text;
     } */
-    html.no-touch .bubbles:not(.is-selecting) &,
-    html.is-touch body:not(.no-select) .bubbles.is-selecting & { // * need no-select on body because chat-input transforms in channels
+    html.no-touch .chat:not(.no-forwards) .bubbles:not(.is-selecting) &,
+    html.is-touch body:not(.no-select) .chat:not(.no-forwards) .bubbles.is-selecting & { // * need no-select on body because chat-input transforms in channels
       user-select: text;
     }
   }
@@ -382,6 +382,14 @@ $bubble-beside-button-width: 38px;
     html.no-touch body.animation-level-2 & {
       transition: opacity .2s ease-in-out;
     }
+  }
+
+  &-view-button {
+    border-radius: 6px;
+    border: 1px solid var(--primary-color);
+    height: 2rem;
+    margin: 0 0.5625rem .5rem;
+    width: auto;
   }
 
   @include hover() {
@@ -506,17 +514,22 @@ $bubble-beside-button-width: 38px;
       line-height: 1;
     }
     
-    &:not(.sticker) .attachment {
-      padding-top: .5rem;
-      padding-bottom: 1.5rem;
-      //max-width: fit-content!important;
-      max-height: fit-content!important;
-      cursor: text;
-      user-select: text;
-      
-      span.emoji {
-        height: auto;
-        width: auto;
+    &:not(.sticker) {
+      .attachment {
+        padding-top: .5rem;
+        padding-bottom: 1.5rem;
+        //max-width: fit-content!important;
+        max-height: fit-content!important;
+        
+        span.emoji {
+          height: auto;
+          width: auto;
+        }
+      }
+
+      .chat:not(.no-forwards) & {
+        cursor: text;
+        user-select: text;
       }
     }
     
@@ -1205,14 +1218,18 @@ $bubble-beside-button-width: 38px;
     //padding: 4px 6px 4px 8px !important;
   }
 
-  .message.contact-message {
+  .message.contact-message,
+  .message.call-message {
     min-width: 200px;
     padding-left: 8px;
+  }
 
+  .message.contact-message {
     .contact {
       display: flex;
       padding: 2px 0;
       cursor: pointer;
+      user-select: none;
 
       &-avatar {
         color: #fff;
@@ -1266,6 +1283,55 @@ $bubble-beside-button-width: 38px;
         margin-top: 1px;
         overflow: hidden;
         text-overflow: ellipsis;
+      }
+    }
+  }
+
+  &-call {
+    cursor: pointer;
+    padding: .125rem 0;
+    padding-left: 2.5625rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    position: relative;
+    user-select: none;
+
+    &:before {
+      position: absolute;
+      left: .3125rem;
+      font-size: 1.5rem;
+    }
+
+    &-title {
+      font-weight: 500;
+    }
+
+    &-subtitle {
+      font-size: .875rem;
+      color: var(--secondary-text-color);
+      display: flex;
+      align-items: center;
+      margin-top: .0625rem;
+      margin-left: -.1875rem;
+
+      &.is-reason:before {
+        margin-right: .0625rem;
+      }
+
+      &:before {
+        content: $tgico-arrow-next;
+        display: inline-block;
+        transform: rotate(135deg);
+        font-size: 1rem;
+      }
+
+      &.arrow-red:before {
+        color: var(--danger-color);
+      }
+
+      &.arrow-green:before {
+        color: var(--message-out-primary-color);
       }
     }
   }
@@ -2357,8 +2423,13 @@ $bubble-beside-button-width: 38px;
   }
 
   .contact-number, 
-  .document-size {
+  .document-size,
+  .bubble-call-subtitle {
     color: var(--message-out-status-color);
+  }
+
+  .bubble-call-subtitle:before {
+    transform: rotate(-45deg);
   }
 
   poll-element {

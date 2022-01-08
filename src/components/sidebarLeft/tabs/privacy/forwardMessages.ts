@@ -10,6 +10,7 @@ import { LangPackKey } from "../../../../lib/langPack";
 
 export default class AppPrivacyForwardMessagesTab extends SliderSuperTabEventable {
   protected init() {
+    this.header.classList.add('with-border');
     this.container.classList.add('privacy-tab', 'privacy-forward-messages');
     this.setTitle('PrivacySettings.Forwards');
 

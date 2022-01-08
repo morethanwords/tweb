@@ -13,6 +13,7 @@ import { UsernameInputField } from "../../usernameInputField";
 import { i18n, i18n_ } from "../../../lib/langPack";
 import { attachClickEvent } from "../../../helpers/dom/clickEvent";
 import rootScope from "../../../lib/rootScope";
+import { generateSection, SettingSection } from "..";
 
 // TODO: аватарка не поменяется в этой вкладке после изменения почему-то (если поставить в другом клиенте, и потом тут проверить, для этого ещё вышел в чатлист)
 
@@ -34,6 +35,7 @@ export default class AppEditProfileTab extends SliderSuperTab {
     const inputFields: InputField[] = [];
 
     {
+      const section = generateSection(this.scrollable, undefined, 'Bio.Description');
       const inputWrapper = document.createElement('div');
       inputWrapper.classList.add('input-wrapper');
   
@@ -60,23 +62,23 @@ export default class AppEditProfileTab extends SliderSuperTab {
       i18n_({element: caption, key: 'Bio.Description'});
 
       inputFields.push(this.firstNameInputField, this.lastNameInputField, this.bioInputField);
-      this.scrollable.append(inputWrapper, caption);
+
+      this.editPeer = new EditPeer({
+        peerId: rootScope.myId,
+        inputFields,
+        listenerSetter: this.listenerSetter
+      });
+
+      this.content.append(this.editPeer.nextBtn);
+
+      section.append(this.editPeer.avatarEdit.container, inputWrapper);
     }
 
-    this.scrollable.append(document.createElement('hr'));
-
-    this.editPeer = new EditPeer({
-      peerId: rootScope.myId,
-      inputFields,
-      listenerSetter: this.listenerSetter
-    });
-    this.content.append(this.editPeer.nextBtn);
-    this.scrollable.prepend(this.editPeer.avatarEdit.container);
-
     {
-      const h2 = document.createElement('div');
-      h2.classList.add('sidebar-left-h2');
-      i18n_({element: h2, key: 'EditAccount.Username'});
+      const section = new SettingSection({
+        name: 'EditAccount.Username',
+        caption: true
+      });
 
       const inputWrapper = document.createElement('div');
       inputWrapper.classList.add('input-wrapper');
@@ -97,8 +99,7 @@ export default class AppEditProfileTab extends SliderSuperTab {
 
       inputWrapper.append(this.usernameInputField.container);
 
-      const caption = document.createElement('div');
-      caption.classList.add('caption');
+      const caption = section.caption;
       caption.append(i18n('UsernameSettings.ChangeDescription'));
       caption.append(document.createElement('br'), document.createElement('br'));
 
@@ -115,7 +116,8 @@ export default class AppEditProfileTab extends SliderSuperTab {
       caption.append(profileUrlContainer);
 
       inputFields.push(this.usernameInputField);
-      this.scrollable.append(h2, inputWrapper, caption);
+      section.content.append(inputWrapper);
+      this.scrollable.append(section.container);
     }
 
     attachClickEvent(this.editPeer.nextBtn, () => {

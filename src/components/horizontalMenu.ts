@@ -37,7 +37,13 @@ export function horizontalMenu(tabs: HTMLElement, content: HTMLElement, onClick?
       }
 
       if(scrollableX) {
-        scrollableX.scrollIntoViewNew(target.parentElement.children[id] as HTMLElement, 'center', undefined, undefined, animate ? undefined : FocusDirection.Static, transitionTime, 'x');
+        scrollableX.scrollIntoViewNew({
+          element: target.parentElement.children[id] as HTMLElement, 
+          position: 'center', 
+          forceDirection: animate ? undefined : FocusDirection.Static, 
+          forceDuration: transitionTime, 
+          axis: 'x'
+        });
       }
 
       if(!rootScope.settings.animationsEnabled) {

@@ -1,5 +1,5 @@
 import { IS_FIREFOX } from "./userAgent";
 
-const PARALLAX_SUPPORTED = !IS_FIREFOX && false;
+const IS_PARALLAX_SUPPORTED = !IS_FIREFOX && false;
 
-export default PARALLAX_SUPPORTED;
+export default IS_PARALLAX_SUPPORTED;

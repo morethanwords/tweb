@@ -26,6 +26,8 @@ export function formatPhoneNumber(originalStr: string): {
   code: HelpCountryCode,
   leftPattern: string
 } {
+  originalStr = originalStr || '';
+  
   if(!prefixes.size) {
     I18n.countriesList.forEach(country => {
       country.country_codes.forEach(code => {

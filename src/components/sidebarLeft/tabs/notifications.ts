@@ -20,7 +20,8 @@ type InputNotifyKey = Exclude<InputNotifyPeer['_'], 'inputNotifyPeer'>;
 
 export default class AppNotificationsTab extends SliderSuperTabEventable {
   protected init() {
-    this.container.classList.add('notifications-container');
+    this.header.classList.add('with-border');
+    this.container.classList.add('notifications-container', 'with-border');
     this.setTitle('Telegram.NotificationSettingsViewController');
 
     const NotifySection = (options: {

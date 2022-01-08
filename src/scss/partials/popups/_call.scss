@@ -1,0 +1,194 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
+.popup-call {
+  $parent: ".popup";
+
+  #{$parent} {
+    &-header {
+      width: 100%;
+    }
+
+    &-title {
+      flex: 1 1 auto;
+    }
+  }
+}
+
+.call {
+  width: 100%;
+  height: 100%;
+  color: #fff;
+  align-items: center;
+
+  &.is-full-screen {
+    border-radius: 0;
+  }
+
+  &-avatar {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: -1;
+    opacity: .7;
+    
+    .avatar-photo {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+  }
+
+  &-title {
+    font-weight: 500;
+    font-size: 1.25rem;
+  }
+
+  &-subtitle {
+    font-size: 1rem;
+  }
+
+  &-buttons {
+    display: flex;
+    align-items: center;
+    position: absolute;
+    bottom: 1.75rem;
+    align-self: center;
+    z-index: 1;
+    pointer-events: none; // ! fix backdrop-filter transition
+
+    .call-button {
+      pointer-events: all; // ! fix backdrop-filter transition
+
+      &-container {
+        --scale: 1;
+
+        &.hide-me {
+          --scale: 0 !important;
+          transform: scale(var(--scale));
+    
+          @include animation-level(2) {
+            transition: transform var(--transition-standard-in);
+          }
+    
+          .call-button,
+          .call-button-text { // ! fix backdrop-filter transition
+            opacity: 0;
+          }
+        }
+      }
+    }
+
+    @include animation-level(2) {
+      .call-button { // ! fix backdrop-filter transition
+        &,
+        &-text {
+          transition: opacity var(--transition-standard-in), transform var(--transition-standard-in);
+        }
+      }
+    }
+      
+
+    &.is-first {
+      .call-button { // ! fix backdrop-filter transition
+        &,
+        &-text {
+          transform: /* scale(var(--scale))  */translateX(calc(var(--call-button-size) * -.5 + var(--call-button-margin) * -.5));
+        }
+      }
+    }
+
+    &.is-second {
+      .call-button { // ! fix backdrop-filter transition
+        &,
+        &-text {
+          transform: /* scale(var(--scale))  */translateX(calc(var(--call-button-size) * 2 + var(--call-button-margin) * 2));
+        }
+      }
+    }
+  }
+
+  &-button {
+    background-color: rgba(255, 255, 255, .1);
+
+    &-red {
+      background-color: var(--danger-color) !important;
+    }
+
+    &-green {
+      background-color: var(--gc-green-text-color) !important;
+    }
+
+    &.active {
+      background-color: #fff !important;
+
+      &:before {
+        color: #9e9e9e;
+      }
+    }
+  }
+
+  &-video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    position: absolute;
+    border-radius: inherit;
+
+    &-container {
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      display: flex;
+      align-items: center;
+      background-color: #000;
+      z-index: -1;
+
+      &.small {
+        bottom: 8rem;
+        right: 1rem;
+        left: auto;
+        top: auto;
+        z-index: 1;
+        border-radius: $border-radius-medium;
+      }
+    }
+
+    &-blur {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      opacity: .7;
+      border-radius: inherit;
+    }
+  }
+
+  &.two-button-rows {
+    .call-buttons {
+      &.is-first {
+        .call-button { // ! fix backdrop-filter transition
+          &,
+          &-text {
+            transform: /* scale(var(--scale))  */translateY(calc((var(--call-button-size) + var(--call-button-margin) + 1.125rem) * -1));
+          }
+        }
+      }
+
+      &.is-second {
+        .call-button { // ! fix backdrop-filter transition
+          &,
+          &-text {
+            transform: /* scale(var(--scale))  */translateX(0);
+          }
+        }
+      }
+    }
+  }
+}

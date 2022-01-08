@@ -57,7 +57,7 @@ export default class Chat extends EventListenerBase<{
   public contextMenu: ChatContextMenu;
   public search: ChatSearch;
 
-  public wasAlreadyUsed = false;
+  public wasAlreadyUsed: boolean;
   // public initPeerId = 0;
   public peerId: PeerId;
   public threadId: number;
@@ -66,11 +66,12 @@ export default class Chat extends EventListenerBase<{
 
   public log: ReturnType<typeof logger>;
 
-  public type: ChatType = 'chat';
+  public type: ChatType;
 
   public noAutoDownloadMedia: boolean;
+  public noForwards: boolean;
 
-  public inited = false;
+  public inited: boolean;
   
   constructor(public appImManager: AppImManager, 
     public appChatsManager: AppChatsManager, 
@@ -94,6 +95,8 @@ export default class Chat extends EventListenerBase<{
     public appGroupCallsManager: AppGroupCallsManager
   ) {
     super();
+
+    this.type = 'chat';
 
     this.container = document.createElement('div');
     this.container.classList.add('chat', 'tabs-tab');
@@ -177,7 +180,7 @@ export default class Chat extends EventListenerBase<{
     // this.initPeerId = peerId;
 
     this.topbar = new ChatTopbar(this, appSidebarRight, this.appMessagesManager, this.appPeersManager, this.appChatsManager, this.appNotificationsManager, this.appProfileManager, this.appUsersManager, this.appGroupCallsManager);
-    this.bubbles = new ChatBubbles(this, this.appMessagesManager, this.appStickersManager, this.appUsersManager, this.appInlineBotsManager, this.appPhotosManager, this.appPeersManager, this.appProfileManager, this.appDraftsManager, this.appMessagesIdsManager);
+    this.bubbles = new ChatBubbles(this, this.appMessagesManager, this.appStickersManager, this.appUsersManager, this.appInlineBotsManager, this.appPhotosManager, this.appPeersManager, this.appProfileManager, this.appDraftsManager, this.appMessagesIdsManager, this.appChatsManager);
     this.input = new ChatInput(this, this.appMessagesManager, this.appMessagesIdsManager, this.appDocsManager, this.appChatsManager, this.appPeersManager, this.appWebPagesManager, this.appImManager, this.appDraftsManager, this.serverTimeManager, this.appNotificationsManager, this.appEmojiManager, this.appUsersManager, this.appInlineBotsManager);
     this.selection = new ChatSelection(this, this.bubbles, this.input, this.appMessagesManager);
     this.contextMenu = new ChatContextMenu(this.bubbles.bubblesContainer, this, this.appMessagesManager, this.appPeersManager, this.appPollsManager, this.appDocsManager, this.appMessagesIdsManager);
@@ -254,7 +257,7 @@ export default class Chat extends EventListenerBase<{
 
   public setPeer(peerId: PeerId, lastMsgId?: number) {
     if(!peerId) {
-      this.inited = false;
+      this.inited = undefined;
     } else if(!this.inited) {
       if(this.init) {
         this.init(/* peerId */);
@@ -268,6 +271,8 @@ export default class Chat extends EventListenerBase<{
     if(!samePeer) {
       rootScope.dispatchEvent('peer_changing', this);
       this.peerId = peerId;
+      this.noForwards = this.appPeersManager.noForwards(peerId);
+      this.container.classList.toggle('no-forwards', this.noForwards);
     } else if(this.setPeerPromise) {
       return;
     }

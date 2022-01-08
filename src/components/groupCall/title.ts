@@ -6,7 +6,7 @@
 
 import setInnerHTML from "../../helpers/dom/setInnerHTML";
 import { GroupCall } from "../../layer";
-import { GroupCallInstance } from "../../lib/appManagers/appGroupCallsManager";
+import GroupCallInstance from "../../lib/calls/groupCallInstance";
 import RichTextProcessor from "../../lib/richtextprocessor";
 import PeerTitle from "../peerTitle";
 
@@ -23,10 +23,15 @@ export default class GroupCallTitleElement {
     const peerId = instance.chatId.toPeerId(true);
     if(groupCall.title) {
       setInnerHTML(appendTo, RichTextProcessor.wrapEmojiText(groupCall.title));
-    } else if(peerTitle.peerId !== peerId) {
-      peerTitle.peerId = peerId;
-      peerTitle.update();
-      appendTo.append(peerTitle.element);
-    }
+    } else {
+      if(peerTitle.peerId !== peerId) {
+        peerTitle.peerId = peerId;
+        peerTitle.update();
+      }
+
+      if(peerTitle.element.parentElement !== appendTo) {
+        appendTo.append(peerTitle.element);
+      }
+    } 
   }
 }

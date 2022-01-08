@@ -39,6 +39,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
   private blurCheckboxField: CheckboxField;
 
   init() {
+    this.header.classList.add('with-border');
     this.container.classList.add('background-container', 'background-image-container');
     this.setTitle('ChatBackground');
 
@@ -93,10 +94,11 @@ export default class AppBackgroundTab extends SliderSuperTab {
       //console.log(accountWallpapers);
     });
 
+    const gridContainer = generateSection(this.scrollable);
     const grid = this.grid = document.createElement('div');
     grid.classList.add('grid');
     attachClickEvent(grid, this.onGridClick, {listenerSetter: this.listenerSetter});
-    this.scrollable.append(grid);
+    gridContainer.append(grid);
   }
 
   private onUploadClick = () => {

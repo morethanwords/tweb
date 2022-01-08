@@ -595,9 +595,9 @@ export default class PollElement extends HTMLElement {
        * WINDOWS DESKTOP - реверс
        * все приложения накладывают аватарку первую на вторую, а в макете зато вторая на первую, ЛОЛ!
        */
-      results.recent_voters/* .slice().reverse() */.forEach((userId, idx) => {
+      (results.recent_voters || [])/* .slice().reverse() */.forEach((userId, idx) => {
         const style = idx === 0 ? '' : `style="transform: translateX(-${idx * 3}px);"`;
-        html += `<avatar-element class="avatar-16 poll-avatar" dialog="0" peer="${userId}" ${style}></avatar-element>`;
+        html += `<avatar-element class="avatar-16 poll-avatar" dialog="0" peer="${userId.toPeerId()}" ${style}></avatar-element>`;
       });
       this.avatarsDiv.innerHTML = html;
     }

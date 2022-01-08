@@ -139,8 +139,8 @@ export default class RLottiePlayer extends EventListenerBase<{
 
   private currentMethod: RLottiePlayer['mainLoopForwards'] | RLottiePlayer['mainLoopBackwards'];
   private frameListener: (currentFrame: number) => void;
-  private onPauseCallback: () => void;
   private skipFirstFrameRendering: boolean;
+  private playToFrameOnFrameCallback: (frameNo: number) => void;
 
   constructor({el, worker, options}: {
     el: HTMLElement,
@@ -291,14 +291,6 @@ export default class RLottiePlayer extends EventListenerBase<{
       clearTimeout(this.rafId);
     }
     //window.cancelAnimationFrame(this.rafId);
-    
-    if(this.onPauseCallback) {
-      this.setSpeed(1);
-      this.onPauseCallback = undefined;
-
-      const callback = this.onPauseCallback;
-      callback && callback();
-    }
   }
 
   private resetCurrentFrame() {
@@ -454,19 +446,23 @@ export default class RLottiePlayer extends EventListenerBase<{
     }
   }
 
+  private onLap() {
+    //this.playedTimes++;
+
+    if(!this.loop) {
+      this.pause(false);
+      return false;
+    }
+  }
+
   private mainLoopForwards() {
     const {skipDelta, maxFrame} = this;
-    const frame = (this.curFrame + skipDelta) > maxFrame ? this.curFrame = this.minFrame : this.curFrame += skipDelta;
-    //console.log('mainLoopForwards', this.curFrame, skipDelta, frame);
+    const frame = (this.curFrame + skipDelta) > maxFrame ? this.curFrame = (this.loop ? this.minFrame : this.maxFrame) : this.curFrame += skipDelta;
+    // console.log('mainLoopForwards', this.curFrame, skipDelta, frame);
 
     this.requestFrame(frame);
     if((frame + skipDelta) > maxFrame) {
-      //this.playedTimes++;
-
-      if(!this.loop) {
-        this.pause(false);
-        return false;
-      }
+      this.onLap();
     }
 
     return true;
@@ -474,17 +470,12 @@ export default class RLottiePlayer extends EventListenerBase<{
   
   private mainLoopBackwards() {
     const {skipDelta, minFrame} = this;
-    const frame = (this.curFrame - skipDelta) < minFrame ? this.curFrame = this.maxFrame : this.curFrame -= skipDelta;
-    //console.log('mainLoopBackwards', this.curFrame, skipDelta, frame);
+    const frame = (this.curFrame - skipDelta) < minFrame ? this.curFrame = (this.loop ? this.maxFrame : this.minFrame) : this.curFrame -= skipDelta;
+    // console.log('mainLoopBackwards', this.curFrame, skipDelta, frame);
 
     this.requestFrame(frame);
     if((frame - skipDelta) < minFrame) {
-      //this.playedTimes++;
-
-      if(!this.loop) {
-        this.pause(false);
-        return false;
-      }
+      this.onLap();
     }
 
     return true;
@@ -553,15 +544,29 @@ export default class RLottiePlayer extends EventListenerBase<{
     
     this.loop = false;
     this.setMinMax(bounds[0], bounds[1]);
-    this.onPauseCallback = callback;
+
+    if(this.playToFrameOnFrameCallback) {
+      this.removeEventListener('enterFrame', this.playToFrameOnFrameCallback);
+    }
+
+    if(callback) {
+      this.playToFrameOnFrameCallback = (frameNo: number) => {
+        if(frameNo === frame) {
+          this.removeEventListener('enterFrame', this.playToFrameOnFrameCallback);
+          callback();
+        }
+      };
+
+      this.addEventListener('enterFrame', this.playToFrameOnFrameCallback);
+    }
 
     this.play();
   }
 
-  public setColor(color: RLottieColor) {
+  public setColor(color: RLottieColor, renderIfPaused: boolean) {
     this.color = color;
 
-    if(this.paused) {
+    if(renderIfPaused && this.paused) {
       this.renderFrame2(this.imageData.data, this.curFrame);
     }
   }

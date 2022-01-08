@@ -6,9 +6,6 @@
 
 .popup-group-call {
   $parent: ".popup";
-  padding: 0;
-  background-color: transparent;
-  overflow: visible;
 
   &:not(.movable-element) {
     // max-width: 420px;
@@ -40,7 +37,7 @@
 }
 
 .group-call {
-  --button-size: 3.375rem;
+  --call-button-margin: 1.25rem;
   width: 100%;
   height: 100%;
   padding: 0 .5rem;
@@ -103,26 +100,8 @@
   }
 
   &-button {
-    width: var(--button-size);
-    height: var(--button-size);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
     color: var(--gc-primary-text-color);
-    font-size: 1.5rem;
-    position: relative;
     background-color: var(--gc-button-unmuted-color);
-    border-radius: 50%;
-    backdrop-filter: blur(25px);
-
-    @include animation-level(2) {
-      transition: background-color var(--transition-standard-in);
-    }
-
-    & + & {
-      margin-left: 1.25rem;
-    }
 
     .group-call[data-mic-state="muted"] & {
       background-color: var(--gc-button-muted-color);
@@ -199,11 +178,6 @@
     }
 
     &-video {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-      position: absolute;
-
       &-container {
         position: relative;
         height: 15rem;
@@ -297,13 +271,6 @@
           flex: 0 0 auto;
           margin-left: .75rem;
         }
-      }
-
-      &-blur {
-        position: absolute;
-        width: 100%;
-        height: 100%;
-        opacity: .7;
       }
     }
 

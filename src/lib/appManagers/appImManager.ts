@@ -76,6 +76,9 @@ import appGroupCallsManager, { GroupCallId, MyGroupCall } from './appGroupCallsM
 import TopbarCall from '../../components/topbarCall';
 import confirmationPopup from '../../components/confirmationPopup';
 import IS_GROUP_CALL_SUPPORTED from '../../environment/groupCallSupport';
+import appAvatarsManager from './appAvatarsManager';
+import IS_CALL_SUPPORTED from '../../environment/callSupport';
+import { CallType } from '../calls/types';
 
 //console.log('appImManager included33!');
 
@@ -244,7 +247,24 @@ export class AppImManager {
       stateStorage.setToCache('chatPositions', c || {});
     });
 
-    this.topbarCall = new TopbarCall(appGroupCallsManager, appPeersManager, appChatsManager);
+    if(IS_CALL_SUPPORTED || IS_GROUP_CALL_SUPPORTED) {
+      this.topbarCall = new TopbarCall(appGroupCallsManager, appPeersManager, appChatsManager, appAvatarsManager);
+    }
+
+    /* if(IS_CALL_SUPPORTED) {
+      rootScope.addEventListener('call_instance', ({instance, hasCurrent}) => {
+        if(hasCurrent) {
+          return;
+        }
+        
+        new PopupCall({
+          appAvatarsManager,
+          appCallsManager,
+          appPeersManager,
+          instance
+        }).show();
+      });
+    } */
 
     // ! do not remove this line 
     // ! instance can be deactivated before the UI starts, because it waits in background for RAF that is delayed
@@ -748,6 +768,79 @@ export class AppImManager {
     });
   }
 
+  public async callUser(userId: UserId, type: CallType) {
+    /* const call = appCallsManager.getCallByUserId(userId);
+    if(call) {
+      return;
+    }
+    
+    const userFull = await appProfileManager.getProfile(userId);
+    if(userFull.pFlags.phone_calls_private) {
+      confirmationPopup({
+        descriptionLangKey: 'Call.PrivacyErrorMessage',
+        descriptionLangArgs: [new PeerTitle({peerId: userId.toPeerId()}).element],
+        button: {
+          langKey: 'OK',
+          isCancel: true
+        }
+      });
+
+      return;
+    }
+
+    await this.discardCurrentCall(userId.toPeerId());
+
+    appCallsManager.startCallInternal(userId, type === 'video'); */
+  }
+
+  private discardCurrentCall(toPeerId: PeerId) {
+    /* if(appCallsManager.currentCall) return this.discardCallConfirmation(toPeerId);
+    else if(appGroupCallsManager.groupCall) return this.discardGroupCallConfirmation(toPeerId);
+    else return Promise.resolve(); */
+  }
+
+  private async discardCallConfirmation(toPeerId: PeerId) {
+    /* const currentCall = appCallsManager.currentCall;
+    if(currentCall) {
+      await confirmationPopup({
+        titleLangKey: 'Call.Confirm.Discard.Call.Header',
+        descriptionLangKey: toPeerId.isUser() ? 'Call.Confirm.Discard.Call.ToCall.Text' : 'Call.Confirm.Discard.Call.ToVoice.Text',
+        descriptionLangArgs: [
+          new PeerTitle({peerId: currentCall.interlocutorUserId.toPeerId(false)}).element, 
+          new PeerTitle({peerId: toPeerId}).element
+        ],
+        button: {
+          langKey: 'OK'
+        }
+      });
+
+      if(appCallsManager.currentCall === currentCall) {
+        await currentCall.hangUp();
+      }
+    } */
+  }
+
+  private async discardGroupCallConfirmation(toPeerId: PeerId) {
+    const currentGroupCall = appGroupCallsManager.groupCall;
+    if(currentGroupCall) {
+      await confirmationPopup({
+        titleLangKey: 'Call.Confirm.Discard.Voice.Header',
+        descriptionLangKey: toPeerId.isUser() ? 'Call.Confirm.Discard.Voice.ToCall.Text' : 'Call.Confirm.Discard.Voice.ToVoice.Text',
+        descriptionLangArgs: [
+          new PeerTitle({peerId: currentGroupCall.chatId.toPeerId(true)}).element, 
+          new PeerTitle({peerId: toPeerId}).element
+        ],
+        button: {
+          langKey: 'OK'
+        }
+      });
+
+      if(appGroupCallsManager.groupCall === currentGroupCall) {
+        await currentGroupCall.hangUp();
+      }
+    }
+  }
+
   public async joinGroupCall(peerId: PeerId, groupCallId?: GroupCallId) {
     const chatId = peerId.toChatId();
     const hasRights = appChatsManager.hasRights(chatId, 'manage_call');
@@ -787,24 +880,7 @@ export class AppImManager {
       }
     }
 
-    const currentGroupCall = appGroupCallsManager.groupCall;
-    if(currentGroupCall) {
-      await confirmationPopup({
-        titleLangKey: 'Call.Confirm.Discard.Voice.Header',
-        descriptionLangKey: 'Call.Confirm.Discard.Voice.ToVoice.Text',
-        descriptionLangArgs: [
-          new PeerTitle({peerId: currentGroupCall.chatId.toPeerId(true)}).element, 
-          new PeerTitle({peerId: peerId}).element
-        ],
-        button: {
-          langKey: 'OK'
-        }
-      });
-
-      if(appGroupCallsManager.groupCall === currentGroupCall) {
-        await currentGroupCall.hangUp();
-      }
-    }
+    await this.discardCurrentCall(peerId);
 
     next();
   };
@@ -1242,11 +1318,14 @@ export class AppImManager {
     }
 
     this.chats.push(chat);
+
+    return chat;
   }
 
   private spliceChats(fromIndex: number, justReturn = true, animate?: boolean, spliced?: Chat[]) {
     if(fromIndex >= this.chats.length) return;
 
+    const chatFrom = this.chat;
     if(this.chats.length > 1 && justReturn) {
       rootScope.dispatchEvent('peer_changing', this.chat);
     }
@@ -1254,6 +1333,8 @@ export class AppImManager {
     if(!spliced) {
       spliced = this.chats.splice(fromIndex, this.chats.length - fromIndex);
     }
+
+    rootScope.dispatchEvent('chat_changing', {from: chatFrom, to: this.chat});
 
     // * -1 because one item is being sliced when closing the chat by calling .removeByType
     for(let i = 0; i < spliced.length - 1; ++i) {
@@ -1382,20 +1463,23 @@ export class AppImManager {
       return this.setPeer(peerId, lastMsgId);
     }
 
-    const chat = this.chat;
-    if(chat.inited) { // * use first not inited chat
-      this.createNewChat();
+    const oldChat = this.chat;
+    let chat = oldChat;
+    if(oldChat.inited) { // * use first not inited chat
+      chat = this.createNewChat();
     }
 
     if(type) {
-      this.chat.setType(type);
+      chat.setType(type);
 
       if(threadId) {
-        this.chat.threadId = threadId;
+        chat.threadId = threadId;
       }
     }
 
-    //this.chatsSelectTab(this.chat.container);
+    rootScope.dispatchEvent('chat_changing', {from: oldChat, to: chat});
+
+    //this.chatsSelectTab(chat.container);
 
     return this.setPeer(peerId, lastMsgId);
   }

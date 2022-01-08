@@ -25,7 +25,7 @@ import AppNewChannelTab from "./tabs/newChannel";
 import AppContactsTab from "./tabs/contacts";
 import AppArchivedTab from "./tabs/archivedTab";
 import AppAddMembersTab from "./tabs/addMembers";
-import { i18n_, LangPackKey } from "../../lib/langPack";
+import { FormatterArguments, i18n_, LangPackKey } from "../../lib/langPack";
 import { ButtonMenuItemOptions } from "../buttonMenu";
 import CheckboxField from "../checkboxField";
 import { IS_MOBILE_SAFARI } from "../../environment/userAgent";
@@ -602,54 +602,68 @@ export class AppSidebarLeft extends SidebarSlider {
   }
 }
 
+const className = 'sidebar-left-section';
 export class SettingSection {
   public container: HTMLElement;
+  public innerContainer: HTMLElement;
   public content: HTMLElement;
   public title: HTMLElement;
   public caption: HTMLElement;
 
   constructor(options: {
     name?: LangPackKey, 
+    nameArgs?: FormatterArguments,
     caption?: LangPackKey | true,
     noDelimiter?: boolean,
-    fakeGradientDelimiter?: boolean
-  }) {
-    this.container = document.createElement('div');
-    this.container.classList.add('sidebar-left-section');
+    fakeGradientDelimiter?: boolean,
+    noShadow?: boolean
+  } = {}) {
+    const container = this.container = document.createElement('div');
+    container.classList.add(className + '-container');
+
+    const innerContainer = this.innerContainer = document.createElement('div');
+    innerContainer.classList.add(className);
+
+    if(options.noShadow) {
+      innerContainer.classList.add('no-shadow');
+    }
 
     if(options.fakeGradientDelimiter) {
-      this.container.append(generateDelimiter());
-      this.container.classList.add('with-fake-delimiter');
+      innerContainer.append(generateDelimiter());
+      innerContainer.classList.add('with-fake-delimiter');
     } else if(!options.noDelimiter) {
       const hr = document.createElement('hr');
-      this.container.append(hr);
+      innerContainer.append(hr);
     } else {
-      this.container.classList.add('no-delimiter');
+      innerContainer.classList.add('no-delimiter');
     }
 
-    this.content = this.generateContentElement();
+    const content = this.content = this.generateContentElement();
 
     if(options.name) {
-      this.title = document.createElement('div');
-      this.title.classList.add('sidebar-left-h2', 'sidebar-left-section-name');
-      i18n_({element: this.title, key: options.name});
-      this.content.append(this.title);
+      const title = this.title = document.createElement('div');
+      title.classList.add('sidebar-left-h2', className + '-name');
+      i18n_({element: title, key: options.name, args: options.nameArgs});
+      content.append(title);
     }
 
+    container.append(innerContainer);
+
     if(options.caption) {
-      this.caption = this.generateContentElement();
-      this.caption.classList.add('sidebar-left-section-caption');
+      const caption = this.caption = this.generateContentElement();
+      caption.classList.add(className + '-caption');
+      container.append(caption);
 
       if(options.caption !== true) {
-        i18n_({element: this.caption, key: options.caption});
+        i18n_({element: caption, key: options.caption});
       }
     }
   }
 
   public generateContentElement() {
     const content = document.createElement('div');
-    content.classList.add('sidebar-left-section-content');
-    this.container.append(content);
+    content.classList.add(className + '-content');
+    this.innerContainer.append(content);
     return content;
   }
 }

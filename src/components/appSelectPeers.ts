@@ -24,6 +24,7 @@ import { filterUnique, indexOfAndSplice } from "../helpers/array";
 import debounce from "../helpers/schedulers/debounce";
 import windowSize from "../helpers/windowSize";
 import appPeersManager, { IsPeerType } from "../lib/appManagers/appPeersManager";
+import { generateDelimiter, SettingSection } from "./sidebarLeft";
 
 type SelectSearchPeerType = 'contacts' | 'dialogs' | 'channelParticipants';
 
@@ -35,11 +36,11 @@ export default class AppSelectPeers {
     handheldsSize: 66,
     avatarSize: 48
   } */);
-  public chatsContainer = document.createElement('div');
+  private chatsContainer = document.createElement('div');
   public scrollable: Scrollable;
-  public selectedScrollable: Scrollable;
+  private selectedScrollable: Scrollable;
   
-  public selectedContainer: HTMLElement;
+  private selectedContainer: HTMLElement;
   public input: HTMLInputElement;
   
   //public selected: {[peerId: PeerId]: HTMLElement} = {};
@@ -77,6 +78,8 @@ export default class AppSelectPeers {
   private selfPresence: LangPackKey = 'Presence.YourChat';
   
   private needSwitchList = false;
+
+  private sectionNameLangPackKey: LangPackKey;
   
   constructor(options: {
     appendTo: AppSelectPeers['appendTo'], 
@@ -92,7 +95,8 @@ export default class AppSelectPeers {
     placeholder?: AppSelectPeers['placeholder'],
     selfPresence?: AppSelectPeers['selfPresence'],
     exceptSelf?: AppSelectPeers['exceptSelf'],
-    filterPeerTypeBy?: AppSelectPeers['filterPeerTypeBy']
+    filterPeerTypeBy?: AppSelectPeers['filterPeerTypeBy'],
+    sectionNameLangPackKey?: AppSelectPeers['sectionNameLangPackKey']
   }) {
     safeAssign(this, options);
 
@@ -139,6 +143,8 @@ export default class AppSelectPeers {
     this.input.type = 'text';
 
     if(this.multiSelect) {
+      const section = new SettingSection({});
+      section.innerContainer.classList.add('selector-search-section');
       let topContainer = document.createElement('div');
       topContainer.classList.add('selector-search-container');
   
@@ -149,7 +155,7 @@ export default class AppSelectPeers {
       topContainer.append(this.selectedContainer);
       this.selectedScrollable = new Scrollable(topContainer);
   
-      let delimiter = document.createElement('hr');
+      // let delimiter = document.createElement('hr');
 
       this.selectedContainer.addEventListener('click', (e) => {
         if(this.freezed) return;
@@ -167,11 +173,18 @@ export default class AppSelectPeers {
         }
       });
 
-      this.container.append(topContainer, delimiter);
+      section.content.append(topContainer);
+      this.container.append(section.container/* , delimiter */);
     }
 
     this.chatsContainer.classList.add('chatlist-container');
-    this.chatsContainer.append(this.list);
+    // this.chatsContainer.append(this.list);
+    const section = new SettingSection({
+      name: this.sectionNameLangPackKey,
+      noShadow: true
+    });
+    section.content.append(this.list);
+    this.chatsContainer.append(section.container);
     this.scrollable = new Scrollable(this.chatsContainer);
     this.scrollable.setVirtualContainer(this.list);
 
@@ -207,6 +220,8 @@ export default class AppSelectPeers {
     this.scrollable.onScrolledBottom = () => {
       this.getMoreResults();
     };
+
+    this.scrollable.container.prepend(generateDelimiter());
 
     this.container.append(this.chatsContainer);
     this.appendTo.append(this.container);
@@ -565,7 +580,10 @@ export default class AppSelectPeers {
     this.onChange && this.onChange(this.selected.size);
     
     if(scroll) {
-      this.selectedScrollable.scrollIntoViewNew(this.input, 'center');
+      this.selectedScrollable.scrollIntoViewNew({
+        element: this.input, 
+        position: 'center'
+      });
     }
     
     return div;
@@ -602,7 +620,11 @@ export default class AppSelectPeers {
     });
 
     window.requestAnimationFrame(() => { // ! not the best place for this raf though it works
-      this.selectedScrollable.scrollIntoViewNew(this.input, 'center', undefined, undefined, FocusDirection.Static);
+      this.selectedScrollable.scrollIntoViewNew({
+        element: this.input, 
+        position: 'center', 
+        forceDirection: FocusDirection.Static
+      });
     });
   }
 }

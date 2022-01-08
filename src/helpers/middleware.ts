@@ -12,10 +12,10 @@ export const getMiddleware = () => {
       cleanupObj.cleaned = true;
       cleanupObj = {cleaned: false};
     },
-    get: () => {
+    get: (additionalCallback?: () => boolean) => {
       const _cleanupObj = cleanupObj;
       return () => {
-        return !_cleanupObj.cleaned;
+        return !_cleanupObj.cleaned && (!additionalCallback || additionalCallback());
       };
     }
   };

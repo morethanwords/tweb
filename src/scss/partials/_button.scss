@@ -186,7 +186,7 @@
     @include hover-background-effect();
 
     &.danger {
-      @include hover-background-effect(danger);
+      @include hover-background-effect(red);
     }
 
     &:before {
@@ -287,6 +287,10 @@
 
     @include hover() {
       background: var(--light-primary-color);
+    }
+
+    .c-ripple__circle {
+      background-color: var(--light-primary-color);
     }
 
     &.danger {
@@ -431,4 +435,57 @@
   /* .c-ripple__circle {
     background-color: var(--light-primary-color);
   } */
+}
+
+.call-button {
+  width: var(--call-button-size);
+  height: var(--call-button-size);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1.5rem;
+  position: relative;
+  border-radius: 50%;
+  backdrop-filter: blur(25px);
+
+  &-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    width: var(--call-button-size);
+
+    &.disabled {
+      pointer-events: none;
+
+      .call-button { // ! fix backdrop-filter transition
+        pointer-events: none;
+
+        &,
+        &-text {
+          opacity: .8;
+        }
+      }
+    }
+  }
+
+  &-text {
+    white-space: nowrap;
+    font-size: .875rem;
+    margin-top: .25rem;
+
+    @include animation-level(2) {
+      transition: opacity var(--transition-standard-in);
+    }
+  }
+
+  @include animation-level(2) {
+    transition: background-color var(--transition-standard-in), opacity var(--transition-standard-in);
+  }
+
+  & + &,
+  &-container + &-container {
+    margin-left: var(--call-button-margin);
+  }
 }

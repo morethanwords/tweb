@@ -4,17 +4,19 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-export default function getVisibleRect(element: HTMLElement, overflowElement: HTMLElement) {
+export default function getVisibleRect(element: HTMLElement, overflowElement: HTMLElement, lookForSticky?: boolean) {
   const rect = element.getBoundingClientRect();
   const overflowRect = overflowElement.getBoundingClientRect();
 
   let {top: overflowTop, bottom: overflowBottom} = overflowRect;
 
   // * respect sticky headers
-  const sticky = overflowElement.querySelector('.sticky');
-  if(sticky) {
-    const stickyRect = sticky.getBoundingClientRect();
-    overflowTop = stickyRect.bottom;
+  if(lookForSticky) {
+    const sticky = overflowElement.querySelector('.sticky');
+    if(sticky) {
+      const stickyRect = sticky.getBoundingClientRect();
+      overflowTop = stickyRect.bottom;
+    }
   }
 
   if(rect.top >= overflowBottom
@@ -48,3 +50,5 @@ export default function getVisibleRect(element: HTMLElement, overflowElement: HT
     overflow
   };
 }
+
+(window as any).getVisibleRect = getVisibleRect;

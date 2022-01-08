@@ -6,6 +6,7 @@
 
 import noop from "../../helpers/noop";
 import { safeAssign } from "../../helpers/object";
+import rootScope from "../rootScope";
 import lottieLoader, { LottieAssetName } from "./lottieLoader";
 import type RLottiePlayer from "./rlottiePlayer";
 import { RLottieColor } from "./rlottiePlayer";
@@ -13,7 +14,8 @@ import { RLottieColor } from "./rlottiePlayer";
 export type RLottieIconOptions = {
   width: number,
   height: number,
-  container?: HTMLElement
+  container?: HTMLElement,
+  skipAnimation?: boolean
 };
 
 export type RLottieIconItemPartOptions = {
@@ -41,8 +43,8 @@ export class RLottieIconItemPart implements RLottieIconItemPartOptions {
     safeAssign(this, options);
   }
 
-  public play() {
-    return this.item.playPart(this);
+  public play(callback?: () => void) {
+    return this.item.playPart(this, callback);
   }
 }
 
@@ -57,6 +59,8 @@ export class RLottieIconItem implements RLottieIconItemOptions {
   public color: RLottieColor;
   public inverseColor: RLottieColor;
   public loadPromise: Promise<void>;
+  public onLoadForPart: () => void;
+  public onLoadForColor: () => void;
 
   constructor(public icon: RLottieIcon, options: RLottieIconItemOptions) {
     this.autoplay = false;
@@ -89,6 +93,16 @@ export class RLottieIconItem implements RLottieIconItemOptions {
       return lottieLoader.waitForFirstFrame(player);
     }).then(player => {
       this.player = player;
+
+      if(this.onLoadForColor) {
+        this.onLoadForColor();
+        this.onLoadForColor = undefined;
+      }
+
+      if(this.onLoadForPart) {
+        this.onLoadForPart();
+        this.onLoadForPart = undefined;
+      }
     });
 
     this.loadPromise = loadPromise;
@@ -106,8 +120,8 @@ export class RLottieIconItem implements RLottieIconItemOptions {
     else return this.parts[index];
   }
 
-  public playPart(part: RLottieIconItemPart) {
-    return this.icon.playPart(this, part);
+  public playPart(part: RLottieIconItemPart, callback?: () => void) {
+    return this.icon.playPart(this, part, callback);
   }
 }
 
@@ -119,6 +133,8 @@ export default class RLottieIcon {
 
   protected items: Map<LottieAssetName, RLottieIconItem>;
   public loadPromises: Map<LottieAssetName, Promise<void>>;
+
+  protected skipAnimation: boolean;
 
   constructor(options: RLottieIconOptions) {
     safeAssign(this, options);
@@ -154,23 +170,31 @@ export default class RLottieIcon {
     return item;
   }
 
-  public playPart(item: RLottieIconItem, index: Parameters<RLottieIconItem['getPart']>[0]) {
-    if(!item.player) return;
+  public playPart(item: RLottieIconItem, index: Parameters<RLottieIconItem['getPart']>[0], callback?: () => void) {
+    if(!item.player) {
+      item.onLoadForPart = () => {
+        this.playPart(item, index, callback);
+      };
+
+      return;
+    }
+    
     const part = item.getPart(index);
     item.player.playPart({
-      from: part.startFrame, 
-      to: part.endFrame
+      from: rootScope.settings.animationsEnabled && !this.skipAnimation ? part.startFrame : part.endFrame, 
+      to: part.endFrame,
+      callback
     });
   }
 
-  public playToPart(item: RLottieIconItem, index: Parameters<RLottieIconItem['getPart']>[0], toEnd: boolean) {
+  /* public playToPart(item: RLottieIconItem, index: Parameters<RLottieIconItem['getPart']>[0], toEnd: boolean) {
     if(!item.player) return;
     const part = item.getPart(index);
     const toFrame = toEnd ? part.endFrame : part.startFrame;
     item.player.playToFrame({
       frame: toFrame
     });
-  }
+  } */
   
   public static generateEqualParts(length: number, frameCount: number): RLottieIconItemPartOptions[] {
     return new Array(length).fill(0).map((_, idx) => {

@@ -11,7 +11,7 @@ import type { Config, InputFile, MethodDeclMap, User } from '../../layer';
 import MTProtoWorker from 'worker-loader!./mtproto.worker';
 //import './mtproto.worker';
 import { isObject } from '../../helpers/object';
-import CryptoWorkerMethods from '../crypto/crypto_methods';
+import CryptoWorkerMethods, { CryptoMethods } from '../crypto/crypto_methods';
 import { logger } from '../logger';
 import rootScope from '../rootScope';
 import webpWorkerController from '../webp/webpWorkerController';
@@ -390,26 +390,34 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
     }
   }
 
-  public performTaskWorkerVoid(task: string, ...args: any[]) {
-    const params = {
+  private createTask(task: string, type: string, args: any[]): any {
+    return {
       task,
-      taskId: this.taskId,
-      args
+      taskId: this.taskId++,
+      type,
+      args,
     };
+  }
 
-    this.pending.push(params);
+  public performTaskWorkerVoid(taskName: string, ...args: any[]) {
+    const task = this.createTask(taskName, undefined, args);
+    this.pending.push(task);
     this.releasePending();
+  }
 
-    this.taskId++;
+  public performTaskWorkerNew<T>(taskName: string, type: string, ...args: any[]) {
+    this.debug && this.log.debug('start', taskName, args);
+
+    return new Promise<T>((resolve, reject) => {
+      const task = this.createTask(taskName, type, args);
+      this.pending.push(task);
+      this.awaiting[task.taskId] = {resolve, reject, taskName: taskName};
+      this.releasePending();
+    });
   }
 
   public performTaskWorker<T>(task: string, ...args: any[]) {
-    this.debug && this.log.debug('start', task, args);
-
-    return new Promise<T>((resolve, reject) => {
-      this.awaiting[this.taskId] = {resolve, reject, taskName: task};
-      this.performTaskWorkerVoid(task, ...args);
-    });
+    return this.performTaskWorkerNew<T>(task, undefined, ...args);
   }
 
   private releasePending() {
@@ -429,6 +437,12 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
   public setUpdatesProcessor(callback: (obj: any) => void) {
     this.updatesProcessor = callback;
   }
+
+  /// #if MTPROTO_WORKER
+  public invokeCrypto<Method extends keyof CryptoMethods>(method: Method, ...args: Parameters<CryptoMethods[typeof method]>): Promise<Awaited<ReturnType<CryptoMethods[typeof method]>>> {
+    return this.performTaskWorkerNew(method, 'crypto', ...args);
+  }
+  /// #endif
 
   public invokeApi<T extends keyof MethodDeclMap>(method: T, params: MethodDeclMap[T]['req'] = {}, options: InvokeApiOptions = {}): Promise<MethodDeclMap[T]['res']> {
     //console.log('will invokeApi:', method, params, options);

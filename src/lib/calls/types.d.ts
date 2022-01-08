@@ -3,7 +3,7 @@ import type { logger } from "../logger";
 import { WebRTCLineType } from "./sdpBuilder";
 
 export type GroupCallConnectionTransport = {
-  candidates: {
+  candidates?: {
     generation: string,
     component: string,
     protocol: string,
@@ -17,9 +17,9 @@ export type GroupCallConnectionTransport = {
     'rel-addr'?: string,
     'rel-port'?: string
   }[],
-  xmlns: string,
+  xmlns?: string,
   ufrag: string,
-  'rtcp-mux': boolean,
+  'rtcp-mux'?: boolean,
   pwd: string,
   fingerprints: {
     fingerprint: string,
@@ -29,14 +29,10 @@ export type GroupCallConnectionTransport = {
 };
 
 export type Ssrc = {
-  // isRemoved?: boolean,
   source: number,
   sourceGroups?: GroupCallParticipantVideoSourceGroup[],
   type: WebRTCLineType,
-  endpoint?: string,
-  // isMain?: boolean,
-  // doNotOffer?: boolean,
-  // transceiver?: RTCRtpTransceiver
+  endpoint?: string
 };
 
 export type RtcpFbs = {
@@ -82,11 +78,78 @@ export type UpdateGroupCallConnectionData = {
 
 export type UpgradeGroupCallConnectionPresentationData = Omit<UpdateGroupCallConnectionData, 'audio'>;
 
-export type SdpConference = {
-  sessionId: number,
-  transport: GroupCallConnectionTransport,
-  ssrcs: Ssrc[]
+// * Peer-to-Peer
+export type P2PPayloadType = {
+  id: number,
+  name: string,
+  clockrate: number,
+  channels?: number,
+  feedbackTypes?: Array<RtcpFbs>,
+  parameters?: {
+    [k in string]: string | number
+  },
 };
+
+export type P2PAudioCodec = {
+  payloadTypes: Array<P2PPayloadType>,
+  rtpExtensions: Array<RtpHdrexts>,
+  ssrc: string,
+};
+
+export type P2PVideoCodec = P2PAudioCodec & {
+  ssrcGroups: {semantics: string, ssrcs: string[]}[]
+};
+
+export type CallSignalingData = CallSignalingData.candidates | CallSignalingData.initialSetup;
+export namespace CallSignalingData {
+  export type candidates = {
+    '@type': 'Candidates',
+    candidates: {
+      sdpString: string
+    }[]
+  };
+
+  export type initialSetup = {
+    '@type': 'InitialSetup',
+    audio: P2PAudioCodec,
+    fingerprints: GroupCallConnectionTransport['fingerprints'],
+    pwd: string,
+    ufrag: string,
+    video: P2PVideoCodec,
+    screencast?: P2PVideoCodec
+  };
+}
+
+export type CallMediaState = {
+  '@type': 'MediaState',
+  type?: 'input' | 'output',
+  lowBattery: boolean,
+  muted: boolean,
+  screencastState: 'active' | 'inactive',
+  videoRotation: number,
+  videoState: CallMediaState['screencastState']
+};
+
+export type DiffieHellmanInfo = DiffieHellmanInfo.a | DiffieHellmanInfo.b;
+
+export namespace DiffieHellmanInfo {
+  export type a = {
+    a: Uint8Array,
+    g_a: Uint8Array,
+    g_a_hash: Uint8Array,
+    p: Uint8Array,
+  };
+
+  export type b = {
+    b: Uint8Array,
+    g_b: Uint8Array,
+    g_b_hash: Uint8Array,
+    p: Uint8Array,
+  };
+}
+
+export type CallType = 'video' | 'voice';
+// * Peer-to-Peer end
 
 declare global {
   /* interface HTMLMediaElement {

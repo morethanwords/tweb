@@ -12,6 +12,7 @@
 import { logger } from '../logger';
 import rootScope from '../rootScope';
 import { GROUP_CALL_AMPLITUDE_ANALYSE_COUNT_MAX } from './constants';
+import stopTrack from './helpers/stopTrack';
 import LocalConferenceDescription from './localConferenceDescription';
 import { getAmplitude, toTelegramSource } from './utils';
 
@@ -68,13 +69,21 @@ export default class StreamManager {
   private items: StreamItem[];
 
   private log: ReturnType<typeof logger>;
+
+  public direction: RTCRtpTransceiver['direction'];
+  public canCreateConferenceEntry: boolean;
+  public lol: boolean;
   
   constructor(private interval?: number) {
     this.context = new (window.AudioContext || (window as any).webkitAudioContext)();
     this.items = [];
     this.outputStream = new MediaStream();
+    this.inputStream = new MediaStream();
     this.counter = 0;
     this.log = logger('SM');
+    this.direction = 'sendonly';
+    this.canCreateConferenceEntry = true;
+    // this.lol = true;
   }
 
   public addStream(stream: MediaStream, type: StreamItem['type']) {
@@ -249,31 +258,68 @@ export default class StreamManager {
   } */
 
   public appendToConference(conference: LocalConferenceDescription) {
-    const transceiverInit: RTCRtpTransceiverInit = {direction: 'sendonly', streams: [this.inputStream]};
+    if(this.lol) {
+      return;
+    }
+    // return;
+    const {inputStream, direction, canCreateConferenceEntry} = this;
+    // const direction: RTCRtpTransceiverInit['direction'] = 'sendrecv';
+    // const direction: RTCRtpTransceiverInit['direction'] = 'sendonly';
+    const transceiverInit: RTCRtpTransceiverInit = {direction, streams: [inputStream]};
     const types: ['audio' | 'video', RTCRtpTransceiverInit][] = [
       ['audio' as const, transceiverInit], 
       ['video' as const, transceiverInit/* {sendEncodings: [{maxBitrate: 2500000}], ...transceiverInit} */]
     ];
 
-    const tracks = this.inputStream.getTracks();
+    const tracks = inputStream.getTracks();
+    // const transceivers = conference.connection.getTransceivers();
     for(const [type, transceiverInit] of types) {
-      let entry = conference.findEntry(entry => entry.direction === 'sendonly' && entry.type === type);
+      let entry = conference.findEntry(entry => entry.direction === direction && entry.type === type);
       if(!entry) {
+        if(!canCreateConferenceEntry) {
+          continue;
+        }
+
         entry = conference.createEntry(type);
-        entry.createTransceiver(conference.connection, transceiverInit);
       }
-      
+      /* const entry = conference.findFreeSendRecvEntry(type, true);
+      if(!entry.transceiver) {
+        entry.transceiver = transceivers.find(transceiver => transceiver.mid === entry.mid);
+      } */
+
+      let {transceiver} = entry;
+      if(!transceiver) {
+        transceiver = entry.createTransceiver(conference.connection, transceiverInit);
+      }
+
+      if(entry.direction !== transceiver.direction) {
+        transceiver.direction = entry.direction;
+      }
+
       const track = tracks.find(track => track.kind === type);
-      const sender = entry.transceiver.sender;
+      const sender = transceiver.sender;
       if(sender.track === track) {
         continue;
       }
 
-      try { // ! don't use await here. it will wait for adding track and fake one won't be visible in startNegotiation.
-        /* await  */sender.replaceTrack(track);
-      } catch(err) {
-        this.log.error(err);
-      }
+      // try { // ! don't use await here. it will wait for adding track and fake one won't be visible in startNegotiation.
+        /* await  */sender.replaceTrack(track).catch(err => {
+          this.log.error(err);
+        });
+      // } catch(err) {
+
+      // }
+    }
+  }
+
+  public stop() {
+    try {
+      const tracks = this.inputStream.getTracks().concat(this.outputStream.getTracks());
+      tracks.forEach(track => {
+        stopTrack(track);
+      });
+    } catch(e) {
+      this.log.error(e);
     }
   }
 }

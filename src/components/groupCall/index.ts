@@ -11,10 +11,9 @@ import customProperties from "../../helpers/dom/customProperties";
 import { safeAssign } from "../../helpers/object";
 import { GroupCall, GroupCallParticipant } from "../../layer";
 import type { AppChatsManager } from "../../lib/appManagers/appChatsManager";
-import type { AppGroupCallsManager, GroupCallInstance } from "../../lib/appManagers/appGroupCallsManager";
+import type { AppGroupCallsManager } from "../../lib/appManagers/appGroupCallsManager";
 import type { AppPeersManager } from "../../lib/appManagers/appPeersManager";
 import GROUP_CALL_STATE from "../../lib/calls/groupCallState";
-import { LangPackKey } from "../../lib/langPack";
 import { RLottieColor } from "../../lib/rlottie/rlottiePlayer";
 import rootScope from "../../lib/rootScope";
 import ButtonIcon from "../buttonIcon";
@@ -26,16 +25,16 @@ import GroupCallDescriptionElement from "./description";
 import GroupCallTitleElement from "./title";
 import { addFullScreenListener, cancelFullScreen, isFullScreen, requestFullScreen } from "../../helpers/dom/fullScreen";
 import Scrollable from "../scrollable";
-import MovableElement, { MovableState } from "../movableElement";
+import { MovableState } from "../movableElement";
 import animationIntersector from "../animationIntersector";
-import { IS_TOUCH_SUPPORTED } from "../../environment/touchSupport";
 import { IS_APPLE_MOBILE } from "../../environment/userAgent";
-import mediaSizes, { ScreenSize } from "../../helpers/mediaSizes";
 import toggleDisability from "../../helpers/dom/toggleDisability";
-import { ripple } from "../ripple";
 import throttle from "../../helpers/schedulers/throttle";
 import IS_SCREEN_SHARING_SUPPORTED from "../../environment/screenSharingSupport";
-import ListenerSetter from "../../helpers/listenerSetter";
+import GroupCallInstance from "../../lib/calls/groupCallInstance";
+import makeButton from "../call/button";
+import MovablePanel from "../../helpers/movablePanel";
+import findUpClassName from "../../helpers/dom/findUpClassName";
 
 export enum GROUP_CALL_PARTICIPANT_MUTED_STATE {
   UNMUTED,
@@ -118,32 +117,6 @@ let previousState: MovableState = {
 
 const className = 'group-call';
 
-function makeButton(listenerSetter: ListenerSetter, options: {
-  text?: LangPackKey,
-  isDanger?: boolean,
-  noRipple?: boolean,
-  callback?: () => void,
-  listenerSetter?: ListenerSetter
-}) {
-  const _className = className + '-button';
-  const div = document.createElement('div');
-  div.classList.add(_className, 'rp-overflow');
-
-  if(!options.noRipple) {
-    ripple(div);
-  }
-
-  if(options.isDanger) {
-    div.classList.add(_className + '-red');
-  }
-
-  if(options.callback) {
-    attachClickEvent(div, options.callback, {listenerSetter: options.listenerSetter});
-  }
-
-  return div;
-}
-
 export default class PopupGroupCall extends PopupElement {
   private appGroupCallsManager: AppGroupCallsManager;
   private appPeersManager: AppPeersManager;
@@ -160,7 +133,7 @@ export default class PopupGroupCall extends PopupElement {
   private btnExitFullScreen: HTMLButtonElement;
   private btnInvite: HTMLButtonElement;
   private btnShowColumn: HTMLButtonElement;
-  private movable: MovableElement;
+  private movablePanel: MovablePanel;
   private buttonsContainer: HTMLDivElement;
   private btnFullScreen2: HTMLButtonElement;
   private btnVideo: HTMLDivElement;
@@ -202,7 +175,6 @@ export default class PopupGroupCall extends PopupElement {
 
     const btnInvite = this.btnInvite = ButtonIcon('adduser');
     const btnShowColumn = this.btnShowColumn = ButtonIcon('rightpanel ' + className + '-only-big');
-    this.toggleMovable(!IS_TOUCH_SUPPORTED);
 
     attachClickEvent(btnShowColumn, this.toggleRightColumn, {listenerSetter});
 
@@ -259,45 +231,54 @@ export default class PopupGroupCall extends PopupElement {
       ...options
     });
 
-    listenerSetter.add(rootScope)('group_call_state', (instance) => {
-      if(this.instance === instance) {
-        this.updateInstance();
-      }
+    this.movablePanel = new MovablePanel({
+      listenerSetter,
+      movableOptions: {
+        minWidth: 400,
+        minHeight: 480,
+        element: this.element,
+        verifyTouchTarget: (e) => {
+          const target = e.target;
+          if(findUpClassName(target, 'chatlist') || 
+            findUpClassName(target, 'group-call-button') || 
+            findUpClassName(target, 'btn-icon') ||
+            findUpClassName(target, 'group-call-participants-video-container') ||
+            isFullScreen()) {
+            return false;
+          }
+
+          return true;
+        }
+      },
+      onResize: () => this.toggleBigLayout(),
+      previousState
+    });
+
+    listenerSetter.add(instance)('state', () => {
+      this.updateInstance();
     });
 
     listenerSetter.add(rootScope)('group_call_update', (groupCall) => {
-      if(this.instance.id === groupCall.id) {
+      if(this.instance?.id === groupCall.id) {
         this.updateInstance();
       }
     });
 
-    listenerSetter.add(rootScope)('group_call_pinned', ({instance}) => {
-      if(this.instance === instance) {
-        this.setHasPinned();
-      }
+    listenerSetter.add(instance)('pinned', () => {
+      this.setHasPinned();
     });
 
     listenerSetter.add(this.groupCallParticipantsVideo)('toggleControls', this.onToggleControls);
 
-    listenerSetter.add(mediaSizes)('changeScreen', (from, to) => {
-      if(to === ScreenSize.mobile || from === ScreenSize.mobile) {
-        this.toggleMovable(!IS_TOUCH_SUPPORTED);
-      }
-    });
-
     this.addEventListener('close', () => {
-      const {movable} = this;
-      if(movable) {
-        previousState = movable.state;
-      }
+      const {movablePanel} = this;
+      previousState = movablePanel.state;
 
       this.groupCallParticipantsVideo.destroy();
       this.groupCallParticipants.destroy();
       this.groupCallMicrophoneIcon.destroy();
 
-      if(movable) {
-        movable.destroy();
-      }
+      movablePanel.destroy();
     });
 
     this.toggleRightColumn();
@@ -310,21 +291,20 @@ export default class PopupGroupCall extends PopupElement {
     const buttons = this.buttonsContainer = document.createElement('div');
     buttons.classList.add(className + '-buttons');
 
-    const _makeButton = makeButton.bind(null, this.listenerSetter);
+    const _makeButton = makeButton.bind(null, className, this.listenerSetter);
 
     const btnVideo = this.btnVideo = _makeButton({
-      text: 'VoiceChat.Video.Stream.Video',
-      callback: this.onVideoClick
+      // text: 'VoiceChat.Video.Stream.Video',
+      callback: this.onVideoClick,
+      icon: 'videocamera_filled'
     });
-
-    btnVideo.classList.add('tgico-videocamera_filled');
 
     const btnScreen = this.btnScreen = _makeButton({
-      text: 'VoiceChat.Video.Stream.Screencast',
-      callback: this.onScreenClick
+      // text: 'VoiceChat.Video.Stream.Screencast',
+      callback: this.onScreenClick,
+      icon: 'sharescreen_filled'
     });
 
-    btnScreen.classList.add('tgico-sharescreen_filled');
     btnScreen.classList.toggle('hide', !IS_SCREEN_SHARING_SUPPORTED);
 
     const btnMute = _makeButton({
@@ -337,19 +317,19 @@ export default class PopupGroupCall extends PopupElement {
     btnMute.append(microphoneIcon.container);
 
     const btnMore = _makeButton({
-      text: 'VoiceChat.Video.Stream.More'
+      // text: 'VoiceChat.Video.Stream.More'
+      icon: 'settings_filled'
     });
 
-    btnMore.classList.add('tgico-settings_filled', 'btn-disabled');
+    btnMore.classList.add('btn-disabled');
     btnMore.classList.toggle('hide', !IS_SCREEN_SHARING_SUPPORTED);
 
     const btnLeave = _makeButton({
-      text: 'VoiceChat.Leave',
+      // text: 'VoiceChat.Leave',
       isDanger: true,
-      callback: this.onLeaveClick
+      callback: this.onLeaveClick,
+      icon: 'close'
     });
-
-    btnLeave.classList.add('tgico-close');
 
     buttons.append(btnVideo, btnScreen, btnMute, btnMore, btnLeave);
 
@@ -419,36 +399,6 @@ export default class PopupGroupCall extends PopupElement {
     return this.container;
   }
 
-  private toggleMovable(enabled: boolean) {
-    if(enabled) {
-      if(this.movable) {
-        return;
-      }
-
-      const movable = this.movable = new MovableElement({
-        // minWidth: 366,
-        minWidth: 400,
-        minHeight: 480,
-        element: this.element
-      });
-  
-      movable.state = previousState;
-      if(previousState.top === undefined) {
-        movable.setPositionToCenter();
-      }
-  
-      this.listenerSetter.add(movable)('resize', this.toggleBigLayout);
-    } else {
-      if(!this.movable) {
-        return;
-      }
-
-      this.movable.destroyElements();
-      this.movable.destroy();
-      this.movable = undefined;
-    }
-  }
-
   private onFullScreenChange = () => {
     this.toggleBigLayout();
     const isFull = isFullScreen();
@@ -470,7 +420,8 @@ export default class PopupGroupCall extends PopupElement {
 
   private toggleBigLayout = () => {
     const isFull = isFullScreen();
-    const isBig = (isFull || !!(this.movable && this.movable.width >= 680)) && !!this.videosCount;
+    const movable = this.movablePanel?.movable;
+    const isBig = (isFull || !!(movable && movable.width >= 680)) && !!this.videosCount;
 
     /* if(!isBig && isFull) {
       cancelFullScreen();
@@ -519,11 +470,16 @@ export default class PopupGroupCall extends PopupElement {
       return;
     }
 
+    const {participant, groupCall} = this.instance;
+    if(!participant) {
+      return;
+    }
+
     this.setTitle();
     this.setDescription();
     this.setHasPinned();
 
-    const microphoneButtonState = getGroupCallMicrophoneButtonState(this.instance.groupCall as any, this.instance.participant);
+    const microphoneButtonState = getGroupCallMicrophoneButtonState(groupCall as any, participant);
     this.container.dataset.micState = microphoneButtonState === GROUP_CALL_MICROPHONE_BUTTON_STATE.HAND ? 'hand' : (microphoneButtonState === GROUP_CALL_MICROPHONE_BUTTON_STATE.MUTED ? 'muted' : 'unmuted');
     this.groupCallMicrophoneIcon.setState(microphoneButtonState);
   }

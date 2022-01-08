@@ -27,6 +27,7 @@ export default class AppActiveSessionsTab extends SliderSuperTab {
   private menuElement: HTMLElement;
   
   protected init() {
+    this.header.classList.add('with-border');
     this.container.classList.add('active-sessions-container');
     this.setTitle('SessionsTitle');
 
@@ -53,7 +54,8 @@ export default class AppActiveSessionsTab extends SliderSuperTab {
 
     {
       const section = new SettingSection({
-        name: 'CurrentSession'
+        name: 'CurrentSession',
+        caption: 'ClearOtherSessionsHelp'
       });
 
       const auth = authorizations.findAndSplice(auth => auth.pFlags.current);
@@ -96,7 +98,8 @@ export default class AppActiveSessionsTab extends SliderSuperTab {
     }
 
     const otherSection = new SettingSection({
-      name: 'OtherSessions'
+      name: 'OtherSessions',
+      caption: 'SessionsListInfo'
     });
 
     authorizations.forEach(auth => {

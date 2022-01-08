@@ -73,6 +73,7 @@ export class RangeSettingSelector {
 
 export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
   init() {
+    this.header.classList.add('with-border');
     this.container.classList.add('general-settings-container');
     this.setTitle('General');
 

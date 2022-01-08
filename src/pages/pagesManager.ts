@@ -47,7 +47,11 @@ class PagesManager {
       this.pageId = id;
 
       if(this.scrollableDiv) {
-        fastSmoothScroll(this.scrollableDiv, this.scrollableDiv.firstElementChild as HTMLElement, 'start');
+        fastSmoothScroll({
+          container: this.scrollableDiv, 
+          element: this.scrollableDiv.firstElementChild as HTMLElement, 
+          position: 'start'
+        });
       }
     } else {
       this.pagesDiv.style.display = 'none';

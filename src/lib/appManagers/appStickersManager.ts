@@ -26,10 +26,12 @@ export type MyStickerSetInput = {
   access_hash?: StickerSet.stickerSet['access_hash']
 };
 
-export class AppStickersManager {
-  private storage = new AppStorage<Record<Long, MessagesStickerSet>, typeof DATABASE_STATE>(DATABASE_STATE, 'stickerSets');
+export type MyMessagesStickerSet = MessagesStickerSet.messagesStickerSet;
 
-  private getStickerSetPromises: {[setId: Long]: Promise<MessagesStickerSet>} = {};
+export class AppStickersManager {
+  private storage = new AppStorage<Record<Long, MyMessagesStickerSet>, typeof DATABASE_STATE>(DATABASE_STATE, 'stickerSets');
+
+  private getStickerSetPromises: {[setId: Long]: Promise<MyMessagesStickerSet>} = {};
   private getStickersByEmoticonsPromises: {[emoticon: string]: Promise<Document[]>} = {};
 
   private greetingStickers: Document.document[];
@@ -41,8 +43,9 @@ export class AppStickersManager {
 
     rootScope.addMultipleEventsListeners({
       updateNewStickerSet: (update) => {
-        this.saveStickerSet(update.stickerset, update.stickerset.set.id);
-        rootScope.dispatchEvent('stickers_installed', update.stickerset.set);
+        const stickerSet = update.stickerset as MyMessagesStickerSet;
+        this.saveStickerSet(stickerSet, stickerSet.set.id);
+        rootScope.dispatchEvent('stickers_installed', stickerSet.set);
       }
     });
 
@@ -92,7 +95,7 @@ export class AppStickersManager {
     overwrite: boolean,
     useCache: boolean,
     saveById: boolean
-  }> = {}): Promise<MessagesStickerSet> {
+  }> = {}): Promise<MyMessagesStickerSet> {
     const id = set.id;
     if(this.getStickerSetPromises[id]) {
       return this.getStickerSetPromises[id];
@@ -111,8 +114,9 @@ export class AppStickersManager {
 
       try {
         const stickerSet = await apiManager.invokeApi('messages.getStickerSet', {
-          stickerset: this.getStickerSetInput(set)
-        });
+          stickerset: this.getStickerSetInput(set),
+          hash: 0
+        }) as MyMessagesStickerSet;
   
         const saveById = params.saveById ? id : stickerSet.set.id;
         this.saveStickerSet(stickerSet, saveById);

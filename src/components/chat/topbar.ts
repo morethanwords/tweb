@@ -47,6 +47,8 @@ import AppEditContactTab from "../sidebarRight/tabs/editContact";
 import appMediaPlaybackController from "../appMediaPlaybackController";
 import { NULL_PEER_ID } from "../../lib/mtproto/mtproto_config";
 import IS_GROUP_CALL_SUPPORTED from "../../environment/groupCallSupport";
+import IS_CALL_SUPPORTED from "../../environment/callSupport";
+import { CallType } from "../../lib/calls/types";
 
 type ButtonToVerify = {element?: HTMLElement, verify: () => boolean};
 
@@ -60,6 +62,7 @@ export default class ChatTopbar {
   private chatUtils: HTMLDivElement;
   private btnJoin: HTMLButtonElement;
   private btnPinned: HTMLButtonElement;
+  private btnCall: HTMLButtonElement;
   private btnGroupCall: HTMLButtonElement;
   private btnMute: HTMLButtonElement;
   private btnSearch: HTMLButtonElement;
@@ -156,12 +159,14 @@ export default class ChatTopbar {
       this.pinnedMessage ? this.pinnedMessage.pinnedMessageContainer.divAndCaption.container : null, 
       this.btnJoin, 
       this.btnPinned, 
+      this.btnCall, 
       this.btnGroupCall, 
       this.btnMute, 
       this.btnSearch, 
       this.btnMore
     ].filter(Boolean));
 
+    this.pushButtonToVerify(this.btnCall, this.verifyCallButton.bind(this, 'voice'));
     this.pushButtonToVerify(this.btnGroupCall, this.verifyVideoChatButton);
 
     this.chatInfoContainer.append(this.btnBack, this.chatInfo, this.chatUtils);
@@ -290,6 +295,14 @@ export default class ChatTopbar {
     return (chat as MTChat.chat).pFlags?.call_active || this.appChatsManager.hasRights(chatId, 'manage_call');
   };
 
+  private verifyCallButton = (type?: CallType) => {
+    if(!IS_CALL_SUPPORTED || !this.peerId.isUser()) return false;
+    const userId = this.peerId.toUserId();
+    const userFull = this.appProfileManager.getCachedFullUser(userId);
+
+    return !!userFull && !!(type === 'voice' ? userFull.pFlags.phone_calls_available : userFull.pFlags.video_calls_available);
+  };
+
   public constructUtils() {
     this.menuButtons = [{
       icon: 'search',
@@ -332,6 +345,16 @@ export default class ChatTopbar {
         const chatFull = this.appProfileManager.getCachedFullChat(this.peerId.toChatId());
         return this.chat.type === 'chat' && !!(chatFull as ChatFull.channelFull)?.linked_chat_id;
       }
+    }, {
+      icon: 'phone',
+      text: 'Call',
+      onClick: this.onCallClick.bind(this, 'voice'),
+      verify: this.verifyCallButton.bind(this, 'voice')
+    }, {
+      icon: 'videocamera',
+      text: 'VideoCall',
+      onClick: this.onCallClick.bind(this, 'video'),
+      verify: this.verifyCallButton.bind(this, 'video')
     }, {
       icon: 'videochat',
       text: 'PeerInfo.Action.LiveStream',
@@ -487,6 +510,10 @@ export default class ChatTopbar {
     }, {listenerSetter: this.listenerSetter});
   }
 
+  private onCallClick(type: CallType) {
+    this.chat.appImManager.callUser(this.peerId.toUserId(), type);
+  }
+
   private onJoinGroupCallClick = () => {
     this.chat.appImManager.joinGroupCall(this.peerId);
   };
@@ -503,10 +530,12 @@ export default class ChatTopbar {
     this.pinnedMessage = new ChatPinnedMessage(this, this.chat, this.appMessagesManager, this.appPeersManager);
 
     this.btnJoin = Button('btn-primary btn-color-primary chat-join hide');
+    this.btnCall = ButtonIcon('phone');
     this.btnGroupCall = ButtonIcon('videochat');
     this.btnPinned = ButtonIcon('pinlist');
     this.btnMute = ButtonIcon('mute');
 
+    this.attachClickEvent(this.btnCall, this.onCallClick.bind(this, 'voice'));
     this.attachClickEvent(this.btnGroupCall, this.onJoinGroupCallClick);
 
     this.attachClickEvent(this.btnPinned, () => {
@@ -660,7 +689,7 @@ export default class ChatTopbar {
     if(this.btnJoin) {
       if(this.appPeersManager.isAnyChat(peerId)) {
         const chatId = peerId.toChatId();
-        replaceContent(this.btnJoin, i18n(this.appChatsManager.isChannel(chatId) ? 'Chat.Subscribe' : 'ChannelJoin'));
+        replaceContent(this.btnJoin, i18n(this.appChatsManager.isBroadcast(chatId) ? 'Chat.Subscribe' : 'ChannelJoin'));
         this.btnJoin.classList.toggle('hide', !this.appChatsManager.getChat(chatId)?.pFlags?.left);
       } else {
         this.btnJoin.classList.add('hide');

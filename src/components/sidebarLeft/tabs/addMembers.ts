@@ -18,6 +18,7 @@ export default class AppAddMembersTab extends SliderSuperTab {
   private skippable: boolean;
 
   protected init() {
+    this.container.classList.add('add-members-container');
     this.nextBtn = ButtonCorner({icon: 'arrow_next'});
     this.content.append(this.nextBtn);
     this.scrollable.container.remove();

@@ -62,13 +62,13 @@ export default class PopupCreateContact extends PopupElement {
     this.listenerSetter.add(nameInputField.input)('input', onInput);
     this.listenerSetter.add(lastNameInputField.input)('input', onInput);
 
+    telInputField.validate = () => {
+      return !!telInputField.value.match(/\d/);
+    };
+
     const user = appUsersManager.getSelf();
     const formatted = formatPhoneNumber(user.phone);
-    if(formatted) {
-      telInputField.validate = () => {
-        return !!telInputField.value.match(/\d/);
-      };
-
+    if(formatted.code) {
       telInputField.value = '+' + formatted.code.country_code;
     }
 

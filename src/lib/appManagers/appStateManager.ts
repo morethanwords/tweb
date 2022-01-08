@@ -176,7 +176,7 @@ const ALL_KEYS = Object.keys(STATE_INIT) as any as Array<keyof State>;
 const REFRESH_KEYS = ['contactsList', 'stateCreatedTime',
   'maxSeenMsgId', 'filters', 'topPeers'] as any as Array<keyof State>;
 
-export type StatePeerType = 'recentSearch' | 'topPeer' | 'dialog' | 'contact' | 'topMessage';
+export type StatePeerType = 'recentSearch' | 'topPeer' | 'dialog' | 'contact' | 'topMessage' | 'self';
 
 //const REFRESH_KEYS_WEEK = ['dialogs', 'allDialogsLoaded', 'updates', 'pinnedOrders'] as any as Array<keyof State>;
 
@@ -213,6 +213,10 @@ export class AppStateManager extends EventListenerBase<{
   constructor() {
     super();
     this.loadSavedState();
+
+    rootScope.addEventListener('user_auth', () => {
+      this.requestPeerSingle(rootScope.myId, 'self');
+    });
   }
 
   public loadSavedState(): Promise<State> {

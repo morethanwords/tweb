@@ -23,6 +23,7 @@ export default class AppBackgroundColorTab extends SliderSuperTab {
   private theme: Theme;
 
   init() {
+    this.header.classList.add('with-border');
     this.container.classList.add('background-container', 'background-color-container');
     this.setTitle('SetColor');
 
@@ -34,6 +35,8 @@ export default class AppBackgroundColorTab extends SliderSuperTab {
     section.content.append(this.colorPicker.container);
 
     this.scrollable.append(section.container);
+
+    const gridSection = new SettingSection({});
 
     const grid = this.grid = document.createElement('div');
     grid.classList.add('grid');
@@ -81,7 +84,8 @@ export default class AppBackgroundColorTab extends SliderSuperTab {
       this.applyColor(color);
     }, {listenerSetter: this.listenerSetter});
 
-    this.scrollable.append(grid);
+    gridSection.content.append(grid);
+    this.scrollable.append(gridSection.container);
 
     this.applyColor = throttle(this._applyColor, 16, true);
   }

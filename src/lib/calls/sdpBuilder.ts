@@ -12,7 +12,7 @@
 import { IS_FIREFOX } from '../../environment/userAgent';
 import LocalConferenceDescription, { ConferenceEntry } from './localConferenceDescription';
 import StringFromLineBuilder from './stringFromLineBuilder';
-import { Codec, GroupCallConnectionTransport, PayloadType, Ssrc, UpdateGroupCallConnectionData } from './types';
+import { GroupCallConnectionTransport, PayloadType, UpdateGroupCallConnectionData } from './types';
 import { fromTelegramSource } from './utils';
 
 export type WebRTCLineType = 'video' | 'audio' | 'application';
@@ -97,7 +97,7 @@ export class SDPBuilder extends StringFromLineBuilder {
       );
     }
 
-    if(!skipCandidates) {
+    if(!skipCandidates && transport.candidates) {
       for(const candidate of transport.candidates) {
         this.addCandidate(candidate);
       }
@@ -192,7 +192,7 @@ export class SDPBuilder extends StringFromLineBuilder {
     } */
 
     let setDirection = direction;
-    if(isAnswer && !(isInactive || isApplication)) {
+    if(direction !== 'sendrecv' && isAnswer && !(isInactive || isApplication)) {
       setDirection = direction === 'sendonly' ? 'recvonly' : 'sendonly';
     }
 
@@ -258,7 +258,8 @@ export class SDPBuilder extends StringFromLineBuilder {
     }
 
     for(const entry of entries) {
-      this.addSsrcEntry(entry, conference, isAnswer);
+      // this.addSsrcEntry(entry, conference, isAnswer);
+      this.addSsrcEntry((isAnswer ? entry.recvEntry || entry.sendEntry : entry.sendEntry || entry.recvEntry) || entry, conference, isAnswer);
     }
 
     return this;

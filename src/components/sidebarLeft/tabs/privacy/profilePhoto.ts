@@ -11,6 +11,7 @@ import { LangPackKey } from "../../../../lib/langPack";
 
 export default class AppPrivacyProfilePhotoTab extends SliderSuperTabEventable {
   protected init() {
+    this.header.classList.add('with-border');
     this.container.classList.add('privacy-tab', 'privacy-profile-photo');
     this.setTitle('PrivacyProfilePhoto');
 

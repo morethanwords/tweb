@@ -1,7 +1,13 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
 .color-picker {
   width: 380px;
   max-width: 100%;
-  margin: 1.1875rem auto 1rem;
+  margin: 1.1875rem auto .25rem;
   user-select: none;
 
   &-box {

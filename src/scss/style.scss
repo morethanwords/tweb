@@ -85,6 +85,9 @@ $chat-input-inner-padding-handhelds: .25rem;
   --topbar-call-height: 3rem;
   --topbar-floating-call-height: 0px;
 
+  --call-button-size: 3.375rem;
+  --call-button-margin: 2rem;
+
   // https://github.com/overtake/TelegramSwift/blob/5cc7d2475fe4738a6aa0486c23eaf80a89d33b97/submodules/TGUIKit/TGUIKit/PresentationTheme.swift#L2054
   --peer-avatar-red-top: #ff885e;
   --peer-avatar-red-bottom: #ff516a;
@@ -145,10 +148,12 @@ $chat-input-inner-padding-handhelds: .25rem;
   // * Day theme
   --body-background-color: #fff;
   --background-color-true: #f4f4f5;
-  --background-color: #fff;
+  // --background-color: #fff;
+  --background-color: var(--background-color-true);
   --border-color: #dfe1e5;
   --surface-color: #fff;
   --scrollbar-color: rgba(0, 0, 0, .2);
+  --section-box-shadow-color: rgba(0, 0, 0, .06);
 
   --input-search-background-color: #fff;
   --input-search-border-color: #dfe1e5;
@@ -209,10 +214,12 @@ $chat-input-inner-padding-handhelds: .25rem;
   // * Night theme
   --body-background-color: #181818;
   --background-color-true: #181818;
-  --background-color: #212121;
+  // --background-color: #212121;
+  --background-color: var(--background-color-true);
   --border-color: #0f0f0f;
   --surface-color: #212121;
   --scrollbar-color: rgba(255, 255, 255, .2);
+  --section-box-shadow-color: rgba(0, 0, 0, .12);
 
   --input-search-background-color: #181818;
   --input-search-border-color: #2f2f2f;
@@ -305,6 +312,7 @@ $chat-input-inner-padding-handhelds: .25rem;
 @import "partials/popups/joinChatInvite";
 @import "partials/popups/reportMessages";
 @import "partials/popups/groupCall";
+@import "partials/popups/call";
 
 @import "partials/pages/pages";
 @import "partials/pages/authCode";
@@ -1227,6 +1235,7 @@ middle-ellipsis-element {
 
 .rlottie-icon {
   position: relative;
+  pointer-events: none;
 }
 
 .rlottie.fade-in {
@@ -1334,6 +1343,57 @@ middle-ellipsis-element {
     bottom: 0;
     background: linear-gradient(180deg, rgba(0, 0, 0, .06) 0%, rgba(0, 0, 0, 0) 20%, rgba(0, 0, 0, 0) 94%, rgba(0, 0, 0, .06) 100%);
   }
+}
+
+.sidebar-header.with-border {
+  min-height: 3.5625rem;
+  border-bottom: 1px solid var(--border-color);
+
+  /* position: relative;
+
+  &:after {
+    content: " ";
+    position: absolute;
+    right: 0;
+    bottom: 0px;
+    left: 0;
+    height: 1px;
+    background-color: var(--border-color);
+  } */
+}
+
+.sidebar-left {
+  &-section {
+    background-color: var(--surface-color);
+    padding: .5rem 0 !important;
+    margin-bottom: .75rem;
+
+    -webkit-box-shadow: 0px 1px 3px 0px var(--section-box-shadow-color);
+    -moz-box-shadow: 0px 1px 3px 0px var(--section-box-shadow-color);
+    box-shadow: 0px 1px 3px 0px var(--section-box-shadow-color);
+
+    &.no-shadow {
+      box-shadow: none !important;
+    }
+
+    &-name {
+      padding: .5rem 1rem;
+    }
+
+    &-caption {
+      margin: -0.1875rem 0 1rem;
+      font-size: .875rem;
+      padding: 0 1.5rem;
+    }
+
+    &-container {
+      user-select: none;
+    }
+  }
+}
+
+hr {
+  display: none !important;
 }
 
 // ! TEMPORARY

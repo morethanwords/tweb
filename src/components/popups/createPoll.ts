@@ -380,7 +380,10 @@ export default class PopupCreatePoll extends PopupElement {
 
     this.questions.append(radioField.label);
 
-    this.scrollable.scrollIntoViewNew(this.questions.lastElementChild as HTMLElement, 'center');
+    this.scrollable.scrollIntoViewNew({
+      element: this.questions.lastElementChild as HTMLElement, 
+      position: 'center'
+    });
     //this.scrollable.scrollTo(this.scrollable.scrollHeight, 'top', true, true);
 
     this.optionInputFields.push(questionField);

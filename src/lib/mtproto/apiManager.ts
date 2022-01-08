@@ -191,6 +191,16 @@ export class ApiManager {
 
     this.transportType = transportType;
 
+    for(const oldGetKey in this.gettingNetworkers) {
+      const promise = this.gettingNetworkers[oldGetKey];
+      delete this.gettingNetworkers[oldGetKey];
+
+      const newGetKey = oldGetKey.replace(oldTransportType, transportType);
+      this.gettingNetworkers[newGetKey] = promise;
+
+      this.log('changed networker getKey from', oldGetKey, 'to', newGetKey)
+    }
+
     this.iterateNetworkers((info) => {
       const transportType = this.getTransportType(info.connectionType);
       const transport = this.chooseServer(info.dcId, info.connectionType, transportType);
@@ -284,6 +294,10 @@ export class ApiManager {
       location.pathname = '/';
     }) */;
   }
+
+  private generateNetworkerGetKey(dcId: DcId, transportType: TransportType, connectionType: ConnectionType) {
+    return [dcId, transportType, connectionType].join('-');
+  }
   
   public getNetworker(dcId: DcId, options: InvokeApiOptions = {}): Promise<MTPNetworker> {
     const connectionType: ConnectionType = options.fileDownload ? 'download' : (options.fileUpload ? 'upload' : 'client');
@@ -320,7 +334,7 @@ export class ApiManager {
       return Promise.resolve(networker);
     }
     
-    const getKey = [dcId, transportType, connectionType].join('-');
+    let getKey = this.generateNetworkerGetKey(dcId, transportType, connectionType);
     if(this.gettingNetworkers[getKey]) {
       return this.gettingNetworkers[getKey];
     }
@@ -331,7 +345,7 @@ export class ApiManager {
     let transport = this.chooseServer(dcId, connectionType, transportType);
     return this.gettingNetworkers[getKey] = Promise.all([ak, ss].map(key => sessionStorage.get(key)))
     .then(async([authKeyHex, serverSaltHex]) => {
-      let networker: MTPNetworker;
+      let networker: MTPNetworker, error: any;
       if(authKeyHex && authKeyHex.length === 512) {
         if(!serverSaltHex || serverSaltHex.length !== 16) {
           serverSaltHex = 'AAAAAAAAAAAAAAAA';
@@ -352,28 +366,37 @@ export class ApiManager {
           });
           
           networker = networkerFactory.getNetworker(dcId, auth.authKey, auth.authKeyId, auth.serverSalt, options);
-        } catch(error) {
-          this.log('Get networker error', error, (error as Error).stack);
-          delete this.gettingNetworkers[getKey];
-          throw error;
+        } catch(_error) {
+          error = _error;
         }
       }
 
       // ! cannot get it before this promise because simultaneous changeTransport will change nothing
       const newTransportType = this.getTransportType(connectionType);
       if(newTransportType !== transportType) {
+        getKey = this.generateNetworkerGetKey(dcId, newTransportType, connectionType);
         transport.destroy();
         DcConfigurator.removeTransport(dcConfigurator.chosenServers, transport);
-        transport = this.chooseServer(dcId, connectionType, newTransportType);
-      }
 
-      networker.changeTransport(transport);
+        if(networker) {
+          transport = this.chooseServer(dcId, connectionType, newTransportType);
+        }
+
+        this.log('transport has been changed during authorization from', transportType, 'to', newTransportType);
+      }
 
       /* networker.onConnectionStatusChange = (online) => {
         console.log('status:', online);
       }; */
       
       delete this.gettingNetworkers[getKey];
+
+      if(error) {
+        this.log('get networker error', error, (error as Error).stack);
+        throw error;
+      }
+
+      networker.changeTransport(transport);
       networkers.unshift(networker);
       this.setOnDrainIfNeeded(networker);
       return networker;

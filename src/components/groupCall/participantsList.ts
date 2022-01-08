@@ -10,11 +10,11 @@ import { fastRaf } from "../../helpers/schedulers";
 import SortedList, { SortedElementBase } from "../../helpers/sortedList";
 import { GroupCallParticipant } from "../../layer";
 import appDialogsManager, { DialogDom, AppDialogsManager } from "../../lib/appManagers/appDialogsManager";
-import { GroupCallInstance } from "../../lib/appManagers/appGroupCallsManager";
 import { LazyLoadQueueIntersector } from "../lazyLoadQueue";
 import { getGroupCallParticipantMutedState } from ".";
 import GroupCallParticipantMutedIcon from "./participantMutedIcon";
 import GroupCallParticipantStatusElement from "./participantStatus";
+import type GroupCallInstance from "../../lib/calls/groupCallInstance";
 
 interface SortedParticipant extends SortedElementBase {
   dom: DialogDom,

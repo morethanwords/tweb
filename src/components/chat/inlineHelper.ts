@@ -46,7 +46,9 @@ export default class InlineHelper extends AutocompleteHelper {
       appendTo, 
       controller,
       listType: 'xy', 
+      waitForKey: 'ArrowUp',
       onSelect: (target) => {
+        if(!target) return false; // can happen when there is only button
         const {peerId, botId, queryId} = this.list.dataset;
         return this.chat.input.getReadyToSend(() => {
           const queryAndResultIds = this.appInlineBotsManager.generateQId(queryId, (target as HTMLElement).dataset.resultId);

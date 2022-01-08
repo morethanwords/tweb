@@ -247,11 +247,7 @@ export class AppPeersManager {
 
     if(!peerId.isUser()) {
       const chatId = peerId.toChatId();
-      if(!appChatsManager.isChannel(chatId)) {
-        return appChatsManager.getChatInputPeer(chatId);
-      } else {
-        return appChatsManager.getChannelInputPeer(chatId);
-      }
+      return appChatsManager.getInputPeer(chatId);
     }
 
     const userId = peerId.toUserId();
@@ -312,6 +308,14 @@ export class AppPeersManager {
       
       default:
         return 'ChatList.Context.DeleteChat';
+    }
+  }
+
+  public noForwards(peerId: PeerId) {
+    if(peerId.isUser()) return false;
+    else {
+      const chat = appChatsManager.getChatTyped(peerId.toChatId());
+      return !!(chat as Chat.chat).pFlags?.noforwards;
     }
   }
 }

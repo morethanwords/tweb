@@ -47,7 +47,13 @@ export default function attachListNavigation({list, type, onSelect, once, waitFo
     target.classList.add(ACTIVE_CLASS_NAME);
 
     if(hadTarget && scrollable && scrollTo) {
-      fastSmoothScroll(scrollable, target as HTMLElement, 'center', undefined, undefined, undefined, 100, type === 'x' ? 'x' : 'y');
+      fastSmoothScroll({
+        container: scrollable, 
+        element: target as HTMLElement, 
+        position: 'center', 
+        forceDuration: 100, 
+        axis: type === 'x' ? 'x' : 'y'
+      });
     }
   };
 
@@ -138,7 +144,20 @@ export default function attachListNavigation({list, type, onSelect, once, waitFo
     }
   };
 
+  let attached = false;
+  const attach = () => {
+    if(attached) return;
+    attached = true;
+    // const input = document.activeElement as HTMLElement;
+    // input.addEventListener(HANDLE_EVENT, onKeyDown, {capture: true, passive: false});
+    document.addEventListener(HANDLE_EVENT, onKeyDown, {capture: true, passive: false});
+    list.addEventListener('mousemove', onMouseMove, {passive: true});
+    attachClickEvent(list, onClick);
+  };
+
   const detach = () => {
+    if(!attached) return;
+    attached = false;
     // input.removeEventListener(HANDLE_EVENT, onKeyDown, {capture: true});
     document.removeEventListener(HANDLE_EVENT, onKeyDown, {capture: true});
     list.removeEventListener('mousemove', onMouseMove);
@@ -168,13 +187,10 @@ export default function attachListNavigation({list, type, onSelect, once, waitFo
     resetTarget();
   }
 
-  // const input = document.activeElement as HTMLElement;
-  // input.addEventListener(HANDLE_EVENT, onKeyDown, {capture: true, passive: false});
-  document.addEventListener(HANDLE_EVENT, onKeyDown, {capture: true, passive: false});
-  list.addEventListener('mousemove', onMouseMove, {passive: true});
-  attachClickEvent(list, onClick);
+  attach();
 
   return {
+    attach,
     detach,
     resetTarget
   };

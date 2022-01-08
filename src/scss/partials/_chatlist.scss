@@ -562,7 +562,9 @@ ul.chatlist {
       }
 
       .chatlist-top.with-placeholder {
-        height: 24.125rem;
+        &.has-contacts {
+          height: 24.125rem;
+        }
   
         .empty-placeholder-dialogs {
           top: 50%;
@@ -583,11 +585,17 @@ ul.chatlist {
 
     .sidebar-left-section {
       padding-bottom: 0;
+      margin-bottom: 0 !important;
+
+      /* &-name {
+        padding-top: 1rem !important;
+        padding-bottom: 1rem !important;
+      } */
     }
 
     .chatlist-new {
       padding: 0;
-      margin-top: -.5rem;
+      // margin-top: -.5rem;
     }
   }
 

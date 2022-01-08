@@ -272,6 +272,7 @@
       //height: 100%;
       position: relative;
       min-height: 150px;
+      background-color: var(--surface-color) !important;
 
       /* > div:not(:empty) + .content-empty {
         display: none;

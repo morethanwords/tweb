@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type { Message, StickerSet, Update, NotifyPeer, PeerNotifySettings, ConstructorDeclMap, Config, PollResults, Poll, WebPage, GroupCall, GroupCallParticipant } from "../layer";
+import type { Message, StickerSet, Update, NotifyPeer, PeerNotifySettings, ConstructorDeclMap, Config, PollResults, Poll, WebPage, GroupCall, GroupCallParticipant, PhoneCall } from "../layer";
 import type { MyDocument } from "./appManagers/appDocsManager";
 import type { AppMessagesManager, Dialog, MessagesStorage, MyMessage } from "./appManagers/appMessagesManager";
 import type { MyDialogFilter } from "./storages/filters";
@@ -15,7 +15,9 @@ import type { MyDraftMessage } from "./appManagers/appDraftsManager";
 import type { PushSubscriptionNotify } from "./mtproto/webPushApiManager";
 import type { PushNotificationObject } from "./serviceWorker/push";
 import type { ConnectionStatusChange } from "./mtproto/connectionStatus";
-import type { GroupCallId, GroupCallInstance, GroupCallOutputSource } from "./appManagers/appGroupCallsManager";
+import type { GroupCallId } from "./appManagers/appGroupCallsManager";
+import type GroupCallInstance from "./calls/groupCallInstance";
+// import type CallInstance from "./calls/callInstance";
 import type { StreamAmplitude } from "./calls/streamManager";
 import type Chat from "../components/chat/chat";
 import { NULL_PEER_ID, UserAuth } from "./mtproto/mtproto_config";
@@ -29,6 +31,8 @@ export type BroadcastEvents = {
   'user_update': UserId,
   'user_auth': UserAuth,
   'user_full_update': UserId,
+
+  'chat_changing': {from: Chat, to: Chat},
 
   'peer_changed': PeerId,
   'peer_changing': Chat,
@@ -144,12 +148,13 @@ export type BroadcastEvents = {
   'context_menu_toggle': boolean,
   'choosing_sticker': boolean
 
-  'group_call_state': GroupCallInstance,
+  'group_call_instance': GroupCallInstance,
   'group_call_update': GroupCall,
   'group_call_amplitude': {amplitudes: StreamAmplitude[], type: 'all' | 'input'},
   'group_call_participant': {groupCallId: GroupCallId, participant: GroupCallParticipant},
   // 'group_call_video_track_added': {instance: GroupCallInstance}
-  'group_call_pinned': {instance: GroupCallInstance, source?: GroupCallOutputSource}
+
+  'call_instance': {hasCurrent: boolean, instance: any/* CallInstance */},
 };
 
 export class RootScope extends EventListenerBase<{

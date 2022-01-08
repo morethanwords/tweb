@@ -365,7 +365,8 @@ body.is-right-column-shown {
           width: auto;
         }
 
-        .group-call-description {
+        .group-call-description,
+        .call-description {
           display: none;
         }
       }
@@ -383,6 +384,10 @@ body.is-right-column-shown {
 
       .btn-icon {
         margin-right: .375rem;
+      }
+
+      .call-description-duration {
+        font-weight: 500;
       }
     }
 

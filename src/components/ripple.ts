@@ -8,9 +8,16 @@ import findUpClassName from "../helpers/dom/findUpClassName";
 import sequentialDom from "../helpers/sequentialDom";
 import {IS_TOUCH_SUPPORTED} from "../environment/touchSupport";
 import rootScope from "../lib/rootScope";
+import findUpAsChild from "../helpers/dom/findUpAsChild";
 
 let rippleClickId = 0;
-export function ripple(elem: HTMLElement, callback: (id: number) => Promise<boolean | void> = () => Promise.resolve(), onEnd: (id: number) => void = null, prepend = false) {
+export function ripple(
+  elem: HTMLElement, 
+  callback: (id: number) => Promise<boolean | void> = () => Promise.resolve(), 
+  onEnd: (id: number) => void = null, 
+  prepend = false,
+  attachListenerTo = elem
+) {
   //return;
   if(elem.querySelector('.c-ripple')) return;
   elem.classList.add('rp');
@@ -132,6 +139,9 @@ export function ripple(elem: HTMLElement, callback: (id: number) => Promise<bool
   const isRippleUnneeded = (e: Event) => e.target !== elem && (
       ['BUTTON', 'A'].includes((e.target as HTMLElement).tagName) 
       || findUpClassName(e.target as HTMLElement, 'c-ripple') !== r
+    ) && (
+      attachListenerTo === elem 
+      || !findUpAsChild(e.target, attachListenerTo)
     );
 
   // TODO: rename this variable
@@ -141,7 +151,7 @@ export function ripple(elem: HTMLElement, callback: (id: number) => Promise<bool
       handler && handler();
     };
   
-    elem.addEventListener('touchstart', (e) => {
+    attachListenerTo.addEventListener('touchstart', (e) => {
       if(!rootScope.settings.animationsEnabled) {
         return;
       }
@@ -156,17 +166,17 @@ export function ripple(elem: HTMLElement, callback: (id: number) => Promise<bool
   
       let {clientX, clientY} = e.touches[0];
       drawRipple(clientX, clientY);
-      elem.addEventListener('touchend', touchEnd, {once: true});
+      attachListenerTo.addEventListener('touchend', touchEnd, {once: true});
   
       window.addEventListener('touchmove', (e) => {
         e.cancelBubble = true;
         e.stopPropagation();
         touchEnd();
-        elem.removeEventListener('touchend', touchEnd);
+        attachListenerTo.removeEventListener('touchend', touchEnd);
       }, {once: true});
     }, {passive: true});
   } else {
-    elem.addEventListener('mousedown', (e) => {
+    attachListenerTo.addEventListener('mousedown', (e) => {
       if(![0, 2].includes(e.button)) { // only left and right buttons
         return;
       }
@@ -176,7 +186,7 @@ export function ripple(elem: HTMLElement, callback: (id: number) => Promise<bool
       }
       //console.log('ripple mousedown', e, e.target, findUpClassName(e.target as HTMLElement, 'c-ripple') === r);
 
-      if(elem.dataset.ripple === '0' || isRippleUnneeded(e)) {
+      if(attachListenerTo.dataset.ripple === '0' || isRippleUnneeded(e)) {
         return;
       } else if(touchStartFired) {
         touchStartFired = false;

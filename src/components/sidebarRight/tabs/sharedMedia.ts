@@ -114,7 +114,10 @@ export default class AppSharedMediaTab extends SliderSuperTab {
 
     attachClickEvent(this.closeBtn, (e) => {
       if(this.closeBtn.firstElementChild.classList.contains('state-back')) {
-        this.scrollable.scrollIntoViewNew(this.scrollable.container.firstElementChild as HTMLElement, 'start');
+        this.scrollable.scrollIntoViewNew({
+          element: this.scrollable.container.firstElementChild as HTMLElement, 
+          position: 'start'
+        });
         transition(0);
         animatedCloseIcon.classList.remove('state-back');
       } else if(!this.scrollable.isHeavyAnimationInProgress) {

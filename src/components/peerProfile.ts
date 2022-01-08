@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import PARALLAX_SUPPORTED from "../environment/parallaxSupport";
+import IS_PARALLAX_SUPPORTED from "../environment/parallaxSupport";
 import { copyTextToClipboard } from "../helpers/clipboard";
 import replaceContent from "../helpers/dom/replaceContent";
 import { fastRaf } from "../helpers/schedulers";
@@ -56,7 +56,7 @@ export default class PeerProfile {
   private threadId: number;
 
   constructor(public scrollable: Scrollable) {
-    if(!PARALLAX_SUPPORTED) {
+    if(!IS_PARALLAX_SUPPORTED) {
       this.scrollable.container.classList.add('no-parallax');
     }
   }
@@ -130,7 +130,11 @@ export default class PeerProfile {
     
     this.section.content.append(this.phone.container, this.username.container, this.bio.container, this.notifications.container);
 
-    this.element.append(this.section.container, generateDelimiter());
+    this.element.append(this.section.container);
+
+    if(IS_PARALLAX_SUPPORTED) {
+      this.element.append(generateDelimiter());
+    }
 
     this.notifications.checkboxField.input.addEventListener('change', (e) => {
       if(!e.isTrusted) {
@@ -216,7 +220,7 @@ export default class PeerProfile {
         if(oldAvatars) oldAvatars.container.replaceWith(this.avatars.container);
         else this.element.prepend(this.avatars.container);
 
-        if(PARALLAX_SUPPORTED) {
+        if(IS_PARALLAX_SUPPORTED) {
           this.scrollable.container.classList.add('parallax');
         }
 
@@ -224,7 +228,7 @@ export default class PeerProfile {
       }
     }
 
-    if(PARALLAX_SUPPORTED) {
+    if(IS_PARALLAX_SUPPORTED) {
       this.scrollable.container.classList.remove('parallax');
     }
 

@@ -14,6 +14,7 @@ import { SliderSuperTab } from "../../slider"
 
 export default class AppLanguageTab extends SliderSuperTab {
   protected async init() {
+    this.header.classList.add('with-border');
     this.container.classList.add('language-container');
     this.setTitle('Telegram.LanguageViewController');
 

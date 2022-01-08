@@ -11,6 +11,7 @@ import { LangPackKey } from "../../../../lib/langPack";
 
 export default class AppPrivacyPhoneNumberTab extends SliderSuperTabEventable {
   protected init() {
+    this.header.classList.add('with-border');
     this.container.classList.add('privacy-tab', 'privacy-phone-number');
     this.setTitle('PrivacyPhone');
 

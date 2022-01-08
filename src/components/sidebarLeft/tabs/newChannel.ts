@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import appSidebarLeft from "..";
+import appSidebarLeft, { SettingSection } from "..";
 import { InputFile } from "../../../layer";
 import appChatsManager from "../../../lib/appManagers/appChatsManager";
 import Button from "../../button";
@@ -31,6 +31,10 @@ export default class AppNewChannelTab extends SliderSuperTab {
       this.uploadAvatar = _upload;
     });
 
+    const section = new SettingSection({
+      caption: 'Channel.DescriptionHolderDescrpiton'
+    });
+
     const inputWrapper = document.createElement('div');
     inputWrapper.classList.add('input-wrapper');
 
@@ -54,10 +58,6 @@ export default class AppNewChannelTab extends SliderSuperTab {
 
     this.channelNameInputField.input.addEventListener('input', onLengthChange);
     this.channelDescriptionInputField.input.addEventListener('input', onLengthChange);
-
-    const caption = document.createElement('div');
-    caption.classList.add('caption');
-    _i18n(caption, 'Channel.DescriptionHolderDescrpiton');
 
     this.nextBtn = ButtonCorner({icon: 'arrow_next'});
 
@@ -87,7 +87,8 @@ export default class AppNewChannelTab extends SliderSuperTab {
     });
 
     this.content.append(this.nextBtn);
-    this.scrollable.append(this.avatarEdit.container, inputWrapper, caption);
+    section.content.append(this.avatarEdit.container, inputWrapper);
+    this.scrollable.append(section.container);
   }
 
   public onCloseAfterTimeout() {
