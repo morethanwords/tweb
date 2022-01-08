@@ -1665,11 +1665,12 @@ export default class ChatBubbles {
 
     let fallbackToElementStartWhenCentering: HTMLElement;
     // * if it's a start, then scroll to start of the group
-    if(bubble && position !== 'end' && whichChild(bubble) === (this.stickyIntersector ? 2 : 1) && this.chat.setPeerPromise) {
+    if(bubble && position !== 'end' && whichChild(bubble) === (this.stickyIntersector ? 2 : 1)/*  && this.chat.setPeerPromise */) {
       const dateGroup = bubble.parentElement;
       // if(whichChild(dateGroup) === 0) {
-        // fallbackToElementStartWhenCentering = dateGroup;
-        element = dateGroup;
+        fallbackToElementStartWhenCentering = dateGroup;
+        // position = 'start';
+        // element = dateGroup;
       // }
     }
 

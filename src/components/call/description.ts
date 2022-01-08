@@ -5,7 +5,6 @@
  */
 
 import replaceContent from "../../helpers/dom/replaceContent";
-import type CallInstance from "../../lib/calls/callInstance";
 import CALL_STATE from "../../lib/calls/callState";
 import { i18n, LangPackKey } from "../../lib/langPack";
 
@@ -29,7 +28,7 @@ export default class CallDescriptionElement {
     this.state = undefined;
   }
 
-  public update(instance: CallInstance) {
+  public update(instance: any) {
     const {connectionState} = instance;
 
     if(this.state === connectionState) {

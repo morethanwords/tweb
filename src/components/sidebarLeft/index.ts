@@ -595,6 +595,7 @@ export class AppSidebarLeft extends SidebarSlider {
             appStateManager.releaseSinglePeer(peerId, 'recentSearch');
           }
 
+          recentSearch.length = 0;
           appStateManager.pushToState('recentSearch', recentSearch);
         });
       });
