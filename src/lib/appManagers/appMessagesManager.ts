@@ -2757,8 +2757,13 @@ export class AppMessagesManager {
   public wrapMessageForReply(message: MyMessage | MyDraftMessage, text: string = (message as Message.message).message, usingMids?: number[], plain?: boolean, highlightWord?: string, withoutMediaType?: boolean): DocumentFragment | string {
     const parts: (Node | string)[] = [];
 
+    let hasAlbumKey = false;
     const addPart = (langKey: LangPackKey, part?: string | HTMLElement) => {
       if(langKey) {
+        if(part === undefined && hasAlbumKey) {
+          return;
+        }
+        
         part = plain ? I18n.format(langKey, true) : i18n(langKey);
       }
       
@@ -2795,6 +2800,7 @@ export class AppMessagesManager {
 
           if(!withoutMediaType) {
             addPart('AttachAlbum');
+            hasAlbumKey = true;
           }
         }
       } else {
@@ -2873,7 +2879,12 @@ export class AppMessagesManager {
         }
       }
 
-      if(text && parts.length) {
+      const length = parts.length;
+      for(let i = 1; i < length; i += 2) {
+        parts.splice(i, 0, ', ');
+      }
+
+      if(text && length) {
         parts.push(', ');
       }
     }
