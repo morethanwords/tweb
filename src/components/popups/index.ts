@@ -102,6 +102,9 @@ export default class PopupElement extends EventListenerBase<{
     }
 
     this.withoutOverlay = options.withoutOverlay;
+    if(this.withoutOverlay) {
+      this.element.classList.add('no-overlay');
+    }
 
     if(options.overlayClosable) {
       attachClickEvent(this.element, (e: MouseEvent) => {

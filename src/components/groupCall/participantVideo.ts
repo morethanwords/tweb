@@ -4,15 +4,16 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { animate } from "../../helpers/animation";
 import { GroupCallParticipant } from "../../layer";
-import type { GroupCallInstance, GroupCallOutputSource } from "../../lib/appManagers/appGroupCallsManager";
+import type { GroupCallOutputSource } from "../../lib/appManagers/appGroupCallsManager";
 import type { AppPeersManager } from "../../lib/appManagers/appPeersManager";
 import { i18n } from "../../lib/langPack";
 import PeerTitle from "../peerTitle";
 import { getGroupCallParticipantMutedState } from ".";
 import GroupCallParticipantMutedIcon from "./participantMutedIcon";
 import GroupCallParticipantStatusElement from "./participantStatus";
+import GroupCallInstance from "../../lib/calls/groupCallInstance";
+import callVideoCanvasBlur from "../call/videoCanvasBlur";
 
 const className = 'group-call-participant-video';
 
@@ -92,33 +93,14 @@ export default class GroupCallParticipantVideoElement {
 
     this.right.append(this.groupCallParticipantMutedIcon.container);
 
-    const className = 'group-call-participant-video';
-    video.classList.add(className);
+    video.classList.add(className, 'call-video');
 
     if(video.paused) {
       video.play();
     }
-    
-    const canvas = document.createElement('canvas');
+
+    const canvas = callVideoCanvasBlur(video);
     canvas.classList.add(className + '-blur');
-    const size = 16;
-    canvas.width = size;
-    canvas.height = size;
-
-    if(video) {
-      const ctx = canvas.getContext('2d');
-      ctx.filter = 'blur(2px)';
-      const renderFrame = () => {
-        ctx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight, 0, 0, canvas.width, canvas.height);
-      };
-
-      animate(() => {
-        renderFrame();
-        return canvas.isConnected;
-      });
-
-      renderFrame();
-    }
     
     this.container.prepend(canvas, video);
 

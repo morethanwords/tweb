@@ -549,6 +549,16 @@ $inactive-opacity: .4;
         opacity: 1;
       }
     }
+
+    &.no-forwards {
+      img {
+        pointer-events: none;
+      }
+
+      .media-viewer-caption {
+        user-select: none;
+      }
+    }
   }
 
   &-movers {

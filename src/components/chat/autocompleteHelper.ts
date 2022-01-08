@@ -21,6 +21,7 @@ export default class AutocompleteHelper extends EventListenerBase<{
   protected container: HTMLElement;
   protected list: HTMLElement;
   protected resetTarget: () => void;
+  protected attach: () => void;
   protected detach: () => void;
   protected init?(): void;
 
@@ -52,13 +53,21 @@ export default class AutocompleteHelper extends EventListenerBase<{
     this.controller.addHelper(this);
   }
 
+  public toggleListNavigation(enabled: boolean) {
+    if(enabled) {
+      this.attach && this.attach();
+    } else {
+      this.detach && this.detach();
+    }
+  }
+
   protected onVisible = () => {
     if(this.detach) { // it can be so because 'visible' calls before animation's end
       this.detach();
     }
 
     const list = this.list;
-    const {detach, resetTarget} = attachListNavigation({
+    const {attach, detach, resetTarget} = attachListNavigation({
       list, 
       type: this.listType,
       onSelect: this.onSelect,
@@ -66,6 +75,7 @@ export default class AutocompleteHelper extends EventListenerBase<{
       waitForKey: this.waitForKey
     });
 
+    this.attach = attach;
     this.detach = detach;
     this.resetTarget = resetTarget;
     if(!IS_MOBILE && !this.navigationItem) {

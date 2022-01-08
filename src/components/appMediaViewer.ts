@@ -31,8 +31,10 @@ type AppMediaViewerTargetType = {
   peerId: PeerId
 };
 export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delete' | 'forward', AppMediaViewerTargetType> {
-  protected btnMenuDelete: HTMLElement;
   protected listLoader: SearchListLoader<AppMediaViewerTargetType>;
+  protected btnMenuForward: ButtonMenuItemOptions;
+  protected btnMenuDownload: ButtonMenuItemOptions;
+  protected btnMenuDelete: ButtonMenuItemOptions;
 
   get searchContext() {
     return this.listLoader.searchContext;
@@ -98,22 +100,21 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
 
     attachClickEvent(this.buttons.delete, this.onDeleteClick);
 
-    const buttons: ButtonMenuItemOptions[] = [{
+    const buttons: ButtonMenuItemOptions[] = [this.btnMenuForward = {
       icon: 'forward',
       text: 'Forward',
       onClick: this.onForwardClick
-    }, {
+    }, this.btnMenuDownload = {
       icon: 'download',
       text: 'MediaViewer.Context.Download',
       onClick: this.onDownloadClick
-    }, {
+    }, this.btnMenuDelete = {
       icon: 'delete danger',
       text: 'Delete',
       onClick: this.onDeleteClick
     }];
 
     this.setBtnMenuToggle(buttons);
-    this.btnMenuDelete = buttons[buttons.length - 1].element;
 
     // * constructing html end
     
@@ -256,10 +257,20 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     const fromId = (message as Message.message).fwd_from && !message.fromId ? (message as Message.message).fwd_from.from_name : message.fromId;
     const media = appMessagesManager.getMediaFromMessage(message);
 
-    this.buttons.forward.classList.toggle('hide', message._ === 'messageService');
+    const cantForwardMessage = message._ === 'messageService' || !appMessagesManager.canForward(message);
+    [this.buttons.forward, this.btnMenuForward.element].forEach(button => {
+      button.classList.toggle('hide', cantForwardMessage);
+    });
+
+    this.wholeDiv.classList.toggle('no-forwards', cantForwardMessage);
+    
+    const cantDownloadMessage = cantForwardMessage;
+    [this.buttons.download, this.btnMenuDownload.element].forEach(button => {
+      button.classList.toggle('hide', cantDownloadMessage);
+    });
 
     const canDeleteMessage = appMessagesManager.canDeleteMessage(message);
-    [this.buttons.delete, this.btnMenuDelete].forEach(button => {
+    [this.buttons.delete, this.btnMenuDelete.element].forEach(button => {
       button.classList.toggle('hide', !canDeleteMessage);
     });
 

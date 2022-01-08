@@ -97,6 +97,12 @@ const taskListeners = {
         deferred.resolve(task.payload);
       }
     }
+  },
+
+  crypto: (task: any) => {
+    cryptoWorker.invokeCrypto(task.task, ...task.args as any).then(result => {
+      notifyAll({taskId: task.taskId, result});
+    });
   }
 };
 
@@ -120,14 +126,8 @@ const onMessage = async(e: any) => {
     if(!task.task) {
       return;
     }
-  
+
     switch(task.task) {
-      case 'computeSRP':
-      case 'gzipUncompress':
-        return cryptoWorker.invokeCrypto(task.task, ...task.args as any).then(result => {
-          notifyAll({taskId, result});
-        });
-  
       case 'requestFilePart':
       case 'setQueueId':
       case 'cancelDownload':

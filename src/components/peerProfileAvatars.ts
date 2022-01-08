@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import PARALLAX_SUPPORTED from "../environment/parallaxSupport";
+import IS_PARALLAX_SUPPORTED from "../environment/parallaxSupport";
 import { IS_TOUCH_SUPPORTED } from "../environment/touchSupport";
 import { cancelEvent } from "../helpers/dom/cancelEvent";
 import { attachClickEvent } from "../helpers/dom/clickEvent";
@@ -26,8 +26,8 @@ const LOAD_NEAREST = 3;
 
 export default class PeerProfileAvatars {
   private static BASE_CLASS = 'profile-avatars';
-  private static SCALE = PARALLAX_SUPPORTED ? 2 : 1;
-  private static TRANSLATE_TEMPLATE = PARALLAX_SUPPORTED ? `translate3d({x}, 0, -1px) scale(${PeerProfileAvatars.SCALE})` : 'translate({x}, 0)';
+  private static SCALE = IS_PARALLAX_SUPPORTED ? 2 : 1;
+  private static TRANSLATE_TEMPLATE = IS_PARALLAX_SUPPORTED ? `translate3d({x}, 0, -1px) scale(${PeerProfileAvatars.SCALE})` : 'translate({x}, 0)';
   public container: HTMLElement;
   public avatars: HTMLElement;
   public gradient: HTMLElement;
@@ -74,7 +74,10 @@ export default class PeerProfileAvatars {
 
     const checkScrollTop = () => {
       if(this.scrollable.scrollTop !== 0) {
-        this.scrollable.scrollIntoViewNew(this.scrollable.container.firstElementChild as HTMLElement, 'start');
+        this.scrollable.scrollIntoViewNew({
+          element: this.scrollable.container.firstElementChild as HTMLElement, 
+          position: 'start'
+        });
         return false;
       }
 

@@ -25,26 +25,40 @@ export enum FocusDirection {
 
 export type ScrollGetNormalSizeCallback = (options: {rect: DOMRect}) => number;
 
-export default function fastSmoothScroll(
+export type ScrollOptions = {
   container: HTMLElement,
   element: HTMLElement,
   position: ScrollLogicalPosition,
-  margin = 0,
-  maxDistance = LONG_TRANSITION_MAX_DISTANCE,
+  margin?: number,
+  maxDistance?: number,
   forceDirection?: FocusDirection,
   forceDuration?: number,
-  axis: 'x' | 'y' = 'y',
-  getNormalSize?: ScrollGetNormalSizeCallback
-) {
+  axis?: 'x' | 'y',
+  getNormalSize?: ScrollGetNormalSizeCallback,
+  fallbackToElementStartWhenCentering?: HTMLElement
+};
+
+export default function fastSmoothScroll(options: ScrollOptions) {
+  if(options.margin === undefined) {
+    options.margin = 0;
+  }
+
+  if(options.maxDistance === undefined) {
+    options.maxDistance = LONG_TRANSITION_MAX_DISTANCE;
+  }
+
+  if(options.axis === undefined) {
+    options.axis = 'y';
+  }
   //return;
 
   if(!rootScope.settings.animationsEnabled) {
-    forceDirection = FocusDirection.Static;
+    options.forceDirection = FocusDirection.Static;
   }
 
-  if(forceDirection === FocusDirection.Static) {
-    forceDuration = 0;
-    return scrollWithJs(container, element, position, margin, forceDuration, axis, getNormalSize);
+  if(options.forceDirection === FocusDirection.Static) {
+    options.forceDuration = 0;
+    return scrollWithJs(options);
     /* return Promise.resolve();
 
     element.scrollIntoView({ block: position });
@@ -53,58 +67,17 @@ export default function fastSmoothScroll(
     return Promise.resolve(); */
   }
 
-  if(axis === 'y' && element !== container && isInDOM(element) && container.getBoundingClientRect) {
-    const elementRect = element.getBoundingClientRect();
-    const containerRect = container.getBoundingClientRect();
-  
-    const offsetTop = elementRect.top - containerRect.top;
-    if(forceDirection === undefined) {
-      if(offsetTop < -maxDistance) {
-        container.scrollTop += (offsetTop + maxDistance);
-      } else if(offsetTop > maxDistance) {
-        container.scrollTop += (offsetTop - maxDistance);
-      }
-    } else if(forceDirection === FocusDirection.Up) { // * not tested yet
-      container.scrollTop = offsetTop + container.scrollTop + maxDistance;
-    } else if(forceDirection === FocusDirection.Down) { // * not tested yet
-      container.scrollTop = Math.max(0, offsetTop + container.scrollTop - maxDistance);
-    }
-    /* const { offsetTop } = element;
-
-    if(forceDirection === undefined) {
-      const offset = offsetTop - container.scrollTop;
-
-      if(offset < -maxDistance) {
-        container.scrollTop += (offset + maxDistance);
-      } else if(offset > maxDistance) {
-        container.scrollTop += (offset - maxDistance);
-      }
-    } else if(forceDirection === FocusDirection.Up) {
-      container.scrollTop = offsetTop + maxDistance;
-    } else if(forceDirection === FocusDirection.Down) {
-      container.scrollTop = Math.max(0, offsetTop - maxDistance);
-    } */
-  }
-
   const promise = new Promise<void>((resolve) => {
     fastRaf(() => {
-      scrollWithJs(container, element, position, margin, forceDuration, axis, getNormalSize)
-      .then(resolve);
+      scrollWithJs(options).then(resolve);
     });
   });
 
-  return axis === 'y' ? dispatchHeavyAnimationEvent(promise) : promise;
+  return options.axis === 'y' ? dispatchHeavyAnimationEvent(promise) : promise;
 }
 
-function scrollWithJs(
-  container: HTMLElement, 
-  element: HTMLElement, 
-  position: ScrollLogicalPosition, 
-  margin = 0, 
-  forceDuration?: number, 
-  axis: 'x' | 'y' = 'y',
-  getNormalSize?: ScrollGetNormalSizeCallback
-) {
+function scrollWithJs(options: ScrollOptions): Promise<void> {
+  const {element, container, getNormalSize, axis, margin, position, forceDirection, maxDistance, forceDuration} = options;
   if(!isInDOM(element)) {
     cancelAnimationByKey(container);
     return Promise.resolve();
@@ -143,14 +116,23 @@ function scrollWithJs(
       path = elementPosition - margin;
       break;
     case 'end':
-      path = elementRect[rectEndKey] + (elementSize - elementRect[sizeKey]) - containerRect[rectEndKey];
+      path = elementRect[rectEndKey] /* + (elementSize - elementRect[sizeKey]) */ - containerRect[rectEndKey] + margin;
       break;
     // 'nearest' is not supported yet
     case 'nearest':
     case 'center':
-      path = elementSize < containerSize
-        ? (elementPosition + elementSize / 2) - (containerSize / 2)
-        : elementPosition - margin;
+      if(elementSize < containerSize) {
+        path = (elementPosition + elementSize / 2) - (containerSize / 2);
+      } else {
+        if(options.fallbackToElementStartWhenCentering && options.fallbackToElementStartWhenCentering !== element) {
+          options.element = options.fallbackToElementStartWhenCentering;
+          options.position = 'start';
+          return scrollWithJs(options);
+        }
+
+        path = elementPosition - margin;
+      }
+
       break;
   }
   /* switch (position) {
@@ -168,6 +150,22 @@ function scrollWithJs(
         : (elementPosition - margin) - scrollPosition;
       break;
   } */
+
+  if(axis === 'y') {
+    if(forceDirection === undefined) {
+      if(path > maxDistance) {
+        container.scrollTop += path - maxDistance;
+        path = maxDistance;
+      } else if(path < -maxDistance) {
+        container.scrollTop += path + maxDistance;
+        path = -maxDistance;
+      }
+    }/*  else if(forceDirection === FocusDirection.Up) { // * not tested yet
+      container.scrollTop = offsetTop + container.scrollTop + maxDistance;
+    } else if(forceDirection === FocusDirection.Down) { // * not tested yet
+      container.scrollTop = Math.max(0, offsetTop + container.scrollTop - maxDistance);
+    } */
+  }
 
   // console.log('scrollWithJs: will scroll path:', path, element);
 

@@ -26,6 +26,12 @@
   display: flex;
   user-select: none;
 
+  &.no-overlay {
+    padding: 0;
+    background-color: transparent;
+    overflow: visible;
+  }
+
   body.animation-level-0 & {
     transition: none;
   }

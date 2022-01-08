@@ -22,6 +22,8 @@ import PopupPeer from "../../popups/peer";
 import ButtonCorner from "../../buttonCorner";
 import { attachClickEvent } from "../../../helpers/dom/clickEvent";
 import toggleDisability from "../../../helpers/dom/toggleDisability";
+import CheckboxField from "../../checkboxField";
+import rootScope from "../../../lib/rootScope";
 
 export default class AppChatTypeTab extends SliderSuperTabEventable {
   public chatId: ChatId;
@@ -157,5 +159,40 @@ export default class AppChatTypeTab extends SliderSuperTabEventable {
     linkInputField.setOriginalValue(originalValue);
 
     this.scrollable.append(section.container, privateSection.container, publicSection.container);
+
+    {
+      const section = new SettingSection({
+        name: 'SavingContentTitle',
+        caption: isBroadcast ? 'RestrictSavingContentInfoChannel' : 'RestrictSavingContentInfoGroup'
+      });
+
+      const checkboxField = new CheckboxField({
+        text: 'RestrictSavingContent',
+        withRipple: true
+      });
+
+      this.listenerSetter.add(checkboxField.input)('change', () => {
+        const toggle = checkboxField.toggleDisability(true);
+        appChatsManager.toggleNoForwards(this.chatId, checkboxField.checked).then(() => {
+          toggle();
+        });
+      });
+
+      const onChatUpdate = () => {
+        checkboxField.setValueSilently(!!(chat as Chat.channel).pFlags.noforwards);
+      };
+
+      this.listenerSetter.add(rootScope)('chat_update', (chatId) => {
+        if(this.chatId === chatId) {
+          onChatUpdate();
+        }
+      });
+
+      onChatUpdate();
+
+      section.content.append(checkboxField.label);
+
+      this.scrollable.append(section.container);
+    }
   }
 }

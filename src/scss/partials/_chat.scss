@@ -609,6 +609,16 @@ $chat-helper-size: 36px;
 			}
 		}
 	}
+
+  &.no-forwards {
+    .bubble-beside-button.forward {
+      display: none;
+    }
+
+    .bubbles {
+      user-select: none !important;
+    }
+  }
 	
 	&-background {
 		overflow: hidden;
@@ -689,6 +699,10 @@ $chat-helper-size: 36px;
     max-width: 696px;
     --wrapper-padding: 15px;
   }
+
+  &.type-chat .bubbles.is-chat-input-hidden .bubbles-date-group:last-of-type .bubble:last-of-type {
+    margin-bottom: 1.25rem;
+  }
 }
 
 .chat-input-wrapper {
@@ -718,6 +732,12 @@ $chat-helper-size: 36px;
 	}
 }
 
+.input-centered-container {
+  position: absolute;
+  margin: 0 auto;
+  width: auto;
+}
+
 .selection-wrapper, .fake-selection-wrapper {
 	position: absolute;
 	left: 50%;
@@ -731,7 +751,7 @@ $chat-helper-size: 36px;
 	border-radius: $border-radius-big;
 	//z-index: 2;
 	box-shadow: none;
-	transition: opacity .1s .1s;
+	transition: opacity .1s .075s;
 	opacity: 0;
 
 	.selection-container {
@@ -747,6 +767,21 @@ $chat-helper-size: 36px;
 		justify-content: space-between;
 		align-items: center;
 		width: 100%;
+
+    &-left, &-right {
+      display: flex;
+      justify-content: space-between;
+		  align-items: center;
+
+      @include animation-level(2) {
+        transform: translateX(0);
+        transition: transform .2s;
+      }
+    }
+
+    &-right {
+      flex: 0 0 auto;
+    }
 
 		&-count {
 			color: var(--primary-text-color);
@@ -826,7 +861,7 @@ $chat-helper-size: 36px;
 	position: absolute;
 	left: var(--padding-horizontal);
 	top: 0;
-	width: calc(100% - var(--chat-input-size) - (var(--padding-horizontal) * 2) - .5625rem);
+	width: calc(100% - var(--chat-input-size) - (var(--padding-horizontal) * 2) - .5rem);
 
 	.pinned-container {
 		padding: 0 .5rem;
@@ -1269,9 +1304,9 @@ $chat-helper-size: 36px;
 		}
 	}
 
-	.chat.type-chat .bubbles.is-chat-input-hidden & {
+	/* .chat.type-chat .bubbles.is-chat-input-hidden & {
 		margin-bottom: 1rem; // .25rem is eaten by the last bubble's margin-bottom
-	}
+	} */
 
 	&:not(.is-channel), &.is-chat {
 		.message {
@@ -1290,6 +1325,11 @@ $chat-helper-size: 36px;
 			}
 		}
 	}
+
+  > .bubble.is-in {
+    // margin-left: 0;
+    width: 100%;
+  }
 }
 
 .bubbles-go-down {

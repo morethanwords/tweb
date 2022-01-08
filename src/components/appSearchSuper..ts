@@ -145,7 +145,8 @@ class SearchContextMenu {
     this.buttons = [{
       icon: 'forward',
       text: 'Forward',
-      onClick: this.onForwardClick
+      onClick: this.onForwardClick,
+      verify: () => appMessagesManager.canForward(appMessagesManager.getMessageByPeer(this.peerId, this.mid))
     }, {
       icon: 'forward',
       text: 'Message.Context.Selection.Forward',
@@ -391,7 +392,10 @@ export default class AppSearchSuper {
 
     this.selectTab = horizontalMenu(this.tabsMenu, this.tabsContainer, (id, tabContent, animate) => {
       if(this.prevTabId === id && !this.skipScroll) {
-        this.scrollable.scrollIntoViewNew(this.container, 'start');
+        this.scrollable.scrollIntoViewNew({
+          element: this.container, 
+          position: 'start'
+        });
         return;
       }
       
@@ -413,7 +417,10 @@ export default class AppSearchSuper {
         const offsetTop = this.container.offsetTop;
         let scrollTop = this.scrollable.scrollTop;
         if(scrollTop < offsetTop) {
-          this.scrollable.scrollIntoViewNew(this.container, 'start');
+          this.scrollable.scrollIntoViewNew({
+            element: this.container, 
+            position: 'start'
+          });
           scrollTop = offsetTop;
         }
         

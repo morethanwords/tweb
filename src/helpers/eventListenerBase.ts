@@ -49,6 +49,8 @@ import type { ArgumentTypes, SuperReturnType } from "../types";
 // const e = new EventSystem();
 // MOUNT_CLASS_TO.e = e;
 
+export type EventListenerListeners = Record<string, Function>;
+
 /**
  * Better not to remove listeners during setting
  * Should add listener callback only once
@@ -56,7 +58,7 @@ import type { ArgumentTypes, SuperReturnType } from "../types";
 
 // type EventLitenerCallback<T> = (data: T) => 
 // export default class EventListenerBase<Listeners extends {[name: string]: Function}> {
-export default class EventListenerBase<Listeners extends Record<string, Function>> {
+export default class EventListenerBase<Listeners extends EventListenerListeners> {
   protected listeners: Partial<{
     [k in keyof Listeners]: Array<{callback: Listeners[k], options: boolean | AddEventListenerOptions}>
   }>;
@@ -128,7 +130,7 @@ export default class EventListenerBase<Listeners extends Record<string, Function
         try {
           result = listener.callback(...args);
         } catch(err) {
-          
+          console.error(err);
         }
 
         if(arr) {

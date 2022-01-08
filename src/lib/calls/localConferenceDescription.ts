@@ -24,6 +24,9 @@ export class ConferenceEntry {
   public port: string;
   public endpoint: string;
   public peerId: PeerId;
+  
+  public sendEntry: ConferenceEntry;
+  public recvEntry: ConferenceEntry;
 
   constructor(public mid: string, public type: WebRTCLineType) {
     this.port = WEBRTC_MEDIA_PORT;
@@ -60,6 +63,7 @@ export class ConferenceEntry {
   public setSource(source: number | GroupCallParticipantVideoSourceGroup[]) {
     let sourceGroups: GroupCallParticipantVideoSourceGroup[];
     if(Array.isArray(source)) {
+      if(!source[0]) return;
       sourceGroups = source;
       source = sourceGroups[0].sources[0];
     }
@@ -76,6 +80,7 @@ export class ConferenceEntry {
 export function generateSsrc(type: WebRTCLineType, source: number | GroupCallParticipantVideoSourceGroup[], endpoint?: string): Ssrc {
   let sourceGroups: GroupCallParticipantVideoSourceGroup[];
   if(Array.isArray(source)) {
+    if(!source[0]) return;
     sourceGroups = source;
     source = sourceGroups[0].sources[0];
   }
@@ -154,6 +159,19 @@ export default class LocalConferenceDescription implements UpdateGroupCallConnec
   
   public findEntry(verify: Parameters<LocalConferenceDescription['entries']['find']>[0]) {
     return this.entries.find(verify);
+  }
+
+  public findFreeSendRecvEntry(type: WebRTCLineType, isSending: boolean) {
+    let entry = this.entries.find(entry => {
+      return entry.direction === 'sendrecv' && entry.type === type && !(isSending ? entry.sendEntry : entry.recvEntry);
+    });
+
+    if(!entry) {
+      entry = this.createEntry(type);
+      entry.setDirection('sendrecv');
+    }
+
+    return entry;
   }
   
   public getEntryByMid(mid: ConferenceEntry['mid']) {

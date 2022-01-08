@@ -4,9 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { deepEqual } from "../../helpers/object";
 import { GroupCall } from "../../layer";
-import { GroupCallInstance } from "../../lib/appManagers/appGroupCallsManager";
+import GroupCallInstance from "../../lib/calls/groupCallInstance";
 import GROUP_CALL_STATE from "../../lib/calls/groupCallState";
 import I18n, { LangPackKey, FormatterArguments } from "../../lib/langPack";
 
@@ -19,13 +18,15 @@ export default class GroupCallDescriptionElement {
     });
 
     this.descriptionIntl.element.classList.add('group-call-description');
+  }
 
-    appendTo.append(this.descriptionIntl.element);
+  public detach() {
+    this.descriptionIntl.element.remove();
   }
 
   public update(instance: GroupCallInstance) {
     const {state} = instance;
-    
+
     let key: LangPackKey, args: FormatterArguments;
     if(state === GROUP_CALL_STATE.CONNECTING) {
       key = 'VoiceChat.Status.Connecting';
@@ -35,11 +36,13 @@ export default class GroupCallDescriptionElement {
     }
 
     const {descriptionIntl} = this;
-    
-    if(descriptionIntl.key !== key || !deepEqual(descriptionIntl.args, args)) {
-      descriptionIntl.key = key;
-      descriptionIntl.args = args;
-      descriptionIntl.update();
+    descriptionIntl.compareAndUpdate({
+      key,
+      args
+    });
+
+    if(!this.descriptionIntl.element.parentElement) {
+      this.appendTo.append(this.descriptionIntl.element);
     }
   }
 }

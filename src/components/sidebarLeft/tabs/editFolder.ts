@@ -82,15 +82,18 @@ export default class AppEditFolderTab extends SliderSuperTab {
 
     this.header.append(this.confirmBtn, this.menuBtn);
 
+    const inputSection = new SettingSection({});
+
     const inputWrapper = document.createElement('div');
     inputWrapper.classList.add('input-wrapper');
     
     this.nameInputField = new InputField({
-      label: 'FilterNameInputLabel',
+      label: 'FilterNameHint',
       maxLength: MAX_FOLDER_NAME_LENGTH
     });
 
     inputWrapper.append(this.nameInputField.container);
+    inputSection.content.append(inputWrapper);
 
     const generateList = (className: string, h2Text: LangPackKey, buttons: {icon: string, name?: string, withRipple?: true, text: LangPackKey}[], to: any) => {
       const section = new SettingSection({
@@ -164,7 +167,7 @@ export default class AppEditFolderTab extends SliderSuperTab {
       name: 'exclude_read'
     }], this.flags);
 
-    this.scrollable.append(this.stickerContainer, this.caption, inputWrapper, this.includePeerIds.container, this.excludePeerIds.container);
+    this.scrollable.append(this.stickerContainer, this.caption, inputSection.container, this.includePeerIds.container, this.excludePeerIds.container);
 
     const includedFlagsContainer = this.includePeerIds.container.querySelector('.folder-categories');
     const excludedFlagsContainer = this.excludePeerIds.container.querySelector('.folder-categories');
@@ -255,7 +258,7 @@ export default class AppEditFolderTab extends SliderSuperTab {
   }
 
   private onCreateOpen() {
-    this.caption.style.display = '';
+    // this.caption.style.display = '';
     this.setTitle('FilterNew');
     this.menuBtn.classList.add('hide');
     this.confirmBtn.classList.remove('hide');
@@ -268,7 +271,7 @@ export default class AppEditFolderTab extends SliderSuperTab {
   }
 
   private onEditOpen() {
-    this.caption.style.display = 'none';
+    // this.caption.style.display = 'none';
     this.setTitle(this.type === 'create' ? 'FilterNew' : 'FilterHeaderEdit');
 
     if(this.type === 'edit') {

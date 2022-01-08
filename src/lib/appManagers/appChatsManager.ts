@@ -395,6 +395,10 @@ export class AppChatsManager {
     }
   }
 
+  public getInputPeer(id: ChatId) {
+    return this.isChannel(id) ? this.getChannelInputPeer(id) : this.getChatInputPeer(id);
+  }
+
   public getChatInputPeer(id: ChatId): InputPeer.inputPeerChat {
     return {
       _: 'inputPeerChat',
@@ -756,6 +760,15 @@ export class AppChatsManager {
   public toggleSignatures(id: ChatId, enabled: boolean) {
     return apiManager.invokeApi('channels.toggleSignatures', {
       channel: this.getChannelInput(id),
+      enabled
+    }).then(updates => {
+      apiUpdatesManager.processUpdateMessage(updates);
+    });
+  }
+
+  public toggleNoForwards(id: ChatId, enabled: boolean) {
+    return apiManager.invokeApi('messages.toggleNoForwards', {
+      peer: this.getInputPeer(id),
       enabled
     }).then(updates => {
       apiUpdatesManager.processUpdateMessage(updates);

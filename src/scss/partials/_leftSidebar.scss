@@ -239,6 +239,7 @@
     &.has-filters {
       .connection-status-bottom {
         --offset-top: -3px;
+        height: calc(100% + var(--offset-top) * -1);
       }
     }
   }
@@ -507,12 +508,13 @@
     width: 420px;
     margin: 0 auto;
     flex: 0 0 auto;
-    padding: 0 1.25rem;
+    padding: 0 .75rem;
     max-width: 100%;
+    margin: .75rem 0;
 
     @include respond-to(handhelds) {
       width: 100%;
-      padding: 0 1rem;
+      padding: 0 .25rem;
     }
   }
 }
@@ -601,26 +603,6 @@
 }
 
 .edit-profile-container {
-  .caption {
-    margin-top: 1.0625rem;
-    margin-left: 1.4375rem;
-    line-height: var(--line-height);
-    padding-bottom: 1.4375rem;
-
-    @include respond-to(handhelds) {
-      padding-right: 24px;
-    }
-  }
-
-  .sidebar-left-h2 {
-    padding: 0 1.4375rem;
-    padding-bottom: 1.5rem;
-  }
-
-  hr {
-    margin-bottom: 1rem;
-  }
-
   .scroll-wrapper {
     width: 100%;
   }
@@ -694,10 +676,6 @@
       width: 100%;
       padding: 0 16px;
     }
-  }
-
-  .input-wrapper {
-    margin-bottom: .125rem !important;
   }
 
   .sidebar-left-section {
@@ -848,11 +826,16 @@
     @include respond-to(handhelds) {
       padding-bottom: .5rem;
     } */
-    user-select: none;
+    // user-select: none;
     padding: .5rem 0 1rem;
 
     &.with-fake-delimiter {
-      padding-top: 0;
+      padding-top: 0 !important;
+      box-shadow: none;
+
+      .gradient-delimiter {
+        margin-bottom: .5rem;
+      }
     }
 
     @include respond-to(handhelds) {
@@ -932,6 +915,10 @@
       flex: 0 0 auto;
       position: relative;
     }
+
+    .chatlist {
+      padding: 0;
+    }
   }
 
   &-h2 {
@@ -953,8 +940,29 @@
   }
 }
 
+#chats-archived-container,
+#contacts-container,
+.add-members-container,
+.settings-container,
+#search-private-container,
+#stickers-container,
+#poll-results-container,
+#search-gifs-container {
+  background-color: var(--surface-color) !important;
+}
+
+.chat-folders-container {
+  .btn-control {
+    margin-bottom: 1.5rem;
+  }
+}
+
 .two-step-verification {
+  background-color: var(--surface-color) !important;
+
   .sidebar-left-section { // * main tab verified with mockup
+    box-shadow: none !important;
+
     &:first-child { // ! refactor is needed
       padding-top: 0;
     }
@@ -1153,8 +1161,6 @@
 
 .background-container {
   .grid {
-    padding: 0 .5rem .5rem;
-
     &-item {
       &:after {
         content: " ";

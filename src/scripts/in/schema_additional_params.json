@@ -78,7 +78,11 @@
     {"name": "error", "type": "any"},
     {"name": "send", "type": "() => Promise<any>"},
     {"name": "totalEntities", "type": "MessageEntity[]"},
-    {"name": "reply_to_mid", "type": "number"}
+    {"name": "reply_to_mid", "type": "number"},
+    {"name": "savedFrom", "type": "string"},
+    {"name": "sponsored", "type": "true"},
+    {"name": "local", "type": "true"},
+    {"name": "sponsoredMessage", "type": "SponsoredMessage.sponsoredMessage"}
   ]
 }, {
   "predicate": "messageService",
@@ -96,7 +100,9 @@
     {"name": "error", "type": "any"},
     {"name": "send", "type": "() => Promise<any>"},
     {"name": "random_id", "type": "string"},
-    {"name": "reply_to_mid", "type": "number"}
+    {"name": "reply_to_mid", "type": "number"},
+    {"name": "clear_history", "type": "boolean"},
+    {"name": "local", "type": "true"}
   ]
 }, {
   "predicate": "messageEmpty",
@@ -333,4 +339,10 @@
     {"name": "rReply", "type": "string"},
     {"name": "chosenIndexes", "type": "number[]"}
   ]
+}, {
+  "predicate": "messageMediaCall",
+  "params": [
+    {"name": "action", "type": "MessageAction.messageActionPhoneCall"}
+  ],
+  "type": "MessageMedia"
 }]

@@ -20,13 +20,12 @@ export default function confirmationPopup(options: PopupConfirmationOptions) {
       resolve(set ? !!set.size : undefined);
     };
 
-    const buttons = addCancelButton([]);
-    const cancelButton = buttons[0];
+    const buttons = addCancelButton([button]);
+    const cancelButton = buttons.find(button => button.isCancel);
     cancelButton.callback = () => {
       reject();
     };
 
-    buttons.unshift(button);
     options.buttons = buttons;
     options.checkboxes = checkbox && [checkbox];
 

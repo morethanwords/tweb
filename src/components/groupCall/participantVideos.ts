@@ -10,8 +10,9 @@ import findUpClassName from "../../helpers/dom/findUpClassName";
 import ListenerSetter from "../../helpers/listenerSetter";
 import { safeAssign } from "../../helpers/object";
 import { GroupCallParticipant } from "../../layer";
-import { GroupCallInstance, AppGroupCallsManager, GroupCallOutputSource } from "../../lib/appManagers/appGroupCallsManager";
+import { AppGroupCallsManager, GroupCallOutputSource } from "../../lib/appManagers/appGroupCallsManager";
 import type { AppPeersManager } from "../../lib/appManagers/appPeersManager";
+import GroupCallInstance from "../../lib/calls/groupCallInstance";
 import rootScope from "../../lib/rootScope";
 import GroupCallParticipantVideoElement, { GroupCallParticipantVideoType } from "./participantVideo";
 
@@ -54,14 +55,12 @@ export default class GroupCallParticipantsVideoElement extends ControlsHover {
       }
     });
 
-    listenerSetter.add(rootScope)('group_call_pinned', ({instance, source}) => {
-      if(this.instance === instance) {
-        this.participantsElements.forEach((map) => {
-          map.forEach((element) => {
-            this.setElementDisplay(element, source);
-          });
+    listenerSetter.add(this.instance)('pinned', (source) => {
+      this.participantsElements.forEach((map) => {
+        map.forEach((element) => {
+          this.setElementDisplay(element, source);
         });
-      }
+      });
     });
 
     attachClickEvent(this.container, (e) => {

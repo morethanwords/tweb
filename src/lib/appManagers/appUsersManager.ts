@@ -80,7 +80,11 @@ export class AppUsersManager {
         const userId = update.user_id;
         const user = this.users[userId];
         if(user) {
-          this.forceUserOnline(userId);
+          if((user.photo as UserProfilePhoto.userProfilePhoto)?.photo_id === (update.photo as UserProfilePhoto.userProfilePhoto).photo_id) {
+            return;
+          }
+
+          this.forceUserOnline(userId, update.date);
 
           if(update.photo._ === 'userProfilePhotoEmpty') {
             delete user.photo;

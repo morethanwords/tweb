@@ -24,12 +24,20 @@ export type MovableState = {
 const className = 'movable-element';
 const resizeHandlerClassName = className + '-resize-handler';
 
+export type MovableElementOptions = {
+  minWidth: MovableElement['minWidth'],
+  minHeight: MovableElement['minHeight'],
+  element: MovableElement['element'],
+  verifyTouchTarget?: MovableElement['verifyTouchTarget']
+};
+
 export default class MovableElement extends EventListenerBase<{
   resize: () => void
 }> {
   private minWidth: number;
   private minHeight: number;
   private element: HTMLElement;
+  private verifyTouchTarget: (e: TouchEvent | MouseEvent) => boolean;
 
   private top: number;
   private left: number;
@@ -39,11 +47,7 @@ export default class MovableElement extends EventListenerBase<{
   private swipeHandler: SwipeHandler;
   private handlers: HTMLElement[];
 
-  constructor(options: {
-    minWidth: MovableElement['minWidth'],
-    minHeight: MovableElement['minHeight'],
-    element: MovableElement['element']
-  }) {
+  constructor(options: MovableElementOptions) {
     super(true);
     safeAssign(this, options);
     
@@ -133,11 +137,7 @@ export default class MovableElement extends EventListenerBase<{
       },
       verifyTouchTarget: (e) => {
         const target = e.target;
-        if(findUpClassName(target, 'chatlist') || 
-          findUpClassName(target, 'group-call-button') || 
-          findUpClassName(target, 'btn-icon') ||
-          findUpClassName(target, 'group-call-participants-video-container') ||
-          isFullScreen()) {
+        if(this.verifyTouchTarget && !this.verifyTouchTarget(e)) {
           return false;
         }
 

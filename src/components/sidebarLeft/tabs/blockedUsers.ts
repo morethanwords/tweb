@@ -21,6 +21,7 @@ export default class AppBlockedUsersTab extends SliderSuperTab {
   private menuElement: HTMLElement;
   
   protected init() {
+    this.header.classList.add('with-border');
     this.container.classList.add('blocked-users-container');
     this.setTitle('BlockedUsers');
 

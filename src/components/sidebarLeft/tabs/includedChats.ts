@@ -172,8 +172,6 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
 
     const filter = this.filter;
 
-    const fragment = document.createDocumentFragment();
-
     const categoriesSection = new SettingSection({
       noDelimiter: true,
       name: 'FilterChatTypes'
@@ -207,12 +205,6 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
     }
     categoriesSection.content.append(f);
 
-    const chatsSection = new SettingSection({
-      name: 'FilterChats'
-    });
-
-    fragment.append(categoriesSection.container, chatsSection.container);
-
     /////////////////
 
     const selectedPeers = (this.type === 'included' ? filter.includePeerIds : filter.excludePeerIds).slice();
@@ -222,7 +214,8 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
       onChange: this.onSelectChange, 
       peerType: ['dialogs'], 
       renderResultsFunc: this.renderResults,
-      placeholder: 'Search'
+      placeholder: 'Search',
+      sectionNameLangPackKey: 'FilterChats'
     });
     this.selector.selected = new Set(selectedPeers);
 
@@ -249,9 +242,7 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
       return div;
     };
 
-    const parent = this.selector.list.parentElement;
-    chatsSection.content.append(this.selector.list);
-    parent.append(fragment);
+    this.selector.scrollable.container.append(categoriesSection.container, this.selector.scrollable.container.lastElementChild);
 
     this.selector.addInitial(selectedPeers);
     addedInitial = true;

@@ -19,7 +19,7 @@ import { randomLong } from "../../helpers/random";
 import { splitStringByLength, limitSymbols, escapeRegExp } from "../../helpers/string";
 import { Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup, InputPeer, InputPhoto, InputDocument, InputGeoPoint, WebPage, GeoPoint, ReportReason, MessagesGetDialogs, InputChannel, InputDialogPeer } from "../../layer";
 import { InvokeApiOptions } from "../../types";
-import I18n, { FormatterArguments, i18n, join, langPack, LangPackKey, _i18n } from "../langPack";
+import I18n, { FormatterArguments, i18n, join, langPack, LangPackKey, UNSUPPORTED_LANG_PACK_KEY, _i18n } from "../langPack";
 import { logger, LogTypes } from "../logger";
 import type { ApiFileManager } from '../mtproto/apiFileManager';
 //import apiManager from '../mtproto/apiManager';
@@ -1214,6 +1214,7 @@ export class AppMessagesManager {
           flags: 4,
           total_voters: 0,
           pFlags: {},
+          recent_voters: []
         });
 
         const {poll, results} = appPollsManager.getPoll(pollId);
@@ -2384,7 +2385,7 @@ export class AppMessagesManager {
     return appMessagesIdsManager.generateMessageId(dialog?.top_message || 0, true);
   }
 
-  public saveMessage(message: any, options: Partial<{
+  public saveMessage(message: Message, options: Partial<{
     storage: MessagesStorage,
     isScheduled: true,
     isOutgoing: true,
@@ -2406,10 +2407,7 @@ export class AppMessagesManager {
     const storage = options.storage || this.getMessagesStorage(peerId);
     const isChannel = message.peer_id._ === 'peerChannel';
     const isBroadcast = isChannel && appChatsManager.isBroadcast(peerId.toChatId());
-
-    if(options.isScheduled) {
-      message.pFlags.is_scheduled = true;
-    }
+    const isMessage = message._ === 'message';
 
     if(options.isOutgoing) {
       message.pFlags.is_outgoing = true;
@@ -2418,9 +2416,20 @@ export class AppMessagesManager {
     const mid = appMessagesIdsManager.generateMessageId(message.id);
     message.mid = mid;
 
-    if(message.grouped_id) {
-      const storage = this.groupedMessagesStorage[message.grouped_id] ?? (this.groupedMessagesStorage[message.grouped_id] = new Map());
-      storage.set(mid, message);
+    if(isMessage) {
+      if(options.isScheduled) {
+        message.pFlags.is_scheduled = true;
+      }
+
+      if(message.grouped_id) {
+        const storage = this.groupedMessagesStorage[message.grouped_id] ?? (this.groupedMessagesStorage[message.grouped_id] = new Map());
+        storage.set(mid, message);
+      }
+
+      if(message.via_bot_id) {
+        // ! WARNING
+        message.viaBotId = message.via_bot_id as any;
+      }
     }
 
     const dialog = this.getDialogOnly(peerId);
@@ -2441,7 +2450,7 @@ export class AppMessagesManager {
       if(message.reply_to.reply_to_top_id) message.reply_to.reply_to_top_id = appMessagesIdsManager.generateMessageId(message.reply_to.reply_to_top_id);
     }
 
-    if(message.replies) {
+    if(isMessage && message.replies) {
       if(message.replies.max_id) message.replies.max_id = appMessagesIdsManager.generateMessageId(message.replies.max_id);
       if(message.replies.read_max_id) message.replies.read_max_id = appMessagesIdsManager.generateMessageId(message.replies.read_max_id);
     }
@@ -2452,17 +2461,18 @@ export class AppMessagesManager {
     }
     
     //storage.generateIndex(message);
-    const myId = appUsersManager.getSelf().id;
+    const myId = appUsersManager.getSelf().id.toPeerId();
+
+    const fwdHeader = isMessage && (message as Message.message).fwd_from as MessageFwdHeader;
 
     message.peerId = peerId;
     if(peerId === myId/*  && !message.from_id && !message.fwd_from */) {
-      message.fromId = message.fwd_from ? (message.fwd_from.from_id ? appPeersManager.getPeerId(message.fwd_from.from_id) : 0) : myId;
+      message.fromId = fwdHeader ? (fwdHeader.from_id ? appPeersManager.getPeerId(fwdHeader.from_id) : NULL_PEER_ID) : myId;
     } else {
       //message.fromId = message.pFlags.post || (!message.pFlags.out && !message.from_id) ? peerId : appPeersManager.getPeerId(message.from_id);
       message.fromId = message.pFlags.post || !message.from_id ? peerId : appPeersManager.getPeerId(message.from_id);
     }
 
-    const fwdHeader = message.fwd_from as MessageFwdHeader;
     if(fwdHeader) {
       //if(peerId === myID) {
         if(fwdHeader.saved_from_msg_id) fwdHeader.saved_from_msg_id = appMessagesIdsManager.generateMessageId(fwdHeader.saved_from_msg_id);
@@ -2490,17 +2500,20 @@ export class AppMessagesManager {
       }
     }
 
-    if(message.via_bot_id > 0) {
-      message.viaBotId = message.via_bot_id;
-    }
-
     const mediaContext: ReferenceContext = {
       type: 'message',
       peerId,
       messageId: mid
     };
 
-    if(message.media) {
+    if(isMessage) {
+      const entities = message.entities;
+      if(entities && entities.find(entity => entity._ === 'messageEntitySpoiler')) {
+        message.media = {_: 'messageMediaUnsupported'};
+      }
+    }
+
+    if(isMessage && message.media) {
       switch(message.media._) {
         case 'messageMediaEmpty': {
           delete message.media;
@@ -2509,12 +2522,12 @@ export class AppMessagesManager {
 
         case 'messageMediaPhoto': {
           if(message.media.ttl_seconds) {
-            message.media = {_: 'messageMediaUnsupportedWeb'};
+            message.media = {_: 'messageMediaUnsupported'};
           } else {
             message.media.photo = appPhotosManager.savePhoto(message.media.photo, mediaContext);
           }
 
-          if(!message.media.photo) { // * found this bug on test DC
+          if(!(message.media as MessageMedia.messageMediaPhoto).photo) { // * found this bug on test DC
             delete message.media;
           }
           
@@ -2530,7 +2543,7 @@ export class AppMessagesManager {
           
         case 'messageMediaDocument': {
           if(message.media.ttl_seconds) {
-            message.media = {_: 'messageMediaUnsupportedWeb'};
+            message.media = {_: 'messageMediaUnsupported'};
           } else {
             message.media.document = appDocsManager.saveDoc(message.media.document, mediaContext); // 11.04.2020 warning
           }
@@ -2550,13 +2563,20 @@ export class AppMessagesManager {
           break; */
 
         case 'messageMediaInvoice': {
-          message.media = {_: 'messageMediaUnsupportedWeb'};
+          message.media = {_: 'messageMediaUnsupported'};
+          break;
+        }
+
+        case 'messageMediaUnsupported': {
+          message.message = '';
+          delete message.entities;
+          delete message.totalEntities;
           break;
         }
       }
     }
 
-    if(message.action) {
+    if(!isMessage && message.action) {
       const action = message.action as MessageAction;
       let migrateFrom: PeerId;
       let migrateTo: PeerId;
@@ -2674,12 +2694,14 @@ export class AppMessagesManager {
         case 'messageActionPhoneCall':
           // @ts-ignore
           action.type = 
-            (message.pFlags.out ? 'out_' : 'in_') +
+            (action.pFlags.video ? 'video_' : '') +
+            (action.duration !== undefined ? (message.pFlags.out ? 'out_' : 'in_') : '') +
             (
-              action.reason._ === 'phoneCallDiscardReasonMissed' ||
-              action.reason._ === 'phoneCallDiscardReasonBusy'
-                 ? 'missed'
-                 : 'ok'
+              action.duration !== undefined ? 'ok' : (
+                action.reason._ === 'phoneCallDiscardReasonMissed'
+                  ? 'missed'
+                  : 'cancelled'
+              )
             );
           break;
       }
@@ -2702,7 +2724,7 @@ export class AppMessagesManager {
       message.rReply = this.getRichReplyText(message);
     } */
 
-    if(message.message && message.message.length && !message.totalEntities) {
+    if(isMessage && message.message.length && !message.totalEntities) {
       this.wrapMessageEntities(message);  
     }
 
@@ -2836,6 +2858,11 @@ export class AppMessagesManager {
               addPart(undefined, plain ? document.file_name : RichTextProcessor.wrapEmojiText(document.file_name));
             }
   
+            break;
+          }
+
+          case 'messageMediaUnsupported': {
+            addPart(UNSUPPORTED_LANG_PACK_KEY);
             break;
           }
   
@@ -4314,8 +4341,9 @@ export class AppMessagesManager {
           return;
         }
 
-        this.scheduleHandleNewDialogs(peerId);
+        (update as any).ignoreExisting = true;
         set.add(update);
+        this.scheduleHandleNewDialogs(peerId);
       }
 
       return;
@@ -4342,27 +4370,32 @@ export class AppMessagesManager {
       this.updateMessageRepliesIfNeeded(message);
     }
 
-    if(historyStorage.history.findSlice(message.mid)) {
-      return false;
-    }
-
-    // * catch situation with disconnect. if message's id is lower than we already have (in bottom end slice), will sort it
-    const firstSlice = historyStorage.history.first;
-    if(firstSlice.isEnd(SliceEnd.Bottom)) {
-      let i = 0;
-      for(const length = firstSlice.length; i < length; ++i) {
-        if(message.mid > firstSlice[i]) {
-          break;
+    // * so message can exist if reloadConversation came back earlier with mid
+    const ignoreExisting: boolean = (update as any).ignoreExisting;
+    const isExisting = !!historyStorage.history.findSlice(message.mid);
+    if(isExisting) {
+      if(!ignoreExisting) {
+        return false;
+      }
+    } else {
+      // * catch situation with disconnect. if message's id is lower than we already have (in bottom end slice), will sort it
+      const firstSlice = historyStorage.history.first;
+      if(firstSlice.isEnd(SliceEnd.Bottom)) {
+        let i = 0;
+        for(const length = firstSlice.length; i < length; ++i) {
+          if(message.mid > firstSlice[i]) {
+            break;
+          }
         }
+
+        firstSlice.splice(i, 0, message.mid);
+      } else {
+        historyStorage.history.unshift(message.mid);
       }
 
-      firstSlice.splice(i, 0, message.mid);
-    } else {
-      historyStorage.history.unshift(message.mid);
-    }
-
-    if(historyStorage.count !== null) {
-      historyStorage.count++;
+      if(historyStorage.count !== null) {
+        historyStorage.count++;
+      }
     }
 
     if(this.mergeReplyKeyboard(historyStorage, message)) {
@@ -4414,7 +4447,7 @@ export class AppMessagesManager {
     
     const inboxUnread = !message.pFlags.out && message.pFlags.unread;
     if(dialog) {
-      if(inboxUnread) {
+      if(inboxUnread && message.mid > dialog.top_message) {
         const releaseUnreadCount = this.dialogsStorage.prepareDialogUnreadCountModifying(dialog);
 
         ++dialog.unread_count;
@@ -4426,7 +4459,9 @@ export class AppMessagesManager {
         releaseUnreadCount();
       }
 
-      this.setDialogTopMessage(message, dialog);
+      if(message.mid >= dialog.top_message) {
+        this.setDialogTopMessage(message, dialog);
+      }
     }
 
     if(inboxUnread/*  && ($rootScope.selectedPeerID != peerID || $rootScope.idle.isIDLE) */) {
@@ -4505,7 +4540,7 @@ export class AppMessagesManager {
     } */
 
     const isTopMessage = dialog && dialog.top_message === mid;
-    if((message as Message.message).clear_history) {
+    if((message as Message.messageService).clear_history) {
       if(isTopMessage) {
         rootScope.dispatchEvent('dialog_flush', {peerId});
       }
@@ -5872,6 +5907,10 @@ export class AppMessagesManager {
 
   public isDialogUnread(dialog: Dialog) {
     return !!this.getDialogUnreadCount(dialog);
+  }
+
+  public canForward(message: Message.message | Message.messageService) {
+    return !(message as Message.message).pFlags.noforwards && !appPeersManager.noForwards(message.peerId);
   }
 }
 

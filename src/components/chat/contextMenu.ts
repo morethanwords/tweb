@@ -24,8 +24,9 @@ import findUpClassName from "../../helpers/dom/findUpClassName";
 import { cancelEvent } from "../../helpers/dom/cancelEvent";
 import { attachClickEvent, simulateClickEvent } from "../../helpers/dom/clickEvent";
 import isSelectionEmpty from "../../helpers/dom/isSelectionEmpty";
-import { Message, Poll } from "../../layer";
+import { Message, Poll, Chat as MTChat, MessageMedia } from "../../layer";
 import PopupReportMessages from "../popups/reportMessages";
+import assumeType from "../../helpers/assumeType";
 
 export default class ChatContextMenu {
   private buttons: (ButtonMenuItemOptions & {verify: () => boolean, notDirect?: () => boolean, withSelection?: true})[];
@@ -40,7 +41,8 @@ export default class ChatContextMenu {
   private isUsernameTarget: boolean;
   private peerId: PeerId;
   private mid: number;
-  private message: any;
+  private message: Message.message | Message.messageService;
+  private noForwards: boolean;
 
   constructor(private attachTo: HTMLElement, 
     private chat: Chat, 
@@ -109,6 +111,7 @@ export default class ChatContextMenu {
 
       this.isSelected = this.chat.selection.isMidSelected(this.peerId, this.mid);
       this.message = this.chat.getMessage(this.mid);
+      this.noForwards = !this.appMessagesManager.canForward(this.message);
 
       this.buttons.forEach(button => {
         let good: boolean;
@@ -176,6 +179,7 @@ export default class ChatContextMenu {
       text: 'MessageScheduleEditTime',
       onClick: () => {
         this.chat.input.scheduleSending(() => {
+          assumeType<Message.message>(this.message);
           this.appMessagesManager.editMessage(this.message, this.message.message, {
             scheduleDate: this.chat.input.scheduleDate,
             entities: this.message.entities
@@ -203,18 +207,18 @@ export default class ChatContextMenu {
       icon: 'copy',
       text: 'Copy',
       onClick: this.onCopyClick,
-      verify: () => !!this.message.message && !this.isTextSelected && (!this.isAnchorTarget || this.message.message !== this.target.innerText)
+      verify: () => !this.noForwards && !!(this.message as Message.message).message && !this.isTextSelected && (!this.isAnchorTarget || (this.message as Message.message).message !== this.target.innerText)
     }, {
       icon: 'copy',
       text: 'Chat.CopySelectedText',
       onClick: this.onCopyClick,
-      verify: () => !!this.message.message && this.isTextSelected
+      verify: () => !this.noForwards && !!(this.message as Message.message).message && this.isTextSelected
     }, {
       icon: 'copy',
       text: 'Message.Context.Selection.Copy',
       onClick: this.onCopyClick,
       verify: () => {
-        if(!this.isSelected) {
+        if(!this.isSelected || this.noForwards) {
           return false;
         }
 
@@ -270,19 +274,19 @@ export default class ChatContextMenu {
       icon: 'unpin',
       text: 'Message.Context.Unpin',
       onClick: this.onUnpinClick,
-      verify: () => this.message.pFlags.pinned && this.appPeersManager.canPinMessage(this.peerId),
+      verify: () => (this.message as Message.message).pFlags.pinned && this.appPeersManager.canPinMessage(this.peerId),
     }, {
       icon: 'download',
       text: 'MediaViewer.Context.Download',
       onClick: () => {
-        this.appDocsManager.saveDocFile(this.message.media.document);
+        this.appDocsManager.saveDocFile((this.message as any).media.document);
       },
       verify: () => {
         if(this.message.pFlags.is_outgoing) {
           return false;
         }
         
-        const doc: MyDocument = this.message.media?.document;
+        const doc: MyDocument = ((this.message as Message.message).media as MessageMedia.messageMediaDocument)?.document as any;
         if(!doc) return false;
         
         let hasTarget = !!IS_TOUCH_SUPPORTED;
@@ -295,7 +299,7 @@ export default class ChatContextMenu {
       text: 'Chat.Poll.Unvote',
       onClick: this.onRetractVote,
       verify: () => {
-        const poll = this.message.media?.poll as Poll;
+        const poll = (this.message as any).media?.poll as Poll;
         return poll && poll.chosenIndexes.length && !poll.pFlags.closed && !poll.pFlags.quiz;
       }/* ,
       cancelEvent: true */
@@ -304,7 +308,7 @@ export default class ChatContextMenu {
       text: 'Chat.Poll.Stop',
       onClick: this.onStopPoll,
       verify: () => {
-        const poll = this.message.media?.poll;
+        const poll = (this.message as any).media?.poll;
         return this.appMessagesManager.canEditMessage(this.message, 'poll') && poll && !poll.pFlags.closed && !this.message.pFlags.is_outgoing;
       }/* ,
       cancelEvent: true */
@@ -312,7 +316,7 @@ export default class ChatContextMenu {
       icon: 'forward',
       text: 'Forward',
       onClick: this.onForwardClick, // let forward the message if it's outgoing but not ours (like a changelog)
-      verify: () => this.chat.type !== 'scheduled' && (!this.message.pFlags.is_outgoing || !this.message.pFlags.out) && this.message._ !== 'messageService'
+      verify: () => !this.noForwards && this.chat.type !== 'scheduled' && (!this.message.pFlags.is_outgoing || !this.message.pFlags.out) && this.message._ !== 'messageService'
     }, {
       icon: 'forward',
       text: 'Message.Context.Selection.Forward',
@@ -335,7 +339,7 @@ export default class ChatContextMenu {
       icon: 'select',
       text: 'Message.Context.Select',
       onClick: this.onSelectClick,
-      verify: () => !this.message.action && !this.isSelected && this.isSelectable,
+      verify: () => !(this.message as Message.messageService).action && !this.isSelected && this.isSelectable,
       notDirect: () => true,
       withSelection: true
     }, {

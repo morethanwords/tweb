@@ -7,7 +7,7 @@
 import { cancelEvent } from "../helpers/dom/cancelEvent";
 import { attachClickEvent } from "../helpers/dom/clickEvent";
 import ListenerSetter from "../helpers/listenerSetter";
-import type { AppGroupCallsManager, GroupCallInstance } from "../lib/appManagers/appGroupCallsManager";
+import type { AppGroupCallsManager } from "../lib/appManagers/appGroupCallsManager";
 import GROUP_CALL_STATE from "../lib/calls/groupCallState";
 import rootScope from "../lib/rootScope";
 import ButtonIcon from "./buttonIcon";
@@ -18,48 +18,30 @@ import type { AppPeersManager } from "../lib/appManagers/appPeersManager";
 import type { AppChatsManager } from "../lib/appManagers/appChatsManager";
 import GroupCallDescriptionElement from "./groupCall/description";
 import GroupCallTitleElement from "./groupCall/title";
-import { SuperRLottieIcon } from "./superIcon";
 import PopupElement from "./popups";
 import throttle from "../helpers/schedulers/throttle";
+import GroupCallInstance from "../lib/calls/groupCallInstance";
+import CALL_STATE from "../lib/calls/callState";
+import replaceContent from "../helpers/dom/replaceContent";
+import PeerTitle from "./peerTitle";
+import CallDescriptionElement from "./call/description";
+// import PopupCall from "./call";
+import type { AppAvatarsManager } from "../lib/appManagers/appAvatarsManager";
+import GroupCallMicrophoneIconMini from "./groupCall/microphoneIconMini";
 
-export class GroupCallMicrophoneIconMini extends SuperRLottieIcon<{
-  PartState: boolean
-}> {
-  constructor() {
-    super({
-      width: 36,
-      height: 36,
-      getPart: (state) => {
-        return this.getItem().getPart(state ? 'unmute' : 'mute');
-      }
-    });
-
-    this.add({
-      name: 'voice_mini',
-      parts: [{
-        startFrame: 0,
-        endFrame: 35,
-        name: 'hand-to-muted'
-      }, {
-        startFrame: 36,
-        endFrame: 68,
-        name: 'unmute'
-      }, {
-        startFrame: 69,
-        endFrame: 98,
-        name: 'mute'
-      }, {
-        startFrame: 99,
-        endFrame: 135,
-        name: 'muted-to-hand'
-      }, {
-        startFrame: 136,
-        endFrame: 171,
-        name: 'unmuted-to-hand'
-      }]
-    });
+function convertCallStateToGroupState(state: CALL_STATE, isMuted: boolean) {
+  switch(state) {
+    case CALL_STATE.CLOSING:
+    case CALL_STATE.CLOSED:
+      return GROUP_CALL_STATE.CLOSED;
+    case CALL_STATE.CONNECTED:
+      return isMuted ? GROUP_CALL_STATE.MUTED : GROUP_CALL_STATE.UNMUTED;
+    default:
+      return GROUP_CALL_STATE.CONNECTING;
   }
 }
+
+const CLASS_NAME = 'topbar-call';
 
 export default class TopbarCall {
   public container: HTMLElement;
@@ -69,15 +51,28 @@ export default class TopbarCall {
   private groupCallTitle: GroupCallTitleElement;
   private groupCallDescription: GroupCallDescriptionElement;
   private groupCallMicrophoneIconMini: GroupCallMicrophoneIconMini;
+  private callDescription: CallDescriptionElement;
+  
+  private currentDescription: GroupCallDescriptionElement | CallDescriptionElement;
+
+  private instance: GroupCallInstance | any/* CallInstance */;
+  private instanceListenerSetter: ListenerSetter;
   
   constructor(
     private appGroupCallsManager: AppGroupCallsManager,
     private appPeersManager: AppPeersManager,
-    private appChatsManager: AppChatsManager
+    private appChatsManager: AppChatsManager,
+    private appAvatarsManager: AppAvatarsManager,
   ) {
     const listenerSetter = this.listenerSetter = new ListenerSetter();
 
-    listenerSetter.add(rootScope)('group_call_state', (instance) => {
+    listenerSetter.add(rootScope)('call_instance', ({instance, hasCurrent}) => {
+      if(!hasCurrent) {
+        this.updateInstance(instance);
+      }
+    });
+
+    listenerSetter.add(rootScope)('group_call_instance', (instance) => {
       this.updateInstance(instance);
     });
     
@@ -102,15 +97,49 @@ export default class TopbarCall {
     });
   }
 
-  private updateInstance(instance: GroupCallInstance) {
+  private onState = () => {
+    this.updateInstance(this.instance);
+  };
+
+  private clearCurrentInstance() {
+    if(!this.instance) return;
+    this.center.textContent = '';
+    
+    if(this.currentDescription) {
+      this.currentDescription.detach();
+      this.currentDescription = undefined;
+    }
+
+    this.instance = undefined;
+    this.instanceListenerSetter.removeAll();
+  }
+
+  private updateInstance(instance: TopbarCall['instance']) {
     if(this.construct) {
       this.construct();
       this.construct = undefined;
     }
 
-    const {state, id} = instance;
+    if(this.instance !== instance) {
+      this.clearCurrentInstance();
+      
+      this.instance = instance;
+      this.instanceListenerSetter = new ListenerSetter();
 
-    const {weave, container} = this;
+      this.instanceListenerSetter.add(instance as GroupCallInstance)('state', this.onState);
+
+      if(instance instanceof GroupCallInstance) {
+        this.currentDescription = this.groupCallDescription;
+      } else {
+        this.currentDescription = this.callDescription;
+        this.instanceListenerSetter.add(instance)('muted', this.onState);
+      }
+    }
+
+    const isMuted = this.instance.isMuted;
+    let state = instance instanceof GroupCallInstance ? instance.state : convertCallStateToGroupState(instance.connectionState, isMuted);
+
+    const {weave} = this;
 
     weave.componentDidMount();
     
@@ -122,6 +151,8 @@ export default class TopbarCall {
 
       SetTransition(document.body, 'is-calling', !isClosed, 250, isClosed ? () => {
         weave.componentWillUnmount();
+
+        this.clearCurrentInstance();
       }: undefined);
     }
     
@@ -129,47 +160,45 @@ export default class TopbarCall {
       return;
     }
     
-    if(state === GROUP_CALL_STATE.CONNECTING) {
-      weave.setCurrentState(GROUP_CALL_STATE.CONNECTING, true);
-    } else {
-      /* var a = 0;
-      animate(() => {
-        a += 0.1;
-        if(a > 1) a = 0;
-        weave.setAmplitude(a);
-        return true;
-      });
-      weave.setAmplitude(1); */
-      weave.setCurrentState(state, true);
-    }
-    
-    container.dataset.callId = '' + id;
+    weave.setCurrentState(state, true);
+    // if(state === GROUP_CALL_STATE.CONNECTING) {
+    //   weave.setCurrentState(state, true);
+    // } else {
+    //   /* var a = 0;
+    //   animate(() => {
+    //     a += 0.1;
+    //     if(a > 1) a = 0;
+    //     weave.setAmplitude(a);
+    //     return true;
+    //   });
+    //   weave.setAmplitude(1); */
+    //   weave.setCurrentState(state, true);
+    // }
     
     this.setTitle(instance);
     this.setDescription(instance);
-    this.groupCallMicrophoneIconMini.setState(state === GROUP_CALL_STATE.UNMUTED);
-    
-    const className = 'state-' + state;
-    if(container.classList.contains(className)) {
-      return;
+    this.groupCallMicrophoneIconMini.setState(!isMuted);
+  }
+
+  private setDescription(instance: TopbarCall['instance']) {
+    return this.currentDescription.update(instance as any);
+  }
+
+  private setTitle(instance: TopbarCall['instance']) {
+    if(instance instanceof GroupCallInstance) {
+      return this.groupCallTitle.update(instance);
+    } else {
+      replaceContent(this.center, new PeerTitle({peerId: instance.interlocutorUserId.toPeerId()}).element);
     }
-  }
-
-  private setDescription(instance: GroupCallInstance) {
-    return this.groupCallDescription.update(instance);
-  }
-
-  private setTitle(instance: GroupCallInstance) {
-    return this.groupCallTitle.update(instance);
   }
 
   private construct() {
     const {listenerSetter} = this;
     const container = this.container = document.createElement('div');
-    container.classList.add('sidebar-header', 'topbar-call-container');
+    container.classList.add('sidebar-header', CLASS_NAME + '-container');
 
     const left = document.createElement('div');
-    left.classList.add('topbar-call-left');
+    left.classList.add(CLASS_NAME + '-left');
 
     const groupCallMicrophoneIconMini = this.groupCallMicrophoneIconMini = new GroupCallMicrophoneIconMini();
     
@@ -178,7 +207,7 @@ export default class TopbarCall {
     left.append(mute);
 
     const throttledMuteClick = throttle(() => {
-      this.appGroupCallsManager.toggleMuted();
+      this.instance.toggleMuted();
     }, 600, true);
     
     attachClickEvent(mute, (e) => {
@@ -187,32 +216,52 @@ export default class TopbarCall {
     }, {listenerSetter});
     
     const center = this.center = document.createElement('div');
-    center.classList.add('topbar-call-center');
+    center.classList.add(CLASS_NAME + '-center');
     
     this.groupCallTitle = new GroupCallTitleElement(center);
     this.groupCallDescription = new GroupCallDescriptionElement(left);
+
+    this.callDescription = new CallDescriptionElement(left);
     
     const right = document.createElement('div');
-    right.classList.add('topbar-call-right');
+    right.classList.add(CLASS_NAME + '-right');
     
     const end = ButtonIcon('endcall_filled');
     right.append(end);
     
     attachClickEvent(end, (e) => {
       cancelEvent(e);
-      this.appGroupCallsManager.hangUp(container.dataset.callId, false, false);
+
+      const {instance} = this;
+      if(!instance) {
+        return;
+      }
+
+      if(instance instanceof GroupCallInstance) {
+        instance.hangUp();
+      } else {
+        instance.hangUp('phoneCallDiscardReasonHangup');
+      }
     }, {listenerSetter});
 
     attachClickEvent(container, () => {
-      if(PopupElement.getPopup(PopupGroupCall)) {
-        return;
-      }
-      
-      new PopupGroupCall({
-        appGroupCallsManager: this.appGroupCallsManager,
-        appPeersManager: this.appPeersManager,
-        appChatsManager: this.appChatsManager
-      }).show();
+      if(this.instance instanceof GroupCallInstance) {
+        if(PopupElement.getPopup(PopupGroupCall)) {
+          return;
+        }
+        
+        new PopupGroupCall({
+          appGroupCallsManager: this.appGroupCallsManager,
+          appPeersManager: this.appPeersManager,
+          appChatsManager: this.appChatsManager
+        }).show();
+      }/*  else if(this.instance instanceof CallInstance) {
+        new PopupCall({
+          appAvatarsManager: this.appAvatarsManager,
+          appPeersManager: this.appPeersManager,
+          instance: this.instance
+        }).show();
+      } */
     }, {listenerSetter});
     
     container.append(left, center, right);

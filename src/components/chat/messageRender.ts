@@ -24,72 +24,91 @@ const makeEdited = () => {
   return edited;
 };
 
+const makeSponsored = () => i18n('SponsoredMessage');
+
 export namespace MessageRender {
   /* export const setText = () => {
 
   }; */
 
-  export const setTime = (chat: Chat, message: Message.message, bubble: HTMLElement, bubbleContainer: HTMLElement, messageDiv: HTMLElement) => {
+  export const setTime = (chat: Chat, message: Message.message | Message.messageService, bubble: HTMLElement, bubbleContainer: HTMLElement, messageDiv: HTMLElement) => {
     const date = new Date(message.date * 1000);
     const args: (HTMLElement | string)[] = [];
-    let time = formatTime(date);
-
-    if(message.views) {
-      const postAuthor = message.post_author || message.fwd_from?.post_author;
-
-      bubble.classList.add('channel-post');
-
-      const postViewsSpan = document.createElement('span');
-      postViewsSpan.classList.add('post-views');
-      postViewsSpan.innerHTML = formatNumber(message.views, 1);
-
-      const channelViews = document.createElement('i');
-      channelViews.classList.add('tgico-channelviews', 'time-icon');
-
-      args.push(postViewsSpan, channelViews);
-      if(postAuthor) {
-        const span = document.createElement('span');
-        span.innerHTML = RichTextProcessor.wrapEmojiText(postAuthor) + ',' + NBSP;
-        args.push(span);
+    
+    let editedSpan: HTMLElement, sponsoredSpan: HTMLElement;
+    
+    const isSponsored = !!(message as Message.message).pFlags.sponsored;
+    const isMessage = !('action' in message) && !isSponsored;
+    
+    let time: HTMLElement = isSponsored ? undefined : formatTime(date);
+    if(isMessage) {
+      if(message.views) {
+        const postAuthor = message.post_author || message.fwd_from?.post_author;
+  
+        bubble.classList.add('channel-post');
+  
+        const postViewsSpan = document.createElement('span');
+        postViewsSpan.classList.add('post-views');
+        postViewsSpan.innerHTML = formatNumber(message.views, 1);
+  
+        const channelViews = document.createElement('i');
+        channelViews.classList.add('tgico-channelviews', 'time-icon');
+  
+        args.push(postViewsSpan, channelViews);
+        if(postAuthor) {
+          const span = document.createElement('span');
+          span.innerHTML = RichTextProcessor.wrapEmojiText(postAuthor) + ',' + NBSP;
+          args.push(span);
+        }
       }
-    }
-
-    let editedSpan: HTMLElement;
-    if(message.edit_date && chat.type !== 'scheduled' && !message.pFlags.edit_hide) {
-      bubble.classList.add('is-edited');
-
-      args.unshift(editedSpan = makeEdited());
-    }
-
-    if(chat.type !== 'pinned' && message.pFlags.pinned) {
-      bubble.classList.add('is-pinned');
-
-      const i = document.createElement('i');
-      i.classList.add('tgico-pinnedchat', 'time-icon');
-      args.unshift(i);
+  
+      if(message.edit_date && chat.type !== 'scheduled' && !message.pFlags.edit_hide) {
+        bubble.classList.add('is-edited');
+  
+        args.unshift(editedSpan = makeEdited());
+      }
+  
+      if(chat.type !== 'pinned' && message.pFlags.pinned) {
+        bubble.classList.add('is-pinned');
+  
+        const i = document.createElement('i');
+        i.classList.add('tgico-pinnedchat', 'time-icon');
+        args.unshift(i);
+      }
+    } else if(isSponsored) {
+      args.push(sponsoredSpan = makeSponsored());
     }
     
-    args.push(time);
+    if(time) {
+      args.push(time);
+    }
 
-    const title = getFullDate(date) 
-      + (message.edit_date ? `\nEdited: ${getFullDate(new Date(message.edit_date * 1000))}` : '')
-      + (message.fwd_from ? `\nOriginal: ${getFullDate(new Date(message.fwd_from.date * 1000))}` : '');
+    let title = isSponsored ? undefined : getFullDate(date);
+    if(isMessage) {
+      title += (message.edit_date ? `\nEdited: ${getFullDate(new Date(message.edit_date * 1000))}` : '')
+        + (message.fwd_from ? `\nOriginal: ${getFullDate(new Date(message.fwd_from.date * 1000))}` : '');
+    }
 
     const timeSpan = document.createElement('span');
     timeSpan.classList.add('time', 'tgico');
-    timeSpan.title = title;
+    if(title) timeSpan.title = title;
     timeSpan.append(...args);
 
     const inner = document.createElement('div');
     inner.classList.add('inner', 'tgico');
-    inner.title = title;
+    if(title) inner.title = title;
 
     let clonedArgs = args;
     if(editedSpan) {
       clonedArgs[clonedArgs.indexOf(editedSpan)] = makeEdited();
     }
+    if(sponsoredSpan) {
+      clonedArgs[clonedArgs.indexOf(sponsoredSpan)] = makeSponsored();
+    }
     clonedArgs = clonedArgs.map(a => a instanceof HTMLElement && !a.classList.contains('i18n') ? a.cloneNode(true) as HTMLElement : a);
-    clonedArgs[clonedArgs.length - 1] = formatTime(date); // clone time
+    if(time) {
+      clonedArgs[clonedArgs.length - 1] = formatTime(date); // clone time
+    }
     inner.append(...clonedArgs);
 
     timeSpan.append(inner);

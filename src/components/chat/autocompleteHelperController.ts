@@ -20,6 +20,12 @@ export default class AutocompleteHelperController {
     return this.tempId;
   } */
 
+  public toggleListNavigation(enabled: boolean) {
+    for(const helper of this.helpers) {
+      helper.toggleListNavigation(enabled);
+    }
+  }
+
   public getMiddleware() {
     this.middleware.clean();
     return this.middleware.get();

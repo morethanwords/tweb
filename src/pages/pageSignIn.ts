@@ -193,7 +193,12 @@ let onFirstMount = () => {
 
     countryInputField.select();
 
-    fastSmoothScroll(page.pageEl.parentElement.parentElement, countryInput, 'start', 4);
+    fastSmoothScroll({
+      container: page.pageEl.parentElement.parentElement, 
+      element: countryInput, 
+      position: 'start', 
+      margin: 4
+    });
 
     setTimeout(() => {
       if(!mouseDownHandlerAttached) {

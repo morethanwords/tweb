@@ -711,10 +711,13 @@ export default class DialogsStorage {
       const updates = this.appMessagesManager.newUpdatesAfterReloadToHandle[peerId];
       if(updates !== undefined) {
         for(const update of updates) {
+          updates.delete(update);
           this.apiUpdatesManager.saveUpdate(update);
         }
 
-        delete this.appMessagesManager.newUpdatesAfterReloadToHandle[peerId];
+        if(!updates.size) {
+          delete this.appMessagesManager.newUpdatesAfterReloadToHandle[peerId];
+        }
       }
     });
 
@@ -835,12 +838,14 @@ export default class DialogsStorage {
       historyStorage.history.push(mid);
     } else  */if(!slice.length) {
       historyStorage.history.unshift(mid);
+      historyStorage.count ||= 1;
       if(this.appMessagesManager.mergeReplyKeyboard(historyStorage, message)) {
         rootScope.dispatchEvent('history_reply_markup', {peerId});
       }
     } else if(!slice.isEnd(SliceEnd.Bottom)) { // * this will probably never happen, however, if it does, then it will fix slice with top_message
       const slice = historyStorage.history.insertSlice([mid]);
       slice.setEnd(SliceEnd.Bottom);
+      historyStorage.count ||= 1;
       if(this.appMessagesManager.mergeReplyKeyboard(historyStorage, message)) {
         rootScope.dispatchEvent('history_reply_markup', {peerId});
       }

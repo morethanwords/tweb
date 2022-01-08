@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import appSidebarLeft from "..";
+import appSidebarLeft, { SettingSection } from "..";
 import { InputFile } from "../../../layer";
 import appChatsManager from "../../../lib/appManagers/appChatsManager";
 import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
@@ -17,12 +17,12 @@ import { i18n } from "../../../lib/langPack";
 import ButtonCorner from "../../buttonCorner";
 
 export default class AppNewGroupTab extends SliderSuperTab {
-  private searchGroup = new SearchGroup(true, 'contacts', true, 'new-group-members disable-hover', false);
   private avatarEdit: AvatarEdit;
   private uploadAvatar: () => Promise<InputFile> = null;
   private peerIds: PeerId[];
   private nextBtn: HTMLButtonElement;
   private groupNameInputField: InputField;
+  list: HTMLUListElement;
 
   protected init() {
     this.container.classList.add('new-group-container');
@@ -31,6 +31,8 @@ export default class AppNewGroupTab extends SliderSuperTab {
     this.avatarEdit = new AvatarEdit((_upload) => {
       this.uploadAvatar = _upload;
     });
+
+    const section = new SettingSection({});
 
     const inputWrapper = document.createElement('div');
     inputWrapper.classList.add('input-wrapper');
@@ -65,16 +67,24 @@ export default class AppNewGroupTab extends SliderSuperTab {
       });
     });
 
-    const chatsContainer = document.createElement('div');
-    chatsContainer.classList.add('chatlist-container');
-    chatsContainer.append(this.searchGroup.container);
+    const chatsSection = new SettingSection({
+      name: 'Members',
+      nameArgs: [this.peerIds.length]
+    });
+
+    const list = this.list = appDialogsManager.createChatList({
+      new: true
+    });
+
+    chatsSection.content.append(list);
+
+    section.content.append(this.avatarEdit.container, inputWrapper);
 
     this.content.append(this.nextBtn);
-    this.scrollable.append(this.avatarEdit.container, inputWrapper, chatsContainer);
+    this.scrollable.append(section.container, chatsSection.container);
   }
 
   public onCloseAfterTimeout() {
-    this.searchGroup.clear();
     this.avatarEdit.clear();
     this.uploadAvatar = null;
     this.groupNameInputField.value = '';
@@ -82,14 +92,13 @@ export default class AppNewGroupTab extends SliderSuperTab {
   }
 
   public open(peerIds: PeerId[]) {
+    this.peerIds = peerIds;
     const result = super.open();
     result.then(() => {
-      this.peerIds = peerIds;
-
       this.peerIds.forEach(userId => {
         let {dom} = appDialogsManager.addDialogNew({
           dialog: userId,
-          container: this.searchGroup.list,
+          container: this.list,
           drawStatus: false,
           rippleEnabled: false,
           avatarSize: 48
@@ -97,10 +106,6 @@ export default class AppNewGroupTab extends SliderSuperTab {
 
         dom.lastMessageSpan.append(appUsersManager.getUserStatusString(userId));
       });
-
-      this.searchGroup.nameEl.textContent = '';
-      this.searchGroup.nameEl.append(i18n('Members', [this.peerIds.length]));
-      this.searchGroup.setActive();
     });
     
     return result;

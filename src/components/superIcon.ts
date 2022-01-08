@@ -1,3 +1,9 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
 import noop from "../helpers/noop";
 import { safeAssign } from "../helpers/object";
 import { LottieAssetName } from "../lib/rlottie/lottieLoader";
@@ -9,6 +15,9 @@ export type SuperRLottieIconGetInfoResult = RLottieIconItemPart;
 export class SuperRLottieIcon<Options extends {
   PartState: any,
   ColorState?: any,
+  Items?: {
+    name: string
+  }[]
 }> extends RLottieIcon {
   protected getPart: (state: Options['PartState'], prevState?: Options['PartState']) => SuperRLottieIconGetInfoResult;
   protected getColor?: (state: Options['ColorState'], prevState?: Options['ColorState']) => RLottieColor;
@@ -20,6 +29,7 @@ export class SuperRLottieIcon<Options extends {
   constructor(options: {
     width: number,
     height: number,
+    skipAnimation?: boolean,
     getPart: (state: Options['PartState'], prevState?: Options['PartState']) => SuperRLottieIconGetInfoResult,
     getColor?: (state: Options['ColorState'], prevState?: Options['ColorState']) => RLottieColor,
   }) {
@@ -59,37 +69,58 @@ export class SuperRLottieIcon<Options extends {
     return Promise.all(promises).then(noop);
   }
 
-  public setState(partState: Options['PartState'], colorState?: Options['ColorState']) {
+  /**
+   * Will redirect setting color state to part callback to synchronize the rendering
+   */
+  public setState(partState: Options['PartState'], colorState?: Options['ColorState'], partCallback?: () => void) {
     if(!this.loaded) this.load(partState, colorState);
-    if(partState !== undefined) this.setPartState(partState);
-    if(colorState !== undefined && this.getColor) this.setColorState(colorState);
+
+    let changedPartState = false, changedColorState = false;
+    if(partState !== undefined) changedPartState = this.setPartState(partState, colorState, partCallback);
+    else if(colorState !== undefined && this.getColor) changedColorState = this.setColorState(colorState);
+
+    return changedPartState || changedColorState;
   }
 
-  public setPartState(state: Options['PartState']) {
+  public setPartState(state: Options['PartState'], colorState?: Options['ColorState'], callback?: () => void) {
     const {partState: prevState} = this;
     if(prevState === state) {
-      return;
+      return colorState !== undefined ? this.setColorState(colorState) : false;
+    }
+
+    if(colorState !== undefined) {
+      this.setColorState(colorState, false);
     }
 
     this.partState = state;
 
     const part = this.getPart(state, prevState);
-    part.play();
+    part.play(callback);
+
+    return true;
   }
 
-  public setColorState(state: Options['ColorState']) {
+  public setColorState(state: Options['ColorState'], renderIfPaused = true) {
     const {colorState: prevState} = this;
     if(prevState === state) {
-      return;
+      return false;
     }
 
     this.colorState = state;
     
     const item = this.getItem();
+    const color = this.getColor(state, prevState);
+    const invoke = () => {
+      item.player.setColor(color, renderIfPaused);
+    };
+    
     if(item.player) {
-      const color = this.getColor(state, prevState);
-      item.player.setColor(color);
+      invoke();
+    } else {
+      item.onLoadForColor = invoke;
     }
+
+    return true;
   }
 
   public destroy() {

@@ -332,16 +332,11 @@ class AppSelection {
       for(const mid of mids) {
         const message = this.appMessagesManager.getMessageFromStorage(storage, mid);
         if(!cantForward) {
-          if(message.action) {
-            cantForward = true;
-          }
+          cantForward = !this.appMessagesManager.canForward(message);
         }
         
         if(!cantDelete) {
-          const canDelete = this.appMessagesManager.canDeleteMessage(message);
-          if(!canDelete) {
-            cantDelete = true;
-          }
+          cantDelete = !this.appMessagesManager.canDeleteMessage(message);
         }
 
         if(cantForward && cantDelete) break;
@@ -666,6 +661,8 @@ export default class ChatSelection extends AppSelection {
   public selectionSendNowBtn: HTMLElement;
   public selectionForwardBtn: HTMLElement;
   public selectionDeleteBtn: HTMLElement;
+  selectionLeft: HTMLDivElement;
+  selectionRight: HTMLDivElement;
 
   constructor(private chat: Chat, private bubbles: ChatBubbles, private input: ChatInput, appMessagesManager: AppMessagesManager) {
     super({
@@ -822,8 +819,8 @@ export default class ChatSelection extends AppSelection {
   }
 
   protected onToggleSelection = (forwards: boolean) => {
-    let transform = '', borderRadius = '';
-    if(forwards) {
+    let transform = '', borderRadius = '', needTranslateX: number;
+    // if(forwards) {
       const p = this.input.rowsWrapper.parentElement;
       const fakeSelectionWrapper = p.querySelector('.fake-selection-wrapper');
       const fakeRowsWrapper = p.querySelector('.fake-rows-wrapper');
@@ -835,16 +832,19 @@ export default class ChatSelection extends AppSelection {
       if(widthFrom !== widthTo) {
         const scale = (widthTo/*  - 8 */) / widthFrom;
         const initTranslateX = (widthFrom - widthTo) / 2;
-        const needTranslateX = fakeSelectionRect.left - fakeRowsRect.left - initTranslateX;
-        transform = `translateX(${needTranslateX}px) scaleX(${scale})`;
+        needTranslateX = fakeSelectionRect.left - fakeRowsRect.left - initTranslateX;
 
-        if(scale < 1) {
-          const br = 12;
-          borderRadius = '' + (br + br * (1 - scale)) + 'px';
+        if(forwards) {
+          transform = `translateX(${needTranslateX}px) scaleX(${scale})`;
+  
+          if(scale < 1) {
+            const br = 12;
+            borderRadius = '' + (br + br * (1 - scale)) + 'px';
+          }
         }
         //scale = widthTo / widthFrom;
       }
-    }
+    // }
 
     SetTransition(this.input.rowsWrapper, 'is-centering', forwards, 200);
     this.input.rowsWrapper.style.transform = transform;
@@ -857,6 +857,8 @@ export default class ChatSelection extends AppSelection {
           this.selectionSendNowBtn = 
           this.selectionForwardBtn = 
           this.selectionDeleteBtn = 
+          this.selectionLeft = 
+          this.selectionRight = 
           null;
         this.selectedText = undefined;
       }
@@ -914,13 +916,21 @@ export default class ChatSelection extends AppSelection {
           });
         }, attachClickOptions);
 
-        this.selectionContainer.append(...[
-          btnCancel, 
-          this.selectionCountEl, 
+        const left = this.selectionLeft = document.createElement('div');
+        left.classList.add('selection-container-left');
+        left.append(btnCancel, this.selectionCountEl);
+
+        const right = this.selectionRight = document.createElement('div');
+        right.classList.add('selection-container-right');
+        right.append(...[
           this.selectionSendNowBtn, 
           this.selectionForwardBtn, 
           this.selectionDeleteBtn
-        ].filter(Boolean));
+        ].filter(Boolean))
+
+        left.style.transform = `translateX(-${needTranslateX * 2}px)`;
+        right.style.transform = `translateX(${needTranslateX * 2}px)`;
+        this.selectionContainer.append(left, right);
 
         this.selectionInputWrapper.style.opacity = '0';
         this.selectionInputWrapper.append(this.selectionContainer);
@@ -928,7 +938,12 @@ export default class ChatSelection extends AppSelection {
 
         void this.selectionInputWrapper.offsetLeft; // reflow
         this.selectionInputWrapper.style.opacity = '';
+        left.style.transform = '';
+        right.style.transform = '';
       }
+    } else {
+      this.selectionLeft.style.transform = `translateX(-${needTranslateX * 2}px)`;
+      this.selectionRight.style.transform = `translateX(${needTranslateX * 2}px)`;
     }
   };
 

@@ -178,6 +178,9 @@ export class AppDialogsManager {
   private loadedDialogsAtLeastOnce = false;
   private allChatsIntlElement: I18n.IntlElement;
 
+  private emptyDialogsPlaceholderSubtitle: I18n.IntlElement;
+  private updateContactsLengthPromise: Promise<number>;
+
   constructor() {
     this.chatsPreloader = putPreloader(null, true);
 
@@ -787,10 +790,7 @@ export class AppDialogsManager {
   private changeFiltersAllChatsKey() {
     const scrollable = this.folders.menuScrollContainer.firstElementChild;
     const key: LangPackKey = scrollable.scrollWidth > scrollable.clientWidth ? 'FilterAllChatsShort' : 'FilterAllChats';
-    if(this.allChatsIntlElement.key !== key) {
-      this.allChatsIntlElement.key = key;
-      this.allChatsIntlElement.update();
-    }
+    this.allChatsIntlElement.compareAndUpdate({key});
   }
 
   private onFiltersLengthChange() {
@@ -986,40 +986,29 @@ export class AppDialogsManager {
       return;
     }
 
-    let placeholder: ReturnType<AppDialogsManager['generateEmptyPlaceholder']>;
+    let placeholder: ReturnType<AppDialogsManager['generateEmptyPlaceholder']>, type: 'dialogs' | 'folder';
     if(!this.filterId) {
       placeholder = this.generateEmptyPlaceholder({
         title: 'ChatList.Main.EmptyPlaceholder.Title',
-        classNameType: 'dialogs'
+        classNameType: type = 'dialogs'
       });
       
       placeholderContainer = placeholder.container;
       
       const img = document.createElement('img');
       img.classList.add('empty-placeholder-dialogs-icon');
+
+      this.emptyDialogsPlaceholderSubtitle = new I18n.IntlElement({
+        element: placeholder.subtitle
+      });
       
       Promise.all([
-        appUsersManager.getContacts().then(users => {
-          let key: LangPackKey, args: FormatterArguments;
-
-          if(users.length/*  && false */) {
-            key = 'ChatList.Main.EmptyPlaceholder.Subtitle';
-            args = [i18n('Contacts.Count', [users.length])];
-          } else {
-            key = 'ChatList.Main.EmptyPlaceholder.SubtitleNoContacts';
-            args = [];
-          }
-
-          const subtitleEl = new I18n.IntlElement({
-            key,
-            args,
-            element: placeholder.subtitle
-          });
-        }),
+        this.updateContactsLength(false),
         renderImageFromUrlPromise(img, 'assets/img/EmptyChats.svg'),
         fastRafPromise()
-      ]).then(() => {
+      ]).then(([usersLength]) => {
         placeholderContainer.classList.add('visible');
+        part.classList.toggle('has-contacts', !!usersLength);
       });
 
       placeholderContainer.prepend(img);
@@ -1027,7 +1016,7 @@ export class AppDialogsManager {
       placeholder = this.generateEmptyPlaceholder({
         title: 'FilterNoChatsToDisplay',
         subtitle: 'FilterNoChatsToDisplayInfo',
-        classNameType: 'folder'
+        classNameType: type = 'folder'
       });
 
       placeholderContainer = placeholder.container;
@@ -1052,6 +1041,40 @@ export class AppDialogsManager {
 
     part.append(placeholderContainer);
     part.classList.add('with-placeholder');
+    part.dataset.placeholderType = type;
+  }
+
+  private updateContactsLength(updatePartClassName: boolean) {
+    if(this.updateContactsLengthPromise) return this.updateContactsLengthPromise;
+    return this.updateContactsLengthPromise = appUsersManager.getContacts().then(users => {
+      const subtitle = this.emptyDialogsPlaceholderSubtitle;
+      if(subtitle) {
+        let key: LangPackKey, args: FormatterArguments;
+        
+        if(users.length/*  && false */) {
+          key = 'ChatList.Main.EmptyPlaceholder.Subtitle';
+          args = [i18n('Contacts.Count', [users.length])];
+        } else {
+          key = 'ChatList.Main.EmptyPlaceholder.SubtitleNoContacts';
+          args = [];
+        }
+
+        subtitle.compareAndUpdate({
+          key,
+          args
+        });
+      }
+
+      if(updatePartClassName) {
+        const chatList = this.chatList;
+        const part = chatList.parentElement as HTMLElement;
+        part.classList.toggle('has-contacts', !!users.length);
+      }
+
+      this.updateContactsLengthPromise = undefined;
+      
+      return users.length;
+    });
   }
 
   private removeContactsPlaceholder() {
@@ -1103,6 +1126,8 @@ export class AppDialogsManager {
         if(ready) {
           section.container.classList.toggle('hide', !sortedUserList.list.childElementCount);
         }
+
+        this.updateContactsLength(true);
       };
 
       const sortedUserList = new SortedUserList({

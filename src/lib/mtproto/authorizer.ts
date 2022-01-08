@@ -586,6 +586,7 @@ export class Authorizer {
     if(this.getTransportTypePromise) return this.getTransportTypePromise;
     return this.getTransportTypePromise = transportController.pingTransports().then(({websocket}) => {
       this.transportType = websocket ? 'websocket' : 'https';
+      this.log('will use transport:', this.transportType);
     });
   }
   /// #endif

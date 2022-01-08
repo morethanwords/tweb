@@ -610,7 +610,7 @@ export default class AppMediaViewerBase<
     let needOpacity = false;
     if(target !== this.content.media && !target.classList.contains('profile-avatars-avatar')) {
       const overflowElement = findUpClassName(realParent, 'scrollable');
-      const visibleRect = getVisibleRect(realParent, overflowElement);
+      const visibleRect = getVisibleRect(realParent, overflowElement, true);
 
       if(closing && (!visibleRect || visibleRect.overflow.vertical === 2 || visibleRect.overflow.horizontal === 2)) {
         target = this.content.media;
@@ -1410,6 +1410,12 @@ export default class AppMediaViewerBase<
               video.parentElement.classList.add('is-buffering');
             }
           });
+
+          if(this.wholeDiv.classList.contains('no-forwards')) {
+            video.addEventListener('contextmenu', (e) => {
+              cancelEvent(e);
+            });
+          }
   
           attachCanPlay();
         }

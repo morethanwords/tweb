@@ -12,7 +12,7 @@
 import { MOUNT_CLASS_TO } from "../../config/debug";
 import { tsNow } from "../../helpers/date";
 import { numberThousandSplitter } from "../../helpers/number";
-import { ChannelParticipantsFilter, ChannelsChannelParticipants, ChannelParticipant, Chat, ChatFull, ChatParticipants, ChatPhoto, ExportedChatInvite, InputChannel, InputFile, InputFileLocation, PhotoSize, SendMessageAction, Update, UserFull, UserProfilePhoto } from "../../layer";
+import { ChannelParticipantsFilter, ChannelsChannelParticipants, ChannelParticipant, Chat, ChatFull, ChatParticipants, ChatPhoto, ExportedChatInvite, InputChannel, InputFile, SendMessageAction, Update, UserFull } from "../../layer";
 import { LangPackKey, i18n } from "../langPack";
 //import apiManager from '../mtproto/apiManager';
 import apiManager from '../mtproto/mtprotoworker';
@@ -20,7 +20,7 @@ import { RichTextProcessor } from "../richtextprocessor";
 import rootScope from "../rootScope";
 import SearchIndex from "../searchIndex";
 import apiUpdatesManager from "./apiUpdatesManager";
-import appChatsManager, { Channel } from "./appChatsManager";
+import appChatsManager from "./appChatsManager";
 import appMessagesIdsManager from "./appMessagesIdsManager";
 import appNotificationsManager from "./appNotificationsManager";
 import appPeersManager from "./appPeersManager";
@@ -111,7 +111,7 @@ export class AppProfileManager {
       if(photo) {
         const hasChatPhoto = photo._ !== 'chatPhotoEmpty';
         const hasFullChatPhoto = fullChat.chat_photo?._ !== 'photoEmpty';
-        if(hasChatPhoto !== hasFullChatPhoto || (photo as ChatPhoto.chatPhoto).photo_id !== fullChat.chat_photo.id) {
+        if(hasChatPhoto !== hasFullChatPhoto || (photo as ChatPhoto.chatPhoto).photo_id !== fullChat.chat_photo?.id) {
           updated = true;
         }
       }
@@ -168,10 +168,11 @@ export class AppProfileManager {
       params: {
         id: appUsersManager.getUserInput(id)
       },
-      processResult: (userFull) => {
-        const user = userFull.user as User;
-        appUsersManager.saveApiUser(user, true);
-        
+      processResult: (usersUserFull) => {
+        appChatsManager.saveApiChats(usersUserFull.chats, true);
+        appUsersManager.saveApiUsers(usersUserFull.users);
+
+        const userFull = usersUserFull.full_user;
         const peerId = id.toPeerId(false);
         if(userFull.profile_photo) {
           userFull.profile_photo = appPhotosManager.savePhoto(userFull.profile_photo, {type: 'profilePhoto', peerId});
@@ -186,7 +187,7 @@ export class AppProfileManager {
           settings: userFull.notify_settings
         });
 
-        rootScope.dispatchEvent('user_full_update', id);
+        this.usersFull[id] = userFull;
 
         /* if(userFull.bot_info) {
           userFull.bot_info = this.saveBotInfo(userFull.bot_info) as any;
@@ -194,7 +195,8 @@ export class AppProfileManager {
 
         //appMessagesManager.savePinnedMessage(id, userFull.pinned_msg_id);
 
-        return this.usersFull[id] = userFull;
+        rootScope.dispatchEvent('user_full_update', id);
+        return userFull;
       }
     });
   }

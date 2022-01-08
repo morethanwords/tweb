@@ -381,10 +381,7 @@ export default class MTPNetworker {
         this.longPollInterval = undefined;
       }
 
-      if(this.checkConnectionTimeout !== undefined) {
-        clearTimeout(this.checkConnectionTimeout);
-        this.checkConnectionTimeout = undefined;
-      }
+      this.clearCheckConnectionTimeout();
       /// #endif
     }
 
@@ -593,8 +590,12 @@ export default class MTPNetworker {
 
   private checkConnection = (event: Event | string) => {
     this.debug && this.log('Check connection', event);
-    clearTimeout(this.checkConnectionTimeout);
-    this.checkConnectionTimeout = undefined;
+    this.clearCheckConnectionTimeout();
+
+    if(!this.transport) {
+      this.log.warn('No transport for checkConnection');
+      return;
+    }
   
     const serializer = new TLSerialization({mtproto: true});
     const pingId = randomLong();
@@ -616,16 +617,24 @@ export default class MTPNetworker {
     this.sendEncryptedRequest(pingMessage).then(() => {
       this.toggleOffline(false);
     }, () => {
-      this.debug && this.log('Delay ', this.checkConnectionPeriod * 1000);
-      this.checkConnectionTimeout = ctx.setTimeout(this.checkConnection, this.checkConnectionPeriod * 1000 | 0);
+      this.debug && this.log('Delay', this.checkConnectionPeriod * 1000);
+      this.checkConnectionTimeout = ctx.setTimeout(() => this.checkConnection('from failed checkConnection request'), this.checkConnectionPeriod * 1000 | 0);
       this.checkConnectionPeriod = Math.min(60, this.checkConnectionPeriod * 1.5);
     });
   };
+
+  private clearCheckConnectionTimeout() {
+    if(this.checkConnectionTimeout !== undefined) {
+      clearTimeout(this.checkConnectionTimeout);
+      this.checkConnectionTimeout = undefined;
+    }
+  }
 
   private toggleOffline(offline: boolean) {
     if(this.offline !== offline) {
       this.offline = offline;
 
+      this.clearCheckConnectionTimeout();
       if(offline) {
         clearTimeout(this.nextReqTimeout);
         this.nextReqTimeout = 0;
@@ -638,7 +647,7 @@ export default class MTPNetworker {
         const delay = this.checkConnectionPeriod * 1000 | 0;
         this.checkConnectionRetryAt = Date.now() + delay;
         this.setConnectionStatus(ConnectionStatus.Closed, this.checkConnectionRetryAt);
-        this.checkConnectionTimeout = ctx.setTimeout(this.checkConnection, delay);
+        this.checkConnectionTimeout = ctx.setTimeout(() => this.checkConnection('from toggleOfline'), delay);
         this.checkConnectionPeriod = Math.min(30, (1 + this.checkConnectionPeriod) * 1.5);
     
         /// #if !MTPROTO_WORKER
@@ -655,9 +664,6 @@ export default class MTPNetworker {
         document.body.removeEventListener('online', this.checkConnection);
         document.body.removeEventListener('focus', this.checkConnection);
         /// #endif
-
-        clearTimeout(this.checkConnectionTimeout);
-        this.checkConnectionTimeout = undefined;
       }
     }
 

@@ -5,7 +5,7 @@
  */
 
 import DEBUG, { MOUNT_CLASS_TO } from "../config/debug";
-import { safeAssign } from "../helpers/object";
+import { deepEqual, safeAssign } from "../helpers/object";
 import { capitalizeFirstLetter } from "../helpers/string";
 import type lang from "../lang";
 import type langSign from "../langSign";
@@ -16,6 +16,7 @@ import stateStorage from "./stateStorage";
 import App from "../config/app";
 import rootScope from "./rootScope";
 import RichTextProcessor from "./richtextprocessor";
+import { IS_MOBILE } from "../environment/userAgent";
 
 export const langPack: {[actionType: string]: LangPackKey} = {
   "messageActionChatCreate": "ActionCreateGroup",
@@ -46,10 +47,14 @@ export const langPack: {[actionType: string]: LangPackKey} = {
 
   "messageActionChannelMigrateFrom": "ActionMigrateFromGroup",
 
+  "messageActionPhoneCall.video_in_ok": "ChatList.Service.VideoCall.incoming",
+	"messageActionPhoneCall.video_out_ok": "ChatList.Service.VideoCall.outgoing",
+	"messageActionPhoneCall.video_missed": "ChatList.Service.VideoCall.Missed",
+	"messageActionPhoneCall.video_cancelled": "ChatList.Service.VideoCall.Cancelled",
   "messageActionPhoneCall.in_ok": "ChatList.Service.Call.incoming",
 	"messageActionPhoneCall.out_ok": "ChatList.Service.Call.outgoing",
-	"messageActionPhoneCall.in_missed": "ChatList.Service.Call.Missed",
-	"messageActionPhoneCall.out_missed": "ChatList.Service.Call.Cancelled",
+	"messageActionPhoneCall.missed": "ChatList.Service.Call.Missed",
+	"messageActionPhoneCall.cancelled": "ChatList.Service.Call.Cancelled",
 
 	"messageActionGroupCall.started": "Chat.Service.VoiceChatStarted.Channel",
 	"messageActionGroupCall.started_by": "Chat.Service.VoiceChatStarted",
@@ -65,6 +70,8 @@ export type LangPackKey = /* string |  */keyof typeof lang | keyof typeof langSi
 
 export type FormatterArgument = string | number | Node | FormatterArgument[];
 export type FormatterArguments = FormatterArgument[];
+
+export const UNSUPPORTED_LANG_PACK_KEY: LangPackKey = IS_MOBILE ? 'Message.Unsupported.Mobile' : 'Message.Unsupported.Desktop';
 
 namespace I18n {
 	export const strings: Map<LangPackKey, LangPackString> = new Map();
@@ -293,7 +300,7 @@ namespace I18n {
 
 	export function superFormatter(input: string, args?: FormatterArguments, indexHolder = {i: 0}): Exclude<FormatterArgument, FormatterArgument[]>[] {
 		let out: ReturnType<typeof superFormatter> = [];
-		const regExp = /(\*\*)(.+?)\1|(\n)|(\[.+?\]\(.*?\))|un\d|%\d\$.|%./g;
+		const regExp = /(\*\*|__)(.+?)\1|(\n)|(\[.+?\]\(.*?\))|un\d|%\d\$.|%./g;
 
 		let lastIndex = 0;
 		input.replace(regExp, (match, p1: any, p2: any, p3: any, p4: string, offset: number, string: string) => {
@@ -303,14 +310,21 @@ namespace I18n {
 
 			if(p1) {
 				//offset += p1.length;
+        let element: HTMLElement;
 				switch(p1) {
 					case '**': {
-						const b = document.createElement('b');
-						b.append(...superFormatter(p2, args, indexHolder) as any);
-						out.push(b);
+            element = document.createElement('b');
 						break;
 					}
+
+          case '__': {
+            element = document.createElement('i');
+            break;
+          }
 				}
+
+        element.append(...superFormatter(p2, args, indexHolder) as any);
+        out.push(element);
 			} else if(p3) {
 				out.push(document.createElement('br'));
 			} else if(p4) {
@@ -404,11 +418,14 @@ namespace I18n {
 		public element: IntlElementBaseOptions['element'];
 		public property: IntlElementBaseOptions['property'] = 'innerHTML';
 	
-		constructor(options: Options) {
-			this.element = options.element || document.createElement('span');
+		constructor(options?: Options) {
+			this.element = options?.element || document.createElement('span');
 			this.element.classList.add('i18n');
 			
-			this.update(options);
+      if(options && ((options as any as IntlElementOptions).key || (options as any as IntlDateElementOptions).date)) {
+        this.update(options);
+      }
+
 			weakMap.set(this.element, this);
 		}
 
@@ -416,7 +433,7 @@ namespace I18n {
 	}
 
 	export type IntlElementOptions = IntlElementBaseOptions & {
-		key: LangPackKey,
+		key?: LangPackKey,
 		args?: FormatterArguments
 	};
 	export class IntlElement extends IntlElementBase<IntlElementOptions> {
@@ -439,10 +456,18 @@ namespace I18n {
 				else (this.element as HTMLInputElement)[this.property] = formatted;
 			}
 		}
+
+    public compareAndUpdate(options?: IntlElementOptions) {
+      if(this.key === options.key && deepEqual(this.args, options.args)) {
+        return;
+      }
+
+      return this.update(options);
+    }
 	}
 
 	export type IntlDateElementOptions = IntlElementBaseOptions & {
-		date: Date,
+		date?: Date,
 		options: Intl.DateTimeFormatOptions
 	};
 	export class IntlDateElement extends IntlElementBase<IntlDateElementOptions> {

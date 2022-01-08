@@ -198,6 +198,8 @@ export default class ChatInput {
   private previousQuery: string;
   
   private releaseMediaPlayback: () => void;
+  botStartBtn: HTMLButtonElement;
+  fakeBotStartBtn: HTMLElement;
 
   constructor(private chat: Chat, 
     private appMessagesManager: AppMessagesManager, 
@@ -636,6 +638,14 @@ export default class ChatInput {
       }
     });
 
+    this.listenerSetter.add(rootScope)('chat_changing', ({from, to}) => {
+      if(this.chat === from) {
+        this.autocompleteHelperController.toggleListNavigation(false);
+      } else if(this.chat === to) {
+        this.autocompleteHelperController.toggleListNavigation(true);
+      }
+    });
+
     if(this.chat.type === 'scheduled') {
       this.listenerSetter.add(rootScope)('scheduled_delete', ({peerId, mids}) => {
         if(this.chat.peerId === peerId && mids.includes(this.editMsgId)) {
@@ -765,6 +775,31 @@ export default class ChatInput {
     attachClickEvent(this.replyElements.container, this.onHelperClick, {listenerSetter: this.listenerSetter});
 
     this.saveDraftDebounced = debounce(() => this.saveDraft(), 2500, false, true);
+
+    /* this.constructCenteredContainer((container, fakeContainer) => {
+      this.botStartBtn = Button('btn-primary btn-transparent text-bold');
+      container.append(this.botStartBtn);
+
+      this.fakeBotStartBtn = this.botStartBtn.cloneNode(true) as HTMLElement;
+      fakeContainer.append(this.fakeBotStartBtn);
+
+      this.botStartBtn.append(i18n('BotStart'));
+      this.fakeBotStartBtn.append(i18n('BotStart'));
+    }); */
+  }
+
+  private constructCenteredContainer(fill: (container: HTMLElement, fakeContainer: HTMLElement) => void) {
+    const container = document.createElement('div');
+    container.classList.add('input-centered-container', 'rows-wrapper', 'is-centered', 'chat-input-wrapper');
+
+    const fakeContainer = container.cloneNode(true) as HTMLElement;
+    fakeContainer.classList.add('fake-wrapper', 'fake-input-centered-container');
+
+    fill(container, fakeContainer);
+
+    this.inputContainer.append(container, fakeContainer);
+
+    return container;
   }
 
   public constructPinnedHelpers() {
@@ -1030,10 +1065,7 @@ export default class ChatInput {
         key = 'Message';
       }
 
-      if(i.key !== key) {
-        i.key = key;
-        i.update();
-      }
+      i.compareAndUpdate({key});
     }
 
     const visible = this.attachMenuButtons.filter(button => {
@@ -1539,7 +1571,7 @@ export default class ChatInput {
       entities = RichTextProcessor.mergeEntities(entities, RichTextProcessor.parseEntities(_value));
     }
 
-    value = value.substr(0, caretPos);
+    value = value.slice(0, caretPos);
 
     if(this.previousQuery === value) {
       return;

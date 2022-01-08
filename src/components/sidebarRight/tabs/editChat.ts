@@ -265,6 +265,7 @@ export default class AppEditChatTab extends SliderSuperTab {
           });
         });
 
+        // ! it won't be updated because chatFull will be old
         const onChatUpdate = () => {
           showChatHistoryCheckboxField.setValueSilently(isChannel && !(chatFull as ChatFull.channelFull).pFlags.hidden_prehistory);
         };
@@ -275,7 +276,9 @@ export default class AppEditChatTab extends SliderSuperTab {
         section.content.append(showChatHistoryCheckboxField.label);
       }
 
-      this.scrollable.append(section.container);
+      if(section.content.childElementCount) {
+        this.scrollable.append(section.container);
+      }
     }
 
     if(appChatsManager.hasRights(this.chatId, 'delete_chat')) {

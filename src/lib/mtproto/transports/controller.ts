@@ -37,7 +37,7 @@ export class MTTransportController extends EventListenerBase<{
 
     setTimeout(() => {
       this.waitForWebSocket();
-    }, 0);
+    }, 200); // wait for first transport so won't have delay for first WS
   }
 
   public async pingTransports() {
@@ -66,10 +66,13 @@ export class MTTransportController extends EventListenerBase<{
       transport.destroy();
     }
 
-    return {
+    const result = {
       https: isHttpAvailable || this.opened.get('https') > 0,
       websocket: isWebSocketAvailable || this.opened.get('websocket') > 0
     };
+
+    // result.websocket = false;
+    return result;
   }
 
   public async waitForWebSocket() {
