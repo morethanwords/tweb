@@ -100,7 +100,7 @@ function scrollWithJs(options: ScrollOptions): Promise<void> {
 
   const containerSize = getNormalSize ? getNormalSize({rect: containerRect}) : containerRect[sizeKey];
 
-  const scrollPosition = container[scrollPositionKey];
+  let scrollPosition = container[scrollPositionKey];
   const scrollSize = container[scrollSizeKey];
   /* const elementPosition = element.offsetTop;
   const elementSize = element.offsetHeight;
@@ -154,10 +154,10 @@ function scrollWithJs(options: ScrollOptions): Promise<void> {
   if(axis === 'y') {
     if(forceDirection === undefined) {
       if(path > maxDistance) {
-        container.scrollTop += path - maxDistance;
+        scrollPosition = container.scrollTop += path - maxDistance;
         path = maxDistance;
       } else if(path < -maxDistance) {
-        container.scrollTop += path + maxDistance;
+        scrollPosition = container.scrollTop += path + maxDistance;
         path = -maxDistance;
       }
     }/*  else if(forceDirection === FocusDirection.Up) { // * not tested yet
