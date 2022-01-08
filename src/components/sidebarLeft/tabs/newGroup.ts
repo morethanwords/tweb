@@ -9,11 +9,9 @@ import { InputFile } from "../../../layer";
 import appChatsManager from "../../../lib/appManagers/appChatsManager";
 import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
 import appUsersManager from "../../../lib/appManagers/appUsersManager";
-import { SearchGroup } from "../../appSearch";
 import InputField from "../../inputField";
 import { SliderSuperTab } from "../../slider";
 import AvatarEdit from "../../avatarEdit";
-import { i18n } from "../../../lib/langPack";
 import ButtonCorner from "../../buttonCorner";
 
 export default class AppNewGroupTab extends SliderSuperTab {
@@ -22,7 +20,7 @@ export default class AppNewGroupTab extends SliderSuperTab {
   private peerIds: PeerId[];
   private nextBtn: HTMLButtonElement;
   private groupNameInputField: InputField;
-  list: HTMLUListElement;
+  private list: HTMLUListElement;
 
   protected init() {
     this.container.classList.add('new-group-container');
