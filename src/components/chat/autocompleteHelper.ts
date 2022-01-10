@@ -93,6 +93,7 @@ export default class AutocompleteHelper extends EventListenerBase<{
 
     this.addEventListener('hidden', () => {
       this.resetTarget = undefined;
+      this.attach = undefined;
       this.detach = undefined;
 
       list.innerHTML = '';
