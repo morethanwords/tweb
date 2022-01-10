@@ -941,7 +941,7 @@ export default class ChatSelection extends AppSelection {
         left.style.transform = '';
         right.style.transform = '';
       }
-    } else {
+    } else if(this.selectionLeft) {
       this.selectionLeft.style.transform = `translateX(-${needTranslateX * 2}px)`;
       this.selectionRight.style.transform = `translateX(${needTranslateX * 2}px)`;
     }
