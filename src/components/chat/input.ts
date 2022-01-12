@@ -105,7 +105,7 @@ export default class ChatInput {
   private lastTimeType = 0;
 
   public chatInput: HTMLElement;
-  private inputContainer: HTMLElement;
+  public inputContainer: HTMLElement;
   public rowsWrapper: HTMLDivElement;
   private newMessageWrapper: HTMLDivElement;
   private btnToggleEmoticons: HTMLButtonElement;
@@ -146,6 +146,7 @@ export default class ChatInput {
   private noWebPage: true;
   public scheduleDate: number;
   public sendSilent: true;
+  public startParam: string;
 
   private recorder: any;
   public recording = false;
@@ -198,8 +199,17 @@ export default class ChatInput {
   private previousQuery: string;
   
   private releaseMediaPlayback: () => void;
-  botStartBtn: HTMLButtonElement;
-  fakeBotStartBtn: HTMLElement;
+
+  private botStartBtn: HTMLButtonElement;
+  omgContainer: HTMLDivElement;
+  private fakeBotStartBtn: HTMLElement;
+  private rowsWrapperWrapper: HTMLDivElement;
+  private botStartContainer: HTMLElement;
+  fakeSelectionWrapper: HTMLDivElement;
+
+  private fakeWrapperTo: HTMLElement;
+
+  // private activeContainer: HTMLElement;
 
   constructor(private chat: Chat, 
     private appMessagesManager: AppMessagesManager, 
@@ -227,8 +237,13 @@ export default class ChatInput {
     this.inputContainer = document.createElement('div');
     this.inputContainer.classList.add('chat-input-container');
 
+    this.rowsWrapperWrapper = document.createElement('div');
+    this.rowsWrapperWrapper.classList.add('rows-wrapper-wrapper');
+
     this.rowsWrapper = document.createElement('div');
     this.rowsWrapper.classList.add('rows-wrapper', 'chat-input-wrapper');
+
+    this.rowsWrapperWrapper.append(this.rowsWrapper);
 
     const tail = generateTail();
     this.rowsWrapper.append(tail);
@@ -236,10 +251,10 @@ export default class ChatInput {
     const fakeRowsWrapper = this.fakeRowsWrapper = document.createElement('div');
     fakeRowsWrapper.classList.add('fake-wrapper', 'fake-rows-wrapper');
 
-    const fakeSelectionWrapper = document.createElement('div');
+    const fakeSelectionWrapper = this.fakeSelectionWrapper = document.createElement('div');
     fakeSelectionWrapper.classList.add('fake-wrapper', 'fake-selection-wrapper');
 
-    this.inputContainer.append(this.rowsWrapper, fakeRowsWrapper, fakeSelectionWrapper);
+    this.inputContainer.append(this.rowsWrapperWrapper, fakeRowsWrapper, fakeSelectionWrapper);
     this.chatInput.append(this.inputContainer);
 
     this.goDownBtn = ButtonCorner({icon: 'arrow_down', className: 'bubbles-corner-button bubbles-go-down hide'});
@@ -510,7 +525,7 @@ export default class ChatInput {
         this.willAttachType = 'media';
         this.fileInput.click();
       },
-      verify: (peerId, threadId) => this.appMessagesManager.canSendToPeer(peerId, threadId, 'send_media')
+      verify: () => this.chat.canSend('send_media')
     }, {
       icon: 'document',
       text: 'Chat.Input.Attach.Document',
@@ -520,14 +535,14 @@ export default class ChatInput {
         this.willAttachType = 'document';
         this.fileInput.click();
       },
-      verify: (peerId, threadId) => this.appMessagesManager.canSendToPeer(peerId, threadId, 'send_media')
+      verify: () => this.chat.canSend('send_media')
     }, {
       icon: 'poll',
       text: 'Poll',
       onClick: () => {
         new PopupCreatePoll(this.chat).show();
       },
-      verify: (peerId, threadId) => peerId.isAnyChat() && this.appMessagesManager.canSendToPeer(peerId, threadId, 'send_polls')
+      verify: (peerId) => peerId.isAnyChat() && this.chat.canSend('send_polls')
     }];
 
     this.attachMenu = ButtonMenuToggle({noRipple: true, listenerSetter: this.listenerSetter}, 'top-left', this.attachMenuButtons);
@@ -776,35 +791,26 @@ export default class ChatInput {
 
     this.saveDraftDebounced = debounce(() => this.saveDraft(), 2500, false, true);
 
-    /* this.constructCenteredContainer((container, fakeContainer) => {
-      this.botStartBtn = Button('btn-primary btn-transparent text-bold');
-      container.append(this.botStartBtn);
+    this.botStartBtn = Button('btn-primary btn-transparent text-bold chat-input-control-button');
+    this.botStartBtn.append(i18n('BotStart'));
 
-      this.fakeBotStartBtn = this.botStartBtn.cloneNode(true) as HTMLElement;
-      fakeContainer.append(this.fakeBotStartBtn);
+    const c = this.botStartContainer = document.createElement('div');
+    c.classList.add('chat-input-control', 'chat-input-wrapper');
+    c.append(this.botStartBtn);
+    this.inputContainer.append(c);
 
-      this.botStartBtn.append(i18n('BotStart'));
-      this.fakeBotStartBtn.append(i18n('BotStart'));
-    }); */
+    // this.botStartContainer.classList.add('hide');
+    // this.startParam = '123';
   }
 
-  private constructCenteredContainer(fill: (container: HTMLElement, fakeContainer: HTMLElement) => void) {
+  private constructPinnedContainer() {
     const container = document.createElement('div');
-    container.classList.add('input-centered-container', 'rows-wrapper', 'is-centered', 'chat-input-wrapper');
-
-    const fakeContainer = container.cloneNode(true) as HTMLElement;
-    fakeContainer.classList.add('fake-wrapper', 'fake-input-centered-container');
-
-    fill(container, fakeContainer);
-
-    this.inputContainer.append(container, fakeContainer);
-
+    container.classList.add('pinned-container');
     return container;
   }
 
   public constructPinnedHelpers() {
-    const container = document.createElement('div');
-    container.classList.add('pinned-container');
+    const container = this.constructPinnedContainer();
 
     this.pinnedControlBtn = Button('btn-primary btn-transparent text-bold pinned-container-button', {icon: 'unpin'});
     container.append(this.pinnedControlBtn);
@@ -832,6 +838,95 @@ export default class ChatInput {
     this.chatInput.classList.add('type-pinned');
     this.rowsWrapper.classList.add('is-centered');
   }
+
+  public center() {
+    const neededFakeContainer = this.getNeededFakeContainer();
+    if(!neededFakeContainer && !this.inputContainer.classList.contains('is-centering')) {
+      return;
+    }
+
+    /* if(neededFakeContainer === this.botStartContainer && this.fakeWrapperTo === this.fakeSelectionWrapper) {
+      this.inputContainer.classList.remove('is-centering');
+      void this.rowsWrapper.offsetLeft; // reflow
+      // this.inputContainer.classList.add('is-centering');
+      // void this.rowsWrapper.offsetLeft; // reflow
+    } */
+
+    const fakeSelectionWrapper = neededFakeContainer || this.fakeWrapperTo;
+    const forwards = !!neededFakeContainer;
+    const oldFakeWrapperTo = this.fakeWrapperTo;
+    let transform = '', borderRadius = '', needTranslateX: number;
+    // if(forwards) {]
+      const fakeSelectionRect = fakeSelectionWrapper.getBoundingClientRect();
+      const fakeRowsRect = this.fakeRowsWrapper.getBoundingClientRect();
+      const widthFrom = fakeRowsRect.width;
+      const widthTo = fakeSelectionRect.width;
+
+      if(widthFrom !== widthTo) {
+        const scale = (widthTo/*  - 8 */) / widthFrom;
+        const initTranslateX = (widthFrom - widthTo) / 2;
+        needTranslateX = fakeSelectionRect.left - fakeRowsRect.left - initTranslateX;
+
+        if(forwards) {
+          transform = `translateX(${needTranslateX}px) scaleX(${scale})`;
+          // transform = `translateX(0px) scaleX(${scale})`;
+  
+          if(scale < 1) {
+            const br = 12;
+            borderRadius = '' + (br + br * (1 - scale)) + 'px';
+          }
+        }
+        //scale = widthTo / widthFrom;
+      }
+    // }
+
+    this.fakeWrapperTo = neededFakeContainer;
+
+    const duration = 200;
+    SetTransition(this.inputContainer, 'is-centering', forwards, duration);
+    SetTransition(this.rowsWrapperWrapper, 'is-centering-to-control', !!(forwards && neededFakeContainer && neededFakeContainer.classList.contains('chat-input-control')), duration);
+    this.rowsWrapper.style.transform = transform;
+    this.rowsWrapper.style.borderRadius = borderRadius;
+
+    return {
+      transform, 
+      borderRadius, 
+      needTranslateX: oldFakeWrapperTo && (
+          (
+            neededFakeContainer && 
+            neededFakeContainer.classList.contains('chat-input-control') && 
+            oldFakeWrapperTo === this.fakeSelectionWrapper
+          ) || oldFakeWrapperTo.classList.contains('chat-input-control')
+        ) ? needTranslateX * -.5 : needTranslateX,
+      widthFrom, 
+      widthTo
+    };
+  }
+
+  public getNeededFakeContainer() {
+    if(this.chat.selection.isSelecting) {
+      return this.fakeSelectionWrapper;
+    } else if(this.startParam || !this.chat.canSend()) {
+      return this.botStartContainer;
+    }
+  }
+
+  // public getActiveContainer() {
+  //   if(this.chat.selection.isSelecting) {
+  //     return this.chat
+  //   }
+  //   return this.startParam !== undefined ? this.botStartContainer : this.rowsWrapper;
+  // }
+
+  // public setActiveContainer() {
+  //   const container = this.activeContainer;
+  //   const newContainer = this.getActiveContainer();
+  //   if(newContainer === container) {
+  //     return;
+  //   }
+
+
+  // }
 
   private onCancelRecordClick = (e?: Event) => {
     if(e) {
@@ -1030,6 +1125,8 @@ export default class ChatInput {
       sendMenu.setPeerId(peerId);
     }
 
+    this.center();
+
     if(this.messageInput) {
       this.updateMessageInput();
     } else if(this.pinnedControlBtn) {
@@ -1046,7 +1143,7 @@ export default class ChatInput {
   public updateMessageInput() {
     const {chatInput, attachMenu, messageInput} = this;
     const {peerId, threadId} = this.chat;
-    const canWrite = this.appMessagesManager.canSendToPeer(peerId, threadId);
+    const canWrite = this.chat.canSend();
     chatInput.classList.add('no-transition');
     chatInput.classList.toggle('is-hidden', !canWrite);
     void chatInput.offsetLeft; // reflow
@@ -1589,7 +1686,7 @@ export default class ChatInput {
 
       if(this.stickersHelper && 
         rootScope.settings.stickers.suggest && 
-        this.appMessagesManager.canSendToPeer(this.chat.peerId, this.chat.threadId, 'send_stickers') &&
+        this.chat.canSend('send_stickers') &&
         entity?._ === 'messageEntityEmoji' && entity.length === value.length && !entity.offset) {
         foundHelper = this.stickersHelper;
         this.stickersHelper.checkEmoticon(value);
@@ -1675,7 +1772,7 @@ export default class ChatInput {
         this.sendMessage();
       }
     } else {
-      if(this.chat.peerId.isAnyChat() && !this.appMessagesManager.canSendToPeer(this.chat.peerId, this.chat.threadId, 'send_media')) {
+      if(this.chat.peerId.isAnyChat() && !this.chat.canSend('send_media')) {
         toast(POSTING_MEDIA_NOT_ALLOWED);
         return;
       }
@@ -2031,7 +2128,7 @@ export default class ChatInput {
     document = this.appDocsManager.getDoc(document);
 
     const flag = document.type === 'sticker' ? 'send_stickers' : (document.type === 'gif' ? 'send_gifs' : 'send_media');
-    if(this.chat.peerId.isAnyChat() && !this.appMessagesManager.canSendToPeer(this.chat.peerId, this.chat.threadId, flag)) {
+    if(this.chat.peerId.isAnyChat() && !this.chat.canSend(flag)) {
       toast(POSTING_MEDIA_NOT_ALLOWED);
       return false;
     }

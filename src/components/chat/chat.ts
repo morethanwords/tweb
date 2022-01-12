@@ -5,7 +5,7 @@
  */
 
 import type { AppNotificationsManager } from "../../lib/appManagers/appNotificationsManager";
-import type { AppChatsManager } from "../../lib/appManagers/appChatsManager";
+import type { AppChatsManager, ChatRights } from "../../lib/appManagers/appChatsManager";
 import type { AppDocsManager } from "../../lib/appManagers/appDocsManager";
 import type { AppImManager } from "../../lib/appManagers/appImManager";
 import type { AppInlineBotsManager } from "../../lib/appManagers/appInlineBotsManager";
@@ -415,5 +415,9 @@ export default class Chat extends EventListenerBase<{
 
       tab.open(this.peerId, this.threadId, this.bubbles.onDatePick, query);
     }
+  }
+
+  public canSend(action?: ChatRights) {
+    return this.appMessagesManager.canSendToPeer(this.peerId, this.threadId, action);
   }
 }
