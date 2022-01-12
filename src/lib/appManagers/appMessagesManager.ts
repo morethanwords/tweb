@@ -2357,8 +2357,8 @@ export class AppMessagesManager {
     //return Object.keys(this.groupedMessagesStorage[grouped_id]).map(id => +id).sort((a, b) => a - b);
   }
 
-  public getMidsByMessage(message: Message.message) {
-    if(message?.grouped_id) return this.getMidsByAlbum(message.grouped_id);
+  public getMidsByMessage(message: Message) {
+    if((message as Message.message)?.grouped_id) return this.getMidsByAlbum((message as Message.message).grouped_id);
     else return [message.mid];
   }
 
@@ -2949,7 +2949,7 @@ export class AppMessagesManager {
       fromMe ? 
         i18n('FromYou') : 
         new PeerTitle({
-          peerId: message.fromId, 
+          ...this.getMessageSenderPeerIdOrName(message),
           dialog: message.peerId === rootScope.myId
         }).element
       );
@@ -2960,6 +2960,18 @@ export class AppMessagesManager {
     }
 
     return senderTitle;
+  }
+
+  public getMessageSenderPeerIdOrName(message: MyMessage) {
+    if(message.fromId) {
+      return {
+        peerId: message.fromId
+      };
+    } else {
+      return {
+        fromName: (message as Message.message).fwd_from?.from_name
+      };
+    }
   }
 
   public wrapSentTime(message: MyMessage) {
@@ -3844,7 +3856,7 @@ export class AppMessagesManager {
     this.getDiscussionMessage(peerId, mid);
   }
 
-  public generateThreadServiceStartMessage(message: Message.message) {
+  public generateThreadServiceStartMessage(message: Message.message | Message.messageService) {
     const threadKey = message.peerId + '_' + message.mid;
     if(this.threadsServiceMessagesIdsStorage[threadKey]) return;
 

@@ -10,9 +10,12 @@ import rootScope from "../lib/rootScope";
 import { i18n } from "../lib/langPack";
 import replaceContent from "../helpers/dom/replaceContent";
 import appUsersManager from "../lib/appManagers/appUsersManager";
+import RichTextProcessor from "../lib/richtextprocessor";
+import { NULL_PEER_ID } from "../lib/mtproto/mtproto_config";
 
 export type PeerTitleOptions = {
-  peerId: PeerId,
+  peerId?: PeerId,
+  fromName?: string,
   plainText?: boolean,
   onlyFirstName?: boolean,
   dialog?: boolean
@@ -37,6 +40,7 @@ rootScope.addEventListener('peer_title_edit', (peerId) => {
 export default class PeerTitle {
   public element: HTMLElement;
   public peerId: PeerId;
+  public fromName: string;
   public plainText = false;
   public onlyFirstName = false;
   public dialog = false;
@@ -54,10 +58,19 @@ export default class PeerTitle {
     if(options) {
       for(let i in options) {
         // @ts-ignore
-        this.element.dataset[i] = options[i] ? '' + (typeof(options[i]) === 'boolean' ? +options[i] : options[i]) : '0';
+        // this.element.dataset[i] = options[i] ? '' + (typeof(options[i]) === 'boolean' ? +options[i] : options[i]) : '0';
         // @ts-ignore
         this[i] = options[i];
       }
+    }
+
+    if(this.fromName !== undefined) {
+      this.element.innerHTML = RichTextProcessor.wrapEmojiText(this.fromName);
+      return;
+    }
+
+    if(this.peerId === undefined) {
+      this.peerId = NULL_PEER_ID;
     }
 
     if(this.peerId !== rootScope.myId || !this.dialog) {

@@ -184,20 +184,20 @@ export default class AppSearch {
       const searchGroup = this.searchGroups.messages;
 
       history.forEach((message) => {
-        const peerId = this.peerId ? message.fromId : message.peerId;
-        const {dialog, dom} = appDialogsManager.addDialogNew({
-          dialog: peerId, 
-          container: this.scrollable/* searchGroup.list */, 
-          drawStatus: false,
-          avatarSize: 54,
-          meAsSaved: false
-        });
-
-        if(message.peerId !== peerId) {
-          dom.listEl.dataset.peerId = '' + message.peerId;
+        try {
+          const peerId = this.peerId ? message.fromId : message.peerId;
+          appDialogsManager.addDialogAndSetLastMessage({
+            peerId, 
+            container: this.scrollable/* searchGroup.list */, 
+            drawStatus: false,
+            avatarSize: 54,
+            meAsSaved: false,
+            message,
+            query
+          });
+        } catch(err) {
+          console.error('[appSearch] render search result', err);
         }
-
-        appDialogsManager.setLastMessage(dialog, message, dom, query);
       });
 
       searchGroup.toggle();

@@ -43,7 +43,7 @@ import appNavigationController from '../../components/appNavigationController';
 import appNotificationsManager from './appNotificationsManager';
 import AppPrivateSearchTab from '../../components/sidebarRight/tabs/search';
 import I18n, { i18n, join, LangPackKey } from '../langPack';
-import { ChatInvite, Dialog, SendMessageAction } from '../../layer';
+import { ChatInvite, Dialog, Message, SendMessageAction } from '../../layer';
 import { hslaStringToHex } from '../../helpers/color';
 import { copy, getObjectKeysAndSort } from '../../helpers/object';
 import { getFilesFromEvent } from '../../helpers/files';
@@ -79,6 +79,7 @@ import IS_GROUP_CALL_SUPPORTED from '../../environment/groupCallSupport';
 import appAvatarsManager from './appAvatarsManager';
 import IS_CALL_SUPPORTED from '../../environment/callSupport';
 import { CallType } from '../calls/types';
+import { Modify } from '../../types';
 
 //console.log('appImManager included33!');
 
@@ -90,6 +91,19 @@ const FOCUS_EVENT_NAME = IS_TOUCH_SUPPORTED ? 'touchstart' : 'mousemove';
 export type ChatSavedPosition = {
   mids: number[], 
   top: number
+};
+
+export type ChatSetPeerOptions = {
+  peerId?: PeerId, 
+  lastMsgId?: number, 
+  threadId?: number,
+  startParam?: string
+};
+
+export type ChatSetInnerPeerOptions = Modify<ChatSetPeerOptions, {
+  peerId: PeerId
+}> & {
+  type?: ChatType
 };
 
 export class AppImManager {
@@ -197,7 +211,12 @@ export class AppImManager {
       if(threadId) threadId = appMessagesIdsManager.generateMessageId(threadId);
       if(mid) mid = appMessagesIdsManager.generateMessageId(mid); // because mid can come from notification, i.e. server message id
       
-      this.setInnerPeer(peerId, mid, threadId ? 'discussion' : undefined, threadId);
+      this.setInnerPeer({
+        peerId, 
+        lastMsgId: mid, 
+        type: threadId ? 'discussion' : undefined, 
+        threadId
+      });
     });
 
     rootScope.addEventListener('peer_changing', (chat) => {
@@ -374,7 +393,7 @@ export class AppImManager {
     //   pathnameParams: [string, string?],
     //   uriParams: {comment?: number}
       pathnameParams: ['c', string, string] | [string, string?],
-      uriParams: {thread?: string, comment?: string} | {comment?: string}
+      uriParams: {thread?: string, comment?: string} | {comment?: string, start?: string}
     }>({
       name: 'im',
       callback: async({pathnameParams, uriParams}) => {
@@ -384,7 +403,7 @@ export class AppImManager {
             _: INTERNAL_LINK_TYPE.PRIVATE_POST,
             channel: pathnameParams[1],
             post: pathnameParams[2],
-            thread: 'thread' in uriParams ? uriParams.thread : undefined,
+            thread: 'thread' in uriParams && uriParams.thread,
             comment: uriParams.comment
           };
         } else {
@@ -392,7 +411,8 @@ export class AppImManager {
             _: INTERNAL_LINK_TYPE.MESSAGE,
             domain: pathnameParams[0],
             post: pathnameParams[1],
-            comment: uriParams.comment
+            comment: uriParams.comment,
+            start: 'start' in uriParams && uriParams.start
           };
         }
 
@@ -514,7 +534,7 @@ export class AppImManager {
         }
         
         if(nextDialog) {
-          this.setPeer(nextDialog.peerId);
+          this.setPeer({peerId: nextDialog.peerId});
         }
       } else if(key === 'ArrowUp') {
         if(!chat.input.editMsgId && chat.input.isInputEmpty()) {
@@ -606,7 +626,11 @@ export class AppImManager {
         const threadId = link.thread ? appMessagesIdsManager.generateMessageId(+link.thread) : undefined;
 
         if(threadId) this.openThread(peerId, postId, threadId);
-        else this.setInnerPeer(peerId, postId);
+        else this.setInnerPeer({
+          peerId,
+          lastMsgId: postId,
+          threadId
+        });
         break;
       }
 
@@ -627,7 +651,9 @@ export class AppImManager {
 
           if(chatInvite._ === 'chatInviteAlready' ||
             chatInvite._ === 'chatInvitePeek'/*  && chatInvite.expires > tsNow(true) */) {
-            this.setInnerPeer(chatInvite.chat.id.toPeerId(true));
+            this.setInnerPeer({
+              peerId: chatInvite.chat.id.toPeerId(true)
+            });
             return;
           }
 
@@ -719,7 +745,10 @@ export class AppImManager {
           }
 
           default: { // peerId
-            this.setInnerPeer(postId ? p.toPeerId(true) : p.toPeerId(), postId);
+            this.setInnerPeer({
+              peerId: postId ? p.toPeerId(true) : p.toPeerId(), 
+              lastMsgId: postId
+            });
             break;
           }
         }
@@ -730,14 +759,21 @@ export class AppImManager {
     //location.hash = '';
   };
 
-  public openUsername(username: string, msgId?: number, threadId?: number, commentId?: number) {
+  public openUsername(username: string, lastMsgId?: number, threadId?: number, commentId?: number) {
     return appUsersManager.resolveUsername(username).then(peer => {
       const isUser = peer._ === 'user';
-      const peerId = isUser ? peer.id.toPeerId() : peer.id.toPeerId(true);
+      const peerId = peer.id.toPeerId(!isUser);
 
-      if(threadId) return this.openThread(peerId, msgId, threadId);
-      else if(commentId) return this.openComment(peerId, msgId, commentId);
-      else return this.setInnerPeer(peerId, msgId);
+      if(threadId) {
+        return this.openThread(peerId, lastMsgId, threadId);
+      } else if(commentId) {
+        return this.openComment(peerId, lastMsgId, commentId);
+      }
+      
+      return this.setInnerPeer({
+        peerId,
+        lastMsgId
+      });
     }, (err) => {
       if(err.type === 'USERNAME_NOT_OCCUPIED') {
         toastNew({langPackKey: 'NoUsernameFound'});
@@ -752,10 +788,19 @@ export class AppImManager {
    */
   public openThread(peerId: PeerId, lastMsgId: number, threadId: number) {
     return appMessagesManager.wrapSingleMessage(peerId, threadId).then(() => {
-      const message = appMessagesManager.getMessageByPeer(peerId, threadId);
-      appMessagesManager.generateThreadServiceStartMessage(message);
+      const message: Message = appMessagesManager.getMessageByPeer(peerId, threadId);
+      if(message._ === 'messageEmpty') {
+        lastMsgId = undefined;
+      } else {
+        appMessagesManager.generateThreadServiceStartMessage(message);
+      }
 
-      return this.setInnerPeer(peerId, lastMsgId, 'discussion', threadId);
+      return this.setInnerPeer({
+        peerId,
+        lastMsgId,
+        threadId,
+        type: 'discussion'
+      });
     });
   }
 
@@ -1044,7 +1089,7 @@ export class AppImManager {
         appNavigationController.pushItem({
           type: 'chat', 
           onPop: (canAnimate) => {
-            this.setPeer(NULL_PEER_ID, undefined, canAnimate);
+            this.setPeer({}, canAnimate);
             blurActiveElement();
           }
         });
@@ -1270,7 +1315,7 @@ export class AppImManager {
           type: 'im', 
           onPop: (canAnimate) => {
             //this.selectTab(prevTabId, !isSafari);
-            this.setPeer(NULL_PEER_ID, undefined, canAnimate);
+            this.setPeer({}, canAnimate);
           }
         });
       }
@@ -1382,11 +1427,13 @@ export class AppImManager {
     }, 250 + 100);
   }
 
-  public setPeer(peerId: PeerId, lastMsgId?: number, animate?: boolean): boolean {
+  public setPeer(options: ChatSetPeerOptions = {}, animate?: boolean): boolean {
     if(this.init) {
       this.init();
       this.init = null;
     }
+
+    const {peerId, lastMsgId} = options;
 
     const chat = this.chat;
     const chatIndex = this.chats.indexOf(chat);
@@ -1411,7 +1458,7 @@ export class AppImManager {
           this.spliceChats(0, true, true, spliced);
           return;
         } else {
-          const ret = this.setPeer(peerId, lastMsgId);
+          const ret = this.setPeer(options);
           this.spliceChats(0, false, false, spliced);
           return ret;
         }
@@ -1452,16 +1499,19 @@ export class AppImManager {
     }
   }
 
-  public setInnerPeer(peerId: PeerId, lastMsgId?: number, type: ChatType = 'chat', threadId?: number) {
+  public setInnerPeer(options: ChatSetInnerPeerOptions) {
+    const {peerId} = options;
     if(peerId === NULL_PEER_ID || !peerId) {
       return;
     }
+
+    const type = options.type ??= 'chat';
 
     // * prevent opening already opened peer
     const existingIndex = this.chats.findIndex(chat => chat.peerId === peerId && chat.type === type);
     if(existingIndex !== -1) {
       this.spliceChats(existingIndex + 1);
-      return this.setPeer(peerId, lastMsgId);
+      return this.setPeer(options);
     }
 
     const oldChat = this.chat;
@@ -1473,8 +1523,8 @@ export class AppImManager {
     if(type) {
       chat.setType(type);
 
-      if(threadId) {
-        chat.threadId = threadId;
+      if(options.threadId) {
+        chat.threadId = options.threadId;
       }
     }
 
@@ -1482,11 +1532,14 @@ export class AppImManager {
 
     //this.chatsSelectTab(chat.container);
 
-    return this.setPeer(peerId, lastMsgId);
+    return this.setPeer(options);
   }
 
   public openScheduled(peerId: PeerId) {
-    this.setInnerPeer(peerId, undefined, 'scheduled');
+    this.setInnerPeer({
+      peerId, 
+      type: 'scheduled'
+    });
   }
 
   private getTypingElement(action: SendMessageAction) {

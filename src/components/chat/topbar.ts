@@ -202,12 +202,12 @@ export default class ChatTopbar {
         } else {
           const peerId = container.dataset.peerId.toPeerId();
           const searchContext = appMediaPlaybackController.getSearchContext();
-          this.chat.appImManager.setInnerPeer(
+          this.chat.appImManager.setInnerPeer({
             peerId, 
-            mid, 
-            searchContext.isScheduled ? 'scheduled' : (searchContext.threadId ? 'discussion' : undefined), 
-            searchContext.threadId
-          );
+            lastMsgId: mid, 
+            type: searchContext.isScheduled ? 'scheduled' : (searchContext.threadId ? 'discussion' : undefined), 
+            threadId: searchContext.threadId
+          });
         }
       } else {
         if(mediaSizes.activeScreen === ScreenSize.medium && document.body.classList.contains(LEFT_COLUMN_ACTIVE_CLASSNAME)) {
@@ -228,7 +228,7 @@ export default class ChatTopbar {
       //const item = appNavigationController.findItemByType('chat');
       // * return manually to chat by arrow, since can't get back to
       if(mediaSizes.activeScreen === ScreenSize.medium && document.body.classList.contains(LEFT_COLUMN_ACTIVE_CLASSNAME)) {
-        this.chat.appImManager.setPeer(this.peerId);
+        this.chat.appImManager.setPeer({peerId: this.peerId});
       } else {
         const isFirstChat = this.chat.appImManager.chats.indexOf(this.chat) === 0;
         appNavigationController.back(isFirstChat ? 'im' : 'chat');
@@ -337,7 +337,9 @@ export default class ChatTopbar {
         const middleware = this.chat.bubbles.getMiddleware();
         this.appProfileManager.getChannelFull(this.peerId.toChatId()).then(channelFull => {
           if(middleware() && channelFull.linked_chat_id) {
-            this.chat.appImManager.setInnerPeer(channelFull.linked_chat_id.toPeerId(true));
+            this.chat.appImManager.setInnerPeer({
+              peerId: channelFull.linked_chat_id.toPeerId(true)
+            });
           }
         });
       },
@@ -426,7 +428,7 @@ export default class ChatTopbar {
                     resolve();
 
                     this.appMessagesManager.sendOther(peerId, this.appUsersManager.getContactMediaInput(contactPeerId));
-                    this.chat.appImManager.setInnerPeer(peerId);
+                    this.chat.appImManager.setInnerPeer({peerId});
                   }
                 }, {
                   langKey: 'Cancel',
@@ -640,7 +642,11 @@ export default class ChatTopbar {
   }
 
   public openPinned(byCurrent: boolean) {
-    this.chat.appImManager.setInnerPeer(this.peerId, byCurrent ? +this.pinnedMessage.pinnedMessageContainer.divAndCaption.container.dataset.mid : 0, 'pinned');
+    this.chat.appImManager.setInnerPeer({
+      peerId: this.peerId, 
+      lastMsgId: byCurrent ? +this.pinnedMessage.pinnedMessageContainer.divAndCaption.container.dataset.mid : 0, 
+      type: 'pinned'
+    });
   }
 
   private onResize = () => {
@@ -748,7 +754,7 @@ export default class ChatTopbar {
 
           // ! костыль х2, это нужно делать в другом месте
           if(!count) {
-            this.chat.appImManager.setPeer(NULL_PEER_ID); // * close tab
+            this.chat.appImManager.setPeer(); // * close tab
 
             // ! костыль, это скроет закреплённые сообщения сразу, вместо того, чтобы ждать пока анимация перехода закончится
             const originalChat = this.chat.appImManager.chat;
