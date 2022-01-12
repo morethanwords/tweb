@@ -28,7 +28,7 @@ import I18n, { LangPackKey, i18n } from "../lib/langPack";
 import findUpClassName from "../helpers/dom/findUpClassName";
 import { getMiddleware } from "../helpers/middleware";
 import appProfileManager from "../lib/appManagers/appProfileManager";
-import { ChannelParticipant, ChatFull, ChatParticipant, ChatParticipants } from "../layer";
+import { ChannelParticipant, ChatFull, ChatParticipant, ChatParticipants, Message, MessageMedia, Photo, WebPage } from "../layer";
 import SortedUserList from "./sortedUserList";
 import findUpTag from "../helpers/dom/findUpTag";
 import appSidebarRight from "./sidebarRight";
@@ -221,6 +221,15 @@ class SearchContextMenu {
     }
   };
 }
+
+export type ProcessSearchSuperResult = {
+  message: Message.message, 
+  middleware: () => boolean, 
+  promises: Promise<any>[], 
+  elemsToAppend: {element: HTMLElement, message: any}[],
+  inputFilter: MyInputMessagesFilter,
+  searchGroup?: SearchGroup
+};
 
 export default class AppSearchSuper {
   public tabs: {[t in SearchSuperType]: HTMLDivElement} = {} as any;
@@ -655,6 +664,217 @@ export default class AppSearchSuper {
 
     return filtered;
   }
+
+  private processEmptyFilter({message, searchGroup}: ProcessSearchSuperResult) {
+    const {dialog, dom} = appDialogsManager.addDialogNew({
+      dialog: message.peerId, 
+      container: searchGroup.list, 
+      drawStatus: false,
+      avatarSize: 54
+    });
+
+    appDialogsManager.setLastMessage(dialog, message, dom, this.searchContext.query);
+  }
+
+  private processPhotoVideoFilter({message, promises, middleware, elemsToAppend}: ProcessSearchSuperResult) {
+    const media = appMessagesManager.getMediaFromMessage(message);
+
+    const div = document.createElement('div');
+    div.classList.add('grid-item');
+    //this.log(message, photo);
+
+    let wrapped: ReturnType<typeof wrapPhoto>;
+    const size = appPhotosManager.choosePhotoSize(media, 200, 200);
+    if(media._ !== 'photo') {
+      wrapped = wrapVideo({
+        doc: media,
+        message,
+        container: div,
+        boxWidth: 0,
+        boxHeight: 0,
+        lazyLoadQueue: this.lazyLoadQueue,
+        middleware,
+        onlyPreview: true,
+        withoutPreloader: true,
+        noPlayButton: true,
+        size
+      }).thumb;
+    } else {
+      wrapped = wrapPhoto({
+        photo: media,
+        message,
+        container: div,
+        boxWidth: 0,
+        boxHeight: 0,
+        lazyLoadQueue: this.lazyLoadQueue,
+        middleware,
+        withoutPreloader: true,
+        noBlur: true,
+        size
+      });
+    }
+
+    [wrapped.images.thumb, wrapped.images.full].filter(Boolean).forEach(image => {
+      image.classList.add('grid-item-media');
+    });
+
+    promises.push(wrapped.loadPromises.thumb);
+
+    elemsToAppend.push({element: div, message});
+  }
+
+  private processDocumentFilter({message, elemsToAppend, inputFilter}: ProcessSearchSuperResult) {
+    const document = appMessagesManager.getMediaFromMessage(message);
+    const showSender = this.showSender || (['voice', 'round'] as MyDocument['type'][]).includes(document.type);
+    const div = wrapDocument({
+      message,
+      withTime: !showSender,
+      fontWeight: 400,
+      voiceAsMusic: true,
+      showSender,
+      searchContext: this.copySearchContext(inputFilter),
+      lazyLoadQueue: this.lazyLoadQueue,
+      noAutoDownload: true
+    });
+
+    if((['audio', 'voice', 'round'] as MyDocument['type'][]).includes(document.type)) {
+      div.classList.add('audio-48');
+    }
+
+    elemsToAppend.push({element: div, message});
+  }
+
+  private processUrlFilter({message, promises, middleware, elemsToAppend}: ProcessSearchSuperResult) {
+    let webpage = (message.media as MessageMedia.messageMediaWebPage)?.webpage as WebPage.webPage;
+
+    if(!webpage) {
+      const entity = message.totalEntities ? message.totalEntities.find((e: any) => e._ === 'messageEntityUrl' || e._ === 'messageEntityTextUrl') : null;
+      let url: string, display_url: string, sliced: string;
+
+      if(!entity) {
+        //this.log.error('NO ENTITY:', message);
+        const match = RichTextProcessor.matchUrl(message.message);
+        if(!match) {
+          //this.log.error('NO ENTITY AND NO MATCH:', message);
+          return;
+        }
+
+        url = match[0];
+      } else {
+        sliced = message.message.slice(entity.offset, entity.offset + entity.length);
+      }
+
+      if(entity?._ === 'messageEntityTextUrl') {
+        url = entity.url;
+        //display_url = sliced;
+      } else {
+        url = url || sliced;
+      }
+
+      display_url = url;
+
+      const same = message.message === url;
+      if(!url.match(/^(ftp|http|https):\/\//)) {
+        display_url = 'https://' + url;
+        url = url.includes('@') ? url : 'https://' + url;
+      }
+
+      display_url = new URL(display_url).hostname;
+
+      webpage = {
+        _: 'webPage',
+        url,
+        display_url,
+        id: '',
+        hash: 0
+      };
+
+      if(!same) {
+        webpage.description = message.message;
+        webpage.rDescription = RichTextProcessor.wrapRichText(limitSymbols(message.message, 150, 180));
+      }
+    }
+
+    let previewDiv = document.createElement('div');
+    previewDiv.classList.add('preview', 'row-media');
+    
+    //this.log('wrapping webpage', webpage);
+    
+    if(webpage.photo) {
+      const res = wrapPhoto({
+        container: previewDiv,
+        message: null,
+        photo: webpage.photo as Photo.photo,
+        boxWidth: 0,
+        boxHeight: 0,
+        withoutPreloader: true,
+        lazyLoadQueue: this.lazyLoadQueue,
+        middleware,
+        size: appPhotosManager.choosePhotoSize(webpage.photo as Photo.photo, 60, 60, false),
+        loadPromises: promises,
+        noBlur: true
+      });
+    } else {
+      previewDiv.classList.add('empty');
+      previewDiv.innerHTML = RichTextProcessor.getAbbreviation(webpage.title || webpage.display_url || webpage.description || webpage.url, true);
+    }
+    
+    let title = webpage.rTitle || '';
+    let subtitle = webpage.rDescription || '';
+
+    const subtitleFragment = htmlToDocumentFragment(subtitle);
+    const aFragment = htmlToDocumentFragment(RichTextProcessor.wrapRichText(webpage.url || ''));
+    const a = aFragment.firstElementChild;
+    if(a instanceof HTMLAnchorElement) {
+      try { // can have 'URIError: URI malformed'
+        a.innerText = decodeURIComponent(a.href);
+      } catch(err) {
+
+      }
+    }
+
+    if(subtitleFragment.firstChild) {
+      subtitleFragment.append('\n');
+    }
+
+    subtitleFragment.append(a);
+
+    if(this.showSender) {
+      subtitleFragment.append('\n', appMessagesManager.wrapSenderToPeer(message));
+    }
+    
+    if(!title) {
+      //title = new URL(webpage.url).hostname;
+      title = RichTextProcessor.wrapPlainText(webpage.display_url.split('/', 1)[0]);
+    }
+
+    const row = new Row({
+      title,
+      titleRight: appMessagesManager.wrapSentTime(message),
+      subtitle: subtitleFragment,
+      havePadding: true,
+      clickable: true,
+      noRipple: true
+    });
+
+    /* const mediaDiv = document.createElement('div');
+    mediaDiv.classList.add('row-media'); */
+
+    row.container.append(previewDiv);
+    
+    /* ripple(div);
+    div.append(previewDiv);
+    div.insertAdjacentHTML('beforeend', `
+    <div class="title">${title}${titleAdditionHTML}</div>
+    <div class="subtitle">${subtitle}</div>
+    <div class="url">${url}</div>
+    ${sender}
+    `); */
+    
+    if(row.container.innerText.trim().length) {
+      elemsToAppend.push({element: row.container, message});
+    }
+  }
   
   public async performSearchResult(messages: any[], mediaTab: SearchSuperMediaTab, append = true) {
     const elemsToAppend: {element: HTMLElement, message: any}[] = [];
@@ -674,73 +894,26 @@ export default class AppSearchSuper {
       searchGroup = this.searchGroups.messages;
     }
 
+    const options: ProcessSearchSuperResult = {
+      elemsToAppend,
+      inputFilter,
+      message: undefined,
+      middleware,
+      promises,
+      searchGroup
+    };
+
+    let processCallback: (options: ProcessSearchSuperResult) => any;
+
     // https://core.telegram.org/type/MessagesFilter
     switch(inputFilter) {
       case 'inputMessagesFilterEmpty': {
-        for(const message of messages) {
-          const {dialog, dom} = appDialogsManager.addDialogNew({
-            dialog: message.peerId, 
-            container: searchGroup.list, 
-            drawStatus: false,
-            avatarSize: 54
-          });
-          appDialogsManager.setLastMessage(dialog, message, dom, this.searchContext.query);
-        }
-
-        if(searchGroup.list.childElementCount) {
-          searchGroup.setActive();
-        }
+        processCallback = this.processEmptyFilter;
         break;
       }
 
       case 'inputMessagesFilterPhotoVideo': {
-        for(const message of messages) {
-          const media = message.media.photo || message.media.document || (message.media.webpage && message.media.webpage.document);
-
-          const div = document.createElement('div');
-          div.classList.add('grid-item');
-          //this.log(message, photo);
-
-          let wrapped: ReturnType<typeof wrapPhoto>;
-          const size = appPhotosManager.choosePhotoSize(media, 200, 200);
-          if(media._ !== 'photo') {
-            wrapped = wrapVideo({
-              doc: media,
-              message,
-              container: div,
-              boxWidth: 0,
-              boxHeight: 0,
-              lazyLoadQueue: this.lazyLoadQueue,
-              middleware,
-              onlyPreview: true,
-              withoutPreloader: true,
-              noPlayButton: true,
-              size
-            }).thumb;
-          } else {
-            wrapped = wrapPhoto({
-              photo: media,
-              message,
-              container: div,
-              boxWidth: 0,
-              boxHeight: 0,
-              lazyLoadQueue: this.lazyLoadQueue,
-              middleware,
-              withoutPreloader: true,
-              noBlur: true,
-              size
-            });
-          }
-
-          [wrapped.images.thumb, wrapped.images.full].filter(Boolean).forEach(image => {
-            image.classList.add('grid-item-media');
-          });
-
-          promises.push(wrapped.loadPromises.thumb);
-
-          elemsToAppend.push({element: div, message});
-        }
-        
+        processCallback = this.processPhotoVideoFilter;
         break;
       }
       
@@ -748,164 +921,35 @@ export default class AppSearchSuper {
       case 'inputMessagesFilterRoundVoice':
       case 'inputMessagesFilterMusic':
       case 'inputMessagesFilterDocument': {
-        for(const message of messages) {
-          const showSender = this.showSender || (['voice', 'round'] as MyDocument['type'][]).includes(message.media.document.type);
-          const div = wrapDocument({
-            message,
-            withTime: !showSender,
-            fontWeight: 400,
-            voiceAsMusic: true,
-            showSender,
-            searchContext: this.copySearchContext(inputFilter),
-            lazyLoadQueue: this.lazyLoadQueue,
-            noAutoDownload: true
-          });
-
-          if((['audio', 'voice', 'round'] as MyDocument['type'][]).includes(message.media.document.type)) {
-            div.classList.add('audio-48');
-          }
-
-          elemsToAppend.push({element: div, message});
-        }
+        processCallback = this.processDocumentFilter;
         break;
       }
       
       case 'inputMessagesFilterUrl': {
-        for(let message of messages) {
-          let webpage: any;
-
-          if(message.media?.webpage && message.media.webpage._ !== 'webPageEmpty') {
-            webpage = message.media.webpage;
-          } else {
-            const entity = message.totalEntities ? message.totalEntities.find((e: any) => e._ === 'messageEntityUrl' || e._ === 'messageEntityTextUrl') : null;
-            let url: string, display_url: string, sliced: string;
-
-            if(!entity) {
-              //this.log.error('NO ENTITY:', message);
-              const match = RichTextProcessor.matchUrl(message.message);
-              if(!match) {
-                //this.log.error('NO ENTITY AND NO MATCH:', message);
-                continue;
-              }
-
-              url = match[0];
-            } else {
-              sliced = message.message.slice(entity.offset, entity.offset + entity.length);
-            }
-
-            if(entity?._ === 'messageEntityTextUrl') {
-              url = entity.url;
-              //display_url = sliced;
-            } else {
-              url = url || sliced;
-            }
-
-            display_url = url;
-
-            const same = message.message === url;
-            if(!url.match(/^(ftp|http|https):\/\//)) {
-              display_url = 'https://' + url;
-              url = url.includes('@') ? url : 'https://' + url;
-            }
-
-            display_url = new URL(display_url).hostname;
-
-            webpage = {
-              url,
-              display_url
-            };
-
-            if(!same) {
-              webpage.description = message.message;
-              webpage.rDescription = RichTextProcessor.wrapRichText(limitSymbols(message.message, 150, 180));
-            }
-          }
-
-          let div = document.createElement('div');
-          
-          let previewDiv = document.createElement('div');
-          previewDiv.classList.add('preview', 'row-media');
-          
-          //this.log('wrapping webpage', webpage);
-          
-          if(webpage.photo) {
-            const res = wrapPhoto({
-              container: previewDiv,
-              message: null,
-              photo: webpage.photo,
-              boxWidth: 0,
-              boxHeight: 0,
-              withoutPreloader: true,
-              lazyLoadQueue: this.lazyLoadQueue,
-              middleware,
-              size: appPhotosManager.choosePhotoSize(webpage.photo, 60, 60, false),
-              loadPromises: promises,
-              noBlur: true
-            });
-          } else {
-            previewDiv.classList.add('empty');
-            previewDiv.innerHTML = RichTextProcessor.getAbbreviation(webpage.title || webpage.display_url || webpage.description || webpage.url, true);
-          }
-          
-          let title = webpage.rTitle || '';
-          let subtitle = webpage.rDescription || '';
-
-          const subtitleFragment = htmlToDocumentFragment(subtitle);
-          const aFragment = htmlToDocumentFragment(RichTextProcessor.wrapRichText(webpage.url || ''));
-          const a = aFragment.firstElementChild;
-          if(a instanceof HTMLAnchorElement) {
-            a.innerText = decodeURIComponent(a.href);
-          }
-
-          if(subtitleFragment.firstChild) {
-            subtitleFragment.append('\n');
-          }
-
-          subtitleFragment.append(a);
-
-          if(this.showSender) {
-            subtitleFragment.append('\n', appMessagesManager.wrapSenderToPeer(message));
-          }
-          
-          if(!title) {
-            //title = new URL(webpage.url).hostname;
-            title = RichTextProcessor.wrapPlainText(webpage.display_url.split('/', 1)[0]);
-          }
-
-          const row = new Row({
-            title,
-            titleRight: appMessagesManager.wrapSentTime(message),
-            subtitle: subtitleFragment,
-            havePadding: true,
-            clickable: true,
-            noRipple: true
-          });
-
-          /* const mediaDiv = document.createElement('div');
-          mediaDiv.classList.add('row-media'); */
-
-          row.container.append(previewDiv);
-          
-          /* ripple(div);
-          div.append(previewDiv);
-          div.insertAdjacentHTML('beforeend', `
-          <div class="title">${title}${titleAdditionHTML}</div>
-          <div class="subtitle">${subtitle}</div>
-          <div class="url">${url}</div>
-          ${sender}
-          `); */
-          
-          if(row.container.innerText.trim().length) {
-            elemsToAppend.push({element: row.container, message});
-          }
-        }
-        
+        processCallback = this.processUrlFilter;
         break;
       }
 
       default:
         //this.log.warn('death is my friend', messages);
         break;
+    }
+
+    if(processCallback) {
+      processCallback = processCallback.bind(this);
+
+      for(const message of messages) {
+        try {
+          options.message = message;
+          processCallback(options);
+        } catch(err) {
+          this.log.error('error rendering filter', inputFilter, options, message, err);
+        }
+      }
+    }
+    
+    if(searchGroup && searchGroup.list.childElementCount) {
+      searchGroup.setActive();
     }
 
     if(this.loadMutex) {
@@ -1163,7 +1207,7 @@ export default class AppSearchSuper {
           }
           
           promise.then(() => {
-            appImManager.setInnerPeer(peerId);
+            appImManager.setInnerPeer({peerId});
           });
         });
         mediaTab.contentTab.append(this.membersList.list);

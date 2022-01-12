@@ -19,7 +19,8 @@ export namespace InternalLink {
     _: INTERNAL_LINK_TYPE.MESSAGE,
     domain: string,
     post?: string,
-    comment?: string
+    comment?: string,
+    start?: string
   }
 
   export interface InternalLinkPrivatePost {

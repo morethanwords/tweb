@@ -1011,7 +1011,9 @@ export default class ChatBubbles {
 
     const contactDiv: HTMLElement = findUpClassName(target, 'contact');
     if(contactDiv) {
-      this.chat.appImManager.setInnerPeer(contactDiv.dataset.peerId.toPeerId());
+      this.chat.appImManager.setInnerPeer({
+        peerId: contactDiv.dataset.peerId.toPeerId()
+      });
       return;
     }
 
@@ -1035,7 +1037,11 @@ export default class ChatBubbles {
         const replies = message.replies;
         if(replies) {
           this.appMessagesManager.getDiscussionMessage(this.peerId, message.mid).then(message => {
-            this.chat.appImManager.setInnerPeer(replies.channel_id.toPeerId(true), undefined, 'discussion', (message as MyMessage).mid);
+            this.chat.appImManager.setInnerPeer({
+              peerId: replies.channel_id.toPeerId(true),
+              type: 'discussion', 
+              threadId: (message as MyMessage).mid
+            });
           });
         }
       }
@@ -1064,11 +1070,14 @@ export default class ChatBubbles {
         if(savedFrom) {
           const [peerId, mid] = savedFrom.split('_');
   
-          this.chat.appImManager.setInnerPeer(peerId.toPeerId(), +mid);
+          this.chat.appImManager.setInnerPeer({
+            peerId: peerId.toPeerId(), 
+            lastMsgId: +mid
+          });
         } else {
           const peerId = peerIdStr.toPeerId();
           if(peerId !== NULL_PEER_ID) {
-            this.chat.appImManager.setInnerPeer(peerId);
+            this.chat.appImManager.setInnerPeer({peerId});
           } else {
             toast(I18n.format('HidAccount', true));
           }
@@ -1213,7 +1222,10 @@ export default class ChatBubbles {
         const savedFrom = bubble.dataset.savedFrom;
         const [peerId, mid] = savedFrom.split('_');
         ////this.log('savedFrom', peerId, msgID);
-        this.chat.appImManager.setInnerPeer(peerId.toPeerId(), +mid);
+        this.chat.appImManager.setInnerPeer({
+          peerId: peerId.toPeerId(), 
+          lastMsgId: +mid
+        });
         return;
       } else if(target.classList.contains('forward')) {
         const mid = +bubble.dataset.mid;
@@ -1240,7 +1252,12 @@ export default class ChatBubbles {
         const replyToPeerId = message.reply_to.reply_to_peer_id ? this.appPeersManager.getPeerId(message.reply_to.reply_to_peer_id) : this.peerId;
         const replyToMid = message.reply_to.reply_to_msg_id;
 
-        this.chat.appImManager.setInnerPeer(replyToPeerId, replyToMid, this.chat.type, this.chat.threadId);
+        this.chat.appImManager.setInnerPeer({
+          peerId: replyToPeerId, 
+          lastMsgId: replyToMid, 
+          type: this.chat.type, 
+          threadId: this.chat.threadId
+        });
 
         /* if(this.chat.type === 'discussion') {
           this.chat.appImManager.setMessageId(, originalMessageId);

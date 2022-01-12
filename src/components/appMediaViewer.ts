@@ -205,7 +205,12 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
           }
         }
 
-        appImManager.setInnerPeer(message.peerId, mid, threadId ? 'discussion' : undefined, threadId);
+        appImManager.setInnerPeer({
+          peerId: message.peerId, 
+          lastMsgId: mid, 
+          type: threadId ? 'discussion' : undefined, 
+          threadId
+        });
       });
     }
   };

@@ -805,7 +805,7 @@ export default class ChatInput {
       const peerId = this.chat.peerId;
 
       new PopupPinMessage(peerId, 0, true, () => {
-        this.chat.appImManager.setPeer(NULL_PEER_ID); // * close tab
+        this.chat.appImManager.setPeer(); // * close tab
 
         // ! костыль, это скроет закреплённые сообщения сразу, вместо того, чтобы ждать пока анимация перехода закончится
         const originalChat = this.chat.appImManager.chat;

@@ -223,7 +223,7 @@ export default class Chat extends EventListenerBase<{
 
     this.bubbles.listenerSetter.add(rootScope)('dialog_drop', (e) => {
       if(e.peerId === this.peerId) {
-        this.appImManager.setPeer(NULL_PEER_ID);
+        this.appImManager.setPeer();
       }
     });
   }
@@ -271,8 +271,6 @@ export default class Chat extends EventListenerBase<{
     if(!samePeer) {
       rootScope.dispatchEvent('peer_changing', this);
       this.peerId = peerId;
-      this.noForwards = this.appPeersManager.noForwards(peerId);
-      this.container.classList.toggle('no-forwards', this.noForwards);
     } else if(this.setPeerPromise) {
       return;
     }
@@ -296,6 +294,9 @@ export default class Chat extends EventListenerBase<{
       if(searchTab) {
         searchTab.close();
       }
+
+      this.noForwards = this.appPeersManager.noForwards(peerId);
+      this.container.classList.toggle('no-forwards', this.noForwards);
 
       appSidebarRight.sharedMediaTab.setPeer(peerId, this.threadId);
       this.input.clearHelper(); // костыль

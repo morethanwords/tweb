@@ -122,7 +122,9 @@ export class AppSidebarLeft extends SidebarSlider {
       text: 'SavedMessages',
       onClick: () => {
         setTimeout(() => { // menu doesn't close if no timeout (lol)
-          appImManager.setPeer(appImManager.myId);
+          appImManager.setPeer({
+            peerId: appImManager.myId
+          });
         }, 0);
       }
     }, btnArchive, {

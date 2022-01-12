@@ -1358,9 +1358,11 @@ export class AppDialogsManager {
         const peerId = elem.dataset.peerId.toPeerId();
         const lastMsgId = +elem.dataset.mid || undefined;
 
-        setPeerFunc(peerId, lastMsgId);
+        setPeerFunc({
+          peerId, lastMsgId
+        });
       } else {
-        setPeerFunc(NULL_PEER_ID);
+        setPeerFunc();
       }
     }, {capture: true});
 
@@ -1641,12 +1643,13 @@ export class AppDialogsManager {
   }
 
   private getDialog(dialog: Dialog | PeerId): Dialog {
-    if(typeof(dialog) !== 'object' && dialog) {
+    if(typeof(dialog) !== 'object') {
       const originalDialog = appMessagesManager.getDialogOnly(dialog);
       if(!originalDialog) {
+        const peerId = dialog || NULL_PEER_ID;
         return {
-          peerId: dialog,
-          peer: appPeersManager.getOutputPeer(dialog),
+          peerId,
+          peer: appPeersManager.getOutputPeer(peerId),
           pFlags: {}
         } as any;
       }
@@ -1712,6 +1715,30 @@ export class AppDialogsManager {
     this.setCallStatus(dom, !!(chat.pFlags.call_active && chat.pFlags.call_not_empty));
   }
 
+  /**
+   * use for rendering search result
+   */
+  public addDialogAndSetLastMessage(options: Omit<Parameters<AppDialogsManager['addDialogNew']>[0], 'dialog'> & {
+    message: MyMessage, 
+    peerId: PeerId,
+    query?: string
+  }) {
+    const {peerId, message, query} = options;
+    const ret = appDialogsManager.addDialogNew({
+      ...options,
+      ...appMessagesManager.getMessageSenderPeerIdOrName(message),
+      dialog: this.getDialog(peerId),
+    });
+
+    this.setLastMessage(ret.dialog, message, ret.dom, query);
+
+    if(message.peerId !== peerId) {
+      ret.dom.listEl.dataset.peerId = '' + message.peerId;
+    }
+
+    return ret;
+  }
+
   public addDialogNew(options: {
     dialog: Parameters<AppDialogsManager['addDialog']>[0],
     container?: Parameters<AppDialogsManager['addDialog']>[1],
@@ -1723,12 +1750,14 @@ export class AppDialogsManager {
     avatarSize?: number,
     autonomous?: boolean,
     lazyLoadQueue?: LazyLoadQueueIntersector,
-    loadPromises?: Promise<any>[]
+    loadPromises?: Promise<any>[],
+    fromName?: string
   }) {
-    return this.addDialog(options.dialog, options.container, options.drawStatus, options.rippleEnabled, options.onlyFirstName, options.meAsSaved, options.append, options.avatarSize, options.autonomous, options.lazyLoadQueue, options.loadPromises);
+    return this.addDialog(options.dialog, options.container, options.drawStatus, options.rippleEnabled, options.onlyFirstName, options.meAsSaved, options.append, options.avatarSize, options.autonomous, options.lazyLoadQueue, options.loadPromises, options.fromName);
   }
 
-  public addDialog(_dialog: Parameters<AppDialogsManager['getDialog']>[0], 
+  public addDialog(
+    _dialog: Parameters<AppDialogsManager['getDialog']>[0], 
     container?: HTMLElement | Scrollable | DocumentFragment | false, 
     drawStatus = true, 
     rippleEnabled = true, 
@@ -1738,7 +1767,9 @@ export class AppDialogsManager {
     avatarSize = 54, 
     autonomous = !!container, 
     lazyLoadQueue?: LazyLoadQueueIntersector,
-    loadPromises?: Promise<any>[]) {
+    loadPromises?: Promise<any>[],
+    fromName?: string
+  ) {
     const dialog = this.getDialog(_dialog);
     const peerId = dialog.peerId;
 
@@ -1746,6 +1777,7 @@ export class AppDialogsManager {
     avatarEl.loadPromises = loadPromises;
     avatarEl.lazyLoadQueue = lazyLoadQueue;
     avatarEl.setAttribute('dialog', meAsSaved ? '1' : '0');
+    if(fromName !== undefined) avatarEl.setAttribute('peer-title', fromName);
     avatarEl.setAttribute('peer', '' + peerId);
     avatarEl.classList.add('dialog-avatar', 'avatar-' + avatarSize);
 
@@ -1764,6 +1796,7 @@ export class AppDialogsManager {
 
     const peerTitle = new PeerTitle({
       peerId,
+      fromName,
       dialog: meAsSaved,
       onlyFirstName,
       plainText: false
