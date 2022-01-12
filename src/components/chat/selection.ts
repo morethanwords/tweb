@@ -819,36 +819,8 @@ export default class ChatSelection extends AppSelection {
   }
 
   protected onToggleSelection = (forwards: boolean) => {
-    let transform = '', borderRadius = '', needTranslateX: number;
-    // if(forwards) {
-      const p = this.input.rowsWrapper.parentElement;
-      const fakeSelectionWrapper = p.querySelector('.fake-selection-wrapper');
-      const fakeRowsWrapper = p.querySelector('.fake-rows-wrapper');
-      const fakeSelectionRect = fakeSelectionWrapper.getBoundingClientRect();
-      const fakeRowsRect = fakeRowsWrapper.getBoundingClientRect();
-      const widthFrom = fakeRowsRect.width;
-      const widthTo = fakeSelectionRect.width;
+    const {needTranslateX, widthFrom, widthTo} = this.chat.input.center();
 
-      if(widthFrom !== widthTo) {
-        const scale = (widthTo/*  - 8 */) / widthFrom;
-        const initTranslateX = (widthFrom - widthTo) / 2;
-        needTranslateX = fakeSelectionRect.left - fakeRowsRect.left - initTranslateX;
-
-        if(forwards) {
-          transform = `translateX(${needTranslateX}px) scaleX(${scale})`;
-  
-          if(scale < 1) {
-            const br = 12;
-            borderRadius = '' + (br + br * (1 - scale)) + 'px';
-          }
-        }
-        //scale = widthTo / widthFrom;
-      }
-    // }
-
-    SetTransition(this.input.rowsWrapper, 'is-centering', forwards, 200);
-    this.input.rowsWrapper.style.transform = transform;
-    this.input.rowsWrapper.style.borderRadius = borderRadius;
     SetTransition(this.listenElement, 'is-selecting', forwards, 200, () => {
       if(!this.isSelecting) {
         this.selectionInputWrapper.remove();
@@ -870,10 +842,14 @@ export default class ChatSelection extends AppSelection {
 
     //const chatInput = this.appImManager.chatInput;
 
+    const translateButtonsX = widthFrom < widthTo ? undefined : needTranslateX * 2;
     if(this.isSelecting) {
       if(!this.selectionContainer) {
         this.selectionInputWrapper = document.createElement('div');
         this.selectionInputWrapper.classList.add('chat-input-wrapper', 'selection-wrapper');
+
+        // const background = document.createElement('div');
+        // background.classList.add('chat-input-wrapper-background');
 
         this.selectionContainer = document.createElement('div');
         this.selectionContainer.classList.add('selection-container');
@@ -928,22 +904,27 @@ export default class ChatSelection extends AppSelection {
           this.selectionDeleteBtn
         ].filter(Boolean))
 
-        left.style.transform = `translateX(-${needTranslateX * 2}px)`;
-        right.style.transform = `translateX(${needTranslateX * 2}px)`;
+        if(translateButtonsX !== undefined) {
+          left.style.transform = `translateX(${-translateButtonsX}px)`;
+          right.style.transform = `translateX(${translateButtonsX}px)`;
+        }
+
         this.selectionContainer.append(left, right);
 
+        // background.style.opacity = '0';
         this.selectionInputWrapper.style.opacity = '0';
-        this.selectionInputWrapper.append(this.selectionContainer);
-        this.input.rowsWrapper.parentElement.append(this.selectionInputWrapper);
-
+        this.selectionInputWrapper.append(/* background,  */this.selectionContainer);
+        this.input.inputContainer.append(this.selectionInputWrapper);
+        
         void this.selectionInputWrapper.offsetLeft; // reflow
+        // background.style.opacity = '';
         this.selectionInputWrapper.style.opacity = '';
         left.style.transform = '';
         right.style.transform = '';
       }
-    } else if(this.selectionLeft) {
-      this.selectionLeft.style.transform = `translateX(-${needTranslateX * 2}px)`;
-      this.selectionRight.style.transform = `translateX(${needTranslateX * 2}px)`;
+    } else if(this.selectionLeft && translateButtonsX !== undefined) {
+      this.selectionLeft.style.transform = `translateX(-${translateButtonsX}px)`;
+      this.selectionRight.style.transform = `translateX(${translateButtonsX}px)`;
     }
   };
 

@@ -479,7 +479,7 @@ export default class ChatBubbles {
       handleHorizontalSwipe({
         element: this.bubblesContainer,
         verifyTouchTarget: (e) => {
-          if(this.chat.selection.isSelecting || !this.appMessagesManager.canSendToPeer(this.peerId, this.chat.threadId)) {
+          if(this.chat.selection.isSelecting || !this.chat.canSend()) {
             return false;
           }
 
@@ -551,7 +551,7 @@ export default class ChatBubbles {
     if(!IS_MOBILE && this.chat.type !== 'pinned') {
       this.listenerSetter.add(this.bubblesContainer)('dblclick', (e) => {
         if(this.chat.selection.isSelecting || 
-          !this.appMessagesManager.canSendToPeer(this.peerId, this.chat.threadId)) {
+          !this.chat.canSend()) {
           return;
         }
         
@@ -645,11 +645,11 @@ export default class ChatBubbles {
     this.listenerSetter.add(rootScope)('chat_update', (chatId) => {
       if(this.peerId === chatId.toPeerId(true)) {
         const hadRights = this.chatInner.classList.contains('has-rights');
-        const hasRights = this.appMessagesManager.canSendToPeer(this.peerId, this.chat.threadId);
+        const hasRights = this.chat.canSend();
 
         if(hadRights !== hasRights) {
           this.finishPeerChange();
-          this.chat.input.updateMessageInput();
+          this.chat.input.finishPeerChange();
         }
       }
     });
@@ -2258,9 +2258,8 @@ export default class ChatBubbles {
   }
 
   public finishPeerChange() {
-    const peerId = this.peerId;
-    const isChannel = this.appPeersManager.isChannel(peerId);
-    const canWrite = this.appMessagesManager.canSendToPeer(peerId, this.chat.threadId);
+    const isChannel = this.appPeersManager.isChannel(this.peerId);
+    const canWrite = this.chat.canSend();
     
     this.chatInner.classList.toggle('has-rights', canWrite);
     this.bubblesContainer.classList.toggle('is-chat-input-hidden', !canWrite);
@@ -3886,7 +3885,7 @@ export default class ChatBubbles {
       this.renderEmptyPlaceholder('noScheduledMessages', bubble, message, elements);
     } else if(rootScope.myId === this.peerId) {
       this.renderEmptyPlaceholder('saved', bubble, message, elements);
-    } else if(this.appPeersManager.isUser(this.peerId) && !isBot && this.appMessagesManager.canSendToPeer(this.peerId) && this.chat.type === 'chat') {
+    } else if(this.appPeersManager.isUser(this.peerId) && !isBot && this.chat.canSend() && this.chat.type === 'chat') {
       this.renderEmptyPlaceholder('greeting', bubble, message, elements);
     } else {
       this.renderEmptyPlaceholder('noMessages', bubble, message, elements);

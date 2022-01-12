@@ -1199,8 +1199,9 @@ export class AppImManager {
   }
 
   private canDrag() {
-    const peerId = this.chat?.peerId;
-    return !(!peerId || rootScope.isOverlayActive || !appMessagesManager.canSendToPeer(peerId, this.chat.threadId, 'send_media'));
+    const chat = this.chat;
+    const peerId = chat?.peerId;
+    return !(!peerId || rootScope.isOverlayActive || !chat.canSend('send_media'));
   }
 
   private onDocumentPaste = (e: ClipboardEvent | DragEvent, attachType?: 'media' | 'document') => {
