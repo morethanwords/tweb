@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type { AppMessagesManager, MessagesStorage } from "../../lib/appManagers/appMessagesManager";
+import type { AppMessagesManager } from "../../lib/appManagers/appMessagesManager";
 import type ChatBubbles from "./bubbles";
 import type ChatInput from "./input";
 import type Chat from "./chat";
@@ -28,7 +28,6 @@ import cancelSelection from "../../helpers/dom/cancelSelection";
 import getSelectedText from "../../helpers/dom/getSelectedText";
 import rootScope from "../../lib/rootScope";
 import { safeAssign } from "../../helpers/object";
-import { fastRaf } from "../../helpers/schedulers";
 import replaceContent from "../../helpers/dom/replaceContent";
 import AppSearchSuper from "../appSearchSuper.";
 import isInDOM from "../../helpers/dom/isInDOM";
@@ -54,7 +53,7 @@ class AppSelection {
   protected isScheduled: boolean;
   protected listenElement: HTMLElement;
 
-  protected onToggleSelection: (forwards: boolean) => void;
+  protected onToggleSelection: (forwards: boolean, animate: boolean) => void;
   protected onUpdateContainer: (cantForward: boolean, cantDelete: boolean, cantSend: boolean) => void;
   protected onCancelSelection: () => void;
   protected toggleByMid: (peerId: PeerId, mid: number) => void;
@@ -69,6 +68,8 @@ class AppSelection {
   protected targetLookupClassName: string;
   protected lookupBetweenParentClassName: string;
   protected lookupBetweenElementsQuery: string;
+
+  protected doNotAnimate: boolean;
 
   constructor(options: {
     appMessagesManager: AppMessagesManager,
@@ -386,7 +387,7 @@ class AppSelection {
     blurActiveElement();
 
     const forwards = !!size || forceSelection;
-    this.onToggleSelection && this.onToggleSelection(forwards);
+    this.onToggleSelection && this.onToggleSelection(forwards, !this.doNotAnimate);
 
     if(!IS_MOBILE_SAFARI) {
       if(forwards) {
@@ -408,16 +409,20 @@ class AppSelection {
     return true;
   }
 
-  public cancelSelection = () => {
+  public cancelSelection = (doNotAnimate?: boolean) => {
+    if(doNotAnimate) this.doNotAnimate = true;
     this.onCancelSelection && this.onCancelSelection();
     this.selectedMids.clear();
     this.toggleSelection();
     cancelSelection();
+    if(doNotAnimate) this.doNotAnimate = undefined;
   };
 
   public cleanup() {
+    this.doNotAnimate = true;
     this.selectedMids.clear();
     this.toggleSelection(false);
+    this.doNotAnimate = undefined;
   }
 
   protected updateElementSelection(element: HTMLElement, isSelected: boolean) {
@@ -573,8 +578,8 @@ export class SearchSelection extends AppSelection {
     this.selectionDeleteBtn && this.selectionDeleteBtn.classList.toggle('hide', cantDelete);
   };
 
-  protected onToggleSelection = (forwards: boolean) => {
-    SetTransition(this.searchSuper.navScrollableContainer, 'is-selecting', forwards, 200, () => {
+  protected onToggleSelection = (forwards: boolean, animate: boolean) => {
+    SetTransition(this.searchSuper.navScrollableContainer, 'is-selecting', forwards, animate ? 200 : 0, () => {
       if(!this.isSelecting) {
         this.selectionContainer.remove();
         this.selectionContainer = 
@@ -594,7 +599,7 @@ export class SearchSelection extends AppSelection {
         this.selectionContainer.classList.add(BASE_CLASS + '-container');
 
         const btnCancel = ButtonIcon(`close ${BASE_CLASS}-cancel`, {noRipple: true});
-        this.listenerSetter.add(btnCancel)('click', this.cancelSelection, {once: true});
+        this.listenerSetter.add(btnCancel)('click', () => this.cancelSelection(), {once: true});
 
         this.selectionCountEl = document.createElement('div');
         this.selectionCountEl.classList.add(BASE_CLASS + '-count');
@@ -818,10 +823,10 @@ export default class ChatSelection extends AppSelection {
     return !bubble.classList.contains('service') && !bubble.classList.contains('is-sending') && !bubble.classList.contains('bubble-first');
   }
 
-  protected onToggleSelection = (forwards: boolean) => {
-    const {needTranslateX, widthFrom, widthTo} = this.chat.input.center();
+  protected onToggleSelection = (forwards: boolean, animate: boolean) => {
+    const {needTranslateX, widthFrom, widthTo} = this.chat.input.center(animate);
 
-    SetTransition(this.listenElement, 'is-selecting', forwards, 200, () => {
+    SetTransition(this.listenElement, 'is-selecting', forwards, animate ? 200 : 0, () => {
       if(!this.isSelecting) {
         this.selectionInputWrapper.remove();
         this.selectionInputWrapper = 
@@ -835,9 +840,9 @@ export default class ChatSelection extends AppSelection {
         this.selectedText = undefined;
       }
       
-      fastRaf(() => {
+      /* fastRaf(() => {
         this.bubbles.onScroll();
-      });
+      }); */
     });
 
     //const chatInput = this.appImManager.chatInput;
@@ -856,7 +861,7 @@ export default class ChatSelection extends AppSelection {
 
         const attachClickOptions: AttachClickOptions = {listenerSetter: this.listenerSetter};
         const btnCancel = ButtonIcon('close', {noRipple: true});
-        attachClickEvent(btnCancel, this.cancelSelection, {once: true, listenerSetter: this.listenerSetter});
+        attachClickEvent(btnCancel, () => this.cancelSelection(), {once: true, listenerSetter: this.listenerSetter});
 
         this.selectionCountEl = document.createElement('div');
         this.selectionCountEl.classList.add('selection-container-count');

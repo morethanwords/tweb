@@ -80,7 +80,7 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
 		}
 	}
 
-	.chat-input-container {
+	&-container {
 		--padding-horizontal: var(--chat-input-padding);
 		display: flex;
 		align-items: flex-end;
@@ -103,33 +103,57 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
       .new-message-wrapper {
         pointer-events: none;
       }
-    }
-  
-    &.is-centering:not(.backwards) {
-      .new-message-wrapper, .pinned-container {
-        opacity: 0;
-      }
-  
-      .rows-wrapper {
-        max-height: var(--chat-input-size);
-        // opacity: 0;
-        // transition: transform .2s, width .2s, max-height .2s, border-radius .1s, opacity 0s .2s;
-        //box-shadow: none;
 
-        &:before {
+      &:not(.backwards) {
+        .new-message-wrapper {
           opacity: 0;
-          transition: opacity $background-transition-time $background-transition-total-time;
+        }
+    
+        .rows-wrapper {
+          max-height: var(--chat-input-size);
+          border-bottom-right-radius: $border-radius-big;
+  
+          .bubble-tail {
+            transform: scaleX(-1) translateX(#{.5625rem * 2});
+            opacity: 0;
+          }
+        }
+    
+        .reply-wrapper {
+          height: 0 !important;
+          opacity: 0;
+          pointer-events: none;
+        }
+    
+        .btn-send {
+          transform: scale(0);
         }
       }
+
+      &.animating {
+        .rows-wrapper {
+          transition: transform $input-transition-time, max-height $input-transition-time, border-radius $input-half-transition-time/* , opacity 0s 0s */;
   
-      .reply-wrapper {
-        height: 0 !important;
-        opacity: 0;
-        pointer-events: none;
-      }
+          .bubble-tail {
+            transition: transform $input-half-transition-time, opacity .025s 0s;
+          }
+        }
   
-      .btn-send {
-        transform: scale(0);
+        .selection-wrapper {
+          transition: opacity $input-half-transition-time .075s;
+        }
+
+        .btn-send {
+          transition: $input-transition-time transform;
+        }
+
+        &:not(.backwards) {
+          .rows-wrapper {
+            .bubble-tail {
+              transition: transform $input-half-transition-time, opacity .025s .075s;
+            }
+          }
+        }
       }
     }
 	}
@@ -141,12 +165,6 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
 		background: inherit;
 		overflow: hidden;
 	} */
-
-	.btn-send-container {
-		.btn-menu-overlay {
-			z-index: 3;
-		}
-	}
 
 	.menu-send {
 		top: auto;
@@ -211,16 +229,11 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
 	.btn-record-cancel {
 		visibility: hidden;
 		opacity: 0;
-		transition: visibility 0s $input-half-transition-time, opacity $input-half-transition-time 0s;
 		padding: 0;
 		z-index: 3;
 		position: absolute;
 		right: 0;
 		top: 0;
-
-		body.animation-level-0 & {
-			transition: none !important;
-		}
 
 		// here percents can be used since there are no other transforms
 		transform: translateX(calc(-100% + var(--padding-horizontal) * -1 + #{-$btn-send-margin}));
@@ -288,6 +301,13 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
 		right: var(--padding-horizontal);
 		bottom: 0;
 		padding-bottom: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    .btn-menu-overlay {
+			z-index: 3;
+		}
 	}
 
 	.btn-icon {
@@ -299,7 +319,6 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
 	}
 	
 	.btn-send {
-		transition: .2s transform;
 		color: var(--secondary-text-color);
 		z-index: 3;
 
@@ -351,7 +370,8 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
 		}
 	}
 
-	.btn-record-cancel, .btn-send {
+	.btn-record-cancel, 
+  .btn-send {
 		font-size: 1.5rem;
 		line-height: 1.5rem;
 		background-color: var(--surface-color) !important;
@@ -380,68 +400,81 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
 	.record-ripple {
 		border-radius: 50%;
 		background-color: rgba(0, 0, 0, .2);
-		width: 240px;
-		height: 240px;
+		width: 300px;
+		height: 300px;
 		transform: scale(0);
 		position: absolute;
-		top: -94px;
-		left: -94px;
-		transition: transform .03s ease-in-out, visibility $input-half-transition-time;
 		visibility: hidden;
 
-    @include animation-level(0) {
-			transition: none !important;
-		}
-
     @include respond-to(handhelds) {
-			width: 300px;
-			height: 300px;
-			top: -124px;
-			left: -124px;
+			width: 240px;
+			height: 240px;
     }
 	}
 
 	&.is-locked {
 		pointer-events: none;
 
-		.btn-icon {
-			color: #c6cbce;
-		}
-
-		&:not(.is-recording) .btn-send {
+		.btn-icon,
+    &:not(.is-recording) .btn-send {
 			color: #c6cbce;
 		}
 	}
 	
 	&.is-recording {
-		.btn-record-cancel {
-			opacity: 1;
-			visibility: visible;
-			transition: visibility 0s $input-half-transition-time, opacity $input-half-transition-time $input-half-transition-time;
-		}
+    &:not(.backwards) {
+      .btn-record-cancel {
+        opacity: 1;
+        visibility: visible;
+      }
 
-		// unlock
-		.btn-send, .btn-record-cancel {
-			pointer-events: all;
-		}
+      // unlock
+      .btn-send, 
+      .btn-record-cancel {
+        pointer-events: all;
+      }
 
-		.rows-wrapper {
-			width: calc(100% - (var(--chat-input-size) * 2 + #{$btn-send-margin * 2}));
-      // transform: translateX(calc((var(--chat-input-size) + 0.5rem) / -1)) scaleX(1);
-		}
+      .record-ripple {
+        visibility: visible;
+      }
 
-		.attach-file {
-			display: none;
-		}
+      .rows-wrapper {
+        width: calc(100% - (var(--chat-input-size) * 2 + #{$btn-send-margin * 2}));
+        // transform: translateX(calc((var(--chat-input-size) + 0.5rem) / -1)) scaleX(1);
+      }
+  
+      .attach-file {
+        display: none;
+      }
+  
+      .record-time {
+        display: block;
+      }
+    }
 
-		.record-time {
-			display: block;
-		}
+    &.animating {
+      .btn-record-cancel {
+        transition: visibility 0s $input-half-transition-time, opacity $input-half-transition-time 0s;
+      }
 
-		.record-ripple {
-			transition: transform .03s, visibility 0s;
-			visibility: visible;
-		}
+      .record-ripple {
+        transition: transform .03s ease-in-out, visibility $input-half-transition-time;
+      }
+
+      .rows-wrapper {
+        transition: width $input-transition-time;
+      }
+
+      &:not(.backwards) {
+        .btn-record-cancel {
+          transition: visibility 0s $input-half-transition-time, opacity $input-half-transition-time $input-half-transition-time;
+        }
+
+        .record-ripple {
+          transition: transform .03s, visibility 0s;
+        }
+      }
+    }
 	}
 
 	&:not(.is-recording) {
@@ -451,82 +484,36 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
 		}
 	}
 	
-	.new-message-wrapper, .pinned-container {
+	.new-message-wrapper {
 		opacity: 1;
-		
-		@include animation-level(2) {
-			transition: opacity $input-half-transition-time 0s;
-		}
-	}
-
-	.pinned-container {
-		width: auto;
-		/* width: 17.125rem;
-
-		.chat-input.can-pin & {
-			width: 13.125rem;
-		} */
-
-		&-button {
-			height: 2.5rem;
-			padding: 0 .625rem;
-		}
 	}
 
   .bubbles.is-selecting:not(.backwards) ~ & {
     .selection-wrapper {
       opacity: 1;
+    }
+  }
 
-      .chat-input-wrapper-background {
-        // visibility: visible;
-        // transition: visibility 0s 3s;
-        opacity: 1;
-        transition: opacity $background-transition-time $background-transition-total-time;
-      }
+  .bubbles.is-selecting.animating ~ & {
+    .new-message-wrapper {
+      transition: opacity $input-half-transition-time 0s;
     }
 
-    .rows-wrapper {
-      &:before {
-        opacity: 1;
-        transition: opacity 0s 0s;
+    .selection-container {
+      &-left,
+      &-right {
+        transition: transform $input-transition-time;
       }
     }
   }
 
-  /* .bubbles.is-selecting:not(.backwards):not(.animating) ~ & {
-    .selection-wrapper:before {
-      visibility: visible;
-    }
-  } */
-
-	.bubbles.is-selecting.backwards ~ & {
-		@include animation-level(2) {
-			.new-message-wrapper, .pinned-container {
-				transition: opacity $input-half-transition-time $input-half-transition-time;
-			}
-	
-			.selection-wrapper {
-				transition: opacity $input-half-transition-time 0s;
-			}
-		}
-	}
-
-	.pinned-container {
-		box-shadow: none;
-		@include respond-to(handhelds) {
-			font-size: 15px;
-		}
-
-		.btn-transparent {
-			justify-content: center;
-	
-			&::before {
-				margin-right: 10px;
-			}
+	.bubbles.is-selecting.animating.backwards ~ & {
+		.new-message-wrapper {
+			transition: opacity $input-half-transition-time $input-half-transition-time;
 		}
 	
-		&::before {
-			box-shadow: none;
+		.selection-wrapper {
+			transition: opacity $input-half-transition-time 0s;
 		}
 	}
 }
@@ -671,7 +658,8 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
 			transition: none !important;
 		}
 
-		&, &-item {
+		&, 
+    &-item {
 			position: absolute !important;
 			top: 0;
 			left: 0;
@@ -752,8 +740,7 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
 	max-width: calc(100% - (var(--chat-input-size) + #{$btn-send-margin}));
 	justify-content: center;
 	// background-color: var(--surface-color);
-	border-radius: 12px;
-	border-bottom-right-radius: 0;
+	border-radius: $border-radius-big;
 	//box-shadow: 0 1px 2px 0 rgba(16, 35, 47, .07);
 	// box-shadow: 0px 1px 8px 1px rgba(0, 0, 0, .18);
 	min-height: var(--chat-input-size);
@@ -761,10 +748,9 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
 	flex: 0 0 auto;
 	position: relative;
 	z-index: 3;
-	transition: width $input-half-transition-time;
 
-  &:before,
-  .chat-input-wrapper-background {
+  // .chat-input-wrapper-background, 
+  &:before {
     content: " ";
     position: absolute;
     top: 0;
@@ -776,15 +762,6 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
     background-color: #fff;
     background-color: var(--surface-color);
     opacity: 1;
-    transition: opacity $background-transition-time 0s;
-
-    @include animation-level(0) {
-      transition: none !important;
-    }
-  }
-
-  @include animation-level(0) {
-    transition: none !important;
   }
 }
 
@@ -798,7 +775,6 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
   height: var(--chat-input-size);
   padding: var(--padding);
   background-color: var(--surface-color);
-  border-radius: $border-radius-big;
   z-index: 3;
 
   &:before {
@@ -807,32 +783,33 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
 }
 
 .chat-input-control-button {
-  height: 100%;
+  height: 2.5rem;
+  padding: 0 .625rem;
+  justify-content: center;
+
+  @include respond-to(handhelds) {
+    font-size: 15px;
+  }
+
+  &::before {
+    margin-right: 10px;
+  }
 }
 
-.selection-wrapper, .fake-selection-wrapper {
+.selection-wrapper, 
+.fake-selection-wrapper {
 	position: absolute;
-	left: 50%;
 	top: 0;
-	transform: translateX(-50%);
 	width: 28.75rem;
 	max-width: calc(100% - (var(--chat-input-padding) * 2));
 }
 
 .selection-wrapper,
 .chat-input-control {
-  transition: opacity $input-half-transition-time .075s;
 	opacity: 0;
-
-  @include animation-level(0) {
-    transition: none !important;
-  }
 }
 
 .selection-wrapper {
-	border-radius: $border-radius-big;
-	// z-index: 2;
-	// box-shadow: none;
   background-color: var(--surface-color);
 
   &:before {
@@ -860,15 +837,12 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
 		align-items: center;
 		width: 100%;
 
-    &-left, &-right {
+    &-left, 
+    &-right {
       display: flex;
       justify-content: space-between;
 		  align-items: center;
-
-      @include animation-level(2) {
-        transform: translateX(0);
-        transition: transform $input-transition-time;
-      }
+      transform: translateX(0);
     }
 
     &-right {
@@ -936,88 +910,72 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
 	visibility: hidden;
 }
 
-.rows-wrapper, .fake-rows-wrapper {
-	.chat-input.type-pinned & {
-		width: auto;
-	}
-	/* .chat-input.type-pinned & {
-		width: 17.125rem;
-	}
-
-	.chat-input.type-pinned.can-pin & {
-		width: 13.125rem;
-	} */
-}
-
 .fake-rows-wrapper {
-	position: absolute;
 	left: var(--padding-horizontal);
 	top: 0;
 	width: calc(100% - var(--chat-input-size) - (var(--padding-horizontal) * 2) - .5rem);
-
-	.pinned-container {
-		padding: 0 .5rem;
-	}
 }
 
 .rows-wrapper-wrapper {
   width: 100%;
   display: flex;
 
-  &.is-centering-to-control:not(.backwards) ~ .chat-input-control {
-    opacity: 1;
-
-    &:before {
-      opacity: 1;
-      transition: opacity $background-transition-time $background-transition-total-time;
+  &.is-centering-to-control {
+    &:not(.backwards) {
+      .rows-wrapper {
+        &:before {
+          opacity: 0;
+        }
+      }
+  
+      ~ .chat-input-control {
+        opacity: 1;
+    
+        &:before {
+          opacity: 1;
+        }
+      }
     }
-  }
 
-  &.is-centering-to-control.backwards ~ .chat-input-control {
-    transition: opacity $input-half-transition-time 0s;
+    &.animating {
+      .rows-wrapper, 
+      ~ .chat-input-control {
+        &:before {
+          transition: opacity $background-transition-time $background-transition-total-time;
+        }
+      }
+
+      ~ .chat-input-control {
+        transition: opacity $input-half-transition-time .075s;
+      }
+
+      &.backwards {
+        .rows-wrapper,
+        ~ .chat-input-control {
+          &:before {
+            transition: opacity $background-transition-time 0s;
+          }
+        }
+
+        ~ .chat-input-control {
+          transition: opacity $input-half-transition-time 0s;
+        }
+      }
+    }
   }
 }
 
 .rows-wrapper {
-  transform: scaleX(1);
+  transform: translateX(0) scaleX(1);
+  border-bottom-right-radius: 0;
 	// transform: translateX(calc((var(--chat-input-size) + 0.5rem) / -2)) scaleX(1);
-	transition: transform $input-transition-time, width $input-transition-time, max-height $input-transition-time, border-radius $input-half-transition-time/* , opacity 0s 0s */;
+	// transition: transform $input-transition-time, width $input-transition-time, max-height $input-transition-time, border-radius $input-half-transition-time/* , opacity 0s 0s */;
   // background-color: transparent;
   // opacity: 1;
   // box-shadow: none;
 
-  @include animation-level(0) {
-    transition: none !important;
-  }
-
-	&.is-centered {
-		margin: 0 auto;
-    // width: 100%;
-    // max-width: 100%;
-
-		& ~ .fake-rows-wrapper {
-			left: 50%;
-			transform: translateX(-50%);
-		}
-	}
-
 	.bubble-tail {
     opacity: 1;
-		transition: transform $input-half-transition-time, opacity .025s 0s;
-
-		@include animation-level(0) {
-			transition: none !important;
-		}
-	}
-
-	.chat-input-container.is-centering:not(.backwards) &, &.is-centered {
-		border-bottom-right-radius: 12px;
-
-		.bubble-tail {
-      transition: transform $input-half-transition-time, opacity .025s .075s;
-			transform: scaleX(-1) translateX(#{.5625rem * 2});
-      opacity: 0;
-		}
 	}
 
 	@include respond-to(handhelds) {
@@ -1061,7 +1019,7 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
 				bottom: calc(100% + .875rem);
 			}
 			
-			> div {
+			&-item {
 				padding: 0 38px 0 16px;
 			}
 		}
