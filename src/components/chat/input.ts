@@ -194,18 +194,15 @@ export default class ChatInput {
   private saveDraftDebounced: () => void;
 
   private fakeRowsWrapper: HTMLDivElement;
-  private fakePinnedControlBtn: HTMLElement;
 
   private previousQuery: string;
   
   private releaseMediaPlayback: () => void;
 
   private botStartBtn: HTMLButtonElement;
-  omgContainer: HTMLDivElement;
-  private fakeBotStartBtn: HTMLElement;
   private rowsWrapperWrapper: HTMLDivElement;
-  private botStartContainer: HTMLElement;
-  fakeSelectionWrapper: HTMLDivElement;
+  private controlContainer: HTMLElement;
+  private fakeSelectionWrapper: HTMLDivElement;
 
   private fakeWrapperTo: HTMLElement;
 
@@ -331,6 +328,10 @@ export default class ChatInput {
         setScrollTopTimeout = 0;
       }, 0);
     }); */
+
+    const c = this.controlContainer = document.createElement('div');
+    c.classList.add('chat-input-control', 'chat-input-wrapper');
+    this.inputContainer.append(c);
   }
 
   public constructPeerHelpers() {
@@ -729,9 +730,8 @@ export default class ChatInput {
       attachClickEvent(this.btnCancelRecord, this.onCancelRecordClick, {listenerSetter: this.listenerSetter});
 
       this.recorder.onstop = () => {
-        this.recording = false;
-        this.chatInput.classList.remove('is-recording', 'is-locked');
-        this.updateSendBtn();
+        this.setRecording(false);
+        this.chatInput.classList.remove('is-locked');
         this.recordRippleEl.style.transform = '';
       };
   
@@ -794,30 +794,12 @@ export default class ChatInput {
     this.botStartBtn = Button('btn-primary btn-transparent text-bold chat-input-control-button');
     this.botStartBtn.append(i18n('BotStart'));
 
-    const c = this.botStartContainer = document.createElement('div');
-    c.classList.add('chat-input-control', 'chat-input-wrapper');
-    c.append(this.botStartBtn);
-    this.inputContainer.append(c);
-
-    // this.botStartContainer.classList.add('hide');
-    // this.startParam = '123';
-  }
-
-  private constructPinnedContainer() {
-    const container = document.createElement('div');
-    container.classList.add('pinned-container');
-    return container;
+    this.controlContainer.append(this.botStartBtn);
   }
 
   public constructPinnedHelpers() {
-    const container = this.constructPinnedContainer();
-
-    this.pinnedControlBtn = Button('btn-primary btn-transparent text-bold pinned-container-button', {icon: 'unpin'});
-    container.append(this.pinnedControlBtn);
-
-    const fakeContainer = container.cloneNode(true);
-    this.fakePinnedControlBtn = fakeContainer.firstChild as HTMLElement;
-    this.fakeRowsWrapper.append(fakeContainer);
+    this.pinnedControlBtn = Button('btn-primary btn-transparent text-bold chat-input-control-button', {icon: 'unpin'});
+    this.controlContainer.append(this.pinnedControlBtn);
 
     this.listenerSetter.add(this.pinnedControlBtn)('click', () => {
       const peerId = this.chat.peerId;
@@ -833,13 +815,10 @@ export default class ChatInput {
       });
     });
 
-    this.rowsWrapper.append(container);
-
     this.chatInput.classList.add('type-pinned');
-    this.rowsWrapper.classList.add('is-centered');
   }
 
-  public center() {
+  public center(animate = false) {
     const neededFakeContainer = this.getNeededFakeContainer();
     if(!neededFakeContainer && !this.inputContainer.classList.contains('is-centering')) {
       return;
@@ -882,7 +861,7 @@ export default class ChatInput {
 
     this.fakeWrapperTo = neededFakeContainer;
 
-    const duration = 200;
+    const duration = animate ? 200 : 0;
     SetTransition(this.inputContainer, 'is-centering', forwards, duration);
     SetTransition(this.rowsWrapperWrapper, 'is-centering-to-control', !!(forwards && neededFakeContainer && neededFakeContainer.classList.contains('chat-input-control')), duration);
     this.rowsWrapper.style.transform = transform;
@@ -906,8 +885,8 @@ export default class ChatInput {
   public getNeededFakeContainer() {
     if(this.chat.selection.isSelecting) {
       return this.fakeSelectionWrapper;
-    } else if(this.startParam || !this.chat.canSend()) {
-      return this.botStartContainer;
+    } else if(this.startParam || !this.chat.canSend() || this.chat.type === 'pinned') {
+      return this.controlContainer;
     }
   }
 
@@ -1124,30 +1103,28 @@ export default class ChatInput {
     if(sendMenu) {
       sendMenu.setPeerId(peerId);
     }
-
-    this.center();
-
+    
     if(this.messageInput) {
       this.updateMessageInput();
     } else if(this.pinnedControlBtn) {
-      if(this.appPeersManager.canPinMessage(this.chat.peerId)) {
-        this.pinnedControlBtn.append(i18n('Chat.Input.UnpinAll'));
-        this.fakePinnedControlBtn.append(i18n('Chat.Input.UnpinAll'));
-      } else {
-        this.pinnedControlBtn.append(i18n('Chat.Pinned.DontShow'));
-        this.fakePinnedControlBtn.append(i18n('Chat.Pinned.DontShow'));
-      }
+      this.pinnedControlBtn.append(i18n(this.appPeersManager.canPinMessage(this.chat.peerId) ? 'Chat.Input.UnpinAll' : 'Chat.Pinned.DontShow'));
     }
+
+    this.center();
   }
 
   public updateMessageInput() {
     const {chatInput, attachMenu, messageInput} = this;
     const {peerId, threadId} = this.chat;
     const canWrite = this.chat.canSend();
-    chatInput.classList.add('no-transition');
-    chatInput.classList.toggle('is-hidden', !canWrite);
-    void chatInput.offsetLeft; // reflow
-    chatInput.classList.remove('no-transition');
+    const isHidden = chatInput.classList.contains('is-hidden');
+    const willBeHidden = !canWrite;
+    if(isHidden !== willBeHidden) {
+      chatInput.classList.add('no-transition');
+      chatInput.classList.toggle('is-hidden', !canWrite);
+      void chatInput.offsetLeft; // reflow
+      chatInput.classList.remove('no-transition');
+    }
 
     const i = I18n.weakMap.get(messageInput) as I18n.IntlElement;
     if(i) {
@@ -1758,6 +1735,16 @@ export default class ChatInput {
     return foundHelper;
   }
 
+  private setRecording(value: boolean) {
+    if(this.recording === value) {
+      return;
+    }
+
+    SetTransition(this.chatInput, 'is-recording', value, 200);
+    this.recording = value;
+    this.updateSendBtn();
+  }
+
   private onBtnSendClick = (e: Event) => {
     cancelEvent(e);
 
@@ -1784,9 +1771,7 @@ export default class ChatInput {
         this.releaseMediaPlayback = appMediaPlaybackController.setSingleMedia();
         this.recordCanceled = false;
         
-        this.chatInput.classList.add('is-recording');
-        this.recording = true;
-        this.updateSendBtn();
+        this.setRecording(true);
         opusDecodeController.setKeepAlive(true);
         
         const showDiscardPopup = () => {
@@ -1880,7 +1865,8 @@ export default class ChatInput {
             break;
         }
 
-        this.chatInput.classList.remove('is-recording', 'is-locked');
+        this.setRecording(false);
+        this.chatInput.classList.remove('is-locked');
       });
     }
   };
