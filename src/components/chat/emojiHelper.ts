@@ -64,7 +64,7 @@ export default class EmojiHelper extends AutocompleteHelper {
       });
     }
 
-    this.waitForKey = waitForKey ? 'ArrowUp' : undefined;
+    this.waitForKey = waitForKey ? ['ArrowUp', 'ArrowDown'] : undefined;
     this.toggle(!emojis.length);
 
     /* window.requestAnimationFrame(() => {

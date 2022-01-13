@@ -30,7 +30,7 @@ export default class StickersHelper extends AutocompleteHelper {
       onSelect: (target) => {
         return !EmoticonsDropdown.onMediaClick({target}, true);
       }, 
-      waitForKey: 'ArrowUp'
+      waitForKey: ['ArrowUp', 'ArrowDown']
     });
 
     this.container.classList.add('stickers-helper');

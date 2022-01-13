@@ -46,7 +46,7 @@ export default class InlineHelper extends AutocompleteHelper {
       appendTo, 
       controller,
       listType: 'xy', 
-      waitForKey: 'ArrowUp',
+      waitForKey: ['ArrowUp', 'ArrowDown'],
       onSelect: (target) => {
         if(!target) return false; // can happen when there is only button
         const {peerId, botId, queryId} = this.list.dataset;
