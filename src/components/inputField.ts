@@ -9,6 +9,7 @@ import findUpAttribute from "../helpers/dom/findUpAttribute";
 import getRichValue from "../helpers/dom/getRichValue";
 import isInputEmpty from "../helpers/dom/isInputEmpty";
 import selectElementContents from "../helpers/dom/selectElementContents";
+import { MessageEntity } from "../layer";
 import { i18n, LangPackKey, _i18n } from "../lib/langPack";
 import RichTextProcessor from "../lib/richtextprocessor";
 import SetTransition from "./singleTransition";
@@ -18,27 +19,33 @@ let init = () => {
     if(!findUpAttribute(e.target, 'contenteditable="true"')) {
       return;
     }
-    //console.log('document paste');
-
-    //console.log('messageInput paste');
 
     e.preventDefault();
-    // @ts-ignore
-    let text = (e.originalEvent || e).clipboardData.getData('text/plain');
-
-    let entities = RichTextProcessor.parseEntities(text);
-    //console.log('messageInput paste', text, entities);
-    entities = entities.filter(e => e._ === 'messageEntityEmoji' || e._ === 'messageEntityLinebreak');
-    //text = RichTextProcessor.wrapEmojiText(text);
-    text = RichTextProcessor.wrapRichText(text, {entities, noLinks: true, wrappingDraft: true});
-
-    // console.log('messageInput paste after', text);
+    let text: string, entities: MessageEntity[];
 
     // @ts-ignore
-    //let html = (e.originalEvent || e).clipboardData.getData('text/html');
+    const html: string = (e.originalEvent || e).clipboardData.getData('text/html');
+    if(html.trim()) {
+      const span = document.createElement('span');
+      span.innerHTML = html;
+      
+      const richValue = getRichValue(span, true);
+      text = richValue.value;
+      entities = richValue.entities;
 
-    // @ts-ignore
-    //console.log('paste text', text, );
+      let entities2 = RichTextProcessor.parseEntities(text);
+      entities2 = entities2.filter(e => e._ === 'messageEntityEmoji' || e._ === 'messageEntityLinebreak');
+      RichTextProcessor.mergeEntities(entities, entities2);
+    } else {
+      // @ts-ignore
+      text = (e.originalEvent || e).clipboardData.getData('text/plain');
+
+      entities = RichTextProcessor.parseEntities(text);
+      entities = entities.filter(e => e._ === 'messageEntityEmoji' || e._ === 'messageEntityLinebreak');
+    }
+
+    text = RichTextProcessor.wrapDraftText(text, {entities});
+    
     window.document.execCommand('insertHTML', false, text);
   });
 

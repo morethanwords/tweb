@@ -2918,7 +2918,10 @@ export default class ChatBubbles {
             const html = RichTextProcessor.wrapRichText(webpage.url);
             const a: HTMLAnchorElement = htmlToDocumentFragment(html).firstElementChild as any;
             a.classList.add('webpage-name');
+            // const b = document.createElement('b');
             setInnerHTML(a, RichTextProcessor.wrapEmojiText(webpage.site_name));
+            // a.textContent = '';
+            // a.append(b);
             quoteTextDiv.append(a);
             t = a;
           }
@@ -2926,6 +2929,8 @@ export default class ChatBubbles {
           if(webpage.rTitle) {
             let titleDiv = document.createElement('div');
             titleDiv.classList.add('title');
+            // const b = document.createElement('b');
+            // titleDiv.append(b);
             setInnerHTML(titleDiv, webpage.rTitle);
             quoteTextDiv.append(titleDiv);
             t = titleDiv;

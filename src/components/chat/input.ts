@@ -2405,6 +2405,10 @@ export default class ChatInput {
       replyParent.insertBefore(newReply, replyParent.lastElementChild);
     }
 
+    if(type === 'webpage') {
+      newReply.style.cursor = 'default';
+    }
+
     if(!this.chat.container.classList.contains('is-helper-active')) {
       this.chat.container.classList.add('is-helper-active');
       this.t();
