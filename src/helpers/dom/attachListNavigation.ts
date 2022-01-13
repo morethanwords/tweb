@@ -22,8 +22,9 @@ export default function attachListNavigation({list, type, onSelect, once, waitFo
   type: 'xy' | 'x' | 'y',
   onSelect: (target: Element) => void | boolean,
   once: boolean,
-  waitForKey?: string
+  waitForKey?: string[]
 }) {
+  let waitForKeySet = waitForKey?.length ? new Set(waitForKey) : undefined;
   const keyNames = new Set(type === 'xy' ? AXIS_Y_KEYS.concat(AXIS_X_KEYS) : (type === 'x' ? AXIS_X_KEYS : AXIS_Y_KEYS)); 
 
   let target: Element;
@@ -165,21 +166,21 @@ export default function attachListNavigation({list, type, onSelect, once, waitFo
   };
 
   const resetTarget = () => {
-    if(waitForKey) return;
+    if(waitForKeySet) return;
     setCurrentTarget(list.firstElementChild, false);
   };
 
-  if(waitForKey) {
+  if(waitForKeySet) {
     const _onKeyDown = onKeyDown;
     onKeyDown = (e) => {
-      if(e.key === waitForKey) {
+      if(waitForKeySet.has(e.key)) {
         cancelEvent(e);
 
         document.removeEventListener(HANDLE_EVENT, onKeyDown, {capture: true});
         onKeyDown = _onKeyDown;
         document.addEventListener(HANDLE_EVENT, onKeyDown, {capture: true, passive: false});
 
-        waitForKey = undefined;
+        waitForKeySet = undefined;
         resetTarget();
       }
     };

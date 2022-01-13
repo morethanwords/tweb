@@ -1036,7 +1036,7 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
 		width: 100%;
 		position: relative;
 		// z-index: 2;
-		background-color: inherit;
+		background-color: var(--surface-color);
 		border-radius: .75rem;
 		padding: var(--padding);
 	}

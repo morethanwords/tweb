@@ -28,7 +28,7 @@ export default class AutocompleteHelper extends EventListenerBase<{
   protected controller: AutocompleteHelperController;
   protected listType: 'xy' | 'x' | 'y';
   protected onSelect: (target: Element) => boolean | void;
-  protected waitForKey?: string;
+  protected waitForKey?: string[];
 
   protected navigationItem: NavigationItem;
 
