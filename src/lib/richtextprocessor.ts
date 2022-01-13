@@ -345,9 +345,10 @@ namespace RichTextProcessor {
       entities.splice(0, entities.length);
     }
 
-    if(!entities.length && !noTrim) {
-      newText = newText.trim();
-    }
+    // ! idk what it was here for
+    // if(!entities.length && !noTrim) {
+    //   newText = newText.trim();
+    // }
 
     mergeEntities(currentEntities, entities);
     combineSameEntities(currentEntities);

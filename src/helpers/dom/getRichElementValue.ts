@@ -18,7 +18,7 @@ export type MarkdownTag = {
 };
 export const markdownTags: {[type in MarkdownType]: MarkdownTag} = {
   bold: {
-    match: '[style*="font-weight"], b',
+    match: '[style*="bold"], [style*="font-weight: 700"], [style*="font-weight: 600"], [style*="font-weight:700"], [style*="font-weight:600"], b, strong',
     entityName: 'messageEntityBold'
   },
   underline: {
@@ -47,9 +47,46 @@ export const markdownTags: {[type in MarkdownType]: MarkdownTag} = {
   }
 };
 
+const tabulationMatch = '[style*="table-cell"]';
+
+/* export function getDepth(child: Node, container?: Node) {
+  let depth = 0;
+
+  do {
+    if(child === container) {
+      return depth;
+    }
+
+    ++depth;
+  } while((child = child.parentNode) !== null);
+
+  return depth;
+} */
+
+const BLOCK_TAG_NAMES = new Set([
+  'DIV',
+  'P',
+  'BR',
+  'LI',
+  'SECTION',
+  'H6',
+  'H5',
+  'H4',
+  'H3',
+  'H2',
+  'H1',
+]);
+
 export default function getRichElementValue(node: HTMLElement, lines: string[], line: string[], selNode?: Node, selOffset?: number, entities?: MessageEntity[], offset = {offset: 0}) {
   if(node.nodeType === 3) { // TEXT
-    const nodeValue = node.nodeValue;
+    let nodeValue = node.nodeValue;
+
+    const tabulation = node.parentElement?.closest(tabulationMatch + ', [contenteditable]');
+    if(tabulation?.getAttribute('contenteditable') === null) {
+      nodeValue += ' ';
+      // line.push('\t');
+      // ++offset.offset;
+    }
 
     if(selNode === node) {
       line.push(nodeValue.substr(0, selOffset) + '\x01' + nodeValue.substr(selOffset));
@@ -57,35 +94,44 @@ export default function getRichElementValue(node: HTMLElement, lines: string[], 
       line.push(nodeValue);
     }
 
-    if(entities && nodeValue.trim()) {
+    if(entities && nodeValue.length) {
       if(node.parentNode) {
         const parentElement = node.parentElement;
         
+        // let closestTag: MarkdownTag, closestElementByTag: Element, closestDepth = Infinity;
         for(const type in markdownTags) {
           const tag = markdownTags[type as MarkdownType];
           const closest = parentElement.closest(tag.match + ', [contenteditable]');
-          if(closest && closest.getAttribute('contenteditable') === null) {
-            if(tag.entityName === 'messageEntityTextUrl') {
-              entities.push({
-                _: tag.entityName,
-                url: (parentElement as HTMLAnchorElement).href,
-                offset: offset.offset,
-                length: nodeValue.length
-              });
-            } else if(tag.entityName === 'messageEntityMentionName') {
-              entities.push({
-                _: tag.entityName,
-                offset: offset.offset,
-                length: nodeValue.length,
-                user_id: parentElement.dataset.follow.toUserId()
-              });
-            } else {
-              entities.push({
-                _: tag.entityName as any,
-                offset: offset.offset,
-                length: nodeValue.length
-              });
-            }
+          if(closest?.getAttribute('contenteditable') !== null) {
+            /* const depth = getDepth(closest, parentElement.closest('[contenteditable]'));
+            if(closestDepth > depth) {
+              closestDepth = depth;
+              closestTag = tag;
+              closestElementByTag = closest;
+            } */
+            continue;
+          }
+
+          if(tag.entityName === 'messageEntityTextUrl') {
+            entities.push({
+              _: tag.entityName,
+              url: (closest as HTMLAnchorElement).href,
+              offset: offset.offset,
+              length: nodeValue.length
+            });
+          } else if(tag.entityName === 'messageEntityMentionName') {
+            entities.push({
+              _: tag.entityName,
+              offset: offset.offset,
+              length: nodeValue.length,
+              user_id: (closest as HTMLElement).dataset.follow.toUserId()
+            });
+          } else {
+            entities.push({
+              _: tag.entityName as any,
+              offset: offset.offset,
+              length: nodeValue.length
+            });
           }
         }
       }
@@ -100,11 +146,12 @@ export default function getRichElementValue(node: HTMLElement, lines: string[], 
     return;
   }
 
-  const isSelected = (selNode === node);
-  const isBlock = node.tagName === 'DIV' || node.tagName === 'P';
-  if(isBlock && line.length || node.tagName === 'BR') {
+  const isSelected = selNode === node;
+  const isBlock = BLOCK_TAG_NAMES.has(node.tagName);
+  if(isBlock && line.length) {
     lines.push(line.join(''));
     line.splice(0, line.length);
+    ++offset.offset;
   } else if(node instanceof HTMLImageElement) {
     const alt = node.alt;
     if(alt) {
@@ -130,5 +177,11 @@ export default function getRichElementValue(node: HTMLElement, lines: string[], 
   if(isBlock && line.length) {
     lines.push(line.join(''));
     line.splice(0, line.length);
+    ++offset.offset;
+  }
+
+  if(node.tagName === 'P') {
+    lines.push('');
+    ++offset.offset;
   }
 }
