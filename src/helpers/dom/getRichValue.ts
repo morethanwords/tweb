@@ -37,6 +37,7 @@ export default function getRichValue(field: HTMLElement, withEntities = true) {
     } */
 
     RichTextProcessor.combineSameEntities(entities);
+    RichTextProcessor.sortEntities(entities);
   }
 
   //console.log('getRichValue:', value, entities);

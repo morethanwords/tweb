@@ -26,7 +26,7 @@ export const markdownTags: {[type in MarkdownType]: MarkdownTag} = {
     entityName: 'messageEntityUnderline'
   },
   italic: {
-    match: '[style*="italic"], i',
+    match: '[style*="italic"], i, em',
     entityName: 'messageEntityItalic'
   },
   monospace: {
@@ -34,7 +34,7 @@ export const markdownTags: {[type in MarkdownType]: MarkdownTag} = {
     entityName: 'messageEntityPre'
   },
   strikethrough: {
-    match: '[style*="line-through"], strike',
+    match: '[style*="line-through"], strike, del',
     entityName: 'messageEntityStrike'
   },
   link: {
