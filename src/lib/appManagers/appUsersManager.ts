@@ -130,6 +130,7 @@ export class AppUsersManager {
           const user = users[i];
           if(user) {
             this.users[user.id] = user;
+            this.setUserNameToCache(user);
           }
         }
       }
@@ -375,6 +376,20 @@ export class AppUsersManager {
     apiUsers.forEach((user) => this.saveApiUser(user, override));
   }
 
+  private setUserNameToCache(user: MTUser.user, oldUser?: MTUser.user) {
+    if(!oldUser || oldUser.username !== user.username) {
+      if(oldUser?.username) {
+        const oldSearchUsername = cleanUsername(oldUser.username);
+        delete this.usernames[oldSearchUsername];
+      }
+
+      if(user.username) {
+        const searchUsername = cleanUsername(user.username);
+        this.usernames[searchUsername] = user.id;
+      }
+    }
+  }
+
   public saveApiUser(user: MTUser, override?: boolean) {
     if(user._ === 'userEmpty') return;
 
@@ -398,17 +413,7 @@ export class AppUsersManager {
     // * exclude from state
     // defineNotNumerableProperties(user, ['initials', 'num', 'rFirstName', 'rFullName', 'rPhone', 'sortName', 'sortStatus']);
 
-    if(!oldUser || oldUser.username !== user.username) {
-      if(oldUser?.username) {
-        const oldSearchUsername = cleanUsername(oldUser.username);
-        delete this.usernames[oldSearchUsername];
-      }
-
-      if(user.username) {
-        const searchUsername = cleanUsername(user.username);
-        this.usernames[searchUsername] = userId;
-      }
-    }
+    this.setUserNameToCache(user, oldUser);
 
     if(!oldUser 
       || oldUser.initials === undefined 
