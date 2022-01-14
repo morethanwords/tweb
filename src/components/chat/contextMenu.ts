@@ -19,7 +19,7 @@ import PopupPinMessage from "../popups/unpinMessage";
 import { copyTextToClipboard } from "../../helpers/clipboard";
 import PopupSendNow from "../popups/sendNow";
 import { toast } from "../toast";
-import I18n, { LangPackKey } from "../../lib/langPack";
+import I18n, { i18n, LangPackKey } from "../../lib/langPack";
 import findUpClassName from "../../helpers/dom/findUpClassName";
 import { cancelEvent } from "../../helpers/dom/cancelEvent";
 import { attachClickEvent, simulateClickEvent } from "../../helpers/dom/clickEvent";
@@ -27,9 +27,10 @@ import isSelectionEmpty from "../../helpers/dom/isSelectionEmpty";
 import { Message, Poll, Chat as MTChat, MessageMedia } from "../../layer";
 import PopupReportMessages from "../popups/reportMessages";
 import assumeType from "../../helpers/assumeType";
+import PopupSponsored from "../popups/sponsored";
 
 export default class ChatContextMenu {
-  private buttons: (ButtonMenuItemOptions & {verify: () => boolean, notDirect?: () => boolean, withSelection?: true})[];
+  private buttons: (ButtonMenuItemOptions & {verify: () => boolean, notDirect?: () => boolean, withSelection?: true, isSponsored?: true})[];
   private element: HTMLElement;
 
   private isSelectable: boolean;
@@ -77,6 +78,7 @@ export default class ChatContextMenu {
       let mid = +bubble.dataset.mid;
       if(!mid) return;
 
+      const isSponsored = mid < 0;
       this.isSelectable = this.chat.selection.canSelectBubble(bubble);
       this.peerId = this.chat.peerId;
       //this.msgID = msgID;
@@ -90,6 +92,10 @@ export default class ChatContextMenu {
 
       // * если открыть контекстное меню для альбома не по бабблу, и последний элемент не выбран, чтобы показать остальные пункты
       if(chat.selection.isSelecting && !contentWrapper) {
+        if(isSponsored) {
+          return;
+        }
+
         const mids = this.chat.getMidsByMid(mid);
         if(mids.length > 1) {
           const selectedMid = this.chat.selection.isMidSelected(this.peerId, mid) ? 
@@ -111,22 +117,28 @@ export default class ChatContextMenu {
 
       this.isSelected = this.chat.selection.isMidSelected(this.peerId, this.mid);
       this.message = this.chat.getMessage(this.mid);
-      this.noForwards = !this.appMessagesManager.canForward(this.message);
+      if(isSponsored) {
+        this.buttons.forEach(button => {
+          button.element.classList.toggle('hide', !button.isSponsored);
+        });
+      } else {
+        this.noForwards = !this.appMessagesManager.canForward(this.message);
 
-      this.buttons.forEach(button => {
-        let good: boolean;
-
-        //if((appImManager.chatSelection.isSelecting && !button.withSelection) || (button.withSelection && !appImManager.chatSelection.isSelecting)) {
-        if(chat.selection.isSelecting && !button.withSelection) {
-          good = false;
-        } else {
-          good = contentWrapper || IS_TOUCH_SUPPORTED || true ? 
-            button.verify() : 
-            button.notDirect && button.verify() && button.notDirect();
-        }
-
-        button.element.classList.toggle('hide', !good);
-      });
+        this.buttons.forEach(button => {
+          let good: boolean;
+  
+          //if((appImManager.chatSelection.isSelecting && !button.withSelection) || (button.withSelection && !appImManager.chatSelection.isSelecting)) {
+          if(chat.selection.isSelecting && !button.withSelection) {
+            good = false;
+          } else {
+            good = contentWrapper || IS_TOUCH_SUPPORTED || true ? 
+              button.verify() : 
+              button.notDirect && button.verify() && button.notDirect();
+          }
+  
+          button.element.classList.toggle('hide', !good);
+        });
+      }
 
       const side: 'left' | 'right' = bubble.classList.contains('is-in') ? 'left' : 'right';
       //bubble.parentElement.append(this.element);
@@ -361,6 +373,14 @@ export default class ChatContextMenu {
       verify: () => this.isSelected && !this.chat.selection.selectionDeleteBtn.hasAttribute('disabled'),
       notDirect: () => true,
       withSelection: true
+    }, {
+      icon: 'info',
+      text: 'Chat.Message.Sponsored.What',
+      onClick: () => {
+        new PopupSponsored();
+      },
+      verify: () => false,
+      isSponsored: true
     }];
 
     this.element = ButtonMenu(this.buttons, this.chat.bubbles.listenerSetter);

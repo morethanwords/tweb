@@ -27,6 +27,8 @@ export type PopupPeerOptions = PopupOptions & Partial<{
   checkboxes: Array<PopupPeerCheckboxOptions>
 }>;
 export default class PopupPeer extends PopupElement {
+  protected description: HTMLParagraphElement;
+
   constructor(private className: string, options: PopupPeerOptions = {}) {
     super('popup-peer' + (className ? ' ' + className : ''), options.buttons && addCancelButton(options.buttons), {overlayClosable: true, ...options});
 
@@ -48,7 +50,7 @@ export default class PopupPeer extends PopupElement {
     const fragment = document.createDocumentFragment();
 
     if(options.descriptionLangKey || options.description) {
-      const p = document.createElement('p');
+      const p = this.description = document.createElement('p');
       p.classList.add('popup-description');
       if(options.descriptionLangKey) p.append(i18n(options.descriptionLangKey, options.descriptionLangArgs));
       else if(options.description) p.innerHTML = options.description;

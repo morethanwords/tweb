@@ -194,6 +194,7 @@ export default class ChatBubbles {
   private getSponsoredMessagePromise: Promise<void>;
 
   private previousStickyDate: HTMLElement;
+  sponsoredMessage: import("/Users/kuzmenko/Documents/projects/tweb/src/layer").SponsoredMessage.sponsoredMessage;
 
   constructor(
     private chat: Chat, 
@@ -713,9 +714,22 @@ export default class ChatBubbles {
     this.viewsObserver = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
         if(entry.isIntersecting) {
-          this.viewsMids.add(+(entry.target as HTMLElement).dataset.mid);
+          const mid = +(entry.target as HTMLElement).dataset.mid;
           this.viewsObserver.unobserve(entry.target);
-          this.sendViewCountersDebounced();
+
+          if(mid) {
+            this.viewsMids.add(mid);
+            this.sendViewCountersDebounced();
+          } else {
+            const {sponsoredMessage} = this;
+            if(sponsoredMessage && sponsoredMessage.random_id) {
+              delete sponsoredMessage.random_id;
+              this.chat.apiManager.invokeApiSingle('channels.viewSponsoredMessage', {
+                channel: this.appChatsManager.getChannelInput(this.peerId.toChatId()),
+                random_id: sponsoredMessage.random_id
+              });
+            }
+          }
         }
       });
     });
@@ -1946,6 +1960,7 @@ export default class ChatBubbles {
     this.onAnimateLadder = undefined;
     this.resolveLadderAnimation = undefined;
     this.emptyPlaceholderMid = undefined;
+    this.sponsoredMessage = undefined;
 
     this.scrollingToBubble = undefined;
     ////console.timeEnd('appImManager cleanup');
@@ -3869,9 +3884,9 @@ export default class ChatBubbles {
     const elements: (Node | string)[] = [];
     const isBot = this.appPeersManager.isBot(this.peerId);
     if(isSponsored) {
-      let text: LangPackKey, mid: number, callback: () => void;
+      let text: LangPackKey, mid: number, startParam: string, callback: () => void;
 
-      const sponsoredMessage = (message as Message.message).sponsoredMessage;
+      const sponsoredMessage = this.sponsoredMessage = (message as Message.message).sponsoredMessage;
       const peerId = this.appPeersManager.getPeerId(sponsoredMessage.from_id);
       // const peer = this.appPeersManager.getPeer(peerId);
       if(sponsoredMessage.channel_post) {
@@ -3879,6 +3894,7 @@ export default class ChatBubbles {
         mid = this.appMessagesIdsManager.generateMessageId(sponsoredMessage.channel_post);
       } else if(sponsoredMessage.start_param) {
         text = 'Chat.Message.ViewBot';
+        startParam = sponsoredMessage.start_param;
       } else {
         text = this.appPeersManager.isAnyGroup(peerId) ? 'Chat.Message.ViewGroup' : 'Chat.Message.ViewChannel';
       }
@@ -3886,13 +3902,16 @@ export default class ChatBubbles {
       callback = () => {
         rootScope.dispatchEvent('history_focus', {
           peerId,
-          mid
+          mid,
+          startParam
         });
       };
 
       const button = Button('btn-primary btn-primary-transparent bubble-view-button', {
         text
       });
+
+      this.viewsObserver.observe(button); 
 
       if(callback) {
         attachClickEvent(button, callback);
@@ -3996,7 +4015,7 @@ export default class ChatBubbles {
       return;
     } */
 
-    if(side === 'bottom' && this.appPeersManager.isBroadcast(this.peerId) && false) {
+    if(side === 'bottom' && this.appPeersManager.isBroadcast(this.peerId)/*  && false */) {
       const {mid} = this.generateLocalMessageId(SPONSORED_MESSAGE_ID_OFFSET);
       if(value) {
         const middleware = this.getMiddleware(() => {
@@ -4007,6 +4026,12 @@ export default class ChatBubbles {
           channel: this.appChatsManager.getChannelInput(this.peerId.toChatId())
         }, {cacheSeconds: 300}).then(sponsoredMessages => {
           if(!middleware()) return;
+
+          forEachReverse(sponsoredMessages.messages, (message, idx, arr) => {
+            if(message.chat_invite || message.chat_invite_hash) {
+              arr.splice(idx, 1);
+            }
+          });
 
           this.appUsersManager.saveApiUsers(sponsoredMessages.users);
           this.appChatsManager.saveApiChats(sponsoredMessages.chats);

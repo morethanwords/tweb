@@ -1412,6 +1412,12 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
   > .bubble.is-in {
     // margin-left: 0;
     width: 100%;
+
+    @include respond-to(medium-screens) {
+      .bubble-content-wrapper {
+        max-width: 85%;
+      }
+    }
   }
 }
 
