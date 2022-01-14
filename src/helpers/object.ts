@@ -30,7 +30,7 @@ export function copy<T>(obj: T): T {
   //lastly, handle objects
   // @ts-ignore
   let clonedObj = new obj.constructor();
-  for(var prop in obj){
+  for(var prop in obj) {
     if(obj.hasOwnProperty(prop)) {
       clonedObj[prop] = copy(obj[prop]);
     }

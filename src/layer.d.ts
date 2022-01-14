@@ -885,7 +885,8 @@ export namespace Message {
 		totalEntities?: MessageEntity[],
 		reply_to_mid?: number,
 		savedFrom?: string,
-		sponsoredMessage?: SponsoredMessage.sponsoredMessage
+		sponsoredMessage?: SponsoredMessage.sponsoredMessage,
+		promise?: CancellablePromise<void>
 	};
 
 	export type messageService = {

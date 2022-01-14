@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-export default function toggleDisability(elements: HTMLElement[], disable: boolean) {
+export default function toggleDisability(elements: HTMLElement[], disable: boolean): () => void {
   if(disable) {
     elements.forEach(el => el.setAttribute('disabled', 'true'));
   } else {

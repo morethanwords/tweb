@@ -604,7 +604,12 @@ export class AppImManager {
         const postId = link.post ? appMessagesIdsManager.generateMessageId(+link.post) : undefined;
         const commentId = link.comment ? appMessagesIdsManager.generateMessageId(+link.comment) : undefined;
 
-        this.openUsername(link.domain, postId, undefined, commentId);
+        this.openUsername({
+          userName: link.domain, 
+          lastMsgId: postId, 
+          commentId,
+          startParam: link.start
+        });
         break;
       }
 
@@ -740,7 +745,10 @@ export class AppImManager {
 
         switch(p[0]) {
           case '@': {
-            this.openUsername(p, postId);
+            this.openUsername({
+              userName: p, 
+              lastMsgId: postId
+            });
             break;
           }
 
@@ -759,8 +767,15 @@ export class AppImManager {
     //location.hash = '';
   };
 
-  public openUsername(username: string, lastMsgId?: number, threadId?: number, commentId?: number) {
-    return appUsersManager.resolveUsername(username).then(peer => {
+  public openUsername(options: {
+    userName: string, 
+    lastMsgId?: number, 
+    threadId?: number, 
+    commentId?: number,
+    startParam?: string
+  }) {
+    const {userName, lastMsgId, threadId, commentId, startParam} = options;
+    return appUsersManager.resolveUsername(userName).then(peer => {
       const isUser = peer._ === 'user';
       const peerId = peer.id.toPeerId(!isUser);
 
@@ -772,7 +787,8 @@ export class AppImManager {
       
       return this.setInnerPeer({
         peerId,
-        lastMsgId
+        lastMsgId,
+        startParam: startParam
       });
     }, (err) => {
       if(err.type === 'USERNAME_NOT_OCCUPIED') {
@@ -1433,6 +1449,8 @@ export class AppImManager {
       this.init = null;
     }
 
+    options.peerId ??= NULL_PEER_ID;
+
     const {peerId, lastMsgId} = options;
 
     const chat = this.chat;
@@ -1476,7 +1494,7 @@ export class AppImManager {
     }
 
     if(peerId || mediaSizes.activeScreen !== ScreenSize.mobile) {
-      const result = chat.setPeer(peerId, lastMsgId);
+      const result = chat.setPeer(peerId, lastMsgId, options.startParam);
 
       // * wait for cached render
       const promise = result?.cached ? result.promise : Promise.resolve();

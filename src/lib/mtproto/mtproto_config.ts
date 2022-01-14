@@ -14,3 +14,4 @@ export const NULL_PEER_ID: PeerId = 0;
 export const REPLIES_PEER_ID: PeerId = 1271266957;
 export const SERVICE_PEER_ID: PeerId = 777000;
 export const MUTE_UNTIL = 0x7FFFFFFF;
+export const BOT_START_PARAM = '';

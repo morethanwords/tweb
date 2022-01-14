@@ -80,12 +80,13 @@ import { copy } from '../../helpers/object';
 import PopupPeer from '../popups/peer';
 import MEDIA_MIME_TYPES_SUPPORTED from '../../environment/mediaMimeTypesSupport';
 import appMediaPlaybackController from '../appMediaPlaybackController';
-import { NULL_PEER_ID } from '../../lib/mtproto/mtproto_config';
+import { BOT_START_PARAM, NULL_PEER_ID } from '../../lib/mtproto/mtproto_config';
 import setCaretAt from '../../helpers/dom/setCaretAt';
 import CheckboxField from '../checkboxField';
 import DropdownHover from '../../helpers/dropdownHover';
 import RadioForm from '../radioForm';
 import findUpTag from '../../helpers/dom/findUpTag';
+import toggleDisability from '../../helpers/dom/toggleDisability';
 
 const RECORD_MIN_TIME = 500;
 const POSTING_MEDIA_NOT_ALLOWED = 'Posting media content isn\'t allowed in this group.';
@@ -205,6 +206,7 @@ export default class ChatInput {
   private fakeSelectionWrapper: HTMLDivElement;
 
   private fakeWrapperTo: HTMLElement;
+  private toggleBotStartBtnDisability: () => void;
 
   // private activeContainer: HTMLElement;
 
@@ -678,6 +680,20 @@ export default class ChatInput {
           if(this.replyToMsgId && msgs.has(this.replyToMsgId)) {
             this.clearHelper('reply');
           }
+
+          /* if(this.chat.isStartButtonNeeded()) {
+            this.setStartParam(BOT_START_PARAM);
+          } */
+        }
+      });
+
+      this.listenerSetter.add(rootScope)('dialogs_multiupdate', (dialogs) => {
+        if(dialogs[this.chat.peerId]) {
+          if(this.startParam === BOT_START_PARAM) {
+            this.setStartParam();
+          } else { // updateNewMessage comes earlier than dialog appers
+            this.center(true);
+          }
         }
       });
     }
@@ -794,6 +810,27 @@ export default class ChatInput {
     this.botStartBtn = Button('btn-primary btn-transparent text-bold chat-input-control-button');
     this.botStartBtn.append(i18n('BotStart'));
 
+    attachClickEvent(this.botStartBtn, () => {
+      const {startParam} = this;
+      if(startParam === undefined) {
+        return;
+      }
+
+      const toggle = this.toggleBotStartBtnDisability = toggleDisability([this.botStartBtn], true);
+      const peerId = this.chat.peerId;
+      const middleware = this.chat.bubbles.getMiddleware(() => {
+        return this.chat.peerId === peerId && this.startParam === startParam && this.toggleBotStartBtnDisability === toggle;
+      });
+
+      this.appMessagesManager.startBot(peerId.toUserId(), undefined, startParam).then(() => {
+        if(middleware()) {
+          toggle();
+          this.toggleBotStartBtnDisability = undefined;
+          this.setStartParam();
+        }
+      });
+    }, {listenerSetter: this.listenerSetter});
+
     this.controlContainer.append(this.botStartBtn);
   }
 
@@ -821,6 +858,10 @@ export default class ChatInput {
   public center(animate = false) {
     const neededFakeContainer = this.getNeededFakeContainer();
     if(!neededFakeContainer && !this.inputContainer.classList.contains('is-centering')) {
+      return;
+    }
+
+    if(neededFakeContainer === this.fakeWrapperTo) {
       return;
     }
 
@@ -882,10 +923,23 @@ export default class ChatInput {
     };
   }
 
+  public setStartParam(startParam?: string) {
+    if(this.startParam === startParam) {
+      return;
+    }
+
+    this.startParam = startParam;
+    this.center(true);
+  }
+
   public getNeededFakeContainer() {
     if(this.chat.selection.isSelecting) {
       return this.fakeSelectionWrapper;
-    } else if(this.startParam || !this.chat.canSend() || this.chat.type === 'pinned') {
+    } else if(this.startParam !== undefined || 
+      !this.chat.canSend() || 
+      this.chat.type === 'pinned' || 
+      this.chat.isStartButtonNeeded()
+    ) {
       return this.controlContainer;
     }
   }
@@ -1011,6 +1065,12 @@ export default class ChatInput {
     cancelSelection();
 
     this.lastTimeType = 0;
+    this.startParam = undefined;
+
+    if(this.toggleBotStartBtnDisability) {
+      this.toggleBotStartBtnDisability();
+      this.toggleBotStartBtnDisability = undefined;
+    }
 
     if(this.messageInput) {
       this.clearInput();
@@ -1062,7 +1122,7 @@ export default class ChatInput {
     return true;
   }
 
-  public finishPeerChange() {
+  public finishPeerChange(startParam?: string) {
     const peerId = this.chat.peerId;
 
     const {forwardElements, btnScheduled, replyKeyboard, sendMenu, goDownBtn, chatInput} = this;
@@ -1110,7 +1170,12 @@ export default class ChatInput {
       this.pinnedControlBtn.append(i18n(this.appPeersManager.canPinMessage(this.chat.peerId) ? 'Chat.Input.UnpinAll' : 'Chat.Pinned.DontShow'));
     }
 
-    this.center();
+    // * testing
+    // this.startParam = this.appPeersManager.isBot(peerId) ? '123' : undefined;
+    
+    this.startParam = startParam;
+
+    this.center(false);
   }
 
   public updateMessageInput() {
