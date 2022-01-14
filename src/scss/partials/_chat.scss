@@ -776,6 +776,7 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
   padding: var(--padding);
   background-color: var(--surface-color);
   z-index: 3;
+  visibility: hidden;
 
   &:before {
     opacity: 0;
@@ -930,6 +931,7 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
   
       ~ .chat-input-control {
         opacity: 1;
+        visibility: visible;
     
         &:before {
           opacity: 1;
@@ -946,7 +948,7 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
       }
 
       ~ .chat-input-control {
-        transition: opacity $input-half-transition-time .075s;
+        transition: opacity $input-half-transition-time .075s, visibility 0s 0s;
       }
 
       &.backwards {
@@ -958,7 +960,7 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
         }
 
         ~ .chat-input-control {
-          transition: opacity $input-half-transition-time 0s;
+          transition: opacity $input-half-transition-time 0s, visibility 0s $input-transition-time;
         }
       }
     }
