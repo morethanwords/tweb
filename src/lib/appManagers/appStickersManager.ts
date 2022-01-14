@@ -18,6 +18,7 @@ import lottieLoader from '../rlottie/lottieLoader';
 import mediaSizes from '../../helpers/mediaSizes';
 import { getEmojiToneIndex } from '../../vendor/emoji';
 import RichTextProcessor from '../richtextprocessor';
+import assumeType from '../../helpers/assumeType';
 
 const CACHE_TIME = 3600e3;
 
@@ -137,9 +138,14 @@ export class AppStickersManager {
   public async getRecentStickers(): Promise<Modify<MessagesRecentStickers.messagesRecentStickers, {
     stickers: Document[]
   }>> {
-    const res = await apiManager.invokeApiHashable('messages.getRecentStickers') as MessagesRecentStickers.messagesRecentStickers;
-
-    this.saveStickers(res.stickers);
+    const res = await apiManager.invokeApiHashable({
+      method: 'messages.getRecentStickers',
+      processResult: (res) => {
+        assumeType<MessagesRecentStickers.messagesRecentStickers>(res);
+        this.saveStickers(res.stickers);
+        return res;
+      }
+    });
 
     return res;
   }
@@ -260,10 +266,16 @@ export class AppStickersManager {
   }
 
   public async getFeaturedStickers() {
-    const res = await apiManager.invokeApiHashable('messages.getFeaturedStickers') as MessagesFeaturedStickers.messagesFeaturedStickers;
-    
-    res.sets.forEach(covered => {
-      this.saveStickerSet({set: covered.set, documents: [], packs: []}, covered.set.id);
+    const res = await apiManager.invokeApiHashable({
+      method: 'messages.getFeaturedStickers',
+      processResult: (res) => {
+        assumeType<MessagesFeaturedStickers.messagesFeaturedStickers>(res);
+        res.sets.forEach(covered => {
+          this.saveStickerSet({set: covered.set, documents: [], packs: []}, covered.set.id);
+        });
+
+        return res;
+      }
     });
 
     return res.sets;
@@ -299,14 +311,22 @@ export class AppStickersManager {
 
   public async searchStickerSets(query: string, excludeFeatured = true) {
     const flags = excludeFeatured ? 1 : 0;
-    const res = await apiManager.invokeApiHashable('messages.searchStickerSets', {
-      flags,
-      exclude_featured: excludeFeatured || undefined,
-      q: query
-    }) as MessagesFoundStickerSets.messagesFoundStickerSets;
+    const res = await apiManager.invokeApiHashable({
+      method: 'messages.searchStickerSets', 
+      params: {
+        flags,
+        exclude_featured: excludeFeatured || undefined,
+        q: query
+      },
+      processResult: (res) => {
+        assumeType<MessagesFoundStickerSets.messagesFoundStickerSets>(res);
 
-    res.sets.forEach(covered => {
-      this.saveStickerSet({set: covered.set, documents: [], packs: []}, covered.set.id);
+        res.sets.forEach(covered => {
+          this.saveStickerSet({set: covered.set, documents: [], packs: []}, covered.set.id);
+        });
+
+        return res;
+      }
     });
 
     const foundSaved: StickerSetCovered[] = [];
@@ -323,7 +343,7 @@ export class AppStickersManager {
   }
 
   public getAllStickers() {
-    return apiManager.invokeApiHashable('messages.getAllStickers');
+    return apiManager.invokeApiHashable({method: 'messages.getAllStickers'});
   }
 
   public preloadStickerSets() {
@@ -338,8 +358,11 @@ export class AppStickersManager {
     if(this.getStickersByEmoticonsPromises[emoticon]) return this.getStickersByEmoticonsPromises[emoticon];
 
     return this.getStickersByEmoticonsPromises[emoticon] = Promise.all([
-      apiManager.invokeApiHashable('messages.getStickers', {
-        emoticon
+      apiManager.invokeApiHashable({
+        method: 'messages.getStickers', 
+        params: {
+          emoticon
+        }
       }),
       includeOurStickers ? this.preloadStickerSets() : [],
       includeOurStickers ? this.getRecentStickers() : undefined

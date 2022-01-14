@@ -1494,10 +1494,15 @@ export default class ChatInput {
         if(this.lastUrl !== url) {
           this.lastUrl = url;
           // this.willSendWebPage = null;
-          const promise = this.getWebPagePromise = apiManager.invokeApiHashable('messages.getWebPage', {
-            url,
+          const promise = this.getWebPagePromise = apiManager.invokeApiHashable({
+            method: 'messages.getWebPage',
+            processResult: (webPage) => {
+              return this.appWebPagesManager.saveWebPage(webPage);
+            },
+            params: {
+              url
+            },
           }).then((webpage) => {
-            webpage = this.appWebPagesManager.saveWebPage(webpage);
             if(this.getWebPagePromise === promise) this.getWebPagePromise = undefined;
             if(this.lastUrl !== url) return;
             if(webpage._  === 'webPage') {

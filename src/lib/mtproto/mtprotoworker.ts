@@ -460,8 +460,19 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
     return this.invokeApi(method, params, o);
   }
 
-  public invokeApiHashable<T extends keyof MethodDeclMap>(method: T, params: Omit<MethodDeclMap[T]['req'], 'hash'> = {} as any, options: InvokeApiOptions = {}): Promise<MethodDeclMap[T]['res']> {
+  public invokeApiHashable<T extends keyof MethodDeclMap, R>(o: {
+    method: T, 
+    processResult?: (response: MethodDeclMap[T]['res']) => R, 
+    processError?: (error: ApiError) => any,
+    params?: Omit<MethodDeclMap[T]['req'], 'hash'>, 
+    options?: InvokeApiOptions & {cacheKey?: string}
+  }): Promise<R> {
+    // @ts-ignore
+    o.params ??= {};
+    o.options ??= {};
     //console.log('will invokeApi:', method, params, options);
+
+    const {params, options, method} = o;
 
     const queryJSON = JSON.stringify(params);
     let cached: HashResult;
@@ -472,23 +483,32 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
       }
     }
 
-    return this.invokeApi(method, params, options).then((result: any) => {
-      if(result._.includes('NotModified')) {
-        this.debug && this.log.warn('NotModified saved!', method, queryJSON);
-        return cached.result;
-      }
-      
-      if(result.hash/*  || result.messages */) {
-        const hash = result.hash/*  || this.computeHash(result.messages) */;
+    return this.invokeApiSingleProcess({
+      method,
+      processResult: (result) => {
+        if(result._.includes('NotModified')) {
+          this.debug && this.log.warn('NotModified saved!', method, queryJSON);
+          return cached.result;
+        }
         
-        if(!this.hashes[method]) this.hashes[method] = {};
-        this.hashes[method][queryJSON] = {
-          hash,
-          result
-        };
-      }
+        if(result.hash/*  || result.messages */) {
+          const hash = result.hash/*  || this.computeHash(result.messages) */;
+          
+          if(!this.hashes[method]) this.hashes[method] = {};
+          this.hashes[method][queryJSON] = {
+            hash,
+            result
+          };
+        }
 
-      return result;
+        if(o.processResult) {
+          return o.processResult(result);
+        }
+  
+        return result;
+      },
+      params,
+      options
     });
   }
 

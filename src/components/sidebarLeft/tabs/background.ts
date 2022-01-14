@@ -85,7 +85,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
 
     rootScope.addEventListener('background_change', this.setActive);
 
-    apiManager.invokeApiHashable('account.getWallPapers').then((accountWallpapers) => {
+    apiManager.invokeApiHashable({method: 'account.getWallPapers'}).then((accountWallpapers) => {
       const wallpapers = (accountWallpapers as AccountWallPapers.accountWallPapers).wallpapers as WallPaper.wallPaper[];
       wallpapers.forEach((wallpaper) => {
         this.addWallPaper(wallpaper);
