@@ -159,7 +159,9 @@ export class AppSidebarLeft extends SidebarSlider {
       icon: 'help',
       text: 'TelegramFeatures',
       onClick: () => {
-        appImManager.openUsername('TelegramTips');
+        appImManager.openUsername({
+          userName: 'TelegramTips'
+        });
       }
     }, {
       icon: 'bug',

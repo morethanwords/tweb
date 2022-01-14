@@ -82,7 +82,8 @@
     {"name": "savedFrom", "type": "string"},
     {"name": "sponsored", "type": "true"},
     {"name": "local", "type": "true"},
-    {"name": "sponsoredMessage", "type": "SponsoredMessage.sponsoredMessage"}
+    {"name": "sponsoredMessage", "type": "SponsoredMessage.sponsoredMessage"},
+    {"name": "promise", "type": "CancellablePromise<void>"}
   ]
 }, {
   "predicate": "messageService",

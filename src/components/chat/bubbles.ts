@@ -1953,7 +1953,7 @@ export default class ChatBubbles {
     this.isTopPaddingSet = false;
   }
 
-  public setPeer(peerId: PeerId, lastMsgId?: number): {cached?: boolean, promise: Chat['setPeerPromise']} {
+  public setPeer(peerId: PeerId, lastMsgId?: number, startParam?: string): {cached?: boolean, promise: Chat['setPeerPromise']} {
     //console.time('appImManager setPeer');
     //console.time('appImManager setPeer pre promise');
     ////console.time('appImManager: pre render start');
@@ -2018,6 +2018,10 @@ export default class ChatBubbles {
           //this.log('will scroll down', this.scroll.scrollTop, this.scroll.scrollHeight);
           scrollable.scrollTop = scrollable.scrollHeight;
           this.chat.dispatchEvent('setPeer', lastMsgId, true);
+        }
+
+        if(startParam !== undefined) {
+          this.chat.input.setStartParam(startParam);
         }
         
         return null;
@@ -2095,7 +2099,7 @@ export default class ChatBubbles {
       if(!samePeer) {
         scrollable.container.textContent = '';
         //oldChatInner.remove();
-        this.chat.finishPeerChange(isTarget, isJump, lastMsgId);
+        this.chat.finishPeerChange(isTarget, isJump, lastMsgId, startParam);
         this.preloader.attach(this.bubblesContainer);
       }
     }
@@ -2110,7 +2114,7 @@ export default class ChatBubbles {
 
       if(cached) {
         if(!samePeer) {
-          this.chat.finishPeerChange(isTarget, isJump, lastMsgId); // * костыль
+          this.chat.finishPeerChange(isTarget, isJump, lastMsgId, startParam); // * костыль
         }
       } else {
         this.preloader.detach();

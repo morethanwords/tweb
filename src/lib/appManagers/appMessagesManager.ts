@@ -448,7 +448,7 @@ export class AppMessagesManager {
     silent: true
   }> = {}) {
     if(!text.trim()) {
-      return;
+      return Promise.resolve();
     }
 
     //this.checkSendOptions(options);
@@ -552,7 +552,13 @@ export class AppMessagesManager {
         //if(is<Updates.updateShortSentMessage>(updates, updates._ === 'updateShortSentMessage')) {
         if(updates._ === 'updateShortSentMessage') {
           //assumeType<Updates.updateShortSentMessage>(updates);
+
+          // * fix copying object with promise
+          const promise = message.promise;
+          delete message.promise;
           const newMessage = copy(message);
+          message.promise = promise;
+
           newMessage.date = updates.date;
           newMessage.id = updates.id;
           newMessage.media = updates.media;
@@ -596,8 +602,10 @@ export class AppMessagesManager {
         // $timeout(function () {
         // ApiUpdatesManager.processUpdateMessage(upd)
         // }, 5000)
-      }, (/* error: any */) => {
+        message.promise.resolve();
+      }, (error: any) => {
         toggleError(true);
+        message.promise.reject(error);
       }).finally(() => {
         if(this.pendingAfterMsgs[peerId] === sentRequestOptions) {
           delete this.pendingAfterMsgs[peerId];
@@ -610,6 +618,8 @@ export class AppMessagesManager {
       threadId: options.threadId,
       clearDraft: options.clearDraft
     });
+
+    return message.promise;
   }
 
   public sendFile(peerId: PeerId, file: File | Blob | MyDocument, options: Partial<{
@@ -1027,8 +1037,11 @@ export class AppMessagesManager {
           }
 
           toggleError(true);
+          throw error;
         });
       });
+
+      sentDeferred.then(message.promise.resolve, message.promise.reject);
     }
 
     return {message, promise: sentDeferred};
@@ -1120,6 +1133,7 @@ export class AppMessagesManager {
     const invoke = (multiMedia: InputSingleMedia[]) => {
       this.setTyping(peerId, {_: 'sendMessageCancelAction'});
 
+      const deferred = deferredPromise<void>();
       this.sendSmthLazyLoadQueue.push({
         load: () => {
           return apiManager.invokeApi('messages.sendMultiMedia', {
@@ -1131,11 +1145,15 @@ export class AppMessagesManager {
             clear_draft: options.clearDraft
           }).then((updates) => {
             apiUpdatesManager.processUpdateMessage(updates);
+            deferred.resolve();
           }, (error) => {
             messages.forEach(message => toggleError(message, true));
+            deferred.reject(error);
           });
         }
       });
+
+      return deferred;
     };
 
     const promises: Promise<InputSingleMedia>[] = messages.map((message) => {
@@ -1181,8 +1199,8 @@ export class AppMessagesManager {
       });
     });
 
-    Promise.all(promises).then(inputs => {
-      invoke(inputs.filter(Boolean));
+    return Promise.all(promises).then(inputs => {
+      return invoke(inputs.filter(Boolean));
     });
   }
 
@@ -1362,6 +1380,8 @@ export class AppMessagesManager {
       threadId: options.threadId,
       clearDraft: options.clearDraft
     });
+
+    return message.promise;
   }
 
   /* private checkSendOptions(options: Partial<{
@@ -1472,6 +1492,7 @@ export class AppMessagesManager {
       replies: this.generateReplies(peerId),
       views: isBroadcast && 1,
       pending: true,
+      promise: options.groupId === undefined ? deferredPromise() : undefined
     };
 
     return message;

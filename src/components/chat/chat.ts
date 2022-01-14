@@ -34,7 +34,7 @@ import ChatContextMenu from "./contextMenu";
 import ChatInput from "./input";
 import ChatSelection from "./selection";
 import ChatTopbar from "./topbar";
-import { NULL_PEER_ID, REPLIES_PEER_ID } from "../../lib/mtproto/mtproto_config";
+import { BOT_START_PARAM, NULL_PEER_ID, REPLIES_PEER_ID } from "../../lib/mtproto/mtproto_config";
 import SetTransition from "../singleTransition";
 import { fastRaf } from "../../helpers/schedulers";
 import AppPrivateSearchTab from "../sidebarRight/tabs/search";
@@ -108,6 +108,8 @@ export default class Chat extends EventListenerBase<{
 
     this.log = logger('CHAT', LogTypes.Log | LogTypes.Warn | LogTypes.Debug | LogTypes.Error);
     //this.log.error('Chat construction');
+
+    this.peerId = NULL_PEER_ID;
 
     this.container.append(this.backgroundEl);
     this.appImManager.chatsContainer.append(this.container);
@@ -255,7 +257,7 @@ export default class Chat extends EventListenerBase<{
     this.selection.cleanup();
   }
 
-  public setPeer(peerId: PeerId, lastMsgId?: number) {
+  public setPeer(peerId: PeerId, lastMsgId?: number, startParam?: string) {
     if(!peerId) {
       this.inited = undefined;
     } else if(!this.inited) {
@@ -270,7 +272,7 @@ export default class Chat extends EventListenerBase<{
     const samePeer = this.peerId === peerId;
     if(!samePeer) {
       rootScope.dispatchEvent('peer_changing', this);
-      this.peerId = peerId;
+      this.peerId = peerId || NULL_PEER_ID;
     } else if(this.setPeerPromise) {
       return;
     }
@@ -306,7 +308,11 @@ export default class Chat extends EventListenerBase<{
 
     this.peerChanged = samePeer;
 
-    const result = this.bubbles.setPeer(peerId, lastMsgId);
+    if(startParam === undefined && this.isStartButtonNeeded()) {
+      startParam = BOT_START_PARAM;
+    }
+
+    const result = this.bubbles.setPeer(peerId, lastMsgId, startParam);
     if(!result) {
       return;
     }
@@ -361,7 +367,7 @@ export default class Chat extends EventListenerBase<{
     return this.setPeer(this.peerId, messageId);
   }
 
-  public finishPeerChange(isTarget: boolean, isJump: boolean, lastMsgId: number) {
+  public finishPeerChange(isTarget: boolean, isJump: boolean, lastMsgId: number, startParam?: string) {
     if(this.peerChanged) return;
 
     let peerId = this.peerId;
@@ -372,7 +378,7 @@ export default class Chat extends EventListenerBase<{
     this.topbar.setPeer(peerId);
     this.topbar.finishPeerChange(isTarget, isJump, lastMsgId);
     this.bubbles.finishPeerChange();
-    this.input.finishPeerChange();
+    this.input.finishPeerChange(startParam);
 
     appSidebarRight.sharedMediaTab.fillProfileElements();
 
@@ -420,5 +426,11 @@ export default class Chat extends EventListenerBase<{
 
   public canSend(action?: ChatRights) {
     return this.appMessagesManager.canSendToPeer(this.peerId, this.threadId, action);
+  }
+
+  public isStartButtonNeeded() {
+    return this.appPeersManager.isBot(this.peerId) && 
+      !this.appMessagesManager.getDialogOnly(this.peerId) && 
+      !this.appMessagesManager.getHistoryStorage(this.peerId).history.length;
   }
 }
