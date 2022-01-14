@@ -138,7 +138,6 @@ export default function getRichElementValue(node: HTMLElement, lines: string[], 
     }
 
     offset.offset += nodeValue.length;
-
     return;
   }
 
@@ -174,13 +173,14 @@ export default function getRichElementValue(node: HTMLElement, lines: string[], 
     line.push('\x01');
   }
 
-  if(isBlock && line.length) {
+  const wasLength = line.length;
+  if(isBlock && wasLength) {
     lines.push(line.join(''));
-    line.splice(0, line.length);
+    line.splice(0, wasLength);
     ++offset.offset;
   }
 
-  if(node.tagName === 'P') {
+  if(wasLength && node.tagName === 'P' && node.nextSibling) {
     lines.push('');
     ++offset.offset;
   }

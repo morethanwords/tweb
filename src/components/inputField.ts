@@ -24,11 +24,28 @@ let init = () => {
     let text: string, entities: MessageEntity[];
 
     // @ts-ignore
-    const html: string = (e.originalEvent || e).clipboardData.getData('text/html');
+    let html: string = (e.originalEvent || e).clipboardData.getData('text/html');
     if(html.trim()) {
-      const span = document.createElement('span');
+      const match = html.match(/<body>([\s\S]*)<\/body>/);
+      if(match) {
+        html = match[1].trim();
+      }
+
+      let span: HTMLElement = document.createElement('span');
       span.innerHTML = html;
-      
+
+      let curChild = span.firstChild;
+      while(curChild) { // * fix whitespace between elements like <p>asd</p>\n<p>zxc</p>
+        let nextSibling = curChild.nextSibling;
+        if(curChild.nodeType === 3) {
+          if(!curChild.nodeValue.trim()) {
+            curChild.remove();
+          }
+        }
+
+        curChild = nextSibling;
+      }
+
       const richValue = getRichValue(span, true);
       text = richValue.value;
       entities = richValue.entities;
