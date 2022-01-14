@@ -951,8 +951,6 @@ $bubble-beside-button-width: 38px;
     }
     
     .title {
-      font-weight: 500 !important;
-      
       &:not(:first-child) {
         margin-top: 1px;
       }
@@ -960,7 +958,6 @@ $bubble-beside-button-width: 38px;
     
     .webpage-name {
       font-size: var(--messages-secondary-text-size);
-      font-weight: 500 !important;
       text-decoration: none;
       
       @include hover() {

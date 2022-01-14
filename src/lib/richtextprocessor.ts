@@ -403,7 +403,8 @@ namespace RichTextProcessor {
     });
 
     currentEntities.push(...filtered);
-    currentEntities.sort((a, b) => a.offset - b.offset);
+    sortEntities(currentEntities);
+    // currentEntities.sort((a, b) => a.offset - b.offset);
     // currentEntities.sort((a, b) => (a.offset - b.offset) || (a._ === 'messageEntityCaret' && -1));
 
     if(!IS_EMOJI_SUPPORTED) { // fix splitted emoji. messageEntityTextUrl can split the emoji if starts before its end (e.g. on fe0f)
@@ -439,6 +440,15 @@ namespace RichTextProcessor {
     //return entities;
   }
 
+  export function sortEntities(entities: MessageEntity[]) {
+    entities.sort((a, b) => {
+      return (a.offset - b.offset) || (b.length - a.length);
+    });
+  }
+
+  /**
+   * * Expecting correctly sorted nested entities (RichTextProcessor.sortEntities)
+   */
   export function wrapRichText(text: string, options: Partial<{
     entities: MessageEntity[],
     contextSite: string,
