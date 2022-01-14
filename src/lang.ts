@@ -744,9 +744,13 @@ const lang = {
     "one_value": "Do you want to unpin %d message in this chat?",
     "other_value": "Do you want to unpin all %d messages in this chat?"
   },
+  "Chat.Message.Ad.Text": "Unlike other apps, Telegram never uses your private data to target ads. Sponsored messages on Telegram are based solely on the topic of the public channels in which they are shown. This means that no user data is mined or analyzed to display ads, and every user viewing a channel on Telegram sees the same sponsored messages.\n\nUnlike other apps, Telegram doesn't track whether you tapped on a sponsored message and doesn't profile you based on your activity. We also prevent external links in sponsored messages to ensure that third parties can’t spy on our users. We believe that everyone has the right to privacy, and technological platforms should respect that.\n\nTelegram offers a free and unlimited service to hundreds of millions of users, which involves significant server and traffic costs. In order to remain independent and stay true to its values, Telegram developed a paid tool to promote messages with user privacy in mind. We welcome responsible advertisers at:\n\n%@\n\nSponsored Messages are currently in test mode. Once they are fully launched and allow Telegram to cover its basic costs, we will start sharing ad revenue with the owners of public channels in which sponsored messages are displayed.\n\nOnline ads should no longer be synonymous with abuse of user privacy. Let us redefine how a tech company should operate – together.",
+  "Chat.Message.Ad.ReadMore": "Read More",
   "Chat.Message.ViewChannel": "VIEW CHANNEL",
   "Chat.Message.ViewBot": "VIEW BOT",
   "Chat.Message.ViewGroup": "VIEW GROUP",
+  "Chat.Message.Sponsored.What": "What are sponsored messages?",
+  "Chat.Message.Sponsored.Link": "https://promote.telegram.org",
   "ChatList.Context.Mute": "Mute",
   "ChatList.Context.Unmute": "Unmute",
   "ChatList.Context.Pin": "Pin",

@@ -207,7 +207,7 @@ export class AppImManager {
     });
 
     rootScope.addEventListener('history_focus', (e) => {
-      let {peerId, threadId, mid} = e;
+      let {peerId, threadId, mid, startParam} = e;
       if(threadId) threadId = appMessagesIdsManager.generateMessageId(threadId);
       if(mid) mid = appMessagesIdsManager.generateMessageId(mid); // because mid can come from notification, i.e. server message id
       
@@ -215,7 +215,8 @@ export class AppImManager {
         peerId, 
         lastMsgId: mid, 
         type: threadId ? 'discussion' : undefined, 
-        threadId
+        threadId,
+        startParam
       });
     });
 
