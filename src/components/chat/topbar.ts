@@ -427,7 +427,7 @@ export default class ChatTopbar {
                   callback: () => {
                     resolve();
 
-                    this.appMessagesManager.sendOther(peerId, this.appUsersManager.getContactMediaInput(contactPeerId));
+                    this.appMessagesManager.sendContact(peerId, contactPeerId);
                     this.chat.appImManager.setInnerPeer({peerId});
                   }
                 }, {

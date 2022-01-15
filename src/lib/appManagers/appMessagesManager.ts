@@ -1204,6 +1204,10 @@ export class AppMessagesManager {
     });
   }
 
+  public sendContact(peerId: PeerId, contactPeerId: PeerId) {
+    return this.sendOther(peerId, appUsersManager.getContactMediaInput(contactPeerId));
+  }
+
   public sendOther(peerId: PeerId, inputMedia: InputMedia, options: Partial<{
     replyToMsgId: number,
     threadId: number,
