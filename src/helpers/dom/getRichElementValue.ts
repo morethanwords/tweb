@@ -16,13 +16,15 @@ export type MarkdownTag = {
   match: string,
   entityName: 'messageEntityBold' | 'messageEntityUnderline' | 'messageEntityItalic' | 'messageEntityPre' | 'messageEntityStrike' | 'messageEntityTextUrl' | 'messageEntityMentionName';
 };
+
+// https://core.telegram.org/bots/api#html-style
 export const markdownTags: {[type in MarkdownType]: MarkdownTag} = {
   bold: {
     match: '[style*="bold"], [style*="font-weight: 700"], [style*="font-weight: 600"], [style*="font-weight:700"], [style*="font-weight:600"], b, strong',
     entityName: 'messageEntityBold'
   },
   underline: {
-    match: '[style*="underline"], u',
+    match: '[style*="underline"], u, ins',
     entityName: 'messageEntityUnderline'
   },
   italic: {
@@ -34,7 +36,7 @@ export const markdownTags: {[type in MarkdownType]: MarkdownTag} = {
     entityName: 'messageEntityPre'
   },
   strikethrough: {
-    match: '[style*="line-through"], strike, del',
+    match: '[style*="line-through"], strike, del, s',
     entityName: 'messageEntityStrike'
   },
   link: {
