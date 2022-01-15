@@ -17,7 +17,7 @@ import cleanUsername from "../../helpers/cleanUsername";
 import { formatFullSentTimeRaw, tsNow } from "../../helpers/date";
 import { formatPhoneNumber } from "../../helpers/formatPhoneNumber";
 import { safeReplaceObject, isObject } from "../../helpers/object";
-import { Chat, InputContact, InputMedia, InputPeer, InputUser, User as MTUser, UserProfilePhoto, UserStatus } from "../../layer";
+import { Chat, InputContact, InputMedia, InputPeer, InputUser, User as MTUser, UserProfilePhoto, UserStatus, InputGeoPoint } from "../../layer";
 import I18n, { i18n, LangPackKey } from "../langPack";
 //import apiManager from '../mtproto/apiManager';
 import apiManager from '../mtproto/mtprotoworker';
@@ -859,6 +859,32 @@ export class AppUsersManager {
       const peerIds: PeerId[] = contactsBlocked.users.map(u => u.id.toPeerId()).concat(contactsBlocked.chats.map(c => c.id.toPeerId(true)));
 
       return {count, peerIds};
+    });
+  }
+
+  public getLocated(
+    lat: number, long: number,
+    accuracy_radius: number,
+    background: boolean = false,
+    self_expires: number = 0
+  ) {
+    const _globalThis = this;
+    const geo_point = {
+      _: 'inputGeoPoint',
+      lat,
+      long,
+      accuracy_radius
+    } as InputGeoPoint;
+
+    return apiManager.invokeApi(
+      'contacts.getLocated',
+      {geo_point, background}
+    ).then((result) => {
+      // @ts-ignore
+      appUsersManager.saveApiUsers(result.users);
+      // @ts-ignore
+      appChatsManager.saveApiChats(result.chats);
+      return result;
     });
   }
 

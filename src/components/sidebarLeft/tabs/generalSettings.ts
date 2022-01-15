@@ -136,6 +136,36 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
     }
 
     {
+      const container = section('DistanceUnitsTitle');
+
+      const form = document.createElement('form');
+
+      const name = 'distance-unit';
+      const stateKey = 'settings.distanceUnit';
+
+      const kilometersRow = new Row({
+        radioField: new RadioField({
+          langKey: 'DistanceUnitsKilometers', 
+          name, 
+          value: 'kilometers', 
+          stateKey
+        })
+      });
+
+      const milesRow = new Row({
+        radioField: new RadioField({
+          langKey: 'DistanceUnitsMiles',
+          name,
+          value: 'miles', 
+          stateKey
+        })
+      });
+      
+      form.append(kilometersRow.container, milesRow.container);
+      container.append(form);
+    }
+
+    {
       const container = section('General.TimeFormat');
 
       const form = document.createElement('form');

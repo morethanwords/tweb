@@ -1,0 +1,81 @@
+.peoplenearby-container {
+	div.text.nearby-description {
+		margin-top: 15px;
+	  text-align: center;
+	  color: var(--primary-text-color);
+	}
+
+	div.text.nearby-error {
+	  color: var(--gc-secondary-text-color);
+	  margin-top: 10px;
+	  text-align: center;
+	}
+
+	.locating-animation-container {
+	  min-height: 140px;
+	  width: 100%;
+	  display: flex;
+	  align-items: center;
+	  justify-content: center;
+
+	  & .tgico.tgico-location {
+	    padding: 50px;
+	    background: var(--avatar-color-bottom);
+	    width: 140px;
+	    height: 140px;
+	    display: flex;
+	    align-items: center;
+	    justify-content: center;
+	    border-radius: 50%;
+
+	    &::before {
+	    	font-size: 58px;
+	    	color: white;
+	    }
+	  }
+
+	  & .locating-animation-waves {
+	  	position: fixed;
+
+		  &.wave-1,
+		  &.wave-3 {
+		  	animation: 3s waves-animation infinite;
+		    width: 50px;
+		    height: 50px;
+		    border: 5px solid white;
+		    border-radius: 50%;
+		    clip-path: polygon(72% 0, 100% 0, 100% 100%, 72% 100%);
+		    margin-left: 36px;
+		  }
+
+		  &.wave-2,
+		  &.wave-4 {
+		  	animation: 5s waves-animation infinite;
+		    width: 66px;
+		    height: 71px;
+		    border: 5px solid white;
+		    border-radius: 50%;
+		    clip-path: polygon(72% 0, 100% 0, 100% 100%, 72% 100%);
+		    margin-left: 51px;
+		    margin-top: 1px;
+		    animation-delay: 2s;
+		  }
+
+		  &.wave-3 {
+		  	margin-left: -36px !important;
+		  	transform: rotateY(180deg);
+		  }
+
+		  &.wave-4 {
+		  	margin-left: -51px !important;
+		  	transform: rotateY(180deg);
+		  }
+	  }
+	}
+
+	@keyframes waves-animation {
+		from { opacity: 100%; }
+		50% { opacity: 0%; }
+		to { opacity: 100%; }
+	}
+}
