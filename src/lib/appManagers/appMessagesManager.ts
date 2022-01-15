@@ -3446,7 +3446,7 @@ export class AppMessagesManager {
     return true;
   }
 
-  public canEditMessage(message: any, kind: 'text' | 'poll' = 'text') {
+  public canEditMessage(message: Message.message | Message.messageService, kind: 'text' | 'poll' = 'text') {
     if(!message || !this.canMessageBeEdited(message, kind)) {
       return false;
     }
@@ -3456,8 +3456,12 @@ export class AppMessagesManager {
       return true;
     }
 
-    if((message.date < (tsNow(true) - rootScope.config.edit_time_limit) && 
-      message.media?._ !== 'messageMediaPoll') || !message.pFlags.out) {
+    if(!message.pFlags.out || (
+        message.peerId.isUser() && 
+        message.date < (tsNow(true) - rootScope.config.edit_time_limit) && 
+        (message as Message.message).media?._ !== 'messageMediaPoll'
+      )
+    ) {
       return false;
     }
 
