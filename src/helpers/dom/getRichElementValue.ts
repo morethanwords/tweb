@@ -47,7 +47,7 @@ export const markdownTags: {[type in MarkdownType]: MarkdownTag} = {
   }
 };
 
-const tabulationMatch = '[style*="table-cell"]';
+const tabulationMatch = '[style*="table-cell"], th, td';
 
 /* export function getDepth(child: Node, container?: Node) {
   let depth = 0;
@@ -75,18 +75,19 @@ const BLOCK_TAG_NAMES = new Set([
   'H3',
   'H2',
   'H1',
+  'TR'
 ]);
 
 export default function getRichElementValue(node: HTMLElement, lines: string[], line: string[], selNode?: Node, selOffset?: number, entities?: MessageEntity[], offset = {offset: 0}) {
   if(node.nodeType === 3) { // TEXT
     let nodeValue = node.nodeValue;
 
-    const tabulation = node.parentElement?.closest(tabulationMatch + ', [contenteditable]');
+    /* const tabulation = node.parentElement?.closest(tabulationMatch + ', [contenteditable]');
     if(tabulation?.getAttribute('contenteditable') === null) {
       nodeValue += ' ';
       // line.push('\t');
       // ++offset.offset;
-    }
+    } */
 
     if(selNode === node) {
       line.push(nodeValue.substr(0, selOffset) + '\x01' + nodeValue.substr(selOffset));
@@ -163,6 +164,9 @@ export default function getRichElementValue(node: HTMLElement, lines: string[], 
     line.push('\x01');
   }
 
+  const isTableCell = node.matches(tabulationMatch);
+  const wasEntitiesLength = entities?.length;
+
   let curChild = node.firstChild as HTMLElement;
   while(curChild) {
     getRichElementValue(curChild, lines, line, selNode, selOffset, entities, offset);
@@ -171,6 +175,18 @@ export default function getRichElementValue(node: HTMLElement, lines: string[], 
 
   if(isSelected && selOffset) {
     line.push('\x01');
+  }
+
+  if(isTableCell && node.nextSibling) {
+    line.push(' ');
+    ++offset.offset;
+
+    // * combine entities such as url after adding space
+    if(wasEntitiesLength !== undefined) {
+      for(let i = wasEntitiesLength, length = entities.length; i < length; ++i) {
+        ++entities[i].length;
+      }
+    }
   }
 
   const wasLength = line.length;
