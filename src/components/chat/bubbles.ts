@@ -42,7 +42,7 @@ import LazyLoadQueue from "../lazyLoadQueue";
 import ListenerSetter from "../../helpers/listenerSetter";
 import PollElement from "../poll";
 import AudioElement from "../audio";
-import { Message, MessageEntity,  MessageMedia,  MessageReplyHeader, Photo, PhotoSize, ReplyMarkup, Update, WebPage } from "../../layer";
+import { Message, MessageEntity,  MessageMedia,  MessageReplyHeader, Photo, PhotoSize, ReplyMarkup, SponsoredMessage, Update, WebPage } from "../../layer";
 import { NULL_PEER_ID, REPLIES_PEER_ID } from "../../lib/mtproto/mtproto_config";
 import { FocusDirection } from "../../helpers/fastSmoothScroll";
 import useHeavyAnimationCheck, { getHeavyAnimationPromise, dispatchHeavyAnimationEvent, interruptHeavyAnimation } from "../../hooks/useHeavyAnimationCheck";
@@ -194,7 +194,7 @@ export default class ChatBubbles {
   private getSponsoredMessagePromise: Promise<void>;
 
   private previousStickyDate: HTMLElement;
-  sponsoredMessage: import("/Users/kuzmenko/Documents/projects/tweb/src/layer").SponsoredMessage.sponsoredMessage;
+  private sponsoredMessage: SponsoredMessage.sponsoredMessage;
 
   constructor(
     private chat: Chat, 
