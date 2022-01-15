@@ -422,6 +422,16 @@ namespace RichTextProcessor {
     return currentEntities;
   }
 
+  const CAN_COMBINE_ENTITIES: Set<MessageEntity['_']> = new Set([
+    'messageEntityBold',
+    'messageEntityItalic',
+    'messageEntityCode',
+    'messageEntityPre',
+    'messageEntityUnderline',
+    'messageEntityStrike',
+    'messageEntityBlockquote',
+    'messageEntitySpoiler'
+  ]);
   export function combineSameEntities(entities: MessageEntity[]) {
     //entities = entities.slice();
     for(let i = 0; i < entities.length; ++i) {
@@ -429,7 +439,10 @@ namespace RichTextProcessor {
 
       let nextEntityIdx = -1;
       do {
-        nextEntityIdx = entities.findIndex((e, _i) => _i !== i && e._ === entity._ && (e.offset - entity.length) === entity.offset);
+        nextEntityIdx = entities.findIndex((e, _i) => {
+          return CAN_COMBINE_ENTITIES.has(e._) && _i !== i && e._ === entity._ && (e.offset - entity.length) === entity.offset;
+        });
+
         if(nextEntityIdx !== -1) {
           const nextEntity = entities[nextEntityIdx];
           entity.length += nextEntity.length;
