@@ -7,7 +7,7 @@
 import type { AppMessagesManager } from "../../lib/appManagers/appMessagesManager";
 import type ChatInput from "./input";
 import DropdownHover from "../../helpers/dropdownHover";
-import { ReplyMarkup } from "../../layer";
+import { KeyboardButton, ReplyMarkup } from "../../layer";
 import RichTextProcessor from "../../lib/richtextprocessor";
 import rootScope from "../../lib/rootScope";
 import { safeAssign } from "../../helpers/object";
@@ -17,6 +17,7 @@ import { IS_TOUCH_SUPPORTED } from "../../environment/touchSupport";
 import findUpAsChild from "../../helpers/dom/findUpAsChild";
 import { cancelEvent } from "../../helpers/dom/cancelEvent";
 import { getHeavyAnimationPromise } from "../../hooks/useHeavyAnimationCheck";
+import confirmationPopup from "../confirmationPopup";
 
 export default class ReplyKeyboard extends DropdownHover {
   private static BASE_CLASS = 'reply-keyboard';
@@ -78,7 +79,28 @@ export default class ReplyKeyboard extends DropdownHover {
         return;
       }
 
-      this.appMessagesManager.sendText(this.peerId, target.dataset.text);
+      const type = target.dataset.type as KeyboardButton['_'];
+      const {peerId} = this;
+      switch(type) {
+        case 'keyboardButtonRequestPhone': {
+          confirmationPopup({
+            titleLangKey: 'ShareYouPhoneNumberTitle',
+            button: {
+              langKey: 'OK'
+            },
+            descriptionLangKey: 'AreYouSureShareMyContactInfoBot'
+          }).then(() => {
+            this.appMessagesManager.sendContact(peerId, rootScope.myId);
+          });
+          break;
+        }
+
+        default: {
+          this.appMessagesManager.sendText(peerId, target.dataset.text);
+          break;
+        }
+      }
+
       this.toggle(false);
     });
 
@@ -121,6 +143,7 @@ export default class ReplyKeyboard extends DropdownHover {
         btn.classList.add(ReplyKeyboard.BASE_CLASS + '-button', 'btn');
         btn.innerHTML = RichTextProcessor.wrapEmojiText(button.text);
         btn.dataset.text = button.text;
+        btn.dataset.type = button._;
         div.append(btn);
       }
 

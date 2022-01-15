@@ -614,6 +614,8 @@ const lang = {
   "BotUnblock": "RESTART",
   "BotStop": "Stop bot",
   "BotRestart": "Restart bot",
+  "ShareYouPhoneNumberTitle": "Share your phone number?",
+  "AreYouSureShareMyContactInfoBot": "The bot will know your phone number. This can be useful for integration with other services.",
 
   // * macos
   "AccountSettings.Filters": "Chat Folders",
