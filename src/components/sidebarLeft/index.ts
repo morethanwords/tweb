@@ -26,6 +26,7 @@ import AppContactsTab from "./tabs/contacts";
 import AppArchivedTab from "./tabs/archivedTab";
 import AppAddMembersTab from "./tabs/addMembers";
 import { FormatterArguments, i18n_, LangPackKey } from "../../lib/langPack";
+import AppPeopleNearby from "./tabs/peopleNearby";
 import { ButtonMenuItemOptions } from "../buttonMenu";
 import CheckboxField from "../checkboxField";
 import { IS_MOBILE_SAFARI } from "../../environment/userAgent";
@@ -131,6 +132,12 @@ export class AppSidebarLeft extends SidebarSlider {
       icon: 'user',
       text: 'Contacts',
       onClick: onContactsClick
+    }, {
+      icon: 'group',
+      text: 'PeopleNearby',
+      onClick: () => {
+        new AppPeopleNearby(this).open();
+      }
     }, {
       icon: 'settings',
       text: 'Settings',

@@ -39,7 +39,7 @@ export default class AppNotificationsTab extends SliderSuperTabEventable {
       });
       
       const previewEnabledRow = new Row({
-        checkboxField: new CheckboxField({text: 'Notifications.MessagePreview', checked: true}),
+        checkboxField: new CheckboxField({text: 'MessagePreview', checked: true}),
         subtitleLangKey: 'Loading',
       });
 
