@@ -29,6 +29,8 @@ export default class SortedUserList extends SortedList<SortedUser> {
   protected autonomous = true;
   protected createChatListOptions: Parameters<AppDialogsManager['createChatList']>[0];
   protected onListLengthChange: () => void;
+  protected getIndex: (element: SortedUser) => number;
+  protected onUpdate: (element: SortedUser) => void;
 
   constructor(options: Partial<{
     lazyLoadQueue: SortedUserList['lazyLoadQueue'],
@@ -36,18 +38,20 @@ export default class SortedUserList extends SortedList<SortedUser> {
     rippleEnabled: SortedUserList['rippleEnabled'],
     createChatListOptions: SortedUserList['createChatListOptions'],
     autonomous: SortedUserList['autonomous'],
-    onListLengthChange: SortedUserList['onListLengthChange']
+    onListLengthChange: SortedUserList['onListLengthChange'],
+    getIndex: SortedUserList['getIndex'],
+    onUpdate: SortedUserList['onUpdate']
   }> = {}) {
     super({
-      getIndex: (element) => appUsersManager.getUserStatusForSort(element.id),
+      getIndex: options.getIndex || ((element) => appUsersManager.getUserStatusForSort(element.id)),
       onDelete: (element) => {
         element.dom.listEl.remove();
         this.onListLengthChange && this.onListLengthChange();
       },
-      onUpdate: (element) => {
+      onUpdate: options.onUpdate || ((element) => {
         const status = appUsersManager.getUserStatusString(element.id);
         replaceContent(element.dom.lastMessageSpan, status);
-      },
+      }),
       onSort: (element, idx) => {
         const willChangeLength = element.dom.listEl.parentElement !== this.list;
         positionElementByIndex(element.dom.listEl, this.list, idx);

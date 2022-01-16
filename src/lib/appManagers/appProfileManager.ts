@@ -539,13 +539,13 @@ export class AppProfileManager {
     });
   }
 
-  public getChatMembersString(id: ChatId) {
-    const chat: Chat = appChatsManager.getChat(id);
+  public getChatMembersString(chatId: ChatId) {
+    const chat: Chat = appChatsManager.getChat(chatId);
     if(chat._ === 'chatForbidden') {
       return i18n('YouWereKicked');
     }
 
-    const chatFull = this.chatsFull[id];
+    const chatFull = this.chatsFull[chatId];
     let count: number;
     if(chatFull) {
       if(chatFull._ === 'channelFull') {
@@ -557,7 +557,7 @@ export class AppProfileManager {
       count = (chat as Chat.chat).participants_count || (chat as any).participants?.participants.length;
     }
 
-    const isChannel = appChatsManager.isBroadcast(id);
+    const isChannel = appChatsManager.isBroadcast(chatId);
     count = count || 1;
 
     let key: LangPackKey = isChannel ? 'Peer.Status.Subscribers' : 'Peer.Status.Member';

@@ -9,9 +9,9 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import DEBUG, { MOUNT_CLASS_TO } from "../../config/debug";
+import { MOUNT_CLASS_TO } from "../../config/debug";
 import { isObject, safeReplaceObject, copy, deepEqual } from "../../helpers/object";
-import { InputGeoPoint, ChannelParticipant, Chat, ChatAdminRights, ChatBannedRights, ChatParticipant, ChatPhoto, InputChannel, InputChatPhoto, InputFile, InputPeer, Update, Updates } from "../../layer";
+import { ChannelParticipant, Chat, ChatAdminRights, ChatBannedRights, ChatParticipant, ChatPhoto, InputChannel, InputChatPhoto, InputFile, InputPeer, Update, Updates, ChannelsCreateChannel } from "../../layer";
 import apiManagerProxy from "../mtproto/mtprotoworker";
 import apiManager from '../mtproto/mtprotoworker';
 import { RichTextProcessor } from "../richtextprocessor";
@@ -487,37 +487,8 @@ export class AppChatsManager {
     return participants;
   } */
 
-  public createChannel(title: string, about: string): Promise<ChatId> {
-    return apiManager.invokeApi('channels.createChannel', {
-      broadcast: true,
-      title,
-      about
-    }).then((updates) => {
-      apiUpdatesManager.processUpdateMessage(updates);
-
-      const channelId = (updates as any).chats[0].id;
-      rootScope.dispatchEvent('history_focus', {peerId: channelId.toPeerId(true)});
-
-      return channelId;
-    });
-  }
-
-  public createGeoChat(title: string, about: string, gpoint: {
-    lat: number,
-    long: number
-  }, address: string): Promise<ChatId> {
-    let geo_point = {
-      _: 'inputGeoPoint',
-      lat: gpoint['lat'],
-      long: gpoint['long']
-    } as InputGeoPoint;
-    return apiManager.invokeApi('channels.createChannel', {
-      megagroup: true,
-      title,
-      about,
-      geo_point,
-      address
-    }).then((updates) => {
+  public createChannel(options: ChannelsCreateChannel): Promise<ChatId> {
+    return apiManager.invokeApi('channels.createChannel', options).then((updates) => {
       apiUpdatesManager.processUpdateMessage(updates);
 
       const channelId = (updates as any).chats[0].id;

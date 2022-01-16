@@ -608,7 +608,9 @@
   }
 }
 
-.chat-folders-container, .edit-folder-container {
+.chat-folders-container, 
+.edit-folder-container, 
+.people-nearby-container {
   user-select: none;
 
   .sticker-container {
@@ -626,6 +628,16 @@
     line-height: var(--line-height);
     max-width: 20rem;
     margin: 0 auto;
+  }
+}
+
+.people-nearby-container {
+  .sticker-container {
+    margin: 1rem auto;
+  }
+
+  .caption {
+    margin-bottom: 1rem;
   }
 }
 

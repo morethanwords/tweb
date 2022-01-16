@@ -12,7 +12,7 @@ import appUsersManager from "../../../lib/appManagers/appUsersManager";
 import InputField from "../../inputField";
 import { SliderSuperTab } from "../../slider";
 import AvatarEdit from "../../avatarEdit";
-import I18n, { i18n } from "../../../lib/langPack";
+import I18n from "../../../lib/langPack";
 import ButtonCorner from "../../buttonCorner";
 
 interface OpenStreetMapInterface {
@@ -36,7 +36,7 @@ export default class AppNewGroupTab extends SliderSuperTab {
   private groupNameInputField: InputField;
   private list: HTMLUListElement;
   private groupLocationInputField: InputField;
-  private userLocationCoords: { lat: number, long: number };
+  private userLocationCoords: {lat: number, long: number};
   private userLocationAddress: string;
 
   protected init() {
@@ -82,7 +82,16 @@ export default class AppNewGroupTab extends SliderSuperTab {
 
       if(this.isGeoChat){
         if(!this.userLocationAddress || !this.userLocationCoords) return;
-        appChatsManager.createGeoChat(title, '', this.userLocationCoords, this.userLocationAddress).then((chatId) => {
+        appChatsManager.createChannel({
+          title, 
+          about: '', 
+          geo_point: {
+            _: 'inputGeoPoint',
+            ...this.userLocationCoords, 
+          },
+          address: this.userLocationAddress,
+          megagroup: true
+        }).then((chatId) => {
           if(this.uploadAvatar) {
             this.uploadAvatar().then((inputFile) => {
               appChatsManager.editPhoto(chatId, inputFile);
@@ -96,7 +105,7 @@ export default class AppNewGroupTab extends SliderSuperTab {
           appSidebarLeft.removeTabFromHistory(this);
           appSidebarLeft.selectTab(0);
         });
-      }else{
+      } else {
         this.nextBtn.disabled = true;
         appChatsManager.createChat(title, this.peerIds.map(peerId => peerId.toUserId())).then((chatId) => {
           if(this.uploadAvatar) {
@@ -141,18 +150,17 @@ export default class AppNewGroupTab extends SliderSuperTab {
     this.peerIds = peerIds;
     const result = super.open();
     result.then(() => {
-
-      if(isGeoChat){
+      if(isGeoChat) {
         this.setTitle('NearbyCreateGroup');
         this.groupLocationInputField.container.classList.remove('hide');
         this.groupLocationInputField.setValueSilently(I18n.format('Loading', true));
         this.startLocating();
-      }else{
+      } else {
         this.groupLocationInputField.container.classList.add('hide');
       }
 
       this.peerIds.forEach(userId => {
-        let {dom} = appDialogsManager.addDialogNew({
+        const {dom} = appDialogsManager.addDialogNew({
           dialog: userId,
           container: this.list,
           drawStatus: false,
@@ -181,18 +189,15 @@ export default class AppNewGroupTab extends SliderSuperTab {
       uri += "&addressdetails=1";
       uri += "&accept-language=en";
       fetch(uri)
-      // @ts-ignore
-      .then((response) => response.json() as OpenStreetMapInterface)
-      .then(
-        (response: OpenStreetMapInterface) => {
-          this.userLocationAddress = response.display_name;
-          this.groupLocationInputField.setValueSilently(response.display_name);
-        }
-      );
+      .then((response) => response.json())
+      .then((response: OpenStreetMapInterface) => {
+        this.userLocationAddress = response.display_name;
+        this.groupLocationInputField.setValueSilently(response.display_name);
+      });
     }, (error) => {
-      if(error instanceof GeolocationPositionError){
+      if(error instanceof GeolocationPositionError) {
         this.groupLocationInputField.setValueSilently('Location permission denied. Please retry later.');
-      }else{
+      } else {
         this.groupLocationInputField.setValueSilently('An error has occurred. Please retry later.');
       }
     });

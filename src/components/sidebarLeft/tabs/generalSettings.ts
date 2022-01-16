@@ -25,6 +25,7 @@ import LazyLoadQueue from "../../lazyLoadQueue";
 import PopupStickers from "../../popups/stickers";
 import eachMinute from "../../../helpers/eachMinute";
 import { SliderSuperTabEventable } from "../../sliderTab";
+import IS_GEOLOCATION_SUPPORTED from "../../../environment/geolocationSupport";
 
 export class RangeSettingSelector {
   public container: HTMLDivElement;
@@ -135,7 +136,7 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
       container.append(form);
     }
 
-    {
+    if(IS_GEOLOCATION_SUPPORTED) {
       const container = section('DistanceUnitsTitle');
 
       const form = document.createElement('form');

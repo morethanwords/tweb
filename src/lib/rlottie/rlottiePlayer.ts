@@ -20,8 +20,8 @@ export type RLottieOptions = {
   width?: number,
   height?: number,
   group?: string,
-  noCache?: true,
-  needUpscale?: true,
+  noCache?: boolean,
+  needUpscale?: boolean,
   skipRatio?: number,
   initFrame?: number, // index
   color?: RLottieColor,
