@@ -634,6 +634,11 @@ const lang = {
   "PeopleNearbyHeader": "People nearby",
   "ChatsNearbyHeader": "Groups nearby",
   "ChatLocation": "Location",
+  "RequestToJoinGroupDescription": "This group accepts new members only after they are approved by its admins.",
+  "RequestToJoinChannelDescription": "This channel accepts new subscribers only after they are approved by its admins.",
+  "RequestToJoinSent": "Join request sent",
+  "RequestToJoinGroupApproved": "Your request to join the group was approved",
+  "RequestToJoinChannelApproved": "Your request to join the channel was approved",
 
   // * macos
   "AccountSettings.Filters": "Chat Folders",
@@ -722,6 +727,8 @@ const lang = {
   "Chat.Service.VoiceChatInvitation": "%1$@ invited %2$@ to the [video chat](open)",
   "Chat.Service.VoiceChatInvitationByYou": "You invited %1$@ to the [video chat](open)",
   "Chat.Service.VoiceChatInvitationForYou": "%1$@ invited you to the [video chat](open)",
+  "ChatService.UserJoinedGroupByRequest": "%@ was accepted to the group",
+  "ChatService.UserJoinedChannelByRequest": "%@ joined the channel by request",
   "ChatList.Service.VoiceChatScheduled": "%1$@ scheduled a video chat for %2$@",
   "ChatList.Service.VoiceChatScheduledYou": "You scheduled a video chat for %2$@",
   "Chat.Poll.Unvote": "Retract Vote",
@@ -945,6 +952,7 @@ const lang = {
     "other_value": "%d users"
   },
   "RecentSessions.Error.FreshReset": "For security reasons, you can't terminate older sessions from a device that you've just connected. Please use an earlier connection or wait for a few hours.",
+  "RequestJoin.Button": "Request to Join",
   "Message.Context.Select": "Select",
   "Message.Context.Pin": "Pin",
   "Message.Context.Unpin": "Unpin",
