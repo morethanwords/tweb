@@ -336,6 +336,7 @@ $bubble-beside-button-width: 38px;
 
     &.is-sticky {
       opacity: .00001; // for safari
+      // position: sticky;
 
       .bubbles-inner:not(.is-scrolling) & {
         //transition-delay: 1.35s;

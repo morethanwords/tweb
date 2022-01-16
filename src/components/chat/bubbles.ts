@@ -846,19 +846,28 @@ export default class ChatBubbles {
     const timestamps = Object.keys(this.dateMessages).map(k => +k).sort((a, b) => b - a);
     let lastVisible: HTMLElement;
 
-    const {scrollTop} = this.scrollable.container;
-    const isOverflown = scrollTop > 0;
-    if(isOverflown) for(const timestamp of timestamps) {
-      const dateMessage = this.dateMessages[timestamp];
-      if(getVisibleRect(dateMessage.container, this.scrollable.container)) {
-        lastVisible = dateMessage.div;
-      } else if(lastVisible) {
-        break;
+    // if(this.chatInner.classList.contains('is-scrolling')) {
+      const {scrollTop} = this.scrollable.container;
+      const isOverflown = scrollTop > 0;
+      if(isOverflown) {
+        for(const timestamp of timestamps) {
+          const dateMessage = this.dateMessages[timestamp];
+          const visibleRect = getVisibleRect(dateMessage.container, this.scrollable.container);
+          if(visibleRect && visibleRect.overflow.top) {
+            lastVisible = dateMessage.div;
+          } else if(lastVisible) {
+            break;
+          }
+        }
       }
+    // }
+
+    if(lastVisible === this.previousStickyDate) {
+      return;
     }
 
     if(lastVisible) {
-      const needReflow = !!this.chat.setPeerPromise;
+      const needReflow = /* !!this.chat.setPeerPromise ||  */!this.previousStickyDate;
       if(needReflow) {
         lastVisible.classList.add('no-transition');
       }
@@ -1439,8 +1448,6 @@ export default class ChatBubbles {
     if(this.isHeavyAnimationInProgress && this.scrolledDown) return;
     //lottieLoader.checkAnimations(false, 'chat');
 
-    this.setStickyDateManually();
-
     const distanceToEnd = this.scrollable.getDistanceToEnd();
     if(!IS_TOUCH_SUPPORTED && this.scrollable.lastScrollDirection !== 0 && distanceToEnd > 0) {
       if(this.isScrollingTimeout) {
@@ -1466,6 +1473,8 @@ export default class ChatBubbles {
     if(this.chat.topbar.pinnedMessage) {
       this.chat.topbar.pinnedMessage.setCorrectIndex(this.scrollable.lastScrollDirection);
     }
+
+    this.setStickyDateManually();
   };
 
   public setScroll() {
@@ -1585,6 +1594,7 @@ export default class ChatBubbles {
     
     animationIntersector.checkAnimations(false, CHAT_ANIMATION_GROUP);
     this.deleteEmptyDateGroups();
+    this.onScroll();
   }
   
   public renderNewMessagesByIds(mids: number[], scrolledDown?: boolean) {
@@ -1963,11 +1973,17 @@ export default class ChatBubbles {
     this.resolveLadderAnimation = undefined;
     this.emptyPlaceholderMid = undefined;
     this.sponsoredMessage = undefined;
+    this.previousStickyDate = undefined;
 
     this.scrollingToBubble = undefined;
     ////console.timeEnd('appImManager cleanup');
 
     this.isTopPaddingSet = false;
+
+    if(this.isScrollingTimeout) {
+      clearTimeout(this.isScrollingTimeout);
+      this.isScrollingTimeout = 0;
+    }
   }
 
   public setPeer(peerId: PeerId, lastMsgId?: number, startParam?: string): {cached?: boolean, promise: Chat['setPeerPromise']} {
@@ -2196,7 +2212,6 @@ export default class ChatBubbles {
       }
 
       this.onScroll();
-      this.setStickyDateManually();
 
       const middleware = this.getMiddleware();
       const afterSetPromise = Promise.all([setPeerPromise, getHeavyAnimationPromise()]);
@@ -2366,6 +2381,7 @@ export default class ChatBubbles {
           }
 
           this.setUnreadDelimiter(); // не нашёл места лучше
+          // this.setStickyDateManually();
         }).catch(reject);
       }, 0);
     });
@@ -3582,6 +3598,9 @@ export default class ChatBubbles {
       //this.scrollable.scrollTop = this.scrollable.scrollHeight;
       //isTouchSupported && isApple && (this.scrollable.container.style.overflow = '');
 
+      this.scrollable.lastScrollTop = newScrollTop;
+      this.scrollable.lastScrollDirection = 0;
+
       if(IS_SAFARI/*  && !isAppleMobile */) { // * fix blinking and jumping
         reflowScrollableElement(this.scrollable.container);
       }
@@ -3738,6 +3757,8 @@ export default class ChatBubbles {
 
     // fastRaf(() => {
     fastRaf(() => {
+      this.setStickyDateManually(); // ! maybe it's not efficient
+
       setBubbles.forEach(contentWrapper => {
         contentWrapper.classList.remove('zoom-fade');
       });
@@ -3887,6 +3908,8 @@ export default class ChatBubbles {
     const isBot = this.appPeersManager.isBot(this.peerId);
     if(isSponsored) {
       let text: LangPackKey, mid: number, startParam: string, callback: () => void;
+
+      bubble.classList.add('avoid-selection');
 
       const sponsoredMessage = this.sponsoredMessage = (message as Message.message).sponsoredMessage;
       const peerId = this.appPeersManager.getPeerId(sponsoredMessage.from_id);
@@ -4428,6 +4451,11 @@ export default class ChatBubbles {
         }
         delete this.dateMessages[i];
         deleted = true;
+
+        // * no sense in it
+        /* if(dateMessage.div === this.previousStickyDate) {
+          this.previousStickyDate = undefined;
+        } */
       }
     }
 
