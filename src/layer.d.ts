@@ -9359,7 +9359,9 @@ export namespace AvailableReaction {
 		appear_animation: Document,
 		select_animation: Document,
 		activate_animation: Document,
-		effect_animation: Document
+		effect_animation: Document,
+		around_animation?: Document,
+		center_icon?: Document
 	};
 }
 
