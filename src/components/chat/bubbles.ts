@@ -42,7 +42,7 @@ import LazyLoadQueue from "../lazyLoadQueue";
 import ListenerSetter from "../../helpers/listenerSetter";
 import PollElement from "../poll";
 import AudioElement from "../audio";
-import { Message, MessageEntity,  MessageMedia,  MessageReplyHeader, Photo, PhotoSize, ReplyMarkup, SponsoredMessage, Update, WebPage } from "../../layer";
+import { ChatInvite, Message, MessageEntity,  MessageMedia,  MessageReplyHeader, Photo, PhotoSize, ReplyMarkup, SponsoredMessage, Update, WebPage } from "../../layer";
 import { NULL_PEER_ID, REPLIES_PEER_ID } from "../../lib/mtproto/mtproto_config";
 import { FocusDirection } from "../../helpers/fastSmoothScroll";
 import useHeavyAnimationCheck, { getHeavyAnimationPromise, dispatchHeavyAnimationEvent, interruptHeavyAnimation } from "../../hooks/useHeavyAnimationCheck";
@@ -86,6 +86,8 @@ import IS_CALL_SUPPORTED from "../../environment/callSupport";
 import Button from "../button";
 import { CallType } from "../../lib/calls/types";
 import getVisibleRect from "../../helpers/dom/getVisibleRect";
+import PopupJoinChatInvite from "../popups/joinChatInvite";
+import { InternalLink, INTERNAL_LINK_TYPE } from "../../lib/appManagers/internalLink";
 
 const USE_MEDIA_TAILS = false;
 const IGNORE_ACTIONS: Set<Message.messageService['action']['_']> = new Set([
@@ -3899,13 +3901,28 @@ export default class ChatBubbles {
         text = this.appPeersManager.isAnyGroup(peerId) ? 'Chat.Message.ViewGroup' : 'Chat.Message.ViewChannel';
       }
 
-      callback = () => {
-        rootScope.dispatchEvent('history_focus', {
-          peerId,
-          mid,
-          startParam
-        });
-      };
+      if(sponsoredMessage.chat_invite) {
+        callback = () => {
+          new PopupJoinChatInvite(sponsoredMessage.chat_invite_hash, sponsoredMessage.chat_invite as ChatInvite.chatInvite).show();
+        };
+      } else if(sponsoredMessage.chat_invite_hash) {
+        callback = () => {
+          const link: InternalLink = {
+            _: INTERNAL_LINK_TYPE.JOIN_CHAT,
+            invite: sponsoredMessage.chat_invite_hash
+          };
+          
+          this.chat.appImManager.processInternalLink(link);
+        };
+      } else {
+        callback = () => {
+          rootScope.dispatchEvent('history_focus', {
+            peerId,
+            mid,
+            startParam
+          });
+        };
+      }
 
       const button = Button('btn-primary btn-primary-transparent bubble-view-button', {
         text
@@ -4027,11 +4044,11 @@ export default class ChatBubbles {
         }, {cacheSeconds: 300}).then(sponsoredMessages => {
           if(!middleware()) return;
 
-          forEachReverse(sponsoredMessages.messages, (message, idx, arr) => {
+          /* forEachReverse(sponsoredMessages.messages, (message, idx, arr) => {
             if(message.chat_invite || message.chat_invite_hash) {
               arr.splice(idx, 1);
             }
-          });
+          }); */
 
           this.appUsersManager.saveApiUsers(sponsoredMessages.users);
           this.appChatsManager.saveApiChats(sponsoredMessages.chats);
