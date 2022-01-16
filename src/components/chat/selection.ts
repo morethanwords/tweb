@@ -820,7 +820,10 @@ export default class ChatSelection extends AppSelection {
   }
 
   public canSelectBubble(bubble: HTMLElement) {
-    return !bubble.classList.contains('service') && !bubble.classList.contains('is-sending') && !bubble.classList.contains('bubble-first') && bubble.parentElement.classList.contains('bubbles-date-group');
+    return !bubble.classList.contains('service') && 
+      !bubble.classList.contains('is-sending') && 
+      !bubble.classList.contains('bubble-first') && 
+      !bubble.classList.contains('avoid-selection');
   }
 
   protected onToggleSelection = (forwards: boolean, animate: boolean) => {

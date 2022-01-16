@@ -58,7 +58,7 @@ export default class PeerTitle {
     if(options) {
       for(let i in options) {
         // @ts-ignore
-        // this.element.dataset[i] = options[i] ? '' + (typeof(options[i]) === 'boolean' ? +options[i] : options[i]) : '0';
+        this.element.dataset[i] = options[i] ? '' + (typeof(options[i]) === 'boolean' ? +options[i] : options[i]) : '0';
         // @ts-ignore
         this[i] = options[i];
       }
