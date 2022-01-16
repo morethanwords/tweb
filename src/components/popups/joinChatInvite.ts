@@ -5,17 +5,18 @@
  */
 
 import PopupElement, { addCancelButton } from ".";
+import { numberThousandSplitter } from "../../helpers/number";
 import { ChatInvite, Updates } from "../../layer";
 import apiUpdatesManager from "../../lib/appManagers/apiUpdatesManager";
 import appAvatarsManager from "../../lib/appManagers/appAvatarsManager";
-import appChatsManager from "../../lib/appManagers/appChatsManager";
 import appPhotosManager from "../../lib/appManagers/appPhotosManager";
-import { i18n } from "../../lib/langPack";
+import { i18n, _i18n } from "../../lib/langPack";
 import apiManager from "../../lib/mtproto/mtprotoworker";
 import { NULL_PEER_ID } from "../../lib/mtproto/mtproto_config";
 import RichTextProcessor from "../../lib/richtextprocessor";
 import rootScope from "../../lib/rootScope";
 import AvatarElement from "../avatar";
+import { toastNew } from "../toast";
 import { wrapPhoto } from "../wrappers";
 
 // const FAKE_CHAT_ID = Number.MAX_SAFE_INTEGER - 0x1000;
@@ -23,7 +24,7 @@ import { wrapPhoto } from "../wrappers";
 export default class PopupJoinChatInvite extends PopupElement {
   constructor(hash: string, chatInvite: ChatInvite.chatInvite) {
     super('popup-join-chat-invite', addCancelButton([{
-      langKey: chatInvite.pFlags.broadcast ? 'JoinByPeekChannelTitle' : 'JoinByPeekGroupTitle',
+      langKey: chatInvite.pFlags.request_needed ? 'RequestJoin.Button' : (chatInvite.pFlags.broadcast ? 'JoinByPeekChannelTitle' : 'JoinByPeekGroupTitle'),
       callback: () => {
         apiManager.invokeApi('messages.importChatInvite', {hash})
         .then((updates) => {
@@ -31,6 +32,10 @@ export default class PopupJoinChatInvite extends PopupElement {
           const chat = (updates as Updates.updates).chats[0];
           const peerId = chat.id.toPeerId(true);
           rootScope.dispatchEvent('history_focus', {peerId});
+        }, (error) => {
+          if(error.type === 'INVITE_REQUEST_SENT') {
+            toastNew({langPackKey: 'RequestToJoinSent'});
+          }
         });
       }
     }]), {closable: true, overlayClosable: true, body: true});
@@ -74,9 +79,17 @@ export default class PopupJoinChatInvite extends PopupElement {
     //avatarElem.setAttribute('peer', '' + -fakeChat.id);
     
     const isBroadcast = chatInvite.pFlags.broadcast;
-    const peopleCount = i18n(isBroadcast ? 'Subscribers' : 'Members', [chatInvite.participants_count]);
+    const peopleCount = i18n(isBroadcast ? 'Subscribers' : 'Members', [numberThousandSplitter(chatInvite.participants_count)]);
     peopleCount.classList.add('chat-participants-count');
 
     this.body.append(avatarElem, title, peopleCount);
+
+    if(chatInvite.pFlags.request_needed) {
+      const caption = document.createElement('div');
+      _i18n(caption, isBroadcast ? 'RequestToJoinChannelDescription' : 'RequestToJoinGroupDescription');
+      caption.classList.add('chat-participants-count', 'request-caption');
+
+      this.body.append(caption);
+    }
   }
 }

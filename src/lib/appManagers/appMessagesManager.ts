@@ -3175,6 +3175,17 @@ export class AppMessagesManager {
           break;
         }
 
+        case 'messageActionChatJoinedByRequest': {
+          const isBroadcast = appPeersManager.isBroadcast(message.peerId);
+          if(message.pFlags.out) {
+            langPackKey = isBroadcast ? 'RequestToJoinChannelApproved' : 'RequestToJoinGroupApproved';
+          } else {
+            langPackKey = isBroadcast ? 'ChatService.UserJoinedChannelByRequest' : 'ChatService.UserJoinedGroupByRequest';
+            args = [getNameDivHTML(message.fromId, plain)];
+          }
+          break;
+        }
+
         case 'messageActionContactSignUp':
         case 'messageActionChatReturn':
         case 'messageActionChatLeave':

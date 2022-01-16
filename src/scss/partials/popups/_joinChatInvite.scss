@@ -6,6 +6,10 @@
  
 .popup-join-chat-invite {
   user-select: none;
+
+  .popup-container {
+    max-width: 420px;
+  }
   
   .popup-body {
     align-items: center;
@@ -22,5 +26,10 @@
     color: var(--secondary-text-color);
     font-size: .875rem;
     line-height: var(--line-height);
+  }
+
+  .request-caption {
+    margin-top: 1rem;
+    text-align: center;
   }
 }
