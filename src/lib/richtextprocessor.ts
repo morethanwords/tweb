@@ -564,7 +564,9 @@ namespace RichTextProcessor {
         }
           
         case 'messageEntityPre': {
-          if(!options.noTextFormat) {
+          if(options.wrappingDraft) {
+            insertPart(entity, '<span style="font-family: monospace;">', '</span>');
+          } else if(!options.noTextFormat) {
             insertPart(entity, `<pre><code${entity.language ? ' class="language-' + encodeEntities(entity.language) + '"' : ''}>`, '</code></pre>');
           }
           
