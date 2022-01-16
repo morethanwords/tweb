@@ -486,17 +486,19 @@ export class AppImManager {
       }
     });
 
-    this.addAnchorListener<{
-      uriParams: {
-        invite: string
-      }
-    }>({
-      name: 'joinchat',
-      protocol: 'tg',
-      callback: ({uriParams}) => {
-        const link = this.makeLink(INTERNAL_LINK_TYPE.JOIN_CHAT, uriParams);
-        this.processInternalLink(link);
-      }
+    ['joinchat' as const, 'join' as const].forEach(name => {
+      this.addAnchorListener<{
+        uriParams: {
+          invite: string
+        }
+      }>({
+        name,
+        protocol: 'tg',
+        callback: ({uriParams}) => {
+          const link = this.makeLink(INTERNAL_LINK_TYPE.JOIN_CHAT, uriParams);
+          this.processInternalLink(link);
+        }
+      });
     });
 
     this.onHashChange();
@@ -688,8 +690,8 @@ export class AppImManager {
   }
 
   private addAnchorListener<Params extends {pathnameParams?: any, uriParams?: any}>(options: {
-    name: 'showMaskedAlert' | 'execBotCommand' | 'searchByHashtag' | 'addstickers' | 'joinchat' | 'im' |
-          'resolve' | 'privatepost' | 'addstickers' | 'voicechat', 
+    name: 'showMaskedAlert' | 'execBotCommand' | 'searchByHashtag' | 'addstickers' | 'im' |
+          'resolve' | 'privatepost' | 'addstickers' | 'voicechat' | 'joinchat' | 'join', 
     protocol?: 'tg',
     callback: (params: Params, element?: HTMLAnchorElement) => boolean | any, 
     noPathnameParams?: boolean,
