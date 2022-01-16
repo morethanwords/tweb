@@ -863,28 +863,25 @@ export class AppUsersManager {
   }
 
   public getLocated(
-    lat: number, long: number,
+    lat: number, 
+    long: number,
     accuracy_radius: number,
     background: boolean = false,
     self_expires: number = 0
   ) {
-    const _globalThis = this;
-    const geo_point = {
+    const geo_point: InputGeoPoint = {
       _: 'inputGeoPoint',
       lat,
       long,
       accuracy_radius
-    } as InputGeoPoint;
+    };
 
-    return apiManager.invokeApi(
-      'contacts.getLocated',
-      {geo_point, background}
-    ).then((result) => {
-      // @ts-ignore
-      appUsersManager.saveApiUsers(result.users);
-      // @ts-ignore
-      appChatsManager.saveApiChats(result.chats);
-      return result;
+    return apiManager.invokeApi('contacts.getLocated', {
+      geo_point, 
+      background
+    }).then((updates) => {
+      apiUpdatesManager.processUpdateMessage(updates);
+      return updates;
     });
   }
 

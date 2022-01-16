@@ -1111,7 +1111,7 @@ export function renderImageWithFadeIn(container: HTMLElement,
 //   });
 // }
 
-export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, onlyThumb, emoji, width, height, withThumb, loop, loadPromises, needFadeIn}: {
+export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, onlyThumb, emoji, width, height, withThumb, loop, loadPromises, needFadeIn, needUpscale}: {
   doc: MyDocument, 
   div: HTMLElement, 
   middleware?: () => boolean, 
@@ -1126,6 +1126,7 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
   loop?: boolean,
   loadPromises?: Promise<any>[],
   needFadeIn?: boolean,
+  needUpscale?: boolean
 }) {
   const stickerType = doc.sticker;
 
@@ -1281,7 +1282,8 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
           animationData: json,
           width,
           height,
-          name: 'doc' + doc.id
+          name: 'doc' + doc.id,
+          needUpscale
         }, group, toneIndex);
 
         //const deferred = deferredPromise<void>();

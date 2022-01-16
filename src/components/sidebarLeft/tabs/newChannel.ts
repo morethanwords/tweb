@@ -7,7 +7,6 @@
 import appSidebarLeft, { SettingSection } from "..";
 import { InputFile } from "../../../layer";
 import appChatsManager from "../../../lib/appManagers/appChatsManager";
-import Button from "../../button";
 import InputField from "../../inputField";
 import { SliderSuperTab } from "../../slider";
 import AvatarEdit from "../../avatarEdit";
@@ -66,7 +65,11 @@ export default class AppNewChannelTab extends SliderSuperTab {
       const about = this.channelDescriptionInputField.value;
 
       this.nextBtn.disabled = true;
-      appChatsManager.createChannel(title, about).then((channelId) => {
+      appChatsManager.createChannel({
+        title, 
+        about,
+        broadcast: true
+      }).then((channelId) => {
         if(this.uploadAvatar) {
           this.uploadAvatar().then((inputFile) => {
             appChatsManager.editPhoto(channelId, inputFile);

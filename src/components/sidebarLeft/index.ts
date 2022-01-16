@@ -26,7 +26,7 @@ import AppContactsTab from "./tabs/contacts";
 import AppArchivedTab from "./tabs/archivedTab";
 import AppAddMembersTab from "./tabs/addMembers";
 import { FormatterArguments, i18n_, LangPackKey } from "../../lib/langPack";
-import AppPeopleNearby from "./tabs/peopleNearby";
+import AppPeopleNearbyTab from "./tabs/peopleNearby";
 import { ButtonMenuItemOptions } from "../buttonMenu";
 import CheckboxField from "../checkboxField";
 import { IS_MOBILE_SAFARI } from "../../environment/userAgent";
@@ -43,6 +43,9 @@ import { closeBtnMenu } from "../misc";
 import { indexOfAndSplice } from "../../helpers/array";
 import ButtonIcon from "../buttonIcon";
 import confirmationPopup from "../confirmationPopup";
+import IS_GEOLOCATION_SUPPORTED from "../../environment/geolocationSupport";
+import type SortedUserList from "../sortedUserList";
+import Button, { ButtonOptions } from "../button";
 
 export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
 
@@ -132,13 +135,13 @@ export class AppSidebarLeft extends SidebarSlider {
       icon: 'user',
       text: 'Contacts',
       onClick: onContactsClick
-    }, {
+    }, IS_GEOLOCATION_SUPPORTED ? {
       icon: 'group',
       text: 'PeopleNearby',
       onClick: () => {
-        new AppPeopleNearby(this).open();
+        new AppPeopleNearbyTab(this).open();
       }
-    }, {
+    } : undefined, {
       icon: 'settings',
       text: 'Settings',
       onClick: () => {
@@ -206,8 +209,10 @@ export class AppSidebarLeft extends SidebarSlider {
       verify: () => App.isMainDomain
     }];
 
-    this.toolsBtn = ButtonMenuToggle({}, 'bottom-right', menuButtons, (e) => {
-      menuButtons.forEach(button => {
+    const filteredButtons = menuButtons.filter(Boolean);
+
+    this.toolsBtn = ButtonMenuToggle({}, 'bottom-right', filteredButtons, (e) => {
+      filteredButtons.forEach(button => {
         if(button.verify) {
           button.element.classList.toggle('hide', !button.verify());
         }
@@ -614,6 +619,15 @@ export class AppSidebarLeft extends SidebarSlider {
   }
 }
 
+export type SettingSectionOptions = {
+  name?: LangPackKey, 
+  nameArgs?: FormatterArguments,
+  caption?: LangPackKey | true,
+  noDelimiter?: boolean,
+  fakeGradientDelimiter?: boolean,
+  noShadow?: boolean
+};
+
 const className = 'sidebar-left-section';
 export class SettingSection {
   public container: HTMLElement;
@@ -622,14 +636,7 @@ export class SettingSection {
   public title: HTMLElement;
   public caption: HTMLElement;
 
-  constructor(options: {
-    name?: LangPackKey, 
-    nameArgs?: FormatterArguments,
-    caption?: LangPackKey | true,
-    noDelimiter?: boolean,
-    fakeGradientDelimiter?: boolean,
-    noShadow?: boolean
-  } = {}) {
+  constructor(options: SettingSectionOptions = {}) {
     const container = this.container = document.createElement('div');
     container.classList.add(className + '-container');
 
@@ -691,6 +698,25 @@ export const generateDelimiter = () => {
   delimiter.classList.add('gradient-delimiter');
   return delimiter;
 };
+
+export class SettingChatListSection extends SettingSection {
+  public sortedList: SortedUserList;
+
+  constructor(options: SettingSectionOptions & {sortedList: SortedUserList}) {
+    super(options);
+
+    this.sortedList = options.sortedList;
+
+    this.content.append(this.sortedList.list);
+  }
+
+  public makeButton(options: ButtonOptions) {
+    const button = Button('folder-category-button btn btn-primary btn-transparent', options);
+    if(this.title) this.content.insertBefore(button, this.title.nextSibling);
+    else this.content.prepend(button);
+    return button;
+  }
+}
 
 const appSidebarLeft = new AppSidebarLeft();
 MOUNT_CLASS_TO.appSidebarLeft = appSidebarLeft;
