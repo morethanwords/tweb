@@ -11,7 +11,7 @@
     {"name": "duration", "type": "number"},
     {"name": "audioTitle", "type": "string"},
     {"name": "audioPerformer", "type": "string"},
-    {"name": "sticker", "type": "1 | 2"},
+    {"name": "sticker", "type": "1 | 2 | 3"},
     {"name": "stickerEmoji", "type": "string"},
     {"name": "stickerEmojiRaw", "type": "string"},
     {"name": "stickerSetInput", "type": "InputStickerSet.inputStickerSetID"},

@@ -3237,7 +3237,7 @@ export namespace Document {
 		duration?: number,
 		audioTitle?: string,
 		audioPerformer?: string,
-		sticker?: 1 | 2,
+		sticker?: 1 | 2 | 3,
 		stickerEmoji?: string,
 		stickerEmojiRaw?: string,
 		stickerSetInput?: InputStickerSet.inputStickerSetID,

@@ -96,8 +96,14 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
   searchContext?: MediaSearchContext,
 }) {
   const isAlbumItem = !(boxWidth && boxHeight);
-  const canAutoplay = (doc.type !== 'video' || (doc.size <= MAX_VIDEO_AUTOPLAY_SIZE && !isAlbumItem)) 
-    && (doc.type === 'gif' ? rootScope.settings.autoPlay.gifs : rootScope.settings.autoPlay.videos);
+  const canAutoplay = doc.sticker || (
+    (
+      doc.type !== 'video' || (
+        doc.size <= MAX_VIDEO_AUTOPLAY_SIZE && 
+        !isAlbumItem
+      )
+    ) && (doc.type === 'gif' ? rootScope.settings.autoPlay.gifs : rootScope.settings.autoPlay.videos)
+  );
   let spanTime: HTMLElement, spanPlay: HTMLElement;
 
   if(!noInfo) {
@@ -395,7 +401,7 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
     preloader = (message.media as any).preloader as ProgressivePreloader;
     preloader.attach(container, false);
     noAutoDownload = undefined;
-  } else if(!cacheContext.downloaded && !doc.supportsStreaming) {
+  } else if(!cacheContext.downloaded && !doc.supportsStreaming && !withoutPreloader) {
     preloader = new ProgressivePreloader({
       attachMethod: 'prepend'
     });
@@ -452,14 +458,16 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
     }
 
     let loadPromise: Promise<any> = Promise.resolve();
-    if(preloader && !isUpload) {
+    if((preloader && !isUpload) || withoutPreloader) {
       if(!cacheContext.downloaded && !doc.supportsStreaming) {
         const promise = loadPromise = appDocsManager.downloadDoc(doc, lazyLoadQueue?.queueId, noAutoDownload);
-        preloader.attach(container, false, promise);
+        if(preloader) {
+          preloader.attach(container, false, promise);
+        }
       } else if(doc.supportsStreaming) {
         if(noAutoDownload) {
           loadPromise = Promise.reject();
-        } else if(!cacheContext.downloaded) { // * check for uploading video
+        } else if(!cacheContext.downloaded && preloader) { // * check for uploading video
           preloader.attach(container, false, null);
           video.addEventListener(IS_SAFARI ? 'timeupdate' : 'canplay', () => {
             preloader.detach();
@@ -1150,6 +1158,22 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
 
   div.dataset.docId = '' + doc.id;
   div.classList.add('media-sticker-wrapper');
+
+  if(stickerType === 3) {
+    return wrapVideo({
+      doc,
+      boxWidth: width,
+      boxHeight: height,
+      container: div,
+      group,
+      lazyLoadQueue,
+      middleware,
+      withoutPreloader: true,
+      loadPromises,
+      noPlayButton: true,
+      noInfo: true
+    }).loadPromise;
+  }
   
   //console.log('wrap sticker', doc, div, onlyThumb);
 
