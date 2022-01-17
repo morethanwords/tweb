@@ -193,9 +193,10 @@ export default abstract class CallInstanceBase<E extends EventListenerListeners>
         element.play().catch(noop);
       }
 
-      if(element.srcObject !== useStream) {
+      // ! EVEN IF MEDIASTREAM IS THE SAME NEW TRACK WON'T PLAY WITHOUT REPLACING IT WHEN NEW PARTICIPANT IS ENTERING !
+      // if(element.srcObject !== useStream) {
         element.srcObject = useStream;
-      }
+      // }
     }
 
     return source;
