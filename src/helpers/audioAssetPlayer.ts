@@ -19,6 +19,7 @@ export default class AudioAssetPlayer<AssetName extends string> {
     
     try {
       const audio = this.createAudio();
+      audio.autoplay = true;
       audio.src = ASSETS_PATH + name;
       audio.loop = loop;
       audio.play();
@@ -39,7 +40,7 @@ export default class AudioAssetPlayer<AssetName extends string> {
   }
 
   public stopSound() {
-    this.audio.pause();
+    this.audio?.pause();
   }
 
   public cancelDelayedPlay() {

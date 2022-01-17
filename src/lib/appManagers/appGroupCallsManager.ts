@@ -469,10 +469,6 @@ export class AppGroupCallsManager {
 
       const connection = connectionInstance.createPeerConnection();
       connection.addEventListener('negotiationneeded', () => {
-        if(!rejoin) {
-          this.startConnectingSound();
-        }
-  
         connectionInstance.negotiate();
       });
 
@@ -485,7 +481,9 @@ export class AppGroupCallsManager {
         currentGroupCall.dispatchEvent('state', currentGroupCall.state);
         
         const {iceConnectionState} = connection;
-        if(iceConnectionState !== 'connected' && iceConnectionState !== 'closed') {
+        if(iceConnectionState === 'disconnected' || iceConnectionState === 'checking' || iceConnectionState === 'new') {
+          this.startConnectingSound();
+        } else {
           this.stopConnectingSound();
         }
         
@@ -540,6 +538,8 @@ export class AppGroupCallsManager {
 
       this.setCurrentGroupCall(currentGroupCall);
       log('set currentGroupCall', groupCallId, currentGroupCall);
+
+      this.startConnectingSound();
 
       return connectionInstance.negotiate();
     }
