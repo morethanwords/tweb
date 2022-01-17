@@ -29,9 +29,12 @@ let out = '';
     str = str.slice(0, str.indexOf(pattern) + pattern.length - 1);
   }
 
-  //console.log(str);
+  // console.log(`'${str}'`);
+  // var idx = 21865;
+  // idx -= 1;
+  // console.log(str.slice(idx, idx + 100));
   const json = JSON.parse(str);
-  //console.log(json);
+  // console.log(json);
 
   for(const key in json) {
     const value = json[key];
