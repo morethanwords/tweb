@@ -91,6 +91,16 @@ export class AppDocsManager {
       this.docs[doc.id] = doc;
     }
 
+    if(doc.mime_type === 'video/webm' && !doc.attributes.find(attribute => attribute._ === 'documentAttributeSticker')) {
+      doc.attributes.push({
+        _: 'documentAttributeSticker',
+        alt: '⏱',
+        stickerset: {
+          _: 'inputStickerSetEmpty'
+        }
+      });
+    }
+
     // * exclude from state
     // defineNotNumerableProperties(doc, [/* 'thumbs',  */'type', 'h', 'w', 'file_name', 
     // 'file', 'duration', 'downloaded', 'url', 'audioTitle', 
@@ -144,6 +154,10 @@ export class AppDocsManager {
           if(/* apiDoc.thumbs &&  */doc.mime_type === 'image/webp' && (doc.thumbs || IS_WEBP_SUPPORTED)) {
             doc.type = 'sticker';
             doc.sticker = 1;
+          } else if(doc.mime_type === 'video/webm') {
+            doc.type = 'sticker';
+            doc.sticker = 3;
+            doc.animated = true;
           }
           break;
 
