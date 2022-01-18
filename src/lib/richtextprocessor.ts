@@ -774,8 +774,9 @@ namespace RichTextProcessor {
         case 'messageEntitySpoiler': {
           if(options.noTextFormat) {
             const before = text.slice(0, entity.offset);
+            const spoilerBefore = text.slice(entity.offset, entity.offset + entity.length);
             const after = text.slice(entity.offset + entity.length);
-            text = before + '▚'.repeat(entity.length) + after;
+            text = before + spoiler(spoilerBefore)/*  '▚'.repeat(entity.length) */ + after;
           } else if(options.wrappingDraft) {
             insertPart(entity, '<span style="font-family: spoiler;">', '</span>');
           } else {
@@ -886,6 +887,19 @@ namespace RichTextProcessor {
       url = url.replace(/\)+$/, '');
     }
     return url;
+  }
+
+  export function spoiler(text: string): string {
+    const chars = '⠁⠂⠄⠈⠐⠠⡀⢀⠃⠅⠆⠉⠊⠌⠑⠒⠔⠘⠡⠢⠤⠨⠰⡁⡂⡄⡈⡐⡠⢁⢂⢄⢈⢐⢠⣀⠇⠋⠍⠎⠓⠕⠖⠙⠚⠜⠣⠥⠦⠩⠪⠬⠱⠲⠴⠸⡃⡅⡆⡉⡊⡌⡑⡒⡔⡘⡡⡢⡤⡨⡰⢃⢅⢆⢉⢊⢌⢑⢒⢔⢘⢡⢢⢤⢨⢰⣁⣂⣄⣈⣐⣠⠏⠗⠛⠝⠞⠧⠫⠭⠮⠳⠵⠶⠹⠺⠼⡇⡋⡍⡎⡓⡕⡖⡙⡚⡜⡣⡥⡦⡩⡪⡬⡱⡲⡴⡸⢇⢋⢍⢎⢓⢕⢖⢙⢚⢜⢣⢥⢦⢩⢪⢬⢱⢲⢴⢸⣃⣅⣆⣉⣊⣌⣑⣒⣔⣘⣡⣢⣤⣨⣰⠟⠯⠷⠻⠽⠾⡏⡗⡛⡝⡞⡧⡫⡭⡮⡳⡵⡶⡹⡺⡼⢏⢗⢛⢝⢞⢧⢫⢭⢮⢳⢵⢶⢹⢺⢼⣇⣋⣍⣎⣓⣕⣖⣙⣚⣜⣣⣥⣦⣩⣪⣬⣱⣲⣴⣸⠿⡟⡯⡷⡻⡽⡾⢟⢯⢷⢻⢽⢾⣏⣗⣛⣝⣞⣧⣫⣭⣮⣳⣵⣶⣹⣺⣼⡿⢿⣟⣯⣷⣻⣽⣾⣿';
+    const charsLength = chars.length;
+    
+    const out: string[] = [];
+    for(let i = 0; i < text.length; ++i) {
+      let char = text.charCodeAt(i);
+      out.push(chars[char % charsLength]);
+    }
+
+    return out.join('');
   }
   
   /* export function replaceUrlEncodings(urlWithEncoded: string) {
