@@ -18,6 +18,7 @@ import { encodeEntities } from '../helpers/string';
 import { IS_SAFARI } from '../environment/userAgent';
 import { MOUNT_CLASS_TO } from '../config/debug';
 import IS_EMOJI_SUPPORTED from '../environment/emojiSupport';
+import { copy } from '../helpers/object';
 
 const EmojiHelper = {
   emojiMap: (code: string) => { return code; },
@@ -82,7 +83,7 @@ const botCommandRegExp = '\\/([a-zA-Z\\d_]{1,32})(?:@(' + usernameRegExp + '))?(
 const fullRegExp = new RegExp('(^| )(@)(' + usernameRegExp + ')|(' + urlRegExp + ')|(\\n)|(' + emojiRegExp + ')|(^|[\\s\\(\\]])(#[' + alphaNumericRegExp + ']{2,64})|(^|\\s)' + botCommandRegExp, 'i');
 const emailRegExp = /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
 //const markdownTestRegExp = /[`_*@~]/;
-const markdownRegExp = /(^|\s|\n)(````?)([\s\S]+?)(````?)([\s\n\.,:?!;]|$)|(^|\s|\x01)(`|~~|\*\*|__|_-_)([^\n]+?)\7([\x01\s\.,:?!;]|$)|@(\d+)\s*\((.+?)\)|(\[(.+?)\]\((.+?)\))/m;
+const markdownRegExp = /(^|\s|\n)(````?)([\s\S]+?)(````?)([\s\n\.,:?!;]|$)|(^|\s|\x01)(`|~~|\*\*|__|_-_|\|\|)([^\n]+?)\7([\x01\s\.,:?!;]|$)|@(\d+)\s*\((.+?)\)|(\[(.+?)\]\((.+?)\))/m;
 const siteHashtags: {[siteName: string]: string} = {
   Telegram: 'tg://search_hashtag?hashtag={1}',
   Twitter: 'https://twitter.com/hashtag/{1}',
@@ -102,7 +103,8 @@ const markdownEntities: {[markdown: string]: MessageEntity['_']} = {
   '**': 'messageEntityBold',
   '__': 'messageEntityItalic',
   '~~': 'messageEntityStrike',
-  '_-_': 'messageEntityUnderline'
+  '_-_': 'messageEntityUnderline',
+  '||': 'messageEntitySpoiler'
 };
 
 const passConflictingEntities: Set<MessageEntity['_']> = new Set([
@@ -287,7 +289,7 @@ namespace RichTextProcessor {
         const isSOH = match[6] === '\x01';
 
         entity = {
-          _: markdownEntities[match[7]] as (MessageEntity.messageEntityBold | MessageEntity.messageEntityCode | MessageEntity.messageEntityItalic)['_'],
+          _: markdownEntities[match[7]] as (MessageEntity.messageEntityBold | MessageEntity.messageEntityCode | MessageEntity.messageEntityItalic | MessageEntity.messageEntitySpoiler)['_'],
           //offset: matchIndex + match[6].length,
           offset: matchIndex + (isSOH ? 0 : match[6].length),
           length: text.length
@@ -407,7 +409,9 @@ namespace RichTextProcessor {
     // currentEntities.sort((a, b) => a.offset - b.offset);
     // currentEntities.sort((a, b) => (a.offset - b.offset) || (a._ === 'messageEntityCaret' && -1));
 
-    if(!IS_EMOJI_SUPPORTED) { // fix splitted emoji. messageEntityTextUrl can split the emoji if starts before its end (e.g. on fe0f)
+    // * fix splitted emoji. messageEntityTextUrl can split the emoji if starts before its end (e.g. on fe0f)
+    // * have to fix even if emoji supported since it's being wrapped in span
+    // if(!IS_EMOJI_SUPPORTED) {
       for(let i = 0; i < currentEntities.length; ++i) {
         const entity = currentEntities[i];
         if(entity._ === 'messageEntityEmoji') {
@@ -417,7 +421,7 @@ namespace RichTextProcessor {
           }
         }
       }
-    }
+    // }
 
     return currentEntities;
   }
@@ -466,16 +470,17 @@ namespace RichTextProcessor {
     entities: MessageEntity[],
     contextSite: string,
     highlightUsername: string,
-    noLinks: true,
-    noLinebreaks: true,
-    noCommands: true,
+    noLinks: boolean,
+    noLinebreaks: boolean,
+    noCommands: boolean,
     wrappingDraft: boolean,
     //mustWrapEmoji: boolean,
     fromBot: boolean,
-    noTextFormat: true,
+    noTextFormat: boolean,
     passEntities: Partial<{
       [_ in MessageEntity['_']]: boolean
     }>,
+    noEncoding: boolean,
 
     contextHashtag?: string,
   }> = {}) {
@@ -495,17 +500,50 @@ namespace RichTextProcessor {
     const contextExternal = contextSite !== 'Telegram';
 
     const insertPart = (entity: MessageEntity, startPart: string, endPart?: string/* , priority = 0 */) => {
-      lol.push({part: startPart, offset: entity.offset/* , priority */});
+      const startOffset = entity.offset, endOffset = endPart ? entity.offset + entity.length : undefined;
+      let startIndex: number, endIndex: number, length = lol.length;
+      for(let i = length - 1; i >= 0; --i) {
+        const offset = lol[i].offset;
 
-      if(endPart) {
-        lol.push({part: endPart, offset: entity.offset + entity.length/* , priority */});
+        if(startIndex === undefined && startOffset >= offset) {
+          startIndex = i + 1;
+        }
+
+        if(endOffset !== undefined) {
+          if(endOffset <= offset) {
+            endIndex = i;
+          }
+        }
+
+        if(startOffset > offset && (endOffset === undefined || endOffset < offset)) {
+          break;
+        }
+      }
+
+      startIndex ??= 0;
+      lol.splice(startIndex, 0, {part: startPart, offset: entity.offset/* , priority */});
+
+      if(endOffset !== undefined) {
+        endIndex ??= startIndex;
+        ++endIndex;
+        lol.splice(endIndex, 0, {part: endPart, offset: entity.offset + entity.length/* , priority */});
       }
     };
 
     const pushPartsAfterSort: typeof lol = [];
-
+    const textLength = text.length;
     for(let i = 0, length = entities.length; i < length; ++i) {
-      const entity = entities[i];
+      let entity = entities[i];
+
+      // * check whether text was sliced
+      // TODO: consider about moving it to other function
+      if(entity.offset >= textLength) {
+        continue;
+      } else if((entity.offset + entity.length) > textLength) {
+        entity = copy(entity);
+        entity.length = entity.offset + entity.length - textLength;
+      }
+
       switch(entity._) {
         case 'messageEntityBold': {
           if(!options.noTextFormat) {
@@ -535,7 +573,7 @@ namespace RichTextProcessor {
           if(options.wrappingDraft) {
             const styleName = IS_SAFARI ? 'text-decoration' : 'text-decoration-line';
             insertPart(entity, `<span style="${styleName}: line-through;">`, '</span>');
-          } else {
+          } else if(!options.noTextFormat) {
             insertPart(entity, '<del>', '</del>');
           }
 
@@ -546,7 +584,7 @@ namespace RichTextProcessor {
           if(options.wrappingDraft) {
             const styleName = IS_SAFARI ? 'text-decoration' : 'text-decoration-line';
             insertPart(entity, `<span style="${styleName}: underline;">`, '</span>');
-          } else {
+          } else if(!options.noTextFormat) {
             insertPart(entity, '<u>', '</u>');
           }
 
@@ -556,7 +594,7 @@ namespace RichTextProcessor {
         case 'messageEntityCode': {
           if(options.wrappingDraft) {
             insertPart(entity, '<span style="font-family: monospace;">', '</span>');
-          } else {
+          } else if(!options.noTextFormat) {
             insertPart(entity, '<code>', '</code>');
           }
           
@@ -732,14 +770,28 @@ namespace RichTextProcessor {
           
           break;
         }
+
+        case 'messageEntitySpoiler': {
+          if(options.noTextFormat) {
+            const before = text.slice(0, entity.offset);
+            const after = text.slice(entity.offset + entity.length);
+            text = before + '▚'.repeat(entity.length) + after;
+          } else if(options.wrappingDraft) {
+            insertPart(entity, '<span style="font-family: spoiler;">', '</span>');
+          } else {
+            insertPart(entity, '<span class="spoiler"><span class="spoiler-text">', '</span></span>');
+          }
+          
+          break;
+        }
       }
     }
 
     // lol.sort((a, b) => (a.offset - b.offset) || (a.priority - b.priority));
-    lol.sort((a, b) => a.offset - b.offset); // have to sort because of nested entities
+    // lol.sort((a, b) => a.offset - b.offset); // have to sort because of nested entities
 
-    let partsLength = lol.length, partsAfterSortLength = pushPartsAfterSort.length;
-    for(let i = 0; i < partsAfterSortLength; ++i) {
+    let partsLength = lol.length, pushPartsAfterSortLength = pushPartsAfterSort.length;
+    for(let i = 0; i < pushPartsAfterSortLength; ++i) {
       const part = pushPartsAfterSort[i];
       let insertAt = 0;
       while(insertAt < partsLength) {
@@ -751,14 +803,15 @@ namespace RichTextProcessor {
       lol.splice(insertAt, 0, part);
     }
 
-    partsLength += partsAfterSortLength;
+    partsLength += pushPartsAfterSortLength;
 
     const arr: string[] = [];
     let usedLength = 0;
     for(let i = 0; i < partsLength; ++i) {
       const {part, offset} = lol[i];
       if(offset > usedLength) {
-        arr.push(encodeEntities(text.slice(usedLength, offset)));
+        const sliced = text.slice(usedLength, offset);
+        arr.push(options.noEncoding ? sliced : encodeEntities(sliced));
         usedLength = offset;
       }
 
@@ -766,7 +819,8 @@ namespace RichTextProcessor {
     }
 
     if(usedLength < text.length) {
-      arr.push(encodeEntities(text.slice(usedLength)));
+      const sliced = text.slice(usedLength);
+      arr.push(options.noEncoding ? sliced : encodeEntities(sliced));
     }
 
     return arr.join('');
@@ -834,7 +888,7 @@ namespace RichTextProcessor {
     return url;
   }
   
-  export function replaceUrlEncodings(urlWithEncoded: string) {
+  /* export function replaceUrlEncodings(urlWithEncoded: string) {
     return urlWithEncoded.replace(/(%[A-Z\d]{2})+/g, (str) => {
       try {
         return decodeURIComponent(str);
@@ -842,43 +896,23 @@ namespace RichTextProcessor {
         return str;
       }
     });
-  }
+  } */
   
-  export function wrapPlainText(text: string) {
-    if(IS_EMOJI_SUPPORTED) {
-      return text;
+  /**
+   * ! This function is still unsafe to use with .innerHTML
+   */
+  export function wrapPlainText(text: string, entities?: MessageEntity[]) {
+    if(entities?.length) {
+      entities = entities.filter(entity => entity._ === 'messageEntitySpoiler');
     }
   
-    if(!text || !text.length) {
-      return '';
-    }
-  
-    text = text.replace(/\ufe0f/g, '');
-    var match;
-    var raw = text;
-    const arr: string[] = [];
-    let emojiTitle;
-    fullRegExp.lastIndex = 0;
-    while((match = raw.match(fullRegExp))) {
-      arr.push(raw.substr(0, match.index))
-      if(match[8]) {
-        // @ts-ignore
-        const emojiCode = EmojiHelper.emojiMap[match[8]];
-        if(emojiCode &&
-        // @ts-ignore
-          (emojiTitle = emojiData[emojiCode][1][0])) {
-          arr.push(':' + emojiTitle + ':');
-        } else {
-          arr.push(match[0]);
-        }
-      } else {
-        arr.push(match[0]);
-      }
-  
-      raw = raw.substr(match.index + match[0].length);
-    }
-    arr.push(raw);
-    return arr.join('');
+    return wrapRichText(text, {
+      entities, 
+      noEncoding: true,
+      noTextFormat: true,
+      noLinebreaks: true,
+      noLinks: true
+    });
   }
 
   export function wrapEmojiText(text: string, isDraft = false) {

@@ -11,10 +11,10 @@
 
 import { MessageEntity } from "../../layer";
 
-export type MarkdownType = 'bold' | 'italic' | 'underline' | 'strikethrough' | 'monospace' | 'link' | 'mentionName';
+export type MarkdownType = 'bold' | 'italic' | 'underline' | 'strikethrough' | 'monospace' | 'link' | 'mentionName' | 'spoiler';
 export type MarkdownTag = {
   match: string,
-  entityName: 'messageEntityBold' | 'messageEntityUnderline' | 'messageEntityItalic' | 'messageEntityPre' | 'messageEntityStrike' | 'messageEntityTextUrl' | 'messageEntityMentionName';
+  entityName: Extract<MessageEntity['_'], 'messageEntityBold' | 'messageEntityUnderline' | 'messageEntityItalic' | 'messageEntityPre' | 'messageEntityStrike' | 'messageEntityTextUrl' | 'messageEntityMentionName' | 'messageEntitySpoiler'>;
 };
 
 // https://core.telegram.org/bots/api#html-style
@@ -46,6 +46,10 @@ export const markdownTags: {[type in MarkdownType]: MarkdownTag} = {
   mentionName: {
     match: 'A.follow',
     entityName: 'messageEntityMentionName'
+  },
+  spoiler: {
+    match: '[style*="spoiler"]',
+    entityName: 'messageEntitySpoiler'
   }
 };
 

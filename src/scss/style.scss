@@ -175,6 +175,8 @@ $chat-input-inner-padding-handhelds: .25rem;
   --link-color: #00488f;
   --ripple-color: rgba(0, 0, 0, .08);
   --poll-circle-color: var(--border-color);
+  --spoiler-background-color: #e3e5e8;
+  --spoiler-draft-background-color: #d9d9d9;
 
   --message-background-color: var(--surface-color);
   --message-checkbox-color: #61c642;
@@ -241,6 +243,8 @@ $chat-input-inner-padding-handhelds: .25rem;
   --link-color: var(--primary-color);
   --ripple-color: rgba(255, 255, 255, .08);
   --poll-circle-color: #fff;
+  --spoiler-background-color: #373e4e;
+  --spoiler-draft-background-color: #484848;
 
   --message-background-color: var(--surface-color);
   --message-checkbox-color: var(--primary-color);
@@ -300,6 +304,7 @@ $chat-input-inner-padding-handhelds: .25rem;
 @import "partials/colorPicker";
 @import "partials/replyKeyboard";
 @import "partials/peopleNearby";
+@import "partials/spoiler";
 
 @import "partials/popups/popup";
 @import "partials/popups/editAvatar";
