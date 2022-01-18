@@ -2663,7 +2663,7 @@ export default class ChatBubbles {
       let strLength = messageMessage.length;
       let emojiStrLength = emojiEntities.reduce((acc, curr) => acc + curr.length, 0);
       
-      if(emojiStrLength === strLength && emojiEntities.length <= 3) {
+      if(emojiStrLength === strLength && emojiEntities.length <= 3 && totalEntities.length === emojiEntities.length) {
         if(rootScope.settings.emoji.big) {
           let sticker = this.appStickersManager.getAnimatedEmojiSticker(messageMessage);
           if(emojiEntities.length === 1 && !messageMedia && sticker) {

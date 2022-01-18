@@ -413,7 +413,7 @@ export class AppImManager {
             domain: pathnameParams[0],
             post: pathnameParams[1],
             comment: uriParams.comment,
-            start: 'start' in uriParams && uriParams.start
+            start: 'start' in uriParams ? uriParams.start : undefined
           };
         }
 
