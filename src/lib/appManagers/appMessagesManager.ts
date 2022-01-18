@@ -2531,12 +2531,12 @@ export class AppMessagesManager {
       messageId: mid
     };
 
-    if(isMessage) {
+    /* if(isMessage) {
       const entities = message.entities;
       if(entities && entities.find(entity => entity._ === 'messageEntitySpoiler')) {
         message.media = {_: 'messageMediaUnsupported'};
       }
-    }
+    } */
 
     if(isMessage && message.media) {
       switch(message.media._) {
@@ -2802,6 +2802,7 @@ export class AppMessagesManager {
       }
     };
 
+    let entities = (message as Message.message).totalEntities;
     if((message as Message.message).media) {
       assumeType<Message.message>(message);
       let usingFullAlbum = true;
@@ -2821,7 +2822,9 @@ export class AppMessagesManager {
         }
 
         if(usingFullAlbum) {
-          text = this.getAlbumText(message.grouped_id).message;
+          const albumText = this.getAlbumText(message.grouped_id);
+          text = albumText.message;
+          entities = albumText.totalEntities;
 
           if(!withoutMediaType) {
             addPart('AttachAlbum');
@@ -2859,8 +2862,8 @@ export class AppMessagesManager {
             addPart('AttachContact');
             break;
           case 'messageMediaGame': {
-            const prefix = '🎮' + ' ';
-            text = prefix + media.game.title;
+            const f = '🎮' + ' ' + media.game.title;
+            addPart(undefined, plain ? f : RichTextProcessor.wrapEmojiText(f));
             break;
           }
           case 'messageMediaDocument': {
@@ -2924,14 +2927,17 @@ export class AppMessagesManager {
     if(text) {
       text = limitSymbols(text, 100);
 
+      if(!entities) {
+        entities = [];
+      }
+
       if(plain) {
-        parts.push(text);
+        parts.push(RichTextProcessor.wrapPlainText(text, entities));
       } else {
-        let entities = RichTextProcessor.parseEntities(text.replace(/\n/g, ' '));
+        // let entities = RichTextProcessor.parseEntities(text.replace(/\n/g, ' '));
 
         if(highlightWord) {
           highlightWord = highlightWord.trim();
-          if(!entities) entities = [];
           let found = false;
           let match: any;
           let regExp = new RegExp(escapeRegExp(highlightWord), 'gi');
@@ -2941,7 +2947,7 @@ export class AppMessagesManager {
           }
       
           if(found) {
-            entities.sort((a, b) => a.offset - b.offset);
+            RichTextProcessor.sortEntities(entities);
           }
         }
 

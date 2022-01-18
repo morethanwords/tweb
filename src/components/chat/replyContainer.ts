@@ -96,7 +96,7 @@ export function wrapReplyDivAndCaption(options: {
   } else {
     if(message) {
       subtitleEl.textContent = '';
-      subtitleEl.append(appMessagesManager.wrapMessageForReply(message, message.message && limitSymbols(message.message, 140)));
+      subtitleEl.append(appMessagesManager.wrapMessageForReply(message));
     } else {
       if(typeof(subtitle) === 'string') {
         subtitle = limitSymbols(subtitle, 140);

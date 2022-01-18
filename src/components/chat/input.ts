@@ -1368,7 +1368,8 @@ export default class ChatInput {
       underline: 'Underline',
       strikethrough: 'Strikethrough',
       monospace: () => document.execCommand('fontName', false, 'monospace'),
-      link: href ? () => document.execCommand('createLink', false, href) : () => document.execCommand('unlink', false, null)
+      link: href ? () => document.execCommand('createLink', false, href) : () => document.execCommand('unlink', false, null),
+      spoiler: () => document.execCommand('fontName', false, 'spoiler')
     };
 
     if(!commandsMap[type]) {
@@ -1463,7 +1464,8 @@ export default class ChatInput {
       'KeyI': 'italic',
       'KeyU': 'underline',
       'KeyS': 'strikethrough',
-      'KeyM': 'monospace'
+      'KeyM': 'monospace',
+      'KeyP': 'spoiler'
     };
 
     if(this.appImManager.markupTooltip) {

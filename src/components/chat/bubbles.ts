@@ -1048,6 +1048,32 @@ export default class ChatBubbles {
       return;
     }
 
+    const spoiler: HTMLElement = findUpClassName(target, 'spoiler');
+    if(spoiler) {
+      const messageDiv = findUpClassName(spoiler, 'message');
+
+      const className = 'is-spoiler-visible';
+      const isVisible = messageDiv.classList.contains(className);
+      if(!isVisible) {
+        cancelEvent(e);
+      }
+
+      const duration = 400 / 2;
+      const showDuration = 5000;
+      const useRafs = !isVisible ? 1 : 0;
+      if(useRafs) {
+        messageDiv.classList.add('will-change');
+      }
+
+      SetTransition(messageDiv, className, true, duration + showDuration, () => {
+        SetTransition(messageDiv, className, false, duration, () => {
+          messageDiv.classList.remove('will-change');
+        });
+      }, useRafs);
+
+      return;
+    }
+
     const commentsDiv: HTMLElement = findUpClassName(target, 'replies');
     if(commentsDiv) {
       const bubbleMid = +bubble.dataset.mid;
