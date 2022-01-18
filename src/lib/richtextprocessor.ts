@@ -901,7 +901,7 @@ namespace RichTextProcessor {
   /**
    * ! This function is still unsafe to use with .innerHTML
    */
-  export function wrapPlainText(text: string, entities?: MessageEntity[]) {
+  export function wrapPlainText(text: string, entities: MessageEntity[] = []) {
     if(entities?.length) {
       entities = entities.filter(entity => entity._ === 'messageEntitySpoiler');
     }
