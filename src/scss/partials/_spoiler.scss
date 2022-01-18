@@ -63,4 +63,10 @@
       }
     }
   }
+
+  &:not(.is-spoiler-visible) {
+    .spoiler {
+      cursor: pointer;
+    }
+  }
 }

@@ -1060,15 +1060,24 @@ export default class ChatBubbles {
 
       const duration = 400 / 2;
       const showDuration = 5000;
-      const useRafs = !isVisible ? 1 : 0;
+      const useRafs = !isVisible ? 2 : 0;
       if(useRafs) {
         messageDiv.classList.add('will-change');
       }
 
-      SetTransition(messageDiv, className, true, duration + showDuration, () => {
-        SetTransition(messageDiv, className, false, duration, () => {
-          messageDiv.classList.remove('will-change');
-        });
+      const spoilerTimeout = messageDiv.dataset.spoilerTimeout;
+      if(spoilerTimeout !== null) {
+        clearTimeout(+spoilerTimeout);
+        delete messageDiv.dataset.spoilerTimeout;
+      }
+
+      SetTransition(messageDiv, className, true, duration, () => {
+        messageDiv.dataset.spoilerTimeout = '' + window.setTimeout(() => {
+          SetTransition(messageDiv, className, false, duration, () => {
+            messageDiv.classList.remove('will-change');
+            delete messageDiv.dataset.spoilerTimeout;
+          });
+        }, showDuration);
       }, useRafs);
 
       return;
