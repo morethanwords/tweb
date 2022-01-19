@@ -24,8 +24,15 @@ let init = () => {
     let text: string, entities: MessageEntity[];
 
     // @ts-ignore
+    let plainText: string = (e.originalEvent || e).clipboardData.getData('text/plain');
+    let usePlainText = true;
+
+    // @ts-ignore
     let html: string = (e.originalEvent || e).clipboardData.getData('text/html');
     if(html.trim()) {
+      html = html.replace(/<style([\s\S]*)<\/style>/, '');
+      html = html.replace(/<!--([\s\S]*)-->/, '');
+
       const match = html.match(/<body>([\s\S]*)<\/body>/);
       if(match) {
         html = match[1].trim();
@@ -47,16 +54,19 @@ let init = () => {
       }
 
       const richValue = getRichValue(span, true);
-      text = richValue.value;
-      entities = richValue.entities;
-
-      let entities2 = RichTextProcessor.parseEntities(text);
-      entities2 = entities2.filter(e => e._ === 'messageEntityEmoji' || e._ === 'messageEntityLinebreak');
-      RichTextProcessor.mergeEntities(entities, entities2);
-    } else {
-      // @ts-ignore
-      text = (e.originalEvent || e).clipboardData.getData('text/plain');
-
+      if(richValue.value.replace(/\s/g, '').length === plainText.replace(/\s/g, '').length) {
+        text = richValue.value;
+        entities = richValue.entities;
+        usePlainText = false;
+  
+        let entities2 = RichTextProcessor.parseEntities(text);
+        entities2 = entities2.filter(e => e._ === 'messageEntityEmoji' || e._ === 'messageEntityLinebreak');
+        RichTextProcessor.mergeEntities(entities, entities2);
+      }
+    }
+    
+    if(usePlainText) {
+      text = plainText;
       entities = RichTextProcessor.parseEntities(text);
       entities = entities.filter(e => e._ === 'messageEntityEmoji' || e._ === 'messageEntityLinebreak');
     }
