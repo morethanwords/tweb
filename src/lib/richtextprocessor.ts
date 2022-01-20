@@ -538,7 +538,9 @@ namespace RichTextProcessor {
       // * check whether text was sliced
       // TODO: consider about moving it to other function
       if(entity.offset >= textLength) {
-        continue;
+        if(entity._ !== 'messageEntityCaret') { // * can set caret to the end
+          continue;
+        }
       } else if((entity.offset + entity.length) > textLength) {
         entity = copy(entity);
         entity.length = entity.offset + entity.length - textLength;
