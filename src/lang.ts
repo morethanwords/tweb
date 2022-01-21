@@ -975,6 +975,7 @@ const lang = {
   "Schedule.SendWhenOnline": "Send When Online",
   "Stickers.Recent": "Recent",
   //"Stickers.Favorite": "Favorite",
+  "StickerSet.DontExist": "Sorry, this sticker set doesn't seem to exist.",
   "VoiceChat.Chat.StartNew": "Video chat ended. Start a new one?",
   "VoiceChat.Chat.StartNew.OK": "Start",
   "VoiceChat.Chat.Ended": "Video chat ended.",
