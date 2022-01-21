@@ -23,6 +23,7 @@ import { isObject } from "../mtproto/bin_utils";
 import { MOUNT_CLASS_TO } from "../../config/debug";
 import stateStorage from "../stateStorage";
 import appMessagesIdsManager from "./appMessagesIdsManager";
+import assumeType from "../../helpers/assumeType";
 
 export type MyDraftMessage = DraftMessage.draftMessage;
 
@@ -182,7 +183,7 @@ export class AppDraftsManager {
     return draft;
   }
 
-  public async syncDraft(peerId: PeerId, threadId: number, localDraft?: MyDraftMessage, saveOnServer = true, force = false) {
+  public async syncDraft(peerId: PeerId, threadId: number, localDraft?: DraftMessage, saveOnServer = true, force = false) {
     // console.warn(dT(), 'sync draft', peerID)
     const serverDraft = this.getDraft(peerId, threadId);
     if(this.draftsAreEqual(serverDraft, localDraft)) {
@@ -200,6 +201,7 @@ export class AppDraftsManager {
     if(this.isEmptyDraft(localDraft)) {
       draftObj = {_: 'draftMessageEmpty'};
     } else {
+      assumeType<DraftMessage.draftMessage>(localDraft);
       let message = localDraft.message;
       let entities: MessageEntity[] = localDraft.entities;
 
@@ -248,10 +250,14 @@ export class AppDraftsManager {
   }
 
   public clearDraft(peerId: PeerId, threadId: number) {
+    const emptyDraft: DraftMessage.draftMessageEmpty = {
+      _: 'draftMessageEmpty'
+    };
+
     if(threadId) {
-      this.syncDraft(peerId, threadId);
+      this.syncDraft(peerId, threadId, emptyDraft as any, false, true);
     } else {
-      this.saveDraft(peerId, threadId, null, {notify: true, force: true});  
+      this.saveDraft(peerId, threadId, emptyDraft, {notify: true, force: true});  
     }
   }
 

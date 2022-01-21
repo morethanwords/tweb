@@ -1016,6 +1016,10 @@ export default class ChatInput {
   };
 
   public setUnreadCount() {
+    if(!this.goDownUnreadBadge) {
+      return;
+    }
+    
     const dialog = this.appMessagesManager.getDialogOnly(this.chat.peerId);
     const count = dialog?.unread_count;
     this.goDownUnreadBadge.innerText = '' + (count || '');
