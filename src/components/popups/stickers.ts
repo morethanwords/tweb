@@ -20,6 +20,7 @@ import Button from "../button";
 import findUpClassName from "../../helpers/dom/findUpClassName";
 import toggleDisability from "../../helpers/dom/toggleDisability";
 import { attachClickEvent } from "../../helpers/dom/clickEvent";
+import { toastNew } from "../toast";
 
 const ANIMATION_GROUP = 'STICKERS-POPUP';
 
@@ -86,6 +87,11 @@ export default class PopupStickers extends PopupElement {
 
   private loadStickerSet() {
     return appStickersManager.getStickerSet(this.stickerSetInput).then(set => {
+      if(!set) {
+        toastNew({langPackKey: 'StickerSet.DontExist'});
+        this.hide();
+        return;
+      }
       //console.log('PopupStickers loadStickerSet got set:', set);
 
       this.set = set.set;
