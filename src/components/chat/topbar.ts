@@ -447,7 +447,7 @@ export default class ChatTopbar {
           selfPresence: 'ChatYourSelf'
         });
       },
-      verify: () => rootScope.myId !== this.peerId && this.peerId.isUser() && this.appPeersManager.isContact(this.peerId)
+      verify: () => rootScope.myId !== this.peerId && this.peerId.isUser() && this.appPeersManager.isContact(this.peerId) && !!this.appUsersManager.getUser(this.peerId.toUserId()).phone
     }, {
       icon: 'lock',
       text: 'BlockUser',
