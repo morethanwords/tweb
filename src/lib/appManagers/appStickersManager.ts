@@ -22,6 +22,13 @@ import assumeType from '../../helpers/assumeType';
 
 const CACHE_TIME = 3600e3;
 
+const EMOJI_SET_LOCAL_ID = 'emoji';
+const EMOJI_ANIMATIONS_SET_LOCAL_ID = 'emojiAnimations';
+const LOCAL_IDS_SET = new Set([
+  EMOJI_SET_LOCAL_ID,
+  EMOJI_ANIMATIONS_SET_LOCAL_ID
+]);
+
 export type MyStickerSetInput = {
   id: StickerSet.stickerSet['id'],
   access_hash?: StickerSet.stickerSet['access_hash']
@@ -104,11 +111,13 @@ export class AppStickersManager {
 
     return this.getStickerSetPromises[id] = new Promise(async(resolve) => {
       if(!params.overwrite) {
+        // const perf = performance.now();
         const cachedSet = await this.storage.get(id);
         if(cachedSet && cachedSet.documents?.length && ((Date.now() - cachedSet.refreshTime) < CACHE_TIME || params.useCache)) {
           this.saveStickers(cachedSet.documents);
           resolve(cachedSet);
           delete this.getStickerSetPromises[id];
+          // console.log('get sticker set from cache time', id, performance.now() - perf);
           return;
         }
       }
@@ -132,7 +141,12 @@ export class AppStickersManager {
   }
 
   public getAnimatedEmojiStickerSet() {
-    return this.getStickerSet({id: 'emoji'}, {saveById: true});
+    return Promise.all([
+      this.getStickerSet({id: EMOJI_SET_LOCAL_ID}, {saveById: true}),
+      this.getStickerSet({id: EMOJI_ANIMATIONS_SET_LOCAL_ID}, {saveById: true})
+    ]).then(([emoji, animations]) => {
+      return {emoji, animations};
+    });
   }
 
   public async getRecentStickers(): Promise<Modify<MessagesRecentStickers.messagesRecentStickers, {
@@ -150,8 +164,8 @@ export class AppStickersManager {
     return res;
   }
 
-  public getAnimatedEmojiSticker(emoji: string) {
-    const stickerSet = this.storage.getFromCache('emoji');
+  public getAnimatedEmojiSticker(emoji: string, isAnimation?: boolean) {
+    const stickerSet = this.storage.getFromCache(isAnimation ? EMOJI_ANIMATIONS_SET_LOCAL_ID : EMOJI_SET_LOCAL_ID);
     if(!stickerSet || !stickerSet.documents) return undefined;
 
     emoji = emoji.replace(/\ufe0f/g, '').replace(/🏻|🏼|🏽|🏾|🏿/g, '');
@@ -207,7 +221,7 @@ export class AppStickersManager {
     this.saveStickers(res.documents);
     
     //console.log('stickers wrote', this.stickerSets);
-    const needSave = stickerSet.set.installed_date || id === 'emoji';
+    const needSave = stickerSet.set.installed_date || LOCAL_IDS_SET.has(id as any);
     stickerSet.refreshTime = Date.now();
     this.storage.set({[id]: stickerSet}, !needSave);
   }
@@ -247,9 +261,13 @@ export class AppStickersManager {
   } */
 
   public getStickerSetInput(set: MyStickerSetInput): InputStickerSet {
-    if(set.id === 'emoji') {
+    if(set.id === EMOJI_SET_LOCAL_ID) {
       return {
         _: 'inputStickerSetAnimatedEmoji'
+      };
+    } else if(set.id === EMOJI_ANIMATIONS_SET_LOCAL_ID) {
+      return {
+        _: 'inputStickerSetAnimatedEmojiAnimations'
       };
     } else if(!set.access_hash) {
       return {

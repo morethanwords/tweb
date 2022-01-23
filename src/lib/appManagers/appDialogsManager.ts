@@ -1899,12 +1899,10 @@ export class AppDialogsManager {
       return;
     }
 
-    let typingElement = dom.lastMessageSpan.querySelector('.peer-typing-container') as HTMLElement;
-    if(typingElement) {
-      appImManager.getPeerTyping(dialog.peerId, typingElement);
-    } else {
-      typingElement = appImManager.getPeerTyping(dialog.peerId);
-      replaceContent(dom.lastMessageSpan, typingElement);
+    const oldTypingElement = dom.lastMessageSpan.querySelector('.peer-typing-container') as HTMLElement;
+    const newTypingElement = appImManager.getPeerTyping(dialog.peerId, oldTypingElement);
+    if(!oldTypingElement && newTypingElement) {
+      replaceContent(dom.lastMessageSpan, newTypingElement);
       dom.lastMessageSpan.classList.add('user-typing');
     }
   }

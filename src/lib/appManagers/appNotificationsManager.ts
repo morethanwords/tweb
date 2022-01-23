@@ -28,6 +28,7 @@ import appPeersManager from "./appPeersManager";
 import appRuntimeManager from "./appRuntimeManager";
 import appStateManager from "./appStateManager";
 import appUsersManager from "./appUsersManager";
+import IS_VIBRATE_SUPPORTED from "../../environment/vibrateSupport";
 
 type MyNotification = Notification & {
   hidden?: boolean,
@@ -60,7 +61,7 @@ export class AppNotificationsManager {
   private notificationIndex = 0;
   private notificationsCount = 0;
   private soundsPlayed: {[tag: string]: number} = {};
-  private vibrateSupport = !!navigator.vibrate;
+  private vibrateSupport = IS_VIBRATE_SUPPORTED;
   private nextSoundAt: number;
   private prevSoundVolume: number;
   private peerSettings = {

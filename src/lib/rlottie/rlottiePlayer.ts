@@ -132,8 +132,8 @@ export default class RLottiePlayer extends EventListenerBase<{
   private color: RLottieColor;
   private inverseColor: RLottieColor;
 
-  private minFrame: number;
-  private maxFrame: number;
+  public minFrame: number;
+  public maxFrame: number;
 
   //private playedTimes = 0;
 
@@ -294,7 +294,7 @@ export default class RLottiePlayer extends EventListenerBase<{
   }
 
   private resetCurrentFrame() {
-    return this.curFrame = this.initFrame || (this.direction === 1 ? this.minFrame : this.maxFrame);
+    return this.curFrame = this.initFrame ?? (this.direction === 1 ? this.minFrame : this.maxFrame);
   }
 
   public stop(renderFirstFrame = true) {
@@ -655,6 +655,11 @@ export default class RLottiePlayer extends EventListenerBase<{
       };
 
       this.addEventListener('enterFrame', this.frameListener);
+
+      // ! fix autoplaying since there will be no animationIntersector for it,
+      if(this.group === 'none' && this.autoplay) {
+        this.play();
+      }
     }, {once: true});
   }
 }

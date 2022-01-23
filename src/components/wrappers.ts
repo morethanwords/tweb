@@ -49,6 +49,13 @@ import { MiddleEllipsisElement } from './middleEllipsis';
 import { joinElementsWith } from '../lib/langPack';
 import throttleWithRaf from '../helpers/schedulers/throttleWithRaf';
 import { NULL_PEER_ID } from '../lib/mtproto/mtproto_config';
+import findUpClassName from '../helpers/dom/findUpClassName';
+import RLottiePlayer from '../lib/rlottie/rlottiePlayer';
+import assumeType from '../helpers/assumeType';
+import appMessagesIdsManager from '../lib/appManagers/appMessagesIdsManager';
+import throttle from '../helpers/schedulers/throttle';
+import { SendMessageEmojiInteractionData } from '../types';
+import IS_VIBRATE_SUPPORTED from '../environment/vibrateSupport';
 
 const MAX_VIDEO_AUTOPLAY_SIZE = 50 * 1024 * 1024; // 50 MB
 
@@ -1127,7 +1134,7 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
   loadPromises?: Promise<any>[],
   needFadeIn?: boolean,
   needUpscale?: boolean
-}) {
+}): Promise<RLottiePlayer | void> {
   const stickerType = doc.sticker;
 
   if(!width) {
@@ -1160,7 +1167,7 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
   
   let loadThumbPromise = deferredPromise<void>();
   let haveThumbCached = false;
-  if((doc.thumbs?.length || doc.stickerCachedThumbs) && !div.firstElementChild && (!downloaded || stickerType === 2 || onlyThumb)/*  && doc.thumbs[0]._ !== 'photoSizeEmpty' */) {
+  if((doc.thumbs?.length || doc.stickerCachedThumbs) && !div.firstElementChild && (!downloaded || stickerType === 2 || onlyThumb) && withThumb !== false/*  && doc.thumbs[0]._ !== 'photoSizeEmpty' */) {
     let thumb = doc.stickerCachedThumbs && doc.stickerCachedThumbs[toneIndex] || doc.thumbs[0];
     
     //console.log('wrap sticker', thumb, div);
@@ -1267,7 +1274,7 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
 
       //appDocsManager.downloadDocNew(doc.id).promise.then(res => res.json()).then(async(json) => {
       //fetch(doc.url).then(res => res.json()).then(async(json) => {
-      /* return */ await appDocsManager.downloadDoc(doc, /* undefined,  */lazyLoadQueue?.queueId)
+      return await appDocsManager.downloadDoc(doc, /* undefined,  */lazyLoadQueue?.queueId)
       .then(readBlobAsText)
       //.then(JSON.parse)
       .then(async(json) => {
@@ -1324,6 +1331,13 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
         }, {once: true});
   
         if(emoji) {
+          const data: SendMessageEmojiInteractionData = {
+            a: [],
+            v: 1
+          };
+
+          let sendInteractionThrottled: () => void;
+
           attachClickEvent(div, (e) => {
             cancelEvent(e);
             let animation = LottieLoader.getAnimation(div);
@@ -1332,8 +1346,133 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
               animation.autoplay = true;
               animation.restart();
             }
+
+            const doc = appStickersManager.getAnimatedEmojiSticker(emoji, true);
+            if(!doc) {
+              return;
+            }
+            
+            const animationDiv = document.createElement('div');
+            animationDiv.classList.add('emoji-animation');
+
+            const size = 280;
+            animationDiv.style.width = size + 'px';
+            animationDiv.style.height = size + 'px';
+
+            wrapSticker({
+              div: animationDiv,
+              doc,
+              middleware,
+              withThumb: false,
+              needFadeIn: false,
+              loop: false,
+              width: size,
+              height: size,
+              play: true,
+              group: 'none'
+            }).then(animation => {
+              assumeType<RLottiePlayer>(animation);
+              animation.addEventListener('enterFrame', (frameNo) => {
+                if(frameNo === animation.maxFrame) {
+                  animation.remove();
+                  // animationDiv.remove();
+                  appImManager.chat.bubbles.scrollable.container.removeEventListener('scroll', onScroll);
+                }
+              });
+
+              if(IS_VIBRATE_SUPPORTED) {
+                animation.addEventListener('firstFrame', () => {
+                  navigator.vibrate(100);
+                }, {once: true});
+              }
+            });
+
+            const generateRandomSigned = (max: number) => {
+              const r = Math.random() * max * 2;
+              return r > max ? -r % max : r;
+            };
+
+            const bubble = findUpClassName(div, 'bubble');
+            const isOut = bubble.classList.contains('is-out');
+
+            const randomOffsetX = generateRandomSigned(16);
+            const randomOffsetY = generateRandomSigned(4);
+            const stableOffsetX = size / 8 * (isOut ? 1 : -1);
+            const setPosition = () => {
+              const rect = div.getBoundingClientRect();
+              /* const boxWidth = Math.max(rect.width, rect.height);
+              const boxHeight = Math.max(rect.width, rect.height);
+              const x = rect.left + ((boxWidth - size) / 2);
+              const y = rect.top + ((boxHeight - size) / 2); */
+
+              const rectX = isOut ? rect.right : rect.left;
+
+              const addOffsetX = (isOut ? -size : 0) + stableOffsetX + randomOffsetX;
+              const x = rectX + addOffsetX;
+              // const y = rect.bottom - size + size / 4;
+              const y = rect.top + ((rect.height - size) / 2) + randomOffsetY;
+              // animationDiv.style.transform = `translate(${x}px, ${y}px)`;
+              animationDiv.style.top = y + 'px';
+              animationDiv.style.left = x + 'px';
+            };
+
+            const onScroll = throttleWithRaf(setPosition);
+
+            appImManager.chat.bubbles.scrollable.container.addEventListener('scroll', onScroll);
+
+            setPosition();
+
+            if(bubble) {
+              if(isOut) {
+                animationDiv.classList.add('is-out');
+              } else {
+                animationDiv.classList.add('is-in');
+              }
+            }
+
+            appImManager.emojiAnimationContainer.append(animationDiv);
+
+            if(!sendInteractionThrottled) {
+              sendInteractionThrottled = throttle(() => {
+                const length = data.a.length;
+                if(!length) {
+                  return;
+                }
+      
+                const firstTime = data.a[0].t;
+      
+                data.a.forEach((a) => {
+                  a.t = (a.t - firstTime) / 1000;
+                });
+      
+                const bubble = findUpClassName(div, 'bubble');
+                appMessagesManager.setTyping(appImManager.chat.peerId, {
+                  _: 'sendMessageEmojiInteraction',
+                  msg_id: appMessagesIdsManager.getServerMessageId(+bubble.dataset.mid),
+                  emoticon: emoji,
+                  interaction: {
+                    _: 'dataJSON',
+                    data: JSON.stringify(data)
+                  }
+                }, true);
+      
+                data.a.length = 0;
+              }, 1000, false);
+            }
+
+            // using a trick here: simulated event from interlocutor's interaction won't fire ours
+            if(e.isTrusted) {
+              data.a.push({
+                i: 1,
+                t: Date.now()
+              });
+    
+              sendInteractionThrottled();
+            }
           });
         }
+
+        return animation;
 
         //return deferred;
         //await new Promise((resolve) => setTimeout(resolve, 5e3));
@@ -1384,12 +1523,12 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
     }
   };
 
-  const loadPromise: Promise<any> = lazyLoadQueue && (!downloaded || stickerType === 2) ? 
+  const loadPromise: Promise<RLottiePlayer | void> = lazyLoadQueue && (!downloaded || stickerType === 2) ? 
     (lazyLoadQueue.push({div, load}), Promise.resolve()) : 
     load();
 
   if(downloaded && stickerType === 1) {
-    loadThumbPromise = loadPromise;
+    loadThumbPromise = loadPromise as any;
     if(loadPromises) {
       loadPromises.push(loadThumbPromise);
     }
