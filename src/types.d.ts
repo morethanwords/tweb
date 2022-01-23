@@ -111,3 +111,8 @@ export namespace AuthState {
     _: 'authStateSignedIn'
   };
 }
+
+export type SendMessageEmojiInteractionData = {
+  a: {t: number, i: 1}[],
+  v: 1
+};

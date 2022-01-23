@@ -1,0 +1,29 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
+.emoji-animation {
+  position: absolute;
+  pointer-events: none;
+
+  // @include sidebar-transform(true);
+
+  &.is-in {
+    .rlottie {
+      transform: scaleX(-1);
+    }
+  }
+
+  &-container {
+    position: absolute; 
+    top: 0; 
+    right: 0; 
+    bottom: 0; 
+    left: 0; 
+    pointer-events: none; 
+    overflow: hidden;
+    z-index: 3;
+  }
+}

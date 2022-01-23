@@ -41,7 +41,8 @@ export default class AppStorage<Storage extends Record<string, any>, T extends D
 
   //private cache: Partial<{[key: string]: Storage[typeof key]}> = {};
   private cache: Partial<Storage> = {};
-  private useStorage = true;
+  private useStorage: boolean;
+  private savingFreezed: boolean;
 
   private getPromises: Map<keyof Storage, CancellablePromise<Storage[keyof Storage]>> = new Map();
   private getThrottled: () => void;
@@ -59,7 +60,11 @@ export default class AppStorage<Storage extends Record<string, any>, T extends D
 
     if(AppStorage.STORAGES.length) {
       this.useStorage = AppStorage.STORAGES[0].useStorage;
+    } else {
+      this.useStorage = true;
     }
+
+    this.savingFreezed = false;
 
     AppStorage.STORAGES.push(this);
 
@@ -140,6 +145,7 @@ export default class AppStorage<Storage extends Record<string, any>, T extends D
     this.getThrottled = throttle(async() => {
       const keys = Array.from(this.getPromises.keys());
 
+      // const perf = performance.now();
       this.storage.get(keys as string[]).then(values => {
         for(let i = 0, length = keys.length; i < length; ++i) {
           const key = keys[i];
@@ -150,6 +156,8 @@ export default class AppStorage<Storage extends Record<string, any>, T extends D
             this.getPromises.delete(key);
           }
         }
+
+        // console.log('[AS]: get time', keys, performance.now() - perf);
       }, (error) => {
         if(!['NO_ENTRY_FOUND', 'STORAGE_OFFLINE'].includes(error)) {
           this.useStorage = false;
@@ -214,6 +222,7 @@ export default class AppStorage<Storage extends Record<string, any>, T extends D
   public set(obj: Partial<Storage>, onlyLocal = false) {
     //console.log('storageSetValue', obj, callback, arguments);
 
+    const canUseStorage = this.useStorage && !onlyLocal && !this.savingFreezed;
     for(const key in obj) {
       if(obj.hasOwnProperty(key)) {
         const value = obj[key];
@@ -233,7 +242,7 @@ export default class AppStorage<Storage extends Record<string, any>, T extends D
         value = stringify(value);
         console.log('LocalStorage set: stringify time by own stringify:', performance.now() - perf); */
 
-        if(this.useStorage && !onlyLocal) {
+        if(canUseStorage) {
           this.keysToSet.add(key);
           this.keysToDelete.delete(key);
           this.saveThrottled();
@@ -241,7 +250,7 @@ export default class AppStorage<Storage extends Record<string, any>, T extends D
       }
     }
 
-    return this.useStorage ? this.saveDeferred : Promise.resolve();
+    return canUseStorage ? this.saveDeferred : Promise.resolve();
   }
 
   public delete(key: keyof Storage, saveLocal = false) {
@@ -289,6 +298,14 @@ export default class AppStorage<Storage extends Record<string, any>, T extends D
         return storage.set(storage.cache);
       }
     })).catch(noop);
+  }
+
+  public static freezeSaving<T extends Database<any>>(callback: () => any, names: T['stores'][number]['name'][]) {
+    this.STORAGES.forEach(storage => storage.savingFreezed = true);
+    try {
+      callback();
+    } catch(err) {}
+    this.STORAGES.forEach(storage => storage.savingFreezed = false);
   }
 
   /* public deleteDatabase() {

@@ -79,7 +79,10 @@ import IS_GROUP_CALL_SUPPORTED from '../../environment/groupCallSupport';
 import appAvatarsManager from './appAvatarsManager';
 import IS_CALL_SUPPORTED from '../../environment/callSupport';
 import { CallType } from '../calls/types';
-import { Modify } from '../../types';
+import { Modify, SendMessageEmojiInteractionData } from '../../types';
+import htmlToSpan from '../../helpers/dom/htmlToSpan';
+import getVisibleRect from '../../helpers/dom/getVisibleRect';
+import { simulateClickEvent } from '../../helpers/dom/clickEvent';
 
 //console.log('appImManager included33!');
 
@@ -127,6 +130,7 @@ export class AppImManager {
   private backgroundPromises: {[slug: string]: Promise<string>} = {};
   
   private topbarCall: TopbarCall;
+  emojiAnimationContainer: HTMLDivElement;
 
   get myId() {
     return rootScope.myId;
@@ -177,6 +181,10 @@ export class AppImManager {
     this.chatsContainer.classList.add('chats-container', 'tabs-container');
     this.chatsContainer.dataset.animation = 'navigation';
 
+    this.emojiAnimationContainer = document.createElement('div');
+    this.emojiAnimationContainer.classList.add('emoji-animation-container');
+    document.body.append(this.emojiAnimationContainer);
+
     this.columnEl.append(this.chatsContainer);
     
     this.createNewChat();
@@ -204,6 +212,12 @@ export class AppImManager {
         && document.body.classList.contains(RIGHT_COLUMN_ACTIVE_CLASSNAME)) {
         appSidebarRight.toggleSidebar(false);
       }
+
+      if(from === ScreenSize.mobile) {
+        document.body.append(this.emojiAnimationContainer);
+      } else if(to === ScreenSize.mobile) {
+        this.columnEl.append(this.emojiAnimationContainer);
+      }
     });
 
     rootScope.addEventListener('history_focus', (e) => {
@@ -230,6 +244,41 @@ export class AppImManager {
 
     rootScope.addEventListener('choosing_sticker', (choosing) => {
       this.setChoosingStickerTyping(!choosing);
+    });
+
+    rootScope.addEventListener('peer_typings', ({peerId, typings}) => {
+      const chat = this.chat;
+      if(
+        !chat || 
+        chat.peerId !== peerId || 
+        rootScope.overlaysActive || (
+          mediaSizes.activeScreen === ScreenSize.mobile && 
+          this.tabId !== 1
+        )
+      ) {
+        return;
+      }
+
+      const typing = typings.find(typing => typing.action._ === 'sendMessageEmojiInteraction');
+      if(typing?.action?._ === 'sendMessageEmojiInteraction') {
+        const action = typing.action;
+        const bubble = chat.bubbles.bubbles[appMessagesIdsManager.generateMessageId(typing.action.msg_id)];
+        if(bubble && getVisibleRect(bubble, chat.bubbles.scrollable.container)) {
+          const stickerWrapper: HTMLElement = bubble.querySelector('.media-sticker-wrapper');
+
+          const data: SendMessageEmojiInteractionData = JSON.parse(action.interaction.data);
+          data.a.forEach(a => {
+            setTimeout(() => {
+              simulateClickEvent(stickerWrapper);
+            }, a.t * 1000);
+          });
+          
+          appMessagesManager.setTyping(peerId, {
+            _: 'sendMessageEmojiInteractionSeen',
+            emoticon: action.emoticon
+          });
+        }
+      }
     });
 
     rootScope.addEventListener('instance_deactivated', () => {
@@ -1599,6 +1648,7 @@ export class AppImManager {
         break;
       }
 
+      case 'sendMessageEmojiInteractionSeen':
       case 'sendMessageChooseStickerAction': {
         c += '-choosing-sticker';
         for(let i = 0; i < 2; ++i) {
@@ -1638,7 +1688,8 @@ export class AppImManager {
           'sendMessageRecordAudioAction': 'Peer.Activity.User.RecordingAudio',
           'sendMessageRecordRoundAction': 'Peer.Activity.User.RecordingVideo',
           'sendMessageGamePlayAction': 'Peer.Activity.User.PlayingGame',
-          'sendMessageChooseStickerAction': 'Peer.Activity.User.ChoosingSticker'
+          'sendMessageChooseStickerAction': 'Peer.Activity.User.ChoosingSticker',
+          'sendMessageEmojiInteractionSeen': 'Peer.Activity.User.EnjoyingAnimations'
         },
         chat: {
           'sendMessageTypingAction': 'Peer.Activity.Chat.TypingText',
@@ -1651,7 +1702,8 @@ export class AppImManager {
           'sendMessageRecordAudioAction': 'Peer.Activity.Chat.RecordingAudio',
           'sendMessageRecordRoundAction': 'Peer.Activity.Chat.RecordingVideo',
           'sendMessageGamePlayAction': 'Peer.Activity.Chat.PlayingGame',
-          'sendMessageChooseStickerAction': 'Peer.Activity.Chat.ChoosingSticker'
+          'sendMessageChooseStickerAction': 'Peer.Activity.Chat.ChoosingSticker',
+          'sendMessageEmojiInteractionSeen': 'Peer.Activity.Chat.EnjoyingAnimations'
         },
         multi: {
           'sendMessageTypingAction': 'Peer.Activity.Chat.Multi.TypingText1',
@@ -1696,9 +1748,7 @@ export class AppImManager {
         container.classList.add('online', 'peer-typing-container');
       }
 
-      if(action._ === 'sendMessageChooseStickerAction') {
-        container.classList.add('peer-typing-flex');
-      }
+      container.classList.toggle('peer-typing-flex', action._ === 'sendMessageChooseStickerAction' || action._ === 'sendMessageEmojiInteractionSeen');
 
       let typingElement = container.firstElementChild as HTMLElement;
       if(!typingElement) {
@@ -1717,6 +1767,18 @@ export class AppImManager {
           typings.length - 1
         ];
       }
+
+      if(action._ === 'sendMessageEmojiInteractionSeen') {
+        if(args) {
+          args.pop();
+        } else {
+          args = [];
+        }
+
+        const span = htmlToSpan(RichTextProcessor.wrapEmojiText(action.emoticon));
+        args.push(span);
+      }
+
       const descriptionElement = i18n(langPackKey, args);
       descriptionElement.classList.add('peer-typing-description');
 

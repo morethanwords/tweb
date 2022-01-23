@@ -201,7 +201,7 @@ export class AppMessagesManager {
 
   private groupedTempId = 0;
 
-  private typings: {[peerId: PeerId]: {type: SendMessageAction['_'], timeout?: number}} = {};
+  private typings: {[peerId: PeerId]: {action: SendMessageAction, timeout?: number}} = {};
 
   private middleware: ReturnType<typeof getMiddleware>;
 
@@ -5806,13 +5806,14 @@ export class AppMessagesManager {
     });
   }
 
-  public setTyping(peerId: PeerId, action: SendMessageAction): Promise<boolean> {
+  public setTyping(peerId: PeerId, action: SendMessageAction, force?: boolean): Promise<boolean> {
     let typing = this.typings[peerId];
     if(!rootScope.myId || 
       !peerId || 
       !this.canSendToPeer(peerId) || 
       peerId === rootScope.myId ||
-      typing?.type === action._
+      // (!force && deepEqual(typing?.action, action))
+      (!force && typing?.action?._ === action._)
     ) {
       return Promise.resolve(false);
     }
@@ -5822,7 +5823,7 @@ export class AppMessagesManager {
     }
 
     typing = this.typings[peerId] = {
-      type: action._
+      action
     };
 
     return apiManager.invokeApi('messages.setTyping', {

@@ -31,6 +31,8 @@ import { MyDialogFilter } from "./filters";
 import { NULL_PEER_ID } from "../mtproto/mtproto_config";
 import { NoneToVoidFunction } from "../../types";
 import ctx from "../../environment/ctx";
+import AppStorage from "../storage";
+import type DATABASE_STATE from "../../config/databases/state";
 
 export type FolderDialog = {
   dialog: Dialog,
@@ -159,35 +161,39 @@ export default class DialogsStorage {
       
       const dialogs = appStateManager.storagesResults.dialogs;
       if(dialogs.length) {
-        for(let i = 0, length = dialogs.length; i < length; ++i) {
-          const dialog = dialogs[i];
-          if(dialog) {
-            // if(dialog.peerId !== SERVICE_PEER_ID) {
-              dialog.top_message = this.appMessagesIdsManager.getServerMessageId(dialog.top_message); // * fix outgoing message to avoid copying dialog
-            // }
-
-            if(dialog.topMessage) {
-              this.appMessagesManager.saveMessages([dialog.topMessage]);
-            }
-
-            for(let i = 0; i <= 10; ++i) {
-              // @ts-ignore
-              delete dialog[`index_${i}`];
-            }
-  
-            this.saveDialog(dialog, undefined, true);
-
-            // ! WARNING, убрать это когда нужно будет делать чтобы pending сообщения сохранялись
-            const message = this.appMessagesManager.getMessageByPeer(dialog.peerId, dialog.top_message);
-            if(message.deleted) {
-              this.appMessagesManager.reloadConversation(dialog.peerId);
-            }
-          }
-        }
+        AppStorage.freezeSaving<typeof DATABASE_STATE>(this.setDialogsFromState.bind(this, dialogs), ['chats', 'dialogs', 'messages', 'users']);
       }
 
       this.allDialogsLoaded = state.allDialogsLoaded || {};
     });
+  }
+
+  private setDialogsFromState(dialogs: Dialog[]) {
+    for(let i = 0, length = dialogs.length; i < length; ++i) {
+      const dialog = dialogs[i];
+      if(dialog) {
+        // if(dialog.peerId !== SERVICE_PEER_ID) {
+          dialog.top_message = this.appMessagesIdsManager.getServerMessageId(dialog.top_message); // * fix outgoing message to avoid copying dialog
+        // }
+
+        if(dialog.topMessage) {
+          this.appMessagesManager.saveMessages([dialog.topMessage]);
+        }
+
+        for(let i = 0; i <= 10; ++i) {
+          // @ts-ignore
+          delete dialog[`index_${i}`];
+        }
+
+        this.saveDialog(dialog, undefined, true);
+
+        // ! WARNING, убрать это когда нужно будет делать чтобы pending сообщения сохранялись
+        const message = this.appMessagesManager.getMessageByPeer(dialog.peerId, dialog.top_message);
+        if(message.deleted) {
+          this.appMessagesManager.reloadConversation(dialog.peerId);
+        }
+      }
+    }
   }
 
   public isDialogsLoaded(folderId: number) {
