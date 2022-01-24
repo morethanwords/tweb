@@ -182,15 +182,17 @@ export class AppStickersManager {
           flags: 0,
           id: sound.id,
           access_hash: sound.access_hash,
-          attributes: [/* {
+          attributes: [{
             _: 'documentAttributeAudio',
             duration: 1,
-            pFlags: {}
-          } */],
+            pFlags: {
+              voice: true
+            }
+          }],
           date: 0,
           dc_id: rootScope.config.this_dc,
           file_reference: bytes,
-          mime_type: 'audio/mp3',
+          mime_type: 'audio/ogg',
           size: 1
           // size: 101010 // test loading everytime
         }, {

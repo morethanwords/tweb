@@ -1341,12 +1341,15 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
           appStickersManager.preloadAnimatedEmojiStickerAnimation(emoji);
 
           attachClickEvent(div, async(e) => {
+            cancelEvent(e);
             const animation = LottieLoader.getAnimation(div);
   
             if(animation.paused) {
               const doc = appStickersManager.getAnimatedEmojiSoundDocument(emoji);
               if(doc) {
                 const audio = document.createElement('audio');
+                audio.style.display = 'none';
+                div.parentElement.append(audio);
 
                 try {
                   await appDocsManager.downloadDoc(doc);
@@ -1355,9 +1358,10 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
                   audio.src = cacheContext.url;
                   audio.play();
                   await onMediaLoad(audio, undefined, true);
-
+                  
                   audio.addEventListener('ended', () => {
                     audio.src = '';
+                    audio.remove();
                   }, {once: true});
                 } catch(err) {
                   
@@ -1367,8 +1371,6 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
               animation.autoplay = true;
               animation.restart();
             }
-
-            cancelEvent(e);
 
             const doc = appStickersManager.getAnimatedEmojiSticker(emoji, true);
             if(!doc) {
