@@ -7,7 +7,7 @@
 import type { LocalStorageProxyTask, LocalStorageProxyTaskResponse } from '../localStorage';
 //import type { LocalStorageProxyDeleteTask, LocalStorageProxySetTask } from '../storage';
 import type { Awaited, InvokeApiOptions, WorkerTaskVoidTemplate } from '../../types';
-import type { Config, InputFile, MethodDeclMap, User } from '../../layer';
+import type { Config, InputFile, JSONValue, MethodDeclMap, User } from '../../layer';
 import MTProtoWorker from 'worker-loader!./mtproto.worker';
 //import './mtproto.worker';
 import { isObject } from '../../helpers/object';
@@ -32,6 +32,7 @@ import { CacheStorageDbName } from '../cacheStorage';
 import { pause } from '../../helpers/schedulers/pause';
 import IS_WEBP_SUPPORTED from '../../environment/webpSupport';
 import type { ApiError } from './apiManager';
+import { MTAppConfig } from './appConfig';
 
 type Task = {
   taskId: number,
@@ -105,6 +106,7 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
   private postMessagesWaiting: any[][] = [];
 
   private getConfigPromise: Promise<Config.config>;
+  private getAppConfigPromise: Promise<MTAppConfig>;
 
   constructor() {
     super();
@@ -690,6 +692,14 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
     if(this.getConfigPromise) return this.getConfigPromise;
     return this.getConfigPromise = this.invokeApi('help.getConfig').then(config => {
       rootScope.config = config;
+      return config;
+    });
+  }
+
+  public getAppConfig(overwrite?: boolean): Promise<MTAppConfig> {
+    if(this.getAppConfigPromise && !overwrite) return this.getAppConfigPromise;
+    return this.getAppConfigPromise = this.invokeApi('help.getAppConfig').then(config => {
+      rootScope.appConfig = config;
       return config;
     });
   }

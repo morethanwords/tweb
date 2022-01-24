@@ -6,6 +6,7 @@
 
 import { RefreshReferenceTask, RefreshReferenceTaskResponse } from "./apiFileManager";
 import appMessagesManager from "../appManagers/appMessagesManager";
+import appStickersManager from "../appManagers/appStickersManager";
 import { Photo } from "../../layer";
 import { bytesToHex } from "../../helpers/bytes";
 import { deepEqual } from "../../helpers/object";
@@ -14,7 +15,7 @@ import apiManager from "./mtprotoworker";
 import assumeType from "../../helpers/assumeType";
 import { logger } from "../logger";
 
-export type ReferenceContext = ReferenceContext.referenceContextProfilePhoto | ReferenceContext.referenceContextMessage;
+export type ReferenceContext = ReferenceContext.referenceContextProfilePhoto | ReferenceContext.referenceContextMessage | ReferenceContext.referenceContextEmojiesSounds;
 export namespace ReferenceContext {
   export type referenceContextProfilePhoto = {
     type: 'profilePhoto',
@@ -25,6 +26,10 @@ export namespace ReferenceContext {
     type: 'message',
     peerId: PeerId,
     messageId: number
+  };
+
+  export type referenceContextEmojiesSounds = {
+    type: 'emojiesSounds'
   };
 }
 
@@ -38,6 +43,7 @@ class ReferenceDatabase {
   //private references: Map<ReferenceBytes, number[]> = new Map();
   private links: {[hex: string]: ReferenceBytes} = {};
   private log = logger('RD', undefined, true);
+  private refreshEmojiesSoundsPromise: Promise<any>;
 
   constructor() {
     apiManager.addTaskListener('refreshReference', (task: RefreshReferenceTask) => {
@@ -123,6 +129,13 @@ class ReferenceDatabase {
         // .then(() => {
         //   console.log('FILE_REFERENCE_EXPIRED: got message', context, appMessagesManager.getMessage((context as ReferenceContext.referenceContextMessage).messageId).media, reference);
         // });
+      }
+
+      case 'emojiesSounds': {
+        promise = this.refreshEmojiesSoundsPromise || appStickersManager.getAnimatedEmojiSounds(true).then(() => {
+          this.refreshEmojiesSoundsPromise = undefined;
+        });
+        break;
       }
 
       default: {

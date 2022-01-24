@@ -19,6 +19,7 @@ import mediaSizes from '../../helpers/mediaSizes';
 import { getEmojiToneIndex } from '../../vendor/emoji';
 import RichTextProcessor from '../richtextprocessor';
 import assumeType from '../../helpers/assumeType';
+import fixBase64String from '../../helpers/fixBase64String';
 
 const CACHE_TIME = 3600e3;
 
@@ -28,6 +29,8 @@ const LOCAL_IDS_SET = new Set([
   EMOJI_SET_LOCAL_ID,
   EMOJI_ANIMATIONS_SET_LOCAL_ID
 ]);
+
+// let TEST_FILE_REFERENCE_REFRESH = true;
 
 export type MyStickerSetInput = {
   id: StickerSet.stickerSet['id'],
@@ -39,14 +42,21 @@ export type MyMessagesStickerSet = MessagesStickerSet.messagesStickerSet;
 export class AppStickersManager {
   private storage = new AppStorage<Record<Long, MyMessagesStickerSet>, typeof DATABASE_STATE>(DATABASE_STATE, 'stickerSets');
 
-  private getStickerSetPromises: {[setId: Long]: Promise<MyMessagesStickerSet>} = {};
-  private getStickersByEmoticonsPromises: {[emoticon: string]: Promise<Document[]>} = {};
+  private getStickerSetPromises: {[setId: Long]: Promise<MyMessagesStickerSet>};
+  private getStickersByEmoticonsPromises: {[emoticon: string]: Promise<Document[]>};
 
   private greetingStickers: Document.document[];
   private getGreetingStickersTimeout: number;
   private getGreetingStickersPromise: Promise<void>;
+
+  private sounds: Record<string, MyDocument>;
+  getAnimatedEmojiSoundsPromise: Promise<void>;
   
   constructor() {
+    this.getStickerSetPromises = {};
+    this.getStickersByEmoticonsPromises = {};    
+    this.sounds = {};
+
     this.getAnimatedEmojiStickerSet();
 
     rootScope.addMultipleEventsListeners({
@@ -143,9 +153,56 @@ export class AppStickersManager {
   public getAnimatedEmojiStickerSet() {
     return Promise.all([
       this.getStickerSet({id: EMOJI_SET_LOCAL_ID}, {saveById: true}),
-      this.getStickerSet({id: EMOJI_ANIMATIONS_SET_LOCAL_ID}, {saveById: true})
+      this.getStickerSet({id: EMOJI_ANIMATIONS_SET_LOCAL_ID}, {saveById: true}),
+      this.getAnimatedEmojiSounds()
     ]).then(([emoji, animations]) => {
       return {emoji, animations};
+    });
+  }
+
+  public getAnimatedEmojiSounds(overwrite?: boolean) {
+    if(this.getAnimatedEmojiSoundsPromise && !overwrite) return this.getAnimatedEmojiSoundsPromise;
+    return this.getAnimatedEmojiSoundsPromise = apiManager.getAppConfig(overwrite).then(appConfig => {
+      for(const emoji in appConfig.emojies_sounds) {
+        const sound = appConfig.emojies_sounds[emoji];
+        const bytesStr = atob(fixBase64String(sound.file_reference_base64, false));
+        const bytes = new Uint8Array(bytesStr.length);
+        for(let i = 0, length = bytes.length; i < length; ++i) {
+          bytes[i] = bytesStr[i].charCodeAt(0);
+        }
+
+        // if(TEST_FILE_REFERENCE_REFRESH) {
+        //   bytes[0] = bytes[1] = bytes[2] = bytes[3] = bytes[4] = 0;
+        //   sound.access_hash += '999';
+        // }
+        
+        const doc = appDocsManager.saveDoc({
+          _: 'document',
+          pFlags: {},
+          flags: 0,
+          id: sound.id,
+          access_hash: sound.access_hash,
+          attributes: [/* {
+            _: 'documentAttributeAudio',
+            duration: 1,
+            pFlags: {}
+          } */],
+          date: 0,
+          dc_id: rootScope.config.this_dc,
+          file_reference: bytes,
+          mime_type: 'audio/mp3',
+          size: 1
+          // size: 101010 // test loading everytime
+        }, {
+          type: 'emojiesSounds'
+        });
+
+        this.sounds[emoji] = doc;
+      }
+
+      // if(TEST_FILE_REFERENCE_REFRESH) {
+      //   TEST_FILE_REFERENCE_REFRESH = false;
+      // }
     });
   }
 
@@ -164,17 +221,25 @@ export class AppStickersManager {
     return res;
   }
 
+  private cleanEmoji(emoji: string) {
+    return emoji.replace(/\ufe0f/g, '').replace(/🏻|🏼|🏽|🏾|🏿/g, '');
+  }
+
   public getAnimatedEmojiSticker(emoji: string, isAnimation?: boolean) {
     const stickerSet = this.storage.getFromCache(isAnimation ? EMOJI_ANIMATIONS_SET_LOCAL_ID : EMOJI_SET_LOCAL_ID);
     if(!stickerSet || !stickerSet.documents) return undefined;
 
-    emoji = emoji.replace(/\ufe0f/g, '').replace(/🏻|🏼|🏽|🏾|🏿/g, '');
+    emoji = this.cleanEmoji(emoji);
     const pack = stickerSet.packs.find(p => p.emoticon === emoji);
     return pack ? appDocsManager.getDoc(pack.documents[0]) : undefined;
   }
 
+  public getAnimatedEmojiSoundDocument(emoji: string) {
+    return this.sounds[this.cleanEmoji(emoji)];
+  }
+
   public preloadAnimatedEmojiSticker(emoji: string, width?: number, height?: number) {
-    return this.getAnimatedEmojiStickerSet().then(() => {
+    const preloadEmojiPromise = this.getAnimatedEmojiStickerSet().then(() => {
       const doc = this.getAnimatedEmojiSticker(emoji);
       if(doc) {
         return appDocsManager.downloadDoc(doc)
@@ -197,6 +262,24 @@ export class AppStickersManager {
             animation.remove();
           }, {once: true});
         });
+      }
+    });
+    
+    return Promise.all([
+      preloadEmojiPromise,
+      this.preloadAnimatedEmojiStickerAnimation(emoji)
+    ]);
+  }
+
+  public preloadAnimatedEmojiStickerAnimation(emoji: string) {
+    return this.getAnimatedEmojiStickerSet().then(() => {
+      const doc = this.getAnimatedEmojiSticker(emoji, true);
+      if(doc) {
+        const soundDoc = this.getAnimatedEmojiSoundDocument(emoji);
+        return Promise.all([
+          appDocsManager.downloadDoc(doc),
+          soundDoc ? appDocsManager.downloadDoc(soundDoc) : undefined
+        ]);
       }
     });
   }
