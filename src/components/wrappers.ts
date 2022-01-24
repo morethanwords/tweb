@@ -1353,13 +1353,12 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
 
                   const cacheContext = appDownloadManager.getCacheContext(doc);
                   audio.src = cacheContext.url;
-                  await onMediaLoad(audio);
+                  audio.play();
+                  await onMediaLoad(audio, undefined, true);
 
                   audio.addEventListener('ended', () => {
                     audio.src = '';
                   }, {once: true});
-
-                  audio.play();
                 } catch(err) {
                   
                 }
