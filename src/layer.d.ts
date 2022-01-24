@@ -13015,7 +13015,7 @@ export interface MethodDeclMap {
 	'help.getTermsOfServiceUpdate': {req: HelpGetTermsOfServiceUpdate, res: HelpTermsOfServiceUpdate},
 	'help.acceptTermsOfService': {req: HelpAcceptTermsOfService, res: boolean},
 	'help.getDeepLinkInfo': {req: HelpGetDeepLinkInfo, res: HelpDeepLinkInfo},
-	'help.getAppConfig': {req: HelpGetAppConfig, res: JSONValue},
+	'help.getAppConfig': {req: HelpGetAppConfig, res: any},
 	'help.saveAppLog': {req: HelpSaveAppLog, res: boolean},
 	'help.getPassportConfig': {req: HelpGetPassportConfig, res: HelpPassportConfig},
 	'help.getSupportName': {req: HelpGetSupportName, res: HelpSupportName},
