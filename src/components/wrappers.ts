@@ -1399,6 +1399,10 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
             const randomOffsetY = generateRandomSigned(4);
             const stableOffsetX = size / 8 * (isOut ? 1 : -1);
             const setPosition = () => {
+              if(!isInDOM(div)) {
+                return;
+              }
+              
               const rect = div.getBoundingClientRect();
               /* const boxWidth = Math.max(rect.width, rect.height);
               const boxHeight = Math.max(rect.width, rect.height);
