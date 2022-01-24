@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type { Message, StickerSet, Update, NotifyPeer, PeerNotifySettings, ConstructorDeclMap, Config, PollResults, Poll, WebPage, GroupCall, GroupCallParticipant, PhoneCall } from "../layer";
+import type { Message, StickerSet, Update, NotifyPeer, PeerNotifySettings, ConstructorDeclMap, Config, PollResults, Poll, WebPage, GroupCall, GroupCallParticipant, PhoneCall, MethodDeclMap } from "../layer";
 import type { MyDocument } from "./appManagers/appDocsManager";
 import type { AppMessagesManager, Dialog, MessagesStorage, MyMessage } from "./appManagers/appMessagesManager";
 import type { MyDialogFilter } from "./storages/filters";
@@ -23,6 +23,7 @@ import type Chat from "../components/chat/chat";
 import { NULL_PEER_ID, UserAuth } from "./mtproto/mtproto_config";
 import EventListenerBase from "../helpers/eventListenerBase";
 import { MOUNT_CLASS_TO } from "../config/debug";
+import { MTAppConfig } from "./mtproto/appConfig";
 
 export type BroadcastEvents = {
   'chat_full_update': ChatId,
@@ -183,6 +184,7 @@ export class RootScope extends EventListenerBase<{
     message_length_max: 4096,
     caption_length_max: 1024,
   };
+  public appConfig: MTAppConfig;
 
   public themeColor: string;
   private _themeColorElem: Element;

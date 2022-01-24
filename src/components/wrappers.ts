@@ -1338,14 +1338,38 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
 
           let sendInteractionThrottled: () => void;
 
-          attachClickEvent(div, (e) => {
-            cancelEvent(e);
-            let animation = LottieLoader.getAnimation(div);
+          appStickersManager.preloadAnimatedEmojiStickerAnimation(emoji);
+
+          attachClickEvent(div, async(e) => {
+            const animation = LottieLoader.getAnimation(div);
   
             if(animation.paused) {
+              const doc = appStickersManager.getAnimatedEmojiSoundDocument(emoji);
+              if(doc) {
+                const audio = document.createElement('audio');
+
+                try {
+                  await appDocsManager.downloadDoc(doc);
+
+                  const cacheContext = appDownloadManager.getCacheContext(doc);
+                  audio.src = cacheContext.url;
+                  await onMediaLoad(audio);
+
+                  audio.addEventListener('ended', () => {
+                    audio.src = '';
+                  }, {once: true});
+
+                  audio.play();
+                } catch(err) {
+                  
+                }
+              }
+
               animation.autoplay = true;
               animation.restart();
             }
+
+            cancelEvent(e);
 
             const doc = appStickersManager.getAnimatedEmojiSticker(emoji, true);
             if(!doc) {
@@ -1375,7 +1399,7 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
               animation.addEventListener('enterFrame', (frameNo) => {
                 if(frameNo === animation.maxFrame) {
                   animation.remove();
-                  // animationDiv.remove();
+                  animationDiv.remove();
                   appImManager.chat.bubbles.scrollable.container.removeEventListener('scroll', onScroll);
                 }
               });

@@ -19,6 +19,7 @@ import rootScope from '../lib/rootScope';
 import { putPreloader } from '../components/misc';
 import getLanguageChangeButton from '../components/languageChangeButton';
 import { pause } from '../helpers/schedulers/pause';
+import fixBase64String from '../helpers/fixBase64String';
 
 const FETCH_INTERVAL = 3;
 
@@ -105,7 +106,7 @@ let onFirstMount = async() => {
         prevToken = loginToken.token;
 
         let encoded = bytesToBase64(loginToken.token);
-        let url = "tg://login?token=" + encoded.replace(/\+/g, "-").replace(/\//g, "_").replace(/\=+$/, "");
+        let url = "tg://login?token=" + fixBase64String(encoded, true);
 
         const style = window.getComputedStyle(document.documentElement);
         const surfaceColor = style.getPropertyValue('--surface-color').trim();
