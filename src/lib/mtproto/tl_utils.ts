@@ -9,16 +9,28 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import { bytesToHex } from '../../helpers/bytes';
-import { isObject, longFromInts } from './bin_utils';
+import { bytesFromHex, bytesToHex } from '../../helpers/bytes';
+import { addPadding, isObject, longFromInts } from './bin_utils';
 import { MOUNT_CLASS_TO } from '../../config/debug';
-import { str2bigInt, dup, divide_, bigInt2str } from '../../vendor/leemon';
+import { str2bigInt, bigInt2str, int2bigInt, sub_ } from '../../vendor/leemon';
 import Schema, { MTProtoConstructor } from './schema';
+import { JSONValue } from '../../layer';
 
 /// #if MTPROTO_WORKER
 // @ts-ignore
 import { gzipUncompress } from '../crypto/crypto_utils';
 /// #endif
+
+// @ts-ignore
+/* import {BigInteger} from 'jsbn';
+
+export function bigint(num: number) {
+  return new BigInteger(num.toString(16), 16);
+}
+
+function bigStringInt(strNum: string) {
+  return new BigInteger(strNum, 10)
+} */
 
 const boolFalse = +Schema.API.constructors.find(c => c.predicate === 'boolFalse').id;
 const boolTrue = +Schema.API.constructors.find(c => c.predicate === 'boolTrue').id;
@@ -155,28 +167,33 @@ class TLSerialization {
       sLong = sLong ? sLong.toString() : '0';
     }
 
-    const R = 0x100000000;
-    //const divRem = bigStringInt(sLong).divideAndRemainder(bigint(R));
+    /* let perf = performance.now();
+    const jsbnBytes: Uint8Array = new Uint8Array(8);
+    const jsbnBigInt = bigStringInt(sLong);
+    for(let i = 0; i < 8; i++) {
+      jsbnBytes[i] = +jsbnBigInt.shiftRight(8 * i).and(bigint(255)).toString(10);
+    }
+    console.log('perf1', performance.now() - perf); */
 
-    const a = str2bigInt(sLong, 10, 64);
-    const q = dup(a);
-    const r = dup(a);
-    divide_(a, str2bigInt((R).toString(16), 16, 64), q, r);
-    //divInt_(a, R);
-
-    const high = +bigInt2str(q, 10);
-    let low = +bigInt2str(r, 10);
-
-    if(high < low) {
-      low -= R; 
+    // perf = performance.now();
+    let bigInt: number[];
+    if(sLong[0] === '-') { // leemon library can't parse signed numbers
+      bigInt = int2bigInt(0, 64, 8);
+      sub_(bigInt, str2bigInt(sLong.slice(1), 10, 64));
+    } else {
+      bigInt = str2bigInt(sLong, 10, 64);
     }
 
-    //console.log('storeLong', sLong, divRem[0].intValue(), divRem[1].intValue(), high, low);
-  
-    //this.writeInt(divRem[1].intValue(), (field || '') + ':long[low]');
-    //this.writeInt(divRem[0].intValue(), (field || '') + ':long[high]');
-    this.writeInt(low, (field || '') + ':long[low]');
-    this.writeInt(high, (field || '') + ':long[high]');
+    const hex = bigInt2str(bigInt, 16).slice(-16);
+    const bytes = addPadding(bytesFromHex(hex).reverse(), 8, true, true, false);
+
+    // console.log('perf2', performance.now() - perf);
+
+    this.storeRawBytes(bytes);
+
+    // if(jsbnBytes.hex !== bytes.hex) {
+    //   console.error(bigInt, sLong, bigInt2str(bigInt, 10), negative(bigInt), jsbnBytes.hex, bigInt2str(bigInt, 16), bytes.hex);
+    // }
   }
   
   public storeDouble(f: any, field?: string) {
@@ -806,8 +823,31 @@ class TLDeserialization<FetchLongAs extends Long> {
     if(fallback) {
       this.mtproto = true;
     }
+
+    if(type === 'JSONValue') {
+      return this.formatJSONValue(result);
+    }
   
     return result;
+  }
+
+  private formatJSONValue(jsonValue: JSONValue): any {
+    if(!jsonValue._) return jsonValue;
+    switch(jsonValue._) {
+      case 'jsonNull':
+        return null;
+      case 'jsonObject': {
+        const out: any = {};
+        const objectValues = jsonValue.value;
+        for(let i = 0, length = objectValues.length; i < length; ++i) {
+          const objectValue = objectValues[i];
+          out[objectValue.key] = this.formatJSONValue(objectValue.value);
+        }
+        return out;
+      }
+      default:
+        return jsonValue.value;
+    }
   }
   
   public getOffset() {

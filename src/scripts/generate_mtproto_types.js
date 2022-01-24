@@ -251,7 +251,10 @@ mtproto.methods.forEach((_method) => {
 
   const camelizedMethod = camelizeName(method, true, true);
 
-  methodsMap[method] = {req: camelizedMethod, res: processParamType(type, false/* , overrideMethodTypes */)};
+  methodsMap[method] = {
+    req: camelizedMethod, 
+    res: processParamType(type, false, {'JSONValue': 'any'}/* , overrideMethodTypes */)
+  };
 
   let str = `export type ${camelizedMethod} = {\n`;
 
