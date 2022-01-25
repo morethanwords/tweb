@@ -1424,7 +1424,7 @@ export default class ChatInput {
 
     executed.push(document.execCommand('styleWithCSS', false, 'true'));
     
-    if(type === 'monospace') {
+    if(type === 'monospace' || type === 'spoiler') {
       let haveThisType = false;
       //executed.push(document.execCommand('styleWithCSS', false, 'true'));
 

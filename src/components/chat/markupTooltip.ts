@@ -49,7 +49,7 @@ export default class MarkupTooltip {
     tools1.classList.add('markup-tooltip-tools');
     tools2.classList.add('markup-tooltip-tools');
 
-    const arr = ['bold', 'italic', 'underline', 'strikethrough', 'monospace', 'link'] as (keyof MarkupTooltip['buttons'])[];
+    const arr = ['bold', 'italic', 'underline', 'strikethrough', 'monospace', 'spoiler', 'link'] as (keyof MarkupTooltip['buttons'])[];
     arr.forEach(c => {
       const button = ButtonIcon(c, {noRipple: true});
       tools1.append(this.buttons[c] = button);
