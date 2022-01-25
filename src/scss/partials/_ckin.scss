@@ -85,7 +85,6 @@
       text-align: center;
       outline: 0;
       padding: 0;
-      cursor: pointer;
       position: absolute;
       opacity: 1;
       visibility: visible;
@@ -93,7 +92,7 @@
       left: 50%;
       transform: translate3d(-50%, -50%, 0) scale(1);
       font-size: 4rem;
-      touch-action: manipulation;
+      pointer-events: none;
       
       @include animation-level(2) {
         transition: visibility var(--layer-transition), opacity var(--layer-transition);
