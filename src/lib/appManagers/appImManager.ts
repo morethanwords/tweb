@@ -183,7 +183,7 @@ export class AppImManager {
 
     this.emojiAnimationContainer = document.createElement('div');
     this.emojiAnimationContainer.classList.add('emoji-animation-container');
-    document.body.append(this.emojiAnimationContainer);
+    this.appendEmojiAnimationContainer(mediaSizes.activeScreen);
 
     this.columnEl.append(this.chatsContainer);
     
@@ -213,11 +213,7 @@ export class AppImManager {
         appSidebarRight.toggleSidebar(false);
       }
 
-      if(from === ScreenSize.mobile) {
-        document.body.append(this.emojiAnimationContainer);
-      } else if(to === ScreenSize.mobile) {
-        this.columnEl.append(this.emojiAnimationContainer);
-      }
+      this.appendEmojiAnimationContainer(to);
     });
 
     rootScope.addEventListener('history_focus', (e) => {
@@ -552,6 +548,13 @@ export class AppImManager {
 
     this.onHashChange();
     this.attachKeydownListener();
+  }
+
+  private appendEmojiAnimationContainer(screen: ScreenSize) {
+    const appendTo = screen === ScreenSize.mobile ? this.columnEl : document.body;
+    if(this.emojiAnimationContainer.parentElement !== appendTo) {
+      appendTo.append(this.emojiAnimationContainer)
+    }
   }
 
   private attachKeydownListener() {
