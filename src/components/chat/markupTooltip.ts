@@ -17,6 +17,7 @@ import { attachClickEvent } from "../../helpers/dom/clickEvent";
 import getSelectedNodes from "../../helpers/dom/getSelectedNodes";
 import isSelectionEmpty from "../../helpers/dom/isSelectionEmpty";
 import { MarkdownType, markdownTags } from "../../helpers/dom/getRichElementValue";
+import getVisibleRect from "../../helpers/dom/getVisibleRect";
 //import { logger } from "../../lib/logger";
 
 export default class MarkupTooltip {
@@ -251,7 +252,9 @@ export default class MarkupTooltip {
 
     this.container.style.maxWidth = inputRect.width + 'px';
 
-    const selectionTop = selectionRect.top + (bodyRect.top * -1);
+    const visibleRect = getVisibleRect(undefined, this.appImManager.chat.input.messageInput, false, selectionRect);
+
+    const selectionTop = visibleRect.rect.top/* selectionRect.top */ + (bodyRect.top * -1);
     
     const currentTools = this.container.classList.contains('is-link') ? this.wrapper.lastElementChild : this.wrapper.firstElementChild;
 
@@ -333,12 +336,12 @@ export default class MarkupTooltip {
     //document.removeEventListener('mouseup', this.onMouseUp);
   }; */
 
-  private onMouseUpSingle = (e: Event) => {
+  private onMouseUpSingle = (e?: Event) => {
     //this.log('onMouseUpSingle');
     this.waitingForMouseUp = false;
 
     if(IS_TOUCH_SUPPORTED) {
-      cancelEvent(e);
+      e && cancelEvent(e);
       if(this.mouseUpCounter++ === 0) {
         this.resetSelection(this.savedRange);
       } else {
@@ -383,7 +386,8 @@ export default class MarkupTooltip {
         return;
       }
 
-      if(document.activeElement !== this.appImManager.chat.input.messageInput) {
+      const messageInput = this.appImManager.chat.input.messageInput;
+      if(document.activeElement !== messageInput) {
         this.hide();
         return;
       }
@@ -412,8 +416,12 @@ export default class MarkupTooltip {
             this.show();
           }, {once: true, passive: false}); */
         }
-      } else {
+      } else if(this.container && this.container.classList.contains('is-visible')) {
+        this.setTooltipPosition();
+      } else if(messageInput.matches(':active')) {
         this.setMouseUpEvent();
+      } else {
+        this.show();
       }
     });
   }

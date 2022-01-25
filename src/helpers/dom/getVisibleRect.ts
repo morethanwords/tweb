@@ -4,8 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-export default function getVisibleRect(element: HTMLElement, overflowElement: HTMLElement, lookForSticky?: boolean) {
-  const rect = element.getBoundingClientRect();
+export default function getVisibleRect(element: HTMLElement, overflowElement: HTMLElement, lookForSticky?: boolean, rect = element.getBoundingClientRect()) {
   const overflowRect = overflowElement.getBoundingClientRect();
 
   let {top: overflowTop, bottom: overflowBottom} = overflowRect;
