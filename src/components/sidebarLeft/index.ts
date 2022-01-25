@@ -319,7 +319,7 @@ export class AppSidebarLeft extends SidebarSlider {
 
       const CHECK_UPDATE_INTERVAL = 1800e3;
       const checkUpdateInterval = setInterval(() => {
-        fetch('version')
+        fetch('version', {cache: 'no-cache'})
         .then(res => (res.status === 200 && res.ok && res.text()) || Promise.reject())
         .then(text => {
           if(text !== App.versionFull) {
