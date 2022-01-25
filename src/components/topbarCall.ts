@@ -267,7 +267,7 @@ export default class TopbarCall {
     container.append(left, center, right);
 
     const weave = this.weave = new TopbarWeave();
-    const weaveContainer = weave.render();
+    const weaveContainer = weave.render(CLASS_NAME + '-weave');
     container.prepend(weaveContainer);
     
     document.getElementById('column-center').prepend(container);

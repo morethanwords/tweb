@@ -639,6 +639,7 @@ const lang = {
   "RequestToJoinSent": "Join request sent",
   "RequestToJoinGroupApproved": "Your request to join the group was approved",
   "RequestToJoinChannelApproved": "Your request to join the channel was approved",
+  "Update": "UPDATE",
 
   // * macos
   "AccountSettings.Filters": "Chat Folders",

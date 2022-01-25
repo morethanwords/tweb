@@ -489,3 +489,40 @@
     margin-left: var(--call-button-margin);
   }
 }
+
+// .btn-update {
+//   position: absolute;
+//   right: 0;
+//   bottom: 0;
+//   left: 0;
+//   height: 2.5rem;
+//   line-height: 2.5rem;
+//   text-align: center;
+//   color: #fff;
+
+//   &-weave {
+//     position: absolute;
+//     top: 0;
+//     right: 0;
+//     bottom: -2.5rem;
+//     left: 0;
+//     z-index: -1;
+//     transform: scale(1, -1);
+
+//     &-canvas {
+//       width: 100%;
+//       height: 100%;
+//     }
+//   }
+// }
+
+.btn-update {
+  width: auto;
+  padding: 0 2rem !important;
+  border-radius: var(--size);
+  font-size: 1rem;
+  font-weight: 500;
+  /* margin-right: calc(var(--size) + 0.5rem); */
+  /* left: var(--offset); */
+  right: auto;
+}

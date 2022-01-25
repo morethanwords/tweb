@@ -180,12 +180,12 @@ export default class TopbarWeave {
     this.invokeDraw();
   }
   
-  private handleFocus = () => {
+  public handleFocus = () => {
     this.focused = true;
     this.invokeDraw();
   }
   
-  private handleBlur = () => {
+  public handleBlur = () => {
     this.focused = false;
   }
   
@@ -327,8 +327,7 @@ export default class TopbarWeave {
     this.setCanvasSize();
   }
   
-  public render() {
-    const className = 'topbar-call-weave';
+  public render(className: string) {
     const container = this.container = document.createElement('div');
     container.classList.add(className);
 

@@ -25,7 +25,7 @@ import AppNewChannelTab from "./tabs/newChannel";
 import AppContactsTab from "./tabs/contacts";
 import AppArchivedTab from "./tabs/archivedTab";
 import AppAddMembersTab from "./tabs/addMembers";
-import { FormatterArguments, i18n_, LangPackKey } from "../../lib/langPack";
+import { FormatterArguments, i18n, i18n_, LangPackKey } from "../../lib/langPack";
 import AppPeopleNearbyTab from "./tabs/peopleNearby";
 import { ButtonMenuItemOptions } from "../buttonMenu";
 import CheckboxField from "../checkboxField";
@@ -38,7 +38,7 @@ import App from "../../config/app";
 import ButtonMenuToggle from "../buttonMenuToggle";
 import replaceContent from "../../helpers/dom/replaceContent";
 import sessionStorage from "../../lib/sessionStorage";
-import { CLICK_EVENT_NAME } from "../../helpers/dom/clickEvent";
+import { attachClickEvent, CLICK_EVENT_NAME } from "../../helpers/dom/clickEvent";
 import { closeBtnMenu } from "../misc";
 import { indexOfAndSplice } from "../../helpers/array";
 import ButtonIcon from "../buttonIcon";
@@ -46,6 +46,8 @@ import confirmationPopup from "../confirmationPopup";
 import IS_GEOLOCATION_SUPPORTED from "../../environment/geolocationSupport";
 import type SortedUserList from "../sortedUserList";
 import Button, { ButtonOptions } from "../button";
+import noop from "../../helpers/noop";
+import { ripple } from "../ripple";
 
 export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
 
@@ -63,6 +65,9 @@ export class AppSidebarLeft extends SidebarSlider {
 
   private searchGroups: {[k in 'contacts' | 'globalContacts' | 'messages' | 'people' | 'recent']: SearchGroup} = {} as any;
   private searchSuper: AppSearchSuper;
+
+  private updateBtn: HTMLElement;
+  private hasUpdate: boolean;
 
   constructor() {
     super({
@@ -264,6 +269,28 @@ export class AppSidebarLeft extends SidebarSlider {
     this.newBtnMenu.id = 'new-menu';
     sidebarHeader.nextElementSibling.append(this.newBtnMenu);
 
+    this.updateBtn = document.createElement('div');
+    // this.updateBtn.classList.add('btn-update');
+    this.updateBtn.className = 'btn-circle rp btn-corner z-depth-1 btn-update is-hidden';
+    ripple(this.updateBtn);
+    this.updateBtn.append(i18n('Update'));
+    // const weave = new TopbarWeave();
+    // const weaveContainer = weave.render('btn-update-weave');
+    // this.updateBtn.prepend(weaveContainer);
+
+    attachClickEvent(this.updateBtn, () => {
+      location.reload();
+    });
+    
+    sidebarHeader.nextElementSibling.append(this.updateBtn);
+
+    // setTimeout(() => {
+    //   weave.componentDidMount();
+    //   weave.setCurrentState(GROUP_CALL_STATE.MUTED, true);
+    //   weave.setAmplitude(0);
+    //   weave.handleBlur();
+    // }, 1e3);
+
     this.inputSearch.input.addEventListener('focus', () => this.initSearch(), {once: true});
 
     //parseMenuButtonsTo(this.newButtons, this.newBtnMenu.firstElementChild.children);
@@ -289,6 +316,23 @@ export class AppSidebarLeft extends SidebarSlider {
       for(let i = 0, length = recentSearch.length; i < length; ++i) {
         appStateManager.requestPeer(recentSearch[i], 'recentSearch');
       }
+
+      const CHECK_UPDATE_INTERVAL = 1800e3;
+      const checkUpdateInterval = setInterval(() => {
+        fetch('version')
+        .then(res => (res.status === 200 && res.ok && res.text()) || Promise.reject())
+        .then(text => {
+          if(text !== App.versionFull) {
+            this.hasUpdate = true;
+            clearInterval(checkUpdateInterval);
+
+            if(!this.newBtnMenu.classList.contains('is-hidden')) {
+              this.updateBtn.classList.remove('is-hidden');
+            }
+          }
+        })
+        .catch(noop);
+      }, CHECK_UPDATE_INTERVAL);
     });
   }
 
@@ -553,6 +597,7 @@ export class AppSidebarLeft extends SidebarSlider {
         hideNewBtnMenuTimeout = window.setTimeout(() => {
           hideNewBtnMenuTimeout = 0;
           this.newBtnMenu.classList.remove('is-hidden');
+          this.hasUpdate && this.updateBtn.classList.remove('is-hidden');
         }, 150);
       }
 
@@ -566,6 +611,7 @@ export class AppSidebarLeft extends SidebarSlider {
       this.toolsBtn.classList.remove(activeClassName);
       this.backBtn.classList.add(activeClassName);
       this.newBtnMenu.classList.add('is-hidden');
+      this.updateBtn.classList.add('is-hidden');
       this.toolsBtn.parentElement.firstElementChild.classList.toggle('state-back', true);
 
       if(!IS_MOBILE_SAFARI && !appNavigationController.findItemByType('global-search')) {
