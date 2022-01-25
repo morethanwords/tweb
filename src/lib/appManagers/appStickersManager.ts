@@ -50,7 +50,7 @@ export class AppStickersManager {
   private getGreetingStickersPromise: Promise<void>;
 
   private sounds: Record<string, MyDocument>;
-  getAnimatedEmojiSoundsPromise: Promise<void>;
+  private getAnimatedEmojiSoundsPromise: Promise<void>;
   
   constructor() {
     this.getStickerSetPromises = {};
@@ -230,6 +230,12 @@ export class AppStickersManager {
   public getAnimatedEmojiSticker(emoji: string, isAnimation?: boolean) {
     const stickerSet = this.storage.getFromCache(isAnimation ? EMOJI_ANIMATIONS_SET_LOCAL_ID : EMOJI_SET_LOCAL_ID);
     if(!stickerSet || !stickerSet.documents) return undefined;
+
+    if(isAnimation) {
+      if(['🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎'].includes(emoji)) {
+        emoji = '❤️';
+      }
+    }
 
     emoji = this.cleanEmoji(emoji);
     const pack = stickerSet.packs.find(p => p.emoticon === emoji);
