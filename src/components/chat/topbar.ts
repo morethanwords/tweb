@@ -49,6 +49,7 @@ import { NULL_PEER_ID } from "../../lib/mtproto/mtproto_config";
 import IS_GROUP_CALL_SUPPORTED from "../../environment/groupCallSupport";
 import IS_CALL_SUPPORTED from "../../environment/callSupport";
 import { CallType } from "../../lib/calls/types";
+import PopupMute from "../popups/mute";
 
 type ButtonToVerify = {element?: HTMLElement, verify: () => boolean};
 
@@ -319,15 +320,13 @@ export default class ChatTopbar {
     }, */{
       icon: 'mute',
       text: 'ChatList.Context.Mute',
-      onClick: () => {
-        this.appMessagesManager.mutePeer(this.peerId);
-      },
+      onClick: this.onMuteClick,
       verify: () => this.chat.type === 'chat' && rootScope.myId !== this.peerId && !this.appNotificationsManager.isPeerLocalMuted(this.peerId, false)
     }, {
       icon: 'unmute',
       text: 'ChatList.Context.Unmute',
       onClick: () => {
-        this.appMessagesManager.mutePeer(this.peerId);
+        this.appMessagesManager.togglePeerMute(this.peerId);
       },
       verify: () => this.chat.type === 'chat' && rootScope.myId !== this.peerId && this.appNotificationsManager.isPeerLocalMuted(this.peerId, false)
     }, {
@@ -544,9 +543,7 @@ export default class ChatTopbar {
       this.openPinned(true);
     });
 
-    this.attachClickEvent(this.btnMute, () => {
-      this.appMessagesManager.mutePeer(this.peerId);
-    });
+    this.attachClickEvent(this.btnMute, this.onMuteClick);
 
     this.attachClickEvent(this.btnJoin, () => {
       const middleware = this.chat.bubbles.getMiddleware();
@@ -648,6 +645,10 @@ export default class ChatTopbar {
       type: 'pinned'
     });
   }
+
+  private onMuteClick = () => {
+    new PopupMute(this.peerId);
+  };
 
   private onResize = () => {
     this.setUtilsWidth(true);

@@ -18,6 +18,7 @@ import PopupPeer from "./popups/peer";
 import AppChatFoldersTab from "./sidebarLeft/tabs/chatFolders";
 import appSidebarLeft from "./sidebarLeft";
 import { toastNew } from "./toast";
+import PopupMute from "./popups/mute";
 
 export default class DialogsContextMenu {
   private element: HTMLElement;
@@ -123,11 +124,11 @@ export default class DialogsContextMenu {
   };
 
   private onUnmuteClick = () => {
-    appMessagesManager.mutePeer(this.selectedId, false);
+    appMessagesManager.togglePeerMute(this.selectedId, false);
   };
   
   private onMuteClick = () => {
-    appMessagesManager.mutePeer(this.selectedId, true);
+    new PopupMute(this.selectedId);
   };
 
   private onUnreadClick = () => {

@@ -156,7 +156,7 @@ export default class PeerProfile {
       }
 
       //let checked = this.notificationsCheckbox.checked;
-      appMessagesManager.mutePeer(this.peerId);
+      appMessagesManager.togglePeerMute(this.peerId);
     });
 
     rootScope.addEventListener('dialog_notify_settings', (dialog) => {
