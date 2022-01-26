@@ -436,13 +436,13 @@ export class AppNotificationsManager {
       }
 
       const muteUntil = peerNotifySettings.mute_until;
-      if(muteUntil === undefined) {
+      if(!muteUntil) {
         continue;
       }
 
       if(muteUntil <= timestamp) {
         // ! do not delete it because peer's unique settings will be overwritten in getPeerLocalSettings with type's settings
-        // delete peerNotifySettings.mute_until;
+        peerNotifySettings.mute_until = 0;
 
         rootScope.dispatchEvent('updateNotifySettings', {
           _: 'updateNotifySettings',
