@@ -910,6 +910,18 @@ export class AppUsersManager {
     });
   } */
   public searchContacts(query: string, limit = 20) {
+    // handle 't.me/username' as 'username'
+    const entities = RichTextProcessor.parseEntities(query);
+    if(entities.length && entities[0].length === query.trim().length && entities[0]._ === 'messageEntityUrl') {
+      try {
+        const url = new URL(RichTextProcessor.wrapUrl(query).url);
+        const path = url.pathname.slice(1);
+        if(path) {
+          query = path;
+        }
+      } catch(err) {}
+    }
+
     return apiManager.invokeApiCacheable('contacts.search', {
       q: query,
       limit
