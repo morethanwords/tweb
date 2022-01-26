@@ -2196,7 +2196,7 @@ export default class ChatBubbles {
       // this.ladderDeferred.resolve();
 
       scrollable.lastScrollDirection = 0;
-      scrollable.lastScrollTop = 0;
+      scrollable.lastScrollPosition = 0;
       replaceContent(scrollable.container, chatInner);
 
       animationIntersector.unlockGroup(CHAT_ANIMATION_GROUP);
@@ -3633,7 +3633,7 @@ export default class ChatBubbles {
       //this.scrollable.scrollTop = this.scrollable.scrollHeight;
       //isTouchSupported && isApple && (this.scrollable.container.style.overflow = '');
 
-      this.scrollable.lastScrollTop = newScrollTop;
+      this.scrollable.lastScrollPosition = newScrollTop;
       this.scrollable.lastScrollDirection = 0;
 
       if(IS_SAFARI/*  && !isAppleMobile */) { // * fix blinking and jumping

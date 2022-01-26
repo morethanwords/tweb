@@ -8,7 +8,7 @@ import rootScope from "../lib/rootScope";
 import { IS_SAFARI } from "../environment/userAgent";
 import { MOUNT_CLASS_TO } from "../config/debug";
 import isInDOM from "../helpers/dom/isInDOM";
-import { indexOfAndSplice } from "../helpers/array";
+import { forEachReverse, indexOfAndSplice } from "../helpers/array";
 import RLottiePlayer from "../lib/rlottie/rlottiePlayer";
 
 export interface AnimationItem {
@@ -18,9 +18,10 @@ export interface AnimationItem {
 };
 
 export class AnimationIntersector {
-  public observer: IntersectionObserver;
+  private observer: IntersectionObserver;
   private visible: Set<AnimationItem> = new Set();
 
+  private overrideIdleGroups: Set<string>;
   private byGroups: {[group: string]: AnimationItem[]} = {};
   private lockedGroups: {[group: string]: true} = {};
   private onlyOnePlayableGroup: string = '';
@@ -30,7 +31,7 @@ export class AnimationIntersector {
 
   constructor() {
     this.observer = new IntersectionObserver((entries) => {
-      if(rootScope.idle.isIDLE) return;
+      // if(rootScope.idle.isIDLE) return;
 
       for(const entry of entries) {
         const target = entry.target;
@@ -61,6 +62,8 @@ export class AnimationIntersector {
       }
     });
 
+    this.overrideIdleGroups = new Set();
+
     rootScope.addEventListener('media_play', ({doc}) => {
       if(doc.type === 'round') {
         this.videosLocked = true;
@@ -74,6 +77,11 @@ export class AnimationIntersector {
         this.checkAnimations();
       }
     });
+  }
+
+  public setOverrideIdleGroup(group: string, override: boolean) {
+    if(override) this.overrideIdleGroups.add(group);
+    else this.overrideIdleGroups.delete(group);
   }
 
   public getAnimations(element: HTMLElement) {
@@ -101,8 +109,12 @@ export class AnimationIntersector {
       }, 1e3);
     }
 
-    for(const group in this.byGroups) {
-      indexOfAndSplice(this.byGroups[group], player);
+    const group = this.byGroups[player.group];
+    if(group) {
+      indexOfAndSplice(group, player);
+      if(!group.length) {
+        delete this.byGroups[player.group];
+      }
     }
   
     this.observer.unobserve(el);
@@ -127,20 +139,19 @@ export class AnimationIntersector {
   }
 
   public checkAnimations(blurred?: boolean, group?: string, destroy = false) {
-    if(rootScope.idle.isIDLE) return;
-    
-    const groups = group /* && false */ ? [group] : Object.keys(this.byGroups);
+    // if(rootScope.idle.isIDLE) return;
 
-    if(group && !this.byGroups[group]) {
+    if(group !== undefined && !this.byGroups[group]) {
       //console.warn('no animation group:', group);
-      this.byGroups[group] = [];
       return;
     }
+    
+    const groups = group !== undefined /* && false */ ? [group] : Object.keys(this.byGroups);
 
     for(const group of groups) {
       const animations = this.byGroups[group];
 
-      animations.forEach(player => {
+      forEachReverse(animations, (player) => {
         this.checkAnimation(player, blurred, destroy);
       });
     }
@@ -162,7 +173,8 @@ export class AnimationIntersector {
     } else if(animation.paused && 
       this.visible.has(player) && 
       animation.autoplay && 
-      (!this.onlyOnePlayableGroup || this.onlyOnePlayableGroup === group)
+      (!this.onlyOnePlayableGroup || this.onlyOnePlayableGroup === group) &&
+      (!rootScope.idle.isIDLE || this.overrideIdleGroups.has(player.group))
     ) {
       //console.warn('play animation:', animation);
       animation.play();

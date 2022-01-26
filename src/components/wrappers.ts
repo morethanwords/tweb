@@ -1118,7 +1118,7 @@ export function renderImageWithFadeIn(container: HTMLElement,
 //   });
 // }
 
-export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, onlyThumb, emoji, width, height, withThumb, loop, loadPromises, needFadeIn, needUpscale}: {
+export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, onlyThumb, emoji, width, height, withThumb, loop, loadPromises, needFadeIn, needUpscale, skipRatio}: {
   doc: MyDocument, 
   div: HTMLElement, 
   middleware?: () => boolean, 
@@ -1133,7 +1133,8 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
   loop?: boolean,
   loadPromises?: Promise<any>[],
   needFadeIn?: boolean,
-  needUpscale?: boolean
+  needUpscale?: boolean,
+  skipRatio?: number
 }): Promise<RLottiePlayer | void> {
   const stickerType = doc.sticker;
 
@@ -1280,7 +1281,9 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
       .then(async(json) => {
         //console.timeEnd('download sticker' + doc.id);
         //console.log('loaded sticker:', doc, div/* , blob */);
-        if(middleware && !middleware()) return;
+        if(middleware && !middleware()) {
+          throw new Error('wrapSticker 2 middleware');
+        }
 
         let animation = await LottieLoader.loadAnimationWorker({
           container: div,
@@ -1290,14 +1293,17 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
           width,
           height,
           name: 'doc' + doc.id,
-          needUpscale
-        }, group, toneIndex);
+          needUpscale,
+          skipRatio
+        }, group, toneIndex, middleware);
 
         //const deferred = deferredPromise<void>();
   
         animation.addEventListener('firstFrame', () => {
           const element = div.firstElementChild;
-          needFadeIn = (needFadeIn || !element || element.tagName === 'svg') && rootScope.settings.animationsEnabled;
+          if(needFadeIn !== false) {
+            needFadeIn = (needFadeIn || !element || element.tagName === 'svg') && rootScope.settings.animationsEnabled;
+          }
 
           const cb = () => {
             if(element && element !== animation.canvas) {
@@ -1325,7 +1331,9 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
             });
           }
 
-          appDocsManager.saveLottiePreview(doc, animation.canvas, toneIndex);
+          if(withThumb !== false) {
+            appDocsManager.saveLottiePreview(doc, animation.canvas, toneIndex);
+          }
 
           //deferred.resolve();
         }, {once: true});
@@ -1511,7 +1519,9 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
     } else if(stickerType === 1) {
       const image = new Image();
       const thumbImage = div.firstElementChild !== image && div.firstElementChild;
-      needFadeIn = (needFadeIn || !downloaded || thumbImage) && rootScope.settings.animationsEnabled;
+      if(needFadeIn !== false) {
+        needFadeIn = (needFadeIn || !downloaded || thumbImage) && rootScope.settings.animationsEnabled;
+      }
 
       image.classList.add('media-sticker');
 

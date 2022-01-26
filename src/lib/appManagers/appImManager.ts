@@ -83,6 +83,7 @@ import { Modify, SendMessageEmojiInteractionData } from '../../types';
 import htmlToSpan from '../../helpers/dom/htmlToSpan';
 import getVisibleRect from '../../helpers/dom/getVisibleRect';
 import { simulateClickEvent } from '../../helpers/dom/clickEvent';
+import appReactionsManager from './appReactionsManager';
 
 //console.log('appImManager included33!');
 
@@ -1427,7 +1428,8 @@ export class AppImManager {
       appNotificationsManager, 
       appEmojiManager,
       appMessagesIdsManager,
-      appGroupCallsManager
+      appGroupCallsManager,
+      appReactionsManager
     );
 
     if(this.chats.length) {

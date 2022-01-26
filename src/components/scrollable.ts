@@ -55,11 +55,24 @@ const scrollsIntersector = new IntersectionObserver(entries => {
 export class ScrollableBase {
   protected log: ReturnType<typeof logger>;
 
+  public splitUp: HTMLElement;
   public onScrollMeasure: number = 0;
-  protected onScroll: () => void;
+
+  public lastScrollPosition: number = 0;
+  public lastScrollDirection: number = 0;
+
+  public onAdditionalScroll: () => void;
+  public onScrolledTop: () => void;
+  public onScrolledBottom: () => void;
 
   public isHeavyAnimationInProgress = false;
   protected needCheckAfterAnimation = false;
+
+  public checkForTriggers?: () => void;
+
+  public scrollProperty: 'scrollTop' | 'scrollLeft';
+  
+  private removeHeavyAnimationListener: () => void;
 
   constructor(public el: HTMLElement, logPrefix = '', public container: HTMLElement = document.createElement('div')) {
     this.container.classList.add('scrollable');
@@ -74,11 +87,15 @@ export class ScrollableBase {
     //this.onScroll();
   }
 
-  protected setListeners() {
+  public setListeners() {
+    if(this.removeHeavyAnimationListener) {
+      return;
+    }
+
     window.addEventListener('resize', this.onScroll, {passive: true});
     this.container.addEventListener('scroll', this.onScroll, {passive: true, capture: true});
 
-    useHeavyAnimationCheck(() => {
+    this.removeHeavyAnimationListener = useHeavyAnimationCheck(() => {
       this.isHeavyAnimationInProgress = true;
 
       if(this.onScrollMeasure) {
@@ -95,6 +112,17 @@ export class ScrollableBase {
     });
   }
 
+  public removeListeners() {
+    if(!this.removeHeavyAnimationListener) {
+      return;
+    }
+
+    window.removeEventListener('resize', this.onScroll);
+    this.container.removeEventListener('scroll', this.onScroll, {capture: true});
+
+    this.removeHeavyAnimationListener();
+  }
+
   public append(element: HTMLElement) {
     this.container.append(element);
   }
@@ -105,42 +133,6 @@ export class ScrollableBase {
       ...options,
       container: this.container
     });
-  }
-}
-
-export type SliceSides = 'top' | 'bottom';
-export type SliceSidesContainer = {[k in SliceSides]: boolean};
-
-export default class Scrollable extends ScrollableBase {
-  public splitUp: HTMLElement;
-  public padding: HTMLElement;
-  
-  public onAdditionalScroll: () => void;
-  public onScrolledTop: () => void;
-  public onScrolledBottom: () => void;
-  
-  public lastScrollTop: number = 0;
-  public lastScrollDirection: number = 0;
-
-  public loadedAll: SliceSidesContainer = {top: true, bottom: false};
-
-  constructor(el: HTMLElement, logPrefix = '', public onScrollOffset = 300, withPaddingContainer?: boolean) {
-    super(el, logPrefix);
-
-    /* if(withPaddingContainer) {
-      this.padding = document.createElement('div');
-      this.padding.classList.add('scrollable-padding');
-      Array.from(this.container.children).forEach(c => this.padding.append(c));
-      this.container.append(this.padding);
-    } */
-
-    this.container.classList.add('scrollable-y');
-    this.setListeners();
-  }
-
-  public setVirtualContainer(el?: HTMLElement) {
-    this.splitUp = el;
-    this.log('setVirtualContainer:', el, this);
   }
 
   public onScroll = () => {
@@ -165,9 +157,9 @@ export default class Scrollable extends ScrollableBase {
     this.onScrollMeasure = window.requestAnimationFrame(() => {
       this.onScrollMeasure = 0;
 
-      const scrollTop = this.container.scrollTop;
-      this.lastScrollDirection = this.lastScrollTop === scrollTop ? 0 : (this.lastScrollTop < scrollTop ? 1 : -1); // * 1 - bottom, -1 - top
-      this.lastScrollTop = scrollTop;
+      const scrollPosition = this.container[this.scrollProperty];
+      this.lastScrollDirection = this.lastScrollPosition === scrollPosition ? 0 : (this.lastScrollPosition < scrollPosition ? 1 : -1); // * 1 - bottom, -1 - top
+      this.lastScrollPosition = scrollPosition;
 
       if(this.onAdditionalScroll && this.lastScrollDirection !== 0) {
         this.onAdditionalScroll();
@@ -178,6 +170,35 @@ export default class Scrollable extends ScrollableBase {
       }
     });
   };
+}
+
+export type SliceSides = 'top' | 'bottom';
+export type SliceSidesContainer = {[k in SliceSides]: boolean};
+
+export default class Scrollable extends ScrollableBase {
+  public padding: HTMLElement;
+  
+  public loadedAll: SliceSidesContainer = {top: true, bottom: false};
+
+  constructor(el: HTMLElement, logPrefix = '', public onScrollOffset = 300, withPaddingContainer?: boolean) {
+    super(el, logPrefix);
+
+    /* if(withPaddingContainer) {
+      this.padding = document.createElement('div');
+      this.padding.classList.add('scrollable-padding');
+      Array.from(this.container.children).forEach(c => this.padding.append(c));
+      this.container.append(this.padding);
+    } */
+
+    this.container.classList.add('scrollable-y');
+    this.setListeners();
+    this.scrollProperty = 'scrollTop';
+  }
+
+  public setVirtualContainer(el?: HTMLElement) {
+    this.splitUp = el;
+    this.log('setVirtualContainer:', el, this);
+  }
 
   public checkForTriggers = () => {
     if((!this.onScrolledTop && !this.onScrolledBottom)) return;
@@ -194,7 +215,7 @@ export default class Scrollable extends ScrollableBase {
 
     const clientHeight = this.container.clientHeight;
     const maxScrollTop = scrollHeight - clientHeight;
-    const scrollTop = this.lastScrollTop;
+    const scrollTop = this.lastScrollPosition;
 
     //this.log('checkForTriggers:', scrollTop, maxScrollTop);
 
@@ -253,5 +274,7 @@ export class ScrollableX extends ScrollableBase {
       
       this.container.addEventListener('wheel', scrollHorizontally, {passive: false});
     }
+
+    this.scrollProperty = 'scrollLeft';
   }
 }

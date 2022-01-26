@@ -342,6 +342,7 @@ export default class RLottiePlayer extends EventListenerBase<{
     this.pause();
     this.sendQuery('destroy');
     if(this.cacheName) cache.releaseCache(this.cacheName);
+    this.cleanup();
     //this.removed = true;
   }
 

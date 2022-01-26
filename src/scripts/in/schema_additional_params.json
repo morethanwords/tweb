@@ -346,4 +346,15 @@
     {"name": "action", "type": "MessageAction.messageActionPhoneCall"}
   ],
   "type": "MessageMedia"
+}, {
+  "predicate": "availableReaction",
+  "properties": [
+    {"name": "static_icon", "type": "Document.document"},
+    {"name": "appear_animation", "type": "Document.document"},
+    {"name": "select_animation", "type": "Document.document"},
+    {"name": "activate_animation", "type": "Document.document"},
+    {"name": "effect_animation", "type": "Document.document"},
+    {"name": "around_animation", "type": "Document.document"},
+    {"name": "center_icon", "type": "Document.document"}
+  ]
 }]
