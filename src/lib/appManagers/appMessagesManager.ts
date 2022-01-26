@@ -5127,21 +5127,25 @@ export class AppMessagesManager {
     return pendingMessage;
   }
 
-  public mutePeer(peerId: PeerId, mute?: boolean) {
+  public mutePeer(peerId: PeerId, muteUntil: number) {
     const settings: InputPeerNotifySettings = {
       _: 'inputPeerNotifySettings'
     };
 
-    if(mute === undefined) {
-      mute = !appNotificationsManager.isPeerLocalMuted(peerId, false);
-    }
-    
-    settings.mute_until = mute ? MUTE_UNTIL : 0;
+    settings.mute_until = muteUntil;
 
     return appNotificationsManager.updateNotifySettings({
       _: 'inputNotifyPeer',
       peer: appPeersManager.getInputPeerById(peerId)
     }, settings);
+  }
+
+  public togglePeerMute(peerId: PeerId, mute?: boolean) {
+    if(mute === undefined) {
+      mute = !appNotificationsManager.isPeerLocalMuted(peerId, false);
+    }
+
+    return this.mutePeer(peerId, mute ? MUTE_UNTIL : 0);
   }
 
   public canSendToPeer(peerId: PeerId, threadId?: number, action: ChatRights = 'send_messages') {

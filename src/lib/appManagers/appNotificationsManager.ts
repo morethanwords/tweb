@@ -29,6 +29,8 @@ import appRuntimeManager from "./appRuntimeManager";
 import appStateManager from "./appStateManager";
 import appUsersManager from "./appUsersManager";
 import IS_VIBRATE_SUPPORTED from "../../environment/vibrateSupport";
+import { MUTE_UNTIL } from "../mtproto/mtproto_config";
+import throttle from "../../helpers/schedulers/throttle";
 
 type MyNotification = Notification & {
   hidden?: boolean,
@@ -91,6 +93,9 @@ export class AppNotificationsManager {
 
   private getNotifyPeerTypePromise: Promise<any>;
 
+  private checkMuteUntilTimeout: number;
+  private checkMuteUntilThrottled: () => void;
+
   constructor() {
     // @ts-ignore
     navigator.vibrate = navigator.vibrate || navigator.mozVibrate || navigator.webkitVibrate;
@@ -102,6 +107,8 @@ export class AppNotificationsManager {
     this.notifySoundEl = document.createElement('div');
     this.notifySoundEl.id = 'notify-sound';
     document.body.append(this.notifySoundEl);
+
+    this.checkMuteUntilThrottled = throttle(this.checkMuteUntil, 1000, false);
 
     rootScope.addEventListener('instance_deactivated', () => {
       this.stop();
@@ -414,6 +421,45 @@ export class AppNotificationsManager {
     this.prevFavicon = href;
   }
 
+  private checkMuteUntil = () => {
+    if(this.checkMuteUntilTimeout !== undefined) {
+      clearTimeout(this.checkMuteUntilTimeout);
+      this.checkMuteUntilTimeout = undefined;
+    }
+
+    const timestamp = tsNow(true);
+    let closestMuteUntil = MUTE_UNTIL;
+    for(const peerId in this.peerSettings.notifyPeer) {
+      const peerNotifySettings = this.peerSettings.notifyPeer[peerId];
+      if(peerNotifySettings instanceof Promise) {
+        continue;
+      }
+
+      const muteUntil = peerNotifySettings.mute_until;
+      if(muteUntil === undefined) {
+        continue;
+      }
+
+      if(muteUntil <= timestamp) {
+        // ! do not delete it because peer's unique settings will be overwritten in getPeerLocalSettings with type's settings
+        // delete peerNotifySettings.mute_until;
+
+        rootScope.dispatchEvent('updateNotifySettings', {
+          _: 'updateNotifySettings',
+          peer: {
+            _: 'notifyPeer',
+            peer: appPeersManager.getOutputPeer(peerId.toPeerId())
+          },
+          notify_settings: peerNotifySettings
+        });
+      } else if(muteUntil < closestMuteUntil) {
+        closestMuteUntil = muteUntil;
+      }
+    }
+
+    this.checkMuteUntilTimeout = window.setTimeout(this.checkMuteUntil, (closestMuteUntil - timestamp) * 1000);
+  };
+
   public savePeerSettings({key, peerId, settings}: {
     key?: Exclude<NotifyPeer['_'], 'notifyPeer'>,
     peerId?: PeerId, 
@@ -429,6 +475,8 @@ export class AppNotificationsManager {
 
     if(!peerId) {
       rootScope.dispatchEvent('notify_peer_type_settings', {key, settings});
+    } else {
+      this.checkMuteUntilThrottled();
     }
 
     //rootScope.broadcast('notify_settings', {peerId: peerId});
@@ -436,7 +484,7 @@ export class AppNotificationsManager {
 
   public isMuted(peerNotifySettings: PeerNotifySettings) {
     return peerNotifySettings._ === 'peerNotifySettings' &&
-      ((peerNotifySettings.mute_until * 1000) > tsNow() || peerNotifySettings.silent);
+      (peerNotifySettings.silent || (peerNotifySettings.mute_until !== undefined && (peerNotifySettings.mute_until * 1000) > tsNow()));
   }
 
   public getPeerMuted(peerId: PeerId) {

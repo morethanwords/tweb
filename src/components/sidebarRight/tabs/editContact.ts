@@ -90,7 +90,7 @@ export default class AppEditContactTab extends SliderSuperTab {
             return;
           }
   
-          appMessagesManager.mutePeer(this.peerId);
+          appMessagesManager.togglePeerMute(this.peerId);
         });
   
         this.listenerSetter.add(rootScope)('notify_settings', (update) => {
