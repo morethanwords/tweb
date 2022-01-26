@@ -15,7 +15,7 @@ import apiManager from "./mtprotoworker";
 import assumeType from "../../helpers/assumeType";
 import { logger } from "../logger";
 
-export type ReferenceContext = ReferenceContext.referenceContextProfilePhoto | ReferenceContext.referenceContextMessage | ReferenceContext.referenceContextEmojiesSounds;
+export type ReferenceContext = ReferenceContext.referenceContextProfilePhoto | ReferenceContext.referenceContextMessage | ReferenceContext.referenceContextEmojiesSounds | ReferenceContext.referenceContextReactions;
 export namespace ReferenceContext {
   export type referenceContextProfilePhoto = {
     type: 'profilePhoto',
@@ -30,6 +30,10 @@ export namespace ReferenceContext {
 
   export type referenceContextEmojiesSounds = {
     type: 'emojiesSounds'
+  };
+
+  export type referenceContextReactions = {
+    type: 'reactions'
   };
 }
 

@@ -13,9 +13,13 @@ export function readBlobAs(blob: Blob, method: 'readAsText'): Promise<string>;
 export function readBlobAs(blob: Blob, method: 'readAsDataURL'): Promise<string>;
 export function readBlobAs(blob: Blob, method: 'readAsArrayBuffer'): Promise<ArrayBuffer>;
 export function readBlobAs(blob: Blob, method: 'readAsArrayBuffer' | 'readAsText' | 'readAsDataURL'): Promise<any> {
+  // const perf = performance.now();
   return new Promise<any>((resolve) => {
     const reader = new FileReader();
-    reader.addEventListener('loadend', (e) => resolve(e.target.result));
+    reader.addEventListener('loadend', (e) => {
+      // console.log('readBlobAs time:', method, performance.now() - perf);
+      resolve(e.target.result);
+    });
     reader[method](blob);
   });
 }

@@ -130,7 +130,7 @@ export class LottieLoader {
     ]).then(() => player);
   }
 
-  public async loadAnimationWorker(params: RLottieOptions, group = params.group || '', toneIndex = -1): Promise<RLottiePlayer> {
+  public async loadAnimationWorker(params: RLottieOptions, group = params.group || '', toneIndex = -1, middleware?: () => boolean): Promise<RLottiePlayer> {
     if(!this.isWebAssemblySupported) {
       return this.loadPromise as any;
     }
@@ -148,6 +148,10 @@ export class LottieLoader {
 
     if(!this.loaded) {
       await this.loadLottieWorkers();
+    }
+
+    if(middleware && !middleware()) {
+      throw new Error('middleware');
     }
 
     if(!params.width || !params.height) {

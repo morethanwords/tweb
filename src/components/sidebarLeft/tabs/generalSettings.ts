@@ -20,12 +20,13 @@ import appStickersManager from "../../../lib/appManagers/appStickersManager";
 import assumeType from "../../../helpers/assumeType";
 import { MessagesAllStickers, StickerSet } from "../../../layer";
 import RichTextProcessor from "../../../lib/richtextprocessor";
-import { wrapStickerSetThumb } from "../../wrappers";
+import { wrapSticker, wrapStickerSetThumb } from "../../wrappers";
 import LazyLoadQueue from "../../lazyLoadQueue";
 import PopupStickers from "../../popups/stickers";
 import eachMinute from "../../../helpers/eachMinute";
 import { SliderSuperTabEventable } from "../../sliderTab";
 import IS_GEOLOCATION_SUPPORTED from "../../../environment/geolocationSupport";
+import appReactionsManager from "../../../lib/appManagers/appReactionsManager";
 
 export class RangeSettingSelector {
   public container: HTMLDivElement;
@@ -285,6 +286,28 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
     {
       const container = section('Telegram.InstalledStickerPacksController');
 
+      const reactionsRow = new Row({
+        titleLangKey: 'Reactions',
+        havePadding: true,
+        clickable: () => {
+
+        }
+      });
+
+      const quickReactionMediaDiv = document.createElement('div');
+      quickReactionMediaDiv.classList.add('row-media', 'row-media-small');
+
+      appReactionsManager.getQuickReaction().then(reaction => {
+        wrapSticker({
+          div: quickReactionMediaDiv,
+          doc: reaction.static_icon,
+          width: 32,
+          height: 32
+        });
+      });
+
+      reactionsRow.container.append(quickReactionMediaDiv);
+
       const suggestCheckboxField = new CheckboxField({
         text: 'Stickers.SuggestStickers', 
         name: 'suggest', 
@@ -356,7 +379,7 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
         }
       });
 
-      container.append(suggestCheckboxField.label, loopCheckboxField.label);
+      container.append(reactionsRow.container, suggestCheckboxField.label, loopCheckboxField.label);
     }
   }
 
