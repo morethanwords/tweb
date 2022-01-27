@@ -12,7 +12,7 @@ import RichTextProcessor from "../../lib/richtextprocessor";
 import { LazyLoadQueueIntersector } from "../lazyLoadQueue";
 import PeerTitle from "../peerTitle";
 import { wrapReply } from "../wrappers";
-import Chat from "./chat";
+import Chat, { ChatType } from "./chat";
 import RepliesElement from "./replies";
 
 const NBSP = '&nbsp;';
@@ -31,7 +31,11 @@ export namespace MessageRender {
 
   }; */
 
-  export const setTime = (chat: Chat, message: Message.message | Message.messageService, bubble: HTMLElement, bubbleContainer: HTMLElement, messageDiv: HTMLElement) => {
+  export const setTime = (options: {
+    chatType: ChatType, 
+    message: Message.message | Message.messageService,
+  }) => {
+    const {chatType, message} = options;
     const date = new Date(message.date * 1000);
     const args: (HTMLElement | string)[] = [];
     
@@ -44,8 +48,6 @@ export namespace MessageRender {
     if(isMessage) {
       if(message.views) {
         const postAuthor = message.post_author || message.fwd_from?.post_author;
-  
-        bubble.classList.add('channel-post');
   
         const postViewsSpan = document.createElement('span');
         postViewsSpan.classList.add('post-views');
@@ -62,15 +64,11 @@ export namespace MessageRender {
         }
       }
   
-      if(message.edit_date && chat.type !== 'scheduled' && !message.pFlags.edit_hide) {
-        bubble.classList.add('is-edited');
-  
+      if(message.edit_date && chatType !== 'scheduled' && !message.pFlags.edit_hide) {
         args.unshift(editedSpan = makeEdited());
       }
   
-      if(chat.type !== 'pinned' && message.pFlags.pinned) {
-        bubble.classList.add('is-pinned');
-  
+      if(chatType !== 'pinned' && message.pFlags.pinned) {
         const i = document.createElement('i');
         i.classList.add('tgico-pinnedchat', 'time-icon');
         args.unshift(i);
@@ -112,8 +110,6 @@ export namespace MessageRender {
     inner.append(...clonedArgs);
 
     timeSpan.append(inner);
-
-    messageDiv.append(timeSpan);
 
     return timeSpan;
   };
