@@ -2700,12 +2700,18 @@ export default class ChatBubbles {
     if(needToSetHTML) {
       setInnerHTML(messageDiv, richText);
     }
-    
-    const timeSpan = MessageRender.setTime(this.chat, message, bubble, bubbleContainer, messageDiv);
+
+    const timeSpan = MessageRender.setTime({
+      chatType: this.chat.type, 
+      message
+    });
+    messageDiv.append(timeSpan);
     bubbleContainer.prepend(messageDiv);
     //bubble.prepend(timeSpan, messageDiv); // that's bad
 
     if(isMessage && message.views) {
+      bubble.classList.add('channel-post');
+
       if(!message.fwd_from?.saved_from_msg_id && this.chat.type !== 'pinned') {
         const forward = document.createElement('div');
         forward.classList.add('bubble-beside-button', 'forward', 'tgico-forward_filled');
