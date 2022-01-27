@@ -3952,7 +3952,7 @@ export default class ChatBubbles {
       if(sponsoredMessage.channel_post) {
         text = 'OpenChannelPost';
         mid = this.appMessagesIdsManager.generateMessageId(sponsoredMessage.channel_post);
-      } else if(sponsoredMessage.start_param) {
+      } else if(sponsoredMessage.start_param || this.appUsersManager.isBot(peerId.toUserId())) {
         text = 'Chat.Message.ViewBot';
         startParam = sponsoredMessage.start_param;
       } else {
