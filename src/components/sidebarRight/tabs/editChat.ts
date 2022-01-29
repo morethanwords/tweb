@@ -21,22 +21,27 @@ import PopupDeleteDialog from "../../popups/deleteDialog";
 import { attachClickEvent } from "../../../helpers/dom/clickEvent";
 import toggleDisability from "../../../helpers/dom/toggleDisability";
 import CheckboxField from "../../checkboxField";
+import appReactionsManager from "../../../lib/appManagers/appReactionsManager";
+import AppChatReactionsTab from "./chatReactions";
 
 export default class AppEditChatTab extends SliderSuperTab {
   private chatNameInputField: InputField;
   private descriptionInputField: InputField;
   private editPeer: EditPeer;
+  private tempId: number;
   public chatId: ChatId;
 
   protected async _init() {
     // * cleanup prev
     this.listenerSetter.removeAll();
     this.scrollable.container.innerHTML = '';
+    this.tempId ??= 0;
+    const tempId = ++this.tempId;
 
     this.container.classList.add('edit-peer-container', 'edit-group-container');
     this.setTitle('Edit');
     
-    const chatFull = await appProfileManager.getChatFull(this.chatId, true);
+    let chatFull = await appProfileManager.getChatFull(this.chatId, true);
 
     const chat: Chat.chat | Chat.channel = appChatsManager.getChat(this.chatId);
     const isBroadcast = appChatsManager.isBroadcast(this.chatId);
@@ -50,6 +55,12 @@ export default class AppEditChatTab extends SliderSuperTab {
     this.listenerSetter.add(rootScope)('chat_update', (chatId) => {
       if(this.chatId === chatId) {
         chatUpdateListeners.forEach(callback => callback());
+      }
+    });
+
+    this.listenerSetter.add(rootScope)('chat_full_update', (chatId) => {
+      if(this.chatId === chatId) {
+        chatFull = appProfileManager.getCachedFullChat(chatId) || chatFull;
       }
     });
 
@@ -119,6 +130,32 @@ export default class AppEditChatTab extends SliderSuperTab {
 
         setChatTypeSubtitle();
         section.content.append(chatTypeRow.container);
+
+        const reactionsRow = new Row({
+          titleLangKey: 'Reactions',
+          icon: 'tip',
+          clickable: () => {
+            const tab = new AppChatReactionsTab(this.slider);
+            tab.chatId = this.chatId;
+            tab.open().then(() => {
+              if(this.tempId !== tempId) {
+                return;
+              }
+              
+              this.listenerSetter.add(tab.eventListener)('destroy', setReactionsLength);
+            });
+          }
+        });
+
+        const availableReactions = await appReactionsManager.getAvailableReactions();
+        const availableReactionsLength = availableReactions.filter(availableReaction => !availableReaction.pFlags.inactive).length;
+        const setReactionsLength = () => {
+          reactionsRow.subtitle.innerHTML = chatFull.available_reactions.length + '/' + availableReactionsLength;
+        };
+
+        setReactionsLength();
+
+        section.content.append(reactionsRow.container);
       }
 
       if(appChatsManager.hasRights(this.chatId, 'change_permissions') && !isBroadcast) {

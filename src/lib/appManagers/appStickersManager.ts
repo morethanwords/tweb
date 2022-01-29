@@ -162,7 +162,11 @@ export class AppStickersManager {
 
   public getAnimatedEmojiSounds(overwrite?: boolean) {
     if(this.getAnimatedEmojiSoundsPromise && !overwrite) return this.getAnimatedEmojiSoundsPromise;
-    return this.getAnimatedEmojiSoundsPromise = apiManager.getAppConfig(overwrite).then(appConfig => {
+    const promise = this.getAnimatedEmojiSoundsPromise = apiManager.getAppConfig(overwrite).then(appConfig => {
+      if(this.getAnimatedEmojiSoundsPromise !== promise) {
+        return;
+      }
+
       for(const emoji in appConfig.emojies_sounds) {
         const sound = appConfig.emojies_sounds[emoji];
         const bytesStr = atob(fixBase64String(sound.file_reference_base64, false));
@@ -206,6 +210,8 @@ export class AppStickersManager {
       //   TEST_FILE_REFERENCE_REFRESH = false;
       // }
     });
+
+    return promise;
   }
 
   public async getRecentStickers(): Promise<Modify<MessagesRecentStickers.messagesRecentStickers, {
