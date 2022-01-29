@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type { Message, StickerSet, Update, NotifyPeer, PeerNotifySettings, ConstructorDeclMap, Config, PollResults, Poll, WebPage, GroupCall, GroupCallParticipant, PhoneCall, MethodDeclMap } from "../layer";
+import type { Message, StickerSet, Update, NotifyPeer, PeerNotifySettings, ConstructorDeclMap, Config, PollResults, Poll, WebPage, GroupCall, GroupCallParticipant, PhoneCall, MethodDeclMap, MessageReactions } from "../layer";
 import type { MyDocument } from "./appManagers/appDocsManager";
 import type { AppMessagesManager, Dialog, MessagesStorage, MyMessage } from "./appManagers/appMessagesManager";
 import type { MyDialogFilter } from "./storages/filters";
@@ -76,6 +76,7 @@ export type BroadcastEvents = {
   'message_edit': {storage: MessagesStorage, peerId: PeerId, mid: number},
   'message_views': {peerId: PeerId, mid: number, views: number},
   'message_sent': {storage: MessagesStorage, tempId: number, tempMessage: any, mid: number, message: MyMessage},
+  'message_reactions': Message.message,
   'messages_pending': void,
   'messages_read': void,
   'messages_downloaded': {peerId: PeerId, mids: number[]},
@@ -156,6 +157,8 @@ export type BroadcastEvents = {
   // 'group_call_video_track_added': {instance: GroupCallInstance}
 
   'call_instance': {hasCurrent: boolean, instance: any/* CallInstance */},
+
+  'quick_reaction': string
 };
 
 export class RootScope extends EventListenerBase<{

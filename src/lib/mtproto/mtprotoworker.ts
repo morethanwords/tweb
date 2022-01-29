@@ -698,10 +698,16 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
 
   public getAppConfig(overwrite?: boolean): Promise<MTAppConfig> {
     if(this.getAppConfigPromise && !overwrite) return this.getAppConfigPromise;
-    return this.getAppConfigPromise = this.invokeApi('help.getAppConfig').then(config => {
+    const promise = this.getAppConfigPromise = this.invokeApi('help.getAppConfig').then(config => {
+      if(this.getAppConfigPromise !== promise) {
+        return;
+      }
+      
       rootScope.appConfig = config;
       return config;
     });
+
+    return promise;
   }
 }
 

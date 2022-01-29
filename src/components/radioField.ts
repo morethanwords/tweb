@@ -18,10 +18,15 @@ export default class RadioField {
     langKey?: LangPackKey,
     name: string, 
     value?: string, 
-    stateKey?: string
+    stateKey?: string,
+    alignRight?: boolean
   }) {
     const label = this.label = document.createElement('label');
     label.classList.add('radio-field');
+
+    if(options.alignRight) {
+      label.classList.add('radio-field-right');
+    }
   
     const input = this.input = document.createElement('input');
     input.type = 'radio';

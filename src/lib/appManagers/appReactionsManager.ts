@@ -6,6 +6,7 @@
 
 import { MOUNT_CLASS_TO } from "../../config/debug";
 import assumeType from "../../helpers/assumeType";
+import callbackify from "../../helpers/callbackify";
 import { AvailableReaction, MessagesAvailableReactions } from "../../layer";
 import apiManager from "../mtproto/mtprotoworker";
 import { ReferenceContext } from "../mtproto/referenceDatabase";
@@ -37,7 +38,7 @@ export class AppReactionsManager {
   }
 
   public getAvailableReactions() {
-    if(this.availableReactions) return Promise.resolve(this.availableReactions);
+    if(this.availableReactions) return this.availableReactions;
     return apiManager.invokeApiSingleProcess({
       method: 'messages.getAvailableReactions',
       processResult: (messagesAvailableReactions) => {
@@ -62,12 +63,66 @@ export class AppReactionsManager {
     });
   }
 
+  public getActiveAvailableReactions() {
+    return callbackify(this.getAvailableReactions(), (availableReactions) => {
+      return availableReactions.filter(availableReaction => !availableReaction.pFlags.inactive);
+    });
+  }
+
+  public isReactionActive(reaction: string) {
+    if(!this.availableReactions) return false;
+    return !!this.availableReactions.find(availableReaction => availableReaction.reaction === reaction);
+  }
+
   public getQuickReaction() {
     return Promise.all([
       apiManager.getAppConfig(), 
       this.getAvailableReactions()
     ]).then(([appConfig, availableReactions]) => {
       return availableReactions.find(reaction => reaction.reaction === appConfig.reactions_default);
+    });
+  }
+
+  public getReactionCached(reaction: string) {
+    return this.availableReactions.find(availableReaction => availableReaction.reaction === reaction);
+  }
+
+  public getReaction(reaction: string) {
+    return callbackify(this.getAvailableReactions(), () => {
+      return this.getReactionCached(reaction);
+    });
+  }
+
+  /* public getMessagesReactions(peerId: PeerId, mids: number[]) {
+    return apiManager.invokeApiSingleProcess({
+      method: 'messages.getMessagesReactions',
+      params: {
+        id: mids.map(mid => appMessagesIdsManager.getServerMessageId(mid)),
+        peer: appPeersManager.getInputPeerById(peerId)
+      },
+      processResult: (updates) => {
+        apiUpdatesManager.processUpdateMessage(updates);
+
+        // const update = (updates as Updates.updates).updates.find(update => update._ === 'updateMessageReactions') as Update.updateMessageReactions;
+        // return update.reactions;
+      }
+    });
+  } */
+
+  public setDefaultReaction(reaction: string) {
+    return apiManager.invokeApi('messages.setDefaultReaction', {reaction}).then(value => {
+      if(value) {
+        const appConfig = rootScope.appConfig;
+        if(appConfig) {
+          appConfig.reactions_default = reaction;
+        } else { // if no config or loading it - overwrite
+          apiManager.getAppConfig(true);
+        }
+
+        rootScope.dispatchEvent('quick_reaction', reaction);
+      }
+
+      return value;
     });
   }
 }

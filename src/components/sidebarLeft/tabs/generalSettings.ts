@@ -20,13 +20,14 @@ import appStickersManager from "../../../lib/appManagers/appStickersManager";
 import assumeType from "../../../helpers/assumeType";
 import { MessagesAllStickers, StickerSet } from "../../../layer";
 import RichTextProcessor from "../../../lib/richtextprocessor";
-import { wrapSticker, wrapStickerSetThumb } from "../../wrappers";
+import { wrapStickerSetThumb, wrapStickerToRow } from "../../wrappers";
 import LazyLoadQueue from "../../lazyLoadQueue";
 import PopupStickers from "../../popups/stickers";
 import eachMinute from "../../../helpers/eachMinute";
 import { SliderSuperTabEventable } from "../../sliderTab";
 import IS_GEOLOCATION_SUPPORTED from "../../../environment/geolocationSupport";
 import appReactionsManager from "../../../lib/appManagers/appReactionsManager";
+import AppQuickReactionTab from "./quickReaction";
 
 export class RangeSettingSelector {
   public container: HTMLDivElement;
@@ -287,26 +288,26 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
       const container = section('Telegram.InstalledStickerPacksController');
 
       const reactionsRow = new Row({
-        titleLangKey: 'Reactions',
+        titleLangKey: 'DoubleTapSetting',
         havePadding: true,
         clickable: () => {
-
+          new AppQuickReactionTab(this.slider).open();
         }
       });
 
-      const quickReactionMediaDiv = document.createElement('div');
-      quickReactionMediaDiv.classList.add('row-media', 'row-media-small');
-
-      appReactionsManager.getQuickReaction().then(reaction => {
-        wrapSticker({
-          div: quickReactionMediaDiv,
-          doc: reaction.static_icon,
-          width: 32,
-          height: 32
+      const renderQuickReaction = () => {
+        appReactionsManager.getQuickReaction().then(reaction => {
+          wrapStickerToRow({
+            row: reactionsRow,
+            doc: reaction.static_icon,
+            size: 'small'
+          });
         });
-      });
+      };
 
-      reactionsRow.container.append(quickReactionMediaDiv);
+      renderQuickReaction();
+
+      this.listenerSetter.add(rootScope)('quick_reaction', renderQuickReaction);
 
       const suggestCheckboxField = new CheckboxField({
         text: 'Stickers.SuggestStickers', 

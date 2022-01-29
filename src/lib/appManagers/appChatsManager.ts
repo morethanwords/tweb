@@ -770,6 +770,15 @@ export class AppChatsManager {
       apiUpdatesManager.processUpdateMessage(updates);
     });
   }
+
+  public setChatAvailableReactions(id: ChatId, reactions: Array<string>) {
+    return apiManager.invokeApi('messages.setChatAvailableReactions', {
+      peer: this.getInputPeer(id),
+      available_reactions: reactions
+    }).then(updates => {
+      apiUpdatesManager.processUpdateMessage(updates);
+    });
+  }
 }
 
 const appChatsManager = new AppChatsManager();

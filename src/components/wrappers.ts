@@ -56,6 +56,7 @@ import appMessagesIdsManager from '../lib/appManagers/appMessagesIdsManager';
 import throttle from '../helpers/schedulers/throttle';
 import { SendMessageEmojiInteractionData } from '../types';
 import IS_VIBRATE_SUPPORTED from '../environment/vibrateSupport';
+import Row from './row';
 
 const MAX_VIDEO_AUTOPLAY_SIZE = 50 * 1024 * 1024; // 50 MB
 
@@ -1635,6 +1636,37 @@ export async function wrapStickerSetThumb({set, lazyLoadQueue, container, group,
       lazyLoadQueue
     }); // kostil
   }
+}
+
+export function wrapStickerToRow({doc, row, size}: {
+  doc: MyDocument,
+  row: Row,
+  size?: 'small' | 'large',
+}) {
+  const previousMedia = row.media;
+  const media = row.createMedia('small');
+
+  if(previousMedia) {
+    media.classList.add('hide');
+  }
+
+  const loadPromises: Promise<any>[] = previousMedia ? [] : undefined;
+
+  const _size = size === 'small' ? 32 : 48;
+  const result = wrapSticker({
+    div: media,
+    doc: doc,
+    width: _size,
+    height: _size,
+    loadPromises
+  });
+
+  loadPromises && Promise.all(loadPromises).then(() => {
+    media.classList.remove('hide');
+    previousMedia.remove();
+  });
+
+  return result;
 }
 
 export function wrapLocalSticker({emoji, width, height}: {
