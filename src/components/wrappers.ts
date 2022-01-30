@@ -1372,6 +1372,11 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
               animation.restart();
             }
 
+            const peerId = appImManager.chat.peerId;
+            if(!peerId.isUser()) {
+              return;
+            }
+
             const doc = appStickersManager.getAnimatedEmojiSticker(emoji, true);
             if(!doc) {
               return;
