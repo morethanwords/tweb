@@ -103,8 +103,14 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
   searchContext?: MediaSearchContext,
 }) {
   const isAlbumItem = !(boxWidth && boxHeight);
-  const canAutoplay = (doc.type !== 'video' || (doc.size <= MAX_VIDEO_AUTOPLAY_SIZE && !isAlbumItem)) 
-    && (doc.type === 'gif' ? rootScope.settings.autoPlay.gifs : rootScope.settings.autoPlay.videos);
+  const canAutoplay = /* doc.sticker ||  */(
+    (
+      doc.type !== 'video' || (
+        doc.size <= MAX_VIDEO_AUTOPLAY_SIZE && 
+        !isAlbumItem
+      )
+    ) && (doc.type === 'gif' ? rootScope.settings.autoPlay.gifs : rootScope.settings.autoPlay.videos)
+  );
   let spanTime: HTMLElement, spanPlay: HTMLElement;
 
   if(!noInfo) {
@@ -402,7 +408,7 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
     preloader = (message.media as any).preloader as ProgressivePreloader;
     preloader.attach(container, false);
     noAutoDownload = undefined;
-  } else if(!cacheContext.downloaded && !doc.supportsStreaming) {
+  } else if(!cacheContext.downloaded && !doc.supportsStreaming && !withoutPreloader) {
     preloader = new ProgressivePreloader({
       attachMethod: 'prepend'
     });
@@ -459,14 +465,16 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
     }
 
     let loadPromise: Promise<any> = Promise.resolve();
-    if(preloader && !isUpload) {
+    if((preloader && !isUpload) || withoutPreloader) {
       if(!cacheContext.downloaded && !doc.supportsStreaming) {
         const promise = loadPromise = appDocsManager.downloadDoc(doc, lazyLoadQueue?.queueId, noAutoDownload);
-        preloader.attach(container, false, promise);
+        if(preloader) {
+          preloader.attach(container, false, promise);
+        }
       } else if(doc.supportsStreaming) {
         if(noAutoDownload) {
           loadPromise = Promise.reject();
-        } else if(!cacheContext.downloaded) { // * check for uploading video
+        } else if(!cacheContext.downloaded && preloader) { // * check for uploading video
           preloader.attach(container, false, null);
           video.addEventListener(IS_SAFARI ? 'timeupdate' : 'canplay', () => {
             preloader.detach();
@@ -1157,6 +1165,34 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
 
   div.dataset.docId = '' + doc.id;
   div.classList.add('media-sticker-wrapper');
+
+  /* if(stickerType === 3) {
+    const videoRes = wrapVideo({
+      doc,
+      boxWidth: width,
+      boxHeight: height,
+      container: div,
+      group,
+      lazyLoadQueue,
+      middleware,
+      withoutPreloader: true,
+      loadPromises,
+      noPlayButton: true,
+      noInfo: true
+    });
+
+    if(videoRes.thumb) {
+      if(videoRes.thumb.images.thumb) {
+        videoRes.thumb.images.thumb.classList.add('media-sticker', 'thumbnail');
+      }
+
+      if(videoRes.thumb.images.full) {
+        videoRes.thumb.images.full.classList.add('media-sticker');
+      }
+    }
+
+    return videoRes.loadPromise;
+  } */
   
   //console.log('wrap sticker', doc, div, onlyThumb);
 
@@ -1219,7 +1255,7 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
           }).catch(() => {});
         }
       }
-    } else if(stickerType === 2 && (withThumb || onlyThumb) && toneIndex <= 0) {
+    } else if(((stickerType === 2 && toneIndex <= 0) || stickerType === 3) && (withThumb || onlyThumb)) {
       thumbImage = new Image();
 
       const load = () => {
@@ -1513,40 +1549,64 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
       });
 
       //console.timeEnd('render sticker' + doc.id);
-    } else if(stickerType === 1) {
-      const image = new Image();
-      const thumbImage = div.firstElementChild !== image && div.firstElementChild;
+    } else if(stickerType === 1 || stickerType === 3) {
+      let media: HTMLElement;
+      if(stickerType === 1) {
+        media = new Image();
+      } else {
+        media = document.createElement('video');
+        media.setAttribute('playsinline', 'true');
+        (media as HTMLVideoElement).muted = true;
+
+        if(play) {
+          (media as HTMLVideoElement).autoplay = true;
+          (media as HTMLVideoElement).loop = true;
+        }
+      }
+
+      const thumbImage = div.firstElementChild !== media && div.firstElementChild;
       needFadeIn = (needFadeIn || !downloaded || thumbImage) && rootScope.settings.animationsEnabled;
 
-      image.classList.add('media-sticker');
+      media.classList.add('media-sticker');
 
       if(needFadeIn) {
-        image.classList.add('fade-in');
+        media.classList.add('fade-in');
       }
 
       return new Promise<void>((resolve, reject) => {
         const r = () => {
           if(middleware && !middleware()) return resolve();
   
-          renderImageFromUrl(image, cacheContext.url, () => {
+          const onLoad = () => {
             sequentialDom.mutateElement(div, () => {
-              div.append(image);
+              div.append(media);
               if(thumbImage) {
                 thumbImage.classList.add('fade-out');
+              }
+
+              if(stickerType === 3 && group) {
+                animationIntersector.addAnimation(media as HTMLVideoElement, group);
               }
 
               resolve();
 
               if(needFadeIn) {
-                image.addEventListener('animationend', () => {
-                  image.classList.remove('fade-in');
+                media.addEventListener('animationend', () => {
+                  media.classList.remove('fade-in');
                   if(thumbImage) {
                     thumbImage.remove();
                   }
                 }, {once: true});
               }
             });
-          });
+          };
+
+          if(stickerType === 1) {
+            renderImageFromUrl(media, cacheContext.url, onLoad);
+          } else {
+            (media as HTMLVideoElement).src = cacheContext.url;
+            onMediaLoad(media as HTMLVideoElement).then(onLoad);
+          }
         };
   
         if(cacheContext.url) r();
@@ -1561,7 +1621,7 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
     (lazyLoadQueue.push({div, load}), Promise.resolve()) : 
     load();
 
-  if(downloaded && stickerType === 1) {
+  if(downloaded && (stickerType === 1 || stickerType === 3)) {
     loadThumbPromise = loadPromise as any;
     if(loadPromises) {
       loadPromises.push(loadThumbPromise);
@@ -1588,7 +1648,7 @@ export async function wrapStickerSetThumb({set, lazyLoadQueue, container, group,
         const downloadOptions = appStickersManager.getStickerSetThumbDownloadOptions(set);
         const promise = appDownloadManager.download(downloadOptions);
 
-        if(set.pFlags.animated) {
+        if(set.pFlags.animated && !set.pFlags.videos) {
           return promise
           .then(readBlobAsText)
           //.then(JSON.parse)
@@ -1605,12 +1665,22 @@ export async function wrapStickerSetThumb({set, lazyLoadQueue, container, group,
             }, group);
           });
         } else {
-          const image = new Image();
-          image.classList.add('media-sticker');
+          let media: HTMLElement;
+          if(set.pFlags.videos) {
+            media = document.createElement('video');
+            media.setAttribute('playsinline', 'true');
+            (media as HTMLVideoElement).autoplay = true;
+            (media as HTMLVideoElement).muted = true;
+            (media as HTMLVideoElement).loop = true;
+          } else {
+            media = new Image();
+          }
+
+          media.classList.add('media-sticker');
   
           return promise.then(blob => {
-            renderImageFromUrl(image, URL.createObjectURL(blob), () => {
-              container.append(image);
+            renderImageFromUrl(media, URL.createObjectURL(blob), () => {
+              container.append(media);
             });
           });
         }
