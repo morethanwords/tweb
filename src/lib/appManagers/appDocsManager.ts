@@ -91,16 +91,6 @@ export class AppDocsManager {
       this.docs[doc.id] = doc;
     }
 
-    if(doc.mime_type === 'video/webm' && !doc.attributes.find(attribute => attribute._ === 'documentAttributeSticker')) {
-      doc.attributes.push({
-        _: 'documentAttributeSticker',
-        alt: '⏱',
-        stickerset: {
-          _: 'inputStickerSetEmpty'
-        }
-      });
-    }
-
     // * exclude from state
     // defineNotNumerableProperties(doc, [/* 'thumbs',  */'type', 'h', 'w', 'file_name', 
     // 'file', 'duration', 'downloaded', 'url', 'audioTitle', 
