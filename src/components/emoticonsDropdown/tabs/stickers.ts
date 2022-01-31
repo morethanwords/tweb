@@ -43,7 +43,7 @@ export class SuperStickerRenderer {
       div = document.createElement('div');
       div.classList.add('grid-item', 'super-sticker');
 
-      if(doc.sticker === 2) {
+      if(doc.animated) {
         this.observeAnimatedDiv(div);
       }
     }
@@ -54,7 +54,7 @@ export class SuperStickerRenderer {
       div,
       lazyLoadQueue: this.regularLazyLoadQueue, 
       group: this.group, 
-      onlyThumb: doc.sticker === 2,
+      onlyThumb: doc.animated,
       loadPromises
     });
 
