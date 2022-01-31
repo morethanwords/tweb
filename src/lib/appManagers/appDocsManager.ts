@@ -144,6 +144,10 @@ export class AppDocsManager {
           if(/* apiDoc.thumbs &&  */doc.mime_type === 'image/webp' && (doc.thumbs || IS_WEBP_SUPPORTED)) {
             doc.type = 'sticker';
             doc.sticker = 1;
+          } else if(doc.mime_type === 'video/webm') {
+            doc.type = 'sticker';
+            doc.sticker = 3;
+            doc.animated = true;
           }
           break;
 
