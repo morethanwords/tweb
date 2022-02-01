@@ -391,6 +391,11 @@ export class AppDocsManager {
     return download;
   }
 
+  public isSavingLottiePreview(doc: MyDocument, toneIndex: number) {
+    const key = doc.id + '-' + toneIndex;
+    return !!this.savingLottiePreview[key];
+  }
+
   public saveLottiePreview(doc: MyDocument, canvas: HTMLCanvasElement, toneIndex: number) {
     const key = doc.id + '-' + toneIndex;
     if(this.savingLottiePreview[key]/*  || true */) return;

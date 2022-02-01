@@ -1203,7 +1203,7 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
   
   let loadThumbPromise = deferredPromise<void>();
   let haveThumbCached = false;
-  if((doc.thumbs?.length || doc.stickerCachedThumbs) && !div.firstElementChild && (!downloaded || stickerType === 2 || onlyThumb) && withThumb !== false/*  && doc.thumbs[0]._ !== 'photoSizeEmpty' */) {
+  if((doc.thumbs?.length || doc.stickerCachedThumbs) && !div.firstElementChild && (!downloaded || stickerType === 2 || stickerType === 3 || onlyThumb) && withThumb !== false/*  && doc.thumbs[0]._ !== 'photoSizeEmpty' */) {
     let thumb = doc.stickerCachedThumbs && doc.stickerCachedThumbs[toneIndex] || doc.thumbs[0];
     
     //console.log('wrap sticker', thumb, div);
@@ -1565,7 +1565,7 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
       }
 
       const thumbImage = div.firstElementChild !== media && div.firstElementChild;
-      needFadeIn = (needFadeIn || !downloaded || thumbImage) && rootScope.settings.animationsEnabled;
+      needFadeIn = (needFadeIn || !downloaded || (stickerType === 1 ? thumbImage : (!thumbImage || thumbImage.tagName === 'svg'))) && rootScope.settings.animationsEnabled;
 
       media.classList.add('media-sticker');
 
@@ -1582,6 +1582,18 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
               div.append(media);
               if(thumbImage) {
                 thumbImage.classList.add('fade-out');
+              }
+
+              if(stickerType === 3 && !appDocsManager.isSavingLottiePreview(doc, toneIndex)) {
+                // const perf = performance.now();
+                assumeType<HTMLVideoElement>(media);
+                const canvas = document.createElement('canvas');
+                canvas.width = width * window.devicePixelRatio;
+                canvas.height = height * window.devicePixelRatio;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(media, 0, 0, canvas.width, canvas.height);
+                appDocsManager.saveLottiePreview(doc, canvas, toneIndex);
+                // console.log('perf', performance.now() - perf);
               }
 
               if(stickerType === 3 && group) {
@@ -1617,11 +1629,11 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
     }
   };
 
-  const loadPromise: Promise<RLottiePlayer | void> = lazyLoadQueue && (!downloaded || stickerType === 2) ? 
+  const loadPromise: Promise<RLottiePlayer | void> = lazyLoadQueue && (!downloaded || stickerType === 2 || stickerType === 3) ? 
     (lazyLoadQueue.push({div, load}), Promise.resolve()) : 
     load();
 
-  if(downloaded && (stickerType === 1 || stickerType === 3)) {
+  if(downloaded && (stickerType === 1/*  || stickerType === 3 */)) {
     loadThumbPromise = loadPromise as any;
     if(loadPromises) {
       loadPromises.push(loadThumbPromise);
