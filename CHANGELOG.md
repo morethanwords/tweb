@@ -1,3 +1,6 @@
+### 1.0.6 (87)
+* Added support for new video stickers.
+
 ### 1.0.5 (83)
 New:
 * Added support for all interactive emoji, including fullscreen animations and sound effects. Try 😂, 🎄, 🔥 and more.
