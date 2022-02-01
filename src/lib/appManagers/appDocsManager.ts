@@ -23,6 +23,7 @@ import { MOUNT_CLASS_TO } from '../../config/debug';
 import { getFullDate } from '../../helpers/date';
 import rootScope from '../rootScope';
 import IS_WEBP_SUPPORTED from '../../environment/webpSupport';
+import IS_WEBM_SUPPORTED from '../../environment/webmSupport';
 
 export type MyDocument = Document.document;
 
@@ -97,7 +98,8 @@ export class AppDocsManager {
     // 'audioPerformer', 'sticker', 'stickerEmoji', 'stickerEmojiRaw', 
     // 'stickerSetInput', 'stickerThumbConverted', 'animated', 'supportsStreaming']);
 
-    doc.attributes.forEach(attribute => {
+    for(let i = 0, length = doc.attributes.length; i < length; ++i) {
+      const attribute = doc.attributes[i];
       switch(attribute._) {
         case 'documentAttributeFilename':
           doc.file_name = RichTextProcessor.wrapPlainText(attribute.file_name);
@@ -145,6 +147,10 @@ export class AppDocsManager {
             doc.type = 'sticker';
             doc.sticker = 1;
           } else if(doc.mime_type === 'video/webm') {
+            if(!IS_WEBM_SUPPORTED) {
+              return;
+            }
+
             doc.type = 'sticker';
             doc.sticker = 3;
             doc.animated = true;
@@ -165,7 +171,7 @@ export class AppDocsManager {
           doc.animated = true;
           break;
       }
-    });
+    }
     
     if(!doc.mime_type) {
       const ext = (doc.file_name || '').split('.').pop();

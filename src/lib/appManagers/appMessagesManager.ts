@@ -2539,6 +2539,7 @@ export class AppMessagesManager {
     } */
 
     if(isMessage && message.media) {
+      let unsupported = false;
       switch(message.media._) {
         case 'messageMediaEmpty': {
           delete message.media;
@@ -2547,7 +2548,7 @@ export class AppMessagesManager {
 
         case 'messageMediaPhoto': {
           if(message.media.ttl_seconds) {
-            message.media = {_: 'messageMediaUnsupported'};
+            unsupported = true;
           } else {
             message.media.photo = appPhotosManager.savePhoto(message.media.photo, mediaContext);
           }
@@ -2568,9 +2569,14 @@ export class AppMessagesManager {
           
         case 'messageMediaDocument': {
           if(message.media.ttl_seconds) {
-            message.media = {_: 'messageMediaUnsupported'};
+            unsupported = true;
           } else {
-            message.media.document = appDocsManager.saveDoc(message.media.document, mediaContext); // 11.04.2020 warning
+            const originalDoc = message.media.document;
+            message.media.document = appDocsManager.saveDoc(originalDoc, mediaContext); // 11.04.2020 warning
+
+            if(!message.media.document && originalDoc._ !== 'documentEmpty') {
+              unsupported = true;
+            }
           }
 
           break;
@@ -2588,16 +2594,22 @@ export class AppMessagesManager {
           break; */
 
         case 'messageMediaInvoice': {
+          unsupported = true;
           message.media = {_: 'messageMediaUnsupported'};
           break;
         }
 
         case 'messageMediaUnsupported': {
-          message.message = '';
-          delete message.entities;
-          delete message.totalEntities;
+          unsupported = true;
           break;
         }
+      }
+
+      if(unsupported) {
+        message.media = {_: 'messageMediaUnsupported'};
+        message.message = '';
+        delete message.entities;
+        delete message.totalEntities;
       }
     }
 

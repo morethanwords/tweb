@@ -20,6 +20,7 @@ import { getEmojiToneIndex } from '../../vendor/emoji';
 import RichTextProcessor from '../richtextprocessor';
 import assumeType from '../../helpers/assumeType';
 import fixBase64String from '../../helpers/fixBase64String';
+import IS_WEBM_SUPPORTED from '../../environment/webmSupport';
 
 const CACHE_TIME = 3600e3;
 
@@ -215,6 +216,7 @@ export class AppStickersManager {
       method: 'messages.getRecentStickers',
       processResult: (res) => {
         assumeType<MessagesRecentStickers.messagesRecentStickers>(res);
+
         this.saveStickers(res.stickers);
         return res;
       }
@@ -379,6 +381,13 @@ export class AppStickersManager {
       method: 'messages.getFeaturedStickers',
       processResult: (res) => {
         assumeType<MessagesFeaturedStickers.messagesFeaturedStickers>(res);
+
+        forEachReverse(res.sets, (covered, idx, arr) => {
+          if(covered.set.pFlags.videos && !IS_WEBM_SUPPORTED) {
+            arr.splice(idx, 1);
+          }
+        });
+
         res.sets.forEach(covered => {
           this.saveStickerSet({set: covered.set, documents: [], packs: []}, covered.set.id);
         });
@@ -430,6 +439,12 @@ export class AppStickersManager {
       processResult: (res) => {
         assumeType<MessagesFoundStickerSets.messagesFoundStickerSets>(res);
 
+        forEachReverse(res.sets, (covered, idx, arr) => {
+          if(covered.set.pFlags.videos && !IS_WEBM_SUPPORTED) {
+            arr.splice(idx, 1);
+          }
+        });
+
         res.sets.forEach(covered => {
           this.saveStickerSet({set: covered.set, documents: [], packs: []}, covered.set.id);
         });
@@ -452,7 +467,20 @@ export class AppStickersManager {
   }
 
   public getAllStickers() {
-    return apiManager.invokeApiHashable({method: 'messages.getAllStickers'});
+    return apiManager.invokeApiHashable({
+      method: 'messages.getAllStickers', 
+      processResult: (allStickers) => {
+        assumeType<MessagesAllStickers.messagesAllStickers>(allStickers);
+
+        forEachReverse(allStickers.sets, (stickerSet, idx, arr) => {
+          if(stickerSet.pFlags.videos && !IS_WEBM_SUPPORTED) {
+            arr.splice(idx, 1);
+          }
+        });
+
+        return allStickers;
+      }
+    });
   }
 
   public preloadStickerSets() {
@@ -471,7 +499,8 @@ export class AppStickersManager {
         method: 'messages.getStickers', 
         params: {
           emoticon
-        }
+        },
+        processResult: (stickers) => stickers
       }),
       includeOurStickers ? this.preloadStickerSets() : [],
       includeOurStickers ? this.getRecentStickers() : undefined
@@ -518,6 +547,12 @@ export class AppStickersManager {
       } */
 
       const stickers = [...new Set(cachedStickersAnimated.concat(cachedStickersStatic, foundStickers))]/* .filter(doc => !doc.animated) */;
+
+      forEachReverse(stickers, (sticker, idx, arr) => {
+        if(sticker.sticker === 3 && !IS_WEBM_SUPPORTED) {
+          arr.splice(idx, 1);
+        }
+      });
 
       return stickers;
     });
