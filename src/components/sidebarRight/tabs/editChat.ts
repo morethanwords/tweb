@@ -133,7 +133,7 @@ export default class AppEditChatTab extends SliderSuperTab {
 
         const reactionsRow = new Row({
           titleLangKey: 'Reactions',
-          icon: 'tip',
+          icon: 'reactions',
           clickable: () => {
             const tab = new AppChatReactionsTab(this.slider);
             tab.chatId = this.chatId;
