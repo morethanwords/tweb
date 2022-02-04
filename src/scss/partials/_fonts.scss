@@ -9,9 +9,9 @@
 @font-face {
   font-family: "#{$tgico-font-family}";
   src:
-    url('#{$tgico-font-path}/#{$tgico-font-family}.ttf?onwvlx') format('truetype'),
-    url('#{$tgico-font-path}/#{$tgico-font-family}.woff?onwvlx') format('woff'),
-    url('#{$tgico-font-path}/#{$tgico-font-family}.svg?onwvlx#tgico') format('svg');
+    url('#{$tgico-font-path}/#{$tgico-font-family}.ttf?yaqhmr') format('truetype'),
+    url('#{$tgico-font-path}/#{$tgico-font-family}.woff?yaqhmr') format('woff'),
+    url('#{$tgico-font-path}/#{$tgico-font-family}.svg?yaqhmr#tgico') format('svg');
   font-weight: normal;
   font-style: normal;
   font-display: block;
@@ -50,6 +50,11 @@
 .tgico-activesessions {
   &:before {
     content: $tgico-activesessions; 
+  }
+}
+.tgico-add_reaction {
+  &:before {
+    content: $tgico-add_reaction; 
   }
 }
 .tgico-add {
@@ -327,6 +332,11 @@
     content: $tgico-endcall_filled; 
   }
 }
+.tgico-endcall {
+  &:before {
+    content: $tgico-endcall; 
+  }
+}
 .tgico-enter {
   &:before {
     content: $tgico-enter; 
@@ -340,6 +350,16 @@
 .tgico-eye2 {
   &:before {
     content: $tgico-eye2; 
+  }
+}
+.tgico-fast_forward {
+  &:before {
+    content: $tgico-fast_forward; 
+  }
+}
+.tgico-fast_rewind {
+  &:before {
+    content: $tgico-fast_rewind; 
   }
 }
 .tgico-favourites {
@@ -627,6 +647,26 @@
     content: $tgico-play; 
   }
 }
+.tgico-playback_1x {
+  &:before {
+    content: $tgico-playback_1x; 
+  }
+}
+.tgico-playback_2x {
+  &:before {
+    content: $tgico-playback_2x; 
+  }
+}
+.tgico-playback_05 {
+  &:before {
+    content: $tgico-playback_05; 
+  }
+}
+.tgico-playback_15 {
+  &:before {
+    content: $tgico-playback_15; 
+  }
+}
 .tgico-plus {
   &:before {
     content: $tgico-plus; 
@@ -650,6 +690,11 @@
 .tgico-radioon {
   &:before {
     content: $tgico-radioon; 
+  }
+}
+.tgico-reactions {
+  &:before {
+    content: $tgico-reactions; 
   }
 }
 .tgico-readchats {
@@ -755,6 +800,11 @@
 .tgico-smile {
   &:before {
     content: $tgico-smile; 
+  }
+}
+.tgico-spoiler {
+  &:before {
+    content: $tgico-spoiler; 
   }
 }
 .tgico-sport {
