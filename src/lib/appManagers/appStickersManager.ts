@@ -13,7 +13,6 @@ import AppStorage from '../storage';
 import { MOUNT_CLASS_TO } from '../../config/debug';
 import { forEachReverse } from '../../helpers/array';
 import DATABASE_STATE from '../../config/databases/state';
-import { readBlobAsText } from '../../helpers/blob';
 import lottieLoader from '../rlottie/lottieLoader';
 import mediaSizes from '../../helpers/mediaSizes';
 import { getEmojiToneIndex } from '../../vendor/emoji';
@@ -162,7 +161,7 @@ export class AppStickersManager {
 
   public getAnimatedEmojiSounds(overwrite?: boolean) {
     if(this.getAnimatedEmojiSoundsPromise && !overwrite) return this.getAnimatedEmojiSoundsPromise;
-    const promise = this.getAnimatedEmojiSoundsPromise = apiManager.getAppConfig(overwrite).then(appConfig => {
+    const promise = this.getAnimatedEmojiSoundsPromise = Promise.resolve(apiManager.getAppConfig(overwrite)).then(appConfig => {
       if(this.getAnimatedEmojiSoundsPromise !== promise) {
         return;
       }
@@ -257,19 +256,19 @@ export class AppStickersManager {
       const doc = this.getAnimatedEmojiSticker(emoji);
       if(doc) {
         return appDocsManager.downloadDoc(doc)
-        .then(readBlobAsText)
-        .then(async(json) => {
+        .then(async(blob) => {
           const mediaSize = mediaSizes.active.emojiSticker;
           const toneIndex = getEmojiToneIndex(emoji);
           const animation = await lottieLoader.loadAnimationWorker({
             container: undefined,
-            animationData: json,
+            animationData: blob,
             width: width ?? mediaSize.width,
             height: height ?? mediaSize.height,
             name: 'doc' + doc.id,
             autoplay: false,
-            loop: false
-          }, 'none', toneIndex);
+            loop: false,
+            toneIndex
+          }, 'none');
 
           animation.addEventListener('firstFrame', () => {
             appDocsManager.saveLottiePreview(doc, animation.canvas, toneIndex);

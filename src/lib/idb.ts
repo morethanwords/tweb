@@ -11,7 +11,7 @@
 
 import { Database } from '../config/databases';
 import Modes from '../config/modes';
-import { blobConstruct } from '../helpers/blob';
+import blobConstruct from '../helpers/blob/blobConstruct';
 import { safeAssign } from '../helpers/object';
 import { logger } from './logger';
 
