@@ -6,7 +6,6 @@
 
 import type Chat from './chat/chat';
 import { getEmojiToneIndex } from '../vendor/emoji';
-import { readBlobAsText } from '../helpers/blob';
 import { deferredPromise } from '../helpers/cancellablePromise';
 import { formatFullSentTime } from '../helpers/date';
 import mediaSizes, { ScreenSize } from '../helpers/mediaSizes';
@@ -1277,9 +1276,7 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
       //appDocsManager.downloadDocNew(doc.id).promise.then(res => res.json()).then(async(json) => {
       //fetch(doc.url).then(res => res.json()).then(async(json) => {
       return await appDocsManager.downloadDoc(doc, /* undefined,  */lazyLoadQueue?.queueId)
-      .then(readBlobAsText)
-      //.then(JSON.parse)
-      .then(async(json) => {
+      .then(async(blob) => {
         //console.timeEnd('download sticker' + doc.id);
         //console.log('loaded sticker:', doc, div/* , blob */);
         if(middleware && !middleware()) {
@@ -1290,13 +1287,14 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
           container: div,
           loop: loop && !emoji,
           autoplay: play,
-          animationData: json,
+          animationData: blob,
           width,
           height,
           name: 'doc' + doc.id,
           needUpscale,
-          skipRatio
-        }, group, toneIndex, middleware);
+          skipRatio,
+          toneIndex
+        }, group, middleware);
 
         //const deferred = deferredPromise<void>();
   
@@ -1596,14 +1594,12 @@ export async function wrapStickerSetThumb({set, lazyLoadQueue, container, group,
 
         if(set.pFlags.animated) {
           return promise
-          .then(readBlobAsText)
-          //.then(JSON.parse)
-          .then(json => {
+          .then((blob) => {
             lottieLoader.loadAnimationWorker({
               container,
               loop: true,
               autoplay,
-              animationData: json,
+              animationData: blob,
               width,
               height,
               needUpscale: true,

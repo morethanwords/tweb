@@ -9,10 +9,11 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import { blobConstruct, readBlobAsUint8Array } from "../helpers/blob";
+import blobConstruct from "../helpers/blob/blobConstruct";
+import readBlobAsUint8Array from "../helpers/blob/readBlobAsUint8Array";
 
 export class FileManager {
-  public blobSupported = true;
+  private blobSupported = true;
   
   constructor() {
     try {

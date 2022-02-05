@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { readBlobAsUint8Array } from "../../helpers/blob";
+import readBlobAsUint8Array from "../../helpers/blob/readBlobAsUint8Array";
 import { CancellablePromise, deferredPromise } from "../../helpers/cancellablePromise";
 import { getWindowClients } from "../../helpers/context";
 import debounce from "../../helpers/schedulers/debounce";
