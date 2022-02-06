@@ -13,7 +13,7 @@ import type { AppReactionsManager } from "../../lib/appManagers/appReactionsMana
 import type Chat from "./chat";
 import { IS_TOUCH_SUPPORTED } from "../../environment/touchSupport";
 import ButtonMenu, { ButtonMenuItemOptions } from "../buttonMenu";
-import { attachContextMenuListener, openBtnMenu, positionMenu } from "../misc";
+import { attachContextMenuListener, MenuPositionPadding, openBtnMenu, positionMenu } from "../misc";
 import PopupDeleteMessages from "../popups/deleteMessages";
 import PopupForward from "../popups/forward";
 import PopupPinMessage from "../popups/unpinMessage";
@@ -29,7 +29,7 @@ import { Message, Poll, Chat as MTChat, MessageMedia, AvailableReaction } from "
 import PopupReportMessages from "../popups/reportMessages";
 import assumeType from "../../helpers/assumeType";
 import PopupSponsored from "../popups/sponsored";
-import { ScrollableX } from "../scrollable";
+import Scrollable, { ScrollableBase, ScrollableX } from "../scrollable";
 import { wrapSticker } from "../wrappers";
 import RLottiePlayer from "../../lib/rlottie/rlottiePlayer";
 import getVisibleRect from "../../helpers/dom/getVisibleRect";
@@ -37,11 +37,18 @@ import ListenerSetter from "../../helpers/listenerSetter";
 import animationIntersector from "../animationIntersector";
 import { getMiddleware } from "../../helpers/middleware";
 import noop from "../../helpers/noop";
+import callbackify from "../../helpers/callbackify";
+import rootScope from "../../lib/rootScope";
+import { fastRaf } from "../../helpers/schedulers";
+import lottieLoader from "../../lib/rlottie/lottieLoader";
+import PeerTitle from "../peerTitle";
+import StackedAvatars from "../stackedAvatars";
+import { IS_APPLE } from "../../environment/userAgent";
 
 const REACTIONS_CLASS_NAME = 'btn-menu-reactions';
 const REACTION_CLASS_NAME = REACTIONS_CLASS_NAME + '-reaction';
 
-const REACTION_SIZE = 24;
+const REACTION_SIZE = 28;
 const PADDING = 4;
 const REACTION_CONTAINER_SIZE = REACTION_SIZE + PADDING * 2;
 
@@ -49,25 +56,42 @@ type ChatReactionsMenuPlayers = {
   select?: RLottiePlayer,
   appear?: RLottiePlayer,
   selectWrapper: HTMLElement,
-  appearWrapper: HTMLElement
+  appearWrapper: HTMLElement,
+  reaction: string
 };
 export class ChatReactionsMenu {
-  public container: HTMLElement;
+  public widthContainer: HTMLElement;
+  private container: HTMLElement;
   private reactionsMap: Map<HTMLElement, ChatReactionsMenuPlayers>;
-  private scrollable: ScrollableX;
+  private scrollable: ScrollableBase;
   private animationGroup: string;
   private middleware: ReturnType<typeof getMiddleware>;
+  private message: Message.message;
 
   constructor(
-    private appReactionsManager: AppReactionsManager
+    private appReactionsManager: AppReactionsManager,
+    private type: 'horizontal' | 'vertical',
+    middleware: ChatReactionsMenu['middleware']
   ) {
+    const widthContainer = this.widthContainer = document.createElement('div');
+    widthContainer.classList.add(REACTIONS_CLASS_NAME + '-container');
+    widthContainer.classList.add(REACTIONS_CLASS_NAME + '-container-' + type);
+
     const reactionsContainer = this.container = document.createElement('div');
     reactionsContainer.classList.add(REACTIONS_CLASS_NAME);
 
-    const reactionsScrollable = this.scrollable = new ScrollableX(undefined);
+    const reactionsScrollable = this.scrollable = type === 'vertical' ? new Scrollable(undefined) : new ScrollableX(undefined);
     reactionsContainer.append(reactionsScrollable.container);
     reactionsScrollable.onAdditionalScroll = this.onScroll;
     reactionsScrollable.setListeners();
+
+    reactionsScrollable.container.classList.add('no-scrollbar');
+
+    ['big'].forEach(type => {
+      const bubble = document.createElement('div');
+      bubble.classList.add(REACTIONS_CLASS_NAME + '-bubble', REACTIONS_CLASS_NAME + '-bubble-' + type);
+      reactionsContainer.append(bubble);
+    });
 
     this.reactionsMap = new Map();
     this.animationGroup = 'CHAT-MENU-REACTIONS-' + Date.now();
@@ -77,13 +101,42 @@ export class ChatReactionsMenu {
       reactionsContainer.addEventListener('mousemove', this.onMouseMove);
     }
 
-    this.middleware = getMiddleware();
+    attachClickEvent(reactionsContainer, (e) => {
+      const reactionDiv = findUpClassName(e.target, REACTION_CLASS_NAME);
+      if(!reactionDiv) return;
+
+      const players = this.reactionsMap.get(reactionDiv);
+      if(!players) return;
+
+      this.appReactionsManager.sendReaction(this.message, players.reaction);
+    });
+
+    widthContainer.append(reactionsContainer);
+
+    this.middleware = middleware ?? getMiddleware();
+  }
+
+  public init(message: Message.message) {
+    this.message = message;
+
     const middleware = this.middleware.get();
-    appReactionsManager.getAvailableReactions().then(reactions => {
-      if(!middleware()) return;
+    // const result = Promise.resolve(this.appReactionsManager.getAvailableReactionsForPeer(message.peerId)).then((res) => pause(1000).then(() => res));
+    const result = this.appReactionsManager.getAvailableReactionsByMessage(message);
+    callbackify(result, (reactions) => {
+      if(!middleware() || !reactions.length) return;
       reactions.forEach(reaction => {
         this.renderReaction(reaction);
       });
+
+      const setVisible = () => {
+        this.container.classList.add('is-visible');
+      };
+
+      if(result instanceof Promise) {
+        fastRaf(setVisible);
+      } else {
+        setVisible();
+      }
     });
   }
 
@@ -109,20 +162,25 @@ export class ChatReactionsMenu {
     scaleContainer.classList.add(REACTION_CLASS_NAME + '-scale');
 
     const appearWrapper = document.createElement('div');
-    const selectWrapper = document.createElement('div');
+    let selectWrapper: HTMLElement;;
     appearWrapper.classList.add(REACTION_CLASS_NAME + '-appear');
-    selectWrapper.classList.add(REACTION_CLASS_NAME + '-select', 'hide');
 
-    const hoverScale = IS_TOUCH_SUPPORTED ? 1 : 1.25;
-    const size = REACTION_SIZE * hoverScale;
+    if(rootScope.settings.animationsEnabled) {
+      selectWrapper = document.createElement('div');
+      selectWrapper.classList.add(REACTION_CLASS_NAME + '-select', 'hide');
+    }
 
     const players: ChatReactionsMenuPlayers = {
       selectWrapper,
-      appearWrapper
+      appearWrapper,
+      reaction: reaction.reaction
     };
     this.reactionsMap.set(reactionDiv, players);
 
     const middleware = this.middleware.get();
+
+    const hoverScale = IS_TOUCH_SUPPORTED ? 1 : 1.25;
+    const size = REACTION_SIZE * hoverScale;
 
     const options = {
       width: size,
@@ -133,54 +191,66 @@ export class ChatReactionsMenu {
       group: this.animationGroup,
       middleware
     };
-    
-    let isFirst = true;
-    wrapSticker({
-      doc: reaction.appear_animation,
-      div: appearWrapper,
-      play: true,
-      ...options
-    }).then(player => {
-      assumeType<RLottiePlayer>(player);
 
-      players.appear = player;
+    if(!rootScope.settings.animationsEnabled) {
+      delete options.needFadeIn;
+      delete options.withThumb;
 
-      player.addEventListener('enterFrame', (frameNo) => {
-        if(player.maxFrame === frameNo) {
-          selectLoadPromise.then((selectPlayer) => {
-            assumeType<RLottiePlayer>(selectPlayer);
-            appearWrapper.classList.add('hide');
-            selectWrapper.classList.remove('hide');
-
-            if(isFirst) {
-              players.select = selectPlayer;
-              isFirst = false;
-            }
-          }, noop);
-        }
+      wrapSticker({
+        doc: reaction.static_icon,
+        div: appearWrapper,
+        ...options
       });
-    }, noop);
+    } else {
+      let isFirst = true;
+      wrapSticker({
+        doc: reaction.appear_animation,
+        div: appearWrapper,
+        play: true,
+        ...options
+      }).then(player => {
+        assumeType<RLottiePlayer>(player);
+  
+        players.appear = player;
+  
+        player.addEventListener('enterFrame', (frameNo) => {
+          if(player.maxFrame === frameNo) {
+            selectLoadPromise.then((selectPlayer) => {
+              assumeType<RLottiePlayer>(selectPlayer);
+              appearWrapper.classList.add('hide');
+              selectWrapper.classList.remove('hide');
+  
+              if(isFirst) {
+                players.select = selectPlayer;
+                isFirst = false;
+              }
+            }, noop);
+          }
+        });
+      }, noop);
+  
+      const selectLoadPromise = wrapSticker({
+        doc: reaction.select_animation,
+        div: selectWrapper,
+        ...options
+      }).then(player => {
+        assumeType<RLottiePlayer>(player);
 
-    const selectLoadPromise = wrapSticker({
-      doc: reaction.select_animation,
-      div: selectWrapper,
-      ...options
-    }).catch(noop);
+        return lottieLoader.waitForFirstFrame(player);
+      }).catch(noop);
+    }
     
-    scaleContainer.append(appearWrapper, selectWrapper);
+    scaleContainer.append(appearWrapper);
+    selectWrapper && scaleContainer.append(selectWrapper);
     reactionDiv.append(scaleContainer);
     this.scrollable.append(reactionDiv);
   }
 
   private onScrollProcessItem(div: HTMLElement, players: ChatReactionsMenuPlayers) {
-    if(!players.appear) {
-      return;
-    }
-
     const scaleContainer = div.firstElementChild as HTMLElement;
     const visibleRect = getVisibleRect(div, this.scrollable.container);
     if(!visibleRect) {
-      if(!players.appearWrapper.classList.contains('hide')) {
+      if(!players.appearWrapper.classList.contains('hide') || !players.appear) {
         return;
       }
 
@@ -252,6 +322,9 @@ export default class ChatContextMenu {
   private reactionsMenu: ChatReactionsMenu;
   private listenerSetter: ListenerSetter;
 
+  private viewerPeerId: PeerId;
+  private middleware: ReturnType<typeof getMiddleware>;
+
   constructor(
     private attachTo: HTMLElement, 
     private chat: Chat, 
@@ -263,6 +336,7 @@ export default class ChatContextMenu {
     private appReactionsManager: AppReactionsManager
   ) {
     this.listenerSetter = new ListenerSetter();
+    this.middleware = getMiddleware();
 
     if(IS_TOUCH_SUPPORTED/*  && false */) {
       attachClickEvent(attachTo, (e) => {
@@ -349,19 +423,21 @@ export default class ChatContextMenu {
     this.isSelected = this.chat.selection.isMidSelected(this.peerId, this.mid);
     this.message = this.chat.getMessage(this.mid);
     this.noForwards = !isSponsored && !this.appMessagesManager.canForward(this.message);
+    this.viewerPeerId = undefined;
 
     const initResult = this.init();
     element = initResult.element;
-    const {cleanup, destroy} = initResult;
+    const {cleanup, destroy, menuPadding} = initResult;
 
     const side: 'left' | 'right' = bubble.classList.contains('is-in') ? 'left' : 'right';
     //bubble.parentElement.append(element);
     //appImManager.log('contextmenu', e, bubble, side);
-    positionMenu((e as TouchEvent).touches ? (e as TouchEvent).touches[0] : e as MouseEvent, element, side);
+    positionMenu((e as TouchEvent).touches ? (e as TouchEvent).touches[0] : e as MouseEvent, element, side, menuPadding);
     openBtnMenu(element, () => {
       this.mid = 0;
       this.peerId = undefined;
       this.target = null;
+      this.viewerPeerId = undefined;
       cleanup();
 
       setTimeout(() => {
@@ -373,6 +449,7 @@ export default class ChatContextMenu {
   public cleanup() {
     this.listenerSetter.removeAll();
     this.reactionsMenu && this.reactionsMenu.cleanup();
+    this.middleware.clean();
   }
 
   public destroy() {
@@ -591,6 +668,16 @@ export default class ChatContextMenu {
       notDirect: () => true,
       withSelection: true
     }, {
+      onClick: () => {
+        if(this.viewerPeerId) {
+          this.chat.appImManager.setInnerPeer({
+            peerId: this.viewerPeerId
+          });
+        }
+      },
+      verify: () => !this.peerId.isUser() && (!!(this.message as Message.message).reactions?.recent_reactons?.length || this.appMessagesManager.canViewMessageReadParticipants(this.message)),
+      notDirect: () => true
+    }, {
       icon: 'delete danger',
       text: 'Delete',
       onClick: this.onDeleteClick,
@@ -622,8 +709,110 @@ export default class ChatContextMenu {
     element.id = 'bubble-contextmenu';
     element.classList.add('contextmenu');
 
-    const reactionsMenu = this.reactionsMenu = new ChatReactionsMenu(this.appReactionsManager);
-    element.prepend(reactionsMenu.container);
+    const viewsButton = filteredButtons.find(button => !button.icon);
+    if(viewsButton) {
+      const recentReactions = (this.message as Message.message).reactions?.recent_reactons;
+      const isViewingReactions = !!recentReactions?.length;
+      const participantsCount = (this.appPeersManager.getPeer(this.peerId) as MTChat.chat).participants_count;
+
+      viewsButton.element.classList.add('tgico-' + (isViewingReactions ? 'reactions' : 'checks'));
+      const i18nElem = new I18n.IntlElement({
+        key: isViewingReactions ? 'Chat.Context.Reacted' : 'NobodyViewed',
+        args: isViewingReactions ? [participantsCount, participantsCount] : undefined,
+        element: viewsButton.textElement
+      });
+
+      let fakeText: HTMLElement;
+      if(isViewingReactions) {
+        fakeText = i18n(
+          recentReactions.length === participantsCount ? 'Chat.Context.ReactedFast' : 'Chat.Context.Reacted', 
+          [recentReactions.length, participantsCount]
+        );
+      } else {
+        fakeText = i18n('Loading');
+      }
+
+      fakeText.classList.add('btn-menu-item-text-fake');
+      viewsButton.element.append(fakeText);
+
+      const PADDING_PER_AVATAR = .875;
+      i18nElem.element.style.visibility = 'hidden';
+      i18nElem.element.style.paddingRight = isViewingReactions ? PADDING_PER_AVATAR * recentReactions.length + 'rem' : '1rem';
+      const middleware = this.middleware.get();
+      this.appMessagesManager.getMessageReactionsListAndReadParticipants(this.message as Message.message).then((result) => {
+        if(!middleware()) {
+          return;
+        }
+
+        if(fakeText) {
+          fakeText.remove();
+        }
+
+        const reactions = result.combined;
+        const reactedLength = isViewingReactions ? reactions.filter(reaction => reaction.reaction).length : reactions.length;
+
+        let fakeElem: HTMLElement;
+        if(reactions.length === 1) {
+          fakeElem = new PeerTitle({
+            peerId: reactions[0].peerId,
+            onlyFirstName: true,
+            dialog: true
+          }).element;
+
+          this.viewerPeerId = reactions[0].peerId;
+        } else if(isViewingReactions) {
+          const isFull = reactedLength === reactions.length;
+          fakeElem = i18n(
+            isFull ? 'Chat.Context.ReactedFast' : 'Chat.Context.Reacted', 
+            [reactedLength, reactions.length]
+          );
+        } else {
+          if(!reactions.length) {
+            i18nElem.element.style.visibility = '';
+          } else {
+            fakeElem = i18n('MessageSeen', [reactions.length]);
+          }
+        }
+
+        if(fakeElem) {
+          fakeElem.style.paddingRight = PADDING_PER_AVATAR * reactedLength + 'rem';
+          fakeElem.classList.add('btn-menu-item-text-fake');
+          viewsButton.element.append(fakeElem);
+        }
+
+        if(reactions.length) {
+          const avatars = new StackedAvatars({avatarSize: 24});
+          avatars.render(recentReactions ? recentReactions.map(r => r.user_id.toPeerId()) : reactions.map(reaction => reaction.peerId));
+          viewsButton.element.append(avatars.container);
+        }
+      });
+    }
+
+    let menuPadding: MenuPositionPadding;
+    let reactionsMenu: ChatReactionsMenu;
+    if(this.message._ === 'message') {
+      const position: 'horizontal' | 'vertical' = IS_APPLE || IS_TOUCH_SUPPORTED ? 'horizontal' : 'vertical';
+      reactionsMenu = this.reactionsMenu = new ChatReactionsMenu(this.appReactionsManager, position, this.middleware);
+      reactionsMenu.init(this.message);
+      element.prepend(reactionsMenu.widthContainer);
+
+      const size = 42;
+      const margin = 8;
+      const totalSize = size + margin;
+      if(position === 'vertical') {
+        menuPadding = {
+          top: 24,
+          // bottom: 36, // positionMenu will detect it itself somehow
+          left: totalSize
+        };
+      } else {
+        menuPadding = {
+          top: totalSize,
+          right: 36,
+          left: 24
+        };
+      }
+    }
 
     this.chat.container.append(element);
 
@@ -631,11 +820,12 @@ export default class ChatContextMenu {
       element, 
       cleanup: () => {
         this.cleanup();
-        reactionsMenu.cleanup();
+        reactionsMenu && reactionsMenu.cleanup();
       },
       destroy: () => {
         element.remove();
-      }
+      },
+      menuPadding
     };
   }
 
