@@ -14,10 +14,10 @@ import ProgressivePreloader from "../../components/preloader";
 import { CancellablePromise, deferredPromise } from "../../helpers/cancellablePromise";
 import { formatDateAccordingToTodayNew, formatTime, tsNow } from "../../helpers/date";
 import { createPosterForVideo } from "../../helpers/files";
-import { copy, getObjectKeysAndSort } from "../../helpers/object";
+import { copy, deepEqual, getObjectKeysAndSort } from "../../helpers/object";
 import { randomLong } from "../../helpers/random";
 import { splitStringByLength, limitSymbols, escapeRegExp } from "../../helpers/string";
-import { Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup, InputPeer, InputPhoto, InputDocument, InputGeoPoint, WebPage, GeoPoint, ReportReason, MessagesGetDialogs, InputChannel, InputDialogPeer } from "../../layer";
+import { Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup, InputPeer, InputPhoto, InputDocument, InputGeoPoint, WebPage, GeoPoint, ReportReason, MessagesGetDialogs, InputChannel, InputDialogPeer, MessageUserReaction } from "../../layer";
 import { InvokeApiOptions } from "../../types";
 import I18n, { FormatterArguments, i18n, join, langPack, LangPackKey, UNSUPPORTED_LANG_PACK_KEY, _i18n } from "../langPack";
 import { logger, LogTypes } from "../logger";
@@ -63,6 +63,7 @@ import IMAGE_MIME_TYPES_SUPPORTED from "../../environment/imageMimeTypesSupport"
 import VIDEO_MIME_TYPES_SUPPORTED from "../../environment/videoMimeTypesSupport";
 import './appGroupCallsManager';
 import appGroupCallsManager from "./appGroupCallsManager";
+import appReactionsManager from "./appReactionsManager";
 
 //console.trace('include');
 // TODO: если удалить диалог находясь в папке, то он не удалится из папки и будет виден в настройках
@@ -222,6 +223,8 @@ export class AppMessagesManager {
 
       updateEditMessage: this.onUpdateEditMessage,
       updateEditChannelMessage: this.onUpdateEditMessage,
+
+      updateMessageReactions: this.onUpdateMessageReactions,
 
       updateReadChannelDiscussionInbox: this.onUpdateReadHistory,
       updateReadChannelDiscussionOutbox: this.onUpdateReadHistory,
@@ -1518,7 +1521,7 @@ export class AppMessagesManager {
   private generateReplies(peerId: PeerId) {
     let replies: MessageReplies.messageReplies;
     if(appPeersManager.isBroadcast(peerId)) {
-      const channelFull = appProfileManager.chatsFull[peerId.toChatId()] as ChatFull.channelFull;
+      const channelFull = appProfileManager.getCachedFullChat(peerId.toChatId()) as ChatFull.channelFull;
       if(channelFull?.linked_chat_id) {
         replies = {
           _: 'messageReplies',
@@ -4314,6 +4317,18 @@ export class AppMessagesManager {
     return this.historiesStorage[peerId] ?? (this.historiesStorage[peerId] = {count: null, history: new SlicedArray()});
   }
 
+  private getNotifyPeerSettings(peerId: PeerId) {
+    return Promise.all([
+      appNotificationsManager.getNotifyPeerTypeSettings(),
+      appNotificationsManager.getNotifySettings(appPeersManager.getInputNotifyPeerById(peerId, true))
+    ]).then(([_, peerTypeNotifySettings]) => {
+      return {
+        muted: appNotificationsManager.isPeerLocalMuted(peerId, true),
+        peerTypeNotifySettings
+      };
+    });
+  }
+
   private handleNotifications = () => {
     window.clearTimeout(this.notificationsHandlePromise);
     this.notificationsHandlePromise = 0;
@@ -4328,13 +4343,9 @@ export class AppMessagesManager {
       }
 
       const notifyPeerToHandle = this.notificationsToHandle[peerId];
-
-      Promise.all([
-        appNotificationsManager.getNotifyPeerTypeSettings(),
-        appNotificationsManager.getNotifySettings(appPeersManager.getInputNotifyPeerById(peerId, true))
-      ]).then(([_, peerTypeNotifySettings]) => {
+      this.getNotifyPeerSettings(peerId).then(({muted, peerTypeNotifySettings}) => {
         const topMessage = notifyPeerToHandle.topMessage;
-        if(appNotificationsManager.isPeerLocalMuted(peerId, true) || !topMessage.pFlags.unread) {
+        if(muted || !topMessage.pFlags.unread) {
           return;
         }
 
@@ -4560,6 +4571,47 @@ export class AppMessagesManager {
     }
   };
 
+  private onUpdateMessageReactions = (update: Update.updateMessageReactions) => {
+    const {peer, msg_id, reactions} = update;
+    const mid = appMessagesIdsManager.generateMessageId(msg_id);
+    const peerId = appPeersManager.getPeerId(peer);
+    const message: MyMessage = this.getMessageByPeer(peerId, mid);
+
+    if(message._ !== 'message') {
+      return;
+    }
+
+    const recentReactions = reactions.recent_reactons;
+    if(recentReactions) {
+      const recentReaction = recentReactions[recentReactions.length - 1];
+      const previousReactions = message.reactions;
+      const previousRecentReactions = previousReactions?.recent_reactons;
+      if(
+        recentReaction.user_id !== rootScope.myId.toUserId() && (
+          !previousRecentReactions ||
+          previousRecentReactions.length <= recentReactions.length
+        ) && (
+          !previousRecentReactions || 
+          !deepEqual(recentReaction, previousRecentReactions[previousRecentReactions.length - 1])
+        )
+      ) {
+        this.getNotifyPeerSettings(peerId).then(({muted, peerTypeNotifySettings}) => {
+          if(muted || !peerTypeNotifySettings.show_previews) return;
+          this.notifyAboutMessage(message, {
+            userReaction: recentReaction,
+            peerTypeNotifySettings
+          });
+        });
+      }
+    }
+
+    message.reactions = reactions;
+
+    rootScope.dispatchEvent('message_reactions', message);
+
+    this.setDialogToStateIfMessageIsTop(message);
+  };
+
   private onUpdateDialogUnreadMark = (update: Update.updateDialogUnreadMark) => {
     //this.log('updateDialogUnreadMark', update);
     const peerId = appPeersManager.getPeerId((update.peer as DialogPeer.dialogPeer).peer);
@@ -4614,6 +4666,20 @@ export class AppMessagesManager {
         rootScope.dispatchEvent('dialog_flush', {peerId});
       }
     } else {
+      // no sense in dispatching message_edit since only reactions have changed
+      if(oldMessage?._ === 'message' && !deepEqual(oldMessage.reactions, (newMessage as Message.message).reactions)) {
+        const newReactions = (newMessage as Message.message).reactions;
+        (newMessage as Message.message).reactions = oldMessage.reactions;
+        apiUpdatesManager.processLocalUpdate({
+          _: 'updateMessageReactions',
+          peer: appPeersManager.getOutputPeer(peerId),
+          msg_id: message.id,
+          reactions: newReactions
+        });
+
+        return;
+      }
+
       rootScope.dispatchEvent('message_edit', {
         storage,
         peerId,
@@ -5259,6 +5325,75 @@ export class AppMessagesManager {
     });
   }
 
+  public getMessageReactionsListAndReadParticipants(
+    message: Message.message, 
+    limit?: number, 
+    reaction?: string, 
+    offset?: string
+  ) {
+    const emptyMessageReactionsList = {
+      reactions: [] as MessageUserReaction[],
+      count: 0,
+      next_offset: undefined as string
+    };
+
+    const canViewMessageReadParticipants = this.canViewMessageReadParticipants(message);
+    if(canViewMessageReadParticipants && limit === undefined) {
+      limit = 100;
+    } else if(limit === undefined) {
+      limit = 50;
+    }
+
+    return Promise.all([
+      canViewMessageReadParticipants ? this.getMessageReadParticipants(message.peerId, message.mid).catch(() => [] as UserId[]) : [] as UserId[],
+
+      message.reactions?.recent_reactons?.length ? appReactionsManager.getMessageReactionsList(message.peerId, message.mid, limit, reaction, offset).catch(err => emptyMessageReactionsList) : emptyMessageReactionsList
+    ]).then(([userIds, messageReactionsList]) => {
+      const readParticipantsPeerIds = userIds.map(userId => userId.toPeerId());
+      
+      const filteredReadParticipants = readParticipantsPeerIds.slice();
+      forEachReverse(filteredReadParticipants, (peerId, idx, arr) => {
+        if(messageReactionsList.reactions.some(reaction => reaction.user_id.toPeerId() === peerId)) {
+          arr.splice(idx, 1);
+        }
+      });
+
+      let combined: {peerId: PeerId, reaction?: string}[] = messageReactionsList.reactions.map(reaction => ({peerId: reaction.user_id.toPeerId(), reaction: reaction.reaction}));
+      combined = combined.concat(filteredReadParticipants.map(readPeerId => ({peerId: readPeerId})));
+      
+      return {
+        reactions: messageReactionsList.reactions,
+        readParticipants: readParticipantsPeerIds,
+        combined: combined,
+        nextOffset: messageReactionsList.next_offset
+      };
+    });
+  }
+
+  public getMessageReadParticipants(peerId: PeerId, mid: number): Promise<UserId[]> {
+    return apiManager.invokeApiSingle('messages.getMessageReadParticipants', {
+      peer: appPeersManager.getInputPeerById(peerId),
+      msg_id: appMessagesIdsManager.getServerMessageId(mid)
+    }).then(userIds => { // ! convert long to number
+      return userIds.map(userId => userId.toUserId());
+    });
+  }
+
+  public canViewMessageReadParticipants(message: Message) {
+    if(
+      message._ !== 'message' || 
+      message.pFlags.is_outgoing || 
+      !message.pFlags.out || 
+      !appPeersManager.isAnyGroup(message.peerId)
+    ) {
+      return false;
+    }
+
+    const chat: Chat.chat | Chat.channel = appChatsManager.getChat(message.peerId.toChatId());
+    return chat.participants_count < rootScope.appConfig.chat_read_mark_size_threshold && 
+      (tsNow(true) - message.date) < rootScope.appConfig.chat_read_mark_expire_period;
+  }
+
   public incrementMessageViews(peerId: PeerId, mids: number[]) {
     if(!mids.length) {
       return;
@@ -5291,9 +5426,11 @@ export class AppMessagesManager {
 
   private notifyAboutMessage(message: MyMessage, options: Partial<{
     fwdCount: number,
+    userReaction: MessageUserReaction,
     peerTypeNotifySettings: PeerNotifySettings
   }> = {}) {
     const peerId = this.getMessagePeer(message);
+    const isAnyChat = peerId.isAnyChat();
     const notification: NotifyOptions = {};
     const peerString = appPeersManager.getPeerString(peerId);
     let notificationMessage: string;
@@ -5303,13 +5440,27 @@ export class AppMessagesManager {
         notificationMessage = I18n.format('Notifications.Forwarded', true, [options.fwdCount]);
       } else {
         notificationMessage = this.wrapMessageForReply(message, undefined, undefined, true);
+
+        if(options.userReaction) {
+          const langPackKey: LangPackKey = /* isAnyChat ? 'Notification.Group.Reacted' :  */'Notification.Contact.Reacted';
+          const args: FormatterArguments = [
+            options.userReaction.reaction, 
+            notificationMessage
+          ];
+  
+          /* if(isAnyChat) {
+            args.unshift(appPeersManager.getPeerTitle(message.fromId, true));
+          } */
+  
+          notificationMessage = I18n.format(langPackKey, true, args);
+        }
       }
     } else {
       notificationMessage = I18n.format('Notifications.New', true);
     }
 
     notification.title = appPeersManager.getPeerTitle(peerId, true);
-    if(peerId.isAnyChat() && message.fromId !== message.peerId) {
+    if(isAnyChat && message.fromId !== message.peerId) {
       notification.title = appPeersManager.getPeerTitle(message.fromId, true) +
         ' @ ' +
         notification.title;
@@ -5329,7 +5480,7 @@ export class AppMessagesManager {
     const peerPhoto = appPeersManager.getPeerPhoto(peerId);
     if(peerPhoto) {
       appAvatarsManager.loadAvatar(peerId, peerPhoto, 'photo_small').loadPromise.then(url => {
-        if(message.pFlags.unread) {
+        if(message.pFlags.unread || options.userReaction) {
           notification.image = url;
           appNotificationsManager.notify(notification);
         }
