@@ -491,6 +491,10 @@ class TLDeserialization<FetchLongAs extends Long> {
     this.debug = options.debug !== undefined ? options.debug : /* Modes.debug */false;
   }
 
+  /* public setMtproto(mtproto: boolean) {
+    this.mtproto = mtproto;
+  } */
+
   private readInt(field: string) {
     //if(this.offset >= this.intView.length * 4) {
     if((this.byteView.length - this.offset) < 4) {
