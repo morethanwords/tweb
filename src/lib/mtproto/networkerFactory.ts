@@ -65,6 +65,12 @@ export class NetworkerFactory {
     }
   }
 
+  public unsetConnectionInited() {
+    for(const networker of this.networkers) {
+      networker.connectionInited = false;
+    }
+  }
+
   public forceReconnectTimeout() {
     for(const networker of this.networkers) {
       networker.forceReconnectTimeout();
