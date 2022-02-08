@@ -24,6 +24,7 @@ import DATABASE_STATE from '../../config/databases/state';
 import sessionStorage from '../sessionStorage';
 import { nextRandomUint } from '../../helpers/random';
 import compareVersion from '../../helpers/compareVersion';
+import getTimeFormat from '../../helpers/getTimeFormat';
 
 const REFRESH_EVERY = 24 * 60 * 60 * 1000; // 1 day
 // const REFRESH_EVERY = 1e3;
@@ -166,7 +167,7 @@ export const STATE_INIT: State = {
     notifications: {
       sound: false
     },
-    timeFormat: new Date().toLocaleString().match(/\s(AM|PM)/) ? 'h12' : 'h23'
+    timeFormat: getTimeFormat()
   },
   keepSigned: true,
   chatContextMenuHintWasShown: false,

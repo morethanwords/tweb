@@ -17,7 +17,7 @@ import { createPosterForVideo } from "../../helpers/files";
 import { copy, deepEqual, getObjectKeysAndSort } from "../../helpers/object";
 import { randomLong } from "../../helpers/random";
 import { splitStringByLength, limitSymbols, escapeRegExp } from "../../helpers/string";
-import { Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup, InputPeer, InputPhoto, InputDocument, InputGeoPoint, WebPage, GeoPoint, ReportReason, MessagesGetDialogs, InputChannel, InputDialogPeer, MessageUserReaction } from "../../layer";
+import { Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup, InputPeer, InputPhoto, InputDocument, InputGeoPoint, WebPage, GeoPoint, ReportReason, MessagesGetDialogs, InputChannel, InputDialogPeer, MessageUserReaction, ReactionCount } from "../../layer";
 import { InvokeApiOptions } from "../../types";
 import I18n, { FormatterArguments, i18n, join, langPack, LangPackKey, UNSUPPORTED_LANG_PACK_KEY, _i18n } from "../langPack";
 import { logger, LogTypes } from "../logger";
@@ -2368,7 +2368,7 @@ export class AppMessagesManager {
         message = m.message;
         totalEntities = m.totalEntities;
         entities = m.entities;
-      }  
+      }
     }
 
     if(foundMessages > 1) {
@@ -2378,6 +2378,20 @@ export class AppMessagesManager {
     }
 
     return {message, entities, totalEntities};
+  }
+
+  public getGroupsFirstMessage(message: Message.message): Message.message {
+    if(!message.grouped_id) return message;
+
+    const storage = this.groupedMessagesStorage[message.grouped_id];
+    let minMid = Number.MAX_SAFE_INTEGER;
+    for(const [mid, message] of storage) {
+      if(message.mid < minMid) {
+        minMid = message.mid;
+      }
+    }
+
+    return storage.get(minMid);
   }
 
   public getMidsByAlbum(grouped_id: string) {
@@ -2390,10 +2404,10 @@ export class AppMessagesManager {
     else return [message.mid];
   }
 
-  public filterMessages(message: any, verify: (message: MyMessage) => boolean) {
+  public filterMessages(message: MyMessage, verify: (message: MyMessage) => boolean) {
     const out: MyMessage[] = [];
-    if(message.grouped_id) {
-      const storage = this.groupedMessagesStorage[message.grouped_id];
+    if((message as Message.message).grouped_id) {
+      const storage = this.groupedMessagesStorage[(message as Message.message).grouped_id];
       for(const [mid, message] of storage) {
         if(verify(message)) {
           out.push(message);
@@ -3481,7 +3495,7 @@ export class AppMessagesManager {
     }
 
     if(!message.pFlags.out || (
-        message.peerId.isUser() && 
+        message.peer_id._ !== 'peerChannel' &&  
         message.date < (tsNow(true) - rootScope.config.edit_time_limit) && 
         (message as Message.message).media?._ !== 'messageMediaPoll'
       )
@@ -3938,7 +3952,7 @@ export class AppMessagesManager {
       appUsersManager.saveApiUsers(result.users);
       this.saveMessages(result.messages);
 
-      const message = this.filterMessages(result.messages[0], message => !!(message as Message.message).replies)[0] as Message.message;
+      const message = this.filterMessages(result.messages[0] as Message.message, message => !!(message as Message.message).replies)[0] as Message.message;
       const threadKey = message.peerId + '_' + message.mid;
 
       this.generateThreadServiceStartMessage(message);
@@ -4581,11 +4595,11 @@ export class AppMessagesManager {
       return;
     }
 
-    const recentReactions = reactions.recent_reactons;
-    if(recentReactions) {
+    const recentReactions = reactions?.recent_reactions;
+    if(recentReactions?.length) {
       const recentReaction = recentReactions[recentReactions.length - 1];
       const previousReactions = message.reactions;
-      const previousRecentReactions = previousReactions?.recent_reactons;
+      const previousRecentReactions = previousReactions?.recent_reactions;
       if(
         recentReaction.user_id !== rootScope.myId.toUserId() && (
           !previousRecentReactions ||
@@ -4605,11 +4619,30 @@ export class AppMessagesManager {
       }
     }
 
+    const results = reactions?.results ?? [];
+    const previousResults = message.reactions?.results ?? [];
+    const changedResults = results.filter(reactionCount => {
+      const previousReactionCount = previousResults.find(_reactionCount => _reactionCount.reaction === reactionCount.reaction);
+      return (
+        message.pFlags.out && (
+          !previousReactionCount || 
+          reactionCount.count > previousReactionCount.count
+        )
+      ) || (
+        reactionCount.pFlags.chosen && (
+          !previousReactionCount || 
+          !previousReactionCount.pFlags.chosen
+        )
+      );
+    });
+
     message.reactions = reactions;
 
-    rootScope.dispatchEvent('message_reactions', message);
+    rootScope.dispatchEvent('message_reactions', {message, changedResults});
 
-    this.setDialogToStateIfMessageIsTop(message);
+    if(!update.local) {
+      this.setDialogToStateIfMessageIsTop(message);
+    }
   };
 
   private onUpdateDialogUnreadMark = (update: Update.updateDialogUnreadMark) => {
@@ -5329,7 +5362,9 @@ export class AppMessagesManager {
     message: Message.message, 
     limit?: number, 
     reaction?: string, 
-    offset?: string
+    offset?: string,
+    skipReadParticipants?: boolean,
+    skipReactionsList?: boolean
   ) {
     const emptyMessageReactionsList = {
       reactions: [] as MessageUserReaction[],
@@ -5345,9 +5380,9 @@ export class AppMessagesManager {
     }
 
     return Promise.all([
-      canViewMessageReadParticipants ? this.getMessageReadParticipants(message.peerId, message.mid).catch(() => [] as UserId[]) : [] as UserId[],
+      canViewMessageReadParticipants && !reaction && !skipReadParticipants ? this.getMessageReadParticipants(message.peerId, message.mid).catch(() => [] as UserId[]) : [] as UserId[],
 
-      message.reactions?.recent_reactons?.length ? appReactionsManager.getMessageReactionsList(message.peerId, message.mid, limit, reaction, offset).catch(err => emptyMessageReactionsList) : emptyMessageReactionsList
+      message.reactions?.recent_reactions?.length && !skipReactionsList ? appReactionsManager.getMessageReactionsList(message.peerId, message.mid, limit, reaction, offset).catch(err => emptyMessageReactionsList) : emptyMessageReactionsList
     ]).then(([userIds, messageReactionsList]) => {
       const readParticipantsPeerIds = userIds.map(userId => userId.toPeerId());
       
@@ -5363,6 +5398,7 @@ export class AppMessagesManager {
       
       return {
         reactions: messageReactionsList.reactions,
+        reactionsCount: messageReactionsList.count,
         readParticipants: readParticipantsPeerIds,
         combined: combined,
         nextOffset: messageReactionsList.next_offset

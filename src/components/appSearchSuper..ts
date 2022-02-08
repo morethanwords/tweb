@@ -1246,14 +1246,14 @@ export default class AppSearchSuper {
         return renderParticipants(participants.participants);
       });
     } else {
-      promise = (appProfileManager.getChatFull(id) as Promise<ChatFull.chatFull>).then(chatFull => {
+      promise = Promise.resolve(appProfileManager.getChatFull(id)).then(chatFull => {
         if(!middleware()) {
           return;
         }
 
         //console.log('anymore', chatFull);
         this.loaded[mediaTab.inputFilter] = true;
-        const participants = chatFull.participants;
+        const participants = (chatFull as ChatFull.chatFull).participants;
         if(participants._ === 'chatParticipantsForbidden') {
           return;
         }

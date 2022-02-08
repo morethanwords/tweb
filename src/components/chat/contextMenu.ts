@@ -44,6 +44,7 @@ import lottieLoader from "../../lib/rlottie/lottieLoader";
 import PeerTitle from "../peerTitle";
 import StackedAvatars from "../stackedAvatars";
 import { IS_APPLE } from "../../environment/userAgent";
+import PopupReactedList from "../popups/reactedList";
 
 const REACTIONS_CLASS_NAME = 'btn-menu-reactions';
 const REACTION_CLASS_NAME = REACTIONS_CLASS_NAME + '-reaction';
@@ -324,6 +325,7 @@ export default class ChatContextMenu {
 
   private viewerPeerId: PeerId;
   private middleware: ReturnType<typeof getMiddleware>;
+  canOpenReactedList: boolean;
 
   constructor(
     private attachTo: HTMLElement, 
@@ -424,6 +426,7 @@ export default class ChatContextMenu {
     this.message = this.chat.getMessage(this.mid);
     this.noForwards = !isSponsored && !this.appMessagesManager.canForward(this.message);
     this.viewerPeerId = undefined;
+    this.canOpenReactedList = undefined;
 
     const initResult = this.init();
     element = initResult.element;
@@ -438,6 +441,7 @@ export default class ChatContextMenu {
       this.peerId = undefined;
       this.target = null;
       this.viewerPeerId = undefined;
+      this.canOpenReactedList = undefined;
       cleanup();
 
       setTimeout(() => {
@@ -673,9 +677,13 @@ export default class ChatContextMenu {
           this.chat.appImManager.setInnerPeer({
             peerId: this.viewerPeerId
           });
+        } else if(this.canOpenReactedList) {
+          new PopupReactedList(this.appMessagesManager, this.message as Message.message);
+        } else {
+          return false;
         }
       },
-      verify: () => !this.peerId.isUser() && (!!(this.message as Message.message).reactions?.recent_reactons?.length || this.appMessagesManager.canViewMessageReadParticipants(this.message)),
+      verify: () => !this.peerId.isUser() && (!!(this.message as Message.message).reactions?.recent_reactions?.length || this.appMessagesManager.canViewMessageReadParticipants(this.message)),
       notDirect: () => true
     }, {
       icon: 'delete danger',
@@ -711,23 +719,33 @@ export default class ChatContextMenu {
 
     const viewsButton = filteredButtons.find(button => !button.icon);
     if(viewsButton) {
-      const recentReactions = (this.message as Message.message).reactions?.recent_reactons;
+      const reactions = (this.message as Message.message).reactions;
+      const recentReactions = reactions?.recent_reactions;
       const isViewingReactions = !!recentReactions?.length;
-      const participantsCount = (this.appPeersManager.getPeer(this.peerId) as MTChat.chat).participants_count;
+      const participantsCount = this.appMessagesManager.canViewMessageReadParticipants(this.message) ? (this.appPeersManager.getPeer(this.peerId) as MTChat.chat).participants_count : undefined;
+      const reactedLength = reactions ? reactions.results.reduce((acc, r) => acc + r.count, 0) : undefined;
 
       viewsButton.element.classList.add('tgico-' + (isViewingReactions ? 'reactions' : 'checks'));
       const i18nElem = new I18n.IntlElement({
-        key: isViewingReactions ? 'Chat.Context.Reacted' : 'NobodyViewed',
-        args: isViewingReactions ? [participantsCount, participantsCount] : undefined,
+        key: isViewingReactions ? (
+          participantsCount === undefined ? 'Chat.Context.ReactedFast' : 'Chat.Context.Reacted'
+        ) : 'NobodyViewed',
+        args: isViewingReactions ? (
+          participantsCount === undefined ? [reactedLength] : [participantsCount, participantsCount]
+        ) : undefined,
         element: viewsButton.textElement
       });
 
       let fakeText: HTMLElement;
       if(isViewingReactions) {
-        fakeText = i18n(
-          recentReactions.length === participantsCount ? 'Chat.Context.ReactedFast' : 'Chat.Context.Reacted', 
-          [recentReactions.length, participantsCount]
-        );
+        if(participantsCount === undefined) {
+          fakeText = i18n('Chat.Context.ReactedFast', [reactedLength]);
+        } else {
+          fakeText = i18n(
+            recentReactions.length === participantsCount ? 'Chat.Context.ReactedFast' : 'Chat.Context.Reacted', 
+            [recentReactions.length, participantsCount]
+          );
+        }
       } else {
         fakeText = i18n('Loading');
       }
@@ -735,9 +753,10 @@ export default class ChatContextMenu {
       fakeText.classList.add('btn-menu-item-text-fake');
       viewsButton.element.append(fakeText);
 
+      const MAX_AVATARS = 3;
       const PADDING_PER_AVATAR = .875;
       i18nElem.element.style.visibility = 'hidden';
-      i18nElem.element.style.paddingRight = isViewingReactions ? PADDING_PER_AVATAR * recentReactions.length + 'rem' : '1rem';
+      i18nElem.element.style.paddingRight = isViewingReactions ? PADDING_PER_AVATAR * Math.min(MAX_AVATARS, recentReactions.length) + 'rem' : '1rem';
       const middleware = this.middleware.get();
       this.appMessagesManager.getMessageReactionsListAndReadParticipants(this.message as Message.message).then((result) => {
         if(!middleware()) {
@@ -749,22 +768,30 @@ export default class ChatContextMenu {
         }
 
         const reactions = result.combined;
-        const reactedLength = isViewingReactions ? reactions.filter(reaction => reaction.reaction).length : reactions.length;
+        const reactedLength = participantsCount === undefined ? 
+          result.reactionsCount : 
+          (
+            isViewingReactions ? 
+              reactions.filter(reaction => reaction.reaction).length : 
+              reactions.length
+          );
 
         let fakeElem: HTMLElement;
         if(reactions.length === 1) {
           fakeElem = new PeerTitle({
             peerId: reactions[0].peerId,
             onlyFirstName: true,
-            dialog: true
+            dialog: false,
           }).element;
 
-          this.viewerPeerId = reactions[0].peerId;
+          if(!isViewingReactions || result.readParticipants.length <= 1) {
+            this.viewerPeerId = reactions[0].peerId;
+          }
         } else if(isViewingReactions) {
-          const isFull = reactedLength === reactions.length;
+          const isFull = reactedLength === reactions.length || participantsCount === undefined;
           fakeElem = i18n(
             isFull ? 'Chat.Context.ReactedFast' : 'Chat.Context.Reacted', 
-            [reactedLength, reactions.length]
+            isFull ? [reactedLength] : [reactedLength, reactions.length]
           );
         } else {
           if(!reactions.length) {
@@ -775,7 +802,7 @@ export default class ChatContextMenu {
         }
 
         if(fakeElem) {
-          fakeElem.style.paddingRight = PADDING_PER_AVATAR * reactedLength + 'rem';
+          fakeElem.style.paddingRight = PADDING_PER_AVATAR * Math.min(MAX_AVATARS, reactedLength) + 'rem';
           fakeElem.classList.add('btn-menu-item-text-fake');
           viewsButton.element.append(fakeElem);
         }
@@ -784,16 +811,21 @@ export default class ChatContextMenu {
           const avatars = new StackedAvatars({avatarSize: 24});
           avatars.render(recentReactions ? recentReactions.map(r => r.user_id.toPeerId()) : reactions.map(reaction => reaction.peerId));
           viewsButton.element.append(avatars.container);
+
+          // if(reactions.length > 1) {
+          // if(isViewingReactions) {
+            this.canOpenReactedList = true;
+          // }
         }
       });
     }
 
     let menuPadding: MenuPositionPadding;
     let reactionsMenu: ChatReactionsMenu;
-    if(this.message._ === 'message') {
-      const position: 'horizontal' | 'vertical' = IS_APPLE || IS_TOUCH_SUPPORTED ? 'horizontal' : 'vertical';
+    if(this.message._ === 'message' && !this.chat.selection.isSelecting && !this.message.pFlags.is_outgoing && !this.message.pFlags.is_scheduled) {
+      const position: 'horizontal' | 'vertical' = (IS_APPLE || IS_TOUCH_SUPPORTED)/*  && false */ ? 'horizontal' : 'vertical';
       reactionsMenu = this.reactionsMenu = new ChatReactionsMenu(this.appReactionsManager, position, this.middleware);
-      reactionsMenu.init(this.message);
+      reactionsMenu.init(this.appMessagesManager.getGroupsFirstMessage(this.message));
       element.prepend(reactionsMenu.widthContainer);
 
       const size = 42;

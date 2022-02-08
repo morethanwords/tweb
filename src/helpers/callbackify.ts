@@ -1,6 +1,15 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
 import {Awaited} from '../types';
 
-export default function callbackify<T extends Awaited<any>, R extends any>(smth: T, callback: (result: Awaited<T>) => R): PromiseLike<R> | R {
+export default function callbackify<T extends Awaited<any>, R>(
+  smth: T, 
+  callback: (result: Awaited<T>) => R
+): PromiseLike<R> | R {
   if(smth instanceof Promise) {
     return smth.then(callback);
   } else {

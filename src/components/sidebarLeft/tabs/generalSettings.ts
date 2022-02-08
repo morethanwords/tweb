@@ -296,7 +296,7 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
       });
 
       const renderQuickReaction = () => {
-        appReactionsManager.getQuickReaction().then(reaction => {
+        Promise.resolve(appReactionsManager.getQuickReaction()).then(reaction => {
           wrapStickerToRow({
             row: reactionsRow,
             doc: reaction.static_icon,

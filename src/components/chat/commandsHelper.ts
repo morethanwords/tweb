@@ -37,7 +37,7 @@ export default class CommandsHelper extends AutocompletePeerHelper {
     }
 
     const middleware = this.controller.getMiddleware();
-    this.appProfileManager.getProfileByPeerId(peerId).then(full => {
+    Promise.resolve(this.appProfileManager.getProfileByPeerId(peerId)).then(full => {
       if(!middleware()) {
         return;
       }

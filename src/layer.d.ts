@@ -2640,7 +2640,10 @@ export namespace Update {
 		_: 'updateMessageReactions',
 		peer: Peer,
 		msg_id: number,
-		reactions: MessageReactions
+		reactions: MessageReactions,
+		pts?: number,
+		pts_count?: number,
+		local?: boolean
 	};
 
 	export type updateNewDiscussionMessage = {
@@ -9308,7 +9311,7 @@ export namespace MessageReactions {
 			can_see_list?: true,
 		}>,
 		results: Array<ReactionCount>,
-		recent_reactons?: Array<MessageUserReaction>
+		recent_reactions?: Array<MessageUserReaction>
 	};
 }
 

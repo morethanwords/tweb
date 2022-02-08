@@ -391,7 +391,7 @@ export default class DialogsStorage {
     }
 
     if(newDialogIndex) {
-      insertInDescendSortedArray(dialogs, dialog, indexKey, wasIndex);
+      insertInDescendSortedArray(dialogs, dialog, indexKey, -1);
     }
   }
 
@@ -618,7 +618,7 @@ export default class DialogsStorage {
       this.prepareFolderUnreadCountModifyingByDialog(folder_id, dialog, true);
     }
 
-    /* const newPos =  */insertInDescendSortedArray(dialogs, dialog, 'index', pos);
+    /* const newPos =  */insertInDescendSortedArray(dialogs, dialog, 'index', -1);
     /* if(pos !== -1 && pos !== newPos) {
       rootScope.dispatchEvent('dialog_order', {dialog, pos: newPos});
     } */
