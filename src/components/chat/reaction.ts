@@ -6,7 +6,8 @@
 
 import callbackify from "../../helpers/callbackify";
 import { formatNumber } from "../../helpers/number";
-import { MessageUserReaction, ReactionCount } from "../../layer";
+import { MessagePeerReaction, ReactionCount } from "../../layer";
+import appPeersManager from "../../lib/appManagers/appPeersManager";
 import appReactionsManager from "../../lib/appManagers/appReactionsManager";
 import RLottiePlayer from "../../lib/rlottie/rlottiePlayer";
 import SetTransition from "../singleTransition";
@@ -103,7 +104,7 @@ export default class ReactionElement extends HTMLElement {
     }
   }
 
-  public renderAvatars(recentReactions: MessageUserReaction[]) {
+  public renderAvatars(recentReactions: MessagePeerReaction[]) {
     if(this.type === 'inline') {
       return;
     }
@@ -125,7 +126,7 @@ export default class ReactionElement extends HTMLElement {
       this.append(this.stackedAvatars.container);
     }
 
-    this.stackedAvatars.render(recentReactions.map(reaction => reaction.user_id.toPeerId()));
+    this.stackedAvatars.render(recentReactions.map(reaction => appPeersManager.getPeerId(reaction.peer_id)));
   }
 
   public setIsChosen(isChosen = !!this.reactionCount.pFlags.chosen) {

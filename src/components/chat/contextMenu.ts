@@ -809,7 +809,7 @@ export default class ChatContextMenu {
 
         if(reactions.length) {
           const avatars = new StackedAvatars({avatarSize: 24});
-          avatars.render(recentReactions ? recentReactions.map(r => r.user_id.toPeerId()) : reactions.map(reaction => reaction.peerId));
+          avatars.render(recentReactions ? recentReactions.map(r => this.appPeersManager.getPeerId(r.peer_id)) : reactions.map(reaction => reaction.peerId));
           viewsButton.element.append(avatars.container);
 
           // if(reactions.length > 1) {

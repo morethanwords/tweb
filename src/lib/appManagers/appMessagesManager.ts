@@ -17,7 +17,7 @@ import { createPosterForVideo } from "../../helpers/files";
 import { copy, deepEqual, getObjectKeysAndSort } from "../../helpers/object";
 import { randomLong } from "../../helpers/random";
 import { splitStringByLength, limitSymbols, escapeRegExp } from "../../helpers/string";
-import { Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup, InputPeer, InputPhoto, InputDocument, InputGeoPoint, WebPage, GeoPoint, ReportReason, MessagesGetDialogs, InputChannel, InputDialogPeer, MessageUserReaction, ReactionCount } from "../../layer";
+import { Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup, InputPeer, InputPhoto, InputDocument, InputGeoPoint, WebPage, GeoPoint, ReportReason, MessagesGetDialogs, InputChannel, InputDialogPeer, ReactionCount, MessagePeerReaction } from "../../layer";
 import { InvokeApiOptions } from "../../types";
 import I18n, { FormatterArguments, i18n, join, langPack, LangPackKey, UNSUPPORTED_LANG_PACK_KEY, _i18n } from "../langPack";
 import { logger, LogTypes } from "../logger";
@@ -4613,7 +4613,7 @@ export class AppMessagesManager {
       const previousReactions = message.reactions;
       const previousRecentReactions = previousReactions?.recent_reactions;
       if(
-        recentReaction.user_id !== rootScope.myId.toUserId() && (
+        appPeersManager.getPeerId(recentReaction.peer_id) !== rootScope.myId && (
           !previousRecentReactions ||
           previousRecentReactions.length <= recentReactions.length
         ) && (
@@ -5383,7 +5383,7 @@ export class AppMessagesManager {
     skipReactionsList?: boolean
   ) {
     const emptyMessageReactionsList = {
-      reactions: [] as MessageUserReaction[],
+      reactions: [] as MessagePeerReaction[],
       count: 0,
       next_offset: undefined as string
     };
@@ -5404,12 +5404,12 @@ export class AppMessagesManager {
       
       const filteredReadParticipants = readParticipantsPeerIds.slice();
       forEachReverse(filteredReadParticipants, (peerId, idx, arr) => {
-        if(messageReactionsList.reactions.some(reaction => reaction.user_id.toPeerId() === peerId)) {
+        if(messageReactionsList.reactions.some(reaction => appPeersManager.getPeerId(reaction.peer_id) === peerId)) {
           arr.splice(idx, 1);
         }
       });
 
-      let combined: {peerId: PeerId, reaction?: string}[] = messageReactionsList.reactions.map(reaction => ({peerId: reaction.user_id.toPeerId(), reaction: reaction.reaction}));
+      let combined: {peerId: PeerId, reaction?: string}[] = messageReactionsList.reactions.map(reaction => ({peerId: appPeersManager.getPeerId(reaction.peer_id), reaction: reaction.reaction}));
       combined = combined.concat(filteredReadParticipants.map(readPeerId => ({peerId: readPeerId})));
       
       return {
@@ -5478,7 +5478,7 @@ export class AppMessagesManager {
 
   private notifyAboutMessage(message: MyMessage, options: Partial<{
     fwdCount: number,
-    userReaction: MessageUserReaction,
+    userReaction: MessagePeerReaction,
     peerTypeNotifySettings: PeerNotifySettings
   }> = {}) {
     const peerId = this.getMessagePeer(message);
