@@ -245,7 +245,7 @@ export default class PeerProfileAvatars {
         } else {
           const promises: [Promise<ChatFull>, ReturnType<AppMessagesManager['getSearch']>] = [] as any;
           if(!listLoader.current) {
-            promises.push(appProfileManager.getChatFull(peerId.toChatId()));
+            promises.push(Promise.resolve(appProfileManager.getChatFull(peerId.toChatId())));
           }
           
           promises.push(appMessagesManager.getSearch({

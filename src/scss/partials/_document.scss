@@ -7,7 +7,6 @@
 .document {
   --background-color: #{var(--primary-color)};
   $border-radius: .375rem;
-  padding-left: 4.25rem;
   height: 70px;
 
   .media-photo {
@@ -157,19 +156,24 @@
 
 .document, 
 .audio {
+  --icon-size: 3.375rem;
+  --icon-margin: .875rem;
+  --padding-left: calc(var(--icon-size) + var(--icon-margin));
+  padding-left: var(--padding-left);
   display: flex;
   flex-direction: column;
   justify-content: center;
   cursor: pointer;
-  position: relative;
+  // position: relative;
   user-select: none;
 
   &-ico, 
   &-download {
     position: absolute;
-    left: 0;
-    width: 3.375rem;
-    height: 3.375rem;
+    // left: 0;
+    margin-left: calc(var(--padding-left) * -1);
+    width: var(--icon-size);
+    height: var(--icon-size);
     color: #fff;
   }
 
@@ -196,6 +200,15 @@
 
   &:not(.corner-download) .preloader-container:not(.preloader-streamable) {
     transform: scale(1) !important;
+  }
+
+  .checkbox-field-round {
+    --margin-top: .25rem;
+    --margin-left: .125rem;
+    margin-left: calc(var(--padding-left) * -1 + var(--icon-size) - var(--size) + var(--margin-left));
+    margin-top: calc(var(--icon-size) - var(--size) + var(--margin-top));
+    top: auto;
+    left: auto;
   }
 }
 

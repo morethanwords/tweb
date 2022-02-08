@@ -357,4 +357,11 @@
     {"name": "around_animation", "type": "Document.document"},
     {"name": "center_icon", "type": "Document.document"}
   ]
+}, {
+  "predicate": "updateMessageReactions",
+  "params": [
+    {"name": "pts", "type": "number"},
+    {"name": "pts_count", "type": "number"},
+    {"name": "local", "type": "boolean"}
+  ]
 }]

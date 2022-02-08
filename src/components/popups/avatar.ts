@@ -8,8 +8,8 @@ import appDownloadManager from "../../lib/appManagers/appDownloadManager";
 import resizeableImage from "../../lib/cropper";
 import PopupElement from ".";
 import { _i18n } from "../../lib/langPack";
-import { readBlobAsDataURL } from "../../helpers/blob";
 import { attachClickEvent } from "../../helpers/dom/clickEvent";
+import readBlobAsDataURL from "../../helpers/blob/readBlobAsDataURL";
 
 export default class PopupAvatar extends PopupElement {
   private cropContainer: HTMLElement;

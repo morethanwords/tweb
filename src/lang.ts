@@ -646,6 +646,12 @@ const lang = {
   "EnableReactionsChannelInfo": "Allow subscribers to react to channel posts.",
   "EnableReactionsGroupInfo": "Allow members to react to group messages.",
   "AvailableReactions": "Available reactions",
+  "NobodyViewed": "Nobody viewed",
+  "MessageSeen": {
+    "one_value": "Seen",
+    "other_value": "%1$d Seen"
+  },
+  // "Close": "Close",
 
   // * macos
   "AccountSettings.Filters": "Chat Folders",
@@ -710,6 +716,10 @@ const lang = {
   },
   "Chat.CopySelectedText": "Copy Selected Text",
   "Chat.Confirm.Unpin": "Would you like to unpin this message?",
+  "Chat.Context.Reacted": "%1$@/%2$@ Reacted",
+  "Chat.Context.ReactedFast": {
+    "other_value": "%d Reacted"
+  },
   "Chat.Date.ScheduledFor": "Scheduled for %@",
   "Chat.Date.ScheduledForToday": "Scheduled for today",
   "Chat.DropTitle": "Drop files here to send them",

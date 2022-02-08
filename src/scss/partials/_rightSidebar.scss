@@ -387,7 +387,7 @@
     }
   }
 
-  .document, 
+  /* .document, 
   .audio {
     .checkbox-field {
       top: 50%;
@@ -396,7 +396,7 @@
       margin-top: 1rem;
       transform: translateY(-50%);
     }
-  }
+  } */
 
   &-content-media &-month {
     &-items {
@@ -421,15 +421,12 @@
     }
 
     .document {
-      padding-left: 60px;
-      // padding-right: 1rem;
-      //height: 54px;
+      --icon-size: 3rem;
+      --icon-margin: .75rem;
       height: calc(48px + 1.5rem);
 
       &-ico, 
       &-download {
-        width: 48px;
-        height: 48px;
         border-radius: 5px !important;
       }
 
@@ -867,7 +864,7 @@
 
   .profile-name {
     font-size: 1.5rem;
-    line-height: 1.3125;
+    line-height: var(--line-height);
   }
 }
 

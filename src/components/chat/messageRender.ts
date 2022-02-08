@@ -7,12 +7,14 @@
 import { formatTime, getFullDate } from "../../helpers/date";
 import { formatNumber } from "../../helpers/number";
 import { Message } from "../../layer";
+import appMessagesManager from "../../lib/appManagers/appMessagesManager";
 import { i18n, _i18n } from "../../lib/langPack";
 import RichTextProcessor from "../../lib/richtextprocessor";
 import { LazyLoadQueueIntersector } from "../lazyLoadQueue";
 import PeerTitle from "../peerTitle";
 import { wrapReply } from "../wrappers";
 import Chat, { ChatType } from "./chat";
+import ReactionsElement from "./reactions";
 import RepliesElement from "./replies";
 
 const NBSP = '&nbsp;';
@@ -39,10 +41,11 @@ export namespace MessageRender {
     const date = new Date(message.date * 1000);
     const args: (HTMLElement | string)[] = [];
     
-    let editedSpan: HTMLElement, sponsoredSpan: HTMLElement;
+    let editedSpan: HTMLElement, sponsoredSpan: HTMLElement, reactionsElement: ReactionsElement, reactionsMessage: Message.message;
     
     const isSponsored = !!(message as Message.message).pFlags.sponsored;
     const isMessage = !('action' in message) && !isSponsored;
+    let hasReactions: boolean;
     
     let time: HTMLElement = isSponsored ? undefined : formatTime(date);
     if(isMessage) {
@@ -63,7 +66,7 @@ export namespace MessageRender {
           args.push(span);
         }
       }
-  
+
       if(message.edit_date && chatType !== 'scheduled' && !message.pFlags.edit_hide) {
         args.unshift(editedSpan = makeEdited());
       }
@@ -72,6 +75,17 @@ export namespace MessageRender {
         const i = document.createElement('i');
         i.classList.add('tgico-pinnedchat', 'time-icon');
         args.unshift(i);
+      }
+
+      if(message.peer_id._ === 'peerUser'/*  && message.reactions?.results?.length */) {
+        hasReactions = true;
+
+        reactionsMessage = appMessagesManager.getGroupsFirstMessage(message);
+
+        reactionsElement = new ReactionsElement();
+        reactionsElement.init(reactionsMessage, 'inline', true);
+        reactionsElement.render();
+        args.unshift(reactionsElement);
       }
     } else if(isSponsored) {
       args.push(sponsoredSpan = makeSponsored());
@@ -83,13 +97,13 @@ export namespace MessageRender {
 
     let title = isSponsored ? undefined : getFullDate(date);
     if(isMessage) {
-      title += (message.edit_date ? `\nEdited: ${getFullDate(new Date(message.edit_date * 1000))}` : '')
+      title += (message.edit_date && !message.pFlags.edit_hide ? `\nEdited: ${getFullDate(new Date(message.edit_date * 1000))}` : '')
         + (message.fwd_from ? `\nOriginal: ${getFullDate(new Date(message.fwd_from.date * 1000))}` : '');
     }
 
     const timeSpan = document.createElement('span');
     timeSpan.classList.add('time', 'tgico');
-    if(title) timeSpan.title = title;
+    // if(title) timeSpan.title = title;
     timeSpan.append(...args);
 
     const inner = document.createElement('div');
@@ -103,7 +117,12 @@ export namespace MessageRender {
     if(sponsoredSpan) {
       clonedArgs[clonedArgs.indexOf(sponsoredSpan)] = makeSponsored();
     }
-    clonedArgs = clonedArgs.map(a => a instanceof HTMLElement && !a.classList.contains('i18n') ? a.cloneNode(true) as HTMLElement : a);
+    if(reactionsElement) {
+      const _reactionsElement = clonedArgs[clonedArgs.indexOf(reactionsElement)] = new ReactionsElement();
+      _reactionsElement.init(reactionsMessage, 'inline');
+      _reactionsElement.render();
+    }
+    clonedArgs = clonedArgs.map(a => a instanceof HTMLElement && !a.classList.contains('i18n') && !a.classList.contains('reactions') ? a.cloneNode(true) as HTMLElement : a);
     if(time) {
       clonedArgs[clonedArgs.length - 1] = formatTime(date); // clone time
     }

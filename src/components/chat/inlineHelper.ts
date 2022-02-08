@@ -20,11 +20,11 @@ import AutocompleteHelperController from "./autocompleteHelperController";
 import Button from "../button";
 import { attachClickEvent } from "../../helpers/dom/clickEvent";
 import { MyPhoto } from "../../lib/appManagers/appPhotosManager";
-import { readBlobAsDataURL } from "../../helpers/blob";
 import assumeType from "../../helpers/assumeType";
 import GifsMasonry from "../gifsMasonry";
 import { SuperStickerRenderer } from "../emoticonsDropdown/tabs/stickers";
 import mediaSizes from "../../helpers/mediaSizes";
+import readBlobAsDataURL from "../../helpers/blob/readBlobAsDataURL";
 
 const ANIMATION_GROUP = 'INLINE-HELPER';
 // const GRID_ITEMS = 5;

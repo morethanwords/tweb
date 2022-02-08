@@ -32,6 +32,10 @@ $chat-input-inner-padding-handhelds: .25rem;
   @return rgba($color, $hover-alpha);
 }
 
+@function rgba-to-rgb($rgba, $background: #fff) {
+  @return mix(rgb(red($rgba), green($rgba), blue($rgba)), $background, alpha($rgba) * 100%);
+}
+
 /* @mixin safari-overflow() {
   html.is-safari & {
     -webkit-mask-image: -webkit-radial-gradient(circle, white 100%, black 100%);
@@ -80,6 +84,7 @@ $chat-input-inner-padding-handhelds: .25rem;
   --esg-sticker-size: 80px;
   --disabled-opacity: .3;
   --round-video-size: 280px;
+  --menu-box-shadow: 0px 2px 8px 1px var(--menu-box-shadow-color);
 
   --topbar-floating-scaleX: 1;
   --topbar-call-height: 3rem;
@@ -132,15 +137,25 @@ $chat-input-inner-padding-handhelds: .25rem;
   }
 }
 
-@mixin splitColor($property, $color, $light: true, $dark: true) {
+@mixin splitColor($property, $color, $light: true, $dark: true, $light-rgb: false, $dark-rgb: false) {
   --#{$property}: #{$color};
 
+  $lightened: hover-color($color);
   @if $light != false {
-    --light-#{$property}: #{hover-color($color)};
+    --light-#{$property}: #{$lightened};
   }
 
+  @if $light-rgb != false {
+    --light-filled-#{$property}: #{rgba-to-rgb($lightened, $light-rgb)};
+  }
+
+  $darkened: darken($color, $hover-alpha * 100);
   @if $dark != false {
-    --dark-#{$property}: #{darken($color, $hover-alpha * 100)};
+    --dark-#{$property}: #{$darkened};
+  }
+
+  @if $dark-rgb != false {
+    --dark-filled-#{$property}: #{rgba-to-rgb($darkened, $dark-rgb)};
   }
 }
 
@@ -154,11 +169,12 @@ $chat-input-inner-padding-handhelds: .25rem;
   --surface-color: #fff;
   --scrollbar-color: rgba(0, 0, 0, .2);
   --section-box-shadow-color: rgba(0, 0, 0, .06);
+  --menu-box-shadow-color: rgba(0, 0, 0, .24);
 
   --input-search-background-color: #fff;
   --input-search-border-color: #dfe1e5;
 
-  @include splitColor(primary-color, #3390ec, true, true);
+  @include splitColor(primary-color, #3390ec, true, true, #fff);
   --primary-text-color: #000;
 
   --secondary-color: #c4c9cc;
@@ -181,11 +197,14 @@ $chat-input-inner-padding-handhelds: .25rem;
   --message-background-color: var(--surface-color);
   --message-checkbox-color: #61c642;
   --message-checkbox-border-color: #fff;
+  --message-primary-color: var(--primary-color);
+  --light-filled-message-primary-color: var(--light-filled-primary-color);
   --message-secondary-color: var(--secondary-color);
 
-  @include splitColor(message-out-background-color, #eeffde, true, true);
+  $message-out-background-color: #eeffde;
+  @include splitColor(message-out-background-color, $message-out-background-color, true, true);
   --message-out-link-color: var(--link-color);
-  --message-out-primary-color: #4fae4e;
+  @include splitColor(message-out-primary-color, #4fae4e, false, false, $message-out-background-color);
   --message-out-status-color: var(--message-out-primary-color);
   --message-out-audio-play-button-color: #fff;
 
@@ -226,7 +245,7 @@ $chat-input-inner-padding-handhelds: .25rem;
   --input-search-background-color: #181818;
   --input-search-border-color: #2f2f2f;
 
-  @include splitColor(primary-color, #8774E1, true, true);
+  @include splitColor(primary-color, #8774E1, true, true, #212121);
   --primary-text-color: #fff;
 
   --secondary-color: #707579;
@@ -251,10 +270,11 @@ $chat-input-inner-padding-handhelds: .25rem;
   --message-checkbox-border-color: #fff;
   --message-secondary-color: var(--secondary-color);
 
+  $message-out-background-color: #8774E1;
   //@include splitColor(message-out-background-color, #ae582d, true, true);
-  @include splitColor(message-out-background-color, #8774E1, true, true);
+  @include splitColor(message-out-background-color, $message-out-background-color, true, true);
   --message-out-link-color: #fff;
-  --message-out-primary-color: #fff;
+  @include splitColor(message-out-primary-color, #fff, false, false, $message-out-background-color);
   --message-out-status-color: rgba(255, 255, 255, .6);
   --message-out-audio-play-button-color: var(--message-out-background-color);
   // * Night theme end
@@ -306,6 +326,9 @@ $chat-input-inner-padding-handhelds: .25rem;
 @import "partials/peopleNearby";
 @import "partials/spoiler";
 @import "partials/emojiAnimation";
+@import "partials/reactions";
+@import "partials/reaction";
+@import "partials/stackedAvatars";
 
 @import "partials/popups/popup";
 @import "partials/popups/editAvatar";
@@ -321,6 +344,7 @@ $chat-input-inner-padding-handhelds: .25rem;
 @import "partials/popups/groupCall";
 @import "partials/popups/call";
 @import "partials/popups/sponsored";
+@import "partials/popups/reactedList";
 
 @import "partials/pages/pages";
 @import "partials/pages/authCode";
@@ -1541,6 +1565,18 @@ hr {
     position: absolute;
     line-height: 1 !important;
   }
+}
+
+.quick-reaction-title {
+  display: flex;
+  align-items: center;
+}
+
+.quick-reaction-sticker {
+  width: 32px !important;
+  height: 32px !important;
+  position: relative !important;
+  margin: 0 .5rem 0 0 !important;
 }
 
 .verified-icon {

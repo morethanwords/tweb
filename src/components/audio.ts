@@ -608,7 +608,11 @@ export default class AudioElement extends HTMLElement {
           }
         }
 
-        this.append(downloadDiv);
+        if(this.classList.contains('corner-download')) {
+          toggle.append(downloadDiv);
+        } else {
+          this.append(downloadDiv);
+        }
 
         this.classList.add('downloading');
 

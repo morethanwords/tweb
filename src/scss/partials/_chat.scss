@@ -727,6 +727,11 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
   &.type-chat .bubbles.is-chat-input-hidden .bubbles-date-group:last-of-type .bubble:last-of-type {
     margin-bottom: 1.25rem;
   }
+
+  .contextmenu {
+    box-shadow: none !important;
+    filter: drop-shadow(0 .125rem .5rem var(--menu-box-shadow-color));
+  }
 }
 
 .chat-input-wrapper {
@@ -1142,7 +1147,7 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
           &-field {
             --size: 1.5rem;
             order: 0;
-            margin: 0 2rem 0 0;
+            margin: 0 var(--icon-margin) 0 0;
           }
 
           &-box {

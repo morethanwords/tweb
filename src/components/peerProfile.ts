@@ -93,7 +93,7 @@ export default class PeerProfile {
           return;
         }
         
-        appProfileManager.getProfileByPeerId(this.peerId).then(full => {
+        Promise.resolve(appProfileManager.getProfileByPeerId(this.peerId)).then(full => {
           copyTextToClipboard(full.about);
           toast(I18n.format('BioCopied', true));
         });
@@ -324,7 +324,7 @@ export default class PeerProfile {
 
     let promise: Promise<boolean>;
     if(peerId.isUser()) {
-      promise = appProfileManager.getProfile(peerId, override).then(userFull => {
+      promise = Promise.resolve(appProfileManager.getProfile(peerId, override)).then(userFull => {
         if(this.peerId !== peerId || this.threadId !== threadId) {
           //this.log.warn('peer changed');
           return false;
@@ -338,7 +338,7 @@ export default class PeerProfile {
         return true;
       });
     } else {
-      promise = appProfileManager.getChatFull(peerId.toChatId(), override).then((chatFull) => {
+      promise = Promise.resolve(appProfileManager.getChatFull(peerId.toChatId(), override)).then((chatFull) => {
         if(this.peerId !== peerId || this.threadId !== threadId) {
           //this.log.warn('peer changed');
           return false;

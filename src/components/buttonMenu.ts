@@ -7,7 +7,7 @@
 import { cancelEvent } from "../helpers/dom/cancelEvent";
 import { AttachClickOptions, attachClickEvent, CLICK_EVENT_NAME } from "../helpers/dom/clickEvent";
 import ListenerSetter from "../helpers/listenerSetter";
-import { i18n, LangPackKey } from "../lib/langPack";
+import { FormatterArguments, i18n, LangPackKey } from "../lib/langPack";
 import CheckboxField from "./checkboxField";
 import { closeBtnMenu } from "./misc";
 import { ripple } from "./ripple";
@@ -15,6 +15,7 @@ import { ripple } from "./ripple";
 export type ButtonMenuItemOptions = {
   icon?: string, 
   text?: LangPackKey, 
+  textArgs?: FormatterArguments,
   regularText?: string, 
   onClick: (e: MouseEvent | TouchEvent) => void | boolean, 
   element?: HTMLElement,
@@ -31,12 +32,12 @@ const ButtonMenuItem = (options: ButtonMenuItemOptions) => {
 
   const {icon, text, onClick, checkboxField, noCheckboxClickListener} = options;
   const el = document.createElement('div');
-  el.className = 'btn-menu-item' + (icon ? ' tgico-' + icon : '');
+  el.className = 'btn-menu-item rp-overflow' + (icon ? ' tgico-' + icon : '');
   ripple(el);
 
   let textElement = options.textElement;
   if(!textElement) {
-    textElement = options.textElement = text ? i18n(text) : document.createElement('span');
+    textElement = options.textElement = text ? i18n(text, options.textArgs) : document.createElement('span');
     if(options.regularText) textElement.innerHTML = options.regularText;
   }
   
