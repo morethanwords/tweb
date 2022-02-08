@@ -17,6 +17,7 @@ export default class Row {
   public container: HTMLElement;
   public title: HTMLDivElement;
   public subtitle: HTMLElement;
+  public media: HTMLElement;
 
   public checkboxField: CheckboxField;
   public radioField: RadioField;
@@ -31,7 +32,7 @@ export default class Row {
     radioField: Row['radioField'],
     checkboxField: Row['checkboxField'],
     noCheckboxSubtitle: boolean,
-    title: string,
+    title: string | HTMLElement,
     titleLangKey: LangPackKey,
     titleRight: string | HTMLElement,
     clickable: boolean | ((e: Event) => void),
@@ -58,10 +59,10 @@ export default class Row {
 
     let havePadding = !!options.havePadding;
     if(options.radioField || options.checkboxField) {
-      havePadding = true;
       if(options.radioField) {
         this.radioField = options.radioField;
         this.container.append(this.radioField.label);
+        havePadding = true;
       }
 
       if(options.checkboxField) {
@@ -72,6 +73,7 @@ export default class Row {
           this.container.classList.add('row-with-toggle');
           options.titleRight = this.checkboxField.label;
         } else {
+          havePadding = true;
           this.container.append(this.checkboxField.label);
         }
 
@@ -100,7 +102,11 @@ export default class Row {
       this.title.classList.add('row-title');
       this.title.setAttribute('dir', 'auto');
       if(options.title) {
-        this.title.innerHTML = options.title;
+        if(typeof(options.title) === 'string') {
+          this.title.innerHTML = options.title;
+        } else {
+          this.title.append(options.title);
+        }
       } else {
         this.title.append(i18n(options.titleLangKey));
       }
@@ -154,7 +160,20 @@ export default class Row {
     }
   }
 
+  public createMedia(size?: 'small') {
+    this.container.classList.add('row-with-padding');
+    
+    const media = this.media = document.createElement('div');
+    media.classList.add('row-media');
 
+    if(size) {
+      media.classList.add('row-media-' + size);
+    }
+
+    this.container.append(media);
+
+    return media;
+  }
 }
 
 export const RadioFormFromRows = (rows: Row[], onChange: (value: string) => void) => {

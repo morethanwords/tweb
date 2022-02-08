@@ -576,6 +576,9 @@ export class ApiManager {
           } else {
             rejectPromise(error);
           }
+        } else if(error.code === 400 && error.type === 'CONNECTION_NOT_INITED') {
+          networkerFactory.unsetConnectionInited();
+          performRequest(cachedNetworker);
         } else if(!options.rawError && error.code === 420) {
           const waitTime = +error.type.match(/^FLOOD_WAIT_(\d+)/)[1] || 1;
           

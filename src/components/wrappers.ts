@@ -6,7 +6,6 @@
 
 import type Chat from './chat/chat';
 import { getEmojiToneIndex } from '../vendor/emoji';
-import { readBlobAsText } from '../helpers/blob';
 import { deferredPromise } from '../helpers/cancellablePromise';
 import { formatFullSentTime } from '../helpers/date';
 import mediaSizes, { ScreenSize } from '../helpers/mediaSizes';
@@ -56,6 +55,7 @@ import appMessagesIdsManager from '../lib/appManagers/appMessagesIdsManager';
 import throttle from '../helpers/schedulers/throttle';
 import { SendMessageEmojiInteractionData } from '../types';
 import IS_VIBRATE_SUPPORTED from '../environment/vibrateSupport';
+import Row from './row';
 
 const MAX_VIDEO_AUTOPLAY_SIZE = 50 * 1024 * 1024; // 50 MB
 
@@ -1126,7 +1126,103 @@ export function renderImageWithFadeIn(container: HTMLElement,
 //   });
 // }
 
-export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, onlyThumb, emoji, width, height, withThumb, loop, loadPromises, needFadeIn, needUpscale}: {
+export function wrapStickerAnimation({
+  size,
+  doc,
+  middleware,
+  target,
+  side,
+  skipRatio,
+  play
+}: {
+  size: number,
+  doc: MyDocument,
+  middleware?: () => boolean,
+  target: HTMLElement,
+  side: 'left' | 'center' | 'right',
+  skipRatio?: number,
+  play: boolean
+}) {
+  const animationDiv = document.createElement('div');
+  animationDiv.classList.add('emoji-animation');
+
+  // const size = 280;
+  animationDiv.style.width = size + 'px';
+  animationDiv.style.height = size + 'px';
+
+  const stickerPromise = wrapSticker({
+    div: animationDiv,
+    doc,
+    middleware,
+    withThumb: false,
+    needFadeIn: false,
+    loop: false,
+    width: size,
+    height: size,
+    play,
+    group: 'none',
+    skipRatio
+  }).then(animation => {
+    assumeType<RLottiePlayer>(animation);
+    animation.addEventListener('enterFrame', (frameNo) => {
+      if(frameNo === animation.maxFrame) {
+        animation.remove();
+        animationDiv.remove();
+        appImManager.chat.bubbles.scrollable.container.removeEventListener('scroll', onScroll);
+      }
+    });
+
+    if(IS_VIBRATE_SUPPORTED) {
+      animation.addEventListener('firstFrame', () => {
+        navigator.vibrate(100);
+      }, {once: true});
+    }
+
+    return animation;
+  });
+
+  const generateRandomSigned = (max: number) => {
+    const r = Math.random() * max * 2;
+    return r > max ? -r % max : r;
+  };
+
+  const randomOffsetX = generateRandomSigned(16);
+  const randomOffsetY = generateRandomSigned(4);
+  const stableOffsetX = size / 8 * (side === 'right' ? 1 : -1);
+  const setPosition = () => {
+    if(!isInDOM(target)) {
+      return;
+    }
+    
+    const rect = target.getBoundingClientRect();
+    /* const boxWidth = Math.max(rect.width, rect.height);
+    const boxHeight = Math.max(rect.width, rect.height);
+    const x = rect.left + ((boxWidth - size) / 2);
+    const y = rect.top + ((boxHeight - size) / 2); */
+
+    const rectX = side === 'right' ? rect.right : rect.left;
+
+    const addOffsetX = side === 'center' ? (rect.width - size) / 2 : (side === 'right' ? -size : 0) + stableOffsetX + randomOffsetX;
+    const x = rectX + addOffsetX;
+    // const y = rect.bottom - size + size / 4;
+    const y = rect.top + ((rect.height - size) / 2) + (side === 'center' ? 0 : randomOffsetY);
+    // animationDiv.style.transform = `translate(${x}px, ${y}px)`;
+    animationDiv.style.top = y + 'px';
+    animationDiv.style.left = x + 'px';
+  };
+
+  const onScroll = throttleWithRaf(setPosition);
+
+  appImManager.chat.bubbles.scrollable.container.addEventListener('scroll', onScroll);
+
+  setPosition();
+
+  appImManager.emojiAnimationContainer.append(animationDiv);
+
+  return {animationDiv, stickerPromise};
+}
+
+export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, onlyThumb, emoji, width, height, withThumb, loop, loadPromises, needFadeIn, needUpscale, skipRatio}: {
   doc: MyDocument, 
   div: HTMLElement, 
   middleware?: () => boolean, 
@@ -1141,7 +1237,8 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
   loop?: boolean,
   loadPromises?: Promise<any>[],
   needFadeIn?: boolean,
-  needUpscale?: boolean
+  needUpscale?: boolean,
+  skipRatio?: number
 }): Promise<RLottiePlayer | void> {
   const stickerType = doc.sticker;
 
@@ -1311,29 +1408,33 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
       //appDocsManager.downloadDocNew(doc.id).promise.then(res => res.json()).then(async(json) => {
       //fetch(doc.url).then(res => res.json()).then(async(json) => {
       return await appDocsManager.downloadDoc(doc, /* undefined,  */lazyLoadQueue?.queueId)
-      .then(readBlobAsText)
-      //.then(JSON.parse)
-      .then(async(json) => {
+      .then(async(blob) => {
         //console.timeEnd('download sticker' + doc.id);
         //console.log('loaded sticker:', doc, div/* , blob */);
-        if(middleware && !middleware()) return;
+        if(middleware && !middleware()) {
+          throw new Error('wrapSticker 2 middleware');
+        }
 
         let animation = await LottieLoader.loadAnimationWorker({
           container: div,
           loop: loop && !emoji,
           autoplay: play,
-          animationData: json,
+          animationData: blob,
           width,
           height,
           name: 'doc' + doc.id,
-          needUpscale
-        }, group, toneIndex);
+          needUpscale,
+          skipRatio,
+          toneIndex
+        }, group, middleware);
 
         //const deferred = deferredPromise<void>();
   
         animation.addEventListener('firstFrame', () => {
           const element = div.firstElementChild;
-          needFadeIn = (needFadeIn || !element || element.tagName === 'svg') && rootScope.settings.animationsEnabled;
+          if(needFadeIn !== false) {
+            needFadeIn = (needFadeIn || !element || element.tagName === 'svg') && rootScope.settings.animationsEnabled;
+          }
 
           const cb = () => {
             if(element && element !== animation.canvas) {
@@ -1361,7 +1462,9 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
             });
           }
 
-          appDocsManager.saveLottiePreview(doc, animation.canvas, toneIndex);
+          if(withThumb !== false) {
+            appDocsManager.saveLottiePreview(doc, animation.canvas, toneIndex);
+          }
 
           //deferred.resolve();
         }, {once: true});
@@ -1418,79 +1521,17 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
               return;
             }
             
-            const animationDiv = document.createElement('div');
-            animationDiv.classList.add('emoji-animation');
-
-            const size = 280;
-            animationDiv.style.width = size + 'px';
-            animationDiv.style.height = size + 'px';
-
-            wrapSticker({
-              div: animationDiv,
-              doc,
-              middleware,
-              withThumb: false,
-              needFadeIn: false,
-              loop: false,
-              width: size,
-              height: size,
-              play: true,
-              group: 'none'
-            }).then(animation => {
-              assumeType<RLottiePlayer>(animation);
-              animation.addEventListener('enterFrame', (frameNo) => {
-                if(frameNo === animation.maxFrame) {
-                  animation.remove();
-                  animationDiv.remove();
-                  appImManager.chat.bubbles.scrollable.container.removeEventListener('scroll', onScroll);
-                }
-              });
-
-              if(IS_VIBRATE_SUPPORTED) {
-                animation.addEventListener('firstFrame', () => {
-                  navigator.vibrate(100);
-                }, {once: true});
-              }
-            });
-
-            const generateRandomSigned = (max: number) => {
-              const r = Math.random() * max * 2;
-              return r > max ? -r % max : r;
-            };
-
             const bubble = findUpClassName(div, 'bubble');
             const isOut = bubble.classList.contains('is-out');
 
-            const randomOffsetX = generateRandomSigned(16);
-            const randomOffsetY = generateRandomSigned(4);
-            const stableOffsetX = size / 8 * (isOut ? 1 : -1);
-            const setPosition = () => {
-              if(!isInDOM(div)) {
-                return;
-              }
-              
-              const rect = div.getBoundingClientRect();
-              /* const boxWidth = Math.max(rect.width, rect.height);
-              const boxHeight = Math.max(rect.width, rect.height);
-              const x = rect.left + ((boxWidth - size) / 2);
-              const y = rect.top + ((boxHeight - size) / 2); */
-
-              const rectX = isOut ? rect.right : rect.left;
-
-              const addOffsetX = (isOut ? -size : 0) + stableOffsetX + randomOffsetX;
-              const x = rectX + addOffsetX;
-              // const y = rect.bottom - size + size / 4;
-              const y = rect.top + ((rect.height - size) / 2) + randomOffsetY;
-              // animationDiv.style.transform = `translate(${x}px, ${y}px)`;
-              animationDiv.style.top = y + 'px';
-              animationDiv.style.left = x + 'px';
-            };
-
-            const onScroll = throttleWithRaf(setPosition);
-
-            appImManager.chat.bubbles.scrollable.container.addEventListener('scroll', onScroll);
-
-            setPosition();
+            const {animationDiv} = wrapStickerAnimation({
+              doc,
+              middleware,
+              side: isOut ? 'right' : 'left',
+              size: 280,
+              target: div,
+              play: true
+            });
 
             if(bubble) {
               if(isOut) {
@@ -1499,8 +1540,6 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
                 animationDiv.classList.add('is-in');
               }
             }
-
-            appImManager.emojiAnimationContainer.append(animationDiv);
 
             if(!sendInteractionThrottled) {
               sendInteractionThrottled = throttle(() => {
@@ -1565,7 +1604,9 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
       }
 
       const thumbImage = div.firstElementChild !== media && div.firstElementChild;
-      needFadeIn = (needFadeIn || !downloaded || (stickerType === 1 ? thumbImage : (!thumbImage || thumbImage.tagName === 'svg'))) && rootScope.settings.animationsEnabled;
+      if(needFadeIn !== false) {
+        needFadeIn = (needFadeIn || !downloaded || (stickerType === 1 ? thumbImage : (!thumbImage || thumbImage.tagName === 'svg'))) && rootScope.settings.animationsEnabled;
+      }
 
       media.classList.add('media-sticker');
 
@@ -1662,14 +1703,12 @@ export async function wrapStickerSetThumb({set, lazyLoadQueue, container, group,
 
         if(set.pFlags.animated && !set.pFlags.videos) {
           return promise
-          .then(readBlobAsText)
-          //.then(JSON.parse)
-          .then(json => {
+          .then((blob) => {
             lottieLoader.loadAnimationWorker({
               container,
               loop: true,
               autoplay,
-              animationData: json,
+              animationData: blob,
               width,
               height,
               needUpscale: true,
@@ -1712,6 +1751,37 @@ export async function wrapStickerSetThumb({set, lazyLoadQueue, container, group,
       lazyLoadQueue
     }); // kostil
   }
+}
+
+export function wrapStickerToRow({doc, row, size}: {
+  doc: MyDocument,
+  row: Row,
+  size?: 'small' | 'large',
+}) {
+  const previousMedia = row.media;
+  const media = row.createMedia('small');
+
+  if(previousMedia) {
+    media.classList.add('hide');
+  }
+
+  const loadPromises: Promise<any>[] = previousMedia ? [] : undefined;
+
+  const _size = size === 'small' ? 32 : 48;
+  const result = wrapSticker({
+    div: media,
+    doc: doc,
+    width: _size,
+    height: _size,
+    loadPromises
+  });
+
+  loadPromises && Promise.all(loadPromises).then(() => {
+    media.classList.remove('hide');
+    previousMedia.remove();
+  });
+
+  return result;
 }
 
 export function wrapLocalSticker({emoji, width, height}: {

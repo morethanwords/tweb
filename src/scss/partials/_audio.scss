@@ -5,19 +5,12 @@
  */
 
 .audio {
-  position: relative;
-  padding-left: 67px;
+  // position: relative;
   overflow: visible!important;
-  height: 3.375rem;
-  user-select: none;
-
-  /* @include respond-to(handhelds) {
-    padding-left: 45px;
-  } */
 
   &-toggle, 
   &-download {
-    overflow: hidden;
+    // overflow: hidden;
     border-radius: 50%;
     background-color: var(--primary-color);
     align-items: center;
@@ -25,12 +18,15 @@
 
   &.corner-download {
     .audio-download {
+      // top: 0;
       width: 1.375rem;
       height: 1.375rem;
-      margin: 2rem 2rem 0;
+      // margin: 2rem 2rem 0;
+      margin: 0 !important;
+      top: 57.5%;
+      left: 57.5%;
       background: none;
       display: flex !important;
-      top: 0;
     }
 
     .preloader-container {
@@ -416,8 +412,9 @@
   // //}
 
   // &.audio-48 {
-    height: 3rem;
-    padding-left: calc(3rem + .5625rem);
+    --icon-size: 3rem;
+    --icon-margin: .5625rem;
+    height: var(--icon-size);
 
     .audio-details {
       margin-top: 3px;
@@ -426,12 +423,6 @@
 
     .audio-title {
       margin-bottom: -2px;
-    }
-
-    &-ico, 
-    &-download {
-      width: 3rem;
-      height: 3rem;
     }
 
     .part {

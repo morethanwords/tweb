@@ -12,7 +12,6 @@
 import type { ReferenceBytes } from "./referenceDatabase";
 import { MOUNT_CLASS_TO } from "../../config/debug";
 import Modes from "../../config/modes";
-import { readBlobAsArrayBuffer } from "../../helpers/blob";
 import { CancellablePromise, deferredPromise } from "../../helpers/cancellablePromise";
 import { notifyAll, notifySomeone } from "../../helpers/context";
 import { getFileNameByLocation } from "../../helpers/fileName";
@@ -21,7 +20,7 @@ import { InputFile, InputFileLocation, InputWebFileLocation, UploadFile, UploadW
 import { DcId, WorkerTaskVoidTemplate } from "../../types";
 import CacheStorageController from "../cacheStorage";
 import cryptoWorker from "../crypto/cryptoworker";
-import FileManager from "../filemanager";
+import fileManager from "../fileManager";
 import { logger, LogTypes } from "../logger";
 import apiManager from "./apiManager";
 import { isWebpSupported } from "./mtproto.worker";
@@ -29,6 +28,7 @@ import { bytesToHex } from "../../helpers/bytes";
 import assumeType from "../../helpers/assumeType";
 import ctx from "../../environment/ctx";
 import noop from "../../helpers/noop";
+import readBlobAsArrayBuffer from "../../helpers/blob/readBlobAsArrayBuffer";
 
 type Delayed = {
   offset: number, 
@@ -45,7 +45,10 @@ export type DownloadOptions = {
   limitPart?: number,
   queueId?: number,
   onlyCache?: boolean,
+  // getFileMethod: Parameters<CacheStorageController['getFile']>[1]
 };
+
+type DownloadPromise = CancellablePromise<Blob>;
 
 export type MyUploadFile = UploadFile.uploadFile | UploadWebFile.uploadWebFile;
 
@@ -66,7 +69,7 @@ export class ApiFileManager {
   private cacheStorage = new CacheStorageController('cachedFiles');
 
   private cachedDownloadPromises: {
-    [fileName: string]: CancellablePromise<Blob>
+    [fileName: string]: DownloadPromise
   } = {};
 
   private uploadPromises: {
@@ -311,8 +314,8 @@ export class ApiFileManager {
     });
   }
 
-  public downloadFile(options: DownloadOptions): CancellablePromise<Blob> {
-    if(!FileManager.isAvailable()) {
+  public downloadFile(options: DownloadOptions): DownloadPromise {
+    if(!fileManager.isAvailable()) {
       return Promise.reject({type: 'BROWSER_BLOB_NOT_SUPPORTED'});
     }
 
@@ -343,8 +346,8 @@ export class ApiFileManager {
       //this.log('downloadFile cachedPromise');
 
       if(size) {
-        return cachedPromise.then((blob: Blob) => {
-          if(blob.size < size) {
+        return cachedPromise.then((blob) => {
+          if(blob instanceof Blob && blob.size < size) {
             this.debug && this.log('downloadFile need to deleteFile, wrong size:', blob.size, size);
 
             return this.deleteFile(fileName).then(() => {
@@ -361,12 +364,12 @@ export class ApiFileManager {
       }
     }
 
-    const deferred = deferredPromise<Blob>();
+    const deferred: DownloadPromise = deferredPromise();
     const mimeType = options.mimeType || 'image/jpeg';
 
     let error: Error;
     let resolved = false;
-    let cacheFileWriter: ReturnType<typeof FileManager['getFakeFileWriter']>;
+    let cacheFileWriter: ReturnType<typeof fileManager['getFakeFileWriter']>;
     let errorHandler = (_error: Error) => {
       error = _error;
       delete this.cachedDownloadPromises[fileName];
@@ -464,7 +467,7 @@ export class ApiFileManager {
               await writeFilePromise;
               checkCancel();
 
-              await FileManager.write(fileWriter, processedResult);
+              await fileManager.write(fileWriter, processedResult);
             }
 
             writeFileDeferred.resolve();

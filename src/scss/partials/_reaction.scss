@@ -1,0 +1,143 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
+/* @keyframes reaction-activate {
+  0% {
+    opacity: 1;
+    transform: scale(1.75);
+  }
+
+  95% {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+    transform: scale(1.25);
+  }
+} */
+
+.reaction {
+  display: flex;
+  align-items: center;
+
+  &-sticker {
+    position: relative;
+    width: var(--reaction-size);
+    height: var(--reaction-size);
+
+    &-activate {
+      --offset: -.4375rem;
+      // --offset: 0;
+      position: absolute;
+      top: var(--offset);
+      right: var(--offset);
+      bottom: var(--offset);
+      left: var(--offset);
+      // animation: reaction-activate 2s linear forwards;
+
+      & + .media-sticker {
+        opacity: 0;
+      }
+    }
+  }
+
+  &-inline {
+    --reaction-size: .875rem;
+    min-width: var(--reaction-size);
+    min-height: var(--reaction-size);
+  }
+
+  &-inline &-counter {
+    font-size: inherit !important;
+    order: -1;
+    margin-right: .0625rem !important;
+  }
+
+  &-block {
+    --additional-height: .625rem;
+    --margin: .25rem;
+    // --reaction-size: 1.0625rem;
+    --reaction-size: 1rem;
+    --background-color: var(--message-highlightning-color);
+    --chosen-background-color: var(--message-primary-color);
+    --counter-color: #fff;
+    --reaction-total-size: calc(var(--reaction-size) + var(--additional-height));
+    height: var(--reaction-total-size);
+    border-radius: var(--reaction-total-size);
+    // padding: 0 .375rem 0 .625rem;
+    padding: 0 .5rem;
+    background-color: var(--background-color);
+    cursor: pointer;
+    position: relative;
+    margin-top: var(--margin);
+    margin-right: var(--margin);
+    color: var(--counter-color);
+
+    &:last-child {
+      margin-right: 0;
+    }
+
+    &:before {
+      content: " ";
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      background-color: var(--chosen-background-color);
+      // visibility: hidden;
+      border-radius: inherit;
+      // transform: scale3d(.2, .2, .2);
+      transform: scale3d(0, 0, 0);
+      opacity: 0;
+    }
+
+    &.is-chosen {
+      &:not(.backwards) {
+        &:before {
+          transform: scale3d(1, 1, 1);
+          opacity: 1;
+          // visibility: visible;
+        }
+
+        .stacked-avatars {
+          --border-color: var(--chosen-background-color);
+        }
+      }
+
+      &.animating {
+        &:before {
+          transition: transform var(--transition-standard-in), opacity var(--transition-standard-in);
+          // transition: transform var(--transition-standard-in);
+        }
+
+        .reaction-counter {
+          transition: color var(--transition-standard-in);
+          // transition: color 1s linear;
+        }
+
+        .stacked-avatars-avatar-container {
+          transition: border-color var(--transition-standard-in);
+        }
+      }
+    }
+
+    .stacked-avatars {
+      --border-color: transparent;
+      margin-left: .25rem;
+      // margin-right: .0625rem;
+    }
+  }
+
+  &-block &-counter {
+    font-size: .875rem !important;
+    font-weight: 500;
+    margin: 0 .125rem 0 .375rem;
+    line-height: 1;
+    position: relative;
+  }
+}

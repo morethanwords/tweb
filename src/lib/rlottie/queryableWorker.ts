@@ -53,7 +53,7 @@ export default class QueryableWorker extends EventListenerBase<{
           transfer.push(arg);
         }
   
-        if(arg.buffer && arg.buffer instanceof ArrayBuffer) {
+        if(typeof(arg) === 'object' && arg.buffer instanceof ArrayBuffer) {
           transfer.push(arg.buffer);
         }
       });

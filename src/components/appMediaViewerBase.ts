@@ -1208,6 +1208,7 @@ export default class AppMediaViewerBase<
       this.moveTheMover(this.content.mover, fromRight === 1);
       this.setNewMover();
     } else {
+      rootScope.isOverlayActive = true;
       window.addEventListener('keydown', this.onKeyDown);
       window.addEventListener('keyup', this.onKeyUp);
       if(!IS_TOUCH_SUPPORTED) window.addEventListener('wheel', this.onWheel, {passive: false, capture: true});
@@ -1215,7 +1216,6 @@ export default class AppMediaViewerBase<
       this.pageEl.insertBefore(this.wholeDiv, mainColumns);
       void this.wholeDiv.offsetLeft; // reflow
       this.wholeDiv.classList.add('active');
-      rootScope.isOverlayActive = true;
       animationIntersector.checkAnimations(true);
 
       if(!IS_MOBILE_SAFARI) {

@@ -114,6 +114,12 @@
     position: absolute !important;
     margin: 0 !important;
     left: .5rem;
+
+    &-small {
+      width: 32px !important;
+      height: 32px !important;
+      left: .75rem !important;
+    }
   }
 
   &.menu-open {

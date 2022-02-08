@@ -23,6 +23,7 @@ import type { AppEmojiManager } from "../../lib/appManagers/appEmojiManager";
 import type { ServerTimeManager } from "../../lib/mtproto/serverTimeManager";
 import type { AppMessagesIdsManager } from "../../lib/appManagers/appMessagesIdsManager";
 import type { AppGroupCallsManager } from "../../lib/appManagers/appGroupCallsManager";
+import type { AppReactionsManager } from "../../lib/appManagers/appReactionsManager";
 import type { State } from "../../lib/appManagers/appStateManager";
 import type stateStorage from '../../lib/stateStorage';
 import EventListenerBase from "../../helpers/eventListenerBase";
@@ -92,7 +93,8 @@ export default class Chat extends EventListenerBase<{
     public appNotificationsManager: AppNotificationsManager,
     public appEmojiManager: AppEmojiManager,
     public appMessagesIdsManager: AppMessagesIdsManager,
-    public appGroupCallsManager: AppGroupCallsManager
+    public appGroupCallsManager: AppGroupCallsManager,
+    public appReactionsManager: AppReactionsManager
   ) {
     super();
 
@@ -182,10 +184,10 @@ export default class Chat extends EventListenerBase<{
     // this.initPeerId = peerId;
 
     this.topbar = new ChatTopbar(this, appSidebarRight, this.appMessagesManager, this.appPeersManager, this.appChatsManager, this.appNotificationsManager, this.appProfileManager, this.appUsersManager, this.appGroupCallsManager);
-    this.bubbles = new ChatBubbles(this, this.appMessagesManager, this.appStickersManager, this.appUsersManager, this.appInlineBotsManager, this.appPhotosManager, this.appPeersManager, this.appProfileManager, this.appDraftsManager, this.appMessagesIdsManager, this.appChatsManager);
+    this.bubbles = new ChatBubbles(this, this.appMessagesManager, this.appStickersManager, this.appUsersManager, this.appInlineBotsManager, this.appPhotosManager, this.appPeersManager, this.appProfileManager, this.appDraftsManager, this.appMessagesIdsManager, this.appChatsManager, this.appReactionsManager);
     this.input = new ChatInput(this, this.appMessagesManager, this.appMessagesIdsManager, this.appDocsManager, this.appChatsManager, this.appPeersManager, this.appWebPagesManager, this.appImManager, this.appDraftsManager, this.serverTimeManager, this.appNotificationsManager, this.appEmojiManager, this.appUsersManager, this.appInlineBotsManager);
     this.selection = new ChatSelection(this, this.bubbles, this.input, this.appMessagesManager);
-    this.contextMenu = new ChatContextMenu(this.bubbles.bubblesContainer, this, this.appMessagesManager, this.appPeersManager, this.appPollsManager, this.appDocsManager, this.appMessagesIdsManager);
+    this.contextMenu = new ChatContextMenu(this.bubbles.bubblesContainer, this, this.appMessagesManager, this.appPeersManager, this.appPollsManager, this.appDocsManager, this.appMessagesIdsManager, this.appReactionsManager);
 
     if(this.type === 'chat') {
       this.topbar.constructUtils();
@@ -214,6 +216,10 @@ export default class Chat extends EventListenerBase<{
       this.input.constructPeerHelpers();
     }
 
+    if(this.type !== 'scheduled') {
+      this.bubbles.setReactionsHoverListeners();
+    }
+
     this.container.classList.add('type-' + this.type);
     this.container.append(this.topbar.container, this.bubbles.bubblesContainer, this.input.chatInput);
 
@@ -240,6 +246,7 @@ export default class Chat extends EventListenerBase<{
     this.topbar.destroy();
     this.bubbles.destroy();
     this.input.destroy();
+    this.contextMenu && this.contextMenu.destroy();
 
     delete this.topbar;
     delete this.bubbles;
