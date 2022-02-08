@@ -9,7 +9,7 @@ import assumeType from "../../helpers/assumeType";
 import callbackify from "../../helpers/callbackify";
 import callbackifyAll from "../../helpers/callbackifyAll";
 import { copy } from "../../helpers/object";
-import { AvailableReaction, Message, MessagesAvailableReactions, MessageUserReaction, Update, Updates } from "../../layer";
+import { AvailableReaction, Message, MessagePeerReaction, MessagesAvailableReactions, Update, Updates } from "../../layer";
 import apiManager from "../mtproto/mtprotoworker";
 import { ReferenceContext } from "../mtproto/referenceDatabase";
 import rootScope from "../rootScope";
@@ -225,7 +225,7 @@ export class AppReactionsManager {
     }
 
     const {peerId, mid} = message;
-    const myUserId = rootScope.myId.toUserId();
+    const myPeerId = rootScope.myId;
 
     let reactions = onlyLocal ? message.reactions : copy(message.reactions);
     let chosenReactionIdx = reactions ? reactions.results.findIndex((reactionCount) => reactionCount.pFlags.chosen) : -1;
@@ -245,7 +245,7 @@ export class AppReactionsManager {
       } */
 
       if(reactions.recent_reactions) {
-        reactions.recent_reactions.findAndSplice((recentReaction) => recentReaction.user_id === myUserId);
+        reactions.recent_reactions.findAndSplice((recentReaction) => appPeersManager.getPeerId(recentReaction.peer_id) === myPeerId);
       }
 
       if(!reactions.results.length) {
@@ -287,10 +287,10 @@ export class AppReactionsManager {
       }
 
       if(reactions.recent_reactions) {
-        const userReaction: MessageUserReaction = {
-          _: 'messageUserReaction',
+        const userReaction: MessagePeerReaction = {
+          _: 'messagePeerReaction',
           reaction,
-          user_id: myUserId
+          peer_id: appPeersManager.getOutputPeer(myPeerId)
         };
 
         if(!appPeersManager.isMegagroup(peerId)) {
