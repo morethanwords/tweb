@@ -4,6 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import readBlobAsText from "../../helpers/blob/readBlobAsText";
+import applyReplacements from "./applyReplacements";
+
 importScripts('rlottie-wasm.js');
 //import Module, { allocate, intArrayFromString } from './rlottie-wasm';
 
@@ -19,46 +22,46 @@ export class RLottieItem {
   private stringOnWasmHeap: number;
   private handle: LottieHandlePointer;
   private frameCount: number;
+  private fps: number;
 
   private dead: boolean;
   //private context: OffscreenCanvasRenderingContext2D;
 
   constructor(
     private reqId: number, 
-    jsString: string, 
     private width: number, 
-    private height: number, 
-    private fps: number/* , 
+    private height: number/* , 
     private canvas: OffscreenCanvas */
   ) {
+
+  }
+
+  public init(json: string, fps: number) {
+    if(this.dead) {
+      return;
+    }
+
     this.fps = Math.max(1, Math.min(60, fps || DEFAULT_FPS));
 
-    this.frameCount = 0;
-
     //this.context = canvas.getContext('2d');
-
-    this.init(jsString);
-
-    reply('loaded', this.reqId, this.frameCount, this.fps);
-
     /* let frame = 0;
     setInterval(() => {
       if(frame >= this.frameCount) frame = 0;
       let _frame = frame++;
       this.render(_frame, null);
     }, 1000 / this.fps); */
-  }
 
-  private init(jsString: string) {
     try {
       this.handle = worker.Api.init();
   
       // @ts-ignore
-      this.stringOnWasmHeap = allocate(intArrayFromString(jsString), 'i8', 0);
+      this.stringOnWasmHeap = allocate(intArrayFromString(json), 'i8', 0);
   
       this.frameCount = worker.Api.loadFromData(this.handle, this.stringOnWasmHeap);
   
       worker.Api.resize(this.handle, this.width, this.height);
+
+      reply('loaded', this.reqId, this.frameCount, this.fps);
     } catch(e) {
       console.error('init RLottieItem error:', e);
       reply('error', this.reqId, e);
@@ -66,7 +69,7 @@ export class RLottieItem {
   }
 
   public render(frameNo: number, clamped?: Uint8ClampedArray) {
-    if(this.dead) return;
+    if(this.dead || this.handle === undefined) return;
     //return;
   
     if(this.frameCount < frameNo || frameNo < 0) {
@@ -99,7 +102,9 @@ export class RLottieItem {
   public destroy() {
     this.dead = true;
 
-    worker.Api.destroy(this.handle);
+    if(this.handle !== undefined) {
+      worker.Api.destroy(this.handle);
+    }
   }
 }
 
@@ -138,27 +143,39 @@ _Module.onRuntimeInitialized = function() {
 
 const items: {[reqId: string]: RLottieItem} = {};
 const queryableFunctions = {
-  loadFromData: function(reqId: number, jsString: string, width: number, height: number/* , canvas: OffscreenCanvas */) {
-    try {
-      // ! WARNING, с этой проверкой не все стикеры работают, например - ДУРКА
-      /* if(!/"tgs":\s*?1./.test(jsString)) {
-        throw new Error('Invalid file');
-      } */
+  loadFromData: function(reqId: number, blob: Blob, width: number, height: number, toneIndex: number/* , canvas: OffscreenCanvas */) {
+    const item = items[reqId] = new RLottieItem(reqId, width, height/* , canvas */);
+    readBlobAsText(blob).then((json) => {
+      try {
+        if(typeof(toneIndex) === 'number' && toneIndex >= 1 && toneIndex <= 5) {
+          /* params.animationData = copy(params.animationData);
+          this.applyReplacements(params.animationData, toneIndex); */
 
-      /* let perf = performance.now();
-      let json = JSON.parse(jsString);
-      console.log('sticker decode:', performance.now() - perf); */
+          const newAnimationData = JSON.parse(json);
+          applyReplacements(newAnimationData, toneIndex);
+          json = JSON.stringify(newAnimationData);
+        }
 
-      const match = jsString.match(/"fr":\s*?(\d+?),/);
-      const frameRate = +match?.[1] || DEFAULT_FPS;
+        // ! WARNING, с этой проверкой не все стикеры работают, например - ДУРКА
+        /* if(!/"tgs":\s*?1./.test(jsString)) {
+          throw new Error('Invalid file');
+        } */
 
-      //console.log('Rendering sticker:', reqId, frameRate, 'now rendered:', Object.keys(items).length);
+        /* let perf = performance.now();
+        let json = JSON.parse(jsString);
+        console.log('sticker decode:', performance.now() - perf); */
 
-      items[reqId] = new RLottieItem(reqId, jsString, width, height, frameRate/* , canvas */);
-    } catch(e) {
-      console.error('Invalid file for sticker:', jsString);
-      reply('error', reqId, e);
-    }
+        const match = json.match(/"fr":\s*?(\d+?),/);
+        const frameRate = +match?.[1] || DEFAULT_FPS;
+
+        //console.log('Rendering sticker:', reqId, frameRate, 'now rendered:', Object.keys(items).length);
+
+        item.init(json, frameRate);
+      } catch(err) {
+        console.error('Invalid file for sticker:', json);
+        reply('error', reqId, err);
+      }
+    });
   },
   destroy: function(reqId: number) {
     const item = items[reqId];

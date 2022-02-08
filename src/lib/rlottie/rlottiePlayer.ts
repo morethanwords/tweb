@@ -15,7 +15,7 @@ export type RLottieOptions = {
   container: HTMLElement, 
   canvas?: HTMLCanvasElement, 
   autoplay?: boolean, 
-  animationData: string, 
+  animationData: Blob, 
   loop?: boolean, 
   width?: number,
   height?: number,
@@ -264,8 +264,8 @@ export default class RLottiePlayer extends EventListenerBase<{
     this.worker.sendQuery(methodName, this.reqId, ...args);
   }
 
-  public loadFromData(jsonString: string) {
-    this.sendQuery('loadFromData', jsonString, this.width, this.height/* , this.canvas.transferControlToOffscreen() */);
+  public loadFromData(data: RLottieOptions['animationData']) {
+    this.sendQuery('loadFromData', data, this.width, this.height, this.toneIndex/* , this.canvas.transferControlToOffscreen() */);
   }
 
   public play() {
@@ -342,6 +342,7 @@ export default class RLottiePlayer extends EventListenerBase<{
     this.pause();
     this.sendQuery('destroy');
     if(this.cacheName) cache.releaseCache(this.cacheName);
+    this.cleanup();
     //this.removed = true;
   }
 

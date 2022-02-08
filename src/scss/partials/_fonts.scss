@@ -9,9 +9,9 @@
 @font-face {
   font-family: "#{$tgico-font-family}";
   src:
-    url('#{$tgico-font-path}/#{$tgico-font-family}.ttf?ee3u9s') format('truetype'),
-    url('#{$tgico-font-path}/#{$tgico-font-family}.woff?ee3u9s') format('woff'),
-    url('#{$tgico-font-path}/#{$tgico-font-family}.svg?ee3u9s#tgico') format('svg');
+    url('#{$tgico-font-path}/#{$tgico-font-family}.ttf?yaqhmr') format('truetype'),
+    url('#{$tgico-font-path}/#{$tgico-font-family}.woff?yaqhmr') format('woff'),
+    url('#{$tgico-font-path}/#{$tgico-font-family}.svg?yaqhmr#tgico') format('svg');
   font-weight: normal;
   font-style: normal;
   font-display: block;
@@ -50,6 +50,11 @@
 .tgico-activesessions {
   &:before {
     content: $tgico-activesessions; 
+  }
+}
+.tgico-add_reaction {
+  &:before {
+    content: $tgico-add_reaction; 
   }
 }
 .tgico-add {
@@ -347,6 +352,16 @@
     content: $tgico-eye2; 
   }
 }
+.tgico-fast_forward {
+  &:before {
+    content: $tgico-fast_forward; 
+  }
+}
+.tgico-fast_rewind {
+  &:before {
+    content: $tgico-fast_rewind; 
+  }
+}
 .tgico-favourites {
   &:before {
     content: $tgico-favourites; 
@@ -632,6 +647,26 @@
     content: $tgico-play; 
   }
 }
+.tgico-playback_1x {
+  &:before {
+    content: $tgico-playback_1x; 
+  }
+}
+.tgico-playback_2x {
+  &:before {
+    content: $tgico-playback_2x; 
+  }
+}
+.tgico-playback_05 {
+  &:before {
+    content: $tgico-playback_05; 
+  }
+}
+.tgico-playback_15 {
+  &:before {
+    content: $tgico-playback_15; 
+  }
+}
 .tgico-plus {
   &:before {
     content: $tgico-plus; 
@@ -655,6 +690,11 @@
 .tgico-radioon {
   &:before {
     content: $tgico-radioon; 
+  }
+}
+.tgico-reactions {
+  &:before {
+    content: $tgico-reactions; 
   }
 }
 .tgico-readchats {

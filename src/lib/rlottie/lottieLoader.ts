@@ -12,7 +12,7 @@ import { logger, LogTypes } from "../logger";
 import apiManager from "../mtproto/mtprotoworker";
 import RLottiePlayer, { RLottieOptions } from './rlottiePlayer';
 import QueryableWorker from './queryableWorker';
-import applyReplacements from './applyReplacements';
+import blobConstruct from '../../helpers/blob/blobConstruct';
 
 export type LottieAssetName = 'EmptyFolder' | 'Folders_1' | 'Folders_2' | 
   'TwoFactorSetupMonkeyClose' | 'TwoFactorSetupMonkeyCloseAndPeek' | 
@@ -101,16 +101,16 @@ export class LottieLoader {
     return fetch(url)
     .then(res => {
       if(!res.headers || res.headers.get('content-type') === 'application/octet-stream') {
-        return res.arrayBuffer().then(data => apiManager.invokeCrypto('gzipUncompress', data, true))
+        return res.arrayBuffer().then(data => apiManager.invokeCrypto('gzipUncompress', data)).then(arr => blobConstruct([arr], ''))
       } else {
-        return res.text();
+        return res.blob();
       }
     })
     /* .then(str => {
       return new Promise<string>((resolve) => setTimeout(() => resolve(str), 2e3));
     }) */
-    .then(str => {
-      const newParams = Object.assign(params, {animationData: str as string/* JSON.parse(str) */, needUpscale: true});
+    .then(blob => {
+      const newParams = Object.assign(params, {animationData: blob, needUpscale: true});
       if(!newParams.name) newParams.name = url;
       return this.loadAnimationWorker(newParams);
     });
@@ -130,24 +130,18 @@ export class LottieLoader {
     ]).then(() => player);
   }
 
-  public async loadAnimationWorker(params: RLottieOptions, group = params.group || '', toneIndex = -1): Promise<RLottiePlayer> {
+  public async loadAnimationWorker(params: RLottieOptions, group = params.group || '', middleware?: () => boolean): Promise<RLottiePlayer> {
     if(!this.isWebAssemblySupported) {
       return this.loadPromise as any;
     }
     //params.autoplay = true;
 
-    if(toneIndex >= 1 && toneIndex <= 5) {
-      /* params.animationData = copy(params.animationData);
-      this.applyReplacements(params.animationData, toneIndex); */
-
-      params.toneIndex = toneIndex;
-      const newAnimationData = JSON.parse(params.animationData);
-      applyReplacements(newAnimationData, toneIndex);
-      params.animationData = JSON.stringify(newAnimationData);
-    }
-
     if(!this.loaded) {
       await this.loadLottieWorkers();
+    }
+
+    if(middleware && !middleware()) {
+      throw new Error('middleware');
     }
 
     if(!params.width || !params.height) {

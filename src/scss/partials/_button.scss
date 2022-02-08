@@ -96,7 +96,6 @@
   visibility: hidden;
   position: absolute;
   background-color: var(--surface-color);
-  box-shadow: 0px 2px 8px 1px rgba(0, 0, 0, .24);
   z-index: 3;
   top: 100%;
   padding: .5rem 0;
@@ -104,7 +103,12 @@
   opacity: 0;
   transform: scale(.8);
   transition: opacity var(--btn-menu-transition), transform var(--btn-menu-transition), visibility var(--btn-menu-transition);
-  font-size: 16px;
+  font-size: 1rem;
+
+  &/* ,
+  &-reactions */ {
+    box-shadow: var(--menu-box-shadow);
+  }
 
   body.animation-level-0 & {
     transition: none;
@@ -168,17 +172,21 @@
   }
 
   &-item {
+    --padding-left: 1rem;
+    --padding-right: 2.5rem;
+    --icon-margin: 1.5rem;
+    --icon-size: 1.5rem;
     display: flex;
     position: relative;
-    padding: 0 40px 0 1rem;
-    height: 56px;
+    padding: 0 var(--padding-right) 0 var(--padding-left);
+    height: 3rem;
     cursor: pointer !important;
     pointer-events: all !important;
     color: var(--primary-text-color);
     text-transform: none;
     white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    // overflow: hidden;
+    // text-overflow: ellipsis;
     align-items: center;
     text-align: left;
     line-height: var(--line-height);
@@ -191,17 +199,46 @@
 
     &:before {
       color: var(--secondary-text-color);
-      font-size: 1.5rem;
-      margin-right: 2rem;
+      font-size: var(--icon-size);
+      margin-right: var(--icon-margin);
+      position: relative;
     }
 
     @include respond-to(handhelds) {
-      padding: 0 30px 0 16px;
-      height: 50px;
+      --padding-right: 1.875rem;
     }
 
     &-text {
+      position: relative;
       flex: 1 1 auto;
+
+      &,
+      &-fake {
+        pointer-events: none;
+      }
+
+      &-fake {
+        --margin-left: calc(var(--icon-size) + var(--icon-margin));
+        position: absolute;
+        margin-left: var(--margin-left);
+        max-width: calc(100% - var(--margin-left) - var(--padding-left) - var(--padding-right));
+
+        @include text-overflow();
+      }
+    }
+
+    .stacked-avatars {
+      --margin-right: -.6875rem;
+      flex: 0 0 auto;
+      right: 1rem;
+      // margin-right: -1.5rem;
+      // margin-left: 1rem;
+      position: absolute;
+      pointer-events: none;
+
+      /* @include respond-to(handhelds) {
+        margin-right: -.875rem;
+      } */
     }
   }
 
@@ -260,6 +297,174 @@
   hr {
     padding: 0;
     margin: .5rem 0;
+    display: block !important;
+  }
+
+  &-reactions {
+    --inner-shadow-degree: 90deg;
+    max-width: 100%;
+    max-height: 100%;
+    height: inherit;
+    border-radius: var(--height);
+    background-color: var(--surface-color);
+    position: absolute;
+    opacity: 0;
+    transform: scale(.8);
+    // filter: drop-shadow(0 .125rem .5rem rgba(0, 0, 0, .24));
+
+    &-container {
+      --height: 2.625rem;
+      --bubble-side-offset: -2.25rem;
+      --other-side-offset: -1.5rem;
+      --width: calc(100% + (var(--bubble-side-offset) + var(--other-side-offset)) * -1);
+      position: absolute;
+      top: calc((var(--height) + .5rem) * -1);
+      width: var(--width);
+      max-width: var(--width);
+      left: var(--other-side-offset);
+      // left: var(--bubble-side-offset);
+      display: flex;
+      justify-content: flex-end;
+      height: var(--height);
+
+      &-vertical {
+        top: var(--other-side-offset);
+        left: calc((var(--height) + .5rem) * -1);
+        width: var(--height);
+        height: var(--width);
+        max-width: var(--height);
+        max-height: var(--width);
+        flex-direction: column;
+        
+        .btn-menu-reactions {
+          --inner-shadow-degree: 180deg;
+          width: inherit;
+          height: auto;
+          display: flex;
+          flex-direction: column;
+        }
+
+        .btn-menu-reactions-reaction {
+          --padding-vertical: var(--padding-base);
+          --padding-horizontal: 0rem;
+        }
+
+        .btn-menu-reactions-bubble-big {
+          right: calc(var(--size) / -2);
+          bottom: var(--offset);
+        }
+      }
+    }
+
+    @include animation-level(2) {
+      transition: opacity var(--transition-standard-in), transform var(--transition-standard-in);
+    }
+
+    &.is-visible {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    &-bubble {
+      position: absolute;
+      background-color: inherit;
+      border-radius: 50%;
+      z-index: -1;
+
+      /* &-small {
+        width: .5rem;
+        height: .5rem;
+        right: .5rem;
+        bottom: -1.25rem;
+      } */
+
+      &-big {
+        --size: 1rem;
+        --offset: calc(var(--height) / 2);
+        width: var(--size);
+        height: var(--size);
+        right: var(--offset);
+        // left: var(--offset);
+        bottom: calc(var(--size) / -2);
+      }
+    }
+
+    &:after {
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      content: " ";
+      pointer-events: none;
+      border-radius: inherit;
+      background: linear-gradient(var(--inner-shadow-degree), var(--surface-color) 0%, transparent 1rem, transparent calc(100% - 1rem), var(--surface-color) 100%);
+    }
+
+    .scrollable {
+      $padding: .25rem;
+      position: relative;
+      display: flex;
+      border-radius: inherit;
+
+      &-x {
+        align-items: center;
+        padding: 0 #{$padding};
+      }
+
+      &-y {
+        align-items: center;
+        padding: #{$padding} 0;
+        flex-direction: column;
+      }
+    }
+
+    &-reaction {
+      --size: 1.75rem;
+      --padding-base: .25rem;
+      --padding-vertical: 0rem;
+      --padding-horizontal: var(--padding-base);
+      width: calc(var(--size) + var(--padding-horizontal) * 2);
+      height: calc(var(--size) + var(--padding-vertical) * 2);
+      flex: 0 0 auto;
+      padding: var(--padding-vertical) var(--padding-horizontal);
+      cursor: pointer;
+
+      &-scale {
+        width: 100%;
+        height: 100%;
+        transform: scale(1);
+
+        @include animation-level(2) {
+          transition: transform .1s linear;
+        }
+      }
+
+      &-select {
+        html.no-touch & {
+          transform: scale(1);
+        }
+  
+        html.no-touch body.animation-level-2 & {
+          transition: transform var(--transition-standard-in);
+        }
+  
+        @include hover() {
+          transform: scale(1.25);
+        }
+      }
+
+      .media-sticker-wrapper {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        /* position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0; */
+      }
+    }
   }
 }
 
@@ -344,7 +549,7 @@
   //width: auto;
   //text-transform: capitalize;
   font-weight: normal;
-  line-height: 1.3125; // * it centers the text
+  line-height: var(--line-height); // * it centers the text
 
   @include respond-to(handhelds) {
     height: 3rem;

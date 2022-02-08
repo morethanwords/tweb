@@ -866,7 +866,6 @@ export namespace Message {
 		replies?: MessageReplies,
 		edit_date?: number,
 		post_author?: string,
-		grouped_id?: string,
 		reactions?: MessageReactions,
 		restriction_reason?: Array<RestrictionReason>,
 		ttl_period?: number,
@@ -875,6 +874,7 @@ export namespace Message {
 		peerId?: PeerId,
 		fromId?: PeerId,
 		fwdFromId?: PeerId,
+		grouped_id?: string,
 		random_id?: string,
 		rReply?: string,
 		viaBotId?: PeerId,
@@ -2641,7 +2641,10 @@ export namespace Update {
 		_: 'updateMessageReactions',
 		peer: Peer,
 		msg_id: number,
-		reactions: MessageReactions
+		reactions: MessageReactions,
+		pts?: number,
+		pts_count?: number,
+		local?: boolean
 	};
 
 	export type updateNewDiscussionMessage = {
@@ -3225,10 +3228,10 @@ export namespace Document {
 		date: number,
 		mime_type: string,
 		size: number,
-		thumbs?: Array<PhotoSize.photoSize | PhotoSize.photoCachedSize | PhotoSize.photoStrippedSize | PhotoSize.photoPathSize>,
 		video_thumbs?: Array<VideoSize>,
 		dc_id: number,
 		attributes: Array<DocumentAttribute>,
+		thumbs?: Array<PhotoSize.photoSize | PhotoSize.photoCachedSize | PhotoSize.photoStrippedSize | PhotoSize.photoPathSize>,
 		type?: 'gif' | 'sticker' | 'audio' | 'voice' | 'video' | 'round' | 'photo' | 'pdf',
 		h?: number,
 		w?: number,
@@ -9345,13 +9348,13 @@ export namespace AvailableReaction {
 		}>,
 		reaction: string,
 		title: string,
-		static_icon: Document,
-		appear_animation: Document,
-		select_animation: Document,
-		activate_animation: Document,
-		effect_animation: Document,
-		around_animation?: Document,
-		center_icon?: Document
+		static_icon: Document.document,
+		appear_animation: Document.document,
+		select_animation: Document.document,
+		activate_animation: Document.document,
+		effect_animation: Document.document,
+		around_animation: Document.document,
+		center_icon: Document.document
 	};
 }
 

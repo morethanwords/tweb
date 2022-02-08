@@ -46,11 +46,8 @@ export default class ChatAudio extends PinnedContainer {
 
     this.divAndCaption.border.remove();
 
-    const prevEl = ButtonIcon('pprevious active', {noRipple: true});
-    const nextEl = ButtonIcon('nnext active', {noRipple: true});
-
-    prevEl.innerHTML = `<svg class="missing-icon" viewBox="0 0 24 24" preserveAspectRatio="xMidYMid meet"><g><path class="missing-icon-path" d="M6 6h2v12H6zm3.5 6l8.5 6V6z"></path></g></svg>`;
-    nextEl.innerHTML = `<svg class="missing-icon" viewBox="0 0 24 24" preserveAspectRatio="xMidYMid meet"><g><path class="missing-icon-path" d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"></path></g></svg>`;
+    const prevEl = ButtonIcon('fast_rewind active', {noRipple: true});
+    const nextEl = ButtonIcon('fast_forward active', {noRipple: true});
 
     const attachClick = (elem: HTMLElement, callback: () => void) => {
       attachClickEvent(elem, (e) => {

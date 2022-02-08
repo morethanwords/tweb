@@ -9,10 +9,11 @@ import type { AppPeersManager } from "../../lib/appManagers/appPeersManager";
 import type { AppPollsManager } from "../../lib/appManagers/appPollsManager";
 import type { AppDocsManager, MyDocument } from "../../lib/appManagers/appDocsManager";
 import type { AppMessagesIdsManager } from "../../lib/appManagers/appMessagesIdsManager";
+import type { AppReactionsManager } from "../../lib/appManagers/appReactionsManager";
 import type Chat from "./chat";
 import { IS_TOUCH_SUPPORTED } from "../../environment/touchSupport";
 import ButtonMenu, { ButtonMenuItemOptions } from "../buttonMenu";
-import { attachContextMenuListener, openBtnMenu, positionMenu } from "../misc";
+import { attachContextMenuListener, MenuPositionPadding, openBtnMenu, positionMenu } from "../misc";
 import PopupDeleteMessages from "../popups/deleteMessages";
 import PopupForward from "../popups/forward";
 import PopupPinMessage from "../popups/unpinMessage";
@@ -24,10 +25,282 @@ import findUpClassName from "../../helpers/dom/findUpClassName";
 import { cancelEvent } from "../../helpers/dom/cancelEvent";
 import { attachClickEvent, simulateClickEvent } from "../../helpers/dom/clickEvent";
 import isSelectionEmpty from "../../helpers/dom/isSelectionEmpty";
-import { Message, Poll, Chat as MTChat, MessageMedia } from "../../layer";
+import { Message, Poll, Chat as MTChat, MessageMedia, AvailableReaction } from "../../layer";
 import PopupReportMessages from "../popups/reportMessages";
 import assumeType from "../../helpers/assumeType";
 import PopupSponsored from "../popups/sponsored";
+import Scrollable, { ScrollableBase, ScrollableX } from "../scrollable";
+import { wrapSticker } from "../wrappers";
+import RLottiePlayer from "../../lib/rlottie/rlottiePlayer";
+import getVisibleRect from "../../helpers/dom/getVisibleRect";
+import ListenerSetter from "../../helpers/listenerSetter";
+import animationIntersector from "../animationIntersector";
+import { getMiddleware } from "../../helpers/middleware";
+import noop from "../../helpers/noop";
+import callbackify from "../../helpers/callbackify";
+import rootScope from "../../lib/rootScope";
+import { fastRaf } from "../../helpers/schedulers";
+import lottieLoader from "../../lib/rlottie/lottieLoader";
+import PeerTitle from "../peerTitle";
+import StackedAvatars from "../stackedAvatars";
+import { IS_APPLE } from "../../environment/userAgent";
+import PopupReactedList from "../popups/reactedList";
+
+const REACTIONS_CLASS_NAME = 'btn-menu-reactions';
+const REACTION_CLASS_NAME = REACTIONS_CLASS_NAME + '-reaction';
+
+const REACTION_SIZE = 28;
+const PADDING = 4;
+const REACTION_CONTAINER_SIZE = REACTION_SIZE + PADDING * 2;
+
+type ChatReactionsMenuPlayers = {
+  select?: RLottiePlayer,
+  appear?: RLottiePlayer,
+  selectWrapper: HTMLElement,
+  appearWrapper: HTMLElement,
+  reaction: string
+};
+export class ChatReactionsMenu {
+  public widthContainer: HTMLElement;
+  private container: HTMLElement;
+  private reactionsMap: Map<HTMLElement, ChatReactionsMenuPlayers>;
+  private scrollable: ScrollableBase;
+  private animationGroup: string;
+  private middleware: ReturnType<typeof getMiddleware>;
+  private message: Message.message;
+
+  constructor(
+    private appReactionsManager: AppReactionsManager,
+    private type: 'horizontal' | 'vertical',
+    middleware: ChatReactionsMenu['middleware']
+  ) {
+    const widthContainer = this.widthContainer = document.createElement('div');
+    widthContainer.classList.add(REACTIONS_CLASS_NAME + '-container');
+    widthContainer.classList.add(REACTIONS_CLASS_NAME + '-container-' + type);
+
+    const reactionsContainer = this.container = document.createElement('div');
+    reactionsContainer.classList.add(REACTIONS_CLASS_NAME);
+
+    const reactionsScrollable = this.scrollable = type === 'vertical' ? new Scrollable(undefined) : new ScrollableX(undefined);
+    reactionsContainer.append(reactionsScrollable.container);
+    reactionsScrollable.onAdditionalScroll = this.onScroll;
+    reactionsScrollable.setListeners();
+
+    reactionsScrollable.container.classList.add('no-scrollbar');
+
+    ['big'].forEach(type => {
+      const bubble = document.createElement('div');
+      bubble.classList.add(REACTIONS_CLASS_NAME + '-bubble', REACTIONS_CLASS_NAME + '-bubble-' + type);
+      reactionsContainer.append(bubble);
+    });
+
+    this.reactionsMap = new Map();
+    this.animationGroup = 'CHAT-MENU-REACTIONS-' + Date.now();
+    animationIntersector.setOverrideIdleGroup(this.animationGroup, true);
+
+    if(!IS_TOUCH_SUPPORTED) {
+      reactionsContainer.addEventListener('mousemove', this.onMouseMove);
+    }
+
+    attachClickEvent(reactionsContainer, (e) => {
+      const reactionDiv = findUpClassName(e.target, REACTION_CLASS_NAME);
+      if(!reactionDiv) return;
+
+      const players = this.reactionsMap.get(reactionDiv);
+      if(!players) return;
+
+      this.appReactionsManager.sendReaction(this.message, players.reaction);
+    });
+
+    widthContainer.append(reactionsContainer);
+
+    this.middleware = middleware ?? getMiddleware();
+  }
+
+  public init(message: Message.message) {
+    this.message = message;
+
+    const middleware = this.middleware.get();
+    // const result = Promise.resolve(this.appReactionsManager.getAvailableReactionsForPeer(message.peerId)).then((res) => pause(1000).then(() => res));
+    const result = this.appReactionsManager.getAvailableReactionsByMessage(message);
+    callbackify(result, (reactions) => {
+      if(!middleware() || !reactions.length) return;
+      reactions.forEach(reaction => {
+        this.renderReaction(reaction);
+      });
+
+      const setVisible = () => {
+        this.container.classList.add('is-visible');
+      };
+
+      if(result instanceof Promise) {
+        fastRaf(setVisible);
+      } else {
+        setVisible();
+      }
+    });
+  }
+
+  public cleanup() {
+    this.middleware.clean();
+    this.scrollable.removeListeners();
+    this.reactionsMap.clear();
+    animationIntersector.setOverrideIdleGroup(this.animationGroup, false);
+    animationIntersector.checkAnimations(true, this.animationGroup, true);
+  }
+
+  private onScroll = () => {
+    this.reactionsMap.forEach((players, div) => {
+      this.onScrollProcessItem(div, players);
+    });
+  };
+
+  private renderReaction(reaction: AvailableReaction) {
+    const reactionDiv = document.createElement('div');
+    reactionDiv.classList.add(REACTION_CLASS_NAME);
+
+    const scaleContainer = document.createElement('div');
+    scaleContainer.classList.add(REACTION_CLASS_NAME + '-scale');
+
+    const appearWrapper = document.createElement('div');
+    let selectWrapper: HTMLElement;;
+    appearWrapper.classList.add(REACTION_CLASS_NAME + '-appear');
+
+    if(rootScope.settings.animationsEnabled) {
+      selectWrapper = document.createElement('div');
+      selectWrapper.classList.add(REACTION_CLASS_NAME + '-select', 'hide');
+    }
+
+    const players: ChatReactionsMenuPlayers = {
+      selectWrapper,
+      appearWrapper,
+      reaction: reaction.reaction
+    };
+    this.reactionsMap.set(reactionDiv, players);
+
+    const middleware = this.middleware.get();
+
+    const hoverScale = IS_TOUCH_SUPPORTED ? 1 : 1.25;
+    const size = REACTION_SIZE * hoverScale;
+
+    const options = {
+      width: size,
+      height: size,
+      skipRatio: 1,
+      needFadeIn: false,
+      withThumb: false,
+      group: this.animationGroup,
+      middleware
+    };
+
+    if(!rootScope.settings.animationsEnabled) {
+      delete options.needFadeIn;
+      delete options.withThumb;
+
+      wrapSticker({
+        doc: reaction.static_icon,
+        div: appearWrapper,
+        ...options
+      });
+    } else {
+      let isFirst = true;
+      wrapSticker({
+        doc: reaction.appear_animation,
+        div: appearWrapper,
+        play: true,
+        ...options
+      }).then(player => {
+        assumeType<RLottiePlayer>(player);
+  
+        players.appear = player;
+  
+        player.addEventListener('enterFrame', (frameNo) => {
+          if(player.maxFrame === frameNo) {
+            selectLoadPromise.then((selectPlayer) => {
+              assumeType<RLottiePlayer>(selectPlayer);
+              appearWrapper.classList.add('hide');
+              selectWrapper.classList.remove('hide');
+  
+              if(isFirst) {
+                players.select = selectPlayer;
+                isFirst = false;
+              }
+            }, noop);
+          }
+        });
+      }, noop);
+  
+      const selectLoadPromise = wrapSticker({
+        doc: reaction.select_animation,
+        div: selectWrapper,
+        ...options
+      }).then(player => {
+        assumeType<RLottiePlayer>(player);
+
+        return lottieLoader.waitForFirstFrame(player);
+      }).catch(noop);
+    }
+    
+    scaleContainer.append(appearWrapper);
+    selectWrapper && scaleContainer.append(selectWrapper);
+    reactionDiv.append(scaleContainer);
+    this.scrollable.append(reactionDiv);
+  }
+
+  private onScrollProcessItem(div: HTMLElement, players: ChatReactionsMenuPlayers) {
+    const scaleContainer = div.firstElementChild as HTMLElement;
+    const visibleRect = getVisibleRect(div, this.scrollable.container);
+    if(!visibleRect) {
+      if(!players.appearWrapper.classList.contains('hide') || !players.appear) {
+        return;
+      }
+
+      if(players.select) {
+        players.select.stop();
+      }
+
+      players.appear.stop();
+      players.appear.autoplay = true;
+      players.appearWrapper.classList.remove('hide');
+      players.selectWrapper.classList.add('hide');
+      scaleContainer.style.transform = '';
+    } else if(visibleRect.overflow.left || visibleRect.overflow.right) {
+      const diff = Math.abs(visibleRect.rect.left - visibleRect.rect.right);
+      const scale = Math.min(diff ** 2 / REACTION_CONTAINER_SIZE ** 2, 1);
+
+      scaleContainer.style.transform = `scale(${scale})`;
+    } else {
+      scaleContainer.style.transform = '';
+    }
+  }
+
+  private onMouseMove = (e: MouseEvent) => {
+    const reactionDiv = findUpClassName(e.target, REACTION_CLASS_NAME);
+    if(!reactionDiv) {
+      return;
+    }
+    
+    const players = this.reactionsMap.get(reactionDiv);
+    if(!players) {
+      return;
+    }
+
+    // do not play select animation when appearing
+    if(!players.appear?.paused) {
+      return;
+    }
+
+    const player = players.select;
+    if(!player) {
+      return;
+    }
+
+    if(player.paused) {
+      player.autoplay = true;
+      player.restart();
+    }
+  };
+}
 
 export default class ChatContextMenu {
   private buttons: (ButtonMenuItemOptions & {verify: () => boolean, notDirect?: () => boolean, withSelection?: true, isSponsored?: true})[];
@@ -40,116 +313,32 @@ export default class ChatContextMenu {
   private isTextSelected: boolean;
   private isAnchorTarget: boolean;
   private isUsernameTarget: boolean;
+  private isSponsored: boolean;
+  private isOverBubble: boolean;
   private peerId: PeerId;
   private mid: number;
   private message: Message.message | Message.messageService;
   private noForwards: boolean;
 
-  constructor(private attachTo: HTMLElement, 
+  private reactionsMenu: ChatReactionsMenu;
+  private listenerSetter: ListenerSetter;
+
+  private viewerPeerId: PeerId;
+  private middleware: ReturnType<typeof getMiddleware>;
+  canOpenReactedList: boolean;
+
+  constructor(
+    private attachTo: HTMLElement, 
     private chat: Chat, 
     private appMessagesManager: AppMessagesManager, 
     private appPeersManager: AppPeersManager, 
     private appPollsManager: AppPollsManager,
     private appDocsManager: AppDocsManager,
-    private appMessagesIdsManager: AppMessagesIdsManager
+    private appMessagesIdsManager: AppMessagesIdsManager,
+    private appReactionsManager: AppReactionsManager
   ) {
-    const onContextMenu = (e: MouseEvent | Touch | TouchEvent) => {
-      if(this.init) {
-        this.init();
-        this.init = null;
-      }
-
-      let bubble: HTMLElement, contentWrapper: HTMLElement;
-
-      try {
-        contentWrapper = findUpClassName(e.target, 'bubble-content-wrapper');
-        bubble = contentWrapper ? contentWrapper.parentElement : findUpClassName(e.target, 'bubble');
-      } catch(e) {}
-
-      // ! context menu click by date bubble (there is no pointer-events)
-      if(!bubble || bubble.classList.contains('bubble-first')) return;
-
-      if(e instanceof MouseEvent || e.hasOwnProperty('preventDefault')) (e as any).preventDefault();
-      if(this.element.classList.contains('active')) {
-        return false;
-      }
-      if(e instanceof MouseEvent || e.hasOwnProperty('cancelBubble')) (e as any).cancelBubble = true;
-
-      let mid = +bubble.dataset.mid;
-      if(!mid) return;
-
-      const isSponsored = mid < 0;
-      this.isSelectable = this.chat.selection.canSelectBubble(bubble);
-      this.peerId = this.chat.peerId;
-      //this.msgID = msgID;
-      this.target = e.target as HTMLElement;
-      this.isTextSelected = !isSelectionEmpty();
-      this.isAnchorTarget = this.target.tagName === 'A' && (
-        (this.target as HTMLAnchorElement).target === '_blank' || 
-        this.target.classList.contains('anchor-url')
-      );
-      this.isUsernameTarget = this.target.tagName === 'A' && this.target.classList.contains('mention');
-
-      // * если открыть контекстное меню для альбома не по бабблу, и последний элемент не выбран, чтобы показать остальные пункты
-      if(chat.selection.isSelecting && !contentWrapper) {
-        if(isSponsored) {
-          return;
-        }
-
-        const mids = this.chat.getMidsByMid(mid);
-        if(mids.length > 1) {
-          const selectedMid = this.chat.selection.isMidSelected(this.peerId, mid) ? 
-            mid : 
-            mids.find(mid => this.chat.selection.isMidSelected(this.peerId, mid));
-          if(selectedMid) {
-            mid = selectedMid;
-          }
-        }
-      }
-
-      const groupedItem = findUpClassName(this.target, 'grouped-item');
-      this.isTargetAGroupedItem = !!groupedItem;
-      if(groupedItem) {
-        this.mid = +groupedItem.dataset.mid;
-      } else {
-        this.mid = mid;
-      }
-
-      this.isSelected = this.chat.selection.isMidSelected(this.peerId, this.mid);
-      this.message = this.chat.getMessage(this.mid);
-      if(isSponsored) {
-        this.buttons.forEach(button => {
-          button.element.classList.toggle('hide', !button.isSponsored);
-        });
-      } else {
-        this.noForwards = !this.appMessagesManager.canForward(this.message);
-
-        this.buttons.forEach(button => {
-          let good: boolean;
-  
-          //if((appImManager.chatSelection.isSelecting && !button.withSelection) || (button.withSelection && !appImManager.chatSelection.isSelecting)) {
-          if(chat.selection.isSelecting && !button.withSelection) {
-            good = false;
-          } else {
-            good = contentWrapper || IS_TOUCH_SUPPORTED || true ? 
-              button.verify() : 
-              button.notDirect && button.verify() && button.notDirect();
-          }
-  
-          button.element.classList.toggle('hide', !good);
-        });
-      }
-
-      const side: 'left' | 'right' = bubble.classList.contains('is-in') ? 'left' : 'right';
-      //bubble.parentElement.append(this.element);
-      //appImManager.log('contextmenu', e, bubble, side);
-      positionMenu((e as TouchEvent).touches ? (e as TouchEvent).touches[0] : e as MouseEvent, this.element, side);
-      openBtnMenu(this.element, () => {
-        this.mid = 0;
-        this.peerId = undefined;
-        this.target = null;
-      });
-    };
+    this.listenerSetter = new ListenerSetter();
+    this.middleware = getMiddleware();
 
     if(IS_TOUCH_SUPPORTED/*  && false */) {
       attachClickEvent(attachTo, (e) => {
@@ -167,13 +356,134 @@ export default class ChatContextMenu {
           cancelEvent(e);
           //onContextMenu((e as TouchEvent).changedTouches[0]);
           // onContextMenu((e as TouchEvent).changedTouches ? (e as TouchEvent).changedTouches[0] : e as MouseEvent);
-          onContextMenu(e);
+          this.onContextMenu(e);
         }
       }, {listenerSetter: this.chat.bubbles.listenerSetter});
-    } else attachContextMenuListener(attachTo, onContextMenu, this.chat.bubbles.listenerSetter);
+    } else attachContextMenuListener(attachTo, this.onContextMenu, this.chat.bubbles.listenerSetter);
   }
 
-  private init() {
+  private onContextMenu = (e: MouseEvent | Touch | TouchEvent) => {
+    let bubble: HTMLElement, contentWrapper: HTMLElement;
+
+    try {
+      contentWrapper = findUpClassName(e.target, 'bubble-content-wrapper');
+      bubble = contentWrapper ? contentWrapper.parentElement : findUpClassName(e.target, 'bubble');
+    } catch(e) {}
+
+    // ! context menu click by date bubble (there is no pointer-events)
+    if(!bubble || bubble.classList.contains('bubble-first')) return;
+
+    let element = this.element;
+    if(e instanceof MouseEvent || e.hasOwnProperty('preventDefault')) (e as any).preventDefault();
+    if(element && element.classList.contains('active')) {
+      return false;
+    }
+    if(e instanceof MouseEvent || e.hasOwnProperty('cancelBubble')) (e as any).cancelBubble = true;
+
+    let mid = +bubble.dataset.mid;
+    if(!mid) return;
+
+    const isSponsored = this.isSponsored = mid < 0;
+    this.isSelectable = this.chat.selection.canSelectBubble(bubble);
+    this.peerId = this.chat.peerId;
+    //this.msgID = msgID;
+    this.target = e.target as HTMLElement;
+    this.isTextSelected = !isSelectionEmpty();
+    this.isAnchorTarget = this.target.tagName === 'A' && (
+      (this.target as HTMLAnchorElement).target === '_blank' || 
+      this.target.classList.contains('anchor-url')
+    );
+    this.isUsernameTarget = this.target.tagName === 'A' && this.target.classList.contains('mention');
+
+    // * если открыть контекстное меню для альбома не по бабблу, и последний элемент не выбран, чтобы показать остальные пункты
+    if(this.chat.selection.isSelecting && !contentWrapper) {
+      if(isSponsored) {
+        return;
+      }
+
+      const mids = this.chat.getMidsByMid(mid);
+      if(mids.length > 1) {
+        const selectedMid = this.chat.selection.isMidSelected(this.peerId, mid) ? 
+          mid : 
+          mids.find(mid => this.chat.selection.isMidSelected(this.peerId, mid));
+        if(selectedMid) {
+          mid = selectedMid;
+        }
+      }
+    }
+
+    this.isOverBubble = !!contentWrapper;
+
+    const groupedItem = findUpClassName(this.target, 'grouped-item');
+    this.isTargetAGroupedItem = !!groupedItem;
+    if(groupedItem) {
+      this.mid = +groupedItem.dataset.mid;
+    } else {
+      this.mid = mid;
+    }
+
+    this.isSelected = this.chat.selection.isMidSelected(this.peerId, this.mid);
+    this.message = this.chat.getMessage(this.mid);
+    this.noForwards = !isSponsored && !this.appMessagesManager.canForward(this.message);
+    this.viewerPeerId = undefined;
+    this.canOpenReactedList = undefined;
+
+    const initResult = this.init();
+    element = initResult.element;
+    const {cleanup, destroy, menuPadding} = initResult;
+
+    const side: 'left' | 'right' = bubble.classList.contains('is-in') ? 'left' : 'right';
+    //bubble.parentElement.append(element);
+    //appImManager.log('contextmenu', e, bubble, side);
+    positionMenu((e as TouchEvent).touches ? (e as TouchEvent).touches[0] : e as MouseEvent, element, side, menuPadding);
+    openBtnMenu(element, () => {
+      this.mid = 0;
+      this.peerId = undefined;
+      this.target = null;
+      this.viewerPeerId = undefined;
+      this.canOpenReactedList = undefined;
+      cleanup();
+
+      setTimeout(() => {
+        destroy();
+      }, 300);
+    });
+  };
+
+  public cleanup() {
+    this.listenerSetter.removeAll();
+    this.reactionsMenu && this.reactionsMenu.cleanup();
+    this.middleware.clean();
+  }
+
+  public destroy() {
+    this.cleanup();
+  }
+
+  private filterButtons(buttons: ChatContextMenu['buttons']) {
+    if(this.isSponsored) {
+      return buttons.filter(button => {
+        return button.isSponsored;
+      });
+    } else {
+      return buttons.filter(button => {
+        let good: boolean;
+
+        //if((appImManager.chatSelection.isSelecting && !button.withSelection) || (button.withSelection && !appImManager.chatSelection.isSelecting)) {
+        if(this.chat.selection.isSelecting && !button.withSelection) {
+          good = false;
+        } else {
+          good = this.isOverBubble || IS_TOUCH_SUPPORTED || true ? 
+            button.verify() : 
+            button.notDirect && button.verify() && button.notDirect();
+        }
+
+        return good;
+      });
+    }
+  }
+
+  private setButtons() {
     this.buttons = [{
       icon: 'send2',
       text: 'MessageScheduleSend',
@@ -362,6 +672,20 @@ export default class ChatContextMenu {
       notDirect: () => true,
       withSelection: true
     }, {
+      onClick: () => {
+        if(this.viewerPeerId) {
+          this.chat.appImManager.setInnerPeer({
+            peerId: this.viewerPeerId
+          });
+        } else if(this.canOpenReactedList) {
+          new PopupReactedList(this.appMessagesManager, this.message as Message.message);
+        } else {
+          return false;
+        }
+      },
+      verify: () => !this.peerId.isUser() && (!!(this.message as Message.message).reactions?.recent_reactions?.length || this.appMessagesManager.canViewMessageReadParticipants(this.message)),
+      notDirect: () => true
+    }, {
       icon: 'delete danger',
       text: 'Delete',
       onClick: this.onDeleteClick,
@@ -382,11 +706,159 @@ export default class ChatContextMenu {
       verify: () => false,
       isSponsored: true
     }];
+  }
 
-    this.element = ButtonMenu(this.buttons, this.chat.bubbles.listenerSetter);
-    this.element.id = 'bubble-contextmenu';
-    this.element.classList.add('contextmenu');
-    this.chat.container.append(this.element);
+  private init() {
+    this.cleanup();
+    this.setButtons();
+    
+    const filteredButtons = this.filterButtons(this.buttons);
+    const element = this.element = ButtonMenu(filteredButtons, this.listenerSetter);
+    element.id = 'bubble-contextmenu';
+    element.classList.add('contextmenu');
+
+    const viewsButton = filteredButtons.find(button => !button.icon);
+    if(viewsButton) {
+      const reactions = (this.message as Message.message).reactions;
+      const recentReactions = reactions?.recent_reactions;
+      const isViewingReactions = !!recentReactions?.length;
+      const participantsCount = this.appMessagesManager.canViewMessageReadParticipants(this.message) ? (this.appPeersManager.getPeer(this.peerId) as MTChat.chat).participants_count : undefined;
+      const reactedLength = reactions ? reactions.results.reduce((acc, r) => acc + r.count, 0) : undefined;
+
+      viewsButton.element.classList.add('tgico-' + (isViewingReactions ? 'reactions' : 'checks'));
+      const i18nElem = new I18n.IntlElement({
+        key: isViewingReactions ? (
+          participantsCount === undefined ? 'Chat.Context.ReactedFast' : 'Chat.Context.Reacted'
+        ) : 'NobodyViewed',
+        args: isViewingReactions ? (
+          participantsCount === undefined ? [reactedLength] : [participantsCount, participantsCount]
+        ) : undefined,
+        element: viewsButton.textElement
+      });
+
+      let fakeText: HTMLElement;
+      if(isViewingReactions) {
+        if(participantsCount === undefined) {
+          fakeText = i18n('Chat.Context.ReactedFast', [reactedLength]);
+        } else {
+          fakeText = i18n(
+            recentReactions.length === participantsCount ? 'Chat.Context.ReactedFast' : 'Chat.Context.Reacted', 
+            [recentReactions.length, participantsCount]
+          );
+        }
+      } else {
+        fakeText = i18n('Loading');
+      }
+
+      fakeText.classList.add('btn-menu-item-text-fake');
+      viewsButton.element.append(fakeText);
+
+      const MAX_AVATARS = 3;
+      const PADDING_PER_AVATAR = .875;
+      i18nElem.element.style.visibility = 'hidden';
+      i18nElem.element.style.paddingRight = isViewingReactions ? PADDING_PER_AVATAR * Math.min(MAX_AVATARS, recentReactions.length) + 'rem' : '1rem';
+      const middleware = this.middleware.get();
+      this.appMessagesManager.getMessageReactionsListAndReadParticipants(this.message as Message.message).then((result) => {
+        if(!middleware()) {
+          return;
+        }
+
+        if(fakeText) {
+          fakeText.remove();
+        }
+
+        const reactions = result.combined;
+        const reactedLength = participantsCount === undefined ? 
+          result.reactionsCount : 
+          (
+            isViewingReactions ? 
+              reactions.filter(reaction => reaction.reaction).length : 
+              reactions.length
+          );
+
+        let fakeElem: HTMLElement;
+        if(reactions.length === 1) {
+          fakeElem = new PeerTitle({
+            peerId: reactions[0].peerId,
+            onlyFirstName: true,
+            dialog: false,
+          }).element;
+
+          if(!isViewingReactions || result.readParticipants.length <= 1) {
+            this.viewerPeerId = reactions[0].peerId;
+          }
+        } else if(isViewingReactions) {
+          const isFull = reactedLength === reactions.length || participantsCount === undefined;
+          fakeElem = i18n(
+            isFull ? 'Chat.Context.ReactedFast' : 'Chat.Context.Reacted', 
+            isFull ? [reactedLength] : [reactedLength, reactions.length]
+          );
+        } else {
+          if(!reactions.length) {
+            i18nElem.element.style.visibility = '';
+          } else {
+            fakeElem = i18n('MessageSeen', [reactions.length]);
+          }
+        }
+
+        if(fakeElem) {
+          fakeElem.style.paddingRight = PADDING_PER_AVATAR * Math.min(MAX_AVATARS, reactedLength) + 'rem';
+          fakeElem.classList.add('btn-menu-item-text-fake');
+          viewsButton.element.append(fakeElem);
+        }
+
+        if(reactions.length) {
+          const avatars = new StackedAvatars({avatarSize: 24});
+          avatars.render(recentReactions ? recentReactions.map(r => r.user_id.toPeerId()) : reactions.map(reaction => reaction.peerId));
+          viewsButton.element.append(avatars.container);
+
+          // if(reactions.length > 1) {
+          // if(isViewingReactions) {
+            this.canOpenReactedList = true;
+          // }
+        }
+      });
+    }
+
+    let menuPadding: MenuPositionPadding;
+    let reactionsMenu: ChatReactionsMenu;
+    if(this.message._ === 'message' && !this.chat.selection.isSelecting && !this.message.pFlags.is_outgoing && !this.message.pFlags.is_scheduled) {
+      const position: 'horizontal' | 'vertical' = (IS_APPLE || IS_TOUCH_SUPPORTED)/*  && false */ ? 'horizontal' : 'vertical';
+      reactionsMenu = this.reactionsMenu = new ChatReactionsMenu(this.appReactionsManager, position, this.middleware);
+      reactionsMenu.init(this.appMessagesManager.getGroupsFirstMessage(this.message));
+      element.prepend(reactionsMenu.widthContainer);
+
+      const size = 42;
+      const margin = 8;
+      const totalSize = size + margin;
+      if(position === 'vertical') {
+        menuPadding = {
+          top: 24,
+          // bottom: 36, // positionMenu will detect it itself somehow
+          left: totalSize
+        };
+      } else {
+        menuPadding = {
+          top: totalSize,
+          right: 36,
+          left: 24
+        };
+      }
+    }
+
+    this.chat.container.append(element);
+
+    return {
+      element, 
+      cleanup: () => {
+        this.cleanup();
+        reactionsMenu && reactionsMenu.cleanup();
+      },
+      destroy: () => {
+        element.remove();
+      },
+      menuPadding
+    };
   }
 
   private onSendScheduledClick = () => {

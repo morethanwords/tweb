@@ -35,6 +35,7 @@ import { randomLong } from "../../helpers/random";
 import { attachContextMenuListener } from "../misc";
 import { attachClickEvent, AttachClickOptions } from "../../helpers/dom/clickEvent";
 import findUpAsChild from "../../helpers/dom/findUpAsChild";
+import EventListenerBase from "../../helpers/eventListenerBase";
 
 const accumulateMapSet = (map: Map<any, Set<number>>) => {
   return [...map.values()].reduce((acc, v) => acc + v.size, 0);
@@ -42,7 +43,9 @@ const accumulateMapSet = (map: Map<any, Set<number>>) => {
 
 //const MIN_CLICK_MOVE = 32; // minimum bubble height
 
-class AppSelection {
+class AppSelection extends EventListenerBase<{
+  toggle: (isSelecting: boolean) => void
+}> {
   public selectedMids: Map<PeerId, Set<number>> = new Map();
   public isSelecting = false;
 
@@ -84,6 +87,8 @@ class AppSelection {
     lookupBetweenElementsQuery: string,
     isScheduled?: AppSelection['isScheduled']
   }) {
+    super(false);
+
     safeAssign(this, options);
 
     this.navigationType = 'multiselect-' + randomLong() as any;
@@ -355,6 +360,8 @@ class AppSelection {
     this.isSelecting = !!size || forceSelection;
 
     if(wasSelecting === this.isSelecting) return false;
+
+    this.dispatchEvent('toggle', this.isSelecting);
     
     // const bubblesContainer = this.bubbles.bubblesContainer;
     //bubblesContainer.classList.toggle('is-selecting', !!size);
@@ -666,8 +673,8 @@ export default class ChatSelection extends AppSelection {
   public selectionSendNowBtn: HTMLElement;
   public selectionForwardBtn: HTMLElement;
   public selectionDeleteBtn: HTMLElement;
-  selectionLeft: HTMLDivElement;
-  selectionRight: HTMLDivElement;
+  private selectionLeft: HTMLDivElement;
+  private selectionRight: HTMLDivElement;
 
   constructor(private chat: Chat, private bubbles: ChatBubbles, private input: ChatInput, appMessagesManager: AppMessagesManager) {
     super({

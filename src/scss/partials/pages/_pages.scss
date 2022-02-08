@@ -209,7 +209,7 @@
   .qr-description {
     max-width: 480px;
     margin: 1rem auto;
-    line-height: 1.3125;
+    line-height: var(--line-height);
     text-align: left;
 
     li {

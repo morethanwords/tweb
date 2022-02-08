@@ -151,6 +151,11 @@ function scrollWithJs(options: ScrollOptions): Promise<void> {
       break;
   } */
 
+  if(Math.abs(path - (margin || 0)) < 1) {
+    cancelAnimationByKey(container);
+    return Promise.resolve();
+  }
+
   if(axis === 'y') {
     if(forceDirection === undefined) {
       if(path > maxDistance) {

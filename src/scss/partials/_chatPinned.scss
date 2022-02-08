@@ -612,11 +612,11 @@
 
   &-ico {
     &:before {
-      content: $tgico-largeplay;
+      content: $tgico-play;
     }
 
     &.flip-icon:before {
-      content: $tgico-largepause;
+      content: $tgico-pause;
     }
   }
 

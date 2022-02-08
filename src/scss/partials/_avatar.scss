@@ -151,6 +151,8 @@ avatar-element {
       font-size: 56px;
     }
   } */
+
+  // * can get multiplier by diving 54 / X
   &.avatar-120 {
     --size: 120px;
     --multiplier: .45;
@@ -204,6 +206,11 @@ avatar-element {
   &.avatar-30 {
     --size: 30px;
     --multiplier: 1.8;
+  }
+
+  &.avatar-24 {
+    --size: 24px;
+    --multiplier: 2.25;
   }
 
   &.avatar-18 {

@@ -12,9 +12,14 @@ const replace = require(__dirname + '/in/schema_replace_types.json');
 const mtproto = schema.API;
 
 for(const constructor of additional) {
-  constructor.params.forEach(param => {
+  const additionalParams = constructor.params || (constructor.params = []);
+  additionalParams.forEach(param => {
     param.type = 'flags.-1?' + param.type;
   });
+
+  if(constructor.properties) {
+    additionalParams.push(...constructor.properties);
+  }
 
   if(constructor.type) {
     mtproto.constructors.push(constructor);
@@ -22,13 +27,22 @@ for(const constructor of additional) {
 
   const realConstructor = constructor.type ? constructor : mtproto.constructors.find(c => c.predicate == constructor.predicate);
 
+  if(!constructor.type) {
+    for(let i = realConstructor.params.length - 1; i >= 0; --i) {
+      const param = realConstructor.params[i];
+      if(additionalParams.find(newParam => newParam.name === param.name)) {
+        realConstructor.params.splice(i, 1);
+      }
+    }
+  }
+
   /* constructor.params.forEach(param => {
     const index = realConstructor.params.findIndex(_param => _param.predicate == param.predicate);
     if(index !== -1) {
       realConstructor.params.splice(index, 1);
     }
   }); */
-  realConstructor.params.splice(realConstructor.params.length, 0, ...constructor.params);
+  realConstructor.params.splice(realConstructor.params.length, 0, ...additionalParams);
 }
 
 ['Vector t', 'Bool', 'True', 'Null'].forEach(key => {
@@ -116,7 +130,7 @@ const processParamType = (type, parseBooleanFlags, overrideTypes) => {
     default:
       //console.log('no such type', type);
       //throw new Error('no such type: ' + type);
-      return isAdditional ? type : camelizeName(type, true);
+      return isAdditional || type[0] === type[0].toUpperCase() ? type : camelizeName(type, true);
   }
 };
 

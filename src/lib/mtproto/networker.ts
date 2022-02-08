@@ -375,6 +375,8 @@ export default class MTPNetworker {
         this.nextReq = 0;
       }
 
+      this.connectionInited = false;
+
       /// #if MTPROTO_HAS_HTTP
       if(this.longPollInterval !== undefined) {
         clearInterval(this.longPollInterval);
@@ -1336,7 +1338,9 @@ export default class MTPNetworker {
                 return;
               }
   
+              // deserializer.setMtproto(false);
               result.result = deserializer.fetchObject(type, field + '[result]');
+              // deserializer.setMtproto(true);
               // self.log(dT(), 'override rpc_result', sentMessage, type, result);
             }
           }

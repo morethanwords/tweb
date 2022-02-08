@@ -48,16 +48,17 @@ export function insertInDescendSortedArray<T extends {[smth in K]?: number}, K e
 
   if(pos === undefined) {
     pos = array.indexOf(element);
-    if(pos !== -1) {
-      const prev = array[pos - 1];
-      const next = array[pos + 1];
-      if((!prev || prev[property] >= sortProperty) && (!next || next[property] <= sortProperty)) {
-        // console.warn('same pos', pos, sortProperty, prev, next);
-        return pos;
-      }
-      
-      array.splice(pos, 1);
+  }
+
+  if(pos !== -1) {
+    const prev = array[pos - 1];
+    const next = array[pos + 1];
+    if((!prev || prev[property] >= sortProperty) && (!next || next[property] <= sortProperty)) {
+      // console.warn('same pos', pos, sortProperty, prev, next);
+      return pos;
     }
+    
+    array.splice(pos, 1);
   }
 
   const len = array.length;
