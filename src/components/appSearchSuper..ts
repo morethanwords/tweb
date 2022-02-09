@@ -392,7 +392,7 @@ export default class AppSearchSuper {
     this.searchGroupMedia = new SearchGroup(false, 'messages', true);
 
     this.scrollable.onScrolledBottom = () => {
-      if(this.mediaTab.contentTab && this.mediaTab.contentTab.childElementCount/* && false */) {
+      if(this.mediaTab.contentTab && !this.loaded[this.mediaTab.inputFilter]/* && false */) {
         //this.log('onScrolledBottom will load media');
         this.load(true);
       }
