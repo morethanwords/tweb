@@ -296,7 +296,7 @@ export class AppImManager {
 
       document.body.classList.add('deactivated');
 
-      (popup as any).onClose = () => {
+      popup.addEventListener('close', () => {
         document.body.classList.add('deactivated-backwards');
 
         singleInstance.activateInstance();
@@ -304,7 +304,7 @@ export class AppImManager {
         setTimeout(() => {
           document.body.classList.remove('deactivated', 'deactivated-backwards');
         }, 333);
-      };
+      });
 
       popup.show();
     });
