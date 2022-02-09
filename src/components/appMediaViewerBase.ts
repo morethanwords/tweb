@@ -1335,6 +1335,8 @@ export default class AppMediaViewerBase<
           video.muted = true;
           video.autoplay = true;
           video.loop = true;
+        } else if(media.duration < 60) {
+          video.loop = true;
         }
   
         // if(!video.parentElement) {
