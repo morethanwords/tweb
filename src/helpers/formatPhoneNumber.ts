@@ -31,8 +31,6 @@ export function formatPhoneNumber(originalStr: string): {
   if(!prefixes.size) {
     I18n.countriesList.forEach(country => {
       country.country_codes.forEach(code => {
-        const s = {country, code};
-
         if(code.prefixes) {
           code.prefixes.forEach(prefix => {
             setPrefix(country, code, prefix);
