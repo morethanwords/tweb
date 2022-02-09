@@ -1443,14 +1443,6 @@ export default class AppMediaViewerBase<
                 return;
               }
 
-              if(useController) {
-                const rollback = appMediaPlaybackController.setSingleMedia(video, message as Message.message);
-
-                this.addEventListener('setMoverBefore', () => {
-                  rollback();
-                }, {once: true});
-              }
-  
               const url = cacheContext.url;
               if(target instanceof SVGSVGElement/*  && (video.parentElement || !isSafari) */) { // if video exists
                 //if(!video.parentElement) {
@@ -1458,6 +1450,16 @@ export default class AppMediaViewerBase<
                 //}
               } else {
                 renderImageFromUrl(video, url);
+              }
+
+              // * have to set options (especially playbackRate) after src
+              // * https://github.com/videojs/video.js/issues/2516
+              if(useController) {
+                const rollback = appMediaPlaybackController.setSingleMedia(video, message as Message.message);
+
+                this.addEventListener('setMoverBefore', () => {
+                  rollback();
+                }, {once: true});
               }
 
               this.updateMediaSource(target, url, 'video');
