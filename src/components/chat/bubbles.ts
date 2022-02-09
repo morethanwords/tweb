@@ -963,7 +963,9 @@ export default class ChatBubbles {
               this.setHoverVisible(hoverReaction, true);
             }, {once: true});
 
-            attachClickEvent(hoverReaction, () => {
+            attachClickEvent(hoverReaction, (e) => {
+              cancelEvent(e); // cancel triggering selection
+
               this.appReactionsManager.sendReaction(message, availableReaction.reaction);
               this.unhoverPrevious();
             }, {listenerSetter: this.listenerSetter});
