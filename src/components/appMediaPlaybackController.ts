@@ -294,6 +294,10 @@ class AppMediaPlaybackController {
     // setTimeout(() => {
     const cacheContext = appDownloadManager.getCacheContext(doc);
     media.src = cacheContext.url;
+
+    if(this.playingMedia === media) {
+      media.playbackRate = this.playbackRate;
+    }
     // }, doc.supportsStreaming ? 500e3 : 0);
 
     const set = this.waitingDocumentsForLoad[doc.id];
