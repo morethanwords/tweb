@@ -244,7 +244,20 @@ let onFirstMount = () => {
     let _value = countryInputField.value.toLowerCase();
     let matches: HelpCountry[] = [];
     countries.forEach((c) => {
-      let good = !![c.name, c.default_name].filter(Boolean).find(str => str.toLowerCase().indexOf(_value) !== -1)/*  === 0 */;//i.test(c.name);
+      const names = [
+        c.name, 
+        c.default_name,
+        c.iso2
+      ];
+
+      names.filter(Boolean).forEach(name => {
+        const abbr = name.split(' ').filter(word => /\w/.test(word)).map(word => word[0]).join('');
+        if(abbr.length > 1) {
+          names.push(abbr);
+        }
+      });
+
+      let good = !!names.filter(Boolean).find(str => str.toLowerCase().indexOf(_value) !== -1)/*  === 0 */;//i.test(c.name);
 
       liMap.get(c.iso2).forEach(li => li.style.display = good ? '' : 'none');
       if(good) matches.push(c);
