@@ -13,7 +13,7 @@ import findUpClassName from "./findUpClassName";
 export default class ControlsHover extends EventListenerBase<{
   toggleControls: (show: boolean) => void
 }> {
-  protected showControlsTimeout: number;
+  protected hideControlsTimeout: number;
   protected controlsLocked: boolean;
 
   protected canHideControls: () => boolean;
@@ -23,7 +23,7 @@ export default class ControlsHover extends EventListenerBase<{
 
   constructor() {
     super(false);
-    this.showControlsTimeout = 0;
+    this.hideControlsTimeout = 0;
   }
   
   public setup(options: {
@@ -70,9 +70,17 @@ export default class ControlsHover extends EventListenerBase<{
     }
   }
 
-  public hideControls = () => {
-    clearTimeout(this.showControlsTimeout);
-    this.showControlsTimeout = 0;
+  public hideControls = (setHideTimeout = false) => {
+    if(setHideTimeout) {
+      if(!this.hideControlsTimeout) {
+        this.hideControlsTimeout = window.setTimeout(this.hideControls, 3e3);
+      }
+
+      return;
+    }
+    
+    clearTimeout(this.hideControlsTimeout);
+    this.hideControlsTimeout = 0;
 
     const isShown = this.element.classList.contains('show-controls');
     if(this.controlsLocked !== false) {
@@ -88,9 +96,9 @@ export default class ControlsHover extends EventListenerBase<{
   };
   
   public showControls = (setHideTimeout = true) => {
-    if(this.showControlsTimeout) {
-      clearTimeout(this.showControlsTimeout);
-      this.showControlsTimeout = 0;
+    if(this.hideControlsTimeout) {
+      clearTimeout(this.hideControlsTimeout);
+      this.hideControlsTimeout = 0;
     } else if(!this.element.classList.contains('show-controls') && this.controlsLocked !== false) {
       this.dispatchEvent('toggleControls', true);
       this.element.classList.add('show-controls');
@@ -100,7 +108,7 @@ export default class ControlsHover extends EventListenerBase<{
       return;
     }
 
-    this.showControlsTimeout = window.setTimeout(this.hideControls, 3e3);
+    this.hideControlsTimeout = window.setTimeout(this.hideControls, 3e3);
   };
 
   public toggleControls = (show?: boolean) => {
