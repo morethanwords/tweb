@@ -55,12 +55,15 @@ type MediaDetails = {
   isSingle?: boolean
 };
 
+export type PlaybackMediaType = 'voice' | 'video' | 'audio';
+
 class AppMediaPlaybackController {
   private container: HTMLElement;
   private media: Map<PeerId, Map<number, HTMLMediaElement>> = new Map();
   private scheduled: AppMediaPlaybackController['media'] = new Map();
   private mediaDetails: Map<HTMLMediaElement, MediaDetails> = new Map();
   private playingMedia: HTMLMediaElement;
+  private playingMediaType: PlaybackMediaType;
 
   private waitingMediaForLoad: Map<PeerId, Map<number, CancellablePromise<void>>> = new Map();
   private waitingScheduledMediaForLoad: AppMediaPlaybackController['waitingMediaForLoad'] = new Map();
@@ -78,6 +81,11 @@ class AppMediaPlaybackController {
   private _muted = false;
   private _playbackRate = 1;
   private lockedSwitchers: boolean;
+  private playbackRates: Record<PlaybackMediaType, number> = {
+    voice: 1,
+    video: 1,
+    audio: 1
+  };
 
   constructor() {
     this.container = document.createElement('div');
@@ -597,7 +605,10 @@ class AppMediaPlaybackController {
       this.mediaDetails.delete(media);
     }
 
+    this.playbackRates[this.playingMediaType] = this.playbackRate;
+
     this.playingMedia = undefined;
+    this.playingMediaType = undefined;
 
     return true;
   };
@@ -685,8 +696,27 @@ class AppMediaPlaybackController {
     this.listLoader.load(false);
   }
 
+  private getPlaybackMediaTypeFromMessage(message: Message.message) {
+    const doc = appMessagesManager.getMediaFromMessage(message) as MyDocument;
+    let mediaType: PlaybackMediaType = 'audio';
+    if(doc?.type) {
+      if(doc.type === 'voice' || doc.type === 'round') {
+        mediaType = 'voice';
+      } else if(doc.type === 'video') {
+        mediaType = 'video';
+      }
+    }
+
+    return mediaType;
+  }
+
   public setMedia(media: HTMLMediaElement, message: Message.message) {
+    const mediaType = this.getPlaybackMediaTypeFromMessage(message);
+
+    this._playbackRate = this.playbackRates[mediaType];
+
     this.playingMedia = media;
+    this.playingMediaType = mediaType;
     this.playingMedia.volume = this.volume;
     this.playingMedia.muted = this.muted;
     this.playingMedia.playbackRate = this.playbackRate;

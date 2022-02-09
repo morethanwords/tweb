@@ -80,7 +80,13 @@ export default class ChatAudio extends PinnedContainer {
     this.volumeSelector.btn.classList.add('pinned-audio-volume', 'active');
     this.volumeSelector.btn.prepend(tunnel);
     this.volumeSelector.btn.append(volumeProgressLineContainer);
-    this.wrapperUtils.prepend(this.volumeSelector.btn);
+
+    const fasterEl = ButtonIcon('playback_2x', {noRipple: true});
+    attachClick(fasterEl, () => {
+      appMediaPlaybackController.playbackRate = fasterEl.classList.contains('active') ? 1 : 1.75;
+    });
+
+    this.wrapperUtils.prepend(this.volumeSelector.btn, fasterEl);
 
     const progressWrapper = document.createElement('div');
     progressWrapper.classList.add('pinned-audio-progress-wrapper');
@@ -90,6 +96,10 @@ export default class ChatAudio extends PinnedContainer {
     progressWrapper.append(this.progressLine.container);
     this.wrapper.insertBefore(progressWrapper, this.wrapperUtils);
 
+    this.topbar.listenerSetter.add(rootScope)('media_playback_params', ({playbackRate}) => {
+      fasterEl.classList.toggle('active', playbackRate > 1);
+    });
+
     this.topbar.listenerSetter.add(rootScope)('media_play', ({doc, message, media}) => {
       let title: string | HTMLElement, subtitle: string | HTMLElement | DocumentFragment;
       if(doc.type === 'voice' || doc.type === 'round') {
@@ -97,9 +107,11 @@ export default class ChatAudio extends PinnedContainer {
 
         //subtitle = 'Voice message';
         subtitle = formatFullSentTime(message.date);
+        fasterEl.classList.remove('hide');
       } else {
         title = doc.audioTitle || doc.fileName;
         subtitle = doc.audioPerformer || i18n('AudioUnknownArtist');
+        fasterEl.classList.add('hide');
       }
 
       this.progressLine.setMedia(media);

@@ -263,11 +263,15 @@ export class VolumeSelector extends RangeSelector {
 }
 
 export default class VideoPlayer extends ControlsHover {
+  private static PLAYBACK_RATES = [0.5, 1, 1.5, 2];
+  private static PLAYBACK_RATES_ICONS = ['playback_05', 'playback_1x', 'playback_15', 'playback_2x'];
+
   protected wrapper: HTMLDivElement;
   protected progress: MediaProgressLine;
   protected skin: 'default';
 
   protected listenerSetter: ListenerSetter;
+  protected playbackRateButton: HTMLElement;
 
   /* protected videoParent: HTMLElement;
   protected videoWhichChild: number; */
@@ -284,7 +288,7 @@ export default class VideoPlayer extends ControlsHover {
       element: this.wrapper, 
       listenerSetter: this.listenerSetter, 
       canHideControls: () => {
-        return !this.video.paused;
+        return !this.video.paused && (!this.playbackRateButton || !this.playbackRateButton.classList.contains('menu-open'));
       },
       showOnLeaveToClassName: 'media-viewer-caption'
     });
@@ -295,7 +299,7 @@ export default class VideoPlayer extends ControlsHover {
     this.skin = 'default';
 
     this.stylePlayer(duration);
-    // this.setBtnMenuToggle();
+    this.setBtnMenuToggle();
 
     if(this.skin === 'default') {
       const controls = this.wrapper.querySelector('.default__controls.ckin__controls') as HTMLDivElement;
@@ -328,6 +332,8 @@ export default class VideoPlayer extends ControlsHover {
     let timeDuration: HTMLElement;
   
     if(skin === 'default') {
+      this.playbackRateButton = this.wrapper.querySelector('.playback-rate') as HTMLElement;
+      
       const toggle = wrapper.querySelectorAll('.toggle') as NodeListOf<HTMLElement>;
       const fullScreenButton = wrapper.querySelector('.fullscreen') as HTMLElement;
       const timeElapsed = wrapper.querySelector('#time-elapsed');
@@ -365,10 +371,14 @@ export default class VideoPlayer extends ControlsHover {
             appMediaPlaybackController.muted = !appMediaPlaybackController.muted;
           } else if(code === 'Space') {
             this.togglePlay();
-          } else if(e.altKey && code === 'Equal') {
-            appMediaPlaybackController.playbackRate += .25;
-          } else if(e.altKey && code === 'Minus') {
-            appMediaPlaybackController.playbackRate -= .25;
+          } else if(e.altKey && (code === 'Equal' || code === 'Minus')) {
+            const add = code === 'Equal' ? 1 : -1;
+            const playbackRate = appMediaPlaybackController.playbackRate;
+            const idx = VideoPlayer.PLAYBACK_RATES.indexOf(playbackRate);
+            const nextIdx = idx + add;
+            if(nextIdx >= 0 && nextIdx < VideoPlayer.PLAYBACK_RATES.length) {
+              appMediaPlaybackController.playbackRate = VideoPlayer.PLAYBACK_RATES[nextIdx];
+            }
           } else if(wrapper.classList.contains('ckin__fullscreen') && (key === 'ArrowLeft' || key === 'ArrowRight')) {
             if(key === 'ArrowLeft') appMediaPlaybackController.seekBackward({action: 'seekbackward'});
             else appMediaPlaybackController.seekForward({action: 'seekforward'});
@@ -417,6 +427,10 @@ export default class VideoPlayer extends ControlsHover {
       listenerSetter.add(video)('pause', () => {
         this.showControls(false);
       });
+
+      listenerSetter.add(rootScope)('media_playback_params', () => {
+        this.setPlaybackRateIcon();
+      });
     }
 
     listenerSetter.add(video)('play', () => {
@@ -426,7 +440,7 @@ export default class VideoPlayer extends ControlsHover {
     listenerSetter.add(video)('pause', () => {
       wrapper.classList.remove('is-playing');
     });
-  
+
     if(video.duration || initDuration) {
       timeDuration.innerHTML = String(Math.round(video.duration || initDuration)).toHHMMSS();
     } else {
@@ -457,7 +471,7 @@ export default class VideoPlayer extends ControlsHover {
             </div>
           </div>
           <div class="right-controls">
-            <button class="btn-icon ${skin}__button btn-menu-toggle settings tgico-settings hide" title="Playback Rate"></button>
+            <button class="btn-icon ${skin}__button btn-menu-toggle playback-rate night" title="Playback Rate"></button>
             <button class="btn-icon ${skin}__button fullscreen tgico-fullscreen" title="Full Screen"></button>
           </div>
         </div>
@@ -466,19 +480,34 @@ export default class VideoPlayer extends ControlsHover {
   }
 
   protected setBtnMenuToggle() {
-    const buttons: Parameters<typeof ButtonMenu>[0] = [0.25, 0.5, 1, 1.25, 1.5, 2].map((rate) => {
+    const buttons: Parameters<typeof ButtonMenu>[0] = VideoPlayer.PLAYBACK_RATES.map((rate, idx) => {
       return { 
-        regularText: rate === 1 ? 'Normal' : '' + rate, 
+        // icon: VideoPlayer.PLAYBACK_RATES_ICONS[idx],
+        regularText: rate + 'x', 
         onClick: () => {
-          this.video.playbackRate = rate;
+          appMediaPlaybackController.playbackRate = rate;
         }
       };
     });
     const btnMenu = ButtonMenu(buttons);
-    const settingsButton = this.wrapper.querySelector('.settings') as HTMLElement;
     btnMenu.classList.add('top-left');
-    ButtonMenuToggleHandler(settingsButton);
-    settingsButton.append(btnMenu);
+    ButtonMenuToggleHandler(this.playbackRateButton);
+    this.playbackRateButton.append(btnMenu);
+
+    this.setPlaybackRateIcon();
+  }
+
+  protected setPlaybackRateIcon() {
+    const playbackRateButton = this.playbackRateButton;
+    VideoPlayer.PLAYBACK_RATES_ICONS.forEach((className) => {
+      className = 'tgico-' + className;
+      playbackRateButton.classList.remove(className);
+    });
+
+    let idx = VideoPlayer.PLAYBACK_RATES.indexOf(appMediaPlaybackController.playbackRate);
+    if(idx === -1) idx = VideoPlayer.PLAYBACK_RATES.indexOf(1);
+
+    playbackRateButton.classList.add('tgico-' + VideoPlayer.PLAYBACK_RATES_ICONS[idx]);
   }
   
   protected toggleFullScreen() {
