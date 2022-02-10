@@ -6,6 +6,7 @@
 
 import callbackify from "../../helpers/callbackify";
 import { formatNumber } from "../../helpers/number";
+import { fastRaf } from "../../helpers/schedulers";
 import { MessagePeerReaction, ReactionCount } from "../../layer";
 import appPeersManager from "../../lib/appManagers/appPeersManager";
 import appReactionsManager from "../../lib/appManagers/appReactionsManager";
@@ -31,6 +32,7 @@ export default class ReactionElement extends HTMLElement {
   private stackedAvatars: StackedAvatars;
   private canRenderAvatars: boolean;
   private _reactionCount: ReactionCount;
+  private wrapStickerPromise: ReturnType<typeof wrapSticker>;
 
   constructor() {
     super();
@@ -79,12 +81,16 @@ export default class ReactionElement extends HTMLElement {
         }
 
         const size = this.type === 'inline' ? REACTION_INLINE_SIZE : REACTION_BLOCK_SIZE;
-        wrapSticker({
+        const wrapPromise = this.wrapStickerPromise = wrapSticker({
           div: this.stickerContainer,
           doc: availableReaction.center_icon ?? availableReaction.static_icon,
           width: size,
           height: size,
           static: true
+        }).finally(() => {
+          if(this.wrapStickerPromise === wrapPromise) {
+            this.wrapStickerPromise = undefined;
+          }
         });
       });
     }
@@ -175,15 +181,31 @@ export default class ReactionElement extends HTMLElement {
           play: false
         }).stickerPromise
       ]).then(([iconPlayer, aroundPlayer]) => {
-        iconPlayer.addEventListener('enterFrame', (frameNo) => {
-          if(frameNo === iconPlayer.maxFrame) {
+        const remove = () => {
+          // if(!isInDOM(div)) return;
+          fastRaf(() => {
+            // if(!isInDOM(div)) return;
             iconPlayer.remove();
             div.remove();
+            this.stickerContainer.classList.remove('has-animation');
+          });
+        };
+
+        iconPlayer.addEventListener('enterFrame', (frameNo) => {
+          if(frameNo === iconPlayer.maxFrame) {
+            if(this.wrapStickerPromise) { // wait for fade in animation
+              this.wrapStickerPromise.then(() => {
+                setTimeout(remove, 1e3);
+              });
+            } else {
+              remove();
+            }
           }
         });
 
         iconPlayer.addEventListener('firstFrame', () => {
-          this.stickerContainer.prepend(div);
+          this.stickerContainer.append(div);
+          this.stickerContainer.classList.add('has-animation');
           iconPlayer.play();
           aroundPlayer.play();
         }, {once: true});
