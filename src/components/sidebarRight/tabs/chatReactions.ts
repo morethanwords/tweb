@@ -4,6 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import debounce from "../../../helpers/schedulers/debounce";
 import appChatsManager from "../../../lib/appManagers/appChatsManager";
 import appProfileManager from "../../../lib/appManagers/appProfileManager";
 import appReactionsManager from "../../../lib/appManagers/appReactionsManager";
@@ -21,7 +22,7 @@ export default class AppChatReactionsTab extends SliderSuperTabEventable {
 
     const availableReactions = await appReactionsManager.getActiveAvailableReactions();
     const chatFull = await appProfileManager.getChatFull(this.chatId);
-    const originalReactions = chatFull.available_reactions ?? [];
+    let originalReactions = chatFull.available_reactions ?? [];
     const enabledReactions = new Set(originalReactions);
 
     const toggleSection = new SettingSection({
@@ -53,7 +54,15 @@ export default class AppChatReactionsTab extends SliderSuperTabEventable {
           if(!toggleCheckboxField.checked) {
             toggleCheckboxField.setValueSilently(true);
           }
-        } else enabledReactions.delete(availableReaction.reaction);
+        } else {
+          enabledReactions.delete(availableReaction.reaction);
+
+          if(!enabledReactions.size && toggleCheckboxField.checked) {
+            toggleCheckboxField.setValueSilently(false);
+          }
+        }
+
+        saveReactionsDebounced();
       });
 
       const row = new Row({
@@ -76,12 +85,14 @@ export default class AppChatReactionsTab extends SliderSuperTabEventable {
     this.listenerSetter.add(toggleRow.checkboxField.input)('change', () => {
       if(!toggleCheckboxField.checked) {
         checkboxFields.forEach(checkboxField => checkboxField.setValueSilently(false));
+        saveReactionsDebounced();
       } else if(checkboxFields.every(checkboxField => !checkboxField.checked)) {
         checkboxFields.forEach(checkboxField => checkboxField.setValueSilently(true));
+        saveReactionsDebounced();
       }
     });
 
-    this.eventListener.addEventListener('destroy', () => {
+    const saveReactions = () => {
       const newReactions = Array.from(enabledReactions);
       if([...newReactions].sort().join() === [...originalReactions].sort().join()) {
         return;
@@ -93,7 +104,12 @@ export default class AppChatReactionsTab extends SliderSuperTabEventable {
       }
       
       appChatsManager.setChatAvailableReactions(this.chatId, newReactions);
-    }, {once: true});
+      originalReactions = newReactions;
+    };
+
+    const saveReactionsDebounced = debounce(saveReactions, 3000, false, true);
+
+    this.eventListener.addEventListener('destroy', saveReactions, {once: true});
 
     this.scrollable.append(toggleSection.container, reactionsSection.container);
   }
