@@ -422,11 +422,11 @@ export default class VideoPlayer extends ControlsHover {
 
       listenerSetter.add(video)('play', () => {
         wrapper.classList.add('played');
-      }, {once: true});
 
-      listenerSetter.add(video)('play', () => {
-        this.hideControls(true);
-      });
+        listenerSetter.add(video)('play', () => {
+          this.hideControls(true);
+        });
+      }, {once: true});
 
       listenerSetter.add(video)('pause', () => {
         this.showControls(false);
