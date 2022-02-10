@@ -1222,7 +1222,7 @@ export function wrapStickerAnimation({
   return {animationDiv, stickerPromise};
 }
 
-export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, onlyThumb, emoji, width, height, withThumb, loop, loadPromises, needFadeIn, needUpscale, skipRatio}: {
+export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, onlyThumb, emoji, width, height, withThumb, loop, loadPromises, needFadeIn, needUpscale, skipRatio, static: asStatic}: {
   doc: MyDocument, 
   div: HTMLElement, 
   middleware?: () => boolean, 
@@ -1238,9 +1238,13 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
   loadPromises?: Promise<any>[],
   needFadeIn?: boolean,
   needUpscale?: boolean,
-  skipRatio?: number
+  skipRatio?: number,
+  static?: boolean
 }): Promise<RLottiePlayer | void> {
   const stickerType = doc.sticker;
+  if(stickerType === 1) {
+    asStatic = true;
+  }
 
   if(!width) {
     width = !emoji ? 200 : undefined;
@@ -1293,14 +1297,32 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
   
   //console.log('wrap sticker', doc, div, onlyThumb);
 
-  const cacheContext = appDownloadManager.getCacheContext(doc);
+  let cacheContext: ThumbCache;
+  if(asStatic && stickerType !== 1) {
+    const thumb = appPhotosManager.choosePhotoSize(doc, width, height, false) as PhotoSize.photoSize;
+    cacheContext = appDownloadManager.getCacheContext(doc, thumb.type);
+  } else {
+    cacheContext = appDownloadManager.getCacheContext(doc);
+  }
 
   const toneIndex = emoji ? getEmojiToneIndex(emoji) : -1;
   const downloaded = cacheContext.downloaded && !needFadeIn;
+
+  const isAnimated = !asStatic && (stickerType === 2 || stickerType === 3);
+  const isThumbNeededForType = isAnimated;
   
   let loadThumbPromise = deferredPromise<void>();
   let haveThumbCached = false;
-  if((doc.thumbs?.length || doc.stickerCachedThumbs) && !div.firstElementChild && (!downloaded || stickerType === 2 || stickerType === 3 || onlyThumb) && withThumb !== false/*  && doc.thumbs[0]._ !== 'photoSizeEmpty' */) {
+  if((
+      doc.thumbs?.length || 
+      doc.stickerCachedThumbs
+    ) && 
+    !div.firstElementChild && (
+      !downloaded || 
+      isThumbNeededForType ||  
+      onlyThumb
+    ) && withThumb !== false/*  && doc.thumbs[0]._ !== 'photoSizeEmpty' */
+  ) {
     let thumb = doc.stickerCachedThumbs && doc.stickerCachedThumbs[toneIndex] || doc.thumbs[0];
     
     //console.log('wrap sticker', thumb, div);
@@ -1395,7 +1417,7 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
   const load = async() => {
     if(middleware && !middleware()) return;
 
-    if(stickerType === 2) {
+    if(stickerType === 2 && !asStatic) {
       /* if(doc.id === '1860749763008266301') {
         console.log('loaded sticker:', doc, div);
       } */
@@ -1588,9 +1610,9 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
       });
 
       //console.timeEnd('render sticker' + doc.id);
-    } else if(stickerType === 1 || stickerType === 3) {
+    } else if(asStatic || stickerType === 3) {
       let media: HTMLElement;
-      if(stickerType === 1) {
+      if(asStatic) {
         media = new Image();
       } else {
         media = document.createElement('video');
@@ -1605,7 +1627,7 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
 
       const thumbImage = div.firstElementChild !== media && div.firstElementChild;
       if(needFadeIn !== false) {
-        needFadeIn = (needFadeIn || !downloaded || (stickerType === 1 ? thumbImage : (!thumbImage || thumbImage.tagName === 'svg'))) && rootScope.settings.animationsEnabled;
+        needFadeIn = (needFadeIn || !downloaded || (asStatic ? thumbImage : (!thumbImage || thumbImage.tagName === 'svg'))) && rootScope.settings.animationsEnabled;
       }
 
       media.classList.add('media-sticker');
@@ -1654,27 +1676,35 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
             });
           };
 
-          if(stickerType === 1) {
+          if(asStatic) {
             renderImageFromUrl(media, cacheContext.url, onLoad);
           } else {
             (media as HTMLVideoElement).src = cacheContext.url;
             onMediaLoad(media as HTMLVideoElement).then(onLoad);
           }
         };
-  
+
         if(cacheContext.url) r();
         else {
-          appDocsManager.downloadDoc(doc, /* undefined,  */lazyLoadQueue?.queueId).then(r, resolve);
+          let promise: Promise<any>;
+          if(stickerType === 2 && asStatic) {
+            const thumb = appPhotosManager.choosePhotoSize(doc, width, height, false) as PhotoSize.photoSize;
+            promise = appDocsManager.getThumbURL(doc, thumb).promise
+          } else {
+            promise = appDocsManager.downloadDoc(doc, /* undefined,  */lazyLoadQueue?.queueId);
+          }
+            
+          promise.then(r, resolve);
         }
       });
     }
   };
 
-  const loadPromise: Promise<RLottiePlayer | void> = lazyLoadQueue && (!downloaded || stickerType === 2 || stickerType === 3) ? 
+  const loadPromise: Promise<RLottiePlayer | void> = lazyLoadQueue && (!downloaded || isAnimated) ? 
     (lazyLoadQueue.push({div, load}), Promise.resolve()) : 
     load();
 
-  if(downloaded && (stickerType === 1/*  || stickerType === 3 */)) {
+  if(downloaded && (asStatic/*  || stickerType === 3 */)) {
     loadThumbPromise = loadPromise as any;
     if(loadPromises) {
       loadPromises.push(loadThumbPromise);
