@@ -185,7 +185,10 @@ export class LottieLoader {
       return;
     }
 
-    rlPlayer.clamped = frame;
+    if(rlPlayer.clamped !== undefined) {
+      rlPlayer.clamped = frame;
+    }
+    
     rlPlayer.renderFrame(frame, frameNo);
   };
 

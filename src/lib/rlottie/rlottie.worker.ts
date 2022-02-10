@@ -4,6 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import CAN_USE_TRANSFERABLES from "../../environment/canUseTransferables";
 import readBlobAsText from "../../helpers/blob/readBlobAsText";
 import applyReplacements from "./applyReplacements";
 
@@ -192,29 +193,6 @@ const queryableFunctions = {
   }
 };
 
-/**
- * Returns true when run in WebKit derived browsers.
- * This is used as a workaround for a memory leak in Safari caused by using Transferable objects to
- * transfer data between WebWorkers and the main thread.
- * https://github.com/mapbox/mapbox-gl-js/issues/8771
- *
- * This should be removed once the underlying Safari issue is fixed.
- *
- * @private
- * @param scope {WindowOrWorkerGlobalScope} Since this function is used both on the main thread and WebWorker context,
- *      let the calling scope pass in the global scope object.
- * @returns {boolean}
- */
-let _isSafari: boolean = null;
-function isSafari(scope: any) {
-  if(_isSafari === null) {
-    const userAgent = scope.navigator ? scope.navigator.userAgent : null;
-    _isSafari = !!scope.safari ||
-    !!(userAgent && (/\b(iPad|iPhone|iPod)\b/.test(userAgent) || (!!userAgent.match('Safari') && !userAgent.match('Chrome'))));
-  }
-  return _isSafari;
-}
-
 function reply(...args: any[]) {
   if(arguments.length < 1) { 
     throw new TypeError('reply - not enough arguments'); 
@@ -223,7 +201,8 @@ function reply(...args: any[]) {
   //if(arguments[0] === 'frame') return;
 
   args = Array.prototype.slice.call(arguments, 1);
-  if(isSafari(self)) {
+
+  if(!CAN_USE_TRANSFERABLES) {
     postMessage({queryMethodListener: arguments[0], queryMethodArguments: args});
   } else {
     const transfer: ArrayBuffer[] = [];
