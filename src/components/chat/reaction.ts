@@ -17,7 +17,7 @@ import { wrapSticker, wrapStickerAnimation } from "../wrappers";
 const CLASS_NAME = 'reaction';
 const TAG_NAME = CLASS_NAME + '-element';
 const REACTION_INLINE_SIZE = 14;
-const REACTION_BLOCK_SIZE = 16;
+const REACTION_BLOCK_SIZE = 22;
 
 export const REACTION_DISPLAY_INLINE_COUNTER_AT = 2;
 export const REACTION_DISPLAY_BLOCK_COUNTER_AT = 4;
@@ -73,9 +73,10 @@ export default class ReactionElement extends HTMLElement {
         const size = this.type === 'inline' ? REACTION_INLINE_SIZE : REACTION_BLOCK_SIZE;
         wrapSticker({
           div: this.stickerContainer,
-          doc: availableReaction.static_icon,
+          doc: availableReaction.center_icon,
           width: size,
-          height: size
+          height: size,
+          static: true
         });
       });
     }
@@ -120,7 +121,7 @@ export default class ReactionElement extends HTMLElement {
 
     if(!this.stackedAvatars) {
       this.stackedAvatars = new StackedAvatars({
-        avatarSize: 16
+        avatarSize: 24
       });
 
       this.append(this.stackedAvatars.container);
@@ -139,7 +140,7 @@ export default class ReactionElement extends HTMLElement {
 
   public fireAroundAnimation() {
     callbackify(appReactionsManager.getReaction(this.reactionCount.reaction), (availableReaction) => {
-      const size = (this.type === 'inline' ? REACTION_INLINE_SIZE : REACTION_BLOCK_SIZE) + 14;
+      const size = this.type === 'inline' ? REACTION_INLINE_SIZE + 14 : REACTION_BLOCK_SIZE + 18;
       const div = document.createElement('div');
       div.classList.add(CLASS_NAME + '-sticker-activate');
 
@@ -165,17 +166,17 @@ export default class ReactionElement extends HTMLElement {
           skipRatio: 1,
           play: false
         }).stickerPromise
-      ]).then(([activatePlayer, aroundPlayer]) => {
-        activatePlayer.addEventListener('enterFrame', (frameNo) => {
-          if(frameNo === activatePlayer.maxFrame) {
-            activatePlayer.remove();
+      ]).then(([iconPlayer, aroundPlayer]) => {
+        iconPlayer.addEventListener('enterFrame', (frameNo) => {
+          if(frameNo === iconPlayer.maxFrame) {
+            iconPlayer.remove();
             div.remove();
           }
         });
 
-        activatePlayer.addEventListener('firstFrame', () => {
+        iconPlayer.addEventListener('firstFrame', () => {
           this.stickerContainer.prepend(div);
-          activatePlayer.play();
+          iconPlayer.play();
           aroundPlayer.play();
         }, {once: true});
       });

@@ -45,10 +45,15 @@ class SequentialDom {
    * @param callback 
    */
   public mutateElement(element: HTMLElement, callback?: VoidFunction) {
-    const promise = isInDOM(element) ? this.mutate() : Promise.resolve();
+    const isConnected = isInDOM(element);
+    const promise = isConnected ? this.mutate() : Promise.resolve();
 
     if(callback !== undefined) {
-      promise.then(() => callback());
+      if(isConnected) {
+        callback();
+      } else {
+        promise.then(() => callback());
+      }
     }
 
     return promise;
