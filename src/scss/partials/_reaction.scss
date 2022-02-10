@@ -38,10 +38,13 @@
       right: var(--reaction-offset);
       bottom: var(--reaction-offset);
       left: var(--reaction-offset);
+      z-index: 1;
       // animation: reaction-activate 2s linear forwards;
+    }
 
-      & + .media-sticker {
-        opacity: 0;
+    &.has-animation {
+      > .media-sticker {
+        visibility: hidden;
       }
     }
 
