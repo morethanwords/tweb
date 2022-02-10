@@ -4,6 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import CAN_USE_TRANSFERABLES from "../../environment/canUseTransferables";
 import { IS_ANDROID, IS_APPLE_MOBILE, IS_APPLE, IS_SAFARI } from "../../environment/userAgent";
 import EventListenerBase from "../../helpers/eventListenerBase";
 import mediaSizes from "../../helpers/mediaSizes";
@@ -240,7 +241,10 @@ export default class RLottiePlayer extends EventListenerBase<{
 
     this.context = this.canvas.getContext('2d');
 
-    this.clamped = new Uint8ClampedArray(this.width * this.height * 4);
+    if(CAN_USE_TRANSFERABLES) {
+      this.clamped = new Uint8ClampedArray(this.width * this.height * 4);
+    }
+
     this.imageData = new ImageData(this.width, this.height);
 
     if(this.name) {
@@ -252,6 +256,10 @@ export default class RLottiePlayer extends EventListenerBase<{
   }
 
   public clearCache() {
+    if(this.cachingDelta === Infinity) {
+      return;
+    }
+    
     if(this.cacheName && cache.getCacheCounter(this.cacheName) > 1) { // skip clearing because same sticker can be still visible
       return;
     }
@@ -436,10 +444,8 @@ export default class RLottiePlayer extends EventListenerBase<{
     const frame = this.frames.get(frameNo);
     if(frame) {
       this.renderFrame(frame, frameNo);
-    } else if(IS_SAFARI) {
-      this.sendQuery('renderFrame', frameNo);
     } else {
-      if(!this.clamped.length) { // fix detached
+      if(this.clamped && !this.clamped.length) { // fix detached
         this.clamped = new Uint8ClampedArray(this.width * this.height * 4);
       }
       
@@ -454,6 +460,8 @@ export default class RLottiePlayer extends EventListenerBase<{
       this.pause(false);
       return false;
     }
+
+    return true;
   }
 
   private mainLoopForwards() {
@@ -463,7 +471,7 @@ export default class RLottiePlayer extends EventListenerBase<{
 
     this.requestFrame(frame);
     if((frame + skipDelta) > maxFrame) {
-      this.onLap();
+      return this.onLap();
     }
 
     return true;
@@ -476,7 +484,7 @@ export default class RLottiePlayer extends EventListenerBase<{
 
     this.requestFrame(frame);
     if((frame - skipDelta) < minFrame) {
-      this.onLap();
+      return this.onLap();
     }
 
     return true;

@@ -398,7 +398,7 @@
       content: " ";
       pointer-events: none;
       border-radius: inherit;
-      background: linear-gradient(var(--inner-shadow-degree), var(--surface-color) 0%, transparent 1rem, transparent calc(100% - 1rem), var(--surface-color) 100%);
+      background: linear-gradient(var(--inner-shadow-degree), var(--surface-color) 0%, rgba(var(--surface-color-rgb), 0) 1rem, rgba(var(--surface-color-rgb), 0) calc(100% - 1rem), var(--surface-color) 100%);
     }
 
     .scrollable {
@@ -433,24 +433,28 @@
       &-scale {
         width: 100%;
         height: 100%;
-        transform: scale(1);
+        
+        html:not(.is-safari) & {
+          transform: scale(1);
+        }
 
-        @include animation-level(2) {
+        html:not(.is-safari) body.animation-level-2 & {
           transition: transform .1s linear;
         }
       }
 
       &-select {
-        html.no-touch & {
+        html.no-touch:not(.is-safari) & {
           transform: scale(1);
+
+          &:hover,
+          &:active {
+            transform: scale(1.25);
+          }
         }
   
-        html.no-touch body.animation-level-2 & {
+        html.no-touch:not(.is-safari) body.animation-level-2 & {
           transition: transform var(--transition-standard-in);
-        }
-  
-        @include hover() {
-          transform: scale(1.25);
         }
       }
 
