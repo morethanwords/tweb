@@ -260,8 +260,8 @@ export class AppImManager {
       if(typing?.action?._ === 'sendMessageEmojiInteraction') {
         const action = typing.action;
         const bubble = chat.bubbles.bubbles[appMessagesIdsManager.generateMessageId(typing.action.msg_id)];
-        if(bubble && getVisibleRect(bubble, chat.bubbles.scrollable.container)) {
-          const stickerWrapper: HTMLElement = bubble.querySelector('.media-sticker-wrapper');
+        if(bubble && bubble.classList.contains('emoji-big') && bubble.classList.contains('sticker') && getVisibleRect(bubble, chat.bubbles.scrollable.container)) {
+          const stickerWrapper: HTMLElement = bubble.querySelector('.media-sticker-wrapper:not(.bubble-hover-reaction-sticker):not(.reaction-sticker)');
 
           const data: SendMessageEmojiInteractionData = JSON.parse(action.interaction.data);
           data.a.forEach(a => {
