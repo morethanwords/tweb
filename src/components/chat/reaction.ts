@@ -70,10 +70,18 @@ export default class ReactionElement extends HTMLElement {
     if(!doNotRenderSticker && !hadStickerContainer) {
       const availableReaction = appReactionsManager.getReaction(reactionCount.reaction);
       callbackify(availableReaction, (availableReaction) => {
+        if(!availableReaction.center_icon) {
+          this.stickerContainer.classList.add('is-static');
+        }
+
+        if(availableReaction.pFlags.inactive) {
+          this.classList.add('is-inactive');
+        }
+
         const size = this.type === 'inline' ? REACTION_INLINE_SIZE : REACTION_BLOCK_SIZE;
         wrapSticker({
           div: this.stickerContainer,
-          doc: availableReaction.center_icon,
+          doc: availableReaction.center_icon ?? availableReaction.static_icon,
           width: size,
           height: size,
           static: true

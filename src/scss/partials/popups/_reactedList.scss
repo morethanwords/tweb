@@ -37,6 +37,8 @@
     // --background-color: var(--secondary-color);
     --background-color: var(--light-filled-primary-color);
     --counter-color: var(--primary-color);
+    flex: 1 0 auto;
+    justify-content: space-evenly;
 
     &.is-chosen {
       &:not(.backwards) {

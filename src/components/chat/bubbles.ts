@@ -1244,13 +1244,17 @@ export default class ChatBubbles {
 
     const reactionElement = findUpTag(target, 'REACTION-ELEMENT') as ReactionElement;
     if(reactionElement) {
+      cancelEvent(e);
+      if(reactionElement.classList.contains('is-inactive')) {
+        return;
+      }
+
       const reactionsElement = reactionElement.parentElement as ReactionsElement;
       const reactionCount = reactionsElement.getReactionCount(reactionElement);
 
       const message = reactionsElement.getMessage();
       this.appReactionsManager.sendReaction(message, reactionCount.reaction);
 
-      cancelEvent(e);
       return;
     }
 
