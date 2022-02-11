@@ -373,9 +373,9 @@ export class AppProfileManager {
     });
   }
 
-  public getChannelFull(id: ChatId, override?: true): Promise<ChatFull.channelFull> {
+  public getChannelFull(id: ChatId, override?: true) {
     if(this.chatsFull[id] !== undefined && !override) {
-      return Promise.resolve(this.chatsFull[id] as ChatFull.channelFull);
+      return this.chatsFull[id] as ChatFull.channelFull;
     }
 
     return apiManager.invokeApiSingleProcess({
@@ -457,8 +457,8 @@ export class AppProfileManager {
         return cP.participants.map(p => appChatsManager.getParticipantPeerId(p));
       });
     } else if(chatId) {
-      promise = (this.getChatFull(chatId) as Promise<ChatFull.chatFull>).then(chatFull => {
-        return (chatFull.participants as ChatParticipants.chatParticipants).participants.map(p => p.user_id.toPeerId());
+      promise = Promise.resolve(this.getChatFull(chatId)).then(chatFull => {
+        return ((chatFull as ChatFull.chatFull).participants as ChatParticipants.chatParticipants).participants.map(p => p.user_id.toPeerId());
       });
     } else {
       promise = Promise.resolve([]);

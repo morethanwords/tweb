@@ -334,7 +334,7 @@ export default class ChatTopbar {
       text: 'ViewDiscussion',
       onClick: () => {
         const middleware = this.chat.bubbles.getMiddleware();
-        this.appProfileManager.getChannelFull(this.peerId.toChatId()).then(channelFull => {
+        Promise.resolve(this.appProfileManager.getChannelFull(this.peerId.toChatId())).then(channelFull => {
           if(middleware() && channelFull.linked_chat_id) {
             this.chat.appImManager.setInnerPeer({
               peerId: channelFull.linked_chat_id.toPeerId(true)
