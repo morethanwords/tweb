@@ -664,12 +664,15 @@ export default class ChatTopbar {
 
   public destroy() {
     //this.chat.log.error('Topbar destroying');
-
     this.listenerSetter.removeAll();
     window.clearInterval(this.setPeerStatusInterval);
     
     if(this.pinnedMessage) {
       this.pinnedMessage.destroy(); // * возможно это можно не делать
+    }
+
+    if(this.chatAudio) {
+      this.chatAudio.destroy();
     }
 
     delete this.chatAudio;
