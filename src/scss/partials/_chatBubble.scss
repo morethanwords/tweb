@@ -884,8 +884,9 @@ $bubble-beside-button-width: 38px;
     &.empty-bubble-placeholder {
       position: absolute;
       top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
+      transform: translateY(-50%);
+      // left: 50%;
+      // transform: translate(-50%, -50%);
 
       &.has-description {
         .service-msg {
