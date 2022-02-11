@@ -1958,20 +1958,17 @@ $bubble-beside-button-width: 38px;
       bottom: 47px; // * forward button + 9px margin
       border-radius: 2rem;
       right: -44px; // * because not 38px, as forward button
-      padding: 5.5px 0;
-
-      .tgico-commentssticker {
-        font-size: 23px;
-      }
+      padding: .375rem 0 .5rem;
 
       &-text {
         font-size: .75rem;
+        margin-top: .125rem;
       }
     }
 
     &-footer {
-      height: 50px;
-      border-top: 1px solid var(--border-color);
+      height: 3.1875rem;
+      border-top: .0625rem solid var(--border-color);
       position: relative;
       display: flex;
       align-items: center;
@@ -1983,16 +1980,22 @@ $bubble-beside-button-width: 38px;
   
       .tgico-comments, 
       .tgico-next {
-        font-size: 1.4375rem;
+        font-size: 1.5rem;
+      }
+
+      .tgico-comments {
+        margin-left: .125rem;
+        margin-right: .375rem;
       }
   
       &-text {
         font-weight: 500;
-        font-size: 15px;
-        margin-left: 9px;
+        font-size: .9375rem;
+        margin-left: .5rem;
         display: flex;
         align-items: center;
         color: var(--primary-color);
+        line-height: 1.125rem;
       }
   
       &-avatars {
@@ -2014,7 +2017,7 @@ $bubble-beside-button-width: 38px;
   
       .tgico-next {
         position: absolute;
-        right: 4px;
+        right: .1875rem;
       }
   
       &.is-unread {
