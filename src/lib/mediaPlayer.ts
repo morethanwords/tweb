@@ -175,11 +175,13 @@ export class MediaProgressLine extends RangeSelector {
   public removeListeners() {
     super.removeListeners();
 
-    this.media.removeEventListener('loadeddata', this.onLoadedData);
-    this.media.removeEventListener('ended', this.onEnded);
-    this.media.removeEventListener('play', this.onPlay);
-    this.media.removeEventListener('timeupdate', this.onTimeUpdate);
-    this.streamable && this.media.removeEventListener('progress', this.onProgress);
+    if(this.media) {
+      this.media.removeEventListener('loadeddata', this.onLoadedData);
+      this.media.removeEventListener('ended', this.onEnded);
+      this.media.removeEventListener('play', this.onPlay);
+      this.media.removeEventListener('timeupdate', this.onTimeUpdate);
+      this.streamable && this.media.removeEventListener('progress', this.onProgress);
+    }
 
     if(this.progressRAF) {
       window.cancelAnimationFrame(this.progressRAF);
