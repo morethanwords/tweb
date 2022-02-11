@@ -261,7 +261,8 @@ export default class AppMediaViewerBase<
     });
 
     ([[-1, this.buttons.prev], [1, this.buttons.next]] as [number, HTMLElement][]).forEach(([moveLength, button]) => {
-      attachClickEvent(button, (e) => {
+      // attachClickEvent(button, (e) => {
+      button.addEventListener('click', (e) => {
         cancelEvent(e);
         if(this.setMoverPromise) return;
   
