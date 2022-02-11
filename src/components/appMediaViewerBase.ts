@@ -276,7 +276,9 @@ export default class AppMediaViewerBase<
       }
     });
 
-    attachClickEvent(this.wholeDiv, this.onClick);
+    // ! cannot use the function because it'll cancel slide event on touch devices
+    // attachClickEvent(this.wholeDiv, this.onClick);
+    this.wholeDiv.addEventListener('click', this.onClick);
 
     this.listLoader.onJump = (item, older) => {
       if(older) this.onNextClick(item);
