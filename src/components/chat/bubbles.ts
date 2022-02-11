@@ -2222,7 +2222,7 @@ export default class ChatBubbles {
 
     const chatType = this.chat.type;
 
-    if(chatType === 'scheduled') {
+    if(chatType === 'scheduled' || this.chat.isRestricted) {
       lastMsgId = 0;
     }
 
@@ -2296,7 +2296,7 @@ export default class ChatBubbles {
     }
 
     // add last message, bc in getHistory will load < max_id
-    const additionMsgId = isJump || chatType === 'scheduled' ? 0 : topMessage;
+    const additionMsgId = isJump || chatType === 'scheduled' || this.chat.isRestricted ? 0 : topMessage;
 
     /* this.setPeerPromise = null;
     this.preloader.detach();
@@ -4103,7 +4103,7 @@ export default class ChatBubbles {
     return promise;
   }
 
-  private renderEmptyPlaceholder(type: 'group' | 'saved' | 'noMessages' | 'noScheduledMessages' | 'greeting', bubble: HTMLElement, message: any, elements: (Node | string)[]) {
+  private renderEmptyPlaceholder(type: 'group' | 'saved' | 'noMessages' | 'noScheduledMessages' | 'greeting' | 'restricted', bubble: HTMLElement, message: any, elements: (Node | string)[]) {
     const BASE_CLASS = 'empty-bubble-placeholder';
     bubble.classList.add(BASE_CLASS, BASE_CLASS + '-' + type);
 
@@ -4112,6 +4112,10 @@ export default class ChatBubbles {
     else if(type === 'saved') title = i18n('ChatYourSelfTitle');
     else if(type === 'noMessages' || type === 'greeting') title = i18n('NoMessages');
     else if(type === 'noScheduledMessages') title = i18n('NoScheduledMessages');
+    else if(type === 'restricted') {
+      title = document.createElement('span');
+      title.innerText = this.appPeersManager.getRestrictionReasonText(this.peerId);
+    }
     title.classList.add('center', BASE_CLASS + '-title');
 
     elements.push(title);
@@ -4219,7 +4223,9 @@ export default class ChatBubbles {
 
     const elements: (Node | string)[] = [];
     const isBot = this.appPeersManager.isBot(this.peerId);
-    if(isSponsored) {
+    if(this.chat.isRestricted) {
+      this.renderEmptyPlaceholder('restricted', bubble, message, elements);
+    } else if(isSponsored) {
       let text: LangPackKey, mid: number, startParam: string, callback: () => void;
 
       bubble.classList.add('avoid-selection');
@@ -4368,7 +4374,7 @@ export default class ChatBubbles {
       return;
     } */
 
-    if(side === 'bottom' && this.appPeersManager.isBroadcast(this.peerId)/*  && false */) {
+    if(side === 'bottom' && this.appPeersManager.isBroadcast(this.peerId) && !this.chat.isRestricted/*  && false */) {
       const {mid} = this.generateLocalMessageId(SPONSORED_MESSAGE_ID_OFFSET);
       if(value) {
         const middleware = this.getMiddleware(() => {
@@ -4420,7 +4426,7 @@ export default class ChatBubbles {
       }
     }
 
-    if(side === 'top' && value && this.appPeersManager.isBot(this.peerId)) {
+    if(side === 'top' && value && this.appPeersManager.isBot(this.peerId) && !this.chat.isRestricted) {
       this.log('inject bot description');
 
       const middleware = this.getMiddleware();
@@ -4450,6 +4456,7 @@ export default class ChatBubbles {
       this.scrollable.loadedAll.bottom && 
       this.emptyPlaceholderMid === undefined && 
       (
+        this.chat.isRestricted || 
         !this.appMessagesManager.getHistoryStorage(this.peerId).count || 
         (
           Object.keys(this.bubbles).length && 

@@ -17,6 +17,7 @@ import cleanUsername from "../../helpers/cleanUsername";
 import { formatFullSentTimeRaw, tsNow } from "../../helpers/date";
 import { formatPhoneNumber } from "../../helpers/formatPhoneNumber";
 import { safeReplaceObject, isObject } from "../../helpers/object";
+import { isRestricted } from "../../helpers/restrictions";
 import { Chat, InputContact, InputMedia, InputPeer, InputUser, User as MTUser, UserProfilePhoto, UserStatus, InputGeoPoint } from "../../layer";
 import I18n, { i18n, LangPackKey } from "../langPack";
 //import apiManager from '../mtproto/apiManager';
@@ -1015,6 +1016,13 @@ export class AppUsersManager {
         this.onContactUpdated(userId, false);
       });
     });
+  }
+
+  public isRestricted(userId: UserId) {
+    const user: MTUser.user = this.getUser(userId);
+    const restrictionReasons = user.restriction_reason;
+
+    return !!(user.pFlags.restricted && restrictionReasons && isRestricted(restrictionReasons));
   }
 }
 

@@ -33,6 +33,7 @@ import { pause } from '../../helpers/schedulers/pause';
 import IS_WEBP_SUPPORTED from '../../environment/webpSupport';
 import type { ApiError } from './apiManager';
 import { MTAppConfig } from './appConfig';
+import { ignoreRestrictionReasons } from '../../helpers/restrictions';
 
 type Task = {
   taskId: number,
@@ -699,12 +700,13 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
   public getAppConfig(overwrite?: boolean) {
     if(rootScope.appConfig && !overwrite) return rootScope.appConfig;
     if(this.getAppConfigPromise && !overwrite) return this.getAppConfigPromise;
-    const promise: Promise<MTAppConfig> = this.getAppConfigPromise = this.invokeApi('help.getAppConfig').then(config => {
+    const promise: Promise<MTAppConfig> = this.getAppConfigPromise = this.invokeApi('help.getAppConfig').then((config: MTAppConfig) => {
       if(this.getAppConfigPromise !== promise) {
         return this.getAppConfigPromise;
       }
       
       rootScope.appConfig = config;
+      ignoreRestrictionReasons(config.ignore_restriction_reasons ?? []);
       return config;
     });
 

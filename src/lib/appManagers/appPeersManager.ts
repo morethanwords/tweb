@@ -19,6 +19,7 @@ import appChatsManager from "./appChatsManager";
 import appUsersManager from "./appUsersManager";
 import I18n from '../langPack';
 import { NULL_PEER_ID } from "../mtproto/mtproto_config";
+import { getRestrictionReason } from "../../helpers/restrictions";
 
 // https://github.com/eelcohn/Telegram-API/wiki/Calculating-color-for-a-Telegram-user-on-IRC
 /*
@@ -48,11 +49,15 @@ export class AppPeersManager {
   }
 
   public getPeerPhoto(peerId: PeerId): UserProfilePhoto.userProfilePhoto | ChatPhoto.chatPhoto {
+    if(this.isRestricted(peerId)) {
+      return;
+    }
+
     const photo = peerId.isUser() 
       ? appUsersManager.getUserPhoto(peerId.toUserId())
       : appChatsManager.getChatPhoto(peerId.toChatId());
 
-    return photo._ !== 'chatPhotoEmpty' && photo._ !== 'userProfilePhotoEmpty' ? photo : null;
+    return photo._ !== 'chatPhotoEmpty' && photo._ !== 'userProfilePhotoEmpty' ? photo : undefined;
   }
 
   public getPeerMigratedTo(peerId: PeerId) {
@@ -185,6 +190,20 @@ export class AppPeersManager {
   
   public isAnyChat(peerId: PeerId) {
     return !this.isUser(peerId);
+  }
+
+  public isRestricted(peerId: PeerId) {
+    return peerId.isUser() ? appUsersManager.isRestricted(peerId.toUserId()) : appChatsManager.isRestricted(peerId.toChatId());
+  }
+
+  public getRestrictionReasonText(peerId: PeerId) {
+    const peer: Chat.channel | User.user = this.getPeer(peerId);
+    const reason = peer.restriction_reason ? getRestrictionReason(peer.restriction_reason) : undefined;
+    if(reason) {
+      return reason.text;
+    } else {
+      return peerId.isUser() ? 'This user is restricted' : 'This chat is restricted';
+    }
   }
 
   /* public getInputPeer(peerString: string): InputPeer {

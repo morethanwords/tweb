@@ -74,8 +74,11 @@ export default class Chat extends EventListenerBase<{
   public noForwards: boolean;
 
   public inited: boolean;
+
+  public isRestricted: boolean;
   
-  constructor(public appImManager: AppImManager, 
+  constructor(
+    public appImManager: AppImManager, 
     public appChatsManager: AppChatsManager, 
     public appDocsManager: AppDocsManager, 
     public appInlineBotsManager: AppInlineBotsManager, 
@@ -306,6 +309,7 @@ export default class Chat extends EventListenerBase<{
       }
 
       this.noForwards = this.appPeersManager.noForwards(peerId);
+      this.isRestricted = this.appPeersManager.isRestricted(peerId);
       this.container.classList.toggle('no-forwards', this.noForwards);
 
       appSidebarRight.sharedMediaTab.setPeer(peerId, this.threadId);

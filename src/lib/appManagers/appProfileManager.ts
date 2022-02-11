@@ -178,10 +178,6 @@ export class AppProfileManager {
           userFull.profile_photo = appPhotosManager.savePhoto(userFull.profile_photo, {type: 'profilePhoto', peerId});
         }
 
-        if(userFull.about !== undefined) {
-          userFull.rAbout = RichTextProcessor.wrapRichText(userFull.about, {noLinebreaks: true});
-        }
-
         appNotificationsManager.savePeerSettings({
           peerId, 
           settings: userFull.notify_settings

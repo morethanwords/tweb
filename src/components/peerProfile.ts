@@ -8,7 +8,7 @@ import IS_PARALLAX_SUPPORTED from "../environment/parallaxSupport";
 import { copyTextToClipboard } from "../helpers/clipboard";
 import replaceContent from "../helpers/dom/replaceContent";
 import { fastRaf } from "../helpers/schedulers";
-import { User } from "../layer";
+import { ChatFull, User } from "../layer";
 import { Channel } from "../lib/appManagers/appChatsManager";
 import appImManager from "../lib/appManagers/appImManager";
 import appMessagesManager from "../lib/appManagers/appMessagesManager";
@@ -318,52 +318,28 @@ export default class PeerProfile {
     const peerId = this.peerId;
     const threadId = this.threadId;
 
-    if(!peerId) {
+    if(!peerId || appPeersManager.isRestricted(peerId)) {
       return;
     }
 
-    let promise: Promise<boolean>;
-    if(peerId.isUser()) {
-      promise = Promise.resolve(appProfileManager.getProfile(peerId, override)).then(userFull => {
-        if(this.peerId !== peerId || this.threadId !== threadId) {
-          //this.log.warn('peer changed');
-          return false;
-        }
-        
-        if(userFull.rAbout && peerId !== rootScope.myId) {
-          setText(userFull.rAbout, this.bio);
-        }
-        
-        //this.log('userFull', userFull);
-        return true;
-      });
-    } else {
-      promise = Promise.resolve(appProfileManager.getChatFull(peerId.toChatId(), override)).then((chatFull) => {
-        if(this.peerId !== peerId || this.threadId !== threadId) {
-          //this.log.warn('peer changed');
-          return false;
-        }
-        
-        //this.log('chatInfo res 2:', chatFull);
-        
-        if(chatFull.about) {
-          setText(RichTextProcessor.wrapRichText(chatFull.about), this.bio);
-        }
-
-        // @ts-ignore
-        if(chatFull?.location?._ == 'channelLocation') {
-          // @ts-ignore
-          setText(chatFull.location.address, this.location);
-        }
-
-        return true;
-      });
-    }
-
-    promise.then((canSetNext) => {
-      if(canSetNext) {
-        this.setMoreDetailsTimeout = window.setTimeout(() => this.setMoreDetails(true), 60e3);
+    Promise.resolve(appProfileManager.getProfileByPeerId(peerId, override)).then((peerFull) => {
+      if(this.peerId !== peerId || this.threadId !== threadId || appPeersManager.isRestricted(peerId)) {
+        //this.log.warn('peer changed');
+        return;
       }
+      
+      //this.log('chatInfo res 2:', chatFull);
+      
+      if(peerFull.about) {
+        setText(RichTextProcessor.wrapRichText(peerFull.about), this.bio);
+      }
+
+      if((peerFull as ChatFull.channelFull)?.location?._ == 'channelLocation') {
+        // @ts-ignore
+        setText(chatFull.location.address, this.location);
+      }
+
+      this.setMoreDetailsTimeout = window.setTimeout(() => this.setMoreDetails(true), 60e3);
     });
   }
 
