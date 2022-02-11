@@ -1612,8 +1612,9 @@ $bubble-beside-button-width: 38px;
 
   .message {
     // &.document-message, 
-    &.audio-message, 
-    &.voice-message, 
+    // &.audio-message, 
+    // &.voice-message, 
+    .audio, 
     &.poll-message, 
     &.contact-message {
       .time {
