@@ -42,6 +42,7 @@ import AppPrivateSearchTab from "../sidebarRight/tabs/search";
 import renderImageFromUrl from "../../helpers/dom/renderImageFromUrl";
 import mediaSizes from "../../helpers/mediaSizes";
 import ChatSearch from "./search";
+import { IS_TOUCH_SUPPORTED } from "../../environment/touchSupport";
 
 export type ChatType = 'chat' | 'pinned' | 'replies' | 'discussion' | 'scheduled';
 
@@ -216,7 +217,7 @@ export default class Chat extends EventListenerBase<{
       this.input.constructPeerHelpers();
     }
 
-    if(this.type !== 'scheduled') {
+    if(this.type !== 'scheduled' && !IS_TOUCH_SUPPORTED) {
       this.bubbles.setReactionsHoverListeners();
     }
 

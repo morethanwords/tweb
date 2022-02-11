@@ -533,13 +533,20 @@ $inactive-opacity: .4;
         transition: opacity var(--open-duration) 0s, visibility 0s var(--open-duration);
       } */
   
-      .btn-menu-toggle {
+      .btn-menu-toggle:not(.playback-rate) {
         color: rgba(255, 255, 255, $inactive-opacity);
         opacity: 1;
 
         &.menu-open {
           color: #fff;
           background-color: rgba(112, 117, 121, .2) !important;
+        }
+      }
+
+      &.hide-caption {
+        .media-viewer-caption {
+          opacity: 0 !important;
+          pointer-events: none;
         }
       }
     }

@@ -266,6 +266,7 @@ export default class VideoPlayer extends ControlsHover {
   private static PLAYBACK_RATES = [0.5, 1, 1.5, 2];
   private static PLAYBACK_RATES_ICONS = ['playback_05', 'playback_1x', 'playback_15', 'playback_2x'];
 
+  protected video: HTMLVideoElement;
   protected wrapper: HTMLDivElement;
   protected progress: MediaProgressLine;
   protected skin: 'default';
@@ -276,11 +277,22 @@ export default class VideoPlayer extends ControlsHover {
   /* protected videoParent: HTMLElement;
   protected videoWhichChild: number; */
 
-  constructor(protected video: HTMLVideoElement, play = false, streamable = false, duration?: number) {
+  protected onPlaybackRackMenuToggle?: (open: boolean) => void;
+
+  constructor({video, play = false, streamable = false, duration, onPlaybackRackMenuToggle}: {
+    video: HTMLVideoElement, 
+    play?: boolean, 
+    streamable?: boolean, 
+    duration?: number,
+    onPlaybackRackMenuToggle?: (open: boolean) => void
+  }) {
     super();
 
+    this.video = video;
     this.wrapper = document.createElement('div');
     this.wrapper.classList.add('ckin__player');
+
+    this.onPlaybackRackMenuToggle = onPlaybackRackMenuToggle;
 
     this.listenerSetter = new ListenerSetter();
 
@@ -290,7 +302,8 @@ export default class VideoPlayer extends ControlsHover {
       canHideControls: () => {
         return !this.video.paused && (!this.playbackRateButton || !this.playbackRateButton.classList.contains('menu-open'));
       },
-      showOnLeaveToClassName: 'media-viewer-caption'
+      showOnLeaveToClassName: 'media-viewer-caption',
+      ignoreClickClassName: 'ckin__controls'
     });
 
     video.parentNode.insertBefore(this.wrapper, video);
@@ -423,9 +436,11 @@ export default class VideoPlayer extends ControlsHover {
       listenerSetter.add(video)('play', () => {
         wrapper.classList.add('played');
 
-        listenerSetter.add(video)('play', () => {
-          this.hideControls(true);
-        });
+        if(!IS_TOUCH_SUPPORTED) {
+          listenerSetter.add(video)('play', () => {
+            this.hideControls(true);
+          });
+        }
       }, {once: true});
 
       listenerSetter.add(video)('pause', () => {
@@ -495,7 +510,16 @@ export default class VideoPlayer extends ControlsHover {
     });
     const btnMenu = ButtonMenu(buttons);
     btnMenu.classList.add('top-left');
-    ButtonMenuToggleHandler(this.playbackRateButton);
+    ButtonMenuToggleHandler(
+      this.playbackRateButton, 
+      this.onPlaybackRackMenuToggle ? () => {
+        this.onPlaybackRackMenuToggle(true);
+      } : undefined, 
+      undefined, 
+      this.onPlaybackRackMenuToggle ? () => {
+        this.onPlaybackRackMenuToggle(false);
+      } : undefined
+    );
     this.playbackRateButton.append(btnMenu);
 
     this.setPlaybackRateIcon();
@@ -572,5 +596,6 @@ export default class VideoPlayer extends ControlsHover {
     super.cleanup();
     this.listenerSetter.removeAll();
     this.progress.removeListeners();
+    this.onPlaybackRackMenuToggle = undefined;
   }
 }

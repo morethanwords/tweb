@@ -25,6 +25,7 @@ import debounce from "../helpers/schedulers/debounce";
 import windowSize from "../helpers/windowSize";
 import appPeersManager, { IsPeerType } from "../lib/appManagers/appPeersManager";
 import { generateDelimiter, SettingSection } from "./sidebarLeft";
+import { attachClickEvent } from "../helpers/dom/clickEvent";
 
 type SelectSearchPeerType = 'contacts' | 'dialogs' | 'channelParticipants';
 
@@ -157,7 +158,7 @@ export default class AppSelectPeers {
   
       // let delimiter = document.createElement('hr');
 
-      this.selectedContainer.addEventListener('click', (e) => {
+      attachClickEvent(this.selectedContainer, (e) => {
         if(this.freezed) return;
         let target = e.target as HTMLElement;
         target = findUpClassName(target, 'selector-user');
@@ -188,7 +189,7 @@ export default class AppSelectPeers {
     this.scrollable = new Scrollable(this.chatsContainer);
     this.scrollable.setVirtualContainer(this.list);
 
-    this.chatsContainer.addEventListener('click', (e) => {
+    attachClickEvent(this.chatsContainer, (e) => {
       const target = findUpAttribute(e.target, 'data-peer-id') as HTMLElement;
       cancelEvent(e);
 

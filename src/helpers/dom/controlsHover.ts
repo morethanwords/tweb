@@ -20,6 +20,7 @@ export default class ControlsHover extends EventListenerBase<{
   protected element: HTMLElement;
   protected listenerSetter: ListenerSetter;
   protected showOnLeaveToClassName: string;
+  protected ignoreClickClassName: string;
 
   constructor() {
     super(false);
@@ -30,14 +31,19 @@ export default class ControlsHover extends EventListenerBase<{
     element: HTMLElement, 
     listenerSetter: ListenerSetter, 
     canHideControls?: () => boolean,
-    showOnLeaveToClassName?: string
+    showOnLeaveToClassName?: string,
+    ignoreClickClassName?: string
   }) {
     safeAssign(this, options);
 
     const {listenerSetter, element} = this;
 
     if(IS_TOUCH_SUPPORTED) {
-      listenerSetter.add(element)('click', () => {
+      listenerSetter.add(element)('click', (e) => {
+        if(this.ignoreClickClassName && findUpClassName(e.target, this.ignoreClickClassName)) {
+          return;
+        }
+
         this.toggleControls();
       });
 
