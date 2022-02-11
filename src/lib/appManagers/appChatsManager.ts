@@ -11,6 +11,7 @@
 
 import { MOUNT_CLASS_TO } from "../../config/debug";
 import { isObject, safeReplaceObject, copy, deepEqual } from "../../helpers/object";
+import { isRestricted } from "../../helpers/restrictions";
 import { ChannelParticipant, Chat, ChatAdminRights, ChatBannedRights, ChatParticipant, ChatPhoto, InputChannel, InputChatPhoto, InputFile, InputPeer, Update, Updates, ChannelsCreateChannel } from "../../layer";
 import apiManagerProxy from "../mtproto/mtprotoworker";
 import apiManager from '../mtproto/mtprotoworker';
@@ -778,6 +779,13 @@ export class AppChatsManager {
     }).then(updates => {
       apiUpdatesManager.processUpdateMessage(updates);
     });
+  }
+
+  public isRestricted(chatId: ChatId) {
+    const chat: Chat.channel = this.getChat(chatId);
+    const restrictionReasons = chat.restriction_reason;
+
+    return !!(chat.pFlags.restricted && restrictionReasons && isRestricted(restrictionReasons));
   }
 }
 

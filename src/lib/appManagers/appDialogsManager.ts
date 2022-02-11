@@ -1448,6 +1448,7 @@ export class AppDialogsManager {
     }
 
     const peerId = dialog.peerId;
+    const isRestricted = lastMessage && appMessagesManager.isRestricted(lastMessage);
     //let peerId = appMessagesManager.getMessagePeer(lastMessage);
 
     //console.log('setting last message:', lastMessage);
@@ -1455,7 +1456,7 @@ export class AppDialogsManager {
     /* if(!dom.lastMessageSpan.classList.contains('user-typing')) */ {
 
       let mediaContainer: HTMLElement;
-      if(!lastMessage.deleted && !draftMessage) {
+      if(!lastMessage.deleted && !draftMessage && !isRestricted) {
         const media: MyDocument | MyPhoto = appMessagesManager.getMediaFromMessage(lastMessage);
         if(media && (media._ === 'photo' || (['video', 'gif'] as MyDocument['type'][]).includes(media.type))) {
           const size = appPhotosManager.choosePhotoSize(media, 20, 20);

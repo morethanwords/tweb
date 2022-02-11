@@ -113,11 +113,6 @@
     {"name": "pFlags", "type": "{}"}
   ]
 }, {
-  "predicate": "userFull",
-  "params": [
-    {"name": "rAbout", "type": "string"}
-  ]
-}, {
   "predicate": "messageEntityEmoji",
   "params": [
     {"name": "offset", "type": "number"},

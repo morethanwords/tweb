@@ -17,7 +17,7 @@ import { createPosterForVideo } from "../../helpers/files";
 import { copy, deepEqual, getObjectKeysAndSort } from "../../helpers/object";
 import { randomLong } from "../../helpers/random";
 import { splitStringByLength, limitSymbols, escapeRegExp } from "../../helpers/string";
-import { Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup, InputPeer, InputPhoto, InputDocument, InputGeoPoint, WebPage, GeoPoint, ReportReason, MessagesGetDialogs, InputChannel, InputDialogPeer, ReactionCount, MessagePeerReaction } from "../../layer";
+import { Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup, InputPeer, InputPhoto, InputDocument, InputGeoPoint, WebPage, GeoPoint, ReportReason, MessagesGetDialogs, InputChannel, InputDialogPeer, ReactionCount, MessagePeerReaction, MessagesSearchCounter } from "../../layer";
 import { InvokeApiOptions } from "../../types";
 import I18n, { FormatterArguments, i18n, join, langPack, LangPackKey, UNSUPPORTED_LANG_PACK_KEY, _i18n } from "../langPack";
 import { logger, LogTypes } from "../logger";
@@ -64,6 +64,7 @@ import VIDEO_MIME_TYPES_SUPPORTED from "../../environment/videoMimeTypesSupport"
 import './appGroupCallsManager';
 import appGroupCallsManager from "./appGroupCallsManager";
 import appReactionsManager from "./appReactionsManager";
+import { getRestrictionReason, isRestricted } from "../../helpers/restrictions";
 
 //console.trace('include');
 // TODO: если удалить диалог находясь в папке, то он не удалится из папки и будет виден в настройках
@@ -2831,8 +2832,10 @@ export class AppMessagesManager {
       }
     };
 
+    const isRestricted = this.isRestricted(message as any);
+
     let entities = (message as Message.message).totalEntities;
-    if((message as Message.message).media) {
+    if((message as Message.message).media && !isRestricted) {
       assumeType<Message.message>(message);
       let usingFullAlbum = true;
       if(message.grouped_id) {
@@ -2951,6 +2954,11 @@ export class AppMessagesManager {
       if(actionWrapped) {
         addPart(undefined, actionWrapped);
       }
+    }
+
+    if(isRestricted) {
+      text = getRestrictionReason((message as Message.message).restriction_reason).text;
+      entities = [];
     }
 
     if(text) {
@@ -3616,7 +3624,18 @@ export class AppMessagesManager {
     return this.searchesStorage[peerId][inputFilter];
   }
 
-  public getSearchCounters(peerId: PeerId, filters: MessagesFilter[], canCache = true) {
+  public getSearchCounters(peerId: PeerId, filters: MessagesFilter[], canCache = true): Promise<MessagesSearchCounter[]> {
+    if(appPeersManager.isRestricted(peerId)) {
+      return Promise.resolve(filters.map((filter) => {
+        return {
+          _: 'messages.searchCounter',
+          pFlags: {},
+          filter: filter,
+          count: 0
+        };
+      }));
+    }
+
     const func = (canCache ? apiManager.invokeApiCacheable : apiManager.invokeApi).bind(apiManager);
     return func('messages.getSearchCounters', {
       peer: appPeersManager.getInputPeerById(peerId),
@@ -3778,6 +3797,15 @@ export class AppMessagesManager {
     offset_id_offset: number,
     history: MyMessage[]
   }> {
+    if(appPeersManager.isRestricted(peerId)) {
+      return Promise.resolve({
+        count: 0,
+        offset_id_offset: 0,
+        next_rate: undefined,
+        history: []
+      });
+    }
+
     if(!query) query = '';
     if(!inputFilter) inputFilter = {_: 'inputMessagesFilterEmpty'};
     if(limit === undefined) limit = 20;
@@ -5260,6 +5288,10 @@ export class AppMessagesManager {
   }
 
   public canSendToPeer(peerId: PeerId, threadId?: number, action: ChatRights = 'send_messages') {
+    if(appPeersManager.isRestricted(peerId)) {
+      return false;
+    }
+    
     if(peerId.isAnyChat()) {
       //const isChannel = appPeersManager.isChannel(peerId);
       const chat: Chat.chat = appChatsManager.getChat(peerId.toChatId());
@@ -5482,6 +5514,11 @@ export class AppMessagesManager {
     peerTypeNotifySettings: PeerNotifySettings
   }> = {}) {
     const peerId = this.getMessagePeer(message);
+
+    if(appPeersManager.isRestricted(peerId)) {
+      return;
+    }
+
     const isAnyChat = peerId.isAnyChat();
     const notification: NotifyOptions = {};
     const peerString = appPeersManager.getPeerString(peerId);
@@ -5608,6 +5645,10 @@ export class AppMessagesManager {
     return peerId.isAnyChat() && !appChatsManager.isInChat(peerId.toChatId());
   }
 
+  public isRestricted(message: Message.message) {
+    return !!(message.restriction_reason && isRestricted(message.restriction_reason));
+  }
+
   public async getNewHistory(peerId: PeerId, threadId?: number) {
     if(!this.isFetchIntervalNeeded(peerId)) {
       return;
@@ -5640,6 +5681,20 @@ export class AppMessagesManager {
    */
   public getHistory(peerId: PeerId, maxId = 0, limit: number, backLimit?: number, threadId?: number): Promise<HistoryResult> | HistoryResult {
     const historyStorage = this.getHistoryStorage(peerId, threadId);
+
+    if(appPeersManager.isRestricted(peerId)) {
+      const first = historyStorage.history.first;
+      first.setEnd(SliceEnd.Both);
+
+      const slice = first.slice(0, 0);
+      slice.setEnd(SliceEnd.Both);
+      
+      return {
+        count: 0,
+        history: slice,
+        offsetIdOffset: 0
+      };
+    }
 
     let offset = 0;
     /* 

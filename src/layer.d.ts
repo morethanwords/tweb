@@ -1655,8 +1655,7 @@ export namespace UserFull {
 		folder_id?: number,
 		ttl_period?: number,
 		theme_emoticon?: string,
-		private_forward_name?: string,
-		rAbout?: string
+		private_forward_name?: string
 	};
 }
 
