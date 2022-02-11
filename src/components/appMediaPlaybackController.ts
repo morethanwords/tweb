@@ -470,7 +470,7 @@ class AppMediaPlaybackController {
     navigator.mediaSession.metadata = metadata;
   }
 
-  private getMessageByMedia(media: HTMLMediaElement) {
+  private getMessageByMedia(media: HTMLMediaElement): Message.message {
     const details = this.mediaDetails.get(media);
     const {peerId, mid} = details;
     const message = details.isScheduled ? appMessagesManager.getScheduledMessageByPeer(peerId, mid) : appMessagesManager.getMessageByPeer(peerId, mid);
@@ -517,9 +517,27 @@ class AppMediaPlaybackController {
 
     // audio_pause не успеет сработать без таймаута
     setTimeout(() => {
-      rootScope.dispatchEvent('media_play', {doc: appMessagesManager.getMediaFromMessage(message), message, media});
+      if(this.playingMedia !== media) {
+        return;
+      }
+
+      rootScope.dispatchEvent('media_play', this.getPlayingDetails());
     }, 0);
   };
+
+  public getPlayingDetails() {
+    const {playingMedia} = this;
+    if(!playingMedia) {
+      return;
+    }
+
+    const message = this.getMessageByMedia(playingMedia);
+    return {
+      doc: appMessagesManager.getMediaFromMessage(message),
+      message,
+      media: playingMedia
+    };
+  }
 
   private onPause = (e?: Event) => {
     /* const target = e.target as HTMLMediaElement;

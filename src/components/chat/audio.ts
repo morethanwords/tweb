@@ -19,11 +19,14 @@ import { i18n } from "../../lib/langPack";
 import { formatFullSentTime } from "../../helpers/date";
 import { MediaProgressLine, VolumeSelector } from "../../lib/mediaPlayer";
 import ButtonIcon from "../buttonIcon";
+import { MyDocument } from "../../lib/appManagers/appDocsManager";
+import { Message } from "../../layer";
 
 export default class ChatAudio extends PinnedContainer {
   private toggleEl: HTMLElement;
   private progressLine: MediaProgressLine;
   private volumeSelector: VolumeSelector;
+  private fasterEl: HTMLElement;
 
   constructor(protected topbar: ChatTopbar, protected chat: Chat, protected appMessagesManager: AppMessagesManager) {
     super({
@@ -81,7 +84,7 @@ export default class ChatAudio extends PinnedContainer {
     this.volumeSelector.btn.prepend(tunnel);
     this.volumeSelector.btn.append(volumeProgressLineContainer);
 
-    const fasterEl = ButtonIcon('playback_2x', {noRipple: true});
+    const fasterEl = this.fasterEl = ButtonIcon('playback_2x', {noRipple: true});
     attachClick(fasterEl, () => {
       appMediaPlaybackController.playbackRate = fasterEl.classList.contains('active') ? 1 : 1.75;
     });
@@ -96,37 +99,61 @@ export default class ChatAudio extends PinnedContainer {
     progressWrapper.append(this.progressLine.container);
     this.wrapper.insertBefore(progressWrapper, this.wrapperUtils);
 
+    this.topbar.listenerSetter.add(rootScope)('media_play', this.onMediaPlay);
+    this.topbar.listenerSetter.add(rootScope)('media_pause', this.onPause);
+    this.topbar.listenerSetter.add(rootScope)('media_stop', this.onStop);
     this.topbar.listenerSetter.add(rootScope)('media_playback_params', ({playbackRate}) => {
-      fasterEl.classList.toggle('active', playbackRate > 1);
+      this.onPlaybackRateChange(playbackRate);
     });
 
-    this.topbar.listenerSetter.add(rootScope)('media_play', ({doc, message, media}) => {
-      let title: string | HTMLElement, subtitle: string | HTMLElement | DocumentFragment;
-      if(doc.type === 'voice' || doc.type === 'round') {
-        title = new PeerTitle({peerId: message.fromId}).element;
-
-        //subtitle = 'Voice message';
-        subtitle = formatFullSentTime(message.date);
-        fasterEl.classList.remove('hide');
-      } else {
-        title = doc.audioTitle || doc.fileName;
-        subtitle = doc.audioPerformer || i18n('AudioUnknownArtist');
-        fasterEl.classList.add('hide');
-      }
-
-      this.progressLine.setMedia(media);
-
-      this.fill(title, subtitle, message);
-      this.toggleEl.classList.add('flip-icon');
-      this.toggle(false);
-    });
-
-    this.topbar.listenerSetter.add(rootScope)('media_pause', () => {
-      this.toggleEl.classList.remove('flip-icon');
-    });
-
-    this.topbar.listenerSetter.add(rootScope)('media_stop', () => {
-      this.toggle(true);
-    });
+    const playingDetails = appMediaPlaybackController.getPlayingDetails();
+    if(playingDetails) {
+      this.onMediaPlay(playingDetails);
+      this.onPlaybackRateChange(appMediaPlaybackController.playbackRate);
+    }
   }
+
+  public destroy() {
+    if(this.progressLine) {
+      this.progressLine.removeListeners();
+    }
+  }
+
+  private onPlaybackRateChange = (playbackRate: number) => {
+    this.fasterEl.classList.toggle('active', playbackRate > 1);
+  };
+
+  private onPause = () => {
+    this.toggleEl.classList.remove('flip-icon');
+  };
+
+  private onStop = () => {
+    this.toggle(true);
+  };
+  
+  private onMediaPlay = ({doc, message, media}: {
+    doc: MyDocument,
+    message: Message.message,
+    media: HTMLMediaElement
+  }) => {
+    let title: string | HTMLElement, subtitle: string | HTMLElement | DocumentFragment;
+    if(doc.type === 'voice' || doc.type === 'round') {
+      title = new PeerTitle({peerId: message.fromId}).element;
+
+      //subtitle = 'Voice message';
+      subtitle = formatFullSentTime(message.date);
+      this.fasterEl.classList.remove('hide');
+    } else {
+      title = doc.audioTitle || doc.fileName;
+      subtitle = doc.audioPerformer || i18n('AudioUnknownArtist');
+      this.fasterEl.classList.add('hide');
+    }
+
+    this.progressLine.setMedia(media);
+
+    this.fill(title, subtitle, message);
+    // this.toggleEl.classList.add('flip-icon');
+    this.toggleEl.classList.toggle('flip-icon', !media.paused);
+    this.toggle(false);
+  };
 }
