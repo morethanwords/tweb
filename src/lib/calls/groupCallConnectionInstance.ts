@@ -308,6 +308,19 @@ export default class GroupCallConnectionInstance extends CallConnectionInstanceB
       });
     }
 
+    if(this.options.type === 'presentation') {
+      promise.then(() => {
+        this.connection.getTransceivers().find(transceiver => {
+          if(transceiver.sender?.track?.kind === 'video') {
+            transceiver.sender.setParameters({
+              ...transceiver.sender.getParameters(),
+              degradationPreference: 'maintain-resolution'
+            });
+          }
+        });
+      });
+    }
+
     return promise;
   }
 
