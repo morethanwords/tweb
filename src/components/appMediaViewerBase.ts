@@ -310,7 +310,7 @@ export default class AppMediaViewerBase<
 
           const percentsY = Math.abs(yDiff) / windowSize.height;
           if(percentsY > .2 || yDiff > 125) {
-            this.buttons.close.click();
+            this.close();
             return true;
           }
 
@@ -492,7 +492,7 @@ export default class AppMediaViewerBase<
     });
 
     if(/* target === this.mediaViewerDiv */!mover || (!isZooming && (target.tagName === 'IMG' || target.tagName === 'image'))) {
-      this.buttons.close.click();
+      this.close();
     }
   };
 
