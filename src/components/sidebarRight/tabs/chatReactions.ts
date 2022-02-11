@@ -84,10 +84,10 @@ export default class AppChatReactionsTab extends SliderSuperTabEventable {
 
     this.listenerSetter.add(toggleRow.checkboxField.input)('change', () => {
       if(!toggleCheckboxField.checked) {
-        checkboxFields.forEach(checkboxField => checkboxField.setValueSilently(false));
+        checkboxFields.forEach(checkboxField => checkboxField.checked = false);
         saveReactionsDebounced();
       } else if(checkboxFields.every(checkboxField => !checkboxField.checked)) {
-        checkboxFields.forEach(checkboxField => checkboxField.setValueSilently(true));
+        checkboxFields.forEach(checkboxField => checkboxField.checked = true);
         saveReactionsDebounced();
       }
     });

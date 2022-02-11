@@ -150,7 +150,8 @@ export default class AppEditChatTab extends SliderSuperTab {
         const availableReactions = await appReactionsManager.getAvailableReactions();
         const availableReactionsLength = availableReactions.filter(availableReaction => !availableReaction.pFlags.inactive).length;
         const setReactionsLength = () => {
-          reactionsRow.subtitle.innerHTML = chatFull.available_reactions.length + '/' + availableReactionsLength;
+          const reactions = chatFull.available_reactions ?? [];
+          reactionsRow.subtitle.innerHTML = reactions.length + '/' + availableReactionsLength;
         };
 
         setReactionsLength();
