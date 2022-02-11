@@ -266,9 +266,18 @@ export default class StreamManager {
     // const direction: RTCRtpTransceiverInit['direction'] = 'sendrecv';
     // const direction: RTCRtpTransceiverInit['direction'] = 'sendonly';
     const transceiverInit: RTCRtpTransceiverInit = {direction, streams: [inputStream]};
+    const transceiverAudioInit: RTCRtpTransceiverInit = {...transceiverInit};
+    const transceiverVideoInit: RTCRtpTransceiverInit = {...transceiverInit};
+
+    // if(this.isScreenSharingManager) {
+    //   transceiverVideoInit.sendEncodings = [{}];
+    // } else {
+    //   transceiverVideoInit.sendEncodings = [{maxBitrate: 2500000}];
+    // }
+
     const types: ['audio' | 'video', RTCRtpTransceiverInit][] = [
-      ['audio' as const, transceiverInit], 
-      ['video' as const, transceiverInit/* {sendEncodings: [{maxBitrate: 2500000}], ...transceiverInit} */]
+      ['audio' as const, transceiverAudioInit], 
+      ['video' as const, transceiverVideoInit]
     ];
 
     const tracks = inputStream.getTracks();
@@ -290,6 +299,13 @@ export default class StreamManager {
       let {transceiver} = entry;
       if(!transceiver) {
         transceiver = entry.createTransceiver(conference.connection, transceiverInit);
+
+        /* if(this.isScreenSharingManager) {
+          transceiver.sender.setParameters({
+            ...transceiver.sender.getParameters(),
+            degradationPreference: 'maintain-resolution'
+          });
+        } */
       }
 
       if(entry.direction !== transceiver.direction) {
