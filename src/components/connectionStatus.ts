@@ -18,6 +18,7 @@ import sessionStorage from '../lib/sessionStorage';
 import { ConnectionStatus } from "../lib/mtproto/connectionStatus";
 import { cancelEvent } from "../helpers/dom/cancelEvent";
 import apiManager from "../lib/mtproto/mtprotoworker";
+import { attachClickEvent } from "../helpers/dom/clickEvent";
 
 export default class ConnectionStatusComponent {
   public static CHANGE_STATE_DELAY = 1000;
@@ -133,7 +134,7 @@ export default class ConnectionStatusComponent {
     const a = document.createElement('a');
     a.classList.add('force-reconnect');
     a.append(i18n(langPackKey));
-    a.addEventListener('click', (e) => {
+    attachClickEvent(a, (e) => {
       cancelEvent(e);
       callback();
     });

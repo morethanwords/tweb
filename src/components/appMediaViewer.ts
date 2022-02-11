@@ -6,7 +6,7 @@
 
 import MEDIA_MIME_TYPES_SUPPORTED from "../environment/mediaMimeTypesSupport";
 import { cancelEvent } from "../helpers/dom/cancelEvent";
-import { attachClickEvent } from "../helpers/dom/clickEvent";
+import { attachClickEvent, detachClickEvent } from "../helpers/dom/clickEvent";
 import setInnerHTML from "../helpers/dom/setInnerHTML";
 import mediaSizes from "../helpers/mediaSizes";
 import SearchListLoader from "../helpers/searchListLoader";
@@ -123,8 +123,8 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
 
   protected setListeners() {
     super.setListeners();
-    this.buttons.forward.addEventListener('click', this.onForwardClick);
-    this.author.container.addEventListener('click', this.onAuthorClick);
+    attachClickEvent(this.buttons.forward, this.onForwardClick);
+    attachClickEvent(this.author.container, this.onAuthorClick);
 
     const onCaptionClick = (e: MouseEvent) => {
       if(e.target instanceof HTMLAnchorElement) { // close viewer if it's t.me/ redirect
@@ -136,14 +136,15 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
         cancelEvent(e);
 
         this.close().then(() => {
-          this.content.caption.removeEventListener('click', onCaptionClick, {capture: true});
+          detachClickEvent(this.content.caption, onCaptionClick, {capture: true});
           (e.target as HTMLAnchorElement).click();
         });
 
         return false;
       }
     };
-    this.content.caption.addEventListener('click', onCaptionClick, {capture: true});
+
+    attachClickEvent(this.content.caption, onCaptionClick, {capture: true});
   }
 
   /* public close(e?: MouseEvent) {

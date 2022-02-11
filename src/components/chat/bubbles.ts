@@ -522,9 +522,6 @@ export default class ChatBubbles {
       });
     });
 
-    // attachClickEvent(this.bubblesContainer, this.onBubblesClick, {listenerSetter: this.listenerSetter});
-    this.listenerSetter.add(this.bubblesContainer)('click', this.onBubblesClick/* , {capture: true, passive: false} */);
-
     if(IS_TOUCH_SUPPORTED) {
       const className = 'is-gesturing-reply';
       const MAX = 64;
@@ -592,6 +589,9 @@ export default class ChatBubbles {
         listenerOptions: {capture: true}
       });
     }
+
+    attachClickEvent(this.bubblesContainer, this.onBubblesClick, {listenerSetter: this.listenerSetter});
+    // this.listenerSetter.add(this.bubblesContainer)('click', this.onBubblesClick/* , {capture: true, passive: false} */);
 
     if(DEBUG) {
       this.listenerSetter.add(this.bubblesContainer)('dblclick', (e) => {

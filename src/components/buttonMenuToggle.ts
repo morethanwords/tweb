@@ -23,7 +23,7 @@ const ButtonMenuToggle = (options: Partial<{noRipple: true, onlyMobile: true, li
 };
 
 // TODO: refactor for attachClickEvent, because if move finger after touchstart, it will start anyway
-const ButtonMenuToggleHandler = (el: HTMLElement, onOpen?: (e: Event) => void, options?: AttachClickOptions) => {
+const ButtonMenuToggleHandler = (el: HTMLElement, onOpen?: (e: Event) => void, options?: AttachClickOptions, onClose?: () => void) => {
   const add = options?.listenerSetter ? options.listenerSetter.add(el) : el.addEventListener.bind(el);
 
   //console.trace('ButtonMenuToggleHandler attach', el, onOpen, options);
@@ -39,7 +39,7 @@ const ButtonMenuToggleHandler = (el: HTMLElement, onOpen?: (e: Event) => void, o
       closeBtnMenu();
     } else {
       onOpen && onOpen(e);
-      openBtnMenu(openedMenu);
+      openBtnMenu(openedMenu, onClose);
     }
   });
 };

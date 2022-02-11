@@ -43,6 +43,7 @@ import { MyMessage } from "../lib/appManagers/appMessagesManager";
 import RichTextProcessor from "../lib/richtextprocessor";
 import { NULL_PEER_ID } from "../lib/mtproto/mtproto_config";
 import { isFullScreen } from "../helpers/dom/fullScreen";
+import { attachClickEvent } from "../helpers/dom/clickEvent";
 
 const ZOOM_STEP = 0.5;
 const ZOOM_INITIAL_VALUE = 1;
@@ -190,9 +191,9 @@ export default class AppMediaViewerBase<
     this.zoomElements.container.classList.add('zoom-container');
 
     this.zoomElements.btnOut = ButtonIcon('zoomout', {noRipple: true});
-    this.zoomElements.btnOut.addEventListener('click', () => this.changeZoom(false));
+    attachClickEvent(this.zoomElements.btnOut, () => this.changeZoom(false));
     this.zoomElements.btnIn = ButtonIcon('zoomin', {noRipple: true});
-    this.zoomElements.btnIn.addEventListener('click', () => this.changeZoom(true));
+    attachClickEvent(this.zoomElements.btnIn, () => this.changeZoom(true));
 
     this.zoomElements.rangeSelector = new RangeSelector({
       step: ZOOM_STEP, 
@@ -254,13 +255,13 @@ export default class AppMediaViewerBase<
   }
 
   protected setListeners() {
-    this.buttons.download.addEventListener('click', this.onDownloadClick);
+    attachClickEvent(this.buttons.download, this.onDownloadClick);
     [this.buttons.close, this.buttons['mobile-close'], this.preloaderStreamable.preloader].forEach(el => {
-      el.addEventListener('click', this.close.bind(this));
+      attachClickEvent(el, this.close.bind(this));
     });
 
     ([[-1, this.buttons.prev], [1, this.buttons.next]] as [number, HTMLElement][]).forEach(([moveLength, button]) => {
-      button.addEventListener('click', (e) => {
+      attachClickEvent(button, (e) => {
         cancelEvent(e);
         if(this.setMoverPromise) return;
   
@@ -268,14 +269,14 @@ export default class AppMediaViewerBase<
       });
     });
 
-    this.buttons.zoom.addEventListener('click', () => {
+    attachClickEvent(this.buttons.zoom, () => {
       if(this.isZooming()) this.toggleZoom(false);
       else {
         this.changeZoom(true);
       }
     });
 
-    this.wholeDiv.addEventListener('click', this.onClick);
+    attachClickEvent(this.wholeDiv, this.onClick);
 
     this.listLoader.onJump = (item, older) => {
       if(older) this.onNextClick(item);
@@ -1359,7 +1360,14 @@ export default class AppMediaViewerBase<
   
               // const play = useController ? appMediaPlaybackController.willBePlayedMedia === video : true;
               const play = true;
-              const player = this.videoPlayer = new VideoPlayer(video, play, supportsStreaming);
+              const player = this.videoPlayer = new VideoPlayer({
+                video, 
+                play, 
+                streamable: supportsStreaming,
+                onPlaybackRackMenuToggle: (open) => {
+                  this.wholeDiv.classList.toggle('hide-caption', !!open);
+                }
+              });
               player.addEventListener('toggleControls', (show) => {
                 this.wholeDiv.classList.toggle('has-video-controls', show);
               });

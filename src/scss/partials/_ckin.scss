@@ -92,7 +92,10 @@
       left: 50%;
       transform: translate3d(-50%, -50%, 0) scale(1);
       font-size: 4rem;
-      pointer-events: none;
+
+      @include respond-to(not-handhelds) {
+        pointer-events: none;
+      }
       
       @include animation-level(2) {
         transition: visibility var(--layer-transition), opacity var(--layer-transition);

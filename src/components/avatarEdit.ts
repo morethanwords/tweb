@@ -5,6 +5,7 @@
  */
 
 import type { CancellablePromise } from "../helpers/cancellablePromise";
+import { attachClickEvent } from "../helpers/dom/clickEvent";
 import type { InputFile } from "../layer";
 import PopupAvatar from "./popups/avatar";
 
@@ -25,7 +26,7 @@ export default class AvatarEdit {
 
     this.container.append(this.canvas, this.icon);
 
-    this.container.addEventListener('click', () => {
+    attachClickEvent(this.container, () => {
       new PopupAvatar().open(this.canvas, onChange);
     });
   }

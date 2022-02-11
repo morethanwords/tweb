@@ -1100,7 +1100,7 @@ export default class AppSearchSuper {
               });
               showMore.append(intlElement.element);
               this.searchGroups.globalContacts.nameEl.append(showMore);
-              showMore.addEventListener('click', () => {
+              attachClickEvent(showMore, () => {
                 const isShort = this.searchGroups.globalContacts.container.classList.toggle('is-short');
                 intlElement.key = isShort ? 'Separator.ShowMore' : 'Separator.ShowLess';
                 intlElement.update();
@@ -1194,7 +1194,7 @@ export default class AppSearchSuper {
       
       if(!this.membersList) {
         this.membersList = new SortedUserList({lazyLoadQueue: this.lazyLoadQueue, rippleEnabled: false});
-        this.membersList.list.addEventListener('click', (e) => {
+        attachClickEvent(this.membersList.list, (e) => {
           const li = findUpTag(e.target, 'LI');
           if(!li) {
             return;

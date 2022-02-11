@@ -44,7 +44,7 @@
 
     &.has-animation {
       > .media-sticker {
-        visibility: hidden;
+        opacity: 0;
       }
     }
 
