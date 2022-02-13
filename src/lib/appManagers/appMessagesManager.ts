@@ -17,7 +17,7 @@ import { createPosterForVideo } from "../../helpers/files";
 import { copy, deepEqual, getObjectKeysAndSort } from "../../helpers/object";
 import { randomLong } from "../../helpers/random";
 import { splitStringByLength, limitSymbols, escapeRegExp } from "../../helpers/string";
-import { Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup, InputPeer, InputPhoto, InputDocument, InputGeoPoint, WebPage, GeoPoint, ReportReason, MessagesGetDialogs, InputChannel, InputDialogPeer, ReactionCount, MessagePeerReaction, MessagesSearchCounter } from "../../layer";
+import { Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup, InputPeer, InputPhoto, InputDocument, InputGeoPoint, WebPage, GeoPoint, ReportReason, MessagesGetDialogs, InputChannel, InputDialogPeer, ReactionCount, MessagePeerReaction, MessagesSearchCounter, Peer } from "../../layer";
 import { InvokeApiOptions } from "../../types";
 import I18n, { FormatterArguments, i18n, join, langPack, LangPackKey, UNSUPPORTED_LANG_PACK_KEY, _i18n } from "../langPack";
 import { logger, LogTypes } from "../logger";
@@ -1571,7 +1571,8 @@ export class AppMessagesManager {
 
   private generateForwardHeader(peerId: PeerId, originalMessage: Message.message) {
     const myId = appUsersManager.getSelf().id.toPeerId();
-    if(originalMessage.fromId === myId && originalMessage.peerId === myId && !originalMessage.fwd_from) {
+    const fromId = originalMessage.fromId;
+    if(fromId === myId && originalMessage.peerId === myId && !originalMessage.fwd_from) {
       return;
     }
 
@@ -1581,13 +1582,25 @@ export class AppMessagesManager {
       date: originalMessage.date
     };
 
+    let isUserHidden = false;
     if(originalMessage.fwd_from) {
       fwdHeader.from_id = originalMessage.fwd_from.from_id;
       fwdHeader.from_name = originalMessage.fwd_from.from_name;
       fwdHeader.post_author = originalMessage.fwd_from.post_author;
     } else {
-      fwdHeader.from_id = appPeersManager.getOutputPeer(originalMessage.fromId);
       fwdHeader.post_author = originalMessage.post_author;
+      
+      if(fromId.isUser()) {
+        const userFull = appProfileManager.getCachedFullUser(fromId.toUserId());
+        if(userFull?.private_forward_name) {
+          fwdHeader.from_name = userFull.private_forward_name;
+          isUserHidden = true;
+        }
+      }
+
+      if(!isUserHidden) {
+        fwdHeader.from_id = appPeersManager.getOutputPeer(fromId);
+      }
     }
 
     if(appPeersManager.isBroadcast(originalMessage.peerId)) {
@@ -1598,8 +1611,7 @@ export class AppMessagesManager {
       fwdHeader.channel_post = originalMessage.id;
     }
     
-    // * there is no way to detect whether user profile is hidden
-    if(peerId === myId) {
+    if(peerId === myId && !isUserHidden) {
       fwdHeader.saved_from_msg_id = originalMessage.id;
       fwdHeader.saved_from_peer = appPeersManager.getOutputPeer(originalMessage.peerId);
     }
@@ -1972,6 +1984,10 @@ export class AppMessagesManager {
       if(!options.dropAuthor) {
         message.fwd_from = this.generateForwardHeader(peerId, originalMessage);
         keys.push('views', 'forwards');
+
+        if(message.fwd_from.from_name) {
+          message
+        }
       }
 
       if(!options.dropCaptions || !originalMessage.media) {
