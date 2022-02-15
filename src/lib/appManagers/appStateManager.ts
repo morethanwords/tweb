@@ -18,7 +18,7 @@ import { copy, setDeepProperty, validateInitObject } from '../../helpers/object'
 import App from '../../config/app';
 import DEBUG, { MOUNT_CLASS_TO } from '../../config/debug';
 import AppStorage from '../storage';
-import { Chat } from '../../layer';
+import { AutoDownloadSettings, Chat } from '../../layer';
 import { IS_MOBILE } from '../../environment/userAgent';
 import DATABASE_STATE from '../../config/databases/state';
 import sessionStorage from '../sessionStorage';
@@ -43,6 +43,13 @@ export type Background = {
 export type Theme = {
   name: 'day' | 'night' | 'system',
   background: Background
+};
+
+export type AutoDownloadPeerTypeSettings = {
+  contacts: boolean,
+  private: boolean,
+  groups: boolean,
+  channels: boolean
 };
 
 export type State = {
@@ -75,11 +82,15 @@ export type State = {
     sendShortcut: 'enter' | 'ctrlEnter',
     animationsEnabled: boolean,
     autoDownload: {
-      contacts: boolean
-      private: boolean
-      groups: boolean
-      channels: boolean
+      contacts: boolean,
+      private: boolean,
+      groups: boolean,
+      channels: boolean,
+      photo: AutoDownloadPeerTypeSettings,
+      video: AutoDownloadPeerTypeSettings,
+      file: AutoDownloadPeerTypeSettings
     },
+    autoDownloadNew: AutoDownloadSettings,
     autoPlay: {
       gifs: boolean,
       videos: boolean
@@ -132,7 +143,36 @@ export const STATE_INIT: State = {
       contacts: true,
       private: true,
       groups: true,
-      channels: true
+      channels: true,
+      photo: {
+        contacts: true,
+        private: true,
+        groups: true,
+        channels: true
+      },
+      video: {
+        contacts: true,
+        private: true,
+        groups: true,
+        channels: true
+      },
+      file: {
+        contacts: true,
+        private: true,
+        groups: true,
+        channels: true
+      }
+    },
+    autoDownloadNew: {
+      _: 'autoDownloadSettings',
+      file_size_max: 3145728,
+      pFlags: {
+        video_preload_large: true,
+        audio_preload_next: true
+      },
+      photo_size_max: 1048576,
+      video_size_max: 15728640,
+      video_upload_maxbitrate: 100
     },
     autoPlay: {
       gifs: true,

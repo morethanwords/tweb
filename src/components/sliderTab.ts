@@ -22,6 +22,10 @@ export interface SliderSuperTabConstructable {
   new(slider: SidebarSlider, destroyable: boolean): SliderSuperTab;
 }
 
+export interface SliderSuperTabEventableConstructable {
+  new(slider: SidebarSlider, destroyable: boolean): SliderSuperTabEventable;
+}
+
 export default class SliderSuperTab implements SliderTab {
   public container: HTMLElement;
 

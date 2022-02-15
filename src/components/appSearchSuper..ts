@@ -734,7 +734,7 @@ export default class AppSearchSuper {
       showSender,
       searchContext: this.copySearchContext(inputFilter),
       lazyLoadQueue: this.lazyLoadQueue,
-      noAutoDownload: true
+      autoDownloadSize: 0
     });
 
     if((['audio', 'voice', 'round'] as MyDocument['type'][]).includes(document.type)) {
