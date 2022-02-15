@@ -318,7 +318,7 @@ export default class PeerProfile {
     const peerId = this.peerId;
     const threadId = this.threadId;
 
-    if(!peerId || appPeersManager.isRestricted(peerId)) {
+    if(!peerId || appPeersManager.isRestricted(peerId) || peerId === rootScope.myId) {
       return;
     }
 
