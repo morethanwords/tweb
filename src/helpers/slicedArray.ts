@@ -88,7 +88,7 @@ export default class SlicedArray {
       }
 
       unsetEnd(side: SliceEnd) {
-        this.end ^= side;
+        this.end &= ~side;
       }
 
       splice(start: number, deleteCount: number, ...items: ItemType[]) {
