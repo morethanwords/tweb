@@ -145,6 +145,10 @@ class AppMediaPlaybackController {
             this.playingMedia[key] = value;
           }
 
+          if(key === 'playbackRate' && this.playingMediaType !== undefined) {
+            this.playbackRates[this.playingMediaType] = value as number;
+          }
+
           this.dispatchPlaybackParams();
         }
       };
@@ -626,8 +630,6 @@ class AppMediaPlaybackController {
 
       this.mediaDetails.delete(media);
     }
-
-    this.playbackRates[this.playingMediaType] = this.playbackRate;
 
     this.playingMedia = undefined;
     this.playingMediaType = undefined;
