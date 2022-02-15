@@ -38,13 +38,14 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
   private authorizations: Authorization.authorization[];
 
   protected init() {
+    this.header.classList.add('with-border');
     this.container.classList.add('dont-u-dare-block-me');
     this.setTitle('PrivacySettings');
 
     const SUBTITLE: LangPackKey = 'Loading';
 
     {
-      const section = new SettingSection({noDelimiter: true});
+      const section = new SettingSection({noDelimiter: true, caption: 'SessionsInfo'});
 
       let blockedPeerIds: PeerId[];
       const blockedUsersRow = new Row({
@@ -141,7 +142,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
     }
 
     {
-      const section = new SettingSection({name: 'PrivacyTitle'});
+      const section = new SettingSection({name: 'PrivacyTitle', caption: 'GroupsAndChannelsHelp'});
 
       section.content.classList.add('privacy-navigation-container');
 
@@ -218,7 +219,14 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
         });
       };
 
-      section.content.append(numberVisibilityRow.container, lastSeenTimeRow.container, photoVisibilityRow.container, callRow.container, linkAccountRow.container, groupChatsAddRow.container);
+      section.content.append(
+        numberVisibilityRow.container, 
+        lastSeenTimeRow.container, 
+        photoVisibilityRow.container, 
+        callRow.container, 
+        linkAccountRow.container, 
+        groupChatsAddRow.container
+      );
       this.scrollable.append(section.container);
 
       for(const key in rowsByKeys) {
