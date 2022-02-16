@@ -63,7 +63,7 @@ export interface RefreshReferenceTaskResponse extends WorkerTaskVoidTemplate {
   originalPayload: ReferenceBytes
 };
 
-const MAX_FILE_SAVE_SIZE = 20e6;
+const MAX_FILE_SAVE_SIZE = 20 * 1024 * 1024;
 
 export class ApiFileManager {
   private cacheStorage = new CacheStorageController('cachedFiles');

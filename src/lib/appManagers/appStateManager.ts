@@ -82,10 +82,10 @@ export type State = {
     sendShortcut: 'enter' | 'ctrlEnter',
     animationsEnabled: boolean,
     autoDownload: {
-      contacts: boolean,
-      private: boolean,
-      groups: boolean,
-      channels: boolean,
+      contacts?: boolean, // ! DEPRECATED
+      private?: boolean, // ! DEPRECATED
+      groups?: boolean, // ! DEPRECATED
+      channels?: boolean, // ! DEPRECATED
       photo: AutoDownloadPeerTypeSettings,
       video: AutoDownloadPeerTypeSettings,
       file: AutoDownloadPeerTypeSettings
@@ -140,10 +140,6 @@ export const STATE_INIT: State = {
     sendShortcut: 'enter',
     animationsEnabled: true,
     autoDownload: {
-      contacts: true,
-      private: true,
-      groups: true,
-      channels: true,
       photo: {
         contacts: true,
         private: true,
@@ -461,6 +457,36 @@ export class AppStateManager extends EventListenerBase<{
             theme.background = state.settings.background;
             this.pushToState('settings', state.settings);
           }
+        }
+
+        // * migrate auto download settings
+        const autoDownloadSettings = state.settings.autoDownload;
+        if(autoDownloadSettings?.private !== undefined) {
+          const oldTypes = [
+            'contacts' as const, 
+            'private' as const, 
+            'groups' as const, 
+            'channels' as const
+          ];
+
+          const mediaTypes = [
+            'photo' as const,
+            'video' as const,
+            'file' as const
+          ];
+
+          mediaTypes.forEach(mediaType => {
+            const peerTypeSettings: AutoDownloadPeerTypeSettings = autoDownloadSettings[mediaType] = {} as any;
+            oldTypes.forEach(peerType => {
+              peerTypeSettings[peerType] = autoDownloadSettings[peerType];
+            });
+          });
+
+          oldTypes.forEach(peerType => {
+            delete autoDownloadSettings[peerType];
+          });
+
+          this.pushToState('settings', state.settings);
         }
 
         validateInitObject(STATE_INIT, state, (missingKey) => {
