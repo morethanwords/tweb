@@ -13,7 +13,7 @@ import apiUpdatesManager from "../appManagers/apiUpdatesManager";
 import appGroupCallsManager, { GroupCallConnectionType, GroupCallId, GroupCallOutputSource } from "../appManagers/appGroupCallsManager";
 import appPeersManager from "../appManagers/appPeersManager";
 import { logger } from "../logger";
-import apiManager from "../mtproto/apiManager";
+import apiManager from "../mtproto/mtprotoworker";
 import { NULL_PEER_ID } from "../mtproto/mtproto_config";
 import rootScope from "../rootScope";
 import CallInstanceBase, { TryAddTrackOptions } from "./callInstanceBase";
