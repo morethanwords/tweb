@@ -26,9 +26,10 @@ import { joinElementsWith } from "../lib/langPack";
 import { MiddleEllipsisElement } from "./middleEllipsis";
 import htmlToSpan from "../helpers/dom/htmlToSpan";
 import { formatFullSentTime } from "../helpers/date";
-import { clamp, formatBytes } from "../helpers/number";
 import throttleWithRaf from "../helpers/schedulers/throttleWithRaf";
 import { NULL_PEER_ID } from "../lib/mtproto/mtproto_config";
+import formatBytes from "../helpers/formatBytes";
+import { clamp } from "../helpers/number";
 
 rootScope.addEventListener('messages_media_read', ({mids, peerId}) => {
   mids.forEach(mid => {
@@ -523,7 +524,8 @@ export default class AudioElement extends HTMLElement {
     if(!isOutgoing) {
       let preloader: ProgressivePreloader = this.preloader;
 
-      onLoad(doc.type !== 'audio' && !this.noAutoDownload);
+      const autoDownload = doc.type !== 'audio'/*  || !this.noAutoDownload */;
+      onLoad(autoDownload);
 
       const r = (shouldPlay: boolean) => {
         if(this.audio.src) {
@@ -634,7 +636,7 @@ export default class AudioElement extends HTMLElement {
       };
 
       if(!this.audio?.src) {
-        if(doc.type !== 'audio' && !this.noAutoDownload) {
+        if(autoDownload) {
           r(false);
         } else {
           attachClickEvent(toggle, () => {

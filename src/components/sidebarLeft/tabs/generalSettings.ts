@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { generateSection } from "..";
+import { generateSection, SettingSection } from "..";
 import RangeSelector from "../../rangeSelector";
 import Button from "../../button";
 import CheckboxField from "../../checkboxField";
@@ -31,11 +31,19 @@ import AppQuickReactionTab from "./quickReaction";
 
 export class RangeSettingSelector {
   public container: HTMLDivElement;
+  public valueContainer: HTMLElement;
   private range: RangeSelector;
 
   public onChange: (value: number) => void;
 
-  constructor(name: LangPackKey, step: number, initialValue: number, minValue: number, maxValue: number) {
+  constructor(
+    name: LangPackKey, 
+    step: number, 
+    initialValue: number, 
+    minValue: number, 
+    maxValue: number,
+    writeValue = true
+  ) {
     const BASE_CLASS = 'range-setting-selector';
     this.container = document.createElement('div');
     this.container.classList.add(BASE_CLASS);
@@ -47,9 +55,12 @@ export class RangeSettingSelector {
     nameDiv.classList.add(BASE_CLASS + '-name');
     _i18n(nameDiv, name);
 
-    const valueDiv = document.createElement('div');
+    const valueDiv = this.valueContainer = document.createElement('div');
     valueDiv.classList.add(BASE_CLASS + '-value');
-    valueDiv.innerHTML = '' + initialValue;
+
+    if(writeValue) {
+      valueDiv.innerHTML = '' + initialValue;
+    }
 
     details.append(nameDiv, valueDiv);
 
@@ -65,8 +76,10 @@ export class RangeSettingSelector {
           this.onChange(value);
         }
 
-        //console.log('font size scrub:', value);
-        valueDiv.innerText = '' + value;
+        if(writeValue) {
+          //console.log('font size scrub:', value);
+          valueDiv.innerText = '' + value;
+        }
       }
     });
 
@@ -214,58 +227,6 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
     }
 
     {
-      const container = section('AutoDownloadMedia');
-      //container.classList.add('sidebar-left-section-disabled');
-
-      const contactsCheckboxField = new CheckboxField({
-        text: 'AutodownloadContacts', 
-        name: 'contacts',
-        stateKey: 'settings.autoDownload.contacts',
-        withRipple: true
-      });
-      const privateCheckboxField = new CheckboxField({
-        text: 'AutodownloadPrivateChats', 
-        name: 'private',
-        stateKey: 'settings.autoDownload.private',
-        withRipple: true
-      });
-      const groupsCheckboxField = new CheckboxField({
-        text: 'AutodownloadGroupChats', 
-        name: 'groups',
-        stateKey: 'settings.autoDownload.groups',
-        withRipple: true
-      });
-      const channelsCheckboxField = new CheckboxField({
-        text: 'AutodownloadChannels', 
-        name: 'channels',
-        stateKey: 'settings.autoDownload.channels',
-        withRipple: true
-      });
-
-      container.append(contactsCheckboxField.label, privateCheckboxField.label, groupsCheckboxField.label, channelsCheckboxField.label);
-    }
-
-    {
-      const container = section('General.AutoplayMedia');
-      //container.classList.add('sidebar-left-section-disabled');
-
-      const gifsCheckboxField = new CheckboxField({
-        text: 'AutoplayGIF', 
-        name: 'gifs', 
-        stateKey: 'settings.autoPlay.gifs',
-        withRipple: true
-      });
-      const videosCheckboxField = new CheckboxField({
-        text: 'AutoplayVideo', 
-        name: 'videos', 
-        stateKey: 'settings.autoPlay.videos',
-        withRipple: true
-      });
-
-      container.append(gifsCheckboxField.label, videosCheckboxField.label);
-    }
-
-    {
       const container = section('Emoji');
 
       const suggestCheckboxField = new CheckboxField({
@@ -285,7 +246,7 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
     }
     
     {
-      const container = section('Telegram.InstalledStickerPacksController');
+      const section = new SettingSection({name: 'Telegram.InstalledStickerPacksController', caption: 'StickersBotInfo'});
 
       const reactionsRow = new Row({
         titleLangKey: 'DoubleTapSetting',
@@ -324,6 +285,8 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
 
       const stickerSets: {[id: string]: Row} = {};
 
+      const stickersContent = section.generateContentElement();
+
       const lazyLoadQueue = new LazyLoadQueue();
       const renderStickerSet = (stickerSet: StickerSet.stickerSet, method: 'append' | 'prepend' = 'append') => {
         const row = new Row({
@@ -353,7 +316,7 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
 
         row.container.append(div);
 
-        container[method](row.container);
+        stickersContent[method](row.container);
       };
 
       appStickersManager.getAllStickers().then(allStickers => {
@@ -380,7 +343,8 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
         }
       });
 
-      container.append(reactionsRow.container, suggestCheckboxField.label, loopCheckboxField.label);
+      section.content.append(reactionsRow.container, suggestCheckboxField.label, loopCheckboxField.label);
+      this.scrollable.append(section.container);
     }
   }
 

@@ -564,6 +564,10 @@
   &.danger {
     @include hover-background-effect(red);
   }
+  
+  &.primary {
+    @include hover-background-effect(primary);
+  }
 
   // * tgico
   &:before {

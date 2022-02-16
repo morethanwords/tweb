@@ -12,6 +12,15 @@
   flex-direction: column;
   justify-content: center;
 
+  @include animation-level(2) {
+    transition: opacity var(--transition-standard-in);
+  }
+
+  &.is-disabled {
+    pointer-events: none !important;
+    opacity: var(--disabled-opacity);
+  }
+
   a {
     position: relative;
     z-index: 1;
