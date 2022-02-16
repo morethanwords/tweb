@@ -1110,6 +1110,10 @@ $bubble-beside-button-width: 38px;
     min-width: 10rem;
     width: auto;
 
+    @include hover() {
+      background-color: var(--light-filled-message-primary-color);
+    }
+
     &-media {
       top: .125rem;
     }

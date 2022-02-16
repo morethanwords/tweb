@@ -19,6 +19,7 @@ import PeerTitle from "../../peerTitle";
 import AppLanguageTab from "./language";
 import lottieLoader from "../../../lib/rlottie/lottieLoader";
 import PopupPeer from "../../popups/peer";
+import AppDataAndStorageTab from "./dataAndStorage";
 //import AppMediaViewer from "../../appMediaViewerNew";
 
 export default class AppSettingsTab extends SliderSuperTab {
@@ -31,6 +32,7 @@ export default class AppSettingsTab extends SliderSuperTab {
     folders: HTMLButtonElement,
     general: HTMLButtonElement,
     notifications: HTMLButtonElement,
+    storage: HTMLButtonElement,
     privacy: HTMLButtonElement,
     language: HTMLButtonElement
   } = {} as any;
@@ -115,12 +117,15 @@ export default class AppSettingsTab extends SliderSuperTab {
     buttonsDiv.classList.add('profile-buttons');
 
     const className = 'profile-button btn-primary btn-transparent';
-    buttonsDiv.append(this.buttons.edit = Button(className, {icon: 'edit', text: 'EditAccount.Title'}));
-    buttonsDiv.append(this.buttons.folders = Button(className, {icon: 'folder', text: 'AccountSettings.Filters'}));
-    buttonsDiv.append(this.buttons.general = Button(className, {icon: 'settings', text: 'Telegram.GeneralSettingsViewController'}));
-    buttonsDiv.append(this.buttons.notifications = Button(className, {icon: 'unmute', text: 'AccountSettings.Notifications'}));
-    buttonsDiv.append(this.buttons.privacy = Button(className, {icon: 'lock', text: 'AccountSettings.PrivacyAndSecurity'}));
-    buttonsDiv.append(this.buttons.language = Button(className, {icon: 'language', text: 'AccountSettings.Language'}));
+    buttonsDiv.append(
+      this.buttons.edit = Button(className, {icon: 'edit', text: 'EditAccount.Title'}),
+      this.buttons.folders = Button(className, {icon: 'folder', text: 'AccountSettings.Filters'}),
+      this.buttons.general = Button(className, {icon: 'settings', text: 'Telegram.GeneralSettingsViewController'}),
+      this.buttons.storage = Button(className, {icon: 'data', text: 'DataSettings'}),
+      this.buttons.notifications = Button(className, {icon: 'unmute', text: 'AccountSettings.Notifications'}),
+      this.buttons.privacy = Button(className, {icon: 'lock', text: 'AccountSettings.PrivacyAndSecurity'}),
+      this.buttons.language = Button(className, {icon: 'language', text: 'AccountSettings.Language'})
+    );
     
     this.scrollable.append(this.avatarElem, this.nameDiv, this.phoneDiv, buttonsDiv);
     this.scrollable.container.classList.add('profile-content-wrapper');
@@ -140,6 +145,10 @@ export default class AppSettingsTab extends SliderSuperTab {
 
     this.buttons.general.addEventListener('click', () => {
       new AppGeneralSettingsTab(this.slider).open();
+    });
+
+    this.buttons.storage.addEventListener('click', () => {
+      new AppDataAndStorageTab(this.slider).open();
     });
 
     this.buttons.notifications.addEventListener('click', () => {

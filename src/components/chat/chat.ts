@@ -43,6 +43,7 @@ import renderImageFromUrl from "../../helpers/dom/renderImageFromUrl";
 import mediaSizes from "../../helpers/mediaSizes";
 import ChatSearch from "./search";
 import { IS_TOUCH_SUPPORTED } from "../../environment/touchSupport";
+import getAutoDownloadSettingsByPeerId, { ChatAutoDownloadSettings } from "../../helpers/autoDownload";
 
 export type ChatType = 'chat' | 'pinned' | 'replies' | 'discussion' | 'scheduled';
 
@@ -70,12 +71,12 @@ export default class Chat extends EventListenerBase<{
 
   public type: ChatType;
 
-  public noAutoDownloadMedia: boolean;
   public noForwards: boolean;
 
   public inited: boolean;
 
   public isRestricted: boolean;
+  public autoDownload: ChatAutoDownloadSettings;
   
   constructor(
     public appImManager: AppImManager, 
@@ -351,28 +352,7 @@ export default class Chat extends EventListenerBase<{
   }
 
   public setAutoDownloadMedia() {
-    const peerId = this.peerId;
-    if(!peerId) {
-      return;
-    }
-
-    let type: keyof State['settings']['autoDownload'];
-
-    if(!peerId.isUser()) {
-      if(peerId.isBroadcast()) {
-        type = 'channels';
-      } else {
-        type = 'groups';
-      }
-    } else {
-      if(peerId.isContact()) {
-        type = 'contacts';
-      } else {
-        type = 'private';
-      }
-    }
-
-    this.noAutoDownloadMedia = !rootScope.settings.autoDownload[type];
+    this.autoDownload = getAutoDownloadSettingsByPeerId(this.peerId);
   }
 
   public setMessageId(messageId?: number) {

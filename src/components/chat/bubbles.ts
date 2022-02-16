@@ -3106,7 +3106,7 @@ export default class ChatBubbles {
               lazyLoadQueue: this.lazyLoadQueue,
               chat: this.chat,
               loadPromises,
-              noAutoDownload: this.chat.noAutoDownloadMedia,
+              autoDownload: this.chat.autoDownload,
             });
             
             break;
@@ -3123,7 +3123,7 @@ export default class ChatBubbles {
             lazyLoadQueue: this.lazyLoadQueue,
             middleware: this.getMiddleware(),
             loadPromises,
-            noAutoDownload: this.chat.noAutoDownloadMedia,
+            autoDownloadSize: this.chat.autoDownload.photo,
           });
 
           break;
@@ -3178,13 +3178,13 @@ export default class ChatBubbles {
                 isOut,
                 group: CHAT_ANIMATION_GROUP,
                 loadPromises,
-                noAutoDownload: this.chat.noAutoDownloadMedia,
+                autoDownloadSize: this.chat.autoDownload.video,
               });
               //}
             } else {
               const docDiv = wrapDocument({
                 message,
-                noAutoDownload: this.chat.noAutoDownloadMedia,
+                autoDownloadSize: this.chat.autoDownload.file,
                 lazyLoadQueue: this.lazyLoadQueue,
                 loadPromises
               });
@@ -3269,7 +3269,7 @@ export default class ChatBubbles {
               middleware: this.getMiddleware(),
               loadPromises,
               withoutPreloader: isSquare,
-              noAutoDownload: this.chat.noAutoDownloadMedia,
+              autoDownloadSize: this.chat.autoDownload.photo,
             });
           }
           
@@ -3350,7 +3350,7 @@ export default class ChatBubbles {
                 lazyLoadQueue: this.lazyLoadQueue,
                 chat: this.chat,
                 loadPromises,
-                noAutoDownload: this.chat.noAutoDownloadMedia,
+                autoDownload: this.chat.autoDownload,
               });
             } else {
               const withTail = !IS_ANDROID && !IS_APPLE && !isRound && canHaveTail && !withReplies && USE_MEDIA_TAILS;
@@ -3367,7 +3367,7 @@ export default class ChatBubbles {
                 middleware: this.getMiddleware(),
                 group: CHAT_ANIMATION_GROUP,
                 loadPromises,
-                noAutoDownload: this.chat.noAutoDownloadMedia,
+                autoDownloadSize: this.chat.autoDownload.video,
                 searchContext: isRound ? {
                   peerId: this.peerId,
                   inputFilter: {_: 'inputMessagesFilterRoundVoice'},
@@ -3386,7 +3386,7 @@ export default class ChatBubbles {
               messageDiv,
               chat: this.chat,
               loadPromises,
-              noAutoDownload: this.chat.noAutoDownloadMedia,
+              autoDownloadSize: this.chat.autoDownload.file,
               lazyLoadQueue: this.lazyLoadQueue,
               searchContext: doc.type === 'voice' || doc.type === 'audio' ? {
                 peerId: this.peerId,

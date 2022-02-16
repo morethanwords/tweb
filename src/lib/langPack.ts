@@ -528,7 +528,7 @@ export function join(elements: (Node | string)[], useLast?: boolean, plain?: fal
 export function join(elements: (Node | string)[], useLast: boolean, plain: boolean): string | (string | Node)[];
 export function join(elements: (Node | string)[], useLast = true, plain?: boolean): string | (string | Node)[] {
 	const joined = joinElementsWith(elements, (isLast) => {
-    const langPackKey: LangPackKey = isLast && useLast ? 'WordDelimiterLast' : 'WordDelimiter';
+    const langPackKey: LangPackKey = isLast && useLast ? 'AutoDownloadSettings.LastDelimeter' : 'AutoDownloadSettings.Delimeter';
     return plain ? I18n.format(langPackKey, true) : i18n(langPackKey);
   });
 
