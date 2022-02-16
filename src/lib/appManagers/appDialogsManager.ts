@@ -745,8 +745,8 @@ export class AppDialogsManager {
     unreadSpan.classList.add('badge', 'badge-20', 'badge-primary');
     const i = document.createElement('i');
     span.append(titleSpan, unreadSpan, i);
-    menuTab.append(span);
     ripple(menuTab);
+    menuTab.append(span);
 
     const containerToAppend = this.folders.menu as HTMLElement;
     positionElementByIndex(menuTab, containerToAppend, filter.orderIndex);
