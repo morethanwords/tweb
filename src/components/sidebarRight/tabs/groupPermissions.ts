@@ -54,10 +54,11 @@ export class ChatPermissions {
       'send_messages': ['send_media', 'send_stickers', 'send_polls', 'embed_links']
     };
 
-    const chat: Chat.chat = appChatsManager.getChat(options.chatId);
+    const chat: Chat.chat | Chat.channel = appChatsManager.getChat(options.chatId);
     const defaultBannedRights = chat.default_banned_rights;
     const rights = options.participant ? appChatsManager.combineParticipantBannedRights(options.chatId, options.participant.banned_rights) : defaultBannedRights;
     
+    const restrictionText: LangPackKey = options.participant ? 'UserRestrictionsDisabled' : 'EditCantEditPermissionsPublic';
     for(const info of this.v) {
       const mainFlag = info.flags[0];
       info.checkboxField = new CheckboxField({
@@ -67,8 +68,17 @@ export class ChatPermissions {
         withRipple: true
       });
 
-      // @ts-ignore
-      if(options.participant && defaultBannedRights.pFlags[mainFlag]) {
+      if((
+          options.participant && 
+          defaultBannedRights.pFlags[mainFlag as keyof typeof defaultBannedRights['pFlags']]
+        ) || (
+          (chat as Chat.channel).username &&
+          (
+            info.flags.includes('pin_messages') ||
+            info.flags.includes('change_info')
+          )
+        )
+      ) {
         info.checkboxField.input.disabled = true;
         
         /* options.listenerSetter.add(info.checkboxField.input)('change', (e) => {
@@ -82,7 +92,7 @@ export class ChatPermissions {
         }); */
 
         attachClickEvent(info.checkboxField.label, (e) => {
-          toast(I18n.format('UserRestrictionsDisabled', true));
+          toast(I18n.format(restrictionText, true));
         }, {listenerSetter: options.listenerSetter});
       }
 
