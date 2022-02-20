@@ -680,6 +680,7 @@ const lang = {
   "SendMessageAsTitle": "Send message as...",
   "Devices": "Devices",
   "LanguageName": "English",
+  "EditCantEditPermissionsPublic": "This permission is not available in public groups.",
 
   // * macos
   "AccountSettings.Filters": "Chat Folders",
