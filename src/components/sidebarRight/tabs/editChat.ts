@@ -65,6 +65,8 @@ export default class AppEditChatTab extends SliderSuperTab {
     });
 
     const peerId = this.chatId.toPeerId(true);
+    const canChangeType = appChatsManager.hasRights(this.chatId, 'change_type');
+    const canChangePermissions = appChatsManager.hasRights(this.chatId, 'change_permissions');
 
     {
       const section = new SettingSection({noDelimiter: true});
@@ -100,8 +102,8 @@ export default class AppEditChatTab extends SliderSuperTab {
       this.content.append(this.editPeer.nextBtn);
 
       section.content.append(this.editPeer.avatarEdit.container, inputWrapper);
-
-      if(appChatsManager.hasRights(this.chatId, 'change_type')) {
+    
+      if(canChangeType) {
         const chatTypeRow = new Row({
           titleLangKey: isBroadcast ? 'ChannelType' : 'GroupType',
           clickable: () => {
@@ -130,7 +132,9 @@ export default class AppEditChatTab extends SliderSuperTab {
 
         setChatTypeSubtitle();
         section.content.append(chatTypeRow.container);
+      }
 
+      if(canChangeType || canChangePermissions) {
         const reactionsRow = new Row({
           titleLangKey: 'Reactions',
           icon: 'reactions',
@@ -159,7 +163,7 @@ export default class AppEditChatTab extends SliderSuperTab {
         section.content.append(reactionsRow.container);
       }
 
-      if(appChatsManager.hasRights(this.chatId, 'change_permissions') && !isBroadcast) {
+      if(canChangePermissions && !isBroadcast) {
         const flags = [
           'send_messages',
           'send_media',
@@ -290,7 +294,7 @@ export default class AppEditChatTab extends SliderSuperTab {
 
       section.content.append(membersRow.container); */
 
-      if(!isBroadcast && appChatsManager.hasRights(this.chatId, 'change_permissions')) {
+      if(!isBroadcast && canChangeType) {
         const showChatHistoryCheckboxField = new CheckboxField({
           text: 'ChatHistory',
           withRipple: true
