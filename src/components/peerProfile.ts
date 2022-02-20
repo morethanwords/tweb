@@ -33,8 +33,8 @@ import { toast } from "./toast";
 
 let setText = (text: string, row: Row) => {
   //fastRaf(() => {
-    row.title.innerHTML = text;
-    row.container.style.display = '';
+    row.title.innerHTML = text || '';
+    row.container.style.display = text ? '' : 'none';
   //});
 };
 
@@ -207,6 +207,12 @@ export default class PeerProfile {
       }
     });
 
+    listenerSetter.add(rootScope)('peer_title_edit', (peerId) => {
+      if(peerId === this.peerId) {
+        this.fillUsername();
+      }
+    });
+
     listenerSetter.add(rootScope)('user_update', (userId) => {
       if(this.peerId === userId.toPeerId()) {
         this.setPeerStatus();
@@ -216,12 +222,8 @@ export default class PeerProfile {
     listenerSetter.add(rootScope)('contacts_update', (userId) => {
       if(this.peerId === userId.toPeerId()) {
         const user = appUsersManager.getUser(userId);
-        if(!user.pFlags.self) {
-          if(user.phone) {
-            setText(appUsersManager.formatUserPhone(user.phone), this.phone);
-          } else {
-            this.phone.container.style.display = 'none';
-          }
+        if(!user.pFlags.self || !this.isDialog) {
+          this.fillUserPhone();
         }
       }
     });
@@ -299,47 +301,44 @@ export default class PeerProfile {
     this.section.content.prepend(this.avatar, this.name, this.subtitle);
   }
 
-  public fillProfileElements() {
-    if(!this.cleaned) return;
-    this.cleaned = false;
-    
-    const peerId = this.peerId;
+  private fillUsername() {
+    const {peerId} = this;
+    if(peerId.isUser() && this.canBeDetailed()) {
+      const username = appPeersManager.getPeerUsername(peerId);
+      setText(username, this.username);
+    }
+  }
 
-    this.cleanupHTML();
+  private fillUserPhone() {
+    const {peerId} = this;
+    if(peerId.isUser() && this.canBeDetailed()) {
+      const user = appUsersManager.getUser(peerId);
+      setText(user.phone ? appUsersManager.formatUserPhone(user.phone) : undefined, this.phone);
+    }
+  }
 
-    this.setAvatar();
+  private fillNotifications() {
+    const notificationsRow = this.notifications;
+    if(!notificationsRow) {
+      return;
+    }
 
-    // username
     if(this.canBeDetailed()) {
-      if(peerId.isUser()) {
-        const username = appPeersManager.getPeerUsername(peerId);
-        if(username) {
-          setText(appPeersManager.getPeerUsername(peerId), this.username);
-        }
-      }
-      
-      if(this.notifications) {
-        const muted = appNotificationsManager.isPeerLocalMuted(peerId, false);
-        this.notifications.checkboxField.checked = !muted;
-      }
-    } else if(this.notifications) {
+      const muted = appNotificationsManager.isPeerLocalMuted(this.peerId, false);
+      notificationsRow.checkboxField.checked = !muted;
+    } else {
       fastRaf(() => {
-        this.notifications.container.style.display = 'none';
+        notificationsRow.container.style.display = 'none';
       });
     }
-    
-    //let membersLi = this.profileTabs.firstElementChild.children[0] as HTMLLIElement;
-    if(peerId.isUser()) {
-      //membersLi.style.display = 'none';
+  }
 
-      let user = appUsersManager.getUser(peerId);
-      if(user.phone && this.canBeDetailed()) {
-        setText(appUsersManager.formatUserPhone(user.phone), this.phone);
-      }
-    }/*  else {
-      //membersLi.style.display = appPeersManager.isBroadcast(peerId) ? 'none' : '';
-    } */
+  private fillRows() {
+    const peerId = this.peerId;
 
+    this.fillUsername();
+    this.fillUserPhone();
+    this.fillNotifications();
     this.setMoreDetails();
 
     replaceContent(this.name, new PeerTitle({
@@ -353,6 +352,15 @@ export default class PeerProfile {
     }
 
     this.setPeerStatus(true);
+  }
+
+  public fillProfileElements() {
+    if(!this.cleaned) return;
+    this.cleaned = false;
+    
+    this.cleanupHTML();
+    this.setAvatar();
+    this.fillRows();
   }
 
   public setMoreDetails(override?: true) {
@@ -376,9 +384,9 @@ export default class PeerProfile {
       
       //this.log('chatInfo res 2:', chatFull);
       
-      if(peerFull.about) {
-        setText(RichTextProcessor.wrapRichText(peerFull.about), this.bio);
-      }
+      // if(peerFull.about) {
+        setText(peerFull.about ? RichTextProcessor.wrapRichText(peerFull.about) : undefined, this.bio);
+      // }
 
       if(!peerId.isUser()) {
         const chat: Chat.channel = appChatsManager.getChat(peerId.toChatId());

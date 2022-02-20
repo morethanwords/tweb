@@ -106,11 +106,12 @@ export class AppUsersManager {
         if(user) {
           this.forceUserOnline(userId);
           
-          this.saveApiUser(Object.assign({}, user, {
+          this.saveApiUser({
+            ...user, 
             first_name: update.first_name,
             last_name: update.last_name,
             username: update.username
-          }), true);
+          }, true);
         }
       }
     });

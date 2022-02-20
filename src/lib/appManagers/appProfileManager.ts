@@ -496,13 +496,23 @@ export class AppProfileManager {
     // this.getProfileByPeerId(peerId, true);
   }
 
-  public updateProfile(first_name: string, last_name: string, about: string) {
+  public updateProfile(first_name?: string, last_name?: string, about?: string) {
     return apiManager.invokeApi('account.updateProfile', {
       first_name,
       last_name,
       about
     }).then(user => {
       appUsersManager.saveApiUser(user);
+
+      if(about !== undefined) {
+        const peerId = user.id.toPeerId();
+        const userFull = this.usersFull[user.id];
+        if(userFull) {
+          userFull.about = about;
+        }
+  
+        rootScope.dispatchEvent('peer_bio_edit', peerId);
+      }
       
       return this.getProfile(rootScope.myId, true);
     });
