@@ -53,10 +53,8 @@ export default class InlineHelper extends AutocompleteHelper {
         return this.chat.input.getReadyToSend(() => {
           const queryAndResultIds = this.appInlineBotsManager.generateQId(queryId, (target as HTMLElement).dataset.resultId);
           this.appInlineBotsManager.sendInlineResult(peerId.toPeerId(), botId, queryAndResultIds, {
+            ...this.chat.getMessageSendingParams(),
             clearDraft: true,
-            scheduleDate: this.chat.input.scheduleDate,
-            silent: this.chat.input.sendSilent,
-            replyToMsgId: this.chat.input.replyToMsgId
           });
 
           this.chat.input.onMessageSent(true, true);

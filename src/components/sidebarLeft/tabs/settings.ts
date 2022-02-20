@@ -5,9 +5,7 @@
  */
 
 import { SliderSuperTab } from "../../slider";
-import AvatarElement from "../../avatar";
 import apiManager from "../../../lib/mtproto/mtprotoworker";
-import appUsersManager from "../../../lib/appManagers/appUsersManager";
 import ButtonMenuToggle from "../../buttonMenuToggle";
 import Button from "../../button";
 import AppPrivacyAndSecurityTab from "./privacyAndSecurity";
@@ -15,18 +13,24 @@ import AppGeneralSettingsTab from "./generalSettings";
 import AppEditProfileTab from "./editProfile";
 import AppChatFoldersTab from "./chatFolders";
 import AppNotificationsTab from "./notifications";
-import PeerTitle from "../../peerTitle";
 import AppLanguageTab from "./language";
 import lottieLoader from "../../../lib/rlottie/lottieLoader";
 import PopupPeer from "../../popups/peer";
 import AppDataAndStorageTab from "./dataAndStorage";
+import ButtonIcon from "../../buttonIcon";
+import PeerProfile from "../../peerProfile";
+import rootScope from "../../../lib/rootScope";
+import { SettingSection } from "..";
+import Row from "../../row";
+import AppActiveSessionsTab from "./activeSessions";
+import { i18n, LangPackKey } from "../../../lib/langPack";
+import { AccountAuthorizations, Authorization } from "/Users/kuzmenko/Documents/projects/tweb/src/layer";
+import { SliderSuperTabConstructable } from "../../sliderTab";
+import PopupAvatar from "../../popups/avatar";
+import appProfileManager from "../../../lib/appManagers/appProfileManager";
 //import AppMediaViewer from "../../appMediaViewerNew";
 
 export default class AppSettingsTab extends SliderSuperTab {
-  private avatarElem: AvatarElement;
-  private nameDiv: HTMLElement;
-  private phoneDiv: HTMLElement;
-
   private buttons: {
     edit: HTMLButtonElement,
     folders: HTMLButtonElement,
@@ -34,8 +38,14 @@ export default class AppSettingsTab extends SliderSuperTab {
     notifications: HTMLButtonElement,
     storage: HTMLButtonElement,
     privacy: HTMLButtonElement,
-    language: HTMLButtonElement
   } = {} as any;
+  private profile: PeerProfile;
+
+  private languageRow: Row;
+  private devicesRow: Row;
+
+  private authorizations: Authorization.authorization[];
+  private getAuthorizationsPromise: Promise<AccountAuthorizations.accountAuthorizations>;
 
   protected init() {
     this.container.classList.add('settings-container');
@@ -59,11 +69,25 @@ export default class AppSettingsTab extends SliderSuperTab {
       }
     }]);
 
-    this.header.append(btnMenu);
+    this.buttons.edit = ButtonIcon('edit');
 
-    this.avatarElem = new AvatarElement();
-    this.avatarElem.setAttribute('clickable', '');
-    this.avatarElem.classList.add('profile-avatar', 'avatar-120');
+    this.header.append(this.buttons.edit, btnMenu);
+
+    this.profile = new PeerProfile(this.scrollable, this.listenerSetter, false);
+    this.profile.init();
+    this.profile.setPeer(rootScope.myId);
+    this.profile.fillProfileElements();
+
+    const changeAvatarBtn = Button('btn-circle btn-corner z-depth-1 profile-change-avatar', {icon: 'cameraadd'});
+    changeAvatarBtn.addEventListener('click', () => {
+      const canvas = document.createElement('canvas');
+      new PopupAvatar().open(canvas, (upload) => {
+        upload().then(inputFile => {
+          return appProfileManager.uploadProfilePhoto(inputFile);
+        });
+      });
+    });
+    this.profile.element.lastElementChild.firstElementChild.append(changeAvatarBtn);
 
     /* const div = document.createElement('div');
     //div.style.cssText = 'border-radius: 8px; overflow: hidden; width: 396px; height: 264px; flex: 0 0 auto; position: relative; margin: 10rem 0 10rem auto;';
@@ -107,28 +131,66 @@ export default class AppSettingsTab extends SliderSuperTab {
 
     this.scrollable.append(div); */
     
-    this.nameDiv = document.createElement('div');
-    this.nameDiv.classList.add('profile-name');
-
-    this.phoneDiv = document.createElement('div');
-    this.phoneDiv.classList.add('profile-subtitle');
-
     const buttonsDiv = document.createElement('div');
     buttonsDiv.classList.add('profile-buttons');
 
-    const className = 'profile-button btn-primary btn-transparent';
-    buttonsDiv.append(
-      this.buttons.edit = Button(className, {icon: 'edit', text: 'EditAccount.Title'}),
-      this.buttons.folders = Button(className, {icon: 'folder', text: 'AccountSettings.Filters'}),
-      this.buttons.general = Button(className, {icon: 'settings', text: 'Telegram.GeneralSettingsViewController'}),
-      this.buttons.storage = Button(className, {icon: 'data', text: 'DataSettings'}),
-      this.buttons.notifications = Button(className, {icon: 'unmute', text: 'AccountSettings.Notifications'}),
-      this.buttons.privacy = Button(className, {icon: 'lock', text: 'AccountSettings.PrivacyAndSecurity'}),
-      this.buttons.language = Button(className, {icon: 'language', text: 'AccountSettings.Language'})
+    const b: [string, LangPackKey, SliderSuperTabConstructable][] = [
+      ['unmute', 'AccountSettings.Notifications', AppNotificationsTab],
+      ['data', 'DataSettings', AppDataAndStorageTab],
+      ['lock', 'AccountSettings.PrivacyAndSecurity', AppPrivacyAndSecurityTab],
+      ['settings', 'Telegram.GeneralSettingsViewController', AppGeneralSettingsTab],
+      ['folder', 'AccountSettings.Filters', AppChatFoldersTab],
+    ];
+
+    const rows = b.map(([icon, langPackKey, tabConstructor]) => {
+      return new Row({
+        titleLangKey: langPackKey,
+        icon,
+        clickable: () => {
+          new tabConstructor(this.slider, true).open();
+        }
+      });
+    });
+
+    rows.push(
+      this.devicesRow = new Row({
+        titleLangKey: 'Devices',
+        titleRightSecondary: ' ',
+        icon: 'activesessions',
+        clickable: async() => {
+          if(!this.authorizations) {
+            await this.updateActiveSessions();
+          }
+
+          const tab = new AppActiveSessionsTab(this.slider);
+          tab.authorizations = this.authorizations;
+          tab.eventListener.addEventListener('destroy', () => {
+            this.authorizations = undefined;
+            this.updateActiveSessions(true);
+          }, {once: true});
+          tab.open();
+        }
+      }),
+
+      this.languageRow = new Row({
+        titleLangKey: 'AccountSettings.Language',
+        titleRightSecondary: i18n('LanguageName'),
+        icon: 'language',
+        clickable: () => {
+          new AppLanguageTab(this.slider).open();
+        }
+      })
     );
-    
-    this.scrollable.append(this.avatarElem, this.nameDiv, this.phoneDiv, buttonsDiv);
-    this.scrollable.container.classList.add('profile-content-wrapper');
+
+    buttonsDiv.append(...rows.map(row => row.container));
+
+    // const profileSection = new SettingSection({fullWidth: true, noPaddingTop: true});
+    // profileSection.content.append(this.profile.element);
+
+    const buttonsSection = new SettingSection();
+    buttonsSection.content.append(buttonsDiv);
+
+    this.scrollable.append(this.profile.element/* profileSection.container */, buttonsSection.container);
 
     /* rootScope.$on('user_auth', (e) => {
       this.fillElements();
@@ -139,41 +201,28 @@ export default class AppSettingsTab extends SliderSuperTab {
       tab.open();
     });
 
-    this.buttons.folders.addEventListener('click', () => {
-      new AppChatFoldersTab(this.slider).open();
-    });
-
-    this.buttons.general.addEventListener('click', () => {
-      new AppGeneralSettingsTab(this.slider).open();
-    });
-
-    this.buttons.storage.addEventListener('click', () => {
-      new AppDataAndStorageTab(this.slider).open();
-    });
-
-    this.buttons.notifications.addEventListener('click', () => {
-      new AppNotificationsTab(this.slider).open();
-    });
-
-    this.buttons.privacy.addEventListener('click', () => {
-      new AppPrivacyAndSecurityTab(this.slider).open();
-    });
-
-    this.buttons.language.addEventListener('click', () => {
-      new AppLanguageTab(this.slider).open();
-    });
-
     lottieLoader.loadLottieWorkers();
 
-    this.fillElements();
+    this.updateActiveSessions();
   }
 
-  public fillElements() {
-    const user = appUsersManager.getSelf();
-    const peerId = user.id.toPeerId(false);
-    this.avatarElem.setAttribute('peer', '' + peerId);
+  private getAuthorizations(overwrite?: boolean) {
+    if(this.getAuthorizationsPromise && !overwrite) return this.getAuthorizationsPromise;
 
-    this.nameDiv.append(new PeerTitle({peerId: peerId}).element);
-    this.phoneDiv.innerHTML = user.phone ? appUsersManager.formatUserPhone(user.phone) : '';
+    const promise = this.getAuthorizationsPromise = apiManager.invokeApi('account.getAuthorizations')
+    .finally(() => {
+      if(this.getAuthorizationsPromise === promise) {
+        this.getAuthorizationsPromise = undefined;
+      }
+    });
+
+    return promise;
+  }
+
+  public updateActiveSessions(overwrite?: boolean) {
+    return this.getAuthorizations(overwrite).then(auths => {
+      this.authorizations = auths.authorizations;
+      this.devicesRow.titleRight.textContent = '' + this.authorizations.length;
+    });
   }
 }

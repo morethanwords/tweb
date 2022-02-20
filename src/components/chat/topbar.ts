@@ -67,7 +67,7 @@ export default class ChatTopbar {
   private btnGroupCall: HTMLButtonElement;
   private btnMute: HTMLButtonElement;
   private btnSearch: HTMLButtonElement;
-  private btnMore: HTMLButtonElement;
+  private btnMore: HTMLElement;
   
   private chatAudio: ChatAudio;
   public pinnedMessage: ChatPinnedMessage;

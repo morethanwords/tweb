@@ -11,13 +11,26 @@ import ButtonIcon from "./buttonIcon";
 import ButtonMenu, { ButtonMenuItemOptions } from "./buttonMenu";
 import { closeBtnMenu, openBtnMenu } from "./misc";
 
-const ButtonMenuToggle = (options: Partial<{noRipple: true, onlyMobile: true, listenerSetter: ListenerSetter, asDiv: boolean}> = {}, direction: 'bottom-left' | 'bottom-right' | 'top-left' | 'top-right', buttons: ButtonMenuItemOptions[], onOpen?: (e: Event) => void) => {
+const ButtonMenuToggle = (
+  options: Partial<{
+    noRipple: true, 
+    onlyMobile: true, 
+    listenerSetter: ListenerSetter, 
+    asDiv: boolean,
+    container: HTMLElement
+  }> = {}, 
+  direction: 'bottom-left' | 'bottom-right' | 'top-left' | 'top-right', 
+  buttons: ButtonMenuItemOptions[], 
+  onOpen?: (e: Event) => void,
+  onClose?: () => void
+) => {
   options.asDiv = true;
-  const button = ButtonIcon('more btn-menu-toggle', options);
+  const button = options.container ?? ButtonIcon('more', options);
+  button.classList.add('btn-menu-toggle');
 
   const btnMenu = ButtonMenu(buttons, options.listenerSetter);
   btnMenu.classList.add(direction);
-  ButtonMenuToggleHandler(button, onOpen, options);
+  ButtonMenuToggleHandler(button, onOpen, options, onClose);
   button.append(btnMenu);
   return button;
 };

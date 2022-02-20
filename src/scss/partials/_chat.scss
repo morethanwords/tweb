@@ -1018,19 +1018,6 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
 			background-color: var(--light-primary-color) !important;
 		}
 
-		.btn-menu {
-			right: calc(var(--padding-horizontal) * -1 - .125rem);
-			bottom: calc(100% + 1.125rem);
-
-			@include respond-to(esg-bottom-new) {
-				bottom: calc(100% + .875rem);
-			}
-			
-			&-item {
-				padding: 0 38px 0 16px;
-			}
-		}
-
 		&.btn-disabled {
 			opacity: var(--disabled-opacity);
 		}
@@ -1175,10 +1162,123 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
 	}
 
 	.new-message-wrapper {
+    --button-size: 2.125rem;
+    --button-horizontal-margin: .125rem;
+    --send-as-size: 1.875rem;
+    --send-as-margin-left: .25rem;
+    --send-as-margin-right: .375rem;
+    --send-as-total-size: calc(var(--send-as-size) + var(--send-as-margin-left) + var(--send-as-margin-right));
 		//padding: 4.5px 0;
 		//padding-bottom: 4.5px;
 		align-items: flex-end;
 		min-height: var(--chat-input-size);
+
+    .new-message-send-as {
+      &-container {
+        width: var(--send-as-size);
+        height: var(--send-as-size);
+        position: absolute;
+        flex: 0 0 auto;
+        // margin: 0 0.375rem .4375rem var(--send-as-margin-left);
+        margin: 0 0 .4375rem var(--send-as-margin-left);
+        cursor: pointer;
+        transform: scale(0);
+        background: none !important;
+
+        .btn-menu-item-icon {
+          margin-right: calc(var(--icon-margin) - .5rem);
+
+          &.active:before {
+            --offset: -.25rem;
+            content: " ";
+            position: absolute;
+            top: var(--offset);
+            right: var(--offset);
+            bottom: var(--offset);
+            left: var(--offset);
+            border: .125rem solid var(--primary-color);
+            border-radius: 50%;
+          }
+        }
+      }
+
+      &-avatar {
+        position: absolute;
+        transform: scale(0);
+        opacity: 0;
+
+        &.is-visible {
+          &:not(.backwards) {
+            transform: scale(1);
+            opacity: 1;
+          }
+
+          &.animating {
+            transition: transform var(--transition-standard-in), opacity var(--transition-standard-in);
+          }
+        }
+      }
+
+      &-close {
+        width: inherit;
+        height: inherit;
+        background-color: var(--primary-color);
+        font-size: 1.375rem;
+        color: #fff;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1;
+      }
+    }
+
+    &.has-send-as {
+      .toggle-emoticons,
+      .input-message-container {
+        transform: translateX(0);
+      }
+
+      &:not(.backwards) {
+        .toggle-emoticons {
+          transform: translateX(var(--send-as-total-size));
+        }
+  
+        .input-message-container {
+          --translateX: calc(var(--send-as-total-size));
+          padding-right: var(--translateX);
+          transform: translate(var(--translateX));
+        }
+
+        .new-message-send-as-container {
+          transform: scale(1);
+        }
+      }
+
+      &.animating {
+        .toggle-emoticons,
+        .input-message-container,
+        .new-message-send-as-container {
+          transition: transform var(--transition-standard-in);
+        }
+      }
+    }
+
+    .btn-menu {
+			bottom: calc(100% + 1.125rem);
+
+			@include respond-to(esg-bottom-new) {
+				bottom: calc(100% + .875rem);
+			}
+
+      &.top-left {
+        right: calc(var(--padding-horizontal) * -1 - .125rem);
+      }
+
+      &.top-right {
+        left: calc(var(--padding-horizontal) * -1 - .125rem);
+      }
+		}
 	}
 	
 	.input-message-container {
@@ -1199,14 +1299,14 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
 	
 	.btn-icon {
 		flex: 0 0 auto;
-		font-size: 24px;
+		font-size: 1.5rem;
 		color: var(--secondary-text-color);
 
 		// ! EXPERIMENTAL
-		margin: 0 .125rem 5px;
+		margin: 0 var(--button-horizontal-margin) 5px;
 		padding: 0;
-		width: 34px;
-		height: 34px;
+		width: var(--button-size);
+		height: var(--button-size);
 
 		&.active {
 			color: var(--primary-color);

@@ -279,6 +279,7 @@ export class AppInlineBotsManager {
     clearDraft: true,
     scheduleDate: number,
     silent: true,
+    sendAsPeerId: PeerId,
     geoPoint: GeoPoint
   }> = {}) {
     const inlineResult = this.inlineResults[queryAndResultIds];

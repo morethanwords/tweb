@@ -214,7 +214,7 @@
       padding-left: 54px;
     } */
 
-    &-wrapper {
+    /* &-wrapper {
       flex: 1 1 auto;
       display: flex;
       flex-direction: column;
@@ -223,7 +223,7 @@
       @include respond-to(not-handhelds) {
         padding-top: 15px;
       }
-    }
+    } */
 
     .sidebar-left-section {
       position: relative;
@@ -256,6 +256,21 @@
         display: none;
       }
     }
+  }
+
+  &-button {
+    @include respond-to(handhelds) {
+      border-radius: 0;
+    }
+  }
+
+  &-change-avatar {
+    --size: 3.375rem;
+    position: absolute !important;
+    top: calc(var(--size) / -2);
+    right: 1.25rem;
+    transform: none;
+    transition: none !important;
   }
 
   &-container {

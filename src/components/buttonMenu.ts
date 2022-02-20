@@ -47,7 +47,7 @@ const ButtonMenuItem = (options: ButtonMenuItemOptions) => {
   const keepOpen = !!checkboxField || !!options.keepOpen;
 
   // * cancel mobile keyboard close
-  attachClickEvent(el, /* CLICK_EVENT_NAME !== 'click' || keepOpen ? */ (e) => {
+  onClick && attachClickEvent(el, /* CLICK_EVENT_NAME !== 'click' || keepOpen ? */ (e) => {
     cancelEvent(e);
     const result = onClick(e);
 

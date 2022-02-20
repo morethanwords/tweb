@@ -449,7 +449,8 @@ export class AppMessagesManager {
     clearDraft: true,
     webPage: WebPage,
     scheduleDate: number,
-    silent: true
+    silent: true,
+    sendAsPeerId: PeerId,
   }> = {}) {
     if(!text.trim()) {
       return Promise.resolve();
@@ -520,6 +521,7 @@ export class AppMessagesManager {
         sentRequestOptions.afterMessageId = this.pendingAfterMsgs[peerId].messageId;
       }
 
+      const sendAs = options.sendAsPeerId ? appPeersManager.getInputPeerById(options.sendAsPeerId) : undefined
       let apiPromise: any;
       if(options.viaBotId) {
         apiPromise = apiManager.invokeApiAfter('messages.sendInlineBotResult', {
@@ -528,7 +530,8 @@ export class AppMessagesManager {
           reply_to_msg_id: replyToMsgId || undefined,
           query_id: options.queryId,
           id: options.resultId,
-          clear_draft: options.clearDraft
+          clear_draft: options.clearDraft,
+          send_as: sendAs
         }, sentRequestOptions);
       } else {
         apiPromise = apiManager.invokeApiAfter('messages.sendMessage', {
@@ -540,7 +543,8 @@ export class AppMessagesManager {
           entities: sendEntites,
           clear_draft: options.clearDraft,
           schedule_date: options.scheduleDate || undefined,
-          silent: options.silent
+          silent: options.silent,
+          send_as: sendAs
         }, sentRequestOptions);
       }
 
@@ -633,6 +637,7 @@ export class AppMessagesManager {
     isMedia: true,
 
     replyToMsgId: number,
+    sendAsPeerId: PeerId,
     threadId: number,
     groupId: string,
     caption: string,
@@ -1026,7 +1031,8 @@ export class AppMessagesManager {
           schedule_date: options.scheduleDate,
           silent: options.silent,
           entities,
-          clear_draft: options.clearDraft
+          clear_draft: options.clearDraft,
+          send_as: options.sendAsPeerId ? appPeersManager.getInputPeerById(options.sendAsPeerId) : undefined
         }).then((updates) => {
           apiUpdatesManager.processUpdateMessage(updates);
         }, (error) => {
@@ -1055,6 +1061,7 @@ export class AppMessagesManager {
     isMedia: true,
     entities: MessageEntity[],
     replyToMsgId: number,
+    sendAsPeerId: PeerId,
     threadId: number,
     caption: string,
     sendFileDetails: Partial<{
@@ -1101,6 +1108,7 @@ export class AppMessagesManager {
         silent: options.silent,
         replyToMsgId,
         threadId: options.threadId,
+        sendAsPeerId: options.sendAsPeerId,
         groupId,
         ...details
       };
@@ -1146,7 +1154,8 @@ export class AppMessagesManager {
             reply_to_msg_id: replyToMsgId,
             schedule_date: options.scheduleDate,
             silent: options.silent,
-            clear_draft: options.clearDraft
+            clear_draft: options.clearDraft,
+            send_as: options.sendAsPeerId ? appPeersManager.getInputPeerById(options.sendAsPeerId) : undefined
           }).then((updates) => {
             apiUpdatesManager.processUpdateMessage(updates);
             deferred.resolve();
@@ -1222,7 +1231,8 @@ export class AppMessagesManager {
     resultId: string,
     scheduleDate: number,
     silent: true,
-    geoPoint: GeoPoint
+    geoPoint: GeoPoint,
+    sendAsPeerId: PeerId,
   }> = {}) {
     peerId = appPeersManager.getPeerMigratedTo(peerId) || peerId;
 
@@ -1337,6 +1347,7 @@ export class AppMessagesManager {
         sentRequestOptions.afterMessageId = this.pendingAfterMsgs[peerId].messageId;
       }
 
+      const sendAs = options.sendAsPeerId ? appPeersManager.getInputPeerById(options.sendAsPeerId) : undefined;
       let apiPromise: Promise<any>;
       if(options.viaBotId) {
         apiPromise = apiManager.invokeApiAfter('messages.sendInlineBotResult', {
@@ -1347,7 +1358,8 @@ export class AppMessagesManager {
           id: options.resultId,
           clear_draft: options.clearDraft,
           schedule_date: options.scheduleDate,
-          silent: options.silent
+          silent: options.silent,
+          send_as: sendAs
         }, sentRequestOptions);
       } else {
         apiPromise = apiManager.invokeApiAfter('messages.sendMedia', {
@@ -1358,7 +1370,8 @@ export class AppMessagesManager {
           message: '',
           clear_draft: options.clearDraft,
           schedule_date: options.scheduleDate,
-          silent: options.silent
+          silent: options.silent,
+          send_as: sendAs
         }, sentRequestOptions);
       }
 
@@ -1463,6 +1476,7 @@ export class AppMessagesManager {
   private generateOutgoingMessage(peerId: PeerId, options: Partial<{
     scheduleDate: number,
     replyToMsgId: number,
+    sendAsPeerId: PeerId, 
     threadId: number,
     viaBotId: BotId,
     groupId: string,
@@ -1486,7 +1500,7 @@ export class AppMessagesManager {
     const message: Message.message = {
       _: 'message',
       id: this.generateTempMessageId(peerId),
-      from_id: this.generateFromId(peerId),
+      from_id: options.sendAsPeerId ? appPeersManager.getOutputPeer(options.sendAsPeerId) : this.generateFromId(peerId),
       peer_id: appPeersManager.getOutputPeer(peerId),
       post_author: postAuthor, 
       pFlags: this.generateFlags(peerId),
@@ -1937,7 +1951,8 @@ export class AppMessagesManager {
     silent: true,
     scheduleDate: number,
     dropAuthor: boolean,
-    dropCaptions: boolean
+    dropCaptions: boolean,
+    sendAsPeerId: PeerId,
   }> = {}) {
     peerId = appPeersManager.getPeerMigratedTo(peerId) || peerId;
     mids = mids.slice().sort((a, b) => a - b);
@@ -2044,7 +2059,8 @@ export class AppMessagesManager {
       silent: options.silent,
       schedule_date: options.scheduleDate,
       drop_author: options.dropAuthor,
-      drop_media_captions: options.dropCaptions
+      drop_media_captions: options.dropCaptions,
+      send_as: options.sendAsPeerId ? appPeersManager.getInputPeerById(options.sendAsPeerId) : undefined
     }, sentRequestOptions).then((updates) => {
       this.log('forwardMessages updates:', updates);
       apiUpdatesManager.processUpdateMessage(updates);
@@ -5047,6 +5063,8 @@ export class AppMessagesManager {
         this.dialogsStorage.dropDialogOnDeletion(peerId);
       }
     }
+
+    rootScope.dispatchEvent('channel_update', channelId);
   };
 
   private onUpdateChannelReload = (update: Update.updateChannelReload) => {

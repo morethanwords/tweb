@@ -666,7 +666,7 @@ const lang = {
   "AutoDownloadPm": "PM",
   "AutoDownloadGroups": "Groups",
   "AutoDownloadChannels": "Channels",
-  "AutoDownloadAudioInfo": "Voice messages are tiny, so they\'re always downloaded automatically.",
+  "AutoDownloadAudioInfo": "Voice messages are tiny, so they're always downloaded automatically.",
   "AutoplayMedia": "Auto-play media",
   "AutoDownloadPhotosTitle": "Auto-download photos",
   "AutoDownloadVideosTitle": "Auto-download videos and GIFs",
@@ -677,6 +677,9 @@ const lang = {
   "ResetAutomaticMediaDownloadAlertTitle": "Reset settings",
   "ResetAutomaticMediaDownloadAlert": "Are you sure you want to reset auto-download settings?",
   "Reset": "Reset",
+  "SendMessageAsTitle": "Send message as...",
+  "Devices": "Devices",
+  "LanguageName": "English",
 
   // * macos
   "AccountSettings.Filters": "Chat Folders",
@@ -811,6 +814,7 @@ const lang = {
   "Chat.Send.WithoutSound": "Send Without Sound",
   "Chat.Send.SetReminder": "Set a Reminder",
   "Chat.Send.ScheduledMessage": "Schedule Message",
+  "Chat.SendAs.PersonalAccount": "personal account",
   "Chat.UnpinAllMessagesConfirmation": {
     "one_value": "Do you want to unpin %d message in this chat?",
     "other_value": "Do you want to unpin all %d messages in this chat?"

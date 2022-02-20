@@ -584,21 +584,9 @@
 
 .settings-container {
   .profile {
-    &-button {
-      @include respond-to(handhelds) {
-        border-radius: 0;
-      }
-    }
-
-    &-buttons {
-      margin-top: 1.1875rem;
-      width: 100%;
-      padding: 0 .4375rem;
-
-      @include respond-to(handhelds) {
-        margin-top: .6875rem;
-        padding: 0;
-      }
+    &-avatars-container {
+      padding-bottom: 0;
+      height: 15rem;
     }
   }
 }
@@ -851,6 +839,10 @@
       }
     }
 
+    &.no-padding-top {
+      padding-top: 0 !important;
+    }
+
     @include respond-to(handhelds) {
       padding-bottom: .5rem;
     }
@@ -875,6 +867,10 @@
         > .btn-primary {
           border-radius: 0;
         }
+      }
+
+      &.full-width {
+        margin: 0 !important;
       }
     }
   
@@ -956,7 +952,6 @@
 #chats-archived-container,
 #contacts-container,
 .add-members-container,
-.settings-container,
 #search-private-container,
 #stickers-container,
 #poll-results-container,
