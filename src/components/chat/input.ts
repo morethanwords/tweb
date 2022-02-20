@@ -32,7 +32,7 @@ import PopupNewMedia from '../popups/newMedia';
 import { toast } from "../toast";
 import { wrapReply } from "../wrappers";
 import InputField from '../inputField';
-import { MessageEntity, DraftMessage, WebPage, Message } from '../../layer';
+import { MessageEntity, DraftMessage, WebPage, Message, ChatFull } from '../../layer';
 import StickersHelper from './stickersHelper';
 import ButtonIcon from '../buttonIcon';
 import ButtonMenuToggle from '../buttonMenuToggle';
@@ -87,9 +87,15 @@ import DropdownHover from '../../helpers/dropdownHover';
 import RadioForm from '../radioForm';
 import findUpTag from '../../helpers/dom/findUpTag';
 import toggleDisability from '../../helpers/dom/toggleDisability';
+import AvatarElement from '../avatar';
+import type { AppProfileManager } from '../../lib/appManagers/appProfileManager';
+import { indexOfAndSplice } from '../../helpers/array';
+import callbackify from '../../helpers/callbackify';
 
 const RECORD_MIN_TIME = 500;
 const POSTING_MEDIA_NOT_ALLOWED = 'Posting media content isn\'t allowed in this group.';
+
+const SEND_AS_ANIMATION_DURATION = 300;
 
 type ChatInputHelperType = 'edit' | 'webpage' | 'forward' | 'reply';
 
@@ -115,7 +121,7 @@ export default class ChatInput {
 
   private replyKeyboard: ReplyKeyboard;
 
-  private attachMenu: HTMLButtonElement;
+  private attachMenu: HTMLElement;
   private attachMenuButtons: (ButtonMenuItemOptions & {verify: (peerId: PeerId, threadId: number) => boolean})[];
 
   private sendMenu: SendMenu;
@@ -208,9 +214,17 @@ export default class ChatInput {
   private fakeWrapperTo: HTMLElement;
   private toggleBotStartBtnDisability: () => void;
 
+  private sendAsAvatar: AvatarElement;
+  private sendAsContainer: HTMLElement;
+  private sendAsCloseBtn: HTMLElement;
+  private sendAsBtnMenu: HTMLElement;
+  private sendAsPeerIds: PeerId[];
+  public sendAsPeerId: PeerId;
+
   // private activeContainer: HTMLElement;
 
-  constructor(private chat: Chat, 
+  constructor(
+    private chat: Chat, 
     private appMessagesManager: AppMessagesManager, 
     private appMessagesIdsManager: AppMessagesIdsManager, 
     private appDocsManager: AppDocsManager, 
@@ -223,7 +237,8 @@ export default class ChatInput {
     private appNotificationsManager: AppNotificationsManager,
     private appEmojiManager: AppEmojiManager,
     private appUsersManager: AppUsersManager,
-    private appInlineBotsManager: AppInlineBotsManager
+    private appInlineBotsManager: AppInlineBotsManager,
+    private appProfileManager: AppProfileManager
   ) {
     this.listenerSetter = new ListenerSetter();
   }
@@ -461,6 +476,46 @@ export default class ChatInput {
     this.newMessageWrapper = document.createElement('div');
     this.newMessageWrapper.classList.add('new-message-wrapper');
 
+    this.sendAsContainer = document.createElement('div');
+    this.sendAsContainer.classList.add('new-message-send-as-container');
+
+    this.sendAsCloseBtn = document.createElement('div');
+    this.sendAsCloseBtn.classList.add('new-message-send-as-close', 'new-message-send-as-avatar', 'tgico-close');
+
+    const sendAsButtons: ButtonMenuItemOptions[] = [{
+      text: 'SendMessageAsTitle',
+      onClick: undefined
+    }];
+
+    let previousAvatar: HTMLElement;
+    const onSendAsMenuToggle = (visible: boolean) => {
+      if(visible) {
+        previousAvatar = this.sendAsAvatar;
+      }
+
+      const isChanged = this.sendAsAvatar !== previousAvatar;
+      const useRafs = !visible && isChanged ? 2 : 0;
+
+      SetTransition(this.sendAsCloseBtn, 'is-visible', visible, SEND_AS_ANIMATION_DURATION, undefined, useRafs);
+      if(!isChanged) {
+        SetTransition(previousAvatar, 'is-visible', !visible, SEND_AS_ANIMATION_DURATION, undefined, useRafs);
+      }
+    };
+
+    ButtonMenuToggle({
+      noRipple: true, 
+      listenerSetter: this.listenerSetter, 
+      container: this.sendAsContainer
+    }, 'top-right', sendAsButtons, () => {
+      onSendAsMenuToggle(true);
+    }, () => {
+      onSendAsMenuToggle(false);
+    });
+
+    sendAsButtons[0].element.classList.add('btn-menu-item-header');
+    this.sendAsBtnMenu = this.sendAsContainer.firstElementChild as any;
+    this.sendAsContainer.append(this.sendAsCloseBtn);
+
     this.btnToggleEmoticons = ButtonIcon('none toggle-emoticons', {noRipple: true});
 
     this.inputMessageContainer = document.createElement('div');
@@ -562,7 +617,7 @@ export default class ChatInput {
     this.fileInput.multiple = true;
     this.fileInput.style.display = 'none';
 
-    this.newMessageWrapper.append(...[this.btnToggleEmoticons, this.inputMessageContainer, this.btnScheduled, this.btnToggleReplyMarkup, this.attachMenu, this.recordTimeEl, this.fileInput].filter(Boolean));
+    this.newMessageWrapper.append(...[this.sendAsContainer, this.btnToggleEmoticons, this.inputMessageContainer, this.btnScheduled, this.btnToggleReplyMarkup, this.attachMenu, this.recordTimeEl, this.fileInput].filter(Boolean));
 
     this.rowsWrapper.append(this.replyElements.container);
     this.autocompleteHelperController = new AutocompleteHelperController();
@@ -663,6 +718,14 @@ export default class ChatInput {
         this.autocompleteHelperController.toggleListNavigation(true);
       }
     });
+
+    if(this.sendAsContainer) {
+      this.listenerSetter.add(rootScope)('peer_full_update', (peerId) => {
+        if(peerId.isChannel() && this.chat.peerId === peerId) {
+          this.updateSendAs();
+        }
+      });
+    }
 
     if(this.chat.type === 'scheduled') {
       this.listenerSetter.add(rootScope)('scheduled_delete', ({peerId, mids}) => {
@@ -1129,7 +1192,7 @@ export default class ChatInput {
   public finishPeerChange(startParam?: string) {
     const peerId = this.chat.peerId;
 
-    const {forwardElements, btnScheduled, replyKeyboard, sendMenu, goDownBtn, chatInput} = this;
+    const {forwardElements, btnScheduled, replyKeyboard, sendMenu, goDownBtn, chatInput, sendAsContainer} = this;
     chatInput.style.display = '';
     
     const isBroadcast = this.appPeersManager.isBroadcast(peerId);
@@ -1160,6 +1223,19 @@ export default class ChatInput {
       });
     }
 
+    if(sendAsContainer) {
+      if(this.sendAsAvatar) {
+        this.sendAsAvatar.remove();
+        this.sendAsAvatar = undefined;
+      }
+      
+      sendAsContainer.remove();
+      SetTransition(this.newMessageWrapper, 'has-send-as', false, 0);
+      this.sendAsPeerId = undefined;
+
+      this.updateSendAs(true);
+    }
+
     if(replyKeyboard) {
       replyKeyboard.setPeer(peerId);
     }
@@ -1180,6 +1256,157 @@ export default class ChatInput {
     this.startParam = startParam;
 
     this.center(false);
+  }
+
+  private updateSendAsButtons(peerIds: PeerId[]) {
+    const buttons: ButtonMenuItemOptions[] = peerIds.map((sendAsPeerId, idx) => {
+      const textElement = document.createElement('div');
+
+      const subtitle = document.createElement('div');
+      subtitle.classList.add('btn-menu-item-subtitle');
+      if(sendAsPeerId.isUser()) {
+        subtitle.append(i18n('Chat.SendAs.PersonalAccount'));
+      } else {
+        subtitle.append(this.appProfileManager.getChatMembersString(sendAsPeerId.toChatId()));
+      }
+
+      textElement.append(
+        new PeerTitle({peerId: sendAsPeerId}).element,
+        subtitle
+      );
+
+      return {
+        onClick: idx ? () => {
+          const currentPeerId = this.chat.peerId;
+          if(currentPeerId.isChannel()) {
+            const channelFull = this.appProfileManager.getCachedFullChat(currentPeerId.toChatId()) as ChatFull.channelFull;
+            if(channelFull) {
+              channelFull.default_send_as = this.appPeersManager.getOutputPeer(sendAsPeerId);
+              this.sendAsPeerId = sendAsPeerId;
+              this.updateSendAsAvatar(sendAsPeerId);
+
+              const middleware = this.chat.bubbles.getMiddleware();
+              const executeButtonsUpdate = () => {
+                if(this.sendAsPeerId !== sendAsPeerId || !middleware()) return;
+                const peerIds = this.sendAsPeerIds.slice();
+                indexOfAndSplice(peerIds, sendAsPeerId);
+                peerIds.unshift(sendAsPeerId);
+                this.updateSendAsButtons(peerIds);
+              };
+              
+              if(rootScope.settings.animationsEnabled) {
+                setTimeout(executeButtonsUpdate, 250);
+              } else {
+                executeButtonsUpdate();
+              }
+            }
+          }
+
+          // return;
+          apiManager.invokeApi('messages.saveDefaultSendAs', {
+            peer: this.appPeersManager.getInputPeerById(currentPeerId),
+            send_as: this.appPeersManager.getInputPeerById(sendAsPeerId)
+          });
+        } : undefined,
+        textElement
+      };
+    });
+
+    const btnMenu = ButtonMenu(buttons/* , this.listenerSetter */);
+    buttons.forEach((button, idx) => {
+      const peerId = peerIds[idx];
+      const avatar = new AvatarElement();
+      avatar.classList.add('avatar-32', 'btn-menu-item-icon');
+      avatar.setAttribute('peer', '' + peerId);
+
+      if(!idx) {
+        avatar.classList.add('active');
+      }
+      
+      button.element.prepend(avatar);
+    });
+
+    Array.from(this.sendAsBtnMenu.children).slice(1).forEach(node => node.remove());
+    this.sendAsBtnMenu.append(...Array.from(btnMenu.children));
+  }
+
+  private updateSendAsAvatar(sendAsPeerId: PeerId, skipAnimation?: boolean) {
+    const previousAvatar = this.sendAsAvatar;
+    if(previousAvatar) {
+      if(+previousAvatar.getAttribute('peer') === sendAsPeerId) {
+        return;
+      }
+    }
+    
+    if(!previousAvatar) {
+      skipAnimation = true;
+    }
+    
+    let useRafs = skipAnimation ? 0 : 2;
+    const duration = skipAnimation ? 0 : SEND_AS_ANIMATION_DURATION;
+    const avatar = this.sendAsAvatar = new AvatarElement();
+    avatar.setAttribute('dialog', '0');
+    avatar.setAttribute('peer', '' + sendAsPeerId);
+    avatar.classList.add('new-message-send-as-avatar', 'avatar-30');
+
+    SetTransition(avatar, 'is-visible', true, duration, undefined, useRafs);    
+    if(previousAvatar) {
+      SetTransition(previousAvatar, 'is-visible', false, duration, () => {
+        previousAvatar.remove();
+      }, useRafs);
+    }
+    
+    this.sendAsContainer.append(avatar);
+  }
+
+  private getDefaultSendAs() {
+    // return rootScope.myId;
+    return callbackify(this.appProfileManager.getChannelFull(this.chat.peerId.toChatId()), (channelFull) => {
+      return channelFull.default_send_as ? this.appPeersManager.getPeerId(channelFull.default_send_as) : undefined;
+    });
+  }
+
+  private updateSendAs(skipAnimation?: boolean) {
+    const peerId = this.chat.peerId;
+    if(!peerId.isChannel()) {
+      return;
+    }
+    
+    const middleware = this.chat.bubbles.getMiddleware();
+    const {sendAsContainer} = this;
+    const chatId = peerId.toChatId();
+    const result = this.getDefaultSendAs();
+    // const result = Promise.resolve(this.getDefaultSendAs());
+
+    if(result instanceof Promise) {
+      skipAnimation = undefined;
+    }
+
+    callbackify(result, (sendAsPeerId) => {
+      if(!middleware() || sendAsPeerId === undefined) return;
+      
+      this.sendAsPeerId = sendAsPeerId;
+      this.updateSendAsAvatar(sendAsPeerId, skipAnimation);
+
+      this.appChatsManager.getSendAs(chatId).then(peers => {
+        if(!middleware()) return;
+
+        const peerIds = peers.map((peer) => this.appPeersManager.getPeerId(peer));
+        this.sendAsPeerIds = peerIds.slice();
+
+        indexOfAndSplice(peerIds, sendAsPeerId);
+        peerIds.unshift(sendAsPeerId);
+        this.updateSendAsButtons(peerIds);
+      });
+
+      let useRafs = 0;
+      if(!sendAsContainer.parentElement) {
+        this.newMessageWrapper.prepend(sendAsContainer);
+        useRafs = 2;
+      }
+
+      SetTransition(this.newMessageWrapper, 'has-send-as', true, skipAnimation ? 0 : SEND_AS_ANIMATION_DURATION, undefined, useRafs);
+    });
   }
 
   public updateMessageInput() {
@@ -2128,8 +2355,9 @@ export default class ChatInput {
       return;
     }
 
-    const {threadId, peerId} = chat;
-    const {replyToMsgId, noWebPage, sendSilent, scheduleDate} = this;
+    const {peerId} = chat;
+    const {noWebPage} = this;
+    const sendingParams = this.chat.getMessageSendingParams();
 
     const {value, entities} = getRichValue(this.messageInputField.input);
 
@@ -2151,12 +2379,9 @@ export default class ChatInput {
     } else if(value.trim()) {
       this.appMessagesManager.sendText(peerId, value, {
         entities,
-        replyToMsgId: replyToMsgId,
-        threadId: threadId,
+        ...sendingParams,
         noWebPage: noWebPage,
         webPage: this.getWebPagePromise ? undefined : this.willSendWebPage,
-        scheduleDate: scheduleDate,
-        silent: sendSilent,
         clearDraft: true
       });
 
@@ -2170,8 +2395,7 @@ export default class ChatInput {
       setTimeout(() => {
         for(const fromPeerId in forwarding) {
           this.appMessagesManager.forwardMessages(peerId, fromPeerId.toPeerId(), forwarding[fromPeerId], {
-            silent: sendSilent,
-            scheduleDate: scheduleDate,
+            ...sendingParams,
             dropAuthor: this.forwardElements && this.forwardElements.hideSender.checkboxField.checked,
             dropCaptions: this.isDroppingCaptions()
           });
@@ -2202,11 +2426,8 @@ export default class ChatInput {
 
     if(document) {
       this.appMessagesManager.sendFile(this.chat.peerId, document, {
+        ...this.chat.getMessageSendingParams(),
         isMedia: true, 
-        replyToMsgId: this.replyToMsgId, 
-        threadId: this.chat.threadId,
-        silent: this.sendSilent, 
-        scheduleDate: this.scheduleDate,
         clearDraft: clearDraft || undefined
       });
       this.onMessageSent(clearDraft, true);

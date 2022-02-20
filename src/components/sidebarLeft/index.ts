@@ -52,7 +52,7 @@ import { ripple } from "../ripple";
 export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
 
 export class AppSidebarLeft extends SidebarSlider {
-  private toolsBtn: HTMLButtonElement;
+  private toolsBtn: HTMLElement;
   private backBtn: HTMLButtonElement;
   //private searchInput = document.getElementById('global-search') as HTMLInputElement;
   private inputSearch: InputSearch;
@@ -671,7 +671,9 @@ export type SettingSectionOptions = {
   caption?: LangPackKey | true,
   noDelimiter?: boolean,
   fakeGradientDelimiter?: boolean,
-  noShadow?: boolean
+  noShadow?: boolean,
+  // fullWidth?: boolean,
+  // noPaddingTop?: boolean
 };
 
 const className = 'sidebar-left-section';
@@ -681,6 +683,8 @@ export class SettingSection {
   public content: HTMLElement;
   public title: HTMLElement;
   public caption: HTMLElement;
+
+  private fullWidth: boolean;
 
   constructor(options: SettingSectionOptions = {}) {
     const container = this.container = document.createElement('div');
@@ -702,6 +706,14 @@ export class SettingSection {
     } else {
       innerContainer.classList.add('no-delimiter');
     }
+
+    // if(options.fullWidth) {
+    //   this.fullWidth = true;
+    // }
+
+    // if(options.noPaddingTop) {
+    //   innerContainer.classList.add('no-padding-top');
+    // }
 
     const content = this.content = this.generateContentElement();
 
@@ -728,6 +740,11 @@ export class SettingSection {
   public generateContentElement() {
     const content = document.createElement('div');
     content.classList.add(className + '-content');
+
+    // if(this.fullWidth) {
+    //   content.classList.add('full-width');
+    // }
+
     this.innerContainer.append(content);
     return content;
   }

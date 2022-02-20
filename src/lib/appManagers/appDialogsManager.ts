@@ -15,7 +15,7 @@ import { ripple } from "../../components/ripple";
 //import Scrollable from "../../components/scrollable";
 import Scrollable, { ScrollableX, SliceSides } from "../../components/scrollable";
 import { formatDateAccordingToTodayNew } from "../../helpers/date";
-import { IS_SAFARI } from "../../environment/userAgent";
+import { IS_MOBILE_SAFARI, IS_SAFARI } from "../../environment/userAgent";
 import { logger, LogTypes } from "../logger";
 import { RichTextProcessor } from "../richtextprocessor";
 import rootScope from "../rootScope";
@@ -59,6 +59,7 @@ import groupCallActiveIcon from "../../components/groupCallActiveIcon";
 import { Chat } from "../../layer";
 import IS_GROUP_CALL_SUPPORTED from "../../environment/groupCallSupport";
 import mediaSizes from "../../helpers/mediaSizes";
+import appNavigationController, { NavigationItem } from "../../components/appNavigationController";
 
 export type DialogDom = {
   avatarEl: AvatarElement,
@@ -181,6 +182,8 @@ export class AppDialogsManager {
   private emptyDialogsPlaceholderSubtitle: I18n.IntlElement;
   private updateContactsLengthPromise: Promise<number>;
 
+  private filtersNavigationItem: NavigationItem;
+
   constructor() {
     this.chatsPreloader = putPreloader(null, true);
 
@@ -297,6 +300,25 @@ export class AppDialogsManager {
       } */
 
       id = +tabContent.dataset.filterId || 0;
+
+      if(!IS_MOBILE_SAFARI) {
+        if(id) {
+          if(!this.filtersNavigationItem) {
+            this.filtersNavigationItem = {
+              type: 'filters',
+              onPop: () => {
+                selectTab(0);
+                this.filtersNavigationItem = undefined;
+              }
+            };
+    
+            appNavigationController.unshiftItem(this.filtersNavigationItem);
+          }
+        } else if(this.filtersNavigationItem) {
+          appNavigationController.removeItem(this.filtersNavigationItem);
+          this.filtersNavigationItem = undefined;
+        }
+      }
 
       if(this.filterId === id) return;
 

@@ -286,10 +286,7 @@ export default class PopupCreatePoll extends PopupElement {
     //console.log('Will try to create poll:', inputMediaPoll);
 
     this.chat.appMessagesManager.sendOther(this.chat.peerId, inputMediaPoll, {
-      threadId: this.chat.threadId,
-      replyToMsgId: this.chat.input.replyToMsgId,
-      scheduleDate: this.chat.input.scheduleDate,
-      silent: this.chat.input.sendSilent
+      ...this.chat.getMessageSendingParams()
     });
 
     if(this.chat.input.helperType === 'reply') {

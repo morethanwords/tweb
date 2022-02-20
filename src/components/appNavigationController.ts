@@ -16,7 +16,7 @@ import isSwipingBackSafari from "../helpers/dom/isSwipingBackSafari";
 export type NavigationItem = {
   type: 'left' | 'right' | 'im' | 'chat' | 'popup' | 'media' | 'menu' | 
     'esg' | 'multiselect' | 'input-helper' | 'autocomplete-helper' | 'markup' | 
-    'global-search' | 'voice' | 'mobile-search',
+    'global-search' | 'voice' | 'mobile-search' | 'filters',
   onPop: (canAnimate: boolean) => boolean | void,
   onEscape?: () => boolean,
   noHistory?: boolean,
@@ -169,13 +169,22 @@ export class AppNavigationController {
     //}
   }
 
-  public pushItem(item: NavigationItem) {
-    this.navigations.push(item);
+  private onItemAdded(item: NavigationItem) {
     this.debug && this.log('pushstate', item, this.navigations);
 
     if(!item.noHistory) {
       this.pushState();
     }
+  }
+
+  public pushItem(item: NavigationItem) {
+    this.navigations.push(item);
+    this.onItemAdded(item);
+  }
+
+  public unshiftItem(item: NavigationItem) {
+    this.navigations.unshift(item);
+    this.onItemAdded(item);
   }
 
   private pushState() {

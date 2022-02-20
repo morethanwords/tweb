@@ -1793,7 +1793,7 @@ export class AppImManager {
     }
   }
 
-  public async getPeerStatus(peerId: PeerId) {
+  public async getPeerStatus(peerId: PeerId, ignoreSelf?: boolean) {
     let subtitle: HTMLElement;
     if(!peerId) return;
 
@@ -1828,7 +1828,7 @@ export class AppImManager {
     } else { // user
       const user = appUsersManager.getUser(peerId);
       
-      if(rootScope.myId === peerId) {
+      if(rootScope.myId === peerId && !ignoreSelf) {
         return;
       } else if(user) {
         subtitle = appUsersManager.getUserStatusString(user.id);
@@ -1851,7 +1851,7 @@ export class AppImManager {
     }
   }
 
-  public setPeerStatus(peerId: PeerId, element: HTMLElement, needClear: boolean, useWhitespace: boolean, middleware: () => boolean) {
+  public setPeerStatus(peerId: PeerId, element: HTMLElement, needClear: boolean, useWhitespace: boolean, middleware: () => boolean, ignoreSelf?: boolean) {
     if(needClear) {
       element.innerHTML = useWhitespace ? '‎' : ''; // ! HERE U CAN FIND WHITESPACE
     }
@@ -1862,7 +1862,7 @@ export class AppImManager {
       return;
     }
 
-    this.getPeerStatus(peerId).then((subtitle) => {
+    this.getPeerStatus(peerId, ignoreSelf).then((subtitle) => {
       if(!middleware()) {
         return;
       }

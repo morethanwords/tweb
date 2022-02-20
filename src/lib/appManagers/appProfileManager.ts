@@ -121,6 +121,10 @@ export class AppProfileManager {
       }
     });
 
+    rootScope.addEventListener('channel_update', (chatId) => {
+      this.refreshFullPeer(chatId.toPeerId(true));
+    });
+
     // * genius
     rootScope.addEventListener('chat_full_update', (chatId) => {
       rootScope.dispatchEvent('peer_full_update', chatId.toPeerId(true));
@@ -477,10 +481,15 @@ export class AppProfileManager {
   }
 
   private refreshFullPeer(peerId: PeerId) {
-    if(peerId.isUser()) delete this.usersFull[peerId.toUserId()];
-    else delete this.chatsFull[peerId.toChatId()];
-
-    rootScope.dispatchEvent('peer_full_update', peerId);
+    if(peerId.isUser()) {
+      const userId = peerId.toUserId();
+      delete this.usersFull[userId];
+      rootScope.dispatchEvent('user_full_update', userId);
+    } else {
+      const chatId = peerId.toChatId();
+      delete this.chatsFull[chatId];
+      rootScope.dispatchEvent('chat_full_update', chatId);
+    }
 
     // ! эта строчка будет создавать race condition:
     // ! запрос вернёт chat с установленным флагом call_not_empty, хотя сам апдейт уже будет применён

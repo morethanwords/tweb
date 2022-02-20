@@ -93,8 +93,10 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
         subtitleLangKey: SUBTITLE,
         clickable: () => {
           const tab = new AppActiveSessionsTab(this.slider);
-          tab.privacyTab = this;
           tab.authorizations = this.authorizations;
+          tab.eventListener.addEventListener('destroy', () => {
+            this.updateActiveSessions();
+          }, {once: true});
           tab.open();
         }
       });

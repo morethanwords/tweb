@@ -20,9 +20,9 @@ import PopupPeer from "../../popups/peer";
 import findUpClassName from "../../../helpers/dom/findUpClassName";
 import { attachClickEvent } from "../../../helpers/dom/clickEvent";
 import toggleDisability from "../../../helpers/dom/toggleDisability";
+import { SliderSuperTabEventable } from "../../sliderTab";
 
-export default class AppActiveSessionsTab extends SliderSuperTab {
-  public privacyTab: AppPrivacyAndSecurityTab;
+export default class AppActiveSessionsTab extends SliderSuperTabEventable {
   public authorizations: Authorization.authorization[];
   private menuElement: HTMLElement;
   
@@ -76,7 +76,6 @@ export default class AppActiveSessionsTab extends SliderSuperTab {
                   //toggleDisability([btnTerminate], false);
                   btnTerminate.remove();
                   otherSection.container.remove();
-                  this.privacyTab.updateActiveSessions();
                 }, onError).finally(() => {
                   toggle();
                 });
@@ -127,7 +126,6 @@ export default class AppActiveSessionsTab extends SliderSuperTab {
             .then(value => {
               if(value) {
                 target.remove();
-                this.privacyTab.updateActiveSessions();
               }
             }, onError);
           }

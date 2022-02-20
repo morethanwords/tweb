@@ -50,6 +50,10 @@
     &-right {
       flex: 0 0 auto !important;
       margin-left: 1rem;
+
+      &-secondary {
+        color: var(--secondary-text-color);
+      }
     }
   }
 

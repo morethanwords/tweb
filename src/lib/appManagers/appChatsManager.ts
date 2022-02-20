@@ -12,7 +12,7 @@
 import { MOUNT_CLASS_TO } from "../../config/debug";
 import { isObject, safeReplaceObject, copy, deepEqual } from "../../helpers/object";
 import { isRestricted } from "../../helpers/restrictions";
-import { ChannelParticipant, Chat, ChatAdminRights, ChatBannedRights, ChatParticipant, ChatPhoto, InputChannel, InputChatPhoto, InputFile, InputPeer, Update, Updates, ChannelsCreateChannel } from "../../layer";
+import { ChannelParticipant, Chat, ChatAdminRights, ChatBannedRights, ChatParticipant, ChatPhoto, InputChannel, InputChatPhoto, InputFile, InputPeer, Update, Updates, ChannelsCreateChannel, Peer } from "../../layer";
 import apiManagerProxy from "../mtproto/mtprotoworker";
 import apiManager from '../mtproto/mtprotoworker';
 import { RichTextProcessor } from "../richtextprocessor";
@@ -786,6 +786,21 @@ export class AppChatsManager {
     const restrictionReasons = chat.restriction_reason;
 
     return !!(chat.pFlags.restricted && restrictionReasons && isRestricted(restrictionReasons));
+  }
+
+  public getSendAs(channelId: ChatId) {
+    return apiManager.invokeApiSingleProcess({
+      method: 'channels.getSendAs', 
+      params: {
+        peer: this.getChannelInputPeer(channelId)
+      },
+      processResult: (sendAsPeers) => {
+        appUsersManager.saveApiUsers(sendAsPeers.users);
+        appChatsManager.saveApiChats(sendAsPeers.chats);
+
+        return sendAsPeers.peers;
+      }
+    });
   }
 }
 

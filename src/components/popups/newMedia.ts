@@ -232,21 +232,17 @@ export default class PopupNewMedia extends PopupElement {
     //console.log('will send files with options:', willAttach);
 
     const {peerId, input} = this.chat;
-    const {sendSilent, scheduleDate} = input;
 
     sendFileDetails.forEach(d => {
       d.itemDiv = undefined;
     });
 
     const {length} = sendFileDetails;
-    const replyToMsgId = input.replyToMsgId;
+    const sendingParams = this.chat.getMessageSendingParams();
     this.iterate((sendFileDetails) => {
       if(caption && sendFileDetails.length !== length) {
         this.chat.appMessagesManager.sendText(peerId, caption, {
-          replyToMsgId, 
-          threadId: this.chat.threadId,
-          silent: sendSilent, 
-          scheduleDate,
+          ...sendingParams,
           clearDraft: true
         });
 
@@ -259,12 +255,9 @@ export default class PopupNewMedia extends PopupElement {
       };
 
       this.chat.appMessagesManager.sendAlbum(peerId, w.sendFileDetails.map(d => d.file), Object.assign({
+        ...sendingParams,
         caption,
-        replyToMsgId,
-        threadId: this.chat.threadId,
         isMedia: isMedia,
-        silent: sendSilent,
-        scheduleDate,
         clearDraft: true as true
       }, w));
 

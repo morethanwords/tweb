@@ -28,6 +28,8 @@ import { MTAppConfig } from "./mtproto/appConfig";
 export type BroadcastEvents = {
   'chat_full_update': ChatId,
   'chat_update': ChatId,
+
+  'channel_update': ChatId,
   
   'user_update': UserId,
   'user_auth': UserAuth,

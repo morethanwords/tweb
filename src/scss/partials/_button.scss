@@ -200,6 +200,10 @@
     &:before {
       color: var(--secondary-text-color);
       font-size: var(--icon-size);
+    }
+
+    &-icon,
+    &:before {
       margin-right: var(--icon-margin);
       position: relative;
     }
@@ -225,6 +229,18 @@
 
         @include text-overflow();
       }
+    }
+
+    &-subtitle {
+      font-size: .875rem;
+      color: var(--secondary-text-color);
+    }
+
+    &-header {
+      color: var(--primary-color);
+      height: 2rem;
+      font-weight: 500;
+      pointer-events: none !important;
     }
 
     .stacked-avatars {

@@ -205,7 +205,8 @@ avatar-element {
 
   &.avatar-30 {
     --size: 30px;
-    --multiplier: 1.8;
+    // --multiplier: 1.8; // text won't be centered
+    --multiplier: 1.6875;
   }
 
   &.avatar-24 {

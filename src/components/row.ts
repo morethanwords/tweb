@@ -16,6 +16,7 @@ import setInnerHTML from "../helpers/dom/setInnerHTML";
 export default class Row {
   public container: HTMLElement;
   public title: HTMLDivElement;
+  public titleRight: HTMLElement;
   public subtitle: HTMLElement;
   public media: HTMLElement;
 
@@ -35,6 +36,7 @@ export default class Row {
     title: string | HTMLElement,
     titleLangKey: LangPackKey,
     titleRight: string | HTMLElement,
+    titleRightSecondary: string | HTMLElement,
     clickable: boolean | ((e: Event) => void),
     navigationTab: SliderSuperTab,
     havePadding: boolean,
@@ -90,7 +92,8 @@ export default class Row {
     
     if(options.title || options.titleLangKey) {
       let c: HTMLElement;
-      if(options.titleRight) {
+      const titleRight = options.titleRight || options.titleRightSecondary;
+      if(titleRight) {
         c = document.createElement('div');
         c.classList.add('row-title-row');
         this.container.append(c);
@@ -112,17 +115,21 @@ export default class Row {
       }
       c.append(this.title);
 
-      if(options.titleRight) {
-        const titleRight = document.createElement('div');
-        titleRight.classList.add('row-title', 'row-title-right');
+      if(titleRight) {
+        const titleRightEl = this.titleRight = document.createElement('div');
+        titleRightEl.classList.add('row-title', 'row-title-right');
 
-        if(typeof(options.titleRight) === 'string') {
-          titleRight.innerHTML = options.titleRight;
-        } else {
-          titleRight.append(options.titleRight);
+        if(options.titleRightSecondary) {
+          titleRightEl.classList.add('row-title-right-secondary');
         }
 
-        c.append(titleRight);
+        if(typeof(titleRight) === 'string') {
+          titleRightEl.innerHTML = titleRight;
+        } else {
+          titleRightEl.append(titleRight);
+        }
+
+        c.append(titleRightEl);
       }
     }
 
