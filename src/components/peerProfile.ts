@@ -10,8 +10,8 @@ import { copyTextToClipboard } from "../helpers/clipboard";
 import replaceContent from "../helpers/dom/replaceContent";
 import ListenerSetter from "../helpers/listenerSetter";
 import { fastRaf } from "../helpers/schedulers";
-import { ChatFull, User } from "../layer";
-import { Channel } from "../lib/appManagers/appChatsManager";
+import { Chat, ChatFull, User } from "../layer";
+import appChatsManager, { Channel } from "../lib/appManagers/appChatsManager";
 import appImManager from "../lib/appManagers/appImManager";
 import appMessagesManager from "../lib/appManagers/appMessagesManager";
 import appNotificationsManager from "../lib/appManagers/appNotificationsManager";
@@ -140,10 +140,11 @@ export default class PeerProfile {
       subtitleLangKey: 'SetUrlPlaceholder',
       icon: 'link',
       clickable: () => {
-        Promise.resolve(appProfileManager.getChatFull(this.peerId.toChatId())).then(chatFull => {
-          copyTextToClipboard(chatFull.exported_invite.link);
+        copyTextToClipboard(this.link.title.textContent);
+        // Promise.resolve(appProfileManager.getChatFull(this.peerId.toChatId())).then(chatFull => {
+          // copyTextToClipboard(chatFull.exported_invite.link);
           toast(I18n.format('LinkCopied', true));
-        });
+        // });
       }
     });
 
@@ -310,9 +311,11 @@ export default class PeerProfile {
 
     // username
     if(this.canBeDetailed()) {
-      let username = appPeersManager.getPeerUsername(peerId);
-      if(username) {
-        setText(appPeersManager.getPeerUsername(peerId), this.username);
+      if(peerId.isUser()) {
+        const username = appPeersManager.getPeerUsername(peerId);
+        if(username) {
+          setText(appPeersManager.getPeerUsername(peerId), this.username);
+        }
       }
       
       if(this.notifications) {
@@ -377,9 +380,16 @@ export default class PeerProfile {
         setText(RichTextProcessor.wrapRichText(peerFull.about), this.bio);
       }
 
-      const exportedInvite = (peerFull as ChatFull.channelFull).exported_invite;
-      if(exportedInvite) {
-        setText(exportedInvite.link, this.link);
+      if(!peerId.isUser()) {
+        const chat: Chat.channel = appChatsManager.getChat(peerId.toChatId());
+        if(chat.username) {
+          setText('https://t.me/' + chat.username, this.link);
+        } else {
+          const exportedInvite = (peerFull as ChatFull.channelFull).exported_invite;
+          if(exportedInvite) {
+            setText(exportedInvite.link, this.link);
+          }
+        }
       }
 
       const location = (peerFull as ChatFull.channelFull).location;
