@@ -111,7 +111,12 @@ export class AppProfileManager {
       if(photo) {
         const hasChatPhoto = photo._ !== 'chatPhotoEmpty';
         const hasFullChatPhoto = !!(fullChat.chat_photo && fullChat.chat_photo._ !== 'photoEmpty'); // chat_photo can be missing
-        if(hasChatPhoto !== hasFullChatPhoto || (photo as ChatPhoto.chatPhoto).photo_id !== fullChat.chat_photo?.id) {
+        if(
+          hasChatPhoto !== hasFullChatPhoto || (
+            hasChatPhoto && 
+            photo.photo_id !== fullChat.chat_photo?.id
+          )
+        ) {
           updated = true;
         }
       }
