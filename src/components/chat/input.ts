@@ -515,6 +515,7 @@ export default class ChatInput {
 
     sendAsButtons[0].element.classList.add('btn-menu-item-header');
     this.sendAsBtnMenu = this.sendAsContainer.firstElementChild as any;
+    this.sendAsBtnMenu.classList.add('scrollable', 'scrollable-y');
     this.sendAsContainer.append(this.sendAsCloseBtn);
 
     this.btnToggleEmoticons = ButtonIcon('none toggle-emoticons', {noRipple: true});
