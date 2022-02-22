@@ -228,6 +228,15 @@ export default class PeerProfile {
       }
     });
 
+    listenerSetter.add(rootScope)('avatar_update', (peerId) => {
+      if(this.peerId === peerId) {
+        // const photo = appPeersManager.getPeerPhoto(peerId);
+        // if(!photo && this.avatars) {
+          this.setAvatar();
+        // }
+      }
+    });
+
     this.setPeerStatusInterval = window.setInterval(this.setPeerStatus, 60e3);
   }
 
@@ -293,6 +302,7 @@ export default class PeerProfile {
 
     if(this.avatars) {
       this.avatars.container.remove();
+      this.avatars.cleanup();
       this.avatars = undefined;
     }
 

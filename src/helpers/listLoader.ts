@@ -51,6 +51,17 @@ export default class ListLoader<T extends {}, P extends {}> {
     return this.count !== undefined ? this.previous.length : -1;
   }
 
+  /* public filter(callback: (item: T, idx: number, arr: T[]) => boolean) {
+    const filter = (item: T, idx: number, arr: T[]) => {
+      if(!callback(item, idx, arr)) {
+        arr.splice(idx, 1);
+      }
+    };
+
+    forEachReverse(this.previous, filter);
+    forEachReverse(this.next, filter);
+  } */
+
   public reset(loadedAll = false) {
     this.current = undefined;
     this.previous = [];

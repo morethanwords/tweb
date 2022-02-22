@@ -9,6 +9,7 @@ import { IS_TOUCH_SUPPORTED } from "../environment/touchSupport";
 import { cancelEvent } from "../helpers/dom/cancelEvent";
 import { attachClickEvent } from "../helpers/dom/clickEvent";
 import filterChatPhotosMessages from "../helpers/filterChatPhotosMessages";
+import ListenerSetter from "../helpers/listenerSetter";
 import ListLoader from "../helpers/listLoader";
 import { fastRaf } from "../helpers/schedulers";
 import { Message, ChatFull, MessageAction, Photo } from "../layer";
@@ -17,6 +18,7 @@ import appMessagesManager, { AppMessagesManager } from "../lib/appManagers/appMe
 import appPeersManager from "../lib/appManagers/appPeersManager";
 import appPhotosManager from "../lib/appManagers/appPhotosManager";
 import appProfileManager from "../lib/appManagers/appProfileManager";
+import rootScope from "../lib/rootScope";
 import { openAvatarViewer } from "./avatar";
 import Scrollable from "./scrollable";
 import SwipeHandler from "./swipeHandler";
@@ -38,7 +40,9 @@ export default class PeerProfileAvatars {
   private listLoader: ListLoader<Photo.photo['id'] | Message.messageService, Photo.photo['id'] | Message.messageService>;
   private peerId: PeerId;
   private intersectionObserver: IntersectionObserver;
-  private loadCallbacks: Map<Element, () => void> = new Map();
+  private loadCallbacks: Map<Element, () => void>;
+  private listenerSetter: ListenerSetter;
+  private swipeHandler: SwipeHandler;
 
   constructor(public scrollable: Scrollable) {
     this.container = document.createElement('div');
@@ -71,6 +75,9 @@ export default class PeerProfileAvatars {
     this.arrowNext.append(nextIcon); */
 
     this.container.append(this.avatars, this.gradient, this.info, this.tabs, this.arrowPrevious, this.arrowNext);
+
+    this.loadCallbacks = new Map();
+    this.listenerSetter = new ListenerSetter();
 
     const checkScrollTop = () => {
       if(this.scrollable.scrollTop !== 0) {
@@ -148,7 +155,7 @@ export default class PeerProfileAvatars {
           });
         // });
       }
-    });
+    }, {listenerSetter: this.listenerSetter});
 
     const cancelNextClick = () => {
       cancel = true;
@@ -158,7 +165,7 @@ export default class PeerProfileAvatars {
     };
 
     let width = 0, x = 0, lastDiffX = 0, lastIndex = 0, minX = 0;
-    const swipeHandler = new SwipeHandler({
+    const swipeHandler = this.swipeHandler = new SwipeHandler({
       element: this.avatars, 
       onSwipe: (xDiff, yDiff) => {
         lastDiffX = xDiff;
@@ -219,6 +226,20 @@ export default class PeerProfileAvatars {
         this.loadNearestToTarget(entry.target);
       });
     });
+
+    /* this.listenerSetter.add(rootScope)('avatar_update', (peerId) => {
+      if(this.peerId === peerId) {
+        const photo = appPeersManager.getPeerPhoto(peerId);
+        if(photo) {
+          const id = photo.photo_id;
+          const previous = this.listLoader.previous;
+          for(let i = 0; i < previous.length; ++i) {
+            if(previous[i] === id)
+          }
+          this.listLoader.previous.forEach((_id, idx, arr) => {});
+        }
+      }
+    }); */
   }
 
   public setPeer(peerId: PeerId) {
@@ -379,5 +400,10 @@ export default class PeerProfileAvatars {
         this.intersectionObserver.unobserve(target);
       }
     });
+  }
+
+  public cleanup() {
+    this.listenerSetter.removeAll();
+    this.swipeHandler.removeListeners();
   }
 }
