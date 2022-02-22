@@ -232,9 +232,9 @@ export default class PeerProfile {
   }
 
   public setPeerStatus = (needClear = false) => {
-    if(!this.peerId) return;
-
     const peerId = this.peerId;
+    if(!peerId || rootScope.myId === peerId) return;
+
     appImManager.setPeerStatus(this.peerId, this.subtitle, needClear, true, () => peerId === this.peerId, !this.isDialog);
   };
 

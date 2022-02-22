@@ -133,6 +133,8 @@ const lang = {
 	"PushNotification.Message.NoPreview": "You have a new message",
   "LogOut.Description": "Are you sure you want to log out?\n\nNote that you can seamlessly use Telegram on all your devices at once.",
 	//"PushNotification.Action.Mute1d.Success": "Notification settings were successfully saved.",
+  //it is from iOS
+  "VoiceChat.DiscussionGroup": "discussion group",
 
   // * android
   "AccDescrEditing": "Editing",
