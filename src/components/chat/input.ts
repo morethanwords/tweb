@@ -220,6 +220,7 @@ export default class ChatInput {
   private sendAsBtnMenu: HTMLElement;
   private sendAsPeerIds: PeerId[];
   public sendAsPeerId: PeerId;
+  private updatingSendAsPromise: Promise<void>;
 
   // private activeContainer: HTMLElement;
 
@@ -1232,6 +1233,7 @@ export default class ChatInput {
       sendAsContainer.remove();
       SetTransition(this.newMessageWrapper, 'has-send-as', false, 0);
       this.sendAsPeerId = undefined;
+      this.updatingSendAsPromise = undefined;
 
       this.updateSendAs(true);
     }
@@ -1266,6 +1268,8 @@ export default class ChatInput {
       subtitle.classList.add('btn-menu-item-subtitle');
       if(sendAsPeerId.isUser()) {
         subtitle.append(i18n('Chat.SendAs.PersonalAccount'));
+      } else if(sendAsPeerId === this.chat.peerId) {
+        subtitle.append(i18n('VoiceChat.DiscussionGroup'));
       } else {
         subtitle.append(this.appProfileManager.getChatMembersString(sendAsPeerId.toChatId()));
       }
@@ -1284,6 +1288,7 @@ export default class ChatInput {
               channelFull.default_send_as = this.appPeersManager.getOutputPeer(sendAsPeerId);
               this.sendAsPeerId = sendAsPeerId;
               this.updateSendAsAvatar(sendAsPeerId);
+              this.updateMessageInputPlaceholder();
 
               const middleware = this.chat.bubbles.getMiddleware();
               const executeButtonsUpdate = () => {
@@ -1368,11 +1373,14 @@ export default class ChatInput {
 
   private updateSendAs(skipAnimation?: boolean) {
     const peerId = this.chat.peerId;
-    if(!peerId.isChannel()) {
+    if(!peerId.isChannel() || this.updatingSendAsPromise) {
       return;
     }
-    
-    const middleware = this.chat.bubbles.getMiddleware();
+
+    const middleware = this.chat.bubbles.getMiddleware(() => {
+      return !this.updatingSendAsPromise || this.updatingSendAsPromise === updatingSendAsPromise;
+    });
+
     const {sendAsContainer} = this;
     const chatId = peerId.toChatId();
     const result = this.getDefaultSendAs();
@@ -1382,11 +1390,12 @@ export default class ChatInput {
       skipAnimation = undefined;
     }
 
-    callbackify(result, (sendAsPeerId) => {
+    const updateSendAsResult = callbackify(result, (sendAsPeerId) => {
       if(!middleware() || sendAsPeerId === undefined) return;
       
       this.sendAsPeerId = sendAsPeerId;
       this.updateSendAsAvatar(sendAsPeerId, skipAnimation);
+      this.updateMessageInputPlaceholder();
 
       this.appChatsManager.getSendAs(chatId).then(peers => {
         if(!middleware()) return;
@@ -1406,7 +1415,32 @@ export default class ChatInput {
       }
 
       SetTransition(this.newMessageWrapper, 'has-send-as', true, skipAnimation ? 0 : SEND_AS_ANIMATION_DURATION, undefined, useRafs);
+
+      this.updatingSendAsPromise = undefined;
     });
+
+    const updatingSendAsPromise = this.updatingSendAsPromise = Promise.resolve(updateSendAsResult);
+    return updatingSendAsPromise;
+  }
+
+  private updateMessageInputPlaceholder() {
+    const i = I18n.weakMap.get(this.messageInput) as I18n.IntlElement;
+    if(i) {
+      const {peerId, threadId} = this.chat;
+      let key: LangPackKey;
+      if(threadId) {
+        key = 'Comment';
+      } else if(this.appPeersManager.isBroadcast(peerId)) {
+        key = 'ChannelBroadcast';
+      } else if((this.sendAsPeerId !== undefined && this.sendAsPeerId !== rootScope.myId) || 
+        this.appMessagesManager.isAnonymousSending(peerId)) {
+        key = 'SendAnonymously';
+      } else {
+        key = 'Message';
+      }
+
+      i.compareAndUpdate({key});
+    }
   }
 
   public updateMessageInput() {
@@ -1422,21 +1456,7 @@ export default class ChatInput {
       chatInput.classList.remove('no-transition');
     }
 
-    const i = I18n.weakMap.get(messageInput) as I18n.IntlElement;
-    if(i) {
-      let key: LangPackKey;
-      if(threadId) {
-        key = 'Comment';
-      } else if(this.appPeersManager.isBroadcast(peerId)) {
-        key = 'ChannelBroadcast';
-      } else if(this.appMessagesManager.isAnonymousSending(peerId)) {
-        key = 'SendAnonymously';
-      } else {
-        key = 'Message';
-      }
-
-      i.compareAndUpdate({key});
-    }
+    this.updateMessageInputPlaceholder();
 
     const visible = this.attachMenuButtons.filter(button => {
       const good = button.verify(peerId, threadId);

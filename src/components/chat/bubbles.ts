@@ -3069,6 +3069,8 @@ export default class ChatBubbles {
     const isOut = our && (!fwdFrom || this.peerId !== rootScope.myId);
     let nameContainer: HTMLElement = bubbleContainer;
 
+    const canHideNameIfMedia = !message.viaBotId && message.fromId === rootScope.myId;
+
     // media
     if(messageMedia/*  && messageMedia._ === 'messageMediaPhoto' */) {
       let attachmentDiv = document.createElement('div');
@@ -3089,7 +3091,7 @@ export default class ChatBubbles {
             canHaveTail = false;
           }
           
-          if(!message.viaBotId) {
+          if(canHideNameIfMedia) {
             bubble.classList.add('hide-name');  
           }
 
@@ -3333,7 +3335,7 @@ export default class ChatBubbles {
               canHaveTail = false;
             }
 
-            if(!message.viaBotId) {
+            if(canHideNameIfMedia) {
               bubble.classList.add('hide-name');
             }
             
@@ -3540,7 +3542,7 @@ export default class ChatBubbles {
     let savedFrom = '';
     
     // const needName = ((peerId.isAnyChat() && (peerId !== message.fromId || our)) && message.fromId !== rootScope.myId) || message.viaBotId;
-    const needName = (message.fromId !== rootScope.myId && this.appPeersManager.isAnyChat(peerId) && !this.appPeersManager.isBroadcast(peerId)) || message.viaBotId || (message as Message.message).pFlags.sponsored;
+    const needName = (message.fromId !== rootScope.myId && this.appPeersManager.isAnyGroup(peerId)) || message.viaBotId || (message as Message.message).pFlags.sponsored;
     if(needName || fwdFrom || message.reply_to_mid) { // chat
       let title: HTMLElement | DocumentFragment;
       let titleVia: typeof title;
