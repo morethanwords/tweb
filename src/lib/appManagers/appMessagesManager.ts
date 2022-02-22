@@ -4668,7 +4668,7 @@ export class AppMessagesManager {
     }
 
     const recentReactions = reactions?.recent_reactions;
-    if(recentReactions?.length) {
+    if(recentReactions?.length && message.pFlags.out) {
       const recentReaction = recentReactions[recentReactions.length - 1];
       const previousReactions = message.reactions;
       const previousRecentReactions = previousReactions?.recent_reactions;
