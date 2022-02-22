@@ -3561,7 +3561,7 @@ export class AppMessagesManager {
   public canDeleteMessage(message: MyMessage) {
     return message && (
       message.peerId.isUser() 
-      || message.fromId === rootScope.myId 
+      || message.pFlags.out 
       || appChatsManager.getChat(message.peerId.toChatId())._ === 'chat' 
       || appChatsManager.hasRights(message.peerId.toChatId(), 'delete_messages')
     ) && !message.pFlags.is_outgoing;
