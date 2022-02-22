@@ -101,7 +101,7 @@
   padding: .5rem 0;
   border-radius: $border-radius-medium;
   opacity: 0;
-  transform: scale(.8);
+  transform: scale(.8) !important;
   transition: opacity var(--btn-menu-transition), transform var(--btn-menu-transition), visibility var(--btn-menu-transition);
   font-size: 1rem;
 
@@ -120,7 +120,7 @@
   &.active {
     visibility: visible;
     opacity: 1;
-    transform: scale3d(1, 1, 1); // * scale3d (NOT scale) will fix jumping text
+    transform: scale3d(1, 1, 1) !important; // * scale3d (NOT scale) will fix jumping text
   }
 
   &:not(.active) {
@@ -206,6 +206,10 @@
     &:before {
       margin-right: var(--icon-margin);
       position: relative;
+    }
+
+    &-icon {
+      flex: 0 0 auto;
     }
 
     @include respond-to(handhelds) {

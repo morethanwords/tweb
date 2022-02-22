@@ -738,6 +738,8 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
 	--padding-vertical: .3125rem;
 	--padding-horizontal: var(--chat-input-inner-padding);
 	--padding: var(--padding-vertical) var(--padding-horizontal);
+  --button-size: 2.125rem;
+  --button-horizontal-margin: .125rem;
 	display: flex;
 	align-items: center;
 	flex-direction: column;
@@ -1162,8 +1164,6 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
 	}
 
 	.new-message-wrapper {
-    --button-size: 2.125rem;
-    --button-horizontal-margin: .125rem;
     --send-as-size: 1.875rem;
     --send-as-margin-left: .25rem;
     --send-as-margin-right: .375rem;
@@ -1180,24 +1180,43 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
         position: absolute;
         flex: 0 0 auto;
         // margin: 0 0.375rem .4375rem var(--send-as-margin-left);
-        margin: 0 0 .4375rem var(--send-as-margin-left);
+        margin-left: var(--send-as-margin-left);
+        bottom: calc(var(--padding-vertical) + .4375rem);
         cursor: pointer;
         transform: scale(0);
         background: none !important;
+        z-index: 2;
 
-        .btn-menu-item-icon {
-          margin-right: calc(var(--icon-margin) - .5rem);
+        .btn-menu {
+          max-height: 20rem;
+          max-width: 20rem;
+          top: auto;
+          right: auto;
+          left: calc(var(--padding-horizontal) * -1 - .25rem) !important;
+          width: auto;
+          height: auto;
+          transform: scale3d(1, 1, 1);
 
-          &.active:before {
-            --offset: -.25rem;
-            content: " ";
-            position: absolute;
-            top: var(--offset);
-            right: var(--offset);
-            bottom: var(--offset);
-            left: var(--offset);
-            border: .125rem solid var(--primary-color);
-            border-radius: 50%;
+          &-item {
+            &-icon {
+              margin-right: calc(var(--icon-margin) - .5rem);
+
+              &.active:before {
+                --offset: -.25rem;
+                content: " ";
+                position: absolute;
+                top: var(--offset);
+                right: var(--offset);
+                bottom: var(--offset);
+                left: var(--offset);
+                border: .125rem solid var(--primary-color);
+                border-radius: 50%;
+              }
+            }
+
+            &-text {
+              @include text-overflow();
+            }
           }
         }
       }
@@ -1206,6 +1225,7 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
         position: absolute;
         transform: scale(0);
         opacity: 0;
+        pointer-events: none;
 
         &.is-visible {
           &:not(.backwards) {
