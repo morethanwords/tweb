@@ -79,19 +79,28 @@ export default class AppSettingsTab extends SliderSuperTab {
     this.profile.setPeer(rootScope.myId);
     this.profile.fillProfileElements();
 
-    const user = appUsersManager.getSelf();
-    if(user.photo?._ === 'userProfilePhoto') {
-      const changeAvatarBtn = Button('btn-circle btn-corner z-depth-1 profile-change-avatar', {icon: 'cameraadd'});
-      changeAvatarBtn.addEventListener('click', () => {
-        const canvas = document.createElement('canvas');
-        new PopupAvatar().open(canvas, (upload) => {
-          upload().then(inputFile => {
-            return appProfileManager.uploadProfilePhoto(inputFile);
-          });
+    const changeAvatarBtn = Button('btn-circle btn-corner z-depth-1 profile-change-avatar', {icon: 'cameraadd'});
+    changeAvatarBtn.addEventListener('click', () => {
+      const canvas = document.createElement('canvas');
+      new PopupAvatar().open(canvas, (upload) => {
+        upload().then(inputFile => {
+          return appProfileManager.uploadProfilePhoto(inputFile);
         });
       });
-      this.profile.element.lastElementChild.firstElementChild.append(changeAvatarBtn);
-    }
+    });
+    this.profile.element.lastElementChild.firstElementChild.append(changeAvatarBtn);
+    
+    const updateChangeAvatarBtn = () => {
+      const user = appUsersManager.getSelf();
+      changeAvatarBtn.classList.toggle('hide', user.photo?._ !== 'userProfilePhoto');
+    };
+    
+    updateChangeAvatarBtn();
+    this.listenerSetter.add(rootScope)('avatar_update', (peerId) => {
+      if(rootScope.myId === peerId) {
+        updateChangeAvatarBtn();
+      }
+    });
 
     /* const div = document.createElement('div');
     //div.style.cssText = 'border-radius: 8px; overflow: hidden; width: 396px; height: 264px; flex: 0 0 auto; position: relative; margin: 10rem 0 10rem auto;';

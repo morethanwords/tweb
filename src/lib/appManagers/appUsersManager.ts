@@ -81,7 +81,7 @@ export class AppUsersManager {
         const userId = update.user_id;
         const user = this.users[userId];
         if(user) {
-          if((user.photo as UserProfilePhoto.userProfilePhoto)?.photo_id === (update.photo as UserProfilePhoto.userProfilePhoto).photo_id) {
+          if((user.photo as UserProfilePhoto.userProfilePhoto)?.photo_id === (update.photo as UserProfilePhoto.userProfilePhoto)?.photo_id) {
             return;
           }
 

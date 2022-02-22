@@ -12,7 +12,7 @@
 import { MOUNT_CLASS_TO } from "../../config/debug";
 import { tsNow } from "../../helpers/date";
 import { numberThousandSplitter } from "../../helpers/number";
-import { ChannelParticipantsFilter, ChannelsChannelParticipants, ChannelParticipant, Chat, ChatFull, ChatParticipants, ChatPhoto, ExportedChatInvite, InputChannel, InputFile, SendMessageAction, Update, UserFull } from "../../layer";
+import { ChannelParticipantsFilter, ChannelsChannelParticipants, ChannelParticipant, Chat, ChatFull, ChatParticipants, ChatPhoto, ExportedChatInvite, InputChannel, InputFile, SendMessageAction, Update, UserFull, Photo, PhotoSize } from "../../layer";
 import { LangPackKey, i18n } from "../langPack";
 //import apiManager from '../mtproto/apiManager';
 import apiManager from '../mtproto/mtprotoworker';
@@ -527,6 +527,23 @@ export class AppProfileManager {
     return apiManager.invokeApi('photos.uploadProfilePhoto', {
       file: inputFile
     }).then((updateResult) => {
+      // ! sometimes can have no user in users
+      const photo = updateResult.photo as Photo.photo;
+      if(!updateResult.users.length) {
+        const strippedThumb = photo.sizes.find(size => size._ === 'photoStrippedSize') as PhotoSize.photoStrippedSize;
+        updateResult.users.push({
+          ...appUsersManager.getSelf(), 
+          photo: {
+            _: 'userProfilePhoto',
+            dc_id: photo.dc_id,
+            photo_id: photo.id,
+            stripped_thumb: strippedThumb?.bytes,
+            pFlags: {
+
+            }
+          }
+        });
+      }
       appUsersManager.saveApiUsers(updateResult.users);
 
       const myId = rootScope.myId;
