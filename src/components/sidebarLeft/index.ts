@@ -241,7 +241,7 @@ export class AppSidebarLeft extends SidebarSlider {
     });
     const t = document.createElement('span');
     t.classList.add('btn-menu-footer-text');
-    t.innerHTML = 'Telegram Web' + App.suffix + ' alpha ' + App.versionFull;
+    t.innerHTML = 'Telegram Web' + App.suffix + ' '/* ' alpha ' */ + App.versionFull;
     btnMenuFooter.append(t); 
     btnMenu.classList.add('has-footer');
     btnMenu.append(btnMenuFooter);
