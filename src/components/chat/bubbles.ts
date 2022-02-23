@@ -392,8 +392,8 @@ export default class ChatBubbles {
 
         //getHeavyAnimationPromise().then(() => {
           fastRaf(() => {
-            if(bubble.classList.contains('is-sending')) {
-              bubble.classList.remove('is-sending');
+            if(bubble.classList.contains('is-outgoing')) {
+              bubble.classList.remove('is-sending', 'is-outgoing');
               bubble.classList.add(this.peerId === rootScope.myId && this.chat.type !== 'scheduled' ? 'is-read' : 'is-sent');
             }
           });
@@ -1750,11 +1750,11 @@ export default class ChatBubbles {
       if(msgId > 0 && msgId <= maxId) {
         const bubble = this.bubbles[msgId];
         if(bubble) {
-          if(bubble.classList.contains('is-sending')) {
+          if(bubble.classList.contains('is-outgoing')) {
             continue;
           }
           
-          bubble.classList.remove('is-sent', 'is-sending'); // is-sending can be when there are bulk of updates (e.g. sending command to Stickers bot)
+          bubble.classList.remove('is-sent', 'is-sending', 'is-outgoing'); // is-sending can be when there are bulk of updates (e.g. sending command to Stickers bot)
           bubble.classList.add('is-read');
         }
         
@@ -2714,7 +2714,7 @@ export default class ChatBubbles {
     
     const peerId = this.peerId;
     // * can't use 'message.pFlags.out' here because this check will be used to define side of message (left-right)
-    const our = message.fromId === rootScope.myId || (message.pFlags.out && this.appPeersManager.isMegagroup(this.peerId));
+    const our = message.fromId === rootScope.myId || (message.pFlags.out && this.appPeersManager.isMegagroup(peerId));
     
     const messageDiv = document.createElement('div');
     messageDiv.classList.add('message');
@@ -3054,6 +3054,10 @@ export default class ChatBubbles {
       if(isOutgoing) status = 'is-sending';
       else status = message.pFlags.unread || (message as Message.message).pFlags.is_scheduled ? 'is-sent' : 'is-read';
       bubble.classList.add(status);
+    }
+
+    if(isOutgoing) {
+      bubble.classList.add('is-outgoing');
     }
 
     const messageWithReplies = isMessage && this.appMessagesManager.getMessageWithReplies(message);
