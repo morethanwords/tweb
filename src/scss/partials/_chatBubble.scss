@@ -1023,9 +1023,15 @@ $bubble-beside-button-width: 38px;
         margin-top: 1px;
       }
     }
+
+    .webpage-name,
+    .text,
+    .title {
+      font-size: var(--messages-secondary-text-size);
+      line-height: var(--messages-secondary-line-height);
+    }
     
     .webpage-name {
-      font-size: var(--messages-secondary-text-size);
       text-decoration: none;
       
       @include hover() {
@@ -1036,7 +1042,6 @@ $bubble-beside-button-width: 38px;
     .text {
       word-break: break-word;
       margin-top: 1px;
-      font-size: var(--messages-secondary-text-size);
     }
 
     .quote {
@@ -1064,7 +1069,6 @@ $bubble-beside-button-width: 38px;
     }
   }
   
-  .web, 
   .reply {
     font-size: var(--messages-secondary-text-size);
   }
@@ -1834,13 +1838,12 @@ $bubble-beside-button-width: 38px;
   .name {
   // &-content > .name, 
   // .document-wrapper > .name {
-    /* padding: .2675rem 9px 0 9px; */
-    /* padding: .32rem 9px 0 9px; */
-    padding: 5px 9px 0 9px;
+    padding: .3125rem .625rem 0 .625rem;
     font-weight: 500 !important;
     /* padding-bottom: 4px; */
     color: var(--primary-color);
-    font-size: .9rem;
+    font-size: .875rem;
+    line-height: 1.25rem;
     max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;

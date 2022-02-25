@@ -151,8 +151,8 @@
   
   &-title, 
   &-subtitle {
-    font-size: 14px;
-    line-height: var(--line-height);
+    font-size: var(--font-size-14);
+    line-height: var(--line-height-14);
 
     @include text-overflow();
   }
@@ -484,7 +484,7 @@
 
   &-subtitle {
     .animated-super-row {
-      font-size: .875rem;
+      font-size: var(--font-size-14);
       line-height: 16px;
       overflow: hidden;
       white-space: nowrap;
@@ -630,8 +630,8 @@
 
   &-title, 
   &-subtitle {
-    font-size: .875rem;
-    line-height: var(--line-height);
+    font-size: var(--font-size-14);
+    line-height: var(--line-height-14);
     width: 100%;
     max-width: 100%;
 
