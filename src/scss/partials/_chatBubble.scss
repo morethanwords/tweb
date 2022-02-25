@@ -1114,9 +1114,7 @@ $bubble-beside-button-width: 38px;
     min-width: 10rem;
     width: auto;
 
-    @include hover() {
-      background-color: var(--light-filled-message-primary-color);
-    }
+    
 
     &-media {
       top: .125rem;
@@ -1138,6 +1136,14 @@ $bubble-beside-button-width: 38px;
   .message + .reply {
     // margin-bottom: .125rem; // ! JS2 mockup
     margin-bottom: 0; // ! same margin as between name and message
+  }
+
+  &:not(.just-media) {
+    .reply {
+      @include hover() {
+        background-color: var(--light-filled-message-primary-color);
+      }
+    }
   }
 
   &.just-media {
