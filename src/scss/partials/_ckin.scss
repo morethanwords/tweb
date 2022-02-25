@@ -216,29 +216,55 @@
   }
 
   .player-volume {
-    margin: 0 .125rem 0 .625rem;
+    --icon-size: 2.25rem;
+    --icon-margin-right: .5rem;
+    --selector-size: 50px;
+    --selector-thumb-size: .75rem;
+    --hide-width: var(--icon-size);
+    --show-width: calc(var(--icon-size) + var(--icon-margin-right) + var(--selector-size) + var(--selector-thumb-size) * .75);
+    // margin: 0 .125rem;
     display: flex;
     align-items: center;
+    width: var(--hide-width);
+    overflow: hidden;
+
+    @include animation-level(2) {
+      transition: width var(--layer-transition);
+    }
 
     html.is-touch & {
       // margin-left: .125rem;
       display: none;
     }
+
+    html:not(.is-touch) & {
+      & + .time {
+        margin-left: .5rem;
+      }
+    }
+
+    @include hover() {
+      width: var(--show-width);
+    }
     
     &__icon {
-      fill: #fff;
-      width: 2.25rem;
-      height: 2.25rem;
-      margin-right: .5rem;
+      color: #fff;
+      width: var(--icon-size);
+      height: var(--icon-size);
+      margin-right: var(--icon-margin-right);
       cursor: pointer;
       padding: .375rem;
+      font-size: 1.5rem;
+      display: flex;
     }
 
     .progress-line {
       --color: #fff;
+      --thumb-size: var(--selector-thumb-size);
+      --height: 4px;
       margin: 0;
-      width: 50px;
-      --thumb-size: 15px;
+      width: var(--selector-size);
+      min-width: var(--selector-size);
 
       // https://stackoverflow.com/a/4816050
       html.is-ios & {

@@ -711,14 +711,8 @@
     }
 
     .player-volume__icon {
-      fill: var(--secondary-text-color);
-      width: inherit;
-      height: inherit;
+      display: flex;
       cursor: pointer;
-    }
-
-    &.active .player-volume__icon {
-      fill: var(--primary-color);
     }
 
     .progress-line {
