@@ -648,9 +648,9 @@
 
   .row {
     .btn-primary {
-      height: 30px;
-      padding: 0 12px;
-      font-size: 15px;
+      height: 1.875rem;
+      padding: 0 .75rem;
+      font-size: .9375rem;
       width: auto;
       transition: width 0.2s;
       margin: 0;
@@ -658,7 +658,8 @@
       right: 1rem;
       top: 50%;
       transform: translateY(-50%);
-      border-radius: 15px;
+      border-radius: .9375rem;
+      line-height: 1.875rem;
 
       body.animation-level-0 & {
         transition: none;
