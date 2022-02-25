@@ -93,6 +93,7 @@ import type ReactionElement from "./reaction";
 import type { AppReactionsManager } from "../../lib/appManagers/appReactionsManager";
 import RLottiePlayer from "../../lib/rlottie/rlottiePlayer";
 import { pause } from "../../helpers/schedulers/pause";
+import ScrollSaver from "../../helpers/scrollSaver";
 
 const USE_MEDIA_TAILS = false;
 const IGNORE_ACTIONS: Set<Message.messageService['action']['_']> = new Set([
@@ -426,11 +427,11 @@ export default class ChatBubbles {
         if(!mounted) return;
 
         const updatePosition = this.chat.type === 'scheduled';
-        const scrolledDown = this.scrolledDown;
+        
+        const scrollSaver = new ScrollSaver(this.scrollable, true);
+        scrollSaver.save();
         this.safeRenderMessage(mounted.message, true, false, mounted.bubble, updatePosition);
-        if(scrolledDown) {
-          this.scrollToBubbleIfLast(mounted.bubble);
-        }
+        scrollSaver.restore();
 
         if(updatePosition) {
           (this.messagesQueuePromise || Promise.resolve()).then(() => {
@@ -464,26 +465,25 @@ export default class ChatBubbles {
           return;
         }
 
-        const scrolledDown = this.scrolledDown;
-        let bubble: HTMLElement;
-        if(scrolledDown) {
-          bubble = this.getBubbleByMessage(message);
-        }
-
-        const key = message.peerId + '_' + message.mid;
-        const set = REACTIONS_ELEMENTS.get(key);
-        if(!set) {
-          rootScope.dispatchEvent('missed_reactions_element', {message, changedResults});
+        const scrollSaver = new ScrollSaver(this.scrollable, true);
+        const bubble = this.getBubbleByMessage(message);
+        if(!bubble) {
           return;
         }
 
-        for(const element of set) {
-          element.update(message, changedResults);
+        scrollSaver.save();
+
+        const key = message.peerId + '_' + message.mid;
+        const set = REACTIONS_ELEMENTS.get(key);
+        if(set) {
+          for(const element of set) {
+            element.update(message, changedResults);
+          }
+        } else {
+          rootScope.dispatchEvent('missed_reactions_element', {message, changedResults});
         }
 
-        if(scrolledDown && bubble) {
-          this.scrollToBubbleIfLast(bubble);
-        }
+        scrollSaver.restore();
       });
     }
 
@@ -3845,32 +3845,11 @@ export default class ChatBubbles {
       this.log('performHistoryResult: will render some messages:', history.length, this.isHeavyAnimationInProgress, this.messagesQueuePromise);
     } */
 
-    //const padding = 10000;
-    //const realLength = this.scrollable.container.childElementCount;
-    let previousScrollHeightMinusTop: number/* , previousScrollHeight: number */;
-    //if(realLength > 0/*  && (reverse || isSafari) */) { // for safari need set when scrolling bottom too
-    //if(!this.scrollable.isHeavyScrolling) {
-      this.messagesQueueOnRender = () => {
-        const {scrollTop, scrollHeight} = this.scrollable;
-
-        //previousScrollHeight = scrollHeight;
-        //previousScrollHeight = scrollHeight + padding;
-        previousScrollHeightMinusTop = reverse ? scrollHeight - scrollTop : scrollTop;
-
-        //this.chatInner.style.paddingTop = padding + 'px';
-        /* if(reverse) {
-          previousScrollHeightMinusTop = this.scrollable.scrollHeight - scrollTop;
-        } else {
-          previousScrollHeightMinusTop = scrollTop;
-        } */
-
-        /* if(DEBUG) {
-          this.log('performHistoryResult: messagesQueueOnRender, scrollTop:', scrollTop, scrollHeight, previousScrollHeightMinusTop);
-        } */
-        this.messagesQueueOnRender = undefined;
-      };
-    //}
-    //}
+    let scrollSaver: ScrollSaver;
+    this.messagesQueueOnRender = () => {
+      scrollSaver = new ScrollSaver(this.scrollable, reverse);
+      scrollSaver.save();
+    };
 
     if(this.needReflowScroll) {
       reflowScrollableElement(this.scrollable.container);
@@ -3916,44 +3895,8 @@ export default class ChatBubbles {
       }
     }
 
-    if(previousScrollHeightMinusTop !== undefined) {
-      /* const scrollHeight = this.scrollable.scrollHeight;
-      const addedHeight = scrollHeight - previousScrollHeight;
-      
-      this.chatInner.style.paddingTop = (10000 - addedHeight) + 'px'; */
-      /* const scrollHeight = this.scrollable.scrollHeight;
-      const addedHeight = scrollHeight - previousScrollHeight;
-      
-      this.chatInner.style.paddingTop = (padding - addedHeight) + 'px';
-      
-      //const newScrollTop = reverse ? scrollHeight - previousScrollHeightMinusTop : previousScrollHeightMinusTop;
-      const newScrollTop = reverse ? scrollHeight - addedHeight - previousScrollHeightMinusTop : previousScrollHeightMinusTop;
-      this.log('performHistoryResult: will set scrollTop', 
-      previousScrollHeightMinusTop, this.scrollable.scrollHeight, 
-      newScrollTop, this.scrollable.container.clientHeight); */
-      //const newScrollTop = reverse ? scrollHeight - previousScrollHeightMinusTop : previousScrollHeightMinusTop;
-      const newScrollTop = reverse ? this.scrollable.scrollHeight - previousScrollHeightMinusTop : previousScrollHeightMinusTop;
-      
-      /* if(DEBUG) {
-        this.log('performHistoryResult: will set up scrollTop:', newScrollTop, this.isHeavyAnimationInProgress);
-      } */
-
-      // touchSupport for safari iOS
-      //isTouchSupported && isApple && (this.scrollable.container.style.overflow = 'hidden');
-      this.scrollable.scrollTop = newScrollTop;
-      //this.scrollable.scrollTop = this.scrollable.scrollHeight;
-      //isTouchSupported && isApple && (this.scrollable.container.style.overflow = '');
-
-      this.scrollable.lastScrollPosition = newScrollTop;
-      this.scrollable.lastScrollDirection = 0;
-
-      if(IS_SAFARI/*  && !isAppleMobile */) { // * fix blinking and jumping
-        reflowScrollableElement(this.scrollable.container);
-      }
-
-      /* if(DEBUG) {
-        this.log('performHistoryResult: have set up scrollTop:', newScrollTop, this.scrollable.scrollTop, this.scrollable.scrollHeight, this.isHeavyAnimationInProgress);
-      } */
+    if(scrollSaver) {
+      scrollSaver.restore();
     }
 
     return true;
