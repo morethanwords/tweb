@@ -88,7 +88,7 @@ import { CallType } from "../../lib/calls/types";
 import getVisibleRect from "../../helpers/dom/getVisibleRect";
 import PopupJoinChatInvite from "../popups/joinChatInvite";
 import { InternalLink, INTERNAL_LINK_TYPE } from "../../lib/appManagers/internalLink";
-import ReactionsElement from "./reactions";
+import ReactionsElement, { REACTIONS_ELEMENTS } from "./reactions";
 import type ReactionElement from "./reaction";
 import type { AppReactionsManager } from "../../lib/appManagers/appReactionsManager";
 import RLottiePlayer from "../../lib/rlottie/rlottiePlayer";
@@ -457,6 +457,33 @@ export default class ChatBubbles {
         }
 
         this.appendReactionsElementToBubble(bubble, message, changedResults);
+      });
+
+      this.listenerSetter.add(rootScope)('message_reactions', ({message, changedResults}) => {
+        if(this.peerId !== message.peerId) {
+          return;
+        }
+
+        const scrolledDown = this.scrolledDown;
+        let bubble: HTMLElement;
+        if(scrolledDown) {
+          bubble = this.getBubbleByMessage(message);
+        }
+
+        const key = message.peerId + '_' + message.mid;
+        const set = REACTIONS_ELEMENTS.get(key);
+        if(!set) {
+          rootScope.dispatchEvent('missed_reactions_element', {message, changedResults});
+          return;
+        }
+
+        for(const element of set) {
+          element.update(message, changedResults);
+        }
+
+        if(scrolledDown && bubble) {
+          this.scrollToBubbleIfLast(bubble);
+        }
       });
     }
 
@@ -2462,7 +2489,7 @@ export default class ChatBubbles {
           });
         };
 
-        afterSetPromise.then(() => {
+        Promise.all([afterSetPromise, getHeavyAnimationPromise(), pause(500)]).then(() => {
           fetchReactions();
         });
       }

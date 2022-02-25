@@ -14,19 +14,8 @@ import ReactionElement, { ReactionLayoutType, REACTION_DISPLAY_BLOCK_COUNTER_AT 
 const CLASS_NAME = 'reactions';
 const TAG_NAME = CLASS_NAME + '-element';
 
-const elements: Map<string, Set<ReactionsElement>> = new Map();
-rootScope.addEventListener('message_reactions', ({message, changedResults}) => {
-  const key = message.peerId + '_' + message.mid;
-  const set = elements.get(key);
-  if(!set) {
-    rootScope.dispatchEvent('missed_reactions_element', {message, changedResults});
-    return;
-  }
-
-  for(const element of set) {
-    element.update(message, changedResults);
-  }
-});
+const REACTIONS_ELEMENTS: Map<string, Set<ReactionsElement>> = new Map();
+export {REACTIONS_ELEMENTS};
 
 export default class ReactionsElement extends HTMLElement {
   private message: Message.message;
@@ -43,9 +32,9 @@ export default class ReactionsElement extends HTMLElement {
   }
   
   connectedCallback() {
-    let set = elements.get(this.key);
+    let set = REACTIONS_ELEMENTS.get(this.key);
     if(!set) {
-      elements.set(this.key, set = new Set());
+      REACTIONS_ELEMENTS.set(this.key, set = new Set());
     }
 
     set.add(this);
@@ -57,10 +46,10 @@ export default class ReactionsElement extends HTMLElement {
   }
 
   disconnectedCallback() {
-    const set = elements.get(this.key);
+    const set = REACTIONS_ELEMENTS.get(this.key);
     set.delete(this);
     if(!set.size) {
-      elements.delete(this.key);
+      REACTIONS_ELEMENTS.delete(this.key);
     }
   }
 
