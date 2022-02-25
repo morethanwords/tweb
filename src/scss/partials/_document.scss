@@ -118,21 +118,18 @@
   &-name {
     white-space: nowrap;
     font-weight: 500;
-    font-size: 1rem;
+    font-size: var(--font-size-16);
+    line-height: var(--line-height-16);
   }
 
   &-size {
     white-space: nowrap;
     color: var(--secondary-text-color);
-    font-size: .875rem;
+    font-size: var(--font-size-14);
+    line-height: var(--line-height-14);
     //padding-right: 32px;
     text-overflow: ellipsis;
     overflow: hidden;
-  }
-
-  &-name, 
-  &-size {
-    line-height: var(--line-height);
   }
 
   .preloader-container {
