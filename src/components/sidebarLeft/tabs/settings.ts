@@ -24,11 +24,11 @@ import { SettingSection } from "..";
 import Row from "../../row";
 import AppActiveSessionsTab from "./activeSessions";
 import { i18n, LangPackKey } from "../../../lib/langPack";
-import { AccountAuthorizations, Authorization } from "/Users/kuzmenko/Documents/projects/tweb/src/layer";
 import { SliderSuperTabConstructable } from "../../sliderTab";
 import PopupAvatar from "../../popups/avatar";
 import appProfileManager from "../../../lib/appManagers/appProfileManager";
 import appUsersManager from "../../../lib/appManagers/appUsersManager";
+import { AccountAuthorizations, Authorization } from "../../../layer";
 //import AppMediaViewer from "../../appMediaViewerNew";
 
 export default class AppSettingsTab extends SliderSuperTab {
