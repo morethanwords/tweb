@@ -3100,7 +3100,7 @@ export default class ChatBubbles {
     const isOut = our && (!fwdFrom || this.peerId !== rootScope.myId);
     let nameContainer: HTMLElement = bubbleContainer;
 
-    const canHideNameIfMedia = !message.viaBotId && message.fromId === rootScope.myId;
+    const canHideNameIfMedia = !message.viaBotId && (message.fromId === rootScope.myId || !message.pFlags.out);
 
     // media
     if(messageMedia/*  && messageMedia._ === 'messageMediaPhoto' */) {
