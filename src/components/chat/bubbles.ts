@@ -207,6 +207,8 @@ export default class ChatBubbles {
   private hoverBubble: HTMLElement;
   private hoverReaction: HTMLElement;
 
+  private onUpdateScrollSaver: ScrollSaver;
+
   // private reactions: Map<number, ReactionsElement>;
 
   constructor(
@@ -428,10 +430,8 @@ export default class ChatBubbles {
 
         const updatePosition = this.chat.type === 'scheduled';
         
-        const scrollSaver = new ScrollSaver(this.scrollable, true);
-        scrollSaver.save();
+        this.saveOnUpdateScroll();
         this.safeRenderMessage(mounted.message, true, false, mounted.bubble, updatePosition);
-        scrollSaver.restore();
 
         if(updatePosition) {
           (this.messagesQueuePromise || Promise.resolve()).then(() => {
@@ -465,13 +465,12 @@ export default class ChatBubbles {
           return;
         }
 
-        const scrollSaver = new ScrollSaver(this.scrollable, true);
         const bubble = this.getBubbleByMessage(message);
         if(!bubble) {
           return;
         }
 
-        scrollSaver.save();
+        this.saveOnUpdateScroll();
 
         const key = message.peerId + '_' + message.mid;
         const set = REACTIONS_ELEMENTS.get(key);
@@ -482,8 +481,6 @@ export default class ChatBubbles {
         } else {
           rootScope.dispatchEvent('missed_reactions_element', {message, changedResults});
         }
-
-        scrollSaver.restore();
       });
     }
 
@@ -775,6 +772,7 @@ export default class ChatBubbles {
           let different = false;
           postViewsElements.forEach(postViews => {
             if(different || postViews.innerHTML !== str) {
+              this.saveOnUpdateScroll();
               different = true;
               postViews.innerHTML = str;
             }
@@ -919,6 +917,18 @@ export default class ChatBubbles {
       // @ts-ignore
       const resizeObserver = new ResizeObserver(processEntries);
       resizeObserver.observe(this.bubblesContainer);
+    }
+  }
+
+  private saveOnUpdateScroll() {
+    if(!this.onUpdateScrollSaver) {
+      this.onUpdateScrollSaver = new ScrollSaver(this.scrollable, true);
+      setTimeout(() => {
+        this.onUpdateScrollSaver.restore();
+        this.onUpdateScrollSaver = undefined;
+      }, 0);
+
+      this.onUpdateScrollSaver.save();
     }
   }
 
@@ -3904,7 +3914,7 @@ export default class ChatBubbles {
     }
 
     if(scrollSaver) {
-      scrollSaver.restore();
+      scrollSaver.restore(history.length === 1 && !reverse ? false : true);
     }
 
     return true;
