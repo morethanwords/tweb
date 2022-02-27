@@ -4483,7 +4483,7 @@ export default class ChatBubbles {
 
     const isBroadcast = this.appPeersManager.isBroadcast(peerId);
     //console.time('appImManager call getHistory');
-    const pageCount = Math.min(30, windowSize.height / 75/*  * 1.25 */ | 0);
+    const pageCount = Math.min(30, windowSize.height / 48/*  * 1.25 */ | 0);
     //const loadCount = Object.keys(this.bubbles).length > 0 ? 50 : pageCount;
     const realLoadCount = isBroadcast ? 20 : (Object.keys(this.bubbles).length > 0 ? Math.max(35, pageCount) : pageCount);
     //const realLoadCount = pageCount;//const realLoadCount = 50;
