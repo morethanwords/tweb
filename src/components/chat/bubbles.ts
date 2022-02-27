@@ -60,7 +60,7 @@ import { toast } from "../toast";
 import { getElementByPoint } from "../../helpers/dom/getElementByPoint";
 import { getMiddleware } from "../../helpers/middleware";
 import { cancelEvent } from "../../helpers/dom/cancelEvent";
-import { attachClickEvent } from "../../helpers/dom/clickEvent";
+import { attachClickEvent, simulateClickEvent } from "../../helpers/dom/clickEvent";
 import htmlToDocumentFragment from "../../helpers/dom/htmlToDocumentFragment";
 import positionElementByIndex from "../../helpers/dom/positionElementByIndex";
 import reflowScrollableElement from "../../helpers/dom/reflowScrollableElement";
@@ -1384,6 +1384,13 @@ export default class ChatBubbles {
       const message = this.chat.getMessage(messageId);
       if(!message) {
         this.log.warn('no message by messageId:', messageId);
+        return;
+      }
+
+      const preloader = (groupedItem || bubble).querySelector<HTMLElement>('.preloader-container');
+      if(preloader) {
+        simulateClickEvent(preloader);
+        cancelEvent(e);
         return;
       }
 
@@ -3212,7 +3219,7 @@ export default class ChatBubbles {
                 isOut,
                 group: CHAT_ANIMATION_GROUP,
                 loadPromises,
-                autoDownloadSize: this.chat.autoDownload.video,
+                autoDownload: this.chat.autoDownload,
               });
               //}
             } else {
@@ -3401,7 +3408,7 @@ export default class ChatBubbles {
                 middleware: this.getMiddleware(),
                 group: CHAT_ANIMATION_GROUP,
                 loadPromises,
-                autoDownloadSize: this.chat.autoDownload.video,
+                autoDownload: this.chat.autoDownload,
                 searchContext: isRound ? {
                   peerId: this.peerId,
                   inputFilter: {_: 'inputMessagesFilterRoundVoice'},
