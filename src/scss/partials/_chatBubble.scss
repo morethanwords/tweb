@@ -2014,20 +2014,8 @@ $bubble-beside-button-width: 38px;
       }
   
       &-avatars {
-        display: flex;
-        flex-direction: row-reverse;
-  
-        avatar-element {
-          width: 34px;
-          height: 34px;
-          border: 2px solid var(--surface-color);
-          cursor: pointer;
-          z-index: 0; // * fix border blinking
-
-          &:not(:first-child) {
-            margin-right: -14px;
-          }
-        }
+        --margin-right: -.875rem;
+        --border-size: 2px;
       }
   
       .tgico-next {
