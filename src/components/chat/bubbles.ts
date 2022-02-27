@@ -2418,7 +2418,7 @@ export default class ChatBubbles {
 
       //if(dialog && lastMsgID && lastMsgID !== topMessage && (this.bubbles[lastMsgID] || this.firstUnreadBubble)) {
       if(savedPosition) {
-        scrollable.scrollTop = savedPosition.top;
+        scrollable.scrollTop = scrollable.lastScrollPosition = savedPosition.top;
         /* const mountedByLastMsgId = this.getMountedBubble(lastMsgId);
         let bubble: HTMLElement = mountedByLastMsgId?.bubble;
         if(!bubble?.parentElement) {
@@ -2434,9 +2434,9 @@ export default class ChatBubbles {
         const fromUp = maxBubbleId > 0 && (maxBubbleId < lastMsgId || lastMsgId < 0);
         const followingUnread = readMaxId === lastMsgId && !isTarget;
         if(!fromUp && samePeer) {
-          scrollable.scrollTop = 99999;
+          scrollable.scrollTop = scrollable.lastScrollPosition = 99999;
         } else if(fromUp/*  && (samePeer || forwardingUnread) */) {
-          scrollable.scrollTop = 0;
+          scrollable.scrollTop = scrollable.lastScrollPosition = 0;
         }
 
         const mountedByLastMsgId = this.getMountedBubble(lastMsgId);
@@ -2453,7 +2453,7 @@ export default class ChatBubbles {
           }
         }
       } else {
-        scrollable.scrollTop = 99999;
+        scrollable.scrollTop = scrollable.lastScrollPosition = 99999;
       }
 
       this.onScroll();
@@ -4463,10 +4463,11 @@ export default class ChatBubbles {
   public getHistory(maxId = 0, reverse = false, isBackLimit = false, additionMsgId = 0, justLoad = false): {cached: boolean, promise: Promise<boolean>} {
     const peerId = this.peerId;
 
+    const isBroadcast = this.appPeersManager.isBroadcast(peerId);
     //console.time('appImManager call getHistory');
-    const pageCount = Math.min(30, windowSize.height / 38/*  * 1.25 */ | 0);
+    const pageCount = Math.min(30, windowSize.height / 75/*  * 1.25 */ | 0);
     //const loadCount = Object.keys(this.bubbles).length > 0 ? 50 : pageCount;
-    const realLoadCount = Object.keys(this.bubbles).length > 0/*  || additionMsgId */ ? Math.max(40, pageCount) : pageCount;//const realLoadCount = 50;
+    const realLoadCount = isBroadcast ? 20 : (Object.keys(this.bubbles).length > 0 ? Math.max(35, pageCount) : pageCount);
     //const realLoadCount = pageCount;//const realLoadCount = 50;
     let loadCount = realLoadCount;
     
