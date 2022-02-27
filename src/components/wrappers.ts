@@ -453,6 +453,12 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
     video.addEventListener('timeupdate', () => {
       spanTime.innerText = (video.duration - video.currentTime + '').toHHMMSS(false);
     });
+
+    if(spanPlay) {
+      video.addEventListener('timeupdate', () => {
+        spanPlay.remove();
+      }, {once: true});
+    }
   }
 
   video.muted = true;
