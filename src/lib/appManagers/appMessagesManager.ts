@@ -1635,17 +1635,20 @@ export class AppMessagesManager {
 
   public generateFakeAvatarMessage(peerId: PeerId, photo: Photo) {
     const maxId = Number.MAX_SAFE_INTEGER;
-    const message = {
+    const message: Message.messageService = {
       _: 'messageService',
+      pFlags: {},
       action: {
         _: 'messageActionChannelEditPhoto',
         photo
       },
+      id: maxId,
+      peer_id: appPeersManager.getOutputPeer(peerId),
       mid: maxId,
       peerId,
       date: (photo as Photo.photo).date,
       fromId: peerId
-    } as Message.messageService;
+    };
 
     this.getMessagesStorage(peerId).set(maxId, message);
     return message;
