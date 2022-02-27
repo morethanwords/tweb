@@ -2000,7 +2000,7 @@ export class AppMessagesManager {
         message.fwd_from = this.generateForwardHeader(peerId, originalMessage);
         keys.push('views', 'forwards');
 
-        if(message.fwd_from?.from_name) {
+        if(message.fwd_from?.from_name && peerId === rootScope.myId) {
           delete message.from_id;
         }
       }
