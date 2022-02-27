@@ -9,6 +9,7 @@ import { IS_SAFARI } from "../environment/userAgent";
 import reflowScrollableElement from "./dom/reflowScrollableElement";
 
 export default class ScrollSaver {
+  private previousScrollHeight: number;
   private previousScrollHeightMinusTop: number/* , previousScrollHeight: number */;
 
   /**
@@ -16,7 +17,10 @@ export default class ScrollSaver {
    * @param scrollable to reset scroll position and direction
    * @param reverse true means top
    */
-  constructor(private scrollable: Scrollable, private reverse: boolean) {
+  constructor(
+    private scrollable: Scrollable, 
+    private reverse: boolean
+  ) {
 
   }
 
@@ -29,6 +33,7 @@ export default class ScrollSaver {
 
     //previousScrollHeight = scrollHeight;
     //previousScrollHeight = scrollHeight + padding;
+    this.previousScrollHeight = scrollHeight;
     this.previousScrollHeightMinusTop = this.reverse ? scrollHeight - scrollTop : scrollTop;
 
     //this.chatInner.style.paddingTop = padding + 'px';
@@ -43,14 +48,19 @@ export default class ScrollSaver {
     } */
   }
 
-  public restore() {
+  public restore(useReflow?: boolean) {
     const {container, previousScrollHeightMinusTop, scrollable} = this;
     if(previousScrollHeightMinusTop !== undefined) {
+      const scrollHeight = container.scrollHeight;
+      if(scrollHeight === this.previousScrollHeight) {
+        return;
+      }
+
       /* const scrollHeight = container.scrollHeight;
       const addedHeight = scrollHeight - previousScrollHeight;
       
       this.chatInner.style.paddingTop = (10000 - addedHeight) + 'px'; */
-      /* const scrollHeight = container.scrollHeight;
+      /* const scrollHeight = scrollHeight;
       const addedHeight = scrollHeight - previousScrollHeight;
       
       this.chatInner.style.paddingTop = (padding - addedHeight) + 'px';
@@ -58,10 +68,10 @@ export default class ScrollSaver {
       //const newScrollTop = reverse ? scrollHeight - previousScrollHeightMinusTop : previousScrollHeightMinusTop;
       const newScrollTop = reverse ? scrollHeight - addedHeight - previousScrollHeightMinusTop : previousScrollHeightMinusTop;
       this.log('performHistoryResult: will set scrollTop', 
-      previousScrollHeightMinusTop, container.scrollHeight, 
+      previousScrollHeightMinusTop, scrollHeight, 
       newScrollTop, container.container.clientHeight); */
       //const newScrollTop = reverse ? scrollHeight - previousScrollHeightMinusTop : previousScrollHeightMinusTop;
-      const newScrollTop = this.reverse ? container.scrollHeight - previousScrollHeightMinusTop : previousScrollHeightMinusTop;
+      const newScrollTop = this.reverse ? scrollHeight - previousScrollHeightMinusTop : previousScrollHeightMinusTop;
       
       /* if(DEBUG) {
         this.log('performHistoryResult: will set up scrollTop:', newScrollTop, this.isHeavyAnimationInProgress);
@@ -70,13 +80,13 @@ export default class ScrollSaver {
       // touchSupport for safari iOS
       //isTouchSupported && isApple && (container.container.style.overflow = 'hidden');
       container.scrollTop = newScrollTop;
-      //container.scrollTop = container.scrollHeight;
+      //container.scrollTop = scrollHeight;
       //isTouchSupported && isApple && (container.container.style.overflow = '');
 
       scrollable.lastScrollPosition = newScrollTop;
       // scrollable.lastScrollDirection = 0;
 
-      if(IS_SAFARI/*  && !isAppleMobile */) { // * fix blinking and jumping
+      if(IS_SAFARI && useReflow/*  && !isAppleMobile */) { // * fix blinking and jumping
         reflowScrollableElement(container);
       }
 
