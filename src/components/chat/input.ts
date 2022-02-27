@@ -1794,7 +1794,7 @@ export default class ChatInput {
       this.undoHistory.length = 0;
     }
 
-    const urlEntities: Array<MessageEntity.messageEntityUrl | MessageEntity.messageEntityTextUrl> = !this.editMessage?.media && entities.filter(e => e._ === 'messageEntityUrl' || e._ === 'messageEntityTextUrl') as any;
+    const urlEntities: Array<MessageEntity.messageEntityUrl | MessageEntity.messageEntityTextUrl> = (!this.editMessage?.media || this.editMessage.media._ === 'messageMediaWebPage') && entities.filter(e => e._ === 'messageEntityUrl' || e._ === 'messageEntityTextUrl') as any;
     if(urlEntities.length) {
       for(const entity of urlEntities) {
         let url: string;
