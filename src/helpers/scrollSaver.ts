@@ -74,7 +74,7 @@ export default class ScrollSaver {
       //isTouchSupported && isApple && (container.container.style.overflow = '');
 
       scrollable.lastScrollPosition = newScrollTop;
-      scrollable.lastScrollDirection = 0;
+      // scrollable.lastScrollDirection = 0;
 
       if(IS_SAFARI/*  && !isAppleMobile */) { // * fix blinking and jumping
         reflowScrollableElement(container);
