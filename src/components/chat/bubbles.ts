@@ -961,6 +961,7 @@ export default class ChatBubbles {
         ]).then(([availableReactions]) => {
           const availableReaction = availableReactions[0];
           if(!availableReaction) {
+            hoverReaction.remove();
             return;
           }
 

@@ -11,15 +11,13 @@ import appMessagesManager from "../../lib/appManagers/appMessagesManager";
 import appPeersManager from "../../lib/appManagers/appPeersManager";
 import rootScope from "../../lib/rootScope";
 import { ripple } from "../ripple";
-import AvatarElement from "../avatar";
-import { i18n } from "../../lib/langPack";
+import I18n from "../../lib/langPack";
 import replaceContent from "../../helpers/dom/replaceContent";
-import appChatsManager from "../../lib/appManagers/appChatsManager";
+import StackedAvatars from "../stackedAvatars";
 
 const TAG_NAME = 'replies-element';
 
-rootScope.addEventListener('replies_updated', (e) => {
-  const message = e;
+rootScope.addEventListener('replies_updated', (message) => {
   (Array.from(document.querySelectorAll(TAG_NAME + `[data-post-key="${message.peerId}_${message.mid}"]`)) as RepliesElement[]).forEach(element => {
     element.message = message;
     element.render();
@@ -31,6 +29,8 @@ export default class RepliesElement extends HTMLElement {
   public type: 'footer' | 'beside';
   public loadPromises: Promise<any>[];
   public lazyLoadQueue: LazyLoadQueueIntersector;
+  public stackedAvatars: StackedAvatars;
+  public text: I18n.IntlElement;
   
   private updated = false;
 
@@ -63,33 +63,18 @@ export default class RepliesElement extends HTMLElement {
           leftPart = null;
         }
 
-        if(!leftPart) {
-          leftPart = document.createElement('div');
-          leftPart.classList.add('replies-footer-avatars');
+        if(!this.stackedAvatars) {
+          this.stackedAvatars = new StackedAvatars({
+            lazyLoadQueue: this.lazyLoadQueue,
+            avatarSize: 30
+          });
+
+          this.stackedAvatars.container.classList.add('replies-footer-avatars');
         }
 
-        replies.recent_repliers.slice().reverse().forEach((peer, idx) => {
-          let avatarElem = leftPart.children[idx] as AvatarElement;
-          if(!avatarElem) {
-            avatarElem = new AvatarElement();
-            avatarElem.setAttribute('dialog', '0');
-            avatarElem.classList.add('avatar-30');
-            avatarElem.lazyLoadQueue = this.lazyLoadQueue;
-            
-            if(this.loadPromises) {
-              avatarElem.loadPromises = this.loadPromises;
-            }
-          }
-          
-          avatarElem.setAttribute('peer', '' + appPeersManager.getPeerId(peer));
-          
-          if(!avatarElem.parentNode) {
-            leftPart.append(avatarElem);
-          }
-        });
+        leftPart = this.stackedAvatars.container;
 
-        // if were 3 and became 2
-        (Array.from(leftPart.children) as HTMLElement[]).slice(replies.recent_repliers.length).forEach(el => el.remove());
+        this.stackedAvatars.render(replies.recent_repliers.map(peer => appPeersManager.getPeerId(peer)), this.loadPromises);
       } else {
         if(leftPart && !leftPart.classList.contains('tgico-comments')) {
           leftPart.remove();
@@ -103,29 +88,33 @@ export default class RepliesElement extends HTMLElement {
       }
 
       if(!leftPart.parentElement) {
-        this.append(leftPart);
+        this.prepend(leftPart);
       }
   
-      let text: HTMLElement;
+      if(!this.text) {
+        this.text = new I18n.IntlElement();
+      }
+
+      const text = this.text;
       if(replies) {
         if(replies.replies) {
-          text = i18n('Comments', [replies.replies]);
+          text.compareAndUpdate({key: 'Comments', args: [replies.replies]});
         } else {
-          text = i18n('LeaveAComment');
+          text.compareAndUpdate({key: 'LeaveAComment'});
         }
       } else {
-        text = i18n('ViewInChat');
+        text.compareAndUpdate({key: 'ViewInChat'});
       }
 
       if(replies) {
-        const historyStorage = appMessagesManager.getHistoryStorage(replies.channel_id.toPeerId(true));
+        // const historyStorage = appMessagesManager.getHistoryStorage(replies.channel_id.toPeerId(true));
         let isUnread = false;
         if(replies.replies) {
           if(replies.read_max_id !== undefined && replies.max_id !== undefined) {
             isUnread = replies.read_max_id < replies.max_id;
-          } else {
+          }/*  else {
             isUnread = !historyStorage.readMaxId || historyStorage.readMaxId < (replies.max_id || 0);
-          }
+          } */
         }
         this.classList.toggle('is-unread', isUnread);
       }
@@ -144,7 +133,7 @@ export default class RepliesElement extends HTMLElement {
         this.append(textSpan, iconSpan, rippleContainer);
       }
 
-      replaceContent(textSpan, text);
+      replaceContent(textSpan, text.element);
     } else {
       this.classList.add('bubble-beside-button');
       this.innerHTML = `<span class="tgico-commentssticker"></span><span class="replies-beside-text">${replies?.replies ? formatNumber(replies.replies, 0) : ''}</span>`;
