@@ -83,7 +83,7 @@ mediaSizes.addEventListener('changeScreen', (from, to) => {
   }
 });
 
-export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTail, isOut, middleware, lazyLoadQueue, noInfo, group, onlyPreview, withoutPreloader, loadPromises, noPlayButton, autoDownloadSize, size, searchContext}: {
+export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTail, isOut, middleware, lazyLoadQueue, noInfo, group, onlyPreview, withoutPreloader, loadPromises, noPlayButton, size, searchContext, autoDownload}: {
   doc: MyDocument, 
   container?: HTMLElement, 
   message?: Message.message, 
@@ -99,10 +99,11 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
   onlyPreview?: boolean,
   withoutPreloader?: boolean,
   loadPromises?: Promise<any>[],
-  autoDownloadSize?: number,
+  autoDownload?: ChatAutoDownloadSettings,
   size?: PhotoSize,
   searchContext?: MediaSearchContext,
 }) {
+  const autoDownloadSize = autoDownload?.video;
   let noAutoDownload = autoDownloadSize === 0;
   const isAlbumItem = !(boxWidth && boxHeight);
   const canAutoplay = /* doc.sticker ||  */(
@@ -373,7 +374,7 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
       middleware,
       withoutPreloader: true,
       loadPromises,
-      autoDownloadSize,
+      autoDownloadSize: autoDownload?.photo,
       size
     });
 
@@ -1982,7 +1983,6 @@ export function wrapAlbum({groupId, attachmentDiv, middleware, uploading, lazyLo
     div.dataset.peerId = '' + message.peerId;
     const mediaDiv = div.firstElementChild as HTMLElement;
     const isPhoto = media._ === 'photo';
-    const autoDownloadSize = autoDownload ? autoDownload[isPhoto ? 'photo' : 'video'] : undefined;
     if(isPhoto) {
       wrapPhoto({
         photo: media,
@@ -1995,7 +1995,7 @@ export function wrapAlbum({groupId, attachmentDiv, middleware, uploading, lazyLo
         middleware,
         size,
         loadPromises,
-        autoDownloadSize
+        autoDownloadSize: autoDownload.photo
       });
     } else {
       wrapVideo({
@@ -2009,7 +2009,7 @@ export function wrapAlbum({groupId, attachmentDiv, middleware, uploading, lazyLo
         lazyLoadQueue,
         middleware,
         loadPromises,
-        autoDownloadSize
+        autoDownload
       });
     }
   });
