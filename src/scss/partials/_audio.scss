@@ -379,29 +379,42 @@
   }
 
   &-waveform {
-    height: 23px;
-    margin-top: 1px;
-    
-    /* @include respond-to(handhelds) {
-      margin-top: -4px;
-    } */
+    height: 100%;
 
-    //overflow: visible!important;
+    &-background {
+      rect {
+        opacity: .3;
+  
+        @include hover() {
+          opacity: 1;
+        }
+      }
+    }
+
+    &-fake {
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      width: 0;
+      overflow: hidden;
+    }
+
+    &-container {
+      position: relative;
+      height: 23px;
+      margin-top: 1px;
+    }
 
     rect {
       fill: var(--primary-color);
       //overflow: visible!important;
-      opacity: .3;
-
-      @include hover() {
-        opacity: 1;
-      }
-
-      &.active, 
-      .audio.is-unread:not(.is-out) .audio-toggle:not(.playing) + & {
-        opacity: 1;
-      }
     }
+    
+    /* @include respond-to(handhelds) {
+      margin-top: -4px;
+    } */
   }
 
   // //&.audio-54 {
@@ -499,7 +512,7 @@
         margin-top: .3125rem;
       }
 
-      .audio-waveform {
+      .audio-waveform-container {
         height: 16px;
         margin-top: 0;
       }
@@ -515,6 +528,10 @@
           border-radius: 50%;
           margin-left: .375rem;
         }
+      }
+
+      &:not(.is-out) .audio-toggle:not(.playing) + .audio-waveform-container .audio-waveform-background rect {
+        opacity: 1;
       }
     }
   }
