@@ -2271,7 +2271,7 @@ export default class ChatBubbles {
       lastMsgId = 0;
     }
 
-    this.historyStorage = this.appMessagesManager.getHistoryStorage(peerId, this.chat.threadId);
+    const historyStorage = this.historyStorage = this.appMessagesManager.getHistoryStorage(peerId, this.chat.threadId);
     let topMessage = chatType === 'pinned' ? this.appMessagesManager.pinnedMessages[peerId].maxId : this.historyStorage.maxId ?? 0;
     const isTarget = lastMsgId !== undefined;
 
@@ -2280,7 +2280,8 @@ export default class ChatBubbles {
       topMessage = 0;
     } */
 
-    let readMaxId = 0, savedPosition: ReturnType<AppImManager['getChatSavedPosition']>;
+    let followingUnread: boolean;
+    let readMaxId = 0, savedPosition: ReturnType<AppImManager['getChatSavedPosition']>, overrideAdditionMsgId: number;
     if(!isTarget) {
       if(!samePeer) {
         savedPosition = this.chat.appImManager.getChatSavedPosition(this.chat);
@@ -2290,7 +2291,14 @@ export default class ChatBubbles {
         
       } else if(topMessage) {
         readMaxId = this.appMessagesManager.getReadMaxIdIfUnread(peerId, this.chat.threadId);
-        if(/* dialog.unread_count */readMaxId && !samePeer) {
+        const dialog = this.appMessagesManager.getDialogOnly(peerId);
+        if(/* dialog.unread_count */readMaxId && !samePeer && (!dialog || dialog.unread_count !== 1)) {
+          const foundSlice = historyStorage.history.findSliceOffset(readMaxId);
+          if(foundSlice && foundSlice.slice.isEnd(SliceEnd.Bottom)) {
+            overrideAdditionMsgId = foundSlice.slice[foundSlice.offset - 25] || foundSlice.slice[0] || readMaxId;
+          }
+
+          followingUnread = !isTarget;
           lastMsgId = readMaxId;
         } else {
           lastMsgId = topMessage;
@@ -2299,7 +2307,7 @@ export default class ChatBubbles {
       }
     }
 
-    const isJump = lastMsgId !== topMessage;
+    const isJump = lastMsgId !== topMessage/*  && overrideAdditionMsgId === undefined */;
 
     const {scrollable} = this;
     
@@ -2341,7 +2349,7 @@ export default class ChatBubbles {
     }
 
     // add last message, bc in getHistory will load < max_id
-    const additionMsgId = isJump || chatType === 'scheduled' || this.chat.isRestricted ? 0 : topMessage;
+    const additionMsgId = overrideAdditionMsgId ?? (isJump || chatType === 'scheduled' || this.chat.isRestricted ? 0 : topMessage);
 
     /* this.setPeerPromise = null;
     this.preloader.detach();
@@ -2450,7 +2458,6 @@ export default class ChatBubbles {
         } */
       } else if((topMessage && isJump) || isTarget) {
         const fromUp = maxBubbleId > 0 && (maxBubbleId < lastMsgId || lastMsgId < 0);
-        const followingUnread = readMaxId === lastMsgId && !isTarget;
         if(!fromUp && samePeer) {
           scrollable.scrollTop = scrollable.lastScrollPosition = 99999;
         } else if(fromUp/*  && (samePeer || forwardingUnread) */) {
