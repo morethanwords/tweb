@@ -30,6 +30,7 @@ import throttleWithRaf from "../helpers/schedulers/throttleWithRaf";
 import { NULL_PEER_ID } from "../lib/mtproto/mtproto_config";
 import formatBytes from "../helpers/formatBytes";
 import { clamp } from "../helpers/number";
+import { animateSingle } from "../helpers/animation";
 
 rootScope.addEventListener('messages_media_read', ({mids, peerId}) => {
   mids.forEach(mid => {
@@ -78,16 +79,7 @@ export function decodeWaveform(waveform: Uint8Array | number[]) {
   return result;
 }
 
-function wrapVoiceMessage(audioEl: AudioElement) {
-  audioEl.classList.add('is-voice');
-
-  const message = audioEl.message;
-  const doc = appMessagesManager.getMediaFromMessage(message) as MyDocument;
-
-  if(message.pFlags.out) {
-    audioEl.classList.add('is-out');
-  }
-
+function createWaveformBars(waveform: Uint8Array, duration: number) {
   const barWidth = 2;
   const barMargin = 2;      //mediaSizes.isMobile ? 2 : 1;
   const barHeightMin = 4;   //mediaSizes.isMobile ? 3 : 2;
@@ -96,21 +88,13 @@ function wrapVoiceMessage(audioEl: AudioElement) {
 
   const minW = mediaSizes.isMobile ? 152 : 190;
   const maxW = mediaSizes.isMobile ? 190 : 256;
-  const duration = doc.duration;
   const availW = clamp(duration / 60 * maxW, minW, maxW); // mediaSizes.isMobile ? 152 : 224;
 
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  svg.classList.add('audio-waveform');
+  svg.classList.add('audio-waveform-bars');
   svg.setAttributeNS(null, 'width', '' + availW);
   svg.setAttributeNS(null, 'height', '' + barHeightMax);
   svg.setAttributeNS(null, 'viewBox', `0 0 ${availW} ${barHeightMax}`);
-
-  const timeDiv = document.createElement('div');
-  timeDiv.classList.add('audio-time');
-  audioEl.append(svg, timeDiv);
-
-  let waveform = (doc.attributes.find(attribute => attribute._ === 'documentAttributeAudio') as DocumentAttribute.documentAttributeAudio).waveform || new Uint8Array([]);
-  waveform = decodeWaveform(waveform.slice(0, 63));
 
   //console.log('decoded waveform:', waveform);
 
@@ -151,23 +135,55 @@ function wrapVoiceMessage(audioEl: AudioElement) {
     }
   }
 
-  svg.insertAdjacentHTML('beforeend', html);
-  const rects = Array.from(svg.children) as HTMLElement[];
+  const container = document.createElement('div');
+  container.classList.add('audio-waveform');
+  container.append(svg);
 
-  let progress = audioEl.querySelector('.audio-waveform') as HTMLDivElement;
+  svg.insertAdjacentHTML('beforeend', html);
+  return {svg, container, availW};
+}
+
+function wrapVoiceMessage(audioEl: AudioElement) {
+  audioEl.classList.add('is-voice');
+
+  const message = audioEl.message;
+  const doc = appMessagesManager.getMediaFromMessage(message) as MyDocument;
+
+  if(message.pFlags.out) {
+    audioEl.classList.add('is-out');
+  }
+
+  let waveform = (doc.attributes.find(attribute => attribute._ === 'documentAttributeAudio') as DocumentAttribute.documentAttributeAudio).waveform || new Uint8Array([]);
+  waveform = decodeWaveform(waveform.slice(0, 63));
+  
+  const {svg, container: svgContainer, availW} = createWaveformBars(waveform, doc.duration);
+  
+  const fakeSvgContainer = svgContainer.cloneNode(true) as HTMLElement;
+  fakeSvgContainer.classList.add('audio-waveform-fake');
+  svgContainer.classList.add('audio-waveform-background');
+
+  const waveformContainer = document.createElement('div');
+  waveformContainer.classList.add('audio-waveform-container');
+  waveformContainer.append(svgContainer, fakeSvgContainer);
+
+  const timeDiv = document.createElement('div');
+  timeDiv.classList.add('audio-time');
+  audioEl.append(waveformContainer, timeDiv);
+
+  let progress = svg as any as HTMLElement;
   
   const onLoad = () => {
     let audio = audioEl.audio;
 
+    const setAnimation = () => {
+      animateSingle(() => {
+        onTimeUpdate();
+        return !audio.paused;
+      }, audioEl);
+    };
+
     const onTimeUpdate = () => {
-      const lastIndex = audio.currentTime === audio.duration ? 0 : Math.ceil(audio.currentTime / audio.duration * barCount);
-        
-      //svg.children[lastIndex].setAttributeNS(null, 'fill', '#000');
-      //svg.children[lastIndex].classList.add('active'); #Иногда пропускает полоски..
-      rects.forEach((node, idx) => node.classList.toggle('active', idx < lastIndex));
-      //++lastIndex;
-      //console.log('lastIndex:', lastIndex, audio.currentTime);
-      //}, duration * 1000 / svg.childElementCount | 0/* 63 * duration / 10 */);
+      fakeSvgContainer.style.width = (audio.currentTime / audio.duration * 100) + '%';
     };
 
     if(!audio.paused || (audio.currentTime > 0 && audio.currentTime !== audio.duration)) {
@@ -177,6 +193,7 @@ function wrapVoiceMessage(audioEl: AudioElement) {
     const throttledTimeUpdate = throttleWithRaf(onTimeUpdate);
     audioEl.addAudioListener('timeupdate', throttledTimeUpdate);
     audioEl.addAudioListener('ended', throttledTimeUpdate);
+    audioEl.addAudioListener('play', setAnimation);
 
     audioEl.readyPromise.then(() => {
       let mousedown = false, mousemove = false;
