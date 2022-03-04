@@ -22,14 +22,17 @@ export function processPeerFullForCommands(full: ChatFull.chatFull | ChatFull.ch
     });
   }
   
-  const commands: Map<string, {peerId: PeerId, name: string, description: string}> = new Map();
+  type T = {peerId: PeerId, name: string, description: string, index: number, command: string};
+  const commands: Map<string, T> = new Map();
   botInfos.forEach(botInfo => {
-    botInfo.commands.forEach(botCommand => {
+    botInfo.commands.forEach((botCommand, idx) => {
       const c = '/' + botCommand.command;
       commands.set(botCommand.command, {
         peerId: botInfo.user_id.toPeerId(false), 
+        command: botCommand.command, 
         name: c, 
-        description: botCommand.description
+        description: botCommand.description,
+        index: idx
       });
 
       if(index) {
@@ -38,13 +41,17 @@ export function processPeerFullForCommands(full: ChatFull.chatFull | ChatFull.ch
     });
   });
 
+  let out: T[];
   if(!index) {
-    return [...commands.values()];
+    out = [...commands.values()];
+  } else {
+    const found = index.search(query);
+    out = Array.from(found).map(command => commands.get(command));
   }
 
-  const found = index.search(query);
-  const filtered = Array.from(found).map(command => commands.get(command));
-  return filtered;
+  out = out.sort((a, b) => commands.get(a.command).index - commands.get(b.command).index);
+  
+  return out;
 }
 
 export default class CommandsHelper extends AutocompletePeerHelper {
