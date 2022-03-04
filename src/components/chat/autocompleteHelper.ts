@@ -16,6 +16,7 @@ import AutocompleteHelperController from "./autocompleteHelperController";
 export default class AutocompleteHelper extends EventListenerBase<{
   hidden: () => void,
   visible: () => void,
+  hiding: () => void
 }> {
   protected hidden = true;
   protected container: HTMLElement;
@@ -34,7 +35,7 @@ export default class AutocompleteHelper extends EventListenerBase<{
 
   constructor(options: {
     appendTo: HTMLElement,
-    controller: AutocompleteHelper['controller'],
+    controller?: AutocompleteHelper['controller'],
     listType: AutocompleteHelper['listType'],
     onSelect: AutocompleteHelper['onSelect'],
     waitForKey?: AutocompleteHelper['waitForKey']
@@ -50,7 +51,7 @@ export default class AutocompleteHelper extends EventListenerBase<{
     
     this.attachNavigation();
 
-    this.controller.addHelper(this);
+    this.controller && this.controller.addHelper(this);
   }
 
   public toggleListNavigation(enabled: boolean) {
@@ -110,7 +111,7 @@ export default class AutocompleteHelper extends EventListenerBase<{
     this.addEventListener('visible', this.onVisible);
   }
 
-  public toggle(hide?: boolean, fromController = false) {
+  public toggle(hide?: boolean, fromController = false, skipAnimation?: boolean) {
     if(this.init) {
       return;
     }
@@ -130,7 +131,7 @@ export default class AutocompleteHelper extends EventListenerBase<{
     this.hidden = hide;
 
     if(!hide) {
-      this.controller.hideOtherHelpers(this);
+      this.controller && this.controller.hideOtherHelpers(this);
       this.dispatchEvent('visible'); // fire it before so target will be set
     } else {
       if(this.navigationItem) {
@@ -138,7 +139,7 @@ export default class AutocompleteHelper extends EventListenerBase<{
         this.navigationItem = undefined;
       }
 
-      if(!fromController) {
+      if(!fromController && this.controller) {
         this.controller.hideOtherHelpers();
       }
 
@@ -147,8 +148,21 @@ export default class AutocompleteHelper extends EventListenerBase<{
       }
     }
 
-    SetTransition(this.container, 'is-visible', !hide, rootScope.settings.animationsEnabled ? 200 : 0, () => {
-      this.hidden && this.dispatchEvent('hidden');
-    });
+    const useRafs = this.controller || hide ? 0 : 2;
+
+    if(hide) {
+      this.dispatchEvent('hiding');
+    }
+
+    SetTransition(
+      this.container, 
+      'is-visible', 
+      !hide, 
+      rootScope.settings.animationsEnabled && !skipAnimation ? 300 : 0, 
+      () => {
+        this.hidden && this.dispatchEvent('hidden');
+      }, 
+      useRafs
+    );
   }
 }

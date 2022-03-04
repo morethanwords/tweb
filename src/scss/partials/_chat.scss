@@ -5,7 +5,8 @@
  */
 
 $btn-send-margin: .5rem;
-$chat-helper-size: 36px;
+$chat-helper-size: 45px;
+$chat-input-box-shadow: 0px 1px 8px 1px rgb(0 0 0 / 18%);
 
 $input-transition-time: .2s;
 $input-half-transition-time: #{$input-transition-time / 2};
@@ -765,7 +766,7 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
     bottom: 0;
     left: 0;
     border-radius: inherit;
-    box-shadow: 0px 1px 8px 1px rgb(0 0 0 / 18%);
+    box-shadow: $chat-input-box-shadow;
     background-color: #fff;
     background-color: var(--surface-color);
     opacity: 1;
@@ -1047,9 +1048,9 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
 		height: 100%;
 		z-index: 1; */
 		height: 0;
-		width: calc(100% - var(--padding-horizontal) * 2);
-		padding: 0;
-		margin-top: .5625rem;//var(--padding-vertical);
+		width: 100%;
+		padding: .5625rem var(--padding-horizontal) 0;
+		// margin-top: .5625rem;//var(--padding-vertical);
 		margin-bottom: -.5625rem;
 		//height: calc(#{$chat-helper-size} + .3125rem);
 		align-items: center;
@@ -1064,7 +1065,7 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
 		}
 
 		@include respond-to(esg-bottom-new) {
-			margin-top: .3125rem;
+			padding-top: .3125rem;
 			margin-bottom: -.3125rem;
 		}
 
@@ -1163,29 +1164,78 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
 		} */
 	}
 
+  /* &:after {
+    content: " ";
+    position: absolute;
+    top: 0;
+    width: 100%;
+    height: .0625rem;
+    background-color: var(--border-color);
+    opacity: 0;
+    z-index: 2;
+  }
+
+  &.have-commands {
+    &:after {
+      opacity: 1;
+    }
+  } */
+
 	.new-message-wrapper {
     --send-as-size: 1.875rem;
     --send-as-margin-left: .25rem;
     --send-as-margin-right: .375rem;
     --send-as-total-size: calc(var(--send-as-size) + var(--send-as-margin-left) + var(--send-as-margin-right));
+    --commands-size: 2.375rem;
+    --commands-margin-left: .25rem;
+    --commands-margin-right: .375rem;
+    --commands-total-size: calc(var(--commands-size) + var(--commands-margin-left) + var(--commands-margin-right));
+    --offset-translateX: 0px;
 		//padding: 4.5px 0;
 		//padding-bottom: 4.5px;
 		align-items: flex-end;
 		min-height: var(--chat-input-size);
 
+    .new-message-bot-commands,
+    .new-message-send-as-container {
+      position: absolute;
+      flex: 0 0 auto;
+      bottom: calc(var(--padding-vertical) + .4375rem);
+      cursor: pointer;
+      transform: scale(0);
+      z-index: 2;
+    }
+
+    .new-message-bot-commands {
+      width: var(--commands-size);
+      height: 1.875rem;
+      border-radius: 1.875rem;
+      background-color: var(--primary-color);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-left: var(--commands-margin-left);
+      cursor: pointer;
+
+      &-icon-scale {
+        transform: scale(.875);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .animated-menu-close-icon {
+        --color: #fff;
+      }
+    }
+
     .new-message-send-as {
       &-container {
         width: var(--send-as-size);
         height: var(--send-as-size);
-        position: absolute;
-        flex: 0 0 auto;
         // margin: 0 0.375rem .4375rem var(--send-as-margin-left);
         margin-left: var(--send-as-margin-left);
-        bottom: calc(var(--padding-vertical) + .4375rem);
-        cursor: pointer;
-        transform: scale(0);
         background: none !important;
-        z-index: 2;
 
         .btn-menu {
           max-height: 20rem;
@@ -1253,7 +1303,15 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
       }
     }
 
-    &.has-send-as {
+    &.has-offset {
+      &[data-offset="as"] {
+        --offset-translateX: var(--send-as-total-size);
+      }
+
+      &[data-offset="commands"] {
+        --offset-translateX: 48px;
+      }
+
       .toggle-emoticons,
       .input-message-container {
         transform: translateX(0);
@@ -1261,16 +1319,17 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
 
       &:not(.backwards) {
         .toggle-emoticons {
-          transform: translateX(var(--send-as-total-size));
+          transform: translateX(var(--offset-translateX));
         }
   
         .input-message-container {
-          --translateX: calc(var(--send-as-total-size));
+          --translateX: calc(var(--offset-translateX));
           padding-right: var(--translateX);
           transform: translate(var(--translateX));
         }
 
-        .new-message-send-as-container {
+        .new-message-send-as-container,
+        .new-message-bot-commands {
           transform: scale(1);
         }
       }
@@ -1278,7 +1337,8 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
       &.animating {
         .toggle-emoticons,
         .input-message-container,
-        .new-message-send-as-container {
+        .new-message-send-as-container,
+        .new-message-bot-commands {
           transition: transform var(--transition-standard-in);
         }
       }
