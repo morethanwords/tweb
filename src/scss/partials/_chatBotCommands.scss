@@ -1,0 +1,85 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
+.bot-commands {
+  --border-radius-padding: #{$border-radius-big * 2};
+  --offset: .5rem;
+  position: absolute !important;
+  // bottom: 100%;
+  bottom: calc(100% - var(--border-radius-padding));
+  right: calc(var(--offset) * -1);
+  left: calc(var(--offset) * -1);
+  width: auto !important;
+  max-height: 20rem;
+  max-width: none;
+  border-radius: $border-radius-big $border-radius-big 0 0 !important;
+  background-color: transparent !important;
+  pointer-events: none;
+  overflow: hidden;
+  padding: var(--offset) var(--offset) 0 !important;
+  box-shadow: none;
+  animation: none !important;
+  visibility: visible !important;
+  transition: none !important;
+  display: flex !important;
+
+  .scrollable {
+    background-color: var(--surface-color);
+    box-shadow: $chat-input-box-shadow;
+    border-radius: inherit;
+    height: auto;
+    pointer-events: all;
+    // max-height: 20rem;
+
+    @include animation-level(2) {
+      opacity: 0;
+      transform: translateY(var(--height));
+    }
+  }
+
+  &.is-visible {
+    &.animating {
+      .scrollable {
+        transition: transform var(--transition-standard-in), opacity var(--transition-standard-in);
+      }
+    }
+
+    &:not(.backwards) {
+      .scrollable {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+  }
+
+  &-list {
+    border-radius: inherit;
+    width: 100%;
+    height: var(--height);
+    // padding-bottom: var(--border-radius-padding);
+    padding-bottom: 0;
+
+    &-element {
+      border-radius: 0 !important;
+      flex-direction: column;
+      align-items: flex-start;
+      justify-content: center;
+      padding-left: 3.375rem;
+
+      &-avatar {
+        position: absolute;
+        left: .75rem;
+      }
+
+      &-name,
+      &-description {
+        margin-left: 0;
+        font-size: .875rem;
+        line-height: var(--line-height-14);
+      }
+    }
+  }
+}

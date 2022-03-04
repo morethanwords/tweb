@@ -96,7 +96,11 @@ Utility Classes
 }
 
 .no-transition {
-  transition: none !important;
+  &,
+  &:before,
+  &:after {
+    transition: none !important;
+  }
 
   /* &-all, &-all * {
     transition: none !important;

@@ -16,7 +16,12 @@ export default class AutocompletePeerHelper extends AutocompleteHelper {
   protected static BASE_CLASS_LIST_ELEMENT = AutocompletePeerHelper.BASE_CLASS + '-list-element';
   private scrollable: Scrollable;
 
-  constructor(appendTo: HTMLElement, controller: AutocompleteHelperController, protected className: string, onSelect: (target: Element) => boolean | void) {
+  constructor(
+    appendTo: HTMLElement, 
+    controller: AutocompleteHelperController, 
+    protected className: string, 
+    onSelect: (target: Element) => boolean | void
+  ) {
     super({
       appendTo, 
       controller,
@@ -29,7 +34,7 @@ export default class AutocompletePeerHelper extends AutocompleteHelper {
 
   protected init() {
     this.list = document.createElement('div');
-    this.list.classList.add(AutocompletePeerHelper.BASE_CLASS + '-list');
+    this.list.classList.add(AutocompletePeerHelper.BASE_CLASS + '-list', this.className + '-list');
 
     this.container.append(this.list);
 
@@ -42,7 +47,7 @@ export default class AutocompletePeerHelper extends AutocompleteHelper {
     });
   }
 
-  public render(data: {peerId: PeerId, name?: string, description?: string}[]) {
+  public render(data: {peerId: PeerId, name?: string, description?: string}[], doNotShow?: boolean) {
     if(this.init) {
       if(!data.length) {
         return;
@@ -66,7 +71,9 @@ export default class AutocompletePeerHelper extends AutocompleteHelper {
       });
     }
 
-    this.toggle(!data.length);
+    if(!doNotShow) {
+      this.toggle(!data.length);
+    }
   }
 
   public static listElement(options: {

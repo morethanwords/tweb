@@ -31,12 +31,6 @@
     &, &:before, &:after {
       transition: transform var(--slide-header-transition);
     }
-
-    &.no-transition {
-      &, &:before, &:after {
-        transition: none;
-      }
-    }
   }
 
   &.state-back {
@@ -53,13 +47,14 @@
 }
 
 .animated-menu-icon {
+  --color: var(--secondary-text-color);
   position: absolute;
 
   &, &:before, &:after {
     width: 1.125rem;
     height: .125rem;
     border-radius: .125rem;
-    background-color: var(--secondary-text-color);
+    background-color: var(--color);
     transform: rotate(0);
   }
 
@@ -94,6 +89,48 @@
       transform: rotate(-45deg) scaleX(.75) translate(.375rem, .1875rem);
     }
   }
+}
+
+.animated-menu-close-icon {
+  margin-top: -.625rem;
+
+  &:before {
+    top: .3125rem;
+    opacity: 1;
+
+    @include animation-level(2) {
+      transition: transform .25s, opacity .125s 0s;
+    }
+  }
+
+  &:after {
+    top: .625rem;
+  }
+
+  &.state-back {
+    transform: translate(0, .3125rem) rotate(135deg);
+
+    &:before {
+      transform: rotate(45deg);
+      opacity: 0;
+    }
+
+    &:after {
+      transform: translate(-.0rem, -.625rem) rotate(90deg);
+    }
+  }
+  /* &.state-back {
+    transform: rotate(135deg) translate(.25rem, -.1875rem);
+
+    &:before {
+      transform: rotate(45deg);
+      opacity: 0;
+    }
+
+    &:after {
+      transform: rotate(90deg) translate(-.625rem, 0rem);
+    }
+  } */
 }
 
 .animated-button-icon {
