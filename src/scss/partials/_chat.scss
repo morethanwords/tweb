@@ -1217,6 +1217,10 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
       margin-left: var(--commands-margin-left);
       cursor: pointer;
 
+      .animated-menu-close-icon {
+        position: relative;
+      }
+
       &-icon-scale {
         transform: scale(.875);
         display: flex;
