@@ -226,7 +226,7 @@ export default class ChatInput {
   private botCommandsToggle: HTMLElement;
   private botCommands: ChatBotCommands;
   private botCommandsIcon: HTMLDivElement;
-  hasBotCommands: number;
+  private hasBotCommands: number;
 
   // private activeContainer: HTMLElement;
 

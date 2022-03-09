@@ -24,7 +24,10 @@
   animation: none !important;
   visibility: visible !important;
   transition: none !important;
-  display: flex !important;
+  
+  @include animation-level(2) {
+    display: flex !important;
+  }
 
   .scrollable {
     background-color: var(--surface-color);
