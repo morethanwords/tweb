@@ -1263,7 +1263,9 @@ export default class ChatInput {
       });
     }
 
-    this.updateOffset(null, false, true);
+    if(this.newMessageWrapper) {
+      this.updateOffset(null, false, true);
+    }
 
     if(botCommandsToggle) {
       this.hasBotCommands = undefined;
