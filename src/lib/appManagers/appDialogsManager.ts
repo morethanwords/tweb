@@ -56,10 +56,11 @@ import debounce from "../../helpers/schedulers/debounce";
 import generateVerifiedIcon from "../../components/generateVerifiedIcon";
 import { NULL_PEER_ID } from "../mtproto/mtproto_config";
 import groupCallActiveIcon from "../../components/groupCallActiveIcon";
-import { Chat } from "../../layer";
+import { Chat, NotifyPeer } from "../../layer";
 import IS_GROUP_CALL_SUPPORTED from "../../environment/groupCallSupport";
 import mediaSizes from "../../helpers/mediaSizes";
 import appNavigationController, { NavigationItem } from "../../components/appNavigationController";
+import assumeType from "../../helpers/assumeType";
 
 export type DialogDom = {
   avatarEl: AvatarElement,
@@ -579,6 +580,16 @@ export class AppDialogsManager {
   }
 
   private async onStateLoaded(state: State) {
+    if(state.notifySettings) {
+      for(const key in state.notifySettings) {
+        assumeType<Exclude<NotifyPeer['_'], 'notifyPeer'>>(key);
+        appNotificationsManager.savePeerSettings({
+          key,
+          settings: state.notifySettings[key]
+        });
+      }
+    }
+
     appNotificationsManager.getNotifyPeerTypeSettings();
 
     if(!this.initedListeners) {

@@ -475,6 +475,11 @@ export class AppNotificationsManager {
 
     if(!peerId) {
       rootScope.dispatchEvent('notify_peer_type_settings', {key, settings});
+      appStateManager.getState().then(state => {
+        const notifySettings = state.notifySettings;
+        notifySettings[key] = settings;
+        appStateManager.pushToState('notifySettings', notifySettings);
+      });
     } else {
       this.checkMuteUntilThrottled();
     }
