@@ -18,7 +18,7 @@ import { copy, setDeepProperty, validateInitObject } from '../../helpers/object'
 import App from '../../config/app';
 import DEBUG, { MOUNT_CLASS_TO } from '../../config/debug';
 import AppStorage from '../storage';
-import { AutoDownloadSettings, Chat } from '../../layer';
+import { AutoDownloadSettings, Chat, NotifyPeer, PeerNotifySettings } from '../../layer';
 import { IS_MOBILE } from '../../environment/userAgent';
 import DATABASE_STATE from '../../config/databases/state';
 import sessionStorage from '../sessionStorage';
@@ -114,7 +114,8 @@ export type State = {
   },
   keepSigned: boolean,
   chatContextMenuHintWasShown: boolean,
-  stateId: number
+  stateId: number,
+  notifySettings: {[k in Exclude<NotifyPeer['_'], 'notifyPeer'>]?: PeerNotifySettings.peerNotifySettings}
 };
 
 export const STATE_INIT: State = {
@@ -207,7 +208,8 @@ export const STATE_INIT: State = {
   },
   keepSigned: true,
   chatContextMenuHintWasShown: false,
-  stateId: nextRandomUint(32)
+  stateId: nextRandomUint(32),
+  notifySettings: {}
 };
 
 const ALL_KEYS = Object.keys(STATE_INIT) as any as Array<keyof State>;
