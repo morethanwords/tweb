@@ -463,6 +463,7 @@ export class AppDialogsManager {
     });
 
     rootScope.addEventListener('dialog_notify_settings', (dialog) => {
+      this.validateDialogForFilter(dialog);
       this.setUnreadMessages(dialog); // возможно это не нужно, но нужно менять is-muted
       this.setFiltersUnreadCount();
     });
@@ -690,8 +691,6 @@ export class AppDialogsManager {
     for(const filterId in this.filtersRendered) {
       this.setFilterUnreadCount(+filterId);
     }
-
-    this.setFilterUnreadCount(0);
   }
 
   /**

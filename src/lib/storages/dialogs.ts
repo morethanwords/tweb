@@ -137,6 +137,10 @@ export default class DialogsStorage {
       delete this.folders[filter.id];
     });
 
+    rootScope.addEventListener('dialog_notify_settings', (dialog) => {
+      this.processDialogForFilters(dialog);
+    });
+
     rootScope.addEventListener('chat_update', (chatId) => {
       const chat: Chat.chat = this.appChatsManager.getChat(chatId);
 
