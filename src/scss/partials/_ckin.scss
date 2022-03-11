@@ -380,8 +380,8 @@ video::-webkit-media-controls-enclosure {
         cursor: pointer;
         position: absolute;
         right: 0;
-        top: 50%;
-        transform: translate(calc(var(--thumb-size) / 2), -50%) scale(1);
+        top: calc((var(--thumb-size) - var(--height)) / -2);
+        transform: translateX(calc(var(--thumb-size) / 2)) scale(1);
 
         @include animation-level(2) {
           transition: transform .125s ease-in-out;
@@ -391,7 +391,7 @@ video::-webkit-media-controls-enclosure {
   }
 
   &.is-focused .progress-line__filled:not(.progress-line__loaded):after {
-    transform: translate(calc(var(--thumb-size) / 2), -50%) scale(1.25);
+    transform: translateX(calc(var(--thumb-size) / 2)) scale(1.25);
   }
 
   &__loaded, &:before {
