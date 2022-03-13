@@ -93,7 +93,7 @@ export default class AppBackgroundColorTab extends SliderSuperTab {
   private setActive() {
     const active = this.grid.querySelector('.active');
     const background = this.theme.background;
-    const target = background.type === 'color' ? this.grid.querySelector(`.grid-item[data-color="${background.color}"]`) : null;
+    const target = background.color ? this.grid.querySelector(`.grid-item[data-color="${background.color}"]`) : null;
     if(active === target) {
       return;
     }
@@ -115,8 +115,10 @@ export default class AppBackgroundColorTab extends SliderSuperTab {
       const background = this.theme.background;
       const hsla = highlightningColor(rgba);
     
+      background.id = '2';
+      background.intensity = 0;
+      background.slug = '';
       background.color = hex.toLowerCase();
-      background.type = 'color';
       background.highlightningColor = hsla;
       appStateManager.pushToState('settings', rootScope.settings);
     
@@ -133,14 +135,17 @@ export default class AppBackgroundColorTab extends SliderSuperTab {
     setTimeout(() => {
       const background = this.theme.background;
 
+      const color = (background.color || '').split(',')[0];
+      const isColored = !!color && !background.slug;
+      
       // * set active if type is color
-      if(background.type === 'color') {
+      if(isColored) {
         this.colorPicker.onChange = this.onColorChange;
       }
 
-      this.colorPicker.setColor(background.color || '#cccccc');
+      this.colorPicker.setColor(color || '#cccccc');
       
-      if(background.type !== 'color') {
+      if(!isColored) {
         this.colorPicker.onChange = this.onColorChange;
       }
     }, 0);

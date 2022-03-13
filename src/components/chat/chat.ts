@@ -24,7 +24,6 @@ import type { ServerTimeManager } from "../../lib/mtproto/serverTimeManager";
 import type { AppMessagesIdsManager } from "../../lib/appManagers/appMessagesIdsManager";
 import type { AppGroupCallsManager } from "../../lib/appManagers/appGroupCallsManager";
 import type { AppReactionsManager } from "../../lib/appManagers/appReactionsManager";
-import type { State } from "../../lib/appManagers/appStateManager";
 import type stateStorage from '../../lib/stateStorage';
 import EventListenerBase from "../../helpers/eventListenerBase";
 import { logger, LogTypes } from "../../lib/logger";
@@ -37,13 +36,15 @@ import ChatSelection from "./selection";
 import ChatTopbar from "./topbar";
 import { BOT_START_PARAM, NULL_PEER_ID, REPLIES_PEER_ID } from "../../lib/mtproto/mtproto_config";
 import SetTransition from "../singleTransition";
-import { fastRaf } from "../../helpers/schedulers";
 import AppPrivateSearchTab from "../sidebarRight/tabs/search";
-import renderImageFromUrl from "../../helpers/dom/renderImageFromUrl";
+import renderImageFromUrl, { renderImageFromUrlPromise } from "../../helpers/dom/renderImageFromUrl";
 import mediaSizes from "../../helpers/mediaSizes";
 import ChatSearch from "./search";
 import { IS_TOUCH_SUPPORTED } from "../../environment/touchSupport";
 import getAutoDownloadSettingsByPeerId, { ChatAutoDownloadSettings } from "../../helpers/autoDownload";
+import ChatBackgroundGradientRenderer from "./gradientRenderer";
+import ChatBackgroundPatternRenderer from "./patternRenderer";
+import { pause } from "../../helpers/schedulers/pause";
 
 export type ChatType = 'chat' | 'pinned' | 'replies' | 'discussion' | 'scheduled';
 
@@ -77,6 +78,13 @@ export default class Chat extends EventListenerBase<{
 
   public isRestricted: boolean;
   public autoDownload: ChatAutoDownloadSettings;
+
+  public gradientRenderer: ChatBackgroundGradientRenderer;
+  public patternRenderer: ChatBackgroundPatternRenderer;
+  public gradientCanvas: HTMLCanvasElement;
+  public patternCanvas: HTMLCanvasElement;
+  public backgroundTempId: number;
+  public setBackgroundPromise: Promise<void>;
   
   constructor(
     public appImManager: AppImManager, 
@@ -120,32 +128,107 @@ export default class Chat extends EventListenerBase<{
 
     this.container.append(this.backgroundEl);
     this.appImManager.chatsContainer.append(this.container);
+
+    this.backgroundTempId = 0;
   }
 
-  public setBackground(url: string): Promise<void> {
+  public setBackground(url: string, skipAnimation?: boolean): Promise<void> {
     const theme = rootScope.getTheme();
 
     let item: HTMLElement;
-    if(theme.background.type === 'color' && document.documentElement.style.cursor === 'grabbing') {
-      const _item = this.backgroundEl.lastElementChild as HTMLElement;
-      if(_item && _item.dataset.type === theme.background.type) {
-        item = _item;
-      }
+    const isColorBackground = !!theme.background.color && !theme.background.slug && !theme.background.intensity;
+    if(
+      isColorBackground && 
+      document.documentElement.style.cursor === 'grabbing' && 
+      this.gradientRenderer && 
+      !this.patternRenderer
+    ) {
+      this.gradientCanvas.dataset.colors = theme.background.color;
+      this.gradientRenderer.init(this.gradientCanvas);
+      return Promise.resolve();
     }
+
+    const tempId = ++this.backgroundTempId;
+
+    const previousGradientRenderer = this.gradientRenderer;
+    const previousPatternRenderer = this.patternRenderer;
+    const previousGradientCanvas = this.gradientCanvas;
+    const previousPatternCanvas = this.patternCanvas;
+
+    this.gradientRenderer = 
+      this.patternRenderer = 
+      this.gradientCanvas = 
+      this.patternCanvas = 
+      undefined;
+
+    const intensity = theme.background.intensity && theme.background.intensity / 100;
+    const isDarkPattern = !!intensity && intensity < 0;
     
+    let patternRenderer: ChatBackgroundPatternRenderer;
+    let patternCanvas = item?.firstElementChild as HTMLCanvasElement;
+    let gradientCanvas: HTMLCanvasElement;
     if(!item) {
       item = document.createElement('div');
       item.classList.add('chat-background-item');
-      item.dataset.type = theme.background.type;
+
+      if(url) {
+        if(intensity) {
+          item.classList.add('is-pattern');
+
+          const rect = this.appImManager.chatsContainer.getBoundingClientRect();
+          patternRenderer = this.patternRenderer = ChatBackgroundPatternRenderer.getInstance({
+            url,
+            width: rect.width,
+            height: rect.height
+          });
+
+          patternCanvas = this.patternCanvas = patternRenderer.createCanvas();
+          patternCanvas.classList.add('chat-background-item-canvas', 'chat-background-item-pattern-canvas');
+        } else if(theme.background.slug) {
+          item.classList.add('is-image');
+        }
+      } else if(theme.background.color) {
+        item.classList.add('is-color');
+      }
     }
 
-    if(theme.background.type === 'color') {
-      item.style.backgroundColor = theme.background.color;
-      item.style.backgroundImage = 'none';
+    let gradientRenderer: ChatBackgroundGradientRenderer;
+    const color = theme.background.color;
+    if(color) {
+      // if(color.includes(',')) {
+      const {canvas, gradientRenderer: _gradientRenderer} = ChatBackgroundGradientRenderer.create(color);
+      gradientRenderer = this.gradientRenderer = _gradientRenderer;
+      gradientCanvas = this.gradientCanvas = canvas;
+      gradientCanvas.classList.add('chat-background-item-canvas', 'chat-background-item-color-canvas');
+
+      if(rootScope.settings.animationsEnabled) {
+        gradientRenderer.scrollAnimate(true);
+      }
+      // } else {
+      //   item.style.backgroundColor = color;
+      //   item.style.backgroundImage = 'none';
+      // }
     }
 
-    return new Promise<void>((resolve) => {
+    if(patternRenderer) {
+      const setOpacityTo = isDarkPattern ? gradientCanvas : patternCanvas;
+      setOpacityTo.style.setProperty('--opacity-max', '' + Math.abs(intensity));
+    }
+
+    const promise = new Promise<void>((resolve) => {
       const cb = () => {
+        if(this.backgroundTempId !== tempId) {
+          if(patternRenderer) {
+            patternRenderer.cleanup(patternCanvas);
+          }
+
+          if(gradientRenderer) {
+            gradientRenderer.cleanup();
+          }
+
+          return;
+        }
+
         const prev = this.backgroundEl.lastElementChild as HTMLElement;
 
         if(prev === item) {
@@ -153,27 +236,57 @@ export default class Chat extends EventListenerBase<{
           return;
         }
 
+        const append = [gradientCanvas, isDarkPattern ? undefined : patternCanvas].filter(Boolean);
+        if(append.length) {
+          item.append(...append);
+        }
+
         this.backgroundEl.append(item);
 
-        // * одного недостаточно, при обновлении страницы все равно фон появляется неплавно
-        // ! с requestAnimationFrame лучше, но все равно иногда моргает, так что использую два фаста.
-        fastRaf(() => {
-          fastRaf(() => {
-            SetTransition(item, 'is-visible', true, 200, prev ? () => {
-              prev.remove();
-            } : null);
-          });
-        });
+        SetTransition(item, 'is-visible', true, !skipAnimation ? 200 : 0, prev ? () => {
+          if(previousPatternRenderer) {
+            previousPatternRenderer.cleanup(previousPatternCanvas);
+          }
+
+          if(previousGradientRenderer) {
+            previousGradientRenderer.cleanup();
+          }
+
+          prev.remove();
+        } : null, 2);
 
         resolve();
       };
 
-      if(url) {
+      if(patternRenderer) {
+        const renderPatternPromise = patternRenderer.renderToCanvas(patternCanvas);
+        renderPatternPromise.then(() => {
+          let promise: Promise<any>;
+          if(isDarkPattern) {
+            promise = patternRenderer.exportCanvasPatternToImage(patternCanvas).then(url => {
+              if(this.backgroundTempId !== tempId) {
+                return;
+              }
+              
+              gradientCanvas.style.webkitMaskImage = `url(${url})`;
+            });
+          } else {
+            promise = Promise.resolve();
+          }
+          
+          promise.then(cb);
+        });
+      } else if(url) {
         renderImageFromUrl(item, url, cb);
       } else {
         cb();
       }
     });
+
+    return this.setBackgroundPromise = Promise.race([
+      pause(500),
+      promise
+    ]);
   }
 
   public setType(type: ChatType) {
@@ -245,6 +358,19 @@ export default class Chat extends EventListenerBase<{
     this.bubbles.cleanup();
   }
 
+  private cleanupBackground() {
+    ++this.backgroundTempId;
+    if(this.patternRenderer) {
+      this.patternRenderer.cleanup(this.patternCanvas);
+      this.patternRenderer = undefined;
+    }
+
+    if(this.gradientRenderer) {
+      this.gradientRenderer.cleanup();
+      this.gradientRenderer = undefined;
+    }
+  }
+
   public destroy() {
     //const perf = performance.now();
 
@@ -252,6 +378,8 @@ export default class Chat extends EventListenerBase<{
     this.bubbles.destroy();
     this.input.destroy();
     this.contextMenu && this.contextMenu.destroy();
+
+    this.cleanupBackground();
 
     delete this.topbar;
     delete this.bubbles;

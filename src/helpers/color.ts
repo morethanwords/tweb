@@ -104,7 +104,11 @@ export function hslaStringToRgba(hsla: string) {
 
 export function hexaToRgba(hexa: string) {
   const arr: ColorRgba = [] as any;
-  const offset = 1;
+  const offset = hexa[0] === '#' ? 1 : 0;
+  if(hexa.length === (5 + offset)) {
+    hexa = (offset ? '#' : '') + '0' + hexa.slice(offset);
+  }
+
   if(hexa.length === (3 + offset)) {
     for(let i = offset; i < hexa.length; ++i) {
       arr.push(parseInt(hexa[i] + hexa[i], 16));
