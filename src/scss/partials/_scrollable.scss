@@ -41,6 +41,7 @@ html:not(.is-safari):not(.is-ios) {
     max-height: 12.5rem;
     border-radius: $border-radius-medium;
     background-color: var(--scrollbar-color);
+    backdrop-filter: blur(100);
     opacity: 1;
   }
 }
