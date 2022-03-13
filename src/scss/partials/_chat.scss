@@ -669,10 +669,26 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
 		}
 
 		&-item {
-			background-image: url('assets/img/bg.jpeg');
-			background-size: cover;
-			background-position: center center;
-			background-color: inherit;
+      &.is-image {
+        background-image: url('assets/img/bg.jpeg');
+        background-position: center center;
+        background-color: inherit;
+        background-size: cover;
+      }
+
+      &.is-pattern {
+        margin: 0 !important;
+        background-image: none !important;
+        background-size: contain;
+        background-repeat: repeat-x;
+        background-color: #000 !important;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        // mix-blend-mode: overlay;
+        height: 150%;
+        top: -25%;
+      }
 
 			@include animation-level(2) {
 				transition: opacity var(--transition-standard-out);
@@ -698,6 +714,29 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
 					transition: transform var(--transition-standard-in), opacity var(--transition-standard-in) !important;
 				}
 			}
+
+      &-canvas {
+        --opacity-max: 1;
+        opacity: var(--opacity-max);
+        position: absolute;
+        width: 100%;
+      }
+
+      &-pattern-canvas {
+        mix-blend-mode: overlay;
+        // height: 100%;
+      }
+
+      &-color-canvas {
+        height: 100%;
+        // transform: scale(1.5);
+        // transform: scaleY(1.5);
+        
+        // mask-repeat: round;
+
+        mask-size: cover;
+        mask-position: center;
+      }
 		}
 	}
 

@@ -33,11 +33,13 @@ const STATE_VERSION = App.version;
 const BUILD = App.build;
 
 export type Background = {
-  type: 'color' | 'image' | 'default',
+  type?: 'color' | 'image' | 'default', // ! DEPRECATED
   blur: boolean,
   highlightningColor?: string,
-  color?: string,
-  slug?: string,
+  color?: string,     
+  slug?: string,        // image slug
+  intensity?: number,   // pattern intensity
+  id: string | number,  // wallpaper id
 };
 
 export type Theme = {
@@ -186,18 +188,23 @@ export const STATE_INIT: State = {
     themes: [{
       name: 'day',
       background: {
-        type: 'image',
         blur: false,
-        slug: 'ByxGo2lrMFAIAAAAmkJxZabh8eM', // * new blurred camomile,
-        highlightningColor: 'hsla(85.5319, 36.9171%, 40.402%, 0.4)'
+        slug: 'pattern',
+        color: '#dbddbb,#6ba587,#d5d88d,#88b884',
+        highlightningColor: 'hsla(86.4, 43.846153%, 45.117647%, .4)',
+        intensity: 50,
+        id: '1'
       }
     }, {
       name: 'night',
       background: {
-        type: 'color',
         blur: false,
-        color: '#0f0f0f',
-        highlightningColor: 'hsla(0, 0%, 3.82353%, 0.4)'
+        slug: 'pattern',
+        // color: '#dbddbb,#6ba587,#d5d88d,#88b884',
+        color: '#fec496,#dd6cb9,#962fbf,#4f5bd5',
+        highlightningColor: 'hsla(299.142857, 44.166666%, 37.470588%, .4)',
+        intensity: -50,
+        id: '-1'
       }
     }],
     theme: 'system',
@@ -504,6 +511,32 @@ export class AppStateManager extends EventListenerBase<{
             const result = this.storagesResults.dialogs;
             if(result?.length) {
               result.length = 0;
+            }
+          }
+
+          // * migrate backgrounds (March 13, 2022; to version 1.3.0)
+          if(compareVersion(state.version, '1.3.0') === -1) {
+            let migrated = false;
+            state.settings.themes.forEach((theme, idx, arr) => {
+              if((
+                theme.name === 'day' && 
+                theme.background.slug === 'ByxGo2lrMFAIAAAAmkJxZabh8eM' && 
+                theme.background.type === 'image' 
+              ) || (
+                theme.name === 'night' && 
+                theme.background.color === '#0f0f0f' && 
+                theme.background.type === 'color' 
+              )) {
+                const newTheme = STATE_INIT.settings.themes.find(newTheme => newTheme.name === theme.name);
+                if(newTheme) {
+                  arr[idx] = copy(newTheme);
+                  migrated = true;
+                }
+              }
+            });
+
+            if(migrated) {
+              this.pushToState('settings', state.settings);
             }
           }
           

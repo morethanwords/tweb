@@ -52,7 +52,10 @@ export default function renderImageFromUrl(
     }, {once: true});
 
     if(callback) {
-      loader.addEventListener('error', callback);
+      loader.addEventListener('error', (err) => {
+        console.error('Render image from url failed:', err, url, loader);
+        callback();
+      });
     }
   }
 }

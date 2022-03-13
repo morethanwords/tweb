@@ -272,6 +272,12 @@ export class ApiFileManager {
     return cryptoWorker.invokeCrypto('gzipUncompress', bytes.slice().buffer, true) as Promise<string>;
   };
 
+  private uncompressTGV = (bytes: Uint8Array, fileName: string) => {
+    //this.log('uncompressTGS', bytes, bytes.slice().buffer);
+    // slice нужен потому что в uint8array - 5053 length, в arraybuffer - 5084
+    return cryptoWorker.invokeCrypto('gzipUncompress', bytes.slice().buffer, true) as Promise<string>;
+  };
+
   private convertWebp = (bytes: Uint8Array, fileName: string) => {
     const convertPromise = deferredPromise<Uint8Array>();
 
@@ -324,7 +330,10 @@ export class ApiFileManager {
 
     let process: ApiFileManager['uncompressTGS'] | ApiFileManager['convertWebp'];
 
-    if(options.mimeType === 'image/webp' && !isWebpSupported()) {
+    if(options.mimeType === 'application/x-tgwallpattern') {
+      process = this.uncompressTGV;
+      options.mimeType = 'image/svg+xml';
+    } else if(options.mimeType === 'image/webp' && !isWebpSupported()) {
       process = this.convertWebp;
       options.mimeType = 'image/png';
     } else if(options.mimeType === 'application/x-tgsticker') {

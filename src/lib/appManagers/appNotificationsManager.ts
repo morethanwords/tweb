@@ -457,7 +457,8 @@ export class AppNotificationsManager {
       }
     }
 
-    this.checkMuteUntilTimeout = window.setTimeout(this.checkMuteUntil, (closestMuteUntil - timestamp) * 1000);
+    const timeout = Math.min(1800e3, (closestMuteUntil - timestamp) * 1000);
+    this.checkMuteUntilTimeout = window.setTimeout(this.checkMuteUntil, timeout);
   };
 
   public savePeerSettings({key, peerId, settings}: {
