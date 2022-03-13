@@ -37,7 +37,7 @@ import appDraftsManager from './appDraftsManager';
 import serverTimeManager from '../mtproto/serverTimeManager';
 import stateStorage from '../stateStorage';
 import appDownloadManager from './appDownloadManager';
-import { AppStateManager } from './appStateManager';
+import { AppStateManager, STATE_INIT } from './appStateManager';
 import { MOUNT_CLASS_TO } from '../../config/debug';
 import appNavigationController from '../../components/appNavigationController';
 import appNotificationsManager from './appNotificationsManager';
@@ -128,10 +128,12 @@ export class AppImManager {
   private chatsSelectTabDebounced: () => void;
   
   public markupTooltip: MarkupTooltip;
-  private backgroundPromises: {[slug: string]: Promise<string>} = {};
+  private backgroundPromises: {[slug: string]: Promise<string>};
   
   private topbarCall: TopbarCall;
-  emojiAnimationContainer: HTMLDivElement;
+  public emojiAnimationContainer: HTMLDivElement;
+
+  private lastBackgroundUrl: string;
 
   get myId() {
     return rootScope.myId;
@@ -146,6 +148,14 @@ export class AppImManager {
     appNotificationsManager.start();
 
     this.log = logger('IM', LogTypes.Log | LogTypes.Warn | LogTypes.Debug | LogTypes.Error);
+
+    this.backgroundPromises = {};
+    STATE_INIT.settings.themes.forEach(theme => {
+      if(theme.background.slug) {
+        const url = /* window.location.origin + window.location.pathname +  */'assets/img/' + theme.background.slug + '.svg';
+        this.backgroundPromises[theme.background.slug] = Promise.resolve(url);
+      }
+    });
 
     this.selectTab(0);
     
@@ -205,7 +215,9 @@ export class AppImManager {
       animationIntersector.checkAnimations(false);
     });
 
+    // setTimeout(() => {
     this.applyCurrentTheme();
+    // }, 0);
 
     // * fix simultaneous opened both sidebars, can happen when floating sidebar is opened with left sidebar
     mediaSizes.addEventListener('changeScreen', (from, to) => {
@@ -215,6 +227,13 @@ export class AppImManager {
       }
 
       this.appendEmojiAnimationContainer(to);
+    });
+
+    const resizeBackgroundDebounced = debounce(() => {
+      this.setBackground(this.lastBackgroundUrl, false);
+    }, 200, false, true);
+    mediaSizes.addEventListener('resize', () => {
+      resizeBackgroundDebounced();
     });
 
     rootScope.addEventListener('history_focus', (e) => {
@@ -307,6 +326,11 @@ export class AppImManager {
       });
 
       popup.show();
+    });
+
+    // remove scroll listener when setting chat to tray
+    rootScope.addEventListener('chat_changing', ({to}) => {
+      this.toggleChatGradientAnimation(to);
     });
 
     stateStorage.get('chatPositions').then((c) => {
@@ -549,6 +573,14 @@ export class AppImManager {
 
     this.onHashChange();
     this.attachKeydownListener();
+  }
+
+  private toggleChatGradientAnimation(activatingChat: Chat) {
+    this.chats.forEach(chat => {
+      if(chat.gradientRenderer) {
+        chat.gradientRenderer.scrollAnimate(rootScope.settings.animationsEnabled && chat === activatingChat);
+      }
+    });
   }
 
   private appendEmojiAnimationContainer(screen: ScreenSize) {
@@ -1005,19 +1037,19 @@ export class AppImManager {
   public setCurrentBackground(broadcastEvent = false) {
     const theme = rootScope.getTheme();
 
-    if(theme.background.type === 'image' || (theme.background.type === 'default' && theme.background.slug)) {
+    if(theme.background.slug) {
       const defaultTheme = AppStateManager.STATE_INIT.settings.themes.find(t => t.name === theme.name);
-      const isDefaultBackground = theme.background.blur === defaultTheme.background.blur && 
-        theme.background.slug === defaultTheme.background.slug;
+      // const isDefaultBackground = theme.background.blur === defaultTheme.background.blur && 
+        // theme.background.slug === defaultTheme.background.slug;
 
-      if(!isDefaultBackground) {
+      // if(!isDefaultBackground) {
         return this.getBackground(theme.background.slug).then((url) => {
           return this.setBackground(url, broadcastEvent);
         }, () => { // * if NO_ENTRY_FOUND
           theme.background = copy(defaultTheme.background); // * reset background
           return this.setBackground('', true);
         });
-      }
+      // }
     }
     
     return this.setBackground('', broadcastEvent);
@@ -1031,6 +1063,7 @@ export class AppImManager {
   }
 
   public setBackground(url: string, broadcastEvent = true): Promise<void> {
+    this.lastBackgroundUrl = url;
     const promises = this.chats.map(chat => chat.setBackground(url));
     return promises[promises.length - 1].then(() => {
       if(broadcastEvent) {
@@ -1133,6 +1166,8 @@ export class AppImManager {
     }
     
     I18n.setTimeFormat(rootScope.settings.timeFormat);
+
+    this.toggleChatGradientAnimation(this.chat);
   };
 
   // * не могу использовать тут TransitionSlider, так как мне нужен отрисованный блок рядом 
@@ -1433,7 +1468,7 @@ export class AppImManager {
     );
 
     if(this.chats.length) {
-      chat.backgroundEl.append(this.chat.backgroundEl.lastElementChild.cloneNode(true));
+      chat.setBackground(this.lastBackgroundUrl, true);
     }
 
     this.chats.push(chat);
@@ -1556,7 +1591,10 @@ export class AppImManager {
       // * wait for cached render
       const promise = result?.cached ? result.promise : Promise.resolve();
       if(peerId) {
-        promise.then(() => {
+        Promise.all([
+          promise,
+          chat.setBackgroundPromise
+        ]).then(() => {
           //window.requestAnimationFrame(() => {
           setTimeout(() => { // * setTimeout is better here
             setTimeout(() => {

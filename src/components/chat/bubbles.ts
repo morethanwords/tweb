@@ -689,6 +689,13 @@ export default class ChatBubbles {
       } else {
         this.renderNewMessagesByIds([mid], true);
       }
+
+      if(rootScope.settings.animationsEnabled) {
+        const gradientRenderer = this.chat.gradientRenderer;
+        if(gradientRenderer) {
+          gradientRenderer.toNextPosition();
+        }
+      }
     });
 
     this.listenerSetter.add(rootScope)('history_multiappend', (msgIdsByPeer) => {
