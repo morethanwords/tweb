@@ -1,3 +1,8 @@
+### 1.3.0 (128)
+* Enjoy animated backgrounds: all-new fascinating gradient backgrounds featuring fluid transitions.
+* Added menu for bots with beautiful bounce effect when expanding.
+* Improvements for playback animation of voice messages.
+
 ### 1.2.0 (108)
 New:
 * Redesigned Profiles – enjoy new enhanced profile view.
