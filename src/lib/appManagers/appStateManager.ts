@@ -14,7 +14,6 @@ import EventListenerBase from '../../helpers/eventListenerBase';
 import rootScope from '../rootScope';
 import stateStorage from '../stateStorage';
 import { logger } from '../logger';
-import { copy, setDeepProperty, validateInitObject } from '../../helpers/object';
 import App from '../../config/app';
 import DEBUG, { MOUNT_CLASS_TO } from '../../config/debug';
 import AppStorage from '../storage';
@@ -25,6 +24,9 @@ import sessionStorage from '../sessionStorage';
 import { nextRandomUint } from '../../helpers/random';
 import compareVersion from '../../helpers/compareVersion';
 import getTimeFormat from '../../helpers/getTimeFormat';
+import copy from '../../helpers/object/copy';
+import setDeepProperty from '../../helpers/object/setDeepProperty';
+import validateInitObject from '../../helpers/object/validateInitObject';
 
 const REFRESH_EVERY = 24 * 60 * 60 * 1000; // 1 day
 // const REFRESH_EVERY = 1e3;

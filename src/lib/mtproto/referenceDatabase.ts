@@ -8,12 +8,12 @@ import { RefreshReferenceTask, RefreshReferenceTaskResponse } from "./apiFileMan
 import appMessagesManager from "../appManagers/appMessagesManager";
 import appStickersManager from "../appManagers/appStickersManager";
 import { Photo } from "../../layer";
-import { bytesToHex } from "../../helpers/bytes";
-import { deepEqual } from "../../helpers/object";
 import { MOUNT_CLASS_TO } from "../../config/debug";
 import apiManager from "./mtprotoworker";
 import assumeType from "../../helpers/assumeType";
 import { logger } from "../logger";
+import bytesToHex from "../../helpers/bytes/bytesToHex";
+import deepEqual from "../../helpers/object/deepEqual";
 
 export type ReferenceContext = ReferenceContext.referenceContextProfilePhoto | ReferenceContext.referenceContextMessage | ReferenceContext.referenceContextEmojiesSounds | ReferenceContext.referenceContextReactions;
 export namespace ReferenceContext {

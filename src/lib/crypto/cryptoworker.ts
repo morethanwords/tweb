@@ -13,8 +13,19 @@
 import CryptoWorkerMethods, { CryptoMethods } from './crypto_methods';
 
 /// #if MTPROTO_WORKER
-import { aesDecryptSync, aesEncryptSync, bytesModPow, gzipUncompress, hash_pbkdf2, pqPrimeFactorization, rsaEncrypt, sha1HashSync, sha256HashSync } from './crypto_utils';
-import { computeSRP } from './srp';
+import gzipUncompress from '../../helpers/gzipUncompress';
+import bytesModPow from '../../helpers/bytes/bytesModPow';
+import computeSRP from './srp';
+import { aesEncryptSync, aesDecryptSync } from './utils/aesIGE';
+import pbkdf2 from './utils/pbkdf2';
+import rsaEncrypt from './utils/rsa';
+import sha1 from './utils/sha1';
+import sha256 from './utils/sha256';
+import factorizeBrentPollardPQ from './utils/factorize/BrentPollard';
+import generateDh from './generateDh';
+import computeDhKey from './computeDhKey';
+import getEmojisFingerprint from '../calls/helpers/getEmojisFingerprint';
+// import factorizeTdlibPQ from './utils/factorize/tdlib';
 /// #endif
 
 type Task = {
@@ -44,16 +55,21 @@ class CryptoWorker extends CryptoWorkerMethods {
 
     /// #if MTPROTO_WORKER
     this.utils = {
-      'sha1-hash': sha1HashSync,
-      'sha256-hash': sha256HashSync,
-      'pbkdf2': hash_pbkdf2,
+      'sha1': sha1,
+      'sha256': sha256,
+      'pbkdf2': pbkdf2,
       'aes-encrypt': aesEncryptSync,
       'aes-decrypt': aesDecryptSync,
       'rsa-encrypt': rsaEncrypt,
-      'factorize': pqPrimeFactorization,
+      'factorize': factorizeBrentPollardPQ,
+      // 'factorize-tdlib': factorizeTdlibPQ, 
+      // 'factorize-new-new': pqPrimeLeemonNew, 
       'mod-pow': bytesModPow,
       'gzipUncompress': gzipUncompress,
-      'computeSRP': computeSRP
+      'computeSRP': computeSRP,
+      'generate-dh': generateDh,
+      'compute-dh-key': computeDhKey,
+      'get-emojis-fingerprint': getEmojisFingerprint
     };
 
     // Promise.all([

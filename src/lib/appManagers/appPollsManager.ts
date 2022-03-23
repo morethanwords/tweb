@@ -5,7 +5,7 @@
  */
 
 import { MOUNT_CLASS_TO } from "../../config/debug";
-import { copy } from "../../helpers/object";
+import copy from "../../helpers/object/copy";
 import { InputMedia, Message, MessageEntity, MessageMedia, Poll, PollResults } from "../../layer";
 import { logger, LogTypes } from "../logger";
 import apiManager from "../mtproto/mtprotoworker";

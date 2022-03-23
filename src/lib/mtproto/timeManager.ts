@@ -10,11 +10,11 @@
  */
 
 import sessionStorage from '../sessionStorage';
-import { longFromInts } from './bin_utils';
 import { nextRandomUint } from '../../helpers/random';
 import { MOUNT_CLASS_TO } from '../../config/debug';
 import { WorkerTaskVoidTemplate } from '../../types';
 import { notifySomeone } from '../../helpers/context';
+import longFromInts from '../../helpers/long/longFromInts';
 
 /*
 let lol: any = {};

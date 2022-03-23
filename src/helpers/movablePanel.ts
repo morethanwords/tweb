@@ -8,7 +8,7 @@ import MovableElement, { MovableElementOptions, MovableState } from "../componen
 import { IS_TOUCH_SUPPORTED } from "../environment/touchSupport";
 import ListenerSetter from "./listenerSetter";
 import mediaSizes, { ScreenSize } from "./mediaSizes";
-import { safeAssign } from "./object";
+import safeAssign from "./object/safeAssign";
 
 export default class MovablePanel {
   #movable: MovableElement;

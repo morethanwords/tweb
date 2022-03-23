@@ -8,7 +8,6 @@ import PopupElement from "../popups";
 import { hexToRgb } from "../../helpers/color";
 import { attachClickEvent } from "../../helpers/dom/clickEvent";
 import customProperties from "../../helpers/dom/customProperties";
-import { safeAssign } from "../../helpers/object";
 import { GroupCall, GroupCallParticipant } from "../../layer";
 import type { AppChatsManager } from "../../lib/appManagers/appChatsManager";
 import type { AppGroupCallsManager } from "../../lib/appManagers/appGroupCallsManager";
@@ -28,13 +27,14 @@ import Scrollable from "../scrollable";
 import { MovableState } from "../movableElement";
 import animationIntersector from "../animationIntersector";
 import { IS_APPLE_MOBILE } from "../../environment/userAgent";
-import toggleDisability from "../../helpers/dom/toggleDisability";
 import throttle from "../../helpers/schedulers/throttle";
 import IS_SCREEN_SHARING_SUPPORTED from "../../environment/screenSharingSupport";
 import GroupCallInstance from "../../lib/calls/groupCallInstance";
 import makeButton from "../call/button";
 import MovablePanel from "../../helpers/movablePanel";
 import findUpClassName from "../../helpers/dom/findUpClassName";
+import safeAssign from "../../helpers/object/safeAssign";
+import toggleClassName from "../../helpers/toggleClassName";
 
 export enum GROUP_CALL_PARTICIPANT_MUTED_STATE {
   UNMUTED,
@@ -345,15 +345,17 @@ export default class PopupGroupCall extends PopupElement {
     this.buttonsContainer.classList.toggle('show-controls', show);
   };
 
+  private toggleDisability = toggleClassName.bind(null, 'btn-disabled');
+
   private onVideoClick = () => {
-    const toggle = toggleDisability([this.btnVideo], true);
+    const toggle = this.toggleDisability([this.btnVideo], true);
     this.instance.toggleVideoSharing().finally(() => {
       toggle();
     });
   };
 
   private onScreenClick = () => {
-    const toggle = toggleDisability([this.btnScreen], true);
+    const toggle = this.toggleDisability([this.btnScreen], true);
     this.instance.toggleScreenSharing().finally(() => {
       toggle();
     });

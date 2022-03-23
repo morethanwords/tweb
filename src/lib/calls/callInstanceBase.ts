@@ -8,6 +8,7 @@ import EventListenerBase, { EventListenerListeners } from "../../helpers/eventLi
 import noop from "../../helpers/noop";
 import { logger } from "../logger";
 import getAudioConstraints from "./helpers/getAudioConstraints";
+import getScreenConstraints from "./helpers/getScreenConstraints";
 import getStreamCached from "./helpers/getStreamCached";
 import getVideoConstraints from "./helpers/getVideoConstraints";
 import LocalConferenceDescription from "./localConferenceDescription";
@@ -93,11 +94,16 @@ export default abstract class CallInstanceBase<E extends EventListenerListeners>
     return this.getStream({
       constraints, 
       muted
-    }).then(stream => {
-      if(stream.getVideoTracks().length) {
-        this.saveInputVideoStream(stream, 'main');
-      }
-      
+    }).then((stream) => {
+      this.onInputStream(stream);
+    });
+  }
+
+  public requestScreen() {
+    return this.getStream({
+      isScreen: true,
+      constraints: getScreenConstraints(true)
+    }).then((stream) => {
       this.onInputStream(stream);
     });
   }
@@ -212,6 +218,11 @@ export default abstract class CallInstanceBase<E extends EventListenerListeners>
 
   protected onInputStream(stream: MediaStream): void {
     if(!this.isClosing) {
+      const videoTracks = stream.getVideoTracks();
+      if(videoTracks.length) {
+        this.saveInputVideoStream(stream, 'main');
+      }
+
       const {streamManager, description} = this;
       streamManager.addStream(stream, 'input');
       

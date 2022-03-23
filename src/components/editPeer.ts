@@ -9,8 +9,8 @@ import AvatarEdit from "./avatarEdit";
 import AvatarElement from "./avatar";
 import InputField from "./inputField";
 import ListenerSetter from "../helpers/listenerSetter";
-import { safeAssign } from "../helpers/object";
 import ButtonCorner from "./buttonCorner";
+import safeAssign from "../helpers/object/safeAssign";
 
 export default class EditPeer {
   public nextBtn: HTMLButtonElement;

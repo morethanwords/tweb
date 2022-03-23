@@ -6,8 +6,9 @@
 
 import { logger, LogTypes } from "../lib/logger";
 import VisibilityIntersector, { OnVisibilityChange } from "./visibilityIntersector";
-import { findAndSpliceAll, indexOfAndSplice } from "../helpers/array";
 import throttle from "../helpers/schedulers/throttle";
+import findAndSpliceAll from "../helpers/array/findAndSpliceAll";
+import indexOfAndSplice from "../helpers/array/indexOfAndSplice";
 
 type LazyLoadElementBase = {
   load: () => Promise<any>

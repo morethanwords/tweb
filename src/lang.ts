@@ -683,6 +683,8 @@ const lang = {
   "Devices": "Devices",
   "LanguageName": "English",
   "EditCantEditPermissionsPublic": "This permission is not available in public groups.",
+  "VoipUserMicrophoneIsOff": "%s\'s microphone is off",
+  "VoipUserCameraIsOff": "%s\'s camera is off",
 
   // * macos
   "AccountSettings.Filters": "Chat Folders",

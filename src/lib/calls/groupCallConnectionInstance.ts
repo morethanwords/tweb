@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { forEachReverse } from "../../helpers/array";
+import forEachReverse from "../../helpers/array/forEachReverse";
 import throttle from "../../helpers/schedulers/throttle";
 import { Updates, PhoneJoinGroupCall, PhoneJoinGroupCallPresentation, Update } from "../../layer";
 import apiUpdatesManager from "../appManagers/apiUpdatesManager";

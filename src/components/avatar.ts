@@ -17,7 +17,7 @@ import appAvatarsManager from "../lib/appManagers/appAvatarsManager";
 import AppMediaViewer from "./appMediaViewer";
 import AppMediaViewerAvatar from "./appMediaViewerAvatar";
 import { NULL_PEER_ID } from "../lib/mtproto/mtproto_config";
-import { isObject } from "../helpers/object";
+import isObject from "../helpers/object/isObject";
 
 const onAvatarUpdate = (peerId: PeerId) => {
   appAvatarsManager.removeFromAvatarsCache(peerId);

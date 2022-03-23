@@ -6,7 +6,7 @@
 
 import { clamp } from "../helpers/number";
 import attachGrabListeners, { GrabEvent } from "../helpers/dom/attachGrabListeners";
-import { safeAssign } from "../helpers/object";
+import safeAssign from "../helpers/object/safeAssign";
 
 export default class RangeSelector {
   public container: HTMLDivElement;

@@ -10,7 +10,7 @@ import findUpClassName from "../../helpers/dom/findUpClassName";
 import { addFullScreenListener, isFullScreen } from "../../helpers/dom/fullScreen";
 import ListenerSetter from "../../helpers/listenerSetter";
 import noop from "../../helpers/noop";
-import { safeAssign } from "../../helpers/object";
+import safeAssign from "../../helpers/object/safeAssign";
 import ScrollableLoader from "../../helpers/scrollableLoader";
 import { GroupCallParticipant } from "../../layer";
 import type { AppChatsManager } from "../../lib/appManagers/appChatsManager";

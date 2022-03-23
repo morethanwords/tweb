@@ -14,7 +14,7 @@ import MTPNetworker from "./networker";
 import { InvokeApiOptions } from "../../types";
 import App from "../../config/app";
 import { MOUNT_CLASS_TO } from "../../config/debug";
-import { indexOfAndSplice } from "../../helpers/array";
+import indexOfAndSplice from "../../helpers/array/indexOfAndSplice";
 
 export class NetworkerFactory {
   private networkers: MTPNetworker[] = [];

@@ -11,7 +11,6 @@
 
 import type { NotificationSettings } from "../appManagers/appNotificationsManager";
 import { MOUNT_CLASS_TO } from "../../config/debug";
-import { copy } from "../../helpers/object";
 import { logger } from "../logger";
 import rootScope from "../rootScope";
 import { ServiceWorkerNotificationsClearTask, ServiceWorkerPingTask, ServiceWorkerPushClickTask } from "../serviceWorker/index.service";
@@ -19,6 +18,7 @@ import apiManager from "./mtprotoworker";
 import I18n, { LangPackKey } from "../langPack";
 import { IS_MOBILE } from "../../environment/userAgent";
 import appRuntimeManager from "../appManagers/appRuntimeManager";
+import copy from "../../helpers/object/copy";
 
 export type PushSubscriptionNotifyType = 'init' | 'subscribe' | 'unsubscribe';
 export type PushSubscriptionNotifyEvent = `push_${PushSubscriptionNotifyType}`;

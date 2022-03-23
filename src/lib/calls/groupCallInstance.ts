@@ -5,8 +5,8 @@
  */
 
 import { IS_SAFARI } from "../../environment/userAgent";
-import { indexOfAndSplice } from "../../helpers/array";
-import { safeAssign } from "../../helpers/object";
+import indexOfAndSplice from "../../helpers/array/indexOfAndSplice";
+import safeAssign from "../../helpers/object/safeAssign";
 import throttle from "../../helpers/schedulers/throttle";
 import { GroupCall, GroupCallParticipant, Updates } from "../../layer";
 import apiUpdatesManager from "../appManagers/apiUpdatesManager";

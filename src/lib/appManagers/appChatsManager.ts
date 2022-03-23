@@ -10,9 +10,11 @@
  */
 
 import { MOUNT_CLASS_TO } from "../../config/debug";
-import { isObject, safeReplaceObject, copy, deepEqual } from "../../helpers/object";
-import { isRestricted } from "../../helpers/restrictions";
-import { ChannelParticipant, Chat, ChatAdminRights, ChatBannedRights, ChatParticipant, ChatPhoto, InputChannel, InputChatPhoto, InputFile, InputPeer, Update, Updates, ChannelsCreateChannel, Peer } from "../../layer";
+import copy from "../../helpers/object/copy";
+import deepEqual from "../../helpers/object/deepEqual";
+import isObject from "../../helpers/object/isObject";
+import safeReplaceObject from "../../helpers/object/safeReplaceObject";
+import { ChannelParticipant, ChannelsCreateChannel, Chat, ChatAdminRights, ChatBannedRights, ChatParticipant, ChatPhoto, InputChannel, InputChatPhoto, InputFile, InputPeer, Update, Updates } from "../../layer";
 import apiManagerProxy from "../mtproto/mtprotoworker";
 import apiManager from '../mtproto/mtprotoworker';
 import { RichTextProcessor } from "../richtextprocessor";
@@ -21,6 +23,7 @@ import apiUpdatesManager from "./apiUpdatesManager";
 import appPeersManager from "./appPeersManager";
 import appStateManager from "./appStateManager";
 import appUsersManager from "./appUsersManager";
+import { isRestricted } from "../../helpers/restrictions";
 
 export type Channel = Chat.channel;
 export type ChatRights = keyof ChatBannedRights['pFlags'] | keyof ChatAdminRights['pFlags'] | 'change_type' | 'change_permissions' | 'delete_chat' | 'view_participants';

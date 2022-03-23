@@ -7,7 +7,7 @@
 import { IS_TOUCH_SUPPORTED } from "../../environment/touchSupport";
 import EventListenerBase from "../eventListenerBase";
 import ListenerSetter from "../listenerSetter";
-import { safeAssign } from "../object";
+import safeAssign from "../object/safeAssign";
 import findUpClassName from "./findUpClassName";
 
 export default class ControlsHover extends EventListenerBase<{

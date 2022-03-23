@@ -6,7 +6,7 @@
 
 import { SliderSuperTab } from "../../slider";
 import AppSelectPeers from "../../appSelectPeers";
-import { putPreloader, setButtonLoader } from "../../misc";
+import { setButtonLoader } from "../../misc";
 import { LangPackKey, _i18n } from "../../../lib/langPack";
 import ButtonCorner from "../../buttonCorner";
 

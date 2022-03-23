@@ -18,7 +18,6 @@ import type { AppDraftsManager } from "../../lib/appManagers/appDraftsManager";
 import type { AppMessagesIdsManager } from "../../lib/appManagers/appMessagesIdsManager";
 import type Chat from "./chat";
 import { CHAT_ANIMATION_GROUP } from "../../lib/appManagers/appImManager";
-import { getObjectKeysAndSort } from "../../helpers/object";
 import { IS_TOUCH_SUPPORTED } from "../../environment/touchSupport";
 import { logger } from "../../lib/logger";
 import rootScope from "../../lib/rootScope";
@@ -53,7 +52,6 @@ import DEBUG from "../../config/debug";
 import { SliceEnd } from "../../helpers/slicedArray";
 import serverTimeManager from "../../lib/mtproto/serverTimeManager";
 import PeerTitle from "../peerTitle";
-import { forEachReverse } from "../../helpers/array";
 import findUpClassName from "../../helpers/dom/findUpClassName";
 import findUpTag from "../../helpers/dom/findUpTag";
 import { toast } from "../toast";
@@ -94,6 +92,8 @@ import type { AppReactionsManager } from "../../lib/appManagers/appReactionsMana
 import RLottiePlayer from "../../lib/rlottie/rlottiePlayer";
 import { pause } from "../../helpers/schedulers/pause";
 import ScrollSaver from "../../helpers/scrollSaver";
+import getObjectKeysAndSort from "../../helpers/object/getObjectKeysAndSort";
+import forEachReverse from "../../helpers/array/forEachReverse";
 
 const USE_MEDIA_TAILS = false;
 const IGNORE_ACTIONS: Set<Message.messageService['action']['_']> = new Set([

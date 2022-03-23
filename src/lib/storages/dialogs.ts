@@ -22,9 +22,7 @@ import type { AppMessagesIdsManager } from "../appManagers/appMessagesIdsManager
 import { tsNow } from "../../helpers/date";
 import apiManager from "../mtproto/mtprotoworker";
 import SearchIndex from "../searchIndex";
-import { forEachReverse, indexOfAndSplice, insertInDescendSortedArray } from "../../helpers/array";
 import rootScope from "../rootScope";
-import { defineNotNumerableProperties, safeReplaceObject } from "../../helpers/object";
 import { AppStateManager } from "../appManagers/appStateManager";
 import { SliceEnd } from "../../helpers/slicedArray";
 import { MyDialogFilter } from "./filters";
@@ -33,6 +31,11 @@ import { NoneToVoidFunction } from "../../types";
 import ctx from "../../environment/ctx";
 import AppStorage from "../storage";
 import type DATABASE_STATE from "../../config/databases/state";
+import forEachReverse from "../../helpers/array/forEachReverse";
+import indexOfAndSplice from "../../helpers/array/indexOfAndSplice";
+import insertInDescendSortedArray from "../../helpers/array/insertInDescendSortedArray";
+import defineNotNumerableProperties from "../../helpers/object/defineNotNumerableProperties";
+import safeReplaceObject from "../../helpers/object/safeReplaceObject";
 
 export type FolderDialog = {
   dialog: Dialog,

@@ -45,7 +45,6 @@ import AppPrivateSearchTab from '../../components/sidebarRight/tabs/search';
 import I18n, { i18n, join, LangPackKey } from '../langPack';
 import { ChatInvite, Dialog, Message, SendMessageAction } from '../../layer';
 import { hslaStringToHex } from '../../helpers/color';
-import { copy, getObjectKeysAndSort } from '../../helpers/object';
 import { getFilesFromEvent } from '../../helpers/files';
 import PeerTitle from '../../components/peerTitle';
 import PopupPeer from '../../components/popups/peer';
@@ -77,6 +76,7 @@ import TopbarCall from '../../components/topbarCall';
 import confirmationPopup from '../../components/confirmationPopup';
 import IS_GROUP_CALL_SUPPORTED from '../../environment/groupCallSupport';
 import appAvatarsManager from './appAvatarsManager';
+import appCallsManager from './appCallsManager';
 import IS_CALL_SUPPORTED from '../../environment/callSupport';
 import { CallType } from '../calls/types';
 import { Modify, SendMessageEmojiInteractionData } from '../../types';
@@ -84,6 +84,9 @@ import htmlToSpan from '../../helpers/dom/htmlToSpan';
 import getVisibleRect from '../../helpers/dom/getVisibleRect';
 import { simulateClickEvent } from '../../helpers/dom/clickEvent';
 import appReactionsManager from './appReactionsManager';
+import PopupCall from '../../components/call';
+import copy from '../../helpers/object/copy';
+import getObjectKeysAndSort from '../../helpers/object/getObjectKeysAndSort';
 
 //console.log('appImManager included33!');
 
@@ -341,7 +344,7 @@ export class AppImManager {
       this.topbarCall = new TopbarCall(appGroupCallsManager, appPeersManager, appChatsManager, appAvatarsManager);
     }
 
-    /* if(IS_CALL_SUPPORTED) {
+    if(IS_CALL_SUPPORTED) {
       rootScope.addEventListener('call_instance', ({instance, hasCurrent}) => {
         if(hasCurrent) {
           return;
@@ -349,12 +352,11 @@ export class AppImManager {
         
         new PopupCall({
           appAvatarsManager,
-          appCallsManager,
           appPeersManager,
           instance
         }).show();
       });
-    } */
+    }
 
     // ! do not remove this line 
     // ! instance can be deactivated before the UI starts, because it waits in background for RAF that is delayed
@@ -918,7 +920,7 @@ export class AppImManager {
   }
 
   public async callUser(userId: UserId, type: CallType) {
-    /* const call = appCallsManager.getCallByUserId(userId);
+    const call = appCallsManager.getCallByUserId(userId);
     if(call) {
       return;
     }
@@ -939,17 +941,17 @@ export class AppImManager {
 
     await this.discardCurrentCall(userId.toPeerId());
 
-    appCallsManager.startCallInternal(userId, type === 'video'); */
+    appCallsManager.startCallInternal(userId, type === 'video');
   }
 
   private discardCurrentCall(toPeerId: PeerId) {
-    /* if(appCallsManager.currentCall) return this.discardCallConfirmation(toPeerId);
+    if(appCallsManager.currentCall) return this.discardCallConfirmation(toPeerId);
     else if(appGroupCallsManager.groupCall) return this.discardGroupCallConfirmation(toPeerId);
-    else return Promise.resolve(); */
+    else return Promise.resolve();
   }
 
   private async discardCallConfirmation(toPeerId: PeerId) {
-    /* const currentCall = appCallsManager.currentCall;
+    const currentCall = appCallsManager.currentCall;
     if(currentCall) {
       await confirmationPopup({
         titleLangKey: 'Call.Confirm.Discard.Call.Header',
@@ -966,7 +968,7 @@ export class AppImManager {
       if(appCallsManager.currentCall === currentCall) {
         await currentCall.hangUp();
       }
-    } */
+    }
   }
 
   private async discardGroupCallConfirmation(toPeerId: PeerId) {
