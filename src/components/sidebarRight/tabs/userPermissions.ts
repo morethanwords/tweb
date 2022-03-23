@@ -6,7 +6,7 @@
 
 import { attachClickEvent } from "../../../helpers/dom/clickEvent";
 import toggleDisability from "../../../helpers/dom/toggleDisability";
-import { deepEqual } from "../../../helpers/object";
+import deepEqual from "../../../helpers/object/deepEqual";
 import { ChannelParticipant } from "../../../layer";
 import appChatsManager from "../../../lib/appManagers/appChatsManager";
 import appDialogsManager from "../../../lib/appManagers/appDialogsManager";

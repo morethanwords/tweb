@@ -352,6 +352,7 @@ body.is-right-column-shown {
         width: 2.5rem;
         height: 2.5rem;
         padding: 0;
+        flex: 0 0 auto;
       }
 
       .peer-title {
@@ -384,6 +385,10 @@ body.is-right-column-shown {
 
       .btn-icon {
         margin-right: .375rem;
+      }
+
+      .call-description {
+        white-space: nowrap;
       }
 
       .call-description-duration {

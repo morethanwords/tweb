@@ -6,22 +6,23 @@
 
 //import aesjs from 'aes-js';
 import AES from "@cryptography/aes";
-import { bytesFromWordss } from "../../../helpers/bytes";
+import bytesFromWordss from "../../../helpers/bytes/bytesFromWordss";
 import { Codec } from "./codec";
 
 class Counter {
-  _counter: Uint8Array;
+  public counter: Uint8Array;
 
   constructor(initialValue: Uint8Array) {
-    this._counter = initialValue;
+    this.counter = initialValue;
   }
 
-  increment() {
-    for(let i = 15; i >= 0; i--) {
-      if(this._counter[i] === 255) {
-        this._counter[i] = 0;
+  public increment() {
+    const counter = this.counter;
+    for(let i = 15; i >= 0; --i) {
+      if(counter[i] === 255) {
+        counter[i] = 0;
       } else {
-        this._counter[i]++;
+        ++counter[i];
         break;
       }
     }
@@ -29,27 +30,28 @@ class Counter {
 }
 
 class CTR {
-  _counter: Counter;
-  _remainingCounter: Uint8Array = null;
-  _remainingCounterIndex = 16;
-  _aes: AES;
+  #counter: Counter;
+  #remainingCounter: Uint8Array;
+  #remainingCounterIndex: number;
+  #aes: AES;
 
   constructor(key: Uint8Array, counter: Uint8Array) {
-    this._counter = new Counter(counter);
-    this._aes = new AES(key);
+    this.#counter = new Counter(counter);
+    this.#aes = new AES(key);
+    this.#remainingCounterIndex = 16;
   }
 
-  update(payload: Uint8Array) {
+  public update(payload: Uint8Array) {
     const encrypted = payload.slice();
 
-    for(let i = 0; i < encrypted.length; i++) {
-      if(this._remainingCounterIndex === 16) {
-        this._remainingCounter = new Uint8Array(bytesFromWordss(this._aes.encrypt(this._counter._counter)));
-        this._remainingCounterIndex = 0;
-        this._counter.increment();
+    for(let i = 0; i < encrypted.length; ++i) {
+      if(this.#remainingCounterIndex === 16) {
+        this.#remainingCounter = new Uint8Array(bytesFromWordss(this.#aes.encrypt(this.#counter.counter)));
+        this.#remainingCounterIndex = 0;
+        this.#counter.increment();
       }
 
-      encrypted[i] ^= this._remainingCounter[this._remainingCounterIndex++];
+      encrypted[i] ^= this.#remainingCounter[this.#remainingCounterIndex++];
     }
 
     return encrypted;
@@ -60,19 +62,21 @@ class CTR {
 @cryptography/aes не работает с массивами которые не кратны 4, поэтому использую intermediate а не abridged
 */
 export default class Obfuscation {
-  /* public enc: aesjs.ModeOfOperation.ModeOfOperationCTR;
-  public dec: aesjs.ModeOfOperation.ModeOfOperationCTR; */
+  /* private enc: aesjs.ModeOfOperation.ModeOfOperationCTR;
+  private dec: aesjs.ModeOfOperation.ModeOfOperationCTR; */
 
-  public encNew: CTR;
-  public decNew: CTR;
+  private encNew: CTR;
+  private decNew: CTR;
+  // private cryptoEncKey: CryptoKey;
+  // encIv: Uint8Array;
 
-  public init(codec: Codec) {
+  public /* async */ init(codec: Codec) {
     const initPayload = new Uint8Array(64);
     initPayload.randomize();
     
     while(true) {
-      let val = (initPayload[3] << 24) | (initPayload[2] << 16) | (initPayload[1] << 8) | (initPayload[0]);
-      let val2 = (initPayload[7] << 24) | (initPayload[6] << 16) | (initPayload[5] << 8) | (initPayload[4]);
+      const val = (initPayload[3] << 24) | (initPayload[2] << 16) | (initPayload[1] << 8) | initPayload[0];
+      const val2 = (initPayload[7] << 24) | (initPayload[6] << 16) | (initPayload[5] << 8) | initPayload[4];
       if(initPayload[0] !== 0xef &&
           val !== 0x44414548 &&
           val !== 0x54534f50 &&
@@ -94,7 +98,7 @@ export default class Obfuscation {
     const reversedPayload = initPayload.slice().reverse();
 
     const encKey = initPayload.slice(8, 40);
-    const encIv = initPayload.slice(40, 56);
+    const encIv = /* this.encIv =  */initPayload.slice(40, 56);
     const decKey = reversedPayload.slice(8, 40);
     const decIv = reversedPayload.slice(40, 56);
 
@@ -107,8 +111,16 @@ export default class Obfuscation {
     this.encNew = new CTR(encKey, encIv);
     this.decNew = new CTR(decKey, decIv);
 
+    /* const key = this.cryptoEncKey = await subtle.importKey(
+      'raw',
+      encKey,
+      {name: 'AES-CTR'},
+      false,
+      ['encrypt']
+    ); */
+
     initPayload.set(codec.obfuscateTag, 56);
-    const encrypted = this.encode(initPayload);
+    const encrypted = /* await */ this.encode(initPayload);
 
     //console.log('encrypted', encrypted);
 
@@ -151,6 +163,14 @@ export default class Obfuscation {
     return res;
   } */
   public encode(payload: Uint8Array) {
+    /* return subtle.encrypt({
+        name: 'AES-CTR',
+        counter: this.encIv,
+        length: 64
+      },
+      this.cryptoEncKey,
+      payload
+    ); */
     return this.encNew.update(payload);
   }
 

@@ -1,5 +1,5 @@
 import { salt1, salt2, g, p, srp_id, secure_random, srp_B, password, A, M1, passwordHashed } from '../mock/srp';
-import { computeSRP, makePasswordHash } from '../lib/crypto/srp';
+import computeSRP, { makePasswordHash } from '../lib/crypto/srp';
 import '../lib/polyfill';
 import assumeType from '../helpers/assumeType';
 import { InputCheckPasswordSRP } from '../layer';

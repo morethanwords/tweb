@@ -614,6 +614,8 @@ const lang = {
   "BotUnblock": "RESTART",
   "BotStop": "Stop bot",
   "BotRestart": "Restart bot",
+  "VoipUserMicrophoneIsOff": "%s\'s microphone is off",
+  "VoipUserCameraIsOff": "%s\'s camera is off",
 
   // * macos
   "AccountSettings.Filters": "Chat Folders",

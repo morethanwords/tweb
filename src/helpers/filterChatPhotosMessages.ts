@@ -6,7 +6,7 @@
 
 import type { Message, MessageAction } from "../layer";
 import type { MyMessage } from "../lib/appManagers/appMessagesManager";
-import { forEachReverse } from "./array";
+import forEachReverse from "./array/forEachReverse";
 
 export default function filterChatPhotosMessages(value: {
   count: number;

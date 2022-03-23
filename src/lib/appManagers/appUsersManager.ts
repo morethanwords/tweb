@@ -10,13 +10,15 @@
  */
 
 import { MOUNT_CLASS_TO } from "../../config/debug";
-import { filterUnique, indexOfAndSplice } from "../../helpers/array";
+import filterUnique from "../../helpers/array/filterUnique";
+import indexOfAndSplice from "../../helpers/array/indexOfAndSplice";
 import { CancellablePromise, deferredPromise } from "../../helpers/cancellablePromise";
 import cleanSearchText from "../../helpers/cleanSearchText";
 import cleanUsername from "../../helpers/cleanUsername";
 import { formatFullSentTimeRaw, tsNow } from "../../helpers/date";
 import { formatPhoneNumber } from "../../helpers/formatPhoneNumber";
-import { safeReplaceObject, isObject } from "../../helpers/object";
+import isObject from "../../helpers/object/isObject";
+import safeReplaceObject from "../../helpers/object/safeReplaceObject";
 import { Chat, InputContact, InputMedia, InputPeer, InputUser, User as MTUser, UserProfilePhoto, UserStatus } from "../../layer";
 import I18n, { i18n, LangPackKey } from "../langPack";
 //import apiManager from '../mtproto/apiManager';

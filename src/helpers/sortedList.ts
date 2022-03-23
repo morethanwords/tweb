@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { insertInDescendSortedArray } from "./array";
+import insertInDescendSortedArray from "./array/insertInDescendSortedArray";
 import { getMiddleware } from "./middleware";
-import { safeAssign } from "./object";
+import safeAssign from "./object/safeAssign";
 
 export type SortedElementId = PeerId;
 export type SortedElementBase = {

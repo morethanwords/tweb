@@ -10,11 +10,12 @@
  */
 
 export default class StringFromLineBuilder {
-  private lines: string[] = [];
-  private newLine: string[] = [];
+  private lines: string[];
+  private newLine: string[];
 
   constructor(private joiner = '\r\n') {
-
+    this.lines = [];
+    this.newLine = [];
   }
 
   public add(...strs: string[]) {

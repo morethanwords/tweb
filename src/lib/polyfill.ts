@@ -4,7 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { bytesToHex, bytesFromHex, bufferConcats } from '../helpers/bytes';
+import bufferConcats from "../helpers/bytes/bufferConcats";
+import bytesFromHex from "../helpers/bytes/bytesFromHex";
+import bytesToHex from "../helpers/bytes/bytesToHex";
 
 Object.defineProperty(Uint8Array.prototype, 'hex', {
   get: function(): string {

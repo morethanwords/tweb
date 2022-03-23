@@ -13,18 +13,19 @@ import Scrollable from "./scrollable";
 import { FocusDirection } from "../helpers/fastSmoothScroll";
 import CheckboxField from "./checkboxField";
 import appProfileManager from "../lib/appManagers/appProfileManager";
-import { safeAssign } from "../helpers/object";
 import { i18n, LangPackKey, _i18n } from "../lib/langPack";
 import findUpAttribute from "../helpers/dom/findUpAttribute";
 import findUpClassName from "../helpers/dom/findUpClassName";
 import PeerTitle from "./peerTitle";
 import { cancelEvent } from "../helpers/dom/cancelEvent";
 import replaceContent from "../helpers/dom/replaceContent";
-import { filterUnique, indexOfAndSplice } from "../helpers/array";
 import debounce from "../helpers/schedulers/debounce";
 import windowSize from "../helpers/windowSize";
 import appPeersManager, { IsPeerType } from "../lib/appManagers/appPeersManager";
 import { generateDelimiter, SettingSection } from "./sidebarLeft";
+import filterUnique from "../helpers/array/filterUnique";
+import indexOfAndSplice from "../helpers/array/indexOfAndSplice";
+import safeAssign from "../helpers/object/safeAssign";
 
 type SelectSearchPeerType = 'contacts' | 'dialogs' | 'channelParticipants';
 

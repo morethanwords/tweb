@@ -10,13 +10,13 @@ import DropdownHover from "../../helpers/dropdownHover";
 import { ReplyMarkup } from "../../layer";
 import RichTextProcessor from "../../lib/richtextprocessor";
 import rootScope from "../../lib/rootScope";
-import { safeAssign } from "../../helpers/object";
 import ListenerSetter, { Listener } from "../../helpers/listenerSetter";
 import findUpClassName from "../../helpers/dom/findUpClassName";
 import { IS_TOUCH_SUPPORTED } from "../../environment/touchSupport";
 import findUpAsChild from "../../helpers/dom/findUpAsChild";
 import { cancelEvent } from "../../helpers/dom/cancelEvent";
 import { getHeavyAnimationPromise } from "../../hooks/useHeavyAnimationCheck";
+import safeAssign from "../../helpers/object/safeAssign";
 
 export default class ReplyKeyboard extends DropdownHover {
   private static BASE_CLASS = 'reply-keyboard';

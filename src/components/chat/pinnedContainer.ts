@@ -12,8 +12,8 @@ import { ripple } from "../ripple";
 import ListenerSetter from "../../helpers/listenerSetter";
 import { cancelEvent } from "../../helpers/dom/cancelEvent";
 import { attachClickEvent } from "../../helpers/dom/clickEvent";
-import { safeAssign } from "../../helpers/object";
 import { Message } from "../../layer";
+import safeAssign from "../../helpers/object/safeAssign";
 
 const classNames: string[] = ['is-pinned-message-shown', 'is-pinned-audio-shown'];
 const CLASSNAME_BASE = 'pinned-container';

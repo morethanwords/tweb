@@ -13,8 +13,7 @@ import { MOUNT_CLASS_TO } from "../config/debug";
 import appDownloadManager from "../lib/appManagers/appDownloadManager";
 import simulateEvent from "../helpers/dom/dispatchEvent";
 import type { SearchSuperContext } from "./appSearchSuper.";
-import { copy, deepEqual } from "../helpers/object";
-import { DocumentAttribute, Message, MessageMedia, PhotoSize } from "../layer";
+import { DocumentAttribute, Message, PhotoSize } from "../layer";
 import appPhotosManager from "../lib/appManagers/appPhotosManager";
 import { IS_TOUCH_SUPPORTED } from "../environment/touchSupport";
 import appAvatarsManager from "../lib/appManagers/appAvatarsManager";
@@ -22,6 +21,8 @@ import appPeersManager from "../lib/appManagers/appPeersManager";
 import I18n from "../lib/langPack";
 import SearchListLoader from "../helpers/searchListLoader";
 import { onMediaLoad } from "../helpers/files";
+import copy from "../helpers/object/copy";
+import deepEqual from "../helpers/object/deepEqual";
 
 // TODO: Safari: проверить стрим, включить его и сразу попробовать включить видео или другую песню
 // TODO: Safari: попробовать замаскировать подгрузку последнего чанка

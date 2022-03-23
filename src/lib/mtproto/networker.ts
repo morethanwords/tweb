@@ -9,7 +9,6 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import {isObject, sortLongsArray} from './bin_utils';
 import {TLDeserialization, TLSerialization} from './tl_utils';
 import CryptoWorker from '../crypto/cryptoworker';
 import sessionStorage from '../sessionStorage';
@@ -18,9 +17,8 @@ import timeManager from './timeManager';
 import networkerFactory from './networkerFactory';
 import { logger, LogTypes } from '../logger';
 import { InvokeApiOptions } from '../../types';
-import { longToBytes } from '../crypto/crypto_utils';
+import longToBytes from '../../helpers/long/longToBytes';
 import MTTransport from './transports/transport';
-import { convertToUint8Array, bytesCmp, bytesToHex, bufferConcats } from '../../helpers/bytes';
 import { nextRandomUint, randomLong } from '../../helpers/random';
 import App from '../../config/app';
 import DEBUG from '../../config/debug';
@@ -32,11 +30,17 @@ import HTTP from './transports/http';
 /// #endif
 
 import type TcpObfuscated from './transports/tcpObfuscated';
-import { bigInt2str, rightShift_, str2bigInt } from '../../vendor/leemon';
-import { forEachReverse } from '../../helpers/array';
+import bigInt from 'big-integer';
 import { ConnectionStatus } from './connectionStatus';
 import ctx from '../../environment/ctx';
 import dcConfigurator, { DcConfigurator } from './dcConfigurator';
+import bufferConcats from '../../helpers/bytes/bufferConcats';
+import bytesCmp from '../../helpers/bytes/bytesCmp';
+import bytesToHex from '../../helpers/bytes/bytesToHex';
+import convertToUint8Array from '../../helpers/bytes/convertToUint8Array';
+import isObject from '../../helpers/object/isObject';
+import forEachReverse from '../../helpers/array/forEachReverse';
+import sortLongsArray from '../../helpers/long/sortLongsArray';
 
 //console.error('networker included!', new Error().stack);
 
@@ -843,7 +847,7 @@ export default class MTPNetworker {
     const x = isOut ? 0 : 8;
     const msgKeyLargePlain = bufferConcats(this.authKeyUint8.subarray(88 + x, 88 + x + 32), dataWithPadding);
 
-    const msgKeyLarge = await CryptoWorker.invokeCrypto('sha256-hash', msgKeyLargePlain);
+    const msgKeyLarge = await CryptoWorker.invokeCrypto('sha256', msgKeyLargePlain);
     const msgKey = new Uint8Array(msgKeyLarge).subarray(8, 24);
     return msgKey;
   };
@@ -857,11 +861,11 @@ export default class MTPNetworker {
   
     sha2aText.set(msgKey, 0);
     sha2aText.set(this.authKeyUint8.subarray(x, x + 36), 16);
-    promises.push(CryptoWorker.invokeCrypto('sha256-hash', sha2aText));
+    promises.push(CryptoWorker.invokeCrypto('sha256', sha2aText));
   
     sha2bText.set(this.authKeyUint8.subarray(40 + x, 40 + x + 36), 0);
     sha2bText.set(msgKey, 36);
-    promises.push(CryptoWorker.invokeCrypto('sha256-hash', sha2bText));
+    promises.push(CryptoWorker.invokeCrypto('sha256', sha2bText));
 
     return Promise.all(promises).then((results) => {
       const aesKey = new Uint8Array(32);
@@ -1594,10 +1598,7 @@ export default class MTPNetworker {
           case 32:    // * msg_seqno too low
           case 33:    // * msg_seqno too high
           case 64: {  // * invalid container
-            //const changedOffset = timeManager.applyServerTime(bigStringInt(messageId).shiftRight(32).toString(10));
-            const bigInt = str2bigInt(messageId, 10);
-            rightShift_(bigInt, 32);
-            const changedOffset = timeManager.applyServerTime(+bigInt2str(bigInt, 10));
+            const changedOffset = timeManager.applyServerTime(bigInt(messageId).shiftRight(32).toJSNumber());
             if(message.error_code === 17 || changedOffset) {
               this.log('Update session');
               this.updateSession();

@@ -14,6 +14,7 @@ import rootScope from '../rootScope';
 import { GROUP_CALL_AMPLITUDE_ANALYSE_COUNT_MAX } from './constants';
 import stopTrack from './helpers/stopTrack';
 import LocalConferenceDescription from './localConferenceDescription';
+import { fixMediaLineType, WebRTCLineType } from './sdpBuilder';
 import { getAmplitude, toTelegramSource } from './utils';
 
 export type StreamItemBase = {
@@ -72,7 +73,8 @@ export default class StreamManager {
 
   public direction: RTCRtpTransceiver['direction'];
   public canCreateConferenceEntry: boolean;
-  public lol: boolean;
+  public locked: boolean;
+  public types: WebRTCLineType[];
   
   constructor(private interval?: number) {
     this.context = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -84,6 +86,7 @@ export default class StreamManager {
     this.direction = 'sendonly';
     this.canCreateConferenceEntry = true;
     // this.lol = true;
+    this.types = ['audio', 'video'];
   }
 
   public addStream(stream: MediaStream, type: StreamItem['type']) {
@@ -258,18 +261,20 @@ export default class StreamManager {
   } */
 
   public appendToConference(conference: LocalConferenceDescription) {
-    if(this.lol) {
+    if(this.locked) {
       return;
     }
-    // return;
+    
     const {inputStream, direction, canCreateConferenceEntry} = this;
-    // const direction: RTCRtpTransceiverInit['direction'] = 'sendrecv';
-    // const direction: RTCRtpTransceiverInit['direction'] = 'sendonly';
     const transceiverInit: RTCRtpTransceiverInit = {direction, streams: [inputStream]};
-    const types: ['audio' | 'video', RTCRtpTransceiverInit][] = [
-      ['audio' as const, transceiverInit], 
-      ['video' as const, transceiverInit/* {sendEncodings: [{maxBitrate: 2500000}], ...transceiverInit} */]
-    ];
+    const types = this.types.map(type => {
+      return [
+        type, 
+        /* type === 'video' || type === 'screencast' ? 
+          {sendEncodings: [{maxBitrate: 2500000}], ...transceiverInit} :  */
+          transceiverInit
+      ] as const;
+    });
 
     const tracks = inputStream.getTracks();
     // const transceivers = conference.connection.getTransceivers();
@@ -296,7 +301,9 @@ export default class StreamManager {
         transceiver.direction = entry.direction;
       }
 
-      const track = tracks.find(track => track.kind === type);
+      const mediaTrackType = fixMediaLineType(type);
+      const trackIdx = tracks.findIndex(track => track.kind === mediaTrackType);
+      const track = trackIdx !== -1 ? tracks.splice(trackIdx, 1)[0] : undefined;
       const sender = transceiver.sender;
       if(sender.track === track) {
         continue;

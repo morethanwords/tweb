@@ -4,12 +4,12 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { forEachReverse } from "../../helpers/array";
+import forEachReverse from "../../helpers/array/forEachReverse";
 import throttle from "../../helpers/schedulers/throttle";
 import { Updates, PhoneJoinGroupCall, PhoneJoinGroupCallPresentation, Update } from "../../layer";
 import apiUpdatesManager from "../appManagers/apiUpdatesManager";
 import appGroupCallsManager, { GroupCallConnectionType, JoinGroupCallJsonPayload } from "../appManagers/appGroupCallsManager";
-import apiManager from "../mtproto/apiManager";
+import apiManager from "../mtproto/mtprotoworker";
 import rootScope from "../rootScope";
 import CallConnectionInstanceBase, { CallConnectionInstanceOptions } from "./callConnectionInstanceBase";
 import GroupCallInstance from "./groupCallInstance";

@@ -4,27 +4,45 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import type bytesModPow from "../../helpers/bytes/bytesModPow";
+import type gzipUncompress from "../../helpers/gzipUncompress";
 import type { Awaited } from "../../types";
-import type { aesEncryptSync, aesDecryptSync, sha256HashSync, sha1HashSync, bytesModPow, hash_pbkdf2, rsaEncrypt, pqPrimeFactorization, gzipUncompress } from "./crypto_utils";
-import type { computeSRP } from "./srp";
+import type getEmojisFingerprint from "../calls/helpers/getEmojisFingerprint";
+import type computeDhKey from "./computeDhKey";
+import type generateDh from "./generateDh";
+import type computeSRP from "./srp";
+import type { aesEncryptSync, aesDecryptSync } from "./utils/aesIGE";
+import type factorizeBrentPollardPQ from "./utils/factorize/BrentPollard";
+// import type factorizeTdlibPQ from "./utils/factorize/tdlib";
+import type pbkdf2 from "./utils/pbkdf2";
+import type rsaEncrypt from "./utils/rsa";
+import type sha1 from "./utils/sha1";
+import type sha256 from "./utils/sha256";
 
 export type CryptoMethods = {
-  'sha1-hash': typeof sha1HashSync,
-  'sha256-hash': typeof sha256HashSync,
-  'pbkdf2': typeof hash_pbkdf2,
+  'sha1': typeof sha1,
+  'sha256': typeof sha256,
+  'pbkdf2': typeof pbkdf2,
   'aes-encrypt': typeof aesEncryptSync,
   'aes-decrypt': typeof aesDecryptSync,
   'rsa-encrypt': typeof rsaEncrypt,
-  'factorize': typeof pqPrimeFactorization,
+  'factorize': typeof factorizeBrentPollardPQ,
+  // 'factorize-tdlib': typeof factorizeTdlibPQ,
   'mod-pow': typeof bytesModPow,
   'gzipUncompress': typeof gzipUncompress,
-  'computeSRP': typeof computeSRP
+  'computeSRP': typeof computeSRP,
+  'generate-dh': typeof generateDh,
+  'compute-dh-key': typeof computeDhKey,
+  'get-emojis-fingerprint': typeof getEmojisFingerprint
 };
 
 export default abstract class CryptoWorkerMethods {
   abstract performTaskWorker<T>(task: string, ...args: any[]): Promise<T>;
 
-  public invokeCrypto<Method extends keyof CryptoMethods>(method: Method, ...args: Parameters<CryptoMethods[typeof method]>): Promise<Awaited<ReturnType<CryptoMethods[typeof method]>>> {
+  public invokeCrypto<Method extends keyof CryptoMethods>(
+    method: Method, 
+    ...args: Parameters<CryptoMethods[typeof method]>
+  ): Promise<Awaited<ReturnType<CryptoMethods[typeof method]>>> {
     return this.performTaskWorker<Awaited<ReturnType<CryptoMethods[typeof method]>>>(method, ...args as any[]);
   }
 }

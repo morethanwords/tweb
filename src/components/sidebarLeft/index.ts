@@ -39,9 +39,9 @@ import replaceContent from "../../helpers/dom/replaceContent";
 import sessionStorage from "../../lib/sessionStorage";
 import { CLICK_EVENT_NAME } from "../../helpers/dom/clickEvent";
 import { closeBtnMenu } from "../misc";
-import { indexOfAndSplice } from "../../helpers/array";
 import ButtonIcon from "../buttonIcon";
 import confirmationPopup from "../confirmationPopup";
+import indexOfAndSplice from "../../helpers/array/indexOfAndSplice";
 
 export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
 

@@ -5,7 +5,7 @@
  */
 
 import noop from "../../helpers/noop";
-import { safeAssign } from "../../helpers/object";
+import safeAssign from "../../helpers/object/safeAssign";
 import rootScope from "../rootScope";
 import lottieLoader, { LottieAssetName } from "./lottieLoader";
 import type RLottiePlayer from "./rlottiePlayer";

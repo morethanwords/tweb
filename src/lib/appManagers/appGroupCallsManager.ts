@@ -11,7 +11,7 @@
 
 import { MOUNT_CLASS_TO } from "../../config/debug";
 import AudioAssetPlayer from "../../helpers/audioAssetPlayer";
-import { safeReplaceObject } from "../../helpers/object";
+import safeReplaceObject from "../../helpers/object/safeReplaceObject";
 import { nextRandomUint } from "../../helpers/random";
 import tsNow from "../../helpers/tsNow";
 import { GroupCall, GroupCallParticipant, GroupCallParticipantVideo, GroupCallParticipantVideoSourceGroup, InputGroupCall, Peer, PhoneJoinGroupCall, PhoneJoinGroupCallPresentation, Update, Updates } from "../../layer";

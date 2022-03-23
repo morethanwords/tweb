@@ -12,7 +12,7 @@
 import { Database } from '../config/databases';
 import Modes from '../config/modes';
 import { blobConstruct } from '../helpers/blob';
-import { safeAssign } from '../helpers/object';
+import safeAssign from '../helpers/object/safeAssign';
 import { logger } from './logger';
 
 /**

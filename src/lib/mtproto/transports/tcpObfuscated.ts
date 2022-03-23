@@ -54,14 +54,14 @@ export default class TcpObfuscated implements MTTransport {
     this.connect();
   }
 
-  private onOpen = () => {
+  private onOpen = /* async */() => {
     this.connected = true;
 
     /// #if MTPROTO_AUTO
     transportController.setTransportOpened('websocket');
     /// #endif
 
-    const initPayload = this.obfuscation.init(this.codec);
+    const initPayload = /* await */ this.obfuscation.init(this.codec);
 
     this.connection.send(initPayload);
 

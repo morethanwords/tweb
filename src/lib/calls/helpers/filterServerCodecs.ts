@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { forEachReverse } from "../../../helpers/array";
+import forEachReverse from "../../../helpers/array/forEachReverse";
 import SDPMediaSection from "../sdp/mediaSection";
 import { UpdateGroupCallConnectionData, Codec } from "../types";
 

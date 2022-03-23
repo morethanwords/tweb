@@ -10,7 +10,6 @@ import type { Awaited, InvokeApiOptions, WorkerTaskVoidTemplate } from '../../ty
 import type { Config, InputFile, MethodDeclMap, User } from '../../layer';
 import MTProtoWorker from 'worker-loader!./mtproto.worker';
 //import './mtproto.worker';
-import { isObject } from '../../helpers/object';
 import CryptoWorkerMethods, { CryptoMethods } from '../crypto/crypto_methods';
 import { logger } from '../logger';
 import rootScope from '../rootScope';
@@ -32,6 +31,7 @@ import { CacheStorageDbName } from '../cacheStorage';
 import { pause } from '../../helpers/schedulers/pause';
 import IS_WEBP_SUPPORTED from '../../environment/webpSupport';
 import type { ApiError } from './apiManager';
+import isObject from '../../helpers/object/isObject';
 
 type Task = {
   taskId: number,

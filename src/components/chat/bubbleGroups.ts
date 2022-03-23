@@ -8,7 +8,7 @@ import rootScope from "../../lib/rootScope";
 //import { generatePathData } from "../../helpers/dom";
 import { MyMessage } from "../../lib/appManagers/appMessagesManager";
 import type Chat from "./chat";
-import { indexOfAndSplice } from "../../helpers/array";
+import indexOfAndSplice from "../../helpers/array/indexOfAndSplice";
 
 type Group = {bubble: HTMLElement, mid: number, timestamp: number}[];
 type BubbleGroup = {timestamp: number, fromId: PeerId, mid: number, group: Group};

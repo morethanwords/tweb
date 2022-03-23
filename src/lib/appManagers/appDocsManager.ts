@@ -10,7 +10,6 @@
  */
 
 import { FileURLType, getFileNameByLocation, getFileURL } from '../../helpers/fileName';
-import { safeReplaceArrayInObject, defineNotNumerableProperties, isObject } from '../../helpers/object';
 import { Document, InputFileLocation, InputMedia, PhotoSize } from '../../layer';
 import referenceDatabase, { ReferenceContext } from '../mtproto/referenceDatabase';
 import opusDecodeController from '../opusDecodeController';
@@ -23,6 +22,9 @@ import { MOUNT_CLASS_TO } from '../../config/debug';
 import { getFullDate } from '../../helpers/date';
 import rootScope from '../rootScope';
 import IS_WEBP_SUPPORTED from '../../environment/webpSupport';
+import defineNotNumerableProperties from '../../helpers/object/defineNotNumerableProperties';
+import isObject from '../../helpers/object/isObject';
+import safeReplaceArrayInObject from '../../helpers/object/safeReplaceArrayInObject';
 
 export type MyDocument = Document.document;
 

@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import getDeepProperty from "../helpers/object/getDeepProperty";
 import appStateManager from "../lib/appManagers/appStateManager";
-import { getDeepProperty } from "../helpers/object";
 import { LangPackKey, _i18n } from "../lib/langPack";
 
 export default class RadioField {

@@ -10,7 +10,7 @@ import type { Message } from "../layer";
 import appMessagesIdsManager from "../lib/appManagers/appMessagesIdsManager";
 import appMessagesManager, { MyMessage } from "../lib/appManagers/appMessagesManager";
 import rootScope from "../lib/rootScope";
-import { forEachReverse } from "./array";
+import forEachReverse from "./array/forEachReverse";
 import filterChatPhotosMessages from "./filterChatPhotosMessages";
 import ListLoader, { ListLoaderOptions } from "./listLoader";
 

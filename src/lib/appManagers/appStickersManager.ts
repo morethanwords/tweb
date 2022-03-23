@@ -11,13 +11,13 @@ import rootScope from '../rootScope';
 import appDocsManager, { MyDocument } from './appDocsManager';
 import AppStorage from '../storage';
 import { MOUNT_CLASS_TO } from '../../config/debug';
-import { forEachReverse } from '../../helpers/array';
 import DATABASE_STATE from '../../config/databases/state';
 import { readBlobAsText } from '../../helpers/blob';
 import lottieLoader from '../rlottie/lottieLoader';
 import mediaSizes from '../../helpers/mediaSizes';
 import { getEmojiToneIndex } from '../../vendor/emoji';
 import RichTextProcessor from '../richtextprocessor';
+import forEachReverse from '../../helpers/array/forEachReverse';
 
 const CACHE_TIME = 3600e3;
 
