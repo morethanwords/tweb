@@ -7,11 +7,10 @@
 import { MOUNT_CLASS_TO } from "../config/debug";
 import { IS_MOBILE_SAFARI } from "../environment/userAgent";
 import { logger } from "../lib/logger";
-import { doubleRaf } from "../helpers/schedulers";
 import blurActiveElement from "../helpers/dom/blurActiveElement";
 import { cancelEvent } from "../helpers/dom/cancelEvent";
-import { indexOfAndSplice } from "../helpers/array";
 import isSwipingBackSafari from "../helpers/dom/isSwipingBackSafari";
+import indexOfAndSplice from "../helpers/array/indexOfAndSplice";
 
 export type NavigationItem = {
   type: 'left' | 'right' | 'im' | 'chat' | 'popup' | 'media' | 'menu' | 

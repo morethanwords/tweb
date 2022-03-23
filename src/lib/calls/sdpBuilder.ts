@@ -15,9 +15,15 @@ import StringFromLineBuilder from './stringFromLineBuilder';
 import { GroupCallConnectionTransport, PayloadType, UpdateGroupCallConnectionData } from './types';
 import { fromTelegramSource } from './utils';
 
-export type WebRTCLineType = 'video' | 'audio' | 'application';
+// screencast is for Peer-to-Peer only
+export type WebRTCLineTypeTrue = 'video' | 'audio' | 'application';
+export type WebRTCLineType = WebRTCLineTypeTrue | 'screencast';
 
 export const WEBRTC_MEDIA_PORT = '9';
+
+export function fixMediaLineType(mediaType: WebRTCLineType) {
+  return mediaType === 'screencast' ? 'video' : mediaType;
+}
 
 export function performCandidate(c: GroupCallConnectionTransport['candidates'][0]) {
   const arr: string[] = [];
@@ -31,15 +37,16 @@ export function performCandidate(c: GroupCallConnectionTransport['candidates'][0
 }
 
 export function getConnectionTypeForMediaType(mediaType: WebRTCLineType) {
-  return mediaType === 'application' ? 'DTLS/SCTP' : 'RTP/SAVPF';
+  // return mediaType === 'application' ? 'DTLS/SCTP' : 'RTP/SAVPF';
+  return mediaType === 'application' ? 'DTLS/SCTP' : 'UDP/TLS/RTP/SAVPF';
 }
 
 export function generateMediaFirstLine(mediaType: WebRTCLineType, port = WEBRTC_MEDIA_PORT, payloadIds: (string | number)[]) {
   const connectionType = getConnectionTypeForMediaType(mediaType);
-  return `m=${mediaType} ${port} ${connectionType} ${payloadIds.join(' ')}`;
+  return `m=${fixMediaLineType(mediaType)} ${port} ${connectionType} ${payloadIds.join(' ')}`;
 }
 
-type ConferenceData = UpdateGroupCallConnectionData;
+type ConferenceData = UpdateGroupCallConnectionData | LocalConferenceDescription;
 
 // https://tools.ietf.org/id/draft-ietf-rtcweb-sdp-08.html
 // https://datatracker.ietf.org/doc/html/draft-roach-mmusic-unified-plan-00
@@ -78,7 +85,7 @@ export class SDPBuilder extends StringFromLineBuilder {
       'a=extmap-allow-mixed',
       `a=group:BUNDLE ${bundle}`,
       'a=ice-options:trickle',
-      'a=ice-lite',                   // ice-lite: is a minimal version of the ICE specification, intended for servers running on a public IP address.
+      // 'a=ice-lite',                   // ice-lite: is a minimal version of the ICE specification, intended for servers running on a public IP address.
       'a=msid-semantic:WMS *'
     );
   }
@@ -167,7 +174,7 @@ export class SDPBuilder extends StringFromLineBuilder {
     const isInactive = direction === 'inactive';
     if(entry.shouldBeSkipped(isAnswer)) {
       return add(
-        `m=${type} 0 ${getConnectionTypeForMediaType(type)} 0`,
+        `m=${fixMediaLineType(type)} 0 ${getConnectionTypeForMediaType(type)} 0`,
         `c=IN IP4 0.0.0.0`,
         `a=inactive`,
         `a=mid:${mid}`

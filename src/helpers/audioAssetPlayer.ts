@@ -9,6 +9,7 @@ const ASSETS_PATH = 'assets/audio/';
 export default class AudioAssetPlayer<AssetName extends string> {
   private audio: HTMLAudioElement;
   private tempId: number;
+  private assetName: AssetName;
 
   constructor(private assets: AssetName[]) {
     this.tempId = 0;
@@ -16,7 +17,8 @@ export default class AudioAssetPlayer<AssetName extends string> {
 
   public playSound(name: AssetName, loop = false) {
     ++this.tempId;
-    
+    this.assetName = name;
+
     try {
       const audio = this.createAudio();
       audio.autoplay = true;
@@ -25,6 +27,12 @@ export default class AudioAssetPlayer<AssetName extends string> {
       audio.play();
     } catch(e) {
       console.error('playSound', name, e);
+    }
+  }
+
+  public playSoundIfDifferent(name: AssetName, loop?: boolean) {
+    if(this.assetName !== name) {
+      this.playSound(name, loop);
     }
   }
 
@@ -40,7 +48,11 @@ export default class AudioAssetPlayer<AssetName extends string> {
   }
 
   public stopSound() {
-    this.audio?.pause();
+    if(!this.audio) {
+      return;
+    }
+    
+    this.audio.pause();
   }
 
   public cancelDelayedPlay() {

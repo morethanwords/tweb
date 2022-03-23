@@ -10,11 +10,11 @@ import CheckboxField from "../../checkboxField";
 import { InputNotifyPeer, Update } from "../../../layer";
 import appNotificationsManager from "../../../lib/appManagers/appNotificationsManager";
 import { SliderSuperTabEventable } from "../../sliderTab";
-import { copy } from "../../../helpers/object";
 import rootScope from "../../../lib/rootScope";
 import { convertKeyToInputKey } from "../../../helpers/string";
 import { LangPackKey } from "../../../lib/langPack";
 import appStateManager from "../../../lib/appManagers/appStateManager";
+import copy from "../../../helpers/object/copy";
 
 type InputNotifyKey = Exclude<InputNotifyPeer['_'], 'inputNotifyPeer'>;
 

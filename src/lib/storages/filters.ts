@@ -4,7 +4,6 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { copy, safeReplaceObject } from "../../helpers/object";
 import type { DialogFilter, Update } from "../../layer";
 import type { Modify } from "../../types";
 import type { AppPeersManager } from "../appManagers/appPeersManager";
@@ -15,8 +14,10 @@ import type {AppMessagesManager, Dialog} from '../appManagers/appMessagesManager
 import type {AppNotificationsManager} from "../appManagers/appNotificationsManager";
 import type { ApiUpdatesManager } from "../appManagers/apiUpdatesManager";
 import apiManager from "../mtproto/mtprotoworker";
-import { forEachReverse } from "../../helpers/array";
 import { AppStateManager } from "../appManagers/appStateManager";
+import forEachReverse from "../../helpers/array/forEachReverse";
+import copy from "../../helpers/object/copy";
+import safeReplaceObject from "../../helpers/object/safeReplaceObject";
 
 export type MyDialogFilter = Modify<DialogFilter, {
   /* pinned_peers: PeerId[],

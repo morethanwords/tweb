@@ -18,12 +18,12 @@ import serverTimeManager from "../mtproto/serverTimeManager";
 import { MessageEntity, DraftMessage, MessagesSaveDraft } from "../../layer";
 import apiManager from "../mtproto/mtprotoworker";
 import { tsNow } from "../../helpers/date";
-import { deepEqual } from "../../helpers/object";
-import { isObject } from "../mtproto/bin_utils";
 import { MOUNT_CLASS_TO } from "../../config/debug";
 import stateStorage from "../stateStorage";
 import appMessagesIdsManager from "./appMessagesIdsManager";
 import assumeType from "../../helpers/assumeType";
+import isObject from "../../helpers/object/isObject";
+import deepEqual from "../../helpers/object/deepEqual";
 
 export type MyDraftMessage = DraftMessage.draftMessage;
 

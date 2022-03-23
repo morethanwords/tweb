@@ -16,8 +16,8 @@ import { attachClickEvent, simulateClickEvent } from "../../helpers/dom/clickEve
 import isSendShortcutPressed from "../../helpers/dom/isSendShortcutPressed";
 import { cancelEvent } from "../../helpers/dom/cancelEvent";
 import EventListenerBase from "../../helpers/eventListenerBase";
-import { indexOfAndSplice } from "../../helpers/array";
-import { addFullScreenListener, getFullScreenElement, isFullScreen } from "../../helpers/dom/fullScreen";
+import { addFullScreenListener, getFullScreenElement } from "../../helpers/dom/fullScreen";
+import indexOfAndSplice from "../../helpers/array/indexOfAndSplice";
 
 export type PopupButton = {
   text?: string,

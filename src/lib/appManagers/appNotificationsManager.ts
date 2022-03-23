@@ -13,7 +13,6 @@ import { fontFamily } from "../../components/middleEllipsis";
 import { MOUNT_CLASS_TO } from "../../config/debug";
 import { CancellablePromise, deferredPromise } from "../../helpers/cancellablePromise";
 import { tsNow } from "../../helpers/date";
-import { deepEqual } from "../../helpers/object";
 import { convertInputKeyToKey } from "../../helpers/string";
 import { IS_MOBILE } from "../../environment/userAgent";
 import { InputNotifyPeer, InputPeerNotifySettings, NotifyPeer, PeerNotifySettings, Update } from "../../layer";
@@ -31,6 +30,7 @@ import appUsersManager from "./appUsersManager";
 import IS_VIBRATE_SUPPORTED from "../../environment/vibrateSupport";
 import { MUTE_UNTIL } from "../mtproto/mtproto_config";
 import throttle from "../../helpers/schedulers/throttle";
+import deepEqual from "../../helpers/object/deepEqual";
 
 type MyNotification = Notification & {
   hidden?: boolean,

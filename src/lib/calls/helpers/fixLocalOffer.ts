@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { forEachReverse } from "../../../helpers/array";
-import { copy } from "../../../helpers/object";
+import forEachReverse from "../../../helpers/array/forEachReverse";
+import copy from "../../../helpers/object/copy";
 import { ConferenceEntry } from "../localConferenceDescription";
 import { parseSdp, addSimulcast } from "../sdp/utils";
 import { generateMediaFirstLine, SDPBuilder } from "../sdpBuilder";

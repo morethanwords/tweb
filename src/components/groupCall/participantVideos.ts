@@ -8,7 +8,7 @@ import { attachClickEvent } from "../../helpers/dom/clickEvent";
 import ControlsHover from "../../helpers/dom/controlsHover";
 import findUpClassName from "../../helpers/dom/findUpClassName";
 import ListenerSetter from "../../helpers/listenerSetter";
-import { safeAssign } from "../../helpers/object";
+import safeAssign from "../../helpers/object/safeAssign";
 import { GroupCallParticipant } from "../../layer";
 import { AppGroupCallsManager, GroupCallOutputSource } from "../../lib/appManagers/appGroupCallsManager";
 import type { AppPeersManager } from "../../lib/appManagers/appPeersManager";

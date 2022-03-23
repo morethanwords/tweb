@@ -9,7 +9,6 @@ import AppSelectPeers from "../../appSelectPeers";
 import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
 import appUsersManager from "../../../lib/appManagers/appUsersManager";
 import { MyDialogFilter as DialogFilter } from "../../../lib/storages/filters";
-import { copy } from "../../../helpers/object";
 import ButtonIcon from "../../buttonIcon";
 import CheckboxField from "../../checkboxField";
 import Button from "../../button";
@@ -19,8 +18,9 @@ import appMessagesManager from "../../../lib/appManagers/appMessagesManager";
 import RichTextProcessor from "../../../lib/richtextprocessor";
 import { SettingSection } from "..";
 import { toast } from "../../toast";
-import { forEachReverse } from "../../../helpers/array";
 import appPeersManager from "../../../lib/appManagers/appPeersManager";
+import copy from "../../../helpers/object/copy";
+import forEachReverse from "../../../helpers/array/forEachReverse";
 
 export default class AppIncludedChatsTab extends SliderSuperTab {
   private editFolderTab: AppEditFolderTab;

@@ -12,7 +12,7 @@ import { attachClickEvent } from "../../../helpers/dom/clickEvent";
 import findUpClassName from "../../../helpers/dom/findUpClassName";
 import { requestFile } from "../../../helpers/files";
 import highlightningColor from "../../../helpers/highlightningColor";
-import { copy } from "../../../helpers/object";
+import copy from "../../../helpers/object/copy";
 import sequentialDom from "../../../helpers/sequentialDom";
 import ChatBackgroundGradientRenderer from "../../chat/gradientRenderer";
 import { AccountWallPapers, PhotoSize, WallPaper } from "../../../layer";

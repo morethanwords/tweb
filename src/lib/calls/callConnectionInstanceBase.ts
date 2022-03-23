@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { safeAssign } from "../../helpers/object";
+import safeAssign from "../../helpers/object/safeAssign";
 import { logger } from "../logger";
 import createDataChannel from "./helpers/createDataChannel";
 import createPeerConnection from "./helpers/createPeerConnection";

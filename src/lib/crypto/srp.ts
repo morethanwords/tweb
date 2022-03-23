@@ -4,50 +4,36 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import CryptoWorker from "../crypto/cryptoworker";
-import {str2bigInt, isZero,
-  bigInt2str, powMod, int2bigInt, mult, mod, sub, bitSize, negative, add, greater} from '../../vendor/leemon';
-
-import {logger, LogTypes} from '../logger';
+import cryptoWorker from "../crypto/cryptoworker";
 import { AccountPassword, InputCheckPasswordSRP, PasswordKdfAlgo } from "../../layer";
-import { bufferConcats, bytesToHex, bytesFromHex, bytesXor, convertToUint8Array } from "../../helpers/bytes";
-import { addPadding } from "../mtproto/bin_utils";
-//import { MOUNT_CLASS_TO } from "../../config/debug";
-
-const log = logger('SRP', LogTypes.Error);
-
-//MOUNT_CLASS_TO && Object.assign(MOUNT_CLASS_TO, {str2bigInt, bigInt2str, int2bigInt});
+import addPadding from "../../helpers/bytes/addPadding";
+import bufferConcats from "../../helpers/bytes/bufferConcats";
+import bytesXor from "../../helpers/bytes/bytesXor";
+import convertToUint8Array from "../../helpers/bytes/convertToUint8Array";
+import bigInt from 'big-integer';
+import { bigIntFromBytes, bigIntToBytes } from "../../helpers/bigInt/bigIntConversion";
+import bytesToHex from "../../helpers/bytes/bytesToHex";
 
 export async function makePasswordHash(password: string, client_salt: Uint8Array, server_salt: Uint8Array) {
   // ! look into crypto_methods.test.ts
-  let buffer = await CryptoWorker.invokeCrypto('sha256-hash', bufferConcats(client_salt, new TextEncoder().encode(password), client_salt));
-  //log('encoded 1', bytesToHex(new Uint8Array(buffer)));
-
+  let buffer = await cryptoWorker.invokeCrypto('sha256', bufferConcats(client_salt, new TextEncoder().encode(password), client_salt));
   buffer = bufferConcats(server_salt, buffer, server_salt);
+  buffer = await cryptoWorker.invokeCrypto('sha256', buffer);
 
-  buffer = await CryptoWorker.invokeCrypto('sha256-hash', buffer);
-  //log('encoded 2', buffer, bytesToHex(new Uint8Array(buffer)));
-
-  let hash = await CryptoWorker.invokeCrypto('pbkdf2', new Uint8Array(buffer), client_salt, 100000);
-  //log('encoded 3', hash, bytesToHex(new Uint8Array(hash)));
-
+  let hash = await cryptoWorker.invokeCrypto('pbkdf2', new Uint8Array(buffer), client_salt, 100000);
   hash = bufferConcats(server_salt, hash, server_salt);
 
-  buffer = await CryptoWorker.invokeCrypto('sha256-hash', hash);
-  //log('got password hash:', buffer, bytesToHex(new Uint8Array(buffer)));
+  buffer = await cryptoWorker.invokeCrypto('sha256', hash);
 
   return buffer;
 }
 
-export async function computeSRP(password: string, state: AccountPassword, isNew: boolean) {
+export default async function computeSRP(password: string, state: AccountPassword, isNew: boolean) {
   const algo = (isNew ? state.new_algo : state.current_algo) as PasswordKdfAlgo.passwordKdfAlgoSHA256SHA256PBKDF2HMACSHA512iter100000SHA256ModPow;
-  //console.log('computeSRP:', password, state, isNew, algo);
 
-  const p = str2bigInt(bytesToHex(algo.p), 16);
-  const g = int2bigInt(algo.g, 32, 256);
-  
-  //log('p', bigInt2str(p, 16));
-  
+  const p = bigIntFromBytes(algo.p);
+  const g = bigInt(algo.g);
+
   /* if(B.compareTo(BigInteger.ZERO) < 0) {
     console.error('srp_B < 0')
   }
@@ -69,9 +55,7 @@ export async function computeSRP(password: string, state: AccountPassword, isNew
   //check_prime_and_good(algo.p, g);
   
   const pw_hash = await makePasswordHash(password, algo.salt1, algo.salt2);
-  const x = str2bigInt(bytesToHex(pw_hash), 16);
-  
-  //log('computed pw_hash:', pw_hash, x, bytesToHex(new Uint8Array(pw_hash)));
+  const x = bigInt(bytesToHex(pw_hash), 16);
   
   const padArray = function(arr: number[] | Uint8Array, len: number) {
     if(!(arr instanceof Uint8Array)) {
@@ -81,7 +65,7 @@ export async function computeSRP(password: string, state: AccountPassword, isNew
     return addPadding(arr, len, true, true, true);
   };
   
-  const v = powMod(g, x, p);
+  const v = g.modPow(x, p);
   
   const flipper = (arr: Uint8Array | number[]) => {
     const out = new Uint8Array(arr.length);
@@ -97,125 +81,85 @@ export async function computeSRP(password: string, state: AccountPassword, isNew
   
   // * https://core.telegram.org/api/srp#setting-a-new-2fa-password
   if(isNew) {
-    const bytes = bytesFromHex(bigInt2str(v, 16));
+    const bytes = bigIntToBytes(v);
     return padArray(/* (isBigEndian ? bytes.reverse() : bytes) */bytes, 256);
   }
   
-  const B = str2bigInt(bytesToHex(state.srp_B), 16);
-  //log('B', bigInt2str(B, 16));
+  const B = bigIntFromBytes(state.srp_B);
   
-  const pForHash = padArray(bytesFromHex(bigInt2str(p, 16)), 256);
-  const gForHash = padArray(bytesFromHex(bigInt2str(g, 16)), 256); // like uint8array
-  const b_for_hash = padArray(bytesFromHex(bigInt2str(B, 16)), 256);
-  /* log(bytesToHex(pForHash));
-  log(bytesToHex(gForHash));
-  log(bytesToHex(b_for_hash)); */
+  const pForHash = padArray(bigIntToBytes(p), 256);
+  const gForHash = padArray(bigIntToBytes(g), 256);
+  const b_for_hash = padArray(bigIntToBytes(B), 256);
 
-  //log('g_x', bigInt2str(g_x, 16));
+  const kHash = await cryptoWorker.invokeCrypto('sha256', bufferConcats(pForHash, gForHash));
+  const k = bigIntFromBytes(kHash);
 
-  const kHash = await CryptoWorker.invokeCrypto('sha256-hash', bufferConcats(pForHash, gForHash));
-  const k = str2bigInt(bytesToHex(kHash), 16);
+  const k_v = k.multiply(v).mod(p);
 
-  //log('k', bigInt2str(k, 16));
-
-  // kg_x = (k * g_x) % p
-  const k_v = mod(mult(k, v), p);
-
-  // good
-
-  //log('kg_x', bigInt2str(kg_x, 16));
-
-  const is_good_mod_exp_first = (modexp: any, prime: any) => {
-    const diff = sub(prime, modexp);
+  const is_good_mod_exp_first = (modexp: bigInt.BigInteger, prime: bigInt.BigInteger) => {
+    const diff = prime.subtract(modexp);
     const min_diff_bits_count = 2048 - 64;
     const max_mod_exp_size = 256;
-    if(negative(diff) ||
-      bitSize(diff) < min_diff_bits_count || 
-      bitSize(modexp) < min_diff_bits_count || 
-      Math.floor((bitSize(modexp) + 7) / 8) > max_mod_exp_size)
+    if(diff.isNegative() ||
+      diff.bitLength().toJSNumber() < min_diff_bits_count || 
+      modexp.bitLength().toJSNumber() < min_diff_bits_count || 
+      Math.floor((modexp.bitLength().toJSNumber() + 7) / 8) > max_mod_exp_size)
         return false;
     return true;
   };
 
   const generate_and_check_random = async() => {
     while(true) {
-      const a = str2bigInt(bytesToHex(flipper(state.secure_random)), 16);
+      const a = bigIntFromBytes(flipper(state.secure_random));
       //const a = str2bigInt('9153faef8f2bb6da91f6e5bc96bc00860a530a572a0f45aac0842b4602d711f8bda8d59fb53705e4ae3e31a3c4f0681955425f224297b8e9efd898fec22046debb7ba8a0bcf2be1ada7b100424ea318fdcef6ccfe6d7ab7d978c0eb76a807d4ab200eb767a22de0d828bc53f42c5a35c2df6e6ceeef9a3487aae8e9ef2271f2f6742e83b8211161fb1a0e037491ab2c2c73ad63c8bd1d739de1b523fe8d461270cedcf240de8da75f31be4933576532955041dc5770c18d3e75d0b357df9da4a5c8726d4fced87d15752400883dc57fa1937ac17608c5446c4774dcd123676d683ce3a1ab9f7e020ca52faafc99969822717c8e07ea383d5fb1a007ba0d170cb', 16);
 
-      //console.log('ITERATION');
-
-      //log('g a p', bigInt2str(g, 16), bigInt2str(a, 16), bigInt2str(p, 16));
-
-      const A = powMod(g, a, p);
-      //log('A MODPOW', bigInt2str(A, 16));
+      const A = g.modPow(a, p);
       if(is_good_mod_exp_first(A, p)) {
-        const a_for_hash = bytesFromHex(bigInt2str(A, 16));
+        const a_for_hash = bigIntToBytes(A);
 
-        const s = await CryptoWorker.invokeCrypto('sha256-hash', bufferConcats(a_for_hash, b_for_hash));
-        const u = str2bigInt(s.hex, 16);
-        if(!isZero(u) && !negative(u))
+        const s = await cryptoWorker.invokeCrypto('sha256', bufferConcats(a_for_hash, b_for_hash));
+        const u = bigInt(s.hex, 16);
+        if(!u.isZero() && !u.isNegative())
           return {a, a_for_hash, u};
       } 
     }
   }
-    
 
   const {a, a_for_hash, u} = await generate_and_check_random();
 
-  /* log('a', bigInt2str(a, 16));
-  log('a_for_hash', bytesToHex(a_for_hash));
-  log('u', bigInt2str(u, 16)); */
-
-  // g_b = (B - kg_x) % p
-  /* log('B - kg_x', bigInt2str(sub(B, kg_x), 16));
-  log('subtract', bigInt2str(B, 16), bigInt2str(kg_x, 16));
-  log('B - kg_x', bigInt2str(sub(B, kg_x), 16)); */
-
-  let g_b: number[];
-  if(!greater(B, k_v)) {
-    //log('negative');
-    g_b = add(B, p);
+  let g_b: bigInt.BigInteger;
+  if(!B.greater(k_v)) {
+    g_b = B.add(p);
   } else g_b = B;
-  g_b = mod(sub(g_b, k_v), p);
-  /* let g_b = sub(B, kg_x);
-  if(negative(g_b)) g_b = add(g_b, p); */
-  
-  //log('g_b', bigInt2str(g_b, 16));
+  g_b = g_b.subtract(k_v).mod(p);
 
-  /* if(!is_good_mod_exp_first(g_b, p))
-    throw new Error('bad g_b'); */
+  const ux = u.multiply(x);
+  const a_ux = a.add(ux);
+  const S = g_b.modPow(a_ux, p);
 
-  const ux = mult(u, x);
-  //log('u and x multiply', bigInt2str(u, 16), bigInt2str(x, 16), bigInt2str(ux, 16));
-  const a_ux = add(a, ux);
-  const S = powMod(g_b, a_ux, p);
+  const K = await cryptoWorker.invokeCrypto('sha256', padArray(bigIntToBytes(S), 256));
 
-  const K = await CryptoWorker.invokeCrypto('sha256-hash', padArray(bytesFromHex(bigInt2str(S, 16)), 256));
-
-  //log('K', bytesToHex(K), new Uint32Array(new Uint8Array(K).buffer));
-
-  let h1 = await CryptoWorker.invokeCrypto('sha256-hash', pForHash);
-  const h2 = await CryptoWorker.invokeCrypto('sha256-hash', gForHash);
+  let h1 = await cryptoWorker.invokeCrypto('sha256', pForHash);
+  const h2 = await cryptoWorker.invokeCrypto('sha256', gForHash);
   h1 = bytesXor(h1, h2);
 
-  const buff = bufferConcats(h1, 
-    await CryptoWorker.invokeCrypto('sha256-hash', algo.salt1),
-    await CryptoWorker.invokeCrypto('sha256-hash', algo.salt2),
+  const buff = bufferConcats(
+    h1, 
+    await cryptoWorker.invokeCrypto('sha256', algo.salt1),
+    await cryptoWorker.invokeCrypto('sha256', algo.salt2),
     a_for_hash,
     b_for_hash,
     K
   );
 
-  const M1 = await CryptoWorker.invokeCrypto('sha256-hash', buff);
+  const M1 = await cryptoWorker.invokeCrypto('sha256', buff);
 
-  const out = {
+  const out: InputCheckPasswordSRP.inputCheckPasswordSRP = {
     _: 'inputCheckPasswordSRP', 
     srp_id: state.srp_id, 
     A: new Uint8Array(a_for_hash), 
     M1
-  } as InputCheckPasswordSRP.inputCheckPasswordSRP;
+  };
 
-
-  //log('out', bytesToHex(out.A), bytesToHex(out.M1));
   return out;
 }

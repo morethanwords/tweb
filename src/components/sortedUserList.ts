@@ -11,9 +11,9 @@ import appUsersManager from "../lib/appManagers/appUsersManager";
 import isInDOM from "../helpers/dom/isInDOM";
 import positionElementByIndex from "../helpers/dom/positionElementByIndex";
 import replaceContent from "../helpers/dom/replaceContent";
-import { safeAssign } from "../helpers/object";
 import { fastRaf } from "../helpers/schedulers";
 import SortedList, { SortedElementBase } from "../helpers/sortedList";
+import safeAssign from "../helpers/object/safeAssign";
 
 interface SortedUser extends SortedElementBase {
   dom: DialogDom

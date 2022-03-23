@@ -40,7 +40,6 @@ import replaceContent from "../../helpers/dom/replaceContent";
 import sessionStorage from "../../lib/sessionStorage";
 import { attachClickEvent, CLICK_EVENT_NAME } from "../../helpers/dom/clickEvent";
 import { closeBtnMenu } from "../misc";
-import { indexOfAndSplice } from "../../helpers/array";
 import ButtonIcon from "../buttonIcon";
 import confirmationPopup from "../confirmationPopup";
 import IS_GEOLOCATION_SUPPORTED from "../../environment/geolocationSupport";
@@ -48,6 +47,7 @@ import type SortedUserList from "../sortedUserList";
 import Button, { ButtonOptions } from "../button";
 import noop from "../../helpers/noop";
 import { ripple } from "../ripple";
+import indexOfAndSplice from "../../helpers/array/indexOfAndSplice";
 
 export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
 

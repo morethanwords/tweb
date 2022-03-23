@@ -16,9 +16,6 @@ const ctx = self;
 import {secureRandom} from '../polyfill';
 secureRandom;
 
-import {pqPrimeFactorization, bytesModPow, sha1HashSync,
-  aesEncryptSync, aesDecryptSync, hash_pbkdf2, sha256HashSync, rsaEncrypt} from './crypto_utils';
-
 import {gzipUncompress} from '../mtproto/bin_utils';
 
 ctx.onmessage = function(e) {
@@ -38,11 +35,11 @@ ctx.onmessage = function(e) {
       result = bytesModPow.apply(null, e.data.args);
       break;
 
-    case 'sha1-hash':
+    case 'sha1':
       result = sha1HashSync.apply(null, e.data.args);
       break;
 
-    case 'sha256-hash':
+    case 'sha256':
       result = sha256HashSync.apply(null, e.data.args);
       break;
     

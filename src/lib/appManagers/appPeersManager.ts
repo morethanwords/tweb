@@ -12,7 +12,6 @@
 import type { Chat, ChatPhoto, DialogPeer, InputChannel, InputDialogPeer, InputNotifyPeer, InputPeer, Peer, Update, User, UserProfilePhoto } from "../../layer";
 import type { LangPackKey } from "../langPack";
 import { MOUNT_CLASS_TO } from "../../config/debug";
-import { isObject } from "../../helpers/object";
 import { RichTextProcessor } from "../richtextprocessor";
 import rootScope from "../rootScope";
 import appChatsManager from "./appChatsManager";
@@ -20,6 +19,7 @@ import appUsersManager from "./appUsersManager";
 import I18n from '../langPack';
 import { NULL_PEER_ID } from "../mtproto/mtproto_config";
 import { getRestrictionReason } from "../../helpers/restrictions";
+import isObject from "../../helpers/object/isObject";
 
 // https://github.com/eelcohn/Telegram-API/wiki/Calculating-color-for-a-Telegram-user-on-IRC
 /*

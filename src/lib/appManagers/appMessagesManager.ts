@@ -14,7 +14,6 @@ import ProgressivePreloader from "../../components/preloader";
 import { CancellablePromise, deferredPromise } from "../../helpers/cancellablePromise";
 import { formatDateAccordingToTodayNew, formatTime, tsNow } from "../../helpers/date";
 import { createPosterForVideo } from "../../helpers/files";
-import { copy, deepEqual, getObjectKeysAndSort } from "../../helpers/object";
 import { randomLong } from "../../helpers/random";
 import { splitStringByLength, limitSymbols, escapeRegExp } from "../../helpers/string";
 import { Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup, InputPeer, InputPhoto, InputDocument, InputGeoPoint, WebPage, GeoPoint, ReportReason, MessagesGetDialogs, InputChannel, InputDialogPeer, ReactionCount, MessagePeerReaction, MessagesSearchCounter, Peer } from "../../layer";
@@ -48,7 +47,6 @@ import DEBUG, { MOUNT_CLASS_TO } from "../../config/debug";
 import SlicedArray, { Slice, SliceEnd } from "../../helpers/slicedArray";
 import appNotificationsManager, { NotifyOptions } from "./appNotificationsManager";
 import PeerTitle from "../../components/peerTitle";
-import { forEachReverse, indexOfAndSplice } from "../../helpers/array";
 import htmlToDocumentFragment from "../../helpers/dom/htmlToDocumentFragment";
 import htmlToSpan from "../../helpers/dom/htmlToSpan";
 import { MUTE_UNTIL, NULL_PEER_ID, REPLIES_PEER_ID, SERVICE_PEER_ID } from "../mtproto/mtproto_config";
@@ -65,6 +63,11 @@ import './appGroupCallsManager';
 import appGroupCallsManager from "./appGroupCallsManager";
 import appReactionsManager from "./appReactionsManager";
 import { getRestrictionReason, isRestricted } from "../../helpers/restrictions";
+import copy from "../../helpers/object/copy";
+import getObjectKeysAndSort from "../../helpers/object/getObjectKeysAndSort";
+import forEachReverse from "../../helpers/array/forEachReverse";
+import indexOfAndSplice from "../../helpers/array/indexOfAndSplice";
+import deepEqual from "../../helpers/object/deepEqual";
 
 //console.trace('include');
 // TODO: если удалить диалог находясь в папке, то он не удалится из папки и будет виден в настройках

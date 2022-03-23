@@ -25,9 +25,10 @@ import CALL_STATE from "../lib/calls/callState";
 import replaceContent from "../helpers/dom/replaceContent";
 import PeerTitle from "./peerTitle";
 import CallDescriptionElement from "./call/description";
-// import PopupCall from "./call";
+import PopupCall from "./call";
 import type { AppAvatarsManager } from "../lib/appManagers/appAvatarsManager";
 import GroupCallMicrophoneIconMini from "./groupCall/microphoneIconMini";
+import CallInstance from "../lib/calls/callInstance";
 
 function convertCallStateToGroupState(state: CALL_STATE, isMuted: boolean) {
   switch(state) {
@@ -255,13 +256,13 @@ export default class TopbarCall {
           appPeersManager: this.appPeersManager,
           appChatsManager: this.appChatsManager
         }).show();
-      }/*  else if(this.instance instanceof CallInstance) {
+      } else if(this.instance instanceof CallInstance) {
         new PopupCall({
           appAvatarsManager: this.appAvatarsManager,
           appPeersManager: this.appPeersManager,
           instance: this.instance
         }).show();
-      } */
+      }
     }, {listenerSetter});
     
     container.append(left, center, right);

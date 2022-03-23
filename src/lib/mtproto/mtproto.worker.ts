@@ -19,8 +19,8 @@ import { notifyAll } from '../../helpers/context';
 import CacheStorageController from '../cacheStorage';
 import sessionStorage from '../sessionStorage';
 import { socketsProxied } from './transports/socketProxied';
-import { bytesToHex } from '../../helpers/bytes';
 import ctx from '../../environment/ctx';
+import bytesToHex from '../../helpers/bytes/bytesToHex';
 
 let webpSupported = false;
 export const isWebpSupported = () => {

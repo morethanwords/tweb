@@ -5,7 +5,7 @@
  */
 
 import Scrollable from "../components/scrollable";
-import { safeAssign } from "./object";
+import safeAssign from "./object/safeAssign";
 
 export default class ScrollableLoader {
   public loading = false;

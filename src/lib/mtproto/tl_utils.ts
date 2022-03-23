@@ -9,17 +9,14 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import { bytesFromHex, bytesToHex } from '../../helpers/bytes';
-import { addPadding, isObject, longFromInts } from './bin_utils';
-import { MOUNT_CLASS_TO } from '../../config/debug';
-import { str2bigInt, bigInt2str, int2bigInt, sub_ } from '../../vendor/leemon';
 import Schema, { MTProtoConstructor } from './schema';
 import { JSONValue } from '../../layer';
-
-/// #if MTPROTO_WORKER
-// @ts-ignore
-import { gzipUncompress } from '../crypto/crypto_utils';
-/// #endif
+import { MOUNT_CLASS_TO } from '../../config/debug';
+import bytesToHex from '../../helpers/bytes/bytesToHex';
+import isObject from '../../helpers/object/isObject';
+import gzipUncompress from '../../helpers/gzipUncompress';
+import bigInt from 'big-integer';
+import longFromInts from '../../helpers/long/longFromInts';
 
 // @ts-ignore
 /* import {BigInteger} from 'jsbn';
@@ -167,33 +164,12 @@ class TLSerialization {
       sLong = sLong ? sLong.toString() : '0';
     }
 
-    /* let perf = performance.now();
-    const jsbnBytes: Uint8Array = new Uint8Array(8);
-    const jsbnBigInt = bigStringInt(sLong);
-    for(let i = 0; i < 8; i++) {
-      jsbnBytes[i] = +jsbnBigInt.shiftRight(8 * i).and(bigint(255)).toString(10);
-    }
-    console.log('perf1', performance.now() - perf); */
+    const {quotient, remainder} = bigInt(sLong).divmod(0x100000000);
+    const high = quotient.toJSNumber();
+    const low = remainder.toJSNumber();
 
-    // perf = performance.now();
-    let bigInt: number[];
-    if(sLong[0] === '-') { // leemon library can't parse signed numbers
-      bigInt = int2bigInt(0, 64, 8);
-      sub_(bigInt, str2bigInt(sLong.slice(1), 10, 64));
-    } else {
-      bigInt = str2bigInt(sLong, 10, 64);
-    }
-
-    const hex = bigInt2str(bigInt, 16).slice(-16);
-    const bytes = addPadding(bytesFromHex(hex).reverse(), 8, true, true, false);
-
-    // console.log('perf2', performance.now() - perf);
-
-    this.storeRawBytes(bytes);
-
-    // if(jsbnBytes.hex !== bytes.hex) {
-    //   console.error(bigInt, sLong, bigInt2str(bigInt, 10), negative(bigInt), jsbnBytes.hex, bigInt2str(bigInt, 16), bytes.hex);
-    // }
+    this.writeInt(low, (field || '') + ':long[low]');
+    this.writeInt(high, (field || '') + ':long[high]');
   }
   
   public storeDouble(f: any, field?: string) {
