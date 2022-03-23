@@ -27,7 +27,6 @@ import { cancelEvent } from "../../helpers/dom/cancelEvent";
 import cancelSelection from "../../helpers/dom/cancelSelection";
 import getSelectedText from "../../helpers/dom/getSelectedText";
 import rootScope from "../../lib/rootScope";
-import { safeAssign } from "../../helpers/object";
 import { fastRaf } from "../../helpers/schedulers";
 import replaceContent from "../../helpers/dom/replaceContent";
 import AppSearchSuper from "../appSearchSuper.";
@@ -36,6 +35,7 @@ import { randomLong } from "../../helpers/random";
 import { attachContextMenuListener } from "../misc";
 import { attachClickEvent, AttachClickOptions } from "../../helpers/dom/clickEvent";
 import findUpAsChild from "../../helpers/dom/findUpAsChild";
+import safeAssign from "../../helpers/object/safeAssign";
 
 const accumulateMapSet = (map: Map<any, Set<number>>) => {
   return [...map.values()].reduce((acc, v) => acc + v.size, 0);

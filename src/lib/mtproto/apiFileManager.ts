@@ -25,10 +25,10 @@ import FileManager from "../filemanager";
 import { logger, LogTypes } from "../logger";
 import apiManager from "./apiManager";
 import { isWebpSupported } from "./mtproto.worker";
-import { bytesToHex } from "../../helpers/bytes";
 import assumeType from "../../helpers/assumeType";
 import ctx from "../../environment/ctx";
 import noop from "../../helpers/noop";
+import bytesToHex from "../../helpers/bytes/bytesToHex";
 
 type Delayed = {
   offset: number, 

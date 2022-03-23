@@ -5,7 +5,6 @@
  */
 
 import DEBUG, { MOUNT_CLASS_TO } from "../config/debug";
-import { deepEqual, safeAssign } from "../helpers/object";
 import { capitalizeFirstLetter } from "../helpers/string";
 import type lang from "../lang";
 import type langSign from "../langSign";
@@ -17,6 +16,8 @@ import App from "../config/app";
 import rootScope from "./rootScope";
 import RichTextProcessor from "./richtextprocessor";
 import { IS_MOBILE } from "../environment/userAgent";
+import deepEqual from "../helpers/object/deepEqual";
+import safeAssign from "../helpers/object/safeAssign";
 
 export const langPack: {[actionType: string]: LangPackKey} = {
   "messageActionChatCreate": "ActionCreateGroup",

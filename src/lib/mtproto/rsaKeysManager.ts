@@ -11,9 +11,10 @@
 
 import { TLSerialization } from "./tl_utils";
 import CryptoWorker from '../crypto/cryptoworker';
-import { bytesFromHex, bytesToHex } from "../../helpers/bytes";
-import { bigInt2str, str2bigInt } from "../../vendor/leemon";
 import Modes from "../../config/modes";
+import bytesFromHex from "../../helpers/bytes/bytesFromHex";
+import bytesToHex from "../../helpers/bytes/bytesToHex";
+import bigInt from 'big-integer';
 
 export type RSAPublicKeyHex = {
   modulus: string,
@@ -102,7 +103,7 @@ export class RSAKeysManager {
 
       const buffer = RSAPublicKey.getBuffer();
 
-      return CryptoWorker.invokeCrypto('sha1-hash', buffer).then(bytes => {
+      return CryptoWorker.invokeCrypto('sha1', buffer).then(bytes => {
         const fingerprintBytes = bytes.slice(-8);
         fingerprintBytes.reverse();
   
@@ -123,8 +124,7 @@ export class RSAKeysManager {
     await this.prepare();
 
     for(let i = 0; i < fingerprints.length; ++i) {
-      //fingerprintHex = bigStringInt(fingerprints[i]).toString(16);
-      let fingerprintHex = bigInt2str(str2bigInt(fingerprints[i], 10), 16).toLowerCase();
+      let fingerprintHex = bigInt(fingerprints[i]).toString(16).toLowerCase();
 
       if(fingerprintHex.length < 16) {
         fingerprintHex = new Array(16 - fingerprintHex.length).fill('0').join('') + fingerprintHex;

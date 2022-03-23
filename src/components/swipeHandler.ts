@@ -5,9 +5,9 @@
  */
 
 import { cancelEvent } from "../helpers/dom/cancelEvent";
-import { safeAssign } from "../helpers/object";
 import { IS_TOUCH_SUPPORTED } from "../environment/touchSupport";
 import rootScope from "../lib/rootScope";
+import safeAssign from "../helpers/object/safeAssign";
 
 const getEvent = (e: TouchEvent | MouseEvent) => {
   return (e as TouchEvent).touches ? (e as TouchEvent).touches[0] : e as MouseEvent;

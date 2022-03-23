@@ -10,7 +10,6 @@ import apiManager from '../lib/mtproto/mtprotoworker';
 import Page from './page';
 import serverTimeManager from '../lib/mtproto/serverTimeManager';
 import { AuthAuthorization, AuthLoginToken } from '../layer';
-import { bytesCmp, bytesToBase64 } from '../helpers/bytes';
 import App from '../config/app';
 import Button from '../components/button';
 import { _i18n, i18n, LangPackKey } from '../lib/langPack';
@@ -19,6 +18,8 @@ import rootScope from '../lib/rootScope';
 import { putPreloader } from '../components/misc';
 import getLanguageChangeButton from '../components/languageChangeButton';
 import { pause } from '../helpers/schedulers/pause';
+import bytesCmp from '../helpers/bytes/bytesCmp';
+import bytesToBase64 from '../helpers/bytes/bytesToBase64';
 
 const FETCH_INTERVAL = 3;
 

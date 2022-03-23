@@ -5,7 +5,7 @@
  */
 
 import noop from "../helpers/noop";
-import { safeAssign } from "../helpers/object";
+import safeAssign from "../helpers/object/safeAssign";
 import { LottieAssetName } from "../lib/rlottie/lottieLoader";
 import RLottieIcon, { RLottieIconItemPartOptions, RLottieIconItemPart } from "../lib/rlottie/rlottieIcon";
 import { RLottieColor } from "../lib/rlottie/rlottiePlayer";

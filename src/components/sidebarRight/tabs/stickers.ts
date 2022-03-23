@@ -15,10 +15,10 @@ import { RichTextProcessor } from "../../../lib/richtextprocessor";
 import { wrapSticker } from "../../wrappers";
 import appSidebarRight from "..";
 import { StickerSet, StickerSetCovered } from "../../../layer";
-import { forEachReverse } from "../../../helpers/array";
 import { i18n } from "../../../lib/langPack";
 import findUpClassName from "../../../helpers/dom/findUpClassName";
 import { attachClickEvent } from "../../../helpers/dom/clickEvent";
+import forEachReverse from "../../../helpers/array/forEachReverse";
 
 export default class AppStickersTab extends SliderSuperTab {
   private inputSearch: InputSearch;

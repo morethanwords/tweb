@@ -76,7 +76,6 @@ import PeerTitle from '../peerTitle';
 import { fastRaf } from '../../helpers/schedulers';
 import PopupDeleteMessages from '../popups/deleteMessages';
 import fixSafariStickyInputFocusing, { IS_STICKY_INPUT_BUGGED } from '../../helpers/dom/fixSafariStickyInputFocusing';
-import { copy } from '../../helpers/object';
 import PopupPeer from '../popups/peer';
 import MEDIA_MIME_TYPES_SUPPORTED from '../../environment/mediaMimeTypesSupport';
 import appMediaPlaybackController from '../appMediaPlaybackController';
@@ -86,6 +85,7 @@ import CheckboxField from '../checkboxField';
 import DropdownHover from '../../helpers/dropdownHover';
 import RadioForm from '../radioForm';
 import findUpTag from '../../helpers/dom/findUpTag';
+import copy from '../../helpers/object/copy';
 
 const RECORD_MIN_TIME = 500;
 const POSTING_MEDIA_NOT_ALLOWED = 'Posting media content isn\'t allowed in this group.';

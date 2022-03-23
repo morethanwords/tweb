@@ -6,10 +6,10 @@
 
 import App from "../../config/app";
 import { MOUNT_CLASS_TO } from "../../config/debug";
-import { indexOfAndSplice } from "../../helpers/array";
-import { validateInitObject } from "../../helpers/object";
+import indexOfAndSplice from "../../helpers/array/indexOfAndSplice";
+import isObject from "../../helpers/object/isObject";
+import validateInitObject from "../../helpers/object/validateInitObject";
 import I18n from "../langPack";
-import { isObject } from "../mtproto/bin_utils";
 import apiManager from "../mtproto/mtprotoworker";
 import RichTextProcessor from "../richtextprocessor";
 import rootScope from "../rootScope";

@@ -11,8 +11,8 @@
 
 import MTTransport, { MTConnectionConstructable } from './transports/transport';
 import Modes from '../../config/modes';
-import { indexOfAndSplice } from '../../helpers/array';
 import App from '../../config/app';
+import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
 
 /// #if MTPROTO_HAS_HTTP
 import HTTP from './transports/http';

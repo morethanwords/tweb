@@ -4,7 +4,6 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { deepEqual, copy } from "../../../helpers/object";
 import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
 import { MyDialogFilter as DialogFilter } from "../../../lib/storages/filters";
 import lottieLoader, { LottieLoader } from "../../../lib/rlottie/lottieLoader";
@@ -22,6 +21,8 @@ import { i18n, i18n_, LangPackKey } from "../../../lib/langPack";
 import { SettingSection } from "..";
 import PopupPeer from "../../popups/peer";
 import RLottiePlayer from "../../../lib/rlottie/rlottiePlayer";
+import copy from "../../../helpers/object/copy";
+import deepEqual from "../../../helpers/object/deepEqual";
 
 const MAX_FOLDER_NAME_LENGTH = 12;
 

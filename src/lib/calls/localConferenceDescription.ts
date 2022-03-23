@@ -9,10 +9,10 @@
  * https://github.com/evgeny-nadymov/telegram-react/blob/master/LICENSE
  */
 
-import { indexOfAndSplice } from '../../helpers/array';
-import { safeAssign } from '../../helpers/object';
+import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
+import safeAssign from '../../helpers/object/safeAssign';
 import { GroupCallParticipantVideoSourceGroup } from '../../layer';
-import { SDPBuilder, WebRTCLineType, WEBRTC_MEDIA_PORT } from './sdpBuilder';
+import { fixMediaLineType, SDPBuilder, WebRTCLineType, WEBRTC_MEDIA_PORT } from './sdpBuilder';
 import { AudioCodec, GroupCallConnectionTransport, Ssrc, UpdateGroupCallConnectionData, VideoCodec } from './types';
 
 export class ConferenceEntry {
@@ -57,7 +57,7 @@ export class ConferenceEntry {
       this.setDirection(init.direction);
     }
 
-    return this.transceiver = connection.addTransceiver(this.type, init);
+    return this.transceiver = connection.addTransceiver(fixMediaLineType(this.type), init);
   }
 
   public setSource(source: number | GroupCallParticipantVideoSourceGroup[]) {
@@ -99,6 +99,7 @@ export default class LocalConferenceDescription implements UpdateGroupCallConnec
   public readonly transport: GroupCallConnectionTransport;
   public readonly audio?: AudioCodec;
   public readonly video: VideoCodec;
+  public readonly screencast?: VideoCodec;
   
   private maxSeenId: number;
   public readonly entries: ConferenceEntry[];

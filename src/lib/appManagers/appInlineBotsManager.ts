@@ -22,8 +22,8 @@ import { MOUNT_CLASS_TO } from "../../config/debug";
 import rootScope from "../rootScope";
 import appDraftsManager from "./appDraftsManager";
 import appMessagesIdsManager from "./appMessagesIdsManager";
-import { insertInDescendSortedArray } from "../../helpers/array";
 import appStateManager from "./appStateManager";
+import insertInDescendSortedArray from "../../helpers/array/insertInDescendSortedArray";
 
 export class AppInlineBotsManager {
   private inlineResults: {[queryAndResultIds: string]: BotInlineResult} = {};

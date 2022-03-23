@@ -6,12 +6,12 @@
 
 import attachListNavigation from "../../helpers/dom/attachListNavigation";
 import EventListenerBase from "../../helpers/eventListenerBase";
-import { safeAssign } from "../../helpers/object";
 import { IS_MOBILE } from "../../environment/userAgent";
 import rootScope from "../../lib/rootScope";
 import appNavigationController, { NavigationItem } from "../appNavigationController";
 import SetTransition from "../singleTransition";
 import AutocompleteHelperController from "./autocompleteHelperController";
+import safeAssign from "../../helpers/object/safeAssign";
 
 export default class AutocompleteHelper extends EventListenerBase<{
   hidden: () => void,

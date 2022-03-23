@@ -12,7 +12,6 @@
 import type { UserAuth } from './mtproto_config';
 import sessionStorage from '../sessionStorage';
 import MTPNetworker, { MTMessage } from './networker';
-import { isObject } from './bin_utils';
 import networkerFactory from './networkerFactory';
 //import { telegramMeWebService } from './mtproto';
 import authorizer from './authorizer';
@@ -21,7 +20,6 @@ import { logger } from '../logger';
 import type { DcAuthKey, DcId, DcServerSalt, InvokeApiOptions } from '../../types';
 import type { MethodDeclMap } from '../../layer';
 import { CancellablePromise, deferredPromise } from '../../helpers/cancellablePromise';
-import { bytesFromHex, bytesToHex } from '../../helpers/bytes';
 //import { clamp } from '../../helpers/number';
 import { IS_SAFARI } from '../../environment/userAgent';
 import App from '../../config/app';
@@ -38,6 +36,9 @@ import rootScope from '../rootScope';
 
 /// #if MTPROTO_AUTO
 import transportController from './transports/controller';
+import bytesFromHex from '../../helpers/bytes/bytesFromHex';
+import bytesToHex from '../../helpers/bytes/bytesToHex';
+import isObject from '../../helpers/object/isObject';
 /// #endif
 
 /* var networker = apiManager.cachedNetworkers.websocket.upload[2];
@@ -352,7 +353,7 @@ export class ApiManager {
         }
         
         const authKey = bytesFromHex(authKeyHex);
-        const authKeyId = (await CryptoWorker.invokeCrypto('sha1-hash', authKey)).slice(-8);
+        const authKeyId = (await CryptoWorker.invokeCrypto('sha1', authKey)).slice(-8);
         const serverSalt = bytesFromHex(serverSaltHex);
         
         networker = networkerFactory.getNetworker(dcId, authKey, authKeyId, serverSalt, options);

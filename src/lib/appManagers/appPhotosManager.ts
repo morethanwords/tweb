@@ -10,10 +10,8 @@
  */
 
 import type { DownloadOptions } from "../mtproto/apiFileManager";
-import { bytesFromHex } from "../../helpers/bytes";
 import { CancellablePromise } from "../../helpers/cancellablePromise";
 import { getFileNameByLocation } from "../../helpers/fileName";
-import { safeReplaceArrayInObject, isObject } from "../../helpers/object";
 import { IS_SAFARI } from "../../environment/userAgent";
 import { InputFileLocation, InputMedia, InputPhoto, Photo, PhotoSize, PhotosPhotos } from "../../layer";
 import apiManager from "../mtproto/mtprotoworker";
@@ -27,6 +25,9 @@ import { renderImageFromUrlPromise } from "../../helpers/dom/renderImageFromUrl"
 import calcImageInBox from "../../helpers/calcImageInBox";
 import { makeMediaSize, MediaSize } from "../../helpers/mediaSizes";
 import windowSize from "../../helpers/windowSize";
+import bytesFromHex from "../../helpers/bytes/bytesFromHex";
+import isObject from "../../helpers/object/isObject";
+import safeReplaceArrayInObject from "../../helpers/object/safeReplaceArrayInObject";
 
 export type MyPhoto = Photo.photo;
 

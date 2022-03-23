@@ -10,7 +10,10 @@
  */
 
 import DEBUG, { MOUNT_CLASS_TO } from "../../config/debug";
-import { isObject, safeReplaceObject, copy, deepEqual } from "../../helpers/object";
+import copy from "../../helpers/object/copy";
+import deepEqual from "../../helpers/object/deepEqual";
+import isObject from "../../helpers/object/isObject";
+import safeReplaceObject from "../../helpers/object/safeReplaceObject";
 import { ChannelParticipant, Chat, ChatAdminRights, ChatBannedRights, ChatParticipant, ChatPhoto, InputChannel, InputChatPhoto, InputFile, InputPeer, Update, Updates } from "../../layer";
 import apiManagerProxy from "../mtproto/mtprotoworker";
 import apiManager from '../mtproto/mtprotoworker';

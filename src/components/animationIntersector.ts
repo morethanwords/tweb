@@ -8,8 +8,8 @@ import rootScope from "../lib/rootScope";
 import { IS_SAFARI } from "../environment/userAgent";
 import { MOUNT_CLASS_TO } from "../config/debug";
 import isInDOM from "../helpers/dom/isInDOM";
-import { indexOfAndSplice } from "../helpers/array";
 import RLottiePlayer from "../lib/rlottie/rlottiePlayer";
+import indexOfAndSplice from "../helpers/array/indexOfAndSplice";
 
 export interface AnimationItem {
   el: HTMLElement,
