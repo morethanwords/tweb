@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { forEachReverse } from "../../helpers/array";
+import forEachReverse from "../../helpers/array/forEachReverse";
 import positionElementByIndex from "../../helpers/dom/positionElementByIndex";
 import { Message, ReactionCount } from "../../layer";
 import appReactionsManager from "../../lib/appManagers/appReactionsManager";

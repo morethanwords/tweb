@@ -11,6 +11,7 @@ import getAudioConstraints from "./helpers/getAudioConstraints";
 import getScreenConstraints from "./helpers/getScreenConstraints";
 import getStreamCached from "./helpers/getStreamCached";
 import getVideoConstraints from "./helpers/getVideoConstraints";
+import stopTrack from "./helpers/stopTrack";
 import LocalConferenceDescription from "./localConferenceDescription";
 import StreamManager, { StreamItem } from "./streamManager";
 
@@ -190,6 +191,9 @@ export default abstract class CallInstanceBase<E extends EventListenerListeners>
       
       if(!isVideo) {
         player.appendChild(element);
+      } else {
+        element.setAttribute('playsinline', 'true');
+        element.muted = true;
       }
       // audio.play();
 
@@ -229,6 +233,10 @@ export default abstract class CallInstanceBase<E extends EventListenerListeners>
       if(description) {
         streamManager.appendToConference(description);
       }
+    } else { // if call is declined earlier than stream appears
+      stream.getTracks().forEach(track => {
+        stopTrack(track);
+      });
     }
   }
 }

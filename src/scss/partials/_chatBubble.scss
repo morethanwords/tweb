@@ -1383,12 +1383,13 @@ $bubble-beside-button-width: 38px;
     }
 
     &-subtitle {
-      font-size: .875rem;
+      font-size: var(--messages-secondary-text-size);
       color: var(--secondary-text-color);
       display: flex;
       align-items: center;
       margin-top: .0625rem;
       margin-left: -.1875rem;
+      line-height: var(--messages-secondary-line-height);
 
       &.is-reason:before {
         margin-right: .0625rem;

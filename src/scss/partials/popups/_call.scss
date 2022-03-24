@@ -24,8 +24,13 @@
   color: #fff;
   align-items: center;
 
-  &.is-full-screen {
+  &.is-full-screen,
+  html.is-mobile & {
     border-radius: 0;
+  }
+
+  &.is-full-screen:not(.show-controls) {
+    cursor: none;
   }
 
   &.show-controls,
@@ -41,9 +46,24 @@
     }
   }
 
+  &.show-controls {
+    .call-video {
+      opacity: .8;
+    }
+
+    .call-video-blur {
+      opacity: .56;
+    }
+  }
+
   .popup-header {
     .btn-icon {
       color: #fff;
+    }
+
+    .call-emojis {
+      transform: scale(1.3125);
+      margin-right: 1rem;
     }
   }
 
@@ -55,11 +75,10 @@
     left: 0;
     z-index: -1;
     opacity: .7;
+    border-radius: inherit;
     
-    .avatar-photo {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
+    .avatar-full {
+      font-size: 6rem;
     }
   }
 
@@ -182,6 +201,7 @@
     object-fit: contain;
     position: absolute;
     border-radius: inherit;
+    opacity: 1;
 
     &-container {
       position: absolute;
@@ -212,6 +232,13 @@
       opacity: .7;
       border-radius: inherit;
     }
+
+    &,
+    &-blur {
+      @include animation-level(2) {
+        transition: opacity var(--transition-standard-in);
+      }
+    }
   }
 
   // html.emoji-supported & {
@@ -234,6 +261,7 @@
     z-index: 2;
     width: 100%;
     align-items: center;
+    padding: 0 1rem;
   }
 
   &-party-state {
@@ -252,7 +280,6 @@
     opacity: 0;
     transform: scale(0) translateY(0);
     max-width: 100%;
-    padding: 0 1rem;
 
     @include animation-level(2) {
       transition: opacity var(--transition-standard-in), transform var(--transition-standard-in);
@@ -262,7 +289,7 @@
       width: 1.875rem !important;
       height: 1.875rem !important;
       margin-right: .25rem;
-      margin-left: -.625rem;
+      margin-left: -.25rem;
       flex: 0 0 auto;
     }
 
@@ -275,11 +302,12 @@
       //   opacity: 0 !important;
       // }
     }
+  }
 
-    &-text {
-      max-width: 100%;
-      @include text-overflow();
-    }
+  &-party-state-text,
+  &-title {
+    max-width: 100%;
+    @include text-overflow();
   }
 
   &.two-button-rows {

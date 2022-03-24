@@ -15,7 +15,7 @@ import ListenerSetter from "../../helpers/listenerSetter";
 import { attachClickEvent, simulateClickEvent } from "../../helpers/dom/clickEvent";
 import isSendShortcutPressed from "../../helpers/dom/isSendShortcutPressed";
 import { cancelEvent } from "../../helpers/dom/cancelEvent";
-import EventListenerBase from "../../helpers/eventListenerBase";
+import EventListenerBase, { EventListenerListeners } from "../../helpers/eventListenerBase";
 import { addFullScreenListener, getFullScreenElement } from "../../helpers/dom/fullScreen";
 import indexOfAndSplice from "../../helpers/array/indexOfAndSplice";
 
@@ -52,11 +52,13 @@ const onFullScreenChange = () => {
 
 addFullScreenListener(DEFAULT_APPEND_TO, onFullScreenChange);
 
-export default class PopupElement extends EventListenerBase<{
+type PopupListeners = {
   close: () => void,
   closeAfterTimeout: () => void
-}> {
-  private static POPUPS: PopupElement[] = [];
+};
+
+export default class PopupElement<T extends EventListenerListeners = {}> extends EventListenerBase<PopupListeners & T> {
+  private static POPUPS: PopupElement<any>[] = [];
   protected element = document.createElement('div');
   protected container = document.createElement('div');
   protected header = document.createElement('div');
@@ -181,7 +183,7 @@ export default class PopupElement extends EventListenerBase<{
   public show() {
     this.navigationItem = {
       type: 'popup',
-      onPop: this.destroy,
+      onPop: () => this.destroy(),
       onEscape: this.onEscape
     };
 
@@ -214,8 +216,8 @@ export default class PopupElement extends EventListenerBase<{
     appNavigationController.backByItem(this.navigationItem);
   };
 
-  private destroy = () => {
-    this.dispatchEvent('close');
+  protected destroy() {
+    this.dispatchEvent<PopupListeners>('close');
     this.element.classList.add('hiding');
     this.element.classList.remove('active');
     this.listenerSetter.removeAll();
@@ -234,14 +236,14 @@ export default class PopupElement extends EventListenerBase<{
 
     setTimeout(() => {
       this.element.remove();
-      this.dispatchEvent('closeAfterTimeout');
+      this.dispatchEvent<PopupListeners>('closeAfterTimeout');
       this.cleanup();
 
       if(!this.withoutOverlay) {
         animationIntersector.checkAnimations(false);
       }
     }, 150);
-  };
+  }
 
   public static reAppend() {
     this.POPUPS.forEach(popup => {

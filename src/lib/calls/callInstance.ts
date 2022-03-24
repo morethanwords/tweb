@@ -34,7 +34,8 @@ export default class CallInstance extends CallInstanceBase<{
   state: (state: CALL_STATE) => void,
   id: (id: CallId, prevId: CallId) => void,
   muted: (muted: boolean) => void,
-  mediaState: (mediaState: CallMediaState) => void
+  mediaState: (mediaState: CallMediaState) => void,
+  acceptCallOverride: () => Promise<boolean>,
 }> {
   public dh: Partial<DiffieHellmanInfo.a & DiffieHellmanInfo.b>;
   public id: CallId;
@@ -55,6 +56,7 @@ export default class CallInstance extends CallInstanceBase<{
   public release: () => Promise<void>;
   public _connectionState: CALL_STATE;
 
+  public createdAt: number;
   public connectedAt: number;
   public discardReason: string;
 
@@ -78,6 +80,9 @@ export default class CallInstance extends CallInstanceBase<{
 
   private wasStartingScreen: boolean;
   private wasStartingVideo: boolean;
+  public wasTryingToJoin: boolean;
+
+  public streamManager: StreamManager;
 
   constructor(options: {
     isOutgoing: boolean,
@@ -97,6 +102,7 @@ export default class CallInstance extends CallInstanceBase<{
 
     safeAssign(this, options);
     
+    this.createdAt = Date.now();
     this.offerReceived = false;
     this.offerSent = false;
     this.decryptQueue = [];
@@ -110,7 +116,7 @@ export default class CallInstance extends CallInstanceBase<{
       }
     });
 
-    const streamManager = new StreamManager(GROUP_CALL_AMPLITUDE_ANALYSE_INTERVAL_MS);
+    const streamManager = this.streamManager = new StreamManager(GROUP_CALL_AMPLITUDE_ANALYSE_INTERVAL_MS);
     streamManager.direction = 'sendrecv';
     streamManager.types.push('screencast');
     if(!this.isOutgoing) {
@@ -162,6 +168,14 @@ export default class CallInstance extends CallInstanceBase<{
         return CALL_STATE.CONNECTED;
       }
     }
+  }
+
+  get sortIndex() {
+    const connectionState = this.connectionState;
+    const state = CALL_STATE.CLOSED - connectionState + 1;
+    let index = state * 10000000000000;
+    index += 2147483647000 - (connectionState === CALL_STATE.PENDING && this.isOutgoing ? 0 : this.createdAt);
+    return index;
   }
 
   public getVideoElement(type: CallMediaState['type']) {
@@ -283,10 +297,6 @@ export default class CallInstance extends CallInstanceBase<{
     return connectionState === CALL_STATE.CLOSING || connectionState === CALL_STATE.CLOSED;
   }
 
-  public get streamManager(): StreamManager {
-    return this.connectionInstance?.streamManager;
-  }
-
   public get description(): localConferenceDescription {
     return this.connectionInstance?.description;
   }
@@ -318,6 +328,11 @@ export default class CallInstance extends CallInstanceBase<{
   }
 
   public async acceptCall() {
+    const canAccept = (await Promise.all(this.dispatchResultableEvent('acceptCallOverride')))[0] ?? true;
+    if(this.isClosing || !canAccept) {
+      return;
+    }
+    
     // this.clearHangUpTimeout();
     this.overrideConnectionState(CALL_STATE.EXCHANGING_KEYS);
 
@@ -619,7 +634,7 @@ export default class CallInstance extends CallInstanceBase<{
   }
 
   public async hangUp(discardReason?: PhoneCallDiscardReason['_'], discardedByOtherParty?: boolean) {
-    if(this.connectionState === CALL_STATE.CLOSED) {
+    if(this.isClosing) {
       return;
     }
 

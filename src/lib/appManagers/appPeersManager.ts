@@ -20,6 +20,7 @@ import I18n from '../langPack';
 import { NULL_PEER_ID } from "../mtproto/mtproto_config";
 import { getRestrictionReason } from "../../helpers/restrictions";
 import isObject from "../../helpers/object/isObject";
+import { limitSymbols } from "../../helpers/string";
 
 // https://github.com/eelcohn/Telegram-API/wiki/Calculating-color-for-a-Telegram-user-on-IRC
 /*
@@ -73,7 +74,7 @@ export class AppPeersManager {
     return false;
   }
 
-  public getPeerTitle(peerId: PeerId, plainText = false, onlyFirstName = false) {
+  public getPeerTitle(peerId: PeerId, plainText = false, onlyFirstName = false, _limitSymbols?: number) {
     if(!peerId) {
       peerId = rootScope.myId;
     }
@@ -93,6 +94,10 @@ export class AppPeersManager {
       if(onlyFirstName) {
         title = title.split(' ')[0];
       }
+    }
+
+    if(_limitSymbols !== undefined) {
+      title = limitSymbols(title, _limitSymbols, _limitSymbols);
     }
     
     return plainText ? title : RichTextProcessor.wrapEmojiText(title);

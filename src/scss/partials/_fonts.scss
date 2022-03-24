@@ -37,6 +37,13 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+.tgico-phone_filled {
+  &:before {
+    content: $tgico-endcall_filled;
+    transform: rotate(-135deg);
+  }
+}
+
 .tgico-check {
   &:before {
     content: $tgico-check; 

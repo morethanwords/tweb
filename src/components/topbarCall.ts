@@ -29,6 +29,7 @@ import PopupCall from "./call";
 import type { AppAvatarsManager } from "../lib/appManagers/appAvatarsManager";
 import GroupCallMicrophoneIconMini from "./groupCall/microphoneIconMini";
 import CallInstance from "../lib/calls/callInstance";
+import type { AppCallsManager } from "../lib/appManagers/appCallsManager";
 
 function convertCallStateToGroupState(state: CALL_STATE, isMuted: boolean) {
   switch(state) {
@@ -64,11 +65,18 @@ export default class TopbarCall {
     private appPeersManager: AppPeersManager,
     private appChatsManager: AppChatsManager,
     private appAvatarsManager: AppAvatarsManager,
+    private appCallsManager: AppCallsManager
   ) {
     const listenerSetter = this.listenerSetter = new ListenerSetter();
 
-    listenerSetter.add(rootScope)('call_instance', ({instance, hasCurrent}) => {
-      if(!hasCurrent) {
+    listenerSetter.add(rootScope)('call_instance', ({instance}) => {
+      if(!this.instance) {
+        this.updateInstance(instance);
+      }
+    });
+
+    listenerSetter.add(rootScope)('call_accepting', (instance) => {
+      if(this.instance !== instance) {
         this.updateInstance(instance);
       }
     });
@@ -121,7 +129,8 @@ export default class TopbarCall {
       this.construct = undefined;
     }
 
-    if(this.instance !== instance) {
+    const isChangingInstance = this.instance !== instance;
+    if(isChangingInstance) {
       this.clearCurrentInstance();
       
       this.instance = instance;
@@ -135,6 +144,8 @@ export default class TopbarCall {
         this.currentDescription = this.callDescription;
         this.instanceListenerSetter.add(instance)('muted', this.onState);
       }
+
+      this.container.classList.toggle('is-call', !(instance instanceof GroupCallInstance));
     }
 
     const isMuted = this.instance.isMuted;
@@ -145,7 +156,7 @@ export default class TopbarCall {
     weave.componentDidMount();
     
     const isClosed = state === GROUP_CALL_STATE.CLOSED;
-    if(!document.body.classList.contains('is-calling') || isClosed) {
+    if((!document.body.classList.contains('is-calling') || isChangingInstance) || isClosed) {
       if(isClosed) {
         weave.setAmplitude(0);
       }
@@ -257,7 +268,13 @@ export default class TopbarCall {
           appChatsManager: this.appChatsManager
         }).show();
       } else if(this.instance instanceof CallInstance) {
+        const hasPopup = PopupElement.getPopup(PopupCall) as PopupCall;
+        if(hasPopup && hasPopup.getCallInstance() === this.instance) {
+          return;
+        }
+
         new PopupCall({
+          appCallsManager: this.appCallsManager,
           appAvatarsManager: this.appAvatarsManager,
           appPeersManager: this.appPeersManager,
           instance: this.instance

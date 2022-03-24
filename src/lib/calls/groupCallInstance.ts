@@ -183,8 +183,6 @@ export default class GroupCallInstance extends CallInstanceBase<{
 
     const clone = element.cloneNode() as typeof element;
     clone.srcObject = element.srcObject;
-    clone.setAttribute('playsinline', 'true');
-    clone.muted = true;
     return {video: clone, source};
   }
 
