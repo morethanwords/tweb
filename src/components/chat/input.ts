@@ -668,7 +668,7 @@ export default class ChatInput {
     this.inlineHelper = new InlineHelper(this.rowsWrapper, this.autocompleteHelperController, this.chat, this.appUsersManager, this.appInlineBotsManager);
     this.rowsWrapper.append(this.newMessageWrapper);
 
-    this.btnCancelRecord = ButtonIcon('delete danger btn-circle z-depth-1 btn-record-cancel');
+    this.btnCancelRecord = ButtonIcon('delete btn-circle z-depth-1 btn-record-cancel');
 
     this.btnSendContainer = document.createElement('div');
     this.btnSendContainer.classList.add('btn-send-container');

@@ -235,6 +235,8 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
 		position: absolute;
 		right: 0;
 		top: 0;
+    background-color: var(--danger-color) !important;
+    // background-color: var(--surface-color) !important;
 
 		// here percents can be used since there are no other transforms
 		transform: translateX(calc(-100% + var(--padding-horizontal) * -1 + #{-$btn-send-margin}));
@@ -320,15 +322,16 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
 	}
 	
 	.btn-send {
-		color: var(--secondary-text-color);
+    background-color: var(--primary-color) !important;
+    // color: var(--secondary-text-color);
 		z-index: 3;
 
-		.tgico-send {
-			color: var(--primary-color) !important;
-		}
+		// .tgico-send {
+		// 	color: var(--primary-color) !important;
+		// }
 
 		.tgico-check {
-			color: var(--primary-color) !important;
+			// color: var(--primary-color) !important;
 			height: 32px!important;
 			font-size: 2rem;
 
@@ -337,16 +340,16 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
 			}
 		}
 
-		.tgico-schedule {
-			background-color: var(--primary-color);
-			color: #fff;
-			border-radius: 50%;
-			width: 34px; // * same as for btn-icon in input
-			height: 34px;
-			display: flex;
-			align-items: center;
-			justify-content: center;
-		}
+		// .tgico-schedule {
+		// 	background-color: var(--primary-color);
+		// 	color: #fff;
+		// 	border-radius: 50%;
+		// 	width: 34px; // * same as for btn-icon in input
+		// 	height: 34px;
+		// 	display: flex;
+		// 	align-items: center;
+		// 	justify-content: center;
+		// }
 
 		&.send .tgico-send, 
 		&.record .tgico-microphone,
@@ -375,7 +378,7 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
   .btn-send {
 		font-size: 1.5rem;
 		line-height: 1.5rem;
-		background-color: var(--surface-color) !important;
+    color: #fff !important;
 	}
 
 	.record-time {
