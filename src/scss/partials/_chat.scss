@@ -358,11 +358,11 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
 			visibility: visible !important;
 		}
 
-		&:not(.record) {
+		/* &:not(.record) {
 			.c-ripple__circle {
 				background-color: var(--light-primary-color);
 			}
-		}
+		} */
 
 		@include animation-level(2) {
 			&.send .tgico-send, 
