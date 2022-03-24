@@ -30,7 +30,7 @@ import IS_VIBRATE_SUPPORTED from "../../environment/vibrateSupport";
 import { MUTE_UNTIL } from "../mtproto/mtproto_config";
 import throttle from "../../helpers/schedulers/throttle";
 import deepEqual from "../../helpers/object/deepEqual";
-import { convertInputKeyToKey } from "../../helpers/string/convertInputKeyToKey";
+import convertInputKeyToKey from "../../helpers/string/convertInputKeyToKey";
 
 type MyNotification = Notification & {
   hidden?: boolean,
