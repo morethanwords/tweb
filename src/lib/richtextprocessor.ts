@@ -18,7 +18,7 @@ import { encodeEntities } from '../helpers/string';
 import { IS_SAFARI } from '../environment/userAgent';
 import { MOUNT_CLASS_TO } from '../config/debug';
 import IS_EMOJI_SUPPORTED from '../environment/emojiSupport';
-import { copy } from '../helpers/object';
+import copy from '../helpers/object/copy';
 
 const EmojiHelper = {
   emojiMap: (code: string) => { return code; },

@@ -169,7 +169,7 @@ export class AppAvatarsManager {
   }
 
   // peerId === peerId || title
-  public putPhoto(div: HTMLElement, peerId: PeerId, isDialog = false, title = '', onlyThumb = false) {
+  public putPhoto(div: HTMLElement, peerId: PeerId, isDialog = false, title = '', onlyThumb = false, isBig?: boolean) {
     const myId = rootScope.myId;
     
     //console.log('loadDialogPhoto location:', location, inputPeer);
@@ -213,7 +213,7 @@ export class AppAvatarsManager {
     }
 
     if(avatarAvailable/*  && false */) {
-      const size: PeerPhotoSize = 'photo_small';
+      const size: PeerPhotoSize = isBig ? 'photo_big' : 'photo_small';
       return this.putAvatar(div, peerId, photo, size, undefined, onlyThumb);
     }
   }

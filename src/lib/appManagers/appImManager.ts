@@ -87,6 +87,8 @@ import appReactionsManager from './appReactionsManager';
 import PopupCall from '../../components/call';
 import copy from '../../helpers/object/copy';
 import getObjectKeysAndSort from '../../helpers/object/getObjectKeysAndSort';
+import type GroupCallInstance from '../calls/groupCallInstance';
+import type CallInstance from '../calls/callInstance';
 
 //console.log('appImManager included33!');
 
@@ -341,20 +343,39 @@ export class AppImManager {
     });
 
     if(IS_CALL_SUPPORTED || IS_GROUP_CALL_SUPPORTED) {
-      this.topbarCall = new TopbarCall(appGroupCallsManager, appPeersManager, appChatsManager, appAvatarsManager);
+      this.topbarCall = new TopbarCall(appGroupCallsManager, appPeersManager, appChatsManager, appAvatarsManager, appCallsManager);
     }
 
     if(IS_CALL_SUPPORTED) {
-      rootScope.addEventListener('call_instance', ({instance, hasCurrent}) => {
-        if(hasCurrent) {
-          return;
-        }
+      rootScope.addEventListener('call_instance', ({instance/* , hasCurrent */}) => {
+        // if(hasCurrent) {
+          // return;
+        // }
         
-        new PopupCall({
+        const popup = new PopupCall({
+          appCallsManager,
           appAvatarsManager,
           appPeersManager,
           instance
-        }).show();
+        });
+
+        instance.addEventListener('acceptCallOverride', () => {
+          return this.discardCurrentCall(instance.interlocutorUserId.toPeerId(), undefined, instance)
+          .then(() => {
+            rootScope.dispatchEvent('call_accepting', instance);
+            return true;
+          })
+          .catch(() => false);
+        });
+
+        popup.addEventListener('close', () => {
+          const currentCall = appCallsManager.currentCall;
+          if(currentCall && currentCall !== instance && !instance.wasTryingToJoin) {
+            instance.hangUp('phoneCallDiscardReasonBusy');
+          }
+        }, {once: true});
+
+        popup.show();
       });
     }
 
@@ -944,9 +965,9 @@ export class AppImManager {
     appCallsManager.startCallInternal(userId, type === 'video');
   }
 
-  private discardCurrentCall(toPeerId: PeerId) {
-    if(appCallsManager.currentCall) return this.discardCallConfirmation(toPeerId);
-    else if(appGroupCallsManager.groupCall) return this.discardGroupCallConfirmation(toPeerId);
+  private discardCurrentCall(toPeerId: PeerId, ignoreGroupCall?: GroupCallInstance, ignoreCall?: CallInstance) {
+    if(appGroupCallsManager.groupCall && appGroupCallsManager.groupCall !== ignoreGroupCall) return this.discardGroupCallConfirmation(toPeerId);
+    else if(appCallsManager.currentCall && appCallsManager.currentCall !== ignoreCall) return this.discardCallConfirmation(toPeerId);
     else return Promise.resolve();
   }
 
@@ -965,8 +986,8 @@ export class AppImManager {
         }
       });
 
-      if(appCallsManager.currentCall === currentCall) {
-        await currentCall.hangUp();
+      if(!currentCall.isClosing) {
+        await currentCall.hangUp('phoneCallDiscardReasonDisconnect');
       }
     }
   }

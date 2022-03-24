@@ -8,7 +8,7 @@ import { MOUNT_CLASS_TO } from "../../config/debug";
 import assumeType from "../../helpers/assumeType";
 import callbackify from "../../helpers/callbackify";
 import callbackifyAll from "../../helpers/callbackifyAll";
-import { copy } from "../../helpers/object";
+import copy from "../../helpers/object/copy";
 import { AvailableReaction, Message, MessagePeerReaction, MessagesAvailableReactions, Update, Updates } from "../../layer";
 import apiManager from "../mtproto/mtprotoworker";
 import { ReferenceContext } from "../mtproto/referenceDatabase";

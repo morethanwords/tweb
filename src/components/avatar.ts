@@ -119,10 +119,11 @@ const seen: Set<PeerId> = new Set();
 
 export default class AvatarElement extends HTMLElement {
   private peerId: PeerId;
-  private isDialog = false;
+  private isDialog: boolean;
   private peerTitle: string;
   public loadPromises: Promise<any>[];
   public lazyLoadQueue: LazyLoadQueueIntersector;
+  public isBig: boolean;
   private addedToQueue = false;
 
   connectedCallback() {
@@ -196,7 +197,7 @@ export default class AvatarElement extends HTMLElement {
   }
 
   private r(onlyThumb = false) {
-    const res = appAvatarsManager.putPhoto(this, this.peerId, this.isDialog, this.peerTitle, onlyThumb);
+    const res = appAvatarsManager.putPhoto(this, this.peerId, this.isDialog, this.peerTitle, onlyThumb, this.isBig);
     const promise = res ? res.loadPromise : Promise.resolve();
     if(this.loadPromises) {
       if(res && res.cached) {

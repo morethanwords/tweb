@@ -5,6 +5,7 @@
  */
 
 import IS_SCREEN_SHARING_SUPPORTED from "../../environment/screenSharingSupport";
+import { IS_MOBILE } from "../../environment/userAgent";
 import { attachClickEvent } from "../../helpers/dom/clickEvent";
 import ControlsHover from "../../helpers/dom/controlsHover";
 import findUpClassName from "../../helpers/dom/findUpClassName";
@@ -14,6 +15,7 @@ import MovablePanel from "../../helpers/movablePanel";
 import safeAssign from "../../helpers/object/safeAssign";
 import toggleClassName from "../../helpers/toggleClassName";
 import type { AppAvatarsManager } from "../../lib/appManagers/appAvatarsManager";
+import type { AppCallsManager } from "../../lib/appManagers/appCallsManager";
 import type { AppPeersManager } from "../../lib/appManagers/appPeersManager";
 import CallInstance from "../../lib/calls/callInstance";
 import CALL_STATE from "../../lib/calls/callState";
@@ -21,6 +23,7 @@ import I18n, { i18n } from "../../lib/langPack";
 import RichTextProcessor from "../../lib/richtextprocessor";
 import rootScope from "../../lib/rootScope";
 import animationIntersector from "../animationIntersector";
+import AvatarElement from "../avatar";
 import ButtonIcon from "../buttonIcon";
 import GroupCallMicrophoneIconMini from "../groupCall/microphoneIconMini";
 import { MovableState } from "../movableElement";
@@ -40,6 +43,7 @@ let previousState: MovableState = {
 
 export default class PopupCall extends PopupElement {
   private instance: CallInstance;
+  private appCallsManager: AppCallsManager;
   private appAvatarsManager: AppAvatarsManager;
   private appPeersManager: AppPeersManager;
   private peerId: PeerId;
@@ -76,6 +80,7 @@ export default class PopupCall extends PopupElement {
   private controlsHover: ControlsHover;
 
   constructor(options: {
+    appCallsManager: AppCallsManager,
     appAvatarsManager: AppAvatarsManager,
     appPeersManager: AppPeersManager,
     instance: CallInstance
@@ -96,8 +101,11 @@ export default class PopupCall extends PopupElement {
     avatarContainer.classList.add(className + '-avatar');
 
     const peerId = this.peerId = this.instance.interlocutorUserId.toPeerId();
-    const photo = this.appPeersManager.getPeerPhoto(peerId);
-    this.appAvatarsManager.putAvatar(avatarContainer, peerId, photo, 'photo_big');
+    const avatar = new AvatarElement();
+    avatar.isBig = true;
+    avatar.setAttribute('peer', '' + peerId);
+    avatar.classList.add('avatar-full');
+    avatarContainer.append(avatar);
 
     const title = new PeerTitle({
       peerId
@@ -113,22 +121,28 @@ export default class PopupCall extends PopupElement {
     const emojisSubtitle = this.emojisSubtitle = document.createElement('div');
     emojisSubtitle.classList.add(className + '-emojis');
 
-    container.append(avatarContainer, title, subtitle, emojisSubtitle);
+    container.append(avatarContainer, title, subtitle);
     
-    this.btnFullScreen = ButtonIcon('fullscreen');
-    this.btnExitFullScreen = ButtonIcon('smallscreen hide');
-    attachClickEvent(this.btnFullScreen, this.onFullScreenClick, {listenerSetter});
-    attachClickEvent(this.btnExitFullScreen, () => cancelFullScreen(), {listenerSetter});
-    addFullScreenListener(this.container, this.onFullScreenChange, listenerSetter);
-    this.header.prepend(this.btnExitFullScreen);
-    this.header.append(this.btnFullScreen);
+    if(!IS_MOBILE) {
+      this.btnFullScreen = ButtonIcon('fullscreen');
+      this.btnExitFullScreen = ButtonIcon('smallscreen hide');
+      attachClickEvent(this.btnFullScreen, this.onFullScreenClick, {listenerSetter});
+      attachClickEvent(this.btnExitFullScreen, () => cancelFullScreen(), {listenerSetter});
+      addFullScreenListener(this.container, this.onFullScreenChange, listenerSetter);
+      this.header.prepend(this.btnExitFullScreen);
+      this.header.append(this.btnFullScreen);
+
+      container.append(emojisSubtitle);
+    } else {
+      this.header.append(emojisSubtitle);
+    }
 
     this.partyStates = document.createElement('div');
     this.partyStates.classList.add(className + '-party-states');
 
     this.partyMutedState = document.createElement('div');
     this.partyMutedState.classList.add(className + '-party-state');
-    const stateText = i18n('VoipUserMicrophoneIsOff', [new PeerTitle({peerId, onlyFirstName: true}).element]);
+    const stateText = i18n('VoipUserMicrophoneIsOff', [new PeerTitle({peerId, onlyFirstName: true, limitSymbols: 18}).element]);
     stateText.classList.add(className + '-party-state-text');
     const mutedIcon = new GroupCallMicrophoneIconMini(false, true);
     mutedIcon.setState(false, false);
@@ -191,6 +205,10 @@ export default class PopupCall extends PopupElement {
     });
 
     this.updateInstance();
+  }
+
+  public getCallInstance() {
+    return this.instance;
   }
 
   private constructFirstButtons() {
@@ -260,7 +278,7 @@ export default class PopupCall extends PopupElement {
 
     const btnAccept = this.btnAccept = this.makeButton({
       text: 'Call.Accept',
-      icon: 'phone',
+      icon: 'phone_filled',
       callback: () => {
         this.instance.acceptCall();
       },

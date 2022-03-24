@@ -50,6 +50,8 @@ import type { ArgumentTypes, SuperReturnType } from "../types";
 // MOUNT_CLASS_TO.e = e;
 
 export type EventListenerListeners = Record<string, Function>;
+// export type EventListenerListeners = Record<string, (...args: any[]) => any>;
+// export type EventListenerListeners = {[name in string]: Function};
 
 /**
  * Better not to remove listeners during setting
@@ -151,7 +153,8 @@ export default class EventListenerBase<Listeners extends EventListenerListeners>
   }
 
   // * must be protected, but who cares
-  public dispatchEvent<T extends keyof Listeners>(name: T, ...args: ArgumentTypes<Listeners[T]>) {
+  public dispatchEvent<L extends EventListenerListeners = Listeners, T extends keyof L = keyof L>(name: T, ...args: ArgumentTypes<L[T]>) {
+    // @ts-ignore
     this._dispatchEvent(name, false, ...args);
   }
 

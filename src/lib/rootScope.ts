@@ -17,7 +17,7 @@ import type { PushNotificationObject } from "./serviceWorker/push";
 import type { ConnectionStatusChange } from "./mtproto/connectionStatus";
 import type { GroupCallId } from "./appManagers/appGroupCallsManager";
 import type GroupCallInstance from "./calls/groupCallInstance";
-// import type CallInstance from "./calls/callInstance";
+import type CallInstance from "./calls/callInstance";
 import type { StreamAmplitude } from "./calls/streamManager";
 import type Chat from "../components/chat/chat";
 import { NULL_PEER_ID, UserAuth } from "./mtproto/mtproto_config";
@@ -158,7 +158,8 @@ export type BroadcastEvents = {
   'group_call_participant': {groupCallId: GroupCallId, participant: GroupCallParticipant},
   // 'group_call_video_track_added': {instance: GroupCallInstance}
 
-  'call_instance': {hasCurrent: boolean, instance: any/* CallInstance */},
+  'call_instance': {hasCurrent: boolean, instance: CallInstance},
+  'call_accepting': CallInstance, // это костыль. используется при параллельном вызове, чтобы заменить звонок в topbarCall
 
   'quick_reaction': string,
 

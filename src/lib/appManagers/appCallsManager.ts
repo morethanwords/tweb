@@ -11,6 +11,8 @@
 
 import { MOUNT_CLASS_TO } from "../../config/debug";
 import IS_CALL_SUPPORTED from "../../environment/callSupport";
+import indexOfAndSplice from "../../helpers/array/indexOfAndSplice";
+import insertInDescendSortedArray from "../../helpers/array/insertInDescendSortedArray";
 import AudioAssetPlayer from "../../helpers/audioAssetPlayer";
 import bytesCmp from "../../helpers/bytes/bytesCmp";
 import safeReplaceObject from "../../helpers/object/safeReplaceObject";
@@ -39,6 +41,7 @@ export class AppCallsManager {
   private log: ReturnType<typeof logger>;
   private calls: Map<CallId, MyPhoneCall>;
   private instances: Map<CallId, CallInstance>;
+  private sortedInstances: Array<CallInstance>;
   private tempId: number;
   private audioAsset: AudioAssetPlayer<CallAudioAssetName>;
   
@@ -48,6 +51,7 @@ export class AppCallsManager {
     this.tempId = 0;
     this.calls = new Map();
     this.instances = new Map();
+    this.sortedInstances = [];
 
     if(!IS_CALL_SUPPORTED) {
       return;
@@ -139,15 +143,7 @@ export class AppCallsManager {
   }
 
   public get currentCall() {
-    let lastInstance: CallInstance;
-    for(const [callId, instance] of this.instances) {
-      lastInstance = instance;
-      if(instance.connectionState !== CALL_STATE.PENDING) {
-        break;
-      }
-    }
-
-    return lastInstance;
+    return this.sortedInstances[0];
   }
 
   public getCallByUserId(userId: UserId) {
@@ -207,15 +203,17 @@ export class AppCallsManager {
       ...options,
     });
 
-    let wasTryingToJoin = false;
     call.addEventListener('state', (state) => {
       const currentCall = this.currentCall;
       if(state === CALL_STATE.CLOSED) {
         this.instances.delete(call.id);
+        indexOfAndSplice(this.sortedInstances, call);
+      } else {
+        insertInDescendSortedArray(this.sortedInstances, call, 'sortIndex');
       }
 
       if(state === CALL_STATE.EXCHANGING_KEYS) {
-        wasTryingToJoin = true;
+        call.wasTryingToJoin = true;
       }
 
       const hasConnected = call.connectedAt !== undefined;
@@ -227,9 +225,9 @@ export class AppCallsManager {
 
       if(currentCall === call || !currentCall) {
         if(state === CALL_STATE.CLOSED) {
-          if(!call.isOutgoing && !wasTryingToJoin) { // incoming call has been accepted on other device or ended
+          if(!call.isOutgoing && !call.wasTryingToJoin) { // incoming call has been accepted on other device or ended
             this.audioAsset.stopSound();
-          } else if(wasTryingToJoin && !hasConnected) { // something has happened during the key exchanging
+          } else if(call.wasTryingToJoin && !hasConnected) { // something has happened during the key exchanging
             this.audioAsset.playSound('voip_failed.mp3');
           } else {
             this.audioAsset.playSound(call.discardReason === 'phoneCallDiscardReasonBusy' ? 'call_busy.mp3' : 'call_end.mp3');

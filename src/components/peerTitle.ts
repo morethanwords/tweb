@@ -12,13 +12,15 @@ import replaceContent from "../helpers/dom/replaceContent";
 import appUsersManager from "../lib/appManagers/appUsersManager";
 import RichTextProcessor from "../lib/richtextprocessor";
 import { NULL_PEER_ID } from "../lib/mtproto/mtproto_config";
+import { limitSymbols } from "../helpers/string";
 
 export type PeerTitleOptions = {
   peerId?: PeerId,
   fromName?: string,
   plainText?: boolean,
   onlyFirstName?: boolean,
-  dialog?: boolean
+  dialog?: boolean,
+  limitSymbols?: number
 };
 
 const weakMap: WeakMap<HTMLElement, PeerTitle> = new WeakMap();
@@ -44,6 +46,7 @@ export default class PeerTitle {
   public plainText = false;
   public onlyFirstName = false;
   public dialog = false;
+  public limitSymbols: number;
 
   constructor(options: PeerTitleOptions) {
     this.element = document.createElement('span');
@@ -64,8 +67,13 @@ export default class PeerTitle {
       }
     }
 
-    if(this.fromName !== undefined) {
-      this.element.innerHTML = RichTextProcessor.wrapEmojiText(this.fromName);
+    let fromName = this.fromName;
+    if(fromName !== undefined) {
+      if(this.limitSymbols !== undefined) {
+        fromName = limitSymbols(fromName, this.limitSymbols, this.limitSymbols);
+      }
+
+      this.element.innerHTML = RichTextProcessor.wrapEmojiText(fromName);
       return;
     }
 
@@ -77,7 +85,7 @@ export default class PeerTitle {
       if(this.peerId.isUser() && appUsersManager.getUser(this.peerId).pFlags.deleted) {
         replaceContent(this.element, i18n(this.onlyFirstName ? 'Deleted' : 'HiddenName'));
       } else {
-        this.element.innerHTML = appPeersManager.getPeerTitle(this.peerId, this.plainText, this.onlyFirstName);
+        this.element.innerHTML = appPeersManager.getPeerTitle(this.peerId, this.plainText, this.onlyFirstName, this.limitSymbols);
       }
     } else {
       replaceContent(this.element, i18n(this.onlyFirstName ? 'Saved' : 'SavedMessages'));

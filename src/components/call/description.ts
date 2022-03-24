@@ -75,6 +75,7 @@ export default class CallDescriptionElement {
       }
     }
 
+    this.container.classList.toggle('has-duration', connectionState === CALL_STATE.CONNECTED);
     replaceContent(this.container, element);
 
     if(!this.container.parentElement) {

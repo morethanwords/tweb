@@ -170,6 +170,10 @@ console.timeEnd('get storage1'); */
       document.documentElement.classList.add('is-firefox');
     }
 
+    if(userAgent.IS_MOBILE) {
+      document.documentElement.classList.add('is-mobile');
+    }
+
     if(userAgent.IS_APPLE) {
       if(userAgent.IS_SAFARI) {
         document.documentElement.classList.add('is-safari');

@@ -5,9 +5,9 @@
  */
 
 import { IS_SAFARI } from "../../environment/userAgent";
-import { indexOfAndSplice } from "../../helpers/array";
+import indexOfAndSplice from "../../helpers/array/indexOfAndSplice";
 import { renderImageFromUrlPromise } from "../../helpers/dom/renderImageFromUrl";
-import { deepEqual } from "../../helpers/object";
+import deepEqual from "../../helpers/object/deepEqual";
 
 type ChatBackgroundPatternRendererInitOptions = {
   url: string,

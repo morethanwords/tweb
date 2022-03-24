@@ -239,6 +239,7 @@ body.is-right-column-shown {
       height: 3.5rem;
       max-height: 3.5rem;
       flex: 1 1 auto;
+      max-width: 100%;
     }
 	}
 
@@ -360,15 +361,29 @@ body.is-right-column-shown {
         white-space: nowrap;
       }
 
-      @media only screen and (max-width: 480px) {
-        .topbar-call-left,
-        .topbar-call-right {
-          width: auto;
+      &:not(.is-call) {
+        @media only screen and (max-width: 480px) {
+          .topbar-call-left,
+          .topbar-call-right {
+            width: auto;
+          }
+  
+          .group-call-description {
+            display: none;
+          }
         }
+      }
 
-        .group-call-description,
-        .call-description {
-          display: none;
+      &.is-call {
+        @media only screen and (max-width: 480px) {
+          .topbar-call-left,
+          .topbar-call-right {
+            width: 6.25rem;
+          }
+
+          .call-description:not(.has-duration) {
+            display: none;
+          }
         }
       }
     }
@@ -399,6 +414,13 @@ body.is-right-column-shown {
     &-center {
       @include sidebar-transform(true);
       @include text-overflow();
+
+      @include respond-to(medium-screens) {
+        // ! it flicks over the left side :(
+        // body.is-right-column-shown & {
+          padding: 0 calc(var(--right-column-width) / 2);
+        // }
+      }
     }
 
     &-right {
