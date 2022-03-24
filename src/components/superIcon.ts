@@ -77,7 +77,7 @@ export class SuperRLottieIcon<Options extends {
 
     let changedPartState = false, changedColorState = false;
     if(partState !== undefined) changedPartState = this.setPartState(partState, colorState, partCallback);
-    else if(colorState !== undefined && this.getColor) changedColorState = this.setColorState(colorState);
+    else if(colorState !== undefined) changedColorState = this.setColorState(colorState);
 
     return changedPartState || changedColorState;
   }
@@ -102,7 +102,7 @@ export class SuperRLottieIcon<Options extends {
 
   public setColorState(state: Options['ColorState'], renderIfPaused = true) {
     const {colorState: prevState} = this;
-    if(prevState === state) {
+    if(prevState === state || !this.getColor) {
       return false;
     }
 
