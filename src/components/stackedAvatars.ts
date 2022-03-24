@@ -31,7 +31,12 @@ export default class StackedAvatars {
 
   public render(peerIds: PeerId[], loadPromises?: Promise<any>[]) {
     const children = this.container.children;
-    peerIds.slice().reverse().forEach((peerId, idx) => {
+    peerIds = peerIds.slice().reverse();
+    if(peerIds.length > 3) {
+      peerIds = peerIds.slice(-3);
+    }
+
+    peerIds.forEach((peerId, idx) => {
       let avatarContainer = children[idx] as HTMLElement;
       if(!avatarContainer) {
         avatarContainer = document.createElement('div');

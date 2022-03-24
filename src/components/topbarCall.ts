@@ -258,7 +258,7 @@ export default class TopbarCall {
 
     attachClickEvent(container, () => {
       if(this.instance instanceof GroupCallInstance) {
-        if(PopupElement.getPopup(PopupGroupCall)) {
+        if(PopupElement.getPopups(PopupGroupCall).length) {
           return;
         }
         
@@ -268,8 +268,8 @@ export default class TopbarCall {
           appChatsManager: this.appChatsManager
         }).show();
       } else if(this.instance instanceof CallInstance) {
-        const hasPopup = PopupElement.getPopup(PopupCall) as PopupCall;
-        if(hasPopup && hasPopup.getCallInstance() === this.instance) {
+        const popups = PopupElement.getPopups(PopupCall) as PopupCall[];
+        if(popups.find(popup => popup.getCallInstance() === this.instance)) {
           return;
         }
 

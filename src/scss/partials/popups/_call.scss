@@ -244,6 +244,10 @@
   // html.emoji-supported & {
     .call-emojis {
       transform: scale(1.125);
+
+      .emoji {
+        margin: 0 .125rem;
+      }
     }
   // }
 
@@ -262,6 +266,7 @@
     width: 100%;
     align-items: center;
     padding: 0 1rem;
+    pointer-events: none;
   }
 
   &-party-state {

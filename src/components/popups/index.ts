@@ -255,8 +255,8 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
     });
   }
 
-  public static getPopup(popupConstructor: PopupElementConstructable) {
-    return this.POPUPS.find(element => element instanceof popupConstructor);
+  public static getPopups(popupConstructor: PopupElementConstructable) {
+    return this.POPUPS.filter(element => element instanceof popupConstructor);
   }
 }
 

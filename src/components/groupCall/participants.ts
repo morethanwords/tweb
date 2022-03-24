@@ -141,7 +141,7 @@ export class GroupCallParticipantContextMenu {
     let appendTo: HTMLElement = document.body;
     addFullScreenListener(document.body, () => {
       const isFull = isFullScreen();
-      appendTo = isFull ? (PopupElement.getPopup(PopupGroupCall) as PopupGroupCall).getContainer(): document.body;
+      appendTo = isFull ? (PopupElement.getPopups(PopupGroupCall) as PopupGroupCall[])[0].getContainer(): document.body;
 
       if(!isFull) {
         closeBtnMenu();
@@ -150,7 +150,7 @@ export class GroupCallParticipantContextMenu {
   }
 
   private onOpenProfileClick = () => {
-    const popup = PopupElement.getPopup(PopupGroupCall);
+    const popup = PopupElement.getPopups(PopupGroupCall)[0];
     if(popup) {
       popup.hide();
     }
