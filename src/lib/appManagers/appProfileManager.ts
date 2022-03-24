@@ -11,7 +11,7 @@
 
 import { MOUNT_CLASS_TO } from "../../config/debug";
 import { tsNow } from "../../helpers/date";
-import { numberThousandSplitter } from "../../helpers/number";
+import numberThousandSplitter from "../../helpers/number/numberThousandSplitter";
 import { ChannelParticipantsFilter, ChannelsChannelParticipants, ChannelParticipant, Chat, ChatFull, ChatParticipants, ChatPhoto, ExportedChatInvite, InputChannel, InputFile, SendMessageAction, Update, UserFull, Photo, PhotoSize } from "../../layer";
 import { LangPackKey, i18n } from "../langPack";
 //import apiManager from '../mtproto/apiManager';

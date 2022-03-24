@@ -5,7 +5,7 @@
  */
 
 import callbackify from "../../helpers/callbackify";
-import { formatNumber } from "../../helpers/number";
+import formatNumber from "../../helpers/number/formatNumber";
 import { fastRaf } from "../../helpers/schedulers";
 import { MessagePeerReaction, ReactionCount } from "../../layer";
 import appPeersManager from "../../lib/appManagers/appPeersManager";

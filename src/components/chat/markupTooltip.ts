@@ -7,7 +7,6 @@
 import type { AppImManager } from "../../lib/appManagers/appImManager";
 import RichTextProcessor from "../../lib/richtextprocessor";
 import ButtonIcon from "../buttonIcon";
-import { clamp } from "../../helpers/number";
 import { IS_TOUCH_SUPPORTED } from "../../environment/touchSupport";
 import { IS_APPLE, IS_MOBILE } from "../../environment/userAgent";
 import appNavigationController from "../appNavigationController";
@@ -18,6 +17,7 @@ import getSelectedNodes from "../../helpers/dom/getSelectedNodes";
 import isSelectionEmpty from "../../helpers/dom/isSelectionEmpty";
 import { MarkdownType, markdownTags } from "../../helpers/dom/getRichElementValue";
 import getVisibleRect from "../../helpers/dom/getVisibleRect";
+import clamp from "../../helpers/number/clamp";
 //import { logger } from "../../lib/logger";
 
 export default class MarkupTooltip {

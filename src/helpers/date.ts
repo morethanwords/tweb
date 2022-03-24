@@ -6,7 +6,6 @@
 
 import { MOUNT_CLASS_TO } from "../config/debug";
 import I18n, { i18n } from "../lib/langPack";
-import { capitalizeFirstLetter } from "./string";
 import tsNow from './tsNow';
 
 export const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];

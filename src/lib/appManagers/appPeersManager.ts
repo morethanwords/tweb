@@ -20,7 +20,7 @@ import I18n from '../langPack';
 import { NULL_PEER_ID } from "../mtproto/mtproto_config";
 import { getRestrictionReason } from "../../helpers/restrictions";
 import isObject from "../../helpers/object/isObject";
-import { limitSymbols } from "../../helpers/string";
+import limitSymbols from "../../helpers/string/limitSymbols";
 
 // https://github.com/eelcohn/Telegram-API/wiki/Calculating-color-for-a-Telegram-user-on-IRC
 /*

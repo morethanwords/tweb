@@ -69,7 +69,7 @@ module.exports = merge(common, {
           if(file.includes('.xml') 
             || file.includes('.webmanifest') 
             || file.includes('.wasm')
-            || file.includes('rlottie')
+            || file.includes('rlottie-wasm')
             || file.includes('Worker.min.js')
             || file.includes('recorder.min.js')
             || file.includes('.hbs')) return;

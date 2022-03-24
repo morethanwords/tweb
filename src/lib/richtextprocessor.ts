@@ -14,11 +14,11 @@ import Config from './config';
 import emojiRegExp from '../vendor/emoji/regex';
 import { encodeEmoji, toCodePoints } from '../vendor/emoji';
 import { MessageEntity } from '../layer';
-import { encodeEntities } from '../helpers/string';
 import { IS_SAFARI } from '../environment/userAgent';
 import { MOUNT_CLASS_TO } from '../config/debug';
 import IS_EMOJI_SUPPORTED from '../environment/emojiSupport';
 import copy from '../helpers/object/copy';
+import encodeEntities from '../helpers/string/encodeEntities';
 
 const EmojiHelper = {
   emojiMap: (code: string) => { return code; },

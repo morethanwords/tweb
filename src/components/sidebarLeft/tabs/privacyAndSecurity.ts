@@ -24,7 +24,6 @@ import apiManager from "../../../lib/mtproto/mtprotoworker";
 import AppBlockedUsersTab from "./blockedUsers";
 import appUsersManager from "../../../lib/appManagers/appUsersManager";
 import rootScope from "../../../lib/rootScope";
-import { convertKeyToInputKey } from "../../../helpers/string";
 import { i18n, LangPackKey, _i18n } from "../../../lib/langPack";
 import replaceContent from "../../../helpers/dom/replaceContent";
 import CheckboxField from "../../checkboxField";
@@ -32,6 +31,7 @@ import PopupPeer from "../../popups/peer";
 import appDraftsManager from "../../../lib/appManagers/appDraftsManager";
 import Button from "../../button";
 import toggleDisability from "../../../helpers/dom/toggleDisability";
+import convertKeyToInputKey from "../../../helpers/string/convertKeyToInputKey";
 
 export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
   private activeSessionsRow: Row;

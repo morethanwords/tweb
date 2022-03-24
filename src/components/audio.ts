@@ -29,8 +29,8 @@ import { formatFullSentTime } from "../helpers/date";
 import throttleWithRaf from "../helpers/schedulers/throttleWithRaf";
 import { NULL_PEER_ID } from "../lib/mtproto/mtproto_config";
 import formatBytes from "../helpers/formatBytes";
-import { clamp } from "../helpers/number";
 import { animateSingle } from "../helpers/animation";
+import clamp from "../helpers/number/clamp";
 
 rootScope.addEventListener('messages_media_read', ({mids, peerId}) => {
   mids.forEach(mid => {

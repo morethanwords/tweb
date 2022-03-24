@@ -8,7 +8,7 @@ import CAN_USE_TRANSFERABLES from "../../environment/canUseTransferables";
 import { IS_ANDROID, IS_APPLE_MOBILE, IS_APPLE, IS_SAFARI } from "../../environment/userAgent";
 import EventListenerBase from "../../helpers/eventListenerBase";
 import mediaSizes from "../../helpers/mediaSizes";
-import { clamp } from "../../helpers/number";
+import clamp from "../../helpers/number/clamp";
 import lottieLoader from "./lottieLoader";
 import QueryableWorker from "./queryableWorker";
 

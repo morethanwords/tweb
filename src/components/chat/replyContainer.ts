@@ -5,7 +5,7 @@
  */
 
 import replaceContent from "../../helpers/dom/replaceContent";
-import { limitSymbols } from "../../helpers/string";
+import limitSymbols from "../../helpers/string/limitSymbols";
 import appImManager, { CHAT_ANIMATION_GROUP } from "../../lib/appManagers/appImManager";
 import appMessagesManager from "../../lib/appManagers/appMessagesManager";
 import appPhotosManager from "../../lib/appManagers/appPhotosManager";

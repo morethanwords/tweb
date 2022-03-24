@@ -5,7 +5,7 @@
  */
 
 import { formatTime, getFullDate } from "../../helpers/date";
-import { formatNumber } from "../../helpers/number";
+import formatNumber from "../../helpers/number/formatNumber";
 import { Message } from "../../layer";
 import appMessagesManager from "../../lib/appManagers/appMessagesManager";
 import { i18n, _i18n } from "../../lib/langPack";

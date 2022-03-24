@@ -69,7 +69,6 @@ import { cancelAnimationByKey } from "../../helpers/animation";
 import assumeType from "../../helpers/assumeType";
 import { EmoticonsDropdown } from "../emoticonsDropdown";
 import debounce from "../../helpers/schedulers/debounce";
-import { formatNumber } from "../../helpers/number";
 import { SEND_WHEN_ONLINE_TIMESTAMP } from "../../lib/mtproto/constants";
 import windowSize from "../../helpers/windowSize";
 import { formatPhoneNumber } from "../../helpers/formatPhoneNumber";
@@ -94,6 +93,7 @@ import { pause } from "../../helpers/schedulers/pause";
 import ScrollSaver from "../../helpers/scrollSaver";
 import getObjectKeysAndSort from "../../helpers/object/getObjectKeysAndSort";
 import forEachReverse from "../../helpers/array/forEachReverse";
+import formatNumber from "../../helpers/number/formatNumber";
 
 const USE_MEDIA_TAILS = false;
 const IGNORE_ACTIONS: Set<Message.messageService['action']['_']> = new Set([

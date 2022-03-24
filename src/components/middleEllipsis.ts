@@ -4,8 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import clamp from "../helpers/number/clamp";
+
 // Thanks to https://stackoverflow.com/a/49349813
-import { clamp } from "../helpers/number";
 
 /**
  * Attibute modifier to create middle ellipsis

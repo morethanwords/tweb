@@ -4,8 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { clamp } from "../helpers/number";
 import attachGrabListeners, { GrabEvent } from "../helpers/dom/attachGrabListeners";
+import clamp from "../helpers/number/clamp";
 import safeAssign from "../helpers/object/safeAssign";
 
 export default class RangeSelector {

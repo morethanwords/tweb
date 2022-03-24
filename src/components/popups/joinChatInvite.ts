@@ -5,7 +5,7 @@
  */
 
 import PopupElement, { addCancelButton } from ".";
-import { numberThousandSplitter } from "../../helpers/number";
+import numberThousandSplitter from "../../helpers/number/numberThousandSplitter";
 import { ChatInvite, Updates } from "../../layer";
 import apiUpdatesManager from "../../lib/appManagers/apiUpdatesManager";
 import appAvatarsManager from "../../lib/appManagers/appAvatarsManager";

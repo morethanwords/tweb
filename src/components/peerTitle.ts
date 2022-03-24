@@ -12,7 +12,7 @@ import replaceContent from "../helpers/dom/replaceContent";
 import appUsersManager from "../lib/appManagers/appUsersManager";
 import RichTextProcessor from "../lib/richtextprocessor";
 import { NULL_PEER_ID } from "../lib/mtproto/mtproto_config";
-import { limitSymbols } from "../helpers/string";
+import limitSymbols from "../helpers/string/limitSymbols";
 
 export type PeerTitleOptions = {
   peerId?: PeerId,

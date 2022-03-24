@@ -14,10 +14,10 @@ import appDocsManager from "./appDocsManager";
 import { RichTextProcessor } from "../richtextprocessor";
 import { ReferenceContext } from "../mtproto/referenceDatabase";
 import rootScope from "../rootScope";
-import { limitSymbols } from "../../helpers/string";
 import { WebPage } from "../../layer";
 import { MOUNT_CLASS_TO } from "../../config/debug";
 import safeReplaceObject from "../../helpers/object/safeReplaceObject";
+import limitSymbols from "../../helpers/string/limitSymbols";
 
 const photoTypeSet = new Set(['photo', 'video', 'gif', 'document']);
 

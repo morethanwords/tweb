@@ -29,6 +29,9 @@ import CryptoWorker from "../crypto/cryptoworker";
 import ctx from '../../environment/ctx';
 import noop from '../../helpers/noop';
 import Modes from '../../config/modes';
+import bytesFromHex from '../../helpers/bytes/bytesFromHex';
+import bytesToHex from '../../helpers/bytes/bytesToHex';
+import isObject from '../../helpers/object/isObject';
 
 /// #if !MTPROTO_WORKER
 import rootScope from '../rootScope';
@@ -36,9 +39,6 @@ import rootScope from '../rootScope';
 
 /// #if MTPROTO_AUTO
 import transportController from './transports/controller';
-import bytesFromHex from '../../helpers/bytes/bytesFromHex';
-import bytesToHex from '../../helpers/bytes/bytesToHex';
-import isObject from '../../helpers/object/isObject';
 /// #endif
 
 /* var networker = apiManager.cachedNetworkers.websocket.upload[2];

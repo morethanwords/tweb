@@ -11,7 +11,7 @@ import appChatsManager from "./appChatsManager";
 import appUsersManager from "./appUsersManager";
 import apiUpdatesManager from "./apiUpdatesManager";
 import rootScope from "../rootScope";
-import { convertInputKeyToKey } from "../../helpers/string";
+import { convertInputKeyToKey } from "../../helpers/string/convertInputKeyToKey";
 
 export enum PrivacyType {
   Everybody = 2,

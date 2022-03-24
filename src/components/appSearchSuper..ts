@@ -4,7 +4,6 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { escapeRegExp, limitSymbols } from "../helpers/string";
 import appChatsManager from "../lib/appManagers/appChatsManager";
 import appDialogsManager from "../lib/appManagers/appDialogsManager";
 import appMessagesManager, { MyInputMessagesFilter, MyMessage } from "../lib/appManagers/appMessagesManager";
@@ -53,6 +52,8 @@ import lockTouchScroll from "../helpers/dom/lockTouchScroll";
 import copy from "../helpers/object/copy";
 import getObjectKeysAndSort from "../helpers/object/getObjectKeysAndSort";
 import safeAssign from "../helpers/object/safeAssign";
+import escapeRegExp from "../helpers/string/escapeRegExp";
+import limitSymbols from "../helpers/string/limitSymbols";
 
 //const testScroll = false;
 

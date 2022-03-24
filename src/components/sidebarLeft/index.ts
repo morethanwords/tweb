@@ -4,7 +4,6 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { formatNumber } from "../../helpers/number";
 import appImManager from "../../lib/appManagers/appImManager";
 import appStateManager from "../../lib/appManagers/appStateManager";
 import appUsersManager from "../../lib/appManagers/appUsersManager";
@@ -48,6 +47,7 @@ import Button, { ButtonOptions } from "../button";
 import noop from "../../helpers/noop";
 import { ripple } from "../ripple";
 import indexOfAndSplice from "../../helpers/array/indexOfAndSplice";
+import formatNumber from "../../helpers/number/formatNumber";
 
 export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
 

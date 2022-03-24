@@ -70,7 +70,6 @@ import MEDIA_MIME_TYPES_SUPPORTED from '../../environment/mediaMimeTypesSupport'
 import { NULL_PEER_ID } from '../mtproto/mtproto_config';
 import telegramMeWebManager from '../mtproto/telegramMeWebManager';
 import { ONE_DAY } from '../../helpers/date';
-import { numberThousandSplitter } from '../../helpers/number';
 import appGroupCallsManager, { GroupCallId, MyGroupCall } from './appGroupCallsManager';
 import TopbarCall from '../../components/topbarCall';
 import confirmationPopup from '../../components/confirmationPopup';
@@ -89,6 +88,7 @@ import copy from '../../helpers/object/copy';
 import getObjectKeysAndSort from '../../helpers/object/getObjectKeysAndSort';
 import type GroupCallInstance from '../calls/groupCallInstance';
 import type CallInstance from '../calls/callInstance';
+import numberThousandSplitter from '../../helpers/number/numberThousandSplitter';
 
 //console.log('appImManager included33!');
 
