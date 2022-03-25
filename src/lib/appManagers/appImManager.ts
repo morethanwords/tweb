@@ -377,6 +377,15 @@ export class AppImManager {
 
         popup.show();
       });
+
+      rootScope.addEventListener('call_incompatible', (userId) => {
+        toastNew({
+          langPackKey: 'VoipPeerIncompatible', 
+          langPackArguments: [
+            new PeerTitle({peerId: userId.toPeerId()}).element
+          ]
+        });
+      });
     }
 
     // ! do not remove this line 

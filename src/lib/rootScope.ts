@@ -160,6 +160,7 @@ export type BroadcastEvents = {
 
   'call_instance': {hasCurrent: boolean, instance: CallInstance},
   'call_accepting': CallInstance, // это костыль. используется при параллельном вызове, чтобы заменить звонок в topbarCall
+  'call_incompatible': UserId,
 
   'quick_reaction': string,
 

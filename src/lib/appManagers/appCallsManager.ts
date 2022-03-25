@@ -15,12 +15,14 @@ import indexOfAndSplice from "../../helpers/array/indexOfAndSplice";
 import insertInDescendSortedArray from "../../helpers/array/insertInDescendSortedArray";
 import AudioAssetPlayer from "../../helpers/audioAssetPlayer";
 import bytesCmp from "../../helpers/bytes/bytesCmp";
+import compareVersion from "../../helpers/compareVersion";
 import safeReplaceObject from "../../helpers/object/safeReplaceObject";
 import { nextRandomUint } from "../../helpers/random";
 import tsNow from "../../helpers/tsNow";
 import { InputPhoneCall, MessagesDhConfig, PhoneCall, PhoneCallDiscardReason, PhoneCallProtocol, PhonePhoneCall } from "../../layer";
 import CallInstance from "../calls/callInstance";
 import CALL_STATE from "../calls/callState";
+import getCallProtocol from "../calls/p2P/getCallProtocol";
 import { logger } from "../logger";
 import apiManager from "../mtproto/mtprotoworker";
 import { NULL_PEER_ID } from "../mtproto/mtproto_config";
@@ -74,6 +76,12 @@ export class AppCallsManager {
 
           case 'phoneCallAccepted': {
             if(instance) {
+              if(!this.verifyProtocolCompatibility(call.protocol)) {
+                instance.hangUp('phoneCallDiscardReasonDisconnect');
+                rootScope.dispatchEvent('call_incompatible', instance.interlocutorUserId);
+                break;
+              }
+
               instance.confirmCall();
             }
 
@@ -82,6 +90,11 @@ export class AppCallsManager {
           
           case 'phoneCallRequested': {
             if(!instance) {
+              if(!this.verifyProtocolCompatibility(call.protocol)) {
+                rootScope.dispatchEvent('call_incompatible', call.admin_id);
+                break;
+              }
+
               instance = this.createCallInstance({
                 isOutgoing: false,
                 interlocutorUserId: call.admin_id
@@ -321,6 +334,14 @@ export class AppCallsManager {
       call.overrideConnectionState(CALL_STATE.PENDING);
       call.setPhoneCall(phoneCall);
       call.setHangUpTimeout(CALL_REQUEST_TIMEOUT, 'phoneCallDiscardReasonHangup');
+    });
+  }
+
+  private verifyProtocolCompatibility(protocol: PhoneCallProtocol) {
+    const my = getCallProtocol();
+    const myVersion = my.library_versions[0];
+    return !protocol.library_versions.find(version => {
+      return compareVersion(myVersion, version) > 0;
     });
   }
 

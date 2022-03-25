@@ -14,6 +14,7 @@ import type { ApiUpdatesManager } from "../appManagers/apiUpdatesManager";
 import type { AppCallsManager, CallId } from "../appManagers/appCallsManager";
 import { logger } from "../logger";
 import type { ApiManagerProxy } from "../mtproto/mtprotoworker";
+import rootScope from "../rootScope";
 import CallConnectionInstance from "./callConnectionInstance";
 import CallInstanceBase from "./callInstanceBase";
 import CALL_STATE from "./callState";
@@ -847,6 +848,7 @@ export default class CallInstance extends CallInstanceBase<{
       } catch(err) {
         this.log.error('wrong signaling data', str);
         this.hangUp('phoneCallDiscardReasonDisconnect');
+        rootScope.dispatchEvent('call_incompatible', this.interlocutorUserId);
       }
     }
   }

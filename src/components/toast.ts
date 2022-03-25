@@ -5,7 +5,7 @@
  */
 
 import replaceContent from "../helpers/dom/replaceContent";
-import { i18n, LangPackKey } from "../lib/langPack";
+import { FormatterArguments, i18n, LangPackKey } from "../lib/langPack";
 
 const toastEl = document.createElement('div');
 toastEl.classList.add('toast');
@@ -21,7 +21,8 @@ export function toast(content: string | Node) {
 }
 
 export function toastNew(options: Partial<{
-  langPackKey: LangPackKey
+  langPackKey: LangPackKey,
+  langPackArguments: FormatterArguments
 }>) {
-  toast(i18n(options.langPackKey));
+  toast(i18n(options.langPackKey, options.langPackArguments));
 }
