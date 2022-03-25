@@ -4,12 +4,14 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+@use "sass:math";
+
 $btn-send-margin: .5rem;
 $chat-helper-size: 45px;
 $chat-input-box-shadow: 0px 1px 8px 1px rgb(0 0 0 / 18%);
 
 $input-transition-time: .2s;
-$input-half-transition-time: #{$input-transition-time / 2};
+$input-half-transition-time: math.div($input-transition-time, 2);
 $background-transition-time: 0.05s;
 $background-transition-total-time: #{$input-transition-time - $background-transition-time};
 

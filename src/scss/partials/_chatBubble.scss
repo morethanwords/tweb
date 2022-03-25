@@ -4,6 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+@use "sass:math";
+
 $bubble-margin: .25rem;
 $bubble-beside-button-width: 38px;
 
@@ -103,8 +105,8 @@ $bubble-beside-button-width: 38px;
       left: -50%;
       /* top: 0;
       bottom: 0; */
-      top: -#{$bubble-margin / 2};
-      bottom: -#{$bubble-margin / 2};
+      top: -#{math.div($bubble-margin, 2)};
+      bottom: -#{math.div($bubble-margin, 2)};
       content: " ";
       z-index: -1;
     }
@@ -112,13 +114,13 @@ $bubble-beside-button-width: 38px;
 
   /* &.is-highlighted, &.is-selected {
     &:not(.is-group-last):after {
-      height: calc(100% + #{$bubble-margin / 2}) !important;
+      height: calc(100% + #{math.div($bubble-margin, 2)}) !important;
     }
 
     & + &:not(.is-group-last) {
       &:after {
         top: .125rem !important;
-        height: calc(100% - #{$bubble-margin / 2}) !important;
+        height: calc(100% - #{math.div($bubble-margin, 2)}) !important;
       }
     }
   } */
@@ -126,7 +128,7 @@ $bubble-beside-button-width: 38px;
   // ! if turn this on, there will be an empty space
   /* &.is-highlighted, &.is-selected {
     &.is-group-last:after {
-      bottom: #{$bubble-margin / 2} !important;
+      bottom: #{math.div($bubble-margin, 2)} !important;
     }
   } */
 
@@ -162,7 +164,7 @@ $bubble-beside-button-width: 38px;
 
     &.is-highlighted, &.is-selected {
       &:after {
-        top: calc(#{$bubble-margin / 2} + 30px);
+        top: calc(#{math.div($bubble-margin, 2)} + 30px);
       }
     }
   }
@@ -1547,7 +1549,7 @@ $bubble-beside-button-width: 38px;
 
       &:first-of-type {
         .document-selection {
-          top: -#{$bubble-margin / 2}; // * padding inner + half padding outer
+          top: -#{math.div($bubble-margin, 2)}; // * padding inner + half padding outer
         }
 
         .document-wrapper {
@@ -1559,7 +1561,7 @@ $bubble-beside-button-width: 38px;
 
       &:last-of-type {
         .document-selection {
-          bottom: -#{$bubble-margin / 2};
+          bottom: -#{math.div($bubble-margin, 2)};
         }
 
         .document-wrapper {

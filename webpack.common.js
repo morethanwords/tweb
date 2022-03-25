@@ -3,10 +3,10 @@ const HtmlWebpackPlugin = require('html-webpack-plugin');
 const MediaQueryPlugin = require('media-query-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const postcssPresetEnv = require('postcss-preset-env');
-const ServiceWorkerWebpackPlugin = require('serviceworker-webpack-plugin');
 const { RetryChunkLoadPlugin } = require('webpack-retry-chunk-load-plugin');
 const fs = require('fs');
 const Dotenv = require('dotenv-webpack');
+const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
 
 const allowedIPs = ['127.0.0.1'];
 const devMode = process.env.NODE_ENV !== 'production';
@@ -51,15 +51,21 @@ module.exports = {
               reloadAll: true,
             }
           }, */
-          'css-loader?url=false',
+          {
+            loader: 'css-loader',
+            options: {
+              url: false
+            }
+          },
           devMode ? undefined : MediaQueryPlugin.loader,
           {
             loader: 'postcss-loader',
             options: {
-              ident: 'postcss',
-              plugins: [
-                postcssPresetEnv(),
-              ]
+              postcssOptions: {
+                plugins: [
+                  postcssPresetEnv(),
+                ]
+              }
             }
           },
           {
@@ -92,7 +98,10 @@ module.exports = {
     extensions: ['.ts', '.js'],
   },
 
-  entry: './src/index.ts',
+  entry: {
+    index: './src/index.ts',
+    sw: {import: './src/lib/serviceWorker/index.service.ts', filename: 'sw.js'}
+  },
   /* entry: {
     index: './src/index.ts',
     pluralPolyfill: './src/lib/pluralPolyfill.ts'
@@ -103,12 +112,28 @@ module.exports = {
     globalObject: 'this',
     path: path.resolve(__dirname, 'public'),
     filename: '[name].[chunkhash].bundle.js',
-    chunkFilename: '[name].[chunkhash].chunk.js'
+    chunkFilename: '[name].[chunkhash].chunk.js',
+    clean: {
+      keep(asset) {
+        if(asset.includes('.xml') 
+          || asset.includes('version')
+          || asset.includes('assets/')
+          || asset.includes('changelogs/')
+          || asset.includes('.webmanifest') 
+          || asset.includes('.wasm')
+          || asset.includes('rlottie-wasm')
+          || asset.includes('Worker.min.js')
+          || asset.includes('recorder.min.js')
+          || asset.includes('.hbs')) return true;
+        return false;
+      }
+    }
   },
 
   devServer: {
-    contentBase: path.join(__dirname, 'public'),
-    watchContentBase: true,
+    // static: {
+      // directory: path.join(__dirname, 'public')
+    // },
     compress: true,
     http2: useLocalNotLocal ? true : (useLocal ? undefined : true),
     https: useLocal ? undefined : {
@@ -119,12 +144,14 @@ module.exports = {
       domain
     ],
     host: useLocalNotLocal ? localIp : (useLocal ? undefined : '0.0.0.0'),
-    public: useLocal ? undefined : domain,
     //host: domain, // '0.0.0.0'
     port: useLocal ? undefined : 443,
-    overlay: true,
-    before: useLocal ? undefined : function(app, server, compiler) {
-      app.use((req, res, next) => {
+    client: {
+      overlay: true,
+      progress: true
+    },
+    setupMiddlewares: useLocal ? undefined : (middlewares, devServer) => {
+      middlewares.push((req, res) => {
         let IP = '';
         if(req.headers['cf-connecting-ip']) {
           IP = req.headers['cf-connecting-ip'];
@@ -143,33 +170,16 @@ module.exports = {
           next();
         }
       });
+
+      return middlewares;
     },
-    sockHost: useLocal ? undefined : domain,
+    /* public: useLocal ? undefined : domain,
+    sockHost: useLocal ? undefined : domain, */
   },
 
   plugins: [
     new Dotenv(),
     
-    new ServiceWorkerWebpackPlugin({
-      entry: path.join(__dirname, 'src/lib/serviceWorker/index.service.ts'),
-      filename: 'sw.js',
-      //excludes: ['**/*'],
-      includes: [
-        '**/*.js', 
-        '**/*.css', 
-        '**/*.json', 
-        '**/*.wasm', 
-        '**/*.mp3', 
-        '**/*.svg', 
-        '**/*.tgs', 
-        '**/*.ico', 
-        '**/*.woff', 
-        '**/*.woff2', 
-        '**/*.ttf', 
-        '**/*.webmanifest'
-      ],
-    }),
-
     new HtmlWebpackPlugin({
       filename: `index.html`,
       //template: 'public/index_template.html',
@@ -225,5 +235,11 @@ module.exports = {
       // if not set - nothing will happen and error will be returned to the chunk loader.
       //lastResortScript: "window.location.href='/500.html';",
     }),
-  ],
+
+    devMode ? undefined : new BundleAnalyzerPlugin({
+      analyzerMode: 'static',
+      openAnalyzer: true,
+      generateStatsFile: true
+    }),
+  ].filter(Boolean),
 };
