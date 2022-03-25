@@ -238,8 +238,8 @@ module.exports = {
 
     devMode ? undefined : new BundleAnalyzerPlugin({
       analyzerMode: 'static',
-      openAnalyzer: true,
-      generateStatsFile: true
+      openAnalyzer: false,
+      generateStatsFile: false
     }),
   ].filter(Boolean),
 };
