@@ -4,6 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import replaceContent from "../helpers/dom/replaceContent";
 import { randomLong } from "../helpers/random";
 import { InputPrivacyKey, InputPrivacyRule } from "../layer";
 import appPrivacyManager, { PrivacyType } from "../lib/appManagers/appPrivacyManager";
@@ -16,7 +17,7 @@ import { SettingSection, generateSection } from "./sidebarLeft";
 import AppAddMembersTab from "./sidebarLeft/tabs/addMembers";
 import { SliderSuperTabEventable } from "./sliderTab";
 
-type PrivacySectionStr = LangPackKey | '';
+export type PrivacySectionStr = LangPackKey | '' | HTMLElement;
 export default class PrivacySection {
   public radioRows: Map<PrivacyType, Row>;
   public radioSection: SettingSection;
@@ -216,6 +217,8 @@ export default class PrivacySection {
     const captionElement = this.radioSection.caption;
     if(!caption) {
       captionElement.innerHTML = '';
+    } else if(caption instanceof HTMLElement) {
+      replaceContent(captionElement, caption);
     } else {
       _i18n(captionElement, caption);
     }

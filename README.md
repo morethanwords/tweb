@@ -21,7 +21,7 @@ Run `npm run build` to build the minimized production version of the app. Copy `
 
 
 ### Dependencies
-* [leemon](https://github.com/zerobias/leemon) ([MIT License](https://github.com/zerobias/leemon/blob/master/LICENSE))
+* [BigInteger.js](https://github.com/peterolson/BigInteger.js) ([Unlicense](https://github.com/peterolson/BigInteger.js/blob/master/LICENSE))
 * [pako](https://github.com/nodeca/pako) ([MIT License](https://github.com/nodeca/pako/blob/master/LICENSE))
 * [cryptography](https://github.com/spalt08/cryptography) ([Apache License 2.0](https://github.com/spalt08/cryptography/blob/master/LICENSE))
 * [emoji-data](https://github.com/iamcal/emoji-data) ([MIT License](https://github.com/iamcal/emoji-data/blob/master/LICENSE))

@@ -374,6 +374,7 @@ export class ApiManagerProxy extends CryptoWorkerMethods {
     // return;
 
     const worker = new MTProtoWorker();
+    // const worker = new Worker(new URL('./mtproto.worker.ts', import.meta.url));
     //const worker = window;
     worker.addEventListener('message', this.onWorkerFirstMessage.bind(this, worker), {once: true});
     worker.addEventListener('message', this.onWorkerMessage);

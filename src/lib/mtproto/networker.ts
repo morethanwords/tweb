@@ -33,7 +33,6 @@ import type TcpObfuscated from './transports/tcpObfuscated';
 import bigInt from 'big-integer';
 import { ConnectionStatus } from './connectionStatus';
 import ctx from '../../environment/ctx';
-import dcConfigurator, { DcConfigurator } from './dcConfigurator';
 import bufferConcats from '../../helpers/bytes/bufferConcats';
 import bytesCmp from '../../helpers/bytes/bytesCmp';
 import bytesToHex from '../../helpers/bytes/bytesToHex';
@@ -370,8 +369,6 @@ export default class MTPNetworker {
     const oldTransport = this.transport;
     if(oldTransport) {
       oldTransport.destroy();
-
-      DcConfigurator.removeTransport(dcConfigurator.chosenServers, this.transport);
 
       if(this.nextReqTimeout) {
         clearTimeout(this.nextReqTimeout);

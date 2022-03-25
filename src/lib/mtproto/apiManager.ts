@@ -39,6 +39,7 @@ import rootScope from '../rootScope';
 
 /// #if MTPROTO_AUTO
 import transportController from './transports/controller';
+import MTTransport from './transports/transport';
 /// #endif
 
 /* var networker = apiManager.cachedNetworkers.websocket.upload[2];
@@ -205,7 +206,7 @@ export class ApiManager {
     this.iterateNetworkers((info) => {
       const transportType = this.getTransportType(info.connectionType);
       const transport = this.chooseServer(info.dcId, info.connectionType, transportType);
-      info.networker.changeTransport(transport);
+      this.changeNetworkerTransport(info.networker, transport);
     });
   }
 
@@ -397,11 +398,20 @@ export class ApiManager {
         throw error;
       }
 
-      networker.changeTransport(transport);
+      this.changeNetworkerTransport(networker, transport);
       networkers.unshift(networker);
       this.setOnDrainIfNeeded(networker);
       return networker;
     });
+  }
+
+  private changeNetworkerTransport(networker: MTPNetworker, transport: MTTransport) {
+    const oldTransport = networker.transport;
+    if(oldTransport) {
+      DcConfigurator.removeTransport(dcConfigurator.chosenServers, oldTransport);
+    }
+
+    networker.changeTransport(transport);
   }
 
   public setOnDrainIfNeeded(networker: MTPNetworker) {

@@ -3,6 +3,7 @@ const HtmlWebpackPlugin = require('html-webpack-plugin');
 const MediaQueryPlugin = require('media-query-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const postcssPresetEnv = require('postcss-preset-env');
+const ServiceWorkerWebpackPlugin = require('serviceworker-webpack-plugin');
 const { RetryChunkLoadPlugin } = require('webpack-retry-chunk-load-plugin');
 const fs = require('fs');
 const Dotenv = require('dotenv-webpack');
@@ -38,6 +39,26 @@ const opts = {
 const domain = 'yourdomain.com';
 const localIp = '192.168.93.183';
 
+const middleware = (req, res, next) => {
+  let IP = '';
+  if(req.headers['cf-connecting-ip']) {
+    IP = req.headers['cf-connecting-ip'];
+  } else {
+    IP = req.connection.remoteAddress.split(':').pop();
+  }
+
+  if(!allowedIPs.includes(IP) && !/^192\.168\.\d{1,3}\.\d{1,3}$/.test(IP)) {
+    console.log('Bad IP connecting: ' + IP, req.url);
+    res.status(404).send('Nothing interesting here.');
+  } else {
+    if(req.url.indexOf('/assets/') !== 0) {
+      console.log(req.url, IP);
+    }
+
+    next();
+  }
+};
+
 module.exports = {
   module: {
     rules: [
@@ -51,21 +72,33 @@ module.exports = {
               reloadAll: true,
             }
           }, */
-          {
-            loader: 'css-loader',
-            options: {
-              url: false
-            }
-          },
+
+          // Webpack 4
+          'css-loader?url=false',
+          // Webpack 5
+          // {
+          //   loader: 'css-loader',
+          //   options: {
+          //     url: false
+          //   }
+          // },
+          
           devMode ? undefined : MediaQueryPlugin.loader,
           {
             loader: 'postcss-loader',
             options: {
-              postcssOptions: {
-                plugins: [
-                  postcssPresetEnv(),
-                ]
-              }
+              // Webpack 4
+              ident: 'postcss',
+              plugins: [
+                postcssPresetEnv(),
+              ],
+
+              // Webpack 5
+              // postcssOptions: {
+              //   plugins: [
+              //     postcssPresetEnv(),
+              //   ]
+              // }
             }
           },
           {
@@ -74,14 +107,14 @@ module.exports = {
               sourceMap: devMode
             }
           }
-        ].filter(l => !!l)
+        ].filter(Boolean)
       },
       {
         test: /\.ts?$/,
         use: [
           //{ loader: 'babel-loader', options: require('./babel.config') },
           'ts-loader', 
-          { loader: 'ifdef-loader', options: opts }
+          {loader: 'ifdef-loader', options: opts}
         ],
         exclude: /node_modules/,
       },
@@ -98,10 +131,11 @@ module.exports = {
     extensions: ['.ts', '.js'],
   },
 
-  entry: {
-    index: './src/index.ts',
-    sw: {import: './src/lib/serviceWorker/index.service.ts', filename: 'sw.js'}
-  },
+  entry: './src/index.ts',
+  // entry: {
+  //   index: './src/index.ts',
+  //   sw: {import: './src/lib/serviceWorker/index.service.ts', filename: 'sw.js'}
+  // },
   /* entry: {
     index: './src/index.ts',
     pluralPolyfill: './src/lib/pluralPolyfill.ts'
@@ -113,27 +147,28 @@ module.exports = {
     path: path.resolve(__dirname, 'public'),
     filename: '[name].[chunkhash].bundle.js',
     chunkFilename: '[name].[chunkhash].chunk.js',
-    clean: {
-      keep(asset) {
-        if(asset.includes('.xml') 
-          || asset.includes('version')
-          || asset.includes('assets/')
-          || asset.includes('changelogs/')
-          || asset.includes('.webmanifest') 
-          || asset.includes('.wasm')
-          || asset.includes('rlottie-wasm')
-          || asset.includes('Worker.min.js')
-          || asset.includes('recorder.min.js')
-          || asset.includes('.hbs')) return true;
-        return false;
-      }
-    }
+
+    // Webpack 5
+    // clean: {
+    //   keep: keepAsset,
+    // }
   },
 
   devServer: {
+    // Webpack 4 options
+    contentBase: path.join(__dirname, 'public'),
+    watchContentBase: true,
+    before: useLocal ? undefined : function(app, server, compiler) {
+      app.use(middleware);
+    },
+    public: useLocal ? undefined : domain,
+    sockHost: useLocal ? undefined : domain,
+    overlay: true,
+    
     // static: {
       // directory: path.join(__dirname, 'public')
     // },
+    // hot: false,
     compress: true,
     http2: useLocalNotLocal ? true : (useLocal ? undefined : true),
     https: useLocal ? undefined : {
@@ -146,39 +181,49 @@ module.exports = {
     host: useLocalNotLocal ? localIp : (useLocal ? undefined : '0.0.0.0'),
     //host: domain, // '0.0.0.0'
     port: useLocal ? undefined : 443,
-    client: {
-      overlay: true,
-      progress: true
-    },
-    setupMiddlewares: useLocal ? undefined : (middlewares, devServer) => {
-      middlewares.push((req, res) => {
-        let IP = '';
-        if(req.headers['cf-connecting-ip']) {
-          IP = req.headers['cf-connecting-ip'];
-        } else {
-          IP = req.connection.remoteAddress.split(':').pop();
-        }
 
-        if(!allowedIPs.includes(IP) && !/^192\.168\.\d{1,3}\.\d{1,3}$/.test(IP)) {
-          console.log('Bad IP connecting: ' + IP, req.url);
-          res.status(404).send('Nothing interesting here.');
-        } else {
-          if(req.url.indexOf('/assets/') !== 0) {
-            console.log(req.url, IP);
-          }
-
-          next();
-        }
-      });
-
-      return middlewares;
-    },
-    /* public: useLocal ? undefined : domain,
-    sockHost: useLocal ? undefined : domain, */
+    
+    // Webpack 5
+    // setupMiddlewares: useLocal ? undefined : (middlewares, devServer) => {
+    //   middlewares.push(middleware);
+    
+    //   return middlewares;
+    // },
+    // client: {
+    //   overlay: true,
+    //   progress: true
+    // },
   },
 
   plugins: [
+    devMode ? undefined : new BundleAnalyzerPlugin({
+      analyzerMode: 'static',
+      openAnalyzer: false,
+      generateStatsFile: false,
+      defaultSizes: 'gzip'
+    }),
+
     new Dotenv(),
+
+    new ServiceWorkerWebpackPlugin({
+      entry: path.join(__dirname, 'src/lib/serviceWorker/index.service.ts'),
+      filename: 'sw.js',
+      //excludes: ['**/*'],
+      includes: [
+        '**/*.js', 
+        '**/*.css', 
+        '**/*.json', 
+        '**/*.wasm', 
+        '**/*.mp3', 
+        '**/*.svg', 
+        '**/*.tgs', 
+        '**/*.ico', 
+        '**/*.woff', 
+        '**/*.woff2', 
+        '**/*.ttf', 
+        '**/*.webmanifest'
+      ],
+    }),
     
     new HtmlWebpackPlugin({
       filename: `index.html`,
@@ -234,12 +279,6 @@ module.exports = {
       // optional code to be executed in the browser context if after all retries chunk is not loaded.
       // if not set - nothing will happen and error will be returned to the chunk loader.
       //lastResortScript: "window.location.href='/500.html';",
-    }),
-
-    devMode ? undefined : new BundleAnalyzerPlugin({
-      analyzerMode: 'static',
-      openAnalyzer: false,
-      generateStatsFile: false
     }),
   ].filter(Boolean),
 };

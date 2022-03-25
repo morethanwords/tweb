@@ -685,6 +685,7 @@ const lang = {
   "EditCantEditPermissionsPublic": "This permission is not available in public groups.",
   "VoipUserMicrophoneIsOff": "%s\'s microphone is off",
   "VoipUserCameraIsOff": "%s\'s camera is off",
+  "PrivacyPhoneInfo4": "This public link opens a chat with you:",
 
   // * macos
   "AccountSettings.Filters": "Chat Folders",
