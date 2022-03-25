@@ -193,9 +193,12 @@ export default class PopupCall extends PopupElement {
       previousState: !this.instance.wasTryingToJoin && !this.instance.isOutgoing ? {...INIT_STATE} : previousState
     });
 
-    this.listenerSetter.add(this.movablePanel.movable)('resize', () => {
-      this.resizeVideoContainers();
-    });
+    const movableElement = this.movablePanel.movable;
+    if(movableElement) {
+      this.listenerSetter.add(movableElement)('resize', () => {
+        this.resizeVideoContainers();
+      });
+    }
 
     const controlsHover = this.controlsHover = new ControlsHover();
     controlsHover.setup({
