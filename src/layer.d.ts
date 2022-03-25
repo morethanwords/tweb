@@ -1591,7 +1591,7 @@ export namespace WallPaper {
 /**
  * @link https://core.telegram.org/type/ReportReason
  */
-export type ReportReason = ReportReason.inputReportReasonSpam | ReportReason.inputReportReasonViolence | ReportReason.inputReportReasonPornography | ReportReason.inputReportReasonChildAbuse | ReportReason.inputReportReasonOther | ReportReason.inputReportReasonCopyright | ReportReason.inputReportReasonGeoIrrelevant | ReportReason.inputReportReasonFake;
+export type ReportReason = ReportReason.inputReportReasonSpam | ReportReason.inputReportReasonViolence | ReportReason.inputReportReasonPornography | ReportReason.inputReportReasonChildAbuse | ReportReason.inputReportReasonOther | ReportReason.inputReportReasonCopyright | ReportReason.inputReportReasonGeoIrrelevant | ReportReason.inputReportReasonFake | ReportReason.inputReportReasonIllegalDrugs | ReportReason.inputReportReasonPersonalDetails;
 
 export namespace ReportReason {
   export type inputReportReasonSpam = {
@@ -1624,6 +1624,14 @@ export namespace ReportReason {
 
 	export type inputReportReasonFake = {
 		_: 'inputReportReasonFake'
+	};
+
+	export type inputReportReasonIllegalDrugs = {
+		_: 'inputReportReasonIllegalDrugs'
+	};
+
+	export type inputReportReasonPersonalDetails = {
+		_: 'inputReportReasonPersonalDetails'
 	};
 }
 
@@ -8728,6 +8736,8 @@ export namespace GroupCall {
 			schedule_start_subscribed?: true,
 			can_start_video?: true,
 			record_video_active?: true,
+			rtmp_stream?: true,
+			listeners_hidden?: true,
 		}>,
 		id: string | number,
 		access_hash: string | number,
@@ -9405,6 +9415,45 @@ export namespace MessagePeerReaction {
 		}>,
 		peer_id: Peer,
 		reaction: string
+	};
+}
+
+/**
+ * @link https://core.telegram.org/type/GroupCallStreamChannel
+ */
+export type GroupCallStreamChannel = GroupCallStreamChannel.groupCallStreamChannel;
+
+export namespace GroupCallStreamChannel {
+  export type groupCallStreamChannel = {
+		_: 'groupCallStreamChannel',
+		channel: number,
+		scale: number,
+		last_timestamp_ms: string | number
+	};
+}
+
+/**
+ * @link https://core.telegram.org/type/phone.GroupCallStreamChannels
+ */
+export type PhoneGroupCallStreamChannels = PhoneGroupCallStreamChannels.phoneGroupCallStreamChannels;
+
+export namespace PhoneGroupCallStreamChannels {
+  export type phoneGroupCallStreamChannels = {
+		_: 'phone.groupCallStreamChannels',
+		channels: Array<GroupCallStreamChannel>
+	};
+}
+
+/**
+ * @link https://core.telegram.org/type/phone.GroupCallStreamRtmpUrl
+ */
+export type PhoneGroupCallStreamRtmpUrl = PhoneGroupCallStreamRtmpUrl.phoneGroupCallStreamRtmpUrl;
+
+export namespace PhoneGroupCallStreamRtmpUrl {
+  export type phoneGroupCallStreamRtmpUrl = {
+		_: 'phone.groupCallStreamRtmpUrl',
+		url: string,
+		key: string
 	};
 }
 
@@ -10358,6 +10407,11 @@ export interface ConstructorDeclMap {
 	'messages.translateNoResult': MessagesTranslatedText.messagesTranslateNoResult,
 	'messages.translateResultText': MessagesTranslatedText.messagesTranslateResultText,
 	'messagePeerReaction': MessagePeerReaction.messagePeerReaction,
+	'groupCallStreamChannel': GroupCallStreamChannel.groupCallStreamChannel,
+	'phone.groupCallStreamChannels': PhoneGroupCallStreamChannels.phoneGroupCallStreamChannels,
+	'inputReportReasonIllegalDrugs': ReportReason.inputReportReasonIllegalDrugs,
+	'inputReportReasonPersonalDetails': ReportReason.inputReportReasonPersonalDetails,
+	'phone.groupCallStreamRtmpUrl': PhoneGroupCallStreamRtmpUrl.phoneGroupCallStreamRtmpUrl,
 	'messageEntityEmoji': MessageEntity.messageEntityEmoji,
 	'messageEntityHighlight': MessageEntity.messageEntityHighlight,
 	'messageEntityLinebreak': MessageEntity.messageEntityLinebreak,
@@ -12378,6 +12432,7 @@ export type MessagesUnpinAllMessages = {
 
 export type PhoneCreateGroupCall = {
 	flags?: number,
+	rtmp_stream?: boolean,
 	peer: InputPeer,
 	random_id: number,
 	title?: string,
@@ -12760,6 +12815,25 @@ export type MessagesGetUnreadReactions = {
 
 export type MessagesReadReactions = {
 	peer: InputPeer
+};
+
+export type ContactsResolvePhone = {
+	phone: string
+};
+
+export type PhoneGetGroupCallStreamChannels = {
+	call: InputGroupCall
+};
+
+export type PhoneGetGroupCallStreamRtmpUrl = {
+	peer: InputPeer,
+	revoke: boolean
+};
+
+export type MessagesSearchSentMedia = {
+	q: string,
+	filter: MessagesFilter,
+	limit: number
 };
 
 export interface MethodDeclMap {
@@ -13178,5 +13252,9 @@ export interface MethodDeclMap {
 	'messages.translateText': {req: MessagesTranslateText, res: MessagesTranslatedText},
 	'messages.getUnreadReactions': {req: MessagesGetUnreadReactions, res: MessagesMessages},
 	'messages.readReactions': {req: MessagesReadReactions, res: MessagesAffectedHistory},
+	'contacts.resolvePhone': {req: ContactsResolvePhone, res: ContactsResolvedPeer},
+	'phone.getGroupCallStreamChannels': {req: PhoneGetGroupCallStreamChannels, res: PhoneGroupCallStreamChannels},
+	'phone.getGroupCallStreamRtmpUrl': {req: PhoneGetGroupCallStreamRtmpUrl, res: PhoneGroupCallStreamRtmpUrl},
+	'messages.searchSentMedia': {req: MessagesSearchSentMedia, res: MessagesMessages},
 }
 

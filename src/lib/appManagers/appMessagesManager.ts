@@ -3018,6 +3018,7 @@ export class AppMessagesManager {
           let found = false;
           let match: any;
           let regExp = new RegExp(escapeRegExp(highlightWord), 'gi');
+          entities = entities.slice(); // fix leaving highlight entity
           while((match = regExp.exec(text)) !== null) {
             entities.push({_: 'messageEntityHighlight', length: highlightWord.length, offset: match.index});
             found = true;

@@ -686,6 +686,8 @@ const lang = {
   "VoipUserMicrophoneIsOff": "%s\'s microphone is off",
   "VoipUserCameraIsOff": "%s\'s camera is off",
   "PrivacyPhoneInfo4": "This public link opens a chat with you:",
+  "ReportChatIllegalDrugs": "Illegal Drugs",
+  "ReportChatPersonalDetails": "Personal Details",
 
   // * macos
   "AccountSettings.Filters": "Chat Folders",

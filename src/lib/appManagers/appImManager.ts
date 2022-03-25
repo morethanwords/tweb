@@ -492,7 +492,12 @@ export class AppImManager {
       name: 'im',
       callback: async({pathnameParams, uriParams}) => {
         let link: InternalLink;
-        if(pathnameParams[0] === 'c') {
+        if(RichTextProcessor.PHONE_NUMBER_REG_EXP.test(pathnameParams[0])) {
+          link = {
+            _: INTERNAL_LINK_TYPE.USER_PHONE_NUMBER,
+            phone: pathnameParams[0].slice(1)
+          };
+        } else if(pathnameParams[0] === 'c') {
           link = {
             _: INTERNAL_LINK_TYPE.PRIVATE_POST,
             channel: pathnameParams[1],
@@ -533,14 +538,17 @@ export class AppImManager {
         voicechat?: string,
         post?: string,
         thread?: string,
-        comment?: string
+        comment?: string,
+        phone?: string
       }
     }>({
       name: 'resolve',
       protocol: 'tg',
       callback: ({uriParams}) => {
         let link: InternalLink;
-        if(uriParams.domain === 'telegrampassport') {
+        if(uriParams.phone) {
+          link = this.makeLink(INTERNAL_LINK_TYPE.USER_PHONE_NUMBER, uriParams as Required<typeof uriParams>);
+        } else if(uriParams.domain === 'telegrampassport') {
 
         } else {
           link = this.makeLink(INTERNAL_LINK_TYPE.MESSAGE, uriParams);
@@ -787,6 +795,20 @@ export class AppImManager {
           this.joinGroupCall(link.chat_id.toPeerId(true), link.id);
         }
         
+        break;
+      }
+
+      case INTERNAL_LINK_TYPE.USER_PHONE_NUMBER: {
+        appUsersManager.resolvePhone(link.phone).then(user => {
+          this.setInnerPeer({
+            peerId: user.id.toPeerId(false)
+          });
+        }).catch(err => {
+          if(err.type === 'PHONE_NOT_OCCUPIED') {
+            toastNew({langPackKey: 'Alert.UserDoesntExists'});
+          }
+        });
+
         break;
       }
 

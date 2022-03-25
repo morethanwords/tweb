@@ -20,7 +20,7 @@ import { formatPhoneNumber } from "../../helpers/formatPhoneNumber";
 import isObject from "../../helpers/object/isObject";
 import safeReplaceObject from "../../helpers/object/safeReplaceObject";
 import { isRestricted } from "../../helpers/restrictions";
-import { Chat, InputContact, InputGeoPoint, InputMedia, InputPeer, InputUser, User as MTUser, UserProfilePhoto, UserStatus } from "../../layer";
+import { Chat, ContactsResolvedPeer, InputContact, InputGeoPoint, InputMedia, InputPeer, InputUser, User as MTUser, UserProfilePhoto, UserStatus } from "../../layer";
 import I18n, { i18n, LangPackKey } from "../langPack";
 //import apiManager from '../mtproto/apiManager';
 import apiManager from '../mtproto/mtprotoworker';
@@ -260,10 +260,20 @@ export class AppUsersManager {
     }
 
     return apiManager.invokeApi('contacts.resolveUsername', {username}).then(resolvedPeer => {
-      this.saveApiUsers(resolvedPeer.users);
-      appChatsManager.saveApiChats(resolvedPeer.chats);
+      return this.processResolvedPeer(resolvedPeer);
+    });
+  }
 
-      return appPeersManager.getPeer(appPeersManager.getPeerId(resolvedPeer.peer));
+  private processResolvedPeer(resolvedPeer: ContactsResolvedPeer.contactsResolvedPeer) {
+    this.saveApiUsers(resolvedPeer.users);
+    appChatsManager.saveApiChats(resolvedPeer.chats);
+
+    return appPeersManager.getPeer(appPeersManager.getPeerId(resolvedPeer.peer)) as Chat | User;
+  }
+
+  public resolvePhone(phone: string) {
+    return apiManager.invokeApi('contacts.resolvePhone', {phone}).then(resolvedPeer => {
+      return this.processResolvedPeer(resolvedPeer) as User;
     });
   }
 

@@ -117,6 +117,8 @@ for(let i in markdownEntities) {
 }
 
 namespace RichTextProcessor {
+  export const PHONE_NUMBER_REG_EXP = /^\+\d+$/;
+
   export function getEmojiSpritesheetCoords(emojiCode: string) {
     let unified = encodeEmoji(emojiCode).replace(/-?fe0f/g, '');
   
@@ -950,7 +952,8 @@ namespace RichTextProcessor {
     } else  */if((tgMeMatch = url.match(/^(?:https?:\/\/)?t(?:elegram)?\.me\/(.+)/))) {
       const fullPath = tgMeMatch[1];
 
-      if(/^\W/.test(fullPath)) {
+      // second regexp is for phone numbers (t.me/+38050...)
+      if(/^\W/.test(fullPath) && !PHONE_NUMBER_REG_EXP.test(fullPath)) {
         onclick = 'joinchat';
         return {url, onclick};
       }

@@ -25,7 +25,9 @@ export default class PopupReportMessages extends PopupPeer {
       ['ReportChatViolence', 'inputReportReasonViolence'],
       ['ReportChatChild', 'inputReportReasonChildAbuse'],
       ['ReportChatPornography', 'inputReportReasonPornography'],
-      ['ReportChatOther', 'inputReportReasonOther']
+      ['ReportChatOther', 'inputReportReasonOther'],
+      ['ReportChatPersonalDetails', 'inputReportReasonPersonalDetails'],
+      ['ReportChatIllegalDrugs', 'inputReportReasonIllegalDrugs']
     ];
 
     const className = 'btn-primary btn-transparent';
