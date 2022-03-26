@@ -1,3 +1,4 @@
+import randomize from "../array/randomize";
 import bufferConcats from "./bufferConcats";
 
 export default function addPadding<T extends number[] | ArrayBuffer | Uint8Array>(
@@ -17,7 +18,7 @@ export default function addPadding<T extends number[] | ArrayBuffer | Uint8Array
         padding[i] = 0;
       }
     } else {
-      padding.randomize();
+      randomize(padding);
     }
 
     if(bytes instanceof ArrayBuffer) {

@@ -484,7 +484,7 @@ class TLDeserialization<FetchLongAs extends Long> {
     this.debug/*  || field.includes('[dialog][read_outbox_max_id]') */ 
       && console.log('<<<', i.toString(16), i, field, 
       this.byteView.slice(this.offset - 16, this.offset + 16), 
-      this.byteView.slice(this.offset - 16, this.offset + 16).hex);
+      bytesToHex(this.byteView.slice(this.offset - 16, this.offset + 16)));
   
     this.offset += 4;
   

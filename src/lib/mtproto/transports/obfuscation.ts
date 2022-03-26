@@ -6,6 +6,7 @@
 
 //import aesjs from 'aes-js';
 import AES from "@cryptography/aes";
+import randomize from "../../../helpers/array/randomize";
 import bytesFromWordss from "../../../helpers/bytes/bytesFromWordss";
 import { Codec } from "./codec";
 
@@ -72,7 +73,7 @@ export default class Obfuscation {
 
   public /* async */ init(codec: Codec) {
     const initPayload = new Uint8Array(64);
-    initPayload.randomize();
+    randomize(initPayload);
     
     while(true) {
       const val = (initPayload[3] << 24) | (initPayload[2] << 16) | (initPayload[1] << 8) | initPayload[0];
@@ -88,7 +89,7 @@ export default class Obfuscation {
           //initPayload[56] = initPayload[57] = initPayload[58] = initPayload[59] = transport;
           break;
       }
-      initPayload.randomize();
+      randomize(initPayload);
     }
 
     ////////////////////////initPayload.subarray(60, 62).hex = dcId;

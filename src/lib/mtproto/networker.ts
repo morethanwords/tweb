@@ -40,6 +40,7 @@ import convertToUint8Array from '../../helpers/bytes/convertToUint8Array';
 import isObject from '../../helpers/object/isObject';
 import forEachReverse from '../../helpers/array/forEachReverse';
 import sortLongsArray from '../../helpers/long/sortLongsArray';
+import randomize from '../../helpers/array/randomize';
 
 //console.error('networker included!', new Error().stack);
 
@@ -193,7 +194,7 @@ export default class MTPNetworker {
   private updateSession() {
     this.seqNo = 0;
     this.prevSessionId = this.sessionId;
-    this.sessionId = new Uint8Array(8).randomize();
+    this.sessionId = randomize(new Uint8Array(8));
   }
 
   /* private clearContainers() {
@@ -1149,7 +1150,7 @@ export default class MTPNetworker {
     } */
 
     const paddingLength = (16 - (data.getOffset() % 16)) + 16 * (1 + nextRandomUint(8) % 5);
-    const padding = /* (message as any).padding ||  */new Uint8Array(paddingLength).randomize()/* .fill(0) */;
+    const padding = /* (message as any).padding ||  */randomize(new Uint8Array(paddingLength))/* .fill(0) */;
     /* const padding = [167, 148, 207, 226, 86, 192, 193, 57, 124, 153, 174, 145, 159, 1, 5, 70, 127, 157, 
       51, 241, 46, 85, 141, 212, 139, 234, 213, 164, 197, 116, 245, 70, 184, 40, 40, 201, 233, 211, 150, 
       94, 57, 84, 1, 135, 108, 253, 34, 139, 222, 208, 71, 214, 90, 67, 36, 28, 167, 148, 207, 226, 86, 192, 193, 57, 124, 153, 174, 145, 159, 1, 5, 70, 127, 157, 
@@ -1249,7 +1250,7 @@ export default class MTPNetworker {
   
     const authKeyId = deserializer.fetchIntBytes(64, true, 'auth_key_id');
     if(!bytesCmp(authKeyId, this.authKeyId)) {
-      throw new Error('[MT] Invalid server auth_key_id: ' + authKeyId.hex);
+      throw new Error('[MT] Invalid server auth_key_id: ' + bytesToHex(authKeyId));
     }
 
     const msgKey = deserializer.fetchIntBytes(128, true, 'msg_key');

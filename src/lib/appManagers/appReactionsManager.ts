@@ -5,6 +5,7 @@
  */
 
 import { MOUNT_CLASS_TO } from "../../config/debug";
+import findAndSplice from "../../helpers/array/findAndSplice";
 import assumeType from "../../helpers/assumeType";
 import callbackify from "../../helpers/callbackify";
 import callbackifyAll from "../../helpers/callbackifyAll";
@@ -113,7 +114,7 @@ export class AppReactionsManager {
   }
 
   private unshiftQuickReactionInner(availableReactions: AvailableReaction.availableReaction[], quickReaction: AvailableReaction.availableReaction) {
-    const availableReaction = availableReactions.findAndSplice(availableReaction => availableReaction.reaction === quickReaction.reaction);
+    const availableReaction = findAndSplice(availableReactions, availableReaction => availableReaction.reaction === quickReaction.reaction);
     if(availableReaction) {
       availableReactions.unshift(availableReaction);
     }
@@ -245,7 +246,7 @@ export class AppReactionsManager {
       } */
 
       if(reactions.recent_reactions) {
-        reactions.recent_reactions.findAndSplice((recentReaction) => appPeersManager.getPeerId(recentReaction.peer_id) === myPeerId);
+        findAndSplice(reactions.recent_reactions, (recentReaction) => appPeersManager.getPeerId(recentReaction.peer_id) === myPeerId);
       }
 
       if(!reactions.results.length) {

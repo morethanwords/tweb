@@ -57,6 +57,7 @@ import IS_VIBRATE_SUPPORTED from '../environment/vibrateSupport';
 import Row from './row';
 import { ChatAutoDownloadSettings } from '../helpers/autoDownload';
 import formatBytes from '../helpers/formatBytes';
+import toHHMMSS from '../helpers/string/toHHMMSS';
 
 const MAX_VIDEO_AUTOPLAY_SIZE = 50 * 1024 * 1024; // 50 MB
 
@@ -123,7 +124,7 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
   
     let needPlayButton = false;
     if(doc.type !== 'gif') {
-      spanTime.innerText = (doc.duration + '').toHHMMSS(false);
+      spanTime.innerText = toHHMMSS(doc.duration, false);
 
       if(!noPlayButton && doc.type !== 'round') {
         if(canAutoplay && !noAutoDownload) {
@@ -266,7 +267,7 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
           onFrame();
         }
   
-        spanTime.innerText = (globalVideo.duration - globalVideo.currentTime + '').toHHMMSS(false);
+        spanTime.innerText = toHHMMSS(globalVideo.duration - globalVideo.currentTime, false);
       };
 
       const throttledTimeUpdate = throttleWithRaf(onTimeUpdate);
@@ -295,7 +296,7 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
         divRound.classList.add('is-paused');
         
         video.currentTime = 0;
-        spanTime.innerText = ('' + globalVideo.duration).toHHMMSS(false);
+        spanTime.innerText = toHHMMSS(globalVideo.duration, false);
   
         if(globalVideo.currentTime) {
           globalVideo.currentTime = 0;
@@ -451,7 +452,7 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
 
   if(doc.type === 'video') {
     video.addEventListener('timeupdate', () => {
-      spanTime.innerText = (video.duration - video.currentTime + '').toHHMMSS(false);
+      spanTime.innerText = toHHMMSS(video.duration - video.currentTime, false);
     });
 
     if(spanPlay) {

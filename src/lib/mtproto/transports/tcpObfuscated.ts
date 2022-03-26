@@ -14,6 +14,7 @@ import { ConnectionStatus } from "../connectionStatus";
 
 /// #if MTPROTO_AUTO
 import transportController from "./controller";
+import bytesToHex from "../../../helpers/bytes/bytesToHex";
 /// #endif
 
 export default class TcpObfuscated implements MTTransport {
@@ -112,7 +113,7 @@ export default class TcpObfuscated implements MTTransport {
     //console.log('got hex:', data.hex);
     const pending = this.pending.shift();
     if(!pending) {
-      this.debug && this.log.debug('no pending for res:', data.hex);
+      this.debug && this.log.debug('no pending for res:', bytesToHex(data));
       return;
     }
 

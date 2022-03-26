@@ -6,6 +6,7 @@
 
 //import { MOUNT_CLASS_TO } from "../config/debug";
 import type { ArgumentTypes, SuperReturnType } from "../types";
+import findAndSplice from "./array/findAndSplice";
 
 // class EventSystem {
 //   wm: WeakMap<any, Record<any, Set<any>>> = new WeakMap();
@@ -105,7 +106,7 @@ export default class EventListenerBase<Listeners extends EventListenerListeners>
 
   public removeEventListener<T extends keyof Listeners>(name: T, callback: Listeners[T], options?: boolean | AddEventListenerOptions) {
     if(this.listeners[name]) {
-      this.listeners[name].findAndSplice(l => l.callback === callback);
+      findAndSplice(this.listeners[name], l => l.callback === callback);
     }
     //e.remove(this, name, callback);
   }

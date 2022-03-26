@@ -20,6 +20,7 @@ import assumeType from '../../helpers/assumeType';
 import fixBase64String from '../../helpers/fixBase64String';
 import IS_WEBM_SUPPORTED from '../../environment/webmSupport';
 import forEachReverse from '../../helpers/array/forEachReverse';
+import findAndSplice from '../../helpers/array/findAndSplice';
 
 const CACHE_TIME = 3600e3;
 
@@ -568,7 +569,7 @@ export class AppStickersManager {
     for(const emoticon in this.getStickersByEmoticonsPromises) {
       const promise = this.getStickersByEmoticonsPromises[emoticon];
       promise.then(stickers => {
-        const _doc = stickers.findAndSplice(_doc => _doc.id === doc.id);
+        const _doc = findAndSplice(stickers, _doc => _doc.id === doc.id);
         if(_doc) {
           stickers.unshift(_doc);
         } else if(emoticon.includes(docEmoticon)) {

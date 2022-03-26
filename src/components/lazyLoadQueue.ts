@@ -9,6 +9,7 @@ import VisibilityIntersector, { OnVisibilityChange } from "./visibilityIntersect
 import throttle from "../helpers/schedulers/throttle";
 import findAndSpliceAll from "../helpers/array/findAndSpliceAll";
 import indexOfAndSplice from "../helpers/array/indexOfAndSplice";
+import findAndSplice from "../helpers/array/findAndSplice";
 
 type LazyLoadElementBase = {
   load: () => Promise<any>
@@ -252,7 +253,7 @@ export default class LazyLoadQueue extends LazyLoadQueueIntersector {
   };
 
   protected getItem() {
-    return this.queue.findAndSplice(item => item.wasSeen);
+    return findAndSplice(this.queue, item => item.wasSeen);
   }
 
   public async processItem(item: LazyLoadElement) {

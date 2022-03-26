@@ -27,6 +27,7 @@ import { attachClickEvent } from "../helpers/dom/clickEvent";
 import filterUnique from "../helpers/array/filterUnique";
 import indexOfAndSplice from "../helpers/array/indexOfAndSplice";
 import safeAssign from "../helpers/object/safeAssign";
+import findAndSplice from "../helpers/array/findAndSplice";
 
 type SelectSearchPeerType = 'contacts' | 'dialogs' | 'channelParticipants';
 
@@ -312,7 +313,7 @@ export default class AppSelectPeers {
       const newOffsetIndex = dialogs[dialogs.length - 1].index || 0;
 
       dialogs = dialogs.slice();
-      dialogs.findAndSplice(d => d.peerId === rootScope.myId); // no my account
+      findAndSplice(dialogs, d => d.peerId === rootScope.myId); // no my account
 
       if(this.chatRightsAction) {
         dialogs = dialogs.filter(d => this.filterByRights(d.peerId));

@@ -21,6 +21,7 @@ import findUpClassName from "../../../helpers/dom/findUpClassName";
 import { attachClickEvent } from "../../../helpers/dom/clickEvent";
 import toggleDisability from "../../../helpers/dom/toggleDisability";
 import { SliderSuperTabEventable } from "../../sliderTab";
+import findAndSplice from "../../../helpers/array/findAndSplice";
 
 export default class AppActiveSessionsTab extends SliderSuperTabEventable {
   public authorizations: Authorization.authorization[];
@@ -58,7 +59,7 @@ export default class AppActiveSessionsTab extends SliderSuperTabEventable {
         caption: 'ClearOtherSessionsHelp'
       });
 
-      const auth = authorizations.findAndSplice(auth => auth.pFlags.current);
+      const auth = findAndSplice(authorizations, auth => auth.pFlags.current);
       const session = Session(auth);
 
       section.content.append(session.container);

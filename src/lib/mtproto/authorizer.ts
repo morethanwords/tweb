@@ -31,6 +31,7 @@ import bytesToHex from "../../helpers/bytes/bytesToHex";
 import bytesXor from "../../helpers/bytes/bytesXor";
 import { bigIntFromBytes } from "../../helpers/bigInt/bigIntConversion";
 import bigInt from "big-integer";
+import randomize from "../../helpers/array/randomize";
 
 /* let fNewNonce: any = bytesFromHex('8761970c24cb2329b5b2459752c502f3057cb7e8dbab200e526e8767fdc73b3c').reverse();
 let fNonce: any = bytesFromHex('b597720d11faa5914ef485c529cde414').reverse();
@@ -200,7 +201,7 @@ export class Authorizer {
     request.storeMethod('req_pq_multi', {nonce: auth.nonce});
 
     if(DEBUG) {
-      this.log('Send req_pq', auth.nonce.hex);
+      this.log('Send req_pq', bytesToHex(auth.nonce));
     }
 
     let deserializer: Awaited<ReturnType<Authorizer['sendPlainRequest']>>;
@@ -262,7 +263,7 @@ export class Authorizer {
   }
   
   private async sendReqDhParams(auth: AuthOptions): Promise<AuthOptions> {
-    auth.newNonce = new Uint8Array(32).randomize();
+    auth.newNonce = randomize(new Uint8Array(32));
 
     const p_q_inner_data_dc: P_Q_inner_data = {
       _: 'p_q_inner_data_dc',
@@ -288,7 +289,7 @@ export class Authorizer {
 
     const getKeyAesEncrypted = async() => {
       for(;;) {
-        const tempKey = new Uint8Array(32).randomize();
+        const tempKey = randomize(new Uint8Array(32));
         const dataWithHash = dataPadReversed.concat(await CryptoWorker.invokeCrypto('sha256', tempKey.concat(dataWithPadding)));
         if(dataWithHash.length !== 224) {
           throw 'DH_params: dataWithHash !== 224 bytes!';
@@ -475,7 +476,7 @@ export class Authorizer {
   private async sendSetClientDhParams(auth: AuthOptions): Promise<AuthOptions> {
     const gBytes = bytesFromHex(auth.g.toString(16));
     
-    auth.b = new Uint8Array(256).randomize();
+    auth.b = randomize(new Uint8Array(256));
     //MTProto.secureRandom.nextBytes(auth.b);
     
     // let gB: Awaited<ReturnType<typeof CryptoWorker['modPow']>>;
@@ -611,7 +612,7 @@ export class Authorizer {
         try {
           const auth: AuthOptions = {
             dcId, 
-            nonce: new Uint8Array(16).randomize()
+            nonce: randomize(new Uint8Array(16))
           };
           
           const promise = this.sendReqPQ(auth);

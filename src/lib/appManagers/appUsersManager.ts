@@ -11,6 +11,7 @@
 
 import { MOUNT_CLASS_TO } from "../../config/debug";
 import filterUnique from "../../helpers/array/filterUnique";
+import findAndSplice from "../../helpers/array/findAndSplice";
 import indexOfAndSplice from "../../helpers/array/indexOfAndSplice";
 import { CancellablePromise, deferredPromise } from "../../helpers/cancellablePromise";
 import cleanSearchText from "../../helpers/cleanSearchText";
@@ -190,7 +191,7 @@ export class AppUsersManager {
             delete this.usernames[cleanUsername(user.username)];
           }
 
-          users.findAndSplice((user) => user.id === userId);
+          findAndSplice(users, (user) => user.id === userId);
           this.storage.delete(userId);
           delete this.users[userId];
         }

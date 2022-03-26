@@ -6,6 +6,7 @@
 
 import IS_PARALLAX_SUPPORTED from "../environment/parallaxSupport";
 import { IS_TOUCH_SUPPORTED } from "../environment/touchSupport";
+import findAndSplice from "../helpers/array/findAndSplice";
 import { cancelEvent } from "../helpers/dom/cancelEvent";
 import { attachClickEvent } from "../helpers/dom/clickEvent";
 import filterChatPhotosMessages from "../helpers/filterChatPhotosMessages";
@@ -286,7 +287,7 @@ export default class PeerProfileAvatars {
 
             if(!listLoader.current) {
               const chatFull = result[0];
-              const message = value.history.findAndSplice(m => {
+              const message = findAndSplice(value.history, m => {
                 return ((m as Message.messageService).action as MessageAction.messageActionChannelEditPhoto).photo.id === chatFull.chat_photo.id;
               }) as Message.messageService;
               

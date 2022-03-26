@@ -92,6 +92,7 @@ import callbackify from '../../helpers/callbackify';
 import ChatBotCommands from './botCommands';
 import copy from '../../helpers/object/copy';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
+import toHHMMSS from '../../helpers/string/toHHMMSS';
 
 const RECORD_MIN_TIME = 500;
 const POSTING_MEDIA_NOT_ALLOWED = 'Posting media content isn\'t allowed in this group.';
@@ -2262,7 +2263,7 @@ export default class ChatInput {
           let diff = Date.now() - this.recordStartTime;
           let ms = diff % 1000;
 
-          let formatted = ('' + (diff / 1000)).toHHMMSS() + ',' + ('00' + Math.round(ms / 10)).slice(-2);
+          let formatted = toHHMMSS(diff / 1000) + ',' + ('00' + Math.round(ms / 10)).slice(-2);
 
           this.recordTimeEl.innerText = formatted;
 

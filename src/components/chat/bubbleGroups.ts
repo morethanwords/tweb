@@ -9,6 +9,7 @@ import rootScope from "../../lib/rootScope";
 import { MyMessage } from "../../lib/appManagers/appMessagesManager";
 import type Chat from "./chat";
 import indexOfAndSplice from "../../helpers/array/indexOfAndSplice";
+import findAndSplice from "../../helpers/array/findAndSplice";
 
 type Group = {bubble: HTMLElement, mid: number, timestamp: number}[];
 type BubbleGroup = {timestamp: number, fromId: PeerId, mid: number, group: Group};
@@ -27,7 +28,7 @@ export default class BubbleGroups {
     const details = this.detailsMap.get(bubble);
     if(details) {
       if(details.group.length) {
-        details.group.findAndSplice(d => d.bubble === bubble);
+        findAndSplice(details.group, d => d.bubble === bubble);
         if(!details.group.length) {
           indexOfAndSplice(this.groups, details.group);
         } else {

@@ -5,6 +5,7 @@
  */
 
 import bigInt from "big-integer";
+import randomize from "../../helpers/array/randomize";
 import { bigIntFromBytes } from "../../helpers/bigInt/bigIntConversion";
 import addPadding from "../../helpers/bytes/addPadding";
 import bytesFromHex from "../../helpers/bytes/bytesFromHex";
@@ -17,7 +18,7 @@ export default async function generateDh(dhConfig: MessagesDhConfig.messagesDhCo
   
   const generateA = (p: Uint8Array) => {
     for(;;) {
-      const a = new Uint8Array(p.length).randomize();
+      const a = randomize(new Uint8Array(p.length));
       // const a = new Uint8Array(4).randomize();
       
       const aBigInt = bigIntFromBytes(a); // str2bigInt(bytesToHex(a), 16);

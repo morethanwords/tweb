@@ -54,6 +54,7 @@ import getObjectKeysAndSort from "../helpers/object/getObjectKeysAndSort";
 import safeAssign from "../helpers/object/safeAssign";
 import escapeRegExp from "../helpers/string/escapeRegExp";
 import limitSymbols from "../helpers/string/limitSymbols";
+import findAndSplice from "../helpers/array/findAndSplice";
 
 //const testScroll = false;
 
@@ -1476,7 +1477,7 @@ export default class AppSearchSuper {
     });
 
     if(peerId.isUser()) {
-      toLoad.findAndSplice(mediaTab => mediaTab.type === 'members');
+      findAndSplice(toLoad, mediaTab => mediaTab.type === 'members');
     }
 
     if(!toLoad.length) {

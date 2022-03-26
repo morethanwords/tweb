@@ -31,6 +31,7 @@ import { NULL_PEER_ID } from "../lib/mtproto/mtproto_config";
 import formatBytes from "../helpers/formatBytes";
 import { animateSingle } from "../helpers/animation";
 import clamp from "../helpers/number/clamp";
+import toHHMMSS from "../helpers/string/toHHMMSS";
 
 rootScope.addEventListener('messages_media_read', ({mids, peerId}) => {
   mids.forEach(mid => {
@@ -423,7 +424,7 @@ export default class AudioElement extends HTMLElement {
     const isOutgoing = this.message.pFlags.is_outgoing;
     const uploading = isOutgoing && this.preloader;
 
-    const durationStr = String(doc.duration | 0).toHHMMSS();
+    const durationStr = toHHMMSS(doc.duration | 0);
 
     this.innerHTML = `
     <div class="audio-toggle audio-ico">
@@ -466,7 +467,7 @@ export default class AudioElement extends HTMLElement {
 
       this.onTypeDisconnect = onTypeLoad();
       
-      const getTimeStr = () => String(audio.currentTime | 0).toHHMMSS() + (isVoice ? (' / ' + durationStr) : '');
+      const getTimeStr = () => toHHMMSS(audio.currentTime | 0) + (isVoice ? (' / ' + durationStr) : '');
 
       const onPlay = () => {
         audioTimeDiv.innerText = getTimeStr();

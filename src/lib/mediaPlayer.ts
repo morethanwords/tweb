@@ -18,6 +18,7 @@ import { GrabEvent } from "../helpers/dom/attachGrabListeners";
 import { attachClickEvent } from "../helpers/dom/clickEvent";
 import ControlsHover from "../helpers/dom/controlsHover";
 import { addFullScreenListener, cancelFullScreen, isFullScreen, requestFullScreen } from "../helpers/dom/fullScreen";
+import toHHMMSS from "../helpers/string/toHHMMSS";
 
 export class MediaProgressLine extends RangeSelector {
   protected filledLoad: HTMLDivElement;
@@ -351,7 +352,7 @@ export default class VideoPlayer extends ControlsHover {
       const fullScreenButton = wrapper.querySelector('.fullscreen') as HTMLElement;
       const timeElapsed = wrapper.querySelector('#time-elapsed');
       timeDuration = wrapper.querySelector('#time-duration') as HTMLElement;
-      timeDuration.innerHTML = String(video.duration | 0).toHHMMSS();
+      timeDuration.innerHTML = toHHMMSS(video.duration | 0);
 
       const volumeSelector = new VolumeSelector(listenerSetter);
 
@@ -430,7 +431,7 @@ export default class VideoPlayer extends ControlsHover {
       addFullScreenListener(wrapper, this.onFullScreen.bind(this, fullScreenButton), listenerSetter);
 
       listenerSetter.add(video)('timeupdate', () => {
-        timeElapsed.innerHTML = String(video.currentTime | 0).toHHMMSS();
+        timeElapsed.innerHTML = toHHMMSS(video.currentTime | 0);
       });
 
       listenerSetter.add(video)('play', () => {
@@ -461,10 +462,10 @@ export default class VideoPlayer extends ControlsHover {
     });
 
     if(video.duration || initDuration) {
-      timeDuration.innerHTML = String(Math.round(video.duration || initDuration)).toHHMMSS();
+      timeDuration.innerHTML = toHHMMSS(Math.round(video.duration || initDuration));
     } else {
       onMediaLoad(video).then(() => {
-        timeDuration.innerHTML = String(Math.round(video.duration)).toHHMMSS();
+        timeDuration.innerHTML = toHHMMSS(Math.round(video.duration));
       });
     }
   }

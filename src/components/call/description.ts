@@ -5,6 +5,7 @@
  */
 
 import replaceContent from "../../helpers/dom/replaceContent";
+import toHHMMSS from "../../helpers/string/toHHMMSS";
 import CALL_STATE from "../../lib/calls/callState";
 import { i18n, LangPackKey } from "../../lib/langPack";
 
@@ -43,7 +44,7 @@ export default class CallDescriptionElement {
       element.classList.add('call-description-duration');
 
       const setTime = () => {
-        element.innerText = ('' + instance.duration).toHHMMSS(true);
+        element.innerText = toHHMMSS(instance.duration, true);
       };
 
       this.interval = window.setInterval(setTime, 1000);

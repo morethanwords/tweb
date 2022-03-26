@@ -24,6 +24,7 @@ import appPeersManager from "./appPeersManager";
 import appStateManager from "./appStateManager";
 import appUsersManager from "./appUsersManager";
 import { isRestricted } from "../../helpers/restrictions";
+import findAndSplice from "../../helpers/array/findAndSplice";
 
 export type Channel = Chat.channel;
 export type ChatRights = keyof ChatBannedRights['pFlags'] | keyof ChatAdminRights['pFlags'] | 'change_type' | 'change_permissions' | 'delete_chat' | 'view_participants';
@@ -104,7 +105,7 @@ export class AppChatsManager {
             delete this.usernames[cleanUsername(chat.username)];
           } */
           
-          chats.findAndSplice((chat) => chat.id === chatId);
+          findAndSplice(chats, (chat) => chat.id === chatId);
           this.storage.delete(chatId);
           delete this.chats[chatId];
         }

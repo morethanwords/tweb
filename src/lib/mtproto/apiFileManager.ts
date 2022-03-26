@@ -29,6 +29,7 @@ import ctx from "../../environment/ctx";
 import noop from "../../helpers/noop";
 import readBlobAsArrayBuffer from "../../helpers/blob/readBlobAsArrayBuffer";
 import bytesToHex from "../../helpers/bytes/bytesToHex";
+import findAndSplice from "../../helpers/array/findAndSplice";
 
 type Delayed = {
   offset: number, 
@@ -145,7 +146,7 @@ export class ApiFileManager {
     }
 
     //const data = downloadPull.shift();
-    const data = downloadPull.findAndSplice(d => d.queueId === 0) || downloadPull.findAndSplice(d => d.queueId === this.queueId) || downloadPull.shift();
+    const data = findAndSplice(downloadPull, d => d.queueId === 0) || findAndSplice(downloadPull, d => d.queueId === this.queueId) || downloadPull.shift();
     const activeDelta = data.activeDelta || 1;
 
     this.downloadActives[dcId] += activeDelta;
@@ -521,7 +522,7 @@ export class ApiFileManager {
 
     this.cachedDownloadPromises[fileName] = deferred;
 
-    deferred.safeFinally(() => {
+    deferred.catch(noop).finally(() => {
       delete this.cachedDownloadPromises[fileName];
     });
 

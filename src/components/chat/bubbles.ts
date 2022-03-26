@@ -94,6 +94,7 @@ import ScrollSaver from "../../helpers/scrollSaver";
 import getObjectKeysAndSort from "../../helpers/object/getObjectKeysAndSort";
 import forEachReverse from "../../helpers/array/forEachReverse";
 import formatNumber from "../../helpers/number/formatNumber";
+import findAndSplice from "../../helpers/array/findAndSplice";
 
 const USE_MEDIA_TAILS = false;
 const IGNORE_ACTIONS: Set<Message.messageService['action']['_']> = new Set([
@@ -4148,7 +4149,7 @@ export default class ChatBubbles {
       const subtitle = i18n('NoMessagesGreetingsDescription');
       subtitle.classList.add('center', BASE_CLASS + '-subtitle');
 
-      this.messagesQueue.findAndSplice(q => q.bubble === bubble);
+      findAndSplice(this.messagesQueue, q => q.bubble === bubble);
 
       const stickerDiv = document.createElement('div');
       stickerDiv.classList.add(BASE_CLASS + '-sticker');

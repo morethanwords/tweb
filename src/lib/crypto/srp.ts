@@ -118,7 +118,8 @@ export default async function computeSRP(password: string, state: AccountPasswor
         const a_for_hash = bigIntToBytes(A);
 
         const s = await cryptoWorker.invokeCrypto('sha256', bufferConcats(a_for_hash, b_for_hash));
-        const u = bigInt(s.hex, 16);
+        // const u = bigInt(s.hex, 16);
+        const u = bigIntFromBytes(s);
         if(!u.isZero() && !u.isNegative())
           return {a, a_for_hash, u};
       } 

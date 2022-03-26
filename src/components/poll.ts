@@ -23,6 +23,7 @@ import { attachClickEvent, detachClickEvent } from "../helpers/dom/clickEvent";
 import replaceContent from "../helpers/dom/replaceContent";
 import windowSize from "../helpers/windowSize";
 import { Poll, PollResults } from "../layer";
+import toHHMMSS from "../helpers/string/toHHMMSS";
 
 let lineTotalLength = 0;
 const tailLength = 9;
@@ -342,7 +343,7 @@ export default class PollElement extends HTMLElement {
           const time = Date.now();
           const percents = (closeTime - time) / period;
           const timeLeft = (closeTime - time) / 1000 + 1 | 0;
-          timeLeftDiv.innerHTML = String(timeLeft).toHHMMSS();
+          timeLeftDiv.innerHTML = toHHMMSS(timeLeft);
           
           if (timeLeft <= 5) {
             timeLeftDiv.style.color = '#ee545c';

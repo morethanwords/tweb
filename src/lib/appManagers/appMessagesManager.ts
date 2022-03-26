@@ -5576,7 +5576,7 @@ export class AppMessagesManager {
         if(options.userReaction) {
           const langPackKey: LangPackKey = /* isAnyChat ? 'Notification.Group.Reacted' :  */'Notification.Contact.Reacted';
           const args: FormatterArguments = [
-            options.userReaction.reaction, 
+            RichTextProcessor.fixEmoji(options.userReaction.reaction), // can be plain heart
             notificationMessage
           ];
   
