@@ -76,11 +76,11 @@ export class AppCallsManager {
 
           case 'phoneCallAccepted': {
             if(instance) {
-              if(!this.verifyProtocolCompatibility(call.protocol)) {
+              /* if(!this.verifyProtocolCompatibility(call.protocol)) {
                 instance.hangUp('phoneCallDiscardReasonDisconnect');
                 rootScope.dispatchEvent('call_incompatible', instance.interlocutorUserId);
                 break;
-              }
+              } */
 
               instance.confirmCall();
             }
@@ -90,10 +90,10 @@ export class AppCallsManager {
           
           case 'phoneCallRequested': {
             if(!instance) {
-              if(!this.verifyProtocolCompatibility(call.protocol)) {
+              /* if(!this.verifyProtocolCompatibility(call.protocol)) {
                 rootScope.dispatchEvent('call_incompatible', call.admin_id);
                 break;
-              }
+              } */
 
               instance = this.createCallInstance({
                 isOutgoing: false,
