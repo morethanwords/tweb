@@ -20,6 +20,7 @@
   "author": "",
   "license": "GPL-3.0-only",
   "dependencies": {
+    "mime": "^3.0.0",
     "webpack-dev-server": "^3.11.2"
   },
   "devDependencies": {
