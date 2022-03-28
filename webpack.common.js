@@ -37,7 +37,7 @@ const opts = {
 };
 
 const domain = 'yourdomain.com';
-const localIp = '10.17.0.210';
+const localIp = '192.168.100.51';
 
 const middleware = (req, res, next) => {
   let IP = '';

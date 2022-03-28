@@ -4102,9 +4102,9 @@ export default class ChatBubbles {
 
         // ! в хроме, каким-то образом из-за zoom-fade класса начинает прыгать скролл при подгрузке сообщений вверх, 
         // ! т.е. скролл не ставится, так же, как в сафари при translateZ на блок выше scrollable
-        if(!IS_SAFARI) {
-          this.needReflowScroll = true;
-        }
+        // if(!IS_SAFARI) {
+        //   this.needReflowScroll = true;
+        // }
       });
     }
 

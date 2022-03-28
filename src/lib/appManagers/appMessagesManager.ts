@@ -4732,7 +4732,7 @@ export class AppMessagesManager {
     
     const key = message.peerId + '_' + message.mid;
     this.pushBatchUpdate('messages_reactions', this.batchUpdateReactions, key, () => copy(message.reactions));
-    
+
     message.reactions = reactions;
 
     if(!update.local) {
@@ -6354,9 +6354,9 @@ export class AppMessagesManager {
     const toDispatch: {message: Message.message, changedResults: ReactionCount.reactionCount[]}[] = [];
 
     const map = this.getMessagesFromMap(batch);
-    for(const [message, reactions] of map) {
-      const results = reactions?.results ?? [];
-      const previousResults = message.reactions?.results ?? [];
+    for(const [message, previousReactions] of map) {
+      const results = message.reactions?.results ?? [];
+      const previousResults = previousReactions?.results ?? [];
       const changedResults = results.filter(reactionCount => {
         const previousReactionCount = previousResults.find(_reactionCount => _reactionCount.reaction === reactionCount.reaction);
         return (

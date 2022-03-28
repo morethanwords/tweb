@@ -112,6 +112,14 @@ export default class PinnedContainer {
     this.topbar.setUtilsWidth();
   }
 
+  public isVisible() {
+    return !this.divAndCaption.container.classList.contains('hide');
+  }
+
+  public isFloating() {
+    return this.divAndCaption.container.classList.contains('is-floating');
+  }
+
   public fill(title: string | HTMLElement | DocumentFragment, subtitle: string | HTMLElement | DocumentFragment, message: Message.message) {
     this.divAndCaption.container.dataset.peerId = '' + message.peerId;
     this.divAndCaption.container.dataset.mid = '' + message.mid;
