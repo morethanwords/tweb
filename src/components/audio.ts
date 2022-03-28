@@ -178,6 +178,7 @@ function wrapVoiceMessage(audioEl: AudioElement) {
 
     const setAnimation = () => {
       animateSingle(() => {
+        if(!audio) return false;
         onTimeUpdate();
         return !audio.paused;
       }, audioEl);
