@@ -868,12 +868,13 @@ export default class ChatTopbar {
   public setFloating = () => {
     const containers = [this.chatAudio, this.pinnedMessage && this.pinnedMessage.pinnedMessageContainer].filter(Boolean);
     const count = containers.reduce((acc, container) => {
+      const isFloating = container.isFloating();
+      this.container.classList.toggle(`is-pinned-${container.className}-floating`, isFloating);
+
       if(!container.isVisible()) {
         return acc;
       }
 
-      const isFloating = container.isFloating();
-      this.container.classList.toggle(`is-pinned-${container.className}-floating`, isFloating);
       return acc + +isFloating;
     }, 0);
     this.container.dataset.floating = '' + count;
