@@ -4729,11 +4729,11 @@ export class AppMessagesManager {
         });
       }
     }
-
-    message.reactions = reactions;
-
+    
     const key = message.peerId + '_' + message.mid;
     this.pushBatchUpdate('messages_reactions', this.batchUpdateReactions, key, () => copy(message.reactions));
+    
+    message.reactions = reactions;
 
     if(!update.local) {
       this.setDialogToStateIfMessageIsTop(message);
