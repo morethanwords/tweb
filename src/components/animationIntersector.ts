@@ -47,14 +47,24 @@ export class AnimationIntersector {
             if(entry.isIntersecting) {
               this.visible.add(player);
               this.checkAnimation(player, false);
+              
+              /* if(animation instanceof HTMLVideoElement && animation.dataset.src) {
+                animation.src = animation.dataset.src;
+                animation.load();
+              } */
             } else {
               this.visible.delete(player);
               this.checkAnimation(player, true);
-
-              if(player.animation instanceof RLottiePlayer/*  && player.animation.cachingDelta === 2 */) {
+              
+              const animation = player.animation;
+              if(animation instanceof RLottiePlayer/*  && animation.cachingDelta === 2 */) {
                 //console.warn('will clear cache', player);
-                player.animation.clearCache();
-              }
+                animation.clearCache();
+              }/*  else if(animation instanceof HTMLVideoElement && animation.src) {
+                animation.dataset.src = animation.src;
+                animation.src = '';
+                animation.load();
+              } */
             }
 
             break;

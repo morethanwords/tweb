@@ -208,8 +208,6 @@ export default class ChatBubbles {
   private hoverBubble: HTMLElement;
   private hoverReaction: HTMLElement;
 
-  private onUpdateScrollSaver: ScrollSaver;
-
   // private reactions: Map<number, ReactionsElement>;
 
   constructor(
@@ -431,8 +429,10 @@ export default class ChatBubbles {
 
         const updatePosition = this.chat.type === 'scheduled';
         
-        this.saveOnUpdateScroll();
+        const scrollSaver = new ScrollSaver(this.scrollable, true);
+        scrollSaver.save();
         this.safeRenderMessage(mounted.message, true, false, mounted.bubble, updatePosition);
+        scrollSaver.restore();
 
         if(updatePosition) {
           (this.messagesQueuePromise || Promise.resolve()).then(() => {
@@ -461,42 +461,40 @@ export default class ChatBubbles {
         this.appendReactionsElementToBubble(bubble, message, changedResults);
       });
 
-      this.listenerSetter.add(rootScope)('message_reactions', ({message, changedResults}) => {
-        if(this.peerId !== message.peerId) {
-          return;
-        }
+      this.listenerSetter.add(rootScope)('messages_reactions', (arr) => {
+        let scrollSaver: ScrollSaver;
 
-        const bubble = this.getBubbleByMessage(message);
-        if(!bubble) {
-          return;
-        }
-
-        this.saveOnUpdateScroll();
-
-        const key = message.peerId + '_' + message.mid;
-        const set = REACTIONS_ELEMENTS.get(key);
-        if(set) {
-          for(const element of set) {
-            element.update(message, changedResults);
+        for(const {message, changedResults} of arr) {
+          if(this.peerId !== message.peerId) {
+            return;
           }
-        } else {
-          rootScope.dispatchEvent('missed_reactions_element', {message, changedResults});
+  
+          const bubble = this.getBubbleByMessage(message);
+          if(!bubble) {
+            return;
+          }
+
+          if(!scrollSaver) {
+            scrollSaver = new ScrollSaver(this.scrollable, true);
+            scrollSaver.save();
+          }
+  
+          const key = message.peerId + '_' + message.mid;
+          const set = REACTIONS_ELEMENTS.get(key);
+          if(set) {
+            for(const element of set) {
+              element.update(message, changedResults);
+            }
+          } else {
+            rootScope.dispatchEvent('missed_reactions_element', {message, changedResults});
+          }
+        }
+
+        if(scrollSaver) {
+          scrollSaver.restore();
         }
       });
     }
-
-    /* this.listenerSetter.add(rootScope)('message_reactions', ({peerId, mid}) => {
-      if(this.peerId !== peerId) {
-        return;
-      }
-
-      const reactionsElement = this.reactions.get(mid);
-      if(!reactionsElement) {
-        return;
-      }
-
-      
-    }); */
 
     this.listenerSetter.add(rootScope)('album_edit', ({peerId, groupId, deletedMids}) => {
       //fastRaf(() => { // ! can't use delayed smth here, need original bubble to be edited
@@ -767,24 +765,35 @@ export default class ChatBubbles {
       }
     });
 
-    this.listenerSetter.add(rootScope)('message_views', ({peerId, views, mid}) => {
-      if(this.peerId !== peerId) return;
-
+    this.listenerSetter.add(rootScope)('messages_views', (arr) => {
       fastRaf(() => {
-        const bubble = this.bubbles[mid];
-        if(!bubble) return;
+        let scrollSaver: ScrollSaver;
+        for(const {peerId, views, mid} of arr) {
+          if(this.peerId !== peerId) return;
 
-        const postViewsElements = Array.from(bubble.querySelectorAll('.post-views')) as HTMLElement[];
-        if(postViewsElements.length) {
-          const str = formatNumber(views, 1);
-          let different = false;
-          postViewsElements.forEach(postViews => {
-            if(different || postViews.innerHTML !== str) {
-              this.saveOnUpdateScroll();
-              different = true;
-              postViews.innerHTML = str;
-            }
-          });
+          const bubble = this.bubbles[mid];
+          if(!bubble) return;
+  
+          const postViewsElements = Array.from(bubble.querySelectorAll('.post-views')) as HTMLElement[];
+          if(postViewsElements.length) {
+            const str = formatNumber(views, 1);
+            let different = false;
+            postViewsElements.forEach(postViews => {
+              if(different || postViews.innerHTML !== str) {
+                if(!scrollSaver) {
+                  scrollSaver = new ScrollSaver(this.scrollable, true);
+                  scrollSaver.save();
+                }
+
+                different = true;
+                postViews.innerHTML = str;
+              }
+            });
+          }
+        }
+
+        if(scrollSaver) {
+          scrollSaver.restore();
         }
       });
     });
@@ -928,18 +937,6 @@ export default class ChatBubbles {
     }
   }
 
-  private saveOnUpdateScroll() {
-    if(!this.onUpdateScrollSaver) {
-      this.onUpdateScrollSaver = new ScrollSaver(this.scrollable, true);
-      setTimeout(() => {
-        this.onUpdateScrollSaver.restore();
-        this.onUpdateScrollSaver = undefined;
-      }, 0);
-
-      this.onUpdateScrollSaver.save();
-    }
-  }
-
   private onBubblesMouseMove = (e: MouseEvent) => {
     const content = findUpClassName(e.target, 'bubble-content');
     if(content && !this.chat.selection.isSelecting) {
@@ -1048,6 +1045,8 @@ export default class ChatBubbles {
   };
 
   public setStickyDateManually() {
+    // return;
+
     const timestamps = Object.keys(this.dateMessages).map(k => +k).sort((a, b) => b - a);
     let lastVisible: HTMLElement;
 
@@ -1716,7 +1715,7 @@ export default class ChatBubbles {
     //lottieLoader.checkAnimations(false, 'chat');
 
     const distanceToEnd = this.scrollable.getDistanceToEnd();
-    if(!IS_TOUCH_SUPPORTED && this.scrollable.lastScrollDirection !== 0 && distanceToEnd > 0) {
+    if(/* !IS_TOUCH_SUPPORTED &&  */this.scrollable.lastScrollDirection !== 0 && distanceToEnd > 0) {
       if(this.isScrollingTimeout) {
         clearTimeout(this.isScrollingTimeout);
       } else if(!this.chatInner.classList.contains('is-scrolling')) {
@@ -1767,7 +1766,7 @@ export default class ChatBubbles {
     this.scrollable.onScrolledBottom = () => this.loadMoreHistory(false);
     //this.scrollable.attachSentinels(undefined, 300);
 
-    if(IS_TOUCH_SUPPORTED) {
+    if(IS_TOUCH_SUPPORTED && false) {
       this.scrollable.container.addEventListener('touchmove', () => {
         if(this.isScrollingTimeout) {
           clearTimeout(this.isScrollingTimeout);
@@ -3782,7 +3781,7 @@ export default class ChatBubbles {
   }
 
   private appendReactionsElementToBubble(bubble: HTMLElement, message: Message.message, changedResults?: ReactionCount[]) {
-    if(this.peerId.isUser()) {
+    if(this.peerId.isUser()/*  || true */) {
       return;
     }
 

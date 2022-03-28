@@ -4,6 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import { MOUNT_CLASS_TO } from "../../config/debug";
 import { renderImageFromUrlPromise } from "../../helpers/dom/renderImageFromUrl";
 import replaceContent from "../../helpers/dom/replaceContent";
 import sequentialDom from "../../helpers/sequentialDom";
@@ -220,4 +221,5 @@ export class AppAvatarsManager {
 }
 
 const appAvatarsManager = new AppAvatarsManager();
+MOUNT_CLASS_TO && (MOUNT_CLASS_TO.appAvatarsManager = appAvatarsManager);
 export default appAvatarsManager;

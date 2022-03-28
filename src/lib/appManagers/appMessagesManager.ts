@@ -15,8 +15,8 @@ import { CancellablePromise, deferredPromise } from "../../helpers/cancellablePr
 import { formatDateAccordingToTodayNew, formatTime, tsNow } from "../../helpers/date";
 import { createPosterForVideo } from "../../helpers/files";
 import { randomLong } from "../../helpers/random";
-import { Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup, InputPeer, InputPhoto, InputDocument, InputGeoPoint, WebPage, GeoPoint, ReportReason, MessagesGetDialogs, InputChannel, InputDialogPeer, ReactionCount, MessagePeerReaction, MessagesSearchCounter, Peer } from "../../layer";
-import { InvokeApiOptions } from "../../types";
+import { Chat, ChatFull, Dialog as MTDialog, DialogPeer, DocumentAttribute, InputMedia, InputMessage, InputPeerNotifySettings, InputSingleMedia, Message, MessageAction, MessageEntity, MessageFwdHeader, MessageMedia, MessageReplies, MessageReplyHeader, MessagesDialogs, MessagesFilter, MessagesMessages, MethodDeclMap, NotifyPeer, PeerNotifySettings, PhotoSize, SendMessageAction, Update, Photo, Updates, ReplyMarkup, InputPeer, InputPhoto, InputDocument, InputGeoPoint, WebPage, GeoPoint, ReportReason, MessagesGetDialogs, InputChannel, InputDialogPeer, ReactionCount, MessagePeerReaction, MessagesSearchCounter, Peer, MessageReactions } from "../../layer";
+import { ArgumentTypes, InvokeApiOptions } from "../../types";
 import I18n, { FormatterArguments, i18n, join, langPack, LangPackKey, UNSUPPORTED_LANG_PACK_KEY, _i18n } from "../langPack";
 import { logger, LogTypes } from "../logger";
 import type { ApiFileManager } from '../mtproto/apiFileManager';
@@ -70,6 +70,7 @@ import deepEqual from "../../helpers/object/deepEqual";
 import escapeRegExp from "../../helpers/string/escapeRegExp";
 import limitSymbols from "../../helpers/string/limitSymbols";
 import splitStringByLength from "../../helpers/string/splitStringByLength";
+import debounce from "../../helpers/schedulers/debounce";
 
 //console.trace('include');
 // TODO: если удалить диалог находясь в папке, то он не удалится из папки и будет виден в настройках
@@ -127,6 +128,13 @@ type PendingAfterMsg = Partial<InvokeApiOptions & {
   afterMessageId: string,
   messageId: string
 }>;
+
+type MapValueType<A> = A extends Map<any, infer V> ? V : never;
+
+export type BatchUpdates = {
+  'messages_reactions': AppMessagesManager['batchUpdateReactions'],
+  'messages_views': AppMessagesManager['batchUpdateViews']
+};
 
 export class AppMessagesManager {
   private messagesStorageByPeerId: {[peerId: string]: MessagesStorage};
@@ -214,6 +222,14 @@ export class AppMessagesManager {
 
   private unreadMentions: {[peerId: PeerId]: SlicedArray} = {};
   private goToNextMentionPromises: {[peerId: PeerId]: Promise<any>} = {};
+  
+  private batchUpdates: {
+    [k in keyof BatchUpdates]?: {
+      callback: BatchUpdates[k],
+      batch: ArgumentTypes<BatchUpdates[k]>[0]
+    }
+  } = {};
+  private batchUpdatesDebounced: () => Promise<void>;
 
   constructor() {
     this.clear();
@@ -345,6 +361,20 @@ export class AppMessagesManager {
         this.maxSeenId = state.maxSeenMsgId;
       }
     });
+
+    this.batchUpdatesDebounced = debounce(() => {
+      for(const event in this.batchUpdates) {
+        const details = this.batchUpdates[event as keyof BatchUpdates];
+        delete this.batchUpdates[event as keyof BatchUpdates];
+
+        // @ts-ignore
+        const result = details.callback(details.batch);
+        if(result && (!(result instanceof Array) || result.length)) {
+          // @ts-ignore
+          rootScope.dispatchEvent(event as keyof BatchUpdates, result);
+        }
+      }
+    }, 33, false, true);
   }
 
   public clear() {
@@ -4700,26 +4730,10 @@ export class AppMessagesManager {
       }
     }
 
-    const results = reactions?.results ?? [];
-    const previousResults = message.reactions?.results ?? [];
-    const changedResults = results.filter(reactionCount => {
-      const previousReactionCount = previousResults.find(_reactionCount => _reactionCount.reaction === reactionCount.reaction);
-      return (
-        message.pFlags.out && (
-          !previousReactionCount || 
-          reactionCount.count > previousReactionCount.count
-        )
-      ) || (
-        reactionCount.pFlags.chosen && (
-          !previousReactionCount || 
-          !previousReactionCount.pFlags.chosen
-        )
-      );
-    });
-
     message.reactions = reactions;
 
-    rootScope.dispatchEvent('message_reactions', {message, changedResults});
+    const key = message.peerId + '_' + message.mid;
+    this.pushBatchUpdate('messages_reactions', this.batchUpdateReactions, key, () => copy(message.reactions));
 
     if(!update.local) {
       this.setDialogToStateIfMessageIsTop(message);
@@ -5094,7 +5108,7 @@ export class AppMessagesManager {
     const message: Message.message = this.getMessageByPeer(peerId, mid);
     if(!message.deleted && message.views !== undefined && message.views < views) {
       message.views = views;
-      rootScope.dispatchEvent('message_views', {peerId, mid, views});
+      this.pushBatchUpdate('messages_views', this.batchUpdateViews, message.peerId + '_' + message.mid);
       this.setDialogToStateIfMessageIsTop(message);
     }
   };
@@ -6283,6 +6297,86 @@ export class AppMessagesManager {
   public canForward(message: Message.message | Message.messageService) {
     return !(message as Message.message).pFlags.noforwards && !appPeersManager.noForwards(message.peerId);
   }
+
+  private pushBatchUpdate<E extends keyof BatchUpdates, C extends BatchUpdates[E]>(
+    event: E, 
+    callback: C, 
+    key: string, 
+    getElementCallback?: () => MapValueType<ArgumentTypes<C>[0]>
+  ) {
+    let details = this.batchUpdates[event];
+    if(!details) {
+      // @ts-ignore
+      details = this.batchUpdates[event] = {
+        callback,
+        batch: new Map()
+      };
+    }
+
+    if(!details.batch.has(key)) {
+      // @ts-ignore
+      details.batch.set(key, getElementCallback ? getElementCallback() : undefined);
+      this.batchUpdatesDebounced();
+    }
+  }
+
+  private getMessagesFromMap<T extends Map<any, any>>(map: T) {
+    const newMap: Map<Message.message, MapValueType<T>> = new Map();
+    for(const [key, value] of map) {
+      const [peerIdStr, mid] = key.split('_');
+      const message: Message.message | Message.messageEmpty = this.getMessageByPeer(peerIdStr.toPeerId(), +mid);
+      if(message._ === 'messageEmpty') {
+        continue;
+      }
+
+      newMap.set(message, value);
+    }
+
+    return newMap;
+  }
+
+  private batchUpdateViews = (batch: Map<string, undefined>) => {
+    const toDispatch: {peerId: PeerId, mid: number, views: number}[] = [];
+
+    const map = this.getMessagesFromMap(batch);
+    for(const [message] of map) {
+      toDispatch.push({
+        peerId: message.peerId,
+        mid: message.mid,
+        views: message.views
+      })
+    }
+
+    return toDispatch;
+  };
+
+  private batchUpdateReactions = (batch: Map<string, MessageReactions>) => {
+    const toDispatch: {message: Message.message, changedResults: ReactionCount.reactionCount[]}[] = [];
+
+    const map = this.getMessagesFromMap(batch);
+    for(const [message, reactions] of map) {
+      const results = reactions?.results ?? [];
+      const previousResults = message.reactions?.results ?? [];
+      const changedResults = results.filter(reactionCount => {
+        const previousReactionCount = previousResults.find(_reactionCount => _reactionCount.reaction === reactionCount.reaction);
+        return (
+          message.pFlags.out && (
+            !previousReactionCount || 
+            reactionCount.count > previousReactionCount.count
+          )
+        ) || (
+          reactionCount.pFlags.chosen && (
+            !previousReactionCount || 
+            !previousReactionCount.pFlags.chosen
+          )
+        );
+      });
+
+      toDispatch.push({message, changedResults});
+    }
+
+    return toDispatch;
+  };
 }
 
 const appMessagesManager = new AppMessagesManager();

@@ -451,13 +451,23 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
   });
 
   if(doc.type === 'video') {
-    video.addEventListener('timeupdate', () => {
+    const onTimeUpdate = () => {
+      if(!video.videoWidth) {
+        return;
+      }
+      
       spanTime.innerText = toHHMMSS(video.duration - video.currentTime, false);
-    });
+    };
+
+    const throttledTimeUpdate = throttleWithRaf(onTimeUpdate);
+
+    video.addEventListener('timeupdate', throttledTimeUpdate);
 
     if(spanPlay) {
       video.addEventListener('timeupdate', () => {
-        spanPlay.remove();
+        sequentialDom.mutateElement(spanPlay, () => {
+          spanPlay.remove();
+        });
       }, {once: true});
     }
   }

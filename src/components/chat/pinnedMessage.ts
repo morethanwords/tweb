@@ -343,7 +343,7 @@ export default class ChatPinnedMessage {
 
   public setCorrectIndex(lastScrollDirection?: number) {
     if(this.isStatic) return;
-    //return;
+    // return;
 
     if(this.locked || this.hidden/*  || this.chat.setPeerPromise || this.chat.bubbles.messagesQueuePromise */) {
       return;

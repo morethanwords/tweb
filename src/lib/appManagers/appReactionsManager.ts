@@ -320,7 +320,7 @@ export class AppReactionsManager {
 
     if(onlyLocal) {
       message.reactions = reactions;
-      rootScope.dispatchEvent('message_reactions', {message, changedResults: []});
+      rootScope.dispatchEvent('messages_reactions', [{message, changedResults: []}]);
       return Promise.resolve();
     }
 

@@ -40,19 +40,30 @@ for(const name of Object.keys(nets)) {
 }
 
 const useHttp = false;
-const server = useHttp ? http : https;
+const transport = useHttp ? http : https;
 let options = {};
 if(!useHttp) {
   options.key = fs.readFileSync(__dirname + '/certs/server-key.pem');
   options.cert = fs.readFileSync(__dirname + '/certs/server-cert.pem');
 }
 
+console.log(results);
+
 const port = 3000;
 const protocol = useHttp ? 'http' : 'https';
 console.log('Listening port:', port);
 function createServer(host) {
-  server.createServer(options, app).listen(port, host, () => {
+  const server = transport.createServer(options, app);
+  server.listen(port, host, () => {
     console.log('Host:', `${protocol}://${host || 'localhost'}:${port}/`);
+  });
+
+  server.on('error', (e) => {
+    // @ts-ignore
+    if(e.code === 'EADDRINUSE') {
+      console.log('Address in use:', host);
+      server.close();
+    }
   });
 }
 

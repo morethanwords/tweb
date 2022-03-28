@@ -76,9 +76,9 @@ export type BroadcastEvents = {
   //'history_request': void,
   
   'message_edit': {storage: MessagesStorage, peerId: PeerId, mid: number},
-  'message_views': {peerId: PeerId, mid: number, views: number},
   'message_sent': {storage: MessagesStorage, tempId: number, tempMessage: any, mid: number, message: MyMessage},
-  'message_reactions': {message: Message.message, changedResults: ReactionCount[]},
+  'messages_views': {peerId: PeerId, mid: number, views: number}[],
+  'messages_reactions': {message: Message.message, changedResults: ReactionCount[]}[],
   'messages_pending': void,
   'messages_read': void,
   'messages_downloaded': {peerId: PeerId, mids: number[]},
