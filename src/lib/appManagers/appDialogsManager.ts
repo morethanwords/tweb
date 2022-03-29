@@ -1490,12 +1490,17 @@ export class AppDialogsManager {
       let mediaContainer: HTMLElement;
       if(!lastMessage.deleted && !draftMessage && !isRestricted) {
         const media: MyDocument | MyPhoto = appMessagesManager.getMediaFromMessage(lastMessage);
-        if(media && (media._ === 'photo' || (['video', 'gif'] as MyDocument['type'][]).includes(media.type))) {
+        const videoTypes: Set<MyDocument['type']> = new Set(['video', 'gif', 'round']);
+        if(media && (media._ === 'photo' || videoTypes.has(media.type))) {
           const size = appPhotosManager.choosePhotoSize(media, 20, 20);
 
           if(size._ !== 'photoSizeEmpty') {
             mediaContainer = document.createElement('div');
             mediaContainer.classList.add('dialog-subtitle-media');
+
+            if((media as MyDocument).type === 'round') {
+              mediaContainer.classList.add('is-round');
+            }
             
             wrapPhoto({
               photo: media,
@@ -1506,7 +1511,7 @@ export class AppDialogsManager {
               loadPromises
             });
 
-            if((media as MyDocument).type === 'video') {
+            if(videoTypes.has((media as MyDocument).type)) {
               const playIcon = document.createElement('span');
               playIcon.classList.add('tgico-play');
 

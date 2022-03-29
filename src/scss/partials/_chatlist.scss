@@ -364,6 +364,14 @@ ul.chatlist {
         display: inline-block;
         vertical-align: middle;
 
+        &.is-round {
+          border-radius: 50%;
+
+          .tgico-play {
+            font-size: .875rem;
+          }
+        }
+
         .tgico-play {
           position: absolute;
           z-index: 1;
