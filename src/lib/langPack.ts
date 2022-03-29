@@ -278,6 +278,7 @@ namespace I18n {
 		if(lastAppliedLangCode !== langPack.lang_code) {
 			rootScope.dispatchEvent('language_change', langPack.lang_code);
 			lastAppliedLangCode = langPack.lang_code;
+      cachedDateTimeFormats.clear();
 		}
 
 		const elements = Array.from(document.querySelectorAll(`.i18n`)) as HTMLElement[];
@@ -467,6 +468,17 @@ namespace I18n {
     }
 	}
 
+  const cachedDateTimeFormats: Map<string, Intl.DateTimeFormat> = new Map();
+  function getDateTimeFormat(options: Intl.DateTimeFormatOptions = {}) {
+    let json = JSON.stringify(options);
+    let dateTimeFormat = cachedDateTimeFormats.get(json);
+    if(!dateTimeFormat) {
+      cachedDateTimeFormats.set(json, dateTimeFormat = new Intl.DateTimeFormat(lastRequestedLangCode + '-u-hc-' + timeFormat, options));
+    }
+
+    return dateTimeFormat;
+  }
+
 	export type IntlDateElementOptions = IntlElementBaseOptions & {
 		date?: Date,
 		options: Intl.DateTimeFormatOptions
@@ -481,7 +493,7 @@ namespace I18n {
 			//var options = { month: 'long', day: 'numeric' };
 			
 			// * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/Locale/hourCycle#adding_an_hour_cycle_via_the_locale_string
-			const dateTimeFormat = new Intl.DateTimeFormat(lastRequestedLangCode + '-u-hc-' + timeFormat, this.options);
+			const dateTimeFormat = getDateTimeFormat(this.options);
 			
 			(this.element as any)[this.property] = capitalizeFirstLetter(dateTimeFormat.format(this.date));
 		}
