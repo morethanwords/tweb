@@ -21,6 +21,7 @@ import { cancelEvent } from "../../helpers/dom/cancelEvent";
 import { attachClickEvent } from "../../helpers/dom/clickEvent";
 import handleScrollSideEvent from "../../helpers/dom/handleScrollSideEvent";
 import debounce from "../../helpers/schedulers/debounce";
+import throttle from "../../helpers/schedulers/throttle";
 
 class AnimatedSuper {
   static DURATION = 200;
@@ -213,46 +214,48 @@ class AnimatedCounter {
 }
 
 export default class ChatPinnedMessage {
-  public static LOAD_COUNT = 50;
-  public static LOAD_OFFSET = 5;
+  private static LOAD_COUNT = 50;
+  private static LOAD_OFFSET = 5;
 
   public pinnedMessageContainer: PinnedContainer;
-  public pinnedMessageBorder: PinnedMessageBorder;
+  private pinnedMessageBorder: PinnedMessageBorder;
 
-  public pinnedMaxMid = 0;
+  private pinnedMaxMid = 0;
   public pinnedMid = 0;
   public pinnedIndex = -1;
-  public wasPinnedIndex = 0;
-  public wasPinnedMediaIndex = 0;
+  private wasPinnedIndex = 0;
+  private wasPinnedMediaIndex = 0;
   
   public locked = false;
-  public waitForScrollBottom = false;
+  private waitForScrollBottom = false;
 
   public count = 0;
-  public mids: number[] = [];
-  public offsetIndex = 0;
+  private mids: number[] = [];
+  private offsetIndex = 0;
 
-  public loading = false;
-  public loadedBottom = false;
-  public loadedTop = false;
+  private loading = false;
+  private loadedBottom = false;
+  private loadedTop = false;
 
-  public animatedSubtitle: AnimatedSuper;
-  public animatedMedia: AnimatedSuper;
-  public animatedCounter: AnimatedCounter;
+  private animatedSubtitle: AnimatedSuper;
+  private animatedMedia: AnimatedSuper;
+  private animatedCounter: AnimatedCounter;
 
-  public listenerSetter: ListenerSetter;
-  public scrollDownListenerSetter: ListenerSetter = null;
+  private listenerSetter: ListenerSetter;
+  private scrollDownListenerSetter: ListenerSetter = null;
 
   public hidden = false;
 
-  public getCurrentIndexPromise: Promise<any> = null;
-  public btnOpen: HTMLButtonElement;
+  private getCurrentIndexPromise: Promise<any> = null;
+  private btnOpen: HTMLButtonElement;
   
-  public setPinnedMessage: () => void;
+  private setPinnedMessage: () => void;
 
   private isStatic = false;
 
   private debug = false;
+  
+  public setCorrectIndexThrottled: (lastScrollDirection?: number) => void;
   
   constructor(private topbar: ChatTopbar, private chat: Chat, private appMessagesManager: AppMessagesManager, private appPeersManager: AppPeersManager) {
     this.listenerSetter = new ListenerSetter();
@@ -330,6 +333,7 @@ export default class ChatPinnedMessage {
     // * 200 - no lags
     // * 100 - need test
     this.setPinnedMessage = debounce(() => this._setPinnedMessage(), 100, true, true);
+    this.setCorrectIndexThrottled = throttle(this.setCorrectIndex.bind(this), 100, false);
 
     this.isStatic = this.chat.type === 'discussion';
   }

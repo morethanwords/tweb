@@ -95,6 +95,7 @@ import getObjectKeysAndSort from "../../helpers/object/getObjectKeysAndSort";
 import forEachReverse from "../../helpers/array/forEachReverse";
 import formatNumber from "../../helpers/number/formatNumber";
 import findAndSplice from "../../helpers/array/findAndSplice";
+import getViewportSlice from "../../helpers/dom/getViewportSlice";
 
 const USE_MEDIA_TAILS = false;
 const IGNORE_ACTIONS: Set<Message.messageService['action']['_']> = new Set([
@@ -154,9 +155,6 @@ export default class ChatBubbles {
   private bubbleGroups: BubbleGroups;
 
   private preloader: ProgressivePreloader = null;
-  
-  private loadedTopTimes = 0;
-  private loadedBottomTimes = 0;
 
   public messagesQueuePromise: Promise<void> = null;
   private messagesQueue: {message: any, bubble: HTMLElement, reverse: boolean, promises: Promise<void>[]}[] = [];
@@ -207,6 +205,7 @@ export default class ChatBubbles {
   
   private hoverBubble: HTMLElement;
   private hoverReaction: HTMLElement;
+  private sliceViewportDebounced: () => Promise<void>;
 
   // private reactions: Map<number, ReactionsElement>;
 
@@ -660,6 +659,9 @@ export default class ChatBubbles {
       }
     });
 
+    if(!IS_SAFARI) {
+      this.sliceViewportDebounced = debounce(this.sliceViewport.bind(this), 100, false, true);
+    }
 
     let middleware: ReturnType<ChatBubbles['getMiddleware']>;
     useHeavyAnimationCheck(() => {
@@ -1737,7 +1739,11 @@ export default class ChatBubbles {
     }
 
     if(this.chat.topbar.pinnedMessage) {
-      this.chat.topbar.pinnedMessage.setCorrectIndex(this.scrollable.lastScrollDirection);
+      this.chat.topbar.pinnedMessage.setCorrectIndexThrottled(this.scrollable.lastScrollDirection);
+    }
+
+    if(this.sliceViewportDebounced) {
+      this.sliceViewportDebounced();
     }
 
     this.setStickyDateManually();
@@ -2232,8 +2238,6 @@ export default class ChatBubbles {
       this.viewsObserver.disconnect();
       this.viewsMids.clear();
     }
-    
-    this.loadedTopTimes = this.loadedBottomTimes = 0;
     
     this.middleware.clean();
     
@@ -3877,9 +3881,13 @@ export default class ChatBubbles {
       this.log('performHistoryResult: will render some messages:', history.length, this.isHeavyAnimationInProgress, this.messagesQueuePromise);
     } */
 
-    let scrollSaver: ScrollSaver;
+    let scrollSaver: ScrollSaver/* , viewportSlice: ReturnType<ChatBubbles['getViewportSlice']> */;
     this.messagesQueueOnRender = () => {
       scrollSaver = new ScrollSaver(this.scrollable, reverse);
+
+      const viewportSlice = this.getViewportSlice();
+      this.deleteViewportSlice(viewportSlice);
+
       scrollSaver.save();
     };
 
@@ -4370,6 +4378,38 @@ export default class ChatBubbles {
     return message;
   }
 
+  public getViewportSlice() {
+    return getViewportSlice({
+      overflowElement: this.scrollable.container, 
+      selector: '.bubbles-date-group .bubble:not(.is-date)',
+      extraSize: Math.max(700, windowSize.height) * 2
+    });
+  }
+
+  public deleteViewportSlice(slice: ReturnType<ChatBubbles['getViewportSlice']>) {
+    const {invisibleTop, invisibleBottom} = slice;
+    const invisible = invisibleTop.concat(invisibleBottom);
+
+    if(invisibleTop.length) this.setLoaded('top', false);
+    if(invisibleBottom.length) this.setLoaded('bottom', false);
+
+    const mids = invisible.map(({element}) => +element.dataset.mid);
+    this.deleteMessagesByIds(mids, false);
+  }
+
+  public sliceViewport() {
+    if(IS_SAFARI) {
+      return;
+    }
+    
+    // const scrollSaver = new ScrollSaver(this.scrollable, true);
+    // scrollSaver.save();
+    const slice = this.getViewportSlice();
+    // if(IS_SAFARI) slice.invisibleTop = [];
+    this.deleteViewportSlice(slice);
+    // scrollSaver.restore(false);
+  }
+
   private setLoaded(side: SliceSides, value: boolean, checkPlaceholders = true) {
     const willChange = this.scrollable.loadedAll[side] !== value;
     if(!willChange) {
@@ -4667,48 +4707,6 @@ export default class ChatBubbles {
     if(justLoad) {
       return null;
     }
-
-    /* false &&  */!isFirstMessageRender && promise.then(() => {
-      if(reverse) {
-        this.loadedTopTimes++;
-        this.loadedBottomTimes = Math.max(0, --this.loadedBottomTimes);
-      } else {
-        this.loadedBottomTimes++;
-        this.loadedTopTimes = Math.max(0, --this.loadedTopTimes);
-      }
-
-      let ids: number[];
-      if((reverse && this.loadedTopTimes > 2) || (!reverse && this.loadedBottomTimes > 2)) {
-        ids = getObjectKeysAndSort(this.bubbles);
-      }
-
-      //let removeCount = loadCount / 2;
-      const safeCount = realLoadCount * 2; // cause i've been runningrunningrunning all day
-      //this.log('getHistory: slice loadedTimes:', reverse, pageCount, this.loadedTopTimes, this.loadedBottomTimes, ids?.length, safeCount);
-      if(ids && ids.length > safeCount) {
-        if(reverse) {
-          //ids = ids.slice(-removeCount);
-          //ids = ids.slice(removeCount * 2);
-          ids = ids.slice(safeCount);
-          this.setLoaded('bottom', false);
-
-          //this.log('getHistory: slice bottom messages:', ids.length, loadCount);
-          //this.getHistoryBottomPromise = undefined; // !WARNING, это нужно для обратной загрузки истории, если запрос словил флуд
-        } else {
-          //ids = ids.slice(0, removeCount);
-          //ids = ids.slice(0, ids.length - (removeCount * 2));
-          ids = ids.slice(0, ids.length - safeCount);
-          this.setLoaded('top', false);
-
-          //this.log('getHistory: slice up messages:', ids.length, loadCount);
-          //this.getHistoryTopPromise = undefined; // !WARNING, это нужно для обратной загрузки истории, если запрос словил флуд
-        }
-
-        //this.log('getHistory: will slice ids:', ids, reverse);
-
-        this.deleteMessagesByIds(ids, false);
-      }
-    });
 
     promise.then(() => {
       // preload more

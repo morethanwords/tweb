@@ -12,7 +12,7 @@ const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPl
 const allowedIPs = ['127.0.0.1'];
 const devMode = process.env.NODE_ENV !== 'production';
 const useLocal = true;
-const useLocalNotLocal = true;
+const useLocalNotLocal = false;
 
 if(devMode) {
   console.log('DEVMODE IS ON!');
@@ -37,7 +37,7 @@ const opts = {
 };
 
 const domain = 'yourdomain.com';
-const localIp = '192.168.100.51';
+const localIp = '192.168.100.167';
 
 const middleware = (req, res, next) => {
   let IP = '';

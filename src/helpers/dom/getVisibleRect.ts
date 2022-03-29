@@ -4,9 +4,13 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-export default function getVisibleRect(element: HTMLElement, overflowElement: HTMLElement, lookForSticky?: boolean, rect = element.getBoundingClientRect()) {
-  const overflowRect = overflowElement.getBoundingClientRect();
-
+export default function getVisibleRect(
+  element: HTMLElement, 
+  overflowElement: HTMLElement, 
+  lookForSticky?: boolean, 
+  rect = element.getBoundingClientRect(),
+  overflowRect = overflowElement.getBoundingClientRect()
+) {
   let {top: overflowTop, right: overflowRight, bottom: overflowBottom, left: overflowLeft} = overflowRect;
 
   // * respect sticky headers

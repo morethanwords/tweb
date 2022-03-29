@@ -1135,6 +1135,9 @@ export class AppImManager {
     //if(bubble) {
       //const top = bubble.getBoundingClientRect().top;
       const chatBubbles = chat.bubbles;
+
+      chatBubbles.sliceViewport();
+
       const top = chatBubbles.scrollable.scrollTop;
 
       const key = chat.peerId + (chat.threadId ? '_' + chat.threadId : '');
