@@ -257,14 +257,16 @@ export class ApiFileManager {
   }
 
   private getLimitPart(size: number): number {
-    let bytes: number;
+    let bytes = 128 * 1024;
 
-    bytes = 512;
+    while((size / bytes) > 2000) {
+      bytes *= 2;
+    }
     /* if(size < 1e6 || !size) bytes = 512;
     else if(size < 3e6) bytes = 256;
     else bytes = 128; */
 
-    return bytes * 1024;
+    return bytes;
   }
 
   private uncompressTGS = (bytes: Uint8Array, fileName: string) => {
