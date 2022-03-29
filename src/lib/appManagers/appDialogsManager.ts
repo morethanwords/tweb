@@ -1812,12 +1812,14 @@ export class AppDialogsManager {
     const peerId = dialog.peerId;
 
     const avatarEl = new AvatarElement();
-    avatarEl.loadPromises = loadPromises;
-    avatarEl.lazyLoadQueue = lazyLoadQueue;
-    avatarEl.setAttribute('dialog', meAsSaved ? '1' : '0');
-    if(fromName !== undefined) avatarEl.setAttribute('peer-title', fromName);
-    avatarEl.setAttribute('peer', '' + peerId);
     avatarEl.classList.add('dialog-avatar', 'avatar-' + avatarSize);
+    avatarEl.updateWithOptions({
+      loadPromises,
+      lazyLoadQueue,
+      isDialog: !!meAsSaved,
+      peerId,
+      peerTitle: fromName
+    });
 
     if(drawStatus && peerId !== rootScope.myId && peerId.isUser()) {
       const user = appUsersManager.getUser(peerId);

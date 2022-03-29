@@ -91,8 +91,10 @@ export default class AutocompletePeerHelper extends AutocompleteHelper {
   
     const avatar = new AvatarElement();
     avatar.classList.add('avatar-30', BASE + '-avatar', options.className + '-avatar');
-    avatar.setAttribute('dialog', '0');
-    avatar.setAttribute('peer', '' + options.peerId);
+    avatar.updateWithOptions({
+      isDialog: false,
+      peerId: options.peerId
+    });
   
     const name = document.createElement('div');
     name.classList.add(BASE + '-name', options.className + '-name');

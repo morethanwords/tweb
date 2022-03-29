@@ -55,7 +55,7 @@ export default class PopupCreateContact extends PopupElement {
     const onInput = () => {
       const name = nameInputField.value + ' ' + lastNameInputField.value;
       // const abbr = RichTextProcessor.getAbbreviation(name);
-      editPeer.avatarElem.setAttribute('peer-title', name);
+      editPeer.avatarElem.peerTitle = name;
       editPeer.avatarElem.update();
     };
 

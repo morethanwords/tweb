@@ -28,6 +28,7 @@ import filterUnique from "../helpers/array/filterUnique";
 import indexOfAndSplice from "../helpers/array/indexOfAndSplice";
 import safeAssign from "../helpers/object/safeAssign";
 import findAndSplice from "../helpers/array/findAndSplice";
+import AvatarElement from "./avatar";
 
 type SelectSearchPeerType = 'contacts' | 'dialogs' | 'channelParticipants';
 
@@ -553,10 +554,9 @@ export default class AppSelectPeers {
     const div = document.createElement('div');
     div.classList.add('selector-user', 'scale-in');
 
-    const avatarEl = document.createElement('avatar-element');
-    avatarEl.classList.add('selector-user-avatar', 'tgico');
-    avatarEl.setAttribute('dialog', '1');
-    avatarEl.classList.add('avatar-32');
+    const avatarEl = new AvatarElement();
+    avatarEl.classList.add('selector-user-avatar', 'tgico', 'avatar-32');
+    avatarEl.isDialog = true;
 
     div.dataset.key = '' + key;
     if(key.isPeerId()) {
@@ -564,7 +564,9 @@ export default class AppSelectPeers {
         title = new PeerTitle({peerId: key.toPeerId(), dialog: true}).element;
       }
 
-      avatarEl.setAttribute('peer', '' + key);
+      avatarEl.updateWithOptions({
+        peerId: key as PeerId
+      });
     }
 
     if(title) {

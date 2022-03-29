@@ -108,9 +108,11 @@ export default class PopupCall extends PopupElement {
 
     const peerId = this.peerId = this.instance.interlocutorUserId.toPeerId();
     const avatar = new AvatarElement();
-    avatar.isBig = true;
-    avatar.setAttribute('peer', '' + peerId);
     avatar.classList.add('avatar-full');
+    avatar.updateWithOptions({
+      isBig: true,
+      peerId: peerId
+    });
     avatarContainer.append(avatar);
 
     const title = new PeerTitle({

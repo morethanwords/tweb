@@ -86,8 +86,8 @@ export default class PeerProfile {
 
     this.avatar = new AvatarElement();
     this.avatar.classList.add('profile-avatar', 'avatar-120');
-    this.avatar.setAttribute('dialog', '' + +this.isDialog);
-    this.avatar.setAttribute('clickable', '');
+    this.avatar.isDialog = this.isDialog;
+    this.avatar.attachClickEvent();
 
     this.name = document.createElement('div');
     this.name.classList.add('profile-name');
@@ -306,7 +306,7 @@ export default class PeerProfile {
       this.avatars = undefined;
     }
 
-    this.avatar.setAttribute('peer', '' + this.peerId);
+    this.avatar.updateWithOptions({peerId: this.peerId});
 
     this.section.content.prepend(this.avatar, this.name, this.subtitle);
   }

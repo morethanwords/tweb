@@ -33,10 +33,12 @@ export default class PopupPeer extends PopupElement {
     super('popup-peer' + (className ? ' ' + className : ''), options.buttons && addCancelButton(options.buttons), {overlayClosable: true, ...options});
 
     if(options.peerId) {
-      let avatarEl = new AvatarElement();
-      avatarEl.setAttribute('dialog', '1');
-      avatarEl.setAttribute('peer', '' + options.peerId);
+      const avatarEl = new AvatarElement();
       avatarEl.classList.add('avatar-32');
+      avatarEl.updateWithOptions({
+        isDialog: true,
+        peerId: options.peerId
+      });
       this.header.prepend(avatarEl);
     }
 

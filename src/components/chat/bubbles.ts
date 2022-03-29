@@ -660,7 +660,7 @@ export default class ChatBubbles {
     });
 
     if(!IS_SAFARI) {
-      this.sliceViewportDebounced = debounce(this.sliceViewport.bind(this), 100, false, true);
+      // this.sliceViewportDebounced = debounce(this.sliceViewport.bind(this), 100, false, true);
     }
 
     let middleware: ReturnType<ChatBubbles['getMiddleware']>;
@@ -1346,7 +1346,7 @@ export default class ChatBubbles {
     const nameDiv = findUpClassName(target, 'peer-title') || findUpTag(target, 'AVATAR-ELEMENT') || findUpAttribute(target, 'data-saved-from');
     if(nameDiv && nameDiv !== bubble) {
       target = nameDiv || target;
-      const peerIdStr = target.dataset.peerId || target.getAttribute('peer');
+      const peerIdStr = target.dataset.peerId || target.getAttribute('peer') || (target as AvatarElement).peerId;
       const savedFrom = target.dataset.savedFrom;
       if(typeof(peerIdStr) === 'string' || savedFrom) {
         if(savedFrom) {
@@ -3555,8 +3555,10 @@ export default class ChatBubbles {
             </div>`;
 
           const avatarElem = new AvatarElement();
-          avatarElem.lazyLoadQueue = this.lazyLoadQueue;
-          avatarElem.setAttribute('peer', '' + contact.user_id.toPeerId());
+          avatarElem.updateWithOptions({
+            lazyLoadQueue: this.lazyLoadQueue,
+            peerId: contact.user_id.toPeerId()
+          });
           avatarElem.classList.add('contact-avatar', 'avatar-54');
 
           contactDiv.prepend(avatarElem);
@@ -3709,16 +3711,13 @@ export default class ChatBubbles {
       const needAvatar = this.chat.isAnyGroup() && !isOut;
       if(needAvatar) {
         let avatarElem = new AvatarElement();
-        avatarElem.lazyLoadQueue = this.lazyLoadQueue;
         avatarElem.classList.add('user-avatar', 'avatar-40');
-        avatarElem.loadPromises = loadPromises;
-
-        if(!fwdFromId && fwdFrom && fwdFrom.from_name) {
-          avatarElem.setAttribute('peer-title', /* '🔥 FF 🔥' */fwdFrom.from_name);
-        }
-
-        avatarElem.setAttribute('peer', '' + (((fwdFrom && (this.peerId === rootScope.myId || this.peerId === REPLIES_PEER_ID)) || isForwardFromChannel ? fwdFromId : message.fromId) || NULL_PEER_ID));
-        //avatarElem.update();
+        avatarElem.updateWithOptions({
+          lazyLoadQueue: this.lazyLoadQueue,
+          peerId: ((fwdFrom && (this.peerId === rootScope.myId || this.peerId === REPLIES_PEER_ID)) || isForwardFromChannel ? fwdFromId : message.fromId) || NULL_PEER_ID,
+          peerTitle: !fwdFromId && fwdFrom && fwdFrom.from_name ? /* '🔥 FF 🔥' */fwdFrom.from_name : undefined,
+          loadPromises
+        });
         
         //this.log('exec loadDialogPhoto', message);
 
@@ -4401,7 +4400,7 @@ export default class ChatBubbles {
     if(IS_SAFARI) {
       return;
     }
-    
+
     // const scrollSaver = new ScrollSaver(this.scrollable, true);
     // scrollSaver.save();
     const slice = this.getViewportSlice();

@@ -1414,7 +1414,7 @@ export default class ChatInput {
       const peerId = peerIds[idx];
       const avatar = new AvatarElement();
       avatar.classList.add('avatar-32', 'btn-menu-item-icon');
-      avatar.setAttribute('peer', '' + peerId);
+      avatar.updateWithOptions({peerId});
 
       if(!idx) {
         avatar.classList.add('active');
@@ -1430,7 +1430,7 @@ export default class ChatInput {
   private updateSendAsAvatar(sendAsPeerId: PeerId, skipAnimation?: boolean) {
     const previousAvatar = this.sendAsAvatar;
     if(previousAvatar) {
-      if(+previousAvatar.getAttribute('peer') === sendAsPeerId) {
+      if(previousAvatar.peerId === sendAsPeerId) {
         return;
       }
     }
@@ -1442,9 +1442,11 @@ export default class ChatInput {
     let useRafs = skipAnimation ? 0 : 2;
     const duration = skipAnimation ? 0 : SEND_AS_ANIMATION_DURATION;
     const avatar = this.sendAsAvatar = new AvatarElement();
-    avatar.setAttribute('dialog', '0');
-    avatar.setAttribute('peer', '' + sendAsPeerId);
     avatar.classList.add('new-message-send-as-avatar', 'avatar-30');
+    avatar.updateWithOptions({
+      isDialog: false,
+      peerId: sendAsPeerId
+    });
 
     SetTransition(avatar, 'is-visible', true, duration, undefined, useRafs);    
     if(previousAvatar) {

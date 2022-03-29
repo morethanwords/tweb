@@ -9,6 +9,7 @@ import { renderImageFromUrlPromise } from "../../helpers/dom/renderImageFromUrl"
 import replaceContent from "../../helpers/dom/replaceContent";
 import sequentialDom from "../../helpers/sequentialDom";
 import { UserProfilePhoto, ChatPhoto, InputFileLocation } from "../../layer";
+import { DownloadOptions } from "../mtproto/apiFileManager";
 import { NULL_PEER_ID, REPLIES_PEER_ID } from "../mtproto/mtproto_config";
 import RichTextProcessor from "../richtextprocessor";
 import rootScope from "../rootScope";
@@ -55,11 +56,11 @@ export class AppAvatarsManager {
         photo_id: photo.photo_id
       };
 
+      const downloadOptions: DownloadOptions = {dcId: photo.dc_id, location: peerPhotoFileLocation};
       if(size === 'photo_big') {
         peerPhotoFileLocation.pFlags.big = true;
+        downloadOptions.limitPart = 512 * 1024;
       }
-
-      const downloadOptions = {dcId: photo.dc_id, location: peerPhotoFileLocation};
 
       /* let str: string;
       const time = Date.now();

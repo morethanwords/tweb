@@ -56,8 +56,8 @@ export default class PopupJoinChatInvite extends PopupElement {
     appChatsManager.saveApiChat(fakeChat); */
     
     const avatarElem = new AvatarElement();
-    avatarElem.setAttribute('dialog', '0');
     avatarElem.classList.add('avatar-100');
+    avatarElem.isDialog = false;
     if(chatInvite.photo._ === 'photo') {
       chatInvite.photo = appPhotosManager.savePhoto(chatInvite.photo);
       wrapPhoto({

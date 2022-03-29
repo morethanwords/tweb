@@ -16,12 +16,12 @@ import { cancelEvent } from "../helpers/dom/cancelEvent";
 import appAvatarsManager from "../lib/appManagers/appAvatarsManager";
 import AppMediaViewer from "./appMediaViewer";
 import AppMediaViewerAvatar from "./appMediaViewerAvatar";
-import { NULL_PEER_ID } from "../lib/mtproto/mtproto_config";
 import isObject from "../helpers/object/isObject";
+import { ArgumentTypes } from "../types";
 
 const onAvatarUpdate = (peerId: PeerId) => {
   appAvatarsManager.removeFromAvatarsCache(peerId);
-  (Array.from(document.querySelectorAll('avatar-element[peer="' + peerId + '"]')) as AvatarElement[]).forEach(elem => {
+  (Array.from(document.querySelectorAll('avatar-element[data-peer-id="' + peerId + '"]')) as AvatarElement[]).forEach(elem => {
     //console.log('updating avatar:', elem);
     elem.update();
   });
@@ -118,33 +118,13 @@ const believeMe: Map<PeerId, Set<AvatarElement>> = new Map();
 const seen: Set<PeerId> = new Set();
 
 export default class AvatarElement extends HTMLElement {
-  private peerId: PeerId;
-  private isDialog: boolean;
-  private peerTitle: string;
+  public peerId: PeerId;
+  public isDialog: boolean;
+  public peerTitle: string;
   public loadPromises: Promise<any>[];
   public lazyLoadQueue: LazyLoadQueueIntersector;
   public isBig: boolean;
   private addedToQueue = false;
-
-  connectedCallback() {
-    // браузер вызывает этот метод при добавлении элемента в документ
-    // (может вызываться много раз, если элемент многократно добавляется/удаляется)
-
-    this.isDialog = this.getAttribute('dialog') === '1';
-    if(this.getAttribute('clickable') === '') {
-      this.setAttribute('clickable', 'set');
-      let loading = false;
-      attachClickEvent(this, async(e) => {
-        cancelEvent(e);
-        if(loading) return;
-        //console.log('avatar clicked');
-        const peerId = this.peerId;
-        loading = true;
-        await openAvatarViewer(this, this.peerId, () => this.peerId === peerId);
-        loading = false;
-      });
-    }
-  }
 
   disconnectedCallback() {
     // браузер вызывает этот метод при удалении элемента из документа
@@ -162,38 +142,56 @@ export default class AvatarElement extends HTMLElement {
     }
   }
 
-  static get observedAttributes(): string[] {
-    return ['peer', 'dialog', 'peer-title'/* массив имён атрибутов для отслеживания их изменений */];
+  public attachClickEvent() {
+    let loading = false;
+    attachClickEvent(this, async(e) => {
+      cancelEvent(e);
+      if(loading) return;
+      //console.log('avatar clicked');
+      const peerId = this.peerId;
+      loading = true;
+      await openAvatarViewer(this, this.peerId, () => this.peerId === peerId);
+      loading = false;
+    });
   }
 
-  attributeChangedCallback(name: string, oldValue: string, newValue: string) {
-    //console.log('avatar changed attribute:', name, oldValue, newValue);
-    // вызывается при изменении одного из перечисленных выше атрибутов
-    if(name === 'peer') {
-      const newPeerId = (newValue || '').toPeerId() || NULL_PEER_ID;
-      if(this.peerId === newPeerId) {
-        return;
-      }
-      
-      this.peerId = appPeersManager.getPeerMigratedTo(newPeerId) || newPeerId;
+  public updateOptions(options: Partial<ArgumentTypes<AvatarElement['updateWithOptions']>[0]>) {
+    for(let i in options) {
+      // @ts-ignore
+      this[i] = options[i];
+    }
+  }
 
-      const wasPeerId = (oldValue || '').toPeerId() || NULL_PEER_ID;
-      if(wasPeerId) {
-        const set = believeMe.get(wasPeerId);
-        if(set) {
-          set.delete(this);
-          if(!set.size) {
-            believeMe.delete(wasPeerId);
-          }
+  public updateWithOptions(options: {
+    peerId: PeerId,
+    isDialog?: boolean,
+    isBig?: boolean,
+    peerTitle?: string,
+    lazyLoadQueue?: LazyLoadQueueIntersector,
+    loadPromises?: Promise<any>[]
+  }) {
+    const wasPeerId = this.peerId;
+    this.updateOptions(options);
+    const newPeerId = this.peerId;
+
+    if(wasPeerId === newPeerId) {
+      return;
+    }
+
+    this.peerId = appPeersManager.getPeerMigratedTo(newPeerId) || newPeerId;
+    this.dataset.peerId = '' + newPeerId;
+
+    if(wasPeerId) {
+      const set = believeMe.get(wasPeerId);
+      if(set) {
+        set.delete(this);
+        if(!set.size) {
+          believeMe.delete(wasPeerId);
         }
       }
-
-      this.update();
-    } else if(name === 'peer-title') {
-      this.peerTitle = newValue;
-    } else if(name === 'dialog') {
-      this.isDialog = newValue === '1';
     }
+
+    return this.update();
   }
 
   private r(onlyThumb = false) {

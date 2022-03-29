@@ -1133,14 +1133,11 @@ export default class AppMediaViewerBase<
 
     let oldAvatar = this.author.avatarEl;
     this.author.avatarEl = (oldAvatar.cloneNode() as AvatarElement);
-
-    if(!isPeerId) {
-      this.author.avatarEl.setAttribute('peer-title', '' + fromId);
-    } else {
-      this.author.avatarEl.removeAttribute('peer-title');
-    }
-
-    this.author.avatarEl.setAttribute('peer', '' + (fromId || NULL_PEER_ID));
+    (this.author.avatarEl as AvatarElement).updateWithOptions({
+      // @ts-ignore
+      peerId: fromId || NULL_PEER_ID,
+      peerTitle: isPeerId ? undefined : '' + fromId
+    });
 
     oldAvatar.parentElement.replaceChild(this.author.avatarEl, oldAvatar);
   }

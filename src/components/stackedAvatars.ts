@@ -46,13 +46,17 @@ export default class StackedAvatars {
       let avatarElem = avatarContainer.firstElementChild as AvatarElement;
       if(!avatarElem) {
         avatarElem = new AvatarElement();
-        avatarElem.setAttribute('dialog', '0');
         avatarElem.classList.add('avatar-' + this.avatarSize, AVATAR_CLASS_NAME);
-        avatarElem.lazyLoadQueue = this.lazyLoadQueue;
-        avatarElem.loadPromises = loadPromises;
+        avatarElem.updateOptions({
+          isDialog: false,
+          loadPromises
+        });
       }
-      
-      avatarElem.setAttribute('peer', '' + peerId);
+
+      avatarElem.updateWithOptions({
+        lazyLoadQueue: this.lazyLoadQueue,
+        peerId: peerId
+      });
       
       if(!avatarElem.parentNode) {
         avatarContainer.append(avatarElem);

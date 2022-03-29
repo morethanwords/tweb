@@ -48,6 +48,7 @@ import noop from "../../helpers/noop";
 import { ripple } from "../ripple";
 import indexOfAndSplice from "../../helpers/array/indexOfAndSplice";
 import formatNumber from "../../helpers/number/formatNumber";
+import AvatarElement from "../avatar";
 
 export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
 
@@ -451,10 +452,9 @@ export class AppSidebarLeft extends SidebarSlider {
       const div = document.createElement('div');
       div.classList.add('selector-user'/* , 'scale-in' */);
 
-      const avatarEl = document.createElement('avatar-element');
-      avatarEl.classList.add('selector-user-avatar', 'tgico');
-      avatarEl.setAttribute('dialog', '1');
-      avatarEl.classList.add('avatar-30');
+      const avatarEl = new AvatarElement();
+      avatarEl.classList.add('selector-user-avatar', 'tgico', 'avatar-30');
+      avatarEl.isDialog = true;
 
       div.dataset.key = '' + key;
       if(key.isPeerId()) {
@@ -462,7 +462,7 @@ export class AppSidebarLeft extends SidebarSlider {
           title = new PeerTitle({peerId: key.toPeerId()}).element;
         }
 
-        avatarEl.setAttribute('peer', '' + key);
+        avatarEl.updateWithOptions({peerId: key as PeerId});
       } else {
         avatarEl.classList.add('tgico-calendarfilter');
       }

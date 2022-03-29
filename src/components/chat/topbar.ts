@@ -521,8 +521,7 @@ export default class ChatTopbar {
 
   public constructPeerHelpers() {
     this.avatarElement = new AvatarElement();
-    this.avatarElement.setAttribute('dialog', '1');
-    //this.avatarElement.setAttribute('clickable', '');
+    this.avatarElement.isDialog = true;
     this.avatarElement.classList.add('avatar-42', 'person-avatar');
 
     this.subtitle = document.createElement('div');
@@ -690,8 +689,7 @@ export default class ChatTopbar {
     const peerId = this.peerId;
 
     if(this.avatarElement) {
-      this.avatarElement.setAttribute('peer', '' + peerId);
-      this.avatarElement.update();
+      this.avatarElement.updateWithOptions({peerId});
     }
 
     const isBroadcast = this.appPeersManager.isBroadcast(peerId);

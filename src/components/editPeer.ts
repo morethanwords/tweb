@@ -49,7 +49,7 @@ export default class EditPeer {
     if(!options.withoutAvatar) {
       this.avatarElem = document.createElement('avatar-element') as AvatarElement;
       this.avatarElem.classList.add('avatar-placeholder', 'avatar-' + this.avatarSize);
-      this.avatarElem.setAttribute('peer', '' + this.peerId);
+      this.avatarElem.updateWithOptions({peerId: this.peerId});
   
       if(!options.doNotEditAvatar) {
         this.avatarEdit = new AvatarEdit((_upload) => {
