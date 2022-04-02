@@ -399,6 +399,24 @@ $bubble-beside-button-width: 38px;
       cursor: pointer;
       pointer-events: all;
     }
+
+    .bubbles:not(.has-sticky-dates) & {
+      visibility: hidden;
+    }
+
+    .bubbles.has-sticky-dates &.is-fake {
+      display: none;
+    }
+
+    &.is-fake {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      opacity: 1 !important;
+      transition: none !important;
+      visibility: visible !important;
+    }
   }
 
   &-beside-button {

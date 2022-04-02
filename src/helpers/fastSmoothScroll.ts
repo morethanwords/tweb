@@ -7,7 +7,7 @@
 // * Jolly Cobra's fastSmoothScroll slightly patched
 
 import { dispatchHeavyAnimationEvent } from '../hooks/useHeavyAnimationCheck';
-import { fastRaf } from './schedulers';
+import { fastRaf, fastRafPromise } from './schedulers';
 import { animateSingle, cancelAnimationByKey } from './animation';
 import rootScope from '../lib/rootScope';
 import isInDOM from './dom/isInDOM';
@@ -67,11 +67,7 @@ export default function fastSmoothScroll(options: ScrollOptions) {
     return Promise.resolve(); */
   }
 
-  const promise = new Promise<void>((resolve) => {
-    fastRaf(() => {
-      scrollWithJs(options).then(resolve);
-    });
-  });
+  const promise = fastRafPromise().then(() => scrollWithJs(options));
 
   return options.axis === 'y' ? dispatchHeavyAnimationEvent(promise) : promise;
 }

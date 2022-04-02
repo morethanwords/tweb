@@ -60,11 +60,11 @@ export function fastRafConventional(callback: NoneToVoidFunction) {
   }
 }
 
-let rafPromise: Promise<DOMHighResTimeStamp>;
+let rafPromise: Promise<void>;
 export function fastRafPromise() {
   if(rafPromise) return rafPromise;
 
-  rafPromise = new Promise(requestAnimationFrame);
+  rafPromise = new Promise<void>((resolve) => fastRaf(() => resolve()));
   rafPromise.then(() => {
     rafPromise = undefined;
   });

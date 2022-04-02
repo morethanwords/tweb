@@ -41,9 +41,12 @@ export default class StickyIntersector {
   
   private observeElements() {
     this.elementsObserver = new IntersectionObserver((entries) => {
-      let entry = entries.filter(entry => entry.boundingClientRect.top < 0).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
+      const entry = entries
+      .filter(entry => entry.boundingClientRect.top < entry.rootBounds.top)
+      .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
       if(!entry) return;
-      let container = entry.isIntersecting ? entry.target : entry.target.nextElementSibling;
+
+      const container = entry.isIntersecting ? entry.target : entry.target.nextElementSibling;
       this.handler(true, container as HTMLElement);
     }, {root: this.container});
   }

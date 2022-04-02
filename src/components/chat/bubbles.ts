@@ -68,7 +68,7 @@ import whichChild from "../../helpers/dom/whichChild";
 import { cancelAnimationByKey } from "../../helpers/animation";
 import assumeType from "../../helpers/assumeType";
 import { EmoticonsDropdown } from "../emoticonsDropdown";
-import debounce from "../../helpers/schedulers/debounce";
+import debounce, { DebounceReturnType } from "../../helpers/schedulers/debounce";
 import { SEND_WHEN_ONLINE_TIMESTAMP } from "../../lib/mtproto/constants";
 import windowSize from "../../helpers/windowSize";
 import { formatPhoneNumber } from "../../helpers/formatPhoneNumber";
@@ -118,6 +118,7 @@ let queueId = 0;
 type GenerateLocalMessageType<IsService> = IsService extends true ? Message.messageService : Message.message;
 
 const SPONSORED_MESSAGE_ID_OFFSET = 1;
+const STICKY_OFFSET = 3;
 
 export default class ChatBubbles {
   public bubblesContainer: HTMLDivElement;
@@ -205,7 +206,8 @@ export default class ChatBubbles {
   
   private hoverBubble: HTMLElement;
   private hoverReaction: HTMLElement;
-  private sliceViewportDebounced: () => Promise<void>;
+  private sliceViewportDebounced: DebounceReturnType<ChatBubbles['sliceViewport']>;
+  resizeObserver: ResizeObserver;
 
   // private reactions: Map<number, ReactionsElement>;
 
@@ -649,18 +651,37 @@ export default class ChatBubbles {
       });
     }
 
-    if(false) this.stickyIntersector = new StickyIntersector(this.scrollable.container, (stuck, target) => {
+    /* if(false)  */this.stickyIntersector = new StickyIntersector(this.scrollable.container, (stuck, target) => {
       for(const timestamp in this.dateMessages) {
         const dateMessage = this.dateMessages[timestamp];
         if(dateMessage.container === target) {
-          dateMessage.div.classList.toggle('is-sticky', stuck);
+          const dateBubble = dateMessage.div;
+
+          // dateMessage.container.classList.add('has-sticky-dates');
+
+          // SetTransition(dateBubble, 'kek', stuck, this.previousStickyDate ? 300 : 0);
+          // if(this.previousStickyDate) {
+            // dateBubble.classList.add('kek');
+          // }
+
+          dateBubble.classList.toggle('is-sticky', stuck);
+          if(stuck) {
+            this.previousStickyDate = dateBubble;
+          }
+
           break;
         }
+      }
+
+      if(this.previousStickyDate) {
+        // fastRaf(() => {
+          // this.bubblesContainer.classList.add('has-sticky-dates');
+        // });
       }
     });
 
     if(!IS_SAFARI) {
-      // this.sliceViewportDebounced = debounce(this.sliceViewport.bind(this), 100, false, true);
+      this.sliceViewportDebounced = debounce(this.sliceViewport.bind(this), 100, false, true);
     }
 
     let middleware: ReturnType<ChatBubbles['getMiddleware']>;
@@ -668,12 +689,20 @@ export default class ChatBubbles {
       this.isHeavyAnimationInProgress = true;
       this.lazyLoadQueue.lock();
       middleware = this.getMiddleware();
+
+      // if(this.sliceViewportDebounced) {
+      //   this.sliceViewportDebounced.clearTimeout();
+      // }
     }, () => {
       this.isHeavyAnimationInProgress = false;
 
       if(middleware && middleware()) {
         this.lazyLoadQueue.unlock();
         this.lazyLoadQueue.refresh();
+
+        // if(this.sliceViewportDebounced) {
+        //   this.sliceViewportDebounced();
+        // }
       }
 
       middleware = null;
@@ -760,7 +789,7 @@ export default class ChatBubbles {
         });
 
         if(isScrolledDown) {
-          this.scrollable.scrollTop = 99999;
+          this.scrollable.setScrollTopSilently(99999);
         } else {
           this.performHistoryResult([], true, false, undefined);
         }
@@ -839,104 +868,124 @@ export default class ChatBubbles {
 
       this.appMessagesManager.incrementMessageViews(this.peerId, mids);
     }, 1000, false, true);
+  }
 
-    if('ResizeObserver' in window) {
-      let wasHeight = this.scrollable.container.offsetHeight;
-      let resizing = false;
-      let skip = false;
-      let scrolled = 0;
-      let part = 0;
-      let rAF = 0;
+  private createResizeObserver() {
+    if(!('ResizeObserver' in window) || this.resizeObserver) {
+      return;
+    }
 
-      const onResizeEnd = () => {
-        const height = this.scrollable.container.offsetHeight;
-        const isScrolledDown = this.scrollable.isScrolledDown;
-        if(height !== wasHeight && (!skip || !isScrolledDown)) { // * fix opening keyboard while ESG is active, offsetHeight will change right between 'start' and this first frame
-          part += wasHeight - height;
-        }
+    const container = this.scrollable.container;
+    let wasHeight = container.offsetHeight;
+    let resizing = false;
+    let skip = false;
+    let scrolled = 0;
+    let part = 0;
+    let rAF = 0;
+    let skipNext = true;
+
+    const onResizeEnd = () => {
+      const height = container.offsetHeight;
+      const isScrolledDown = this.scrollable.isScrolledDown;
+      if(height !== wasHeight && (!skip || !isScrolledDown)) { // * fix opening keyboard while ESG is active, offsetHeight will change right between 'start' and this first frame
+        part += wasHeight - height;
+      }
+
+      /* if(DEBUG) {
+        this.log('resize end', scrolled, part, this.scrollable.scrollTop, height, wasHeight, this.scrollable.isScrolledDown);
+      } */
+
+      if(part) {
+        this.scrollable.scrollTop += Math.round(part);
+      }
+
+      wasHeight = height;
+      scrolled = 0;
+      rAF = 0;
+      part = 0;
+      resizing = false;
+      skip = false;
+    };
+
+    const setEndRAF = (single: boolean) => {
+      if(rAF) window.cancelAnimationFrame(rAF);
+      rAF = window.requestAnimationFrame(single ? onResizeEnd : () => {
+        rAF = window.requestAnimationFrame(onResizeEnd);
+        //this.log('resize after RAF', part);
+      });
+    };
+
+    const processEntries: ResizeObserverCallback = (entries) => {
+      if(skipNext) {
+        skipNext = false;
+        return;
+      }
+
+      if(skip) {
+        setEndRAF(false);
+        return;
+      }
+
+      const entry = entries[0];
+      const height = entry.contentRect.height;/* Math.ceil(entry.contentRect.height); */
+      
+      if(!wasHeight) {
+        wasHeight = height;
+        return;
+      }
+
+      const realDiff = wasHeight - height;
+      let diff = realDiff + part;
+      const _part = diff % 1;
+      diff -= _part;
+
+      if(!resizing) {
+        resizing = true;
 
         /* if(DEBUG) {
-          this.log('resize end', scrolled, part, this.scrollable.scrollTop, height, wasHeight, this.scrollable.isScrolledDown);
+          this.log('resize start', realDiff, this.scrollable.scrollTop, this.scrollable.container.offsetHeight, this.scrollable.isScrolledDown);
         } */
 
-        if(part) {
-          this.scrollable.scrollTop += Math.round(part);
-        }
+        if(realDiff < 0 && this.scrollable.isScrolledDown) {
+          //if(isSafari) { // * fix opening keyboard while ESG is active 
+            part = -realDiff;
+          //}
 
-        wasHeight = height;
-        scrolled = 0;
-        rAF = 0;
-        part = 0;
-        resizing = false;
-        skip = false;
-      };
-
-      const setEndRAF = (single: boolean) => {
-        if(rAF) window.cancelAnimationFrame(rAF);
-        rAF = window.requestAnimationFrame(single ? onResizeEnd : () => {
-          rAF = window.requestAnimationFrame(onResizeEnd);
-          //this.log('resize after RAF', part);
-        });
-      };
-
-      const processEntries = (entries: any) => {
-        if(skip) {
+          skip = true;
           setEndRAF(false);
           return;
         }
+      }
 
-        const entry = entries[0];
-        const height = entry.contentRect.height;/* Math.ceil(entry.contentRect.height); */
-        
-        if(!wasHeight) {
-          wasHeight = height;
-          return;
-        }
+      scrolled += diff;
 
-        const realDiff = wasHeight - height;
-        let diff = realDiff + part;
-        const _part = diff % 1;
-        diff -= _part;
- 
-        if(!resizing) {
-          resizing = true;
+      /* if(DEBUG) {
+        this.log('resize', wasHeight - height, diff, this.scrollable.container.offsetHeight, this.scrollable.isScrolledDown, height, wasHeight);
+      } */
 
-          /* if(DEBUG) {
-            this.log('resize start', realDiff, this.scrollable.scrollTop, this.scrollable.container.offsetHeight, this.scrollable.isScrolledDown);
-          } */
+      if(diff) {
+        const needScrollTop = this.scrollable.scrollTop + diff;
+        this.scrollable.scrollTop = needScrollTop;
+      }
+      
+      setEndRAF(false);
 
-          if(realDiff < 0 && this.scrollable.isScrolledDown) {
-            //if(isSafari) { // * fix opening keyboard while ESG is active 
-              part = -realDiff;
-            //}
+      part = _part;
+      wasHeight = height;
+    };
 
-            skip = true;
-            setEndRAF(false);
-            return;
-          }
-        }
+    const resizeObserver = this.resizeObserver = new ResizeObserver(processEntries);
+    resizeObserver.observe(container);
+  }
 
-        scrolled += diff;
-
-        /* if(DEBUG) {
-          this.log('resize', wasHeight - height, diff, this.scrollable.container.offsetHeight, this.scrollable.isScrolledDown, height, wasHeight);
-        } */
-
-        if(diff) {
-          const needScrollTop = this.scrollable.scrollTop + diff;
-          this.scrollable.scrollTop = needScrollTop;
-        }
-        
-        setEndRAF(false);
-
-        part = _part;
-        wasHeight = height;
-      };
-
-      // @ts-ignore
-      const resizeObserver = new ResizeObserver(processEntries);
-      resizeObserver.observe(this.bubblesContainer);
+  private destroyResizeObserver() {
+    const resizeObserver = this.resizeObserver;
+    if(!resizeObserver) {
+      return;
     }
+
+    resizeObserver.disconnect();
+    this.resizeObserver = undefined;
   }
 
   private onBubblesMouseMove = (e: MouseEvent) => {
@@ -1047,7 +1096,7 @@ export default class ChatBubbles {
   };
 
   public setStickyDateManually() {
-    // return;
+    return;
 
     const timestamps = Object.keys(this.dateMessages).map(k => +k).sort((a, b) => b - a);
     let lastVisible: HTMLElement;
@@ -1713,7 +1762,13 @@ export default class ChatBubbles {
     //return;
     
     // * В таком случае, кнопка не будет моргать если чат в самом низу, и правильно отработает случай написания нового сообщения и проскролла вниз
-    if(this.isHeavyAnimationInProgress && this.scrolledDown) return;
+    if(this.isHeavyAnimationInProgress && this.scrolledDown) {
+      if(this.sliceViewportDebounced) {
+        this.sliceViewportDebounced.clearTimeout();
+      }
+      
+      return;
+    }
     //lottieLoader.checkAnimations(false, 'chat');
 
     const distanceToEnd = this.scrollable.getDistanceToEnd();
@@ -1821,7 +1876,7 @@ export default class ChatBubbles {
     }
   }
   
-  public deleteMessagesByIds(mids: number[], permanent = true) {
+  public deleteMessagesByIds(mids: number[], permanent = true, ignoreOnScroll?: boolean) {
     let deleted = false;
     mids.forEach(mid => {
       if(!(mid in this.bubbles)) return;
@@ -1868,7 +1923,10 @@ export default class ChatBubbles {
     
     animationIntersector.checkAnimations(false, CHAT_ANIMATION_GROUP);
     this.deleteEmptyDateGroups();
-    this.onScroll();
+
+    if(!ignoreOnScroll) {
+      this.onScroll();
+    }
   }
   
   public renderNewMessagesByIds(mids: number[], scrolledDown?: boolean) {
@@ -1928,7 +1986,7 @@ export default class ChatBubbles {
         this.scrollable.scrollTop += add; */
         setPaddingTo = this.chatInner;
         setPaddingTo.style.paddingTop = clientHeight + 'px';
-        this.scrollable.scrollTop = scrollHeight;
+        this.scrollable.setScrollTopSilently(scrollHeight);
         this.isTopPaddingSet = true;
       }
     }
@@ -1982,7 +2040,7 @@ export default class ChatBubbles {
 
     let fallbackToElementStartWhenCentering: HTMLElement;
     // * if it's a start, then scroll to start of the group
-    if(bubble && position !== 'end' && whichChild(bubble) === (this.stickyIntersector ? 2 : 1)/*  && this.chat.setPeerPromise */) {
+    if(bubble && position !== 'end' && whichChild(bubble) === (this.stickyIntersector ? STICKY_OFFSET : 1)/*  && this.chat.setPeerPromise */) {
       const dateGroup = bubble.parentElement;
       // if(whichChild(dateGroup) === 0) {
         fallbackToElementStartWhenCentering = dateGroup;
@@ -2002,7 +2060,7 @@ export default class ChatBubbles {
     } */
 
     const isChangingHeight = (this.chat.input.messageInput && this.chat.input.messageInput.classList.contains('is-changing-height')) || this.chat.container.classList.contains('is-toggling-helper');
-    return this.scrollable.scrollIntoViewNew({
+    const promise = this.scrollable.scrollIntoViewNew({
       element, 
       position, 
       margin, 
@@ -2024,6 +2082,13 @@ export default class ChatBubbles {
       } : undefined,
       fallbackToElementStartWhenCentering
     });
+
+    // fix flickering date when opening unread chat and focusing message
+    if(forceDirection === FocusDirection.Static) {
+      this.scrollable.lastScrollPosition = this.scrollable.scrollTop;
+    }
+    
+    return promise;
   }
 
   public scrollToEnd() {
@@ -2080,58 +2145,66 @@ export default class ChatBubbles {
     }, 2000);
   }
 
+  private createDateBubble(timestamp: number, date: Date = new Date(timestamp * 1000)) {
+    let dateElement: HTMLElement;
+      
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const isScheduled = this.chat.type === 'scheduled';
+    
+    if(today.getTime() === date.getTime()) {
+      dateElement = i18n(isScheduled ? 'Chat.Date.ScheduledForToday' : 'Date.Today');
+    } else if(isScheduled && timestamp === SEND_WHEN_ONLINE_TIMESTAMP) {
+      dateElement = i18n('MessageScheduledUntilOnline');
+    } else {
+      const options: Intl.DateTimeFormatOptions = {
+        day: 'numeric',
+        month: 'long'
+      };
+
+      if(date.getFullYear() !== today.getFullYear()) {
+        options.year = 'numeric';
+      }
+
+      dateElement = new I18n.IntlDateElement({
+        date,
+        options
+      }).element;
+
+      if(isScheduled) {
+        dateElement = i18n('Chat.Date.ScheduledFor', [dateElement]);
+      }
+    }
+    
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble service is-date';
+    const bubbleContent = document.createElement('div');
+    bubbleContent.classList.add('bubble-content');
+    const serviceMsg = document.createElement('div');
+    serviceMsg.classList.add('service-msg');
+
+    serviceMsg.append(dateElement);
+
+    bubbleContent.append(serviceMsg);
+    bubble.append(bubbleContent);
+
+    return bubble;
+  }
+
   public getDateContainerByMessage(message: any, reverse: boolean) {
     const date = new Date(message.date * 1000);
     date.setHours(0, 0, 0);
     const dateTimestamp = date.getTime();
     if(!this.dateMessages[dateTimestamp]) {
-      let dateElement: HTMLElement;
-      
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      const isScheduled = this.chat.type === 'scheduled';
-      
-      if(today.getTime() === date.getTime()) {
-        dateElement = i18n(isScheduled ? 'Chat.Date.ScheduledForToday' : 'Date.Today');
-      } else if(isScheduled && message.date === SEND_WHEN_ONLINE_TIMESTAMP) {
-        dateElement = i18n('MessageScheduledUntilOnline');
-      } else {
-        const options: Intl.DateTimeFormatOptions = {
-          day: 'numeric',
-          month: 'long'
-        };
-
-        if(date.getFullYear() !== today.getFullYear()) {
-          options.year = 'numeric';
-        }
-
-        dateElement = new I18n.IntlDateElement({
-          date,
-          options
-        }).element;
-
-        if(isScheduled) {
-          dateElement = i18n('Chat.Date.ScheduledFor', [dateElement]);
-        }
-      }
-      
-      const bubble = document.createElement('div');
-      bubble.className = 'bubble service is-date';
-      const bubbleContent = document.createElement('div');
-      bubbleContent.classList.add('bubble-content');
-      const serviceMsg = document.createElement('div');
-      serviceMsg.classList.add('service-msg');
-
-      serviceMsg.append(dateElement);
-
-      bubbleContent.append(serviceMsg);
-      bubble.append(bubbleContent);
-      ////////this.log('need to render date message', dateTimestamp, str);
+      const bubble = this.createDateBubble(message.date, date);
+      // bubble.classList.add('is-sticky');
+      const fakeBubble = this.createDateBubble(message.date, date);
+      fakeBubble.classList.add('is-fake');
 
       const container = document.createElement('section');
       container.className = 'bubbles-date-group';
-      container.append(bubble);
+      container.append(bubble, fakeBubble);
 
       this.dateMessages[dateTimestamp] = {
         div: bubble,
@@ -2238,6 +2311,8 @@ export default class ChatBubbles {
       this.viewsObserver.disconnect();
       this.viewsMids.clear();
     }
+
+    this.destroyResizeObserver();
     
     this.middleware.clean();
     
@@ -2258,6 +2333,9 @@ export default class ChatBubbles {
       clearTimeout(this.isScrollingTimeout);
       this.isScrollingTimeout = 0;
     }
+
+    this.bubblesContainer.classList.remove('has-sticky-dates');
+    this.scrollable.cancelMeasure();
   }
 
   public setPeer(peerId: PeerId, lastMsgId?: number, startParam?: string): {cached?: boolean, promise: Chat['setPeerPromise']} {
@@ -2331,7 +2409,7 @@ export default class ChatBubbles {
           this.chat.dispatchEvent('setPeer', lastMsgId, false);
         } else if(topMessage && !isJump) {
           //this.log('will scroll down', this.scroll.scrollTop, this.scroll.scrollHeight);
-          scrollable.scrollTop = scrollable.scrollHeight;
+          scrollable.setScrollTopSilently(scrollable.scrollHeight);
           this.chat.dispatchEvent('setPeer', lastMsgId, true);
         }
 
@@ -2422,6 +2500,8 @@ export default class ChatBubbles {
     //console.timeEnd('appImManager setPeer pre promise');
     /* this.ladderDeferred && this.ladderDeferred.resolve();
     this.ladderDeferred = deferredPromise<void>(); */
+
+    const middleware = this.getMiddleware();
     
     animationIntersector.lockGroup(CHAT_ANIMATION_GROUP);
     const setPeerPromise = promise.then(() => {
@@ -2431,9 +2511,9 @@ export default class ChatBubbles {
         if(!samePeer) {
           this.chat.finishPeerChange(isTarget, isJump, lastMsgId, startParam); // * костыль
         }
-      } else {
-        this.preloader.detach();
       }
+
+      this.preloader.detach();
 
       if(this.resolveLadderAnimation) {
         this.resolveLadderAnimation();
@@ -2455,7 +2535,7 @@ export default class ChatBubbles {
 
       //if(dialog && lastMsgID && lastMsgID !== topMessage && (this.bubbles[lastMsgID] || this.firstUnreadBubble)) {
       if(savedPosition) {
-        scrollable.scrollTop = scrollable.lastScrollPosition = savedPosition.top;
+        scrollable.setScrollTopSilently(savedPosition.top);
         /* const mountedByLastMsgId = this.getMountedBubble(lastMsgId);
         let bubble: HTMLElement = mountedByLastMsgId?.bubble;
         if(!bubble?.parentElement) {
@@ -2470,9 +2550,9 @@ export default class ChatBubbles {
       } else if((topMessage && isJump) || isTarget) {
         const fromUp = maxBubbleId > 0 && (maxBubbleId < lastMsgId || lastMsgId < 0);
         if(!fromUp && samePeer) {
-          scrollable.scrollTop = scrollable.lastScrollPosition = 99999;
+          scrollable.setScrollTopSilently(99999);
         } else if(fromUp/*  && (samePeer || forwardingUnread) */) {
-          scrollable.scrollTop = scrollable.lastScrollPosition = 0;
+          scrollable.setScrollTopSilently(0);
         }
 
         const mountedByLastMsgId = this.getMountedBubble(lastMsgId);
@@ -2489,7 +2569,7 @@ export default class ChatBubbles {
           }
         }
       } else {
-        scrollable.scrollTop = scrollable.lastScrollPosition = 99999;
+        scrollable.setScrollTopSilently(99999);
       }
 
       this.onScroll();
@@ -2605,7 +2685,10 @@ export default class ChatBubbles {
       //console.timeEnd('appImManager setPeer');
     }).catch(err => {
       this.log.error('getHistory promise error:', err);
-      this.preloader.detach();
+      if(!middleware()) {
+        this.preloader.detach();
+      }
+
       throw err;
     });
 
@@ -2628,6 +2711,8 @@ export default class ChatBubbles {
 
     this.chatInner.classList.toggle('is-chat', this.chat.isAnyGroup());
     this.chatInner.classList.toggle('is-channel', isChannel);
+
+    this.createResizeObserver();
   }
 
   public renderMessagesQueue(message: any, bubble: HTMLElement, reverse: boolean, promises: Promise<any>[]) {
@@ -2706,7 +2791,7 @@ export default class ChatBubbles {
 
     const dateMessage = this.getDateContainerByMessage(message, reverse);
     if(this.chat.type === 'scheduled' || this.chat.type === 'pinned'/*  || true */) { // ! TEMP COMMENTED
-      const offset = this.stickyIntersector ? 2 : 1;
+      const offset = this.stickyIntersector ? STICKY_OFFSET : 1;
       let children = Array.from(dateMessage.container.children).slice(offset) as HTMLElement[];
       let i = 0, foundMidOnSameTimestamp = 0;
       for(; i < children.length; ++i) {
@@ -2735,7 +2820,7 @@ export default class ChatBubbles {
       positionElementByIndex(bubble, dateMessage.container, index);
     } else {
       if(reverse) {
-        dateMessage.container.insertBefore(bubble, dateMessage.container.children[this.stickyIntersector ? 1 : 0].nextSibling);
+        dateMessage.container.insertBefore(bubble, dateMessage.container.children[this.stickyIntersector ? STICKY_OFFSET - 1 : 0].nextSibling);
       } else {
         dateMessage.container.append(bubble);
       }
@@ -3880,14 +3965,18 @@ export default class ChatBubbles {
       this.log('performHistoryResult: will render some messages:', history.length, this.isHeavyAnimationInProgress, this.messagesQueuePromise);
     } */
 
-    let scrollSaver: ScrollSaver/* , viewportSlice: ReturnType<ChatBubbles['getViewportSlice']> */;
+    let scrollSaver: ScrollSaver, hadScroll: boolean/* , viewportSlice: ReturnType<ChatBubbles['getViewportSlice']> */;
     this.messagesQueueOnRender = () => {
       scrollSaver = new ScrollSaver(this.scrollable, reverse);
-
-      const viewportSlice = this.getViewportSlice();
-      this.deleteViewportSlice(viewportSlice);
-
+      
+      if(this.getRenderedLength() && !this.chat.setPeerPromise) {
+        const viewportSlice = this.getViewportSlice();
+        this.deleteViewportSlice(viewportSlice);
+      }
+      
       scrollSaver.save();
+      const saved = scrollSaver.getSaved();
+      hadScroll = saved.scrollHeight !== saved.clientHeight;
     };
 
     if(this.needReflowScroll) {
@@ -3936,6 +4025,20 @@ export default class ChatBubbles {
 
     if(scrollSaver) {
       scrollSaver.restore(history.length === 1 && !reverse ? false : true);
+
+      const state = scrollSaver.getSaved();
+      if(state.scrollHeight !== state.clientHeight) {
+        /* for(const timestamp in this.dateMessages) {
+          const dateMessage = this.dateMessages[timestamp];
+          dateMessage.div.classList.add('is-sticky');
+        } */
+
+        const middleware = this.getMiddleware();
+        setTimeout(() => {
+          if(!middleware()) return;
+          this.bubblesContainer.classList.add('has-sticky-dates');
+        }, 600);
+      }
     }
 
     return true;
@@ -4378,6 +4481,7 @@ export default class ChatBubbles {
   }
 
   public getViewportSlice() {
+    // this.log.trace('viewport slice');
     return getViewportSlice({
       overflowElement: this.scrollable.container, 
       selector: '.bubbles-date-group .bubble:not(.is-date)',
@@ -4393,11 +4497,12 @@ export default class ChatBubbles {
     if(invisibleBottom.length) this.setLoaded('bottom', false);
 
     const mids = invisible.map(({element}) => +element.dataset.mid);
-    this.deleteMessagesByIds(mids, false);
+    this.deleteMessagesByIds(mids, false, true);
   }
 
-  public sliceViewport() {
-    if(IS_SAFARI) {
+  public sliceViewport(ignoreHeavyAnimation?: boolean) {
+    // Safari cannot reset the scroll.
+    if(IS_SAFARI || (this.isHeavyAnimationInProgress && !ignoreHeavyAnimation)/*  || true */) {
       return;
     }
 
@@ -4765,7 +4870,7 @@ export default class ChatBubbles {
   }
 
   public deleteEmptyDateGroups() {
-    const mustBeCount = 1 + +!!this.stickyIntersector;
+    const mustBeCount = this.stickyIntersector ? STICKY_OFFSET : 1;
     let deleted = false;
     for(const i in this.dateMessages) {
       const dateMessage = this.dateMessages[i];

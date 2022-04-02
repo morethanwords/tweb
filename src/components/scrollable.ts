@@ -72,7 +72,8 @@ export class ScrollableBase {
 
   public scrollProperty: 'scrollTop' | 'scrollLeft';
   
-  private removeHeavyAnimationListener: () => void;
+  protected removeHeavyAnimationListener: () => void;
+  protected addedScrollListener: boolean;
 
   constructor(public el: HTMLElement, logPrefix = '', public container: HTMLElement = document.createElement('div')) {
     this.container.classList.add('scrollable');
@@ -87,20 +88,38 @@ export class ScrollableBase {
     //this.onScroll();
   }
 
+  public addScrollListener() {
+    if(this.addedScrollListener) {
+      return;
+    }
+
+    this.addedScrollListener = true;
+    this.container.addEventListener('scroll', this.onScroll, {passive: true, capture: true});
+  }
+  
+  public removeScrollListener() {
+    if(!this.addedScrollListener) {
+      return;
+    }
+
+    this.addedScrollListener = false;
+    this.container.removeEventListener('scroll', this.onScroll, {capture: true});
+  }
+
   public setListeners() {
     if(this.removeHeavyAnimationListener) {
       return;
     }
 
     window.addEventListener('resize', this.onScroll, {passive: true});
-    this.container.addEventListener('scroll', this.onScroll, {passive: true, capture: true});
+    this.addScrollListener();
 
     this.removeHeavyAnimationListener = useHeavyAnimationCheck(() => {
       this.isHeavyAnimationInProgress = true;
 
       if(this.onScrollMeasure) {
+        this.cancelMeasure();
         this.needCheckAfterAnimation = true;
-        window.cancelAnimationFrame(this.onScrollMeasure);
       }
     }, () => {
       this.isHeavyAnimationInProgress = false;
@@ -118,9 +137,10 @@ export class ScrollableBase {
     }
 
     window.removeEventListener('resize', this.onScroll);
-    this.container.removeEventListener('scroll', this.onScroll, {capture: true});
+    this.removeScrollListener();
 
     this.removeHeavyAnimationListener();
+    this.removeHeavyAnimationListener = undefined;
   }
 
   public append(element: HTMLElement) {
@@ -143,17 +163,15 @@ export class ScrollableBase {
     //return;
 
     if(this.isHeavyAnimationInProgress) {
-      if(this.onScrollMeasure) {
-        window.cancelAnimationFrame(this.onScrollMeasure);
-      }
-
+      this.cancelMeasure();
       this.needCheckAfterAnimation = true;
       return;
     }
 
     //if(this.onScrollMeasure || ((this.scrollLocked || (!this.onScrolledTop && !this.onScrolledBottom)) && !this.splitUp && !this.onAdditionalScroll)) return;
     if((!this.onScrolledTop && !this.onScrolledBottom) && !this.splitUp && !this.onAdditionalScroll) return;
-    if(this.onScrollMeasure) window.cancelAnimationFrame(this.onScrollMeasure);
+    if(this.onScrollMeasure) return;
+    // if(this.onScrollMeasure) window.cancelAnimationFrame(this.onScrollMeasure);
     this.onScrollMeasure = window.requestAnimationFrame(() => {
       this.onScrollMeasure = 0;
 
@@ -170,6 +188,13 @@ export class ScrollableBase {
       }
     });
   };
+
+  public cancelMeasure() {
+    if(this.onScrollMeasure) {
+      window.cancelAnimationFrame(this.onScrollMeasure);
+      this.onScrollMeasure = 0;
+    }
+  }
 }
 
 export type SliceSides = 'top' | 'bottom';
@@ -251,6 +276,19 @@ export default class Scrollable extends ScrollableBase {
   get scrollTop() {
     //this.log.trace('get scrollTop');
     return this.container.scrollTop;
+  }
+
+  public setScrollTopSilently(value: number) {
+    this.lastScrollPosition = value;
+    if(this.removeHeavyAnimationListener) {
+      this.removeScrollListener();
+      this.container.addEventListener('scroll', (e) => {
+        cancelEvent(e);
+        this.addScrollListener();
+      }, {capture: true, passive: false, once: true});
+    }
+
+    this.scrollTop = value;
   }
   
   get scrollHeight() {

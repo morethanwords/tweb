@@ -9,8 +9,10 @@ import { IS_SAFARI } from "../environment/userAgent";
 import reflowScrollableElement from "./dom/reflowScrollableElement";
 
 export default class ScrollSaver {
-  private previousScrollHeight: number;
-  private previousScrollHeightMinusTop: number/* , previousScrollHeight: number */;
+  private scrollHeight: number;
+  private scrollHeightMinusTop: number;
+  private scrollTop: number;
+  private clientHeight: number;
 
   /**
    * 
@@ -28,13 +30,23 @@ export default class ScrollSaver {
     return this.scrollable.container;
   }
 
+  public getSaved() {
+    return {
+      scrollHeight: this.scrollHeight, 
+      scrollTop: this.scrollTop,
+      clientHeight: this.clientHeight
+    };
+  }
+
   public save() {
-    const {scrollTop, scrollHeight} = this.container;
+    const {scrollTop, scrollHeight, clientHeight} = this.container;
 
     //previousScrollHeight = scrollHeight;
     //previousScrollHeight = scrollHeight + padding;
-    this.previousScrollHeight = scrollHeight;
-    this.previousScrollHeightMinusTop = this.reverse ? scrollHeight - scrollTop : scrollTop;
+    this.scrollHeight = scrollHeight;
+    this.scrollTop = scrollTop;
+    this.clientHeight = clientHeight;
+    this.scrollHeightMinusTop = this.reverse ? scrollHeight - scrollTop : scrollTop;
 
     //this.chatInner.style.paddingTop = padding + 'px';
     /* if(reverse) {
@@ -49,50 +61,53 @@ export default class ScrollSaver {
   }
 
   public restore(useReflow?: boolean) {
-    const {container, previousScrollHeightMinusTop, scrollable} = this;
-    if(previousScrollHeightMinusTop !== undefined) {
-      const scrollHeight = container.scrollHeight;
-      if(scrollHeight === this.previousScrollHeight) {
-        return;
-      }
-
-      /* const scrollHeight = container.scrollHeight;
-      const addedHeight = scrollHeight - previousScrollHeight;
-      
-      this.chatInner.style.paddingTop = (10000 - addedHeight) + 'px'; */
-      /* const scrollHeight = scrollHeight;
-      const addedHeight = scrollHeight - previousScrollHeight;
-      
-      this.chatInner.style.paddingTop = (padding - addedHeight) + 'px';
-      
-      //const newScrollTop = reverse ? scrollHeight - previousScrollHeightMinusTop : previousScrollHeightMinusTop;
-      const newScrollTop = reverse ? scrollHeight - addedHeight - previousScrollHeightMinusTop : previousScrollHeightMinusTop;
-      this.log('performHistoryResult: will set scrollTop', 
-      previousScrollHeightMinusTop, scrollHeight, 
-      newScrollTop, container.container.clientHeight); */
-      //const newScrollTop = reverse ? scrollHeight - previousScrollHeightMinusTop : previousScrollHeightMinusTop;
-      const newScrollTop = this.reverse ? scrollHeight - previousScrollHeightMinusTop : previousScrollHeightMinusTop;
-      
-      /* if(DEBUG) {
-        this.log('performHistoryResult: will set up scrollTop:', newScrollTop, this.isHeavyAnimationInProgress);
-      } */
-
-      // touchSupport for safari iOS
-      //isTouchSupported && isApple && (container.container.style.overflow = 'hidden');
-      container.scrollTop = newScrollTop;
-      //container.scrollTop = scrollHeight;
-      //isTouchSupported && isApple && (container.container.style.overflow = '');
-
-      scrollable.lastScrollPosition = newScrollTop;
-      // scrollable.lastScrollDirection = 0;
-
-      if(IS_SAFARI && useReflow/*  && !isAppleMobile */) { // * fix blinking and jumping
-        reflowScrollableElement(container);
-      }
-
-      /* if(DEBUG) {
-        this.log('performHistoryResult: have set up scrollTop:', newScrollTop, container.scrollTop, container.scrollHeight, this.isHeavyAnimationInProgress);
-      } */
+    const {container, scrollHeightMinusTop: previousScrollHeightMinusTop, scrollable} = this;
+    if(previousScrollHeightMinusTop === undefined) {
+      throw new Error('scroll was not saved');
     }
+
+    const scrollHeight = container.scrollHeight;
+    if(scrollHeight === this.scrollHeight) {
+      return;
+    }
+
+    this.scrollHeight = scrollHeight;
+
+    /* const scrollHeight = container.scrollHeight;
+    const addedHeight = scrollHeight - previousScrollHeight;
+    
+    this.chatInner.style.paddingTop = (10000 - addedHeight) + 'px'; */
+    /* const scrollHeight = scrollHeight;
+    const addedHeight = scrollHeight - previousScrollHeight;
+    
+    this.chatInner.style.paddingTop = (padding - addedHeight) + 'px';
+    
+    //const newScrollTop = reverse ? scrollHeight - previousScrollHeightMinusTop : previousScrollHeightMinusTop;
+    const newScrollTop = reverse ? scrollHeight - addedHeight - previousScrollHeightMinusTop : previousScrollHeightMinusTop;
+    this.log('performHistoryResult: will set scrollTop', 
+    previousScrollHeightMinusTop, scrollHeight, 
+    newScrollTop, container.container.clientHeight); */
+    //const newScrollTop = reverse ? scrollHeight - previousScrollHeightMinusTop : previousScrollHeightMinusTop;
+    const newScrollTop = this.reverse ? scrollHeight - previousScrollHeightMinusTop : previousScrollHeightMinusTop;
+    
+    /* if(DEBUG) {
+      this.log('performHistoryResult: will set up scrollTop:', newScrollTop, this.isHeavyAnimationInProgress);
+    } */
+
+    // touchSupport for safari iOS
+    //isTouchSupported && isApple && (container.container.style.overflow = 'hidden');
+    this.scrollable.setScrollTopSilently(this.scrollTop = newScrollTop);
+    //container.scrollTop = scrollHeight;
+    //isTouchSupported && isApple && (container.container.style.overflow = '');
+
+    if(IS_SAFARI && useReflow/*  && !isAppleMobile */) { // * fix blinking and jumping
+      reflowScrollableElement(container);
+    }
+
+    /* if(DEBUG) {
+      this.log('performHistoryResult: have set up scrollTop:', newScrollTop, container.scrollTop, container.scrollHeight, this.isHeavyAnimationInProgress);
+    } */
+
+    return;
   }
 }
