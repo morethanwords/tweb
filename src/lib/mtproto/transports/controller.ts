@@ -57,7 +57,17 @@ export class MTTransportController extends EventListenerBase<{
     socket.setAutoReconnect(false);
     socket.connection.addEventListener('close', () => websocketPromise.resolve(false), {once: true});
     socket.connection.addEventListener('open', () => websocketPromise.resolve(true), {once: true});
-    setTimeout(() => websocketPromise.resolve(false), timeout);
+    setTimeout(() => {
+      if(websocketPromise.isFulfilled || websocketPromise.isRejected) {
+        return;
+      }
+
+      if(socket.connection) {
+        socket.connection.close();
+      }
+      
+      websocketPromise.resolve(false);
+    }, timeout);
 
     const [isHttpAvailable, isWebSocketAvailable] = await Promise.all([httpPromise, websocketPromise]);
 
