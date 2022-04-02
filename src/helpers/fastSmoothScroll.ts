@@ -24,6 +24,15 @@ export enum FocusDirection {
 };
 
 export type ScrollGetNormalSizeCallback = (options: {rect: DOMRect}) => number;
+export type ScrollStartCallbackDimensions = {
+  scrollSize: number,
+  scrollPosition: number,
+  distanceToEnd: number,
+  path: number,
+  duration: number,
+  containerRect: DOMRect,
+  elementRect: DOMRect,
+};
 
 export type ScrollOptions = {
   container: HTMLElement,
@@ -35,7 +44,8 @@ export type ScrollOptions = {
   forceDuration?: number,
   axis?: 'x' | 'y',
   getNormalSize?: ScrollGetNormalSizeCallback,
-  fallbackToElementStartWhenCentering?: HTMLElement
+  fallbackToElementStartWhenCentering?: HTMLElement,
+  startCallback?: (dimensions: ScrollStartCallbackDimensions) => void
 };
 
 export default function fastSmoothScroll(options: ScrollOptions) {
@@ -265,6 +275,19 @@ function scrollWithJs(options: ScrollOptions): Promise<void> {
     });
     
   }); */
+
+  if(options.startCallback) {
+    const distanceToEnd = scrollSize - Math.round(target + container[axis === 'y' ? 'offsetHeight' : 'offsetWidth']);
+    options.startCallback({
+      scrollSize,
+      scrollPosition,
+      distanceToEnd,
+      path,
+      duration,
+      containerRect,
+      elementRect
+    });
+  }
 
   return animateSingle(tick, container);
 }

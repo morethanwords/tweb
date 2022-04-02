@@ -43,7 +43,7 @@ import PollElement from "../poll";
 import AudioElement from "../audio";
 import { ChatInvite, Message, MessageEntity,  MessageMedia,  MessageReplyHeader, Photo, PhotoSize, ReactionCount, ReplyMarkup, SponsoredMessage, Update, WebPage } from "../../layer";
 import { NULL_PEER_ID, REPLIES_PEER_ID } from "../../lib/mtproto/mtproto_config";
-import { FocusDirection } from "../../helpers/fastSmoothScroll";
+import { FocusDirection, ScrollStartCallbackDimensions } from "../../helpers/fastSmoothScroll";
 import useHeavyAnimationCheck, { getHeavyAnimationPromise, dispatchHeavyAnimationEvent, interruptHeavyAnimation } from "../../hooks/useHeavyAnimationCheck";
 import { fastRaf, fastRafPromise } from "../../helpers/schedulers";
 import { deferredPromise } from "../../helpers/cancellablePromise";
@@ -119,6 +119,7 @@ type GenerateLocalMessageType<IsService> = IsService extends true ? Message.mess
 
 const SPONSORED_MESSAGE_ID_OFFSET = 1;
 const STICKY_OFFSET = 3;
+const SCROLLED_DOWN_THRESHOLD = 300;
 
 export default class ChatBubbles {
   public bubblesContainer: HTMLDivElement;
@@ -207,7 +208,8 @@ export default class ChatBubbles {
   private hoverBubble: HTMLElement;
   private hoverReaction: HTMLElement;
   private sliceViewportDebounced: DebounceReturnType<ChatBubbles['sliceViewport']>;
-  resizeObserver: ResizeObserver;
+  private resizeObserver: ResizeObserver;
+  private willScrollOnLoad: boolean;
 
   // private reactions: Map<number, ReactionsElement>;
 
@@ -1758,21 +1760,38 @@ export default class ChatBubbles {
     }
   }
 
-  public onScroll = () => {
+  public onScroll = (ignoreHeavyAnimation?: boolean, scrollDimensions?: ScrollStartCallbackDimensions) => {
     //return;
-    
-    // * В таком случае, кнопка не будет моргать если чат в самом низу, и правильно отработает случай написания нового сообщения и проскролла вниз
-    if(this.isHeavyAnimationInProgress && this.scrolledDown) {
+
+    if(this.isHeavyAnimationInProgress) {
       if(this.sliceViewportDebounced) {
         this.sliceViewportDebounced.clearTimeout();
       }
-      
-      return;
+
+      // * В таком случае, кнопка не будет моргать если чат в самом низу, и правильно отработает случай написания нового сообщения и проскролла вниз
+      if(this.scrolledDown && !ignoreHeavyAnimation) {
+        return;
+      }
+    } else {
+      if(this.chat.topbar.pinnedMessage) {
+        this.chat.topbar.pinnedMessage.setCorrectIndexThrottled(this.scrollable.lastScrollDirection);
+      }
+  
+      if(this.sliceViewportDebounced) {
+        this.sliceViewportDebounced();
+      }
+  
+      this.setStickyDateManually();
     }
+    
     //lottieLoader.checkAnimations(false, 'chat');
 
-    const distanceToEnd = this.scrollable.getDistanceToEnd();
-    if(/* !IS_TOUCH_SUPPORTED &&  */this.scrollable.lastScrollDirection !== 0 && distanceToEnd > 0) {
+    if(scrollDimensions && scrollDimensions.distanceToEnd < SCROLLED_DOWN_THRESHOLD && this.scrolledDown) {
+      return;
+    }
+
+    const distanceToEnd = scrollDimensions?.distanceToEnd ?? this.scrollable.getDistanceToEnd();
+    if(/* !IS_TOUCH_SUPPORTED &&  */(this.scrollable.lastScrollDirection !== 0 && distanceToEnd > 0) || scrollDimensions) {
       if(this.isScrollingTimeout) {
         clearTimeout(this.isScrollingTimeout);
       } else if(!this.chatInner.classList.contains('is-scrolling')) {
@@ -1782,26 +1801,16 @@ export default class ChatBubbles {
       this.isScrollingTimeout = window.setTimeout(() => {
         this.chatInner.classList.remove('is-scrolling');
         this.isScrollingTimeout = 0;
-      }, 1350);
+      }, 1350 + (scrollDimensions?.duration ?? 0));
     }
     
-    if(distanceToEnd < 300 && (this.scrollable.loadedAll.bottom || this.chat.setPeerPromise || !this.peerId)) {
+    if(distanceToEnd < SCROLLED_DOWN_THRESHOLD && (this.scrollable.loadedAll.bottom || this.chat.setPeerPromise || !this.peerId)) {
       this.bubblesContainer.classList.add('scrolled-down');
       this.scrolledDown = true;
     } else if(this.bubblesContainer.classList.contains('scrolled-down')) {
       this.bubblesContainer.classList.remove('scrolled-down');
       this.scrolledDown = false;
     }
-
-    if(this.chat.topbar.pinnedMessage) {
-      this.chat.topbar.pinnedMessage.setCorrectIndexThrottled(this.scrollable.lastScrollDirection);
-    }
-
-    if(this.sliceViewportDebounced) {
-      this.sliceViewportDebounced();
-    }
-
-    this.setStickyDateManually();
   };
 
   public setScroll() {
@@ -1917,6 +1926,7 @@ export default class ChatBubbles {
       return;
     }
 
+    this.scrollable.ignoreNextScrollEvent();
     if(permanent && this.chat.selection.isSelecting) {
       this.chat.selection.deleteSelectedMids(this.peerId, mids);
     }
@@ -2080,7 +2090,11 @@ export default class ChatBubbles {
         const diff = rowsWrapperHeight - 54;
         return rect.height + diff; */
       } : undefined,
-      fallbackToElementStartWhenCentering
+      fallbackToElementStartWhenCentering,
+      startCallback: (dimensions) => {
+        // this.onScroll(true, this.scrolledDown && dimensions.distanceToEnd <= SCROLLED_DOWN_THRESHOLD ? undefined : dimensions);
+        this.onScroll(true, dimensions);
+      }
     });
 
     // fix flickering date when opening unread chat and focusing message
@@ -2409,7 +2423,8 @@ export default class ChatBubbles {
           this.chat.dispatchEvent('setPeer', lastMsgId, false);
         } else if(topMessage && !isJump) {
           //this.log('will scroll down', this.scroll.scrollTop, this.scroll.scrollHeight);
-          scrollable.setScrollTopSilently(scrollable.scrollHeight);
+          // scrollable.setScrollTopSilently(scrollable.scrollHeight);
+          this.scrollToEnd();
           this.chat.dispatchEvent('setPeer', lastMsgId, true);
         }
 
@@ -2472,6 +2487,12 @@ export default class ChatBubbles {
     }
 
     this.lazyLoadQueue.lock();
+
+    const haveToScrollToBubble = (topMessage && (isJump || samePeer)) || isTarget;
+    const fromUp = maxBubbleId > 0 && (maxBubbleId < lastMsgId || lastMsgId < 0);
+    const scrollFromDown = !fromUp && samePeer;
+    const scrollFromUp = !scrollFromDown && fromUp/*  && (samePeer || forwardingUnread) */;
+    this.willScrollOnLoad = scrollFromDown || scrollFromUp;
 
     let result: ReturnType<ChatBubbles['getHistory']>;
     if(!savedPosition) {
@@ -2547,11 +2568,10 @@ export default class ChatBubbles {
           const distance = savedPosition.top - top;
           scrollable.scrollTop += distance;
         } */
-      } else if((topMessage && isJump) || isTarget) {
-        const fromUp = maxBubbleId > 0 && (maxBubbleId < lastMsgId || lastMsgId < 0);
-        if(!fromUp && samePeer) {
+      } else if(haveToScrollToBubble) {
+        if(scrollFromDown) {
           scrollable.setScrollTopSilently(99999);
-        } else if(fromUp/*  && (samePeer || forwardingUnread) */) {
+        } else if(scrollFromUp) {
           scrollable.setScrollTopSilently(0);
         }
 
@@ -2564,7 +2584,7 @@ export default class ChatBubbles {
         // ! sometimes there can be no bubble
         if(bubble) {
           this.scrollToBubble(bubble, followingUnread ? 'start' : 'center', !samePeer ? FocusDirection.Static : undefined);
-          if(!followingUnread) {
+          if(!followingUnread && isTarget) {
             this.highlightBubble(bubble);
           }
         }
@@ -3971,7 +3991,7 @@ export default class ChatBubbles {
       
       if(this.getRenderedLength() && !this.chat.setPeerPromise) {
         const viewportSlice = this.getViewportSlice();
-        this.deleteViewportSlice(viewportSlice);
+        this.deleteViewportSlice(viewportSlice, true);
       }
       
       scrollSaver.save();
@@ -4032,12 +4052,20 @@ export default class ChatBubbles {
           const dateMessage = this.dateMessages[timestamp];
           dateMessage.div.classList.add('is-sticky');
         } */
-
+        
         const middleware = this.getMiddleware();
-        setTimeout(() => {
+        const callback = () => {
           if(!middleware()) return;
           this.bubblesContainer.classList.add('has-sticky-dates');
-        }, 600);
+        };
+
+        if(this.willScrollOnLoad) {
+          callback();
+        } else {
+          setTimeout(callback, 600);
+        }
+      } else {
+        this.willScrollOnLoad = undefined;
       }
     }
 
@@ -4489,15 +4517,33 @@ export default class ChatBubbles {
     });
   }
 
-  public deleteViewportSlice(slice: ReturnType<ChatBubbles['getViewportSlice']>) {
+  public deleteViewportSlice(slice: ReturnType<ChatBubbles['getViewportSlice']>, ignoreScrollSaving?: boolean) {
+    // return;
+
     const {invisibleTop, invisibleBottom} = slice;
     const invisible = invisibleTop.concat(invisibleBottom);
+    if(!invisible.length) {
+      return;
+    }
 
     if(invisibleTop.length) this.setLoaded('top', false);
     if(invisibleBottom.length) this.setLoaded('bottom', false);
 
     const mids = invisible.map(({element}) => +element.dataset.mid);
+
+    let scrollSaver: ScrollSaver;
+    if(!!invisibleTop.length !== !!invisibleBottom.length && !ignoreScrollSaving) {
+      scrollSaver = new ScrollSaver(this.scrollable, !!invisibleTop.length);
+      scrollSaver.save();
+    }
+    
     this.deleteMessagesByIds(mids, false, true);
+
+    if(scrollSaver) {
+      scrollSaver.restore();
+    } else if(invisibleTop.length) {
+      this.scrollable.lastScrollPosition = this.scrollable.scrollTop;
+    }
   }
 
   public sliceViewport(ignoreHeavyAnimation?: boolean) {
@@ -4511,7 +4557,7 @@ export default class ChatBubbles {
     const slice = this.getViewportSlice();
     // if(IS_SAFARI) slice.invisibleTop = [];
     this.deleteViewportSlice(slice);
-    // scrollSaver.restore(false);
+    // scrollSaver.restore();
   }
 
   private setLoaded(side: SliceSides, value: boolean, checkPlaceholders = true) {
@@ -4641,7 +4687,7 @@ export default class ChatBubbles {
 
     const isBroadcast = this.appPeersManager.isBroadcast(peerId);
     //console.time('appImManager call getHistory');
-    const pageCount = Math.min(30, windowSize.height / 48/*  * 1.25 */ | 0);
+    const pageCount = Math.min(30, windowSize.height / 40/*  * 1.25 */ | 0);
     //const loadCount = Object.keys(this.bubbles).length > 0 ? 50 : pageCount;
     const realLoadCount = isBroadcast ? 20 : (Object.keys(this.bubbles).length > 0 ? Math.max(35, pageCount) : pageCount);
     //const realLoadCount = pageCount;//const realLoadCount = 50;
@@ -4753,7 +4799,11 @@ export default class ChatBubbles {
         }
 
         if(justLoad) {
-          this.scrollable.onScroll(); // нужно делать из-за ранней прогрузки
+          // нужно делать из-за ранней прогрузки
+          this.scrollable.onScroll();
+          // fastRaf(() => {
+          //   this.scrollable.checkForTriggers();
+          // });
           return true;
         }
         //console.timeEnd('appImManager call getHistory');
@@ -4772,6 +4822,8 @@ export default class ChatBubbles {
       cached = false;
       promise = processPromise(result);
     } else if(justLoad) {
+      // нужно делать из-за ранней прогрузки
+      this.scrollable.onScroll();
       return null;
     } else {
       cached = true;

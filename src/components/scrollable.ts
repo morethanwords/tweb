@@ -179,7 +179,8 @@ export class ScrollableBase {
       this.lastScrollDirection = this.lastScrollPosition === scrollPosition ? 0 : (this.lastScrollPosition < scrollPosition ? 1 : -1); // * 1 - bottom, -1 - top
       this.lastScrollPosition = scrollPosition;
 
-      if(this.onAdditionalScroll && this.lastScrollDirection !== 0) {
+      // lastScrollDirection check is useless here, every callback should decide on its own
+      if(this.onAdditionalScroll/*  && this.lastScrollDirection !== 0 */) {
         this.onAdditionalScroll();
       }
       
@@ -280,6 +281,12 @@ export default class Scrollable extends ScrollableBase {
 
   public setScrollTopSilently(value: number) {
     this.lastScrollPosition = value;
+    this.ignoreNextScrollEvent();
+
+    this.scrollTop = value;
+  }
+
+  public ignoreNextScrollEvent() {
     if(this.removeHeavyAnimationListener) {
       this.removeScrollListener();
       this.container.addEventListener('scroll', (e) => {
@@ -287,8 +294,6 @@ export default class Scrollable extends ScrollableBase {
         this.addScrollListener();
       }, {capture: true, passive: false, once: true});
     }
-
-    this.scrollTop = value;
   }
   
   get scrollHeight() {
