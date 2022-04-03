@@ -682,9 +682,9 @@ export default class ChatBubbles {
       }
     });
 
-    if(!IS_SAFARI) {
-      this.sliceViewportDebounced = debounce(this.sliceViewport.bind(this), 100, false, true);
-    }
+    // if(!IS_SAFARI) {
+    //   this.sliceViewportDebounced = debounce(this.sliceViewport.bind(this), 100, false, true);
+    // }
 
     let middleware: ReturnType<ChatBubbles['getMiddleware']>;
     useHeavyAnimationCheck(() => {
@@ -4047,7 +4047,8 @@ export default class ChatBubbles {
       scrollSaver.restore(history.length === 1 && !reverse ? false : true);
 
       const state = scrollSaver.getSaved();
-      if(state.scrollHeight !== state.clientHeight) {
+      const isLoading = !this.preloader.detached;
+      if(state.scrollHeight !== state.clientHeight || isLoading) {
         /* for(const timestamp in this.dateMessages) {
           const dateMessage = this.dateMessages[timestamp];
           dateMessage.div.classList.add('is-sticky');
