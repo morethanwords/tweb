@@ -883,7 +883,7 @@ export default class ChatBubbles {
     }
 
     const container = this.scrollable.container;
-    let wasHeight = container.offsetHeight;
+    let wasHeight = 0/* container.offsetHeight */;
     let resizing = false;
     let skip = false;
     let scrolled = 0;
@@ -4052,9 +4052,10 @@ export default class ChatBubbles {
     if(scrollSaver) {
       scrollSaver.restore(history.length === 1 && !reverse ? false : true);
 
+      const className = 'has-sticky-dates';
       const state = scrollSaver.getSaved();
       const isLoading = !this.preloader.detached;
-      if(state.scrollHeight !== state.clientHeight || isLoading) {
+      if((state.scrollHeight !== state.clientHeight || isLoading) && !this.bubblesContainer.classList.contains(className)) {
         /* for(const timestamp in this.dateMessages) {
           const dateMessage = this.dateMessages[timestamp];
           dateMessage.div.classList.add('is-sticky');
@@ -4063,7 +4064,7 @@ export default class ChatBubbles {
         const middleware = this.getMiddleware();
         const callback = () => {
           if(!middleware()) return;
-          this.bubblesContainer.classList.add('has-sticky-dates');
+          this.bubblesContainer.classList.add(className);
         };
 
         if(this.willScrollOnLoad) {
