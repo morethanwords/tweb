@@ -9,8 +9,6 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import Config from './config';
-
 import emojiRegExp from '../vendor/emoji/regex';
 import { encodeEmoji, toCodePoints } from '../vendor/emoji';
 import { MessageEntity } from '../layer';
@@ -19,14 +17,14 @@ import { MOUNT_CLASS_TO } from '../config/debug';
 import IS_EMOJI_SUPPORTED from '../environment/emojiSupport';
 import copy from '../helpers/object/copy';
 import encodeEntities from '../helpers/string/encodeEntities';
+import Emoji, { EmojiVersions } from '../config/emoji';
+import TLD from '../config/tld';
 
 const EmojiHelper = {
   emojiMap: (code: string) => { return code; },
   shortcuts: [] as any,
   emojis: [] as any
 };
-
-const emojiData = Config.Emoji;
 
 const alphaCharsRegExp = 'a-z' +
   '\\u00c0-\\u00d6\\u00d8-\\u00f6\\u00f8-\\u00ff' + // Latin-1
@@ -119,7 +117,7 @@ for(let i in markdownEntities) {
 namespace RichTextProcessor {
   export const PHONE_NUMBER_REG_EXP = /^\+\d+$/;
 
-  export function getEmojiSpritesheetCoords(emojiCode: string) {
+  export function getEmojiUnified(emojiCode: string) {
     let unified = encodeEmoji(emojiCode).replace(/-?fe0f/g, '');
   
     /* if(unified === '1f441-200d-1f5e8') {
@@ -127,11 +125,11 @@ namespace RichTextProcessor {
       unified = '1f441-fe0f-200d-1f5e8';
     } */
   
-    if(!emojiData.hasOwnProperty(unified) 
+    if(!Emoji.hasOwnProperty(unified) 
       // && !emojiData.hasOwnProperty(unified.replace(/-?fe0f$/, ''))
     ) {
       //console.error('lol', unified);
-      return null;
+      return;
     }
   
     return unified;
@@ -169,7 +167,7 @@ namespace RichTextProcessor {
           const tld = match[6];
           // let excluded = '';
           if(tld) { // URL
-            if(!protocol && (tld.substr(0, 4) === 'xn--' || Config.TLD.indexOf(tld.toLowerCase()) !== -1)) {
+            if(!protocol && (tld.substr(0, 4) === 'xn--' || TLD.indexOf(tld.toLowerCase()) !== -1)) {
               protocol = 'http://';
             }
   
@@ -202,13 +200,13 @@ namespace RichTextProcessor {
         });
       } else if(match[8]) { // Emoji
         //console.log('hit', match[8]);
-        const emojiCoords = getEmojiSpritesheetCoords(match[8]);
-        if(emojiCoords) {
+        const unified = getEmojiUnified(match[8]);
+        if(unified) {
           entities.push({
             _: 'messageEntityEmoji',
             offset: matchIndex,
             length: match[8].length,
-            unicode: emojiCoords
+            unicode: unified
           });
         }
       } else if(match[11]) { // Hashtag
@@ -641,9 +639,22 @@ namespace RichTextProcessor {
         }
 
         case 'messageEntityEmoji': {
-          //if(!(options.wrappingDraft && IS_EMOJI_SUPPORTED)) { // * fix safari emoji
-          if(!IS_EMOJI_SUPPORTED) { // no wrapping needed
-            // if(IS_EMOJI_SUPPORTED) { // ! contenteditable="false" нужен для поля ввода, иначе там будет меняться шрифт в Safari, или же рендерить смайлик напрямую, без контейнера
+          let isSupported = IS_EMOJI_SUPPORTED;
+          if(isSupported) {
+            for(const version in EmojiVersions) {
+              if(version) {
+                const emojiData = EmojiVersions[version];
+                if(emojiData.hasOwnProperty(entity.unicode)) {
+                  isSupported = false;
+                  break;
+                }
+              }
+            }
+          }
+
+          //if(!(options.wrappingDraft && isSupported)) { // * fix safari emoji
+          if(!isSupported) { // no wrapping needed
+            // if(isSupported) { // ! contenteditable="false" нужен для поля ввода, иначе там будет меняться шрифт в Safari, или же рендерить смайлик напрямую, без контейнера
             //   insertPart(entity, '<span class="emoji">', '</span>');
             // } else {
               insertPart(entity, `<img src="assets/img/emoji/${entity.unicode}.png" alt="`, `" class="emoji">`);
@@ -654,7 +665,7 @@ namespace RichTextProcessor {
           }/*  else if(!IS_SAFARI) {
             insertPart(entity, '<span class="emoji" contenteditable="false">', '</span>');
           } */
-          /* if(!IS_EMOJI_SUPPORTED) {
+          /* if(!isSupported) {
             insertPart(entity, `<img src="assets/img/emoji/${entity.unicode}.png" alt="`, `" class="emoji">`);
           } */
 

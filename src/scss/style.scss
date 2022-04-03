@@ -1510,9 +1510,9 @@ hr {
     width: 2.625rem;
     height: 2.625rem;
 
-    html:not(.emoji-supported) & {
+    // html:not(.emoji-supported) & {
       position: relative;
-    }
+    // }
 
     .emoji-placeholder {
       position: absolute;

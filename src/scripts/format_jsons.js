@@ -1,3 +1,4 @@
+// @ts-check
 /*
  * https://github.com/morethanwords/tweb
  * Copyright (C) 2019-2021 Eduard Kuzmenko
@@ -147,8 +148,9 @@ if(false) {
     obj[emoji] = e.sort_order !== undefined ? +('' + c + sort_order) : 0;
   });
 
+  const migrateFromVersion = 13.1;
   if(true) formatted.forEach(e => {
-    let {unified, name, short_names, category, sheet_x, sheet_y, sort_order} = e;
+    let {unified, name, short_names, category, sheet_x, sheet_y, sort_order, added_in} = e;
 
     let emoji = unified.split('-')
     .reduce((prev, curr) => prev + String.fromCodePoint(parseInt(curr, 16)), '');
@@ -156,11 +158,18 @@ if(false) {
     emoji = encodeEmoji(emoji);
     emoji = emoji.replace(/-?fe0f/g, '');
     //emoji = emoji.replace(/-?fe0f$/, '');
+
+    let _obj = obj;
+    if(migrateFromVersion) {
+      const version = +added_in;
+      const key = migrateFromVersion >= version ? '' : version;
+      _obj = obj[key] ?? (obj[key] = {});
+    }
     
     let c = categories[category] === undefined ? 9 : categories[category];
     //obj[emoji] = '' + c + sort_order;
     //obj[emoji] = +('' + (c * 1000 + sort_order)).replace(/0+/g, '0').replace(/^(\d)0(\d)/g, '$1$2');
-    obj[emoji] = e.sort_order !== undefined ? +('' + c + sort_order) : 0;
+    _obj[emoji] = e.sort_order !== undefined ? +('' + c + sort_order) : 0;
   });
 
   console.log(obj);

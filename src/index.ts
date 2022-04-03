@@ -179,7 +179,7 @@ console.timeEnd('get storage1'); */
         document.documentElement.classList.add('is-safari');
       }
       
-      document.documentElement.classList.add('emoji-supported');
+      // document.documentElement.classList.add('emoji-supported');
 
       if(userAgent.IS_APPLE_MOBILE) {
         document.documentElement.classList.add('is-ios');

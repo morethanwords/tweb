@@ -11,7 +11,6 @@ import { fastRaf } from "../../../helpers/schedulers";
 import { pause } from "../../../helpers/schedulers/pause";
 import appEmojiManager from "../../../lib/appManagers/appEmojiManager";
 import appImManager from "../../../lib/appManagers/appImManager";
-import Config from "../../../lib/config";
 import { i18n, LangPackKey } from "../../../lib/langPack";
 import { RichTextProcessor } from "../../../lib/richtextprocessor";
 import rootScope from "../../../lib/rootScope";
@@ -20,8 +19,9 @@ import { putPreloader } from "../../misc";
 import Scrollable from "../../scrollable";
 import StickyIntersector from "../../stickyIntersector";
 import IS_EMOJI_SUPPORTED from "../../../environment/emojiSupport";
-import { IS_TOUCH_SUPPORTED } from "../../../environment/touchSupport";
+import IS_TOUCH_SUPPORTED from "../../../environment/touchSupport";
 import blurActiveElement from "../../../helpers/dom/blurActiveElement";
+import Emoji from "../../../config/emoji";
 
 const loadedURLs: Set<string> = new Set();
 export function appendEmoji(emoji: string, container: HTMLElement, prepend = false, unify = false) {
@@ -55,7 +55,7 @@ export function appendEmoji(emoji: string, container: HTMLElement, prepend = fal
     spanEmoji.append(first);
   }
 
-  if(spanEmoji.firstElementChild && !IS_EMOJI_SUPPORTED) {
+  if(spanEmoji.firstElementChild?.tagName === 'IMG') {
     const image = spanEmoji.firstElementChild as HTMLImageElement;
     
     const url = image.src;
@@ -140,8 +140,8 @@ export default class EmojiTab implements EmoticonsTab {
       ]
     ]);
 
-    for(const emoji in Config.Emoji) {
-      const details = Config.Emoji[emoji];
+    for(const emoji in Emoji) {
+      const details = Emoji[emoji];
       const i = '' + details;
       const category = categories[+i[0] - 1];
       if(!category) continue; // maybe it's skin tones

@@ -9,7 +9,7 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import Config from "../lib/config";
+import LatinizeMap from "../config/latinizeMap";
 
 const badCharsRe = /[`~!@#$%^&*()\-_=+\[\]\\|{}'";:\/?.>,<]+/g;
 const trimRe = /^\s+|\s$/g;
@@ -20,7 +20,7 @@ export function clearBadCharsAndTrim(text: string) {
 
 export function latinizeString(text: string) {
   return text.replace(/[^A-Za-z0-9]/g, (ch) => {
-    const latinizeCh = Config.LatinizeMap[ch];
+    const latinizeCh = LatinizeMap[ch];
     return latinizeCh !== undefined ? latinizeCh : ch;
   });
 }
