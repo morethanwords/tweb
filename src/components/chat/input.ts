@@ -2363,11 +2363,12 @@ export default class ChatInput {
     if(this.helperWaitingForward) return;
     this.helperWaitingForward = true;
 
+    const forwarding = copy(this.forwarding);
     const helperFunc = this.helperFunc;
     this.clearHelper();
     this.updateSendBtn();
     let selected = false;
-    const popup = new PopupForward(copy(this.forwarding), () => {
+    const popup = new PopupForward(forwarding, () => {
       selected = true;
     });
 
