@@ -682,9 +682,9 @@ export default class ChatBubbles {
       }
     });
 
-    // if(!IS_SAFARI) {
-    //   this.sliceViewportDebounced = debounce(this.sliceViewport.bind(this), 100, false, true);
-    // }
+    if(!IS_SAFARI) {
+      this.sliceViewportDebounced = debounce(this.sliceViewport.bind(this), 3000, false, true);
+    }
 
     let middleware: ReturnType<ChatBubbles['getMiddleware']>;
     useHeavyAnimationCheck(() => {
@@ -1792,6 +1792,7 @@ export default class ChatBubbles {
 
     const distanceToEnd = scrollDimensions?.distanceToEnd ?? this.scrollable.getDistanceToEnd();
     if(/* !IS_TOUCH_SUPPORTED &&  */(this.scrollable.lastScrollDirection !== 0 && distanceToEnd > 0) || scrollDimensions) {
+    // if(/* !IS_TOUCH_SUPPORTED &&  */(this.scrollable.lastScrollDirection !== 0 || scrollDimensions) && distanceToEnd > 0) {
       if(this.isScrollingTimeout) {
         clearTimeout(this.isScrollingTimeout);
       } else if(!this.chatInner.classList.contains('is-scrolling')) {
