@@ -350,7 +350,7 @@ export default class PopupNewMedia extends PopupElement {
 
     const isPhoto = file.type.startsWith('image/');
     const isAudio = file.type.startsWith('audio/');
-    if(isPhoto || isAudio) {
+    if(isPhoto || isAudio || file.size < 20e6) {
       params.objectURL = URL.createObjectURL(file);
     }
 
@@ -363,9 +363,11 @@ export default class PopupNewMedia extends PopupElement {
       type: isPhoto ? 'photo' : 'doc'
     } as MyDocument;
 
-    const cacheContext = appDownloadManager.getCacheContext(doc);
-    cacheContext.url = params.objectURL;
-    cacheContext.downloaded = file.size;
+    if(params.objectURL) {
+      const cacheContext = appDownloadManager.getCacheContext(doc);
+      cacheContext.url = params.objectURL;
+      cacheContext.downloaded = file.size;
+    }
 
     const docDiv = wrapDocument({
       message: {

@@ -824,9 +824,11 @@ export class AppMessagesManager {
         size: file.size
       } as any;
 
-      const cacheContext = appDownloadManager.getCacheContext(document);
-      cacheContext.downloaded = file.size;
-      cacheContext.url = options.objectURL || '';
+      if(options.objectURL) {
+        const cacheContext = appDownloadManager.getCacheContext(document);
+        cacheContext.downloaded = file.size;
+        cacheContext.url = options.objectURL;
+      }
 
       let thumb: PhotoSize.photoSize;
       if(isPhoto) {
@@ -5425,11 +5427,17 @@ export class AppMessagesManager {
           appDownloadManager.fakeDownload(fileName, oldCacheContext.url);
         }
       } else if(newDoc) {
-        const doc = appDocsManager.getDoc('' + tempId);
-        if(doc) {
-          if(/* doc._ !== 'documentEmpty' &&  */doc.type && doc.type !== 'sticker' && doc.mime_type !== 'image/gif') {
+        const oldDoc = appDocsManager.getDoc('' + tempId);
+        if(oldDoc) {
+          const oldCacheContext = appDownloadManager.getCacheContext(oldDoc);
+          if(
+            /* doc._ !== 'documentEmpty' &&  */
+            oldDoc.type && 
+            oldDoc.type !== 'sticker' && 
+            oldDoc.mime_type !== 'image/gif' && 
+            oldCacheContext.url
+          ) {
             const cacheContext = appDownloadManager.getCacheContext(newDoc);
-            const oldCacheContext = appDownloadManager.getCacheContext(doc);
             Object.assign(cacheContext, oldCacheContext);
 
             const fileName = appDocsManager.getInputFileName(newDoc);

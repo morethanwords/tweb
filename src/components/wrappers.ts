@@ -10,7 +10,7 @@ import { deferredPromise } from '../helpers/cancellablePromise';
 import { formatFullSentTime } from '../helpers/date';
 import mediaSizes, { ScreenSize } from '../helpers/mediaSizes';
 import { IS_SAFARI } from '../environment/userAgent';
-import { Message, PhotoSize, StickerSet } from '../layer';
+import { Message, MessageMedia, PhotoSize, StickerSet, WebPage } from '../layer';
 import appDocsManager, { MyDocument } from "../lib/appManagers/appDocsManager";
 import appMessagesManager from '../lib/appManagers/appMessagesManager';
 import appPhotosManager, { MyPhoto } from '../lib/appManagers/appPhotosManager';
@@ -571,7 +571,7 @@ rootScope.addEventListener('download_start', (docId) => {
 });
 
 export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showSender, searchContext, loadPromises, autoDownloadSize, lazyLoadQueue}: {
-  message: any, 
+  message: Message.message, 
   withTime?: boolean,
   fontWeight?: number,
   voiceAsMusic?: boolean,
@@ -584,8 +584,8 @@ export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showS
   if(!fontWeight) fontWeight = 500;
   const noAutoDownload = autoDownloadSize === 0;
 
-  const doc = (message.media.document || message.media.webpage.document) as MyDocument;
-  const uploading = message.pFlags.is_outgoing && message.media?.preloader;
+  const doc = ((message.media as MessageMedia.messageMediaDocument).document || ((message.media as MessageMedia.messageMediaWebPage).webpage as WebPage.webPage).document) as MyDocument;
+  const uploading = message.pFlags.is_outgoing && (message.media as any)?.preloader;
   if(doc.type === 'audio' || doc.type === 'voice' || doc.type === 'round') {
     const audioElement = new AudioElement();
     audioElement.withTime = withTime;
@@ -597,7 +597,7 @@ export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showS
     if(voiceAsMusic) audioElement.voiceAsMusic = voiceAsMusic;
     if(searchContext) audioElement.searchContext = searchContext;
     if(showSender) audioElement.showSender = showSender;
-    if(uploading) audioElement.preloader = message.media.preloader;
+    if(uploading) audioElement.preloader = (message.media as any).preloader;
 
     audioElement.dataset.fontWeight = '' + fontWeight;
     audioElement.render();
@@ -622,7 +622,8 @@ export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showS
     docDiv.classList.add('document-with-thumb');
 
     let imgs: HTMLImageElement[] = [];
-    if(message.pFlags.is_outgoing) {
+    // ! WARNING, use thumbs for check when thumb will be generated for media
+    if(message.pFlags.is_outgoing && ['photo', 'video'].includes(doc.type)) {
       icoDiv.innerHTML = `<img src="${cacheContext.url}">`;
       imgs.push(icoDiv.firstElementChild as HTMLImageElement);
     } else {
@@ -662,7 +663,7 @@ export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showS
   }
 
   docDiv.innerHTML = `
-  ${cacheContext.downloaded && !uploading ? '' : `<div class="document-download"></div>`}
+  ${(cacheContext.downloaded && !uploading) || !message.mid ? '' : `<div class="document-download"></div>`}
   <div class="document-name"></div>
   <div class="document-size"></div>
   `;
@@ -683,7 +684,7 @@ export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showS
 
   docDiv.prepend(icoDiv);
 
-  if(!uploading && message.pFlags.is_outgoing) {
+  if(!uploading && message.pFlags.is_outgoing && !message.mid) {
     return docDiv;
   }
 
@@ -741,7 +742,7 @@ export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showS
     preloader.attach(downloadDiv, false, appDocsManager.downloading.get(doc.id));
   } else if(!cacheContext.downloaded || uploading) {
     downloadDiv = docDiv.querySelector('.document-download');
-    preloader = message.media.preloader as ProgressivePreloader;
+    preloader = (message.media as any).preloader as ProgressivePreloader;
 
     if(!preloader) {
       preloader = new ProgressivePreloader();
@@ -756,7 +757,7 @@ export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showS
       }
     } else {
       preloader.attach(downloadDiv);
-      message.media.promise.then(onLoad);
+      (message.media as any).promise.then(onLoad);
     }
   }
 

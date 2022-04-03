@@ -288,7 +288,7 @@ export default class ChatBubbles {
     });
 
     // Calls when message successfully sent and we have an id
-    this.listenerSetter.add(rootScope)('message_sent', (e) => {
+    this.listenerSetter.add(rootScope)('message_sent', async(e) => {
       const {storage, tempId, tempMessage, mid} = e;
 
       // ! can't use peerId to validate here, because id can be the same in 'scheduled' and 'chat' types
@@ -297,6 +297,8 @@ export default class ChatBubbles {
       }
       
       //this.log('message_sent', e);
+
+      await getHeavyAnimationPromise();
 
       const mounted = this.getMountedBubble(tempId, tempMessage) || this.getMountedBubble(mid);
       if(mounted) {
@@ -327,7 +329,10 @@ export default class ChatBubbles {
             const container = findUpClassName(div, 'document-container');
 
             if(!tempMessage.media?.document?.thumbs?.length && message.media.document.thumbs?.length) {
-              div.replaceWith(wrapDocument({message}));
+              const timeSpan = div.querySelector('.time');
+              const newDiv = wrapDocument({message});
+              div.replaceWith(newDiv);
+              newDiv.querySelector('.document-size').append(timeSpan);
             }
 
             if(container) {
@@ -3358,7 +3363,7 @@ export default class ChatBubbles {
               //}
             } else {
               const docDiv = wrapDocument({
-                message,
+                message: message as Message.message,
                 autoDownloadSize: this.chat.autoDownload.file,
                 lazyLoadQueue: this.lazyLoadQueue,
                 loadPromises

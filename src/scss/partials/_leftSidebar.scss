@@ -1077,21 +1077,18 @@
     padding-top: 1rem;
     padding-bottom: .9375rem;
 
-    &-title-row {
-      align-items: flex-end;
-    }
-
     &-title:first-child {
       font-weight: 500;
     }
 
     &-title-right {
-      font-size: .75rem;
+      font-size: var(--font-size-12);
       color: var(--secondary-text-color);
-      line-height: 1.5;
+      line-height: var(--line-height-12);
     }
 
-    &-midtitle, &-subtitle {
+    &-midtitle, 
+    &-subtitle {
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
