@@ -1427,6 +1427,11 @@ middle-ellipsis-element {
       margin: -0.1875rem 0 1rem;
       font-size: .875rem;
       padding: 0 1.5rem;
+
+      &:first-child {
+        margin-top: .8125rem;
+        margin-bottom: .8125rem;
+      }
     }
 
     &-container {

@@ -1121,8 +1121,6 @@
   }
 
   ul {
-    margin-top: .3125rem;
-    
     @include respond-to(not-handhelds) {
       padding: 0 .6875rem;
     }

@@ -25,13 +25,13 @@ export default class AppBlockedUsersTab extends SliderSuperTab {
     this.container.classList.add('blocked-users-container');
     this.setTitle('BlockedUsers');
 
-    {
-      const section = new SettingSection({
-        caption: 'BlockedUsersInfo'
-      });
+    const section = new SettingSection({
+      caption: 'BlockedUsersInfo'
+    });
 
-      this.scrollable.append(section.container);
-    }
+    section.caption.parentElement.prepend(section.caption);
+
+    this.scrollable.append(section.container);
 
     const btnAdd = ButtonCorner({icon: 'add', className: 'is-visible'});
     this.content.append(btnAdd);
@@ -49,7 +49,7 @@ export default class AppBlockedUsersTab extends SliderSuperTab {
 
     const list = appDialogsManager.createChatList();
     this.scrollable.container.classList.add('chatlist-container');
-    this.scrollable.append(list);
+    section.content.append(list);
 
     const add = (peerId: PeerId, append: boolean) => {
       const {dom} = appDialogsManager.addDialogNew({
