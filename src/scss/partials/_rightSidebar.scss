@@ -127,6 +127,16 @@
     }
   }
 
+  .profile-content.is-me {
+    .profile-name {
+      margin-bottom: .9375rem;
+    }
+
+    .profile-subtitle {
+      display: none;
+    }
+  }
+
   .search-super {
     top: 100%;
     min-height: calc((var(--vh, 1vh) * 100) - 56px);

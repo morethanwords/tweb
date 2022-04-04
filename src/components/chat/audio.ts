@@ -138,7 +138,7 @@ export default class ChatAudio extends PinnedContainer {
   }) => {
     let title: string | HTMLElement, subtitle: string | HTMLElement | DocumentFragment;
     if(doc.type === 'voice' || doc.type === 'round') {
-      title = new PeerTitle({peerId: message.fromId}).element;
+      title = new PeerTitle({peerId: message.fromId, fromName: message.fwd_from?.from_name}).element;
 
       //subtitle = 'Voice message';
       subtitle = formatFullSentTime(message.date);

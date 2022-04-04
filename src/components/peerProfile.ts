@@ -242,6 +242,7 @@ export default class PeerProfile {
 
   public setPeerStatus = (needClear = false) => {
     const peerId = this.peerId;
+    this.element.classList.toggle('is-me', peerId === rootScope.myId);
     if(!peerId || (rootScope.myId === peerId && this.isDialog)) return;
 
     appImManager.setPeerStatus(this.peerId, this.subtitle, needClear, true, () => peerId === this.peerId, !this.isDialog);
