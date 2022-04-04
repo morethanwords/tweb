@@ -892,7 +892,7 @@ export default class ChatBubbles {
     let scrolled = 0;
     let part = 0;
     let rAF = 0;
-    let skipNext = true;
+    // let skipNext = true;
 
     const onResizeEnd = () => {
       const height = container.offsetHeight;
@@ -926,10 +926,10 @@ export default class ChatBubbles {
     };
 
     const processEntries: ResizeObserverCallback = (entries) => {
-      if(skipNext) {
+      /* if(skipNext) {
         skipNext = false;
         return;
-      }
+      } */
 
       if(skip) {
         setEndRAF(false);
