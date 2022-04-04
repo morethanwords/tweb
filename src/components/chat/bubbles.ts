@@ -906,7 +906,7 @@ export default class ChatBubbles {
       } */
 
       if(part) {
-        this.scrollable.scrollTop += Math.round(part);
+        this.scrollable.setScrollTopSilently(this.scrollable.scrollTop + Math.round(part));
       }
 
       wasHeight = height;
@@ -975,7 +975,7 @@ export default class ChatBubbles {
 
       if(diff) {
         const needScrollTop = this.scrollable.scrollTop + diff;
-        this.scrollable.scrollTop = needScrollTop;
+        this.scrollable.setScrollTopSilently(needScrollTop);
       }
       
       setEndRAF(false);
