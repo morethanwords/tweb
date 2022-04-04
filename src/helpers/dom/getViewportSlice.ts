@@ -13,7 +13,7 @@ export default function getViewportSlice({overflowElement, selector, extraSize}:
   selector: string,
   extraSize?: number
 }) {
-  const perf = performance.now();
+  // const perf = performance.now();
   const overflowRect = overflowElement.getBoundingClientRect();
   const elements = Array.from(overflowElement.querySelectorAll<HTMLElement>(selector));
 
@@ -67,7 +67,7 @@ export default function getViewportSlice({overflowElement, selector, extraSize}:
     }
   }
 
-  console.log('getViewportSlice time:', performance.now() - perf);
+  // console.log('getViewportSlice time:', performance.now() - perf);
 
   return {invisibleTop, visible, invisibleBottom};
 }

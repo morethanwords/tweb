@@ -332,7 +332,10 @@ export default class ChatBubbles {
               const timeSpan = div.querySelector('.time');
               const newDiv = wrapDocument({message});
               div.replaceWith(newDiv);
-              newDiv.querySelector('.document-size').append(timeSpan);
+              
+              if(timeSpan) {
+                newDiv.querySelector('.document-size').append(timeSpan);
+              }
             }
 
             if(container) {

@@ -469,7 +469,7 @@ export default class MTPNetworker {
   }
 
   public destroy() {
-    this.changeTransport();
+    this.log('destroy');
   }
 
   public forceReconnectTimeout() {
@@ -812,43 +812,43 @@ export default class MTPNetworker {
       options.messageId = message.msg_id;
     }
 
-    if(promise) {
-      const canIncrement = !options.notContentRelated;
-      const timeout = setTimeout(() => {
-        if(this.lastResponseTime && (Date.now() - this.lastResponseTime) < this.delays.connectionTimeout) {
-          return;
-        }
+    return promise;
+  }
 
-        this.log.error('timeout', message);
-        if(this.isOnline) {
-          this.setConnectionStatus(ConnectionStatus.TimedOut);
-        }
+  public attachPromise(promise: Promise<any>, message: MTMessage) {
+    const canIncrement = true;
+    const timeout = setTimeout(() => {
+      if(this.lastResponseTime && (Date.now() - this.lastResponseTime) < this.delays.connectionTimeout) {
+        return;
+      }
 
-        /* this.getEncryptedOutput(message).then(bytes => {
-          this.log.error('timeout encrypted', bytes);
-        }); */
-      }, this.delays.connectionTimeout);
-  
-      promise.catch(noop).finally(() => {
-        clearTimeout(timeout);
-        this.setConnectionStatus(ConnectionStatus.Connected);
+      this.log.error('timeout', message);
+      if(this.isOnline) {
+        this.setConnectionStatus(ConnectionStatus.TimedOut);
+      }
 
-        if(canIncrement) {
-          --this.activeRequests;
-          this.setDrainTimeout();
-        }
-      });
-      
+      /* this.getEncryptedOutput(message).then(bytes => {
+        this.log.error('timeout encrypted', bytes);
+      }); */
+    }, this.delays.connectionTimeout);
+
+    promise.catch(noop).finally(() => {
+      clearTimeout(timeout);
+      this.setConnectionStatus(ConnectionStatus.Connected);
+
       if(canIncrement) {
-        ++this.activeRequests;
-        if(this.onDrainTimeout !== undefined) {
-          clearTimeout(this.onDrainTimeout);
-          this.onDrainTimeout = undefined;
-        }
+        --this.activeRequests;
+        this.setDrainTimeout();
+      }
+    });
+    
+    if(canIncrement) {
+      ++this.activeRequests;
+      if(this.onDrainTimeout !== undefined) {
+        clearTimeout(this.onDrainTimeout);
+        this.onDrainTimeout = undefined;
       }
     }
-
-    return promise;
   }
 
   public setDrainTimeout() {
@@ -885,7 +885,7 @@ export default class MTPNetworker {
         this.scheduleRequest();
       }
 
-      if((this.transport as TcpObfuscated).connection) {
+      if((this.transport as TcpObfuscated)?.connection) {
         this.clearPingDelayDisconnect();
         this.sendPingDelayDisconnect();
       }
@@ -1288,8 +1288,12 @@ export default class MTPNetworker {
   private async sendEncryptedRequest(message: MTMessage) {
     const requestData = await this.getEncryptedOutput(message);
 
+    if(!this.transport) {
+      this.log.error('trying to send something when offline', this.transport, this);
+    }
+
     this.debug && this.log.debug('sending:', message, [message.msg_id].concat(message.inner || []), requestData.length);
-    const promise: Promise<Uint8Array> = this.transport.send(requestData) as any;
+    const promise: Promise<Uint8Array> = this.transport ? this.transport.send(requestData) as any : Promise.reject({});
     // this.debug && this.log.debug('sendEncryptedRequest: launched message into space:', message, promise);
     
     /// #if !MTPROTO_HAS_HTTP
