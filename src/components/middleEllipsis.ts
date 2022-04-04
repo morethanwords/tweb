@@ -4,7 +4,10 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import getTextWidth from "../helpers/canvas/getTextWidth";
+import mediaSizes, { MediaSize } from "../helpers/mediaSizes";
 import clamp from "../helpers/number/clamp";
+import { fastRaf } from "../helpers/schedulers";
 
 // Thanks to https://stackoverflow.com/a/49349813
 
@@ -32,17 +35,24 @@ const map: Map<HTMLElement, {
 const testQueue: Set<HTMLElement> = new Set();
 export const fontFamily = 'Roboto, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif';
 const fontSize = '16px';
-let timeoutId: number;
+let pendingTest = false;
 
-const setTestQueue = () => {
-  cancelAnimationFrame(timeoutId);
-  timeoutId = window.requestAnimationFrame(testQueueElements);
-};
+function setTestQueue() {
+  if(pendingTest) {
+    return;
+  }
 
-const testQueueElements = () => {
+  pendingTest = true;
+  fastRaf(() => {
+    pendingTest = false;
+    testQueueElements();
+  });
+}
+
+function testQueueElements() {
   testQueue.forEach(testElement);
   testQueue.clear();
-};
+}
 
 window.addEventListener('resize', () => {
   for(const [key] of map) {
@@ -52,7 +62,19 @@ window.addEventListener('resize', () => {
   setTestQueue();
 }, {capture: true, passive: true});
 
-const testElement = (element: HTMLElement) => {
+function getElementWidth(element: HTMLElement) {
+  const type = element.dataset.sizeType;
+  if(type) {
+    const mediaSize = mediaSizes.active;
+    // @ts-ignore
+    const size: MediaSize = mediaSize[type];
+    return size.width;
+  } 
+  
+  return element.getBoundingClientRect().width;
+}
+
+function testElement(element: HTMLElement) {
   //const perf = performance.now();
   // do not recalculate variables a second time
   let mapped = map.get(element);
@@ -75,7 +97,7 @@ const testElement = (element: HTMLElement) => {
 
     textWidth = getTextWidth(text, font);
     //const perf = performance.now();
-    elementWidth = element.getBoundingClientRect().width;
+    elementWidth = getElementWidth(element);
     //console.log('testMiddleEllipsis get offsetWidth:', performance.now() - perf, font);
     mapped = {text, textLength, from, multiplier, font, textWidth, elementWidth};
     map.set(element, mapped);
@@ -83,7 +105,7 @@ const testElement = (element: HTMLElement) => {
     //console.log('[MEE] testElement map set', element);
   }
   
-  const newElementWidth = element.getBoundingClientRect().width;
+  const newElementWidth = getElementWidth(element);
   const widthChanged = firstTime || elementWidth !== newElementWidth;
   !firstTime && widthChanged && (mapped.elementWidth = elementWidth = newElementWidth);
   
@@ -108,7 +130,7 @@ const testElement = (element: HTMLElement) => {
       }
 
       // * set new width after cutting text
-      mapped.elementWidth = element.getBoundingClientRect().width;
+      mapped.elementWidth = getElementWidth(element);
       //mapped.textWidth = smallerWidth;
     } else {
       element.removeAttribute('title');
@@ -116,40 +138,19 @@ const testElement = (element: HTMLElement) => {
   }
 
   //console.log('testMiddleEllipsis for element:', elm, performance.now() - perf);
-};
-
-let context: CanvasRenderingContext2D;
-/**
- * Get the text width
- * @param {string} text
- * @param {string} font
- */
-function getTextWidth(text: string, font: string) {
-  //const perf = performance.now();
-  if(!context) {
-    const canvas = document.createElement('canvas');
-    context = canvas.getContext('2d');
-    context.font = font;
-  }
-
-  //context.font = font;
-  const metrics = context.measureText(text);
-  //console.log('getTextWidth perf:', performance.now() - perf);
-  return metrics.width;
-  //return Math.round(metrics.width);
 }
 
 export class MiddleEllipsisElement extends HTMLElement {
-  constructor() {
-    super();
-  }
-
   connectedCallback() {
     //console.log('[MEE]: connectedCallback before', map.has(this), testQueue.has(this), map.size, this.textContent, map);
 
     map.set(this, null);
-    testQueue.add(this);
-    setTestQueue();
+    if(this.dataset.sizeType) {
+      testElement(this);
+    } else {
+      testQueue.add(this);
+      setTestQueue();
+    }
     //testElement(this);
 
     //console.log('[MEE]: connectedCallback after', map.has(this), map.size, testQueue.has(this), testQueue.size);
@@ -157,6 +158,7 @@ export class MiddleEllipsisElement extends HTMLElement {
 
   disconnectedCallback() {
     const deleted = map.delete(this);
+    testQueue.delete(this);
     //console.log('[MEE]: disconnectedCallback', deleted, map.has(this), map.size, this.textContent, map);
   }
 }

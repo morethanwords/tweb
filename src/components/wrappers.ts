@@ -8,7 +8,7 @@ import type Chat from './chat/chat';
 import { getEmojiToneIndex } from '../vendor/emoji';
 import { deferredPromise } from '../helpers/cancellablePromise';
 import { formatFullSentTime } from '../helpers/date';
-import mediaSizes, { ScreenSize } from '../helpers/mediaSizes';
+import mediaSizes, { MediaSizeType, ScreenSize } from '../helpers/mediaSizes';
 import { IS_SAFARI } from '../environment/userAgent';
 import { Message, MessageMedia, PhotoSize, StickerSet, WebPage } from '../layer';
 import appDocsManager, { MyDocument } from "../lib/appManagers/appDocsManager";
@@ -570,7 +570,7 @@ rootScope.addEventListener('download_start', (docId) => {
   });
 });
 
-export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showSender, searchContext, loadPromises, autoDownloadSize, lazyLoadQueue}: {
+export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showSender, searchContext, loadPromises, autoDownloadSize, lazyLoadQueue, sizeType}: {
   message: Message.message, 
   withTime?: boolean,
   fontWeight?: number,
@@ -579,9 +579,11 @@ export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showS
   searchContext?: MediaSearchContext,
   loadPromises?: Promise<any>[],
   autoDownloadSize?: number,
-  lazyLoadQueue?: LazyLoadQueue
+  lazyLoadQueue?: LazyLoadQueue,
+  sizeType?: MediaSizeType
 }): HTMLElement {
   if(!fontWeight) fontWeight = 500;
+  if(!sizeType) sizeType = '' as any;
   const noAutoDownload = autoDownloadSize === 0;
 
   const doc = ((message.media as MessageMedia.messageMediaDocument).document || ((message.media as MessageMedia.messageMediaWebPage).webpage as WebPage.webPage).document) as MyDocument;
@@ -600,6 +602,7 @@ export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showS
     if(uploading) audioElement.preloader = (message.media as any).preloader;
 
     audioElement.dataset.fontWeight = '' + fontWeight;
+    audioElement.dataset.sizeType = sizeType;
     audioElement.render();
     return audioElement;
   }
@@ -671,6 +674,7 @@ export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showS
   const nameDiv = docDiv.querySelector('.document-name') as HTMLElement;
   const middleEllipsisEl = new MiddleEllipsisElement();
   middleEllipsisEl.dataset.fontWeight = '' + fontWeight;
+  middleEllipsisEl.dataset.sizeType = sizeType;
   middleEllipsisEl.innerHTML = fileName;
 
   nameDiv.append(middleEllipsisEl);
@@ -2033,7 +2037,7 @@ export function wrapAlbum({groupId, attachmentDiv, middleware, uploading, lazyLo
   });
 }
 
-export function wrapGroupedDocuments({albumMustBeRenderedFull, message, bubble, messageDiv, chat, loadPromises, autoDownloadSize, lazyLoadQueue, searchContext, useSearch}: {
+export function wrapGroupedDocuments({albumMustBeRenderedFull, message, bubble, messageDiv, chat, loadPromises, autoDownloadSize, lazyLoadQueue, searchContext, useSearch, sizeType}: {
   albumMustBeRenderedFull: boolean,
   message: any,
   messageDiv: HTMLElement,
@@ -2045,6 +2049,7 @@ export function wrapGroupedDocuments({albumMustBeRenderedFull, message, bubble, 
   lazyLoadQueue?: LazyLoadQueue,
   searchContext?: MediaSearchContext,
   useSearch?: boolean,
+  sizeType?: MediaSizeType
 }) {
   let nameContainer: HTMLElement;
   const mids = albumMustBeRenderedFull ? chat.getMidsByMid(message.mid) : [message.mid];
@@ -2059,7 +2064,8 @@ export function wrapGroupedDocuments({albumMustBeRenderedFull, message, bubble, 
       loadPromises,
       autoDownloadSize,
       lazyLoadQueue,
-      searchContext
+      searchContext,
+      sizeType
     });
 
     const container = document.createElement('div');

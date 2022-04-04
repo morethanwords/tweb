@@ -295,6 +295,7 @@ function wrapAudio(audioEl: AudioElement) {
 
   const middleEllipsisEl = new MiddleEllipsisElement();
   middleEllipsisEl.dataset.fontWeight = audioEl.dataset.fontWeight;
+  middleEllipsisEl.dataset.sizeType = audioEl.dataset.sizeType;
   if(isVoice) {
     middleEllipsisEl.append(appMessagesManager.wrapSenderToPeer(message));
   } else {

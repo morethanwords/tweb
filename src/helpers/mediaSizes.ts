@@ -39,8 +39,11 @@ type MediaTypeSizes = {
   staticSticker: MediaSize,
   emojiSticker: MediaSize,
   poll: MediaSize,
-  round: MediaSize
+  round: MediaSize,
+  documentName: MediaSize
 };
+
+export type MediaSizeType = keyof MediaTypeSizes;
 
 export enum ScreenSize {
   mobile,
@@ -72,7 +75,8 @@ class MediaSizes extends EventListenerBase<{
       staticSticker: makeMediaSize(180, 180),
       emojiSticker: makeMediaSize(112, 112),
       poll: makeMediaSize(240, 0),
-      round: makeMediaSize(200, 200)
+      round: makeMediaSize(200, 200),
+      documentName: makeMediaSize(200, 0)
     },
     desktop: {
       regular: makeMediaSize(420, 340),
@@ -83,7 +87,8 @@ class MediaSizes extends EventListenerBase<{
       staticSticker: makeMediaSize(200, 200),
       emojiSticker: makeMediaSize(112, 112),
       poll: makeMediaSize(330, 0),
-      round: makeMediaSize(280, 280)
+      round: makeMediaSize(280, 280),
+      documentName: makeMediaSize(240, 0)
     }
   };
 

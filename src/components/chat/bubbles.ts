@@ -3369,7 +3369,8 @@ export default class ChatBubbles {
                 message: message as Message.message,
                 autoDownloadSize: this.chat.autoDownload.file,
                 lazyLoadQueue: this.lazyLoadQueue,
-                loadPromises
+                loadPromises,
+                sizeType: 'documentName'
               });
               preview.append(docDiv);
               preview.classList.add('preview-with-document');
@@ -3578,6 +3579,7 @@ export default class ChatBubbles {
                 useSearch: !(message as Message.message).pFlags.is_scheduled,
                 isScheduled: (message as Message.message).pFlags.is_scheduled
               } : undefined,
+              sizeType: 'documentName'
             });
 
             if(newNameContainer) {
