@@ -78,7 +78,7 @@ export default class CacheStorageController {
   public saveFile(fileName: string, blob: Blob | Uint8Array) {
     //return Promise.resolve(blobConstruct([blob]));
     if(!(blob instanceof Blob)) {
-      blob = blobConstruct(blob) as Blob;
+      blob = blobConstruct(blob);
     }
 
     const response = new Response(blob, {
@@ -123,8 +123,8 @@ export default class CacheStorageController {
     });
   }
 
-  public getFileWriter(fileName: string, mimeType: string) {
-    const fakeWriter = FileManager.getFakeFileWriter(mimeType, (blob) => {
+  public getFileWriter(fileName: string, fileSize: number, mimeType: string) {
+    const fakeWriter = FileManager.getFakeFileWriter(mimeType, fileSize, (blob) => {
       return this.saveFile(fileName, blob).catch(() => blob);
     });
 

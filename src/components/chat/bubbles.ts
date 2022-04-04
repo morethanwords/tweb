@@ -847,7 +847,7 @@ export default class ChatBubbles {
           this.onUnreadedInViewport(target, mid);
         }
       });
-    });
+    }, {root: this.scrollable.container});
 
     this.viewsObserver = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
@@ -870,7 +870,7 @@ export default class ChatBubbles {
           }
         }
       });
-    });
+    }, {root: this.scrollable.container});
 
     this.sendViewCountersDebounced = debounce(() => {
       const mids = [...this.viewsMids];

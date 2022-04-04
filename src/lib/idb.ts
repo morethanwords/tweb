@@ -260,7 +260,7 @@ export default class IDBStorage<T extends Database<any>> {
   public saveFile(fileName: string, blob: Blob | Uint8Array) {
     //return Promise.resolve(blobConstruct([blob]));
     if(!(blob instanceof Blob)) {
-      blob = blobConstruct([blob]) as Blob;
+      blob = blobConstruct(blob);
     }
 
     return this.save(fileName, blob);

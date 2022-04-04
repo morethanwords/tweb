@@ -11,7 +11,11 @@
 
 import blobSafeMimeType from "./blobSafeMimeType";
 
-export default function blobConstruct(blobParts: any, mimeType: string = ''): Blob {
+export default function blobConstruct<T extends Uint8Array | string>(blobParts: Array<T> | T, mimeType: string = ''): Blob {
+  if(!Array.isArray(blobParts)) {
+    blobParts = [blobParts];
+  }
+
   let blob;
   const safeMimeType = blobSafeMimeType(mimeType);
   try {

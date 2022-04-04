@@ -272,13 +272,13 @@ export class ApiFileManager {
   private uncompressTGS = (bytes: Uint8Array, fileName: string) => {
     //this.log('uncompressTGS', bytes, bytes.slice().buffer);
     // slice нужен потому что в uint8array - 5053 length, в arraybuffer - 5084
-    return cryptoWorker.invokeCrypto('gzipUncompress', bytes.slice().buffer, true) as Promise<string>;
+    return cryptoWorker.invokeCrypto('gzipUncompress', bytes.slice().buffer, false) as Promise<Uint8Array>;
   };
 
   private uncompressTGV = (bytes: Uint8Array, fileName: string) => {
     //this.log('uncompressTGS', bytes, bytes.slice().buffer);
     // slice нужен потому что в uint8array - 5053 length, в arraybuffer - 5084
-    return cryptoWorker.invokeCrypto('gzipUncompress', bytes.slice().buffer, true) as Promise<string>;
+    return cryptoWorker.invokeCrypto('gzipUncompress', bytes.slice().buffer, false) as Promise<Uint8Array>;
   };
 
   private convertWebp = (bytes: Uint8Array, fileName: string) => {
@@ -408,11 +408,11 @@ export class ApiFileManager {
       deferred.resolve(blob);
     }).catch(() => {
       //this.log('not cached', fileName);
-      const fileWriterPromise = fileStorage.getFileWriter(fileName, mimeType);
+      const limit = options.limitPart || this.getLimitPart(size);
+      const fileWriterPromise = fileStorage.getFileWriter(fileName, size || limit, mimeType);
 
       fileWriterPromise.then((fileWriter) => {
         cacheFileWriter = fileWriter;
-        const limit = options.limitPart || this.getLimitPart(size);
         let offset: number;
         let startOffset = 0;
         let writeFilePromise: CancellablePromise<void> = Promise.resolve(),
@@ -422,7 +422,7 @@ export class ApiFileManager {
 
         //console.error('maxRequests', maxRequests);
 
-        const processDownloaded = async(bytes: Uint8Array, offset: number) => {
+        const processDownloaded = async(bytes: Uint8Array) => {
           if(process) {
             //const perf = performance.now();
             const processed = await process(bytes, fileName);
@@ -473,13 +473,18 @@ export class ApiFileManager {
                 deferred.notify({done, offset, total: size});
               //}
 
-              const processedResult = await processDownloaded(bytes, offset);
-              checkCancel();
-
               await writeFilePromise;
               checkCancel();
 
-              await fileManager.write(fileWriter, processedResult);
+              await fileWriter.write(bytes, offset);
+            }
+
+            if(isFinal && process) {
+              const bytes = fileWriter.getParts();
+              const processedResult = await processDownloaded(bytes);
+              checkCancel();
+
+              fileWriter.replaceParts(processedResult);
             }
 
             writeFileDeferred.resolve();
@@ -487,7 +492,12 @@ export class ApiFileManager {
             if(isFinal) {
               resolved = true;
 
-              deferred.resolve(fileWriter.finalize(size < MAX_FILE_SAVE_SIZE));
+              const realSize = size || bytes.byteLength;
+              if(!size) {
+                fileWriter.trim(realSize);
+              }
+
+              deferred.resolve(fileWriter.finalize(realSize < MAX_FILE_SAVE_SIZE));
             }
           } catch(err) {
             errorHandler(err as Error);

@@ -10,7 +10,6 @@
  */
 
 import blobConstruct from "../helpers/blob/blobConstruct";
-import readBlobAsUint8Array from "../helpers/blob/readBlobAsUint8Array";
 
 export class FileManager {
   private blobSupported = true;
@@ -27,37 +26,34 @@ export class FileManager {
     return this.blobSupported;
   }
   
-  public write(fileWriter: ReturnType<FileManager['getFakeFileWriter']>, bytes: Uint8Array | Blob | string): Promise<void> {
-    if(bytes instanceof Blob) { // is file bytes
-      return readBlobAsUint8Array(bytes).then(arr => {
-        return fileWriter.write(arr);
-      });
-    } else {
-      return fileWriter.write(bytes);
-    }
-  }
-
-  public getFakeFileWriter(mimeType: string, saveFileCallback?: (blob: Blob) => Promise<Blob>) {
-    const blobParts: Array<Uint8Array | string> = [];
+  public getFakeFileWriter(mimeType: string, size: number, saveFileCallback?: (blob: Blob) => Promise<Blob>) {
+    let bytes: Uint8Array = new Uint8Array(size);
     const fakeFileWriter = {
-      write: async(part: Uint8Array | string) => {
+      write: async(part: Uint8Array, offset: number) => {
         if(!this.blobSupported) {
           throw false;
         }
         
-        blobParts.push(part);
+        bytes.set(part, offset);
       },
       truncate: () => {
-        blobParts.length = 0;
+        bytes = new Uint8Array();
+      },
+      trim: (size: number) => {
+        bytes = bytes.slice(0, size);
       },
       finalize: (saveToStorage = true) => {
-        const blob = blobConstruct(blobParts, mimeType);
+        const blob = blobConstruct(bytes, mimeType);
 
         if(saveToStorage && saveFileCallback) {
           saveFileCallback(blob);
         }
         
         return blob;
+      },
+      getParts: () => bytes,
+      replaceParts: (parts: typeof bytes) => {
+        bytes = parts;
       }
     };
     

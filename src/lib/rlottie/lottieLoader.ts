@@ -101,7 +101,7 @@ export class LottieLoader {
     return fetch(url)
     .then(res => {
       if(!res.headers || res.headers.get('content-type') === 'application/octet-stream') {
-        return res.arrayBuffer().then(data => apiManager.invokeCrypto('gzipUncompress', data)).then(arr => blobConstruct([arr], ''))
+        return res.arrayBuffer().then(data => apiManager.invokeCrypto('gzipUncompress', data)).then(arr => blobConstruct(arr as Uint8Array, ''))
       } else {
         return res.blob();
       }
