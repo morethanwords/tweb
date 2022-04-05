@@ -1720,10 +1720,10 @@ export default class MTPNetworker {
           case 33:    // * msg_seqno too high
           case 64: {  // * invalid container
             if(changedTimeOffset === undefined) {
-              this.applyServerTime(messageId);
+              changedTimeOffset = this.applyServerTime(messageId);
             }
 
-            if(message.error_code === 17) {
+            if(message.error_code === 17 || changedTimeOffset) {
               this.log('Update session');
               this.updateSession();
             }
