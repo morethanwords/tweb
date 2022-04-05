@@ -828,6 +828,14 @@ export class AppImManager {
     }
   }
 
+  public openUrl(url: string) {
+    const {url: wrappedUrl, onclick} = RichTextProcessor.wrapUrl(url);
+    const a = document.createElement('a');
+    a.href = wrappedUrl;
+    
+    (window as any)[onclick](a);
+  }
+
   private addAnchorListener<Params extends {pathnameParams?: any, uriParams?: any}>(options: {
     name: 'showMaskedAlert' | 'execBotCommand' | 'searchByHashtag' | 'addstickers' | 'im' |
           'resolve' | 'privatepost' | 'addstickers' | 'voicechat' | 'joinchat' | 'join', 

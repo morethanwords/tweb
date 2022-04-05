@@ -689,6 +689,7 @@ const lang = {
   "ReportChatIllegalDrugs": "Illegal Drugs",
   "ReportChatPersonalDetails": "Personal Details",
   "VoipPeerIncompatible": "**%1$s**'s app is using an incompatible protocol. They need to update their app before you can call them.",
+  "TelegramFeaturesUrl": "https://t.me/TelegramTips",
 
   // * macos
   "AccountSettings.Filters": "Chat Folders",

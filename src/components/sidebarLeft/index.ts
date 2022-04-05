@@ -24,7 +24,7 @@ import AppNewChannelTab from "./tabs/newChannel";
 import AppContactsTab from "./tabs/contacts";
 import AppArchivedTab from "./tabs/archivedTab";
 import AppAddMembersTab from "./tabs/addMembers";
-import { FormatterArguments, i18n, i18n_, LangPackKey } from "../../lib/langPack";
+import I18n, { FormatterArguments, i18n, i18n_, LangPackKey } from "../../lib/langPack";
 import AppPeopleNearbyTab from "./tabs/peopleNearby";
 import { ButtonMenuItemOptions } from "../buttonMenu";
 import CheckboxField from "../checkboxField";
@@ -175,9 +175,8 @@ export class AppSidebarLeft extends SidebarSlider {
       icon: 'help',
       text: 'TelegramFeatures',
       onClick: () => {
-        appImManager.openUsername({
-          userName: 'TelegramTips'
-        });
+        const url = I18n.format('TelegramFeaturesUrl', true);
+        appImManager.openUrl(url);
       }
     }, {
       icon: 'bug',
