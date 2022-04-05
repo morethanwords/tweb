@@ -70,22 +70,25 @@ export class TimeManager {
     localTime = (localTime || Date.now()) / 1000 | 0;
     const newTimeOffset = serverTime - localTime;
     const changed = Math.abs(this.timeOffset - newTimeOffset) > 10;
-    sessionStorage.set({
-      server_time_offset: newTimeOffset
-    });
-
     this.lastMessageId = [0, 0];
-    this.timeOffset = newTimeOffset;
+
+    if(this.timeOffset !== newTimeOffset) {
+      sessionStorage.set({
+        server_time_offset: newTimeOffset
+      });
+
+      this.timeOffset = newTimeOffset;
+
+      /// #if MTPROTO_WORKER
+      const task: ApplyServerTimeOffsetTask = {
+        type: 'applyServerTimeOffset',
+        payload: newTimeOffset
+      };
+      notifySomeone(task);
+      /// #endif
+    }
     
     //console.log('[TimeManager]: Apply server time', serverTime, localTime, newTimeOffset, changed);
-
-    /// #if MTPROTO_WORKER
-    const task: ApplyServerTimeOffsetTask = {
-      type: 'applyServerTimeOffset',
-      payload: newTimeOffset
-    };
-    notifySomeone(task);
-    /// #endif
 
     return changed;
   }

@@ -184,6 +184,7 @@ export default class MTPNetworker {
   //private debugRequests: Array<{before: Uint8Array, after: Uint8Array}> = [];
 
   private delays: typeof delays[keyof typeof delays];
+  private getNewTimeOffset: boolean;
 
   constructor(
     public dcId: number, 
@@ -889,6 +890,8 @@ export default class MTPNetworker {
         this.clearPingDelayDisconnect();
         this.sendPingDelayDisconnect();
       }
+
+      this.getNewTimeOffset = true;
     }
     /* if(this.onConnectionStatusChange) {
       this.onConnectionStatusChange(this.isOnline);
@@ -1640,6 +1643,10 @@ export default class MTPNetworker {
     });
   } */
 
+  private applyServerTime(messageId: string) {
+    return timeManager.applyServerTime(bigInt(messageId).shiftRight(32).toJSNumber());
+  }
+
   // * https://core.telegram.org/mtproto/service_messages_about_messages#notice-of-ignored-error-message
   public processMessage(message: any, messageId: MTLong, sessionId: Uint8Array | number[]) {
     if(message._ === 'messageEmpty') {
@@ -1661,6 +1668,12 @@ export default class MTPNetworker {
 
     if(this.pingDelayDisconnectDeferred) {
       this.pingDelayDisconnectDeferred.resolve('any message');
+    }
+
+    let changedTimeOffset: boolean;
+    if(this.getNewTimeOffset) {
+      changedTimeOffset = this.applyServerTime(messageId);
+      this.getNewTimeOffset = undefined;
     }
 
     switch(message._) {
@@ -1704,8 +1717,7 @@ export default class MTPNetworker {
           case 32:    // * msg_seqno too low
           case 33:    // * msg_seqno too high
           case 64: {  // * invalid container
-            const changedOffset = timeManager.applyServerTime(bigInt(messageId).shiftRight(32).toJSNumber());
-            if(message.error_code === 17 || changedOffset) {
+            if(message.error_code === 17 || changedTimeOffset) {
               this.log('Update session');
               this.updateSession();
             }
