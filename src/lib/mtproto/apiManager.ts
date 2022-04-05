@@ -32,6 +32,7 @@ import Modes from '../../config/modes';
 import bytesFromHex from '../../helpers/bytes/bytesFromHex';
 import bytesToHex from '../../helpers/bytes/bytesToHex';
 import isObject from '../../helpers/object/isObject';
+import { pause } from '../../helpers/schedulers/pause';
 
 /// #if !MTPROTO_WORKER
 import rootScope from '../rootScope';
@@ -40,7 +41,6 @@ import rootScope from '../rootScope';
 /// #if MTPROTO_AUTO
 import transportController from './transports/controller';
 import MTTransport from './transports/transport';
-import { pause } from '../../helpers/schedulers/pause';
 /// #endif
 
 /* var networker = apiManager.cachedNetworkers.websocket.upload[2];

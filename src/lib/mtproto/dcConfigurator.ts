@@ -13,6 +13,7 @@ import MTTransport, { MTConnectionConstructable } from './transports/transport';
 import Modes from '../../config/modes';
 import App from '../../config/app';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
+import { MOUNT_CLASS_TO } from '../../config/debug';
 
 /// #if MTPROTO_HAS_HTTP
 import HTTP from './transports/http';
@@ -162,4 +163,6 @@ export class DcConfigurator {
   }
 }
 
-export default new DcConfigurator();
+const dcConfigurator = new DcConfigurator();
+MOUNT_CLASS_TO && (MOUNT_CLASS_TO.dcConfigurator = dcConfigurator);
+export default dcConfigurator;

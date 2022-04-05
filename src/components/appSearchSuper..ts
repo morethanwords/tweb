@@ -55,6 +55,7 @@ import safeAssign from "../helpers/object/safeAssign";
 import escapeRegExp from "../helpers/string/escapeRegExp";
 import limitSymbols from "../helpers/string/limitSymbols";
 import findAndSplice from "../helpers/array/findAndSplice";
+import { ScrollStartCallbackDimensions } from "../helpers/fastSmoothScroll";
 
 //const testScroll = false;
 
@@ -297,6 +298,8 @@ export default class AppSearchSuper {
   private searchContextMenu: SearchContextMenu;
   public selection: SearchSelection;
 
+  public scrollStartCallback: (dimensions: ScrollStartCallbackDimensions) => void;
+
   constructor(options: Pick<AppSearchSuper, 'mediaTabs' | 'scrollable' | 'searchGroups' | 'asChatList' | 'groupByMonth' | 'hideEmptyTabs' | 'onChangeTab' | 'showSender'>) {
     safeAssign(this, options);
 
@@ -407,7 +410,8 @@ export default class AppSearchSuper {
       if(this.prevTabId === id && !this.skipScroll) {
         this.scrollable.scrollIntoViewNew({
           element: this.container, 
-          position: 'start'
+          position: 'start',
+          startCallback: this.scrollStartCallback
         });
         return;
       }
@@ -432,7 +436,8 @@ export default class AppSearchSuper {
         if(scrollTop < offsetTop) {
           this.scrollable.scrollIntoViewNew({
             element: this.container, 
-            position: 'start'
+            position: 'start',
+            startCallback: this.scrollStartCallback
           });
           scrollTop = offsetTop;
         }

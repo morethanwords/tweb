@@ -1644,7 +1644,9 @@ export default class MTPNetworker {
   } */
 
   private applyServerTime(messageId: string) {
-    return timeManager.applyServerTime(bigInt(messageId).shiftRight(32).toJSNumber());
+    const serverTime = bigInt(messageId).shiftRight(32).toJSNumber();
+    this.log('applying server time', serverTime);
+    return timeManager.applyServerTime(serverTime);
   }
 
   // * https://core.telegram.org/mtproto/service_messages_about_messages#notice-of-ignored-error-message
@@ -1717,7 +1719,11 @@ export default class MTPNetworker {
           case 32:    // * msg_seqno too low
           case 33:    // * msg_seqno too high
           case 64: {  // * invalid container
-            if(message.error_code === 17 || changedTimeOffset) {
+            if(changedTimeOffset === undefined) {
+              this.applyServerTime(messageId);
+            }
+
+            if(message.error_code === 17) {
               this.log('Update session');
               this.updateSession();
             }

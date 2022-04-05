@@ -98,7 +98,10 @@ export default class AppSharedMediaTab extends SliderSuperTab {
       if(!rect.width) return;
 
       const top = rect.top - 1;
-      const isSharedMedia = top <= HEADER_HEIGHT;
+      setIsSharedMedia(top <= HEADER_HEIGHT);
+    };
+
+    const setIsSharedMedia = (isSharedMedia: boolean) => {
       animatedCloseIcon.classList.toggle('state-back', isSharedMedia);
       this.searchSuper.container.classList.toggle('is-full-viewport', isSharedMedia);
       transition(+isSharedMedia);
@@ -207,6 +210,10 @@ export default class AppSharedMediaTab extends SliderSuperTab {
         }, timeout);
       }
     });
+
+    this.searchSuper.scrollStartCallback = () => {
+      setIsSharedMedia(true);
+    };
 
     this.profile.element.append(this.searchSuper.container);
 

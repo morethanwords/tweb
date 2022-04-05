@@ -2377,6 +2377,7 @@ export default class ChatBubbles {
     if(!peerId) {
       this.cleanup(true);
       this.peerId = peerId;
+      this.preloader.detach();
       return null;
     }
 
