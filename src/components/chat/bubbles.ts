@@ -1751,7 +1751,8 @@ export default class ChatBubbles {
     }
 
     // warning, если иды только отрицательные то вниз не попадёт (хотя мб и так не попадёт)
-    const history = Object.keys(this.bubbles).map(id => +id).sort((a, b) => a - b);
+    // some messages can have negative id (such as sponsored message)
+    const history = Object.keys(this.bubbles).map(id => +id).sort((a, b) => a - b).filter(id => id > 0);
     if(!history.length) return;
     
     if(top) {
