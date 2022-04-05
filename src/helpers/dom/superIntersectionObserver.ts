@@ -39,6 +39,8 @@ export default class SuperIntersectionObserver {
   }
 
   public disconnect() {
+    this.observing.clear();
+    this.observingQueue.clear();
     this.observer.disconnect();
   }
 
