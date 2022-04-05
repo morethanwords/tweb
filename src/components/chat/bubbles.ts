@@ -96,6 +96,7 @@ import forEachReverse from "../../helpers/array/forEachReverse";
 import formatNumber from "../../helpers/number/formatNumber";
 import findAndSplice from "../../helpers/array/findAndSplice";
 import getViewportSlice from "../../helpers/dom/getViewportSlice";
+import SuperIntersectionObserver from "../../helpers/dom/superIntersectionObserver";
 
 const USE_MEDIA_TAILS = false;
 const IGNORE_ACTIONS: Set<Message.messageService['action']['_']> = new Set([
@@ -149,7 +150,6 @@ export default class ChatBubbles {
 
   private stickyIntersector: StickyIntersector;
 
-  private unreadedObserver: IntersectionObserver;
   private unreaded: Map<HTMLElement, number> = new Map();
   private unreadedSeen: Set<number> = new Set();
   private readPromise: Promise<void>;
@@ -194,7 +194,6 @@ export default class ChatBubbles {
   private resolveLadderAnimation: () => Promise<any>;
   private emptyPlaceholderMid: number;
 
-  private viewsObserver: IntersectionObserver;
   private viewsMids: Set<number> = new Set();
   private sendViewCountersDebounced: () => Promise<void>;
 
@@ -210,6 +209,7 @@ export default class ChatBubbles {
   private sliceViewportDebounced: DebounceReturnType<ChatBubbles['sliceViewport']>;
   private resizeObserver: ResizeObserver;
   private willScrollOnLoad: boolean;
+  private observer: SuperIntersectionObserver;
 
   // private reactions: Map<number, ReactionsElement>;
 
@@ -839,38 +839,23 @@ export default class ChatBubbles {
       });
     });
 
-    this.unreadedObserver = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if(entry.isIntersecting) {
-          const target = entry.target as HTMLElement;
-          const mid = this.unreaded.get(target as HTMLElement);
-          this.onUnreadedInViewport(target, mid);
-        }
-      });
-    }, {root: this.scrollable.container});
+    this.observer = new SuperIntersectionObserver({root: this.scrollable.container});
 
-    this.viewsObserver = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if(entry.isIntersecting) {
-          const mid = +(entry.target as HTMLElement).dataset.mid;
-          this.viewsObserver.unobserve(entry.target);
+    this.listenerSetter.add(rootScope)('chat_changing', ({to}) => {
+      const freeze = to !== this.chat;
 
-          if(mid) {
-            this.viewsMids.add(mid);
-            this.sendViewCountersDebounced();
-          } else {
-            const {sponsoredMessage} = this;
-            if(sponsoredMessage && sponsoredMessage.random_id) {
-              delete sponsoredMessage.random_id;
-              this.chat.apiManager.invokeApiSingle('channels.viewSponsoredMessage', {
-                channel: this.appChatsManager.getChannelInput(this.peerId.toChatId()),
-                random_id: sponsoredMessage.random_id
-              });
-            }
-          }
-        }
-      });
-    }, {root: this.scrollable.container});
+      const cb = () => {
+        this.observer.toggleObservingNew(freeze);
+      };
+
+      if(!freeze) {
+        setTimeout(() => {
+          cb();
+        }, 400);
+      } else {
+        cb();
+      }
+    });
 
     this.sendViewCountersDebounced = debounce(() => {
       const mids = [...this.viewsMids];
@@ -879,6 +864,35 @@ export default class ChatBubbles {
       this.appMessagesManager.incrementMessageViews(this.peerId, mids);
     }, 1000, false, true);
   }
+
+  private unreadedObserverCallback = (entry: IntersectionObserverEntry) => {
+    if(entry.isIntersecting) {
+      const target = entry.target as HTMLElement;
+      const mid = this.unreaded.get(target as HTMLElement);
+      this.onUnreadedInViewport(target, mid);
+    }
+  };
+
+  private viewsObserverCallback = (entry: IntersectionObserverEntry) => {
+    if(entry.isIntersecting) {
+      const mid = +(entry.target as HTMLElement).dataset.mid;
+      this.observer.unobserve(entry.target, this.viewsObserverCallback);
+
+      if(mid) {
+        this.viewsMids.add(mid);
+        this.sendViewCountersDebounced();
+      } else {
+        const {sponsoredMessage} = this;
+        if(sponsoredMessage && sponsoredMessage.random_id) {
+          delete sponsoredMessage.random_id;
+          this.chat.apiManager.invokeApiSingle('channels.viewSponsoredMessage', {
+            channel: this.appChatsManager.getChannelInput(this.peerId.toChatId()),
+            random_id: sponsoredMessage.random_id
+          });
+        }
+      }
+    }
+  };
 
   private createResizeObserver() {
     if(!('ResizeObserver' in window) || this.resizeObserver) {
@@ -1158,7 +1172,7 @@ export default class ChatBubbles {
 
   private onUnreadedInViewport(target: HTMLElement, mid: number) {
     this.unreadedSeen.add(mid);
-    this.unreadedObserver.unobserve(target);
+    this.observer.unobserve(target, this.unreadedObserverCallback);
     this.unreaded.delete(target);
     this.readUnreaded();
   }
@@ -1912,12 +1926,11 @@ export default class ChatBubbles {
       }
 
       this.bubbleGroups.removeBubble(bubble);
-      if(this.unreadedObserver) {
-        this.unreadedObserver.unobserve(bubble);
+      if(this.observer) {
+        this.observer.unobserve(bubble, this.unreadedObserverCallback);
         this.unreaded.delete(bubble);
-      }
-      if(this.viewsObserver) {
-        this.viewsObserver.unobserve(bubble);
+
+        this.observer.unobserve(bubble, this.viewsObserverCallback);
         this.viewsMids.delete(mid);
       }
       //this.unreaded.findAndSplice(mid => mid === id);
@@ -2271,13 +2284,11 @@ export default class ChatBubbles {
     this.listenerSetter.removeAll();
 
     this.lazyLoadQueue.clear();
-    this.unreadedObserver && this.unreadedObserver.disconnect();
-    this.viewsObserver && this.viewsObserver.disconnect();
+    this.observer && this.observer.disconnect();
     this.stickyIntersector && this.stickyIntersector.disconnect();
 
     delete this.lazyLoadQueue;
-    this.unreadedObserver && delete this.unreadedObserver;
-    this.viewsObserver && delete this.viewsObserver;
+    this.observer && delete this.observer;
     this.stickyIntersector && delete this.stickyIntersector;
   }
 
@@ -2323,15 +2334,13 @@ export default class ChatBubbles {
       this.stickyIntersector.disconnect();
     }
     
-    if(this.unreadedObserver) {
-      this.unreadedObserver.disconnect();
+    if(this.observer) {
+      this.observer.disconnect();
+
       this.unreaded.clear();
       this.unreadedSeen.clear();
       this.readPromise = undefined;
-    }
 
-    if(this.viewsObserver) {
-      this.viewsObserver.disconnect();
       this.viewsMids.clear();
     }
 
@@ -2914,13 +2923,13 @@ export default class ChatBubbles {
       contentWrapper.appendChild(bubbleContainer);
       bubble.appendChild(contentWrapper);
 
-      if(!our && !message.pFlags.out && this.unreadedObserver) {
+      if(!our && !message.pFlags.out && this.observer) {
         //this.log('not our message', message, message.pFlags.unread);
         const isUnread = message.pFlags.unread || 
           this.appMessagesManager.isMentionUnread(message) || 
           (this.historyStorage.readMaxId !== undefined && this.historyStorage.readMaxId < message.mid);
         if(isUnread) {
-          this.unreadedObserver.observe(bubble); 
+          this.observer.observe(bubble, this.unreadedObserverCallback);
           this.unreaded.set(bubble, message.mid);
         }
       }
@@ -3107,8 +3116,8 @@ export default class ChatBubbles {
         bubble.classList.add('with-beside-button');
       }
   
-      if(!message.pFlags.is_outgoing && this.viewsObserver) {
-        this.viewsObserver.observe(bubble);
+      if(!message.pFlags.is_outgoing && this.observer) {
+        this.observer.observe(bubble, this.viewsObserverCallback);
       }
     }
 
@@ -4429,7 +4438,7 @@ export default class ChatBubbles {
         text
       });
 
-      this.viewsObserver.observe(button); 
+      this.observer.observe(button, this.viewsObserverCallback);
 
       if(callback) {
         attachClickEvent(button, callback);
