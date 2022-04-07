@@ -114,6 +114,7 @@ namespace I18n {
     timeFormat = format;
 
     if(haveToUpdate) {
+      cachedDateTimeFormats.clear();
       const elements = Array.from(document.querySelectorAll(`.i18n`)) as HTMLElement[];
       elements.forEach(element => {
         const instance = weakMap.get(element);
