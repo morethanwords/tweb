@@ -23,7 +23,7 @@ import RichTextProcessor from "../lib/richtextprocessor";
 import rootScope from "../lib/rootScope";
 import AvatarElement from "./avatar";
 import CheckboxField from "./checkboxField";
-import generateVerifiedIcon from "./generateVerifiedIcon";
+import generateTitleIcons from "./generateTitleIcons";
 import PeerProfileAvatars from "./peerProfileAvatars";
 import PeerTitle from "./peerTitle";
 import Row from "./row";
@@ -357,10 +357,7 @@ export default class PeerProfile {
       dialog: this.isDialog,
     }).element);
 
-    const peer = appPeersManager.getPeer(peerId);
-    if(peer?.pFlags?.verified) {
-      this.name.append(generateVerifiedIcon());
-    }
+    this.name.append(...generateTitleIcons(peerId));
 
     this.setPeerStatus(true);
   }

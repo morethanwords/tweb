@@ -41,15 +41,14 @@ import replaceContent from "../../helpers/dom/replaceContent";
 import { ChatFull, Chat as MTChat, GroupCall } from "../../layer";
 import PopupPickUser from "../popups/pickUser";
 import PopupPeer from "../popups/peer";
-import generateVerifiedIcon from "../generateVerifiedIcon";
 import { fastRaf } from "../../helpers/schedulers";
 import AppEditContactTab from "../sidebarRight/tabs/editContact";
 import appMediaPlaybackController from "../appMediaPlaybackController";
-import { NULL_PEER_ID } from "../../lib/mtproto/mtproto_config";
 import IS_GROUP_CALL_SUPPORTED from "../../environment/groupCallSupport";
 import IS_CALL_SUPPORTED from "../../environment/callSupport";
 import { CallType } from "../../lib/calls/types";
 import PopupMute from "../popups/mute";
+import generateTitleIcons from "../generateTitleIcons";
 
 type ButtonToVerify = {element?: HTMLElement, verify: () => boolean};
 
@@ -809,10 +808,7 @@ export default class ChatTopbar {
     replaceContent(this.title, titleEl);
 
     if(this.chat.type === 'chat') {
-      const peer = this.appPeersManager.getPeer(this.peerId);
-      if(peer?.pFlags?.verified) {
-        this.title.append(generateVerifiedIcon());
-      }
+      this.title.append(...generateTitleIcons(this.peerId));
     }
   }
 

@@ -1608,6 +1608,17 @@ hr {
   margin-left: .125rem;
 }
 
+.badge-fake {
+  color: var(--danger-color);
+  border: 1px solid var(--danger-color);
+  padding: .125rem .25rem;
+  border-radius: .185rem;
+  font-size: .625rem;
+  font-weight: 500;
+  line-height: 1 !important;
+  margin: 0 .25rem;
+}
+
 .movable-element {
   --size: .5rem;
   position: relative;

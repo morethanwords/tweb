@@ -23,7 +23,7 @@ import appPeersManager from './appPeersManager';
 import appImManager from "./appImManager";
 import appMessagesManager, { Dialog, MyMessage } from "./appMessagesManager";
 import appStateManager, { State } from "./appStateManager";
-import appUsersManager from "./appUsersManager";
+import appUsersManager, { User } from "./appUsersManager";
 import Button from "../../components/button";
 import SetTransition from "../../components/singleTransition";
 import appDraftsManager, { MyDraftMessage } from "./appDraftsManager";
@@ -53,7 +53,6 @@ import { MyDocument } from "./appDocsManager";
 import { setSendingStatus } from "../../components/sendingStatus";
 import SortedList, { SortedElementBase } from "../../helpers/sortedList";
 import debounce from "../../helpers/schedulers/debounce";
-import generateVerifiedIcon from "../../components/generateVerifiedIcon";
 import { NULL_PEER_ID } from "../mtproto/mtproto_config";
 import groupCallActiveIcon from "../../components/groupCallActiveIcon";
 import { Chat, NotifyPeer } from "../../layer";
@@ -61,6 +60,7 @@ import IS_GROUP_CALL_SUPPORTED from "../../environment/groupCallSupport";
 import mediaSizes from "../../helpers/mediaSizes";
 import appNavigationController, { NavigationItem } from "../../components/appNavigationController";
 import assumeType from "../../helpers/assumeType";
+import generateTitleIcons from "../../components/generateTitleIcons";
 
 export type DialogDom = {
   avatarEl: AvatarElement,
@@ -1851,10 +1851,7 @@ export class AppDialogsManager {
       // for muted icon
       titleSpanContainer.classList.add('tgico'); // * эта строка будет актуальна только для !container, но ладно
       
-      const peer = appPeersManager.getPeer(peerId);
-      if(peer?.pFlags?.verified) {
-        titleSpanContainer.append(generateVerifiedIcon());
-      }
+      titleSpanContainer.append(...generateTitleIcons(peerId));
     //}
     
     const span = document.createElement('span');
