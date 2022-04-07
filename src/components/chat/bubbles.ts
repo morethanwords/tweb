@@ -41,7 +41,7 @@ import LazyLoadQueue from "../lazyLoadQueue";
 import ListenerSetter from "../../helpers/listenerSetter";
 import PollElement from "../poll";
 import AudioElement from "../audio";
-import { ChatInvite, Message, MessageEntity,  MessageMedia,  MessageReplyHeader, Photo, PhotoSize, ReactionCount, ReplyMarkup, SponsoredMessage, Update, WebPage } from "../../layer";
+import { ChatInvite, Message, MessageEntity,  MessageMedia,  MessageReplyHeader, Photo, PhotoSize, ReactionCount, ReplyMarkup, SponsoredMessage, Update, User, WebPage } from "../../layer";
 import { NULL_PEER_ID, REPLIES_PEER_ID } from "../../lib/mtproto/mtproto_config";
 import { FocusDirection, ScrollStartCallbackDimensions } from "../../helpers/fastSmoothScroll";
 import useHeavyAnimationCheck, { getHeavyAnimationPromise, dispatchHeavyAnimationEvent, interruptHeavyAnimation } from "../../hooks/useHeavyAnimationCheck";
@@ -97,6 +97,7 @@ import formatNumber from "../../helpers/number/formatNumber";
 import findAndSplice from "../../helpers/array/findAndSplice";
 import getViewportSlice from "../../helpers/dom/getViewportSlice";
 import SuperIntersectionObserver from "../../helpers/dom/superIntersectionObserver";
+import generateFakeIcon from "../generateFakeIcon";
 
 const USE_MEDIA_TAILS = false;
 const IGNORE_ACTIONS: Set<Message.messageService['action']['_']> = new Set([
@@ -3805,6 +3806,12 @@ export default class ChatBubbles {
         if(!isStandaloneMedia && needName) {
           nameDiv = document.createElement('div');
           nameDiv.append(title);
+
+          const peer = this.appPeersManager.getPeer(message.fromId);
+          const pFlags = (peer as User.user)?.pFlags;
+          if(pFlags && (pFlags.scam || pFlags.fake)) {
+            nameDiv.append(generateFakeIcon(pFlags.scam));
+          }
 
           if(!our) {
             nameDiv.style.color = this.appPeersManager.getPeerColorById(message.fromId, false);

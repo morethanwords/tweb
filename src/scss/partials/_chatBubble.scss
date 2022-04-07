@@ -1877,6 +1877,12 @@ $bubble-beside-button-width: 38px;
     // order: 1;
     //width: max-content;
     //white-space: nowrap;
+
+    .badge-fake {
+      display: inline-block;
+      vertical-align: middle;
+      margin-top: -2px;
+    }
   }
 
   /* &:not(.is-group-first) .bubble-content > .name .name {
