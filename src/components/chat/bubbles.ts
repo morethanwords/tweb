@@ -1962,6 +1962,42 @@ export default class ChatBubbles {
       this.onScroll();
     }
   }
+
+  private setTopPadding(middleware = this.getMiddleware()) {
+    let isPaddingNeeded = false;
+    let setPaddingTo: HTMLElement;
+    if(!this.isTopPaddingSet) {
+      const {clientHeight, scrollHeight} = this.scrollable.container;
+      isPaddingNeeded = clientHeight === scrollHeight;
+      /* const firstEl = this.chatInner.firstElementChild as HTMLElement;
+      if(this.chatInner.firstElementChild) {
+        const visibleRect = getVisibleRect(firstEl, this.scrollable.container);
+        isPaddingNeeded = !visibleRect.overflow.top && (visibleRect.rect.top - firstEl.offsetTop) !== this.scrollable.container.getBoundingClientRect().top;
+      } else {
+        isPaddingNeeded = true;
+      } */
+
+      if(isPaddingNeeded) {
+        /* const add = clientHeight - scrollHeight;
+        this.chatInner.style.paddingTop = add + 'px';
+        this.scrollable.scrollTop += add; */
+        setPaddingTo = this.chatInner;
+        setPaddingTo.style.paddingTop = clientHeight + 'px';
+        this.scrollable.setScrollTopSilently(scrollHeight);
+        this.isTopPaddingSet = true;
+      }
+    }
+
+    return {
+      isPaddingNeeded,
+      unsetPadding: isPaddingNeeded ? () => {
+        if(middleware() && isPaddingNeeded) {
+          setPaddingTo.style.paddingTop = '';
+          this.isTopPaddingSet = false;
+        }
+      } : undefined
+    };
+  }
   
   public renderNewMessagesByIds(mids: number[], scrolledDown?: boolean) {
     if(!this.scrollable.loadedAll.bottom) { // seems search active or sliced
@@ -2001,29 +2037,7 @@ export default class ChatBubbles {
     }
 
     const middleware = this.getMiddleware();
-    let isPaddingNeeded = false;
-    let setPaddingTo: HTMLElement;
-    if(!this.isTopPaddingSet) {
-      const {clientHeight, scrollHeight} = this.scrollable.container;
-      isPaddingNeeded = clientHeight === scrollHeight;
-      /* const firstEl = this.chatInner.firstElementChild as HTMLElement;
-      if(this.chatInner.firstElementChild) {
-        const visibleRect = getVisibleRect(firstEl, this.scrollable.container);
-        isPaddingNeeded = !visibleRect.overflow.top && (visibleRect.rect.top - firstEl.offsetTop) !== this.scrollable.container.getBoundingClientRect().top;
-      } else {
-        isPaddingNeeded = true;
-      } */
-
-      if(isPaddingNeeded) {
-        /* const add = clientHeight - scrollHeight;
-        this.chatInner.style.paddingTop = add + 'px';
-        this.scrollable.scrollTop += add; */
-        setPaddingTo = this.chatInner;
-        setPaddingTo.style.paddingTop = clientHeight + 'px';
-        this.scrollable.setScrollTopSilently(scrollHeight);
-        this.isTopPaddingSet = true;
-      }
-    }
+    const {isPaddingNeeded, unsetPadding} = this.setTopPadding(middleware);
 
     const promise = this.performHistoryResult(mids, false, true);
     if(scrolledDown) {
@@ -2040,12 +2054,8 @@ export default class ChatBubbles {
 
         const promise = bubble ? this.scrollToBubbleEnd(bubble) : this.scrollToEnd();
         if(isPaddingNeeded) {
-          promise.then(() => { // it will be called only once even if was set multiple times (that won't happen)
-            if(middleware() && isPaddingNeeded) {
-              setPaddingTo.style.paddingTop = '';
-              this.isTopPaddingSet = false;
-            }
-          });
+          // it will be called only once even if was set multiple times (that won't happen)
+          promise.then(unsetPadding);
         }
 
         //this.scrollable.scrollIntoViewNew(this.chatInner, 'end');
@@ -2590,9 +2600,15 @@ export default class ChatBubbles {
           scrollable.scrollTop += distance;
         } */
       } else if(haveToScrollToBubble) {
+        let unsetPadding: () => void;
         if(scrollFromDown) {
           scrollable.setScrollTopSilently(99999);
         } else if(scrollFromUp) {
+          const set = this.setTopPadding();
+          if(set.isPaddingNeeded) {
+            unsetPadding = set.unsetPadding;
+          }
+
           scrollable.setScrollTopSilently(0);
         }
 
@@ -2602,12 +2618,27 @@ export default class ChatBubbles {
           bubble = this.findNextMountedBubbleByMsgId(lastMsgId);
         }
         
+        let promise: Promise<void>;
         // ! sometimes there can be no bubble
         if(bubble) {
-          this.scrollToBubble(bubble, followingUnread ? 'start' : 'center', !samePeer ? FocusDirection.Static : undefined);
+          const lastBubble = this.getLastBubble();
+          const position: ScrollLogicalPosition = followingUnread ? 'start' : (!isJump && !isTarget && lastBubble === bubble ? 'end' : 'center');
+
+          if(position === 'end' && lastBubble === bubble && samePeer) {
+            promise = this.scrollToEnd();
+          } else {
+            promise = this.scrollToBubble(bubble, position, !samePeer ? FocusDirection.Static : undefined);
+          }
+
           if(!followingUnread && isTarget) {
             this.highlightBubble(bubble);
           }
+        }
+
+        if(unsetPadding) {
+          (promise || Promise.resolve()).then(() => {
+            unsetPadding();
+          });
         }
       } else {
         scrollable.setScrollTopSilently(99999);
@@ -4078,7 +4109,8 @@ export default class ChatBubbles {
       const className = 'has-sticky-dates';
       const state = scrollSaver.getSaved();
       const isLoading = !this.preloader.detached;
-      if((state.scrollHeight !== state.clientHeight || isLoading) && !this.bubblesContainer.classList.contains(className)) {
+      const hasScroll = state.scrollHeight !== state.clientHeight;
+      if((hasScroll || isLoading) && !this.bubblesContainer.classList.contains(className)) {
         /* for(const timestamp in this.dateMessages) {
           const dateMessage = this.dateMessages[timestamp];
           dateMessage.div.classList.add('is-sticky');
