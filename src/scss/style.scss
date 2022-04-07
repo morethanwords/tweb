@@ -1609,6 +1609,7 @@ hr {
 }
 
 .badge-fake {
+  flex: 0 0 auto;
   color: var(--danger-color);
   border: 1px solid var(--danger-color);
   padding: .125rem .25rem;
