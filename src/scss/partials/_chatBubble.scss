@@ -2636,6 +2636,12 @@ $bubble-beside-button-width: 38px;
       &-hint {
         color: var(--message-out-primary-color);
       }
+
+      &-avatars {
+        .stacked-avatars {
+          --border-color: var(--message-background-color);
+        }
+      }
     }
 
     .progress-ring__circle {

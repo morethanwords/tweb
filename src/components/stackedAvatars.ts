@@ -28,7 +28,11 @@ export default class StackedAvatars {
 
     this.container.style.setProperty('--avatar-size', options.avatarSize + 'px');
   }
-
+  /**
+   * MACOS, ANDROID - без реверса
+   * WINDOWS DESKTOP - реверс
+   * все приложения накладывают аватарку первую на вторую, а в макете зато вторая на первую, ЛОЛ!
+   */
   public render(peerIds: PeerId[], loadPromises?: Promise<any>[]) {
     const children = this.container.children;
     peerIds = peerIds.slice().reverse();

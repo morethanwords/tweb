@@ -24,6 +24,7 @@ import replaceContent from "../helpers/dom/replaceContent";
 import windowSize from "../helpers/windowSize";
 import { Poll, PollResults } from "../layer";
 import toHHMMSS from "../helpers/string/toHHMMSS";
+import StackedAvatars from "./stackedAvatars";
 
 let lineTotalLength = 0;
 const tailLength = 9;
@@ -590,17 +591,10 @@ export default class PollElement extends HTMLElement {
         this.votersCountDiv.classList.toggle('hide', !!this.chosenIndexes.length);
       }
 
-      let html = '';
-      /**
-       * MACOS, ANDROID - без реверса
-       * WINDOWS DESKTOP - реверс
-       * все приложения накладывают аватарку первую на вторую, а в макете зато вторая на первую, ЛОЛ!
-       */
-      (results.recent_voters || [])/* .slice().reverse() */.forEach((userId, idx) => {
-        const style = idx === 0 ? '' : `style="transform: translateX(-${idx * 3}px);"`;
-        html += `<avatar-element class="avatar-16 poll-avatar" dialog="0" peer="${userId.toPeerId()}" ${style}></avatar-element>`;
-      });
-      this.avatarsDiv.innerHTML = html;
+      const peerIds = (results.recent_voters || []).map(userId => userId.toPeerId());
+      const stackedAvatars = new StackedAvatars({avatarSize: 16});
+      stackedAvatars.render(peerIds);
+      replaceContent(this.avatarsDiv, stackedAvatars.container);
     }
 
     if(this.isMultiple) {
