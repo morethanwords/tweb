@@ -6,6 +6,7 @@
 
 import { indexOfAndSplice } from "../../helpers/array";
 import { renderImageFromUrlPromise } from "../../helpers/dom/renderImageFromUrl";
+import mediaSizes, { ScreenSize } from "../../helpers/mediaSizes";
 import { deepEqual } from "../../helpers/object";
 
 type ChatBackgroundPatternRendererInitOptions = {
@@ -144,7 +145,9 @@ export default class ChatBackgroundPatternRenderer {
     }
 
     for(let x = 0; x < canvas.width; x += imageWidth) {
-      context.drawImage(img, x, 0);
+      for(let y = 0; y < canvas.height; y += imageHeight) {
+        context.drawImage(img, x, y, imageWidth, imageHeight);
+      }
     }
     // context.fillStyle = this.pattern;
     // context.fillRect(0, 0, canvas.width, canvas.height);
@@ -152,8 +155,9 @@ export default class ChatBackgroundPatternRenderer {
   }
 
   public setCanvasDimensions(canvas: HTMLCanvasElement) {
-    canvas.width = this.options.width * window.devicePixelRatio;
-    canvas.height = this.options.height * window.devicePixelRatio * 1.5;
+    const devicePixelRatio = Math.min(2, window.devicePixelRatio);
+    canvas.width = this.options.width * devicePixelRatio;
+    canvas.height = this.options.height * devicePixelRatio * (mediaSizes.activeScreen === ScreenSize.large ? 1.5 : 1);
   }
 
   public createCanvas() {
