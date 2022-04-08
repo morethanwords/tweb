@@ -722,7 +722,7 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
         width: 100%;
       }
 
-      &-pattern-canvas {
+      &:not(.is-dark) &-pattern-canvas {
         mix-blend-mode: overlay;
         // height: 100%;
       }
