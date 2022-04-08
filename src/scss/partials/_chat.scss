@@ -691,8 +691,11 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
         align-items: center;
         justify-content: center;
         // mix-blend-mode: overlay;
-        height: 150%;
-        top: -25%;
+
+        @include respond-to(medium-screens) {
+          height: 150%;
+          top: -25%;
+        }
       }
 
 			@include animation-level(2) {
@@ -727,7 +730,7 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
         width: 100%;
       }
 
-      &-pattern-canvas {
+      &:not(.is-dark) &-pattern-canvas {
         mix-blend-mode: overlay;
         // height: 100%;
       }

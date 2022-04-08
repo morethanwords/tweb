@@ -89,6 +89,7 @@ import getObjectKeysAndSort from '../../helpers/object/getObjectKeysAndSort';
 import type GroupCallInstance from '../calls/groupCallInstance';
 import type CallInstance from '../calls/callInstance';
 import numberThousandSplitter from '../../helpers/number/numberThousandSplitter';
+import ChatBackgroundPatternRenderer from '../../components/chat/patternRenderer';
 
 //console.log('appImManager included33!');
 
@@ -234,11 +235,17 @@ export class AppImManager {
       this.appendEmojiAnimationContainer(to);
     });
 
-    const resizeBackgroundDebounced = debounce(() => {
-      this.setBackground(this.lastBackgroundUrl, false);
-    }, 200, false, true);
     mediaSizes.addEventListener('resize', () => {
-      resizeBackgroundDebounced();
+      // const perf = performance.now();
+      const rect = this.chatsContainer.getBoundingClientRect();
+      ChatBackgroundPatternRenderer.resizeInstances(rect.width, rect.height).then(() => {
+        // this.log.warn('resize bg time:', performance.now() - perf);
+        // for(const chat of this.chats) {
+        //   if(chat.renderDarkPattern) {
+        //     chat.renderDarkPattern();
+        //   }
+        // }
+      });
     });
 
     rootScope.addEventListener('history_focus', (e) => {

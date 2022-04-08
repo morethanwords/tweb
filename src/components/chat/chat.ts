@@ -85,6 +85,7 @@ export default class Chat extends EventListenerBase<{
   public patternCanvas: HTMLCanvasElement;
   public backgroundTempId: number;
   public setBackgroundPromise: Promise<void>;
+  // public renderDarkPattern: () => Promise<void>;
   
   constructor(
     public appImManager: AppImManager, 
@@ -159,6 +160,7 @@ export default class Chat extends EventListenerBase<{
       this.patternRenderer = 
       this.gradientCanvas = 
       this.patternCanvas = 
+      // this.renderDarkPattern = 
       undefined;
 
     const intensity = theme.background.intensity && theme.background.intensity / 100;
@@ -179,11 +181,28 @@ export default class Chat extends EventListenerBase<{
           patternRenderer = this.patternRenderer = ChatBackgroundPatternRenderer.getInstance({
             url,
             width: rect.width,
-            height: rect.height
+            height: rect.height,
+            mask: isDarkPattern
           });
 
           patternCanvas = this.patternCanvas = patternRenderer.createCanvas();
           patternCanvas.classList.add('chat-background-item-canvas', 'chat-background-item-pattern-canvas');
+
+          if(isDarkPattern) {
+            item.classList.add('is-dark');
+          }
+
+          // if(isDarkPattern) {
+          //   this.renderDarkPattern = () => {
+          //     return patternRenderer.exportCanvasPatternToImage(patternCanvas).then(url => {
+          //       if(this.backgroundTempId !== tempId) {
+          //         return;
+          //       }
+                
+          //       gradientCanvas.style.webkitMaskImage = `url(${url})`;
+          //     });
+          //   };
+          // }
         } else if(theme.background.slug) {
           item.classList.add('is-image');
         }
@@ -236,7 +255,11 @@ export default class Chat extends EventListenerBase<{
           return;
         }
 
-        const append = [gradientCanvas, isDarkPattern ? undefined : patternCanvas].filter(Boolean);
+        const append = [
+          gradientCanvas, 
+          // isDarkPattern && this.renderDarkPattern ? undefined : patternCanvas
+          patternCanvas
+        ].filter(Boolean);
         if(append.length) {
           item.append(...append);
         }
@@ -261,18 +284,16 @@ export default class Chat extends EventListenerBase<{
       if(patternRenderer) {
         const renderPatternPromise = patternRenderer.renderToCanvas(patternCanvas);
         renderPatternPromise.then(() => {
-          let promise: Promise<any>;
-          if(isDarkPattern) {
-            promise = patternRenderer.exportCanvasPatternToImage(patternCanvas).then(url => {
-              if(this.backgroundTempId !== tempId) {
-                return;
-              }
-              
-              gradientCanvas.style.webkitMaskImage = `url(${url})`;
-            });
-          } else {
-            promise = Promise.resolve();
+          if(this.backgroundTempId !== tempId) {
+            return;
           }
+
+          let promise: Promise<any>;
+          // if(isDarkPattern && this.renderDarkPattern) {
+          //   promise = this.renderDarkPattern();
+          // } else {
+            promise = Promise.resolve();
+          // }
           
           promise.then(cb);
         });
