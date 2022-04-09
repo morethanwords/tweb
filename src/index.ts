@@ -13,7 +13,6 @@ import IS_EMOJI_SUPPORTED from './environment/emojiSupport';
 import { IS_MOBILE_SAFARI } from './environment/userAgent';
 import './materialize.scss';
 import './scss/style.scss';
-import './scss/tgico.scss';
 /* import { computeCheck } from './lib/crypto/srp';
 import { salt1, salt2, g, p, srp_id, secure_random, srp_B, password } from './mock/srp'; */
 

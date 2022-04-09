@@ -15,6 +15,7 @@
     "whybundled": "npm run profile && whybundled stats.json",
     "generate-mtproto-types": "node ./src/scripts/generate_mtproto_types.js src/",
     "generate-changelog": "node ./src/scripts/generate_changelog.js",
+    "generate-icons": "node ./src/scripts/icomoon/icomoon_generate.js",
     "change-version": "node ./src/scripts/change_version.js"
   },
   "author": "",

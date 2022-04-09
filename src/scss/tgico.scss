@@ -4,5 +4,20 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-@import "partials/ico";
-@import "partials/fonts";
+// ! https://icomoon.io/app/#/select
+
+$tgico-font-family: "tgico" !default;
+$tgico-font-path: "assets/fonts" !default;
+
+/*
+! CAN RUN IN DEVELOPER TOOLS TO CONVERT FONT TO VARIABLES:
+`.tgico-select:before {
+  content: "\e900";
+}`
+.toLowerCase()
+.replace(/([\s])|(_svg)|(1x)/g, '')
+.replace(/\.(.+?):before\{content:"(.+?);\}/g, `$$$1: "\\$2;\n`);
+*/
+
+@import "tgico/style";
+@import "tgico/variables";
