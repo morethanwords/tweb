@@ -2359,8 +2359,6 @@ export default class ChatBubbles {
       this.viewsMids.clear();
     }
 
-    this.destroyResizeObserver();
-    
     this.middleware.clean();
     
     this.onAnimateLadder = undefined;
@@ -2508,6 +2506,7 @@ export default class ChatBubbles {
       }
     } else {
       this.isFirstLoad = true;
+      this.destroyResizeObserver();
     }
 
     const oldChatInner = this.chatInner;
