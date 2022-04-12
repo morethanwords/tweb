@@ -7,23 +7,27 @@ test('Slicing returns new Slice', () => {
 });
 
 describe('Inserting', () => {
-  const sliced = new SlicedArray();
+  const sliced = new SlicedArray<typeof arr[0]>();
 
   // @ts-ignore
   const slices = sliced.slices;
-    
-  const arr = [100, 99, 98, 97, 96, 95];
-  const distantArr = arr.slice(-2).map(v => v - 2);
-  const missingArr = [arr[arr.length - 1], arr[arr.length - 1] - 1, distantArr[0]];
 
-  const startValue = 90;
-  const values: number[] = [];
+  const toSomething = (v: number) => {
+    return '' + v;
+  };
+    
+  const arr = [100, 99, 98, 97, 96, 95].map(toSomething);
+  const distantArr = arr.slice(-2).map(v => toSomething(+v - 2));
+  const missingArr = [arr[arr.length - 1], toSomething(+arr[arr.length - 1] - 1), distantArr[1]];
+
+  const startValue = toSomething(90);
+  const values: typeof arr = [];
   const valuesPerArray = 3;
   const totalArrays = 10;
   for(let i = 0, length = valuesPerArray * totalArrays; i < length; ++i) {
-    values.push(startValue - i);
+    values.push(toSomething(+startValue - i));
   }
-  const arrays: number[][] = [];
+  const arrays: (typeof values)[] = [];
   for(let i = 0; i < totalArrays; ++i) {
     arrays.push(values.slice(valuesPerArray * i, valuesPerArray * (i + 1)));
   }
@@ -57,7 +61,7 @@ describe('Inserting', () => {
     expect(slices.length).toEqual(length - 1);
   });
 
-  let returnedSlice: Slice;
+  let returnedSlice: Slice<typeof arr[0]>;
   test('Insert arrays with gap & join them', () => {
     slices[0].length = 0;
 

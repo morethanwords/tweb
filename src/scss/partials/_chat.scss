@@ -354,7 +354,7 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
 		// }
 
 		&.send .tgico-send, 
-		&.record .tgico-microphone,
+		&.record .tgico-microphone_filled,
 		&.edit .tgico-check,
 		&.schedule .tgico-schedule {
 			visibility: visible !important;
@@ -368,7 +368,7 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
 
 		@include animation-level(2) {
 			&.send .tgico-send, 
-			&.record .tgico-microphone,
+			&.record .tgico-microphone_filled,
 			&.edit .tgico-check,
 			&.schedule .tgico-schedule {
 				animation: grow-icon .4s forwards ease-in-out !important;

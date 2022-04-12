@@ -357,6 +357,13 @@ export default class CallInstance extends CallInstanceBase<{
       });
     }).then(phonePhoneCall => {
       this.appCallsManager.savePhonePhoneCall(phonePhoneCall);
+    }).catch(err => {
+      this.log.error('accept call error', err);
+      // if(err.type === 'CALL_PROTOCOL_COMPAT_LAYER_INVALID') {
+
+      // }
+
+      this.hangUp('phoneCallDiscardReasonHangup');
     });
   }
 

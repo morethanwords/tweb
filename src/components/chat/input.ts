@@ -682,7 +682,7 @@ export default class ChatInput {
     <span class="tgico tgico-send"></span>
     <span class="tgico tgico-schedule"></span>
     <span class="tgico tgico-check"></span>
-    <span class="tgico tgico-microphone"></span>
+    <span class="tgico tgico-microphone_filled"></span>
     `);
 
     this.btnSendContainer.append(this.recordRippleEl, this.btnSend);

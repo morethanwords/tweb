@@ -66,8 +66,8 @@ export default class ListLoader<T extends {}, P extends {}> {
     this.current = undefined;
     this.previous = [];
     this.next = [];
-    this.loadedAllUp = this.loadedAllDown = loadedAll;
-    this.loadPromiseUp = this.loadPromiseDown = null;
+    this.setLoaded(true, loadedAll);
+    this.setLoaded(false, loadedAll);
   }
 
   public go(length: number, dispatchJump = true) {
@@ -79,15 +79,17 @@ export default class ListLoader<T extends {}, P extends {}> {
         return;
       }
 
-      this.previous.push(this.current, ...items);
+      if(this.current !== undefined) items.unshift(this.current);
+      this.previous.push(...items);
     } else {
-      items = this.previous.splice(this.previous.length + length, -length);
+      items = this.previous.splice(Math.max(0, this.previous.length + length), -length);
       item = items.shift();
       if(!item) {
         return;
       }
 
-      this.next.unshift(...items, this.current);
+      if(this.current !== undefined) items.push(this.current);
+      this.next.unshift(...items);
     }
 
     if(this.next.length < this.loadWhenLeft) {
@@ -103,13 +105,50 @@ export default class ListLoader<T extends {}, P extends {}> {
     return this.current;
   }
 
+  protected unsetCurrent(toPrevious: boolean) {
+    if(toPrevious) this.previous.push(this.current);
+    else this.next.unshift(this.current);
+
+    this.current = undefined;
+  }
+
+  public goUnsafe(length: number, dispatchJump?: boolean) {
+    const leftLength = length > 0 ? Math.max(0, length - this.next.length) : Math.min(0, length + this.previous.length);
+    const item = this.go(length, leftLength ? false : dispatchJump);
+
+    /* if(length > 0 ? this.loadedAllUp : this.loadedAllDown) {
+      this.unsetCurrent(length > 0);
+    } */
+    
+    return {
+      item: !leftLength ? item : undefined,
+      leftLength
+    };
+  }
+
+  protected setLoaded(down: boolean, value: boolean) {
+    const isChanged = (down ? this.loadedAllDown : this.loadedAllUp) !== value;
+    if(!isChanged) {
+      return false;
+    }
+
+    if(down) this.loadedAllDown = value;
+    else this.loadedAllUp = value;
+
+    if(!value) {
+      if(down) this.loadPromiseDown = null;
+      else this.loadPromiseUp = null;
+    }
+
+    return true;
+  }
+
   // нет смысла делать проверку для reverse и loadMediaPromise
   public load(older: boolean) {
-    if(older && this.loadedAllDown) return Promise.resolve();
-    else if(!older && this.loadedAllUp) return Promise.resolve();
+    if(older ? this.loadedAllDown : this.loadedAllUp) return Promise.resolve();
 
-    if(older && this.loadPromiseDown) return this.loadPromiseDown;
-    else if(!older && this.loadPromiseUp) return this.loadPromiseUp;
+    let promise = older ? this.loadPromiseDown : this.loadPromiseUp;
+    if(promise) return promise;
 
     let anchor: T;
     if(older) {
@@ -118,14 +157,14 @@ export default class ListLoader<T extends {}, P extends {}> {
       anchor = this.reverse ? this.next[this.next.length - 1] : this.previous[0];
     }
 
-    const promise = this.loadMore(anchor, older, this.loadCount).then(result => {
-      if((older && this.loadPromiseDown !== promise) || (!older && this.loadPromiseUp !== promise)) {
+    anchor ??= this.current;
+    promise = this.loadMore(anchor, older, this.loadCount).then(result => {
+      if((older ? this.loadPromiseDown : this.loadPromiseUp) !== promise) {
         return;
       }
 
       if(result.items.length < this.loadCount) {
-        if(older) this.loadedAllDown = true;
-        else this.loadedAllUp = true;
+        this.setLoaded(older, true);
       }
 
       if(this.count === undefined) {

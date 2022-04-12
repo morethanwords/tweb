@@ -58,7 +58,7 @@ type MediaDetails = {
 
 export type PlaybackMediaType = 'voice' | 'video' | 'audio';
 
-class AppMediaPlaybackController {
+export class AppMediaPlaybackController {
   private container: HTMLElement;
   private media: Map<PeerId, Map<number, HTMLMediaElement>> = new Map();
   private scheduled: AppMediaPlaybackController['media'] = new Map();
@@ -78,9 +78,13 @@ class AppMediaPlaybackController {
   public volume: number;
   public muted: boolean;
   public playbackRate: number;
+  public loop: boolean;
+  public round: boolean;
   private _volume = 1;
   private _muted = false;
   private _playbackRate = 1;
+  private _loop = false;
+  private _round = false;
   private lockedSwitchers: boolean;
   private playbackRates: Record<PlaybackMediaType, number> = {
     voice: 1,
@@ -128,7 +132,9 @@ class AppMediaPlaybackController {
     const keys = [
       'volume' as const, 
       'muted' as const, 
-      'playbackRate' as const
+      'playbackRate' as const,
+      'loop' as const,
+      'round' as const
     ];
     keys.forEach(key => {
       const _key = ('_' + key) as `_${typeof key}`;
@@ -141,7 +147,7 @@ class AppMediaPlaybackController {
 
           // @ts-ignore
           this[_key] = value;
-          if(this.playingMedia) {
+          if(this.playingMedia && (key !== 'loop' || this.playingMediaType === 'audio') && key !== 'round') {
             // @ts-ignore
             this.playingMedia[key] = value;
           }
@@ -158,12 +164,20 @@ class AppMediaPlaybackController {
   }
 
   private dispatchPlaybackParams() {
-    const {volume, muted, playbackRate} = this;
-    rootScope.dispatchEvent('media_playback_params', {
-      volume, muted, playbackRate
-    });
+    rootScope.dispatchEvent('media_playback_params', this.getPlaybackParams());
   }
 
+  public getPlaybackParams() {
+    const {volume, muted, playbackRate, loop, round} = this;
+    return {
+      volume, 
+      muted, 
+      playbackRate,
+      loop,
+      round
+    };
+  }
+  
   public seekBackward = (details: MediaSessionActionDetails) => {
     const media = this.playingMedia;
     if(media) {
@@ -302,6 +316,10 @@ class AppMediaPlaybackController {
 
     if(this.playingMedia === media) {
       media.playbackRate = this.playbackRate;
+
+      if(doc.type === 'audio') {
+        media.loop = this.loop;
+      }
     }
     // }, doc.supportsStreaming ? 500e3 : 0);
 
@@ -494,15 +512,19 @@ class AppMediaPlaybackController {
     const previousMedia = this.playingMedia;
     if(previousMedia !== media) {
       this.stop();
+      this.setMedia(media, message);
 
       const verify = (element: MediaItem) => element.mid === mid && element.peerId === peerId;
-      if(!this.listLoader.current || !verify(this.listLoader.current)) {
-        let idx = this.listLoader.previous.findIndex(verify);
+      const current = this.listLoader.getCurrent();
+      if(!current || !verify(current)) {
+        const previous = this.listLoader.getPrevious();
+
+        let idx = previous.findIndex(verify);
         let jumpLength: number;
         if(idx !== -1) {
-          jumpLength = -(this.listLoader.previous.length - idx);
+          jumpLength = -(previous.length - idx);
         } else {
-          idx = this.listLoader.next.findIndex(verify);
+          idx = this.listLoader.getNext().findIndex(verify);
           if(idx !== -1) {
             jumpLength = idx + 1;
           }
@@ -510,14 +532,12 @@ class AppMediaPlaybackController {
   
         if(idx !== -1) {
           if(jumpLength) {
-            this.listLoader.go(jumpLength, false);
+            this.go(jumpLength, false);
           }
         } else {
           this.setTargets({peerId, mid});
         }
       }
-
-      this.setMedia(media, message);
     }
 
     // audio_pause не успеет сработать без таймаута
@@ -540,7 +560,8 @@ class AppMediaPlaybackController {
     return {
       doc: appMessagesManager.getMediaFromMessage(message),
       message,
-      media: playingMedia
+      media: playingMedia,
+      playbackParams: this.getPlaybackParams()
     };
   }
 
@@ -564,7 +585,10 @@ class AppMediaPlaybackController {
 
     //console.log('on media end');
 
-    if(!this.next()) {
+    if(this.lockedSwitchers || 
+      (!this.round && this.listLoader.current && !this.listLoader.next.length) || 
+      !this.listLoader.getNext().length || 
+      !this.next()) {
       this.stop();
       rootScope.dispatchEvent('media_stop');
     }
@@ -654,19 +678,32 @@ class AppMediaPlaybackController {
     }, 0);
   };
 
+  public go = (length: number, dispatchJump?: boolean) => {
+    if(this.lockedSwitchers) {
+      return;
+    }
+
+    if(this.playingMediaType === 'audio') {
+      return this.listLoader.goRound(length, dispatchJump);
+    } else {
+      return this.listLoader.go(length, dispatchJump);
+    }
+  };
+
   public next = () => {
-    return !this.lockedSwitchers && this.listLoader.go(1);
+    return this.go(1);
   };
 
   public previous = () => {
     const media = this.playingMedia;
-    if(media && (media.currentTime > 5 || !this.listLoader.previous.length)) {
+    // if(media && (media.currentTime > 5 || !this.listLoader.getPrevious().length)) {
+    if(media && media.currentTime > 5) {
       media.currentTime = 0;
       this.toggle(true);
       return;
     }
 
-    return !this.lockedSwitchers && this.listLoader.go(-1);
+    return this.go(-1);
   };
 
   public willBePlayed(media: HTMLMediaElement) {
@@ -745,6 +782,10 @@ class AppMediaPlaybackController {
     this.playingMedia.volume = this.volume;
     this.playingMedia.muted = this.muted;
     this.playingMedia.playbackRate = this.playbackRate;
+
+    if(mediaType === 'audio') {
+      this.playingMedia.loop = this.loop;
+    }
 
     if('mediaSession' in navigator) {
       this.setNewMediadata(message);

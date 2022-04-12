@@ -45,6 +45,7 @@ export type NotifyOptions = Partial<{
   message: string;
   silent: boolean;
   onclick: () => void;
+  noIncrement: boolean;
 }>;
 
 export type NotificationSettings = {
@@ -595,7 +596,10 @@ export class AppNotificationsManager {
     }
     // console.log('notify image', data.image)
 
-    this.notificationsCount++;
+    if(!data.noIncrement) {
+      ++this.notificationsCount;
+    }
+
     if(!this.titleInterval) {
       this.toggleToggler();
     }

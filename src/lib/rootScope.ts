@@ -96,7 +96,7 @@ export type BroadcastEvents = {
 
   'media_play': {doc: MyDocument, message: Message.message, media: HTMLMediaElement},
   'media_pause': void,
-  'media_playback_params': {volume: number, muted: boolean, playbackRate: number},
+  'media_playback_params': {volume: number, muted: boolean, playbackRate: number, loop: boolean, round: boolean},
   'media_stop': void,
   
   'state_cleared': void,
@@ -164,7 +164,9 @@ export type BroadcastEvents = {
 
   'quick_reaction': string,
 
-  'missed_reactions_element': {message: Message.message, changedResults: ReactionCount[]}
+  'missed_reactions_element': {message: Message.message, changedResults: ReactionCount[]},
+
+  'service_notification': Update.updateServiceNotification
 };
 
 export class RootScope extends EventListenerBase<{

@@ -328,7 +328,7 @@ export function wrapVideo({doc, container, message, boxWidth, boxHeight, withTai
             inputFilter: {_: 'inputMessagesFilterEmpty'}, 
             useSearch: false
           })) {
-            const [prev, next] = !hadSearchContext ? [] : findMediaTargets(divRound/* , searchContext.useSearch */);
+            const [prev, next] = !hadSearchContext ? [] : findMediaTargets(divRound, message.mid/* , searchContext.useSearch */);
             appMediaPlaybackController.setTargets({peerId: message.peerId, mid: message.mid}, prev, next);
           }
           

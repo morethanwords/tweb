@@ -80,7 +80,7 @@ const DO_NOT_READ_HISTORY = false;
 
 export type HistoryStorage = {
   count: number | null,
-  history: SlicedArray,
+  history: SlicedArray<number>,
 
   maxId?: number,
   readPromise?: Promise<void>,
@@ -94,7 +94,7 @@ export type HistoryStorage = {
 
 export type HistoryResult = {
   count: number,
-  history: Slice,
+  history: Slice<number>,
   offsetIdOffset?: number,
 };
 
@@ -220,7 +220,7 @@ export class AppMessagesManager {
 
   private middleware: ReturnType<typeof getMiddleware>;
 
-  private unreadMentions: {[peerId: PeerId]: SlicedArray} = {};
+  private unreadMentions: {[peerId: PeerId]: SlicedArray<number>} = {};
   private goToNextMentionPromises: {[peerId: PeerId]: Promise<any>} = {};
   
   private batchUpdates: {
@@ -3901,7 +3901,7 @@ export class AppMessagesManager {
 
     let storage: {
       count?: number;
-      history: SlicedArray;
+      history: SlicedArray<number>;
     };
 
     // * костыль для limit 1, если нужно и получить сообщение, и узнать количество сообщений
@@ -4314,7 +4314,7 @@ export class AppMessagesManager {
     }
   }
 
-  private fixUnreadMentionsCountIfNeeded(peerId: PeerId, slicedArray: SlicedArray) {
+  private fixUnreadMentionsCountIfNeeded(peerId: PeerId, slicedArray: SlicedArray<number>) {
     const dialog = this.getDialogOnly(peerId);
     if(!slicedArray.length && dialog?.unread_mentions_count) {
       this.reloadConversation(peerId);
@@ -5117,6 +5117,11 @@ export class AppMessagesManager {
 
   private onUpdateServiceNotification = (update: Update.updateServiceNotification) => {
     //this.log('updateServiceNotification', update);
+    if(update.pFlags?.popup) {
+      rootScope.dispatchEvent('service_notification', update);
+      return;
+    }
+    
     const fromId = SERVICE_PEER_ID;
     const peerId = fromId;
     const messageId = this.generateTempMessageId(peerId);
@@ -5613,6 +5618,11 @@ export class AppMessagesManager {
       notificationMessage = I18n.format('Notifications.New', true);
     }
 
+    if(options.userReaction) {
+      notification.noIncrement = true;
+      notification.silent = true;
+    }
+
     notification.title = appPeersManager.getPeerTitle(peerId, true);
     if(isAnyChat && message.fromId !== message.peerId) {
       notification.title = appPeersManager.getPeerTitle(message.fromId, true) +
@@ -5848,7 +5858,7 @@ export class AppMessagesManager {
     return {count, offsetIdOffset, isTopEnd, isBottomEnd};
   }
 
-  public mergeHistoryResult(slicedArray: SlicedArray, 
+  public mergeHistoryResult(slicedArray: SlicedArray<number>, 
     historyResult: Parameters<AppMessagesManager['isHistoryResultEnd']>[0], 
     offset_id: number, 
     limit: number, 

@@ -7,7 +7,7 @@
 import type { AppMessagesManager } from "../../lib/appManagers/appMessagesManager";
 import type ChatTopbar from "./topbar";
 import rootScope from "../../lib/rootScope";
-import appMediaPlaybackController from "../appMediaPlaybackController";
+import appMediaPlaybackController, { AppMediaPlaybackController } from "../appMediaPlaybackController";
 import DivAndCaption from "../divAndCaption";
 import PinnedContainer from "./pinnedContainer";
 import Chat from "./chat";
@@ -27,6 +27,7 @@ export default class ChatAudio extends PinnedContainer {
   private progressLine: MediaProgressLine;
   private volumeSelector: VolumeSelector;
   private fasterEl: HTMLElement;
+  private repeatEl: HTMLButtonElement;
 
   constructor(protected topbar: ChatTopbar, protected chat: Chat, protected appMessagesManager: AppMessagesManager) {
     super({
@@ -84,12 +85,25 @@ export default class ChatAudio extends PinnedContainer {
     this.volumeSelector.btn.prepend(tunnel);
     this.volumeSelector.btn.append(volumeProgressLineContainer);
 
+    this.repeatEl = ButtonIcon('audio_repeat', {noRipple: true});
+    attachClick(this.repeatEl, () => {
+      const params = appMediaPlaybackController.getPlaybackParams();
+      if(!params.round) {
+        appMediaPlaybackController.round = true;
+      } else if(params.loop) {
+        appMediaPlaybackController.round = false;
+        appMediaPlaybackController.loop = false;
+      } else {
+        appMediaPlaybackController.loop = !appMediaPlaybackController.loop;
+      }
+    });
+
     const fasterEl = this.fasterEl = ButtonIcon('playback_2x', {noRipple: true});
     attachClick(fasterEl, () => {
       appMediaPlaybackController.playbackRate = fasterEl.classList.contains('active') ? 1 : 1.75;
     });
 
-    this.wrapperUtils.prepend(this.volumeSelector.btn, fasterEl);
+    this.wrapperUtils.prepend(this.volumeSelector.btn, fasterEl, this.repeatEl);
 
     const progressWrapper = document.createElement('div');
     progressWrapper.classList.add('pinned-audio-progress-wrapper');
@@ -102,14 +116,12 @@ export default class ChatAudio extends PinnedContainer {
     this.topbar.listenerSetter.add(rootScope)('media_play', this.onMediaPlay);
     this.topbar.listenerSetter.add(rootScope)('media_pause', this.onPause);
     this.topbar.listenerSetter.add(rootScope)('media_stop', this.onStop);
-    this.topbar.listenerSetter.add(rootScope)('media_playback_params', ({playbackRate}) => {
-      this.onPlaybackRateChange(playbackRate);
-    });
+    this.topbar.listenerSetter.add(rootScope)('media_playback_params', this.onPlaybackParams);
 
     const playingDetails = appMediaPlaybackController.getPlayingDetails();
     if(playingDetails) {
       this.onMediaPlay(playingDetails);
-      this.onPlaybackRateChange(appMediaPlaybackController.playbackRate);
+      this.onPlaybackParams(playingDetails.playbackParams);
     }
   }
 
@@ -119,8 +131,12 @@ export default class ChatAudio extends PinnedContainer {
     }
   }
 
-  private onPlaybackRateChange = (playbackRate: number) => {
-    this.fasterEl.classList.toggle('active', playbackRate > 1);
+  private onPlaybackParams = (playbackParams: ReturnType<AppMediaPlaybackController['getPlaybackParams']>) => {
+    this.fasterEl.classList.toggle('active', playbackParams.playbackRate > 1);
+
+    this.repeatEl.classList.remove('tgico-audio_repeat', 'tgico-audio_repeat_single');
+    this.repeatEl.classList.add(playbackParams.loop ? 'tgico-audio_repeat_single' : 'tgico-audio_repeat');
+    this.repeatEl.classList.toggle('active', playbackParams.loop || playbackParams.round);
   };
 
   private onPause = () => {
@@ -137,17 +153,19 @@ export default class ChatAudio extends PinnedContainer {
     media: HTMLMediaElement
   }) => {
     let title: string | HTMLElement, subtitle: string | HTMLElement | DocumentFragment;
-    if(doc.type === 'voice' || doc.type === 'round') {
+    const isMusic = doc.type !== 'voice' && doc.type !== 'round';
+    if(!isMusic) {
       title = new PeerTitle({peerId: message.fromId, fromName: message.fwd_from?.from_name}).element;
 
       //subtitle = 'Voice message';
       subtitle = formatFullSentTime(message.date);
-      this.fasterEl.classList.remove('hide');
     } else {
       title = doc.audioTitle || doc.fileName;
       subtitle = doc.audioPerformer || i18n('AudioUnknownArtist');
-      this.fasterEl.classList.add('hide');
     }
+
+    this.fasterEl.classList.toggle('hide', isMusic);
+    this.repeatEl.classList.toggle('hide', !isMusic);
 
     this.progressLine.setMedia(media);
 

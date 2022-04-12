@@ -362,7 +362,7 @@ function constructDownloadPreloader(tryAgainOnFail = true) {
   return preloader;
 }
 
-export const findMediaTargets = (anchor: HTMLElement/* , useSearch: boolean */) => {
+export const findMediaTargets = (anchor: HTMLElement, anchorMid: number/* , useSearch: boolean */) => {
   let prev: MediaItem[], next: MediaItem[];
   // if(anchor.classList.contains('search-super-item') || !useSearch) {
     const isBubbles = !anchor.classList.contains('search-super-item');
@@ -393,6 +393,12 @@ export const findMediaTargets = (anchor: HTMLElement/* , useSearch: boolean */) 
       next = mediaItems.slice(idx + 1);
     }
   // }
+
+  if((next.length && next[0].mid < anchorMid) || (prev.length && prev[prev.length - 1].mid > anchorMid)) {
+    [prev, next] = [next.reverse(), prev.reverse()];
+  }
+
+  // prev = next = undefined;
 
   return [prev, next];
 };
@@ -490,7 +496,7 @@ export default class AudioElement extends HTMLElement {
             inputFilter: {_: 'inputMessagesFilterEmpty'}, 
             useSearch: false
           })) {
-            const [prev, next] = !hadSearchContext ? [] : findMediaTargets(this/* , this.searchContext.useSearch */);
+            const [prev, next] = !hadSearchContext ? [] : findMediaTargets(this, this.message.mid/* , this.searchContext.useSearch */);
             appMediaPlaybackController.setTargets({peerId: this.message.peerId, mid: this.message.mid}, prev, next);
           }
 

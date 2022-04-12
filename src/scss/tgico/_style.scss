@@ -3,9 +3,9 @@
 @font-face {
   font-family: '#{$tgico-font-family}';
   src:
-    url('#{$tgico-font-path}/#{$tgico-font-family}.ttf?cyy67r') format('truetype'),
-    url('#{$tgico-font-path}/#{$tgico-font-family}.woff?cyy67r') format('woff'),
-    url('#{$tgico-font-path}/#{$tgico-font-family}.svg?cyy67r##{$tgico-font-family}') format('svg');
+    url('#{$tgico-font-path}/#{$tgico-font-family}.ttf?1mzumm') format('truetype'),
+    url('#{$tgico-font-path}/#{$tgico-font-family}.woff?1mzumm') format('woff'),
+    url('#{$tgico-font-path}/#{$tgico-font-family}.svg?1mzumm##{$tgico-font-family}') format('svg');
   font-weight: normal;
   font-style: normal;
   font-display: block;
@@ -332,11 +332,6 @@
     content: $tgico-email; 
   }
 }
-.tgico-endcall {
-  &:before {
-    content: $tgico-endcall; 
-  }
-}
 .tgico-endcall_filled {
   &:before {
     content: $tgico-endcall_filled; 
@@ -375,6 +370,11 @@
 .tgico-flag {
   &:before {
     content: $tgico-flag; 
+  }
+}
+.tgico-flip {
+  &:before {
+    content: $tgico-flip; 
   }
 }
 .tgico-folder {
@@ -545,6 +545,21 @@
 .tgico-microphone {
   &:before {
     content: $tgico-microphone; 
+  }
+}
+.tgico-microphone_crossed {
+  &:before {
+    content: $tgico-microphone_crossed; 
+  }
+}
+.tgico-microphone_crossed_filled {
+  &:before {
+    content: $tgico-microphone_crossed_filled; 
+  }
+}
+.tgico-microphone_filled {
+  &:before {
+    content: $tgico-microphone_filled; 
   }
 }
 .tgico-minus {
@@ -737,6 +752,16 @@
     content: $tgico-rightpanel; 
   }
 }
+.tgico-rotate_left {
+  &:before {
+    content: $tgico-rotate_left; 
+  }
+}
+.tgico-rotate_right {
+  &:before {
+    content: $tgico-rotate_right; 
+  }
+}
 .tgico-saved {
   &:before {
     content: $tgico-saved; 
@@ -800,6 +825,11 @@
 .tgico-sharescreen_filled {
   &:before {
     content: $tgico-sharescreen_filled; 
+  }
+}
+.tgico-shuffle {
+  &:before {
+    content: $tgico-shuffle; 
   }
 }
 .tgico-smallscreen {
@@ -895,6 +925,11 @@
 .tgico-videocamera {
   &:before {
     content: $tgico-videocamera; 
+  }
+}
+.tgico-videocamera_crossed_filled {
+  &:before {
+    content: $tgico-videocamera_crossed_filled; 
   }
 }
 .tgico-videocamera_filled {

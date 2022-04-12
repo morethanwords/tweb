@@ -257,7 +257,7 @@ export default class PeerProfileAvatars {
         if(!older) return Promise.resolve({count: undefined, items: []});
 
         if(peerId.isUser()) {
-          const maxId: Photo.photo['id'] = (anchor || listLoader.current) as any;
+          const maxId: Photo.photo['id'] = anchor as any;
           return appPhotosManager.getUserPhotos(peerId, maxId, loadCount).then(value => {
             return {
               count: value.count,

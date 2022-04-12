@@ -5,12 +5,13 @@
  */
 
 import { MOUNT_CLASS_TO } from "../config/debug";
+import compareValue from "./compareValue";
 
 /**
  * Descend sorted storage
  */
 
-type ItemType = number;
+type ItemType = number | string;
 
 export enum SliceEnd {
   None = 0,
@@ -19,7 +20,7 @@ export enum SliceEnd {
   Both = SliceEnd.Top | SliceEnd.Bottom
 };
 
-export interface Slice extends Array<ItemType> {
+export interface Slice<T extends ItemType> extends Array<T> {
   //slicedArray: SlicedArray;
   end: SliceEnd;
 
@@ -27,17 +28,18 @@ export interface Slice extends Array<ItemType> {
   setEnd: (side: SliceEnd) => void;
   unsetEnd: (side: SliceEnd) => void;
 
-  slice: (from?: number, to?: number) => Slice;
-  splice: (start: number, deleteCount: number, ...items: ItemType[]) => Slice;
+  slice: (from?: number, to?: number) => Slice<T>;
+  splice: (start: number, deleteCount: number, ...items: ItemType[]) => Slice<T>;
 }
 
-export interface SliceConstructor {
-  new(...items: ItemType[]): Slice;
+export interface SliceConstructor<T extends ItemType> {
+  // new(...items: T[]): Slice<T>;
+  new(length: number): Slice<T>;
 }
 
-export default class SlicedArray {
-  private slices: Slice[]/*  = [[7,6,5],[4,3,2],[1,0,-1]] */;
-  private sliceConstructor: SliceConstructor;
+export default class SlicedArray<T extends ItemType> {
+  private slices: Slice<T>[]/*  = [[7,6,5],[4,3,2],[1,0,-1]] */;
+  private sliceConstructor: SliceConstructor<T>;
   
   constructor() {
     // @ts-ignore
@@ -48,8 +50,8 @@ export default class SlicedArray {
     this.slices = [first];
   }
 
-  private static getSliceConstructor(slicedArray: SlicedArray) {
-    return class Slice extends Array<ItemType> implements Slice {
+  private static getSliceConstructor(slicedArray: SlicedArray<ItemType>) {
+    return class Slice<T> extends Array<ItemType> implements Slice<T> {
       //slicedArray: SlicedArray;
       end: SliceEnd = SliceEnd.None;
   
@@ -95,7 +97,7 @@ export default class SlicedArray {
         const ret = super.splice(start, deleteCount, ...items);
 
         if(!this.length) {
-          const slices = slicedArray.slices as number[][];
+          const slices = slicedArray.slices as ItemType[][];
           const idx = slices.indexOf(this);
           if(idx !== -1) {
             if(slices.length === 1) { // left empty slice without ends
@@ -111,7 +113,7 @@ export default class SlicedArray {
     }
   }
 
-  public constructSlice(...items: ItemType[]) {
+  public constructSlice(...items: T[]) {
     //const slice = new Slice(this, ...items);
     // can't pass items directly to constructor because first argument is length
     const slice = new this.sliceConstructor(items.length);
@@ -166,7 +168,7 @@ export default class SlicedArray {
     */
   }
 
-  public insertSlice(slice: ItemType[], flatten = true) {
+  public insertSlice(slice: T[], flatten = true) {
     if(!slice.length) {
       return;
     }
@@ -180,7 +182,7 @@ export default class SlicedArray {
     const lowerBound = slice[slice.length - 1];
     const upperBound = slice[0];
 
-    let foundSlice: Slice, lowerIndex = -1, upperIndex = -1, foundSliceIndex = 0;
+    let foundSlice: Slice<T>, lowerIndex = -1, upperIndex = -1, foundSliceIndex = 0;
     for(; foundSliceIndex < this.slices.length; ++foundSliceIndex) {
       foundSlice = this.slices[foundSliceIndex];
       lowerIndex = foundSlice.indexOf(lowerBound);
@@ -205,7 +207,7 @@ export default class SlicedArray {
       let insertIndex = 0;
       for(const length = this.slices.length; insertIndex < length; ++insertIndex) { // * maybe should iterate from the end, could be faster ?
         const s = this.slices[insertIndex];
-        if(slice[0] > s[0]) {
+        if(compareValue(slice[0], s[0]) === 1) {
           break;
         }
       }
@@ -263,7 +265,7 @@ export default class SlicedArray {
     return this.slice.length;
   }
 
-  public findSlice(item: ItemType) {
+  public findSlice(item: T) {
     for(let i = 0, length = this.slices.length; i < length; ++i) {
       const slice = this.slices[i];
       const index = slice.indexOf(item);
@@ -275,8 +277,8 @@ export default class SlicedArray {
     return undefined;
   }
 
-  public findSliceOffset(maxId: number) {
-    let slice: Slice;
+  public findSliceOffset(maxId: T) {
+    let slice: Slice<T>;
     for(let i = 0; i < this.slices.length; ++i) {
       let offset = 0;
       slice = this.slices[i];
@@ -284,8 +286,8 @@ export default class SlicedArray {
         continue;
       }
       
-      for(; offset < slice.length; offset++) {
-        if(maxId >= slice[offset]) {
+      for(; offset < slice.length; ++offset) {
+        if(compareValue(maxId, slice[offset]) >= 0) {
           /* if(!offset) { // because can't find 3 in [[5,4], [2,1]]
             return undefined;
           } */
@@ -309,7 +311,7 @@ export default class SlicedArray {
   }
 
   // * https://core.telegram.org/api/offsets
-  public sliceMe(offsetId: number, add_offset: number, limit: number) {
+  public sliceMe(offsetId: T, add_offset: number, limit: number) {
     let slice = this.slice;
     let offset = 0;
     let sliceOffset = 0;
@@ -337,7 +339,7 @@ export default class SlicedArray {
     //const fixHalfBackLimit = add_offset && !(limit / add_offset % 2) && (sliceEnd % 2) ? 1 : 0;
     //sliceEnd += fixHalfBackLimit;
 
-    const sliced = slice.slice(sliceStart, sliceEnd) as Slice;
+    const sliced = slice.slice(sliceStart, sliceEnd) as Slice<T>;
 
     const topWasMeantToLoad = add_offset < 0 ? limit + add_offset : limit;
     const bottomWasMeantToLoad = Math.abs(add_offset);
@@ -356,7 +358,7 @@ export default class SlicedArray {
     };
   }
 
-  public unshift(...items: ItemType[]) {
+  public unshift(...items: T[]) {
     let slice = this.first;
     if(!slice.length) {
       slice.setEnd(SliceEnd.Bottom);
@@ -369,7 +371,7 @@ export default class SlicedArray {
     slice.unshift(...items);
   }
 
-  public push(...items: ItemType[]) {
+  public push(...items: T[]) {
     let slice = this.last;
     if(!slice.length) {
       slice.setEnd(SliceEnd.Top);
@@ -382,7 +384,7 @@ export default class SlicedArray {
     slice.push(...items);
   }
 
-  public delete(item: ItemType) {
+  public delete(item: T) {
     const found = this.findSlice(item);
     if(found) {
       found.slice.splice(found.index, 1);

@@ -345,6 +345,13 @@ export class AppImManager {
       this.toggleChatGradientAnimation(to);
     });
 
+    rootScope.addEventListener('service_notification', (update) => {
+      confirmationPopup({
+        button: {langKey: 'OK', isCancel: true},
+        description: RichTextProcessor.wrapRichText(update.message)
+      });
+    });
+
     stateStorage.get('chatPositions').then((c) => {
       stateStorage.setToCache('chatPositions', c || {});
     });
