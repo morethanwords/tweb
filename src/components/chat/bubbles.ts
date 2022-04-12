@@ -1753,7 +1753,10 @@ export default class ChatBubbles {
 
     // warning, если иды только отрицательные то вниз не попадёт (хотя мб и так не попадёт)
     // some messages can have negative id (such as sponsored message)
-    const history = Object.keys(this.bubbles).map(id => +id).sort((a, b) => a - b).filter(id => id > 0);
+    const history = Object.keys(this.bubbles)
+    .map(id => +id)
+    .sort((a, b) => a - b)
+    .filter(id => id > 0 && !this.skippedMids.has(id));
     if(!history.length) return;
     
     if(top) {
@@ -4847,7 +4850,7 @@ export default class ChatBubbles {
       return getHeavyAnimationPromise().then(() => {
         return processResult(result);
       }).then(() => {
-        return this.performHistoryResult(result.history || [], reverse, isBackLimit, !isAdditionRender && additionMsgId);
+        return this.performHistoryResult(result.history as number[] || [], reverse, isBackLimit, !isAdditionRender && additionMsgId);
       });
     };
 
