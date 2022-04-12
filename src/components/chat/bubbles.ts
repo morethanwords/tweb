@@ -406,9 +406,10 @@ export default class ChatBubbles {
 
         //getHeavyAnimationPromise().then(() => {
           fastRaf(() => {
-            if(bubble.classList.contains('is-outgoing')) {
+            const mid = +bubble.dataset.mid;
+            if(bubbles[mid] === bubble && bubble.classList.contains('is-outgoing')) {
               bubble.classList.remove('is-sending', 'is-outgoing');
-              bubble.classList.add(this.peerId === rootScope.myId && this.chat.type !== 'scheduled' ? 'is-read' : 'is-sent');
+              bubble.classList.add((this.peerId === rootScope.myId && this.chat.type !== 'scheduled') || !this.unreadOut.has(mid) ? 'is-read' : 'is-sent');
             }
           });
         //});
@@ -754,7 +755,10 @@ export default class ChatBubbles {
     this.listenerSetter.add(rootScope)('dialog_unread', ({peerId}) => {
       if(peerId === this.peerId) {
         this.chat.input.setUnreadCount();
-        this.updateUnreadByDialog();
+
+        getHeavyAnimationPromise().then(() => {
+          this.updateUnreadByDialog();
+        });
       }
     });
 
@@ -1900,6 +1904,8 @@ export default class ChatBubbles {
       if(msgId > 0 && msgId <= maxId) {
         const bubble = this.bubbles[msgId];
         if(bubble) {
+          this.unreadOut.delete(msgId);
+
           if(bubble.classList.contains('is-outgoing')) {
             continue;
           }
@@ -1907,8 +1913,6 @@ export default class ChatBubbles {
           bubble.classList.remove('is-sent', 'is-sending', 'is-outgoing'); // is-sending can be when there are bulk of updates (e.g. sending command to Stickers bot)
           bubble.classList.add('is-read');
         }
-        
-        this.unreadOut.delete(msgId);
       }
     }
   }
