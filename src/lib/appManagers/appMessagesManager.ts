@@ -2982,11 +2982,22 @@ export class AppMessagesManager {
             } else if(document.type === 'round') {
               addPart('AttachRound');
             } else if(document.type === 'sticker') {
+              const i = parts.length;
               if(document.stickerEmojiRaw) {
                 addPart(undefined, (plain ? document.stickerEmojiRaw : document.stickerEmoji) + ' ');
               }
               
               addPart('AttachSticker');
+
+              // will combine two parts into one
+              const p = parts.splice(i, 2);
+              if(plain) parts.push((p[0] as string) + (p[1] as string));
+              else {
+                const span = window.document.createElement('span');
+                span.append(...p);
+                parts.push(span);
+              }
+
               text = '';
             } else if(document.type === 'audio') {
               const attribute = document.attributes.find(attribute => attribute._ === 'documentAttributeAudio' && (attribute.title || attribute.performer)) as DocumentAttribute.documentAttributeAudio;
@@ -3012,9 +3023,9 @@ export class AppMessagesManager {
       }
 
       const length = parts.length;
-      /* for(let i = 1; i < length; i += 2) {
+      for(let i = 1; i < length; i += 2) {
         parts.splice(i, 0, ', ');
-      } */
+      }
 
       if(text && length) {
         parts.push(', ');
