@@ -1337,8 +1337,12 @@ export default class ChatInput {
   private updateBotCommandsToggle(skipAnimation?: boolean) {
     const {botCommandsToggle, hasBotCommands} = this;
 
-    const show = hasBotCommands && this.isInputEmpty();
+    const show = !!hasBotCommands && this.isInputEmpty();
     if(!hasBotCommands) {
+      if(!botCommandsToggle.parentElement) {
+        return;
+      }
+      
       botCommandsToggle.remove();
     }
     
