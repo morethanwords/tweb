@@ -81,12 +81,23 @@ export default class ChatContextMenu {
           return;
         }
 
-        const className = (e.target as HTMLElement).className;
-        if(!className || !className.includes) return;
-
         chat.log('touchend', e);
 
-        const good = ['bubble', 'bubble-content-wrapper', 'bubble-content', 'message', 'time', 'inner'].find(c => className.match(new RegExp(c + '($|\\s)')));
+        const badSelectors = [
+          '.name',
+          '.peer-title',
+          '.reply',
+          '.document',
+          'audio-element',
+          'avatar-element',
+          'a',
+          '.bubble-beside-button',
+          'replies-element',
+          '[data-saved-from]:not(.bubble)',
+          'poll-element',
+          'attachment'
+        ];
+        let good = !(e.target as HTMLElement).closest(badSelectors.join(', '));
         if(good) {
           cancelEvent(e);
           //onContextMenu((e as TouchEvent).changedTouches[0]);

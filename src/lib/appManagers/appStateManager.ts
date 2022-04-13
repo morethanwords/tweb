@@ -133,8 +133,10 @@ const BACKGROUND_DAY_DESKTOP: Background = {
 
 const BACKGROUND_DAY_MOBILE: Background = {
   blur: false,
+  slug: '',
   color: '#dbddbb,#6ba587,#d5d88d,#88b884',
   highlightningColor: 'hsla(86.4, 43.846153%, 45.117647%, .4)',
+  intensity: 0,
   id: '1'
 };
 
@@ -150,9 +152,11 @@ const BACKGROUND_NIGHT_DESKTOP: Background = {
 
 const BACKGROUND_NIGHT_MOBILE: Background = {
   blur: false,
+  slug: '',
   color: '#0f0f0f',
-  id: '-1',
-  highlightningColor: 'hsla(0, 0%, 3.82353%, 0.4)'
+  highlightningColor: 'hsla(0, 0%, 3.82353%, 0.4)',
+  intensity: 0,
+  id: '-1'
 };
 
 export const STATE_INIT: State = {

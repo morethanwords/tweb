@@ -626,7 +626,7 @@ export default class ChatBubbles {
       });
     }
 
-    attachClickEvent(this.bubblesContainer, this.onBubblesClick, {listenerSetter: this.listenerSetter});
+    attachClickEvent(this.scrollable.container, this.onBubblesClick, {listenerSetter: this.listenerSetter});
     // this.listenerSetter.add(this.bubblesContainer)('click', this.onBubblesClick/* , {capture: true, passive: false} */);
 
     if(DEBUG) {

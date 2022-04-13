@@ -5,7 +5,7 @@
  */
 
 import { IS_TOUCH_SUPPORTED } from "../../environment/touchSupport";
-import { IS_SAFARI } from "../../environment/userAgent";
+import { IS_MOBILE, IS_SAFARI } from "../../environment/userAgent";
 import assumeType from "../../helpers/assumeType";
 import callbackify from "../../helpers/callbackify";
 import { attachClickEvent } from "../../helpers/dom/clickEvent";
@@ -134,6 +134,10 @@ export class ChatReactionsMenu {
     });
   };
 
+  private canUseAnimations() {
+    return rootScope.settings.animationsEnabled && !IS_MOBILE;
+  }
+
   private renderReaction(reaction: AvailableReaction) {
     const reactionDiv = document.createElement('div');
     reactionDiv.classList.add(REACTION_CLASS_NAME);
@@ -145,7 +149,7 @@ export class ChatReactionsMenu {
     let selectWrapper: HTMLElement;;
     appearWrapper.classList.add(REACTION_CLASS_NAME + '-appear');
 
-    if(rootScope.settings.animationsEnabled) {
+    if(this.canUseAnimations()) {
       selectWrapper = document.createElement('div');
       selectWrapper.classList.add(REACTION_CLASS_NAME + '-select', 'hide');
     }
@@ -172,7 +176,7 @@ export class ChatReactionsMenu {
       middleware
     };
 
-    if(!rootScope.settings.animationsEnabled) {
+    if(!this.canUseAnimations()) {
       delete options.needFadeIn;
       delete options.withThumb;
 

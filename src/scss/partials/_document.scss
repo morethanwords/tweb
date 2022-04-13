@@ -50,8 +50,8 @@
       border-width: calc(var(--size) / 2);
       border-left-color: rgba(0, 0, 0, .25);
       border-bottom-color: rgba(0, 0, 0, .25);
-      border-top-color: #fff;
-      border-right-color: #fff;
+      border-top-color: var(--message-background-color);
+      border-right-color: var(--message-background-color);
     }
   }
   
