@@ -4483,7 +4483,7 @@ export class AppMessagesManager {
       const notifyPeerToHandle = this.notificationsToHandle[peerId];
       this.getNotifyPeerSettings(peerId).then(({muted, peerTypeNotifySettings}) => {
         const topMessage = notifyPeerToHandle.topMessage;
-        if(muted || !topMessage.pFlags.unread) {
+        if((muted && !topMessage.pFlags.mentioned) || !topMessage.pFlags.unread) {
           return;
         }
 
@@ -4734,9 +4734,9 @@ export class AppMessagesManager {
         )
       ) {
         this.getNotifyPeerSettings(peerId).then(({muted, peerTypeNotifySettings}) => {
-          if(muted || !peerTypeNotifySettings.show_previews) return;
+          if(/* muted ||  */!peerTypeNotifySettings.show_previews) return;
           this.notifyAboutMessage(message, {
-            userReaction: recentReaction,
+            peerReaction: recentReaction,
             peerTypeNotifySettings
           });
         });
@@ -5591,7 +5591,7 @@ export class AppMessagesManager {
 
   private notifyAboutMessage(message: MyMessage, options: Partial<{
     fwdCount: number,
-    userReaction: MessagePeerReaction,
+    peerReaction: MessagePeerReaction,
     peerTypeNotifySettings: PeerNotifySettings
   }> = {}) {
     const peerId = this.getMessagePeer(message);
@@ -5606,15 +5606,15 @@ export class AppMessagesManager {
     let notificationMessage: string;
 
     if(options.peerTypeNotifySettings.show_previews) {
-      if(message._ === 'message' && message.fwd_from && options.fwdCount) {
+      if(message._ === 'message' && message.fwd_from && options.fwdCount > 1) {
         notificationMessage = I18n.format('Notifications.Forwarded', true, [options.fwdCount]);
       } else {
         notificationMessage = this.wrapMessageForReply(message, undefined, undefined, true);
 
-        if(options.userReaction) {
+        if(options.peerReaction) {
           const langPackKey: LangPackKey = /* isAnyChat ? 'Notification.Group.Reacted' :  */'Notification.Contact.Reacted';
           const args: FormatterArguments = [
-            RichTextProcessor.fixEmoji(options.userReaction.reaction), // can be plain heart
+            RichTextProcessor.fixEmoji(options.peerReaction.reaction), // can be plain heart
             notificationMessage
           ];
   
@@ -5629,14 +5629,15 @@ export class AppMessagesManager {
       notificationMessage = I18n.format('Notifications.New', true);
     }
 
-    if(options.userReaction) {
+    if(options.peerReaction) {
       notification.noIncrement = true;
       notification.silent = true;
     }
 
+    const notificationFromPeerId = options.peerReaction ? appPeersManager.getPeerId(options.peerReaction.peer_id) : message.fromId;
     notification.title = appPeersManager.getPeerTitle(peerId, true);
-    if(isAnyChat && message.fromId !== message.peerId) {
-      notification.title = appPeersManager.getPeerTitle(message.fromId, true) +
+    if(isAnyChat && notificationFromPeerId !== message.peerId) {
+      notification.title = appPeersManager.getPeerTitle(notificationFromPeerId, true) +
         ' @ ' +
         notification.title;
     }
@@ -5655,7 +5656,7 @@ export class AppMessagesManager {
     const peerPhoto = appPeersManager.getPeerPhoto(peerId);
     if(peerPhoto) {
       appAvatarsManager.loadAvatar(peerId, peerPhoto, 'photo_small').loadPromise.then(url => {
-        if(message.pFlags.unread || options.userReaction) {
+        if(message.pFlags.unread || options.peerReaction) {
           notification.image = url;
           appNotificationsManager.notify(notification);
         }
