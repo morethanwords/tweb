@@ -1251,6 +1251,7 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
       cursor: pointer;
       transform: scale(0);
       z-index: 2;
+      opacity: 0;
     }
 
     .new-message-bot-commands {
@@ -1382,15 +1383,19 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
         .new-message-send-as-container,
         .new-message-bot-commands {
           transform: scale(1);
+          opacity: 1;
         }
       }
 
       &.animating {
         .toggle-emoticons,
-        .input-message-container,
+        .input-message-container {
+          transition: transform var(--transition-standard-in);
+        }
+
         .new-message-send-as-container,
         .new-message-bot-commands {
-          transition: transform var(--transition-standard-in);
+          transition: transform var(--transition-standard-in), opacity var(--transition-standard-in);
         }
       }
     }
