@@ -20,7 +20,7 @@ avatar-element {
   /* overflow: hidden; */
   user-select: none;
   text-transform: uppercase;
-  font-weight: 700;
+  font-weight: var(--font-weight-bold);
 
   &[data-color="red"] {
     --color-top: var(--peer-avatar-red-top);

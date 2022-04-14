@@ -27,7 +27,7 @@
 
     &-title {
       font-size: 1.25rem;
-      font-weight: 500;
+      font-weight: var(--font-weight-bold);
       margin-bottom: .125rem;
 
       &:not(:first-child) {
@@ -51,7 +51,7 @@
       margin-right: -.5rem;
 
       .btn {
-        font-weight: 500;
+        font-weight: var(--font-weight-bold);
 
         & + .btn {
           margin-top: .625rem;

@@ -791,7 +791,7 @@
     }
 
     .user-title {
-      font-weight: 500 !important;
+      font-weight: var(--font-weight-bold) !important;
     }
 
     .dialog-avatar {
@@ -934,7 +934,7 @@
   &-h2 {
     color: var(--primary-color);
     font-size: 16px;
-    font-weight: 500;
+    font-weight: var(--font-weight-bold);
   }
 }
 
@@ -1078,7 +1078,7 @@
     padding-bottom: .9375rem;
 
     &-title:first-child {
-      font-weight: 500;
+      font-weight: var(--font-weight-bold);
     }
 
     &-title-right {
@@ -1099,7 +1099,7 @@
     padding-bottom: 0;
 
     .row-title {
-      font-weight: 500;
+      font-weight: var(--font-weight-bold);
     }
   }
 }
@@ -1252,7 +1252,7 @@
 
   &-header {
     font-size: 1.25rem;
-    font-weight: 500;
+    font-weight: var(--font-weight-bold);
   }
 
   &-subtitle {

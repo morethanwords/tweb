@@ -595,7 +595,7 @@ namespace RichTextProcessor {
           
         case 'messageEntityCode': {
           if(options.wrappingDraft) {
-            insertPart(entity, '<span style="font-family: monospace;">', '</span>');
+            insertPart(entity, '<span style="font-family: var(--font-monospace);">', '</span>');
           } else if(!options.noTextFormat) {
             insertPart(entity, '<code>', '</code>');
           }
@@ -605,7 +605,7 @@ namespace RichTextProcessor {
           
         case 'messageEntityPre': {
           if(options.wrappingDraft) {
-            insertPart(entity, '<span style="font-family: monospace;">', '</span>');
+            insertPart(entity, '<span style="font-family: var(--font-monospace);">', '</span>');
           } else if(!options.noTextFormat) {
             insertPart(entity, `<pre><code${entity.language ? ' class="language-' + encodeEntities(entity.language) + '"' : ''}>`, '</code></pre>');
           }

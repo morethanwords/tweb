@@ -117,7 +117,7 @@
   
   &-name {
     white-space: nowrap;
-    font-weight: 500;
+    font-weight: var(--font-weight-bold);
     font-size: var(--font-size-16);
     line-height: var(--line-height-16);
   }

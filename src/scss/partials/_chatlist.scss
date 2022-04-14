@@ -92,7 +92,7 @@
       color: var(--secondary-text-color);
       padding: 0 23px;
       padding-bottom: 1rem;
-      font-weight: 500;
+      font-weight: var(--font-weight-bold);
       user-select: none;
 
       @include respond-to(handhelds) {

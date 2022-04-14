@@ -92,6 +92,8 @@ $chat-input-inner-padding-handhelds: .25rem;
   --disabled-opacity: .3;
   --round-video-size: 280px;
   --menu-box-shadow: 0px 2px 8px 1px var(--menu-box-shadow-color);
+  --font-monospace: 'Roboto Mono', monospace;
+  --font-weight-bold: 500;
 
   --topbar-floating-scaleX: 1;
   --topbar-call-height: 3rem;
@@ -290,6 +292,8 @@ $chat-input-inner-padding-handhelds: .25rem;
 }
 
 @import "tgico";
+@import "fonts/roboto";
+@import "fonts/robotoMono";
 @import "partials/input";
 @import "partials/button";
 @import "partials/animatedIcon";
@@ -361,98 +365,6 @@ $chat-input-inner-padding-handhelds: .25rem;
 @import "partials/pages/authCode";
 @import "partials/pages/chats";
 @import "partials/pages/password";
-
-/* cyrillic */
-@font-face {
-  font-family: 'Roboto';
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: local('Roboto'), local('Roboto-Regular'), url(assets/fonts/KFOmCnqEu92Fr1Mu5mxKKTU1Kvnz.woff2) format('woff2');
-  unicode-range:U + 0400-045F, U + 0490-0491, U + 04B0-04B1, U + 2116
-}
-
-/* latin-ext */
-@font-face {
-  font-family: 'Roboto';
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: local('Roboto'), local('Roboto-Regular'), url(assets/fonts/KFOmCnqEu92Fr1Mu7GxKKTU1Kvnz.woff2) format('woff2');
-  unicode-range:U + 0100-024F, U + 0259, U + 1E00-1EFF, U + 2020, U + 20A0-20AB, U + 20AD-20CF, U + 2113, U + 2C60-2C7F, U + A720-A7FF
-}
-
-/* latin */
-@font-face {
-  font-family: 'Roboto';
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: local('Roboto'), local('Roboto-Regular'), url(assets/fonts/KFOmCnqEu92Fr1Mu4mxKKTU1Kg.woff2) format('woff2');
-  unicode-range:U + 0000-00FF, U + 0131, U + 0152-0153, U + 02BB-02BC, U + 02C6, U + 02DA, U + 02DC, U + 2000-206F, U + 2074, U + 20AC, U + 2122, U + 2191, U + 2193, U + 2212, U + 2215, U + FEFF, U + FFFD
-}
-
-/* cyrillic */
-@font-face {
-  font-family: 'Roboto';
-  font-style: normal;
-  font-weight: 500;
-  font-display: swap;
-  src: local('Roboto Medium'), local('Roboto-Medium'), url(assets/fonts/KFOlCnqEu92Fr1MmEU9fABc4AMP6lbBP.woff2) format('woff2');
-  unicode-range:U + 0400-045F, U + 0490-0491, U + 04B0-04B1, U + 2116
-}
-
-/* latin-ext */
-@font-face {
-  font-family: 'Roboto';
-  font-style: normal;
-  font-weight: 500;
-  font-display: swap;
-  src: local('Roboto Medium'), local('Roboto-Medium'), url(assets/fonts/KFOlCnqEu92Fr1MmEU9fChc4AMP6lbBP.woff2) format('woff2');
-  unicode-range:U + 0100-024F, U + 0259, U + 1E00-1EFF, U + 2020, U + 20A0-20AB, U + 20AD-20CF, U + 2113, U + 2C60-2C7F, U + A720-A7FF
-}
-
-/* latin */
-@font-face {
-  font-family: 'Roboto';
-  font-style: normal;
-  font-weight: 500;
-  font-display: swap;
-  src: local('Roboto Medium'), local('Roboto-Medium'), url(assets/fonts/KFOlCnqEu92Fr1MmEU9fBBc4AMP6lQ.woff2) format('woff2');
-  unicode-range:U + 0000-00FF, U + 0131, U + 0152-0153, U + 02BB-02BC, U + 02C6, U + 02DA, U + 02DC, U + 2000-206F, U + 2074, U + 20AC, U + 2122, U + 2191, U + 2193, U + 2212, U + 2215, U + FEFF, U + FFFD
-}
-
-// !!! FIX FOR [contenteditable] Ctrl+B, due to font-weight: 500;
-
-/* cyrillic */
-@font-face {
-  font-family: 'Roboto';
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: local('Roboto Medium'), local('Roboto-Medium'), url(assets/fonts/KFOlCnqEu92Fr1MmEU9fABc4AMP6lbBP.woff2) format('woff2');
-  unicode-range:U + 0400-045F, U + 0490-0491, U + 04B0-04B1, U + 2116
-}
-
-/* latin-ext */
-@font-face {
-  font-family: 'Roboto';
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: local('Roboto Medium'), local('Roboto-Medium'), url(assets/fonts/KFOlCnqEu92Fr1MmEU9fChc4AMP6lbBP.woff2) format('woff2');
-  unicode-range:U + 0100-024F, U + 0259, U + 1E00-1EFF, U + 2020, U + 20A0-20AB, U + 20AD-20CF, U + 2113, U + 2C60-2C7F, U + A720-A7FF
-}
-
-/* latin */
-@font-face {
-  font-family: 'Roboto';
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: local('Roboto Medium'), local('Roboto-Medium'), url(assets/fonts/KFOlCnqEu92Fr1MmEU9fBBc4AMP6lQ.woff2) format('woff2');
-  unicode-range:U + 0000-00FF, U + 0131, U + 0152-0153, U + 02BB-02BC, U + 02C6, U + 02DA, U + 02DC, U + 2000-206F, U + 2074, U + 20AC, U + 2122, U + 2191, U + 2193, U + 2212, U + 2215, U + FEFF, U + FFFD
-}
 
 html, body {
   height: 100%;
@@ -558,6 +470,10 @@ input, textarea, button, select, a, div {
   -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
 }
 
+pre, code, kbd, samp {
+  font-family: var(--font-monospace);
+}
+
 .whole {
   min-height: 100%;
   width: 100%;
@@ -581,7 +497,7 @@ input, textarea, button, select, a, div {
 }
 
 h1, h2, h3, h4, h5, h6 {
-  font-weight: 500;
+  font-weight: var(--font-weight-bold);
 }
 
 h4 {
@@ -600,6 +516,10 @@ input, [contenteditable=true] {
   caret-color: var(--primary-color);
   color: var(--primary-text-color);
   background-color: transparent;
+}
+
+[contenteditable] [style*="bold"] {
+  font-weight: var(--font-weight-bold) !important;
 }
 
 input, textarea {
@@ -769,8 +689,8 @@ hr {
 
 .user-title, b/* , .user-last-message b */ {
   color: var(--primary-text-color);
-  font-weight: bolder;
-  //font-weight: 500;
+  // font-weight: bolder;
+  font-weight: var(--font-weight-bold);
   //font-weight: normal;
 }
 
@@ -1558,7 +1478,7 @@ hr {
 .tgico-char {
   &:before {
     font-family: "Roboto" !important;
-    font-weight: 500;
+    font-weight: var(--font-weight-bold);
     width: 1.5rem;
     text-align: center;
   }
@@ -1615,7 +1535,7 @@ hr {
   padding: .125rem .25rem;
   border-radius: .185rem;
   font-size: .625rem;
-  font-weight: 500;
+  font-weight: var(--font-weight-bold);
   line-height: 1 !important;
   margin: 0 .25rem;
 }

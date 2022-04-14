@@ -46,7 +46,7 @@
     color: var(--primary-color);
     background-color: transparent;
     height: 3rem;
-    font-weight: 500;
+    font-weight: var(--font-weight-bold);
     font-size: .9375rem;
 
     @include animation-level(2) {

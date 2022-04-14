@@ -907,7 +907,7 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
 
 		&-count {
 			color: var(--primary-text-color);
-			font-weight: 500;
+			font-weight: var(--font-weight-bold);
 			flex-grow: 1;
 			white-space: nowrap;
 			//padding-left: .5rem;

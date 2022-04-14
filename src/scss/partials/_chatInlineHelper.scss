@@ -97,7 +97,7 @@
     position: relative;
 
     &-title {
-      font-weight: 500;
+      font-weight: var(--font-weight-bold);
       white-space: nowrap;
       text-overflow: ellipsis;
       overflow: hidden;

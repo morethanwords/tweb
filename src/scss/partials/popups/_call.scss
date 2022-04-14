@@ -83,7 +83,7 @@
   }
 
   &-title {
-    font-weight: 500;
+    font-weight: var(--font-weight-bold);
     font-size: 1.25rem;
   }
 
@@ -281,7 +281,7 @@
     align-items: center;
     margin-top: 1rem;
     backdrop-filter: blur(25px);
-    font-weight: 500;
+    font-weight: var(--font-weight-bold);
     opacity: 0;
     transform: scale(0) translateY(0);
     max-width: 100%;

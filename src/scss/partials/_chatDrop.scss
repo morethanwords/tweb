@@ -86,7 +86,7 @@
   }
 
   &-header {
-    font-weight: 500;
+    font-weight: var(--font-weight-bold);
     font-size: 1.25rem;
     
     &:not(:last-child) {

@@ -36,7 +36,7 @@
     }
 
     &-title {
-      font-weight: 500;
+      font-weight: var(--font-weight-bold);
       font-size: 20px;  
     }
 
@@ -59,7 +59,7 @@
 
       .date-picker-month-title {
         font-size: 14px;
-        font-weight: 500;
+        font-weight: var(--font-weight-bold);
       }
     }
 
@@ -169,7 +169,7 @@
       }
 
       &-title {
-        font-weight: 500;
+        font-weight: var(--font-weight-bold);
         font-size: 20px;
         margin-left: -5rem;
 
@@ -180,7 +180,7 @@
 
       .btn-icon {
         justify-self: auto;
-        font-weight: 500;
+        font-weight: var(--font-weight-bold);
         font-size: 14px;
         width: 36px;
         height: 36px;

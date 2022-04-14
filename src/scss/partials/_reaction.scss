@@ -160,7 +160,7 @@
 
   &-block &-counter {
     font-size: .9375rem !important;
-    font-weight: 500;
+    font-weight: var(--font-weight-bold);
     margin: 0 .0625rem 0 .375rem;
     line-height: 1.125rem;
     position: relative;

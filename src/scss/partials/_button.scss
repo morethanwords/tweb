@@ -243,7 +243,7 @@
     &-header {
       color: var(--primary-color);
       height: 2rem;
-      font-weight: 500;
+      font-weight: var(--font-weight-bold);
       pointer-events: none !important;
     }
 
@@ -498,7 +498,7 @@
   text-align: center;
   height: 54px;
   border: none;
-  font-weight: 500;
+  font-weight: var(--font-weight-bold);
   cursor: pointer;
   overflow: hidden;
   position: relative;
@@ -754,7 +754,7 @@
   padding: 0 2rem !important;
   border-radius: var(--size);
   font-size: 1rem;
-  font-weight: 500;
+  font-weight: var(--font-weight-bold);
   /* margin-right: calc(var(--size) + 0.5rem); */
   /* left: var(--offset); */
   right: auto;

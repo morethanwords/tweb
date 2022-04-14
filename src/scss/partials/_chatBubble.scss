@@ -155,7 +155,7 @@ $bubble-beside-button-width: 38px;
       text-align: center;
       color: var(--primary-color);
       line-height: 2.1;
-      font-weight: 500;
+      font-weight: var(--font-weight-bold);
       font-size: 15px;
       background-color: var(--surface-color);
       z-index: 2;
@@ -920,7 +920,7 @@ $bubble-beside-button-width: 38px;
         }
   
         .empty-bubble-placeholder-title {
-          font-weight: 500;
+          font-weight: var(--font-weight-bold);
           font-size: 1rem !important;
         }
 
@@ -1263,7 +1263,7 @@ $bubble-beside-button-width: 38px;
     $parent: ".audio";
     #{$parent} {
       &-title {
-        font-weight: 500;
+        font-weight: var(--font-weight-bold);
       }
 
       &-ico {
@@ -1339,7 +1339,7 @@ $bubble-beside-button-width: 38px;
 
       &-name {
         font-size: 1rem;
-        font-weight: 500;
+        font-weight: var(--font-weight-bold);
       }
 
       &-number {
@@ -1399,7 +1399,7 @@ $bubble-beside-button-width: 38px;
     }
 
     &-title {
-      font-weight: 500;
+      font-weight: var(--font-weight-bold);
     }
 
     &-subtitle {
@@ -1866,7 +1866,7 @@ $bubble-beside-button-width: 38px;
   // &-content > .name, 
   // .document-wrapper > .name {
     padding: .3125rem .625rem 0 .625rem;
-    font-weight: 500 !important;
+    font-weight: var(--font-weight-bold) !important;
     /* padding-bottom: 4px; */
     color: var(--primary-color);
     font-size: .875rem;
@@ -2031,7 +2031,7 @@ $bubble-beside-button-width: 38px;
       }
   
       &-text {
-        font-weight: 500;
+        font-weight: var(--font-weight-bold);
         font-size: .9375rem;
         margin-left: .5rem;
         display: flex;

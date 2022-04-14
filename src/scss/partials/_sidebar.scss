@@ -31,7 +31,7 @@
 
     &__title {
       flex: 1;
-      font-weight: 500;
+      font-weight: var(--font-weight-bold);
       padding-left: 1.5rem;
       font-size: 1.25rem;
       color: var(--primary-text-color);

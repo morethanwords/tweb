@@ -23,7 +23,7 @@ poll-element {
 
   .poll {
     &-title {
-      font-weight: 500;
+      font-weight: var(--font-weight-bold);
   
       @include respond-to(handhelds) {
         max-width: 88%;
@@ -105,7 +105,7 @@ poll-element {
         left: 0;
         top: 0;
         opacity: 0;
-        font-weight: 500;
+        font-weight: var(--font-weight-bold);
         margin-top: 7px;
         font-size: 14px;
         margin-left: -9px;
@@ -207,7 +207,7 @@ poll-element {
       height: 100%;
       color: var(--primary-color);
       //text-transform: uppercase;
-      font-weight: 500;
+      font-weight: var(--font-weight-bold);
       border-top-left-radius: 0 !important;
       border-top-right-radius: 0 !important;
       //border-bottom-left-radius: 6px;
@@ -236,7 +236,7 @@ poll-element {
 
     &-time {
       font-size: 12px;
-      font-weight: 500;
+      font-weight: var(--font-weight-bold);
       position: absolute;
       right: 27px;
       color: #a3adb6;

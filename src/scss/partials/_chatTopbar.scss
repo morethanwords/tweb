@@ -357,7 +357,7 @@ body.is-right-column-shown {
       }
 
       .peer-title {
-        font-weight: 500;
+        font-weight: var(--font-weight-bold);
         white-space: nowrap;
       }
 
@@ -407,7 +407,7 @@ body.is-right-column-shown {
       }
 
       .call-description-duration {
-        font-weight: 500;
+        font-weight: var(--font-weight-bold);
       }
     }
 

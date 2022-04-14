@@ -200,7 +200,7 @@
   .search-super-month-name {
     border-top: 1px solid var(--border-color);
     padding: 24px 0px 0px 24px;
-    font-weight: 500;
+    font-weight: var(--font-weight-bold);
     color: var(--secondary-text-color);
 
     @include respond-to(handhelds) {
@@ -663,7 +663,7 @@
 
     &-count {
       flex-grow: 1;
-      font-weight: 500;
+      font-weight: var(--font-weight-bold);
       color: var(--primary-text-color);
       white-space: nowrap;
       text-transform: capitalize;
@@ -703,7 +703,7 @@
     cursor: pointer;
 
     &-name {
-      font-weight: 500;
+      font-weight: var(--font-weight-bold);
     }
 
     &-count {
@@ -771,7 +771,7 @@
       color: var(--secondary-text-color);
       padding: 0 16px 8px 16px;
       margin: 0;
-      font-weight: 500;
+      font-weight: var(--font-weight-bold);
       justify-content: space-between;
       display: flex;
       font-size: 15px;

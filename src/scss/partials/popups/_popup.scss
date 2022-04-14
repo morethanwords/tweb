@@ -75,7 +75,7 @@
 
   &-description {
     .peer-title {
-      font-weight: 500;
+      font-weight: var(--font-weight-bold);
     }
   }
 
@@ -126,7 +126,7 @@
     }
 		
 		.btn {
-      font-weight: 500;
+      font-weight: var(--font-weight-bold);
 			padding: .5rem;
 			text-transform: uppercase;
 			border-radius: $border-radius;
