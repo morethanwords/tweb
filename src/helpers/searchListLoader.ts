@@ -98,6 +98,7 @@ export default class SearchListLoader<Item extends {mid: number, peerId: PeerId}
     forEachReverse(this.next, filter);
 
     if(this.current && shouldBeDeleted(this.current)) {
+      this.current = undefined;
       /* if(this.go(1)) {
         this.previous.splice(this.previous.length - 1, 1);
       } else if(this.go(-1)) {
@@ -173,8 +174,7 @@ export default class SearchListLoader<Item extends {mid: number, peerId: PeerId}
       this.loadedAllUp = true;
     }
 
-    // it should've been noSearch instead...
-    if(this.searchContext.useSearch !== false) {
+    if(this.searchContext.useSearch === false) {
       this.loadedAllDown = this.loadedAllUp = true;
     }
 
