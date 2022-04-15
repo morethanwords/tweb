@@ -364,7 +364,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
 
           if(this.peerId === peerId) {
             const container = this.searchSuper.tabs[inputFilter];
-            const div = container.querySelector(`div[data-mid="${mid}"][data-peer-id="${peerId}"]`) as HTMLElement;
+            const div = container.querySelector(`[data-mid="${mid}"][data-peer-id="${peerId}"]`) as HTMLElement;
             if(div) {
               if(this.searchSuper.selection.isSelecting) {
                 this.searchSuper.selection.toggleByElement(div);
@@ -378,7 +378,8 @@ export default class AppSharedMediaTab extends SliderSuperTab {
             }
           }
 
-          break;
+          // can have element in different tabs somehow
+          // break;
         }
       }
     }

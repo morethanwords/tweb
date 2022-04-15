@@ -3727,7 +3727,15 @@ export class AppMessagesManager {
     });
   }
 
-  public filterMessagesByInputFilter(inputFilter: MyInputMessagesFilter, history: number[], storage: MessagesStorage, limit: number) {
+  public filterMessagesByInputFilterFromStorage(inputFilter: MyInputMessagesFilter, history: number[], storage: MessagesStorage, limit: number) {
+    return this.filterMessagesByInputFilter(inputFilter, history.map(mid => storage.get(mid)), limit);
+  }
+
+  public filterMessagesByInputFilter(inputFilter: MyInputMessagesFilter, history: Array<Message.message | Message.messageService>, limit: number) {
+    if(inputFilter === 'inputMessagesFilterEmpty') {
+      return history;
+    }
+
     const foundMsgs: MyMessage[] = [];
     if(!history.length) {
       return foundMsgs;
@@ -3762,7 +3770,8 @@ export class AppMessagesManager {
 
       case 'inputMessagesFilterDocument':
         neededContents['messageMediaDocument'] = true;
-        excludeDocTypes.push('video');
+        // excludeDocTypes.push('video');
+        neededDocTypes.push(undefined, 'photo', 'pdf');
         break;
 
       case 'inputMessagesFilterVoice':
@@ -3816,7 +3825,7 @@ export class AppMessagesManager {
     }
 
     for(let i = 0, length = history.length; i < length; ++i) {
-      const message: Message.message | Message.messageService = storage.get(history[i]);
+      const message: Message.message | Message.messageService = history[i];
       if(!message) continue;
   
       //|| (neededContents['mentioned'] && message.totalEntities.find((e: any) => e._ === 'messageEntityMention'));
@@ -3825,8 +3834,12 @@ export class AppMessagesManager {
       if(message._ === 'message') {
         if(message.media && neededContents[message.media._]/*  && !message.fwd_from */) {
           const doc = (message.media as MessageMedia.messageMediaDocument).document as MyDocument;
-          if(doc && ((neededDocTypes.length && !neededDocTypes.includes(doc.type)) 
-            || excludeDocTypes.includes(doc.type))) {
+          if(doc && 
+            (
+              (neededDocTypes.length && !neededDocTypes.includes(doc.type)) || 
+              excludeDocTypes.includes(doc.type)
+            )
+          ) {
             continue;
           }
   
@@ -3920,7 +3933,7 @@ export class AppMessagesManager {
       storage = beta ? 
         this.getSearchStorage(peerId, inputFilter._) as any : 
         this.getHistoryStorage(peerId);
-      foundMsgs = this.filterMessagesByInputFilter(inputFilter._, storage.history.slice, this.getMessagesStorage(peerId), limit);
+      foundMsgs = this.filterMessagesByInputFilterFromStorage(inputFilter._, storage.history.slice, this.getMessagesStorage(peerId), limit);
     }
 
     if(foundMsgs.length) {

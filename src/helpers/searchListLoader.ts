@@ -82,7 +82,7 @@ export default class SearchListLoader<Item extends {mid: number, peerId: PeerId}
     const storage = this.searchContext.isScheduled ? 
       appMessagesManager.getScheduledMessagesStorage(this.searchContext.peerId) : 
       appMessagesManager.getMessagesStorage(this.searchContext.peerId);
-     const filtered = appMessagesManager.filterMessagesByInputFilter(this.searchContext.inputFilter._, mids, storage, mids.length) as Message.message[];
+     const filtered = appMessagesManager.filterMessagesByInputFilterFromStorage(this.searchContext.inputFilter._, mids, storage, mids.length) as Message.message[];
      return filtered;
   }
 
