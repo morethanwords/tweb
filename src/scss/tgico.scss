@@ -21,3 +21,10 @@ $tgico-font-path: "assets/fonts" !default;
 
 @import "tgico/style";
 @import "tgico/variables";
+
+.tgico-phone_filled {
+  &:before {
+    content: $tgico-endcall_filled;
+    transform: rotate(-135deg);
+  }
+}

@@ -338,7 +338,7 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
 			font-size: 2rem;
 
 			&:before {
-				font-weight: bold;
+				font-weight: var(--font-weight-bold);
 			}
 		}
 

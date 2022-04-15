@@ -543,6 +543,7 @@ $bubble-beside-button-width: 38px;
   &.webpage {
     .preview-with-document {
       margin-bottom: 0 !important;
+      min-width: 100%;
     }
 
     .document {
@@ -550,6 +551,15 @@ $bubble-beside-button-width: 38px;
 
       @include respond-to(handhelds) {
         padding-left: 44px;
+      }
+    }
+
+    .has-document {
+      display: flex;
+      flex-direction: column;
+
+      .preview-resizer {
+        order: 1;
       }
     }
   }

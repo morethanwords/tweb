@@ -173,9 +173,10 @@ export default class SearchListLoader<Item extends {mid: number, peerId: PeerId}
       this.loadedAllUp = true;
     }
 
-    // if(!this.searchContext.useSearch) {
-    //   this.loadedAllDown = this.loadedAllUp = true;
-    // }
+    // it should've been noSearch instead...
+    if(this.searchContext.useSearch !== false) {
+      this.loadedAllDown = this.loadedAllUp = true;
+    }
 
     if(this.otherSideLoader) {
       this.otherSideLoader.setSearchContext(context);
@@ -270,7 +271,11 @@ export default class SearchListLoader<Item extends {mid: number, peerId: PeerId}
   protected setLoaded(down: boolean, value: boolean) {
     const changed = super.setLoaded(down, value);
 
-    if(changed && this.otherSideLoader && value/*  && (this.reverse ? this.loadedAllUp : this.loadedAllDown) */) {
+    if(changed && 
+      this.otherSideLoader && 
+      value && 
+      this.searchContext?.useSearch !== false/*  && 
+      (this.reverse ? this.loadedAllUp : this.loadedAllDown) */) {
       const reverse = this.loadedAllUp;
       this.otherSideLoader.setSearchContext({
         ...this.searchContext,

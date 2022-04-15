@@ -17,7 +17,7 @@
   }
 
   .chat-title {
-    font-weight: bold;
+    font-weight: var(--font-weight-bold);
     margin: .75rem 0 .25rem;
     line-height: var(--line-height);
   }

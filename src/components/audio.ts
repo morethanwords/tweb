@@ -7,7 +7,6 @@
 import appDocsManager, {MyDocument} from "../lib/appManagers/appDocsManager";
 import { wrapPhoto } from "./wrappers";
 import ProgressivePreloader from "./preloader";
-import { MediaProgressLine } from "../lib/mediaPlayer";
 import appMediaPlaybackController, { MediaItem, MediaSearchContext } from "./appMediaPlaybackController";
 import { DocumentAttribute, Message } from "../layer";
 import mediaSizes from "../helpers/mediaSizes";
@@ -32,6 +31,7 @@ import formatBytes from "../helpers/formatBytes";
 import { animateSingle } from "../helpers/animation";
 import clamp from "../helpers/number/clamp";
 import toHHMMSS from "../helpers/string/toHHMMSS";
+import MediaProgressLine from "./mediaProgressLine";
 
 rootScope.addEventListener('messages_media_read', ({mids, peerId}) => {
   mids.forEach(mid => {

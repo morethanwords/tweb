@@ -5,263 +5,19 @@
  */
 
 import appMediaPlaybackController from "../components/appMediaPlaybackController";
-import { IS_APPLE_MOBILE } from "../environment/userAgent";
+import { IS_APPLE_MOBILE, IS_MOBILE } from "../environment/userAgent";
 import { IS_TOUCH_SUPPORTED } from "../environment/touchSupport";
-import RangeSelector from "../components/rangeSelector";
 import { onMediaLoad } from "../helpers/files";
 import cancelEvent from "../helpers/dom/cancelEvent";
 import ListenerSetter from "../helpers/listenerSetter";
 import ButtonMenu from "../components/buttonMenu";
 import { ButtonMenuToggleHandler } from "../components/buttonMenuToggle";
 import rootScope from "./rootScope";
-import { GrabEvent } from "../helpers/dom/attachGrabListeners";
-import { attachClickEvent } from "../helpers/dom/clickEvent";
 import ControlsHover from "../helpers/dom/controlsHover";
 import { addFullScreenListener, cancelFullScreen, isFullScreen, requestFullScreen } from "../helpers/dom/fullScreen";
 import toHHMMSS from "../helpers/string/toHHMMSS";
-
-export class MediaProgressLine extends RangeSelector {
-  protected filledLoad: HTMLDivElement;
-
-  protected progressRAF = 0;
-
-  protected media: HTMLMediaElement;
-  protected streamable: boolean;
-
-  constructor(media?: HTMLAudioElement | HTMLVideoElement, streamable?: boolean, withTransition?: boolean, useTransform?: boolean) {
-    super({
-      step: 1000 / 60 / 1000, 
-      min: 0, 
-      max: 1, 
-      withTransition, 
-      useTransform
-    }, 0);
-
-    if(media) {
-      this.setMedia(media, streamable);
-    }
-  }
-
-  public setMedia(media: HTMLMediaElement, streamable = false) {
-    if(this.media) {
-      this.removeListeners();
-    }
-
-    if(streamable && !this.filledLoad) {
-      this.filledLoad = document.createElement('div');
-      this.filledLoad.classList.add('progress-line__filled', 'progress-line__loaded');
-      this.container.prepend(this.filledLoad);
-      //this.setLoadProgress();
-    } else if(this.filledLoad) {
-      this.filledLoad.classList.toggle('hide', !streamable);
-    }
-
-    this.media = media;
-    this.streamable = streamable;
-    if(!media.paused || media.currentTime > 0) {
-      this.onPlay();
-    }
-
-    let wasPlaying = false;
-    this.setSeekMax();
-    this.setListeners();
-    this.setHandlers({
-      onMouseDown: () => {
-        wasPlaying = !this.media.paused;
-        wasPlaying && this.media.pause();
-      },
-
-      onMouseUp: (e) => {
-        // cancelEvent(e.event);
-        wasPlaying && this.media.play();
-      }
-    });
-  }
-
-  protected onLoadedData = () => {
-    this.max = this.media.duration;
-    this.seek.setAttribute('max', '' + this.max);
-  };
-
-  protected onEnded = () => {
-    this.setProgress();
-  };
-
-  protected onPlay = () => {
-    let r = () => {
-      this.setProgress();
-
-      this.progressRAF = this.media.paused ? 0 : window.requestAnimationFrame(r);
-    };
-
-    if(this.progressRAF) {
-      window.cancelAnimationFrame(this.progressRAF);
-    }
-
-    if(this.streamable) {
-      this.setLoadProgress();
-    }
-
-    this.progressRAF = window.requestAnimationFrame(r);
-  };
-
-  protected onTimeUpdate = () => {
-    if(this.media.paused) {
-      this.setProgress();
-
-      if(this.streamable) {
-        this.setLoadProgress();
-      }
-    }
-  };
-
-  protected onProgress = (e: Event) => {
-    this.setLoadProgress();
-  };
-
-  protected scrub(e: GrabEvent) {
-    const scrubTime = super.scrub(e);
-    this.media.currentTime = scrubTime;
-    return scrubTime;
-  }
-
-  protected setLoadProgress() {
-    if(appMediaPlaybackController.isSafariBuffering(this.media)) return;
-    const buf = this.media.buffered;
-    const numRanges = buf.length;
-
-    const currentTime = this.media.currentTime;
-    let nearestStart = 0, end = 0;
-    for(let i = 0; i < numRanges; ++i) {
-      const start = buf.start(i);
-      if(currentTime >= start && start >= nearestStart) {
-        nearestStart = start;
-        end = buf.end(i);
-      }
-
-      //console.log('onProgress range:', i, buf.start(i), buf.end(i), this.media);
-    }
-
-    //console.log('onProgress correct range:', nearestStart, end, this.media);
-
-    const percents = this.media.duration ? end / this.media.duration : 0;
-    this.filledLoad.style.width = (percents * 100) + '%';
-    //this.filledLoad.style.transform = 'scaleX(' + percents + ')';
-  }
-
-  protected setSeekMax() {
-    this.max = this.media.duration || 0;
-    if(this.max > 0) {
-      this.onLoadedData();
-    } else {
-      this.media.addEventListener('loadeddata', this.onLoadedData);
-    }
-  }
-
-  public setProgress() {
-    if(appMediaPlaybackController.isSafariBuffering(this.media)) return;
-    const currentTime = this.media.currentTime;
-
-    super.setProgress(currentTime);
-  }
-
-  public setListeners() {
-    super.setListeners();
-    this.media.addEventListener('ended', this.onEnded);
-    this.media.addEventListener('play', this.onPlay);
-    this.media.addEventListener('timeupdate', this.onTimeUpdate);
-    this.streamable && this.media.addEventListener('progress', this.onProgress);
-  }
-
-  public removeListeners() {
-    super.removeListeners();
-
-    if(this.media) {
-      this.media.removeEventListener('loadeddata', this.onLoadedData);
-      this.media.removeEventListener('ended', this.onEnded);
-      this.media.removeEventListener('play', this.onPlay);
-      this.media.removeEventListener('timeupdate', this.onTimeUpdate);
-      this.streamable && this.media.removeEventListener('progress', this.onProgress);
-    }
-
-    if(this.progressRAF) {
-      window.cancelAnimationFrame(this.progressRAF);
-      this.progressRAF = 0;
-    }
-  }
-}
-
-export class VolumeSelector extends RangeSelector {
-  private static ICONS = ['volume_off', 'volume_mute', 'volume_down', 'volume_up'];
-  public btn: HTMLElement;
-  protected icon: HTMLSpanElement;
-
-  constructor(protected listenerSetter: ListenerSetter, protected vertical = false) {
-    super({
-      step: 0.01, 
-      min: 0, 
-      max: 1,
-      vertical
-    }, 1);
-
-    this.setListeners();
-    this.setHandlers({
-      onScrub: currentTime => {
-        const value = Math.max(Math.min(currentTime, 1), 0);
-
-        //console.log('volume scrub:', currentTime, value);
-
-        appMediaPlaybackController.muted = false;
-        appMediaPlaybackController.volume = value;
-      },
-
-      /* onMouseUp: (e) => {
-        cancelEvent(e.event);
-      } */
-    });
-
-    const className = 'player-volume';
-    const btn = this.btn = document.createElement('div');
-    btn.classList.add('btn-icon', className);
-    const icon = this.icon = document.createElement('span');
-    icon.classList.add(className + '__icon');
-
-    btn.append(icon, this.container);
-
-    attachClickEvent(icon, this.onMuteClick, {listenerSetter: this.listenerSetter});
-    this.listenerSetter.add(rootScope)('media_playback_params', this.setVolume);
-
-    this.setVolume();
-  }
-
-  private onMuteClick = (e?: Event) => {
-    e && cancelEvent(e);
-    appMediaPlaybackController.muted = !appMediaPlaybackController.muted;
-  };
-
-  private setVolume = () => {
-    // const volume = video.volume;
-    const {volume, muted} = appMediaPlaybackController;
-    let d: string;
-    let iconIndex: number;
-    if(!volume || muted) {
-      iconIndex = 0;
-    } else if(volume > .5) {
-      iconIndex = 3;
-    } else if(volume > 0 && volume < .25) {
-      iconIndex = 1;
-    } else {
-      iconIndex = 2;
-    }
-
-    VolumeSelector.ICONS.forEach(icon => this.icon.classList.remove('tgico-' + icon));
-    this.icon.classList.add('tgico-' + VolumeSelector.ICONS[iconIndex]);
-
-    if(!this.mousedown) {
-      this.setProgress(muted ? 0 : volume);
-    }
-  };
-}
+import MediaProgressLine from "../components/mediaProgressLine";
+import VolumeSelector from "../components/volumeSelector";
 
 export default class VideoPlayer extends ControlsHover {
   private static PLAYBACK_RATES = [0.5, 1, 1.5, 2];
@@ -274,18 +30,21 @@ export default class VideoPlayer extends ControlsHover {
 
   protected listenerSetter: ListenerSetter;
   protected playbackRateButton: HTMLElement;
+  protected pipButton: HTMLElement;
 
   /* protected videoParent: HTMLElement;
   protected videoWhichChild: number; */
 
   protected onPlaybackRackMenuToggle?: (open: boolean) => void;
+  protected onPip?: (pip: boolean) => void;
 
-  constructor({video, play = false, streamable = false, duration, onPlaybackRackMenuToggle}: {
+  constructor({video, play = false, streamable = false, duration, onPlaybackRackMenuToggle, onPip}: {
     video: HTMLVideoElement, 
     play?: boolean, 
     streamable?: boolean, 
     duration?: number,
-    onPlaybackRackMenuToggle?: (open: boolean) => void
+    onPlaybackRackMenuToggle?: VideoPlayer['onPlaybackRackMenuToggle'],
+    onPip: VideoPlayer['onPip']
   }) {
     super();
 
@@ -294,6 +53,7 @@ export default class VideoPlayer extends ControlsHover {
     this.wrapper.classList.add('ckin__player');
 
     this.onPlaybackRackMenuToggle = onPlaybackRackMenuToggle;
+    this.onPip = onPip;
 
     this.listenerSetter = new ListenerSetter();
 
@@ -347,6 +107,7 @@ export default class VideoPlayer extends ControlsHover {
   
     if(skin === 'default') {
       this.playbackRateButton = this.wrapper.querySelector('.playback-rate') as HTMLElement;
+      this.pipButton = this.wrapper.querySelector('.pip') as HTMLElement;
       
       const toggle = wrapper.querySelectorAll('.toggle') as NodeListOf<HTMLElement>;
       const fullScreenButton = wrapper.querySelector('.fullscreen') as HTMLElement;
@@ -365,6 +126,25 @@ export default class VideoPlayer extends ControlsHover {
           this.togglePlay();
         });
       });
+
+      if(this.pipButton) {
+        listenerSetter.add(this.pipButton)('click', () => {
+          this.video.requestPictureInPicture();
+        });
+
+        const onPip = (pip: boolean) => {
+          this.wrapper.style.visibility = pip ? 'hidden': '';
+          this.onPip(pip);
+        };
+
+        listenerSetter.add(video)('enterpictureinpicture', () => {
+          onPip(true);
+        });
+
+        listenerSetter.add(video)('leavepictureinpicture', () => {
+          onPip(false);
+        });
+      }
 
       if(!IS_TOUCH_SUPPORTED) {
         listenerSetter.add(video)('click', () => {
@@ -406,17 +186,6 @@ export default class VideoPlayer extends ControlsHover {
           }
         });
       }
-  
-      /* player.addEventListener('click', (e) => {
-        if(e.target !== player) {
-          return;
-        }
-
-        this.togglePlay();
-      }); */
-  
-      /* video.addEventListener('play', () => {
-      }); */
 
       listenerSetter.add(video)('dblclick', () => {
         if(!IS_TOUCH_SUPPORTED) {
@@ -492,6 +261,7 @@ export default class VideoPlayer extends ControlsHover {
           </div>
           <div class="right-controls">
             <button class="btn-icon ${skin}__button btn-menu-toggle playback-rate night" title="Playback Rate"></button>
+            ${!IS_MOBILE && document.pictureInPictureEnabled ? `<button class="btn-icon ${skin}__button pip tgico-pip" title="Picture-in-Picture"></button>` : ''}
             <button class="btn-icon ${skin}__button fullscreen tgico-fullscreen" title="Full Screen"></button>
           </div>
         </div>
@@ -593,10 +363,10 @@ export default class VideoPlayer extends ControlsHover {
     }
   }
 
-  public removeListeners() {
+  public cleanup() {
     super.cleanup();
     this.listenerSetter.removeAll();
     this.progress.removeListeners();
-    this.onPlaybackRackMenuToggle = undefined;
+    this.onPlaybackRackMenuToggle = this.onPip = undefined;
   }
 }

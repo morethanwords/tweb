@@ -87,7 +87,6 @@
       padding: 0;
       position: absolute;
       opacity: 1;
-      visibility: visible;
       top: 50%;
       left: 50%;
       transform: translate3d(-50%, -50%, 0) scale(1);
@@ -98,7 +97,7 @@
       }
       
       @include animation-level(2) {
-        transition: visibility var(--layer-transition), opacity var(--layer-transition);
+        transition: opacity var(--layer-transition);
       }
 
       @include respond-to(handhelds) {
@@ -110,7 +109,6 @@
   &:not(.played) {
     .default__button--big {
       opacity: 0;
-      visibility: hidden;
     }
   }
 
@@ -205,7 +203,6 @@
   &.is-playing, &:not(.played) {
     .default__button--big {
       opacity: 0;
-      visibility: hidden;
     }
 
     .toggle:not(.default__button--big) {

@@ -192,7 +192,7 @@
       }
 
       &-day {
-        font-weight: bold;
+        font-weight: var(--font-weight-bold);
         color: var(--primary-text-color) !important;
         font-size: 14px !important;
       }

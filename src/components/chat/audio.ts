@@ -17,10 +17,11 @@ import replaceContent from "../../helpers/dom/replaceContent";
 import PeerTitle from "../peerTitle";
 import { i18n } from "../../lib/langPack";
 import { formatFullSentTime } from "../../helpers/date";
-import { MediaProgressLine, VolumeSelector } from "../../lib/mediaPlayer";
 import ButtonIcon from "../buttonIcon";
 import { MyDocument } from "../../lib/appManagers/appDocsManager";
 import { Message } from "../../layer";
+import MediaProgressLine from "../mediaProgressLine";
+import VolumeSelector from "../volumeSelector";
 
 export default class ChatAudio extends PinnedContainer {
   private toggleEl: HTMLElement;

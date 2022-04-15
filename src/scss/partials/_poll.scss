@@ -122,7 +122,7 @@ poll-element {
         border-radius: 50%;
         height: 16px;
         width: 16px;
-        font-weight: bold;
+        font-weight: var(--font-weight-bold);
         font-size: .75rem;
         opacity: 1;
         display: flex;
@@ -132,7 +132,7 @@ poll-element {
         &:before {
           content: $tgico-check;
           //margin-left: 1px;
-          font-weight: bold;
+          font-weight: var(--font-weight-bold);
         }
       }
 

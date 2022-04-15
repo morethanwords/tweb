@@ -25,6 +25,7 @@ import { attachClickEvent } from "../../helpers/dom/clickEvent";
 import MEDIA_MIME_TYPES_SUPPORTED from '../../environment/mediaMimeTypesSupport';
 import getGifDuration from "../../helpers/getGifDuration";
 import replaceContent from "../../helpers/dom/replaceContent";
+import createVideo from "../../helpers/dom/createVideo";
 
 type SendFileParams = Partial<{
   file: File,
@@ -275,13 +276,12 @@ export default class PopupNewMedia extends PopupElement {
 
     let promise: Promise<void>;
     if(isVideo) {
-      const video = document.createElement('video');
+      const video = createVideo();
       const source = document.createElement('source');
       source.src = params.objectURL = URL.createObjectURL(file);
       video.autoplay = true;
       video.controls = false;
       video.muted = true;
-      video.setAttribute('playsinline', 'true');
 
       video.addEventListener('timeupdate', () => {
         video.pause();

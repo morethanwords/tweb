@@ -3390,6 +3390,9 @@ export default class ChatBubbles {
             preview.classList.add('preview');
             previewResizer.append(preview);
           }
+
+          let quoteTextDiv = document.createElement('div');
+          quoteTextDiv.classList.add('quote-text');
           
           const doc = webpage.document as MyDocument;
           if(doc) {
@@ -3422,18 +3425,23 @@ export default class ChatBubbles {
                 autoDownloadSize: this.chat.autoDownload.file,
                 lazyLoadQueue: this.lazyLoadQueue,
                 loadPromises,
-                sizeType: 'documentName'
+                sizeType: 'documentName',
+                searchContext: {
+                  useSearch: false,
+                  peerId: this.peerId,
+                  inputFilter: {
+                    _: 'inputMessagesFilterEmpty'
+                  }
+                }
               });
               preview.append(docDiv);
               preview.classList.add('preview-with-document');
+              quoteTextDiv.classList.add('has-document');
               //messageDiv.classList.add((webpage.type || 'document') + '-message');
               //doc = null;
             }
           }
           
-          let quoteTextDiv = document.createElement('div');
-          quoteTextDiv.classList.add('quote-text');
-
           if(previewResizer) {
             quoteTextDiv.append(previewResizer);
           }
