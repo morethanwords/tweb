@@ -6,7 +6,7 @@
 
 import AppTwoStepVerificationTab from ".";
 import { SettingSection } from "../..";
-import { cancelEvent } from "../../../../helpers/dom/cancelEvent";
+import cancelEvent from "../../../../helpers/dom/cancelEvent";
 import { canFocus } from "../../../../helpers/dom/canFocus";
 import { attachClickEvent } from "../../../../helpers/dom/clickEvent";
 import replaceContent from "../../../../helpers/dom/replaceContent";

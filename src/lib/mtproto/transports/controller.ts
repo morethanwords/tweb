@@ -5,9 +5,9 @@
  */
 
 import App from "../../../config/app";
-import { deferredPromise } from "../../../helpers/cancellablePromise";
+import deferredPromise from "../../../helpers/cancellablePromise";
 import EventListenerBase from "../../../helpers/eventListenerBase";
-import { pause } from "../../../helpers/schedulers/pause";
+import pause from "../../../helpers/schedulers/pause";
 import dcConfigurator, { TransportType } from "../dcConfigurator";
 import type HTTP from "./http";
 import type TcpObfuscated from "./tcpObfuscated";

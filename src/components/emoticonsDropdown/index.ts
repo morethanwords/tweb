@@ -23,9 +23,9 @@ import findUpClassName from "../../helpers/dom/findUpClassName";
 import findUpTag from "../../helpers/dom/findUpTag";
 import blurActiveElement from "../../helpers/dom/blurActiveElement";
 import whichChild from "../../helpers/dom/whichChild";
-import { cancelEvent } from "../../helpers/dom/cancelEvent";
+import cancelEvent from "../../helpers/dom/cancelEvent";
 import DropdownHover from "../../helpers/dropdownHover";
-import { pause } from "../../helpers/schedulers/pause";
+import pause from "../../helpers/schedulers/pause";
 import appMessagesManager from "../../lib/appManagers/appMessagesManager";
 import { IS_APPLE_MOBILE } from "../../environment/userAgent";
 

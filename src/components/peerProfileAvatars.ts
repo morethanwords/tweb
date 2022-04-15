@@ -7,7 +7,7 @@
 import IS_PARALLAX_SUPPORTED from "../environment/parallaxSupport";
 import { IS_TOUCH_SUPPORTED } from "../environment/touchSupport";
 import findAndSplice from "../helpers/array/findAndSplice";
-import { cancelEvent } from "../helpers/dom/cancelEvent";
+import cancelEvent from "../helpers/dom/cancelEvent";
 import { attachClickEvent } from "../helpers/dom/clickEvent";
 import filterChatPhotosMessages from "../helpers/filterChatPhotosMessages";
 import ListenerSetter from "../helpers/listenerSetter";

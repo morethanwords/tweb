@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { pause } from '../../../helpers/schedulers/pause';
+import pause from '../../../helpers/schedulers/pause';
 import { DcId } from '../../../types';
 import { logger, LogTypes } from '../../logger';
 import type MTPNetworker from '../networker';

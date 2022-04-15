@@ -9,7 +9,7 @@ import { IS_APPLE_MOBILE } from "../environment/userAgent";
 import { IS_TOUCH_SUPPORTED } from "../environment/touchSupport";
 import RangeSelector from "../components/rangeSelector";
 import { onMediaLoad } from "../helpers/files";
-import { cancelEvent } from "../helpers/dom/cancelEvent";
+import cancelEvent from "../helpers/dom/cancelEvent";
 import ListenerSetter from "../helpers/listenerSetter";
 import ButtonMenu from "../components/buttonMenu";
 import { ButtonMenuToggleHandler } from "../components/buttonMenuToggle";

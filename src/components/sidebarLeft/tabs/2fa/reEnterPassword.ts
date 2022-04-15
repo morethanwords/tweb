@@ -12,7 +12,7 @@ import { SliderSuperTab } from "../../../slider";
 import TrackingMonkey from "../../../monkeys/tracking";
 import AppTwoStepVerificationHintTab from "./hint";
 import { InputState } from "../../../inputField";
-import { cancelEvent } from "../../../../helpers/dom/cancelEvent";
+import cancelEvent from "../../../../helpers/dom/cancelEvent";
 import { attachClickEvent } from "../../../../helpers/dom/clickEvent";
 
 export default class AppTwoStepVerificationReEnterPasswordTab extends SliderSuperTab {

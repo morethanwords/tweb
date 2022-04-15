@@ -6,12 +6,12 @@
 
 import findUpClassName from "../helpers/dom/findUpClassName";
 import sequentialDom from "../helpers/sequentialDom";
-import {IS_TOUCH_SUPPORTED} from "../environment/touchSupport";
+import { IS_TOUCH_SUPPORTED } from "../environment/touchSupport";
 import rootScope from "../lib/rootScope";
 import findUpAsChild from "../helpers/dom/findUpAsChild";
 
 let rippleClickId = 0;
-export function ripple(
+export default function ripple(
   elem: HTMLElement, 
   callback: (id: number) => Promise<boolean | void> = () => Promise.resolve(), 
   onEnd: (id: number) => void = null, 

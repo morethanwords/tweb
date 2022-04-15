@@ -16,7 +16,7 @@ import ProgressivePreloader from "./preloader";
 import SetTransition from "./singleTransition";
 import sessionStorage from '../lib/sessionStorage';
 import { ConnectionStatus } from "../lib/mtproto/connectionStatus";
-import { cancelEvent } from "../helpers/dom/cancelEvent";
+import cancelEvent from "../helpers/dom/cancelEvent";
 import apiManager from "../lib/mtproto/mtprotoworker";
 import { attachClickEvent } from "../helpers/dom/clickEvent";
 

@@ -17,7 +17,7 @@ import ListenerSetter from "../../helpers/listenerSetter";
 import ButtonIcon from "../buttonIcon";
 import { getHeavyAnimationPromise } from "../../hooks/useHeavyAnimationCheck";
 import { i18n } from "../../lib/langPack";
-import { cancelEvent } from "../../helpers/dom/cancelEvent";
+import cancelEvent from "../../helpers/dom/cancelEvent";
 import { attachClickEvent } from "../../helpers/dom/clickEvent";
 import handleScrollSideEvent from "../../helpers/dom/handleScrollSideEvent";
 import debounce from "../../helpers/schedulers/debounce";

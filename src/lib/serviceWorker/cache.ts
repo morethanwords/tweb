@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { pause } from "../../helpers/schedulers/pause";
+import pause from "../../helpers/schedulers/pause";
 
 const ctx = self as any as ServiceWorkerGlobalScope;
 export const CACHE_ASSETS_NAME = 'cachedAssets';

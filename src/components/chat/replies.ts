@@ -9,7 +9,7 @@ import { Message } from "../../layer";
 import appMessagesManager from "../../lib/appManagers/appMessagesManager";
 import appPeersManager from "../../lib/appManagers/appPeersManager";
 import rootScope from "../../lib/rootScope";
-import { ripple } from "../ripple";
+import ripple from "../ripple";
 import I18n from "../../lib/langPack";
 import replaceContent from "../../helpers/dom/replaceContent";
 import StackedAvatars from "../stackedAvatars";

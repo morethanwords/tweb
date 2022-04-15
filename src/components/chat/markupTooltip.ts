@@ -11,7 +11,7 @@ import { IS_TOUCH_SUPPORTED } from "../../environment/touchSupport";
 import { IS_APPLE, IS_MOBILE } from "../../environment/userAgent";
 import appNavigationController from "../appNavigationController";
 import { _i18n } from "../../lib/langPack";
-import { cancelEvent } from "../../helpers/dom/cancelEvent";
+import cancelEvent from "../../helpers/dom/cancelEvent";
 import { attachClickEvent } from "../../helpers/dom/clickEvent";
 import getSelectedNodes from "../../helpers/dom/getSelectedNodes";
 import isSelectionEmpty from "../../helpers/dom/isSelectionEmpty";

@@ -5,7 +5,7 @@
  */
 
 import appStateManager from "../lib/appManagers/appStateManager";
-import { ripple } from "./ripple";
+import ripple from "./ripple";
 import { LangPackKey, _i18n } from "../lib/langPack";
 import getDeepProperty from "../helpers/object/getDeepProperty";
 

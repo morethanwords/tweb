@@ -10,7 +10,7 @@ import appPollsManager from "../../../lib/appManagers/appPollsManager";
 import { roundPercents } from "../../poll";
 import { RichTextProcessor } from "../../../lib/richtextprocessor";
 import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
-import { ripple } from "../../ripple";
+import ripple from "../../ripple";
 import { i18n } from "../../../lib/langPack";
 
 export default class AppPollResultsTab extends SliderSuperTab {

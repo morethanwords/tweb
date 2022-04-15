@@ -13,7 +13,7 @@ import { MOUNT_CLASS_TO } from "../../config/debug";
 import filterUnique from "../../helpers/array/filterUnique";
 import findAndSplice from "../../helpers/array/findAndSplice";
 import indexOfAndSplice from "../../helpers/array/indexOfAndSplice";
-import { CancellablePromise, deferredPromise } from "../../helpers/cancellablePromise";
+import deferredPromise, { CancellablePromise } from "../../helpers/cancellablePromise";
 import cleanSearchText from "../../helpers/cleanSearchText";
 import cleanUsername from "../../helpers/cleanUsername";
 import { formatFullSentTimeRaw, tsNow } from "../../helpers/date";

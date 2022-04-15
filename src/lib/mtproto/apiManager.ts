@@ -19,7 +19,7 @@ import dcConfigurator, { ConnectionType, DcConfigurator, TransportType } from '.
 import { logger } from '../logger';
 import type { DcAuthKey, DcId, DcServerSalt, InvokeApiOptions } from '../../types';
 import type { MethodDeclMap } from '../../layer';
-import { CancellablePromise, deferredPromise } from '../../helpers/cancellablePromise';
+import deferredPromise, { CancellablePromise } from '../../helpers/cancellablePromise';
 //import { clamp } from '../../helpers/number';
 import { IS_SAFARI } from '../../environment/userAgent';
 import App from '../../config/app';
@@ -32,7 +32,7 @@ import Modes from '../../config/modes';
 import bytesFromHex from '../../helpers/bytes/bytesFromHex';
 import bytesToHex from '../../helpers/bytes/bytesToHex';
 import isObject from '../../helpers/object/isObject';
-import { pause } from '../../helpers/schedulers/pause';
+import pause from '../../helpers/schedulers/pause';
 
 /// #if !MTPROTO_WORKER
 import rootScope from '../rootScope';

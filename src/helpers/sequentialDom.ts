@@ -5,7 +5,7 @@
  */
 
 import { fastRaf } from "./schedulers";
-import { CancellablePromise, deferredPromise } from "./cancellablePromise";
+import deferredPromise, { CancellablePromise } from "./cancellablePromise";
 import { MOUNT_CLASS_TO } from "../config/debug";
 import isInDOM from "./dom/isInDOM";
 

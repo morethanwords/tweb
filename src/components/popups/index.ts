@@ -5,7 +5,7 @@
  */
 
 import rootScope from "../../lib/rootScope";
-import { ripple } from "../ripple";
+import ripple from "../ripple";
 import animationIntersector from "../animationIntersector";
 import appNavigationController, { NavigationItem } from "../appNavigationController";
 import { i18n, LangPackKey } from "../../lib/langPack";
@@ -14,7 +14,7 @@ import blurActiveElement from "../../helpers/dom/blurActiveElement";
 import ListenerSetter from "../../helpers/listenerSetter";
 import { attachClickEvent, simulateClickEvent } from "../../helpers/dom/clickEvent";
 import isSendShortcutPressed from "../../helpers/dom/isSendShortcutPressed";
-import { cancelEvent } from "../../helpers/dom/cancelEvent";
+import cancelEvent from "../../helpers/dom/cancelEvent";
 import EventListenerBase, { EventListenerListeners } from "../../helpers/eventListenerBase";
 import { addFullScreenListener, getFullScreenElement } from "../../helpers/dom/fullScreen";
 import indexOfAndSplice from "../../helpers/array/indexOfAndSplice";

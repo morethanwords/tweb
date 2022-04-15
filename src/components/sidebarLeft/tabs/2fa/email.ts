@@ -17,7 +17,7 @@ import AppTwoStepVerificationSetTab from "./passwordSet";
 import AppTwoStepVerificationEmailConfirmationTab from "./emailConfirmation";
 import RichTextProcessor from "../../../../lib/richtextprocessor";
 import PopupPeer from "../../../popups/peer";
-import { cancelEvent } from "../../../../helpers/dom/cancelEvent";
+import cancelEvent from "../../../../helpers/dom/cancelEvent";
 import { canFocus } from "../../../../helpers/dom/canFocus";
 import { attachClickEvent } from "../../../../helpers/dom/clickEvent";
 

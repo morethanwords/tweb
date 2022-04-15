@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { deferredPromise } from "../helpers/cancellablePromise";
+import deferredPromise from "../helpers/cancellablePromise";
 import mediaSizes from "../helpers/mediaSizes";
 import { IS_TOUCH_SUPPORTED } from "../environment/touchSupport";
 import { IS_MOBILE_SAFARI, IS_SAFARI } from "../environment/userAgent";
@@ -29,7 +29,7 @@ import findUpClassName from "../helpers/dom/findUpClassName";
 import renderImageFromUrl, { renderImageFromUrlPromise } from "../helpers/dom/renderImageFromUrl";
 import getVisibleRect from "../helpers/dom/getVisibleRect";
 import appDownloadManager from "../lib/appManagers/appDownloadManager";
-import { cancelEvent } from "../helpers/dom/cancelEvent";
+import cancelEvent from "../helpers/dom/cancelEvent";
 import fillPropertyValue from "../helpers/fillPropertyValue";
 import generatePathData from "../helpers/generatePathData";
 import replaceContent from "../helpers/dom/replaceContent";

@@ -45,7 +45,7 @@ import IS_GEOLOCATION_SUPPORTED from "../../environment/geolocationSupport";
 import type SortedUserList from "../sortedUserList";
 import Button, { ButtonOptions } from "../button";
 import noop from "../../helpers/noop";
-import { ripple } from "../ripple";
+import ripple from "../ripple";
 import indexOfAndSplice from "../../helpers/array/indexOfAndSplice";
 import formatNumber from "../../helpers/number/formatNumber";
 import AvatarElement from "../avatar";

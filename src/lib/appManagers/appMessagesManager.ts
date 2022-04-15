@@ -11,7 +11,7 @@
 
 import { LazyLoadQueueBase } from "../../components/lazyLoadQueue";
 import ProgressivePreloader from "../../components/preloader";
-import { CancellablePromise, deferredPromise } from "../../helpers/cancellablePromise";
+import deferredPromise, { CancellablePromise } from "../../helpers/cancellablePromise";
 import { formatDateAccordingToTodayNew, formatTime, tsNow } from "../../helpers/date";
 import { createPosterForVideo } from "../../helpers/files";
 import { randomLong } from "../../helpers/random";

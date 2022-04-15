@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { CancellablePromise, deferredPromise } from "./cancellablePromise";
+import deferredPromise, { CancellablePromise } from "./cancellablePromise";
 import { getHeavyAnimationPromise } from "../hooks/useHeavyAnimationCheck";
 import { fastRaf } from "./schedulers";
 

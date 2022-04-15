@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { cancelEvent } from "../helpers/dom/cancelEvent";
+import cancelEvent from "../helpers/dom/cancelEvent";
 import { attachClickEvent } from "../helpers/dom/clickEvent";
 import loadFonts from "../helpers/dom/loadFonts";
 import { Config, LangPackDifference, LangPackString } from "../layer";
@@ -53,9 +53,10 @@ export default function getLanguageChangeButton(appendTo: HTMLElement) {
       I18n.strings.set(string.key as LangPackKey, string);
     });
 
-    const btnChangeLanguage = Button('btn-primary btn-secondary btn-primary-transparent primary', {text: 'Login.ContinueOnLanguage'});
+    const key: LangPackKey = 'Login.ContinueOnLanguage';
+    const btnChangeLanguage = Button('btn-primary btn-secondary btn-primary-transparent primary', {text: key});
     btnChangeLanguage.lastElementChild.classList.remove('i18n'); // prevent changing language
-    loadFonts().then(() => {
+    loadFonts({text: [I18n.format(key, true)]}).then(() => {
       window.requestAnimationFrame(() => {
         appendTo.append(btnChangeLanguage);
       });

@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { cancelEvent } from "./cancelEvent";
+import cancelEvent from "./cancelEvent";
 
 export default function lockTouchScroll(container: HTMLElement) {
   const onTouchMove = (e: TouchEvent) => {

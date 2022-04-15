@@ -17,7 +17,7 @@ import appStateManager from '../lib/appManagers/appStateManager';
 import rootScope from '../lib/rootScope';
 import { putPreloader } from '../components/misc';
 import getLanguageChangeButton from '../components/languageChangeButton';
-import { pause } from '../helpers/schedulers/pause';
+import pause from '../helpers/schedulers/pause';
 import fixBase64String from '../helpers/fixBase64String';
 import bytesCmp from '../helpers/bytes/bytesCmp';
 import bytesToBase64 from '../helpers/bytes/bytesToBase64';

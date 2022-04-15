@@ -5,7 +5,7 @@
  */
 
 import PopupGroupCall from ".";
-import { cancelEvent } from "../../helpers/dom/cancelEvent";
+import cancelEvent from "../../helpers/dom/cancelEvent";
 import findUpClassName from "../../helpers/dom/findUpClassName";
 import { addFullScreenListener, isFullScreen } from "../../helpers/dom/fullScreen";
 import ListenerSetter from "../../helpers/listenerSetter";

@@ -11,7 +11,7 @@ import AvatarElement from "../../components/avatar";
 import DialogsContextMenu from "../../components/dialogsContextMenu";
 import { horizontalMenu } from "../../components/horizontalMenu";
 import { attachContextMenuListener, putPreloader } from "../../components/misc";
-import { ripple } from "../../components/ripple";
+import ripple from "../../components/ripple";
 //import Scrollable from "../../components/scrollable";
 import Scrollable, { ScrollableX, SliceSides } from "../../components/scrollable";
 import { formatDateAccordingToTodayNew } from "../../helpers/date";

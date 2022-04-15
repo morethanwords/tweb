@@ -8,7 +8,7 @@ import { MOUNT_CLASS_TO } from "../config/debug";
 import { IS_MOBILE_SAFARI } from "../environment/userAgent";
 import { logger } from "../lib/logger";
 import blurActiveElement from "../helpers/dom/blurActiveElement";
-import { cancelEvent } from "../helpers/dom/cancelEvent";
+import cancelEvent from "../helpers/dom/cancelEvent";
 import isSwipingBackSafari from "../helpers/dom/isSwipingBackSafari";
 import indexOfAndSplice from "../helpers/array/indexOfAndSplice";
 

@@ -17,7 +17,7 @@ import { i18n, LangPackKey, _i18n } from "../lib/langPack";
 import findUpAttribute from "../helpers/dom/findUpAttribute";
 import findUpClassName from "../helpers/dom/findUpClassName";
 import PeerTitle from "./peerTitle";
-import { cancelEvent } from "../helpers/dom/cancelEvent";
+import cancelEvent from "../helpers/dom/cancelEvent";
 import replaceContent from "../helpers/dom/replaceContent";
 import debounce from "../helpers/schedulers/debounce";
 import windowSize from "../helpers/windowSize";

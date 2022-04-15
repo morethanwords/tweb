@@ -11,7 +11,7 @@ import appMediaPlaybackController, { AppMediaPlaybackController } from "../appMe
 import DivAndCaption from "../divAndCaption";
 import PinnedContainer from "./pinnedContainer";
 import Chat from "./chat";
-import { cancelEvent } from "../../helpers/dom/cancelEvent";
+import cancelEvent from "../../helpers/dom/cancelEvent";
 import { attachClickEvent } from "../../helpers/dom/clickEvent";
 import replaceContent from "../../helpers/dom/replaceContent";
 import PeerTitle from "../peerTitle";

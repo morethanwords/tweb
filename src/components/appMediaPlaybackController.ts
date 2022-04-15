@@ -7,7 +7,7 @@
 import rootScope from "../lib/rootScope";
 import appMessagesManager from "../lib/appManagers/appMessagesManager";
 import appDocsManager, {MyDocument} from "../lib/appManagers/appDocsManager";
-import { CancellablePromise, deferredPromise } from "../helpers/cancellablePromise";
+import deferredPromise, { CancellablePromise } from "../helpers/cancellablePromise";
 import { IS_APPLE, IS_SAFARI } from "../environment/userAgent";
 import { MOUNT_CLASS_TO } from "../config/debug";
 import appDownloadManager from "../lib/appManagers/appDownloadManager";

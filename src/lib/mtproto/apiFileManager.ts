@@ -12,7 +12,7 @@
 import type { ReferenceBytes } from "./referenceDatabase";
 import { MOUNT_CLASS_TO } from "../../config/debug";
 import Modes from "../../config/modes";
-import { CancellablePromise, deferredPromise } from "../../helpers/cancellablePromise";
+import deferredPromise, { CancellablePromise } from "../../helpers/cancellablePromise";
 import { notifyAll, notifySomeone } from "../../helpers/context";
 import { getFileNameByLocation } from "../../helpers/fileName";
 import { randomLong } from "../../helpers/random";

@@ -21,7 +21,7 @@ export interface CancellablePromise<T> extends Promise<T> {
   isRejected?: boolean
 }
 
-export function deferredPromise<T>() {
+export default function deferredPromise<T>() {
   let deferredHelper: any = {
     isFulfilled: false, 
     isRejected: false,

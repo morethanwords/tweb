@@ -23,7 +23,7 @@ import { IS_MOBILE_SAFARI } from "../../environment/userAgent";
 import I18n, { i18n, _i18n } from "../../lib/langPack";
 import findUpClassName from "../../helpers/dom/findUpClassName";
 import blurActiveElement from "../../helpers/dom/blurActiveElement";
-import { cancelEvent } from "../../helpers/dom/cancelEvent";
+import cancelEvent from "../../helpers/dom/cancelEvent";
 import cancelSelection from "../../helpers/dom/cancelSelection";
 import getSelectedText from "../../helpers/dom/getSelectedText";
 import rootScope from "../../lib/rootScope";

@@ -10,7 +10,7 @@ import type { MyDocument } from "./appDocsManager";
 import type { MyPhoto } from "./appPhotosManager";
 import rootScope from "../rootScope";
 import apiManager from "../mtproto/mtprotoworker";
-import { deferredPromise, CancellablePromise } from "../../helpers/cancellablePromise";
+import deferredPromise, { CancellablePromise } from "../../helpers/cancellablePromise";
 import { InputFile } from "../../layer";
 import { getFileNameByLocation } from "../../helpers/fileName";
 import CacheStorageController from "../cacheStorage";

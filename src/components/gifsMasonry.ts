@@ -9,7 +9,7 @@ import { wrapVideo } from "./wrappers";
 import { LazyLoadQueueRepeat2 } from "./lazyLoadQueue";
 import animationIntersector from "./animationIntersector";
 import Scrollable from "./scrollable";
-import { CancellablePromise, deferredPromise } from "../helpers/cancellablePromise";
+import deferredPromise, { CancellablePromise } from "../helpers/cancellablePromise";
 import renderImageFromUrl from "../helpers/dom/renderImageFromUrl";
 import calcImageInBox from "../helpers/calcImageInBox";
 import { doubleRaf } from "../helpers/schedulers";

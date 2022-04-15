@@ -6,7 +6,7 @@
 
 import CheckboxField from "./checkboxField";
 import RadioField from "./radioField";
-import { ripple } from "./ripple";
+import ripple from "./ripple";
 import { SliderSuperTab } from "./slider";
 import RadioForm from "./radioForm";
 import { i18n, LangPackKey } from "../lib/langPack";

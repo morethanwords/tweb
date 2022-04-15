@@ -8,10 +8,10 @@
 
 import { AnyToVoidFunction } from '../types';
 import ListenerSetter from '../helpers/listenerSetter';
-import { CancellablePromise, deferredPromise } from '../helpers/cancellablePromise';
+import deferredPromise, { CancellablePromise } from '../helpers/cancellablePromise';
 import rootScope from '../lib/rootScope';
 import DEBUG from '../config/debug';
-import { pause } from '../helpers/schedulers/pause';
+import pause from '../helpers/schedulers/pause';
 
 const ANIMATION_START_EVENT = 'event-heavy-animation-start';
 const ANIMATION_END_EVENT = 'event-heavy-animation-end';

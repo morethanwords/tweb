@@ -6,7 +6,7 @@
 
 import WebpWorker from 'worker-loader!./webp.worker';
 import { MOUNT_CLASS_TO } from '../../config/debug';
-import { CancellablePromise, deferredPromise } from '../../helpers/cancellablePromise';
+import deferredPromise, { CancellablePromise } from '../../helpers/cancellablePromise';
 import apiManagerProxy from '../mtproto/mtprotoworker';
 
 export type WebpConvertTask = {

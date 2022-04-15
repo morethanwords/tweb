@@ -5,10 +5,10 @@
  */
 
 import emoticonsDropdown, { EmoticonsDropdown, EmoticonsTab } from "..";
-import { cancelEvent } from "../../../helpers/dom/cancelEvent";
+import cancelEvent from "../../../helpers/dom/cancelEvent";
 import findUpClassName from "../../../helpers/dom/findUpClassName";
 import { fastRaf } from "../../../helpers/schedulers";
-import { pause } from "../../../helpers/schedulers/pause";
+import pause from "../../../helpers/schedulers/pause";
 import appEmojiManager from "../../../lib/appManagers/appEmojiManager";
 import appImManager from "../../../lib/appManagers/appImManager";
 import { i18n, LangPackKey } from "../../../lib/langPack";

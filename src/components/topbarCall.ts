@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { cancelEvent } from "../helpers/dom/cancelEvent";
+import cancelEvent from "../helpers/dom/cancelEvent";
 import { attachClickEvent } from "../helpers/dom/clickEvent";
 import ListenerSetter from "../helpers/listenerSetter";
 import type { AppGroupCallsManager } from "../lib/appManagers/appGroupCallsManager";

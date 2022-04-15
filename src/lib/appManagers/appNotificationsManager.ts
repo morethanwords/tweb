@@ -11,7 +11,7 @@
 
 import { fontFamily } from "../../components/middleEllipsis";
 import { MOUNT_CLASS_TO } from "../../config/debug";
-import { CancellablePromise, deferredPromise } from "../../helpers/cancellablePromise";
+import deferredPromise, { CancellablePromise } from "../../helpers/cancellablePromise";
 import { tsNow } from "../../helpers/date";
 import { IS_MOBILE } from "../../environment/userAgent";
 import { InputNotifyPeer, InputPeerNotifySettings, NotifyPeer, PeerNotifySettings, Update } from "../../layer";

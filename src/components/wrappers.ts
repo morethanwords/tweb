@@ -6,7 +6,7 @@
 
 import type Chat from './chat/chat';
 import { getEmojiToneIndex } from '../vendor/emoji';
-import { deferredPromise } from '../helpers/cancellablePromise';
+import deferredPromise from '../helpers/cancellablePromise';
 import { formatFullSentTime } from '../helpers/date';
 import mediaSizes, { MediaSizeType, ScreenSize } from '../helpers/mediaSizes';
 import { IS_SAFARI } from '../environment/userAgent';
@@ -35,7 +35,7 @@ import sequentialDom from '../helpers/sequentialDom';
 import { fastRaf } from '../helpers/schedulers';
 import appDownloadManager, { DownloadBlob, ThumbCache } from '../lib/appManagers/appDownloadManager';
 import appStickersManager from '../lib/appManagers/appStickersManager';
-import { cancelEvent } from '../helpers/dom/cancelEvent';
+import cancelEvent from '../helpers/dom/cancelEvent';
 import { attachClickEvent, simulateClickEvent } from '../helpers/dom/clickEvent';
 import isInDOM from '../helpers/dom/isInDOM';
 import lottieLoader from '../lib/rlottie/lottieLoader';

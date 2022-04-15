@@ -4,14 +4,53 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-let promise: Promise<any>;
-export default function loadFonts(): Promise<any> {
-  if(promise) return promise;
-  return promise = 'fonts' in document ? 
-    Promise.race([
-      // @ts-ignore
-      Promise.all(['400 1rem Roboto', '500 1rem Roboto', '500 1rem tgico'].map(font => document.fonts.load(font))),
-      new Promise((resolve) => setTimeout(resolve, 1e3))
-    ]) : 
-    Promise.resolve();
+import pause from "../schedulers/pause";
+
+const texts = ['b', 'б'];
+type FontType = 'text' | 'icons' | 'monospace';
+
+const cache: {
+  [key: string]: {
+    [text: string]: Promise<any>
+  }
+} = {};
+
+const fonts: {[type in FontType]: string} = {
+  text: 'Roboto',
+  icons: 'tgico',
+  monospace: 'Roboto Mono'
+};
+
+export default function loadFonts(types: {[type in FontType]?: string[] | 'all'} = {
+  text: texts,
+  icons: undefined,
+  monospace: texts
+}): Promise<any> {
+  if(!('fonts' in document)) {
+    return Promise.resolve();
+  }
+  
+  const promises: Promise<any>[] = [];
+  for(const type in types) {
+    let _texts = types[type as FontType];
+    if(_texts === 'all') {
+      _texts = texts;
+    }
+
+    const font = fonts[type as FontType];
+    const weights = type === 'icons' ? [500] : [400, 500];
+    for(const weight of weights) {
+      const _promises = (_texts || [undefined]).map(text => {
+        const key = [weight, '1rem', font].join(' ');
+        const promise = (cache[key] ??= {})[text || ''] ??= document.fonts.load(key, text);
+        return promise;
+      });
+      promises.push(..._promises);
+    }
+  }
+
+  return Promise.race([
+    Promise.all(promises),
+    pause(1000)
+  ]);
 }

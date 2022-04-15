@@ -5,7 +5,7 @@
  */
 
 import MEDIA_MIME_TYPES_SUPPORTED from "../environment/mediaMimeTypesSupport";
-import { cancelEvent } from "../helpers/dom/cancelEvent";
+import cancelEvent from "../helpers/dom/cancelEvent";
 import { attachClickEvent, detachClickEvent } from "../helpers/dom/clickEvent";
 import setInnerHTML from "../helpers/dom/setInnerHTML";
 import mediaSizes from "../helpers/mediaSizes";

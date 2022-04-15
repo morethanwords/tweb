@@ -41,8 +41,8 @@ import isObject from '../../helpers/object/isObject';
 import forEachReverse from '../../helpers/array/forEachReverse';
 import sortLongsArray from '../../helpers/long/sortLongsArray';
 import randomize from '../../helpers/array/randomize';
-import { CancellablePromise, deferredPromise } from '../../helpers/cancellablePromise';
-import { pause } from '../../helpers/schedulers/pause';
+import deferredPromise, { CancellablePromise } from '../../helpers/cancellablePromise';
+import pause from '../../helpers/schedulers/pause';
 
 //console.error('networker included!', new Error().stack);
 

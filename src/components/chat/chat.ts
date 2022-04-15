@@ -44,7 +44,7 @@ import { IS_TOUCH_SUPPORTED } from "../../environment/touchSupport";
 import getAutoDownloadSettingsByPeerId, { ChatAutoDownloadSettings } from "../../helpers/autoDownload";
 import ChatBackgroundGradientRenderer from "./gradientRenderer";
 import ChatBackgroundPatternRenderer from "./patternRenderer";
-import { pause } from "../../helpers/schedulers/pause";
+import pause from "../../helpers/schedulers/pause";
 
 export type ChatType = 'chat' | 'pinned' | 'replies' | 'discussion' | 'scheduled';
 

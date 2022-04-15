@@ -4,13 +4,13 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { cancelEvent } from "../helpers/dom/cancelEvent";
+import cancelEvent from "../helpers/dom/cancelEvent";
 import { AttachClickOptions, attachClickEvent, CLICK_EVENT_NAME } from "../helpers/dom/clickEvent";
 import ListenerSetter from "../helpers/listenerSetter";
 import { FormatterArguments, i18n, LangPackKey } from "../lib/langPack";
 import CheckboxField from "./checkboxField";
 import { closeBtnMenu } from "./misc";
-import { ripple } from "./ripple";
+import ripple from "./ripple";
 
 export type ButtonMenuItemOptions = {
   icon?: string, 

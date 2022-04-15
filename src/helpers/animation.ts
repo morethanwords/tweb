@@ -7,7 +7,7 @@
 // * Jolly Cobra's animation.ts
 
 import { fastRaf } from './schedulers';
-import { CancellablePromise, deferredPromise } from './cancellablePromise';
+import deferredPromise, { CancellablePromise } from './cancellablePromise';
 
 interface AnimationInstance {
   isCancelled: boolean;

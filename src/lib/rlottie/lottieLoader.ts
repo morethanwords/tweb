@@ -7,7 +7,7 @@
 import RLottieWorker from 'worker-loader!./rlottie.worker';
 import animationIntersector from "../../components/animationIntersector";
 import { MOUNT_CLASS_TO } from '../../config/debug';
-import { pause } from '../../helpers/schedulers/pause';
+import pause from '../../helpers/schedulers/pause';
 import { logger, LogTypes } from "../logger";
 import apiManager from "../mtproto/mtprotoworker";
 import RLottiePlayer, { RLottieOptions } from './rlottiePlayer';

@@ -5,7 +5,7 @@
  */
 
 import { i18n, LangPackKey } from "../lib/langPack";
-import { ripple } from "./ripple";
+import ripple from "./ripple";
 
 export type ButtonOptions = Partial<{
   noRipple: true, 

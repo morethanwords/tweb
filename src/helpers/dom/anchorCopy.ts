@@ -6,7 +6,7 @@
 
 import { toastNew } from "../../components/toast";
 import { copyTextToClipboard } from "../clipboard";
-import { cancelEvent } from "./cancelEvent";
+import cancelEvent from "./cancelEvent";
 import { attachClickEvent } from "./clickEvent";
 
 export default function anchorCopy(options: Partial<{

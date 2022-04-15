@@ -5,7 +5,7 @@
  */
 
 import SwipeHandler, { SwipeHandlerOptions } from "../../components/swipeHandler";
-import { cancelEvent } from "./cancelEvent";
+import cancelEvent from "./cancelEvent";
 import findUpClassName from "./findUpClassName";
 import isSwipingBackSafari from "./isSwipingBackSafari";
 

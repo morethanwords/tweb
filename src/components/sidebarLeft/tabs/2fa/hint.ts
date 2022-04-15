@@ -14,7 +14,7 @@ import InputField from "../../../inputField";
 import AppTwoStepVerificationEmailTab from "./email";
 import { toast } from "../../../toast";
 import I18n from "../../../../lib/langPack";
-import { cancelEvent } from "../../../../helpers/dom/cancelEvent";
+import cancelEvent from "../../../../helpers/dom/cancelEvent";
 import { attachClickEvent } from "../../../../helpers/dom/clickEvent";
 
 export default class AppTwoStepVerificationHintTab extends SliderSuperTab {

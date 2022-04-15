@@ -5,7 +5,7 @@
  */
 
 import fastSmoothScroll from "../fastSmoothScroll";
-import { cancelEvent } from "./cancelEvent";
+import cancelEvent from "./cancelEvent";
 import { attachClickEvent, detachClickEvent } from "./clickEvent";
 import findUpAsChild from "./findUpAsChild";
 import findUpClassName from "./findUpClassName";

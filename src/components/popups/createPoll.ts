@@ -13,7 +13,7 @@ import Scrollable from "../scrollable";
 import SendContextMenu from "../chat/sendContextMenu";
 import I18n, { _i18n } from "../../lib/langPack";
 import findUpTag from "../../helpers/dom/findUpTag";
-import { cancelEvent } from "../../helpers/dom/cancelEvent";
+import cancelEvent from "../../helpers/dom/cancelEvent";
 import getRichValue from "../../helpers/dom/getRichValue";
 import isInputEmpty from "../../helpers/dom/isInputEmpty";
 import whichChild from "../../helpers/dom/whichChild";

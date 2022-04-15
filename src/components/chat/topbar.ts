@@ -33,7 +33,7 @@ import PeerTitle from "../peerTitle";
 import { i18n } from "../../lib/langPack";
 import findUpClassName from "../../helpers/dom/findUpClassName";
 import blurActiveElement from "../../helpers/dom/blurActiveElement";
-import { cancelEvent } from "../../helpers/dom/cancelEvent";
+import cancelEvent from "../../helpers/dom/cancelEvent";
 import { attachClickEvent } from "../../helpers/dom/clickEvent";
 import findUpTag from "../../helpers/dom/findUpTag";
 import { toast, toastNew } from "../toast";

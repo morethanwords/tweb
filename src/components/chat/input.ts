@@ -50,7 +50,7 @@ import { generateTail } from './bubbles';
 import findUpClassName from '../../helpers/dom/findUpClassName';
 import ButtonCorner from '../buttonCorner';
 import blurActiveElement from '../../helpers/dom/blurActiveElement';
-import { cancelEvent } from '../../helpers/dom/cancelEvent';
+import cancelEvent from '../../helpers/dom/cancelEvent';
 import cancelSelection from '../../helpers/dom/cancelSelection';
 import { attachClickEvent, simulateClickEvent } from '../../helpers/dom/clickEvent';
 import getRichValue from '../../helpers/dom/getRichValue';

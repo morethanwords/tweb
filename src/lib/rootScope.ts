@@ -117,7 +117,6 @@ export type BroadcastEvents = {
   'event-heavy-animation-start': void,
   'event-heavy-animation-end': void,
   
-  'im_mount': void,
   'im_tab_change': number,
   
   'idle': boolean,

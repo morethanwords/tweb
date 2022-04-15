@@ -22,7 +22,7 @@ import PopupSendNow from "../popups/sendNow";
 import { toast } from "../toast";
 import I18n, { i18n, LangPackKey } from "../../lib/langPack";
 import findUpClassName from "../../helpers/dom/findUpClassName";
-import { cancelEvent } from "../../helpers/dom/cancelEvent";
+import cancelEvent from "../../helpers/dom/cancelEvent";
 import { attachClickEvent, simulateClickEvent } from "../../helpers/dom/clickEvent";
 import isSelectionEmpty from "../../helpers/dom/isSelectionEmpty";
 import { Message, Poll, Chat as MTChat, MessageMedia, AvailableReaction } from "../../layer";

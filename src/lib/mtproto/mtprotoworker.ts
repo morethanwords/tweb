@@ -28,7 +28,7 @@ import appRuntimeManager from '../appManagers/appRuntimeManager';
 import { SocketProxyTask } from './transports/socketProxied';
 import telegramMeWebManager from './telegramMeWebManager';
 import { CacheStorageDbName } from '../cacheStorage';
-import { pause } from '../../helpers/schedulers/pause';
+import pause from '../../helpers/schedulers/pause';
 import IS_WEBP_SUPPORTED from '../../environment/webpSupport';
 import type { ApiError } from './apiManager';
 import { MTAppConfig } from './appConfig';

@@ -7,11 +7,11 @@
 import type ChatTopbar from "./topbar";
 import AppSearch, { SearchGroup } from "../appSearch";
 import PopupDatePicker from "../popups/datePicker";
-import { ripple } from "../ripple";
+import ripple from "../ripple";
 import InputSearch from "../inputSearch";
 import type Chat from "./chat";
 import findUpTag from "../../helpers/dom/findUpTag";
-import { cancelEvent } from "../../helpers/dom/cancelEvent";
+import cancelEvent from "../../helpers/dom/cancelEvent";
 import whichChild from "../../helpers/dom/whichChild";
 import replaceContent from "../../helpers/dom/replaceContent";
 import { i18n } from "../../lib/langPack";

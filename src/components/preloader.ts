@@ -7,7 +7,7 @@
 import { CancellablePromise } from "../helpers/cancellablePromise";
 import SetTransition from "./singleTransition";
 import { fastRaf } from "../helpers/schedulers";
-import { cancelEvent } from "../helpers/dom/cancelEvent";
+import cancelEvent from "../helpers/dom/cancelEvent";
 import { attachClickEvent } from "../helpers/dom/clickEvent";
 import isInDOM from "../helpers/dom/isInDOM";
 import safeAssign from "../helpers/object/safeAssign";

@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { cancelEvent } from "../helpers/dom/cancelEvent";
+import cancelEvent from "../helpers/dom/cancelEvent";
 import { IS_TOUCH_SUPPORTED } from "../environment/touchSupport";
 import rootScope from "../lib/rootScope";
 import safeAssign from "../helpers/object/safeAssign";

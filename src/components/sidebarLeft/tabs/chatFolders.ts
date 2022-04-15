@@ -20,7 +20,7 @@ import AppEditFolderTab from "./editFolder";
 import Row from "../../row";
 import { SettingSection } from "..";
 import { i18n, i18n_, LangPackKey, join } from "../../../lib/langPack";
-import { cancelEvent } from "../../../helpers/dom/cancelEvent";
+import cancelEvent from "../../../helpers/dom/cancelEvent";
 import { attachClickEvent } from "../../../helpers/dom/clickEvent";
 import positionElementByIndex from "../../../helpers/dom/positionElementByIndex";
 import RLottiePlayer from "../../../lib/rlottie/rlottiePlayer";

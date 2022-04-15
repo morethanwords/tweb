@@ -11,7 +11,7 @@
 
 import { Database } from "../config/databases";
 //import DATABASE_SESSION from "../config/databases/session";
-import { CancellablePromise, deferredPromise } from "../helpers/cancellablePromise";
+import deferredPromise, { CancellablePromise } from "../helpers/cancellablePromise";
 import throttle from "../helpers/schedulers/throttle";
 //import { WorkerTaskTemplate } from "../types";
 import IDBStorage from "./idb";

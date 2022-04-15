@@ -8,16 +8,12 @@ import blurActiveElement from "../helpers/dom/blurActiveElement";
 import loadFonts from "../helpers/dom/loadFonts";
 import appStateManager from "../lib/appManagers/appStateManager";
 import I18n from "../lib/langPack";
-import rootScope from "../lib/rootScope";
 import Page from "./page";
 
 let onFirstMount = () => {
-  //return;
   appStateManager.pushToState('authState', {_: 'authStateSignedIn'});
   // ! TOO SLOW
   /* appStateManager.saveState(); */
-
-  rootScope.dispatchEvent('im_mount');
 
   if(!I18n.requestedServerLanguage) {
     I18n.getCacheLangPack().then(langPack => {
@@ -28,8 +24,6 @@ let onFirstMount = () => {
   }
 
   page.pageEl.style.display = '';
-
-  //alert('pageIm!');
   
   //AudioContext && global.navigator && global.navigator.mediaDevices && global.navigator.mediaDevices.getUserMedia && global.WebAssembly;
 

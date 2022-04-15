@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { cancelEvent } from "../../helpers/dom/cancelEvent";
+import cancelEvent from "../../helpers/dom/cancelEvent";
 import ListenerSetter from "../../helpers/listenerSetter";
 import rootScope from "../../lib/rootScope";
 import ButtonMenu, { ButtonMenuItemOptions } from "../buttonMenu";

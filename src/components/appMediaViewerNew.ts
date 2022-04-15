@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-// import { deferredPromise } from "../helpers/cancellablePromise";
+// import deferredPromise from "../helpers/cancellablePromise";
 // import mediaSizes from "../helpers/mediaSizes";
 // import { isTouchSupported } from "../helpers/touchSupport";
 // import { isSafari } from "../helpers/userAgent";
