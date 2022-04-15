@@ -546,16 +546,17 @@ export class AppMediaPlaybackController {
       this.setMedia(media, message);
 
       const verify = (element: MediaItem) => element.mid === mid && element.peerId === peerId;
-      const current = this.listLoader.getCurrent();
+      const listLoader = this.listLoader;
+      const current = listLoader.getCurrent();
       if(!current || !verify(current)) {
-        const previous = this.listLoader.getPrevious();
+        const previous = listLoader.getPrevious();
 
         let idx = previous.findIndex(verify);
         let jumpLength: number;
         if(idx !== -1) {
           jumpLength = -(previous.length - idx);
         } else {
-          idx = this.listLoader.getNext().findIndex(verify);
+          idx = listLoader.getNext().findIndex(verify);
           if(idx !== -1) {
             jumpLength = idx + 1;
           }
@@ -605,9 +606,10 @@ export class AppMediaPlaybackController {
 
     //console.log('on media end');
 
+    const listLoader = this.listLoader;
     if(this.lockedSwitchers || 
-      (!this.round && this.listLoader.current && !this.listLoader.next.length) || 
-      !this.listLoader.getNext().length || 
+      (!this.round && listLoader.current && !listLoader.next.length) || 
+      !listLoader.getNext().length || 
       !this.next()) {
       this.stop();
       rootScope.dispatchEvent('media_stop');
@@ -704,14 +706,15 @@ export class AppMediaPlaybackController {
   };
 
   public go = (length: number, dispatchJump?: boolean) => {
-    if(this.lockedSwitchers) {
+    const listLoader = this.listLoader;
+    if(this.lockedSwitchers || !listLoader) {
       return;
     }
 
     if(this.playingMediaType === 'audio') {
-      return this.listLoader.goRound(length, dispatchJump);
+      return listLoader.goRound(length, dispatchJump);
     } else {
-      return this.listLoader.go(length, dispatchJump);
+      return listLoader.go(length, dispatchJump);
     }
   };
 
@@ -772,8 +775,9 @@ export class AppMediaPlaybackController {
   }
 
   public setTargets(current: MediaItem, prev?: MediaItem[], next?: MediaItem[]) {
-    if(!this.listLoader) {
-      this.listLoader = new SearchListLoader({
+    let listLoader = this.listLoader;
+    if(!listLoader) {
+      listLoader = this.listLoader = new SearchListLoader({
         loadCount: 10,
         loadWhenLeft: 5,
         processItem: (message: Message.message) => {
@@ -789,21 +793,21 @@ export class AppMediaPlaybackController {
         }
       });
     } else {
-      this.listLoader.reset();
+      listLoader.reset();
     }
 
     const reverse = this.searchContext.folderId !== undefined ? false : true;
     if(prev) {
-      this.listLoader.setTargets(prev, next, reverse);
+      listLoader.setTargets(prev, next, reverse);
     } else {
-      this.listLoader.reverse = reverse;
+      listLoader.reverse = reverse;
     }
 
-    this.listLoader.setSearchContext(this.searchContext);
-    this.listLoader.current = current;
+    listLoader.setSearchContext(this.searchContext);
+    listLoader.current = current;
 
-    this.listLoader.load(true);
-    this.listLoader.load(false);
+    listLoader.load(true);
+    listLoader.load(false);
   }
 
   private getPlaybackMediaTypeFromMessage(message: Message.message) {
@@ -860,10 +864,17 @@ export class AppMediaPlaybackController {
           this.next() || this.previous();
         }
       }
-
-      if(media && this.playingMedia === media) {
-        this.stop();
+      
+      // If it's still not cleaned
+      if(this.playingMedia === media) {
+        this.playingMedia = undefined;
+        this.playingMediaType = undefined;
       }
+
+      // I don't remember what it was for
+      // if(media && this.playingMedia === media) {
+      //   this.stop();
+      // }
 
       if(playPaused) {
         this.play();
@@ -894,8 +905,10 @@ export class AppMediaPlaybackController {
       listenerSetter.removeAll();
     }, {once: true});
 
-    listenerSetter.add(video)('play', () => {
-      this.pause();
+    listenerSetter.add(video)('play', (e) => {
+      if(this.playingMedia !== video) {
+        this.pause();
+      }
       // if(this.pause()) {
       //   listenerSetter.add(video)('pause', () => {
       //     this.play();

@@ -23,7 +23,7 @@ import { LazyLoadQueueBase } from "./lazyLoadQueue";
 import ProgressivePreloader from "./preloader";
 import SwipeHandler from "./swipeHandler";
 import { formatFullSentTime } from "../helpers/date";
-import appNavigationController from "./appNavigationController";
+import appNavigationController, { NavigationItem } from "./appNavigationController";
 import { Message } from "../layer";
 import findUpClassName from "../helpers/dom/findUpClassName";
 import renderImageFromUrl, { renderImageFromUrlPromise } from "../helpers/dom/renderImageFromUrl";
@@ -117,6 +117,7 @@ export default class AppMediaViewerBase<
   
   protected ctrlKeyDown: boolean;
   protected releaseSingleMedia: ReturnType<AppMediaPlaybackController['setSingleMedia']>;
+  protected navigationItem: NavigationItem;
 
   get target() {
     return this.listLoader.current;
@@ -422,7 +423,9 @@ export default class AppMediaViewerBase<
 
     if(this.setMoverAnimationPromise) return Promise.reject();
 
-    appNavigationController.removeByType('media');
+    if(this.navigationItem) {
+      appNavigationController.removeItem(this.navigationItem);
+    }
 
     this.lazyLoadQueue.clear();
 
@@ -1257,7 +1260,7 @@ export default class AppMediaViewerBase<
       this.toggleWholeActive(true);
 
       if(!IS_MOBILE_SAFARI) {
-        appNavigationController.pushItem({
+        this.navigationItem = {
           type: 'media',
           onPop: (canAnimate) => {
             if(this.setMoverAnimationPromise) {
@@ -1266,7 +1269,9 @@ export default class AppMediaViewerBase<
             
             this.close();
           }
-        });
+        };
+
+        appNavigationController.pushItem(this.navigationItem);
       }
     }
 
@@ -1416,6 +1421,11 @@ export default class AppMediaViewerBase<
                   this.toggleWholeActive(!pip);
                   this.toggleOverlay(!pip);
                   this.toggleGlobalListeners(!pip);
+
+                  if(this.navigationItem) {
+                    if(pip) appNavigationController.removeItem(this.navigationItem);
+                    else appNavigationController.pushItem(this.navigationItem);
+                  }
 
                   if(useController) {
                     if(pip) {
