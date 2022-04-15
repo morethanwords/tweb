@@ -22,9 +22,9 @@ import appPeersManager from "./appPeersManager";
 import appStateManager from './appStateManager';
 import serverTimeManager from '../mtproto/serverTimeManager';
 import assumeType from '../../helpers/assumeType';
-import noop from '../../helpers/noop';
 import RichTextProcessor from '../richtextprocessor';
 import App from '../../config/app';
+import filterUnique from '../../helpers/array/filterUnique';
 
 type UpdatesState = {
   pendingPtsUpdates: (Update & {pts: number, pts_count: number})[],
@@ -624,7 +624,7 @@ export class ApiUpdatesManager {
     rootScope.dispatchEvent(update._, update as any);
   }
   
-  public attach() {
+  public attach(langCode?: string) {
     if(this.attached) return;
 
     //return;
@@ -688,29 +688,41 @@ export class ApiUpdatesManager {
       // });
 
       if(newVersion) {
-        this.updatesState.syncLoading.then(() => {
-          fetch('changelogs/' + newVersion.split(' ')[0] + '.md')
-          .then(res => (res.status === 200 && res.ok && res.text()) || Promise.reject())
-          .then(text => {
-            const pre = `**Telegram Web${App.suffix} was updated to version ${newVersion}**\n\n`;
+        this.updatesState.syncLoading.then(async() => {
+          const getChangelog = (lang: string) => {
+            fetch(`changelogs/${newVersion.split(' ')[0]}_${lang}.md`)
+            .then(res => (res.status === 200 && res.ok && res.text()) || Promise.reject())
+            .then(text => {
+              const pre = `**Telegram Web${App.suffix} was updated to version ${newVersion}**\n\n`;
+  
+              text = pre + text;
+  
+              const entities: MessageEntity[] = [];
+              const message = RichTextProcessor.parseMarkdown(text, entities);
+  
+              const update: Update.updateServiceNotification = {
+                _: 'updateServiceNotification',
+                entities,
+                message,
+                type: 'local',
+                pFlags: {},
+                inbox_date: Date.now() / 1000 | 0,
+                media: undefined
+              };
 
-            text = pre + text;
-
-            const entities: MessageEntity[] = [];
-            const message = RichTextProcessor.parseMarkdown(text, entities);
-
-            const update: Update.updateServiceNotification = {
-              _: 'updateServiceNotification',
-              entities,
-              message,
-              type: 'local',
-              pFlags: {},
-              inbox_date: Date.now() / 1000 | 0,
-              media: undefined
-            };
-            this.processLocalUpdate(update);
-          })
-          .catch(noop);
+              this.processLocalUpdate(update);
+            });
+          };
+          
+          const languages = filterUnique([langCode, 'en']);
+          for(const language of languages) {
+            try {
+              await getChangelog(language);
+              break;
+            } catch(err) {
+              
+            }
+          }
         });
       }
     });

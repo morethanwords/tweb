@@ -150,7 +150,7 @@ export class AppImManager {
   }
 
   constructor() {
-    apiUpdatesManager.attach();
+    apiUpdatesManager.attach(I18n.lastRequestedLangCode);
     appNotificationsManager.start();
 
     this.log = logger('IM', LogTypes.Log | LogTypes.Warn | LogTypes.Debug | LogTypes.Error);
@@ -1164,7 +1164,7 @@ export class AppImManager {
         const top = chatBubbles.scrollable.scrollTop;
         
         const position = {
-          mids: getObjectKeysAndSort(chatBubbles.bubbles, 'desc'),
+          mids: getObjectKeysAndSort(chatBubbles.bubbles, 'desc').filter(mid => !chatBubbles.skippedMids.has(mid)),
           top
         };
 

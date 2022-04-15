@@ -386,7 +386,7 @@ export default class ChatTopbar {
           };
         });
       },
-      verify: () => !this.chat.selection.isSelecting && !!Object.keys(this.chat.bubbles.bubbles).length
+      verify: () => !this.chat.selection.isSelecting && !!this.chat.bubbles.getRenderedLength()
     }, {
       icon: 'select',
       text: 'Chat.Menu.ClearSelection',
