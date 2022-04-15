@@ -20,6 +20,7 @@ import { CACHE_ASSETS_NAME, requestCache } from './cache';
 import onStreamFetch from './stream';
 import { closeAllNotifications, onPing } from './push';
 import CacheStorageController from '../cacheStorage';
+import { IS_SAFARI } from '../../environment/userAgent';
 
 export const log = logger('SW', LogTypes.Error | LogTypes.Debug | LogTypes.Log | LogTypes.Warn);
 const ctx = self as any as ServiceWorkerGlobalScope;
@@ -113,7 +114,9 @@ export function incrementTaskId() {
 } */
 
 const onFetch = (event: FetchEvent): void => {
-  if(event.request.url.indexOf(location.origin + '/') === 0 && event.request.url.match(/\.(js|css|jpe?g|json|wasm|png|mp3|svg|tgs|ico|woff2?|ttf|webmanifest?)(?:\?.*)?$/)) {
+  if(event.request.url.indexOf(location.origin + '/') === 0 
+    && event.request.url.match(/\.(js|css|jpe?g|json|wasm|png|mp3|svg|tgs|ico|woff2?|ttf|webmanifest?)(?:\?.*)?$/)
+    && !IS_SAFARI) {
     return event.respondWith(requestCache(event));
   }
 
