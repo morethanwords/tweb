@@ -2659,6 +2659,10 @@ export default class ChatBubbles {
       const afterSetPromise = Promise.all([setPeerPromise, getHeavyAnimationPromise()]);
       afterSetPromise.then(() => { // check whether list isn't full
         scrollable.checkForTriggers();
+
+        if(cached) {
+          this.onRenderScrollSet();
+        }
       });
 
       this.chat.dispatchEvent('setPeer', lastMsgId, !isJump);
@@ -4063,18 +4067,20 @@ export default class ChatBubbles {
     } */
 
     let scrollSaver: ScrollSaver, hadScroll: boolean/* , viewportSlice: ReturnType<ChatBubbles['getViewportSlice']> */;
-    this.messagesQueueOnRender = () => {
-      scrollSaver = new ScrollSaver(this.scrollable, reverse);
-      
-      if(this.getRenderedLength() && !this.chat.setPeerPromise) {
-        const viewportSlice = this.getViewportSlice();
-        this.deleteViewportSlice(viewportSlice, true);
-      }
-      
-      scrollSaver.save();
-      const saved = scrollSaver.getSaved();
-      hadScroll = saved.scrollHeight !== saved.clientHeight;
-    };
+    if(this.chatInner.parentElement) {
+      this.messagesQueueOnRender = () => {
+        scrollSaver = new ScrollSaver(this.scrollable, reverse);
+        
+        if(this.getRenderedLength() && !this.chat.setPeerPromise) {
+          const viewportSlice = this.getViewportSlice();
+          this.deleteViewportSlice(viewportSlice, true);
+        }
+        
+        scrollSaver.save();
+        const saved = scrollSaver.getSaved();
+        hadScroll = saved.scrollHeight !== saved.clientHeight;
+      };
+    }
 
     if(this.needReflowScroll) {
       reflowScrollableElement(this.scrollable.container);
@@ -4122,12 +4128,26 @@ export default class ChatBubbles {
 
     if(scrollSaver) {
       scrollSaver.restore(history.length === 1 && !reverse ? false : true);
+      this.onRenderScrollSet(scrollSaver.getSaved());
+    }
 
-      const className = 'has-sticky-dates';
-      const state = scrollSaver.getSaved();
+    return true;
+  }
+
+  private onRenderScrollSet(state?: {scrollHeight: number, clientHeight: number}) {
+    const className = 'has-sticky-dates';
+    if(!this.bubblesContainer.classList.contains(className)) {
       const isLoading = !this.preloader.detached;
-      const hasScroll = state.scrollHeight !== state.clientHeight;
-      if((hasScroll || isLoading) && !this.bubblesContainer.classList.contains(className)) {
+
+      if(isLoading || 
+        (
+          state ??= {
+            scrollHeight: this.scrollable.scrollHeight,
+            clientHeight: this.scrollable.container.clientHeight
+          }, 
+          state.scrollHeight !== state.clientHeight
+        )
+      ) {
         /* for(const timestamp in this.dateMessages) {
           const dateMessage = this.dateMessages[timestamp];
           dateMessage.div.classList.add('is-sticky');
@@ -4144,12 +4164,12 @@ export default class ChatBubbles {
         } else {
           setTimeout(callback, 600);
         }
-      } else {
-        this.willScrollOnLoad = undefined;
+
+        return;
       }
     }
-
-    return true;
+    
+    this.willScrollOnLoad = undefined;
   }
 
   onDatePick = (timestamp: number) => {

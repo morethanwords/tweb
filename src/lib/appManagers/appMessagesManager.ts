@@ -5568,7 +5568,7 @@ export class AppMessagesManager {
     }
 
     const chat: Chat.chat | Chat.channel = appChatsManager.getChat(message.peerId.toChatId());
-    return chat.participants_count < rootScope.appConfig.chat_read_mark_size_threshold && 
+    return chat.participants_count <= rootScope.appConfig.chat_read_mark_size_threshold && 
       (tsNow(true) - message.date) < rootScope.appConfig.chat_read_mark_expire_period;
   }
 
