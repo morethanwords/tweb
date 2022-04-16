@@ -16,6 +16,7 @@ import type { PushSubscriptionNotify } from "./mtproto/webPushApiManager";
 import type { PushNotificationObject } from "./serviceWorker/push";
 import type { ConnectionStatusChange } from "./mtproto/connectionStatus";
 import type { GroupCallId } from "./appManagers/appGroupCallsManager";
+import type { AppMediaPlaybackController } from "../components/appMediaPlaybackController";
 import type GroupCallInstance from "./calls/groupCallInstance";
 import type CallInstance from "./calls/callInstance";
 import type { StreamAmplitude } from "./calls/streamManager";
@@ -94,9 +95,9 @@ export type BroadcastEvents = {
   'stickers_installed': StickerSet.stickerSet,
   'stickers_deleted': StickerSet.stickerSet,
 
-  'media_play': {doc: MyDocument, message: Message.message, media: HTMLMediaElement},
+  'media_play': ReturnType<AppMediaPlaybackController['getPlayingDetails']>,
   'media_pause': void,
-  'media_playback_params': {volume: number, muted: boolean, playbackRate: number, loop: boolean, round: boolean},
+  'media_playback_params': ReturnType<AppMediaPlaybackController['getPlaybackParams']>,
   'media_stop': void,
   
   'state_cleared': void,

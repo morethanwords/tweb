@@ -61,6 +61,7 @@ import mediaSizes from "../../helpers/mediaSizes";
 import appNavigationController, { NavigationItem } from "../../components/appNavigationController";
 import assumeType from "../../helpers/assumeType";
 import generateTitleIcons from "../../components/generateTitleIcons";
+import appMediaPlaybackController from "../../components/appMediaPlaybackController";
 
 export type DialogDom = {
   avatarEl: AvatarElement,
@@ -338,6 +339,12 @@ export class AppDialogsManager {
     (this.folders.menu.firstElementChild as HTMLElement).click();
     appMessagesManager.construct();
     appStateManager.getState().then((state) => {
+      // * it should've had a better place :(
+      appMediaPlaybackController.setPlaybackParams(state.playbackParams);
+      rootScope.addEventListener('media_playback_params', (params) => {
+        appStateManager.pushToState('playbackParams', params);
+      });
+      
       return this.onStateLoaded(state);
     })/* .then(() => {
       const isLoadedMain = appMessagesManager.dialogsStorage.isDialogsLoaded(0);

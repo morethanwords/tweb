@@ -148,11 +148,7 @@ export default class ChatAudio extends PinnedContainer {
     this.toggle(true);
   };
   
-  private onMediaPlay = ({doc, message, media}: {
-    doc: MyDocument,
-    message: Message.message,
-    media: HTMLMediaElement
-  }) => {
+  private onMediaPlay = ({doc, message, media, playbackParams}: ReturnType<AppMediaPlaybackController['getPlayingDetails']>) => {
     let title: string | HTMLElement, subtitle: string | HTMLElement | DocumentFragment;
     const isMusic = doc.type !== 'voice' && doc.type !== 'round';
     if(!isMusic) {
@@ -167,6 +163,9 @@ export default class ChatAudio extends PinnedContainer {
 
     this.fasterEl.classList.toggle('hide', isMusic);
     this.repeatEl.classList.toggle('hide', !isMusic);
+
+    this.onPlaybackParams(playbackParams);
+    this.volumeSelector.setVolume();
 
     this.progressLine.setMedia(media);
 

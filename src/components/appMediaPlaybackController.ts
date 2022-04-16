@@ -81,11 +81,11 @@ export class AppMediaPlaybackController {
   public playbackRate: number;
   public loop: boolean;
   public round: boolean;
-  private _volume = 1;
-  private _muted = false;
-  private _playbackRate = 1;
-  private _loop = false;
-  private _round = false;
+  private _volume: number;
+  private _muted: boolean;
+  private _playbackRate: number;
+  private _loop: boolean;
+  private _round: boolean;
   private lockedSwitchers: boolean;
   private playbackRates: Record<PlaybackMediaType, number> = {
     voice: 1,
@@ -171,14 +171,24 @@ export class AppMediaPlaybackController {
   }
 
   public getPlaybackParams() {
-    const {volume, muted, playbackRate, loop, round} = this;
+    const {volume, muted, playbackRate, playbackRates, loop, round} = this;
     return {
       volume, 
       muted, 
       playbackRate,
+      playbackRates,
       loop,
       round
     };
+  }
+
+  public setPlaybackParams(params: ReturnType<AppMediaPlaybackController['getPlaybackParams']>) {
+    this.playbackRates = params.playbackRates;
+    this._volume = params.volume;
+    this._muted = params.muted;
+    this._playbackRate = params.playbackRate;
+    this._loop = params.loop;
+    this._round = params.round;
   }
   
   public seekBackward = (details: MediaSessionActionDetails, media = this.playingMedia) => {

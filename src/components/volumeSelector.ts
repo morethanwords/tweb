@@ -59,7 +59,7 @@ export default class VolumeSelector extends RangeSelector {
     appMediaPlaybackController.muted = !appMediaPlaybackController.muted;
   };
 
-  private setVolume = () => {
+  public setVolume = () => {
     // const volume = video.volume;
     const {volume, muted} = appMediaPlaybackController;
     let d: string;
