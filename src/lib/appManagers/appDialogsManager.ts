@@ -314,7 +314,7 @@ export class AppDialogsManager {
               }
             };
     
-            appNavigationController.unshiftItem(this.filtersNavigationItem);
+            appNavigationController.spliceItems(1, 0, this.filtersNavigationItem);
           }
         } else if(this.filtersNavigationItem) {
           appNavigationController.removeItem(this.filtersNavigationItem);

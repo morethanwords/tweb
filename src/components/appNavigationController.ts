@@ -186,6 +186,13 @@ export class AppNavigationController {
     this.onItemAdded(item);
   }
 
+  public spliceItems(index: number, length: number, ...items: NavigationItem[]) {
+    this.navigations.splice(index, length, ...items);
+    items.forEach((item) => {
+      this.onItemAdded(item);
+    });
+  }
+
   private pushState() {
     this.manual = false;
     history.pushState(this.id, '');
