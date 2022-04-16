@@ -238,7 +238,7 @@ export class AppChatsManager {
 
     if(chat._ === 'chatForbidden' ||
         chat._ === 'channelForbidden' ||
-        (chat as any).pFlags.kicked ||
+        // (chat as any).pFlags.kicked ||
         (chat.pFlags.left && !(chat as Chat.channel).pFlags.megagroup)) {
       return false;
     }
@@ -377,7 +377,7 @@ export class AppChatsManager {
       || chat._ === 'chatForbidden' 
       || chat._ === 'chatEmpty' 
       || (chat as Chat.chat).pFlags.left 
-      || (chat as any).pFlags.kicked 
+      // || (chat as any).pFlags.kicked 
       || (chat as Chat.chat).pFlags.deactivated) {
       good = false;
     }

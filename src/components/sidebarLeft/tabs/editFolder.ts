@@ -377,8 +377,12 @@ export default class AppEditFolderTab extends SliderSuperTab {
     }
 
     return super.open().then(() => {
-      if(this.type === 'edit') this.onEditOpen();
-      else this.onCreateOpen();
+      if(this.type === 'edit') {
+        this.setFilter(this.originalFilter, true);
+        this.onEditOpen();
+      } else {
+        this.onCreateOpen();
+      }
     });
   }
 }

@@ -764,9 +764,9 @@ export default class DialogsStorage {
       // ! chatForbidden stays for chat where you're kicked
       if(
         chat._ === 'channelForbidden' 
-        || chat._ === 'chatForbidden' 
+        // || chat._ === 'chatForbidden' 
         || (chat as Chat.chat).pFlags.left 
-        || (chat as any).pFlags.kicked
+        // || (chat as any).pFlags.kicked
       ) {
         return;
       }

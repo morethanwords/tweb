@@ -324,7 +324,7 @@ export class AppProfileManager {
       const chat = appChatsManager.getChat(id);
       if(chat &&
           chat.pFlags && (
-            chat.pFlags.kicked ||
+            // chat.pFlags.kicked ||
             chat.pFlags.broadcast && !chat.pFlags.creator && !chat.admin_rights
           )) {
         return Promise.reject();

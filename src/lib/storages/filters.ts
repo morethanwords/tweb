@@ -5,7 +5,7 @@
  */
 
 import type { DialogFilter, Update } from "../../layer";
-import type { Modify } from "../../types";
+import type { ArgumentTypes, Modify } from "../../types";
 import type { AppPeersManager } from "../appManagers/appPeersManager";
 import type { AppUsersManager } from "../appManagers/appUsersManager";
 //import type { ApiManagerProxy } from "../mtproto/mtprotoworker";
@@ -13,11 +13,12 @@ import type _rootScope from "../rootScope";
 import type {AppMessagesManager, Dialog} from '../appManagers/appMessagesManager';
 import type {AppNotificationsManager} from "../appManagers/appNotificationsManager";
 import type { ApiUpdatesManager } from "../appManagers/apiUpdatesManager";
+import type { AppStateManager } from "../appManagers/appStateManager";
 import apiManager from "../mtproto/mtprotoworker";
-import { AppStateManager } from "../appManagers/appStateManager";
 import forEachReverse from "../../helpers/array/forEachReverse";
 import copy from "../../helpers/object/copy";
 import safeReplaceObject from "../../helpers/object/safeReplaceObject";
+import findAndSplice from "../../helpers/array/findAndSplice";
 
 export type MyDialogFilter = Modify<DialogFilter, {
   /* pinned_peers: PeerId[],
@@ -321,31 +322,80 @@ export default class FiltersStorage {
     });
   }
 
-  public reloadMissingPeerIds(filterId: number, type: 'pinned_peers' | 'include_peers' | 'exclude_peers' = 'pinned_peers') {
-    const promises: Promise<any>[] = [];
+  private p(filterId: number, type: ArgumentTypes<FiltersStorage['reloadMissingPeerIds']>[1], missingPeerIds: PeerId[]) {
     const filter = this.getFilter(filterId);
     const peers = filter && filter[type];
-    if(peers?.length) {
-      const reloadDialogs = peers.filter((inputPeer, idx) => {
-        const peerId = this.appPeersManager.getPeerId(inputPeer);
-        return !this.reloadedPeerIds.has(peerId) && !this.appMessagesManager.getDialogOnly(peerId);
-      });
-
-      if(reloadDialogs.length) {
-        const reloadPromises = reloadDialogs.map(inputPeer => {
-          const peerId = this.appPeersManager.getPeerId(inputPeer);
-          const promise = this.appMessagesManager.reloadConversation(inputPeer);
-          promise.then(() => {
-            this.reloadedPeerIds.add(peerId);
-          });
-          return promise;
-        });
-        const reloadPromise = Promise.all(reloadPromises);
-        promises.push(reloadPromise);
-      }
+    if(!peers?.length) {
+      return;
     }
 
-    return promises.length ? Promise.all(promises) : undefined;
+    let spliced = false;
+    missingPeerIds.forEach((peerId) => {
+      const inputPeer = findAndSplice(peers, (inputPeer) => this.appPeersManager.getPeerId(inputPeer) === peerId);
+      if(inputPeer) {
+        spliced = true;
+      }
+    });
+
+    if(spliced) {
+      this.onUpdateDialogFilter({
+        _: 'updateDialogFilter',
+        id: filterId,
+        filter
+      });
+    }
+  }
+
+  public reloadMissingPeerIds(filterId: number, type: 'pinned_peers' | 'include_peers' | 'exclude_peers' = 'pinned_peers') {
+    const filter = this.getFilter(filterId);
+    const peers = filter && filter[type];
+    if(!peers?.length) {
+      return;
+    }
+
+    const missingPeerIds: PeerId[] = [];
+    const reloadDialogs = peers.filter((inputPeer) => {
+      const peerId = this.appPeersManager.getPeerId(inputPeer);
+      const isAlreadyReloaded = this.reloadedPeerIds.has(peerId);
+      const dialog = this.appMessagesManager.getDialogOnly(peerId);
+      if(isAlreadyReloaded && !dialog) {
+        missingPeerIds.push(peerId);
+      }
+
+      const reload = !isAlreadyReloaded && !dialog;
+      return reload;
+    });
+
+    if(!reloadDialogs.length) {
+      if(missingPeerIds.length) {
+        this.p(filterId, type, missingPeerIds);
+      }
+
+      return;
+    }
+
+    const reloadPromises = reloadDialogs.map((inputPeer) => {
+      const peerId = this.appPeersManager.getPeerId(inputPeer);
+      const promise = this.appMessagesManager.reloadConversation(inputPeer)
+      .then((dialog) => {
+        this.reloadedPeerIds.add(peerId);
+
+        return dialog ? undefined : peerId;
+      });
+
+      return promise;
+    });
+
+    const reloadPromise = Promise.all(reloadPromises).then((missingPeerIds) => {
+      missingPeerIds = missingPeerIds.filter(Boolean);
+      if(!missingPeerIds.length) {
+        return;
+      }
+
+      this.p(filterId, type, missingPeerIds);
+    });
+
+    return reloadPromise;
   }
 
   public async getDialogFilters(overwrite = false): Promise<MyDialogFilter[]> {
