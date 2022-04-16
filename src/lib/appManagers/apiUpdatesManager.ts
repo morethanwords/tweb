@@ -689,11 +689,17 @@ export class ApiUpdatesManager {
 
       if(newVersion) {
         this.updatesState.syncLoading.then(async() => {
+          const strs: Record<string, string> = {
+            en: 'was updated to version',
+            ru: 'обновлён до версии'
+          };
+
           const getChangelog = (lang: string) => {
-            fetch(`changelogs/${newVersion.split(' ')[0]}_${lang}.md`)
+            fetch(`changelogs/${lang}_${newVersion.split(' ')[0]}.md`)
             .then(res => (res.status === 200 && res.ok && res.text()) || Promise.reject())
             .then(text => {
-              const pre = `**Telegram Web${App.suffix} was updated to version ${newVersion}**\n\n`;
+              const langStr = strs[lang] || strs.en;
+              const pre = `**Telegram Web${App.suffix} ${langStr} ${newVersion}**\n\n`;
   
               text = pre + text;
   
