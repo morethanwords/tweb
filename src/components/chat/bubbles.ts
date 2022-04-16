@@ -54,7 +54,7 @@ import serverTimeManager from "../../lib/mtproto/serverTimeManager";
 import PeerTitle from "../peerTitle";
 import findUpClassName from "../../helpers/dom/findUpClassName";
 import findUpTag from "../../helpers/dom/findUpTag";
-import { toast } from "../toast";
+import { toast, toastNew } from "../toast";
 import { getElementByPoint } from "../../helpers/dom/getElementByPoint";
 import { getMiddleware } from "../../helpers/middleware";
 import cancelEvent from "../../helpers/dom/cancelEvent";
@@ -98,6 +98,10 @@ import findAndSplice from "../../helpers/array/findAndSplice";
 import getViewportSlice from "../../helpers/dom/getViewportSlice";
 import SuperIntersectionObserver from "../../helpers/dom/superIntersectionObserver";
 import generateFakeIcon from "../generateFakeIcon";
+import selectElementContents from "../../helpers/dom/selectElementContents";
+import cancelSelection from "../../helpers/dom/cancelSelection";
+import SelectionSaver from "../../helpers/selectionSaver";
+import copyFromElement from "../../helpers/dom/copyFromElement";
 
 const USE_MEDIA_TAILS = false;
 const IGNORE_ACTIONS: Set<Message.messageService['action']['_']> = new Set([
@@ -631,6 +635,16 @@ export default class ChatBubbles {
 
     attachClickEvent(this.scrollable.container, this.onBubblesClick, {listenerSetter: this.listenerSetter});
     // this.listenerSetter.add(this.bubblesContainer)('click', this.onBubblesClick/* , {capture: true, passive: false} */);
+
+    this.listenerSetter.add(this.scrollable.container)('mousedown', (e) => {
+      const code: HTMLElement = findUpTag(e.target, 'CODE');
+      if(code) {
+        cancelEvent(e);
+        copyFromElement(code);
+        toastNew({langPackKey: 'TextCopied'});
+        return;
+      }
+    });
 
     if(DEBUG) {
       this.listenerSetter.add(this.bubblesContainer)('dblclick', (e) => {

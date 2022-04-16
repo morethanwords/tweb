@@ -203,6 +203,7 @@ $chat-input-inner-padding-handhelds: .25rem;
   --poll-circle-color: var(--border-color);
   --spoiler-background-color: #e3e5e8;
   --spoiler-draft-background-color: #d9d9d9;
+  --monospace-text-color: var(--danger-color);
 
   --message-background-color: var(--surface-color);
   --message-checkbox-color: #61c642;
@@ -275,6 +276,7 @@ $chat-input-inner-padding-handhelds: .25rem;
   --poll-circle-color: #fff;
   --spoiler-background-color: #373e4e;
   --spoiler-draft-background-color: #484848;
+  --monospace-text-color: var(--primary-text-color);
 
   --message-background-color: var(--surface-color);
   --message-checkbox-color: var(--primary-color);

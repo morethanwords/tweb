@@ -1923,7 +1923,7 @@ $bubble-beside-button-width: 38px;
     padding-top: 6px;
   }
 
-  &:not(.sticker):not(.emoji-big) {
+  &:not(.sticker):not(.emoji-big):not(.forwarded) {
     &.hide-name, 
     &:not(.is-group-first)/* , &.is-out */ {
       .reply {
@@ -2107,6 +2107,10 @@ $bubble-beside-button-width: 38px;
         order: 100;
       }
     }
+  }
+
+  code {
+    cursor: pointer;
   }
 }
 
@@ -2343,6 +2347,11 @@ $bubble-beside-button-width: 38px;
       }
     }
   } */
+
+  pre, 
+  code {
+    color: var(--monospace-text-color);
+  }
 }
 
 .bubble.is-out {

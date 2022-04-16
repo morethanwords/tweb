@@ -178,7 +178,7 @@ export class AppMessagesManager {
     [tempId: string]: {
       [callbackName: string]: Partial<{
         deferred: CancellablePromise<void>, 
-        callback: (message: any) => Promise<any>
+        callback: (message: MyMessage) => Promise<any>
       }>
     }
   } = {};
@@ -414,7 +414,7 @@ export class AppMessagesManager {
     return sendEntites;
   }
 
-  public invokeAfterMessageIsSent(tempId: number, callbackName: string, callback: (message: any) => Promise<any>) {
+  public invokeAfterMessageIsSent(tempId: number, callbackName: string, callback: (message: MyMessage) => Promise<any>) {
     const finalize = this.tempFinalizeCallbacks[tempId] ?? (this.tempFinalizeCallbacks[tempId] = {});
     const obj = finalize[callbackName] ?? (finalize[callbackName] = {deferred: deferredPromise<void>()});
 
@@ -2026,9 +2026,11 @@ export class AppMessagesManager {
       }
     } = {};
 
-    const newMessages = mids.map(mid => {
+    const newMids: number[] = [];
+    const newMessages = mids.map((mid) => {
       const originalMessage: Message.message = this.getMessageByPeer(fromPeerId, mid);
       const message: Message.message = this.generateOutgoingMessage(peerId, options);
+      newMids.push(message.id);
 
       const keys: Array<keyof Message.message> = [
         'entities', 
@@ -2047,6 +2049,20 @@ export class AppMessagesManager {
 
       if(!options.dropCaptions || !originalMessage.media) {
         keys.push('message');
+      }
+
+      const replyToMid = originalMessage.reply_to?.reply_to_msg_id;
+      const replyToMessageIdx = mids.indexOf(replyToMid);
+      if(replyToMid && replyToMessageIdx !== -1) {
+        const newReplyToMid = newMids[replyToMessageIdx];
+        message.reply_to = {
+          _: 'messageReplyHeader',
+          reply_to_msg_id: newReplyToMid
+        };
+
+        /* this.invokeAfterMessageIsSent(newReplyToMid, 'reply', async(originalMessage) => {
+          message.reply_to.reply_to_msg_id = originalMessage.mid;
+        }); */
       }
 
       keys.forEach(key => {
@@ -6338,7 +6354,7 @@ export class AppMessagesManager {
   }
 
   public canForward(message: Message.message | Message.messageService) {
-    return !(message as Message.message).pFlags.noforwards && !appPeersManager.noForwards(message.peerId);
+    return message._ === 'message' && !(message as Message.message).pFlags.noforwards && !appPeersManager.noForwards(message.peerId);
   }
 
   private pushBatchUpdate<E extends keyof BatchUpdates, C extends BatchUpdates[E]>(

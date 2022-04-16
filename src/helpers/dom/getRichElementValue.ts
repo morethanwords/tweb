@@ -14,7 +14,7 @@ import { MessageEntity } from "../../layer";
 export type MarkdownType = 'bold' | 'italic' | 'underline' | 'strikethrough' | 'monospace' | 'link' | 'mentionName' | 'spoiler';
 export type MarkdownTag = {
   match: string,
-  entityName: Extract<MessageEntity['_'], 'messageEntityBold' | 'messageEntityUnderline' | 'messageEntityItalic' | 'messageEntityPre' | 'messageEntityStrike' | 'messageEntityTextUrl' | 'messageEntityMentionName' | 'messageEntitySpoiler'>;
+  entityName: Extract<MessageEntity['_'], 'messageEntityBold' | 'messageEntityUnderline' | 'messageEntityItalic' | 'messageEntityCode' | 'messageEntityStrike' | 'messageEntityTextUrl' | 'messageEntityMentionName' | 'messageEntitySpoiler'>;
 };
 
 // https://core.telegram.org/bots/api#html-style
@@ -32,8 +32,8 @@ export const markdownTags: {[type in MarkdownType]: MarkdownTag} = {
     entityName: 'messageEntityItalic'
   },
   monospace: {
-    match: '[style*="monospace"], [face="monospace"], pre',
-    entityName: 'messageEntityPre'
+    match: '[style*="monospace"], [face*="monospace"], pre',
+    entityName: 'messageEntityCode'
   },
   strikethrough: {
     match: '[style*="line-through"], strike, del, s',
@@ -135,7 +135,7 @@ export default function getRichElementValue(node: HTMLElement, lines: string[], 
             });
           } else {
             entities.push({
-              _: tag.entityName as any,
+              _: tag.entityName,
               offset: offset.offset,
               length: nodeValue.length
             });

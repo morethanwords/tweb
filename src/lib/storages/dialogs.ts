@@ -762,7 +762,12 @@ export default class DialogsStorage {
     if(peerId.isAnyChat()) {
       const chat: Chat = this.appChatsManager.getChat(peerId.toChatId());
       // ! chatForbidden stays for chat where you're kicked
-      if(chat._ === 'channelForbidden' /* || chat._ === 'chatForbidden' */ || (chat as Chat.chat).pFlags.left || (chat as Chat.chat).pFlags.kicked) {
+      if(
+        chat._ === 'channelForbidden' 
+        // || chat._ === 'chatForbidden' 
+        || (chat as Chat.chat).pFlags.left 
+        // || (chat as Chat.chat).pFlags.kicked
+      ) {
         return;
       }
     }

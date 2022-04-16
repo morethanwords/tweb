@@ -152,7 +152,7 @@ export default class VideoPlayer extends ControlsHover {
         });
 
         listenerSetter.add(document)('keydown', (e: KeyboardEvent) => {
-          if(rootScope.overlaysActive > 1) { // forward popup is active, etc
+          if(rootScope.overlaysActive > 1 || document.pictureInPictureElement) { // forward popup is active, etc
             return;
           }
 

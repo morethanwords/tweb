@@ -692,6 +692,7 @@ const lang = {
   "TelegramFeaturesUrl": "https://t.me/TelegramTips",
   "ScamMessage": "SCAM",
   "FakeMessage": "FAKE",
+  "TextCopied": "Text copied to clipboard",
 
   // * macos
   "AccountSettings.Filters": "Chat Folders",
