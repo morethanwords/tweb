@@ -1439,6 +1439,12 @@ export default class AppMediaViewerBase<
                       this.releaseSingleMedia = appMediaPlaybackController.setSingleMedia(video, message as Message.message);
                     }
                   }
+                },
+                onPipClose: () => {
+                  // this.target = undefined;
+                  // this.toggleWholeActive(false);
+                  // this.toggleOverlay(false);
+                  this.close();
                 }
               });
               player.addEventListener('toggleControls', (show) => {

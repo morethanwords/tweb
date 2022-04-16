@@ -9,7 +9,7 @@ import { IS_APPLE_MOBILE, IS_MOBILE } from "../environment/userAgent";
 import { IS_TOUCH_SUPPORTED } from "../environment/touchSupport";
 import { onMediaLoad } from "../helpers/files";
 import cancelEvent from "../helpers/dom/cancelEvent";
-import ListenerSetter from "../helpers/listenerSetter";
+import ListenerSetter, { Listener } from "../helpers/listenerSetter";
 import ButtonMenu from "../components/buttonMenu";
 import { ButtonMenuToggleHandler } from "../components/buttonMenuToggle";
 import rootScope from "./rootScope";
@@ -18,6 +18,7 @@ import { addFullScreenListener, cancelFullScreen, isFullScreen, requestFullScree
 import toHHMMSS from "../helpers/string/toHHMMSS";
 import MediaProgressLine from "../components/mediaProgressLine";
 import VolumeSelector from "../components/volumeSelector";
+import debounce from "../helpers/schedulers/debounce";
 
 export default class VideoPlayer extends ControlsHover {
   private static PLAYBACK_RATES = [0.5, 1, 1.5, 2];
@@ -37,14 +38,16 @@ export default class VideoPlayer extends ControlsHover {
 
   protected onPlaybackRackMenuToggle?: (open: boolean) => void;
   protected onPip?: (pip: boolean) => void;
+  protected onPipClose?: () => void;
 
-  constructor({video, play = false, streamable = false, duration, onPlaybackRackMenuToggle, onPip}: {
+  constructor({video, play = false, streamable = false, duration, onPlaybackRackMenuToggle, onPip, onPipClose}: {
     video: HTMLVideoElement, 
     play?: boolean, 
     streamable?: boolean, 
     duration?: number,
     onPlaybackRackMenuToggle?: VideoPlayer['onPlaybackRackMenuToggle'],
-    onPip: VideoPlayer['onPip']
+    onPip?: VideoPlayer['onPip'],
+    onPipClose?: VideoPlayer['onPipClose']
   }) {
     super();
 
@@ -54,6 +57,7 @@ export default class VideoPlayer extends ControlsHover {
 
     this.onPlaybackRackMenuToggle = onPlaybackRackMenuToggle;
     this.onPip = onPip;
+    this.onPipClose = onPipClose;
 
     this.listenerSetter = new ListenerSetter();
 
@@ -134,15 +138,33 @@ export default class VideoPlayer extends ControlsHover {
 
         const onPip = (pip: boolean) => {
           this.wrapper.style.visibility = pip ? 'hidden': '';
-          this.onPip(pip);
+          if(this.onPip) {
+            this.onPip(pip);
+          }
         };
 
+        const debounceTime = 20;
+        const debouncedPip = debounce(onPip, debounceTime, false, true);
+
         listenerSetter.add(video)('enterpictureinpicture', () => {
-          onPip(true);
+          debouncedPip(true);
+
+          listenerSetter.add(video)('leavepictureinpicture', () => {
+            const onPause = () => {
+              clearTimeout(timeout);
+              if(this.onPipClose) {
+                this.onPipClose();
+              }
+            };
+            const listener = listenerSetter.add(video)('pause', onPause, {once: true}) as any as Listener;
+            const timeout = setTimeout(() => {
+              listenerSetter.remove(listener);
+            }, debounceTime);
+          }, {once: true});
         });
 
         listenerSetter.add(video)('leavepictureinpicture', () => {
-          onPip(false);
+          debouncedPip(false);
         });
       }
 
