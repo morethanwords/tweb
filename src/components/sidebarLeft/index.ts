@@ -29,7 +29,7 @@ import AppPeopleNearbyTab from "./tabs/peopleNearby";
 import { ButtonMenuItemOptions } from "../buttonMenu";
 import CheckboxField from "../checkboxField";
 import { IS_MOBILE_SAFARI } from "../../environment/userAgent";
-import appNavigationController from "../appNavigationController";
+import appNavigationController, { NavigationItem } from "../appNavigationController";
 import findUpClassName from "../../helpers/dom/findUpClassName";
 import findUpTag from "../../helpers/dom/findUpTag";
 import PeerTitle from "../peerTitle";
@@ -310,6 +310,20 @@ export class AppSidebarLeft extends SidebarSlider {
     });
 
     appUsersManager.getTopPeers('correspondents');
+
+    // Focus search input by pressing Escape
+    const navigationItem: NavigationItem = {
+      type: 'global-search-focus',
+      onPop: () => {
+        setTimeout(() => {
+          this.inputSearch.input.focus();
+        }, 0);
+
+        return false;
+      },
+      noHistory: true
+    };
+    appNavigationController.pushItem(navigationItem);
 
     appStateManager.getState().then(state => {
       const recentSearch = state.recentSearch || [];
@@ -613,12 +627,13 @@ export class AppSidebarLeft extends SidebarSlider {
       this.updateBtn.classList.add('is-hidden');
       this.toolsBtn.parentElement.firstElementChild.classList.toggle('state-back', true);
 
-      if(!IS_MOBILE_SAFARI && !appNavigationController.findItemByType('global-search')) {
+      const navigationType: NavigationItem['type'] = 'global-search';
+      if(!IS_MOBILE_SAFARI && !appNavigationController.findItemByType(navigationType)) {
         appNavigationController.pushItem({
           onPop: () => {
             close();
           },
-          type: 'global-search'
+          type: navigationType
         });
       }
 
