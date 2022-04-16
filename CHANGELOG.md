@@ -12,7 +12,7 @@
 
 * Issues with messages marked as read automatically and deleting voice messages in Shared Media have been fixed.
 
-**WebK** now has an [official channel](http://t.me/WebK_en) – where we will cover important news, updates and more about the app in English (For Russian, [press 2](http://t.me/WebK_ru)).
+* **WebK** now has an [official channel](http://t.me/WebK_en) – where we will cover important news, updates and more about the app in English (For Russian, [press 2](http://t.me/WebK_ru)).
 
 ### 1.4.1 (144)
 * Supported Emoji 14.
