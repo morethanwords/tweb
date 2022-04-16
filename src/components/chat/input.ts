@@ -1967,7 +1967,11 @@ export default class ChatInput {
       // * so have to reset formatting
       if(document.activeElement === this.messageInput) {
         // document.execCommand('styleWithCSS', false, 'true');
-        this.resetCurrentFormatting();
+        setTimeout(() => {
+          if(document.activeElement === this.messageInput) {
+            this.resetCurrentFormatting();
+          }
+        }, 0);
         // document.execCommand('styleWithCSS', false, 'false');
       }
     } else {
