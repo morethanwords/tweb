@@ -552,7 +552,7 @@ export class AppUsersManager {
       return id;
     }
 
-    return this.users[id] || {id, pFlags: {deleted: true}, access_hash: ''} as User;
+    return this.users[id] || {_: 'userEmpty', id, pFlags: {deleted: true}, access_hash: ''} as any as User;
   }
 
   public getSelf() {

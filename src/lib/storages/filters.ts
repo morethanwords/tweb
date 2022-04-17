@@ -322,29 +322,29 @@ export default class FiltersStorage {
     });
   }
 
-  private p(filterId: number, type: ArgumentTypes<FiltersStorage['reloadMissingPeerIds']>[1], missingPeerIds: PeerId[]) {
-    const filter = this.getFilter(filterId);
-    const peers = filter && filter[type];
-    if(!peers?.length) {
-      return;
-    }
+  // private spliceMissingPeerIds(filterId: number, type: ArgumentTypes<FiltersStorage['reloadMissingPeerIds']>[1], missingPeerIds: PeerId[]) {
+  //   const filter = this.getFilter(filterId);
+  //   const peers = filter && filter[type];
+  //   if(!peers?.length) {
+  //     return;
+  //   }
 
-    let spliced = false;
-    missingPeerIds.forEach((peerId) => {
-      const inputPeer = findAndSplice(peers, (inputPeer) => this.appPeersManager.getPeerId(inputPeer) === peerId);
-      if(inputPeer) {
-        spliced = true;
-      }
-    });
+  //   let spliced = false;
+  //   missingPeerIds.forEach((peerId) => {
+  //     const inputPeer = findAndSplice(peers, (inputPeer) => this.appPeersManager.getPeerId(inputPeer) === peerId);
+  //     if(inputPeer) {
+  //       spliced = true;
+  //     }
+  //   });
 
-    if(spliced) {
-      this.onUpdateDialogFilter({
-        _: 'updateDialogFilter',
-        id: filterId,
-        filter
-      });
-    }
-  }
+  //   if(spliced) {
+  //     this.onUpdateDialogFilter({
+  //       _: 'updateDialogFilter',
+  //       id: filterId,
+  //       filter
+  //     });
+  //   }
+  // }
 
   public reloadMissingPeerIds(filterId: number, type: 'pinned_peers' | 'include_peers' | 'exclude_peers' = 'pinned_peers') {
     const filter = this.getFilter(filterId);
@@ -353,23 +353,23 @@ export default class FiltersStorage {
       return;
     }
 
-    const missingPeerIds: PeerId[] = [];
+    // const missingPeerIds: PeerId[] = [];
     const reloadDialogs = peers.filter((inputPeer) => {
       const peerId = this.appPeersManager.getPeerId(inputPeer);
       const isAlreadyReloaded = this.reloadedPeerIds.has(peerId);
       const dialog = this.appMessagesManager.getDialogOnly(peerId);
-      if(isAlreadyReloaded && !dialog) {
-        missingPeerIds.push(peerId);
-      }
+      // if(isAlreadyReloaded && !dialog) {
+      //   missingPeerIds.push(peerId);
+      // }
 
       const reload = !isAlreadyReloaded && !dialog;
       return reload;
     });
 
     if(!reloadDialogs.length) {
-      if(missingPeerIds.length) {
-        this.p(filterId, type, missingPeerIds);
-      }
+      // if(missingPeerIds.length) {
+      //   this.spliceMissingPeerIds(filterId, type, missingPeerIds);
+      // }
 
       return;
     }
@@ -392,7 +392,7 @@ export default class FiltersStorage {
         return;
       }
 
-      this.p(filterId, type, missingPeerIds);
+      // this.spliceMissingPeerIds(filterId, type, missingPeerIds);
     });
 
     return reloadPromise;

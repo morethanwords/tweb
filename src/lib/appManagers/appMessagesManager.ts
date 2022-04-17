@@ -2260,12 +2260,16 @@ export class AppMessagesManager {
             }
           });
 
+          // fullfillLeft();
+          // resolve();
+        }, (err) => {
+          // fullfillLeft();
+          // resolve();
+          // reject(err);
+        }).finally(() => {
           fullfillLeft();
           resolve();
-        }, (err) => {
-          fullfillLeft();
-          reject(err);
-        }).finally(() => {
+          
           this.reloadConversationsPromise = null;
 
           if(this.reloadConversationsPeers.size) {

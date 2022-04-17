@@ -23,6 +23,8 @@ import PopupPeer from "../../popups/peer";
 import RLottiePlayer from "../../../lib/rlottie/rlottiePlayer";
 import copy from "../../../helpers/object/copy";
 import deepEqual from "../../../helpers/object/deepEqual";
+import appUsersManager from "../../../lib/appManagers/appUsersManager";
+import forEachReverse from "../../../helpers/array/forEachReverse";
 
 const MAX_FOLDER_NAME_LENGTH = 12;
 
@@ -291,11 +293,27 @@ export default class AppEditFolderTab extends SliderSuperTab {
       const section = this[key];
       const ul = appDialogsManager.createChatList();
 
-      const peers = filter[key].slice();
+      let peers = filter[key];
+
+      // filter peers where we're kicked
+      const hasPeer = (peerId: PeerId) => {
+        return !!appMessagesManager.getDialogOnly(peerId) || (peerId.isUser() ? appUsersManager.getUser(peerId.toUserId())._ === 'user' : false);
+      };
+      
+      forEachReverse(peers, (peerId, idx, arr) => {
+        if(!hasPeer(peerId)) {
+          arr.splice(idx, 1);
+        }
+      });
+
+      peers = peers.slice();
 
       const renderMore = (_length: number) => {
         for(let i = 0, length = Math.min(peers.length, _length); i < length; ++i) {
           const peerId = peers.shift();
+          if(peerId.isUser() ? false : !appMessagesManager.getDialogOnly(peerId)) {
+            continue;
+          }
 
           const {dom} = appDialogsManager.addDialogNew({
             dialog: peerId,
