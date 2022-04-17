@@ -37,7 +37,7 @@ import appDraftsManager from './appDraftsManager';
 import serverTimeManager from '../mtproto/serverTimeManager';
 import stateStorage from '../stateStorage';
 import appDownloadManager from './appDownloadManager';
-import { AppStateManager, STATE_INIT } from './appStateManager';
+import appStateManager, { AppStateManager, STATE_INIT } from './appStateManager';
 import { MOUNT_CLASS_TO } from '../../config/debug';
 import appNavigationController from '../../components/appNavigationController';
 import appNotificationsManager from './appNotificationsManager';
@@ -90,6 +90,8 @@ import type GroupCallInstance from '../calls/groupCallInstance';
 import type CallInstance from '../calls/callInstance';
 import numberThousandSplitter from '../../helpers/number/numberThousandSplitter';
 import ChatBackgroundPatternRenderer from '../../components/chat/patternRenderer';
+import { IS_FIREFOX } from '../../environment/userAgent';
+import compareVersion from '../../helpers/compareVersion';
 
 //console.log('appImManager included33!');
 
@@ -158,7 +160,7 @@ export class AppImManager {
     this.backgroundPromises = {};
     STATE_INIT.settings.themes.forEach(theme => {
       if(theme.background.slug) {
-        const url = /* window.location.origin + window.location.pathname +  */'assets/img/' + theme.background.slug + '.svg';
+        const url = 'assets/img/' + theme.background.slug + '.svg' + (IS_FIREFOX ? '?1' : '');
         this.backgroundPromises[theme.background.slug] = Promise.resolve(url);
       }
     });
@@ -221,9 +223,15 @@ export class AppImManager {
       animationIntersector.checkAnimations(false);
     });
 
-    // setTimeout(() => {
-    this.applyCurrentTheme();
-    // }, 0);
+    if(IS_FIREFOX && appStateManager.oldVersion && compareVersion(appStateManager.oldVersion, '1.4.3') === -1) {
+      this.deleteFilesIterative((response) => {
+        return response.headers.get('Content-Type') === 'image/svg+xml';
+      }).then(() => {
+        this.applyCurrentTheme();
+      });
+    } else {
+      this.applyCurrentTheme();
+    }
 
     // * fix simultaneous opened both sidebars, can happen when floating sidebar is opened with left sidebar
     mediaSizes.addEventListener('changeScreen', (from, to) => {
@@ -627,6 +635,34 @@ export class AppImManager {
 
     this.onHashChange();
     this.attachKeydownListener();
+  }
+
+  private deleteFilesIterative(callback: (response: Response) => boolean) {
+    return appDownloadManager.cacheStorage.timeoutOperation((cache) => {
+      const perf = performance.now();
+      return cache.keys().then((requests) => {
+        const promises = requests.map((request) => {
+          return cache.match(request).then((response) => {
+            return callback(response);
+          });
+        });
+
+        return Promise.all(promises).then((values) => {
+          values.map((isBad, idx) => {
+            if(!isBad) {
+              return;
+            }
+
+            const request = requests[idx];
+            return cache.delete(request);
+          });
+
+          return Promise.all(values.filter(Boolean));
+        });
+      }).then(() => {
+        this.log('deleted files', performance.now() - perf);
+      });
+    });
   }
 
   private toggleChatGradientAnimation(activatingChat: Chat) {
@@ -1110,7 +1146,7 @@ export class AppImManager {
     next();
   };
 
-  public setCurrentBackground(broadcastEvent = false) {
+  public setCurrentBackground(broadcastEvent = false): ReturnType<AppImManager['setBackground']> {
     const theme = rootScope.getTheme();
 
     if(theme.background.slug) {
@@ -1123,7 +1159,7 @@ export class AppImManager {
           return this.setBackground(url, broadcastEvent);
         }, () => { // * if NO_ENTRY_FOUND
           theme.background = copy(defaultTheme.background); // * reset background
-          return this.setBackground('', true);
+          return this.setCurrentBackground(true);
         });
       // }
     }

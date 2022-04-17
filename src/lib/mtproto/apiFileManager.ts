@@ -30,6 +30,8 @@ import noop from "../../helpers/noop";
 import readBlobAsArrayBuffer from "../../helpers/blob/readBlobAsArrayBuffer";
 import bytesToHex from "../../helpers/bytes/bytesToHex";
 import findAndSplice from "../../helpers/array/findAndSplice";
+import { IS_FIREFOX } from "../../environment/userAgent";
+import fixFirefoxSvg from "../../helpers/fixFirefoxSvg";
 
 type Delayed = {
   offset: number, 
@@ -278,7 +280,17 @@ export class ApiFileManager {
   private uncompressTGV = (bytes: Uint8Array, fileName: string) => {
     //this.log('uncompressTGS', bytes, bytes.slice().buffer);
     // slice нужен потому что в uint8array - 5053 length, в arraybuffer - 5084
-    return cryptoWorker.invokeCrypto('gzipUncompress', bytes.slice().buffer, false) as Promise<Uint8Array>;
+    const buffer = bytes.slice().buffer;
+    if(IS_FIREFOX) {
+      return cryptoWorker.invokeCrypto('gzipUncompress', buffer, true).then((text) => {
+        return fixFirefoxSvg(text as string);
+      }).then((text) => {
+        const textEncoder = new TextEncoder();
+        return textEncoder.encode(text);
+      });
+    }
+
+    return cryptoWorker.invokeCrypto('gzipUncompress', buffer, false) as Promise<Uint8Array>;
   };
 
   private convertWebp = (bytes: Uint8Array, fileName: string) => {

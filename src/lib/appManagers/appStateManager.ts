@@ -295,6 +295,7 @@ export class AppStateManager extends EventListenerBase<{
   public storage = stateStorage;
 
   public newVersion: string;
+  public oldVersion: string;
 
   constructor() {
     super();
@@ -580,6 +581,7 @@ export class AppStateManager extends EventListenerBase<{
           
           if(compareVersion(state.version, STATE_VERSION) !== 0) {
             this.newVersion = STATE_VERSION;
+            this.oldVersion = state.version;
           }
 
           this.pushToState('version', STATE_VERSION);
