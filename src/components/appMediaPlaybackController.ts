@@ -859,6 +859,22 @@ export class AppMediaPlaybackController {
 
     const wasPlaying = this.pause();
 
+    let onPlay: () => void;
+    if(media) {
+      onPlay = () => {
+        const pip = this.pip;
+        if(pip) {
+          pip.pause();
+        }
+      };
+  
+      if(!media.paused) {
+        onPlay();
+      }
+  
+      media.addEventListener('play', onPlay);
+    }
+
     this.willBePlayed(undefined);
     if(media) this.setMedia(media, message);
     else this.playingMedia = undefined;
@@ -879,6 +895,10 @@ export class AppMediaPlaybackController {
       if(this.playingMedia === media) {
         this.playingMedia = undefined;
         this.playingMediaType = undefined;
+      }
+
+      if(media) {
+        media.removeEventListener('play', onPlay);
       }
 
       // I don't remember what it was for
