@@ -109,9 +109,31 @@ namespace I18n {
 		});
 	}
 
-  export function setTimeFormat(format: State['settings']['timeFormat']) {
-    const haveToUpdate = !!timeFormat && timeFormat !== format;
+  function updateAmPm() {
+    if(timeFormat === 'h12') {
+      try {
+        const dateTimeFormat = getDateTimeFormat({hour: 'numeric', minute: 'numeric', hour12: true});
+        const date = new Date();
+        date.setHours(0);
+        const amText = dateTimeFormat.format(date);
+        amPmCache.am = amText.split(' ')[1];
+        date.setHours(12);
+        const pmText = dateTimeFormat.format(date);
+        amPmCache.pm = pmText.split(' ')[1];
+      } catch(err) {
+        console.error('cannot get am/pm', err);
+        amPmCache = {am: 'AM', pm: 'PM'};
+      }
+    }
+  }
+
+  export function setTimeFormat(
+    format: State['settings']['timeFormat'],
+    haveToUpdate = !!timeFormat && timeFormat !== format
+  ) {
     timeFormat = format;
+
+    updateAmPm();
 
     if(haveToUpdate) {
       cachedDateTimeFormats.clear();
@@ -280,6 +302,7 @@ namespace I18n {
 			rootScope.dispatchEvent('language_change', langPack.lang_code);
 			lastAppliedLangCode = langPack.lang_code;
       cachedDateTimeFormats.clear();
+      updateAmPm();
 		}
 
 		const elements = Array.from(document.querySelectorAll(`.i18n`)) as HTMLElement[];
@@ -414,17 +437,18 @@ namespace I18n {
 
 	export type IntlElementBaseOptions = {
 		element?: HTMLElement,
-		property?: /* 'innerText' |  */'innerHTML' | 'placeholder',
+		property?: 'innerText' | 'innerHTML' | 'placeholder' | 'textContent',
 	};
 
 	abstract class IntlElementBase<Options extends IntlElementBaseOptions> {
 		public element: IntlElementBaseOptions['element'];
-		public property: IntlElementBaseOptions['property'] = 'innerHTML';
+		public property: IntlElementBaseOptions['property'];
 	
 		constructor(options?: Options) {
 			this.element = options?.element || document.createElement('span');
 			this.element.classList.add('i18n');
 			
+      this.property = options?.property;
       if(options && ((options as any as IntlElementOptions).key || (options as any as IntlDateElementOptions).date)) {
         this.update(options);
       }
@@ -442,6 +466,10 @@ namespace I18n {
 	export class IntlElement extends IntlElementBase<IntlElementOptions> {
 		public key: IntlElementOptions['key'];
 		public args: IntlElementOptions['args'];
+
+    constructor(options: IntlElementOptions = {}) {
+      super({...options, property: options.property ?? 'innerHTML'});
+    }
 
 		public update(options?: IntlElementOptions) {
 			safeAssign(this, options);
@@ -480,6 +508,7 @@ namespace I18n {
     return dateTimeFormat;
   }
 
+  export let amPmCache = {am: 'AM', pm: 'PM'};
 	export type IntlDateElementOptions = IntlElementBaseOptions & {
 		date?: Date,
 		options: Intl.DateTimeFormatOptions
@@ -488,15 +517,30 @@ namespace I18n {
 		public date: IntlDateElementOptions['date'];
 		public options: IntlDateElementOptions['options'];
 
+    constructor(options: IntlDateElementOptions) {
+      super({...options, property: options.property ?? 'textContent'});
+    }
+
 		public update(options?: IntlDateElementOptions) {
 			safeAssign(this, options);
 	
-			//var options = { month: 'long', day: 'numeric' };
-			
-			// * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/Locale/hourCycle#adding_an_hour_cycle_via_the_locale_string
-			const dateTimeFormat = getDateTimeFormat(this.options);
-			
-			(this.element as any)[this.property] = capitalizeFirstLetter(dateTimeFormat.format(this.date));
+      let text: string;
+      if(this.options.hour && this.options.minute && Object.keys(this.options).length === 2/*  && false */) {
+        text = ('0' + this.date.getHours()).slice(-2) + ':' + ('0' + this.date.getMinutes()).slice(-2);
+        // if(this.options.second) {
+        //   text += ':' + ('0' + this.date.getSeconds()).slice(-2);
+        // }
+
+        if(timeFormat === 'h12') {
+          text += ' ' + (this.date.getHours() < 12 ? amPmCache.am : amPmCache.pm);
+        }
+      } else {
+        // * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/Locale/hourCycle#adding_an_hour_cycle_via_the_locale_string
+        const dateTimeFormat = getDateTimeFormat(this.options);
+        text = capitalizeFirstLetter(dateTimeFormat.format(this.date));
+      }
+
+      (this.element as any)[this.property] = text;
 		}
 	}
 
