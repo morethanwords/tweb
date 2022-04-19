@@ -526,13 +526,14 @@ namespace I18n {
 	
       let text: string;
       if(this.options.hour && this.options.minute && Object.keys(this.options).length === 2/*  && false */) {
-        text = ('0' + this.date.getHours()).slice(-2) + ':' + ('0' + this.date.getMinutes()).slice(-2);
+        let hours = this.date.getHours();
+        text = ('0' + (timeFormat === 'h12' ? (hours % 12) || 12 : hours)).slice(-2) + ':' + ('0' + this.date.getMinutes()).slice(-2);
         // if(this.options.second) {
         //   text += ':' + ('0' + this.date.getSeconds()).slice(-2);
         // }
 
         if(timeFormat === 'h12') {
-          text += ' ' + (this.date.getHours() < 12 ? amPmCache.am : amPmCache.pm);
+          text += ' ' + (hours < 12 ? amPmCache.am : amPmCache.pm);
         }
       } else {
         // * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Intl/Locale/hourCycle#adding_an_hour_cycle_via_the_locale_string
