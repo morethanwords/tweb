@@ -24,6 +24,7 @@ import appMessagesIdsManager from "./appMessagesIdsManager";
 import assumeType from "../../helpers/assumeType";
 import isObject from "../../helpers/object/isObject";
 import deepEqual from "../../helpers/object/deepEqual";
+import documentFragmentToHTML from "../../helpers/dom/documentFragmentToHTML";
 
 export type MyDraftMessage = DraftMessage.draftMessage;
 
@@ -174,7 +175,7 @@ export class AppDraftsManager {
     const apiEntities = draft.entities || [];
     const totalEntities = RichTextProcessor.mergeEntities(apiEntities.slice(), myEntities); // ! only in this order, otherwise bold and emoji formatting won't work
 
-    draft.rMessage = RichTextProcessor.wrapDraftText(draft.message, {entities: totalEntities});
+    draft.rMessage = documentFragmentToHTML(RichTextProcessor.wrapDraftText(draft.message, {entities: totalEntities}));
     //draft.rReply = appMessagesManager.getRichReplyText(draft);
     if(draft.reply_to_msg_id) {
       draft.reply_to_msg_id = appMessagesIdsManager.generateMessageId(draft.reply_to_msg_id);

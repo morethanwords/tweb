@@ -8,6 +8,7 @@ import IS_PARALLAX_SUPPORTED from "../environment/parallaxSupport";
 import callbackify from "../helpers/callbackify";
 import { copyTextToClipboard } from "../helpers/clipboard";
 import replaceContent from "../helpers/dom/replaceContent";
+import setInnerHTML from "../helpers/dom/setInnerHTML";
 import ListenerSetter from "../helpers/listenerSetter";
 import { fastRaf } from "../helpers/schedulers";
 import { Chat, ChatFull, User } from "../layer";
@@ -31,9 +32,9 @@ import Scrollable from "./scrollable";
 import { SettingSection, generateDelimiter } from "./sidebarLeft";
 import { toast } from "./toast";
 
-let setText = (text: string, row: Row) => {
+let setText = (text: Parameters<typeof setInnerHTML>[1], row: Row) => {
   //fastRaf(() => {
-    row.title.innerHTML = text || '';
+    setInnerHTML(row.title, text || '');
     row.container.style.display = text ? '' : 'none';
   //});
 };

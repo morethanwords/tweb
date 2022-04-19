@@ -16,6 +16,7 @@ import type { AppChatsManager } from "../../lib/appManagers/appChatsManager";
 import type { AppProfileManager } from "../../lib/appManagers/appProfileManager";
 import type { AppDraftsManager } from "../../lib/appManagers/appDraftsManager";
 import type { AppMessagesIdsManager } from "../../lib/appManagers/appMessagesIdsManager";
+import type { AppWebPagesManager } from "../../lib/appManagers/appWebPagesManager";
 import type Chat from "./chat";
 import { CHAT_ANIMATION_GROUP } from "../../lib/appManagers/appImManager";
 import { IS_TOUCH_SUPPORTED } from "../../environment/touchSupport";
@@ -98,9 +99,6 @@ import findAndSplice from "../../helpers/array/findAndSplice";
 import getViewportSlice from "../../helpers/dom/getViewportSlice";
 import SuperIntersectionObserver from "../../helpers/dom/superIntersectionObserver";
 import generateFakeIcon from "../generateFakeIcon";
-import selectElementContents from "../../helpers/dom/selectElementContents";
-import cancelSelection from "../../helpers/dom/cancelSelection";
-import SelectionSaver from "../../helpers/selectionSaver";
 import copyFromElement from "../../helpers/dom/copyFromElement";
 
 const USE_MEDIA_TAILS = false;
@@ -230,7 +228,8 @@ export default class ChatBubbles {
     private appDraftsManager: AppDraftsManager,
     private appMessagesIdsManager: AppMessagesIdsManager,
     private appChatsManager: AppChatsManager,
-    private appReactionsManager: AppReactionsManager
+    private appReactionsManager: AppReactionsManager,
+    private appWebPagesManager: AppWebPagesManager
   ) {
     //this.chat.log.error('Bubbles construction');
     
@@ -3133,7 +3132,7 @@ export default class ChatBubbles {
             let attachmentDiv = document.createElement('div');
             attachmentDiv.classList.add('attachment');
             
-            attachmentDiv.innerHTML = richText;
+            setInnerHTML(attachmentDiv, richText);
             
             bubble.classList.add('emoji-' + emojiEntities.length + 'x');
             
@@ -3259,7 +3258,11 @@ export default class ChatBubbles {
           }
           
           buttonEl.classList.add('reply-markup-button', 'rp');
-          buttonEl.insertAdjacentHTML('beforeend', text);
+          if(typeof(text) === 'string') {
+            buttonEl.insertAdjacentHTML('beforeend', text);
+          } else {
+            buttonEl.append(text);
+          }
 
           ripple(buttonEl);
 
@@ -3477,20 +3480,22 @@ export default class ChatBubbles {
             t = a;
           }
 
-          if(webpage.rTitle) {
+          const title = this.appWebPagesManager.wrapTitle(webpage);
+          if(title.textContent) {
             let titleDiv = document.createElement('div');
             titleDiv.classList.add('title');
             const strong = document.createElement('strong');
-            setInnerHTML(strong, webpage.rTitle);
+            setInnerHTML(strong, title);
             titleDiv.append(strong);
             quoteTextDiv.append(titleDiv);
             t = titleDiv;
           }
 
-          if(webpage.rDescription) {
+          const description = this.appWebPagesManager.wrapDescription(webpage);
+          if(description.textContent) {
             let textDiv = document.createElement('div');
             textDiv.classList.add('text');
-            setInnerHTML(textDiv, webpage.rDescription);
+            setInnerHTML(textDiv, description);
             quoteTextDiv.append(textDiv);
             t = textDiv;
           }
@@ -3738,15 +3743,23 @@ export default class ChatBubbles {
 
           processingWebPage = true;
 
-          const texts = [];
-          if(contact.first_name) texts.push(RichTextProcessor.wrapEmojiText(contact.first_name));
-          if(contact.last_name) texts.push(RichTextProcessor.wrapEmojiText(contact.last_name));
+          const contactDetails = document.createElement('div');
+          contactDetails.className = 'contact-details';
+          const contactNameDiv = document.createElement('div');
+          contactNameDiv.className = 'contact-name';
+          contactNameDiv.append(
+            RichTextProcessor.wrapEmojiText([
+              contact.first_name,
+              contact.last_name
+            ].filter(Boolean).join(' '))
+          );
 
-          contactDiv.innerHTML = `
-            <div class="contact-details">
-              <div class="contact-name">${texts.join(' ')}</div>
-              <div class="contact-number">${contact.phone_number ? '+' + formatPhoneNumber(contact.phone_number).formatted : 'Unknown phone number'}</div>
-            </div>`;
+          const contactNumberDiv = document.createElement('div');
+          contactNumberDiv.className = 'contact-number';
+          contactNumberDiv.textContent = contact.phone_number ? '+' + formatPhoneNumber(contact.phone_number).formatted : 'Unknown phone number';
+
+          contactDiv.append(contactDetails);
+          contactDetails.append(contactNameDiv, contactNumberDiv);
 
           const avatarElem = new AvatarElement();
           avatarElem.updateWithOptions({
@@ -3823,7 +3836,7 @@ export default class ChatBubbles {
       if(isHidden) {
         ///////this.log('message to render hidden', message);
         title = document.createElement('span');
-        title.innerHTML = RichTextProcessor.wrapEmojiText(fwdFrom.from_name);
+        setInnerHTML(title, RichTextProcessor.wrapEmojiText(fwdFrom.from_name));
         title.classList.add('peer-title');
         //title = fwdFrom.from_name;
         bubble.classList.add('hidden-profile');

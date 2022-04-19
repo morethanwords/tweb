@@ -25,6 +25,7 @@ import GifsMasonry from "../gifsMasonry";
 import { SuperStickerRenderer } from "../emoticonsDropdown/tabs/stickers";
 import mediaSizes from "../../helpers/mediaSizes";
 import readBlobAsDataURL from "../../helpers/blob/readBlobAsDataURL";
+import setInnerHTML from "../../helpers/dom/setInnerHTML";
 
 const ANIMATION_GROUP = 'INLINE-HELPER';
 // const GRID_ITEMS = 5;
@@ -131,18 +132,18 @@ export default class InlineHelper extends AutocompleteHelper {
 
         if(!isGallery) {
           preview.classList.add('empty');
-          preview.innerHTML = RichTextProcessor.wrapEmojiText([...item.title.trim()][0]);
+          setInnerHTML(preview, RichTextProcessor.wrapEmojiText([...item.title.trim()][0]));
 
           const title = document.createElement('div');
           title.classList.add('inline-helper-result-title');
-          title.innerHTML = RichTextProcessor.wrapEmojiText(item.title);
+          setInnerHTML(title, RichTextProcessor.wrapEmojiText(item.title));
     
           const description = document.createElement('div');
           description.classList.add('inline-helper-result-description');
-          description.innerHTML = RichTextProcessor.wrapRichText(item.description, {
+          setInnerHTML(description, RichTextProcessor.wrapRichText(item.description, {
             noCommands: true,
             noLinks: true
-          });
+          }));
     
           container.append(title, description);
   
@@ -239,7 +240,7 @@ export default class InlineHelper extends AutocompleteHelper {
         parent.textContent = '';
         if(botResults.switch_pm) {
           const btnSwitchToPM = Button('btn-primary btn-secondary btn-primary-transparent primary');
-          btnSwitchToPM.insertAdjacentHTML('beforeend', RichTextProcessor.wrapEmojiText(botResults.switch_pm.text));
+          setInnerHTML(btnSwitchToPM, RichTextProcessor.wrapEmojiText(botResults.switch_pm.text));
           attachClickEvent(btnSwitchToPM, (e) => {
             this.appInlineBotsManager.switchToPM(peerId, peer.id, botResults.switch_pm.start_param);
           });

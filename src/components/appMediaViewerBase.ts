@@ -1165,7 +1165,7 @@ export default class AppMediaViewerBase<
       }).element;
     } else {
       title = document.createElement('span');
-      title.innerHTML = RichTextProcessor.wrapEmojiText(fromId);
+      title.append(RichTextProcessor.wrapEmojiText(fromId));
       title.classList.add('peer-title');
     }
 

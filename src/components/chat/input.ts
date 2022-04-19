@@ -93,6 +93,7 @@ import ChatBotCommands from './botCommands';
 import copy from '../../helpers/object/copy';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
 import toHHMMSS from '../../helpers/string/toHHMMSS';
+import documentFragmentToHTML from '../../helpers/dom/documentFragmentToHTML';
 
 const RECORD_MIN_TIME = 500;
 const POSTING_MEDIA_NOT_ALLOWED = 'Posting media content isn\'t allowed in this group.';
@@ -2053,7 +2054,7 @@ export default class ChatInput {
 
     //const saveExecuted = this.prepareDocumentExecute();
     // can't exec .value here because it will instantly check for autocomplete
-    const value = RichTextProcessor.wrapDraftText(newValue, {entities});
+    const value = documentFragmentToHTML(RichTextProcessor.wrapDraftText(newValue, {entities}));
     this.messageInputField.setValueSilently(value, true);
 
     const caret = this.messageInput.querySelector('.composer-sel');
@@ -2615,7 +2616,7 @@ export default class ChatInput {
   public initMessageEditing(mid: number) {
     const message: Message.message = this.chat.getMessage(mid);
 
-    let input = RichTextProcessor.wrapDraftText(message.message, {entities: message.totalEntities});
+    let input = documentFragmentToHTML(RichTextProcessor.wrapDraftText(message.message, {entities: message.totalEntities}));
     const f = () => {
       const replyFragment = this.appMessagesManager.wrapMessageForReply(message, undefined, [message.mid]);
       this.setTopInfo('edit', f, i18n('AccDescrEditing'), replyFragment, input, message);

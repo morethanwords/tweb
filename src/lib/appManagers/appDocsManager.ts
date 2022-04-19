@@ -105,13 +105,10 @@ export class AppDocsManager {
       switch(attribute._) {
         case 'documentAttributeFilename':
           doc.file_name = RichTextProcessor.wrapPlainText(attribute.file_name);
-          doc.fileName = RichTextProcessor.wrapEmojiText(attribute.file_name);
           break;
 
         case 'documentAttributeAudio':
           doc.duration = attribute.duration;
-          doc.audioTitle = RichTextProcessor.wrapEmojiText(attribute.title);
-          doc.audioPerformer = RichTextProcessor.wrapEmojiText(attribute.performer);
           doc.type = attribute.pFlags.voice && doc.mime_type === 'audio/ogg' ? 'voice' : 'audio';
           /* if(apiDoc.type === 'audio') {
             apiDoc.supportsStreaming = true;
@@ -133,7 +130,6 @@ export class AppDocsManager {
         case 'documentAttributeSticker':
           if(attribute.alt !== undefined) {
             doc.stickerEmojiRaw = attribute.alt;
-            doc.stickerEmoji = RichTextProcessor.wrapRichText(doc.stickerEmojiRaw, {noLinks: true, noLinebreaks: true});
           }
 
           if(attribute.stickerset) {
@@ -210,7 +206,7 @@ export class AppDocsManager {
 
     if(doc.type === 'voice' || doc.type === 'round') {
       // browser will identify extension
-      doc.file_name = doc.fileName = doc.type + '_' + getFullDate(new Date(doc.date * 1000), {monthAsNumber: true, leadingZero: true}).replace(/[:\.]/g, '-').replace(', ', '_');
+      doc.file_name = doc.type + '_' + getFullDate(new Date(doc.date * 1000), {monthAsNumber: true, leadingZero: true}).replace(/[:\.]/g, '-').replace(', ', '_');
     }
 
     if(apiManager.isServiceWorkerOnline()) {
@@ -229,7 +225,7 @@ export class AppDocsManager {
     // doc.url = ''; // * this will break upload urls
     
     if(!doc.file_name) {
-      doc.file_name = doc.fileName = '';
+      doc.file_name = '';
     }
 
     if(doc.mime_type === 'application/x-tgsticker' && doc.file_name === 'AnimatedSticker.tgs') {

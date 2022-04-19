@@ -71,23 +71,7 @@ export class AppWebPagesManager {
         delete apiWebPage.site_name;
       }
 
-      shortTitle = limitSymbols(shortTitle, 80, 100);
-
-      apiWebPage.rTitle = RichTextProcessor.wrapRichText(shortTitle, {noLinks: true, noLinebreaks: true});
-      let contextHashtag = '';
-      if(siteName === 'GitHub') {
-        const matches = apiWebPage.url.match(/(https?:\/\/github\.com\/[^\/]+\/[^\/]+)/);
-        if(matches) {
-          contextHashtag = matches[0] + '/issues/{1}';
-        }
-      }
-
       // delete apiWebPage.description
-      const shortDescriptionText = limitSymbols(apiWebPage.description || '', 150, 180);
-      apiWebPage.rDescription = RichTextProcessor.wrapRichText(shortDescriptionText, {
-        contextSite: siteName || 'external',
-        contextHashtag: contextHashtag
-      });
 
       if(!photoTypeSet.has(apiWebPage.type) &&
         !apiWebPage.description &&
@@ -126,6 +110,28 @@ export class AppWebPagesManager {
     }
 
     return apiWebPage;
+  }
+
+  public wrapTitle(webPage: WebPage.webPage) {
+    let shortTitle = webPage.title || webPage.author || webPage.site_name || '';
+    shortTitle = limitSymbols(shortTitle, 80, 100);
+    return RichTextProcessor.wrapRichText(shortTitle, {noLinks: true, noLinebreaks: true});
+  }
+
+  public wrapDescription(webPage: WebPage.webPage) {
+    const shortDescriptionText = limitSymbols(webPage.description || '', 150, 180);
+    // const siteName = webPage.site_name;
+    // let contextHashtag = '';
+    // if(siteName === 'GitHub') {
+    //   const matches = apiWebPage.url.match(/(https?:\/\/github\.com\/[^\/]+\/[^\/]+)/);
+    //   if(matches) {
+    //     contextHashtag = matches[0] + '/issues/{1}';
+    //   }
+    // }
+    return RichTextProcessor.wrapRichText(shortDescriptionText/* , {
+      contextSite: siteName || 'external',
+      contextHashtag: contextHashtag
+    } */);
   }
 
   public getMessageKeyForPendingWebPage(peerId: PeerId, mid: number, isScheduled?: boolean): WebPageMessageKey {

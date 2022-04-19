@@ -13,6 +13,7 @@ import appUsersManager from "../lib/appManagers/appUsersManager";
 import RichTextProcessor from "../lib/richtextprocessor";
 import { NULL_PEER_ID } from "../lib/mtproto/mtproto_config";
 import limitSymbols from "../helpers/string/limitSymbols";
+import setInnerHTML from "../helpers/dom/setInnerHTML";
 
 export type PeerTitleOptions = {
   peerId?: PeerId,
@@ -73,7 +74,7 @@ export default class PeerTitle {
         fromName = limitSymbols(fromName, this.limitSymbols, this.limitSymbols);
       }
 
-      this.element.innerHTML = RichTextProcessor.wrapEmojiText(fromName);
+      setInnerHTML(this.element, RichTextProcessor.wrapEmojiText(fromName));
       return;
     }
 
@@ -85,7 +86,7 @@ export default class PeerTitle {
       if(this.peerId.isUser() && appUsersManager.getUser(this.peerId).pFlags.deleted) {
         replaceContent(this.element, i18n(this.onlyFirstName ? 'Deleted' : 'HiddenName'));
       } else {
-        this.element.innerHTML = appPeersManager.getPeerTitle(this.peerId, this.plainText, this.onlyFirstName, this.limitSymbols);
+        setInnerHTML(this.element, appPeersManager.getPeerTitle(this.peerId, this.plainText, this.onlyFirstName, this.limitSymbols));
       }
     } else {
       replaceContent(this.element, i18n(this.onlyFirstName ? 'Saved' : 'SavedMessages'));

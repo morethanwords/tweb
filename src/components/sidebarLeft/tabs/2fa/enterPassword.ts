@@ -10,6 +10,7 @@ import cancelEvent from "../../../../helpers/dom/cancelEvent";
 import { canFocus } from "../../../../helpers/dom/canFocus";
 import { attachClickEvent } from "../../../../helpers/dom/clickEvent";
 import replaceContent from "../../../../helpers/dom/replaceContent";
+import setInnerHTML from "../../../../helpers/dom/setInnerHTML";
 import { AccountPassword } from "../../../../layer";
 import I18n, { i18n } from "../../../../lib/langPack";
 import passwordManager from "../../../../lib/mtproto/passwordManager";
@@ -92,7 +93,7 @@ export default class AppTwoStepVerificationEnterPasswordTab extends SliderSuperT
           this.state = _state;
   
           if(this.state.hint) {
-            passwordInputField.label.innerHTML = RichTextProcessor.wrapEmojiText(this.state.hint);
+            setInnerHTML(passwordInputField.label, RichTextProcessor.wrapEmojiText(this.state.hint));
           } else {
             replaceContent(passwordInputField.label, i18n('LoginPassword'));
           }

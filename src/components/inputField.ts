@@ -5,10 +5,12 @@
  */
 
 import simulateEvent from "../helpers/dom/dispatchEvent";
+import documentFragmentToHTML from "../helpers/dom/documentFragmentToHTML";
 import findUpAttribute from "../helpers/dom/findUpAttribute";
 import getRichValue from "../helpers/dom/getRichValue";
 import isInputEmpty from "../helpers/dom/isInputEmpty";
 import selectElementContents from "../helpers/dom/selectElementContents";
+import setInnerHTML from "../helpers/dom/setInnerHTML";
 import { MessageEntity } from "../layer";
 import { i18n, LangPackKey, _i18n } from "../lib/langPack";
 import RichTextProcessor from "../lib/richtextprocessor";
@@ -71,7 +73,8 @@ let init = () => {
       entities = entities.filter(e => e._ === 'messageEntityEmoji' || e._ === 'messageEntityLinebreak');
     }
 
-    text = RichTextProcessor.wrapDraftText(text, {entities});
+    const fragment = RichTextProcessor.wrapDraftText(text, {entities});
+    text = documentFragmentToHTML(fragment);
     
     window.document.execCommand('insertHTML', false, text);
   });
@@ -106,7 +109,7 @@ export type InputFieldOptions = {
   placeholder?: LangPackKey, 
   label?: LangPackKey, 
   labelOptions?: any[],
-  labelText?: string,
+  labelText?: string | DocumentFragment,
   name?: string, 
   maxLength?: number, 
   showLengthOn?: number,
@@ -266,7 +269,7 @@ class InputField {
   public setLabel() {
     this.label.textContent = '';
     if(this.options.labelText) {
-      this.label.innerHTML = this.options.labelText;
+      setInnerHTML(this.label, this.options.labelText);
     } else {
       this.label.append(i18n(this.options.label, this.options.labelOptions));
     }
@@ -345,7 +348,7 @@ class InputField {
 
   public setDraftValue(value = '', silent = false) {
     if(!this.options.plainText) {
-      value = RichTextProcessor.wrapDraftText(value);
+      value = documentFragmentToHTML(RichTextProcessor.wrapDraftText(value));
     }
 
     if(silent) {

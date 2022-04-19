@@ -4,8 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-export default function htmlToSpan(html: string) {
+export default function htmlToSpan(html: string | DocumentFragment) {
   const span = document.createElement('span');
-  span.innerHTML = html;
+  if(typeof(html) === 'string') span.innerHTML = html;
+  else span.append(html);
   return span;
 }

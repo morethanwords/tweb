@@ -56,6 +56,8 @@ import escapeRegExp from "../helpers/string/escapeRegExp";
 import limitSymbols from "../helpers/string/limitSymbols";
 import findAndSplice from "../helpers/array/findAndSplice";
 import { ScrollStartCallbackDimensions } from "../helpers/fastSmoothScroll";
+import setInnerHTML from "../helpers/dom/setInnerHTML";
+import appWebPagesManager from "../lib/appManagers/appWebPagesManager";
 
 //const testScroll = false;
 
@@ -699,7 +701,6 @@ export default class AppSearchSuper {
 
       if(!same) {
         webpage.description = message.message;
-        webpage.rDescription = RichTextProcessor.wrapRichText(limitSymbols(message.message, 150, 180));
       }
     }
 
@@ -724,13 +725,12 @@ export default class AppSearchSuper {
       });
     } else {
       previewDiv.classList.add('empty');
-      previewDiv.innerHTML = RichTextProcessor.getAbbreviation(webpage.title || webpage.display_url || webpage.description || webpage.url, true);
+      setInnerHTML(previewDiv, RichTextProcessor.getAbbreviation(webpage.title || webpage.display_url || webpage.description || webpage.url, true));
     }
     
-    let title = webpage.rTitle || '';
-    let subtitle = webpage.rDescription || '';
+    let title = appWebPagesManager.wrapTitle(webpage);
 
-    const subtitleFragment = htmlToDocumentFragment(subtitle);
+    const subtitleFragment = appWebPagesManager.wrapDescription(webpage);
     const aFragment = htmlToDocumentFragment(RichTextProcessor.wrapRichText(webpage.url || ''));
     const a = aFragment.firstElementChild;
     if(a instanceof HTMLAnchorElement) {
@@ -751,9 +751,9 @@ export default class AppSearchSuper {
       subtitleFragment.append('\n', appMessagesManager.wrapSenderToPeer(message));
     }
     
-    if(!title) {
+    if(!title.textContent) {
       //title = new URL(webpage.url).hostname;
-      title = RichTextProcessor.wrapPlainText(webpage.display_url.split('/', 1)[0]);
+      title.append(RichTextProcessor.wrapPlainText(webpage.display_url.split('/', 1)[0]));
     }
 
     const row = new Row({

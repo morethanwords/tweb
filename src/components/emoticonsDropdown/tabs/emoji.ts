@@ -32,7 +32,7 @@ export function appendEmoji(emoji: string, container: HTMLElement, prepend = fal
   const spanEmoji = document.createElement('span');
   spanEmoji.classList.add('super-emoji');
 
-  let kek: string;
+  let kek: DocumentFragment;
   if(unify && !IS_EMOJI_SUPPORTED) {
     kek = RichTextProcessor.wrapSingleEmoji(emoji);
   } else {
@@ -47,7 +47,7 @@ export function appendEmoji(emoji: string, container: HTMLElement, prepend = fal
 
   //console.log(kek);
 
-  spanEmoji.innerHTML = kek;
+  spanEmoji.append(kek);
 
   if(spanEmoji.children.length > 1) {
     const first = spanEmoji.firstElementChild;

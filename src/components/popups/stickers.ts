@@ -21,6 +21,7 @@ import findUpClassName from "../../helpers/dom/findUpClassName";
 import toggleDisability from "../../helpers/dom/toggleDisability";
 import { attachClickEvent } from "../../helpers/dom/clickEvent";
 import { toastNew } from "../toast";
+import setInnerHTML from "../../helpers/dom/setInnerHTML";
 
 const ANIMATION_GROUP = 'STICKERS-POPUP';
 
@@ -98,7 +99,7 @@ export default class PopupStickers extends PopupElement {
 
       animationIntersector.setOnlyOnePlayableGroup(ANIMATION_GROUP);
 
-      this.h6.innerHTML = RichTextProcessor.wrapEmojiText(set.set.title);
+      setInnerHTML(this.h6, RichTextProcessor.wrapEmojiText(set.set.title));
       this.stickersFooter.classList.toggle('add', !set.set.installed_date);
 
       let button: HTMLElement;

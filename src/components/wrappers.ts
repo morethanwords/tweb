@@ -59,6 +59,7 @@ import { ChatAutoDownloadSettings } from '../helpers/autoDownload';
 import formatBytes from '../helpers/formatBytes';
 import toHHMMSS from '../helpers/string/toHHMMSS';
 import createVideo from '../helpers/dom/createVideo';
+import setInnerHTML from '../helpers/dom/setInnerHTML';
 
 const MAX_VIDEO_AUTOPLAY_SIZE = 50 * 1024 * 1024; // 50 MB
 
@@ -652,7 +653,7 @@ export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showS
   }
 
   //let fileName = stringMiddleOverflow(doc.file_name || 'Unknown.file', 26);
-  let fileName = doc.fileName || 'Unknown.file';
+  let fileName = doc.file_name ? RichTextProcessor.wrapPlainText(doc.file_name) : 'Unknown.file';
   const descriptionEl = document.createElement('div');
   descriptionEl.classList.add('document-description');
   const descriptionParts: (HTMLElement | string | DocumentFragment)[] = [formatBytes(doc.size)];
@@ -675,7 +676,8 @@ export function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showS
   const middleEllipsisEl = new MiddleEllipsisElement();
   middleEllipsisEl.dataset.fontWeight = '' + fontWeight;
   middleEllipsisEl.dataset.sizeType = sizeType;
-  middleEllipsisEl.innerHTML = fileName;
+  middleEllipsisEl.textContent = fileName;
+  // setInnerHTML(middleEllipsisEl, fileName);
 
   nameDiv.append(middleEllipsisEl);
 
@@ -2082,7 +2084,7 @@ export function wrapGroupedDocuments({albumMustBeRenderedFull, message, bubble, 
         entities: message.totalEntities
       });
 
-      messageDiv.innerHTML = richText;
+      setInnerHTML(messageDiv, richText);
       wrapper.append(messageDiv);
     }
 

@@ -18,10 +18,10 @@ import PeerTitle from "../peerTitle";
 import { i18n } from "../../lib/langPack";
 import { formatFullSentTime } from "../../helpers/date";
 import ButtonIcon from "../buttonIcon";
-import { MyDocument } from "../../lib/appManagers/appDocsManager";
-import { Message } from "../../layer";
+import { DocumentAttribute } from "../../layer";
 import MediaProgressLine from "../mediaProgressLine";
 import VolumeSelector from "../volumeSelector";
+import RichTextProcessor from "../../lib/richtextprocessor";
 
 export default class ChatAudio extends PinnedContainer {
   private toggleEl: HTMLElement;
@@ -149,7 +149,7 @@ export default class ChatAudio extends PinnedContainer {
   };
   
   private onMediaPlay = ({doc, message, media, playbackParams}: ReturnType<AppMediaPlaybackController['getPlayingDetails']>) => {
-    let title: string | HTMLElement, subtitle: string | HTMLElement | DocumentFragment;
+    let title: string | HTMLElement | DocumentFragment, subtitle: string | HTMLElement | DocumentFragment;
     const isMusic = doc.type !== 'voice' && doc.type !== 'round';
     if(!isMusic) {
       title = new PeerTitle({peerId: message.fromId, fromName: message.fwd_from?.from_name}).element;
@@ -157,8 +157,9 @@ export default class ChatAudio extends PinnedContainer {
       //subtitle = 'Voice message';
       subtitle = formatFullSentTime(message.date);
     } else {
-      title = doc.audioTitle || doc.fileName;
-      subtitle = doc.audioPerformer || i18n('AudioUnknownArtist');
+      const audioAttribute = doc.attributes.find((attr) => attr._ === 'documentAttributeAudio') as DocumentAttribute.documentAttributeAudio;
+      title = RichTextProcessor.wrapEmojiText(audioAttribute?.title ?? doc.file_name);
+      subtitle = audioAttribute?.performer ? RichTextProcessor.wrapEmojiText(audioAttribute.performer) : i18n('AudioUnknownArtist');
     }
 
     this.fasterEl.classList.toggle('hide', isMusic);

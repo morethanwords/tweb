@@ -33,7 +33,7 @@ export default class Row {
     radioField: Row['radioField'],
     checkboxField: Row['checkboxField'],
     noCheckboxSubtitle: boolean,
-    title: string | HTMLElement,
+    title: string | HTMLElement | DocumentFragment,
     titleLangKey: LangPackKey,
     titleRight: string | HTMLElement,
     titleRightSecondary: string | HTMLElement,

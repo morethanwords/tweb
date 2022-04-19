@@ -236,7 +236,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
 
   private setCaption(message: MyMessage) {
     const caption = (message as Message.message).message;
-    let html = '';
+    let html: Parameters<typeof setInnerHTML>[1] = '';
     if(caption) {
       html = RichTextProcessor.wrapRichText(caption, {
         entities: (message as Message.message).totalEntities

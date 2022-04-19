@@ -144,8 +144,6 @@ export class AppChatsManager {
       return;
     }
 
-    chat.initials = RichTextProcessor.getAbbreviation(chat.title);
-
     if(chat._ === 'channel' &&
         chat.participants_count === undefined &&
         oldChat !== undefined &&

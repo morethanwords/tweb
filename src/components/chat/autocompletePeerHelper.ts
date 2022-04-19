@@ -4,6 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import setInnerHTML from "../../helpers/dom/setInnerHTML";
 import RichTextProcessor from "../../lib/richtextprocessor";
 import AvatarElement from "../avatar";
 import PeerTitle from "../peerTitle";
@@ -106,7 +107,7 @@ export default class AutocompletePeerHelper extends AutocompleteHelper {
         plainText: false
       }).element);
     } else {
-      name.innerHTML = RichTextProcessor.wrapEmojiText(options.name);
+      setInnerHTML(name, RichTextProcessor.wrapEmojiText(options.name));
     }
   
     div.append(avatar, name);
@@ -114,7 +115,7 @@ export default class AutocompletePeerHelper extends AutocompleteHelper {
     if(options.description) {
       const description = document.createElement('div');
       description.classList.add(BASE + '-description', options.className + '-description');
-      description.innerHTML = RichTextProcessor.wrapEmojiText(options.description);
+      setInnerHTML(description, RichTextProcessor.wrapEmojiText(options.description));
       div.append(description);
     }
   

@@ -18,6 +18,7 @@ import cancelEvent from "../../helpers/dom/cancelEvent";
 import { getHeavyAnimationPromise } from "../../hooks/useHeavyAnimationCheck";
 import confirmationPopup from "../confirmationPopup";
 import safeAssign from "../../helpers/object/safeAssign";
+import setInnerHTML from "../../helpers/dom/setInnerHTML";
 
 export default class ReplyKeyboard extends DropdownHover {
   private static BASE_CLASS = 'reply-keyboard';
@@ -141,7 +142,7 @@ export default class ReplyKeyboard extends DropdownHover {
       for(const button of row.buttons) {
         const btn = document.createElement('button');
         btn.classList.add(ReplyKeyboard.BASE_CLASS + '-button', 'btn');
-        btn.innerHTML = RichTextProcessor.wrapEmojiText(button.text);
+        setInnerHTML(btn, RichTextProcessor.wrapEmojiText(button.text));
         btn.dataset.text = button.text;
         btn.dataset.type = button._;
         div.append(btn);

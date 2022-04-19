@@ -19,7 +19,6 @@ import appDownloadManager from "../../lib/appManagers/appDownloadManager";
 import calcImageInBox from "../../helpers/calcImageInBox";
 import placeCaretAtEnd from "../../helpers/dom/placeCaretAtEnd";
 import rootScope from "../../lib/rootScope";
-import RichTextProcessor from "../../lib/richtextprocessor";
 import { MediaSize } from "../../helpers/mediaSizes";
 import { attachClickEvent } from "../../helpers/dom/clickEvent";
 import MEDIA_MIME_TYPES_SUPPORTED from '../../environment/mediaMimeTypesSupport';
@@ -358,7 +357,6 @@ export default class PopupNewMedia extends PopupElement {
       _: 'document',
       file: file,
       file_name: file.name || '',
-      fileName: file.name ? RichTextProcessor.wrapEmojiText(file.name) : '',
       size: file.size,
       type: isPhoto ? 'photo' : 'doc'
     } as MyDocument;

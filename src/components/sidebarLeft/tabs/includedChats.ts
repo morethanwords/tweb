@@ -21,6 +21,7 @@ import { toast } from "../../toast";
 import appPeersManager from "../../../lib/appManagers/appPeersManager";
 import copy from "../../../helpers/object/copy";
 import forEachReverse from "../../../helpers/array/forEachReverse";
+import setInnerHTML from "../../../helpers/dom/setInnerHTML";
 
 export default class AppIncludedChatsTab extends SliderSuperTab {
   private editFolderTab: AppEditFolderTab;
@@ -149,7 +150,7 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
       this.dialogsByFilters.forEach((dialogs, filter) => {
         if(dialogs.has(peerId)) {
           const span = document.createElement('span');
-          span.innerHTML = RichTextProcessor.wrapEmojiText(filter.title);
+          setInnerHTML(span, RichTextProcessor.wrapEmojiText(filter.title));
           foundInFilters.push(span);
         }
       });

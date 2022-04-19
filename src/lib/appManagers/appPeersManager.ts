@@ -74,7 +74,10 @@ export class AppPeersManager {
     return false;
   }
 
-  public getPeerTitle(peerId: PeerId, plainText = false, onlyFirstName = false, _limitSymbols?: number) {
+  public getPeerTitle(peerId: PeerId, plainText: true, onlyFirstName?: boolean, _limitSymbols?: number): string;
+  public getPeerTitle(peerId: PeerId, plainText?: false, onlyFirstName?: boolean, _limitSymbols?: number): DocumentFragment;
+  public getPeerTitle(peerId: PeerId, plainText: boolean, onlyFirstName?: boolean, _limitSymbols?: number): DocumentFragment | string;
+  public getPeerTitle(peerId: PeerId, plainText = false, onlyFirstName = false, _limitSymbols?: number): DocumentFragment | string {
     if(!peerId) {
       peerId = rootScope.myId;
     }
@@ -131,6 +134,13 @@ export class AppPeersManager {
     return peerId.isUser()
       ? appUsersManager.getUser(peerId.toUserId())
       : appChatsManager.getChat(peerId.toChatId());
+  }
+
+  public getPeerInitials(peerId: PeerId) {
+    const peer: Chat | User = this.getPeer(peerId);
+    return RichTextProcessor.getAbbreviation(
+      (peer as Chat.chat).title ?? [(peer as User.user).first_name, (peer as User.user).last_name].filter(Boolean).join(' ')
+    );
   }
 
   public getPeerId(peerId: {user_id: UserId} | {channel_id: ChatId} | {chat_id: ChatId} | InputPeer | PeerId | string): PeerId {

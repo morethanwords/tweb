@@ -511,7 +511,6 @@ export namespace User {
 		restriction_reason?: Array<RestrictionReason>,
 		bot_inline_placeholder?: string,
 		lang_code?: string,
-		initials?: string,
 		sortName?: string
 	};
 }
@@ -601,15 +600,13 @@ export namespace Chat {
 		version: number,
 		migrated_to?: InputChannel,
 		admin_rights?: ChatAdminRights,
-		default_banned_rights?: ChatBannedRights,
-		initials?: string
+		default_banned_rights?: ChatBannedRights
 	};
 
 	export type chatForbidden = {
 		_: 'chatForbidden',
 		id: string | number,
-		title: string,
-		initials?: string
+		title: string
 	};
 
 	export type channel = {
@@ -646,8 +643,7 @@ export namespace Chat {
 		admin_rights?: ChatAdminRights,
 		banned_rights?: ChatBannedRights,
 		default_banned_rights?: ChatBannedRights,
-		participants_count?: number,
-		initials?: string
+		participants_count?: number
 	};
 
 	export type channelForbidden = {
@@ -660,8 +656,7 @@ export namespace Chat {
 		id: string | number,
 		access_hash: string | number,
 		title: string,
-		until_date?: number,
-		initials?: string
+		until_date?: number
 	};
 }
 
@@ -3281,13 +3276,9 @@ export namespace Document {
 		h?: number,
 		w?: number,
 		file_name?: string,
-		fileName?: string,
 		file?: File,
 		duration?: number,
-		audioTitle?: string,
-		audioPerformer?: string,
 		sticker?: 1 | 2 | 3,
-		stickerEmoji?: string,
 		stickerEmojiRaw?: string,
 		stickerSetInput?: InputStickerSet.inputStickerSetID,
 		pFlags?: Partial<{
@@ -3788,9 +3779,7 @@ export namespace WebPage {
 		author?: string,
 		document?: Document,
 		cached_page?: Page,
-		attributes?: Array<WebPageAttribute>,
-		rTitle?: string,
-		rDescription?: string
+		attributes?: Array<WebPageAttribute>
 	};
 
 	export type webPageNotModified = {
@@ -7632,8 +7621,6 @@ export namespace Poll {
 		answers: Array<PollAnswer>,
 		close_period?: number,
 		close_date?: number,
-		rQuestion?: string,
-		rReply?: string,
 		chosenIndexes?: number[]
 	};
 }

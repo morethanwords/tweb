@@ -151,7 +151,7 @@ export default class StickersTab implements EmoticonsTab {
 
   private superStickerRenderer: SuperStickerRenderer;
 
-  categoryPush(categoryDiv: HTMLElement, categoryTitle: string = '', promise: Promise<MyDocument[]>, prepend?: boolean) {
+  categoryPush(categoryDiv: HTMLElement, categoryTitle: DocumentFragment | string = '', promise: Promise<MyDocument[]>, prepend?: boolean) {
     //if((docs.length % 5) !== 0) categoryDiv.classList.add('not-full');
 
     const itemsDiv = document.createElement('div');
@@ -161,7 +161,8 @@ export default class StickersTab implements EmoticonsTab {
     titleDiv.classList.add('category-title');
 
     if(categoryTitle) {
-      titleDiv.innerHTML = categoryTitle;
+      if(typeof(categoryTitle) === 'string') titleDiv.innerHTML = categoryTitle;
+      else titleDiv.append(categoryTitle);
     }
 
     categoryDiv.append(titleDiv, itemsDiv);

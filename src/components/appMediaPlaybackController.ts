@@ -467,8 +467,8 @@ export class AppMediaPlaybackController {
 
     if(!isVoice) {
       const attribute = doc.attributes.find(attribute => attribute._ === 'documentAttributeAudio') as DocumentAttribute.documentAttributeAudio;
-      title = attribute && attribute.title || doc.file_name;
-      artist = attribute && attribute.performer;
+      title = attribute?.title ?? doc.file_name;
+      artist = attribute?.performer;
     }
 
     if(!artwork.length) {
@@ -529,7 +529,7 @@ export class AppMediaPlaybackController {
 
     const message = this.getMessageByMedia(playingMedia);
     return {
-      doc: appMessagesManager.getMediaFromMessage(message),
+      doc: appMessagesManager.getMediaFromMessage(message) as MyDocument,
       message,
       media: playingMedia,
       playbackParams: this.getPlaybackParams()

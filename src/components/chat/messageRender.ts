@@ -5,6 +5,7 @@
  */
 
 import { formatTime, getFullDate } from "../../helpers/date";
+import setInnerHTML from "../../helpers/dom/setInnerHTML";
 import formatNumber from "../../helpers/number/formatNumber";
 import { Message } from "../../layer";
 import appMessagesManager from "../../lib/appManagers/appMessagesManager";
@@ -62,7 +63,8 @@ export namespace MessageRender {
         args.push(postViewsSpan, channelViews);
         if(postAuthor) {
           const span = document.createElement('span');
-          span.innerHTML = RichTextProcessor.wrapEmojiText(postAuthor) + ',' + NBSP;
+          setInnerHTML(span, RichTextProcessor.wrapEmojiText(postAuthor));
+          span.insertAdjacentHTML('beforeend', ',' + NBSP)
           args.push(span);
         }
       }

@@ -11,7 +11,7 @@
 
 import emojiRegExp from '../vendor/emoji/regex';
 import { encodeEmoji, toCodePoints } from '../vendor/emoji';
-import { MessageEntity } from '../layer';
+import { Message, MessageEntity } from '../layer';
 import { IS_SAFARI } from '../environment/userAgent';
 import { MOUNT_CLASS_TO } from '../config/debug';
 import IS_EMOJI_SUPPORTED from '../environment/emojiSupport';
@@ -463,10 +463,16 @@ namespace RichTextProcessor {
     });
   }
 
+  function setBlankToAnchor(anchor: HTMLAnchorElement) {
+    anchor.target = '_blank';
+    anchor.rel = 'noopener noreferrer';
+    return anchor;
+  }
+
   /**
    * * Expecting correctly sorted nested entities (RichTextProcessor.sortEntities)
    */
-  export function wrapRichText(text: string, options: Partial<{
+   export function wrapRichText(text: string, options: Partial<{
     entities: MessageEntity[],
     contextSite: string,
     highlightUsername: string,
@@ -483,57 +489,33 @@ namespace RichTextProcessor {
     noEncoding: boolean,
 
     contextHashtag?: string,
+    nasty?: {
+      i: number,
+      usedLength: number,
+      lastEntity?: MessageEntity
+    },
+    voodoo?: boolean
   }> = {}) {
+    const fragment = document.createDocumentFragment();
     if(!text) {
-      return '';
+      return fragment;
     }
 
-    const lol: {
-      part: string,
-      offset: number,
-      // priority: number
-    }[] = [];
-    const entities = options.entities || parseEntities(text);
+    const entities = options.entities ??= parseEntities(text);
 
-    const passEntities: typeof options.passEntities = options.passEntities || {};
-    const contextSite = options.contextSite || 'Telegram';
+    const passEntities = options.passEntities ??= {};
+    const contextSite = options.contextSite ??= 'Telegram';
     const contextExternal = contextSite !== 'Telegram';
-
-    const insertPart = (entity: MessageEntity, startPart: string, endPart?: string/* , priority = 0 */) => {
-      const startOffset = entity.offset, endOffset = endPart ? entity.offset + entity.length : undefined;
-      let startIndex: number, endIndex: number, length = lol.length;
-      for(let i = length - 1; i >= 0; --i) {
-        const offset = lol[i].offset;
-
-        if(startIndex === undefined && startOffset >= offset) {
-          startIndex = i + 1;
-        }
-
-        if(endOffset !== undefined) {
-          if(endOffset <= offset) {
-            endIndex = i;
-          }
-        }
-
-        if(startOffset > offset && (endOffset === undefined || endOffset < offset)) {
-          break;
-        }
-      }
-
-      startIndex ??= 0;
-      lol.splice(startIndex, 0, {part: startPart, offset: entity.offset/* , priority */});
-
-      if(endOffset !== undefined) {
-        endIndex ??= startIndex;
-        ++endIndex;
-        lol.splice(endIndex, 0, {part: endPart, offset: entity.offset + entity.length/* , priority */});
-      }
+    const nasty = options.nasty ??= {
+      i: 0,
+      usedLength: 0
     };
 
-    const pushPartsAfterSort: typeof lol = [];
     const textLength = text.length;
-    for(let i = 0, length = entities.length; i < length; ++i) {
-      let entity = entities[i];
+    const length = entities.length;
+    let lastElement: HTMLElement | DocumentFragment;
+    for(; nasty.i < length; ++nasty.i) {
+      let entity = entities[nasty.i];
 
       // * check whether text was sliced
       // TODO: consider about moving it to other function
@@ -546,13 +528,40 @@ namespace RichTextProcessor {
         entity.length = entity.offset + entity.length - textLength;
       }
 
+      if(entity.length) {
+        nasty.lastEntity = entity;
+      }
+
+      let nextEntity = entities[nasty.i + 1];
+
+      const startOffset = entity.offset;
+      const endOffset = startOffset + entity.length;
+      const endPartOffset = Math.min(endOffset, nextEntity?.offset ?? 0xFFFF);
+      const fullEntityText = text.slice(startOffset, endOffset);
+      const sliced = text.slice(startOffset, endPartOffset);
+      const partText = sliced;
+
+      if(nasty.usedLength < startOffset) {
+        (lastElement || fragment).append(text.slice(nasty.usedLength, startOffset));
+      }
+
+      if(lastElement) {
+        lastElement = fragment;
+      }
+
+      nasty.usedLength = endPartOffset;
+
+      let element: HTMLElement, 
+        property: 'textContent' | 'alt' = 'textContent',
+        usedText = false;
       switch(entity._) {
         case 'messageEntityBold': {
           if(!options.noTextFormat) {
             if(options.wrappingDraft) {
-              insertPart(entity, '<span style="font-weight: bold;">', '</span>');
+              element = document.createElement('span');
+              element.style.fontWeight = 'bold';
             } else {
-              insertPart(entity, '<strong>', '</strong>');
+              element = document.createElement('strong');
             }
           }
 
@@ -562,9 +571,10 @@ namespace RichTextProcessor {
         case 'messageEntityItalic': {
           if(!options.noTextFormat) {
             if(options.wrappingDraft) {
-              insertPart(entity, '<span style="font-style: italic;">', '</span>');
+              element = document.createElement('span');
+              element.style.fontStyle = 'italic';
             } else {
-              insertPart(entity, '<em>', '</em>');
+              element = document.createElement('em');
             }
           }
 
@@ -574,9 +584,10 @@ namespace RichTextProcessor {
         case 'messageEntityStrike': {
           if(options.wrappingDraft) {
             const styleName = IS_SAFARI ? 'text-decoration' : 'text-decoration-line';
-            insertPart(entity, `<span style="${styleName}: line-through;">`, '</span>');
+            element = document.createElement('span');
+            element.style.cssText = `${styleName}: line-through;`;
           } else if(!options.noTextFormat) {
-            insertPart(entity, '<del>', '</del>');
+            element = document.createElement('del');
           }
 
           break;
@@ -585,54 +596,68 @@ namespace RichTextProcessor {
         case 'messageEntityUnderline': {
           if(options.wrappingDraft) {
             const styleName = IS_SAFARI ? 'text-decoration' : 'text-decoration-line';
-            insertPart(entity, `<span style="${styleName}: underline;">`, '</span>');
+            element = document.createElement('span');
+            element.style.cssText = `${styleName}: underline;`;
           } else if(!options.noTextFormat) {
-            insertPart(entity, '<u>', '</u>');
+            element = document.createElement('u');
           }
 
           break;
         }
-          
+        
+        case 'messageEntityPre':
         case 'messageEntityCode': {
           if(options.wrappingDraft) {
-            insertPart(entity, '<span style="font-family: var(--font-monospace);">', '</span>');
+            element = document.createElement('span');
+            element.style.fontFamily = 'var(--font-monospace)';
           } else if(!options.noTextFormat) {
-            insertPart(entity, '<code>', '</code>');
+            element = document.createElement('code');
           }
           
           break;
         }
           
-        case 'messageEntityPre': {
-          if(options.wrappingDraft) {
-            insertPart(entity, '<span style="font-family: var(--font-monospace);">', '</span>');
-          } else if(!options.noTextFormat) {
-            insertPart(entity, `<pre><code${entity.language ? ' class="language-' + encodeEntities(entity.language) + '"' : ''}>`, '</code></pre>');
-          }
+        // case 'messageEntityPre': {
+        //   if(options.wrappingDraft) {
+        //     element = document.createElement('span');
+        //     element.style.fontFamily = 'var(--font-monospace)';
+        //   } else if(!options.noTextFormat) {
+        //     element = document.createElement('pre');
+        //     const inner = document.createElement('code');
+        //     if(entity.language) {
+        //       inner.className = 'language-' + entity.language;
+        //       inner.textContent = entityText;
+        //       usedText = true;
+        //     }
+        //   }
           
-          break;
-        }
+        //   break;
+        // }
 
         case 'messageEntityHighlight': {
-          insertPart(entity, '<i class="text-highlight">', '</i>');
+          element = document.createElement('i');
+          element.className = 'text-highlight';
           break;
         }
 
         case 'messageEntityBotCommand': {
           // if(!(options.noLinks || options.noCommands || contextExternal)/*  && !entity.unsafe */) {
           if(!options.noLinks && passEntities[entity._]) {
-            const entityText = text.substr(entity.offset, entity.length);
-            let command = entityText.substr(1);
+            let command = fullEntityText.slice(1);
             let bot: string | boolean;
             let atPos: number;
             if((atPos = command.indexOf('@')) !== -1) {
-              bot = command.substr(atPos + 1);
-              command = command.substr(0, atPos);
+              bot = command.slice(atPos + 1);
+              command = command.slice(0, atPos);
             } else {
               bot = options.fromBot;
             }
 
-            insertPart(entity, `<a href="${encodeEntities('tg://bot_command?command=' + encodeURIComponent(command) + (bot ? '&bot=' + encodeURIComponent(bot) : ''))}" ${contextExternal ? '' : 'onclick="execBotCommand(this)"'}>`, `</a>`);
+            element = document.createElement('a');
+            (element as HTMLAnchorElement).href = encodeEntities('tg://bot_command?command=' + encodeURIComponent(command) + (bot ? '&bot=' + encodeURIComponent(bot) : ''));
+            if(!contextExternal) {
+              element.setAttribute('onclick', 'execBotCommand(this)');
+            }
           }
 
           break;
@@ -657,11 +682,15 @@ namespace RichTextProcessor {
             // if(isSupported) { // ! contenteditable="false" нужен для поля ввода, иначе там будет меняться шрифт в Safari, или же рендерить смайлик напрямую, без контейнера
             //   insertPart(entity, '<span class="emoji">', '</span>');
             // } else {
-              insertPart(entity, `<img src="assets/img/emoji/${entity.unicode}.png" alt="`, `" class="emoji">`);
+              element = document.createElement('img');
+              (element as HTMLImageElement).src = `assets/img/emoji/${entity.unicode}.png`;
+              property = 'alt';
+              element.className = 'emoji';
             // }
           //} else if(options.mustWrapEmoji) {
           } else if(!options.wrappingDraft) {
-            insertPart(entity, '<span class="emoji">', '</span>');
+            element = document.createElement('span');
+            element.className = 'emoji';
           }/*  else if(!IS_SAFARI) {
             insertPart(entity, '<span class="emoji" contenteditable="false">', '</span>');
           } */
@@ -673,32 +702,28 @@ namespace RichTextProcessor {
         }
         
         case 'messageEntityCaret': {
-          const html = '<span class="composer-sel"></span>';
-          // const html = '<span class="composer-sel" contenteditable="false"></span>';
-          // insertPart(entity, '<span class="composer-sel" contenteditable="true"></span>');
-          // insertPart(entity, '<span class="composer-sel"></span>');
-          pushPartsAfterSort.push({part: html, offset: entity.offset});
-          // insertPart(entity, html/* , undefined, 1 */);
+          element = document.createElement('span');
+          element.className = 'composer-sel';
+          // const html = '<span class="composer-sel"></span>';
+          // pushPartsAfterSort.push({part: html, offset: entity.offset});
           break;
         }
 
-        /* case 'messageEntityLinebreak': {
-          if(options.noLinebreaks) {
-            insertPart(entity, ' ');
-          } else {
-            insertPart(entity, '<br/>');
-          }
+        // /* case 'messageEntityLinebreak': {
+        //   if(options.noLinebreaks) {
+        //     insertPart(entity, ' ');
+        //   } else {
+        //     insertPart(entity, '<br/>');
+        //   }
           
-          break;
-        } */
+        //   break;
+        // } */
 
         case 'messageEntityUrl':
         case 'messageEntityTextUrl': {
           if(!(options.noLinks && !passEntities[entity._])) {
-            const entityText = text.substr(entity.offset, entity.length);
-
             // let inner: string;
-            let url: string = (entity as MessageEntity.messageEntityTextUrl).url || entityText;
+            let url: string = (entity as MessageEntity.messageEntityTextUrl).url || fullEntityText;
             let masked = false;
             let onclick: string;
 
@@ -707,14 +732,13 @@ namespace RichTextProcessor {
             onclick = wrapped.onclick;
 
             if(entity._ === 'messageEntityTextUrl') {
-              const nextEntity = entities[i + 1];
               if(nextEntity?._ === 'messageEntityUrl' && 
                 nextEntity.length === entity.length && 
                 nextEntity.offset === entity.offset) {
-                i++;
+                nasty.i++;
               }
 
-              if(url !== entityText) {
+              if(url !== fullEntityText) {
                 masked = true;
               }
             } else {
@@ -734,10 +758,17 @@ namespace RichTextProcessor {
               ? encodeEntities(url)
               : `javascript:electronHelpers.openExternal('${encodeEntities(url)}');`;
 
-            const target = (currentContext || typeof electronHelpers !== 'undefined')
-              ? '' : ' target="_blank" rel="noopener noreferrer"';
+            element = document.createElement('a');
+            element.className = 'anchor-url';
+            (element as HTMLAnchorElement).href = href;
 
-            insertPart(entity, `<a class="anchor-url" href="${href}"${target}${onclick ? `onclick="${onclick}(this)"` : ''}>`, '</a>');
+            if(!(currentContext || typeof electronHelpers !== 'undefined')) {
+              setBlankToAnchor(element as HTMLAnchorElement);
+            }
+
+            if(onclick) {
+              element.setAttribute('onclick', onclick + '(this)');
+            }
           }
 
           break;
@@ -745,8 +776,9 @@ namespace RichTextProcessor {
 
         case 'messageEntityEmail': {
           if(!options.noLinks) {
-            const entityText = text.substr(entity.offset, entity.length);
-            insertPart(entity, `<a href="${encodeEntities('mailto:' + entityText)}" target="_blank" rel="noopener noreferrer">`, '</a>');
+            element = document.createElement('a');
+            (element as HTMLAnchorElement).href = encodeEntities('mailto:' + fullEntityText);
+            setBlankToAnchor(element as HTMLAnchorElement);
           }
 
           break;
@@ -755,9 +787,15 @@ namespace RichTextProcessor {
         case 'messageEntityHashtag': {
           const contextUrl = !options.noLinks && siteHashtags[contextSite];
           if(contextUrl) {
-            const entityText = text.substr(entity.offset, entity.length);
-            const hashtag = entityText.substr(1);
-            insertPart(entity, `<a class="anchor-hashtag" href="${contextUrl.replace('{1}', encodeURIComponent(hashtag))}"${contextExternal ? ' target="_blank" rel="noopener noreferrer"' : ' onclick="searchByHashtag(this)"'}>`, '</a>');
+            const hashtag = fullEntityText.slice(1);
+            element = document.createElement('a');
+            element.className = 'anchor-hashtag';
+            (element as HTMLAnchorElement).href = contextUrl.replace('{1}', encodeURIComponent(hashtag));
+            if(contextExternal) {
+              setBlankToAnchor(element as HTMLAnchorElement);
+            } else {
+              element.setAttribute('onclick', 'searchByHashtag(this)');
+            }
           }
 
           break;
@@ -765,7 +803,10 @@ namespace RichTextProcessor {
 
         case 'messageEntityMentionName': {
           if(!(options.noLinks && !passEntities[entity._])) {
-            insertPart(entity, `<a href="#/im?p=${encodeURIComponent(entity.user_id)}" class="follow" data-follow="${entity.user_id}">`, '</a>');
+            element = document.createElement('a');
+            (element as HTMLAnchorElement).href = `#/im?p=${encodeURIComponent(entity.user_id)}`;
+            element.className = 'follow';
+            element.dataset.follow = '' + entity.user_id;
           }
 
           break;
@@ -774,13 +815,18 @@ namespace RichTextProcessor {
         case 'messageEntityMention': {
           // const contextUrl = !options.noLinks && siteMentions[contextSite];
           if(!options.noLinks) {
-            const entityText = text.substr(entity.offset, entity.length);
-            const username = entityText.substr(1);
+            const username = fullEntityText.slice(1);
 
             const {url, onclick} = wrapUrl('t.me/' + username);
 
+            element = document.createElement('a');
+            element.className = 'mention';
+            (element as HTMLAnchorElement).href = url;
+            if(onclick) {
+              element.setAttribute('onclick', `${onclick}(this)`);
+            }
+
             // insertPart(entity, `<a class="mention" href="${contextUrl.replace('{1}', encodeURIComponent(username))}"${contextExternal ? ' target="_blank" rel="noopener noreferrer"' : ''}>`, '</a>');
-            insertPart(entity, `<a class="mention" href="${url}" ${onclick ? `onclick=${onclick}(this)` : ''}>`, '</a>');
           }
           
           break;
@@ -793,53 +839,63 @@ namespace RichTextProcessor {
             const after = text.slice(entity.offset + entity.length);
             text = before + spoiler(spoilerBefore)/*  '▚'.repeat(entity.length) */ + after;
           } else if(options.wrappingDraft) {
-            insertPart(entity, '<span style="font-family: spoiler;">', '</span>');
+            element = document.createElement('span');
+            element.style.fontFamily = 'spoiler';
           } else {
-            insertPart(entity, '<span class="spoiler"><span class="spoiler-text">', '</span></span>');
+            const container = document.createElement('span');
+            container.className = 'spoiler';
+            element = document.createElement('span');
+            element.className = 'spoiler-text';
+            element.textContent = partText;
+            usedText = true;
+            container.append(element);
+            fragment.append(container);
           }
           
           break;
         }
       }
-    }
 
-    // lol.sort((a, b) => (a.offset - b.offset) || (a.priority - b.priority));
-    // lol.sort((a, b) => a.offset - b.offset); // have to sort because of nested entities
-
-    let partsLength = lol.length, pushPartsAfterSortLength = pushPartsAfterSort.length;
-    for(let i = 0; i < pushPartsAfterSortLength; ++i) {
-      const part = pushPartsAfterSort[i];
-      let insertAt = 0;
-      while(insertAt < partsLength) {
-        if(lol[insertAt++].offset >= part.offset) {
-          break;
-        }
+      if(element && !usedText) {
+        // @ts-ignore
+        element[property] = partText;
       }
 
-      lol.splice(insertAt, 0, part);
-    }
+      while(nextEntity && nextEntity.offset < (endOffset - 1)) {
+        ++nasty.i;
 
-    partsLength += pushPartsAfterSortLength;
+        (element || fragment).append(wrapRichText(text, {
+          ...options,
+          voodoo: true
+        }));
 
-    const arr: string[] = [];
-    let usedLength = 0;
-    for(let i = 0; i < partsLength; ++i) {
-      const {part, offset} = lol[i];
-      if(offset > usedLength) {
-        const sliced = text.slice(usedLength, offset);
-        arr.push(options.noEncoding ? sliced : encodeEntities(sliced));
-        usedLength = offset;
+        nextEntity = entities[nasty.i + 1];
       }
 
-      arr.push(part);
+      if(!element?.parentElement) {
+        (lastElement || fragment).append(element ?? partText);
+      }
+
+      if(entity.length > partText.length && element) {
+        lastElement = element;
+      } else {
+        lastElement = fragment;
+      }
+
+      if(options.voodoo) {
+        return fragment;
+      }
     }
 
-    if(usedLength < text.length) {
-      const sliced = text.slice(usedLength);
-      arr.push(options.noEncoding ? sliced : encodeEntities(sliced));
+    if(nasty.lastEntity) {
+      nasty.usedLength = nasty.lastEntity.offset + nasty.lastEntity.length;
     }
 
-    return arr.join('');
+    if(nasty.usedLength < textLength) {
+      (lastElement || fragment).append(text.slice(nasty.usedLength));
+    }
+
+    return fragment;
   }
 
   export function fixEmoji(text: string, entities?: MessageEntity[]) {
@@ -874,7 +930,7 @@ namespace RichTextProcessor {
     entities: MessageEntity[]
   }> = {}) {
     if(!text) {
-      return '';
+      return wrapRichText('');
     }
 
     return wrapRichText(text, {
@@ -941,11 +997,11 @@ namespace RichTextProcessor {
       noTextFormat: true,
       noLinebreaks: true,
       noLinks: true
-    });
+    }).textContent;
   }
 
   export function wrapEmojiText(text: string, isDraft = false) {
-    if(!text) return '';
+    if(!text) return wrapRichText('');
   
     let entities = parseEntities(text).filter(e => e._ === 'messageEntityEmoji');
     return wrapRichText(text, {entities, wrappingDraft: isDraft});

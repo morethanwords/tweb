@@ -11,7 +11,6 @@ import ControlsHover from "../../helpers/dom/controlsHover";
 import findUpClassName from "../../helpers/dom/findUpClassName";
 import { addFullScreenListener, cancelFullScreen, isFullScreen, requestFullScreen } from "../../helpers/dom/fullScreen";
 import { onMediaLoad } from "../../helpers/files";
-import { MediaSize } from "../../helpers/mediaSizes";
 import MovablePanel from "../../helpers/movablePanel";
 import safeAssign from "../../helpers/object/safeAssign";
 import toggleClassName from "../../helpers/toggleClassName";
@@ -457,7 +456,7 @@ export default class PopupCall extends PopupElement {
 
     if(!this.emojisSubtitle.textContent && connectionState < CALL_STATE.EXCHANGING_KEYS) {
       Promise.resolve(instance.getEmojisFingerprint()).then(emojis => {
-        this.emojisSubtitle.innerHTML = RichTextProcessor.wrapEmojiText(emojis.join(''));
+        this.emojisSubtitle.append(RichTextProcessor.wrapEmojiText(emojis.join('')));
       });
     }
 

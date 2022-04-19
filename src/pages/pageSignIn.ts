@@ -40,6 +40,7 @@ import stateStorage from "../lib/stateStorage";
 import rootScope from "../lib/rootScope";
 import TelInputField from "../components/telInputField";
 import IS_EMOJI_SUPPORTED from "../environment/emojiSupport";
+import setInnerHTML from "../helpers/dom/setInnerHTML";
 
 //import _countries from '../countries_pretty.json';
 let btnNext: HTMLButtonElement = null, btnQr: HTMLButtonElement;
@@ -118,10 +119,10 @@ let onFirstMount = () => {
         let wrapped = RichTextProcessor.wrapEmojiText(emoji);
         if(IS_EMOJI_SUPPORTED) {
           const spanEmoji = document.createElement('span');
-          spanEmoji.innerHTML = wrapped;
+          setInnerHTML(spanEmoji, wrapped);
           li.append(spanEmoji);
         } else {
-          li.innerHTML = wrapped;
+          setInnerHTML(li, wrapped);
         }
         
         const el = i18n(c.default_name as any);

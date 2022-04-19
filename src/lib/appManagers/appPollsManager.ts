@@ -56,8 +56,6 @@ export class AppPollsManager {
     } else {
       this.polls[id] = poll;
 
-      poll.rQuestion = RichTextProcessor.wrapEmojiText(poll.question);
-      poll.rReply = RichTextProcessor.wrapEmojiText('📊') + ' ' + (poll.rQuestion || 'poll');
       poll.chosenIndexes = [];
       results = this.saveResults(poll, results);
     }

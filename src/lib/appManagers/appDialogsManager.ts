@@ -62,6 +62,7 @@ import appNavigationController, { NavigationItem } from "../../components/appNav
 import assumeType from "../../helpers/assumeType";
 import generateTitleIcons from "../../components/generateTitleIcons";
 import appMediaPlaybackController from "../../components/appMediaPlaybackController";
+import setInnerHTML from "../../helpers/dom/setInnerHTML";
 
 export type DialogDom = {
   avatarEl: AvatarElement,
@@ -517,7 +518,7 @@ export class AppDialogsManager {
       }
 
       const elements = this.filtersRendered[filter.id];
-      elements.title.innerHTML = RichTextProcessor.wrapEmojiText(filter.title);
+      setInnerHTML(elements.title, RichTextProcessor.wrapEmojiText(filter.title));
     });
 
     rootScope.addEventListener('filter_delete', (filter) => {
@@ -779,7 +780,7 @@ export class AppDialogsManager {
     const titleSpan = document.createElement('span');
     titleSpan.classList.add('text-super');
     if(filter.titleEl) titleSpan.append(filter.titleEl);
-    else titleSpan.innerHTML = RichTextProcessor.wrapEmojiText(filter.title);
+    else setInnerHTML(titleSpan, RichTextProcessor.wrapEmojiText(filter.title));
     const unreadSpan = document.createElement('div');
     unreadSpan.classList.add('badge', 'badge-20', 'badge-primary');
     const i = document.createElement('i');

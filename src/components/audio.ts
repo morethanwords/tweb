@@ -32,6 +32,8 @@ import { animateSingle } from "../helpers/animation";
 import clamp from "../helpers/number/clamp";
 import toHHMMSS from "../helpers/string/toHHMMSS";
 import MediaProgressLine from "./mediaProgressLine";
+import RichTextProcessor from "../lib/richtextprocessor";
+import setInnerHTML from "../helpers/dom/setInnerHTML";
 
 rootScope.addEventListener('messages_media_read', ({mids, peerId}) => {
   mids.forEach(mid => {
@@ -264,11 +266,13 @@ function wrapAudio(audioEl: AudioElement) {
   const isVoice = doc.type === 'voice' || doc.type === 'round';
   const descriptionEl = document.createElement('div');
   descriptionEl.classList.add('audio-description');
+
+  const audioAttribute = doc.attributes.find((attr) => attr._ === 'documentAttributeAudio') as DocumentAttribute.documentAttributeAudio;
   
   if(!isVoice) {
     const parts: (Node | string)[] = [];
-    if(doc.audioPerformer) {
-      parts.push(htmlToSpan(doc.audioPerformer));
+    if(audioAttribute?.performer) {
+      parts.push(RichTextProcessor.wrapEmojiText(audioAttribute.performer));
     }
 
     if(withTime) {
@@ -299,7 +303,7 @@ function wrapAudio(audioEl: AudioElement) {
   if(isVoice) {
     middleEllipsisEl.append(appMessagesManager.wrapSenderToPeer(message));
   } else {
-    middleEllipsisEl.innerHTML = doc.audioTitle || doc.fileName;
+    setInnerHTML(middleEllipsisEl, RichTextProcessor.wrapEmojiText(audioAttribute?.title ?? doc.file_name));
   }
 
   titleEl.append(middleEllipsisEl);

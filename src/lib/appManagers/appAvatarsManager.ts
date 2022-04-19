@@ -7,6 +7,7 @@
 import { MOUNT_CLASS_TO } from "../../config/debug";
 import { renderImageFromUrlPromise } from "../../helpers/dom/renderImageFromUrl";
 import replaceContent from "../../helpers/dom/replaceContent";
+import setInnerHTML from "../../helpers/dom/setInnerHTML";
 import sequentialDom from "../../helpers/sequentialDom";
 import { UserProfilePhoto, ChatPhoto, InputFileLocation } from "../../layer";
 import { DownloadOptions } from "../mtproto/apiFileManager";
@@ -163,8 +164,8 @@ export class AppAvatarsManager {
     };
   }
 
-  public s(div: HTMLElement, innerHTML: string, color: string, icon: string) {
-    div.innerHTML = innerHTML;
+  public s(div: HTMLElement, innerHTML: Parameters<typeof setInnerHTML>[1], color: string, icon: string) {
+    setInnerHTML(div, innerHTML);
     div.dataset.color = color;
     div.classList.remove('tgico-saved', 'tgico-deletedaccount', 'tgico-reply_filled');
     icon && div.classList.add(icon);
@@ -202,14 +203,7 @@ export class AppAvatarsManager {
         return;
       }
 
-      let abbr: string;
-      if(!title) {
-        const peer = appPeersManager.getPeer(peerId);
-        abbr = peer.initials ?? '';
-      } else {
-        abbr = RichTextProcessor.getAbbreviation(title);
-      }
-
+      const abbr = title ? RichTextProcessor.getAbbreviation(title) : appPeersManager.getPeerInitials(peerId);
       this.s(div, abbr, color, '');
       //return Promise.resolve(true);
     }

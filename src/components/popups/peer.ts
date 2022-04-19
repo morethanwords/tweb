@@ -8,6 +8,7 @@ import AvatarElement from "../avatar";
 import PopupElement, { addCancelButton, PopupButton, PopupOptions } from ".";
 import { i18n, LangPackKey } from "../../lib/langPack";
 import CheckboxField, { CheckboxFieldOptions } from "../checkboxField";
+import setInnerHTML from "../../helpers/dom/setInnerHTML";
 
 export type PopupPeerButton = Omit<PopupButton, 'callback'> & Partial<{callback: PopupPeerButtonCallback}>;
 export type PopupPeerButtonCallbackCheckboxes = Set<LangPackKey>;
@@ -20,7 +21,7 @@ export type PopupPeerOptions = PopupOptions & Partial<{
   titleLangKey?: LangPackKey,
   titleLangArgs?: any[],
   noTitle?: boolean,
-  description: string,
+  description: string | DocumentFragment,
   descriptionLangKey?: LangPackKey,
   descriptionLangArgs?: any[],
   buttons?: Array<PopupPeerButton>,
@@ -55,7 +56,7 @@ export default class PopupPeer extends PopupElement {
       const p = this.description = document.createElement('p');
       p.classList.add('popup-description');
       if(options.descriptionLangKey) p.append(i18n(options.descriptionLangKey, options.descriptionLangArgs));
-      else if(options.description) p.innerHTML = options.description;
+      else if(options.description) setInnerHTML(p, options.description);
   
       fragment.append(p);
     }

@@ -5,6 +5,7 @@
  */
 
 import PopupElement, { addCancelButton } from ".";
+import setInnerHTML from "../../helpers/dom/setInnerHTML";
 import numberThousandSplitter from "../../helpers/number/numberThousandSplitter";
 import { ChatInvite, Updates } from "../../layer";
 import apiUpdatesManager from "../../lib/appManagers/apiUpdatesManager";
@@ -75,7 +76,7 @@ export default class PopupJoinChatInvite extends PopupElement {
 
     const title = document.createElement('div');
     title.classList.add('chat-title');
-    title.innerHTML = RichTextProcessor.wrapEmojiText(chatInvite.title);
+    setInnerHTML(title, RichTextProcessor.wrapEmojiText(chatInvite.title));
     //avatarElem.setAttribute('peer', '' + -fakeChat.id);
     
     const isBroadcast = chatInvite.pFlags.broadcast;

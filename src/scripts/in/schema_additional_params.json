@@ -6,13 +6,9 @@
     {"name": "h", "type": "number"},
     {"name": "w", "type": "number"},
     {"name": "file_name", "type": "string"},
-    {"name": "fileName", "type": "string"},
     {"name": "file", "type": "File"},
     {"name": "duration", "type": "number"},
-    {"name": "audioTitle", "type": "string"},
-    {"name": "audioPerformer", "type": "string"},
     {"name": "sticker", "type": "1 | 2 | 3"},
-    {"name": "stickerEmoji", "type": "string"},
     {"name": "stickerEmojiRaw", "type": "string"},
     {"name": "stickerSetInput", "type": "InputStickerSet.inputStickerSetID"},
     {"name": "stickerThumbConverted", "type": "true"},
@@ -149,7 +145,6 @@
 }, {
   "predicate": "user",
   "params": [
-    {"name": "initials", "type": "string"},
     {"name": "sortName", "type": "string"}
   ]
 }, {
@@ -162,26 +157,6 @@
   "params": [
     {"name": "rReply", "type": "string"},
     {"name": "rMessage", "type": "string"}
-  ]
-}, {
-  "predicate": "chat",
-  "params": [
-    {"name": "initials", "type": "string"}
-  ]
-}, {
-  "predicate": "chatForbidden",
-  "params": [
-    {"name": "initials", "type": "string"}
-  ]
-}, {
-  "predicate": "channel",
-  "params": [
-    {"name": "initials", "type": "string"}
-  ]
-}, {
-  "predicate": "channelForbidden",
-  "params": [
-    {"name": "initials", "type": "string"}
   ]
 }, {
   "predicate": "messageActionDiscussionStarted",
@@ -318,12 +293,6 @@
     {"name": "checkedReference", "type": "boolean"}
   ]
 }, {
-  "predicate": "webPage",
-  "params": [
-    {"name": "rTitle", "type": "string"},
-    {"name": "rDescription", "type": "string"}
-  ]
-}, {
   "predicate": "inputMediaContact",
   "params": [
     {"name": "user_id", "type": "UserId"}
@@ -331,8 +300,6 @@
 }, {
   "predicate": "poll",
   "params": [
-    {"name": "rQuestion", "type": "string"},
-    {"name": "rReply", "type": "string"},
     {"name": "chosenIndexes", "type": "number[]"}
   ]
 }, {

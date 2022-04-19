@@ -25,6 +25,7 @@ import windowSize from "../helpers/windowSize";
 import { Poll, PollResults } from "../layer";
 import toHHMMSS from "../helpers/string/toHHMMSS";
 import StackedAvatars from "./stackedAvatars";
+import setInnerHTML from "../helpers/dom/setInnerHTML";
 
 let lineTotalLength = 0;
 const tailLength = 9;
@@ -152,7 +153,7 @@ const setQuizHint = (solution: string, solution_entities: any[], onHide: () => v
   container.append(textEl);
   element.append(container);
 
-  textEl.innerHTML = RichTextProcessor.wrapRichText(solution, {entities: solution_entities});
+  setInnerHTML(textEl, RichTextProcessor.wrapRichText(solution, {entities: solution_entities}));
   appImManager.chat.bubbles.bubblesContainer.append(element);
 
   void element.offsetLeft; // reflow
@@ -283,12 +284,14 @@ export default class PollElement extends HTMLElement {
     }).join('');
 
     this.innerHTML = `
-      <div class="poll-title">${poll.rQuestion}</div>
+      <div class="poll-title"></div>
       <div class="poll-desc">
         <div class="poll-type"></div>
         <div class="poll-avatars"></div>
       </div>
       ${votes}`;
+    
+    setInnerHTML(this.firstElementChild, RichTextProcessor.wrapEmojiText(poll.question));
 
     this.descDiv = this.firstElementChild.nextElementSibling as HTMLElement;
     this.typeDiv = this.descDiv.firstElementChild as HTMLElement;

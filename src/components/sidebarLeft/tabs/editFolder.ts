@@ -25,6 +25,7 @@ import copy from "../../../helpers/object/copy";
 import deepEqual from "../../../helpers/object/deepEqual";
 import appUsersManager from "../../../lib/appManagers/appUsersManager";
 import forEachReverse from "../../../helpers/array/forEachReverse";
+import documentFragmentToHTML from "../../../helpers/dom/documentFragmentToHTML";
 
 const MAX_FOLDER_NAME_LENGTH = 12;
 
@@ -283,7 +284,7 @@ export default class AppEditFolderTab extends SliderSuperTab {
     }
     
     const filter = this.filter;
-    this.nameInputField.value = RichTextProcessor.wrapDraftText(filter.title);
+    this.nameInputField.value = documentFragmentToHTML(RichTextProcessor.wrapDraftText(filter.title));
 
     for(const flag in this.flags) {
       this.flags[flag as keyof AppEditFolderTab['flags']].style.display = !!filter.pFlags[flag as keyof AppEditFolderTab['flags']] ? '' : 'none';
