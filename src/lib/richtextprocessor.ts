@@ -492,6 +492,7 @@ namespace RichTextProcessor {
     nasty?: {
       i: number,
       usedLength: number,
+      text: string,
       lastEntity?: MessageEntity
     },
     voodoo?: boolean
@@ -501,17 +502,19 @@ namespace RichTextProcessor {
       return fragment;
     }
 
-    const entities = options.entities ??= parseEntities(text);
+    const nasty = options.nasty ??= {
+      i: 0,
+      usedLength: 0,
+      text
+    };
+
+    const entities = options.entities ??= parseEntities(nasty.text);
 
     const passEntities = options.passEntities ??= {};
     const contextSite = options.contextSite ??= 'Telegram';
     const contextExternal = contextSite !== 'Telegram';
-    const nasty = options.nasty ??= {
-      i: 0,
-      usedLength: 0
-    };
 
-    const textLength = text.length;
+    const textLength = nasty.text.length;
     const length = entities.length;
     let lastElement: HTMLElement | DocumentFragment;
     for(; nasty.i < length; ++nasty.i) {
@@ -537,12 +540,12 @@ namespace RichTextProcessor {
       const startOffset = entity.offset;
       const endOffset = startOffset + entity.length;
       const endPartOffset = Math.min(endOffset, nextEntity?.offset ?? 0xFFFF);
-      const fullEntityText = text.slice(startOffset, endOffset);
-      const sliced = text.slice(startOffset, endPartOffset);
-      const partText = sliced;
+      const fullEntityText = nasty.text.slice(startOffset, endOffset);
+      const sliced = nasty.text.slice(startOffset, endPartOffset);
+      let partText = sliced;
 
       if(nasty.usedLength < startOffset) {
-        (lastElement || fragment).append(text.slice(nasty.usedLength, startOffset));
+        (lastElement || fragment).append(nasty.text.slice(nasty.usedLength, startOffset));
       }
 
       if(lastElement) {
@@ -704,12 +707,10 @@ namespace RichTextProcessor {
         case 'messageEntityCaret': {
           element = document.createElement('span');
           element.className = 'composer-sel';
-          // const html = '<span class="composer-sel"></span>';
-          // pushPartsAfterSort.push({part: html, offset: entity.offset});
           break;
         }
 
-        // /* case 'messageEntityLinebreak': {
+        // case 'messageEntityLinebreak': {
         //   if(options.noLinebreaks) {
         //     insertPart(entity, ' ');
         //   } else {
@@ -717,7 +718,7 @@ namespace RichTextProcessor {
         //   }
           
         //   break;
-        // } */
+        // }
 
         case 'messageEntityUrl':
         case 'messageEntityTextUrl': {
@@ -834,10 +835,11 @@ namespace RichTextProcessor {
 
         case 'messageEntitySpoiler': {
           if(options.noTextFormat) {
-            const before = text.slice(0, entity.offset);
-            const spoilerBefore = text.slice(entity.offset, entity.offset + entity.length);
-            const after = text.slice(entity.offset + entity.length);
-            text = before + spoiler(spoilerBefore)/*  '▚'.repeat(entity.length) */ + after;
+            const before = nasty.text.slice(0, entity.offset);
+            const spoilerBefore = nasty.text.slice(entity.offset, entity.offset + entity.length);
+            const spoilerAfter = partText = spoiler(spoilerBefore)/*  '▚'.repeat(entity.length) */;
+            const after = nasty.text.slice(entity.offset + entity.length);
+            nasty.text = before + spoilerAfter + after;
           } else if(options.wrappingDraft) {
             element = document.createElement('span');
             element.style.fontFamily = 'spoiler';
@@ -856,15 +858,23 @@ namespace RichTextProcessor {
         }
       }
 
-      if(element && !usedText) {
-        // @ts-ignore
-        element[property] = partText;
+      if(!usedText) {
+        if(element) {
+          // @ts-ignore
+          element[property] = partText;
+        } else {
+          (element || fragment).append(partText);
+        }
+      }
+
+      if(element && !element.parentElement) {
+        (lastElement || fragment).append(element);
       }
 
       while(nextEntity && nextEntity.offset < (endOffset - 1)) {
         ++nasty.i;
 
-        (element || fragment).append(wrapRichText(text, {
+        (element || fragment).append(wrapRichText(nasty.text, {
           ...options,
           voodoo: true
         }));
@@ -872,9 +882,9 @@ namespace RichTextProcessor {
         nextEntity = entities[nasty.i + 1];
       }
 
-      if(!element?.parentElement) {
-        (lastElement || fragment).append(element ?? partText);
-      }
+      // if(!element?.parentElement) {
+      //   (lastElement || fragment).append(element ?? partText);
+      // }
 
       if(entity.length > partText.length && element) {
         lastElement = element;
@@ -892,7 +902,7 @@ namespace RichTextProcessor {
     }
 
     if(nasty.usedLength < textLength) {
-      (lastElement || fragment).append(text.slice(nasty.usedLength));
+      (lastElement || fragment).append(nasty.text.slice(nasty.usedLength));
     }
 
     return fragment;
