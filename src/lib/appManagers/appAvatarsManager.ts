@@ -114,6 +114,7 @@ export class AppAvatarsManager {
         img.classList.add('fade-in');
       }
 
+      let isFullLoaded = false;
       if(size === 'photo_big') { // let's load small photo first
         const res = this.putAvatar(div, peerId, photo, 'photo_small');
         renderThumbPromise = res.loadPromise;
@@ -124,11 +125,17 @@ export class AppAvatarsManager {
         thumbImage.classList.add('avatar-photo', 'avatar-photo-thumbnail');
         const url = appPhotosManager.getPreviewURLFromBytes(photo.stripped_thumb);
         renderThumbPromise = renderImageFromUrlPromise(thumbImage, url).then(() => {
+          if(isFullLoaded) {
+            return;
+          }
+
           replaceContent(div, thumbImage);
         });
       }
 
       callback = () => {
+        isFullLoaded = true;
+
         if(thumbImage) {
           div.append(img);
         } else {
