@@ -6,14 +6,14 @@
 
 import type fastBlur from '../vendor/fastBlur';
 import addHeavyTask from './heavyQueue';
+import IS_CANVAS_FILTER_SUPPORTED from '../environment/canvasFilterSupport';
 
 const RADIUS = 2;
 const ITERATIONS = 2;
 
-const isFilterAvailable = 'filter' in (document.createElement('canvas').getContext('2d') || {});
 let requireBlurPromise: Promise<any>;
 let fastBlurFunc: typeof fastBlur;
-if(!isFilterAvailable) {
+if(!IS_CANVAS_FILTER_SUPPORTED) {
   requireBlurPromise = import('../vendor/fastBlur').then(m => {
     fastBlurFunc = m.default;
   });
@@ -21,80 +21,80 @@ if(!isFilterAvailable) {
   requireBlurPromise = Promise.resolve();
 }
 
-function processBlurNext(img: HTMLImageElement, radius: number, iterations: number) {
-  return new Promise<string>((resolve) => {
-    const canvas = document.createElement('canvas');
-    canvas.width = img.width;
-    canvas.height = img.height;
-    
-    const ctx = canvas.getContext('2d', {alpha: false});
-    if(isFilterAvailable) {
-      ctx.filter = `blur(${radius}px)`;
-      ctx.drawImage(img, -radius * 2, -radius * 2, canvas.width + radius * 4, canvas.height + radius * 4);
-    } else {
-      ctx.drawImage(img, 0, 0);
-      fastBlurFunc(ctx, 0, 0, canvas.width, canvas.height, radius, iterations);
-    }
-    
-    resolve(canvas.toDataURL());
-    /* if(DEBUG) {
-      console.log(`[blur] end, radius: ${radius}, iterations: ${iterations}, time: ${performance.now() - perf}`);
-    } */
+function processBlurNext(
+  img: HTMLImageElement, 
+  radius: number, 
+  iterations: number, 
+  canvas: HTMLCanvasElement = document.createElement('canvas')
+) {
+  canvas.width = img.width;
+  canvas.height = img.height;
 
-    /* canvas.toBlob(blob => {
-      resolve(URL.createObjectURL(blob));
-      
-      if(DEBUG) {
-        console.log(`[blur] end, radius: ${radius}, iterations: ${iterations}, time: ${performance.now() - perf}`);
-      }
-    }); */
-  });
+  const ctx = canvas.getContext('2d', {alpha: false});
+  if(IS_CANVAS_FILTER_SUPPORTED) {
+    ctx.filter = `blur(${radius}px)`;
+    ctx.drawImage(img, -radius * 2, -radius * 2, canvas.width + radius * 4, canvas.height + radius * 4);
+  } else {
+    ctx.drawImage(img, 0, 0);
+    fastBlurFunc(ctx, 0, 0, canvas.width, canvas.height, radius, iterations);
+  }
+
+  return canvas;
 }
 
-const blurPromises: Map<string, Promise<string>> = new Map();
-const CACHE_SIZE = 1000;
+type CacheValue = {canvas: HTMLCanvasElement, promise: Promise<void>};
+const cache: Map<string, CacheValue> = new Map();
+const CACHE_SIZE = 150;
 
 export default function blur(dataUri: string, radius: number = RADIUS, iterations: number = ITERATIONS) {
   if(!dataUri) {
-    console.error('no dataUri for blur', dataUri);
-    return Promise.resolve(dataUri);
+    throw 'no dataUri for blur: ' + dataUri;
   }
 
-  if(blurPromises.size > CACHE_SIZE) {
-    blurPromises.clear();
+  if(cache.size > CACHE_SIZE) {
+    cache.clear();
   }
+
+  const canvas = document.createElement('canvas');
+  canvas.className = 'canvas-thumbnail';
   
-  if(blurPromises.has(dataUri)) return blurPromises.get(dataUri);
-  const promise = new Promise<string>((resolve) => {
-    //return resolve(dataUri);
-    requireBlurPromise.then(() => {
-      const img = new Image();
-      img.onload = () => {
-        if(isFilterAvailable) {
-          processBlurNext(img, radius, iterations).then(resolve);
-        } else {
-          addHeavyTask({
-            items: [[img, radius, iterations]],
-            context: null,
-            process: processBlurNext
-          }, 'unshift').then(results => {
-            resolve(results[0]);
-          });
-        }
-      };
-      img.src = dataUri;
-
-      /* addHeavyTask({
-        items: [[dataUri, radius, iterations]],
-        context: null,
-        process: processBlur
-      }, 'unshift').then(results => {
-        resolve(results[0]);
-      }); */
+  let cached = cache.get(dataUri);
+  if(!cached) {
+    const promise: CacheValue['promise'] = new Promise((resolve) => {
+      //return resolve(dataUri);
+      requireBlurPromise.then(() => {
+        const img = new Image();
+        img.onload = () => {
+          // if(IS_CANVAS_FILTER_SUPPORTED) {
+            // resolve(processBlurNext(img, radius, iterations));
+          // } else {
+            const promise = addHeavyTask({
+              items: [[img, radius, iterations, canvas]],
+              context: null,
+              process: processBlurNext
+            }, 'unshift');
+            
+            promise.then(() => {
+              resolve();
+            });
+          // }
+        };
+        img.src = dataUri;
+      });
     });
-  });
+  
+    cache.set(dataUri, cached = {
+      canvas,
+      promise
+    });
+  } else {
+    canvas.width = cached.canvas.width;
+    canvas.height = cached.canvas.height;
+    canvas.getContext('2d').drawImage(cached.canvas, 0, 0);
+  }
 
-  blurPromises.set(dataUri, promise);
-
-  return promise;
+  return {
+    ...cached,
+    canvas
+  };
 }

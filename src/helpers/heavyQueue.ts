@@ -7,26 +7,27 @@
 import deferredPromise, { CancellablePromise } from "./cancellablePromise";
 import { getHeavyAnimationPromise } from "../hooks/useHeavyAnimationCheck";
 import { fastRaf } from "./schedulers";
+import { ArgumentTypes } from "../types";
 
-type HeavyQueue<T> = {
-  items: any[], 
-  process: (...args: any[]) => T,
+type HeavyQueue<T extends HeavyQueue<any>> = {
+  items: ArgumentTypes<T['process']>[], 
+  process: (...args: any[]) => ReturnType<T['process']>,
   context: any,
-  promise?: CancellablePromise<ReturnType<HeavyQueue<T>['process']>[]>
+  promise?: CancellablePromise<ReturnType<T['process']>[]>
 };
 const heavyQueue: HeavyQueue<any>[] = [];
 let processingQueue = false;
 
-export default function addHeavyTask<T>(queue: HeavyQueue<T>, method: 'push' | 'unshift' = 'push') {
+export default function addHeavyTask<T extends HeavyQueue<T>>(queue: T, method: 'push' | 'unshift' = 'push') {
   if(!queue.items.length) {
-    return Promise.resolve([]);
+    return Promise.resolve([]) as typeof promise;
   }
   
-  queue.promise = deferredPromise<T[]>();
+  const promise = queue.promise = deferredPromise();
   heavyQueue[method](queue);
   processHeavyQueue();
 
-  return queue.promise;
+  return promise;
 }
 
 function processHeavyQueue() {
@@ -41,23 +42,24 @@ function processHeavyQueue() {
   }
 }
 
-function timedChunk<T>(queue: HeavyQueue<T>) {
+function timedChunk<T extends HeavyQueue<T>>(queue: HeavyQueue<T>) {
   if(!queue.items.length) {
-    queue.promise.resolve([]);
+    queue.promise.resolve([] as any);
     return Promise.resolve([]);
   }
 
   const todo = queue.items.slice();
-  const results: T[] = [];
+  const results: ReturnType<T['process']>[] = [];
 
-  return new Promise<T[]>((resolve, reject) => {
+  return new Promise<typeof results>((resolve, reject) => {
     const f = async() => {
       const start = performance.now();
 
       do {
         await getHeavyAnimationPromise();
         const possiblePromise = queue.process.apply(queue.context, todo.shift());
-        let realResult: T;
+        let realResult: typeof results[0];
+        // @ts-ignore
         if(possiblePromise instanceof Promise) {
           try {
             realResult = await possiblePromise;

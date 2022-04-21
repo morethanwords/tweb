@@ -1213,6 +1213,12 @@ middle-ellipsis-element {
   fill: rgba(0, 0, 0, .08);
 }
 
+.canvas-thumbnail {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+}
+
 .media-photo, 
 .media-video, 
 .media-sticker, 

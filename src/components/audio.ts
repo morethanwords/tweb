@@ -532,7 +532,7 @@ export default class AudioElement extends HTMLElement {
     };
 
     if(doc.thumbs?.length) {
-      const imgs: HTMLImageElement[] = [];
+      const imgs: HTMLElement[] = [];
       const wrapped = wrapPhoto({
         photo: doc, 
         message: null, 

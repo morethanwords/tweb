@@ -314,8 +314,9 @@ export class AppDocsManager {
     const cacheContext = appDownloadManager.getCacheContext(doc, thumb.type);
     if(!cacheContext.url) {
       if('bytes' in thumb) {
-        promise = blur(appPhotosManager.getPreviewURLFromBytes(thumb.bytes, !!doc.sticker)).then(url => {
-          cacheContext.url = url;
+        const result = blur(appPhotosManager.getPreviewURLFromBytes(thumb.bytes, !!doc.sticker));
+        promise = result.promise.then(() => {
+          cacheContext.url = result.canvas.toDataURL();
         }) as any;
       } else {
         //return this.getFileURL(doc, false, thumb);

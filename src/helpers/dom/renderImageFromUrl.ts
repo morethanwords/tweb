@@ -17,7 +17,7 @@ const set = (elem: HTMLElement | HTMLImageElement | SVGImageElement | HTMLVideoE
 export default function renderImageFromUrl(
   elem: HTMLElement | HTMLImageElement | SVGImageElement | HTMLVideoElement, 
   url: string, 
-  callback?: (err?: Event) => void, 
+  callback?: () => void, 
   useCache = true
 ) {
   if(!url) {
@@ -61,7 +61,7 @@ export default function renderImageFromUrl(
 }
 
 export function renderImageFromUrlPromise(elem: Parameters<typeof renderImageFromUrl>[0], url: string, useCache?: boolean) {
-  return new Promise<Event>((resolve) => {
+  return new Promise<void>((resolve) => {
     renderImageFromUrl(elem, url, resolve, useCache);
   });
 }

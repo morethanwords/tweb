@@ -425,14 +425,14 @@ export default class AppBackgroundTab extends SliderSuperTab {
       const cacheContext = appDownloadManager.getCacheContext(doc);
       if(background.blur) {
         setTimeout(() => {
-          blur(cacheContext.url, 12, 4)
-          .then(url => {
+          const {canvas, promise} = blur(cacheContext.url, 12, 4)
+          promise.then(() => {
             if(!middleware()) {
               deferred.resolve();
               return;
             }
 
-            onReady(url);
+            onReady(canvas.toDataURL());
           });
         }, 200);
       } else {
