@@ -1410,7 +1410,8 @@ export default class AppMediaViewerBase<
                   this.wholeDiv.classList.toggle('hide-caption', !!open);
                 },
                 onPip: (pip) => {
-                  if(!pip && (window as any).appMediaViewer !== this) {
+                  const otherMediaViewer = (window as any).appMediaViewer;
+                  if(!pip && otherMediaViewer && otherMediaViewer !== this) {
                     this.releaseSingleMedia = undefined;
                     this.close();
                     return;
