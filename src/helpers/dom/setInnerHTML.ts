@@ -7,7 +7,8 @@
 export default function setInnerHTML(elem: Element, html: string | DocumentFragment) {
   elem.setAttribute('dir', 'auto');
   if(typeof(html) === 'string') {
-    elem.innerHTML = html;
+    if(!html) elem.textContent = '';
+    else elem.innerHTML = html;
   } else {
     elem.textContent = '';
     elem.append(html);

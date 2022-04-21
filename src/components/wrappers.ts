@@ -1387,9 +1387,13 @@ export function wrapSticker({doc, div, middleware, lazyLoadQueue, group, play, o
       if(thumb._ === 'photoPathSize') {
         if(thumb.bytes.length) {
           const d = appPhotosManager.getPathFromPhotoPathSize(thumb);
-          div.innerHTML = `<svg class="rlottie-vector media-sticker thumbnail" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 ${doc.w || 512} ${doc.h || 512}" xml:space="preserve">
-            <path d="${d}"/>
-          </svg>`;
+          const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+          svg.classList.add('rlottie-vector', 'media-sticker', 'thumbnail');
+          svg.setAttributeNS(null, 'viewBox', `0 0 ${doc.w || 512} ${doc.h || 512}`);
+          const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+          path.setAttributeNS(null, 'd', d);
+          svg.append(path);
+          div.append(svg);
         } else {
           thumb = doc.thumbs.find(t => (t as PhotoSize.photoStrippedSize).bytes?.length) || thumb;
         }
