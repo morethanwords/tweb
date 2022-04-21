@@ -636,6 +636,8 @@ export default class ChatBubbles {
     // this.listenerSetter.add(this.bubblesContainer)('click', this.onBubblesClick/* , {capture: true, passive: false} */);
 
     this.listenerSetter.add(this.scrollable.container)('mousedown', (e) => {
+      if(e.button !== 0) return;
+      
       const code: HTMLElement = findUpTag(e.target, 'CODE');
       if(code) {
         cancelEvent(e);
