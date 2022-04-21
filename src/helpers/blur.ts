@@ -90,7 +90,9 @@ export default function blur(dataUri: string, radius: number = RADIUS, iteration
   } else {
     canvas.width = cached.canvas.width;
     canvas.height = cached.canvas.height;
-    canvas.getContext('2d').drawImage(cached.canvas, 0, 0);
+    cached.promise.then(() => {
+      canvas.getContext('2d').drawImage(cached.canvas, 0, 0, canvas.width, canvas.height);
+    });
   }
 
   return {
