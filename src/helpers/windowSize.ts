@@ -5,8 +5,8 @@
  */
 
 export class WindowSize {
-  public width = 0;
-  public height = 0;
+  public width: number;
+  public height: number;
 
   constructor() {
     // @ts-ignore

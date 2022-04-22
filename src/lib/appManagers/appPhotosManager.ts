@@ -29,6 +29,7 @@ import bytesFromHex from "../../helpers/bytes/bytesFromHex";
 import isObject from "../../helpers/object/isObject";
 import safeReplaceArrayInObject from "../../helpers/object/safeReplaceArrayInObject";
 import bytesToDataURL from "../../helpers/bytes/bytesToDataURL";
+import { REPLIES_HIDDEN_CHANNEL_ID } from "../mtproto/mtproto_config";
 
 export type MyPhoto = Photo.photo;
 
@@ -263,7 +264,7 @@ export class AppPhotosManager {
         (message.message || 
           message.reply_to_mid || 
           message.media.webpage || 
-          (message.replies && message.replies.pFlags.comments && message.replies.channel_id !== 777)
+          (message.replies && message.replies.pFlags.comments && message.replies.channel_id.toChatId() !== REPLIES_HIDDEN_CHANNEL_ID)
         )
       ) { // make sure that bubble block is human-readable
         if(boxSize.width < 320) {

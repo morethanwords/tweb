@@ -48,7 +48,7 @@ import appNotificationsManager, { NotifyOptions } from "./appNotificationsManage
 import PeerTitle from "../../components/peerTitle";
 import htmlToDocumentFragment from "../../helpers/dom/htmlToDocumentFragment";
 import htmlToSpan from "../../helpers/dom/htmlToSpan";
-import { MUTE_UNTIL, NULL_PEER_ID, REPLIES_HIDDEN_PEER_ID, REPLIES_PEER_ID, SERVICE_PEER_ID } from "../mtproto/mtproto_config";
+import { MUTE_UNTIL, NULL_PEER_ID, REPLIES_HIDDEN_CHANNEL_ID, REPLIES_PEER_ID, SERVICE_PEER_ID } from "../mtproto/mtproto_config";
 import formatCallDuration from "../../helpers/formatCallDuration";
 import appAvatarsManager from "./appAvatarsManager";
 import telegramMeWebManager from "../mtproto/telegramMeWebManager";
@@ -5756,7 +5756,7 @@ export class AppMessagesManager {
   public getMessageWithReplies(message: Message.message) {
     if(message.peerId !== REPLIES_PEER_ID) {
       message = this.filterMessages(message, message => !!(message as Message.message).replies)[0] as any;
-      if(!(message && message.replies && message.replies.pFlags.comments && message.replies.channel_id.toPeerId() !== REPLIES_HIDDEN_PEER_ID)) {
+      if(!(message && message.replies && message.replies.pFlags.comments && message.replies.channel_id.toChatId() !== REPLIES_HIDDEN_CHANNEL_ID)) {
         return;
       }
     }
