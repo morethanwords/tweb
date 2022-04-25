@@ -274,7 +274,7 @@ export default class PollElement extends HTMLElement {
             ${multipleSelect}
           </div>
           <div class="poll-answer-percents"></div>
-          <div class="poll-answer-text">${RichTextProcessor.wrapEmojiText(answer.text)}</div>
+          <div class="poll-answer-text"></div>
           <svg version="1.1" class="poll-line" style="display: none;" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 485.9 35" xml:space="preserve">
             <use href="#poll-line"></use>
           </svg>
@@ -292,6 +292,10 @@ export default class PollElement extends HTMLElement {
       ${votes}`;
     
     setInnerHTML(this.firstElementChild, RichTextProcessor.wrapEmojiText(poll.question));
+
+    Array.from(this.querySelectorAll('.poll-answer-text')).forEach((el, idx) => {
+      setInnerHTML(el, RichTextProcessor.wrapEmojiText(poll.answers[idx].text));
+    });
 
     this.descDiv = this.firstElementChild.nextElementSibling as HTMLElement;
     this.typeDiv = this.descDiv.firstElementChild as HTMLElement;

@@ -19,6 +19,7 @@ import { i18n } from "../../../lib/langPack";
 import findUpClassName from "../../../helpers/dom/findUpClassName";
 import { attachClickEvent } from "../../../helpers/dom/clickEvent";
 import forEachReverse from "../../../helpers/array/forEachReverse";
+import setInnerHTML from "../../../helpers/dom/setInnerHTML";
 
 export default class AppStickersTab extends SliderSuperTab {
   private inputSearch: InputSearch;
@@ -98,9 +99,9 @@ export default class AppStickersTab extends SliderSuperTab {
 
     const details = document.createElement('div');
     details.classList.add('sticker-set-details');
-    details.innerHTML = `
-      <div class="sticker-set-name">${RichTextProcessor.wrapEmojiText(set.title)}</div>
-    `;
+    details.innerHTML = `<div class="sticker-set-name"></div>`;
+
+    setInnerHTML(details.firstElementChild, RichTextProcessor.wrapEmojiText(set.title));
 
     const countDiv = document.createElement('div');
     countDiv.classList.add('sticker-set-count');
