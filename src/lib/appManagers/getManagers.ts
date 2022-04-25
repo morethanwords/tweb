@@ -87,8 +87,8 @@ function createManagers() {
     proxied[name as keyof T] = createProxy(manager);
   }
 
-  // return proxied/*  as any as T */;
-  return managers;
+  return proxied/*  as any as T */;
+  // return managers;
 }
 
 let managers: ReturnType<typeof createManagers>;

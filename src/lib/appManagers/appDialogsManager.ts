@@ -378,7 +378,7 @@ export class AppDialogsManager {
       this.changeFiltersAllChatsKey();
     });
 
-    new ConnectionStatusComponent(this.managers.apiUpdatesManager, this.chatsContainer);
+    new ConnectionStatusComponent(this.managers, this.chatsContainer);
     this.chatsContainer.append(bottomPart);
 
     setTimeout(() => {
@@ -1574,25 +1574,22 @@ export class AppDialogsManager {
         bold.append(i18n('Draft'), ': ');
         dom.lastMessageSpan.prepend(bold);
       } else if(peerId.isAnyChat() && peerId !== lastMessage.fromId && !lastMessage.action) {
-        const sender = this.managers.appPeersManager.getPeer(lastMessage.fromId);
-        if(sender && sender.id) {
-          const senderBold = document.createElement('b');
+        const senderBold = document.createElement('b');
 
-          if(sender.id === rootScope.myId) {
-            senderBold.append(i18n('FromYou'));
-          } else {
-            //str = sender.first_name || sender.last_name || sender.username;
-            senderBold.append(new PeerTitle({
-              peerId: lastMessage.fromId,
-              onlyFirstName: true,
-            }).element);
-          }
+        if(lastMessage.fromId === rootScope.myId) {
+          senderBold.append(i18n('FromYou'));
+        } else {
+          //str = sender.first_name || sender.last_name || sender.username;
+          senderBold.append(new PeerTitle({
+            peerId: lastMessage.fromId,
+            onlyFirstName: true,
+          }).element);
+        }
 
-          senderBold.append(': ');
-          //console.log(sender, senderBold.innerText);
-          dom.lastMessageSpan.prepend(senderBold);
-        } //////// else console.log('no sender', lastMessage, peerId);
-      }
+        senderBold.append(': ');
+        //console.log(sender, senderBold.innerText);
+        dom.lastMessageSpan.prepend(senderBold);
+      } //////// else console.log('no sender', lastMessage, peerId);
     }
 
     if(!lastMessage.deleted || draftMessage/*  && lastMessage._ !== 'draftMessage' */) {
@@ -1609,14 +1606,14 @@ export class AppDialogsManager {
     }
   }
 
-  private setUnreadMessages(dialog: Dialog, dom = this.getDialogDom(dialog.peerId), isBatch = false) {
+  private async setUnreadMessages(dialog: Dialog, dom = this.getDialogDom(dialog.peerId), isBatch = false) {
     if(!dom) {
       //this.log.error('setUnreadMessages no dom!', dialog);
       return;
     }
 
     if(!isBatch) {
-      const isMuted = this.managers.appNotificationsManager.isPeerLocalMuted(dialog.peerId, true);
+      const isMuted = await this.managers.appNotificationsManager.isPeerLocalMuted(dialog.peerId, true);
       const wasMuted = dom.listEl.classList.contains('is-muted');
       if(isMuted !== wasMuted) {
         SetTransition(dom.listEl, 'is-muted', isMuted, 200);
@@ -1625,7 +1622,7 @@ export class AppDialogsManager {
 
     let setStatusMessage: MyMessage;
     if(dialog.draft?._ !== 'draftMessage') {
-      const lastMessage: MyMessage = this.managers.appMessagesManager.getMessageByPeer(dialog.peerId, dialog.top_message);
+      const lastMessage: MyMessage = await this.managers.appMessagesManager.getMessageByPeer(dialog.peerId, dialog.top_message);
       if(!lastMessage.deleted && lastMessage.pFlags.out && lastMessage.peerId !== rootScope.myId) {
         setStatusMessage = lastMessage;
       }
@@ -1633,7 +1630,7 @@ export class AppDialogsManager {
 
     setSendingStatus(dom.statusSpan, setStatusMessage, true);
 
-    const filter = this.managers.appMessagesManager.filtersStorage.getFilter(this.filterId);
+    const filter = await this.managers.appMessagesManager.filtersStorage.getFilter(this.filterId);
     let isPinned: boolean;
     if(filter) {
       isPinned = filter.pinnedPeerIds.indexOf(dialog.peerId) !== -1;
@@ -1641,7 +1638,7 @@ export class AppDialogsManager {
       isPinned = !!dialog.pFlags.pinned;
     }
 
-    const isDialogUnread = this.managers.appMessagesManager.isDialogUnread(dialog);
+    const isDialogUnread = await this.managers.appMessagesManager.isDialogUnread(dialog);
     const hasUnreadBadge = isPinned || isDialogUnread;
     // dom.messageEl.classList.toggle('has-badge', hasBadge);
 
@@ -1707,16 +1704,16 @@ export class AppDialogsManager {
     return element?.dom;
   }
 
-  private getDialog(dialog: Dialog | PeerId): Dialog {
+  private async getDialog(dialog: Dialog | PeerId) {
     if(typeof(dialog) !== 'object') {
-      const originalDialog = this.managers.appMessagesManager.getDialogOnly(dialog);
+      const originalDialog = await this.managers.appMessagesManager.getDialogOnly(dialog);
       if(!originalDialog) {
         const peerId = dialog || NULL_PEER_ID;
         return {
           peerId,
-          peer: this.managers.appPeersManager.getOutputPeer(peerId),
+          peer: await this.managers.appPeersManager.getOutputPeer(peerId),
           pFlags: {}
-        } as any;
+        } as any as Dialog;
       }
 
       return originalDialog;
@@ -1745,30 +1742,30 @@ export class AppDialogsManager {
   }
 
   public addListDialog(options: Parameters<AppDialogsManager['addDialogNew']>[0] & {isBatch?: boolean}) {
-    const dialog = this.getDialog(options.dialog);
-
     options.autonomous = false;
-
+    
     const ret = this.addDialogNew(options);
-
+    
     if(ret) {
-      const {peerId} = dialog;
-      const isMuted = this.managers.appNotificationsManager.isPeerLocalMuted(peerId, true);
-      if(isMuted) {
-        ret.dom.listEl.classList.add('is-muted');
-      }
-
-      if(!peerId.isUser()) {
-        this.processDialogForCallStatus(dialog, ret.dom);
-      }
-
-      this.setLastMessage(dialog, undefined, ret.dom, undefined, options.loadPromises, options.isBatch, true);
+      this.getDialog(options.dialog).then(async(dialog) => {
+        const {peerId} = dialog;
+        const isMuted = await this.managers.appNotificationsManager.isPeerLocalMuted(peerId, true);
+        if(isMuted) {
+          ret.dom.listEl.classList.add('is-muted');
+        }
+  
+        if(!peerId.isUser()) {
+          this.processDialogForCallStatus(dialog, ret.dom);
+        }
+  
+        this.setLastMessage(dialog, undefined, ret.dom, undefined, options.loadPromises, options.isBatch, true);
+      });
     }
 
     return ret;
   }
 
-  private processDialogForCallStatus(dialog: Dialog, dom?: DialogDom) {
+  private async processDialogForCallStatus(dialog: Dialog, dom?: DialogDom) {
     if(!IS_GROUP_CALL_SUPPORTED) {
       return;
     }
@@ -1776,23 +1773,23 @@ export class AppDialogsManager {
     if(!dom) dom = this.getDialogDom(dialog.peerId);
     if(!dom) return;
     
-    const chat: Chat.chat | Chat.channel = this.managers.appChatsManager.getChat(dialog.peerId.toChatId());
+    const chat: Chat.chat | Chat.channel = await this.managers.appChatsManager.getChat(dialog.peerId.toChatId());
     this.setCallStatus(dom, !!(chat.pFlags.call_active && chat.pFlags.call_not_empty));
   }
 
   /**
    * use for rendering search result
    */
-  public addDialogAndSetLastMessage(options: Omit<Parameters<AppDialogsManager['addDialogNew']>[0], 'dialog'> & {
+  public async addDialogAndSetLastMessage(options: Omit<Parameters<AppDialogsManager['addDialogNew']>[0], 'dialog'> & {
     message: MyMessage, 
     peerId: PeerId,
     query?: string
   }) {
     const {peerId, message, query} = options;
-    const ret = this.addDialogNew({
+    const ret = await this.addDialogNew({
       ...options,
       ...getMessageSenderPeerIdOrName(message),
-      dialog: this.getDialog(peerId),
+      dialog: await this.getDialog(peerId),
     });
 
     this.setLastMessage(ret.dialog, message, ret.dom, query);
@@ -1821,7 +1818,7 @@ export class AppDialogsManager {
     return this.addDialog(options.dialog, options.container, options.drawStatus, options.rippleEnabled, options.onlyFirstName, options.meAsSaved, options.append, options.avatarSize, options.autonomous, options.lazyLoadQueue, options.loadPromises, options.fromName);
   }
 
-  public addDialog(
+  public async addDialog(
     _dialog: Parameters<AppDialogsManager['getDialog']>[0], 
     container?: HTMLElement | Scrollable | DocumentFragment | false, 
     drawStatus = true, 
@@ -1835,7 +1832,7 @@ export class AppDialogsManager {
     loadPromises?: Promise<any>[],
     fromName?: string
   ) {
-    const dialog = this.getDialog(_dialog);
+    const dialog = await this.getDialog(_dialog);
     const peerId = dialog.peerId;
 
     const avatarEl = new AvatarElement();
@@ -1849,7 +1846,7 @@ export class AppDialogsManager {
     });
 
     if(drawStatus && peerId !== rootScope.myId && peerId.isUser()) {
-      const user = this.managers.appUsersManager.getUser(peerId);
+      const user = await this.managers.appUsersManager.getUser(peerId);
       if(user.status?._ === 'userStatusOnline') {
         this.setOnlineStatus(avatarEl, true);
       }

@@ -19,6 +19,7 @@ import { ConnectionStatus } from "../lib/mtproto/connectionStatus";
 import cancelEvent from "../helpers/dom/cancelEvent";
 import apiManager from "../lib/mtproto/mtprotoworker";
 import { attachClickEvent } from "../helpers/dom/clickEvent";
+import { AppManagers } from "../lib/appManagers/managers";
 
 export default class ConnectionStatusComponent {
   public static CHANGE_STATE_DELAY = 1000;
@@ -40,7 +41,7 @@ export default class ConnectionStatusComponent {
   private setFirstConnectionTimeout: number;
   private setStateTimeout: number;
 
-  constructor(private apiUpdatesManager: ApiUpdatesManager, chatsContainer: HTMLElement) {
+  constructor(private managers: AppManagers, chatsContainer: HTMLElement) {
     this.log = logger('CS', undefined, undefined);
   
     this.statusContainer = document.createElement('div');
@@ -108,7 +109,7 @@ export default class ConnectionStatusComponent {
       const online = status && status.status === ConnectionStatus.Connected;
 
       if(this.connecting && online) {
-        this.apiUpdatesManager.forceGetDifference();
+        this.managers.apiUpdatesManager.forceGetDifference();
       }
 
       if(online && !this.hadConnect) {
