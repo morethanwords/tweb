@@ -13,11 +13,12 @@ import apiManager from "./mtproto/mtprotoworker";
 import stateStorage from "./stateStorage";
 import App from "../config/app";
 import rootScope from "./rootScope";
-import RichTextProcessor from "./richtextprocessor";
 import { IS_MOBILE } from "../environment/userAgent";
 import deepEqual from "../helpers/object/deepEqual";
 import safeAssign from "../helpers/object/safeAssign";
 import capitalizeFirstLetter from "../helpers/string/capitalizeFirstLetter";
+import matchUrlProtocol from "./richTextProcessor/matchUrlProtocol";
+import wrapUrl from "./richTextProcessor/wrapUrl";
 
 export const langPack: {[actionType: string]: LangPackKey} = {
   "messageActionChatCreate": "ActionCreateGroup",
@@ -359,9 +360,9 @@ namespace I18n {
         
 				const url = p4.slice(idx + 2, p4.length - 1);
         let a: HTMLAnchorElement;
-				if(url && RichTextProcessor.matchUrlProtocol(url)) {
+				if(url && matchUrlProtocol(url)) {
           a = document.createElement('a');
-          const wrappedUrl = RichTextProcessor.wrapUrl(url);
+          const wrappedUrl = wrapUrl(url);
           a.href = wrappedUrl.url;
           if(wrappedUrl.onclick) a.setAttribute('onclick', wrappedUrl.onclick);
           a.target = '_blank';

@@ -10,36 +10,32 @@
  */
 
 import rootScope from "../rootScope";
-import appPeersManager from "./appPeersManager";
-import appMessagesManager from "./appMessagesManager";
-import apiUpdatesManager from "./apiUpdatesManager";
-import RichTextProcessor from "../richtextprocessor";
 import serverTimeManager from "../mtproto/serverTimeManager";
 import { MessageEntity, DraftMessage, MessagesSaveDraft } from "../../layer";
 import apiManager from "../mtproto/mtprotoworker";
 import { tsNow } from "../../helpers/date";
-import { MOUNT_CLASS_TO } from "../../config/debug";
 import stateStorage from "../stateStorage";
-import appMessagesIdsManager from "./appMessagesIdsManager";
 import assumeType from "../../helpers/assumeType";
 import isObject from "../../helpers/object/isObject";
 import deepEqual from "../../helpers/object/deepEqual";
-import documentFragmentToHTML from "../../helpers/dom/documentFragmentToHTML";
+import { AppManager } from "./manager";
 
 export type MyDraftMessage = DraftMessage.draftMessage;
 
-export class AppDraftsManager {
+export class AppDraftsManager extends AppManager {
   private drafts: {[peerIdAndThreadId: string]: MyDraftMessage} = {};
   private getAllDraftPromise: Promise<void> = null;
 
   constructor() {
+    super();
+    
     stateStorage.get('drafts').then(drafts => {
       this.drafts = drafts || {};
     });
 
     rootScope.addMultipleEventsListeners({
       updateDraftMessage: (update) => {
-        const peerID = appPeersManager.getPeerId(update.peer);
+        const peerID = this.appPeersManager.getPeerId(update.peer);
         this.saveDraft(peerID, update.threadId, update.draft, {notify: true});
       }
     });
@@ -61,9 +57,9 @@ export class AppDraftsManager {
         }
 
         const peerId = key.toPeerId();
-        const dialog = appMessagesManager.getDialogOnly(peerId);
+        const dialog = this.appMessagesManager.getDialogOnly(peerId);
         if(!dialog) {
-          appMessagesManager.reloadConversation(peerId);
+          this.appMessagesManager.reloadConversation(peerId);
           /* const dialog = appMessagesManager.generateDialog(peerId);
           dialog.draft = this.drafts[key];
           appMessagesManager.saveConversation(dialog);
@@ -78,9 +74,9 @@ export class AppDraftsManager {
     return this.getAllDraftPromise || (
       this.getAllDraftPromise = apiManager.invokeApi('messages.getAllDrafts')
       .then((updates) => {
-        const p = apiUpdatesManager.updatesState.syncLoading || Promise.resolve();
+        const p = this.apiUpdatesManager.updatesState.syncLoading || Promise.resolve();
         p.then(() => {
-          apiUpdatesManager.processUpdateMessage(updates);
+          this.apiUpdatesManager.processUpdateMessage(updates);
         });
       })
     );
@@ -171,14 +167,8 @@ export class AppDraftsManager {
       return undefined;
     }
 
-    const myEntities = RichTextProcessor.parseEntities(draft.message);
-    const apiEntities = draft.entities || [];
-    const totalEntities = RichTextProcessor.mergeEntities(apiEntities.slice(), myEntities); // ! only in this order, otherwise bold and emoji formatting won't work
-
-    draft.rMessage = documentFragmentToHTML(RichTextProcessor.wrapDraftText(draft.message, {entities: totalEntities}));
-    //draft.rReply = appMessagesManager.getRichReplyText(draft);
     if(draft.reply_to_msg_id) {
-      draft.reply_to_msg_id = appMessagesIdsManager.generateMessageId(draft.reply_to_msg_id);
+      draft.reply_to_msg_id = this.appMessagesIdsManager.generateMessageId(draft.reply_to_msg_id);
     }
 
     return draft;
@@ -194,7 +184,7 @@ export class AppDraftsManager {
 
     // console.warn(dT(), 'changed draft', localDraft, serverDraft)
     let params: MessagesSaveDraft = {
-      peer: appPeersManager.getInputPeerById(peerId),
+      peer: this.appPeersManager.getInputPeerById(peerId),
       message: ''
     };
 
@@ -207,11 +197,11 @@ export class AppDraftsManager {
       let entities: MessageEntity[] = localDraft.entities;
 
       if(localDraft.reply_to_msg_id) {
-        params.reply_to_msg_id = appMessagesIdsManager.getServerMessageId(localDraft.reply_to_msg_id);
+        params.reply_to_msg_id = this.appMessagesIdsManager.getServerMessageId(localDraft.reply_to_msg_id);
       }
 
       if(entities?.length) {
-        params.entities = appMessagesManager.getInputEntities(entities);
+        params.entities = this.appMessagesManager.getInputEntities(entities);
       }
 
       if(localDraft.pFlags.no_webpage) {
@@ -278,7 +268,3 @@ export class AppDraftsManager {
     }
   }
 }
-
-const appDraftsManager = new AppDraftsManager();
-MOUNT_CLASS_TO.appDraftsManager = appDraftsManager;
-export default appDraftsManager;

@@ -9,7 +9,7 @@ import InputField from "../inputField";
 import PopupElement from ".";
 import Scrollable from "../scrollable";
 import { toast } from "../toast";
-import { prepareAlbum, wrapDocument } from "../wrappers";
+import { wrapDocument } from "../wrappers";
 import CheckboxField from "../checkboxField";
 import SendContextMenu from "../chat/sendContextMenu";
 import { createPosterFromMedia, createPosterFromVideo, onMediaLoad } from "../../helpers/files";
@@ -19,12 +19,13 @@ import appDownloadManager from "../../lib/appManagers/appDownloadManager";
 import calcImageInBox from "../../helpers/calcImageInBox";
 import placeCaretAtEnd from "../../helpers/dom/placeCaretAtEnd";
 import rootScope from "../../lib/rootScope";
-import { MediaSize } from "../../helpers/mediaSizes";
 import { attachClickEvent } from "../../helpers/dom/clickEvent";
 import MEDIA_MIME_TYPES_SUPPORTED from '../../environment/mediaMimeTypesSupport';
 import getGifDuration from "../../helpers/getGifDuration";
 import replaceContent from "../../helpers/dom/replaceContent";
 import createVideo from "../../helpers/dom/createVideo";
+import prepareAlbum from "../prepareAlbum";
+import { MediaSize } from "../../helpers/mediaSize";
 
 type SendFileParams = Partial<{
   file: File,

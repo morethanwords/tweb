@@ -7,21 +7,18 @@
 import { SliderSuperTab } from "../../slider";
 import AppSelectPeers from "../../appSelectPeers";
 import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
-import appUsersManager from "../../../lib/appManagers/appUsersManager";
 import { MyDialogFilter as DialogFilter } from "../../../lib/storages/filters";
 import ButtonIcon from "../../buttonIcon";
 import CheckboxField from "../../checkboxField";
 import Button from "../../button";
 import AppEditFolderTab from "./editFolder";
 import I18n, { i18n, LangPackKey, _i18n, join } from "../../../lib/langPack";
-import appMessagesManager from "../../../lib/appManagers/appMessagesManager";
-import RichTextProcessor from "../../../lib/richtextprocessor";
 import { SettingSection } from "..";
 import { toast } from "../../toast";
-import appPeersManager from "../../../lib/appManagers/appPeersManager";
 import copy from "../../../helpers/object/copy";
 import forEachReverse from "../../../helpers/array/forEachReverse";
 import setInnerHTML from "../../../helpers/dom/setInnerHTML";
+import wrapEmojiText from "../../../lib/richTextProcessor/wrapEmojiText";
 
 export default class AppIncludedChatsTab extends SliderSuperTab {
   private editFolderTab: AppEditFolderTab;
@@ -101,7 +98,7 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
       });
       
       this.filter[this.type === 'included' ? 'includePeerIds' : 'excludePeerIds'] = peerIds;
-      this.filter[this.type === 'included' ? 'include_peers' : 'exclude_peers'] = peerIds.map(peerId => appPeersManager.getInputPeerById(peerId));
+      this.filter[this.type === 'included' ? 'include_peers' : 'exclude_peers'] = peerIds.map(peerId => this.managers.appPeersManager.getInputPeerById(peerId));
       //this.filter.pinned_peers = this.filter.pinned_peers.filter(peerId => this.filter.include_peers.includes(peerId));
 
       this.editFolderTab.setFilter(this.filter, false);
@@ -109,9 +106,9 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
     });
 
     this.dialogsByFilters = new Map();
-    return appMessagesManager.filtersStorage.getDialogFilters().then(filters => {
+    return this.managers.appMessagesManager.filtersStorage.getDialogFilters().then(filters => {
       for(const filter of filters) {
-        this.dialogsByFilters.set(filter, new Set(appMessagesManager.dialogsStorage.getFolderDialogs(filter.id).map(d => d.peerId)));
+        this.dialogsByFilters.set(filter, new Set(this.managers.appMessagesManager.dialogsStorage.getFolderDialogs(filter.id).map(d => d.peerId)));
       }
     });
   }
@@ -130,7 +127,7 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
   renderResults = async(peerIds: PeerId[]) => {
     //const other = this.type === 'included' ? this.filter.exclude_peers : this.filter.include_peers;
 
-    await appUsersManager.getContacts();
+    await this.managers.appUsersManager.getContacts();
     peerIds.forEach(peerId => {
       //if(other.includes(peerId)) return;
 
@@ -150,7 +147,7 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
       this.dialogsByFilters.forEach((dialogs, filter) => {
         if(dialogs.has(peerId)) {
           const span = document.createElement('span');
-          setInnerHTML(span, RichTextProcessor.wrapEmojiText(filter.title));
+          setInnerHTML(span, wrapEmojiText(filter.title));
           foundInFilters.push(span);
         }
       });
@@ -216,7 +213,8 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
       peerType: ['dialogs'], 
       renderResultsFunc: this.renderResults,
       placeholder: 'Search',
-      sectionNameLangPackKey: 'FilterChats'
+      sectionNameLangPackKey: 'FilterChats',
+      managers: this.managers
     });
     this.selector.selected = new Set(selectedPeers);
 

@@ -16,15 +16,13 @@ import { logger, LogTypes } from '../logger';
 import apiManager from '../mtproto/mtprotoworker';
 import rootScope from '../rootScope';
 //import networkerFactory from '../mtproto/networkerFactory';
-import appUsersManager from "./appUsersManager";
-import appChatsManager from "./appChatsManager";
-import appPeersManager from "./appPeersManager";
 import appStateManager from './appStateManager';
 import serverTimeManager from '../mtproto/serverTimeManager';
 import assumeType from '../../helpers/assumeType';
-import RichTextProcessor from '../richtextprocessor';
 import App from '../../config/app';
 import filterUnique from '../../helpers/array/filterUnique';
+import { AppManager } from './manager';
+import parseMarkdown from '../richTextProcessor/parseMarkdown';
 
 type UpdatesState = {
   pendingPtsUpdates: (Update & {pts: number, pts_count: number})[],
@@ -44,7 +42,7 @@ type UpdatesState = {
 
 const SYNC_DELAY = 6;
 
-export class ApiUpdatesManager {
+export class ApiUpdatesManager extends AppManager {
   public updatesState: UpdatesState = {
     pendingPtsUpdates: [],
     pendingSeqUpdates: {},
@@ -215,8 +213,8 @@ export class ApiUpdatesManager {
             _: 'message',
             pFlags: updateMessage.pFlags,
             id: updateMessage.id,
-            from_id: appPeersManager.getOutputPeer(fromId.toPeerId()),
-            peer_id: appPeersManager.getOutputPeer(toId),
+            from_id: this.appPeersManager.getOutputPeer(fromId.toPeerId()),
+            peer_id: this.appPeersManager.getOutputPeer(toId),
             date: updateMessage.date,
             message: updateMessage.message,
             fwd_from: updateMessage.fwd_from,
@@ -231,8 +229,8 @@ export class ApiUpdatesManager {
   
       case 'updatesCombined':
       case 'updates':
-        appUsersManager.saveApiUsers(updateMessage.users, options.override);
-        appChatsManager.saveApiChats(updateMessage.chats, options.override);
+        this.appUsersManager.saveApiUsers(updateMessage.users, options.override);
+        this.appChatsManager.saveApiChats(updateMessage.chats, options.override);
   
         updateMessage.updates.forEach((update: Update) => {
           this.processUpdate(update, processOpts);
@@ -281,8 +279,8 @@ export class ApiUpdatesManager {
       }
 
       if(differenceResult._ !== 'updates.differenceTooLong') {
-        appUsersManager.saveApiUsers(differenceResult.users);
-        appChatsManager.saveApiChats(differenceResult.chats);
+        this.appUsersManager.saveApiUsers(differenceResult.users);
+        this.appChatsManager.saveApiChats(differenceResult.chats);
 
         // Should be first because of updateMessageID
         // this.log('applying', differenceResult.other_updates.length, 'other updates')
@@ -354,7 +352,7 @@ export class ApiUpdatesManager {
 
     //this.log.trace('Get channel diff', appChatsManager.getChat(channelId), channelState.pts);
     const promise = apiManager.invokeApi('updates.getChannelDifference', {
-      channel: appChatsManager.getChannelInput(channelId),
+      channel: this.appChatsManager.getChannelInput(channelId),
       filter: {_: 'channelMessagesFilterEmpty'},
       pts: channelState.pts,
       limit: 30
@@ -375,8 +373,8 @@ export class ApiUpdatesManager {
         return;
       }
   
-      appUsersManager.saveApiUsers(differenceResult.users);
-      appChatsManager.saveApiChats(differenceResult.chats);
+      this.appUsersManager.saveApiUsers(differenceResult.users);
+      this.appChatsManager.saveApiChats(differenceResult.chats);
   
       // Should be first because of updateMessageID
       this.debug && this.log.debug('applying', differenceResult.other_updates.length, 'channel other updates');
@@ -460,7 +458,7 @@ export class ApiUpdatesManager {
     switch(update._) {
       case 'updateNewChannelMessage':
       case 'updateEditChannelMessage':
-        channelId = appPeersManager.getPeerId(update.message.peer_id).toChatId();
+        channelId = this.appPeersManager.getPeerId(update.message.peer_id).toChatId();
         break;
       /* case 'updateDeleteChannelMessages':
         channelId = update.channel_id;
@@ -501,23 +499,23 @@ export class ApiUpdatesManager {
         update._ === 'updateNewChannelMessage' ||
         update._ === 'updateEditChannelMessage') {
       const message = update.message as Message.message;
-      const toPeerId = appPeersManager.getPeerId(message.peer_id);
+      const toPeerId = this.appPeersManager.getPeerId(message.peer_id);
       const fwdHeader: MessageFwdHeader.messageFwdHeader = message.fwd_from || {} as any;
       let reason: string;
-      if(message.from_id && !appUsersManager.hasUser(appPeersManager.getPeerId(message.from_id), message.pFlags.post/* || channelId*/) && (reason = 'author') ||
-          fwdHeader.from_id && !appUsersManager.hasUser(appPeersManager.getPeerId(fwdHeader.from_id), !!(fwdHeader.from_id as Peer.peerChannel).channel_id) && (reason = 'fwdAuthor') ||
-          (fwdHeader.from_id as Peer.peerChannel)?.channel_id && !appChatsManager.hasChat((fwdHeader.from_id as Peer.peerChannel).channel_id, true) && (reason = 'fwdChannel') ||
-          toPeerId.isUser() && !appUsersManager.hasUser(toPeerId) && (reason = 'toPeer User') ||
-          toPeerId.isAnyChat() && !appChatsManager.hasChat(toPeerId.toChatId()) && (reason = 'toPeer Chat')) {
+      if(message.from_id && !this.appUsersManager.hasUser(this.appPeersManager.getPeerId(message.from_id), message.pFlags.post/* || channelId*/) && (reason = 'author') ||
+          fwdHeader.from_id && !this.appUsersManager.hasUser(this.appPeersManager.getPeerId(fwdHeader.from_id), !!(fwdHeader.from_id as Peer.peerChannel).channel_id) && (reason = 'fwdAuthor') ||
+          (fwdHeader.from_id as Peer.peerChannel)?.channel_id && !this.appChatsManager.hasChat((fwdHeader.from_id as Peer.peerChannel).channel_id, true) && (reason = 'fwdChannel') ||
+          toPeerId.isUser() && !this.appUsersManager.hasUser(toPeerId) && (reason = 'toPeer User') ||
+          toPeerId.isAnyChat() && !this.appChatsManager.hasChat(toPeerId.toChatId()) && (reason = 'toPeer Chat')) {
         this.log.warn('Not enough data for message update', toPeerId, reason, message);
-        if(channelId && appChatsManager.hasChat(channelId)) {
+        if(channelId && this.appChatsManager.hasChat(channelId)) {
           this.getChannelDifference(channelId);
         } else {
           this.forceGetDifference();
         }
         return false;
       }
-    } else if(channelId && !appChatsManager.hasChat(channelId)) {
+    } else if(channelId && !this.appChatsManager.hasChat(channelId)) {
       // this.log.log('skip update, missing channel', channelId, update)
       return false;
     }
@@ -528,7 +526,7 @@ export class ApiUpdatesManager {
     if(pts) {
       const newPts = curState.pts + (pts_count || 0);
       if(newPts < pts) {
-        this.debug && this.log.warn('Pts hole', curState, update, channelId && appChatsManager.getChat(channelId));
+        this.debug && this.log.warn('Pts hole', curState, update, channelId && this.appChatsManager.getChat(channelId));
         curState.pendingPtsUpdates.push(update as Update.updateNewMessage);
         if(!curState.syncPending && !curState.syncLoading) {
           curState.syncPending = {
@@ -704,7 +702,7 @@ export class ApiUpdatesManager {
               text = pre + text;
   
               const entities: MessageEntity[] = [];
-              const message = RichTextProcessor.parseMarkdown(text, entities);
+              const message = parseMarkdown(text, entities);
   
               const update: Update.updateServiceNotification = {
                 _: 'updateServiceNotification',

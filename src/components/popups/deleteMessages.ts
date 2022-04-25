@@ -4,27 +4,26 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import appChatsManager from "../../lib/appManagers/appChatsManager";
-import appMessagesManager from "../../lib/appManagers/appMessagesManager";
 import rootScope from "../../lib/rootScope";
-import { addCancelButton } from ".";
+import PopupElement, { addCancelButton } from ".";
 import PopupPeer, { PopupPeerButtonCallbackCheckboxes, PopupPeerOptions } from "./peer";
 import { ChatType } from "../chat/chat";
 import { i18n, LangPackKey } from "../../lib/langPack";
 import PeerTitle from "../peerTitle";
-import appPeersManager from "../../lib/appManagers/appPeersManager";
 
 export default class PopupDeleteMessages {
   constructor(peerId: PeerId, mids: number[], type: ChatType, onConfirm?: () => void) {
     const peerTitleElement = new PeerTitle({peerId}).element;
 
+    const managers = PopupElement.MANAGERS;
+
     mids = mids.slice();
     const callback = (checked: PopupPeerButtonCallbackCheckboxes, revoke?: boolean) => {
       onConfirm && onConfirm();
       if(type === 'scheduled') {
-        appMessagesManager.deleteScheduledMessages(peerId, mids);
+        managers.appMessagesManager.deleteScheduledMessages(peerId, mids);
       } else {
-        appMessagesManager.deleteMessages(peerId, mids, !!checked.size || revoke);
+        managers.appMessagesManager.deleteMessages(peerId, mids, !!checked.size || revoke);
       }
     };
 
@@ -36,7 +35,7 @@ export default class PopupDeleteMessages {
       titleArgs = [i18n('messages', [mids.length])];
     }
     
-    if(appPeersManager.isMegagroup(peerId)) {
+    if(managers.appPeersManager.isMegagroup(peerId)) {
       description = mids.length === 1 ? 'AreYouSureDeleteSingleMessageMega' : 'AreYouSureDeleteFewMessagesMega';
     } else {
       description = mids.length === 1 ? 'AreYouSureDeleteSingleMessage' : 'AreYouSureDeleteFewMessages';
@@ -57,12 +56,12 @@ export default class PopupDeleteMessages {
           textArgs: [peerTitleElement]
         });
       } else {
-        const chat = appChatsManager.getChat(peerId.toChatId());
+        const chat = managers.appChatsManager.getChat(peerId.toChatId());
 
-        const hasRights = appChatsManager.hasRights(peerId.toChatId(), 'delete_messages');
+        const hasRights = managers.appChatsManager.hasRights(peerId.toChatId(), 'delete_messages');
         if(chat._ === 'chat') {
           const canRevoke = hasRights ? mids.slice() : mids.filter(mid => {
-            const message = appMessagesManager.getMessageByPeer(peerId, mid);
+            const message = managers.appMessagesManager.getMessageByPeer(peerId, mid);
             return message.fromId === rootScope.myId;
           });
 

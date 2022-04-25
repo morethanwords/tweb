@@ -9,6 +9,7 @@ import { attachClickEvent } from "../../../helpers/dom/clickEvent";
 import AppSearch, { SearchGroup } from "../../appSearch";
 import ButtonIcon from "../../buttonIcon";
 import InputSearch from "../../inputSearch";
+import PopupElement from "../../popups";
 import PopupDatePicker from "../../popups/datePicker";
 import { SliderSuperTab } from "../../slider";
 
@@ -55,7 +56,7 @@ export default class AppPrivateSearchTab extends SliderSuperTab {
       this.btnPickDate.classList.toggle('hide', !this.onDatePick);
       if(this.onDatePick) {
         attachClickEvent(this.btnPickDate, () => {
-          new PopupDatePicker(new Date(), this.onDatePick).show();
+          PopupElement.createPopup(PopupDatePicker, new Date(), this.onDatePick).show();
         });
       }
 

@@ -153,12 +153,6 @@
     {"name": "phone_number", "type": "string"}
   ]
 }, {
-  "predicate": "draftMessage",
-  "params": [
-    {"name": "rReply", "type": "string"},
-    {"name": "rMessage", "type": "string"}
-  ]
-}, {
   "predicate": "messageActionDiscussionStarted",
   "params": [],
   "type": "MessageAction"

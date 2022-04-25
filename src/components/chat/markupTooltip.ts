@@ -5,7 +5,6 @@
  */
 
 import type { AppImManager } from "../../lib/appManagers/appImManager";
-import RichTextProcessor from "../../lib/richtextprocessor";
 import ButtonIcon from "../buttonIcon";
 import { IS_TOUCH_SUPPORTED } from "../../environment/touchSupport";
 import { IS_APPLE, IS_MOBILE } from "../../environment/userAgent";
@@ -18,6 +17,8 @@ import isSelectionEmpty from "../../helpers/dom/isSelectionEmpty";
 import { MarkdownType, markdownTags } from "../../helpers/dom/getRichElementValue";
 import getVisibleRect from "../../helpers/dom/getVisibleRect";
 import clamp from "../../helpers/number/clamp";
+import matchUrl from "../../lib/richTextProcessor/matchUrl";
+import matchUrlProtocol from "../../lib/richTextProcessor/matchUrlProtocol";
 //import { logger } from "../../lib/logger";
 
 export default class MarkupTooltip {
@@ -79,7 +80,7 @@ export default class MarkupTooltip {
     _i18n(this.linkInput, 'MarkupTooltip.LinkPlaceholder', undefined, 'placeholder');
     this.linkInput.classList.add('input-clear');
     this.linkInput.addEventListener('keydown', (e) => {
-      const valid = !this.linkInput.value.length || !!RichTextProcessor.matchUrl(this.linkInput.value);///^(http)|(https):\/\//i.test(this.linkInput.value);
+      const valid = !this.linkInput.value.length || !!matchUrl(this.linkInput.value);///^(http)|(https):\/\//i.test(this.linkInput.value);
 
       if(e.key === 'Enter') {
         if(!valid) {
@@ -172,7 +173,7 @@ export default class MarkupTooltip {
     cancelEvent(e);
     this.resetSelection();
     let url = this.linkInput.value;
-    if(url && !RichTextProcessor.matchUrlProtocol(url)) {
+    if(url && !matchUrlProtocol(url)) {
       url = 'https://' + url;
     }
     this.appImManager.chat.input.applyMarkdown('link', url);
@@ -182,7 +183,7 @@ export default class MarkupTooltip {
   }
 
   private isLinkValid() {
-    return !this.linkInput.value.length || !!RichTextProcessor.matchUrl(this.linkInput.value);
+    return !this.linkInput.value.length || !!matchUrl(this.linkInput.value);
   }
 
   private resetSelection(range: Range = this.savedRange) {

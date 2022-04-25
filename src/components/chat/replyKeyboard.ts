@@ -8,7 +8,6 @@ import type { AppMessagesManager } from "../../lib/appManagers/appMessagesManage
 import type ChatInput from "./input";
 import DropdownHover from "../../helpers/dropdownHover";
 import { KeyboardButton, ReplyMarkup } from "../../layer";
-import RichTextProcessor from "../../lib/richtextprocessor";
 import rootScope from "../../lib/rootScope";
 import ListenerSetter, { Listener } from "../../helpers/listenerSetter";
 import findUpClassName from "../../helpers/dom/findUpClassName";
@@ -19,6 +18,7 @@ import { getHeavyAnimationPromise } from "../../hooks/useHeavyAnimationCheck";
 import confirmationPopup from "../confirmationPopup";
 import safeAssign from "../../helpers/object/safeAssign";
 import setInnerHTML from "../../helpers/dom/setInnerHTML";
+import wrapEmojiText from "../../lib/richTextProcessor/wrapEmojiText";
 
 export default class ReplyKeyboard extends DropdownHover {
   private static BASE_CLASS = 'reply-keyboard';
@@ -142,7 +142,7 @@ export default class ReplyKeyboard extends DropdownHover {
       for(const button of row.buttons) {
         const btn = document.createElement('button');
         btn.classList.add(ReplyKeyboard.BASE_CLASS + '-button', 'btn');
-        setInnerHTML(btn, RichTextProcessor.wrapEmojiText(button.text));
+        setInnerHTML(btn, wrapEmojiText(button.text));
         btn.dataset.text = button.text;
         btn.dataset.type = button._;
         div.append(btn);

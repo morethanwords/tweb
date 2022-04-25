@@ -5246,9 +5246,7 @@ export namespace DraftMessage {
 		reply_to_msg_id?: number,
 		message: string,
 		entities?: Array<MessageEntity>,
-		date: number,
-		rReply?: string,
-		rMessage?: string
+		date: number
 	};
 }
 

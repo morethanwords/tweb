@@ -21,7 +21,7 @@ import ButtonIcon from "../buttonIcon";
 import { DocumentAttribute } from "../../layer";
 import MediaProgressLine from "../mediaProgressLine";
 import VolumeSelector from "../volumeSelector";
-import RichTextProcessor from "../../lib/richtextprocessor";
+import wrapEmojiText from "../../lib/richTextProcessor/wrapEmojiText";
 
 export default class ChatAudio extends PinnedContainer {
   private toggleEl: HTMLElement;
@@ -158,8 +158,8 @@ export default class ChatAudio extends PinnedContainer {
       subtitle = formatFullSentTime(message.date);
     } else {
       const audioAttribute = doc.attributes.find((attr) => attr._ === 'documentAttributeAudio') as DocumentAttribute.documentAttributeAudio;
-      title = RichTextProcessor.wrapEmojiText(audioAttribute?.title ?? doc.file_name);
-      subtitle = audioAttribute?.performer ? RichTextProcessor.wrapEmojiText(audioAttribute.performer) : i18n('AudioUnknownArtist');
+      title = wrapEmojiText(audioAttribute?.title ?? doc.file_name);
+      subtitle = audioAttribute?.performer ? wrapEmojiText(audioAttribute.performer) : i18n('AudioUnknownArtist');
     }
 
     this.fasterEl.classList.toggle('hide', isMusic);

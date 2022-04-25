@@ -5,9 +5,6 @@
  */
 
 import debounce from "../../../helpers/schedulers/debounce";
-import appChatsManager from "../../../lib/appManagers/appChatsManager";
-import appProfileManager from "../../../lib/appManagers/appProfileManager";
-import appReactionsManager from "../../../lib/appManagers/appReactionsManager";
 import CheckboxField from "../../checkboxField";
 import Row from "../../row";
 import { SettingSection } from "../../sidebarLeft";
@@ -20,13 +17,13 @@ export default class AppChatReactionsTab extends SliderSuperTabEventable {
   protected async init() {
     this.setTitle('Reactions');
 
-    const availableReactions = await appReactionsManager.getActiveAvailableReactions();
-    const chatFull = await appProfileManager.getChatFull(this.chatId);
+    const availableReactions = await this.managers.appReactionsManager.getActiveAvailableReactions();
+    const chatFull = await this.managers.appProfileManager.getChatFull(this.chatId);
     let originalReactions = chatFull.available_reactions ?? [];
     const enabledReactions = new Set(originalReactions);
 
     const toggleSection = new SettingSection({
-      caption: appChatsManager.isBroadcast(this.chatId) ? 'EnableReactionsChannelInfo' : 'EnableReactionsGroupInfo'
+      caption: this.managers.appChatsManager.isBroadcast(this.chatId) ? 'EnableReactionsChannelInfo' : 'EnableReactionsGroupInfo'
     });
 
     const toggleCheckboxField = new CheckboxField({toggle: true, checked: !!enabledReactions.size});
@@ -98,12 +95,12 @@ export default class AppChatReactionsTab extends SliderSuperTabEventable {
         return;
       }
 
-      const chatFull = appProfileManager.getCachedFullChat(this.chatId);
+      const chatFull = this.managers.appProfileManager.getCachedFullChat(this.chatId);
       if(chatFull) {
         chatFull.available_reactions = newReactions;
       }
       
-      appChatsManager.setChatAvailableReactions(this.chatId, newReactions);
+      this.managers.appChatsManager.setChatAvailableReactions(this.chatId, newReactions);
       originalReactions = newReactions;
     };
 

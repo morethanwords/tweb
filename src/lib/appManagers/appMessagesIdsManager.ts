@@ -52,7 +52,3 @@ export class AppMessagesIdsManager {
     return this.generateMessageId(this.getServerMessageId(messageId) + increment);
   }
 }
-
-const appMessagesIdsManager = new AppMessagesIdsManager();
-MOUNT_CLASS_TO && (MOUNT_CLASS_TO.appMessagesIdsManager = appMessagesIdsManager);
-export default appMessagesIdsManager;

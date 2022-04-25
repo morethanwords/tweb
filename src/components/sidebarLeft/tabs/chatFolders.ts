@@ -6,14 +6,11 @@
 
 import { SliderSuperTab } from "../../slider";
 import lottieLoader, { LottieLoader } from "../../../lib/rlottie/lottieLoader";
-import { RichTextProcessor } from "../../../lib/richtextprocessor";
 import { toast } from "../../toast";
 import type { MyDialogFilter } from "../../../lib/storages/filters";
 import type { DialogFilterSuggested, DialogFilter } from "../../../layer";
 import type _rootScope from "../../../lib/rootScope";
 import Button from "../../button";
-import appMessagesManager from "../../../lib/appManagers/appMessagesManager";
-import appPeersManager from "../../../lib/appManagers/appPeersManager";
 import apiManager from "../../../lib/mtproto/mtprotoworker";
 import rootScope from "../../../lib/rootScope";
 import AppEditFolderTab from "./editFolder";
@@ -24,6 +21,7 @@ import cancelEvent from "../../../helpers/dom/cancelEvent";
 import { attachClickEvent } from "../../../helpers/dom/clickEvent";
 import positionElementByIndex from "../../../helpers/dom/positionElementByIndex";
 import RLottiePlayer from "../../../lib/rlottie/rlottiePlayer";
+import wrapEmojiText from "../../../lib/richTextProcessor/wrapEmojiText";
 
 export default class AppChatFoldersTab extends SliderSuperTab {
   private createFolderBtn: HTMLElement;
@@ -65,11 +63,11 @@ export default class AppChatFoldersTab extends SliderSuperTab {
       }
       
       if(!d.length) {
-        const folder = appMessagesManager.dialogsStorage.getFolderDialogs(filter.id);
+        const folder = this.managers.appMessagesManager.dialogsStorage.getFolderDialogs(filter.id);
         let chats = 0, channels = 0, groups = 0;
         for(const dialog of folder) {
-          if(appPeersManager.isAnyGroup(dialog.peerId)) groups++;
-          else if(appPeersManager.isBroadcast(dialog.peerId)) channels++;
+          if(this.managers.appPeersManager.isAnyGroup(dialog.peerId)) groups++;
+          else if(this.managers.appPeersManager.isBroadcast(dialog.peerId)) channels++;
           else chats++;
         }
 
@@ -82,7 +80,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
     let div: HTMLElement;
     if(!row) {
       row = new Row({
-        title: RichTextProcessor.wrapEmojiText(filter.title),
+        title: wrapEmojiText(filter.title),
         subtitle: description,
         clickable: true
       });
@@ -97,7 +95,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
         const filterId = filter.id;
         if(!this.filtersRendered.hasOwnProperty(filter.id)) {
           attachClickEvent(row.container, () => {
-            new AppEditFolderTab(this.slider).open(appMessagesManager.filtersStorage.getFilter(filterId));
+            this.slider.createTab(AppEditFolderTab).open(this.managers.appMessagesManager.filtersStorage.getFilter(filterId));
           }, {listenerSetter: this.listenerSetter});
         }
 
@@ -154,7 +152,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
       if(Object.keys(this.filtersRendered).length >= 10) {
         toast('Sorry, you can\'t create more folders.');
       } else {
-        new AppEditFolderTab(this.slider).open();
+        this.slider.createTab(AppEditFolderTab).open();
       }
     }, {listenerSetter: this.listenerSetter});
 
@@ -162,7 +160,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
       this.foldersSection.container.style.display = Object.keys(this.filtersRendered).length ? '' : 'none';
     };
 
-    appMessagesManager.filtersStorage.getDialogFilters().then(filters => {
+    this.managers.appMessagesManager.filtersStorage.getDialogFilters().then(filters => {
       for(const filter of filters) {
         this.renderFolder(filter, this.foldersSection.content);
       }
@@ -258,7 +256,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
           f.excludePeerIds = [];
           f.pinnedPeerIds = [];
 
-          appMessagesManager.filtersStorage.createDialogFilter(f, true).then(bool => {
+          this.managers.appMessagesManager.filtersStorage.createDialogFilter(f, true).then(bool => {
             if(bool) {
               div.remove();
             }

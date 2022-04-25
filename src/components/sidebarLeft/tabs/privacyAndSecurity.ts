@@ -8,7 +8,7 @@ import { SliderSuperTabEventable } from "../../sliderTab";
 import { SettingSection } from "..";
 import Row from "../../row";
 import { AccountPassword, Authorization, InputPrivacyKey, Updates } from "../../../layer";
-import appPrivacyManager, { PrivacyType } from "../../../lib/appManagers/appPrivacyManager";
+import { PrivacyType } from "../../../lib/appManagers/appPrivacyManager";
 import AppPrivacyPhoneNumberTab from "./privacy/phoneNumber";
 import AppTwoStepVerificationTab from "./2fa";
 import passwordManager from "../../../lib/mtproto/passwordManager";
@@ -22,13 +22,11 @@ import AppPrivacyCallsTab from "./privacy/calls";
 import AppActiveSessionsTab from "./activeSessions";
 import apiManager from "../../../lib/mtproto/mtprotoworker";
 import AppBlockedUsersTab from "./blockedUsers";
-import appUsersManager from "../../../lib/appManagers/appUsersManager";
 import rootScope from "../../../lib/rootScope";
 import { i18n, LangPackKey, _i18n } from "../../../lib/langPack";
 import replaceContent from "../../../helpers/dom/replaceContent";
 import CheckboxField from "../../checkboxField";
 import PopupPeer from "../../popups/peer";
-import appDraftsManager from "../../../lib/appManagers/appDraftsManager";
 import Button from "../../button";
 import toggleDisability from "../../../helpers/dom/toggleDisability";
 import convertKeyToInputKey from "../../../helpers/string/convertKeyToInputKey";
@@ -53,7 +51,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
         titleLangKey: 'BlockedUsers',
         subtitleLangKey: SUBTITLE,
         clickable: () => {
-          const tab = new AppBlockedUsersTab(this.slider);
+          const tab = this.slider.createTab(AppBlockedUsersTab);
           tab.peerIds = blockedPeerIds;
           tab.open();
         }
@@ -68,15 +66,15 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
         clickable: (e: Event) => {
           let tab: AppTwoStepVerificationTab | AppTwoStepVerificationEnterPasswordTab | AppTwoStepVerificationEmailConfirmationTab;
           if(passwordState.pFlags.has_password) {
-            tab = new AppTwoStepVerificationEnterPasswordTab(this.slider);
+            tab = this.slider.createTab(AppTwoStepVerificationEnterPasswordTab);
           } else if(passwordState.email_unconfirmed_pattern) {
-            tab = new AppTwoStepVerificationEmailConfirmationTab(this.slider);
+            tab = this.slider.createTab(AppTwoStepVerificationEmailConfirmationTab);
             tab.email = passwordState.email_unconfirmed_pattern;
             tab.length = 6;
             tab.isFirst = true;
             passwordManager.resendPasswordEmail();
           } else {
-            tab = new AppTwoStepVerificationTab(this.slider);
+            tab = this.slider.createTab(AppTwoStepVerificationTab);
           }
           
           tab.state = passwordState;
@@ -92,7 +90,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
         titleLangKey: 'SessionsTitle',
         subtitleLangKey: SUBTITLE,
         clickable: () => {
-          const tab = new AppActiveSessionsTab(this.slider);
+          const tab = this.slider.createTab(AppActiveSessionsTab);
           tab.authorizations = this.authorizations;
           tab.eventListener.addEventListener('destroy', () => {
             this.updateActiveSessions();
@@ -123,7 +121,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
       });
 
       const updateBlocked = () => {
-        appUsersManager.getBlocked().then(res => {
+        this.managers.appUsersManager.getBlocked().then(res => {
           blockedUsersRow.freezed = false;
           setBlockedCount(res.count);
           blockedPeerIds = res.peerIds;
@@ -156,7 +154,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
         titleLangKey: 'PrivacyPhoneTitle',
         subtitleLangKey: SUBTITLE,
         clickable: () => {
-          new AppPrivacyPhoneNumberTab(this.slider).open();
+          this.slider.createTab(AppPrivacyPhoneNumberTab).open();
         }
       });
 
@@ -164,7 +162,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
         titleLangKey: 'LastSeenTitle',
         subtitleLangKey: SUBTITLE,
         clickable: () => {
-          new AppPrivacyLastSeenTab(this.slider).open();
+          this.slider.createTab(AppPrivacyLastSeenTab).open();
         }
       });
 
@@ -172,7 +170,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
         titleLangKey: 'PrivacyProfilePhotoTitle',
         subtitleLangKey: SUBTITLE,
         clickable: () => {
-          new AppPrivacyProfilePhotoTab(this.slider).open();
+          this.slider.createTab(AppPrivacyProfilePhotoTab).open();
         }
       });
 
@@ -180,7 +178,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
         titleLangKey: 'WhoCanCallMe',
         subtitleLangKey: SUBTITLE,
         clickable: () => {
-          new AppPrivacyCallsTab(this.slider).open();
+          this.slider.createTab(AppPrivacyCallsTab).open();
         }
       });
 
@@ -188,7 +186,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
         titleLangKey: 'PrivacyForwardsTitle',
         subtitleLangKey: SUBTITLE,
         clickable: () => {
-          new AppPrivacyForwardMessagesTab(this.slider).open();
+          this.slider.createTab(AppPrivacyForwardMessagesTab).open();
         }
       });
 
@@ -196,7 +194,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
         titleLangKey: 'WhoCanAddMe',
         subtitleLangKey: SUBTITLE,
         clickable: () => {
-          new AppPrivacyAddToGroupsTab(this.slider).open();
+          this.slider.createTab(AppPrivacyAddToGroupsTab).open();
         }
       });
 
@@ -206,8 +204,8 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
           return;
         }
 
-        appPrivacyManager.getPrivacy(key).then(rules => {
-          const details = appPrivacyManager.getPrivacyRulesDetails(rules);
+        this.managers.appPrivacyManager.getPrivacy(key).then(rules => {
+          const details = this.managers.appPrivacyManager.getPrivacyRulesDetails(rules);
           const langKey = details.type === PrivacyType.Everybody ? 'PrivacySettingsController.Everbody' : (details.type === PrivacyType.Contacts ? 'PrivacySettingsController.MyContacts' : 'PrivacySettingsController.Nobody');
           const disallowLength = details.disallowPeers.users.length + details.disallowPeers.chats.length;
           const allowLength = details.allowPeers.users.length + details.allowPeers.chats.length;
@@ -286,7 +284,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
             langKey: 'Delete',
             callback: () => {
               const toggle = toggleDisability([deleteButton], true);
-              appDraftsManager.clearAllDrafts().then(() => {
+              this.managers.appDraftsManager.clearAllDrafts().then(() => {
                 toggle();
               });
             },

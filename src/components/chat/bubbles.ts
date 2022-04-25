@@ -30,7 +30,6 @@ import ProgressivePreloader from "../preloader";
 import Scrollable, { SliceSides } from "../scrollable";
 import StickyIntersector from "../stickyIntersector";
 import animationIntersector from "../animationIntersector";
-import RichTextProcessor from "../../lib/richtextprocessor";
 import mediaSizes from "../../helpers/mediaSizes";
 import { IS_ANDROID, IS_APPLE, IS_MOBILE, IS_SAFARI } from "../../environment/userAgent";
 import I18n, { FormatterArguments, i18n, langPack, LangPackKey, UNSUPPORTED_LANG_PACK_KEY, _i18n } from "../../lib/langPack";
@@ -100,6 +99,17 @@ import getViewportSlice from "../../helpers/dom/getViewportSlice";
 import SuperIntersectionObserver from "../../helpers/dom/superIntersectionObserver";
 import generateFakeIcon from "../generateFakeIcon";
 import copyFromElement from "../../helpers/dom/copyFromElement";
+import PopupElement from "../popups";
+import setAttachmentSize from "../../helpers/setAttachmentSize";
+import wrapWebPageDescription from "../wrappers/webPageDescription";
+import wrapWebPageTitle from "../wrappers/webPageTitle";
+import wrapEmojiText from "../../lib/richTextProcessor/wrapEmojiText";
+import wrapRichText from "../../lib/richTextProcessor/wrapRichText";
+import wrapMessageActionTextNew from "../wrappers/messageActionTextNew";
+import isMentionUnread from "../../lib/appManagers/utils/messages/isMentionUnread";
+import getMediaFromMessage from "../../lib/appManagers/utils/messages/getMediaFromMessage";
+import getPeerColorById from "../../lib/appManagers/utils/peers/getPeerColorById";
+import getPeerId from "../../lib/appManagers/utils/peers/getPeerId";
 
 const USE_MEDIA_TAILS = false;
 const IGNORE_ACTIONS: Set<Message.messageService['action']['_']> = new Set([
@@ -1225,7 +1235,7 @@ export default class ChatBubbles {
       const readContents: number[] = [];
       for(const mid of this.unreadedSeen) {
         const message: MyMessage = this.chat.getMessage(mid);
-        if(this.appMessagesManager.isMentionUnread(message)) {
+        if(isMentionUnread(message)) {
           readContents.push(mid);
         }
       }
@@ -1304,7 +1314,7 @@ export default class ChatBubbles {
       for(const timestamp in this.dateMessages) {
         const d = this.dateMessages[timestamp];
         if(d.div === bubble) {
-          new PopupDatePicker(new Date(+timestamp), this.onDatePick).show();
+          PopupElement.createPopup(PopupDatePicker, new Date(+timestamp), this.onDatePick).show();
           break;
         }
       }
@@ -1406,7 +1416,7 @@ export default class ChatBubbles {
       const bubbleMid = +bubble.dataset.mid;
       if(this.peerId === REPLIES_PEER_ID) {
         const message = this.chat.getMessage(bubbleMid) as Message.message;
-        const peerId = this.appPeersManager.getPeerId(message.reply_to.reply_to_peer_id);
+        const peerId = getPeerId(message.reply_to.reply_to_peer_id);
         const threadId = message.reply_to.reply_to_top_id;
         const lastMsgId = message.fwd_from.saved_from_msg_id;
         this.chat.appImManager.openThread(peerId, lastMsgId, threadId);
@@ -1526,7 +1536,7 @@ export default class ChatBubbles {
         //if(!this.scrollable.visibleElements.find(e => e.element === this.bubbles[id])) return false;
 
         const message = this.chat.getMessage(id);
-        const media = this.appMessagesManager.getMediaFromMessage(message);
+        const media = getMediaFromMessage(message);
         
         return media && f(media);
       }).sort((a, b) => a - b);
@@ -1634,7 +1644,7 @@ export default class ChatBubbles {
 
         const message = this.chat.getMessage(bubbleMid) as Message.message;
 
-        const replyToPeerId = message.reply_to.reply_to_peer_id ? this.appPeersManager.getPeerId(message.reply_to.reply_to_peer_id) : this.peerId;
+        const replyToPeerId = message.reply_to.reply_to_peer_id ? getPeerId(message.reply_to.reply_to_peer_id) : this.peerId;
         const replyToMid = message.reply_to.reply_to_msg_id;
 
         this.chat.appImManager.setInnerPeer({
@@ -2988,7 +2998,7 @@ export default class ChatBubbles {
       if(!our && !message.pFlags.out && this.observer) {
         //this.log('not our message', message, message.pFlags.unread);
         const isUnread = message.pFlags.unread || 
-          this.appMessagesManager.isMentionUnread(message) || 
+          isMentionUnread(message) || 
           (this.historyStorage.readMaxId !== undefined && this.historyStorage.readMaxId < message.mid);
         if(isUnread) {
           this.observer.observe(bubble, this.unreadedObserverCallback);
@@ -3064,7 +3074,7 @@ export default class ChatBubbles {
         } else if(action._ === 'messageActionChatMigrateTo') {
           s.append(i18n('ChatMigration.To', [new PeerTitle({peerId: action.channel_id.toPeerId(true)}).element]));
         } else {
-          s.append(this.appMessagesManager.wrapMessageActionTextNew(message));
+          s.append(wrapMessageActionTextNew(message));
         }
       }
       bubbleContainer.append(s);
@@ -3106,10 +3116,10 @@ export default class ChatBubbles {
       }
     }
     
-    /* let richText = RichTextProcessor.wrapRichText(messageMessage, {
+    /* let richText = wrapRichText(messageMessage, {
       entities: totalEntities
     }); */
-    let richText = RichTextProcessor.wrapRichText(messageMessage, {
+    let richText = wrapRichText(messageMessage, {
       entities: totalEntities,
       passEntities: this.passEntities
     });
@@ -3197,13 +3207,13 @@ export default class ChatBubbles {
         rowDiv.classList.add('reply-markup-row');
 
         buttons.forEach((button) => {
-          const text = RichTextProcessor.wrapRichText(button.text, {noLinks: true, noLinebreaks: true});
+          const text = wrapRichText(button.text, {noLinks: true, noLinebreaks: true});
 
           let buttonEl: HTMLButtonElement | HTMLAnchorElement;
           
           switch(button._) {
             case 'keyboardButtonUrl': {
-              const r = RichTextProcessor.wrapRichText(' ', {
+              const r = wrapRichText(' ', {
                 entities: [{
                   _: 'messageEntityTextUrl',
                   length: 1,
@@ -3291,7 +3301,13 @@ export default class ChatBubbles {
         }
 
         const button = row.buttons[column];
-        this.appInlineBotsManager.callbackButtonClick(this.peerId, message.mid, button);
+        this.appInlineBotsManager.callbackButtonClick(this.peerId, message.mid, button).then((callbackAnswer) => {
+          if(typeof callbackAnswer.message === 'string' && callbackAnswer.message.length) {
+            toast(wrapRichText(callbackAnswer.message, {noLinks: true, noLinebreaks: true}));
+          }
+          
+          //console.log('callbackButtonClick callbackAnswer:', callbackAnswer);
+        });
       });
 
       canHaveTail = false;
@@ -3471,18 +3487,18 @@ export default class ChatBubbles {
 
           let t: HTMLElement;
           if(webpage.site_name) {
-            const html = RichTextProcessor.wrapRichText(webpage.url);
+            const html = wrapRichText(webpage.url);
             const a: HTMLAnchorElement = htmlToDocumentFragment(html).firstElementChild as any;
             a.classList.add('webpage-name');
             const strong = document.createElement('strong');
-            setInnerHTML(strong, RichTextProcessor.wrapEmojiText(webpage.site_name));
+            setInnerHTML(strong, wrapEmojiText(webpage.site_name));
             a.textContent = '';
             a.append(strong);
             quoteTextDiv.append(a);
             t = a;
           }
 
-          const title = this.appWebPagesManager.wrapTitle(webpage);
+          const title = wrapWebPageTitle(webpage);
           if(title.textContent) {
             let titleDiv = document.createElement('div');
             titleDiv.classList.add('title');
@@ -3493,7 +3509,7 @@ export default class ChatBubbles {
             t = titleDiv;
           }
 
-          const description = this.appWebPagesManager.wrapDescription(webpage);
+          const description = wrapWebPageDescription(webpage);
           if(description.textContent) {
             let textDiv = document.createElement('div');
             textDiv.classList.add('text');
@@ -3518,7 +3534,7 @@ export default class ChatBubbles {
             if(size.w === size.h && t) {
               bubble.classList.add('is-square-photo');
               isSquare = true;
-              this.appPhotosManager.setAttachmentSize(photo, preview, 48, 48, false);
+              setAttachmentSize(photo, preview, 48, 48, false);
 
               /* if(t) {
                 t.append(timeSpan);
@@ -3572,7 +3588,7 @@ export default class ChatBubbles {
             
             const sizes = mediaSizes.active;
             const size = bubble.classList.contains('emoji-big') ? sizes.emojiSticker : (doc.animated ? sizes.animatedSticker : sizes.staticSticker);
-            this.appPhotosManager.setAttachmentSize(doc, attachmentDiv, size.width, size.height);
+            setAttachmentSize(doc, attachmentDiv, size.width, size.height);
             //let preloader = new ProgressivePreloader(attachmentDiv, false);
             bubbleContainer.style.minWidth = attachmentDiv.style.width;
             bubbleContainer.style.minHeight = attachmentDiv.style.height;
@@ -3750,7 +3766,7 @@ export default class ChatBubbles {
           const contactNameDiv = document.createElement('div');
           contactNameDiv.className = 'contact-name';
           contactNameDiv.append(
-            RichTextProcessor.wrapEmojiText([
+            wrapEmojiText([
               contact.first_name,
               contact.last_name
             ].filter(Boolean).join(' '))
@@ -3838,7 +3854,7 @@ export default class ChatBubbles {
       if(isHidden) {
         ///////this.log('message to render hidden', message);
         title = document.createElement('span');
-        setInnerHTML(title, RichTextProcessor.wrapEmojiText(fwdFrom.from_name));
+        setInnerHTML(title, wrapEmojiText(fwdFrom.from_name));
         title.classList.add('peer-title');
         //title = fwdFrom.from_name;
         bubble.classList.add('hidden-profile');
@@ -3872,7 +3888,7 @@ export default class ChatBubbles {
         title.dataset.peerId = '' + fwdFromId;
 
         if((this.peerId === rootScope.myId || this.peerId === REPLIES_PEER_ID || isForwardFromChannel) && !isStandaloneMedia) {
-          nameDiv.style.color = this.appPeersManager.getPeerColorById(fwdFromId, false);
+          nameDiv.style.color = getPeerColorById(fwdFromId, false);
           nameDiv.append(title);
         } else {
           /* const fromTitle = message.fromId === this.myID || appPeersManager.isBroadcast(fwdFromId || message.fromId) ? '' : `<div class="name" data-peer-id="${message.fromId}" style="color: ${appPeersManager.getPeerColorByID(message.fromId, false)};">${appPeersManager.getPeerTitle(message.fromId)}</div>`;
@@ -3895,7 +3911,7 @@ export default class ChatBubbles {
           }
 
           if(!our) {
-            nameDiv.style.color = this.appPeersManager.getPeerColorById(message.fromId, false);
+            nameDiv.style.color = getPeerColorById(message.fromId, false);
           }
 
           nameDiv.dataset.peerId = '' + message.fromId;
@@ -4506,7 +4522,7 @@ export default class ChatBubbles {
       bubble.classList.add('avoid-selection');
 
       const sponsoredMessage = this.sponsoredMessage = (message as Message.message).sponsoredMessage;
-      const peerId = this.appPeersManager.getPeerId(sponsoredMessage.from_id);
+      const peerId = getPeerId(sponsoredMessage.from_id);
       // const peer = this.appPeersManager.getPeer(peerId);
       if(sponsoredMessage.channel_post) {
         text = 'OpenChannelPost';
@@ -4520,7 +4536,7 @@ export default class ChatBubbles {
 
       if(sponsoredMessage.chat_invite) {
         callback = () => {
-          new PopupJoinChatInvite(sponsoredMessage.chat_invite_hash, sponsoredMessage.chat_invite as ChatInvite.chatInvite).show();
+          new PopupJoinChatInvite(sponsoredMessage.chat_invite_hash, sponsoredMessage.chat_invite as ChatInvite.chatInvite, this.chat.appImManager.managers).show();
         };
       } else if(sponsoredMessage.chat_invite_hash) {
         callback = () => {

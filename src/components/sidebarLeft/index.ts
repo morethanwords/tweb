@@ -6,7 +6,6 @@
 
 import appImManager from "../../lib/appManagers/appImManager";
 import appStateManager from "../../lib/appManagers/appStateManager";
-import appUsersManager from "../../lib/appManagers/appUsersManager";
 import rootScope from "../../lib/rootScope";
 import { SearchGroup } from "../appSearch";
 import "../avatar";
@@ -15,7 +14,6 @@ import InputSearch from "../inputSearch";
 import SidebarSlider from "../slider";
 import { TransitionSlider } from "../transition";
 import AppNewGroupTab from "./tabs/newGroup";
-import appMessagesManager from "../../lib/appManagers/appMessagesManager";
 import AppSearchSuper from "../appSearchSuper.";
 import { DateData, fillTipDates } from "../../helpers/date";
 import { MOUNT_CLASS_TO } from "../../config/debug";
@@ -49,6 +47,7 @@ import ripple from "../ripple";
 import indexOfAndSplice from "../../helpers/array/indexOfAndSplice";
 import formatNumber from "../../helpers/number/formatNumber";
 import AvatarElement from "../avatar";
+import { AppManagers } from "../../lib/appManagers/managers";
 
 export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
 
@@ -75,7 +74,10 @@ export class AppSidebarLeft extends SidebarSlider {
       sidebarEl: document.getElementById('column-left') as HTMLDivElement,
       navigationType: 'left'
     });
+  }
 
+  construct(managers: AppManagers) {
+    this.managers = managers;
     //this._selectTab(0); // make first tab as default
 
     this.inputSearch = new InputSearch('Search');
@@ -83,11 +85,11 @@ export class AppSidebarLeft extends SidebarSlider {
     sidebarHeader.append(this.inputSearch.container);
 
     const onNewGroupClick = () => {
-      new AppAddMembersTab(this).open({
+      this.createTab(AppAddMembersTab).open({
         type: 'chat',
         skippable: false,
         takeOut: (peerIds) => {
-          new AppNewGroupTab(this).open(peerIds);
+          this.createTab(AppNewGroupTab).open(peerIds);
         },
         title: 'GroupAddMembers',
         placeholder: 'SendMessageTo'
@@ -95,7 +97,7 @@ export class AppSidebarLeft extends SidebarSlider {
     };
 
     const onContactsClick = () => {
-      new AppContactsTab(this).open();
+      this.createTab(AppContactsTab).open();
     };
 
     //this.toolsBtn = this.sidebarEl.querySelector('.sidebar-tools-button') as HTMLButtonElement;
@@ -105,11 +107,11 @@ export class AppSidebarLeft extends SidebarSlider {
       icon: 'archive',
       text: 'ArchivedChats',
       onClick: () => {
-        new AppArchivedTab(this).open();
+        this.createTab(AppArchivedTab).open();
       },
       verify: () => {
-        const folder = appMessagesManager.dialogsStorage.getFolderDialogs(1, false);
-        return !!folder.length || !appMessagesManager.dialogsStorage.isDialogsLoaded(1);
+        const folder = this.managers.appMessagesManager.dialogsStorage.getFolderDialogs(1, false);
+        return !!folder.length || !this.managers.appMessagesManager.dialogsStorage.isDialogsLoaded(1);
       }
     };
 
@@ -145,13 +147,13 @@ export class AppSidebarLeft extends SidebarSlider {
       icon: 'group',
       text: 'PeopleNearby',
       onClick: () => {
-        new AppPeopleNearbyTab(this).open();
+        this.createTab(AppPeopleNearbyTab).open();
       }
     } : undefined, {
       icon: 'settings',
       text: 'Settings',
       onClick: () => {
-        new AppSettingsTab(this).open();
+        this.createTab(AppSettingsTab).open();
       }
     }, {
       icon: 'darkmode',
@@ -250,7 +252,7 @@ export class AppSidebarLeft extends SidebarSlider {
       icon: 'newchannel',
       text: 'NewChannel',
       onClick: () => {
-        new AppNewChannelTab(this).open();
+        this.createTab(AppNewChannelTab).open();
       }
     }, {
       icon: 'newgroup',
@@ -309,7 +311,7 @@ export class AppSidebarLeft extends SidebarSlider {
       }
     });
 
-    appUsersManager.getTopPeers('correspondents');
+    this.managers.appUsersManager.getTopPeers('correspondents');
 
     // Focus search input by pressing Escape
     const navigationItem: NavigationItem = {
@@ -399,7 +401,8 @@ export class AppSidebarLeft extends SidebarSlider {
       searchGroups: this.searchGroups, 
       asChatList: true,
       hideEmptyTabs: false,
-      showSender: true
+      showSender: true,
+      managers: this.managers
     });
 
     searchContainer.prepend(searchSuper.nav.parentElement.parentElement);
@@ -537,8 +540,8 @@ export class AppSidebarLeft extends SidebarSlider {
         const middleware = searchSuper.middleware.get();
         Promise.all([
           // appMessagesManager.getConversationsAll(value).then(dialogs => dialogs.map(d => d.peerId)),
-          appMessagesManager.getConversations(value).promise.then(({dialogs}) => dialogs.map(d => d.peerId)),
-          appUsersManager.getContactsPeerIds(value, true)
+          this.managers.appMessagesManager.getConversations(value).promise.then(({dialogs}) => dialogs.map(d => d.peerId)),
+          this.managers.appUsersManager.getContactsPeerIds(value, true)
         ]).then(results => {
           if(!middleware()) return;
           const peerIds = new Set(results[0].concat(results[1]));

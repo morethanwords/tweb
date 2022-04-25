@@ -18,14 +18,15 @@ export default function getAutoDownloadSettingsByPeerId(peerId: PeerId): ChatAut
 
   let photoSizeMax = 0, videoSizeMax = 0, fileSizeMax = 0;
   const settings = rootScope.settings;
+  const appPeersManager = rootScope.managers.appPeersManager;
   if(!settings.autoDownloadNew.pFlags.disabled && peerId) {
     if(peerId.isUser()) {
-      if(peerId.isContact()) {
+      if(appPeersManager.isContact(peerId)) {
         type = 'contacts';
       } else {
         type = 'private';
       }
-    } else if(peerId.isBroadcast()) {
+    } else if(appPeersManager.isBroadcast(peerId)) {
       type = 'channels';
     } else {
       type = 'groups';

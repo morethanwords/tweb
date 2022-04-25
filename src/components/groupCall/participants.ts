@@ -141,7 +141,7 @@ export class GroupCallParticipantContextMenu {
     let appendTo: HTMLElement = document.body;
     addFullScreenListener(document.body, () => {
       const isFull = isFullScreen();
-      appendTo = isFull ? (PopupElement.getPopups(PopupGroupCall) as PopupGroupCall[])[0].getContainer(): document.body;
+      appendTo = isFull ? PopupElement.getPopups(PopupGroupCall)[0].getContainer(): document.body;
 
       if(!isFull) {
         closeBtnMenu();

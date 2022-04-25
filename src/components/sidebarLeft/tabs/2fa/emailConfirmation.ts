@@ -6,7 +6,6 @@
 
 import { SettingSection } from "../..";
 import { AccountPassword } from "../../../../layer";
-import appStickersManager from "../../../../lib/appManagers/appStickersManager";
 import Button from "../../../button";
 import { SliderSuperTab } from "../../../slider";
 import { wrapSticker } from "../../../wrappers";
@@ -40,7 +39,7 @@ export default class AppTwoStepVerificationEmailConfirmationTab extends SliderSu
     _i18n(section.caption, 'TwoStepAuth.ConfirmEmailCodeDesc', [this.email]);
 
     const emoji = '📬';
-    const doc = appStickersManager.getAnimatedEmojiSticker(emoji);
+    const doc = this.managers.appStickersManager.getAnimatedEmojiSticker(emoji);
     const stickerContainer = document.createElement('div');
 
     if(doc) {
@@ -107,7 +106,7 @@ export default class AppTwoStepVerificationEmailConfirmationTab extends SliderSu
     const btnResend = Button('btn-primary btn-secondary btn-primary-transparent primary', {text: 'ResendCode'});
 
     const goNext = () => {
-      new AppTwoStepVerificationSetTab(this.slider).open();
+      this.slider.createTab(AppTwoStepVerificationSetTab).open();
     };
 
     const freeze = (disable: boolean) => {

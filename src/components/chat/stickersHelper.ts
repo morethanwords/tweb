@@ -7,7 +7,7 @@
 import mediaSizes from "../../helpers/mediaSizes";
 import { MyDocument } from "../../lib/appManagers/appDocsManager";
 import { CHAT_ANIMATION_GROUP } from "../../lib/appManagers/appImManager";
-import appStickersManager from "../../lib/appManagers/appStickersManager";
+import { AppManagers } from "../../lib/appManagers/managers";
 import rootScope from "../../lib/rootScope";
 import { EmoticonsDropdown } from "../emoticonsDropdown";
 import { SuperStickerRenderer } from "../emoticonsDropdown/tabs/stickers";
@@ -22,7 +22,11 @@ export default class StickersHelper extends AutocompleteHelper {
   private lazyLoadQueue: LazyLoadQueue;
   private onChangeScreen: () => void;
 
-  constructor(appendTo: HTMLElement, controller: AutocompleteHelperController) {
+  constructor(
+    appendTo: HTMLElement, 
+    controller: AutocompleteHelperController,
+    private managers: AppManagers
+  ) {
     super({
       appendTo, 
       controller,
@@ -60,8 +64,8 @@ export default class StickersHelper extends AutocompleteHelper {
       this.lazyLoadQueue.clear();
     }
 
-    appStickersManager.preloadAnimatedEmojiSticker(emoticon);
-    appStickersManager.getStickersByEmoticon(emoticon)
+    this.managers.appStickersManager.preloadAnimatedEmojiSticker(emoticon);
+    this.managers.appStickersManager.getStickersByEmoticon(emoticon)
     .then((stickers) => {
       if(!middleware()) {
         return;
@@ -118,6 +122,6 @@ export default class StickersHelper extends AutocompleteHelper {
 
     this.scrollable = new Scrollable(this.container);
     this.lazyLoadQueue = new LazyLoadQueue();
-    this.superStickerRenderer = new SuperStickerRenderer(this.lazyLoadQueue, CHAT_ANIMATION_GROUP);
+    this.superStickerRenderer = new SuperStickerRenderer(this.lazyLoadQueue, CHAT_ANIMATION_GROUP, this.managers);
   }
 }

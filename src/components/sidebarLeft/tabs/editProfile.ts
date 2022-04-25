@@ -4,8 +4,6 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import appProfileManager from "../../../lib/appManagers/appProfileManager";
-import appUsersManager from "../../../lib/appManagers/appUsersManager";
 import InputField from "../../inputField";
 import { SliderSuperTab } from "../../slider";
 import EditPeer from "../../editPeer";
@@ -14,6 +12,7 @@ import { i18n, i18n_ } from "../../../lib/langPack";
 import { attachClickEvent } from "../../../helpers/dom/clickEvent";
 import rootScope from "../../../lib/rootScope";
 import { generateSection, SettingSection } from "..";
+import apiManagerProxy from "../../../lib/mtproto/mtprotoworker";
 
 // TODO: аватарка не поменяется в этой вкладке после изменения почему-то (если поставить в другом клиенте, и потом тут проверить, для этого ещё вышел в чатлист)
 
@@ -95,7 +94,7 @@ export default class AppEditProfileTab extends SliderSuperTab {
         availableText: 'EditProfile.Username.Available',
         takenText: 'EditProfile.Username.Taken',
         invalidText: 'EditProfile.Username.Invalid'
-      });
+      }, this.managers.appChatsManager, apiManagerProxy);
 
       inputWrapper.append(this.usernameInputField.container);
 
@@ -125,7 +124,7 @@ export default class AppEditProfileTab extends SliderSuperTab {
 
       let promises: Promise<any>[] = [];
       
-      promises.push(appProfileManager.updateProfile(this.firstNameInputField.value, this.lastNameInputField.value, this.bioInputField.value).then(() => {
+      promises.push(this.managers.appProfileManager.updateProfile(this.firstNameInputField.value, this.lastNameInputField.value, this.bioInputField.value).then(() => {
         this.close();
       }, (err) => {
         console.error('updateProfile error:', err);
@@ -133,12 +132,12 @@ export default class AppEditProfileTab extends SliderSuperTab {
 
       if(this.editPeer.uploadAvatar) {
         promises.push(this.editPeer.uploadAvatar().then(inputFile => {
-          return appProfileManager.uploadProfilePhoto(inputFile);
+          return this.managers.appProfileManager.uploadProfilePhoto(inputFile);
         }));
       }
 
       if(this.usernameInputField.isValidToChange()) {
-        promises.push(appUsersManager.updateUsername(this.usernameInputField.value));
+        promises.push(this.managers.appUsersManager.updateUsername(this.usernameInputField.value));
       }
 
       Promise.race(promises).finally(() => {
@@ -146,9 +145,9 @@ export default class AppEditProfileTab extends SliderSuperTab {
       });
     }, {listenerSetter: this.listenerSetter});
 
-    const user = appUsersManager.getSelf();
+    const user = this.managers.appUsersManager.getSelf();
 
-    const userFull = await appProfileManager.getProfile(user.id, true);
+    const userFull = await this.managers.appProfileManager.getProfile(user.id, true);
 
     this.firstNameInputField.setOriginalValue(user.first_name, true);
     this.lastNameInputField.setOriginalValue(user.last_name, true);

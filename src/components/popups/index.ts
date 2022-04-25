@@ -18,6 +18,7 @@ import cancelEvent from "../../helpers/dom/cancelEvent";
 import EventListenerBase, { EventListenerListeners } from "../../helpers/eventListenerBase";
 import { addFullScreenListener, getFullScreenElement } from "../../helpers/dom/fullScreen";
 import indexOfAndSplice from "../../helpers/array/indexOfAndSplice";
+import { AppManagers } from "../../lib/appManagers/managers";
 
 export type PopupButton = {
   text?: string,
@@ -38,8 +39,8 @@ export type PopupOptions = Partial<{
   withoutOverlay: boolean
 }>;
 
-export interface PopupElementConstructable {
-  new(...args: any[]): PopupElement;
+export interface PopupElementConstructable<T extends PopupElement = any> {
+  new(...args: any[]): T;
 }
 
 const DEFAULT_APPEND_TO = document.body;
@@ -59,6 +60,8 @@ type PopupListeners = {
 
 export default class PopupElement<T extends EventListenerListeners = {}> extends EventListenerBase<PopupListeners & T> {
   private static POPUPS: PopupElement<any>[] = [];
+  public static MANAGERS: AppManagers;
+
   protected element = document.createElement('div');
   protected container = document.createElement('div');
   protected header = document.createElement('div');
@@ -79,6 +82,8 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
 
   protected withoutOverlay: boolean;
 
+  protected managers: AppManagers;
+
   constructor(className: string, protected buttons?: Array<PopupButton>, options: PopupOptions = {}) {
     super(false);
     this.element.classList.add('popup');
@@ -91,6 +96,7 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
     this.header.append(this.title);
 
     this.listenerSetter = new ListenerSetter();
+    this.managers = PopupElement.MANAGERS;
 
     this.confirmShortcutIsSendShortcut = options.confirmShortcutIsSendShortcut;
 
@@ -255,8 +261,13 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
     });
   }
 
-  public static getPopups(popupConstructor: PopupElementConstructable) {
-    return this.POPUPS.filter(element => element instanceof popupConstructor);
+  public static getPopups<T extends PopupElement>(popupConstructor: PopupElementConstructable<T>) {
+    return this.POPUPS.filter(element => element instanceof popupConstructor) as T[];
+  }
+
+  public static createPopup<T extends PopupElement, A extends Array<any>>(ctor: {new(...args: A): T}, ...args: A) {
+    const popup = new ctor(...args);
+    return popup;
   }
 }
 

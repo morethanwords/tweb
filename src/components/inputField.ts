@@ -13,7 +13,9 @@ import selectElementContents from "../helpers/dom/selectElementContents";
 import setInnerHTML from "../helpers/dom/setInnerHTML";
 import { MessageEntity } from "../layer";
 import { i18n, LangPackKey, _i18n } from "../lib/langPack";
-import RichTextProcessor from "../lib/richtextprocessor";
+import mergeEntities from "../lib/richTextProcessor/mergeEntities";
+import parseEntities from "../lib/richTextProcessor/parseEntities";
+import wrapDraftText from "../lib/richTextProcessor/wrapDraftText";
 import SetTransition from "./singleTransition";
 
 let init = () => {
@@ -61,19 +63,19 @@ let init = () => {
         entities = richValue.entities;
         usePlainText = false;
   
-        let entities2 = RichTextProcessor.parseEntities(text);
+        let entities2 = parseEntities(text);
         entities2 = entities2.filter(e => e._ === 'messageEntityEmoji' || e._ === 'messageEntityLinebreak');
-        RichTextProcessor.mergeEntities(entities, entities2);
+        mergeEntities(entities, entities2);
       }
     }
     
     if(usePlainText) {
       text = plainText;
-      entities = RichTextProcessor.parseEntities(text);
+      entities = parseEntities(text);
       entities = entities.filter(e => e._ === 'messageEntityEmoji' || e._ === 'messageEntityLinebreak');
     }
 
-    const fragment = RichTextProcessor.wrapDraftText(text, {entities});
+    const fragment = wrapDraftText(text, {entities});
     text = documentFragmentToHTML(fragment);
     
     window.document.execCommand('insertHTML', false, text);
@@ -348,7 +350,7 @@ class InputField {
 
   public setDraftValue(value = '', silent = false) {
     if(!this.options.plainText) {
-      value = documentFragmentToHTML(RichTextProcessor.wrapDraftText(value));
+      value = documentFragmentToHTML(wrapDraftText(value));
     }
 
     if(silent) {

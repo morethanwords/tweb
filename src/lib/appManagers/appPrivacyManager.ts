@@ -7,11 +7,9 @@
 import { MOUNT_CLASS_TO } from "../../config/debug";
 import { InputPrivacyKey, InputPrivacyRule, PrivacyRule, Update, PrivacyKey } from "../../layer";
 import apiManager from "../mtproto/mtprotoworker";
-import appChatsManager from "./appChatsManager";
-import appUsersManager from "./appUsersManager";
-import apiUpdatesManager from "./apiUpdatesManager";
 import rootScope from "../rootScope";
 import convertInputKeyToKey from "../../helpers/string/convertInputKeyToKey";
+import { AppManager } from "./manager";
 
 export enum PrivacyType {
   Everybody = 2,
@@ -19,12 +17,14 @@ export enum PrivacyType {
   Nobody = 0
 }
 
-export class AppPrivacyManager {
+export class AppPrivacyManager extends AppManager {
   private privacy: Partial<{
     [key in PrivacyKey['_']]: PrivacyRule[] | Promise<PrivacyRule[]>
   }> = {};
 
   constructor() {
+    super();
+
     rootScope.addMultipleEventsListeners({
       updatePrivacy: (update) => {
         const key = update.key._;
@@ -41,10 +41,10 @@ export class AppPrivacyManager {
       },
       rules
     }).then(privacyRules => {
-      appUsersManager.saveApiUsers(privacyRules.users);
-      appChatsManager.saveApiChats(privacyRules.chats);
+      this.appUsersManager.saveApiUsers(privacyRules.users);
+      this.appChatsManager.saveApiChats(privacyRules.chats);
 
-      apiUpdatesManager.processLocalUpdate({
+      this.apiUpdatesManager.processLocalUpdate({
         _: 'updatePrivacy',
         key: {
           _: convertInputKeyToKey(inputKey)
@@ -75,8 +75,8 @@ export class AppPrivacyManager {
         _: inputKey
       }
     }).then(privacyRules => {
-      appUsersManager.saveApiUsers(privacyRules.users);
-      appChatsManager.saveApiChats(privacyRules.chats);
+      this.appUsersManager.saveApiUsers(privacyRules.users);
+      this.appChatsManager.saveApiChats(privacyRules.chats);
 
       //console.log('privacy rules', inputKey, privacyRules, privacyRules.rules);
 
@@ -121,7 +121,3 @@ export class AppPrivacyManager {
     return {type: types[0], disallowPeers, allowPeers};
   }
 }
-
-const appPrivacyManager = new AppPrivacyManager();
-MOUNT_CLASS_TO.appPrivacyManager = appPrivacyManager;
-export default appPrivacyManager;

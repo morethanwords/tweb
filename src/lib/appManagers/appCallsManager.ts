@@ -9,7 +9,6 @@
  * https://github.com/evgeny-nadymov/telegram-react/blob/master/LICENSE
  */
 
-import { MOUNT_CLASS_TO } from "../../config/debug";
 import IS_CALL_SUPPORTED from "../../environment/callSupport";
 import indexOfAndSplice from "../../helpers/array/indexOfAndSplice";
 import insertInDescendSortedArray from "../../helpers/array/insertInDescendSortedArray";
@@ -27,9 +26,7 @@ import { logger } from "../logger";
 import apiManager from "../mtproto/mtprotoworker";
 import { NULL_PEER_ID } from "../mtproto/mtproto_config";
 import rootScope from "../rootScope";
-import apiUpdatesManager from "./apiUpdatesManager";
-import appProfileManager from "./appProfileManager";
-import appUsersManager from "./appUsersManager";
+import { AppManager } from "./manager";
 
 export type CallId = PhoneCall['id'];
 
@@ -39,7 +36,7 @@ const CALL_REQUEST_TIMEOUT = 45e3;
 
 export type CallAudioAssetName = "call_busy.mp3" | "call_connect.mp3" | "call_end.mp3" | "call_incoming.mp3" | "call_outgoing.mp3" | "voip_failed.mp3" | "voip_connecting.mp3";
 
-export class AppCallsManager {
+export class AppCallsManager extends AppManager {
   private log: ReturnType<typeof logger>;
   private calls: Map<CallId, MyPhoneCall>;
   private instances: Map<CallId, CallInstance>;
@@ -48,6 +45,8 @@ export class AppCallsManager {
   private audioAsset: AudioAssetPlayer<CallAudioAssetName>;
   
   constructor() {
+    super();
+
     this.log = logger('CALLS');
     
     this.tempId = 0;
@@ -212,7 +211,7 @@ export class AppCallsManager {
     const call = new CallInstance({
       appCallsManager: this,
       apiManager,
-      apiUpdatesManager,
+      apiUpdatesManager: this.apiUpdatesManager,
       ...options,
     });
 
@@ -276,7 +275,7 @@ export class AppCallsManager {
   }
 
   public savePhonePhoneCall(phonePhoneCall: PhonePhoneCall) {
-    appUsersManager.saveApiUsers(phonePhoneCall.users);
+    this.appUsersManager.saveApiUsers(phonePhoneCall.users);
     return this.saveCall(phonePhoneCall.phone_call);
   }
 
@@ -292,7 +291,7 @@ export class AppCallsManager {
   public startCallInternal(userId: UserId, isVideo: boolean) {
     this.log('p2pStartCallInternal', userId, isVideo);
     
-    const fullInfo = appProfileManager.getCachedFullUser(userId);
+    const fullInfo = this.appProfileManager.getCachedFullUser(userId);
     if(!fullInfo) return;
     
     const {video_calls_available} = fullInfo.pFlags;
@@ -323,7 +322,7 @@ export class AppCallsManager {
       call.dh = dh;
 
       return apiManager.invokeApi('phone.requestCall', {
-        user_id: appUsersManager.getUserInput(userId),
+        user_id: this.appUsersManager.getUserInput(userId),
         protocol: call.protocol,
         video: isVideo && video_calls_available,
         random_id: nextRandomUint(32),
@@ -360,10 +359,6 @@ export class AppCallsManager {
       connection_id: '0'
     });
 
-    apiUpdatesManager.processUpdateMessage(updates);
+    this.apiUpdatesManager.processUpdateMessage(updates);
   }
 }
-
-const appCallsManager = new AppCallsManager();
-MOUNT_CLASS_TO && (MOUNT_CLASS_TO.appCallsManager = appCallsManager);
-export default appCallsManager;

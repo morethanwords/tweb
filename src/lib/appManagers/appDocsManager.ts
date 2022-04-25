@@ -11,14 +11,11 @@
 
 import { FileURLType, getFileNameByLocation, getFileURL } from '../../helpers/fileName';
 import { Document, InputFileLocation, InputMedia, PhotoSize } from '../../layer';
-import referenceDatabase, { ReferenceContext } from '../mtproto/referenceDatabase';
+import { ReferenceContext } from '../mtproto/referenceDatabase';
 import opusDecodeController from '../opusDecodeController';
-import { RichTextProcessor } from '../richtextprocessor';
 import appDownloadManager, { DownloadBlob } from './appDownloadManager';
-import appPhotosManager from './appPhotosManager';
 import blur from '../../helpers/blur';
 import apiManager from '../mtproto/mtprotoworker';
-import { MOUNT_CLASS_TO } from '../../config/debug';
 import { getFullDate } from '../../helpers/date';
 import rootScope from '../rootScope';
 import IS_WEBP_SUPPORTED from '../../environment/webpSupport';
@@ -26,6 +23,10 @@ import IS_WEBM_SUPPORTED from '../../environment/webmSupport';
 import defineNotNumerableProperties from '../../helpers/object/defineNotNumerableProperties';
 import isObject from '../../helpers/object/isObject';
 import safeReplaceArrayInObject from '../../helpers/object/safeReplaceArrayInObject';
+import { AppManager } from './manager';
+import getPreviewURLFromBytes from '../../helpers/bytes/getPreviewURLFromBytes';
+import choosePhotoSize from './utils/photos/choosePhotoSize';
+import wrapPlainText from '../richTextProcessor/wrapPlainText';
 
 export type MyDocument = Document.document;
 
@@ -37,12 +38,13 @@ const EXTENSION_MIME_TYPE_MAP = {
   pdf: 'application/pdf',
 };
 
-export class AppDocsManager {
+export class AppDocsManager extends AppManager {
   private docs: {[docId: DocId]: MyDocument} = {};
   private savingLottiePreview: {[docId: DocId]: true} = {};
   public downloading: Map<DocId, DownloadBlob> = new Map();
 
   constructor() {
+    super();
     apiManager.onServiceWorkerFail = this.onServiceWorkerFail;
   }
 
@@ -67,7 +69,7 @@ export class AppDocsManager {
 
     if(doc.file_reference) { // * because we can have a new object w/o the file_reference while sending
       safeReplaceArrayInObject('file_reference', oldDoc, doc);
-      referenceDatabase.saveContext(doc.file_reference, context);
+      this.referenceDatabase.saveContext(doc.file_reference, context);
     }
     
     //console.log('saveDoc', apiDoc, this.docs[apiDoc.id]);
@@ -104,7 +106,7 @@ export class AppDocsManager {
       const attribute = doc.attributes[i];
       switch(attribute._) {
         case 'documentAttributeFilename':
-          doc.file_name = RichTextProcessor.wrapPlainText(attribute.file_name);
+          doc.file_name = wrapPlainText(attribute.file_name);
           break;
 
         case 'documentAttributeAudio':
@@ -314,13 +316,13 @@ export class AppDocsManager {
     const cacheContext = appDownloadManager.getCacheContext(doc, thumb.type);
     if(!cacheContext.url) {
       if('bytes' in thumb) {
-        const result = blur(appPhotosManager.getPreviewURLFromBytes(thumb.bytes, !!doc.sticker));
+        const result = blur(getPreviewURLFromBytes(thumb.bytes, !!doc.sticker));
         promise = result.promise.then(() => {
           cacheContext.url = result.canvas.toDataURL();
         }) as any;
       } else {
         //return this.getFileURL(doc, false, thumb);
-        promise = appPhotosManager.preloadPhoto(doc, thumb) as any;
+        promise = this.appPhotosManager.preloadPhoto(doc, thumb) as any;
       }
     }
 
@@ -328,7 +330,7 @@ export class AppDocsManager {
   }
 
   public getThumb(doc: MyDocument, tryNotToUseBytes = true) {
-    const thumb = appPhotosManager.choosePhotoSize(doc, 0, 0, !tryNotToUseBytes);
+    const thumb = choosePhotoSize(doc, 0, 0, !tryNotToUseBytes);
     if(thumb._ === 'photoSizeEmpty') return null;
     return this.getThumbURL(doc, thumb as any);
   }
@@ -466,7 +468,3 @@ export class AppDocsManager {
     return promise;
   }
 }
-
-const appDocsManager = new AppDocsManager();
-MOUNT_CLASS_TO.appDocsManager = appDocsManager;
-export default appDocsManager;

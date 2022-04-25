@@ -285,8 +285,8 @@ export default class ChatTopbar {
     }
 
     if(type) {
-      if((this.peerId.isBroadcast() && type === 'group') || 
-        (this.peerId.isAnyGroup() && type === 'broadcast')) {
+      if((this.appPeersManager.isBroadcast(this.peerId) && type === 'group') || 
+        (this.appPeersManager.isAnyGroup(this.peerId) && type === 'broadcast')) {
         return false;
       }
     }
@@ -399,7 +399,7 @@ export default class ChatTopbar {
       text: 'AddContact',
       onClick: () => {
         if(!this.appSidebarRight.isTabExists(AppEditContactTab)) {
-          const tab = new AppEditContactTab(this.appSidebarRight);
+          const tab = this.appSidebarRight.createTab(AppEditContactTab);
           tab.peerId = this.peerId;
           tab.open();
 

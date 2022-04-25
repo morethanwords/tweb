@@ -4,10 +4,10 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import type {ApiUpdatesManager} from "../lib/appManagers/apiUpdatesManager";
 import App from "../config/app";
 import DEBUG from "../config/debug";
 import replaceContent from "../helpers/dom/replaceContent";
-import apiUpdatesManager from "../lib/appManagers/apiUpdatesManager";
 import { LangPackKey, i18n } from "../lib/langPack";
 import { logger } from "../lib/logger";
 import rootScope from "../lib/rootScope";
@@ -40,7 +40,7 @@ export default class ConnectionStatusComponent {
   private setFirstConnectionTimeout: number;
   private setStateTimeout: number;
 
-  constructor(chatsContainer: HTMLElement) {
+  constructor(private apiUpdatesManager: ApiUpdatesManager, chatsContainer: HTMLElement) {
     this.log = logger('CS', undefined, undefined);
   
     this.statusContainer = document.createElement('div');
@@ -108,7 +108,7 @@ export default class ConnectionStatusComponent {
       const online = status && status.status === ConnectionStatus.Connected;
 
       if(this.connecting && online) {
-        apiUpdatesManager.forceGetDifference();
+        this.apiUpdatesManager.forceGetDifference();
       }
 
       if(online && !this.hadConnect) {

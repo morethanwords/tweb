@@ -7,8 +7,8 @@
 import forEachReverse from "../../helpers/array/forEachReverse";
 import throttle from "../../helpers/schedulers/throttle";
 import { Updates, PhoneJoinGroupCall, PhoneJoinGroupCallPresentation, Update } from "../../layer";
-import apiUpdatesManager from "../appManagers/apiUpdatesManager";
-import appGroupCallsManager, { GroupCallConnectionType, JoinGroupCallJsonPayload } from "../appManagers/appGroupCallsManager";
+import { ApiUpdatesManager } from "../appManagers/apiUpdatesManager";
+import { AppGroupCallsManager, GroupCallConnectionType, JoinGroupCallJsonPayload } from "../appManagers/appGroupCallsManager";
 import apiManager from "../mtproto/mtprotoworker";
 import rootScope from "../rootScope";
 import CallConnectionInstanceBase, { CallConnectionInstanceOptions } from "./callConnectionInstanceBase";
@@ -38,10 +38,15 @@ export default class GroupCallConnectionInstance extends CallConnectionInstanceB
   private updateConstraintsInterval: number;
   public negotiateThrottled: () => void;
 
+  private apiUpdatesManager: ApiUpdatesManager;
+  private appGroupCallsManager: AppGroupCallsManager;
+
   constructor(options: CallConnectionInstanceOptions & {
     groupCall: GroupCallConnectionInstance['groupCall'],
     type: GroupCallConnectionInstance['type'],
     options: GroupCallConnectionInstance['options'],
+    apiUpdatesManager: ApiUpdatesManager,
+    appGroupsCallsManager: AppGroupCallsManager,
   }) {
     super(options);
 
@@ -157,7 +162,7 @@ export default class GroupCallConnectionInstance extends CallConnectionInstanceB
       };
     }
     
-    const groupCallInput = appGroupCallsManager.getGroupCallInput(groupCallId);
+    const groupCallInput = this.appGroupCallsManager.getGroupCallInput(groupCallId);
     if(options.type === 'main') {
       const request: PhoneJoinGroupCall = {
         call: groupCallInput,
@@ -180,7 +185,7 @@ export default class GroupCallConnectionInstance extends CallConnectionInstanceB
     }
 
     const updates = await promise;
-    apiUpdatesManager.processUpdateMessage(updates);
+    this.apiUpdatesManager.processUpdateMessage(updates);
     const update = (updates as Updates.updates).updates.find(update => update._ === 'updateGroupCallConnection') as Update.updateGroupCallConnection;
 
     const data: UpdateGroupCallConnectionData = JSON.parse(update.params.data);

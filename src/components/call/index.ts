@@ -20,7 +20,7 @@ import type { AppPeersManager } from "../../lib/appManagers/appPeersManager";
 import CallInstance from "../../lib/calls/callInstance";
 import CALL_STATE from "../../lib/calls/callState";
 import I18n, { i18n } from "../../lib/langPack";
-import RichTextProcessor from "../../lib/richtextprocessor";
+import wrapEmojiText from "../../lib/richTextProcessor/wrapEmojiText";
 import rootScope from "../../lib/rootScope";
 import animationIntersector from "../animationIntersector";
 import AvatarElement from "../avatar";
@@ -456,7 +456,7 @@ export default class PopupCall extends PopupElement {
 
     if(!this.emojisSubtitle.textContent && connectionState < CALL_STATE.EXCHANGING_KEYS) {
       Promise.resolve(instance.getEmojisFingerprint()).then(emojis => {
-        this.emojisSubtitle.append(RichTextProcessor.wrapEmojiText(emojis.join('')));
+        this.emojisSubtitle.append(wrapEmojiText(emojis.join('')));
       });
     }
 

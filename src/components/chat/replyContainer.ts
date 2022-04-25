@@ -7,11 +7,12 @@
 import replaceContent from "../../helpers/dom/replaceContent";
 import limitSymbols from "../../helpers/string/limitSymbols";
 import appImManager, { CHAT_ANIMATION_GROUP } from "../../lib/appManagers/appImManager";
-import appMessagesManager from "../../lib/appManagers/appMessagesManager";
-import appPhotosManager from "../../lib/appManagers/appPhotosManager";
-import { RichTextProcessor } from "../../lib/richtextprocessor";
+import choosePhotoSize from "../../lib/appManagers/utils/photos/choosePhotoSize";
+import wrapEmojiText from "../../lib/richTextProcessor/wrapEmojiText";
+import rootScope from "../../lib/rootScope";
 import DivAndCaption from "../divAndCaption";
 import { wrapPhoto, wrapSticker } from "../wrappers";
+import wrapMessageForReply from "../wrappers/messageForReply";
 
 const MEDIA_SIZE = 32;
 
@@ -28,7 +29,7 @@ export function wrapReplyDivAndCaption(options: {
   if(title !== undefined) {
     if(typeof(title) === 'string') {
       title = limitSymbols(title, 140);
-      title = RichTextProcessor.wrapEmojiText(title);
+      title = wrapEmojiText(title);
     }
 
     replaceContent(titleEl, title);
@@ -44,7 +45,7 @@ export function wrapReplyDivAndCaption(options: {
   let middleware: () => boolean;
   if(media && mediaEl) {
     subtitleEl.textContent = '';
-    subtitleEl.append(appMessagesManager.wrapMessageForReply(message, undefined, undefined, undefined, undefined, true));
+    subtitleEl.append(wrapMessageForReply(message, undefined, undefined, undefined, undefined, true));
 
     //console.log('wrap reply', media);
 
@@ -80,7 +81,7 @@ export function wrapReplyDivAndCaption(options: {
             container: mediaEl,
             boxWidth: MEDIA_SIZE,
             boxHeight: MEDIA_SIZE,
-            size: appPhotosManager.choosePhotoSize(photo, MEDIA_SIZE, MEDIA_SIZE),
+            size: choosePhotoSize(photo, MEDIA_SIZE, MEDIA_SIZE),
             middleware,
             lazyLoadQueue,
             noBlur: true,
@@ -96,11 +97,11 @@ export function wrapReplyDivAndCaption(options: {
   } else {
     if(message) {
       subtitleEl.textContent = '';
-      subtitleEl.append(appMessagesManager.wrapMessageForReply(message));
+      subtitleEl.append(wrapMessageForReply(message));
     } else {
       if(typeof(subtitle) === 'string') {
         subtitle = limitSymbols(subtitle, 140);
-        subtitle = RichTextProcessor.wrapEmojiText(subtitle);
+        subtitle = wrapEmojiText(subtitle);
       }
 
       replaceContent(subtitleEl, subtitle || '');

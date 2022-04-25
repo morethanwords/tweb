@@ -9,10 +9,10 @@ import findUpAttribute from "../../../helpers/dom/findUpAttribute";
 import findUpClassName from "../../../helpers/dom/findUpClassName";
 import mediaSizes from "../../../helpers/mediaSizes";
 import { MessagesAllStickers, StickerSet } from "../../../layer";
-import appDocsManager, { MyDocument } from "../../../lib/appManagers/appDocsManager";
-import appStickersManager from "../../../lib/appManagers/appStickersManager";
+import { MyDocument } from "../../../lib/appManagers/appDocsManager";
+import { AppManagers } from "../../../lib/appManagers/managers";
 import { i18n } from "../../../lib/langPack";
-import { RichTextProcessor } from "../../../lib/richtextprocessor";
+import wrapEmojiText from "../../../lib/richTextProcessor/wrapEmojiText";
 import rootScope from "../../../lib/rootScope";
 import animationIntersector from "../../animationIntersector";
 import LazyLoadQueue, { LazyLoadQueueRepeat } from "../../lazyLoadQueue";
@@ -26,7 +26,11 @@ export class SuperStickerRenderer {
   public lazyLoadQueue: LazyLoadQueueRepeat;
   private animatedDivs: Set<HTMLDivElement> = new Set();
 
-  constructor(private regularLazyLoadQueue: LazyLoadQueue, private group: string) {
+  constructor(
+    private regularLazyLoadQueue: LazyLoadQueue, 
+    private group: string,
+    private managers: AppManagers
+  ) {
     this.lazyLoadQueue = new LazyLoadQueueRepeat(undefined, (target, visible) => {
       if(!visible) {
         this.processInvisibleDiv(target as HTMLDivElement);
@@ -84,7 +88,7 @@ export class SuperStickerRenderer {
 
   private processVisibleDiv = (div: HTMLElement) => {
     const docId = div.dataset.docId;
-    const doc = appDocsManager.getDoc(docId);
+    const doc = this.managers.appDocsManager.getDoc(docId);
     
     const size = mediaSizes.active.esgSticker.width;
 
@@ -116,7 +120,7 @@ export class SuperStickerRenderer {
 
   public processInvisibleDiv = (div: HTMLElement) => {
     const docId = div.dataset.docId;
-    const doc = appDocsManager.getDoc(docId);
+    const doc = this.managers.appDocsManager.getDoc(docId);
 
     //console.log('STICKER INvisible:', /* div,  */docId);
 
@@ -150,6 +154,10 @@ export default class StickersTab implements EmoticonsTab {
   private stickyIntersector: StickyIntersector;
 
   private superStickerRenderer: SuperStickerRenderer;
+
+  constructor(private managers: AppManagers) {
+
+  }
 
   categoryPush(categoryDiv: HTMLElement, categoryTitle: DocumentFragment | string = '', promise: Promise<MyDocument[]>, prepend?: boolean) {
     //if((docs.length % 5) !== 0) categoryDiv.classList.add('not-full');
@@ -218,8 +226,8 @@ export default class StickersTab implements EmoticonsTab {
 
     //stickersScroll.append(categoryDiv);
 
-    const promise = appStickersManager.getStickerSet(set);
-    this.categoryPush(categoryDiv, RichTextProcessor.wrapEmojiText(set.title), promise.then(stickerSet => stickerSet.documents as MyDocument[]), prepend);
+    const promise = this.managers.appStickersManager.getStickerSet(set);
+    this.categoryPush(categoryDiv, wrapEmojiText(set.title), promise.then(stickerSet => stickerSet.documents as MyDocument[]), prepend);
     const stickerSet = await promise;
 
     //console.log('got stickerSet', stickerSet, li);
@@ -321,7 +329,7 @@ export default class StickersTab implements EmoticonsTab {
     const preloader = putPreloader(this.content, true);
 
     Promise.all([
-      appStickersManager.getRecentStickers().then(stickers => {
+      this.managers.appStickersManager.getRecentStickers().then(stickers => {
         this.recentStickers = stickers.stickers.slice(0, 20) as MyDocument[];
   
         //stickersScroll.prepend(categoryDiv);
@@ -336,7 +344,7 @@ export default class StickersTab implements EmoticonsTab {
         titleDiv.append(i18n('Stickers.Recent'));
       }),
 
-      appStickersManager.getAllStickers().then((res) => {
+      this.managers.appStickersManager.getAllStickers().then((res) => {
         preloader.remove();
 
         for(let set of (res as MessagesAllStickers.messagesAllStickers).sets) {
@@ -348,7 +356,7 @@ export default class StickersTab implements EmoticonsTab {
       setTyping();
     });
 
-    this.superStickerRenderer = new SuperStickerRenderer(EmoticonsDropdown.lazyLoadQueue, EMOTICONSSTICKERGROUP);
+    this.superStickerRenderer = new SuperStickerRenderer(EmoticonsDropdown.lazyLoadQueue, EMOTICONSSTICKERGROUP, this.managers);
 
     emoticonsDropdown.addLazyLoadQueueRepeat(this.superStickerRenderer.lazyLoadQueue, this.superStickerRenderer.processInvisibleDiv);
 
@@ -364,7 +372,7 @@ export default class StickersTab implements EmoticonsTab {
   }
 
   pushRecentSticker(doc: MyDocument) {
-    appStickersManager.pushRecentSticker(doc);
+    this.managers.appStickersManager.pushRecentSticker(doc);
     
     if(!this.recentDiv?.parentElement) {
       return;

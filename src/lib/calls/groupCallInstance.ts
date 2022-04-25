@@ -4,14 +4,14 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import type { ApiUpdatesManager } from "../appManagers/apiUpdatesManager";
+import type { AppGroupCallsManager, GroupCallConnectionType, GroupCallId, GroupCallOutputSource } from "../appManagers/appGroupCallsManager";
+import type { AppPeersManager } from "../appManagers/appPeersManager";
 import { IS_SAFARI } from "../../environment/userAgent";
 import indexOfAndSplice from "../../helpers/array/indexOfAndSplice";
 import safeAssign from "../../helpers/object/safeAssign";
 import throttle from "../../helpers/schedulers/throttle";
 import { GroupCall, GroupCallParticipant, Updates } from "../../layer";
-import apiUpdatesManager from "../appManagers/apiUpdatesManager";
-import appGroupCallsManager, { GroupCallConnectionType, GroupCallId, GroupCallOutputSource } from "../appManagers/appGroupCallsManager";
-import appPeersManager from "../appManagers/appPeersManager";
 import { logger } from "../logger";
 import apiManager from "../mtproto/mtprotoworker";
 import { NULL_PEER_ID } from "../mtproto/mtproto_config";
@@ -52,11 +52,18 @@ export default class GroupCallInstance extends CallInstanceBase<{
   private startVideoSharingPromise: Promise<void>;
   private startScreenSharingPromise: Promise<void>;
 
+  private appGroupCallsManager: AppGroupCallsManager;
+  private apiUpdatesManager: ApiUpdatesManager;
+  private appPeersManager: AppPeersManager;
+
   constructor(options: {
     id: GroupCallInstance['id'],
     chatId: GroupCallInstance['chatId'],
     isSpeakingMap?: GroupCallInstance['isSpeakingMap'],
-    connections?: GroupCallInstance['connections']
+    connections?: GroupCallInstance['connections'],
+    appGroupCallsManager: AppGroupCallsManager,
+    apiUpdatesManager: ApiUpdatesManager,
+    appPeersManager: AppPeersManager,
   }) {
     super();
 
@@ -111,7 +118,7 @@ export default class GroupCallInstance extends CallInstanceBase<{
   }
 
   get participants() {
-    return appGroupCallsManager.getCachedParticipants(this.id);
+    return this.appGroupCallsManager.getCachedParticipants(this.id);
   }
 
   get isSharingScreen() {
@@ -161,7 +168,7 @@ export default class GroupCallInstance extends CallInstanceBase<{
   }
 
   public toggleMuted() {
-    return this.requestAudioSource(true).then(() => appGroupCallsManager.toggleMuted());
+    return this.requestAudioSource(true).then(() => this.appGroupCallsManager.toggleMuted());
   }
 
   public getElement(endpoint: GroupCallOutputSource) {
@@ -194,12 +201,14 @@ export default class GroupCallInstance extends CallInstanceBase<{
     return this.connections[options.type] = new GroupCallConnectionInstance({
       groupCall: this,
       log: this.log.bindPrefix(options.type),
+      appGroupsCallsManager: this.appGroupCallsManager,
+      apiUpdatesManager: this.apiUpdatesManager,
       ...options
     });
   }
 
   public changeRaiseHand(raise: boolean) {
-    return appGroupCallsManager.editParticipant(this.id, this.participant, {raiseHand: raise});
+    return this.appGroupCallsManager.editParticipant(this.id, this.participant, {raiseHand: raise});
   }
 
   public async startScreenSharingInternal() {
@@ -252,12 +261,12 @@ export default class GroupCallInstance extends CallInstanceBase<{
     connectionInstance.closeConnectionAndStream(true);
 
     delete this.participant.presentation;
-    appGroupCallsManager.saveApiParticipant(this.id, this.participant);
+    this.appGroupCallsManager.saveApiParticipant(this.id, this.participant);
 
     return apiManager.invokeApi('phone.leaveGroupCallPresentation', {
-      call: appGroupCallsManager.getGroupCallInput(this.id)
+      call: this.appGroupCallsManager.getGroupCallInput(this.id)
     }).then(updates => {
-      apiUpdatesManager.processUpdateMessage(updates);
+      this.apiUpdatesManager.processUpdateMessage(updates);
     });
   }
 
@@ -279,7 +288,7 @@ export default class GroupCallInstance extends CallInstanceBase<{
       const connectionInstance = this.connections.main;
       connectionInstance.addInputVideoStream(stream);
 
-      await appGroupCallsManager.editParticipant(this.id, this.participant, {
+      await this.appGroupCallsManager.editParticipant(this.id, this.participant, {
         videoPaused: false,
         videoStopped: false
       });
@@ -304,7 +313,7 @@ export default class GroupCallInstance extends CallInstanceBase<{
     stopTrack(track);
     connectionInstance.streamManager.appendToConference(connectionInstance.description); // clear sender track
 
-    await appGroupCallsManager.editParticipant(this.id, this.participant, {
+    await this.appGroupCallsManager.editParticipant(this.id, this.participant, {
       videoStopped: true
     });
   }
@@ -331,7 +340,7 @@ export default class GroupCallInstance extends CallInstanceBase<{
     
     if(!rejoin) {
       let promise: Promise<Updates>;
-      const groupCallInput = appGroupCallsManager.getGroupCallInput(this.id);
+      const groupCallInput = this.appGroupCallsManager.getGroupCallInput(this.id);
 
       if(discard) {
         this.log(`[api] discardGroupCall id=${this.id}`);
@@ -360,7 +369,7 @@ export default class GroupCallInstance extends CallInstanceBase<{
       }
 
       const updates = await promise;
-      apiUpdatesManager.processUpdateMessage(updates);
+      this.apiUpdatesManager.processUpdateMessage(updates);
     }
   }
 
@@ -383,12 +392,12 @@ export default class GroupCallInstance extends CallInstanceBase<{
     const connectionInstance = this.connections.main;
     const {connection, description} = connectionInstance;
 
-    const peerId = appPeersManager.getPeerId(participant.peer);
+    const peerId = this.appPeersManager.getPeerId(participant.peer);
     const hasLeft = !!participant.pFlags.left;
     const oldSsrcs = this.participantsSsrcs.get(peerId) || [];
 
     if(participant.presentation && !hasLeft) {
-      const {source} = appGroupCallsManager.makeSsrcFromParticipant(participant, 'video', participant.presentation.source_groups, participant.presentation.endpoint);
+      const {source} = this.appGroupCallsManager.makeSsrcFromParticipant(participant, 'video', participant.presentation.source_groups, participant.presentation.endpoint);
       if(!this.hadAutoPinnedSources.has(source)) {
         this.hadAutoPinnedSources.add(source);
         this.pinSource(participant.pFlags.self ? 'presentation' : source);
@@ -422,7 +431,7 @@ export default class GroupCallInstance extends CallInstanceBase<{
       return;
     }
 
-    const ssrcs = hasLeft ? [] : appGroupCallsManager.makeSsrcsFromParticipant(participant);
+    const ssrcs = hasLeft ? [] : this.appGroupCallsManager.makeSsrcsFromParticipant(participant);
 
     if(!hasLeft) {
       this.participantsSsrcs.set(peerId, ssrcs);

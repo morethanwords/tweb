@@ -15,8 +15,7 @@
 // import appPhotosManager from "../lib/appManagers/appPhotosManager";
 // import { logger } from "../lib/logger";
 // import VideoPlayer from "../lib/mediaPlayer";
-// import { RichTextProcessor } from "../lib/richtextprocessor";
-// import rootScope from "../lib/rootScope";
+// // import rootScope from "../lib/rootScope";
 // import { cancelEvent, fillPropertyValue, generatePathData } from "../helpers/dom";
 // import animationIntersector from "./animationIntersector";
 // import appMediaPlaybackController from "./appMediaPlaybackController";
@@ -1294,7 +1293,7 @@
 //     const caption = message.message;
 //     this.content.caption.classList.toggle('hide', !caption);
 //     if(caption) {
-//       this.content.caption.firstElementChild.innerHTML = RichTextProcessor.wrapRichText(caption, {
+//       this.content.caption.firstElementChild.innerHTML = wrapRichText(caption, {
 //         entities: message.totalEntities
 //       });
 //     } else {

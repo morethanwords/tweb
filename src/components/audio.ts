@@ -4,16 +4,14 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import appDocsManager, {MyDocument} from "../lib/appManagers/appDocsManager";
+import type { MyDocument } from "../lib/appManagers/appDocsManager";
 import { wrapPhoto } from "./wrappers";
 import ProgressivePreloader from "./preloader";
 import appMediaPlaybackController, { MediaItem, MediaSearchContext } from "./appMediaPlaybackController";
 import { DocumentAttribute, Message } from "../layer";
 import mediaSizes from "../helpers/mediaSizes";
 import { IS_SAFARI } from "../environment/userAgent";
-import appMessagesManager from "../lib/appManagers/appMessagesManager";
 import rootScope from "../lib/rootScope";
-import './middleEllipsis';
 import cancelEvent from "../helpers/dom/cancelEvent";
 import { attachClickEvent } from "../helpers/dom/clickEvent";
 import LazyLoadQueue from "./lazyLoadQueue";
@@ -23,7 +21,6 @@ import noop from "../helpers/noop";
 import findUpClassName from "../helpers/dom/findUpClassName";
 import { joinElementsWith } from "../lib/langPack";
 import { MiddleEllipsisElement } from "./middleEllipsis";
-import htmlToSpan from "../helpers/dom/htmlToSpan";
 import { formatFullSentTime } from "../helpers/date";
 import throttleWithRaf from "../helpers/schedulers/throttleWithRaf";
 import { NULL_PEER_ID } from "../lib/mtproto/mtproto_config";
@@ -32,8 +29,12 @@ import { animateSingle } from "../helpers/animation";
 import clamp from "../helpers/number/clamp";
 import toHHMMSS from "../helpers/string/toHHMMSS";
 import MediaProgressLine from "./mediaProgressLine";
-import RichTextProcessor from "../lib/richtextprocessor";
 import setInnerHTML from "../helpers/dom/setInnerHTML";
+import { AppManagers } from "../lib/appManagers/managers";
+import wrapEmojiText from "../lib/richTextProcessor/wrapEmojiText";
+import wrapSenderToPeer from "./wrappers/senderToPeer";
+import wrapSentTime from "./wrappers/sentTime";
+import getMediaFromMessage from "../lib/appManagers/utils/messages/getMediaFromMessage";
 
 rootScope.addEventListener('messages_media_read', ({mids, peerId}) => {
   mids.forEach(mid => {
@@ -150,7 +151,7 @@ function wrapVoiceMessage(audioEl: AudioElement) {
   audioEl.classList.add('is-voice');
 
   const message = audioEl.message;
-  const doc = appMessagesManager.getMediaFromMessage(message) as MyDocument;
+  const doc = getMediaFromMessage(message) as MyDocument;
 
   if(message.pFlags.out) {
     audioEl.classList.add('is-out');
@@ -261,7 +262,7 @@ function wrapAudio(audioEl: AudioElement) {
   const withTime = audioEl.withTime;
 
   const message = audioEl.message;
-  const doc: MyDocument = appMessagesManager.getMediaFromMessage(message);
+  const doc: MyDocument = getMediaFromMessage(message);
 
   const isVoice = doc.type === 'voice' || doc.type === 'round';
   const descriptionEl = document.createElement('div');
@@ -272,7 +273,7 @@ function wrapAudio(audioEl: AudioElement) {
   if(!isVoice) {
     const parts: (Node | string)[] = [];
     if(audioAttribute?.performer) {
-      parts.push(RichTextProcessor.wrapEmojiText(audioAttribute.performer));
+      parts.push(wrapEmojiText(audioAttribute.performer));
     }
 
     if(withTime) {
@@ -282,7 +283,7 @@ function wrapAudio(audioEl: AudioElement) {
     }
 
     if(audioEl.showSender) {
-      parts.push(appMessagesManager.wrapSenderToPeer(message));
+      parts.push(wrapSenderToPeer(message));
     }
 
     descriptionEl.append(...joinElementsWith(parts, ' • '));
@@ -301,15 +302,15 @@ function wrapAudio(audioEl: AudioElement) {
   middleEllipsisEl.dataset.fontWeight = audioEl.dataset.fontWeight;
   middleEllipsisEl.dataset.sizeType = audioEl.dataset.sizeType;
   if(isVoice) {
-    middleEllipsisEl.append(appMessagesManager.wrapSenderToPeer(message));
+    middleEllipsisEl.append(wrapSenderToPeer(message));
   } else {
-    setInnerHTML(middleEllipsisEl, RichTextProcessor.wrapEmojiText(audioAttribute?.title ?? doc.file_name));
+    setInnerHTML(middleEllipsisEl, wrapEmojiText(audioAttribute?.title ?? doc.file_name));
   }
 
   titleEl.append(middleEllipsisEl);
 
   if(audioEl.showSender) {
-    titleEl.append(appMessagesManager.wrapSentTime(message));
+    titleEl.append(wrapSentTime(message));
   }
   
   const subtitleDiv = audioEl.querySelector('.audio-subtitle') as HTMLDivElement;
@@ -418,6 +419,7 @@ export default class AudioElement extends HTMLElement {
   public noAutoDownload: boolean;
   public lazyLoadQueue: LazyLoadQueue;
   public loadPromises: Promise<any>[];
+  public managers: AppManagers;
 
   private listenerSetter = new ListenerSetter();
   private onTypeDisconnect: () => void;
@@ -426,11 +428,12 @@ export default class AudioElement extends HTMLElement {
 
   public render() {
     this.classList.add('audio');
+    this.managers = rootScope.managers;
 
     this.dataset.mid = '' + this.message.mid;
     this.dataset.peerId = '' + this.message.peerId;
 
-    const doc: MyDocument = appMessagesManager.getMediaFromMessage(this.message);
+    const doc: MyDocument = getMediaFromMessage(this.message);
     const isRealVoice = doc.type === 'voice';
     const isVoice = !this.voiceAsMusic && isRealVoice;
     const isOutgoing = this.message.pFlags.is_outgoing;
@@ -623,7 +626,7 @@ export default class AudioElement extends HTMLElement {
             const load = () => {
               onDownloadInit();
 
-              const download = appDocsManager.downloadDoc(doc);
+              const download = this.managers.appDocsManager.downloadDoc(doc);
               
               if(!shouldPlay) {
                 download.then(() => {

@@ -5,7 +5,6 @@
  */
 
 import { SettingSection } from "..";
-import appReactionsManager from "../../../lib/appManagers/appReactionsManager";
 import RadioField from "../../radioField";
 import Row, { RadioFormFromRows } from "../../row";
 import SliderSuperTab from "../../sliderTab";
@@ -18,8 +17,8 @@ export default class AppQuickReactionTab extends SliderSuperTab {
     this.container.classList.add('quick-reaction-container');
 
     return Promise.all([
-      appReactionsManager.getQuickReaction(),
-      appReactionsManager.getAvailableReactions()
+      this.managers.appReactionsManager.getQuickReaction(),
+      this.managers.appReactionsManager.getAvailableReactions()
     ]).then(([quickReaction, availableReactions]) => {
       availableReactions = availableReactions.filter(reaction => !reaction.pFlags.inactive);
 
@@ -55,7 +54,7 @@ export default class AppQuickReactionTab extends SliderSuperTab {
       });
 
       const form = RadioFormFromRows(rows, (value) => {
-        appReactionsManager.setDefaultReaction(value);
+        this.managers.appReactionsManager.setDefaultReaction(value);
       });
 
       section.content.append(form);

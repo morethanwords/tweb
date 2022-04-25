@@ -6,7 +6,6 @@
 
 import { SliderSuperTab } from "../../slider";
 import ButtonCorner from "../../buttonCorner";
-import appUsersManager from "../../../lib/appManagers/appUsersManager";
 import AppNewGroupTab from "./newGroup";
 import { toast } from "../../toast";
 import { ButtonMenuItemOptions } from "../../buttonMenu";
@@ -14,12 +13,9 @@ import type { LazyLoadQueueIntersector } from "../../lazyLoadQueue";
 import { i18n, join, _i18n } from "../../../lib/langPack";
 import rootScope from '../../../lib/rootScope';
 import { wrapSticker } from "../../wrappers";
-import appStickersManager from "../../../lib/appManagers/appStickersManager";
 import SortedUserList from "../../sortedUserList";
 import { PeerLocated, Update, Updates } from "../../../layer";
-import appPeersManager from "../../../lib/appManagers/appPeersManager";
 import { SettingChatListSection } from "..";
-import appProfileManager from "../../../lib/appManagers/appProfileManager";
 import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
 import { attachClickEvent } from "../../../helpers/dom/clickEvent";
 import confirmationPopup from "../../confirmationPopup";
@@ -48,7 +44,7 @@ export default class AppPeopleNearbyTab extends SliderSuperTab {
     this.retryBtn = ButtonCorner({icon: 'check'});
 
     const emoji = '🧭';
-    const doc = appStickersManager.getAnimatedEmojiSticker(emoji);
+    const doc = this.managers.appStickersManager.getAnimatedEmojiSticker(emoji);
     const stickerContainer = document.createElement('div');
     stickerContainer.classList.add('sticker-container');
 
@@ -90,7 +86,7 @@ export default class AppPeopleNearbyTab extends SliderSuperTab {
           ];
 
           if(!element.id.isUser()) {
-            elements.push(appProfileManager.getChatMembersString(element.id.toChatId()));
+            elements.push(this.managers.appProfileManager.getChatMembersString(element.id.toChatId()));
           }
 
           element.dom.lastMessageSpan.textContent = '';
@@ -99,7 +95,8 @@ export default class AppPeopleNearbyTab extends SliderSuperTab {
         getIndex: (element) => {
           const peer = this.locatedPeers.get(element.id);
           return 0x7FFFFFFF - peer.distance;
-        }
+        },
+        appUsersManager: this.managers.appUsersManager
       });
 
       appDialogsManager.setListClickListener(sortedUserList.list, undefined, undefined, false);
@@ -149,7 +146,7 @@ export default class AppPeopleNearbyTab extends SliderSuperTab {
     }, {listenerSetter: this.listenerSetter});
 
     attachClickEvent(btnCreateGroup, () => {
-      new AppNewGroupTab(this.slider).open([], true);
+      this.slider.createTab(AppNewGroupTab).open([], true);
     }, {listenerSetter: this.listenerSetter});
 
     btnMakeVisible.classList.add('primary');
@@ -195,7 +192,7 @@ export default class AppPeopleNearbyTab extends SliderSuperTab {
 
         console.log(this.latestLocationSaved);
 
-        appUsersManager.getLocated(
+        this.managers.appUsersManager.getLocated(
           location.coords.latitude,
           location.coords.longitude,
           location.coords.accuracy
@@ -206,7 +203,7 @@ export default class AppPeopleNearbyTab extends SliderSuperTab {
           const groupsCounter = peers.filter((e) => e.peer._ == 'peerChannel').length;
           const usersCounter = peers.filter((e) => e.peer._ != 'peerChannel').length;
           orderedPeers?.forEach(peer => {
-            const peerId = appPeersManager.getPeerId(peer.peer);
+            const peerId = this.managers.appPeersManager.getPeerId(peer.peer);
             const section = peerId.isUser() ? this.peopleSection : this.chatsSection;
             this.locatedPeers.set(peerId, peer);
             section.sortedList.add(peerId);
@@ -236,7 +233,7 @@ export default class AppPeopleNearbyTab extends SliderSuperTab {
 
     toast('Your position is now being shared. Do not close the page or it will be suspended.');
 
-    appUsersManager.getLocated(
+    this.managers.appUsersManager.getLocated(
       this.latestLocationSaved.latitude,
       this.latestLocationSaved.longitude,
       this.latestLocationSaved.accuracy,
@@ -253,7 +250,7 @@ export default class AppPeopleNearbyTab extends SliderSuperTab {
       ) > 100;
 
       if((isLatitudeDifferent || isLongitudeDifferent) && distanceCheck) {
-        appUsersManager.getLocated(
+        this.managers.appUsersManager.getLocated(
           result.coords.latitude,
           result.coords.longitude,
           result.coords.accuracy,
@@ -273,7 +270,7 @@ export default class AppPeopleNearbyTab extends SliderSuperTab {
     if(!this.isLocationWatched) return;
     this.isLocationWatched = false;
     toast('The sharing of your position has been stopped. You will no longer be visible to other users.');
-    appUsersManager.getLocated(
+    this.managers.appUsersManager.getLocated(
       0, // latitude parameter
       0, // longitude parameter
       0, // accuracy parameter

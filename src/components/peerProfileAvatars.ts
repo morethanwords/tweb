@@ -14,13 +14,11 @@ import ListenerSetter from "../helpers/listenerSetter";
 import ListLoader from "../helpers/listLoader";
 import { fastRaf } from "../helpers/schedulers";
 import { Message, ChatFull, MessageAction, Photo } from "../layer";
-import appAvatarsManager from "../lib/appManagers/appAvatarsManager";
-import appMessagesManager, { AppMessagesManager } from "../lib/appManagers/appMessagesManager";
-import appPeersManager from "../lib/appManagers/appPeersManager";
-import appPhotosManager from "../lib/appManagers/appPhotosManager";
-import appProfileManager from "../lib/appManagers/appProfileManager";
-import rootScope from "../lib/rootScope";
+import type { AppMessagesManager } from "../lib/appManagers/appMessagesManager";
+import { AppManagers } from "../lib/appManagers/managers";
+import choosePhotoSize from "../lib/appManagers/utils/photos/choosePhotoSize";
 import { openAvatarViewer } from "./avatar";
+import { putAvatar } from "./putPhoto";
 import Scrollable from "./scrollable";
 import SwipeHandler from "./swipeHandler";
 import { wrapPhoto } from "./wrappers";
@@ -45,7 +43,10 @@ export default class PeerProfileAvatars {
   private listenerSetter: ListenerSetter;
   private swipeHandler: SwipeHandler;
 
-  constructor(public scrollable: Scrollable) {
+  constructor(
+    public scrollable: Scrollable,
+    private managers: AppManagers
+  ) {
     this.container = document.createElement('div');
     this.container.classList.add(PeerProfileAvatars.BASE_CLASS + '-container');
 
@@ -246,7 +247,7 @@ export default class PeerProfileAvatars {
   public setPeer(peerId: PeerId) {
     this.peerId = peerId;
 
-    const photo = appPeersManager.getPeerPhoto(peerId);
+    const photo = this.managers.appPeersManager.getPeerPhoto(peerId);
     if(!photo) {
       return;
     }
@@ -258,7 +259,7 @@ export default class PeerProfileAvatars {
 
         if(peerId.isUser()) {
           const maxId: Photo.photo['id'] = anchor as any;
-          return appPhotosManager.getUserPhotos(peerId, maxId, loadCount).then(value => {
+          return this.managers.appPhotosManager.getUserPhotos(peerId, maxId, loadCount).then(value => {
             return {
               count: value.count,
               items: value.photos
@@ -267,10 +268,10 @@ export default class PeerProfileAvatars {
         } else {
           const promises: [Promise<ChatFull>, ReturnType<AppMessagesManager['getSearch']>] = [] as any;
           if(!listLoader.current) {
-            promises.push(Promise.resolve(appProfileManager.getChatFull(peerId.toChatId())));
+            promises.push(Promise.resolve(this.managers.appProfileManager.getChatFull(peerId.toChatId())));
           }
           
-          promises.push(appMessagesManager.getSearch({
+          promises.push(this.managers.appMessagesManager.getSearch({
             peerId,
             maxId: Number.MAX_SAFE_INTEGER,
             inputFilter: {
@@ -291,7 +292,7 @@ export default class PeerProfileAvatars {
                 return ((m as Message.messageService).action as MessageAction.messageActionChannelEditPhoto).photo.id === chatFull.chat_photo.id;
               }) as Message.messageService;
               
-              listLoader.current = message || appMessagesManager.generateFakeAvatarMessage(this.peerId, chatFull.chat_photo);
+              listLoader.current = message || this.managers.appMessagesManager.generateFakeAvatarMessage(this.peerId, chatFull.chat_photo);
             }
 
             //console.log('avatars loaded:', value);
@@ -348,7 +349,7 @@ export default class PeerProfileAvatars {
     let photo: Photo.photo;
     if(photoId) {
       photo = typeof(photoId) !== 'object' ? 
-        appPhotosManager.getPhoto(photoId) : 
+        this.managers.appPhotosManager.getPhoto(photoId) : 
         (photoId.action as MessageAction.messageActionChannelEditPhoto).photo as Photo.photo;
     }
 
@@ -361,7 +362,7 @@ export default class PeerProfileAvatars {
         const res = wrapPhoto({
           container: avatar,
           photo,
-          size: appPhotosManager.choosePhotoSize(photo, 420, 420, false),
+          size: choosePhotoSize(photo, 420, 420, false),
           withoutPreloader: true
         });
   
@@ -369,8 +370,8 @@ export default class PeerProfileAvatars {
           img.classList.add('avatar-photo');
         });
       } else {
-        const photo = appPeersManager.getPeerPhoto(this.peerId);
-        appAvatarsManager.putAvatar(avatar, this.peerId, photo, 'photo_big', img);
+        const photo = this.managers.appPeersManager.getPeerPhoto(this.peerId);
+        putAvatar(avatar, this.peerId, photo, 'photo_big', img);
       }
     };
 

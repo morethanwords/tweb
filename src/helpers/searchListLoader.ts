@@ -7,8 +7,8 @@
 import type { MediaSearchContext } from "../components/appMediaPlaybackController";
 import type { SearchSuperContext } from "../components/appSearchSuper.";
 import type { Message } from "../layer";
-import appMessagesIdsManager from "../lib/appManagers/appMessagesIdsManager";
-import appMessagesManager, { MyMessage } from "../lib/appManagers/appMessagesManager";
+import type { MyMessage } from "../lib/appManagers/appMessagesManager";
+import { AppManagers } from "../lib/appManagers/managers";
 import rootScope from "../lib/rootScope";
 import forEachReverse from "./array/forEachReverse";
 import filterChatPhotosMessages from "./filterChatPhotosMessages";
@@ -19,8 +19,13 @@ export default class SearchListLoader<Item extends {mid: number, peerId: PeerId}
   public onEmptied: () => void;
 
   private otherSideLoader: SearchListLoader<Item>;
+  private managers: AppManagers;
 
-  constructor(options: Omit<ListLoaderOptions<Item, Message.message>, 'loadMore'> & {onEmptied?: () => void, isInner?: boolean} = {}) {
+  constructor(options: Omit<ListLoaderOptions<Item, Message.message>, 'loadMore'> & {
+    onEmptied?: () => void, 
+    isInner?: boolean, 
+    managers?: AppManagers
+  } = {}) {
     super({
       ...options,
       loadMore: (anchor, older, loadCount) => {
@@ -28,9 +33,9 @@ export default class SearchListLoader<Item extends {mid: number, peerId: PeerId}
         let maxId = anchor?.mid;
 
         if(maxId === undefined) maxId = this.searchContext.maxId;
-        if(!older) maxId = appMessagesIdsManager.incrementMessageId(maxId, 1);
+        if(!older) maxId = this.managers.appMessagesIdsManager.incrementMessageId(maxId, 1);
 
-        return appMessagesManager.getSearch({
+        return this.managers.appMessagesManager.getSearch({
           ...this.searchContext,
           peerId: this.searchContext.peerId || anchor?.peerId,
           maxId,
@@ -62,6 +67,7 @@ export default class SearchListLoader<Item extends {mid: number, peerId: PeerId}
       }
     });
 
+    this.managers ??= rootScope.managers;
     rootScope.addEventListener('history_delete', this.onHistoryDelete);
     rootScope.addEventListener('history_multiappend', this.onHistoryMultiappend);
     rootScope.addEventListener('message_sent', this.onMessageSent);
@@ -80,9 +86,9 @@ export default class SearchListLoader<Item extends {mid: number, peerId: PeerId}
 
   protected filterMids(mids: number[]) {
     const storage = this.searchContext.isScheduled ? 
-      appMessagesManager.getScheduledMessagesStorage(this.searchContext.peerId) : 
-      appMessagesManager.getMessagesStorage(this.searchContext.peerId);
-     const filtered = appMessagesManager.filterMessagesByInputFilterFromStorage(this.searchContext.inputFilter._, mids, storage, mids.length) as Message.message[];
+      this.managers.appMessagesManager.getScheduledMessagesStorage(this.searchContext.peerId) : 
+      this.managers.appMessagesManager.getMessagesStorage(this.searchContext.peerId);
+     const filtered = this.managers.appMessagesManager.filterMessagesByInputFilterFromStorage(this.searchContext.inputFilter._, mids, storage, mids.length) as Message.message[];
      return filtered;
   }
 

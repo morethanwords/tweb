@@ -268,7 +268,7 @@ export default class TopbarCall {
           appChatsManager: this.appChatsManager
         }).show();
       } else if(this.instance instanceof CallInstance) {
-        const popups = PopupElement.getPopups(PopupCall) as PopupCall[];
+        const popups = PopupElement.getPopups(PopupCall);
         if(popups.find(popup => popup.getCallInstance() === this.instance)) {
           return;
         }

@@ -9,7 +9,6 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import type { NotificationSettings } from "../appManagers/appNotificationsManager";
 import { MOUNT_CLASS_TO } from "../../config/debug";
 import { logger } from "../logger";
 import rootScope from "../rootScope";
@@ -19,6 +18,7 @@ import I18n, { LangPackKey } from "../langPack";
 import { IS_MOBILE } from "../../environment/userAgent";
 import appRuntimeManager from "../appManagers/appRuntimeManager";
 import copy from "../../helpers/object/copy";
+import type { NotificationSettings } from "../appManagers/uiNotificationsManager";
 
 export type PushSubscriptionNotifyType = 'init' | 'subscribe' | 'unsubscribe';
 export type PushSubscriptionNotifyEvent = `push_${PushSubscriptionNotifyType}`;

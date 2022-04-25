@@ -7,7 +7,7 @@
 import AvatarListLoader from "../helpers/avatarListLoader";
 import { Photo } from "../layer";
 import appImManager from "../lib/appManagers/appImManager";
-import appPhotosManager from "../lib/appManagers/appPhotosManager";
+import rootScope from "../lib/rootScope";
 import AppMediaViewerBase from "./appMediaViewerBase";
 
 type AppMediaViewerAvatarTargetType = {element: HTMLElement, photoId: Photo.photo['id']};
@@ -15,7 +15,7 @@ export default class AppMediaViewerAvatar extends AppMediaViewerBase<'', 'delete
   public peerId: PeerId;
 
   constructor(peerId: PeerId) {
-    super(new AvatarListLoader({peerId}), [/* 'delete' */]);
+    super(new AvatarListLoader({peerId, managers: rootScope.managers}), [/* 'delete' */]);
 
     this.peerId = peerId;
 
@@ -43,13 +43,13 @@ export default class AppMediaViewerAvatar extends AppMediaViewerBase<'', 'delete
   };
 
   onDownloadClick = () => {
-    appPhotosManager.savePhotoFile(appPhotosManager.getPhoto(this.target.photoId), appImManager.chat.bubbles.lazyLoadQueue.queueId);
+    this.managers.appPhotosManager.savePhotoFile(this.managers.appPhotosManager.getPhoto(this.target.photoId), appImManager.chat.bubbles.lazyLoadQueue.queueId);
   };
 
   public async openMedia(photoId: Photo.photo['id'], target?: HTMLElement, fromRight = 0, prevTargets?: AppMediaViewerAvatarTargetType[], nextTargets?: AppMediaViewerAvatarTargetType[]) {
     if(this.setMoverPromise) return this.setMoverPromise;
 
-    const photo = appPhotosManager.getPhoto(photoId);
+    const photo = this.managers.appPhotosManager.getPhoto(photoId);
     const ret = super._openMedia(photo, photo.date, this.peerId, fromRight, target, false, prevTargets, nextTargets);
     this.target.photoId = photo.id;
 

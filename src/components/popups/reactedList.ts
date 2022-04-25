@@ -7,15 +7,13 @@
 import type { AppMessagesManager } from "../../lib/appManagers/appMessagesManager";
 import PopupElement from ".";
 import { Message } from "../../layer";
-import { generateDelimiter, SettingSection } from "../sidebarLeft";
+import { SettingSection } from "../sidebarLeft";
 import ReactionsElement from "../chat/reactions";
 import { horizontalMenu } from "../horizontalMenu";
 import Scrollable from "../scrollable";
 import ScrollableLoader from "../../helpers/scrollableLoader";
 import appDialogsManager from "../../lib/appManagers/appDialogsManager";
 import replaceContent from "../../helpers/dom/replaceContent";
-import appUsersManager from "../../lib/appManagers/appUsersManager";
-import appReactionsManager from "../../lib/appManagers/appReactionsManager";
 import { wrapSticker } from "../wrappers";
 import ReactionElement from "../chat/reaction";
 
@@ -151,7 +149,7 @@ export default class PopupReactedList extends PopupElement {
             if(reaction) {
               const stickerContainer = document.createElement('div');
               stickerContainer.classList.add('reacted-list-reaction-icon');
-              const availableReaction = appReactionsManager.getReactionCached(reaction);
+              const availableReaction = this.managers.appReactionsManager.getReactionCached(reaction);
 
               wrapSticker({
                 doc: availableReaction.static_icon,
@@ -163,7 +161,7 @@ export default class PopupReactedList extends PopupElement {
               dom.listEl.append(stickerContainer);
             }
 
-            replaceContent(dom.lastMessageSpan, appUsersManager.getUserStatusString(peerId.toUserId()));
+            replaceContent(dom.lastMessageSpan, this.managers.appUsersManager.getUserStatusString(peerId.toUserId()));
           });
 
           return !nextOffset;

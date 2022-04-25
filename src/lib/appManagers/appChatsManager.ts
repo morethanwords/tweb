@@ -9,27 +9,22 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import { MOUNT_CLASS_TO } from "../../config/debug";
 import copy from "../../helpers/object/copy";
 import deepEqual from "../../helpers/object/deepEqual";
 import isObject from "../../helpers/object/isObject";
 import safeReplaceObject from "../../helpers/object/safeReplaceObject";
 import { ChannelParticipant, ChannelsCreateChannel, Chat, ChatAdminRights, ChatBannedRights, ChatParticipant, ChatPhoto, InputChannel, InputChatPhoto, InputFile, InputPeer, Update, Updates } from "../../layer";
-import apiManagerProxy from "../mtproto/mtprotoworker";
 import apiManager from '../mtproto/mtprotoworker';
-import { RichTextProcessor } from "../richtextprocessor";
 import rootScope from "../rootScope";
-import apiUpdatesManager from "./apiUpdatesManager";
-import appPeersManager from "./appPeersManager";
 import appStateManager from "./appStateManager";
-import appUsersManager from "./appUsersManager";
 import { isRestricted } from "../../helpers/restrictions";
 import findAndSplice from "../../helpers/array/findAndSplice";
+import { AppManager } from "./manager";
 
 export type Channel = Chat.channel;
 export type ChatRights = keyof ChatBannedRights['pFlags'] | keyof ChatAdminRights['pFlags'] | 'change_type' | 'change_permissions' | 'delete_chat' | 'view_participants';
 
-export class AppChatsManager {
+export class AppChatsManager extends AppManager {
   private storage = appStateManager.storages.chats;
   
   private chats: {[id: ChatId]: Chat.channel | Chat.chat | any};
@@ -38,6 +33,7 @@ export class AppChatsManager {
   //private megagroups: {[id: number]: true};
 
   constructor() {
+    super();
     this.clear(true);
 
     rootScope.addMultipleEventsListeners({
@@ -48,13 +44,13 @@ export class AppChatsManager {
       }, */
 
       updateChannelParticipant: (update) => {
-        apiManagerProxy.clearCache('channels.getParticipants', (params) => {
+        apiManager.clearCache('channels.getParticipants', (params) => {
           return (params.channel as InputChannel.inputChannel).channel_id === update.channel_id;
         });
       },
 
       updateChatDefaultBannedRights: (update) => {
-        const chatId = appPeersManager.getPeerId(update.peer).toChatId();
+        const chatId = this.appPeersManager.getPeerId(update.peer).toChatId();
         const chat: Chat.chat = this.chats[chatId];
         if(chat) {
           chat.default_banned_rights = update.default_banned_rights;
@@ -333,7 +329,7 @@ export class AppChatsManager {
     }
     
     return apiManager.invokeApi('messages.editChatDefaultBannedRights', {
-      peer: appPeersManager.getInputPeerById(id.toPeerId(true)),
+      peer: this.appPeersManager.getInputPeerById(id.toPeerId(true)),
       banned_rights
     }).then(this.onChatUpdated.bind(this, id));
   }
@@ -452,7 +448,7 @@ export class AppChatsManager {
     }
 
     if(chatFull.about) {
-      chatFull.rAbout = RichTextProcessor.wrapRichText(chatFull.about, {noLinebreaks: true});
+      chatFull.rAbout = wrapRichText(chatFull.about, {noLinebreaks: true});
     }
 
     //chatFull.peerString = this.getChatString(id);
@@ -492,7 +488,7 @@ export class AppChatsManager {
 
   public createChannel(options: ChannelsCreateChannel): Promise<ChatId> {
     return apiManager.invokeApi('channels.createChannel', options).then((updates) => {
-      apiUpdatesManager.processUpdateMessage(updates);
+      this.apiUpdatesManager.processUpdateMessage(updates);
 
       const channelId = (updates as any).chats[0].id;
       rootScope.dispatchEvent('history_focus', {peerId: channelId.toPeerId(true)});
@@ -503,7 +499,7 @@ export class AppChatsManager {
 
   public inviteToChannel(id: ChatId, userIds: UserId[]) {
     const input = this.getChannelInput(id);
-    const usersInputs = userIds.map(u => appUsersManager.getUserInput(u));
+    const usersInputs = userIds.map(u => this.appUsersManager.getUserInput(u));
 
     return apiManager.invokeApi('channels.inviteToChannel', {
       channel: input,
@@ -513,10 +509,10 @@ export class AppChatsManager {
 
   public createChat(title: string, userIds: UserId[]): Promise<ChatId> {
     return apiManager.invokeApi('messages.createChat', {
-      users: userIds.map(u => appUsersManager.getUserInput(u)),
+      users: userIds.map(u => this.appUsersManager.getUserInput(u)),
       title
     }).then(updates => {
-      apiUpdatesManager.processUpdateMessage(updates);
+      this.apiUpdatesManager.processUpdateMessage(updates);
 
       const chatId = (updates as any as Updates.updates).chats[0].id;
       rootScope.dispatchEvent('history_focus', {peerId: chatId.toPeerId(true)});
@@ -528,7 +524,7 @@ export class AppChatsManager {
   private onChatUpdated = (chatId: ChatId, updates?: any) => {
     //console.log('onChatUpdated', chatId, updates);
 
-    apiUpdatesManager.processUpdateMessage(updates);
+    this.apiUpdatesManager.processUpdateMessage(updates);
     if(updates?.updates?.length && this.isChannel(chatId)) {
       rootScope.dispatchEvent('invalidate_participants', chatId);
     }
@@ -549,7 +545,7 @@ export class AppChatsManager {
   public addChatUser(id: ChatId, userId: UserId, fwdLimit = 100) {
     return apiManager.invokeApi('messages.addChatUser', {
       chat_id: id,
-      user_id: appUsersManager.getUserInput(userId),
+      user_id: this.appUsersManager.getUserInput(userId),
       fwd_limit: fwdLimit
     }).then(this.onChatUpdated.bind(this, id));
   }
@@ -557,12 +553,12 @@ export class AppChatsManager {
   public deleteChatUser(id: ChatId, userId: UserId) {
     return apiManager.invokeApi('messages.deleteChatUser', {
       chat_id: id,
-      user_id: appUsersManager.getUserInput(userId)
+      user_id: this.appUsersManager.getUserInput(userId)
     }).then(this.onChatUpdated.bind(this, id));
   }
 
   public leaveChat(id: ChatId) {
-    return this.deleteChatUser(id, appUsersManager.getSelf().id);
+    return this.deleteChatUser(id, this.appUsersManager.getSelf().id);
   }
 
   public leave(id: ChatId) {
@@ -633,7 +629,7 @@ export class AppChatsManager {
     }
 
     return promise.then((updates: any) => {
-      apiUpdatesManager.processUpdateMessage(updates);
+      this.apiUpdatesManager.processUpdateMessage(updates);
     });
   }
 
@@ -653,14 +649,14 @@ export class AppChatsManager {
     }
 
     return promise.then((updates: any) => {
-      apiUpdatesManager.processUpdateMessage(updates);
+      this.apiUpdatesManager.processUpdateMessage(updates);
     });
   }
 
   public editAbout(id: ChatId, about: string) {
     const peerId = id.toPeerId(true);
     return apiManager.invokeApi('messages.editChatAbout', {
-      peer: appPeersManager.getInputPeerById(peerId),
+      peer: this.appPeersManager.getInputPeerById(peerId),
       about
     }).then(bool => {
       if(bool) {
@@ -673,7 +669,7 @@ export class AppChatsManager {
 
   public getParticipantPeerId(participant: ChannelParticipant | ChatParticipant): PeerId {
     const peerId = (participant as ChannelParticipant.channelParticipantBanned).peer ? 
-      appPeersManager.getPeerId((participant as ChannelParticipant.channelParticipantBanned).peer) : 
+      this.appPeersManager.getPeerId((participant as ChannelParticipant.channelParticipantBanned).peer) : 
       (participant as ChatParticipant.chatParticipant).user_id.toPeerId();
     return peerId;
   }
@@ -682,14 +678,14 @@ export class AppChatsManager {
     const peerId = typeof(participant) !== 'object' ? participant : this.getParticipantPeerId(participant);
     return apiManager.invokeApi('channels.editBanned', {
       channel: this.getChannelInput(id),
-      participant: appPeersManager.getInputPeerById(peerId),
+      participant: this.appPeersManager.getInputPeerById(peerId),
       banned_rights
     }).then((updates) => {
       this.onChatUpdated(id, updates);
 
       if(typeof(participant) === 'object') {
         const timestamp = Date.now() / 1000 | 0;
-        apiUpdatesManager.processLocalUpdate({
+        this.apiUpdatesManager.processLocalUpdate({
           _: 'updateChannelParticipant',
           channel_id: id,
           date: timestamp,
@@ -701,8 +697,8 @@ export class AppChatsManager {
             _: 'channelParticipantBanned',
             date: timestamp,
             banned_rights,
-            kicked_by: appUsersManager.getSelf().id,
-            peer: appPeersManager.getOutputPeer(peerId),
+            kicked_by: this.appUsersManager.getSelf().id,
+            peer: this.appPeersManager.getOutputPeer(peerId),
             pFlags: {}
           } : undefined
         });
@@ -752,7 +748,7 @@ export class AppChatsManager {
         enabled
       });
     }).then(updates => {
-      apiUpdatesManager.processUpdateMessage(updates);
+      this.apiUpdatesManager.processUpdateMessage(updates);
     });
   }
 
@@ -761,7 +757,7 @@ export class AppChatsManager {
       channel: this.getChannelInput(id),
       enabled
     }).then(updates => {
-      apiUpdatesManager.processUpdateMessage(updates);
+      this.apiUpdatesManager.processUpdateMessage(updates);
     });
   }
 
@@ -770,7 +766,7 @@ export class AppChatsManager {
       peer: this.getInputPeer(id),
       enabled
     }).then(updates => {
-      apiUpdatesManager.processUpdateMessage(updates);
+      this.apiUpdatesManager.processUpdateMessage(updates);
     });
   }
 
@@ -779,7 +775,7 @@ export class AppChatsManager {
       peer: this.getInputPeer(id),
       available_reactions: reactions
     }).then(updates => {
-      apiUpdatesManager.processUpdateMessage(updates);
+      this.apiUpdatesManager.processUpdateMessage(updates);
     });
   }
 
@@ -797,15 +793,27 @@ export class AppChatsManager {
         peer: this.getChannelInputPeer(channelId)
       },
       processResult: (sendAsPeers) => {
-        appUsersManager.saveApiUsers(sendAsPeers.users);
-        appChatsManager.saveApiChats(sendAsPeers.chats);
+        this.appUsersManager.saveApiUsers(sendAsPeers.users);
+        this.saveApiChats(sendAsPeers.chats);
 
         return sendAsPeers.peers;
       }
     });
   }
-}
 
-const appChatsManager = new AppChatsManager();
-MOUNT_CLASS_TO.appChatsManager = appChatsManager;
-export default appChatsManager;
+  public importChatInvite(hash: string) {
+    return apiManager.invokeApi('messages.importChatInvite', {hash})
+    .then((updates) => {
+      this.apiUpdatesManager.processUpdateMessage(updates);
+      const chat = (updates as Updates.updates).chats[0];
+      return chat.id;
+    });
+  }
+
+  public checkUsername(chatId: ChatId, username: string) {
+    return apiManager.invokeApi('channels.checkUsername', {
+      channel: this.getChannelInput(chatId),
+      username
+    });
+  }
+}

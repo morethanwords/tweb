@@ -15,15 +15,17 @@ import appStateManager from '../lib/appManagers/appStateManager';
 import I18n, { i18n } from '../lib/langPack';
 //import apiManager from '../lib/mtproto/apiManager';
 import apiManager from '../lib/mtproto/mtprotoworker';
-import RichTextProcessor from '../lib/richtextprocessor';
 import LoginPage from './loginPage';
 import Page from './page';
 import blurActiveElement from '../helpers/dom/blurActiveElement';
 import replaceContent from '../helpers/dom/replaceContent';
+import PopupElement from '../components/popups';
+import getManagers from '../lib/appManagers/getManagers';
+import wrapEmojiText from '../lib/richTextProcessor/wrapEmojiText';
 
 let authCode: AuthState.signUp['authCode'] = null;
 
-const onFirstMount = () => import('../lib/appManagers/appProfileManager').then(imported => {
+const onFirstMount = () => {
   const page = new LoginPage({
     className: 'page-signUp',
     withInputWrapper: true,
@@ -44,11 +46,9 @@ const onFirstMount = () => import('../lib/appManagers/appProfileManager').then(i
 
   page.imageDiv.append(avatarPreview, addIco);
   
-  const appProfileManager = imported.default;
-
   let uploadAvatar: () => CancellablePromise<InputFile>;
   page.imageDiv.addEventListener('click', () => {
-    new PopupAvatar().open(avatarPreview, (_uploadAvatar) => {
+    PopupElement.createPopup(PopupAvatar).open(avatarPreview, (_uploadAvatar) => {
       uploadAvatar = _uploadAvatar;
     });
   });
@@ -61,7 +61,7 @@ const onFirstMount = () => import('../lib/appManagers/appProfileManager').then(i
       ? (name + ' ' + lastName).trim() 
       : '';
     
-    if(fullName) replaceContent(page.title, RichTextProcessor.wrapEmojiText(fullName));
+    if(fullName) replaceContent(page.title, wrapEmojiText(fullName));
     else replaceContent(page.title, i18n('YourName'));
   };
 
@@ -75,7 +75,7 @@ const onFirstMount = () => import('../lib/appManagers/appProfileManager').then(i
     uploadAvatar().then((inputFile) => {
       //console.log('uploaded smthn', inputFile);
   
-      appProfileManager.uploadProfilePhoto(inputFile).then(resolve, reject);
+      getManagers().appProfileManager.uploadProfilePhoto(inputFile).then(resolve, reject);
     }, reject);
   });
 
@@ -165,7 +165,7 @@ const onFirstMount = () => import('../lib/appManagers/appProfileManager').then(i
   return new Promise((resolve) => {
     window.requestAnimationFrame(resolve);
   });
-});
+};
 
 const page = new Page('page-signUp', true, onFirstMount, (_authCode: typeof authCode) => {
   authCode = _authCode;

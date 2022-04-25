@@ -5,15 +5,14 @@
  */
 
 import { MOUNT_CLASS_TO } from "../config/debug";
-import appPeersManager from "../lib/appManagers/appPeersManager";
 import rootScope from "../lib/rootScope";
 import { i18n } from "../lib/langPack";
 import replaceContent from "../helpers/dom/replaceContent";
-import appUsersManager from "../lib/appManagers/appUsersManager";
-import RichTextProcessor from "../lib/richtextprocessor";
 import { NULL_PEER_ID } from "../lib/mtproto/mtproto_config";
 import limitSymbols from "../helpers/string/limitSymbols";
 import setInnerHTML from "../helpers/dom/setInnerHTML";
+import { AppManagers } from "../lib/appManagers/managers";
+import wrapEmojiText from "../lib/richTextProcessor/wrapEmojiText";
 
 export type PeerTitleOptions = {
   peerId?: PeerId,
@@ -21,7 +20,8 @@ export type PeerTitleOptions = {
   plainText?: boolean,
   onlyFirstName?: boolean,
   dialog?: boolean,
-  limitSymbols?: number
+  limitSymbols?: number,
+  managers?: AppManagers
 };
 
 const weakMap: WeakMap<HTMLElement, PeerTitle> = new WeakMap();
@@ -43,11 +43,12 @@ rootScope.addEventListener('peer_title_edit', (peerId) => {
 export default class PeerTitle {
   public element: HTMLElement;
   public peerId: PeerId;
-  public fromName: string;
-  public plainText = false;
-  public onlyFirstName = false;
-  public dialog = false;
-  public limitSymbols: number;
+  private fromName: string;
+  private plainText = false;
+  private onlyFirstName = false;
+  private dialog = false;
+  private limitSymbols: number;
+  private managers: AppManagers;
 
   constructor(options: PeerTitleOptions) {
     this.element = document.createElement('span');
@@ -60,11 +61,17 @@ export default class PeerTitle {
 
   public update(options?: PeerTitleOptions) {
     if(options) {
-      for(let i in options) {
+      for(const i in options) {
         // @ts-ignore
-        this.element.dataset[i] = options[i] ? '' + (typeof(options[i]) === 'boolean' ? +options[i] : options[i]) : '0';
+        const value = options[i];
+
+        if(typeof(value) !== 'object') {
+          // @ts-ignore
+          this.element.dataset[i] = value ? '' + (typeof(value) === 'boolean' ? +value : value) : '0';
+        }
+
         // @ts-ignore
-        this[i] = options[i];
+        this[i] = value;
       }
     }
 
@@ -74,7 +81,7 @@ export default class PeerTitle {
         fromName = limitSymbols(fromName, this.limitSymbols, this.limitSymbols);
       }
 
-      setInnerHTML(this.element, RichTextProcessor.wrapEmojiText(fromName));
+      setInnerHTML(this.element, wrapEmojiText(fromName));
       return;
     }
 
@@ -83,10 +90,11 @@ export default class PeerTitle {
     }
 
     if(this.peerId !== rootScope.myId || !this.dialog) {
-      if(this.peerId.isUser() && appUsersManager.getUser(this.peerId).pFlags.deleted) {
+      const managers = this.managers ?? rootScope.managers;
+      if(this.peerId.isUser() && managers.appUsersManager.getUser(this.peerId).pFlags.deleted) {
         replaceContent(this.element, i18n(this.onlyFirstName ? 'Deleted' : 'HiddenName'));
       } else {
-        setInnerHTML(this.element, appPeersManager.getPeerTitle(this.peerId, this.plainText, this.onlyFirstName, this.limitSymbols));
+        setInnerHTML(this.element, managers.appPeersManager.getPeerTitle(this.peerId, this.plainText, this.onlyFirstName, this.limitSymbols));
       }
     } else {
       replaceContent(this.element, i18n(this.onlyFirstName ? 'Saved' : 'SavedMessages'));

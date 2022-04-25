@@ -5,17 +5,17 @@
  */
 
 import App from "../../config/app";
-import { MOUNT_CLASS_TO } from "../../config/debug";
 import indexOfAndSplice from "../../helpers/array/indexOfAndSplice";
 import isObject from "../../helpers/object/isObject";
 import validateInitObject from "../../helpers/object/validateInitObject";
 import I18n from "../langPack";
 import apiManager from "../mtproto/mtprotoworker";
-import RichTextProcessor from "../richtextprocessor";
+import fixEmoji from "../richTextProcessor/fixEmoji";
 import rootScope from "../rootScope";
 import SearchIndex from "../searchIndex";
 import stateStorage from "../stateStorage";
 import appStateManager from "./appStateManager";
+import { AppManager } from "./manager";
 
 type EmojiLangPack = {
   keywords: {
@@ -33,7 +33,7 @@ const EMOJI_LANG_PACK: EmojiLangPack = {
 
 const RECENT_MAX_LENGTH = 36;
 
-export class AppEmojiManager {
+export class AppEmojiManager extends AppManager {
   private static POPULAR_EMOJI = ["😂", "😘", "❤️", "😍", "😊", "😁", "👍", "☺️", "😔", "😄", "😭", "💋", "😒", "😳", "😜", "🙈", "😉", "😃", "😢", "😝", "😱", "😡", "😏", "😞", "😅", "😚", "🙊", "😌", "😀", "😋", "😆", "👌", "😐", "😕"];
   private keywordLangPacks: {
     [langCode: string]: EmojiLangPack
@@ -221,7 +221,7 @@ export class AppEmojiManager {
   }
 
   public pushRecentEmoji(emoji: string) {
-    emoji = RichTextProcessor.fixEmoji(emoji);
+    emoji = fixEmoji(emoji);
     this.getRecentEmojis().then(recent => {
       indexOfAndSplice(recent, emoji);
       recent.unshift(emoji);
@@ -234,7 +234,3 @@ export class AppEmojiManager {
     });
   }
 }
-
-const appEmojiManager = new AppEmojiManager();
-MOUNT_CLASS_TO && (MOUNT_CLASS_TO.appEmojiManager = appEmojiManager);
-export default appEmojiManager;

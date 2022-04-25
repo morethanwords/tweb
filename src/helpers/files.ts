@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { makeMediaSize, MediaSize } from "./mediaSizes";
 import pause from "./schedulers/pause";
 import { IS_APPLE_MOBILE } from "../environment/userAgent";
+import { MediaSize, makeMediaSize } from "./mediaSize";
 
 export function scaleMediaElement(options: {
   media: CanvasImageSource, 

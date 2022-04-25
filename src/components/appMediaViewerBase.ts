@@ -8,8 +8,8 @@ import deferredPromise from "../helpers/cancellablePromise";
 import mediaSizes from "../helpers/mediaSizes";
 import { IS_TOUCH_SUPPORTED } from "../environment/touchSupport";
 import { IS_MOBILE_SAFARI, IS_SAFARI } from "../environment/userAgent";
-import appDocsManager, { MyDocument } from "../lib/appManagers/appDocsManager";
-import appPhotosManager, { MyPhoto } from "../lib/appManagers/appPhotosManager";
+import type { MyDocument } from "../lib/appManagers/appDocsManager";
+import type { MyPhoto } from "../lib/appManagers/appPhotosManager";
 import { logger } from "../lib/logger";
 import VideoPlayer from "../lib/mediaPlayer";
 import rootScope from "../lib/rootScope";
@@ -40,12 +40,15 @@ import windowSize from "../helpers/windowSize";
 import ListLoader from "../helpers/listLoader";
 import EventListenerBase from "../helpers/eventListenerBase";
 import { MyMessage } from "../lib/appManagers/appMessagesManager";
-import RichTextProcessor from "../lib/richtextprocessor";
 import { NULL_PEER_ID } from "../lib/mtproto/mtproto_config";
 import { isFullScreen } from "../helpers/dom/fullScreen";
 import { attachClickEvent } from "../helpers/dom/clickEvent";
 import SearchListLoader from "../helpers/searchListLoader";
 import createVideo from "../helpers/dom/createVideo";
+import { AppManagers } from "../lib/appManagers/managers";
+import getStrippedThumbIfNeeded from "../helpers/getStrippedThumbIfNeeded";
+import setAttachmentSize from "../helpers/setAttachmentSize";
+import wrapEmojiText from "../lib/richTextProcessor/wrapEmojiText";
 
 const ZOOM_STEP = 0.5;
 const ZOOM_INITIAL_VALUE = 1;
@@ -119,6 +122,8 @@ export default class AppMediaViewerBase<
   protected releaseSingleMedia: ReturnType<AppMediaPlaybackController['setSingleMedia']>;
   protected navigationItem: NavigationItem;
 
+  protected managers: AppManagers;
+
   get target() {
     return this.listLoader.current;
   }
@@ -132,6 +137,8 @@ export default class AppMediaViewerBase<
     topButtons: Array<keyof AppMediaViewerBase<ContentAdditionType, ButtonsAdditionType, TargetType>['buttons']>
   ) {
     super(false);
+
+    this.managers = rootScope.managers;
 
     this.log = logger('AMV');
     this.preloader = new ProgressivePreloader();
@@ -1165,7 +1172,7 @@ export default class AppMediaViewerBase<
       }).element;
     } else {
       title = document.createElement('span');
-      title.append(RichTextProcessor.wrapEmojiText(fromId));
+      title.append(wrapEmojiText(fromId));
       title.classList.add('peer-title');
     }
 
@@ -1289,7 +1296,7 @@ export default class AppMediaViewerBase<
     }
     const maxHeight = windowH - 120 - padding;
     let thumbPromise: Promise<any> = Promise.resolve();
-    const size = appPhotosManager.setAttachmentSize(media, container, maxWidth, maxHeight, mediaSizes.isMobile ? false : true, undefined, !!(isDocument && media.w && media.h)).photoSize;
+    const size = setAttachmentSize(media, container, maxWidth, maxHeight, mediaSizes.isMobile ? false : true, undefined, !!(isDocument && media.w && media.h)).photoSize;
     if(useContainerAsTarget) {
       const cacheContext = appDownloadManager.getCacheContext(media, size.type);
       let img: HTMLImageElement | HTMLCanvasElement;
@@ -1297,7 +1304,7 @@ export default class AppMediaViewerBase<
         img = new Image();
         img.src = cacheContext.url;
       } else {
-        const gotThumb = appPhotosManager.getStrippedThumbIfNeeded(media, cacheContext, true);
+        const gotThumb = getStrippedThumbIfNeeded(media, cacheContext, true);
         if(gotThumb) {
           thumbPromise = gotThumb.loadPromise;
           img = gotThumb.image;
@@ -1517,7 +1524,7 @@ export default class AppMediaViewerBase<
             } */
 
             const cacheContext = appDownloadManager.getCacheContext(media);
-            const promise: Promise<any> = supportsStreaming ? Promise.resolve() : appDocsManager.downloadDoc(media);
+            const promise: Promise<any> = supportsStreaming ? Promise.resolve() : this.managers.appDocsManager.downloadDoc(media);
             
             if(!supportsStreaming) {
               onAnimationEnd.then(() => {
@@ -1576,7 +1583,7 @@ export default class AppMediaViewerBase<
         
         const load = () => {
           const cacheContext = appDownloadManager.getCacheContext(media, size.type);
-          const cancellablePromise = isDocument ? appDocsManager.downloadDoc(media) : appPhotosManager.preloadPhoto(media, size);
+          const cancellablePromise = isDocument ? this.managers.appDocsManager.downloadDoc(media) : this.managers.appPhotosManager.preloadPhoto(media, size);
   
           onAnimationEnd.then(() => {
             if(!cacheContext.url) {

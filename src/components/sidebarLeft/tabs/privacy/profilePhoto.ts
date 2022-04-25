@@ -23,7 +23,8 @@ export default class AppPrivacyProfilePhotoTab extends SliderSuperTabEventable {
       captions: [caption, caption, caption],
       exceptionTexts: ['PrivacySettingsController.NeverShare', 'PrivacySettingsController.AlwaysShare'],
       appendTo: this.scrollable,
-      skipTypes: [PrivacyType.Nobody]
+      skipTypes: [PrivacyType.Nobody],
+      managers: this.managers
     });
   }
 }

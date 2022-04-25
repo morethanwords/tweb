@@ -10,10 +10,9 @@ import replaceContent from "../../../helpers/dom/replaceContent";
 import ListenerSetter from "../../../helpers/listenerSetter";
 import ScrollableLoader from "../../../helpers/scrollableLoader";
 import { ChannelParticipant, Chat, ChatBannedRights, Update } from "../../../layer";
-import appChatsManager, { ChatRights } from "../../../lib/appManagers/appChatsManager";
+import { ChatRights } from "../../../lib/appManagers/appChatsManager";
 import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
-import appPeersManager from "../../../lib/appManagers/appPeersManager";
-import appProfileManager from "../../../lib/appManagers/appProfileManager";
+import { AppManagers } from "../../../lib/appManagers/managers";
 import I18n, { i18n, join, LangPackKey } from "../../../lib/langPack";
 import rootScope from "../../../lib/rootScope";
 import CheckboxField from "../../checkboxField";
@@ -38,7 +37,7 @@ export class ChatPermissions {
     listenerSetter: ListenerSetter,
     appendTo: HTMLElement,
     participant?: ChannelParticipant.channelParticipantBanned
-  }) {
+  }, private managers: AppManagers) {
     this.v = [
       {flags: ['send_messages'], text: 'UserRestrictionsSend', exceptionText: 'UserRestrictionsNoSend'},
       {flags: ['send_media'], text: 'UserRestrictionsSendMedia', exceptionText: 'UserRestrictionsNoSendMedia'},
@@ -54,16 +53,16 @@ export class ChatPermissions {
       'send_messages': ['send_media', 'send_stickers', 'send_polls', 'embed_links']
     };
 
-    const chat: Chat.chat | Chat.channel = appChatsManager.getChat(options.chatId);
+    const chat: Chat.chat | Chat.channel = this.managers.appChatsManager.getChat(options.chatId);
     const defaultBannedRights = chat.default_banned_rights;
-    const rights = options.participant ? appChatsManager.combineParticipantBannedRights(options.chatId, options.participant.banned_rights) : defaultBannedRights;
+    const rights = options.participant ? this.managers.appChatsManager.combineParticipantBannedRights(options.chatId, options.participant.banned_rights) : defaultBannedRights;
     
     const restrictionText: LangPackKey = options.participant ? 'UserRestrictionsDisabled' : 'EditCantEditPermissionsPublic';
     for(const info of this.v) {
       const mainFlag = info.flags[0];
       info.checkboxField = new CheckboxField({
         text: info.text,
-        checked: appChatsManager.hasRights(options.chatId, mainFlag, rights),
+        checked: this.managers.appChatsManager.hasRights(options.chatId, mainFlag, rights),
         restriction: true,
         withRipple: true
       });
@@ -149,10 +148,10 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
         chatId: this.chatId,
         listenerSetter: this.listenerSetter,
         appendTo: section.content,
-      });
+      }, this.managers);
 
       this.eventListener.addEventListener('destroy', () => {
-        appChatsManager.editChatDefaultBannedRights(this.chatId, chatPermissions.takeOut());
+        this.managers.appChatsManager.editChatDefaultBannedRights(this.chatId, chatPermissions.takeOut());
       }, {once: true});
 
       this.scrollable.append(section.container);
@@ -184,13 +183,13 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
       const openPermissions = async(peerId: PeerId) => {
         let participant: AppUserPermissionsTab['participant'];
         try {
-          participant = await appProfileManager.getChannelParticipant(this.chatId, peerId) as any;
+          participant = await this.managers.appProfileManager.getChannelParticipant(this.chatId, peerId) as any;
         } catch(err) {
           toast('User is no longer participant');
           return;
         }
 
-        const tab = new AppUserPermissionsTab(this.slider);
+        const tab = this.slider.createTab(AppUserPermissionsTab);
         tab.participant = participant;
         tab.chatId = this.chatId;
         tab.userId = peerId;
@@ -224,7 +223,7 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
 
       const setSubtitle = (li: Element, participant: ChannelParticipant.channelParticipantBanned) => {
         const bannedRights = participant.banned_rights;//appChatsManager.combineParticipantBannedRights(this.chatId, participant.banned_rights);
-        const defaultBannedRights = (appChatsManager.getChat(this.chatId) as Chat.channel).default_banned_rights;
+        const defaultBannedRights = (this.managers.appChatsManager.getChat(this.chatId) as Chat.channel).default_banned_rights;
         //const combinedRights = appChatsManager.combineParticipantBannedRights(this.chatId, bannedRights);
 
         const cantWhat: LangPackKey[] = []/* , canWhat: LangPackKey[] = [] */;
@@ -253,7 +252,7 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
 
       const add = (participant: ChannelParticipant.channelParticipantBanned, append: boolean) => {
         const {dom} = appDialogsManager.addDialogNew({
-          dialog: appPeersManager.getPeerId(participant.peer),
+          dialog: this.managers.appPeersManager.getPeerId(participant.peer),
           container: list,
           drawStatus: false,
           rippleEnabled: true,
@@ -304,7 +303,7 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
         loader = new ScrollableLoader({
           scrollable: this.scrollable,
           getPromise: () => {
-            return appProfileManager.getChannelParticipants(this.chatId, {_: 'channelParticipantsBanned', q: ''}, LOAD_COUNT, list.childElementCount).then(res => {
+            return this.managers.appProfileManager.getChannelParticipants(this.chatId, {_: 'channelParticipantsBanned', q: ''}, LOAD_COUNT, list.childElementCount).then(res => {
               for(const participant of res.participants) {
                 add(participant as ChannelParticipant.channelParticipantBanned, true);
               }
@@ -322,7 +321,7 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
 
       this.scrollable.append(section.container);
 
-      if(appChatsManager.isChannel(this.chatId)) {
+      if(this.managers.appChatsManager.isChannel(this.chatId)) {
         await setLoader();
       } else {
         setLength();

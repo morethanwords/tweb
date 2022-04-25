@@ -4,8 +4,6 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import appMessagesManager from "../../../lib/appManagers/appMessagesManager";
-import appUsersManager from "../../../lib/appManagers/appUsersManager";
 import rootScope from "../../../lib/rootScope";
 import AppSearchSuper, { SearchSuperType } from "../../appSearchSuper.";
 import SidebarSlider, { SliderSuperTab } from "../../slider";
@@ -13,7 +11,6 @@ import { TransitionSlider } from "../../transition";
 import AppEditChatTab from "./editChat";
 import PeerTitle from "../../peerTitle";
 import AppEditContactTab from "./editContact";
-import appChatsManager from "../../../lib/appManagers/appChatsManager";
 import Button from "../../button";
 import ButtonIcon from "../../buttonIcon";
 import { i18n, LangPackKey } from "../../../lib/langPack";
@@ -87,7 +84,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
 
     // * body
 
-    this.profile = new PeerProfile(this.scrollable);
+    this.profile = new PeerProfile(this.managers, this.scrollable);
     this.profile.init();
     
     this.scrollable.append(this.profile.element);
@@ -131,9 +128,9 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     attachClickEvent(this.editBtn, (e) => {
       let tab: AppEditChatTab | AppEditContactTab;
       if(this.peerId.isAnyChat()) {
-        tab = new AppEditChatTab(this.slider);
+        tab = this.slider.createTab(AppEditChatTab);
       } else {
-        tab = new AppEditContactTab(this.slider);
+        tab = this.slider.createTab(AppEditContactTab);
       }
 
       if(tab) {
@@ -208,7 +205,8 @@ export default class AppSharedMediaTab extends SliderSuperTab {
         setTimeout(() => {
           btnAddMembers.classList.toggle('is-hidden', mediaTab.type !== 'members');
         }, timeout);
-      }
+      },
+      managers: this.managers
     });
 
     this.searchSuper.scrollStartCallback = () => {
@@ -223,7 +221,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     btnAddMembers.addEventListener('click', () => {
       const peerId = this.peerId;
       const id = this.peerId.toChatId();
-      const isChannel = appChatsManager.isChannel(id);
+      const isChannel = this.managers.appChatsManager.isChannel(id);
 
       const showConfirmation = (peerIds: PeerId[], callback: (checked: PopupPeerButtonCallbackCheckboxes) => void) => {
         let titleLangKey: LangPackKey, titleLangArgs: any[],
@@ -288,13 +286,13 @@ export default class AppSharedMediaTab extends SliderSuperTab {
       };
       
       if(isChannel) {
-        const tab = new AppAddMembersTab(this.slider);
+        const tab = this.slider.createTab(AppAddMembersTab);
         tab.open({
           type: 'channel',
           skippable: false,
           takeOut: (peerIds) => {
             showConfirmation(peerIds, () => {
-              const promise = appChatsManager.inviteToChannel(id, peerIds);
+              const promise = this.managers.appChatsManager.inviteToChannel(id, peerIds);
               promise.catch(onError);
               tab.attachToPromise(promise);
             });
@@ -311,7 +309,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
           onSelect: (peerId) => {
             setTimeout(() => {
               showConfirmation([peerId], (checked) => {
-                appChatsManager.addChatUser(id, peerId, checked.size ? undefined : 0)
+                this.managers.appChatsManager.addChatUser(id, peerId, checked.size ? undefined : 0)
                 .catch(onError);
               });
             }, 0);
@@ -331,7 +329,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     mids = mids.slice().reverse(); // ! because it will be ascend sorted array
     for(const mediaTab of this.searchSuper.mediaTabs) {
       const inputFilter = mediaTab.inputFilter;
-      const filtered = this.searchSuper.filterMessagesByType(mids.map(mid => appMessagesManager.getMessageByPeer(peerId, mid)), inputFilter);
+      const filtered = this.searchSuper.filterMessagesByType(mids.map(mid => this.managers.appMessagesManager.getMessageByPeer(peerId, mid)), inputFilter);
       if(filtered.length) {
         const history = this.historiesStorage[peerId][inputFilter];
         if(history) {
@@ -395,7 +393,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
 
     this.searchSuper.cleanupHTML(true);
 
-    this.container.classList.toggle('can-add-members', this.searchSuper.canViewMembers() && appChatsManager.hasRights(this.peerId.toChatId(), 'invite_users'));
+    this.container.classList.toggle('can-add-members', this.searchSuper.canViewMembers() && this.managers.appChatsManager.hasRights(this.peerId.toChatId(), 'invite_users'));
 
     // console.log('cleanupHTML shared media time:', performance.now() - perf);
   }
@@ -444,9 +442,9 @@ export default class AppSharedMediaTab extends SliderSuperTab {
   private toggleEditBtn() {
     let show: boolean;
     if(this.peerId.isUser()) {
-      show = this.peerId !== rootScope.myId && appUsersManager.isContact(this.peerId.toUserId());
+      show = this.peerId !== rootScope.myId && this.managers.appUsersManager.isContact(this.peerId.toUserId());
     } else {
-      show = appChatsManager.hasRights(this.peerId.toChatId(), 'change_info');
+      show = this.managers.appChatsManager.hasRights(this.peerId.toChatId(), 'change_info');
     }
 
     this.editBtn.classList.toggle('hide', !show);

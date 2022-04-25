@@ -6,14 +6,13 @@
 
 import type { LazyLoadQueueIntersector } from "../lazyLoadQueue";
 import { Message } from "../../layer";
-import appMessagesManager from "../../lib/appManagers/appMessagesManager";
-import appPeersManager from "../../lib/appManagers/appPeersManager";
 import rootScope from "../../lib/rootScope";
 import ripple from "../ripple";
 import I18n from "../../lib/langPack";
 import replaceContent from "../../helpers/dom/replaceContent";
 import StackedAvatars from "../stackedAvatars";
 import formatNumber from "../../helpers/number/formatNumber";
+import { AppManagers } from "../../lib/appManagers/managers";
 
 const TAG_NAME = 'replies-element';
 
@@ -31,11 +30,13 @@ export default class RepliesElement extends HTMLElement {
   public lazyLoadQueue: LazyLoadQueueIntersector;
   public stackedAvatars: StackedAvatars;
   public text: I18n.IntlElement;
+  public managers: AppManagers;
   
   private updated = false;
 
   constructor() {
     super();
+    this.managers = rootScope.managers;
   }
 
   public init() {
@@ -74,7 +75,7 @@ export default class RepliesElement extends HTMLElement {
 
         leftPart = this.stackedAvatars.container;
 
-        this.stackedAvatars.render(replies.recent_repliers.map(peer => appPeersManager.getPeerId(peer)), this.loadPromises);
+        this.stackedAvatars.render(replies.recent_repliers.map(peer => this.managers.appPeersManager.getPeerId(peer)), this.loadPromises);
       } else {
         if(leftPart && !leftPart.classList.contains('tgico-comments')) {
           leftPart.remove();
@@ -140,8 +141,8 @@ export default class RepliesElement extends HTMLElement {
     }
 
     if(replies && !this.updated && !this.message.pFlags.is_outgoing) {
-      appMessagesManager.subscribeRepliesThread(this.message.peerId, this.message.mid);
-      appMessagesManager.updateMessage(this.message.peerId, this.message.mid, 'replies_updated');
+      this.managers.appMessagesManager.subscribeRepliesThread(this.message.peerId, this.message.mid);
+      this.managers.appMessagesManager.updateMessage(this.message.peerId, this.message.mid, 'replies_updated');
       this.updated = true;
     }
 

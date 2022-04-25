@@ -8,19 +8,19 @@ import { Document, InputFileLocation, InputStickerSet, MessagesAllStickers, Mess
 import { Modify } from '../../types';
 import apiManager from '../mtproto/mtprotoworker';
 import rootScope from '../rootScope';
-import appDocsManager, { MyDocument } from './appDocsManager';
+import type { MyDocument } from './appDocsManager';
 import AppStorage from '../storage';
-import { MOUNT_CLASS_TO } from '../../config/debug';
 import DATABASE_STATE from '../../config/databases/state';
 import lottieLoader from '../rlottie/lottieLoader';
 import mediaSizes from '../../helpers/mediaSizes';
 import { getEmojiToneIndex } from '../../vendor/emoji';
-import RichTextProcessor from '../richtextprocessor';
 import assumeType from '../../helpers/assumeType';
 import fixBase64String from '../../helpers/fixBase64String';
 import IS_WEBM_SUPPORTED from '../../environment/webmSupport';
 import forEachReverse from '../../helpers/array/forEachReverse';
 import findAndSplice from '../../helpers/array/findAndSplice';
+import { AppManager } from './manager';
+import fixEmoji from '../richTextProcessor/fixEmoji';
 
 const CACHE_TIME = 3600e3;
 
@@ -40,7 +40,7 @@ export type MyStickerSetInput = {
 
 export type MyMessagesStickerSet = MessagesStickerSet.messagesStickerSet;
 
-export class AppStickersManager {
+export class AppStickersManager extends AppManager {
   private storage = new AppStorage<Record<Long, MyMessagesStickerSet>, typeof DATABASE_STATE>(DATABASE_STATE, 'stickerSets');
 
   private getStickerSetPromises: {[setId: Long]: Promise<MyMessagesStickerSet>};
@@ -54,6 +54,8 @@ export class AppStickersManager {
   private getAnimatedEmojiSoundsPromise: Promise<void>;
   
   constructor() {
+    super();
+    
     this.getStickerSetPromises = {};
     this.getStickersByEmoticonsPromises = {};    
     this.sounds = {};
@@ -95,7 +97,7 @@ export class AppStickersManager {
         this.greetingStickers.push(doc);
       }
 
-      appDocsManager.downloadDoc(this.greetingStickers[0]); // preload next sticker
+      this.appDocsManager.downloadDoc(this.greetingStickers[0]); // preload next sticker
 
       return doc;
     });
@@ -103,7 +105,7 @@ export class AppStickersManager {
 
   public saveStickers(docs: Document[]) {
     forEachReverse(docs, (doc, idx) => {
-      doc = appDocsManager.saveDoc(doc);
+      doc = this.appDocsManager.saveDoc(doc);
 
       if(!doc) docs.splice(idx, 1);
       else docs[idx] = doc;
@@ -181,7 +183,7 @@ export class AppStickersManager {
         //   sound.access_hash += '999';
         // }
         
-        const doc = appDocsManager.saveDoc({
+        const doc = this.appDocsManager.saveDoc({
           _: 'document',
           pFlags: {},
           flags: 0,
@@ -247,7 +249,7 @@ export class AppStickersManager {
 
     emoji = this.cleanEmoji(emoji);
     const pack = stickerSet.packs.find(p => p.emoticon === emoji);
-    return pack ? appDocsManager.getDoc(pack.documents[0]) : undefined;
+    return pack ? this.appDocsManager.getDoc(pack.documents[0]) : undefined;
   }
 
   public getAnimatedEmojiSoundDocument(emoji: string) {
@@ -258,7 +260,7 @@ export class AppStickersManager {
     const preloadEmojiPromise = this.getAnimatedEmojiStickerSet().then(() => {
       const doc = this.getAnimatedEmojiSticker(emoji);
       if(doc) {
-        return appDocsManager.downloadDoc(doc)
+        return this.appDocsManager.downloadDoc(doc)
         .then(async(blob) => {
           const mediaSize = mediaSizes.active.emojiSticker;
           const toneIndex = getEmojiToneIndex(emoji);
@@ -274,7 +276,7 @@ export class AppStickersManager {
           }, 'none');
 
           animation.addEventListener('firstFrame', () => {
-            appDocsManager.saveLottiePreview(doc, animation.canvas, toneIndex);
+            this.appDocsManager.saveLottiePreview(doc, animation.canvas, toneIndex);
             animation.remove();
           }, {once: true});
         });
@@ -293,8 +295,8 @@ export class AppStickersManager {
       if(doc) {
         const soundDoc = this.getAnimatedEmojiSoundDocument(emoji);
         return Promise.all([
-          appDocsManager.downloadDoc(doc),
-          soundDoc ? appDocsManager.downloadDoc(soundDoc) : undefined
+          this.appDocsManager.downloadDoc(doc),
+          soundDoc ? this.appDocsManager.downloadDoc(soundDoc) : undefined
         ]);
       }
     });
@@ -497,7 +499,7 @@ export class AppStickersManager {
 
   // TODO: detect "🤷" by "🤷‍♂️"
   public getStickersByEmoticon(emoticon: string, includeOurStickers = true) {
-    emoticon = RichTextProcessor.fixEmoji(emoticon);
+    emoticon = fixEmoji(emoticon);
     if(this.getStickersByEmoticonsPromises[emoticon]) return this.getStickersByEmoticonsPromises[emoticon];
 
     return this.getStickersByEmoticonsPromises[emoticon] = Promise.all([
@@ -511,17 +513,17 @@ export class AppStickersManager {
       includeOurStickers ? this.preloadStickerSets() : [],
       includeOurStickers ? this.getRecentStickers() : undefined
     ]).then(([messagesStickers, installedSets, recentStickers]) => {
-      const foundStickers = (messagesStickers as MessagesStickers.messagesStickers).stickers.map(sticker => appDocsManager.saveDoc(sticker));
+      const foundStickers = (messagesStickers as MessagesStickers.messagesStickers).stickers.map(sticker => this.appDocsManager.saveDoc(sticker));
       const cachedStickersAnimated: Document.document[] = [], cachedStickersStatic: Document.document[] = [];
 
       //console.log('getStickersByEmoticon', messagesStickers, installedSets, recentStickers);
 
       const iteratePacks = (packs: StickerPack.stickerPack[]) => {
         for(const pack of packs) {
-          const packEmoticon = RichTextProcessor.fixEmoji(pack.emoticon);
+          const packEmoticon = fixEmoji(pack.emoticon);
           if(packEmoticon.includes(emoticon)) {
             for(const docId of pack.documents) {
-              const doc = appDocsManager.getDoc(docId);
+              const doc = this.appDocsManager.getDoc(docId);
               (doc.animated ? cachedStickersAnimated : cachedStickersStatic).push(doc);
             }
           }
@@ -540,11 +542,11 @@ export class AppStickersManager {
         iteratePacks(set.packs);
       }
 
-      /* const entities = RichTextProcessor.parseEntities(emoticon);
+      /* const entities = parseEntities(emoticon);
       if(entities.length === 1) {
         [cachedStickersAnimated, cachedStickersStatic].forEach(s => {
           forEachReverse(s, (doc, idx) => {
-            const docEmoticon = RichTextProcessor.fixEmoji(doc.stickerEmojiRaw);
+            const docEmoticon = fixEmoji(doc.stickerEmojiRaw);
             if(docEmoticon !== emoticon) {
               s.splice(idx, 1);
             }
@@ -565,7 +567,7 @@ export class AppStickersManager {
   }
 
   public pushRecentSticker(doc: MyDocument) {
-    const docEmoticon = RichTextProcessor.fixEmoji(doc.stickerEmojiRaw);
+    const docEmoticon = fixEmoji(doc.stickerEmojiRaw);
     for(const emoticon in this.getStickersByEmoticonsPromises) {
       const promise = this.getStickersByEmoticonsPromises[emoticon];
       promise.then(stickers => {
@@ -579,7 +581,3 @@ export class AppStickersManager {
     }
   }
 }
-
-const appStickersManager = new AppStickersManager();
-MOUNT_CLASS_TO.appStickersManager = appStickersManager;
-export default appStickersManager;

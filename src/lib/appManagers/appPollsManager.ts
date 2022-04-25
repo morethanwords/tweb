@@ -4,20 +4,15 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { MOUNT_CLASS_TO } from "../../config/debug";
 import copy from "../../helpers/object/copy";
 import { InputMedia, Message, MessageEntity, MessageMedia, Poll, PollResults } from "../../layer";
 import { logger, LogTypes } from "../logger";
 import apiManager from "../mtproto/mtprotoworker";
-import { RichTextProcessor } from "../richtextprocessor";
+import parseMarkdown from "../richTextProcessor/parseMarkdown";
 import rootScope from "../rootScope";
-import apiUpdatesManager from "./apiUpdatesManager";
-import appMessagesIdsManager from "./appMessagesIdsManager";
-import appMessagesManager from './appMessagesManager';
-import appPeersManager from './appPeersManager';
-import appUsersManager from "./appUsersManager";
+import { AppManager } from "./manager";
 
-export class AppPollsManager {
+export class AppPollsManager extends AppManager {
   public polls: {[id: string]: Poll} = {};
   public results: {[id: string]: PollResults} = {};
   public pollToMessages: {[id: string]: Set<string>} = {};
@@ -25,6 +20,8 @@ export class AppPollsManager {
   private log = logger('POLLS', LogTypes.Error);
 
   constructor() {
+    super();
+    
     rootScope.addMultipleEventsListeners({
       updateMessagePoll: (update) => {
         this.log('updateMessagePoll:', update);
@@ -97,7 +94,7 @@ export class AppPollsManager {
         solutionEntities = [];
       }
 
-      solution = RichTextProcessor.parseMarkdown(solution, solutionEntities);
+      solution = parseMarkdown(solution, solutionEntities);
     } else {
       solution = undefined; // can be string here
     }
@@ -143,10 +140,10 @@ export class AppPollsManager {
     
     const messageId = message.mid;
     const peerId = message.peerId;
-    const inputPeer = appPeersManager.getInputPeerById(peerId);
+    const inputPeer = this.appPeersManager.getInputPeerById(peerId);
 
     if(message.pFlags.is_outgoing) {
-      return appMessagesManager.invokeAfterMessageIsSent(messageId, 'sendVote', (message) => {
+      return this.appMessagesManager.invokeAfterMessageIsSent(messageId, 'sendVote', (message) => {
         this.log('invoke sendVote callback');
         return this.sendVote(message, optionIds);
       });
@@ -154,37 +151,37 @@ export class AppPollsManager {
 
     return apiManager.invokeApi('messages.sendVote', {
       peer: inputPeer,
-      msg_id: appMessagesIdsManager.getServerMessageId(message.mid),
+      msg_id: this.appMessagesIdsManager.getServerMessageId(message.mid),
       options
     }).then(updates => {
       this.log('sendVote updates:', updates);
-      apiUpdatesManager.processUpdateMessage(updates);
+      this.apiUpdatesManager.processUpdateMessage(updates);
     });
   }
 
   public getResults(message: any) {
-    const inputPeer = appPeersManager.getInputPeerById(message.peerId);
+    const inputPeer = this.appPeersManager.getInputPeerById(message.peerId);
 
     return apiManager.invokeApi('messages.getPollResults', {
       peer: inputPeer,
-      msg_id: appMessagesIdsManager.getServerMessageId(message.mid)
+      msg_id: this.appMessagesIdsManager.getServerMessageId(message.mid)
     }).then(updates => {
-      apiUpdatesManager.processUpdateMessage(updates);
+      this.apiUpdatesManager.processUpdateMessage(updates);
       this.log('getResults updates:', updates);
     });
   }
 
   public getVotes(message: any, option?: Uint8Array, offset?: string, limit = 20) {
     return apiManager.invokeApi('messages.getPollVotes', {
-      peer: appPeersManager.getInputPeerById(message.peerId),
-      id: appMessagesIdsManager.getServerMessageId(message.mid),
+      peer: this.appPeersManager.getInputPeerById(message.peerId),
+      id: this.appMessagesIdsManager.getServerMessageId(message.mid),
       option,
       offset,
       limit
     }).then((votesList) => {
       this.log('getPollVotes messages:', votesList);
 
-      appUsersManager.saveApiUsers(votesList.users);
+      this.appUsersManager.saveApiUsers(votesList.users);
 
       return votesList;
     });
@@ -197,7 +194,7 @@ export class AppPollsManager {
 
     const newPoll = copy(poll);
     newPoll.pFlags.closed = true;
-    return appMessagesManager.editMessage(message, undefined, {
+    return this.appMessagesManager.editMessage(message, undefined, {
       newMedia: this.getInputMediaPoll(newPoll)
     }).then(() => {
       //console.log('stopped poll');
@@ -206,7 +203,3 @@ export class AppPollsManager {
     });
   }
 }
-
-const appPollsManager = new AppPollsManager();
-MOUNT_CLASS_TO.appPollsManager = appPollsManager;
-export default appPollsManager;

@@ -6,7 +6,6 @@
 
 import { SettingSection } from "../..";
 import { attachClickEvent } from "../../../../helpers/dom/clickEvent";
-import appStickersManager from "../../../../lib/appManagers/appStickersManager";
 import Button from "../../../button";
 import { SliderSuperTab } from "../../../slider";
 import { wrapSticker } from "../../../wrappers";
@@ -23,7 +22,7 @@ export default class AppTwoStepVerificationSetTab extends SliderSuperTab {
     });
 
     const emoji = '🥳';
-    const doc = appStickersManager.getAnimatedEmojiSticker(emoji);
+    const doc = this.managers.appStickersManager.getAnimatedEmojiSticker(emoji);
     const stickerContainer = document.createElement('div');
 
     if(doc) {

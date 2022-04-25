@@ -4,9 +4,8 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import appChatsManager from "../../lib/appManagers/appChatsManager";
-import appMessagesManager from "../../lib/appManagers/appMessagesManager";
-import appPeersManager, { PeerType } from "../../lib/appManagers/appPeersManager";
+import PopupElement from ".";
+import type { PeerType } from "../../lib/appManagers/appPeersManager";
 import { LangPackKey } from "../../lib/langPack";
 import PeerTitle from "../peerTitle";
 import PopupPeer, { PopupPeerButtonCallbackCheckboxes, PopupPeerOptions } from "./peer";
@@ -15,10 +14,15 @@ export default class PopupDeleteDialog {
   constructor(
     peerId: PeerId, 
     // actionType: 'leave' | 'delete', 
-    peerType: PeerType = appPeersManager.getDialogType(peerId), 
+    peerType?: PeerType, 
     onSelect?: (promise: Promise<any>) => void
   ) {
     const peerTitleElement = new PeerTitle({peerId}).element;
+
+    const managers = PopupElement.MANAGERS;
+    if(peerType === undefined) {
+      peerType = managers.appPeersManager.getDialogType(peerId);
+    }
 
     /* const callbackFlush = (checked: PopupPeerButtonCallbackCheckboxes) => {
       const promise = appMessagesManager.flushHistory(peerId, checkboxes ? !checked[checkboxes[0].text] : undefined);
@@ -26,11 +30,11 @@ export default class PopupDeleteDialog {
     }; */
 
     const callbackLeave = (checked: PopupPeerButtonCallbackCheckboxes, flush = checkboxes && !!checked.size) => {
-      let promise = appChatsManager.leave(peerId.toChatId());
+      let promise = managers.appChatsManager.leave(peerId.toChatId());
       
       if(flush) {
         promise = promise.finally(() => {
-          return appMessagesManager.flushHistory(peerId);
+          return managers.appMessagesManager.flushHistory(peerId);
         }) as any;
       }
       
@@ -41,10 +45,10 @@ export default class PopupDeleteDialog {
       let promise: Promise<any>;
 
       if(peerId.isUser()) {
-        promise = appMessagesManager.flushHistory(peerId, false, checkboxes ? !!checked.size : undefined);
+        promise = managers.appMessagesManager.flushHistory(peerId, false, checkboxes ? !!checked.size : undefined);
       } else {
         if(checked.size) {
-          promise = appChatsManager.delete(peerId.toChatId());
+          promise = managers.appChatsManager.delete(peerId.toChatId());
         } else {
           return callbackLeave(checked);
         }
@@ -56,8 +60,8 @@ export default class PopupDeleteDialog {
     let title: LangPackKey, description: LangPackKey, descriptionArgs: any[], buttons: PopupPeerOptions['buttons'], checkboxes: PopupPeerOptions['checkboxes'];
     switch(peerType) {
       case 'channel': {
-        if(/* actionType === 'delete' &&  */appChatsManager.hasRights(peerId.toChatId(), 'delete_chat')) {
-          appChatsManager.deleteChannel
+        if(/* actionType === 'delete' &&  */managers.appChatsManager.hasRights(peerId.toChatId(), 'delete_chat')) {
+          managers.appChatsManager.deleteChannel
           title = 'ChannelDeleteMenu';
           description = 'AreYouSureDeleteAndExitChannel';
           buttons = [{
@@ -130,7 +134,7 @@ export default class PopupDeleteDialog {
 
       case 'megagroup':
       case 'group': {
-        if(/* actionType === 'delete' &&  */appChatsManager.hasRights(peerId.toChatId(), 'delete_chat')) {
+        if(/* actionType === 'delete' &&  */managers.appChatsManager.hasRights(peerId.toChatId(), 'delete_chat')) {
           title = 'DeleteMegaMenu';
           description = 'AreYouSureDeleteAndExit';
           buttons = [{

@@ -8,9 +8,9 @@ import { formatTime, getFullDate } from "../../helpers/date";
 import setInnerHTML from "../../helpers/dom/setInnerHTML";
 import formatNumber from "../../helpers/number/formatNumber";
 import { Message } from "../../layer";
-import appMessagesManager from "../../lib/appManagers/appMessagesManager";
 import { i18n, _i18n } from "../../lib/langPack";
-import RichTextProcessor from "../../lib/richtextprocessor";
+import wrapEmojiText from "../../lib/richTextProcessor/wrapEmojiText";
+import rootScope from "../../lib/rootScope";
 import { LazyLoadQueueIntersector } from "../lazyLoadQueue";
 import PeerTitle from "../peerTitle";
 import { wrapReply } from "../wrappers";
@@ -36,7 +36,7 @@ export namespace MessageRender {
 
   export const setTime = (options: {
     chatType: ChatType, 
-    message: Message.message | Message.messageService,
+    message: Message.message | Message.messageService
   }) => {
     const {chatType, message} = options;
     const date = new Date(message.date * 1000);
@@ -63,7 +63,7 @@ export namespace MessageRender {
         args.push(postViewsSpan, channelViews);
         if(postAuthor) {
           const span = document.createElement('span');
-          setInnerHTML(span, RichTextProcessor.wrapEmojiText(postAuthor));
+          setInnerHTML(span, wrapEmojiText(postAuthor));
           span.insertAdjacentHTML('beforeend', ',' + NBSP)
           args.push(span);
         }
@@ -82,7 +82,7 @@ export namespace MessageRender {
       if(message.peer_id._ === 'peerUser'/*  && message.reactions?.results?.length */) {
         hasReactions = true;
 
-        reactionsMessage = appMessagesManager.getGroupsFirstMessage(message);
+        reactionsMessage = rootScope.managers.appMessagesManager.getGroupsFirstMessage(message);
 
         reactionsElement = new ReactionsElement();
         reactionsElement.init(reactionsMessage, 'inline', true);

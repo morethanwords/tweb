@@ -4,23 +4,18 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import appMessagesManager from "../lib/appManagers/appMessagesManager";
-import appProfileManager from "../lib/appManagers/appProfileManager";
 import rootScope from "../lib/rootScope";
 import { Message, Photo } from "../layer";
-import appPeersManager from "../lib/appManagers/appPeersManager";
-import appPhotosManager from "../lib/appManagers/appPhotosManager";
 import type { LazyLoadQueueIntersector } from "./lazyLoadQueue";
 import { attachClickEvent } from "../helpers/dom/clickEvent";
 import cancelEvent from "../helpers/dom/cancelEvent";
-import appAvatarsManager from "../lib/appManagers/appAvatarsManager";
 import AppMediaViewer from "./appMediaViewer";
 import AppMediaViewerAvatar from "./appMediaViewerAvatar";
 import isObject from "../helpers/object/isObject";
 import { ArgumentTypes } from "../types";
+import putPhoto from "./putPhoto";
 
 const onAvatarUpdate = (peerId: PeerId) => {
-  appAvatarsManager.removeFromAvatarsCache(peerId);
   (Array.from(document.querySelectorAll('avatar-element[data-peer-id="' + peerId + '"]')) as AvatarElement[]).forEach(elem => {
     //console.log('updating avatar:', elem);
     elem.update();
@@ -29,7 +24,7 @@ const onAvatarUpdate = (peerId: PeerId) => {
 
 rootScope.addEventListener('avatar_update', onAvatarUpdate);
 rootScope.addEventListener('peer_title_edit', (peerId) => {
-  if(!appAvatarsManager.isAvatarCached(peerId)) {
+  if(!rootScope.managers.appAvatarsManager.isAvatarCached(peerId)) {
     onAvatarUpdate(peerId);
   }
 });
@@ -42,7 +37,7 @@ export async function openAvatarViewer(
   prevTargets?: {element: HTMLElement, item: Photo.photo['id'] | Message.messageService}[], 
   nextTargets?: typeof prevTargets
 ) {
-  let photo = await appProfileManager.getFullPhoto(peerId);
+  let photo = await rootScope.managers.appProfileManager.getFullPhoto(peerId);
   if(!middleware() || !photo) {
     return;
   }
@@ -56,7 +51,7 @@ export async function openAvatarViewer(
     const hadMessage = !!message;
     const inputFilter = 'inputMessagesFilterChatPhotos';
     if(!message) {
-      message = await appMessagesManager.getSearch({
+      message = await rootScope.managers.appMessagesManager.getSearch({
         peerId, 
         inputFilter: {_: inputFilter}, 
         maxId: 0, 
@@ -77,7 +72,7 @@ export async function openAvatarViewer(
       const messagePhoto = message.action.photo;
       if(messagePhoto.id !== photo.id) {
         if(!hadMessage) {
-          message = appMessagesManager.generateFakeAvatarMessage(peerId, photo);
+          message = rootScope.managers.appMessagesManager.generateFakeAvatarMessage(peerId, photo);
         } else {
           
         }
@@ -102,7 +97,7 @@ export async function openAvatarViewer(
 
   if(photo) {
     if(!isObject(message) && message) {
-      photo = appPhotosManager.getPhoto(message);
+      photo = rootScope.managers.appPhotosManager.getPhoto(message);
     }
     
     const f = (arr: typeof prevTargets) => arr.map(el => ({
@@ -178,7 +173,7 @@ export default class AvatarElement extends HTMLElement {
       return;
     }
 
-    this.peerId = appPeersManager.getPeerMigratedTo(newPeerId) || newPeerId;
+    this.peerId = rootScope.managers.appPeersManager.getPeerMigratedTo(newPeerId) || newPeerId;
     this.dataset.peerId = '' + newPeerId;
 
     if(wasPeerId) {
@@ -195,7 +190,7 @@ export default class AvatarElement extends HTMLElement {
   }
 
   private r(onlyThumb = false) {
-    const res = appAvatarsManager.putPhoto(this, this.peerId, this.isDialog, this.peerTitle, onlyThumb, this.isBig);
+    const res = putPhoto(this, this.peerId, this.isDialog, this.peerTitle, onlyThumb, this.isBig);
     const promise = res ? res.loadPromise : Promise.resolve();
     if(this.loadPromises) {
       if(res && res.cached) {

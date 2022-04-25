@@ -8,7 +8,6 @@ import { putPreloader } from "../components/misc";
 import Scrollable from '../components/scrollable';
 import appStateManager from "../lib/appManagers/appStateManager";
 import apiManager from "../lib/mtproto/mtprotoworker";
-import { RichTextProcessor } from '../lib/richtextprocessor';
 import Page from "./page";
 import InputField from "../components/inputField";
 import CheckboxField from "../components/checkboxField";
@@ -41,6 +40,7 @@ import rootScope from "../lib/rootScope";
 import TelInputField from "../components/telInputField";
 import IS_EMOJI_SUPPORTED from "../environment/emojiSupport";
 import setInnerHTML from "../helpers/dom/setInnerHTML";
+import wrapEmojiText from "../lib/richTextProcessor/wrapEmojiText";
 
 //import _countries from '../countries_pretty.json';
 let btnNext: HTMLButtonElement = null, btnQr: HTMLButtonElement;
@@ -116,7 +116,7 @@ let onFirstMount = () => {
       c.country_codes.forEach((countryCode) => {
         const li = document.createElement('li');
 
-        let wrapped = RichTextProcessor.wrapEmojiText(emoji);
+        let wrapped = wrapEmojiText(emoji);
         if(IS_EMOJI_SUPPORTED) {
           const spanEmoji = document.createElement('span');
           setInnerHTML(spanEmoji, wrapped);

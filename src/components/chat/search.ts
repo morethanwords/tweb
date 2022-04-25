@@ -19,6 +19,7 @@ import ListenerSetter from "../../helpers/listenerSetter";
 import { attachClickEvent } from "../../helpers/dom/clickEvent";
 import appNavigationController, { NavigationItem } from "../appNavigationController";
 import { IS_MOBILE_SAFARI } from "../../environment/userAgent";
+import PopupElement from "../popups";
 
 export default class ChatSearch {
   private element: HTMLElement;
@@ -165,7 +166,7 @@ export default class ChatSearch {
 
   private onDateClick = (e: MouseEvent) => {
     cancelEvent(e);
-    new PopupDatePicker(new Date(), this.chat.bubbles.onDatePick).show();
+    PopupElement.createPopup(PopupDatePicker, new Date(), this.chat.bubbles.onDatePick).show();
   };
 
   private selectResult(elem: HTMLElement) {

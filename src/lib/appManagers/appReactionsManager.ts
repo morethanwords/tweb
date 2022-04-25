@@ -14,12 +14,7 @@ import { AvailableReaction, Message, MessagePeerReaction, MessagesAvailableReact
 import apiManager from "../mtproto/mtprotoworker";
 import { ReferenceContext } from "../mtproto/referenceDatabase";
 import rootScope from "../rootScope";
-import apiUpdatesManager from "./apiUpdatesManager";
-import appDocsManager from "./appDocsManager";
-import appMessagesIdsManager from "./appMessagesIdsManager";
-import appPeersManager from "./appPeersManager";
-import appProfileManager from "./appProfileManager";
-import appUsersManager from "./appUsersManager";
+import { AppManager } from "./manager";
 
 const SAVE_DOC_KEYS = [
   'static_icon' as const,
@@ -35,12 +30,14 @@ const REFERENCE_CONTEXT: ReferenceContext = {
   type: 'reactions'
 };
 
-export class AppReactionsManager {
+export class AppReactionsManager extends AppManager {
   private availableReactions: AvailableReaction[];
   private sendReactionPromises: Map<string, Promise<any>>;
   private lastSendingTimes: Map<string, number>;
 
   constructor() {
+    super();
+
     rootScope.addEventListener('language_change', () => {
       this.availableReactions = undefined;
       this.getAvailableReactions();
@@ -53,10 +50,10 @@ export class AppReactionsManager {
       Promise.resolve(this.getAvailableReactions()).then(async(availableReactions) => {
         for(const availableReaction of availableReactions) {
           await Promise.all([
-            availableReaction.around_animation && appDocsManager.downloadDoc(availableReaction.around_animation),
-            availableReaction.static_icon && appDocsManager.downloadDoc(availableReaction.static_icon),
-            availableReaction.appear_animation && appDocsManager.downloadDoc(availableReaction.appear_animation),
-            availableReaction.center_icon && appDocsManager.downloadDoc(availableReaction.center_icon)
+            availableReaction.around_animation && this.appDocsManager.downloadDoc(availableReaction.around_animation),
+            availableReaction.static_icon && this.appDocsManager.downloadDoc(availableReaction.static_icon),
+            availableReaction.appear_animation && this.appDocsManager.downloadDoc(availableReaction.appear_animation),
+            availableReaction.center_icon && this.appDocsManager.downloadDoc(availableReaction.center_icon)
           ]);
         }
       });
@@ -77,7 +74,7 @@ export class AppReactionsManager {
               continue;
             }
             
-            reaction[key] = appDocsManager.saveDoc(reaction[key], REFERENCE_CONTEXT);
+            reaction[key] = this.appDocsManager.saveDoc(reaction[key], REFERENCE_CONTEXT);
           }
         }
 
@@ -101,7 +98,7 @@ export class AppReactionsManager {
       return this.unshiftQuickReaction(activeAvailableReactions);
     }
 
-    const chatFull = appProfileManager.getChatFull(peerId.toChatId());
+    const chatFull = this.appProfileManager.getChatFull(peerId.toChatId());
     return callbackifyAll([activeAvailableReactions, chatFull, this.getQuickReaction()], ([activeAvailableReactions, chatFull, quickReaction]) => {
       const chatAvailableReactions = chatFull.available_reactions ?? [];
 
@@ -135,7 +132,7 @@ export class AppReactionsManager {
   }
 
   public getAvailableReactionsByMessage(message: Message.message) {
-    const peerId = (message.fwd_from?.channel_post && appPeersManager.isMegagroup(message.peerId) && message.fwdFromId) || message.peerId;
+    const peerId = (message.fwd_from?.channel_post && this.appPeersManager.isMegagroup(message.peerId) && message.fwdFromId) || message.peerId;
     return this.getAvailableReactionsForPeer(peerId);
   }
 
@@ -167,11 +164,11 @@ export class AppReactionsManager {
     return apiManager.invokeApiSingleProcess({
       method: 'messages.getMessagesReactions',
       params: {
-        id: mids.map(mid => appMessagesIdsManager.getServerMessageId(mid)),
-        peer: appPeersManager.getInputPeerById(peerId)
+        id: mids.map(mid => this.appMessagesIdsManager.getServerMessageId(mid)),
+        peer: this.appPeersManager.getInputPeerById(peerId)
       },
       processResult: (updates) => {
-        apiUpdatesManager.processUpdateMessage(updates);
+        this.apiUpdatesManager.processUpdateMessage(updates);
 
         // const update = (updates as Updates.updates).updates.find(update => update._ === 'updateMessageReactions') as Update.updateMessageReactions;
         // return update.reactions;
@@ -183,14 +180,14 @@ export class AppReactionsManager {
     return apiManager.invokeApiSingleProcess({
       method: 'messages.getMessageReactionsList',
       params: {
-        peer: appPeersManager.getInputPeerById(peerId),
-        id: appMessagesIdsManager.getServerMessageId(mid),
+        peer: this.appPeersManager.getInputPeerById(peerId),
+        id: this.appMessagesIdsManager.getServerMessageId(mid),
         limit,
         reaction,
         offset
       },
       processResult: (messageReactionsList) => {
-        appUsersManager.saveApiUsers(messageReactionsList.users);
+        this.appUsersManager.saveApiUsers(messageReactionsList.users);
         return messageReactionsList;
       }
     });
@@ -246,7 +243,7 @@ export class AppReactionsManager {
       } */
 
       if(reactions.recent_reactions) {
-        findAndSplice(reactions.recent_reactions, (recentReaction) => appPeersManager.getPeerId(recentReaction.peer_id) === myPeerId);
+        findAndSplice(reactions.recent_reactions, (recentReaction) => this.appPeersManager.getPeerId(recentReaction.peer_id) === myPeerId);
       }
 
       if(!reactions.results.length) {
@@ -262,7 +259,7 @@ export class AppReactionsManager {
           pFlags: {}
         };
 
-        if(!appPeersManager.isBroadcast(message.peerId)) {
+        if(!this.appPeersManager.isBroadcast(message.peerId)) {
           reactions.pFlags.can_see_list = true;
         }
       }
@@ -291,10 +288,10 @@ export class AppReactionsManager {
         const userReaction: MessagePeerReaction = {
           _: 'messagePeerReaction',
           reaction,
-          peer_id: appPeersManager.getOutputPeer(myPeerId)
+          peer_id: this.appPeersManager.getOutputPeer(myPeerId)
         };
 
-        if(!appPeersManager.isMegagroup(peerId)) {
+        if(!this.appPeersManager.isMegagroup(peerId)) {
           reactions.recent_reactions.push(userReaction);
           reactions.recent_reactions = reactions.recent_reactions.slice(-3);
         } else {
@@ -324,7 +321,7 @@ export class AppReactionsManager {
       return Promise.resolve();
     }
 
-    apiUpdatesManager.processLocalUpdate({
+    this.apiUpdatesManager.processLocalUpdate({
       _: 'updateMessageReactions',
       peer: message.peer_id,
       msg_id: message.id,
@@ -333,9 +330,9 @@ export class AppReactionsManager {
     });
 
     const promiseKey = [peerId, mid].join('-');
-    const msgId = appMessagesIdsManager.getServerMessageId(mid);
+    const msgId = this.appMessagesIdsManager.getServerMessageId(mid);
     const promise = apiManager.invokeApi('messages.sendReaction', {
-      peer: appPeersManager.getInputPeerById(peerId),
+      peer: this.appPeersManager.getInputPeerById(peerId),
       msg_id: msgId,
       reaction
     }).then((updates) => {
@@ -347,14 +344,14 @@ export class AppReactionsManager {
         updates.updates[editMessageUpdateIdx] = {
           _: 'updateMessageReactions',
           msg_id: msgId,
-          peer: appPeersManager.getOutputPeer(peerId),
+          peer: this.appPeersManager.getOutputPeer(peerId),
           reactions: (editMessageUpdate.message as Message.message).reactions,
           pts: editMessageUpdate.pts,
           pts_count: editMessageUpdate.pts_count
         };
       }
 
-      apiUpdatesManager.processUpdateMessage(updates);
+      this.apiUpdatesManager.processUpdateMessage(updates);
     }).catch(err => {
       if(err.type === 'REACTION_INVALID' && this.sendReactionPromises.get(promiseKey) === promise) {
         this.sendReaction(message, chosenReaction?.reaction, true);
@@ -369,7 +366,3 @@ export class AppReactionsManager {
     return promise;
   }
 }
-
-const appReactionsManager = new AppReactionsManager();
-MOUNT_CLASS_TO && (MOUNT_CLASS_TO.appReactionsManager = appReactionsManager);
-export default appReactionsManager;

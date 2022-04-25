@@ -8,10 +8,8 @@ import { SliderSuperTab } from "../../slider";
 import InputSearch from "../../inputSearch";
 import LazyLoadQueue from "../../lazyLoadQueue";
 import appImManager from "../../../lib/appManagers/appImManager";
-import appStickersManager from "../../../lib/appManagers/appStickersManager";
 import PopupStickers from "../../popups/stickers";
 import animationIntersector from "../../animationIntersector";
-import { RichTextProcessor } from "../../../lib/richtextprocessor";
 import { wrapSticker } from "../../wrappers";
 import appSidebarRight from "..";
 import { StickerSet, StickerSetCovered } from "../../../layer";
@@ -19,6 +17,7 @@ import { i18n } from "../../../lib/langPack";
 import findUpClassName from "../../../helpers/dom/findUpClassName";
 import { attachClickEvent } from "../../../helpers/dom/clickEvent";
 import forEachReverse from "../../../helpers/array/forEachReverse";
+import wrapEmojiText from "../../../lib/richTextProcessor/wrapEmojiText";
 
 export default class AppStickersTab extends SliderSuperTab {
   private inputSearch: InputSearch;
@@ -62,8 +61,8 @@ export default class AppStickersTab extends SliderSuperTab {
 
         button.setAttribute('disabled', 'true');
         
-        appStickersManager.getStickerSet({id, access_hash}).then(full => {
-          appStickersManager.toggleStickerSet(full.set).then(changed => {
+        this.managers.appStickersManager.getStickerSet({id, access_hash}).then(full => {
+          this.managers.appStickersManager.toggleStickerSet(full.set).then(changed => {
             if(changed) {
               button.textContent = '';
               button.append(i18n(full.set.installed_date ? 'Stickers.SearchAdded' : 'Stickers.SearchAdd'));
@@ -75,7 +74,7 @@ export default class AppStickersTab extends SliderSuperTab {
           });
         });
       } else {
-        appStickersManager.getStickerSet({id, access_hash}).then(full => {
+        this.managers.appStickersManager.getStickerSet({id, access_hash}).then(full => {
           new PopupStickers(full.set).show();
         });
       }
@@ -99,7 +98,7 @@ export default class AppStickersTab extends SliderSuperTab {
     const details = document.createElement('div');
     details.classList.add('sticker-set-details');
     details.innerHTML = `
-      <div class="sticker-set-name">${RichTextProcessor.wrapEmojiText(set.title)}</div>
+      <div class="sticker-set-name">${wrapEmojiText(set.title)}</div>
     `;
 
     const countDiv = document.createElement('div');
@@ -131,7 +130,7 @@ export default class AppStickersTab extends SliderSuperTab {
       stickersDiv.append(stickerDiv);
     }
 
-    appStickersManager.getStickerSet(set).then(set => {
+    this.managers.appStickersManager.getStickerSet(set).then(set => {
       //console.log('renderSet got set:', set);
       
       for(let i = 0; i < count; ++i) {
@@ -200,7 +199,7 @@ export default class AppStickersTab extends SliderSuperTab {
   }
 
   public renderFeatured() {
-    return appStickersManager.getFeaturedStickers().then(coveredSets => {
+    return this.managers.appStickersManager.getFeaturedStickers().then(coveredSets => {
       if(this.inputSearch.value) {
         return;
       }
@@ -237,7 +236,7 @@ export default class AppStickersTab extends SliderSuperTab {
       return this.renderFeatured();
     }
 
-    return appStickersManager.searchStickerSets(query, false).then(coveredSets => {
+    return this.managers.appStickersManager.searchStickerSets(query, false).then(coveredSets => {
       if(this.inputSearch.value !== query) {
         return;
       }

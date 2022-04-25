@@ -9,7 +9,6 @@
  * https://github.com/evgeny-nadymov/telegram-react/blob/master/LICENSE
  */
 
-import { MOUNT_CLASS_TO } from "../../config/debug";
 import AudioAssetPlayer from "../../helpers/audioAssetPlayer";
 import safeReplaceObject from "../../helpers/object/safeReplaceObject";
 import { nextRandomUint } from "../../helpers/random";
@@ -26,10 +25,7 @@ import { logger } from "../logger";
 import apiManager from "../mtproto/mtprotoworker";
 import { NULL_PEER_ID } from "../mtproto/mtproto_config";
 import rootScope from "../rootScope";
-import apiUpdatesManager from "./apiUpdatesManager";
-import appChatsManager from "./appChatsManager";
-import appPeersManager from "./appPeersManager";
-import appUsersManager from "./appUsersManager";
+import { AppManager } from "./manager";
 
 export type GroupCallId = GroupCall['id'];
 export type MyGroupCall = GroupCall | InputGroupCall;
@@ -56,7 +52,7 @@ export type GroupCallOutputSource = 'main' | 'presentation' | number;
 
 export type GroupCallAudioAssetName = "group_call_connect.mp3" | "group_call_end.mp3" | "group_call_start.mp3" | "voip_onallowtalk.mp3";
 
-export class AppGroupCallsManager {
+export class AppGroupCallsManager extends AppManager {
   private log: ReturnType<typeof logger>;
   
   private groupCalls: Map<GroupCallId, MyGroupCall>;
@@ -71,6 +67,8 @@ export class AppGroupCallsManager {
   private audioAsset: AudioAssetPlayer<GroupCallAudioAssetName>;
 
   constructor() {
+    super();
+
     this.log = logger('GROUP-CALLS');
     
     this.groupCalls = new Map();
@@ -144,7 +142,7 @@ export class AppGroupCallsManager {
     const {currentGroupCall} = this;
     const participants = this.getCachedParticipants(groupCallId);
 
-    const peerId = appPeersManager.getPeerId(participant.peer);
+    const peerId = this.appPeersManager.getPeerId(participant.peer);
 
     const oldParticipant = participants.get(peerId);
     const hasLeft = participant.pFlags.left;
@@ -303,10 +301,10 @@ export class AppGroupCallsManager {
       } */
     }
 
-    const peerId = participant.pFlags.self ? NULL_PEER_ID : appPeersManager.getPeerId(participant.peer);
+    const peerId = participant.pFlags.self ? NULL_PEER_ID : this.appPeersManager.getPeerId(participant.peer);
     const updates = await apiManager.invokeApiSingle('phone.editGroupCallParticipant', {
-      call: appGroupCallsManager.getGroupCallInput(groupCallId),
-      participant: peerId === NULL_PEER_ID ? appPeersManager.getInputPeerSelf() : appPeersManager.getInputPeerById(peerId),
+      call: this.getGroupCallInput(groupCallId),
+      participant: peerId === NULL_PEER_ID ? this.appPeersManager.getInputPeerSelf() : this.appPeersManager.getInputPeerById(peerId),
       muted: options.muted,
       volume: options.volume,
       raise_hand: options.raiseHand,
@@ -316,8 +314,8 @@ export class AppGroupCallsManager {
     });
     
     // do not replace with peerId because it can be null
-    if(!processUpdate) this.doNotDispatchParticipantUpdate = appPeersManager.getPeerId(participant.peer);
-    apiUpdatesManager.processUpdateMessage(updates);
+    if(!processUpdate) this.doNotDispatchParticipantUpdate = this.appPeersManager.getPeerId(participant.peer);
+    this.apiUpdatesManager.processUpdateMessage(updates);
     if(!processUpdate) this.doNotDispatchParticipantUpdate = undefined;
   }
   
@@ -340,8 +338,8 @@ export class AppGroupCallsManager {
       },
       processResult: (groupCall) => {
         // ? maybe I should save group call after participants so I can avoid passing the 'skipCounterUpdating' flag ?
-        appUsersManager.saveApiUsers(groupCall.users);
-        appChatsManager.saveApiChats(groupCall.chats);
+        this.appUsersManager.saveApiUsers(groupCall.users);
+        this.appChatsManager.saveApiChats(groupCall.chats);
         this.saveApiParticipants(id, groupCall.participants, true);
         const call = this.saveGroupCall(groupCall.call) as GroupCall;
 
@@ -398,13 +396,13 @@ export class AppGroupCallsManager {
 
   public async createGroupCall(chatId: ChatId, scheduleDate?: number, title?: string) {
     const updates = await apiManager.invokeApi('phone.createGroupCall', {
-      peer: appPeersManager.getInputPeerById(chatId.toPeerId(true)),
+      peer: this.appPeersManager.getInputPeerById(chatId.toPeerId(true)),
       random_id: nextRandomUint(32),
       schedule_date: scheduleDate,
       title
     });
 
-    apiUpdatesManager.processUpdateMessage(updates);
+    this.apiUpdatesManager.processUpdateMessage(updates);
 
     const update = (updates as Updates.updates).updates.find(update => update._ === 'updateGroupCall') as Update.updateGroupCall;
     return update.call;
@@ -440,7 +438,10 @@ export class AppGroupCallsManager {
     } else {
       currentGroupCall = new GroupCallInstance({
         chatId,
-        id: groupCallId
+        id: groupCallId,
+        appGroupCallsManager: this,
+        apiUpdatesManager: this.apiUpdatesManager,
+        appPeersManager: this.appPeersManager
       });
 
       currentGroupCall.fixSafariAudio();
@@ -577,7 +578,7 @@ export class AppGroupCallsManager {
       video: this.generateSelfVideo(mainSources.video),
       presentation: presentationSources && this.generateSelfVideo(presentationSources.video, presentationSources.audio?.source),
       date: tsNow(true),
-      peer: appPeersManager.getOutputPeer(rootScope.myId)
+      peer: this.appPeersManager.getOutputPeer(rootScope.myId)
     };
   }
 
@@ -611,8 +612,8 @@ export class AppGroupCallsManager {
         processResult: (groupCallParticipants) => {
           const newNextOffset = groupCallParticipants.count === groupCallParticipants.participants.length ? '' : groupCallParticipants.next_offset;
   
-          appChatsManager.saveApiChats(groupCallParticipants.chats);
-          appUsersManager.saveApiUsers(groupCallParticipants.users);
+          this.appChatsManager.saveApiChats(groupCallParticipants.chats);
+          this.appUsersManager.saveApiUsers(groupCallParticipants.users);
           this.saveApiParticipants(id, groupCallParticipants.participants);
     
           setNextOffset(newNextOffset);
@@ -650,7 +651,3 @@ export class AppGroupCallsManager {
     return this.editParticipant(currentGroupCall.id, participant, {muted});
   }
 }
-
-const appGroupCallsManager = new AppGroupCallsManager();
-MOUNT_CLASS_TO && (MOUNT_CLASS_TO.appGroupCallsManager = appGroupCallsManager);
-export default appGroupCallsManager;

@@ -11,11 +11,12 @@ import setInnerHTML from "../helpers/dom/setInnerHTML";
 import mediaSizes from "../helpers/mediaSizes";
 import SearchListLoader from "../helpers/searchListLoader";
 import { Message } from "../layer";
-import appDocsManager, { MyDocument } from "../lib/appManagers/appDocsManager";
+import type { MyDocument } from "../lib/appManagers/appDocsManager";
 import appImManager from "../lib/appManagers/appImManager";
-import appMessagesManager, { MyMessage } from "../lib/appManagers/appMessagesManager";
-import appPhotosManager, { MyPhoto } from "../lib/appManagers/appPhotosManager";
-import RichTextProcessor from "../lib/richtextprocessor";
+import { MyMessage } from "../lib/appManagers/appMessagesManager";
+import { MyPhoto } from "../lib/appManagers/appPhotosManager";
+import getMediaFromMessage from "../lib/appManagers/utils/messages/getMediaFromMessage";
+import wrapRichText from "../lib/richTextProcessor/wrapRichText";
 import { MediaSearchContext } from "./appMediaPlaybackController";
 import AppMediaViewerBase, { MEDIA_VIEWER_CLASSNAME } from "./appMediaViewerBase";
 import { ButtonMenuItemOptions } from "./buttonMenu";
@@ -45,7 +46,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
       processItem: (item) => {
         const isForDocument = this.searchContext.inputFilter._ === 'inputMessagesFilterDocument';
         const {mid, peerId} = item;
-        const media: MyPhoto | MyDocument = appMessagesManager.getMediaFromMessage(item);
+        const media: MyPhoto | MyDocument = getMediaFromMessage(item);
 
         if(!media) return;
         
@@ -160,7 +161,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
   } */
 
   protected getMessageByPeer(peerId: PeerId, mid: number) {
-    return this.searchContext.isScheduled ? appMessagesManager.getScheduledMessageByPeer(peerId, mid) : appMessagesManager.getMessageByPeer(peerId, mid);
+    return this.searchContext.isScheduled ? this.managers.appMessagesManager.getScheduledMessageByPeer(peerId, mid) : this.managers.appMessagesManager.getMessageByPeer(peerId, mid);
   }
 
   onPrevClick = (target: AppMediaViewerTargetType) => {
@@ -220,7 +221,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     const {peerId, mid} = this.target;
     const message = this.getMessageByPeer(peerId, mid);
     if(message.media.photo) {
-      appPhotosManager.savePhotoFile(message.media.photo, appImManager.chat.bubbles.lazyLoadQueue.queueId);
+      this.managers.appPhotosManager.savePhotoFile(message.media.photo, appImManager.chat.bubbles.lazyLoadQueue.queueId);
     } else {
       let document: MyDocument = null;
 
@@ -229,7 +230,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
 
       if(document) {
         //console.log('will save document:', document);
-        appDocsManager.saveDocFile(document, appImManager.chat.bubbles.lazyLoadQueue.queueId);
+        this.managers.appDocsManager.saveDocFile(document, appImManager.chat.bubbles.lazyLoadQueue.queueId);
       }
     }
   };
@@ -238,7 +239,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     const caption = (message as Message.message).message;
     let html: Parameters<typeof setInnerHTML>[1] = '';
     if(caption) {
-      html = RichTextProcessor.wrapRichText(caption, {
+      html = wrapRichText(caption, {
         entities: (message as Message.message).totalEntities
       });
     }
@@ -261,9 +262,9 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
 
     const mid = message.mid;
     const fromId = (message as Message.message).fwd_from && !message.fromId ? (message as Message.message).fwd_from.from_name : message.fromId;
-    const media = appMessagesManager.getMediaFromMessage(message);
+    const media = getMediaFromMessage(message);
 
-    const cantForwardMessage = message._ === 'messageService' || !appMessagesManager.canForward(message);
+    const cantForwardMessage = message._ === 'messageService' || !this.managers.appMessagesManager.canForward(message);
     [this.buttons.forward, this.btnMenuForward.element].forEach(button => {
       button.classList.toggle('hide', cantForwardMessage);
     });
@@ -275,7 +276,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
       button.classList.toggle('hide', cantDownloadMessage);
     });
 
-    const canDeleteMessage = appMessagesManager.canDeleteMessage(message);
+    const canDeleteMessage = this.managers.appMessagesManager.canDeleteMessage(message);
     [this.buttons.delete, this.btnMenuDelete.element].forEach(button => {
       button.classList.toggle('hide', !canDeleteMessage);
     });

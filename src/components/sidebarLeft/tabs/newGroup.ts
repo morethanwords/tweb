@@ -6,9 +6,7 @@
 
 import appSidebarLeft, { SettingSection } from "..";
 import { InputFile } from "../../../layer";
-import appChatsManager from "../../../lib/appManagers/appChatsManager";
 import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
-import appUsersManager from "../../../lib/appManagers/appUsersManager";
 import InputField from "../../inputField";
 import { SliderSuperTab } from "../../slider";
 import AvatarEdit from "../../avatarEdit";
@@ -82,7 +80,7 @@ export default class AppNewGroupTab extends SliderSuperTab {
 
       if(this.isGeoChat){
         if(!this.userLocationAddress || !this.userLocationCoords) return;
-        appChatsManager.createChannel({
+        this.managers.appChatsManager.createChannel({
           title, 
           about: '', 
           geo_point: {
@@ -94,12 +92,12 @@ export default class AppNewGroupTab extends SliderSuperTab {
         }).then((chatId) => {
           if(this.uploadAvatar) {
             this.uploadAvatar().then((inputFile) => {
-              appChatsManager.editPhoto(chatId, inputFile);
+              this.managers.appChatsManager.editPhoto(chatId, inputFile);
             });
           }
 
           if(this.peerIds.length){
-            appChatsManager.inviteToChannel(chatId, this.peerIds);
+            this.managers.appChatsManager.inviteToChannel(chatId, this.peerIds);
           }
           
           appSidebarLeft.removeTabFromHistory(this);
@@ -107,10 +105,10 @@ export default class AppNewGroupTab extends SliderSuperTab {
         });
       } else {
         this.nextBtn.disabled = true;
-        appChatsManager.createChat(title, this.peerIds.map(peerId => peerId.toUserId())).then((chatId) => {
+        this.managers.appChatsManager.createChat(title, this.peerIds.map(peerId => peerId.toUserId())).then((chatId) => {
           if(this.uploadAvatar) {
             this.uploadAvatar().then((inputFile) => {
-              appChatsManager.editPhoto(chatId, inputFile);
+              this.managers.appChatsManager.editPhoto(chatId, inputFile);
             });
           }
           
@@ -168,7 +166,7 @@ export default class AppNewGroupTab extends SliderSuperTab {
           avatarSize: 48
         });
 
-        dom.lastMessageSpan.append(appUsersManager.getUserStatusString(userId));
+        dom.lastMessageSpan.append(this.managers.appUsersManager.getUserStatusString(userId));
       });
     });
     

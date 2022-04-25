@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type { Message, StickerSet, Update, NotifyPeer, PeerNotifySettings, ConstructorDeclMap, Config, PollResults, Poll, WebPage, GroupCall, GroupCallParticipant, PhoneCall, MethodDeclMap, MessageReactions, ReactionCount } from "../layer";
+import type { Message, StickerSet, Update, NotifyPeer, PeerNotifySettings, ConstructorDeclMap, Config, PollResults, Poll, WebPage, GroupCall, GroupCallParticipant, PhoneCall, MethodDeclMap, MessageReactions, ReactionCount, MessagePeerReaction, User, Chat as MTChat } from "../layer";
 import type { MyDocument } from "./appManagers/appDocsManager";
 import type { AppMessagesManager, Dialog, MessagesStorage, MyMessage } from "./appManagers/appMessagesManager";
 import type { MyDialogFilter } from "./storages/filters";
@@ -25,6 +25,7 @@ import { NULL_PEER_ID, UserAuth } from "./mtproto/mtproto_config";
 import EventListenerBase from "../helpers/eventListenerBase";
 import { MOUNT_CLASS_TO } from "../config/debug";
 import { MTAppConfig } from "./mtproto/appConfig";
+import { AppManagers } from "./appManagers/managers";
 
 export type BroadcastEvents = {
   'chat_full_update': ChatId,
@@ -57,8 +58,8 @@ export type BroadcastEvents = {
   'folder_unread': Folder,
   
   'dialog_draft': {peerId: PeerId, dialog: Dialog, drop: boolean, draft: MyDraftMessage | undefined, index: number},
-  'dialog_unread': {peerId: PeerId},
-  'dialog_flush': {peerId: PeerId},
+  'dialog_unread': {peerId: PeerId, dialog: Dialog},
+  'dialog_flush': {peerId: PeerId, dialog: Dialog},
   'dialog_drop': {peerId: PeerId, dialog?: Dialog},
   'dialog_migrate': {migrateFrom: PeerId, migrateTo: PeerId},
   //'dialog_top': Dialog,
@@ -130,6 +131,15 @@ export type BroadcastEvents = {
   
   'notify_settings': Update.updateNotifySettings,
   'notify_peer_type_settings': {key: Exclude<NotifyPeer['_'], 'notifyPeer'>, settings: PeerNotifySettings},
+
+  'notification_reset': string,
+  'notification_cancel': string,
+  'notification_build': {
+    message: Message.message | Message.messageService,
+    fwdCount?: number,
+    peerReaction?: MessagePeerReaction,
+    peerTypeNotifySettings?: PeerNotifySettings
+  },
   
   'language_change': string,
   
@@ -196,6 +206,7 @@ export class RootScope extends EventListenerBase<{
     caption_length_max: 1024,
   };
   public appConfig: MTAppConfig;
+  public managers: AppManagers;
 
   public themeColor: string;
   private _themeColorElem: Element;

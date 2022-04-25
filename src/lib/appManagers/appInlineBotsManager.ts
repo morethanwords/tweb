@@ -9,23 +9,18 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import { toast } from "../../components/toast";
+import type { MyDocument } from "./appDocsManager";
+import type { MyPhoto } from "./appPhotosManager";
+import type { MyTopPeer } from "./appUsersManager";
 import { BotInlineResult, GeoPoint, InputGeoPoint, InputMedia, MessageEntity, MessagesBotResults, ReplyMarkup } from "../../layer";
-import appPeersManager from "./appPeersManager";
 import apiManagerProxy from "../mtproto/mtprotoworker";
-import { RichTextProcessor } from "../richtextprocessor";
-import appDocsManager, { MyDocument } from "./appDocsManager";
-import appPhotosManager, { MyPhoto } from "./appPhotosManager";
-import appUsersManager, { MyTopPeer } from "./appUsersManager";
-import appMessagesManager from "./appMessagesManager";
-import { MOUNT_CLASS_TO } from "../../config/debug";
 import rootScope from "../rootScope";
-import appDraftsManager from "./appDraftsManager";
-import appMessagesIdsManager from "./appMessagesIdsManager";
 import appStateManager from "./appStateManager";
 import insertInDescendSortedArray from "../../helpers/array/insertInDescendSortedArray";
+import { AppManager } from "./manager";
+import getPhotoMediaInput from "./utils/photos/getPhotoMediaInput";
 
-export class AppInlineBotsManager {
+export class AppInlineBotsManager extends AppManager {
   private inlineResults: {[queryAndResultIds: string]: BotInlineResult} = {};
   private setHash: {
     [botId: UserId]: {
@@ -47,8 +42,8 @@ export class AppInlineBotsManager {
 
   public getInlineResults(peerId: PeerId, botId: BotId, query = '', offset = '', geo?: GeoPoint) {
     return apiManagerProxy.invokeApi('messages.getInlineBotResults', {
-      bot: appUsersManager.getUserInput(botId),
-      peer: appPeersManager.getInputPeerById(peerId),
+      bot: this.appUsersManager.getUserInput(botId),
+      peer: this.appPeersManager.getInputPeerById(peerId),
       query,
       geo_point: geo ? this.getGeoInput(geo) : undefined,
       offset
@@ -56,17 +51,17 @@ export class AppInlineBotsManager {
       const queryId = botResults.query_id;
 
       /* if(botResults.switch_pm) {
-        botResults.switch_pm.rText = RichTextProcessor.wrapRichText(botResults.switch_pm.text, {noLinebreaks: true, noLinks: true});
+        botResults.switch_pm.rText = wrapRichText(botResults.switch_pm.text, {noLinebreaks: true, noLinks: true});
       } */
       
       botResults.results.forEach(result => {
         if(result._ === 'botInlineMediaResult') {
           if(result.document) {
-            result.document = appDocsManager.saveDoc(result.document);
+            result.document = this.appDocsManager.saveDoc(result.document);
           }
           
           if(result.photo) {
-            result.photo = appPhotosManager.savePhoto(result.photo);
+            result.photo = this.appPhotosManager.savePhoto(result.photo);
           }
         }
         
@@ -82,7 +77,7 @@ export class AppInlineBotsManager {
   }
 
   private pushPopularBot(botId: BotId) {
-    appUsersManager.getTopPeers('bots_inline').then((topPeers) => {
+    this.appUsersManager.getTopPeers('bots_inline').then((topPeers) => {
       const botPeerId = botId.toPeerId();
       const index = topPeers.findIndex(topPeer => topPeer.id === botPeerId);
       let topPeer: MyTopPeer;
@@ -107,7 +102,7 @@ export class AppInlineBotsManager {
   public switchToPM(fromPeerId: PeerId, botId: BotId, startParam: string) {
     this.setHash[botId] = {peerId: fromPeerId, time: Date.now()};
     rootScope.dispatchEvent('history_focus', {peerId: botId.toPeerId()});
-    return appMessagesManager.startBot(botId, undefined, startParam);
+    return this.appMessagesManager.startBot(botId, undefined, startParam);
   }
   
   /*
@@ -218,7 +213,7 @@ export class AppInlineBotsManager {
       } */
 
   public async checkSwitchReturn(botId: BotId) {
-    const bot = appUsersManager.getUser(botId);
+    const bot = this.appUsersManager.getUser(botId);
     if(!bot || !bot.pFlags.bot || !bot.bot_inline_placeholder) {
       return;
     }
@@ -234,21 +229,15 @@ export class AppInlineBotsManager {
 
   public switchInlineQuery(peerId: PeerId, threadId: number, botId: BotId, query: string) {
     rootScope.dispatchEvent('history_focus', {peerId, threadId});
-    appDraftsManager.setDraft(peerId, threadId, '@' + appUsersManager.getUser(botId).username + ' ' + query);
+    this.appDraftsManager.setDraft(peerId, threadId, '@' + this.appUsersManager.getUser(botId).username + ' ' + query);
   }
 
   public callbackButtonClick(peerId: PeerId, mid: number, button: any) {
     return apiManagerProxy.invokeApi('messages.getBotCallbackAnswer', {
-      peer: appPeersManager.getInputPeerById(peerId),
-      msg_id: appMessagesIdsManager.getServerMessageId(mid),
+      peer: this.appPeersManager.getInputPeerById(peerId),
+      msg_id: this.appMessagesIdsManager.getServerMessageId(mid),
       data: button.data
-    }, {/* timeout: 1,  */stopTime: -1, noErrorBox: true}).then((callbackAnswer) => {
-      if(typeof callbackAnswer.message === 'string' && callbackAnswer.message.length) {
-        toast(RichTextProcessor.wrapRichText(callbackAnswer.message, {noLinks: true, noLinebreaks: true}));
-      }
-      
-      //console.log('callbackButtonClick callbackAnswer:', callbackAnswer);
-    });
+    }, {/* timeout: 1,  */stopTime: -1, noErrorBox: true});
   }
       
   /* function gameButtonClick (id) {
@@ -300,7 +289,7 @@ export class AppInlineBotsManager {
     
     if(inlineResult.send_message._ === 'botInlineMessageText') {
       options.entities = inlineResult.send_message.entities;
-      appMessagesManager.sendText(peerId, inlineResult.send_message.message, options);
+      this.appMessagesManager.sendText(peerId, inlineResult.send_message.message, options);
     } else {
       let caption = '';
       let inputMedia: InputMedia;
@@ -312,9 +301,9 @@ export class AppInlineBotsManager {
           if(inlineResult._ === 'botInlineMediaResult') {
             const {document, photo} = inlineResult;
             if(document) {
-              inputMedia = appDocsManager.getMediaInput(document as MyDocument);
+              inputMedia = this.appDocsManager.getMediaInput(document as MyDocument);
             } else {
-              inputMedia = appPhotosManager.getMediaInput(photo as MyPhoto);
+              inputMedia = getPhotoMediaInput(photo as MyPhoto);
             }
           }
 
@@ -373,7 +362,7 @@ export class AppInlineBotsManager {
         } as any;
       }
 
-      appMessagesManager.sendOther(peerId, inputMedia, options);
+      this.appMessagesManager.sendOther(peerId, inputMedia, options);
     }
   }
   
@@ -399,7 +388,3 @@ export class AppInlineBotsManager {
     })
   } */
 }
-
-const appInlineBotsManager = new AppInlineBotsManager();
-MOUNT_CLASS_TO && (MOUNT_CLASS_TO.appInlineBotsManager = appInlineBotsManager);
-export default appInlineBotsManager;

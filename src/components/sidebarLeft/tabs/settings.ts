@@ -26,9 +26,8 @@ import AppActiveSessionsTab from "./activeSessions";
 import { i18n, LangPackKey } from "../../../lib/langPack";
 import { SliderSuperTabConstructable } from "../../sliderTab";
 import PopupAvatar from "../../popups/avatar";
-import appProfileManager from "../../../lib/appManagers/appProfileManager";
-import appUsersManager from "../../../lib/appManagers/appUsersManager";
 import { AccountAuthorizations, Authorization } from "../../../layer";
+import PopupElement from "../../popups";
 //import AppMediaViewer from "../../appMediaViewerNew";
 
 export default class AppSettingsTab extends SliderSuperTab {
@@ -74,7 +73,7 @@ export default class AppSettingsTab extends SliderSuperTab {
 
     this.header.append(this.buttons.edit, btnMenu);
 
-    this.profile = new PeerProfile(this.scrollable, this.listenerSetter, false);
+    this.profile = new PeerProfile(this.managers, this.scrollable, this.listenerSetter, false);
     this.profile.init();
     this.profile.setPeer(rootScope.myId);
     this.profile.fillProfileElements();
@@ -82,16 +81,16 @@ export default class AppSettingsTab extends SliderSuperTab {
     const changeAvatarBtn = Button('btn-circle btn-corner z-depth-1 profile-change-avatar', {icon: 'cameraadd'});
     changeAvatarBtn.addEventListener('click', () => {
       const canvas = document.createElement('canvas');
-      new PopupAvatar().open(canvas, (upload) => {
+      PopupElement.createPopup(PopupAvatar).open(canvas, (upload) => {
         upload().then(inputFile => {
-          return appProfileManager.uploadProfilePhoto(inputFile);
+          return this.managers.appProfileManager.uploadProfilePhoto(inputFile);
         });
       });
     });
     this.profile.element.lastElementChild.firstElementChild.append(changeAvatarBtn);
     
     const updateChangeAvatarBtn = () => {
-      const user = appUsersManager.getSelf();
+      const user = this.managers.appUsersManager.getSelf();
       changeAvatarBtn.classList.toggle('hide', user.photo?._ !== 'userProfilePhoto');
     };
     
@@ -175,7 +174,7 @@ export default class AppSettingsTab extends SliderSuperTab {
             await this.updateActiveSessions();
           }
 
-          const tab = new AppActiveSessionsTab(this.slider);
+          const tab = this.slider.createTab(AppActiveSessionsTab);
           tab.authorizations = this.authorizations;
           tab.eventListener.addEventListener('destroy', () => {
             this.authorizations = undefined;
@@ -190,7 +189,7 @@ export default class AppSettingsTab extends SliderSuperTab {
         titleRightSecondary: i18n('LanguageName'),
         icon: 'language',
         clickable: () => {
-          new AppLanguageTab(this.slider).open();
+          this.slider.createTab(AppLanguageTab).open();
         }
       })
     );
@@ -210,7 +209,7 @@ export default class AppSettingsTab extends SliderSuperTab {
     }); */
 
     this.buttons.edit.addEventListener('click', () => {
-      const tab = new AppEditProfileTab(this.slider);
+      const tab = this.slider.createTab(AppEditProfileTab);
       tab.open();
     });
 

@@ -16,10 +16,9 @@ import copy from "../../../helpers/object/copy";
 import sequentialDom from "../../../helpers/sequentialDom";
 import ChatBackgroundGradientRenderer from "../../chat/gradientRenderer";
 import { AccountWallPapers, PhotoSize, WallPaper } from "../../../layer";
-import appDocsManager, { MyDocument } from "../../../lib/appManagers/appDocsManager";
+import { MyDocument } from "../../../lib/appManagers/appDocsManager";
 import appDownloadManager, { DownloadBlob } from "../../../lib/appManagers/appDownloadManager";
 import appImManager from "../../../lib/appManagers/appImManager";
-import appPhotosManager from "../../../lib/appManagers/appPhotosManager";
 import appStateManager, { Theme, STATE_INIT } from "../../../lib/appManagers/appStateManager";
 import apiManager from "../../../lib/mtproto/mtprotoworker";
 import rootScope from "../../../lib/rootScope";
@@ -29,6 +28,7 @@ import ProgressivePreloader from "../../preloader";
 import { SliderSuperTab } from "../../slider";
 import { wrapPhoto } from "../../wrappers";
 import AppBackgroundColorTab from "./backgroundColor";
+import choosePhotoSize from "../../../lib/appManagers/utils/photos/choosePhotoSize";
 
 let uploadTempId = 0;
 
@@ -59,7 +59,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
       attachClickEvent(uploadButton, this.onUploadClick, {listenerSetter: this.listenerSetter});
 
       attachClickEvent(colorButton, () => {
-        new AppBackgroundColorTab(this.slider).open();
+        this.slider.createTab(AppBackgroundColorTab).open();
       }, {listenerSetter: this.listenerSetter});
 
       attachClickEvent(resetButton, this.onResetClick, {listenerSetter: this.listenerSetter});
@@ -137,7 +137,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
         file_name: file.name
       };
 
-      document = appDocsManager.saveDoc(document);
+      document = this.managers.appDocsManager.saveDoc(document);
 
       const cacheContext = appDownloadManager.getCacheContext(document);
       cacheContext.downloaded = file.size;
@@ -171,7 +171,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
           Object.assign(newCacheContext, cacheContext);
 
           wallpaper = _wallpaper as WallPaper.wallPaper;
-          wallpaper.document = appDocsManager.saveDoc(wallpaper.document);
+          wallpaper.document = this.managers.appDocsManager.saveDoc(wallpaper.document);
 
           this.setBackgroundDocument(wallpaper).then(deferred.resolve, deferred.reject);
         }, deferred.reject);
@@ -236,7 +236,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
 
     const isDark = !!wallpaper.pFlags.dark;
 
-    const doc: MyDocument = hasFile ? (wallpaper.document = appDocsManager.saveDoc(wallpaper.document)) : undefined;
+    const doc: MyDocument = hasFile ? (wallpaper.document = this.managers.appDocsManager.saveDoc(wallpaper.document)) : undefined;
 
     const container = document.createElement('div');
     container.classList.add('grid-item');
@@ -252,7 +252,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
 
     let wrapped: ReturnType<typeof wrapPhoto>, size: PhotoSize;
     if(hasFile) {
-      size = appPhotosManager.choosePhotoSize(doc, 200, 200);
+      size = choosePhotoSize(doc, 200, 200);
       wrapped = wrapPhoto({
         photo: doc,
         message: null,
@@ -367,7 +367,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
     const deferred = deferredPromise<void>();
     let download: Promise<void> | DownloadBlob;
     if(doc) {
-      download = appDocsManager.downloadDoc(doc, appImManager.chat.bubbles ? appImManager.chat.bubbles.lazyLoadQueue.queueId : 0);
+      download = this.managers.appDocsManager.downloadDoc(doc, appImManager.chat.bubbles ? appImManager.chat.bubbles.lazyLoadQueue.queueId : 0);
       deferred.addNotifyListener = download.addNotifyListener;
       deferred.cancel = download.cancel;
     } else {

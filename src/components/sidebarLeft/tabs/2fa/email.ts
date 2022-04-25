@@ -6,7 +6,6 @@
 
 import { SettingSection } from "../..";
 import { AccountPassword } from "../../../../layer";
-import appStickersManager from "../../../../lib/appManagers/appStickersManager";
 import Button from "../../../button";
 import { SliderSuperTab } from "../../../slider";
 import { wrapSticker } from "../../../wrappers";
@@ -15,11 +14,11 @@ import { putPreloader } from "../../../misc";
 import passwordManager from "../../../../lib/mtproto/passwordManager";
 import AppTwoStepVerificationSetTab from "./passwordSet";
 import AppTwoStepVerificationEmailConfirmationTab from "./emailConfirmation";
-import RichTextProcessor from "../../../../lib/richtextprocessor";
 import PopupPeer from "../../../popups/peer";
 import cancelEvent from "../../../../helpers/dom/cancelEvent";
 import { canFocus } from "../../../../helpers/dom/canFocus";
 import { attachClickEvent } from "../../../../helpers/dom/clickEvent";
+import matchEmail from "../../../../lib/richTextProcessor/matchEmail";
 
 export default class AppTwoStepVerificationEmailTab extends SliderSuperTab {
   public inputField: InputField;
@@ -39,7 +38,7 @@ export default class AppTwoStepVerificationEmailTab extends SliderSuperTab {
     });
 
     const emoji = '💌';
-    const doc = appStickersManager.getAnimatedEmojiSticker(emoji);
+    const doc = this.managers.appStickersManager.getAnimatedEmojiSticker(emoji);
     const stickerContainer = document.createElement('div');
 
     if(doc) {
@@ -86,12 +85,12 @@ export default class AppTwoStepVerificationEmailTab extends SliderSuperTab {
     const btnSkip = Button('btn-primary btn-secondary btn-primary-transparent primary', {text: 'YourEmailSkip'});
 
     const goNext = () => {
-      new AppTwoStepVerificationSetTab(this.slider).open();
+      this.slider.createTab(AppTwoStepVerificationSetTab).open();
     };
 
     const onContinueClick = () => {
       const email = inputField.value.trim();
-      const match = RichTextProcessor.matchEmail(email);
+      const match = matchEmail(email);
       if(!match || match[0].length !== email.length) {
         inputField.input.classList.add('error');
         return;
@@ -111,7 +110,7 @@ export default class AppTwoStepVerificationEmailTab extends SliderSuperTab {
         if(err.type.includes('EMAIL_UNCONFIRMED')) {
           const symbols = +err.type.match(/^EMAIL_UNCONFIRMED_(\d+)/)[1];
 
-          const tab = new AppTwoStepVerificationEmailConfirmationTab(this.slider);
+          const tab = this.slider.createTab(AppTwoStepVerificationEmailConfirmationTab);
           tab.state = this.state;
           tab.email = email;
           tab.length = symbols;

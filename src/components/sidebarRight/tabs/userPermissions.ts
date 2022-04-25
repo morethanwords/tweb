@@ -8,9 +8,7 @@ import { attachClickEvent } from "../../../helpers/dom/clickEvent";
 import toggleDisability from "../../../helpers/dom/toggleDisability";
 import deepEqual from "../../../helpers/object/deepEqual";
 import { ChannelParticipant } from "../../../layer";
-import appChatsManager from "../../../lib/appManagers/appChatsManager";
 import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
-import appUsersManager from "../../../lib/appManagers/appUsersManager";
 import Button from "../../button";
 import { SettingSection } from "../../sidebarLeft";
 import { SliderSuperTabEventable } from "../../sliderTab";
@@ -47,14 +45,14 @@ export default class AppUserPermissionsTab extends SliderSuperTabEventable {
         avatarSize: 48
       });
 
-      dom.lastMessageSpan.append(appUsersManager.getUserStatusString(this.userId));
+      dom.lastMessageSpan.append(this.managers.appUsersManager.getUserStatusString(this.userId));
 
       const p = new ChatPermissions({
         chatId: this.chatId,
         listenerSetter: this.listenerSetter,
         appendTo: section.content,
         participant: this.participant._ === 'channelParticipantBanned' ? this.participant : undefined
-      });
+      }, this.managers);
 
       destroyListener = () => {
         //appChatsManager.editChatDefaultBannedRights(this.chatId, p.takeOut());
@@ -63,7 +61,7 @@ export default class AppUserPermissionsTab extends SliderSuperTabEventable {
           return;
         }
 
-        appChatsManager.editBanned(this.chatId, this.participant, rights);
+        this.managers.appChatsManager.editBanned(this.chatId, this.participant, rights);
       };
 
       this.eventListener.addEventListener('destroy', destroyListener, {once: true});
@@ -79,7 +77,7 @@ export default class AppUserPermissionsTab extends SliderSuperTabEventable {
 
         attachClickEvent(btnDeleteException, () => {
           const toggle = toggleDisability([btnDeleteException], true);
-          appChatsManager.clearChannelParticipantBannedRights(this.chatId, this.participant).then(() => {
+          this.managers.appChatsManager.clearChannelParticipantBannedRights(this.chatId, this.participant).then(() => {
             this.eventListener.removeEventListener('destroy', destroyListener);
             this.close();
           }, () => {
@@ -94,7 +92,7 @@ export default class AppUserPermissionsTab extends SliderSuperTabEventable {
 
       attachClickEvent(btnDelete, () => {
         const toggle = toggleDisability([btnDelete], true);
-        appChatsManager.kickFromChannel(this.chatId, this.participant).then(() => {
+        this.managers.appChatsManager.kickFromChannel(this.chatId, this.participant).then(() => {
           this.eventListener.removeEventListener('destroy', destroyListener);
           this.close();
         });

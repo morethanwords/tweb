@@ -17,13 +17,13 @@ import type { ServerTimeManager } from '../../lib/mtproto/serverTimeManager';
 import type { AppUsersManager } from '../../lib/appManagers/appUsersManager';
 import type { AppInlineBotsManager } from '../../lib/appManagers/appInlineBotsManager';
 import type { AppMessagesIdsManager } from '../../lib/appManagers/appMessagesIdsManager';
+import type { AppStickersManager } from '../../lib/appManagers/appStickersManager';
 import type Chat from './chat';
 import Recorder from '../../../public/recorder.min';
 import { IS_TOUCH_SUPPORTED } from "../../environment/touchSupport";
 import apiManager from "../../lib/mtproto/mtprotoworker";
 //import Recorder from '../opus-recorder/dist/recorder.min';
 import opusDecodeController from "../../lib/opusDecodeController";
-import RichTextProcessor from "../../lib/richtextprocessor";
 import ButtonMenu, { ButtonMenuItemOptions } from '../buttonMenu';
 import emoticonsDropdown from "../emoticonsDropdown";
 import PopupCreatePoll from "../popups/createPoll";
@@ -94,6 +94,14 @@ import copy from '../../helpers/object/copy';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
 import toHHMMSS from '../../helpers/string/toHHMMSS';
 import documentFragmentToHTML from '../../helpers/dom/documentFragmentToHTML';
+import PopupElement from '../popups';
+import getEmojiEntityFromEmoji from '../../lib/richTextProcessor/getEmojiEntityFromEmoji';
+import mergeEntities from '../../lib/richTextProcessor/mergeEntities';
+import parseEntities from '../../lib/richTextProcessor/parseEntities';
+import parseMarkdown from '../../lib/richTextProcessor/parseMarkdown';
+import wrapDraftText from '../../lib/richTextProcessor/wrapDraftText';
+import wrapDraft from '../wrappers/draft';
+import wrapMessageForReply from '../wrappers/messageForReply';
 
 const RECORD_MIN_TIME = 500;
 const POSTING_MEDIA_NOT_ALLOWED = 'Posting media content isn\'t allowed in this group.';
@@ -247,7 +255,8 @@ export default class ChatInput {
     private appEmojiManager: AppEmojiManager,
     private appUsersManager: AppUsersManager,
     private appInlineBotsManager: AppInlineBotsManager,
-    private appProfileManager: AppProfileManager
+    private appProfileManager: AppProfileManager,
+    private appStickersManager: AppStickersManager
   ) {
     this.listenerSetter = new ListenerSetter();
   }
@@ -640,7 +649,7 @@ export default class ChatInput {
       icon: 'poll',
       text: 'Poll',
       onClick: () => {
-        new PopupCreatePoll(this.chat).show();
+        PopupElement.createPopup(PopupCreatePoll, this.chat).show();
       },
       verify: (peerId) => peerId.isAnyChat() && this.chat.canSend('send_polls')
     }];
@@ -663,11 +672,11 @@ export default class ChatInput {
 
     this.rowsWrapper.append(this.replyElements.container);
     this.autocompleteHelperController = new AutocompleteHelperController();
-    this.stickersHelper = new StickersHelper(this.rowsWrapper, this.autocompleteHelperController);
+    this.stickersHelper = new StickersHelper(this.rowsWrapper, this.autocompleteHelperController, this.chat.appImManager.managers);
     this.emojiHelper = new EmojiHelper(this.rowsWrapper, this.autocompleteHelperController, this, this.appEmojiManager);
     this.commandsHelper = new CommandsHelper(this.rowsWrapper, this.autocompleteHelperController, this, this.chat.appProfileManager, this.chat.appUsersManager);
     this.mentionsHelper = new MentionsHelper(this.rowsWrapper, this.autocompleteHelperController, this, this.chat.appProfileManager, this.chat.appUsersManager);
-    this.inlineHelper = new InlineHelper(this.rowsWrapper, this.autocompleteHelperController, this.chat, this.appUsersManager, this.appInlineBotsManager);
+    this.inlineHelper = new InlineHelper(this.rowsWrapper, this.autocompleteHelperController, this.chat, this.chat.appImManager.managers);
     this.rowsWrapper.append(this.newMessageWrapper);
 
     this.btnCancelRecord = ButtonIcon('delete btn-circle z-depth-1 btn-record-cancel');
@@ -763,7 +772,7 @@ export default class ChatInput {
 
     if(this.sendAsContainer) {
       this.listenerSetter.add(rootScope)('peer_full_update', (peerId) => {
-        if(peerId.isChannel() && this.chat.peerId === peerId) {
+        if(this.appPeersManager.isChannel(peerId) && this.chat.peerId === peerId) {
           this.updateSendAs();
         }
       });
@@ -825,7 +834,7 @@ export default class ChatInput {
         return;
       }
       
-      new PopupNewMedia(this.chat, Array.from(files).slice(), this.willAttachType);
+      PopupElement.createPopup(PopupNewMedia, this.chat, Array.from(files).slice(), this.willAttachType);
       this.fileInput.value = '';
     }, false);
 
@@ -1216,7 +1225,9 @@ export default class ChatInput {
       }
     }
 
-    if(this.messageInputField.value === draft.rMessage && this.replyToMsgId === draft.reply_to_msg_id) return false;
+    const wrappedDraft = wrapDraft(draft);
+
+    if(this.messageInputField.value === wrappedDraft && this.replyToMsgId === draft.reply_to_msg_id) return false;
 
     if(fromUpdate) {
       this.clearHelper();
@@ -1227,7 +1238,7 @@ export default class ChatInput {
       this.initMessageReply(draft.reply_to_msg_id);
     }
 
-    this.setInputValue(draft.rMessage, fromUpdate, fromUpdate);
+    this.setInputValue(wrappedDraft, fromUpdate, fromUpdate);
     return true;
   }
 
@@ -1379,7 +1390,7 @@ export default class ChatInput {
       return {
         onClick: idx ? () => {
           const currentPeerId = this.chat.peerId;
-          if(currentPeerId.isChannel()) {
+          if(this.appPeersManager.isChannel(currentPeerId)) {
             const channelFull = this.appProfileManager.getCachedFullChat(currentPeerId.toChatId()) as ChatFull.channelFull;
             if(channelFull) {
               channelFull.default_send_as = this.appPeersManager.getOutputPeer(sendAsPeerId);
@@ -1472,7 +1483,7 @@ export default class ChatInput {
 
   private updateSendAs(skipAnimation?: boolean) {
     const peerId = this.chat.peerId;
-    if(!peerId.isChannel() || this.updatingSendAsPromise) {
+    if(!this.appPeersManager.isChannel(peerId) || this.updatingSendAsPromise) {
       return;
     }
 
@@ -1887,9 +1898,9 @@ export default class ChatInput {
     //const value = this.messageInput.innerText;
     const {value: richValue, entities: markdownEntities, caretPos} = getRichValueWithCaret(this.messageInputField.input);
       
-    //const entities = RichTextProcessor.parseEntities(value);
-    const value = RichTextProcessor.parseMarkdown(richValue, markdownEntities, true);
-    const entities = RichTextProcessor.mergeEntities(markdownEntities, RichTextProcessor.parseEntities(value));
+    //const entities = parseEntities(value);
+    const value = parseMarkdown(richValue, markdownEntities, true);
+    const entities = mergeEntities(markdownEntities, parseEntities(value));
 
     //this.chat.log('messageInput entities', richValue, value, markdownEntities, caretPos);
 
@@ -2013,8 +2024,8 @@ export default class ChatInput {
     const newValue = newPrefix + insertText + suffix;
 
     // merge emojis
-    const hadEntities = RichTextProcessor.parseEntities(fullValue);
-    RichTextProcessor.mergeEntities(entities, hadEntities);
+    const hadEntities = parseEntities(fullValue);
+    mergeEntities(entities, hadEntities);
 
     // max for additional whitespace
     const insertLength = insertEntity ? Math.max(insertEntity.length, insertText.length) : insertText.length;
@@ -2032,7 +2043,7 @@ export default class ChatInput {
       }
     });
 
-    RichTextProcessor.mergeEntities(entities, addEntities);
+    mergeEntities(entities, addEntities);
 
     if(/* caretPos !== -1 && caretPos !== fullValue.length */true) {
       const caretEntity: MessageEntity.messageEntityCaret = {
@@ -2054,7 +2065,7 @@ export default class ChatInput {
 
     //const saveExecuted = this.prepareDocumentExecute();
     // can't exec .value here because it will instantly check for autocomplete
-    const value = documentFragmentToHTML(RichTextProcessor.wrapDraftText(newValue, {entities}));
+    const value = documentFragmentToHTML(wrapDraftText(newValue, {entities}));
     this.messageInputField.setValueSilently(value, true);
 
     const caret = this.messageInput.querySelector('.composer-sel');
@@ -2068,11 +2079,11 @@ export default class ChatInput {
 
     //saveExecuted();
 
-    //document.execCommand('insertHTML', true, RichTextProcessor.wrapEmojiText(emoji));
+    //document.execCommand('insertHTML', true, wrapEmojiText(emoji));
   }
 
   public onEmojiSelected = (emoji: string, autocomplete: boolean) => {
-    this.insertAtCaret(emoji, RichTextProcessor.getEmojiEntityFromEmoji(emoji), autocomplete);
+    this.insertAtCaret(emoji, getEmojiEntityFromEmoji(emoji), autocomplete);
   };
 
   private checkAutocomplete(value?: string, caretPos?: number, entities?: MessageEntity[]) {
@@ -2090,8 +2101,8 @@ export default class ChatInput {
     }
 
     if(entities === undefined) {
-      const _value = RichTextProcessor.parseMarkdown(value, entities, true);
-      entities = RichTextProcessor.mergeEntities(entities, RichTextProcessor.parseEntities(_value));
+      const _value = parseMarkdown(value, entities, true);
+      entities = mergeEntities(entities, parseEntities(_value));
     }
 
     value = value.slice(0, caretPos);
@@ -2346,7 +2357,7 @@ export default class ChatInput {
 
     if(this.helperType === 'edit' && !force) {
       const message = this.editMessage
-      const value = RichTextProcessor.parseMarkdown(this.messageInputField.value, []);
+      const value = parseMarkdown(this.messageInputField.value, []);
       if(message.message !== value) {
         new PopupPeer('discard-editing', {
           buttons: [{
@@ -2474,7 +2485,7 @@ export default class ChatInput {
     this.sendSilent = undefined;
 
     const value = this.messageInputField.value;
-    const entities = RichTextProcessor.parseEntities(value);
+    const entities = parseEntities(value);
     const emojiEntities: MessageEntity.messageEntityEmoji[] = entities.filter(entity => entity._ === 'messageEntityEmoji') as any;
     emojiEntities.forEach(entity => {
       const emoji = emojiFromCodePoints(entity.unicode);
@@ -2616,9 +2627,9 @@ export default class ChatInput {
   public initMessageEditing(mid: number) {
     const message: Message.message = this.chat.getMessage(mid);
 
-    let input = documentFragmentToHTML(RichTextProcessor.wrapDraftText(message.message, {entities: message.totalEntities}));
+    let input = documentFragmentToHTML(wrapDraftText(message.message, {entities: message.totalEntities}));
     const f = () => {
-      const replyFragment = this.appMessagesManager.wrapMessageForReply(message, undefined, [message.mid]);
+      const replyFragment = wrapMessageForReply(message, undefined, [message.mid]);
       this.setTopInfo('edit', f, i18n('AccDescrEditing'), replyFragment, input, message);
 
       this.editMsgId = mid;
@@ -2704,7 +2715,7 @@ export default class ChatInput {
       const delimiter = ': ';
       if(usingFullAlbum || length === 1) {
         const mids = fromPeerIdsMids[fromPeerIds[0]];
-        const replyFragment = this.appMessagesManager.wrapMessageForReply(firstMessage, undefined, mids);
+        const replyFragment = wrapMessageForReply(firstMessage, undefined, mids);
         subtitleFragment.append(
           senderTitles, 
           delimiter, 

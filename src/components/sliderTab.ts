@@ -6,6 +6,7 @@
 
 import EventListenerBase from "../helpers/eventListenerBase";
 import ListenerSetter from "../helpers/listenerSetter";
+import { AppManagers } from "../lib/appManagers/managers";
 import { i18n, LangPackKey } from "../lib/langPack";
 import ButtonIcon from "./buttonIcon";
 import Scrollable from "./scrollable";
@@ -18,8 +19,8 @@ export interface SliderTab {
   onCloseAfterTimeout?: () => void
 }
 
-export interface SliderSuperTabConstructable {
-  new(slider: SidebarSlider, destroyable: boolean): SliderSuperTab;
+export interface SliderSuperTabConstructable<T extends SliderSuperTab = any> {
+  new(slider: SidebarSlider, destroyable: boolean): T;
 }
 
 export interface SliderSuperTabEventableConstructable {
@@ -39,6 +40,8 @@ export default class SliderSuperTab implements SliderTab {
   public slider: SidebarSlider;
   public destroyable: boolean;
   public listenerSetter: ListenerSetter;
+
+  public managers: AppManagers;
 
   constructor(slider: SidebarSlider, destroyable?: boolean) {
     this._constructor(slider, destroyable);

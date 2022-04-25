@@ -5,8 +5,7 @@
  */
 
 import rootScope from "../lib/rootScope";
-import appMessagesManager from "../lib/appManagers/appMessagesManager";
-import appDocsManager, {MyDocument} from "../lib/appManagers/appDocsManager";
+import { MyDocument } from "../lib/appManagers/appDocsManager";
 import deferredPromise, { CancellablePromise } from "../helpers/cancellablePromise";
 import { IS_APPLE, IS_SAFARI } from "../environment/userAgent";
 import { MOUNT_CLASS_TO } from "../config/debug";
@@ -14,16 +13,15 @@ import appDownloadManager from "../lib/appManagers/appDownloadManager";
 import simulateEvent from "../helpers/dom/dispatchEvent";
 import type { SearchSuperContext } from "./appSearchSuper.";
 import { DocumentAttribute, Message, PhotoSize } from "../layer";
-import appPhotosManager from "../lib/appManagers/appPhotosManager";
 import { IS_TOUCH_SUPPORTED } from "../environment/touchSupport";
-import appAvatarsManager from "../lib/appManagers/appAvatarsManager";
-import appPeersManager from "../lib/appManagers/appPeersManager";
 import I18n from "../lib/langPack";
 import SearchListLoader from "../helpers/searchListLoader";
 import { onMediaLoad } from "../helpers/files";
 import copy from "../helpers/object/copy";
 import deepEqual from "../helpers/object/deepEqual";
 import ListenerSetter from "../helpers/listenerSetter";
+import { AppManagers } from "../lib/appManagers/managers";
+import getMediaFromMessage from "../lib/appManagers/utils/messages/getMediaFromMessage";
 
 // TODO: Safari: проверить стрим, включить его и сразу попробовать включить видео или другую песню
 // TODO: Safari: попробовать замаскировать подгрузку последнего чанка
@@ -94,8 +92,10 @@ export class AppMediaPlaybackController {
   };
 
   private pip: HTMLVideoElement;
+  private managers: AppManagers;
 
-  constructor() {
+  construct(managers: AppManagers) {
+    this.managers = managers;
     this.container = document.createElement('div');
     //this.container.style.cssText = 'position: absolute; top: -10000px; left: -10000px;';
     this.container.style.cssText = 'display: none;';
@@ -224,7 +224,7 @@ export class AppMediaPlaybackController {
       return media;
     }
 
-    const doc: MyDocument = appMessagesManager.getMediaFromMessage(message);
+    const doc: MyDocument = getMediaFromMessage(message);
     storage.set(mid, media = document.createElement(doc.type === 'round' || doc.type === 'video' ? 'video' : 'audio'));
     //const source = document.createElement('source');
     //source.type = doc.type === 'voice' && !opusDecodeController.isPlaySupported() ? 'audio/wav' : doc.mime_type;
@@ -256,7 +256,7 @@ export class AppMediaPlaybackController {
 
     if(doc.type !== 'audio' && message?.pFlags.media_unread && message.fromId !== rootScope.myId) {
       media.addEventListener('timeupdate', () => {
-        appMessagesManager.readMessages(peerId, [mid]);
+        this.managers.appMessagesManager.readMessages(peerId, [mid]);
       }, {once: true});
     }
     
@@ -301,7 +301,7 @@ export class AppMediaPlaybackController {
         }
 
         set.add(media);
-        appDocsManager.downloadDoc(doc);
+        this.managers.appDocsManager.downloadDoc(doc);
       }
     }/* , onError */);
     
@@ -315,7 +315,7 @@ export class AppMediaPlaybackController {
 
   private onMediaDocumentLoad = (media: HTMLMediaElement) => {
     const details = this.mediaDetails.get(media);
-    const doc = appDocsManager.getDoc(details.docId);
+    const doc = this.managers.appDocsManager.getDoc(details.docId);
     if(doc.type === 'audio' && doc.supportsStreaming && SHOULD_USE_SAFARI_FIX) {
       this.handleSafariStreamable(media);
     }
@@ -409,7 +409,7 @@ export class AppMediaPlaybackController {
 
     await onMediaLoad(playingMedia, undefined, false); // have to wait for load, otherwise on macOS won't set
 
-    const doc = appMessagesManager.getMediaFromMessage(message) as MyDocument;
+    const doc = getMediaFromMessage(message) as MyDocument;
     
     const artwork: MediaImage[] = [];
 
@@ -428,7 +428,7 @@ export class AppMediaPlaybackController {
             type: 'image/jpeg'
           });
         } else {
-          const download = appPhotosManager.preloadPhoto(doc, size);
+          const download = this.managers.appPhotosManager.preloadPhoto(doc, size);
           download.then(() => {
             if(this.playingMedia !== playingMedia || !cacheContext.url) {
               return;
@@ -440,9 +440,9 @@ export class AppMediaPlaybackController {
       }
     } else if(isVoice) {
       const peerId = message.fromId || message.peerId;
-      const peerPhoto = appPeersManager.getPeerPhoto(peerId);
+      const peerPhoto = this.managers.appPeersManager.getPeerPhoto(peerId);
       if(peerPhoto) {
-        const result = appAvatarsManager.loadAvatar(peerId, peerPhoto, 'photo_small');
+        const result = this.managers.appAvatarsManager.loadAvatar(peerId, peerPhoto, 'photo_small');
         if(result.cached) {
           const url = await result.loadPromise;
           artwork.push({
@@ -461,7 +461,7 @@ export class AppMediaPlaybackController {
         }
       }
 
-      title = appPeersManager.getPeerTitle(peerId, true, false);
+      title = this.managers.appPeersManager.getPeerTitle(peerId, true, false);
       artist = I18n.format(doc.type === 'voice' ? 'AttachAudio' : 'AttachRound', true);
     }
 
@@ -517,7 +517,7 @@ export class AppMediaPlaybackController {
   private getMessageByMedia(media: HTMLMediaElement): Message.message {
     const details = this.mediaDetails.get(media);
     const {peerId, mid} = details;
-    const message = details.isScheduled ? appMessagesManager.getScheduledMessageByPeer(peerId, mid) : appMessagesManager.getMessageByPeer(peerId, mid);
+    const message = details.isScheduled ? this.managers.appMessagesManager.getScheduledMessageByPeer(peerId, mid) : this.managers.appMessagesManager.getMessageByPeer(peerId, mid);
     return message;
   }
 
@@ -529,7 +529,7 @@ export class AppMediaPlaybackController {
 
     const message = this.getMessageByMedia(playingMedia);
     return {
-      doc: appMessagesManager.getMediaFromMessage(message) as MyDocument,
+      doc: getMediaFromMessage(message) as MyDocument,
       message,
       media: playingMedia,
       playbackParams: this.getPlaybackParams()
@@ -821,7 +821,7 @@ export class AppMediaPlaybackController {
   }
 
   private getPlaybackMediaTypeFromMessage(message: Message.message) {
-    const doc = appMessagesManager.getMediaFromMessage(message) as MyDocument;
+    const doc = getMediaFromMessage(message) as MyDocument;
     let mediaType: PlaybackMediaType = 'audio';
     if(doc?.type) {
       if(doc.type === 'voice' || doc.type === 'round') {

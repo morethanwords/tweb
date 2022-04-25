@@ -7,7 +7,6 @@
 import { SettingSection } from "../..";
 import { attachClickEvent } from "../../../../helpers/dom/clickEvent";
 import { AccountPassword } from "../../../../layer";
-import appStickersManager from "../../../../lib/appManagers/appStickersManager";
 import { _i18n } from "../../../../lib/langPack";
 import passwordManager from "../../../../lib/mtproto/passwordManager";
 import Button from "../../../button";
@@ -32,7 +31,7 @@ export default class AppTwoStepVerificationTab extends SliderSuperTab {
     });
 
     const emoji = '🔐';
-    const doc = appStickersManager.getAnimatedEmojiSticker(emoji);
+    const doc = this.managers.appStickersManager.getAnimatedEmojiSticker(emoji);
     const stickerContainer = document.createElement('div');
 
     if(doc) {
@@ -62,7 +61,7 @@ export default class AppTwoStepVerificationTab extends SliderSuperTab {
       const btnSetRecoveryEmail = Button('btn-primary btn-transparent', {icon: 'email', text: this.state.pFlags.has_recovery ? 'TwoStepAuth.ChangeEmail' : 'TwoStepAuth.SetupEmail'});
 
       attachClickEvent(btnChangePassword, () => {
-        const tab = new AppTwoStepVerificationEnterPasswordTab(this.slider);
+        const tab = this.slider.createTab(AppTwoStepVerificationEnterPasswordTab);
         tab.state = this.state;
         tab.plainPassword = this.plainPassword;
         tab.open();
@@ -88,7 +87,7 @@ export default class AppTwoStepVerificationTab extends SliderSuperTab {
       });
 
       attachClickEvent(btnSetRecoveryEmail, () => {
-        const tab = new AppTwoStepVerificationEmailTab(this.slider);
+        const tab = this.slider.createTab(AppTwoStepVerificationEmailTab);
         tab.state = this.state;
         tab.hint = this.state.hint;
         tab.plainPassword = this.plainPassword;
@@ -110,7 +109,7 @@ export default class AppTwoStepVerificationTab extends SliderSuperTab {
       c.append(inputWrapper);
 
       attachClickEvent(btnSetPassword, (e) => {
-        const tab = new AppTwoStepVerificationEnterPasswordTab(this.slider);
+        const tab = this.slider.createTab(AppTwoStepVerificationEnterPasswordTab);
         tab.state = this.state;
         tab.open();
       });

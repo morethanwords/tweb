@@ -7,9 +7,7 @@
 import mediaSizes from "../helpers/mediaSizes";
 import { IS_TOUCH_SUPPORTED } from "../environment/touchSupport";
 import appImManager from "../lib/appManagers/appImManager";
-import appPollsManager from "../lib/appManagers/appPollsManager";
 import serverTimeManager from "../lib/mtproto/serverTimeManager";
-import { RichTextProcessor } from "../lib/richtextprocessor";
 import rootScope from "../lib/rootScope";
 import ripple from "./ripple";
 import appSidebarRight from "./sidebarRight";
@@ -26,6 +24,9 @@ import { Poll, PollResults } from "../layer";
 import toHHMMSS from "../helpers/string/toHHMMSS";
 import StackedAvatars from "./stackedAvatars";
 import setInnerHTML from "../helpers/dom/setInnerHTML";
+import { AppManagers } from "../lib/appManagers/managers";
+import wrapEmojiText from "../lib/richTextProcessor/wrapEmojiText";
+import wrapRichText from "../lib/richTextProcessor/wrapRichText";
 
 let lineTotalLength = 0;
 const tailLength = 9;
@@ -153,7 +154,7 @@ const setQuizHint = (solution: string, solution_entities: any[], onHide: () => v
   container.append(textEl);
   element.append(container);
 
-  setInnerHTML(textEl, RichTextProcessor.wrapRichText(solution, {entities: solution_entities}));
+  setInnerHTML(textEl, wrapRichText(solution, {entities: solution_entities}));
   appImManager.chat.bubbles.bubblesContainer.append(element);
 
   void element.offsetLeft; // reflow
@@ -191,6 +192,7 @@ export default class PollElement extends HTMLElement {
   private percents: number[];
 
   public message: any;
+  public managers: AppManagers;
 
   private quizInterval: number;
   private quizTimer: SVGSVGElement;
@@ -200,11 +202,6 @@ export default class PollElement extends HTMLElement {
 
   private sendVotePromise: Promise<void>;
   private sentVote = false;
-
-  constructor() {
-    super();
-    // элемент создан
-  }
 
   public static setMaxLength() {
     const width = windowSize.width <= 360 ? windowSize.width - 120 : mediaSizes.active.poll.width;
@@ -233,7 +230,7 @@ export default class PollElement extends HTMLElement {
     }
 
     const pollId = this.message.media.poll.id;
-    const {poll, results} = appPollsManager.getPoll(pollId);
+    const {poll, results} = this.managers.appPollsManager.getPoll(pollId);
 
     /* const timestamp = Date.now() / 1000 | 0;
     if(timestamp < this.message.date) { */
@@ -274,7 +271,7 @@ export default class PollElement extends HTMLElement {
             ${multipleSelect}
           </div>
           <div class="poll-answer-percents"></div>
-          <div class="poll-answer-text">${RichTextProcessor.wrapEmojiText(answer.text)}</div>
+          <div class="poll-answer-text">${wrapEmojiText(answer.text)}</div>
           <svg version="1.1" class="poll-line" style="display: none;" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 485.9 35" xml:space="preserve">
             <use href="#poll-line"></use>
           </svg>
@@ -291,7 +288,7 @@ export default class PollElement extends HTMLElement {
       </div>
       ${votes}`;
     
-    setInnerHTML(this.firstElementChild, RichTextProcessor.wrapEmojiText(poll.question));
+    setInnerHTML(this.firstElementChild, wrapEmojiText(poll.question));
 
     this.descDiv = this.firstElementChild.nextElementSibling as HTMLElement;
     this.typeDiv = this.descDiv.firstElementChild as HTMLElement;
@@ -368,7 +365,7 @@ export default class PollElement extends HTMLElement {
 
             setTimeout(() => {
               // нужно запросить апдейт чтобы опрос обновился
-              appPollsManager.getResults(this.message);
+              this.managers.appPollsManager.getResults(this.message);
             }, 3e3);
           }
         }, 1e3);
@@ -396,7 +393,7 @@ export default class PollElement extends HTMLElement {
       cancelEvent(e);
 
       if(!appSidebarRight.isTabExists(AppPollResultsTab)) {
-        new AppPollResultsTab(appSidebarRight).open(this.message);
+        appSidebarRight.createTab(AppPollResultsTab).open(this.message);
       }
     });
     ripple(this.viewResults);
@@ -510,7 +507,7 @@ export default class PollElement extends HTMLElement {
     
     this.classList.add('disable-hover');
     this.sentVote = true;
-    return this.sendVotePromise = appPollsManager.sendVote(this.message, indexes).then(() => {
+    return this.sendVotePromise = this.managers.appPollsManager.sendVote(this.message, indexes).then(() => {
       targets.forEach(target => {
         target.classList.remove('is-voting');
       });

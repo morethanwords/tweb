@@ -80,6 +80,10 @@ type Impossible<K extends keyof any> = {
 // using generics.
 type NoExtraProperties<T, U extends T = T> = U & Impossible<Exclude<keyof U, keyof T>>;
 
+type ModifyFunctionsToAsync<T> = {
+  [key in keyof T]: T[key] extends AnyFunction ? (...args: ArgumentTypes<T[key]>) => Promise<Awaited<ReturnType<T[key]>>> : T[key]
+};
+
 export type AuthState = AuthState.signIn | AuthState.signQr | AuthState.authCode | AuthState.password | AuthState.signUp | AuthState.signedIn;
 export namespace AuthState {
   export type signIn = {

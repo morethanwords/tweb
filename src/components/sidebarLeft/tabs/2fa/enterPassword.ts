@@ -14,7 +14,7 @@ import setInnerHTML from "../../../../helpers/dom/setInnerHTML";
 import { AccountPassword } from "../../../../layer";
 import I18n, { i18n } from "../../../../lib/langPack";
 import passwordManager from "../../../../lib/mtproto/passwordManager";
-import RichTextProcessor from "../../../../lib/richtextprocessor";
+import wrapEmojiText from "../../../../lib/richTextProcessor/wrapEmojiText";
 import Button from "../../../button";
 import { putPreloader } from "../../../misc";
 import PasswordMonkey from "../../../monkeys/password";
@@ -43,7 +43,7 @@ export default class AppTwoStepVerificationEnterPasswordTab extends SliderSuperT
     const passwordInputField = this.passwordInputField = new PasswordInputField({
       name: 'enter-password',
       label: isNew ? 'PleaseEnterFirstPassword' : (this.state.hint ? undefined : 'LoginPassword'),
-      labelText: !isNew && this.state.hint ? RichTextProcessor.wrapEmojiText(this.state.hint) : undefined
+      labelText: !isNew && this.state.hint ? wrapEmojiText(this.state.hint) : undefined
     });
 
     const monkey = new PasswordMonkey(passwordInputField, 157);
@@ -93,7 +93,7 @@ export default class AppTwoStepVerificationEnterPasswordTab extends SliderSuperT
           this.state = _state;
   
           if(this.state.hint) {
-            setInnerHTML(passwordInputField.label, RichTextProcessor.wrapEmojiText(this.state.hint));
+            setInnerHTML(passwordInputField.label, wrapEmojiText(this.state.hint));
           } else {
             replaceContent(passwordInputField.label, i18n('LoginPassword'));
           }
@@ -118,7 +118,7 @@ export default class AppTwoStepVerificationEnterPasswordTab extends SliderSuperT
           if(auth._ === 'auth.authorization') {
             clearInterval(getStateInterval);
             if(monkey) monkey.remove();
-            const tab = new AppTwoStepVerificationTab(this.slider);
+            const tab = this.slider.createTab(AppTwoStepVerificationTab);
             tab.state = this.state;
             tab.plainPassword = plainPassword;
             tab.open();
@@ -153,7 +153,7 @@ export default class AppTwoStepVerificationEnterPasswordTab extends SliderSuperT
 
         if(!verifyInput()) return;
 
-        const tab = new AppTwoStepVerificationReEnterPasswordTab(this.slider);
+        const tab = this.slider.createTab(AppTwoStepVerificationReEnterPasswordTab);
         tab.state = this.state;
         tab.newPassword = passwordInputField.value;
         tab.plainPassword = this.plainPassword;

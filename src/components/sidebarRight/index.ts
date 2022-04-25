@@ -9,6 +9,7 @@ import SidebarSlider from "../slider";
 import mediaSizes, { ScreenSize } from "../../helpers/mediaSizes";
 import AppSharedMediaTab from "./tabs/sharedMedia";
 import { MOUNT_CLASS_TO } from "../../config/debug";
+import { AppManagers } from "../../lib/appManagers/managers";
 
 export const RIGHT_COLUMN_ACTIVE_CLASSNAME = 'is-right-column-shown';
 
@@ -22,6 +23,10 @@ export class AppSidebarRight extends SidebarSlider {
       canHideFirst: true,
       navigationType: 'right'
     });
+  }
+
+  construct(managers: AppManagers) {
+    this.managers = managers;
 
     mediaSizes.addEventListener('changeScreen', (from, to) => {
       if(to === ScreenSize.medium && from !== ScreenSize.mobile) {
@@ -33,7 +38,7 @@ export class AppSidebarRight extends SidebarSlider {
       this.setColumnProportion();
     });
 
-    this.sharedMediaTab = new AppSharedMediaTab(this);
+    this.sharedMediaTab = this.createTab(AppSharedMediaTab);
   }
 
   public onCloseTab(id: number, animate: boolean, isNavigation?: boolean) {

@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import appDocsManager, {MyDocument} from "../lib/appManagers/appDocsManager";
+import type { MyDocument } from "../lib/appManagers/appDocsManager";
 import { wrapVideo } from "./wrappers";
 import { LazyLoadQueueRepeat2 } from "./lazyLoadQueue";
 import animationIntersector from "./animationIntersector";
@@ -13,6 +13,8 @@ import deferredPromise, { CancellablePromise } from "../helpers/cancellablePromi
 import renderImageFromUrl from "../helpers/dom/renderImageFromUrl";
 import calcImageInBox from "../helpers/calcImageInBox";
 import { doubleRaf } from "../helpers/schedulers";
+import { AppManagers } from "../lib/appManagers/managers";
+import rootScope from "../lib/rootScope";
 
 const width = 400;
 const maxSingleWidth = width - 100;
@@ -22,8 +24,16 @@ export default class GifsMasonry {
   public lazyLoadQueue: LazyLoadQueueRepeat2;
   private scrollPromise: CancellablePromise<void> = Promise.resolve();
   private timeout: number = 0;
+  private managers: AppManagers;
 
-  constructor(private element: HTMLElement, private group: string, private scrollable: Scrollable, attach = true) {
+  constructor(
+    private element: HTMLElement, 
+    private group: string, 
+    private scrollable: Scrollable, 
+    attach = true
+  ) {
+    this.managers = rootScope.managers;
+
     this.lazyLoadQueue = new LazyLoadQueueRepeat2(undefined, (target, visible) => {
       if(visible) {
         this.processVisibleDiv(target);
@@ -84,7 +94,7 @@ export default class GifsMasonry {
 
     const load = () => {
       const docId = div.dataset.docId;
-      const doc = appDocsManager.getDoc(docId);
+      const doc = this.managers.appDocsManager.getDoc(docId);
 
       const promise = this.scrollPromise.then(() => {
         const res = wrapVideo({
@@ -207,7 +217,7 @@ export default class GifsMasonry {
 
     //let preloader = new ProgressivePreloader(div);
 
-    const gotThumb = appDocsManager.getThumb(doc, false);
+    const gotThumb = this.managers.appDocsManager.getThumb(doc, false);
 
     const willBeAPoster = !!gotThumb;
     let img: HTMLImageElement;

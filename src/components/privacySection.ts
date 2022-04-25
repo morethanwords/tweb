@@ -7,8 +7,8 @@
 import replaceContent from "../helpers/dom/replaceContent";
 import { randomLong } from "../helpers/random";
 import { InputPrivacyKey, InputPrivacyRule } from "../layer";
-import appPrivacyManager, { PrivacyType } from "../lib/appManagers/appPrivacyManager";
-import appUsersManager from "../lib/appManagers/appUsersManager";
+import { PrivacyType } from "../lib/appManagers/appPrivacyManager";
+import { AppManagers } from "../lib/appManagers/managers";
 import { i18n, join, LangPackKey, _i18n } from "../lib/langPack";
 import RadioField from "./radioField";
 import Row, { RadioFormFromRows } from "./row";
@@ -44,7 +44,8 @@ export default class PrivacySection {
     noExceptions?: boolean,
     onRadioChange?: (value: number) => any,
     skipTypes?: PrivacyType[],
-    exceptionTexts?: [LangPackKey, LangPackKey]
+    exceptionTexts?: [LangPackKey, LangPackKey],
+    managers: AppManagers
   }) {
     if(options.captions) {
       options.captions.reverse();
@@ -120,7 +121,7 @@ export default class PrivacySection {
         exception.row.container.addEventListener('click', () => {
           promise.then(() => {
             const _peerIds = this.peerIds[exception.key];
-            new AppAddMembersTab(options.tab.slider).open({
+            options.tab.slider.createTab(AppAddMembersTab).open({
               type: 'privacy',
               skippable: true,
               title: exception.titleLangKey,
@@ -144,8 +145,8 @@ export default class PrivacySection {
       this.setRadio(PrivacyType.Contacts);
     }, 0); */
 
-    const promise = appPrivacyManager.getPrivacy(options.inputKey).then(rules => {
-      const details = appPrivacyManager.getPrivacyRulesDetails(rules);
+    const promise = this.options.managers.appPrivacyManager.getPrivacy(options.inputKey).then(rules => {
+      const details = this.options.managers.appPrivacyManager.getPrivacyRulesDetails(rules);
       this.setRadio(details.type);
 
       if(this.exceptions) {
@@ -198,13 +199,13 @@ export default class PrivacySection {
               }
   
               if(splitted.users.length) {
-                rules.push({_: usersKey, users: splitted.users.map(id => appUsersManager.getUserInput(id))});
+                rules.push({_: usersKey, users: splitted.users.map(id => this.options.managers.appUsersManager.getUserInput(id))});
               }
             }
           });
         }
         
-        appPrivacyManager.setPrivacy(options.inputKey, rules);
+        this.options.managers.appPrivacyManager.setPrivacy(options.inputKey, rules);
       }, {once: true});
     });
   }

@@ -7,7 +7,7 @@
 import forEachReverse from "../../helpers/array/forEachReverse";
 import positionElementByIndex from "../../helpers/dom/positionElementByIndex";
 import { Message, ReactionCount } from "../../layer";
-import appReactionsManager from "../../lib/appManagers/appReactionsManager";
+import { AppManagers } from "../../lib/appManagers/managers";
 import rootScope from "../../lib/rootScope";
 import ReactionElement, { ReactionLayoutType, REACTION_DISPLAY_BLOCK_COUNTER_AT } from "./reaction";
 
@@ -24,11 +24,13 @@ export default class ReactionsElement extends HTMLElement {
   private type: ReactionLayoutType;
   private sorted: ReactionElement[];
   private onConnectCallback: () => void;
+  private managers: AppManagers;
 
   constructor() {
     super();
     this.classList.add(CLASS_NAME);
     this.sorted = [];
+    this.managers = rootScope.managers;
   }
   
   connectedCallback() {
@@ -93,13 +95,13 @@ export default class ReactionsElement extends HTMLElement {
     this.classList.toggle('has-no-reactions', !hasReactions);
     if(!hasReactions && !this.sorted.length) return;
 
-    const availableReactionsResult = appReactionsManager.getAvailableReactions();
+    const availableReactionsResult = this.managers.appReactionsManager.getAvailableReactions();
     // callbackify(availableReactionsResult, () => {
       const counts = hasReactions ? (
         availableReactionsResult instanceof Promise ? 
           reactions.results : 
           reactions.results.filter(reactionCount => {
-            return appReactionsManager.isReactionActive(reactionCount.reaction);
+            return this.managers.appReactionsManager.isReactionActive(reactionCount.reaction);
           })
       ) : [];
 

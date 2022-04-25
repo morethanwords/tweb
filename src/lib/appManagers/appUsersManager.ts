@@ -9,7 +9,6 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import { MOUNT_CLASS_TO } from "../../config/debug";
 import filterUnique from "../../helpers/array/filterUnique";
 import findAndSplice from "../../helpers/array/findAndSplice";
 import indexOfAndSplice from "../../helpers/array/indexOfAndSplice";
@@ -27,19 +26,18 @@ import I18n, { i18n, LangPackKey } from "../langPack";
 import apiManager from '../mtproto/mtprotoworker';
 import { REPLIES_PEER_ID, SERVICE_PEER_ID } from "../mtproto/mtproto_config";
 import serverTimeManager from "../mtproto/serverTimeManager";
-import { RichTextProcessor } from "../richtextprocessor";
+import parseEntities from "../richTextProcessor/parseEntities";
+import wrapUrl from "../richTextProcessor/wrapUrl";
 import rootScope from "../rootScope";
 import SearchIndex from "../searchIndex";
-import apiUpdatesManager from "./apiUpdatesManager";
-import appChatsManager from "./appChatsManager";
-import appPeersManager from "./appPeersManager";
 import appStateManager from "./appStateManager";
+import { AppManager } from "./manager";
 
 export type User = MTUser.user;
 export type TopPeerType = 'correspondents' | 'bots_inline';
 export type MyTopPeer = {id: PeerId, rating: number};
 
-export class AppUsersManager {
+export class AppUsersManager extends AppManager {
   private storage = appStateManager.storages.users;
   
   private users: {[userId: UserId]: User};
@@ -52,6 +50,8 @@ export class AppUsersManager {
   private getTopPeersPromises: {[type in TopPeerType]?: Promise<MyTopPeer[]>};
 
   constructor() {
+    super();
+    
     this.clear(true);
 
     setInterval(this.updateUsersStatuses, 60000);
@@ -153,7 +153,7 @@ export class AppUsersManager {
       }
 
       appStateManager.addEventListener('peerNeeded', (peerId) => {
-        if(!appPeersManager.isUser(peerId)) {
+        if(!this.appPeersManager.isUser(peerId)) {
           return;
         }
         
@@ -166,7 +166,7 @@ export class AppUsersManager {
       });
 
       appStateManager.addEventListener('peerUnneeded', (peerId) => {
-        if(!appPeersManager.isUser(peerId)) {
+        if(!this.appPeersManager.isUser(peerId)) {
           return;
         }
 
@@ -267,9 +267,9 @@ export class AppUsersManager {
 
   private processResolvedPeer(resolvedPeer: ContactsResolvedPeer.contactsResolvedPeer) {
     this.saveApiUsers(resolvedPeer.users);
-    appChatsManager.saveApiChats(resolvedPeer.chats);
+    this.appChatsManager.saveApiChats(resolvedPeer.chats);
 
-    return appPeersManager.getPeer(appPeersManager.getPeerId(resolvedPeer.peer)) as Chat | User;
+    return this.appPeersManager.getPeer(this.appPeersManager.getPeerId(resolvedPeer.peer)) as Chat | User;
   }
 
   public resolvePhone(phone: string) {
@@ -326,8 +326,8 @@ export class AppUsersManager {
         });
       } else if(sortBy === 'online') {
         contactsList.sort((userId1, userId2) => {
-          const status1 = appUsersManager.getUserStatusForSort(appUsersManager.getUser(userId1).status);
-          const status2 = appUsersManager.getUserStatusForSort(appUsersManager.getUser(userId2).status);
+          const status1 = this.getUserStatusForSort(this.getUser(userId1).status);
+          const status2 = this.getUserStatusForSort(this.getUser(userId2).status);
           return status2 - status1;
         });
       }
@@ -355,12 +355,12 @@ export class AppUsersManager {
 
   public toggleBlock(peerId: PeerId, block: boolean) {
     return apiManager.invokeApiSingle(block ? 'contacts.block' : 'contacts.unblock', {
-      id: appPeersManager.getInputPeerById(peerId)
+      id: this.appPeersManager.getInputPeerById(peerId)
     }).then(value => {
       if(value) {
-        apiUpdatesManager.processLocalUpdate({
+        this.apiUpdatesManager.processLocalUpdate({
           _: 'updatePeerBlocked',
-          peer_id: appPeersManager.getOutputPeer(peerId),
+          peer_id: this.appPeersManager.getOutputPeer(peerId),
           blocked: block
         });
       }
@@ -752,7 +752,7 @@ export class AppUsersManager {
       if((timestamp - eventTimestamp) >= onlineTimeFor) {
         return;
       }
-    } else if(apiUpdatesManager.updatesState.syncLoading) {
+    } else if(this.apiUpdatesManager.updatesState.syncLoading) {
       return;
     }
 
@@ -840,11 +840,11 @@ export class AppUsersManager {
         if(result._ === 'contacts.topPeers') {
           //console.log(result);
           this.saveApiUsers(result.users);
-          appChatsManager.saveApiChats(result.chats);
+          this.appChatsManager.saveApiChats(result.chats);
 
           if(result.categories.length) {
             topPeers = result.categories[0].peers.map((topPeer) => {
-              const peerId = appPeersManager.getPeerId(topPeer.peer);
+              const peerId = this.appPeersManager.getPeerId(topPeer.peer);
               appStateManager.requestPeer(peerId, 'topPeer');
               return {id: peerId, rating: topPeer.rating};
             });
@@ -865,7 +865,7 @@ export class AppUsersManager {
   public getBlocked(offset = 0, limit = 0) {
     return apiManager.invokeApiSingle('contacts.getBlocked', {offset, limit}).then(contactsBlocked => {
       this.saveApiUsers(contactsBlocked.users);
-      appChatsManager.saveApiChats(contactsBlocked.chats);
+      this.appChatsManager.saveApiChats(contactsBlocked.chats);
       const count = contactsBlocked._ === 'contacts.blocked' ? contactsBlocked.users.length + contactsBlocked.chats.length : contactsBlocked.count;
 
       const peerIds: PeerId[] = contactsBlocked.users.map(u => u.id.toPeerId()).concat(contactsBlocked.chats.map(c => c.id.toPeerId(true)));
@@ -892,7 +892,7 @@ export class AppUsersManager {
       geo_point, 
       background
     }).then((updates) => {
-      apiUpdatesManager.processUpdateMessage(updates);
+      this.apiUpdatesManager.processUpdateMessage(updates);
       return updates;
     });
   }
@@ -923,10 +923,10 @@ export class AppUsersManager {
   } */
   public searchContacts(query: string, limit = 20) {
     // handle 't.me/username' as 'username'
-    const entities = RichTextProcessor.parseEntities(query);
+    const entities = parseEntities(query);
     if(entities.length && entities[0].length === query.trim().length && entities[0]._ === 'messageEntityUrl') {
       try {
-        const url = new URL(RichTextProcessor.wrapUrl(query).url);
+        const url = new URL(wrapUrl(query).url);
         const path = url.pathname.slice(1);
         if(path) {
           query = path;
@@ -939,11 +939,11 @@ export class AppUsersManager {
       limit
     }, {cacheSeconds: 60}).then(peers => {
       this.saveApiUsers(peers.users);
-      appChatsManager.saveApiChats(peers.chats);
+      this.appChatsManager.saveApiChats(peers.chats);
 
       const out = {
-        my_results: filterUnique(peers.my_results.map(p => appPeersManager.getPeerId(p))), // ! contacts.search returns duplicates in my_results
-        results: peers.results.map(p => appPeersManager.getPeerId(p))
+        my_results: filterUnique(peers.my_results.map(p => this.appPeersManager.getPeerId(p))), // ! contacts.search returns duplicates in my_results
+        results: peers.results.map(p => this.appPeersManager.getPeerId(p))
       };
 
       return out;
@@ -1011,7 +1011,7 @@ export class AppUsersManager {
       phone,
       add_phone_privacy_exception: showPhone
     }).then((updates) => {
-      apiUpdatesManager.processUpdateMessage(updates, {override: true});
+      this.apiUpdatesManager.processUpdateMessage(updates, {override: true});
 
       this.onContactUpdated(userId, true);
     });
@@ -1021,7 +1021,7 @@ export class AppUsersManager {
     return apiManager.invokeApi('contacts.deleteContacts', {
       id: userIds.map(userId => this.getUserInput(userId))
     }).then((updates) => {
-      apiUpdatesManager.processUpdateMessage(updates, {override: true});
+      this.apiUpdatesManager.processUpdateMessage(updates, {override: true});
 
       userIds.forEach(userId => {
         this.onContactUpdated(userId, false);
@@ -1036,7 +1036,3 @@ export class AppUsersManager {
     return !!(user.pFlags.restricted && restrictionReasons && isRestricted(restrictionReasons));
   }
 }
-
-const appUsersManager = new AppUsersManager();
-MOUNT_CLASS_TO.appUsersManager = appUsersManager;
-export default appUsersManager

@@ -57,7 +57,8 @@ export default class PopupPickUser extends PopupElement {
       avatarSize: 46,
       peerId: options.peerId,
       placeholder: options.placeholder,
-      selfPresence: options.selfPresence
+      selfPresence: options.selfPresence,
+      managers: this.managers
     });
 
     //this.scrollable = new Scrollable(this.body);

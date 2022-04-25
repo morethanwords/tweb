@@ -7,13 +7,13 @@
 import type { LazyLoadQueueIntersector } from "./lazyLoadQueue";
 import appDialogsManager, { AppDialogsManager, DialogDom } from "../lib/appManagers/appDialogsManager";
 import { getHeavyAnimationPromise } from "../hooks/useHeavyAnimationCheck";
-import appUsersManager from "../lib/appManagers/appUsersManager";
 import isInDOM from "../helpers/dom/isInDOM";
 import positionElementByIndex from "../helpers/dom/positionElementByIndex";
 import replaceContent from "../helpers/dom/replaceContent";
 import { fastRaf } from "../helpers/schedulers";
 import SortedList, { SortedElementBase } from "../helpers/sortedList";
 import safeAssign from "../helpers/object/safeAssign";
+import type { AppUsersManager } from "../lib/appManagers/appUsersManager";
 
 interface SortedUser extends SortedElementBase {
   dom: DialogDom
@@ -31,6 +31,7 @@ export default class SortedUserList extends SortedList<SortedUser> {
   protected onListLengthChange: () => void;
   protected getIndex: (element: SortedUser) => number;
   protected onUpdate: (element: SortedUser) => void;
+  protected appUsersManager: AppUsersManager;
 
   constructor(options: Partial<{
     lazyLoadQueue: SortedUserList['lazyLoadQueue'],
@@ -41,15 +42,17 @@ export default class SortedUserList extends SortedList<SortedUser> {
     onListLengthChange: SortedUserList['onListLengthChange'],
     getIndex: SortedUserList['getIndex'],
     onUpdate: SortedUserList['onUpdate']
-  }> = {}) {
+  }> & {
+    appUsersManager: SortedUserList['appUsersManager']
+  }) {
     super({
-      getIndex: options.getIndex || ((element) => appUsersManager.getUserStatusForSort(element.id)),
+      getIndex: options.getIndex || ((element) => this.appUsersManager.getUserStatusForSort(element.id)),
       onDelete: (element) => {
         element.dom.listEl.remove();
         this.onListLengthChange && this.onListLengthChange();
       },
       onUpdate: options.onUpdate || ((element) => {
-        const status = appUsersManager.getUserStatusString(element.id);
+        const status = this.appUsersManager.getUserStatusString(element.id);
         replaceContent(element.dom.lastMessageSpan, status);
       }),
       onSort: (element, idx) => {

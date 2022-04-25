@@ -9,10 +9,15 @@ import GifsMasonry from "../../gifsMasonry";
 import Scrollable from "../../scrollable";
 import { putPreloader } from "../../misc";
 import apiManager from "../../../lib/mtproto/mtprotoworker";
-import appDocsManager, {MyDocument} from "../../../lib/appManagers/appDocsManager";
+import { MyDocument } from "../../../lib/appManagers/appDocsManager";
+import { AppManagers } from "../../../lib/appManagers/managers";
 
 export default class GifsTab implements EmoticonsTab {
   private content: HTMLElement;
+
+  constructor(private managers: AppManagers) {
+
+  }
 
   init() {
     this.content = document.getElementById('content-gifs');
@@ -28,7 +33,7 @@ export default class GifsTab implements EmoticonsTab {
 
       if(res._ === 'messages.savedGifs') {
         res.gifs.forEach((doc, idx) => {
-          res.gifs[idx] = doc = appDocsManager.saveDoc(doc);
+          res.gifs[idx] = doc = this.managers.appDocsManager.saveDoc(doc);
           //if(doc._ === 'documentEmpty') return;
           masonry.add(doc as MyDocument);
         });

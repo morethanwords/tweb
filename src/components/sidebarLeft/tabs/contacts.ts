@@ -6,7 +6,6 @@
 
 import { SliderSuperTab } from "../../slider";
 import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
-import appUsersManager from "../../../lib/appManagers/appUsersManager";
 import InputSearch from "../../inputSearch";
 import { IS_MOBILE } from "../../../environment/userAgent";
 import { canFocus } from "../../../helpers/dom/canFocus";
@@ -18,6 +17,7 @@ import SortedUserList from "../../sortedUserList";
 import { getMiddleware } from "../../../helpers/middleware";
 import replaceContent from "../../../helpers/dom/replaceContent";
 import rootScope from "../../../lib/rootScope";
+import PopupElement from "../../popups";
 
 // TODO: поиск по людям глобальный, если не нашло в контактах никого
 
@@ -35,7 +35,7 @@ export default class AppContactsTab extends SliderSuperTab {
     this.content.append(btnAdd);
 
     attachClickEvent(btnAdd, () => {
-      new PopupCreateContact();
+      PopupElement.createPopup(PopupCreateContact);
     }, {listenerSetter: this.listenerSetter});
 
     this.inputSearch = new InputSearch('Search', (value) => {
@@ -43,7 +43,7 @@ export default class AppContactsTab extends SliderSuperTab {
     });
 
     this.listenerSetter.add(rootScope)('contacts_update', (userId) => {
-      const isContact = appUsersManager.isContact(userId);
+      const isContact = this.managers.appUsersManager.isContact(userId);
       const peerId = userId.toPeerId();
       if(isContact) this.sortedUserList.add(peerId);
       else this.sortedUserList.delete(peerId);
@@ -58,7 +58,9 @@ export default class AppContactsTab extends SliderSuperTab {
   }
 
   protected createList() {
-    const sortedUserList = new SortedUserList();
+    const sortedUserList = new SortedUserList({
+      appUsersManager: this.managers.appUsersManager
+    });
     const list = sortedUserList.list;
     list.id = 'contacts';
     list.classList.add('contacts-container');
@@ -91,7 +93,7 @@ export default class AppContactsTab extends SliderSuperTab {
     this.scrollable.onScrolledBottom = null;
     this.scrollable.container.textContent = '';
 
-    appUsersManager.getContactsPeerIds(query, undefined, 'online').then(contacts => {
+    this.managers.appUsersManager.getContactsPeerIds(query, undefined, 'online').then(contacts => {
       if(!middleware()) {
         return;
       }

@@ -72,7 +72,7 @@ export default class AppTwoStepVerificationReEnterPasswordTab extends SliderSupe
 
       if(!verifyInput()) return;
 
-      const tab = new AppTwoStepVerificationHintTab(this.slider);
+      const tab = this.slider.createTab(AppTwoStepVerificationHintTab);
       tab.state = this.state;
       tab.plainPassword = this.plainPassword;
       tab.newPassword = this.newPassword;

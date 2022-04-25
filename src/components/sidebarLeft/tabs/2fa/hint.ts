@@ -6,7 +6,6 @@
 
 import { SettingSection } from "../..";
 import { AccountPassword } from "../../../../layer";
-import appStickersManager from "../../../../lib/appManagers/appStickersManager";
 import Button from "../../../button";
 import { SliderSuperTab } from "../../../slider";
 import { wrapSticker } from "../../../wrappers";
@@ -32,7 +31,7 @@ export default class AppTwoStepVerificationHintTab extends SliderSuperTab {
     });
 
     const emoji = '💡';
-    const doc = appStickersManager.getAnimatedEmojiSticker(emoji);
+    const doc = this.managers.appStickersManager.getAnimatedEmojiSticker(emoji);
     const stickerContainer = document.createElement('div');
 
     if(doc) {
@@ -79,7 +78,7 @@ export default class AppTwoStepVerificationHintTab extends SliderSuperTab {
         return;
       }
 
-      const tab = new AppTwoStepVerificationEmailTab(this.slider);
+      const tab = this.slider.createTab(AppTwoStepVerificationEmailTab);
       tab.state = this.state;
       tab.plainPassword = this.plainPassword;
       tab.newPassword = this.newPassword;

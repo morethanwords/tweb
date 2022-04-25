@@ -5,15 +5,13 @@
  */
 
 import { RefreshReferenceTask, RefreshReferenceTaskResponse } from "./apiFileManager";
-import appMessagesManager from "../appManagers/appMessagesManager";
-import appStickersManager from "../appManagers/appStickersManager";
 import { Photo } from "../../layer";
-import { MOUNT_CLASS_TO } from "../../config/debug";
 import apiManager from "./mtprotoworker";
 import assumeType from "../../helpers/assumeType";
 import { logger } from "../logger";
 import bytesToHex from "../../helpers/bytes/bytesToHex";
 import deepEqual from "../../helpers/object/deepEqual";
+import { AppManager } from "../appManagers/manager";
 
 export type ReferenceContext = ReferenceContext.referenceContextProfilePhoto | ReferenceContext.referenceContextMessage | ReferenceContext.referenceContextEmojiesSounds | ReferenceContext.referenceContextReactions;
 export namespace ReferenceContext {
@@ -42,7 +40,7 @@ export type ReferenceContexts = Set<ReferenceContext>;
 
 //type ReferenceBytes = Uint8Array;
 
-class ReferenceDatabase {
+export class ReferenceDatabase extends AppManager {
   private contexts: Map<ReferenceBytes, ReferenceContexts> = new Map();
   //private references: Map<ReferenceBytes, number[]> = new Map();
   private links: {[hex: string]: ReferenceBytes} = {};
@@ -50,6 +48,8 @@ class ReferenceDatabase {
   private refreshEmojiesSoundsPromise: Promise<any>;
 
   constructor() {
+    super();
+
     apiManager.addTaskListener('refreshReference', (task: RefreshReferenceTask) => {
       const originalPayload = task.payload;
 
@@ -128,7 +128,7 @@ class ReferenceDatabase {
     let promise: Promise<any>;
     switch(context?.type) {
       case 'message': {
-        promise = appMessagesManager.wrapSingleMessage(context.peerId, context.messageId, true);
+        promise = this.appMessagesManager.wrapSingleMessage(context.peerId, context.messageId, true);
         break; 
         // .then(() => {
         //   console.log('FILE_REFERENCE_EXPIRED: got message', context, appMessagesManager.getMessage((context as ReferenceContext.referenceContextMessage).messageId).media, reference);
@@ -136,7 +136,7 @@ class ReferenceDatabase {
       }
 
       case 'emojiesSounds': {
-        promise = this.refreshEmojiesSoundsPromise || appStickersManager.getAnimatedEmojiSounds(true).then(() => {
+        promise = this.refreshEmojiesSoundsPromise || this.appStickersManager.getAnimatedEmojiSounds(true).then(() => {
           this.refreshEmojiesSoundsPromise = undefined;
         });
         break;
@@ -178,7 +178,3 @@ class ReferenceDatabase {
     }
   } */
 }
-
-const referenceDatabase = new ReferenceDatabase();
-MOUNT_CLASS_TO.referenceDatabase = referenceDatabase;
-export default referenceDatabase;
