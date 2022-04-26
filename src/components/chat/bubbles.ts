@@ -1493,7 +1493,8 @@ export default class ChatBubbles {
       || target.classList.contains('album-item')
       // || isVideoComponentElement
       || (target.tagName === 'VIDEO' && !bubble.classList.contains('round'))
-      || (documentDiv && !documentDiv.querySelector('.preloader-container'))) {
+      || (documentDiv && !documentDiv.querySelector('.preloader-container'))
+      || target.classList.contains('canvas-thumbnail')) {
       const groupedItem = findUpClassName(target, 'album-item') || findUpClassName(target, 'document-container');
       const messageId = +(groupedItem || bubble).dataset.mid;
       const message = this.chat.getMessage(messageId);
@@ -2543,8 +2544,9 @@ export default class ChatBubbles {
 
     this.lazyLoadQueue.lock();
 
-    const haveToScrollToBubble = (topMessage && (isJump || samePeer)) || isTarget;
-    const fromUp = maxBubbleId > 0 && (maxBubbleId < lastMsgId || lastMsgId < 0);
+    // const haveToScrollToBubble = (topMessage && (isJump || samePeer)) || isTarget;
+    const haveToScrollToBubble = samePeer || (topMessage && isJump) || isTarget;
+    const fromUp = maxBubbleId > 0 && (!lastMsgId || maxBubbleId < lastMsgId || lastMsgId < 0);
     const scrollFromDown = !fromUp && samePeer;
     const scrollFromUp = !scrollFromDown && fromUp/*  && (samePeer || forwardingUnread) */;
     this.willScrollOnLoad = scrollFromDown || scrollFromUp;
@@ -2636,7 +2638,7 @@ export default class ChatBubbles {
           scrollable.setScrollTopSilently(0);
         }
 
-        const mountedByLastMsgId = this.getMountedBubble(lastMsgId);
+        const mountedByLastMsgId = lastMsgId ? this.getMountedBubble(lastMsgId) : {bubble: this.getLastBubble()};
         let bubble: HTMLElement = (followingUnread && this.firstUnreadBubble) || mountedByLastMsgId?.bubble;
         if(!bubble?.parentElement) {
           bubble = this.findNextMountedBubbleByMsgId(lastMsgId);
@@ -2668,6 +2670,10 @@ export default class ChatBubbles {
         scrollable.setScrollTopSilently(99999);
       }
 
+      // if(!cached) {
+        this.onRenderScrollSet();
+      // }
+
       this.onScroll();
 
       const middleware = this.getMiddleware();
@@ -2675,9 +2681,9 @@ export default class ChatBubbles {
       afterSetPromise.then(() => { // check whether list isn't full
         scrollable.checkForTriggers();
 
-        if(cached) {
-          this.onRenderScrollSet();
-        }
+        // if(cached) {
+          // this.onRenderScrollSet();
+        // }
       });
 
       this.chat.dispatchEvent('setPeer', lastMsgId, !isJump);
