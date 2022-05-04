@@ -18,3 +18,5 @@ export default function setWorkerProxy() {
   const workerProxy = new Proxy(Worker, workerHandler);
   Worker = workerProxy;
 }
+
+setWorkerProxy();

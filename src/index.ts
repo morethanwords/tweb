@@ -53,7 +53,7 @@ document.addEventListener('DOMContentLoaded', async() => {
     } */
   };
 
-  setWorkerProxy();
+  setWorkerProxy;
 
   // const [_, touchSupport, userAgent, _rootScope, _appStateManager, _I18n, __/* , ___ */] = await Promise.all([
   //   import('./lib/polyfill'),
