@@ -26,9 +26,9 @@ import { wrapSticker } from "../wrappers";
 const REACTIONS_CLASS_NAME = 'btn-menu-reactions';
 const REACTION_CLASS_NAME = REACTIONS_CLASS_NAME + '-reaction';
 
-const REACTION_SIZE = 28;
+const REACTION_SIZE = 26;
 const PADDING = 4;
-const REACTION_CONTAINER_SIZE = REACTION_SIZE + PADDING * 2;
+export const REACTION_CONTAINER_SIZE = REACTION_SIZE + PADDING * 2;
 
 const CAN_USE_TRANSFORM = !IS_SAFARI;
 
@@ -41,9 +41,9 @@ type ChatReactionsMenuPlayers = {
 };
 export class ChatReactionsMenu {
   public widthContainer: HTMLElement;
-  private container: HTMLElement;
+  public container: HTMLElement;
   private reactionsMap: Map<HTMLElement, ChatReactionsMenuPlayers>;
-  private scrollable: ScrollableBase;
+  public scrollable: ScrollableBase;
   private animationGroup: string;
   private middleware: ReturnType<typeof getMiddleware>;
   private message: Message.message;
@@ -67,11 +67,11 @@ export class ChatReactionsMenu {
 
     reactionsScrollable.container.classList.add('no-scrollbar');
 
-    ['big'].forEach(type => {
-      const bubble = document.createElement('div');
-      bubble.classList.add(REACTIONS_CLASS_NAME + '-bubble', REACTIONS_CLASS_NAME + '-bubble-' + type);
-      reactionsContainer.append(bubble);
-    });
+    // ['big'].forEach(type => {
+    //   const bubble = document.createElement('div');
+    //   bubble.classList.add(REACTIONS_CLASS_NAME + '-bubble', REACTIONS_CLASS_NAME + '-bubble-' + type);
+    //   reactionsContainer.append(bubble);
+    // });
 
     this.reactionsMap = new Map();
     this.animationGroup = 'CHAT-MENU-REACTIONS-' + Date.now();

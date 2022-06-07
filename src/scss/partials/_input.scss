@@ -317,7 +317,7 @@ input:focus, button:focus {
     line-height: var(--height);
     
     @include animation-level(2) {
-      transition: background-color .2s ease-in-out, border-color .2s ease-in-out;
+      transition: /* background-color .2s ease-in-out,  */border-color .2s ease-in-out;
     }
 
     @include hover() {

@@ -35,7 +35,7 @@ import PeerTitle from "../peerTitle";
 import StackedAvatars from "../stackedAvatars";
 import { IS_APPLE } from "../../environment/userAgent";
 import PopupReactedList from "../popups/reactedList";
-import { ChatReactionsMenu } from "./reactionsMenu";
+import { ChatReactionsMenu, REACTION_CONTAINER_SIZE } from "./reactionsMenu";
 
 export default class ChatContextMenu {
   private buttons: (ButtonMenuItemOptions & {verify: () => boolean, notDirect?: () => boolean, withSelection?: true, isSponsored?: true})[];
@@ -176,13 +176,44 @@ export default class ChatContextMenu {
 
     const initResult = this.init();
     element = initResult.element;
-    const {cleanup, destroy, menuPadding} = initResult;
+    const {cleanup, destroy, menuPadding, reactionsMenu} = initResult;
+    let isReactionsMenuVisible = false;
+    if(reactionsMenu) {
+      const className = 'is-visible';
+      isReactionsMenuVisible = reactionsMenu.container.classList.contains(className);
+      if(isReactionsMenuVisible) reactionsMenu.container.classList.remove(className);
 
+      const offsetWidth = element.offsetWidth;
+      // if(reactionsMenu.scrollable.container.scrollWidth > offsetWidth) {
+        const INNER_CONTAINER_PADDING = 8;
+        const visibleLength = (offsetWidth - INNER_CONTAINER_PADDING) / REACTION_CONTAINER_SIZE;
+        const nextVisiblePart = visibleLength % 1;
+        const MIN_NEXT_VISIBLE_PART = 0.65;
+        if(nextVisiblePart < MIN_NEXT_VISIBLE_PART) {
+          const minWidth = (offsetWidth + (MIN_NEXT_VISIBLE_PART - nextVisiblePart) * REACTION_CONTAINER_SIZE) | 0;
+          element.style.minWidth = minWidth + 'px';
+        }
+      // }
+    }
+    
     const side: 'left' | 'right' = bubble.classList.contains('is-in') ? 'left' : 'right';
     //bubble.parentElement.append(element);
     //appImManager.log('contextmenu', e, bubble, side);
     positionMenu((e as TouchEvent).touches ? (e as TouchEvent).touches[0] : e as MouseEvent, element, side, menuPadding);
+
+    if(reactionsMenu) {
+      reactionsMenu.widthContainer.style.top = element.style.top;
+      reactionsMenu.widthContainer.style.left = element.style.left;
+      reactionsMenu.widthContainer.style.setProperty('--menu-width', element.offsetWidth + 'px');
+      element.parentElement.append(reactionsMenu.widthContainer);
+      if(isReactionsMenuVisible) void reactionsMenu.container.offsetLeft; // reflow
+    }
+
     openBtnMenu(element, () => {
+      if(reactionsMenu) {
+        reactionsMenu.container.classList.remove('is-visible');
+      }
+
       this.mid = 0;
       this.peerId = undefined;
       this.target = null;
@@ -194,6 +225,10 @@ export default class ChatContextMenu {
         destroy();
       }, 300);
     });
+
+    if(isReactionsMenuVisible) {
+      reactionsMenu.container.classList.add('is-visible');
+    }
   };
 
   public cleanup() {
@@ -572,7 +607,7 @@ export default class ChatContextMenu {
       const position: 'horizontal' | 'vertical' = (IS_APPLE || IS_TOUCH_SUPPORTED)/*  && false */ ? 'horizontal' : 'vertical';
       reactionsMenu = this.reactionsMenu = new ChatReactionsMenu(this.appReactionsManager, position, this.middleware);
       reactionsMenu.init(this.appMessagesManager.getGroupsFirstMessage(this.message));
-      element.prepend(reactionsMenu.widthContainer);
+      // element.prepend(reactionsMenu.widthContainer);
 
       const size = 42;
       const margin = 8;
@@ -602,8 +637,10 @@ export default class ChatContextMenu {
       },
       destroy: () => {
         element.remove();
+        reactionsMenu.widthContainer.remove();
       },
-      menuPadding
+      menuPadding,
+      reactionsMenu
     };
   }
 

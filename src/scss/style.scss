@@ -91,7 +91,9 @@ $chat-input-inner-padding-handhelds: .25rem;
   --esg-sticker-size: 80px;
   --disabled-opacity: .3;
   --round-video-size: 280px;
-  --menu-box-shadow: 0px 2px 8px 1px var(--menu-box-shadow-color);
+  --menu-box-shadow: 0px 0px 10px var(--menu-box-shadow-color);
+  --menu-background-color: rgba(var(--surface-color-rgb), .75);
+  --menu-backdrop-filter: blur(50px);
   --font-monospace: 'Roboto Mono', monospace;
   --font-weight-bold: 500;
 
@@ -179,7 +181,7 @@ $chat-input-inner-padding-handhelds: .25rem;
   --surface-color: #fff;
   --scrollbar-color: rgba(0, 0, 0, .2);
   --section-box-shadow-color: rgba(0, 0, 0, .06);
-  --menu-box-shadow-color: rgba(0, 0, 0, .24);
+  --menu-box-shadow-color: rgba(0, 0, 0, .15);
 
   --input-search-background-color: #fff;
   --input-search-border-color: #dfe1e5;
@@ -1373,16 +1375,17 @@ hr {
 }
 
 // ! TEMPORARY
-.tgico-reply:before, 
-.tgico-attach:before,
-.tgico-saved:before,
-.tgico-phone:before,
+// .tgico-reply:before, 
+// .tgico-attach:before,
+// .tgico-saved:before,
+// .tgico-phone:before,
 .tgico-admin:before,
-.tgico-message:before,
-.tgico-fontsize:before,
-.tgico-forward:before,
-.tgico-reply_filled:before,
-.tgico-forward_filled:before {
+// .tgico-message:before,
+.tgico-fontsize:before
+// .tgico-forward:before,
+// .tgico-reply_filled:before,
+// .tgico-forward_filled:before {
+{
   font-size: 20px !important;
   padding: 2px;
 }

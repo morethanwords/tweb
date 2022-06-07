@@ -209,6 +209,9 @@ export default class RLottiePlayer extends EventListenerBase<{
       }
     }
 
+    this.width = Math.round(this.width);
+    this.height = Math.round(this.height);
+
     //options.noCache = true;
     
     // * Cache frames params

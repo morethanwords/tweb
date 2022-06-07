@@ -95,15 +95,17 @@
 .btn-menu {
   visibility: hidden;
   position: absolute;
-  background-color: var(--surface-color);
+  background-color: var(--menu-background-color);
   z-index: 3;
   top: 100%;
-  padding: .5rem 0;
+  padding: .3125rem 0;
   border-radius: $border-radius-medium;
   opacity: 0;
   transform: scale(.8) !important;
   transition: opacity var(--btn-menu-transition), transform var(--btn-menu-transition), visibility var(--btn-menu-transition);
   font-size: 1rem;
+  backdrop-filter: var(--menu-backdrop-filter);
+  min-width: 11.25rem;
 
   &/* ,
   &-reactions */ {
@@ -123,11 +125,11 @@
     transform: scale3d(1, 1, 1) !important; // * scale3d (NOT scale) will fix jumping text
   }
 
-  &:not(.active) {
+  /* &:not(.active) {
     &, .btn-menu-item {
       pointer-events: none !important;
     }
-  }
+  } */
 
   &.bottom-left {
     right: 0;
@@ -172,14 +174,14 @@
   }
 
   &-item {
-    --padding-left: 1rem;
-    --padding-right: 2.5rem;
-    --icon-margin: 1.5rem;
-    --icon-size: 1.5rem;
+    --padding-left: .75rem;
+    --padding-right: .75rem;
+    --icon-margin: 1.25rem;
+    --icon-size: 1.25rem;
     display: flex;
     position: relative;
     padding: 0 var(--padding-right) 0 var(--padding-left);
-    height: 3rem;
+    height: 2rem;
     cursor: pointer !important;
     pointer-events: all !important;
     color: var(--primary-text-color);
@@ -189,7 +191,25 @@
     // text-overflow: ellipsis;
     align-items: center;
     text-align: left;
-    line-height: var(--line-height);
+    font-size: var(--font-size-14);
+    line-height: var(--line-height-14);
+    border-radius: .3125rem;
+    margin: 0 .3125rem;
+    font-weight: 500;
+    transform: scale(1);
+    
+    @include animation-level(2) {
+      transition: transform var(--btn-menu-transition);
+    }
+
+    &:active {
+      transform: scale(.96);
+    }
+
+    // background-blend-mode: overlay, normal;
+    // @include hover() {
+    //   background: linear-gradient(0deg, rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.2)), rgba(0, 0, 0, 0.05);
+    // }
 
     @include hover-background-effect();
 
@@ -198,7 +218,7 @@
     }
 
     &:before {
-      color: var(--secondary-text-color);
+      color: var(--primary-text-color);
       font-size: var(--icon-size);
     }
 
@@ -222,6 +242,7 @@
 
       &,
       &-fake {
+        margin-top: 1px;
         pointer-events: none;
       }
 
@@ -299,7 +320,7 @@
 
   &-footer {
     height: 2.5rem;
-    background: var(--background-color-true);
+    // background: var(--background-color-true);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -320,32 +341,42 @@
     display: block !important;
   }
 
+  .badge {
+    background-color: transparent;
+    color: var(--secondary-text-color);
+  }
+
   &-reactions {
     --inner-shadow-degree: 90deg;
     max-width: 100%;
     max-height: 100%;
     height: inherit;
     border-radius: var(--height);
-    background-color: var(--surface-color);
+    background-color: var(--menu-background-color);
     position: absolute;
     opacity: 0;
     transform: scale(.8);
-    // filter: drop-shadow(0 .125rem .5rem rgba(0, 0, 0, .24));
+    backdrop-filter: var(--menu-backdrop-filter);
+    filter: drop-shadow(0 .125rem .5rem rgba(0, 0, 0, .24));
+    transform-origin: bottom left;
 
     &-container {
-      --height: 2.625rem;
-      --bubble-side-offset: -2.25rem;
-      --other-side-offset: -1.5rem;
-      --width: calc(100% + (var(--bubble-side-offset) + var(--other-side-offset)) * -1);
-      position: absolute;
-      top: calc((var(--height) + .5rem) * -1);
+      --height: 2.25rem;
+      --bubble-side-offset: 0rem;
+      --other-side-offset: 0rem;
+      --width: calc(var(--menu-width) + (var(--bubble-side-offset) + var(--other-side-offset)) * -1);
+      // position: absolute;
+      margin-top: calc((var(--height) + .5rem) * -1);
       width: var(--width);
       max-width: var(--width);
-      left: var(--other-side-offset);
+      margin-left: var(--other-side-offset);
       // left: var(--bubble-side-offset);
       display: flex;
-      justify-content: flex-end;
+      // justify-content: flex-end;
+      justify-content: flex-start;
       height: var(--height);
+      position: fixed;
+      z-index: 4;
 
       &-vertical {
         top: var(--other-side-offset);
@@ -440,7 +471,7 @@
     }
 
     &-reaction {
-      --size: 1.75rem;
+      --size: 1.625rem;
       --padding-base: .25rem;
       --padding-vertical: 0rem;
       --padding-horizontal: var(--padding-base);

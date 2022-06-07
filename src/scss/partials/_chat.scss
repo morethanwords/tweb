@@ -776,10 +776,24 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
     margin-bottom: 1.25rem;
   }
 
-  .contextmenu {
-    box-shadow: none !important;
-    filter: drop-shadow(0 .125rem .5rem var(--menu-box-shadow-color));
-  }
+  // .contextmenu {
+    // box-shadow: none !important;
+    // filter: drop-shadow(0 .125rem .5rem var(--menu-box-shadow-color));
+    // background: none !important;
+    // backdrop-filter: none !important;
+
+    // &:before {
+    //   content: " ";
+    //   position: absolute;
+    //   top: 0;
+    //   right: 0;
+    //   bottom: 0;
+    //   left: 0;
+    //   backdrop-filter: var(--menu-backdrop-filter);
+    //   background-color: var(--menu-background-color);
+    //   border-radius: inherit;
+    // }
+  // }
 }
 
 .chat-input-wrapper {
@@ -1169,7 +1183,7 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
 
     .btn-menu {
       top: auto;
-      bottom: calc(100% + 1.0625rem);
+      bottom: calc(100% + .5rem);
       left: 3.125rem;
       transform: scale(1) !important;
 
@@ -1182,7 +1196,7 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
 
         .checkbox {
           &-field {
-            --size: 1.5rem;
+            --size: 1.25rem;
             order: 0;
             margin: 0 var(--icon-margin) 0 0;
           }
@@ -1194,7 +1208,7 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
             }
 
             &-check use {
-              stroke: var(--primary-color);
+              stroke: var(--primary-text-color);
             }
           }
         }
