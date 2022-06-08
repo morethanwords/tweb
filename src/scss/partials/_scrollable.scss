@@ -31,6 +31,10 @@ html:not(.is-safari):not(.is-ios) {
   ::-webkit-scrollbar-corner {
     background-color: transparent;
   }
+
+  .scrollable:hover {
+    scrollbar-color: var(--scrollbar-color) rgba(0, 0, 0, 0);
+  }
   
   .scrollable:hover::-webkit-scrollbar {
     opacity: 1; // for safari
@@ -81,7 +85,7 @@ html:not(.is-safari):not(.is-ios) {
 
   &.scrollable-x {
     overflow-x: auto;
-    scrollbar-width: thin; // Firefox only
+    scrollbar-width: none; // Firefox only
     -ms-overflow-style: none;
   }
 
@@ -89,6 +93,8 @@ html:not(.is-safari):not(.is-ios) {
     overflow-y: auto;
     overflow-y: overlay;
     scrollbar-width: thin; // Firefox only
+    scrollbar-color: rgba(0, 0, 0, 0) rgba(0, 0, 0, 0);
+    transition: scrollbar-color .3s ease;
     -ms-overflow-style: none;
     transform: translateZ(0);
 

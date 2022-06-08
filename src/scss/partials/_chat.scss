@@ -1314,24 +1314,40 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
           transform: scale3d(1, 1, 1);
 
           &-item {
+            height: 2.25rem;
+
+            &-header {
+              height: 1.875rem;
+            }
+
             &-icon {
               margin-right: calc(var(--icon-margin) - .5rem);
 
               &.active:before {
-                --offset: -.25rem;
+                --offset: -.125rem;
                 content: " ";
                 position: absolute;
                 top: var(--offset);
                 right: var(--offset);
                 bottom: var(--offset);
                 left: var(--offset);
-                border: .125rem solid var(--primary-color);
+                border: .0625rem solid var(--primary-color);
                 border-radius: 50%;
               }
             }
 
             &-text {
               @include text-overflow();
+              // font-size: .875rem !important;
+              line-height: 1 !important;
+              display: flex;
+              flex-direction: column;
+              justify-content: center;
+            }
+
+            &-subtitle {
+              font-size: .8125rem;
+              font-weight: 400;
             }
           }
         }

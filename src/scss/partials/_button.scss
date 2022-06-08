@@ -107,6 +107,31 @@
   backdrop-filter: var(--menu-backdrop-filter);
   min-width: 11.25rem;
 
+  &-old {
+    padding: .5rem 0;
+    background-color: var(--surface-color);
+    backdrop-filter: none;
+    min-width: auto;
+
+    .btn-menu-item {
+      --padding-left: 1rem;
+      --padding-right: 2.5rem;
+      --icon-margin: 1.5rem;
+      --icon-size: 1.5rem;
+      height: 3rem;
+      line-height: var(--line-height-16);
+      font-size: var(--font-size-16);
+      border-radius: 0;
+      margin: 0;
+      font-weight: 400;
+      transform: none !important;
+
+      &:before {
+        color: var(--secondary-text-color);
+      }
+    }
+  }
+
   &/* ,
   &-reactions */ {
     box-shadow: var(--menu-box-shadow);
@@ -262,7 +287,7 @@
     }
 
     &-header {
-      color: var(--primary-color);
+      color: var(--secondary-text-color);
       height: 2rem;
       font-weight: var(--font-weight-bold);
       pointer-events: none !important;
@@ -364,9 +389,10 @@
       --height: 2.25rem;
       --bubble-side-offset: 0rem;
       --other-side-offset: 0rem;
+      --menu-offset: calc((var(--height) + .5rem) * -1);
       --width: calc(var(--menu-width) + (var(--bubble-side-offset) + var(--other-side-offset)) * -1);
       // position: absolute;
-      margin-top: calc((var(--height) + .5rem) * -1);
+      margin-top: var(--menu-offset);
       width: var(--width);
       max-width: var(--width);
       margin-left: var(--other-side-offset);
@@ -378,14 +404,29 @@
       position: fixed;
       z-index: 4;
 
+      .contextmenu.center-left + &,
+      .contextmenu.bottom-left + & {
+        .btn-menu-reactions {
+          transform-origin: bottom right !important;
+        }
+      }
+
+      .contextmenu.bottom-center + & {
+        .btn-menu-reactions {
+          transform-origin: bottom center !important;
+        }
+      }
+
       &-vertical {
-        top: var(--other-side-offset);
-        left: calc((var(--height) + .5rem) * -1);
+        // top: var(--other-side-offset);
+        // left: calc((var(--height) + .5rem) * -1);
         width: var(--height);
         height: var(--width);
         max-width: var(--height);
         max-height: var(--width);
         flex-direction: column;
+        margin-top: 0;
+        margin-left: var(--menu-offset);
         
         .btn-menu-reactions {
           --inner-shadow-degree: 180deg;
@@ -393,6 +434,7 @@
           height: auto;
           display: flex;
           flex-direction: column;
+          transform-origin: top right;
         }
 
         .btn-menu-reactions-reaction {

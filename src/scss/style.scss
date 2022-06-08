@@ -404,6 +404,11 @@ html.is-ios {
   -webkit-touch-callout: none;
 }
 
+html.no-backdrop {
+  --menu-background-color: var(--surface-color);
+  --menu-backdrop-filter: none;
+}
+
 @supports(padding: unquote('max(0px)')) {
   html {
     padding: 0 unquote('min(16px, env(safe-area-inset-right))') 0 unquote('min(16px, env(safe-area-inset-left))');

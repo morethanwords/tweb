@@ -124,8 +124,15 @@ document.addEventListener('DOMContentLoaded', async() => {
     }
   });
 
+  // restrict contextmenu on images (e.g. webp stickers)
+  document.addEventListener('contextmenu', (e) => {
+    if((e.target as HTMLElement).tagName === 'IMG' && !(window as any).appMediaViewer) {
+      cancelEvent(e);
+    }
+  });
+
   if(IS_FIREFOX) {
-    document.documentElement.classList.add('is-firefox');
+    document.documentElement.classList.add('is-firefox', 'no-backdrop');
   }
 
   if(IS_MOBILE) {

@@ -176,24 +176,26 @@ export default class ChatContextMenu {
 
     const initResult = this.init();
     element = initResult.element;
-    const {cleanup, destroy, menuPadding, reactionsMenu} = initResult;
+    const {cleanup, destroy, menuPadding, reactionsMenu, reactionsMenuPosition} = initResult;
     let isReactionsMenuVisible = false;
     if(reactionsMenu) {
       const className = 'is-visible';
       isReactionsMenuVisible = reactionsMenu.container.classList.contains(className);
       if(isReactionsMenuVisible) reactionsMenu.container.classList.remove(className);
 
-      const offsetWidth = element.offsetWidth;
-      // if(reactionsMenu.scrollable.container.scrollWidth > offsetWidth) {
-        const INNER_CONTAINER_PADDING = 8;
-        const visibleLength = (offsetWidth - INNER_CONTAINER_PADDING) / REACTION_CONTAINER_SIZE;
-        const nextVisiblePart = visibleLength % 1;
-        const MIN_NEXT_VISIBLE_PART = 0.65;
-        if(nextVisiblePart < MIN_NEXT_VISIBLE_PART) {
-          const minWidth = (offsetWidth + (MIN_NEXT_VISIBLE_PART - nextVisiblePart) * REACTION_CONTAINER_SIZE) | 0;
-          element.style.minWidth = minWidth + 'px';
-        }
-      // }
+      if(reactionsMenuPosition === 'horizontal') {
+        const offsetSize = element[/* reactionsMenuPosition === 'vertical' ? 'offsetHeight' :  */'offsetWidth'];
+        // if(reactionsMenu.scrollable.container.scrollWidth > offsetWidth) {
+          const INNER_CONTAINER_PADDING = 8;
+          const visibleLength = (offsetSize - INNER_CONTAINER_PADDING) / REACTION_CONTAINER_SIZE;
+          const nextVisiblePart = visibleLength % 1;
+          const MIN_NEXT_VISIBLE_PART = 0.65;
+          if(nextVisiblePart < MIN_NEXT_VISIBLE_PART) {
+            const minSize = (offsetSize + (MIN_NEXT_VISIBLE_PART - nextVisiblePart) * REACTION_CONTAINER_SIZE) | 0;
+            element.style[/* reactionsMenuPosition === 'vertical' ? 'minHeight' :  */'minWidth'] = minSize + 'px';
+          }
+        // }
+      }
     }
     
     const side: 'left' | 'right' = bubble.classList.contains('is-in') ? 'left' : 'right';
@@ -204,7 +206,7 @@ export default class ChatContextMenu {
     if(reactionsMenu) {
       reactionsMenu.widthContainer.style.top = element.style.top;
       reactionsMenu.widthContainer.style.left = element.style.left;
-      reactionsMenu.widthContainer.style.setProperty('--menu-width', element.offsetWidth + 'px');
+      reactionsMenu.widthContainer.style.setProperty('--menu-width', element[reactionsMenuPosition === 'vertical' ? 'offsetHeight' : 'offsetWidth'] + 'px');
       element.parentElement.append(reactionsMenu.widthContainer);
       if(isReactionsMenuVisible) void reactionsMenu.container.offsetLeft; // reflow
     }
@@ -603,26 +605,28 @@ export default class ChatContextMenu {
 
     let menuPadding: MenuPositionPadding;
     let reactionsMenu: ChatReactionsMenu;
+    let reactionsMenuPosition: 'horizontal' | 'vertical';
     if(this.message._ === 'message' && !this.chat.selection.isSelecting && !this.message.pFlags.is_outgoing && !this.message.pFlags.is_scheduled) {
-      const position: 'horizontal' | 'vertical' = (IS_APPLE || IS_TOUCH_SUPPORTED)/*  && false */ ? 'horizontal' : 'vertical';
-      reactionsMenu = this.reactionsMenu = new ChatReactionsMenu(this.appReactionsManager, position, this.middleware);
+      reactionsMenuPosition = (IS_APPLE || IS_TOUCH_SUPPORTED)/*  && false */ ? 'horizontal' : 'vertical';
+      reactionsMenu = this.reactionsMenu = new ChatReactionsMenu(this.appReactionsManager, reactionsMenuPosition, this.middleware);
       reactionsMenu.init(this.appMessagesManager.getGroupsFirstMessage(this.message));
       // element.prepend(reactionsMenu.widthContainer);
 
-      const size = 42;
+      const size = 36;
       const margin = 8;
       const totalSize = size + margin;
-      if(position === 'vertical') {
+      const paddingLeft = 0, paddingRight = 0;
+      if(reactionsMenuPosition === 'vertical') {
         menuPadding = {
-          top: 24,
+          top: paddingLeft,
           // bottom: 36, // positionMenu will detect it itself somehow
           left: totalSize
         };
       } else {
         menuPadding = {
           top: totalSize,
-          right: 36,
-          left: 24
+          right: paddingRight,
+          left: paddingLeft
         };
       }
     }
@@ -640,7 +644,8 @@ export default class ChatContextMenu {
         reactionsMenu.widthContainer.remove();
       },
       menuPadding,
-      reactionsMenu
+      reactionsMenu,
+      reactionsMenuPosition
     };
   }
 
