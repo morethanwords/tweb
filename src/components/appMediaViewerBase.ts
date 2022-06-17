@@ -6,7 +6,7 @@
 
 import deferredPromise from "../helpers/cancellablePromise";
 import mediaSizes from "../helpers/mediaSizes";
-import { IS_TOUCH_SUPPORTED } from "../environment/touchSupport";
+import IS_TOUCH_SUPPORTED from "../environment/touchSupport";
 import { IS_MOBILE_SAFARI, IS_SAFARI } from "../environment/userAgent";
 import type { MyDocument } from "../lib/appManagers/appDocsManager";
 import type { MyPhoto } from "../lib/appManagers/appPhotosManager";
@@ -19,7 +19,6 @@ import AvatarElement from "./avatar";
 import ButtonIcon from "./buttonIcon";
 import { ButtonMenuItemOptions } from "./buttonMenu";
 import ButtonMenuToggle from "./buttonMenuToggle";
-import { LazyLoadQueueBase } from "./lazyLoadQueue";
 import ProgressivePreloader from "./preloader";
 import SwipeHandler from "./swipeHandler";
 import { formatFullSentTime } from "../helpers/date";
@@ -28,7 +27,6 @@ import { Message } from "../layer";
 import findUpClassName from "../helpers/dom/findUpClassName";
 import renderImageFromUrl, { renderImageFromUrlPromise } from "../helpers/dom/renderImageFromUrl";
 import getVisibleRect from "../helpers/dom/getVisibleRect";
-import appDownloadManager from "../lib/appManagers/appDownloadManager";
 import cancelEvent from "../helpers/dom/cancelEvent";
 import fillPropertyValue from "../helpers/fillPropertyValue";
 import generatePathData from "../helpers/generatePathData";
@@ -49,6 +47,11 @@ import { AppManagers } from "../lib/appManagers/managers";
 import getStrippedThumbIfNeeded from "../helpers/getStrippedThumbIfNeeded";
 import setAttachmentSize from "../helpers/setAttachmentSize";
 import wrapEmojiText from "../lib/richTextProcessor/wrapEmojiText";
+import LazyLoadQueueBase from "./lazyLoadQueueBase";
+import overlayCounter from "../helpers/overlayCounter";
+import { ThumbCache } from "../lib/storages/thumbs";
+import appDownloadManager from "../lib/appManagers/appDownloadManager";
+import wrapPeerTitle from "./wrappers/peerTitle";
 
 const ZOOM_STEP = 0.5;
 const ZOOM_INITIAL_VALUE = 1;
@@ -189,7 +192,7 @@ export default class AppMediaViewerBase<
     const buttonsDiv = document.createElement('div');
     buttonsDiv.classList.add(MEDIA_VIEWER_CLASSNAME + '-buttons');
     
-    topButtons.concat(['download', 'zoom', 'close']).forEach(name => {
+    topButtons.concat(['download', 'zoom', 'close']).forEach((name) => {
       const button = ButtonIcon(name, {noRipple: true});
       this.buttons[name] = button;
       buttonsDiv.append(button);
@@ -267,7 +270,7 @@ export default class AppMediaViewerBase<
 
   protected setListeners() {
     attachClickEvent(this.buttons.download, this.onDownloadClick);
-    [this.buttons.close, this.buttons['mobile-close'], this.preloaderStreamable.preloader].forEach(el => {
+    [this.buttons.close, this.buttons['mobile-close'], this.preloaderStreamable.preloader].forEach((el) => {
       attachClickEvent(el, this.close.bind(this));
     });
 
@@ -465,7 +468,7 @@ export default class AppMediaViewerBase<
   }
 
   protected toggleOverlay(active: boolean) {
-    rootScope.isOverlayActive = active;
+    overlayCounter.isOverlayActive = active;
     animationIntersector.checkAnimations(active);
   }
 
@@ -523,7 +526,7 @@ export default class AppMediaViewerBase<
       classNames.push('media-viewer-movers');
     }
 
-    classNames.find(s => {
+    classNames.find((s) => {
       try {
         mover = findUpClassName(target, s);
         if(mover) return true;
@@ -537,7 +540,7 @@ export default class AppMediaViewerBase<
 
   private onKeyDown = (e: KeyboardEvent) => {
     //this.log('onKeyDown', e);
-    if(rootScope.overlaysActive > 1) {
+    if(overlayCounter.overlaysActive > 1) {
       return;
     }
 
@@ -566,7 +569,7 @@ export default class AppMediaViewerBase<
   };
 
   private onKeyUp = (e: KeyboardEvent) => {
-    if(rootScope.overlaysActive > 1) {
+    if(overlayCounter.overlaysActive > 1) {
       return;
     }
 
@@ -580,7 +583,7 @@ export default class AppMediaViewerBase<
   };
 
   private onWheel = (e: WheelEvent) => {
-    if(rootScope.overlaysActive > 1 || (findUpClassName(e.target, 'media-viewer-caption') && !this.ctrlKeyDown)) {
+    if(overlayCounter.overlaysActive > 1 || (findUpClassName(e.target, 'media-viewer-caption') && !this.ctrlKeyDown)) {
       return;
     }
 
@@ -737,7 +740,7 @@ export default class AppMediaViewerBase<
 
     let borderRadius = window.getComputedStyle(realParent).getPropertyValue('border-radius');
     const brSplitted = fillPropertyValue(borderRadius) as string[];
-    borderRadius = brSplitted.map(r => (parseInt(r) / scaleX) + 'px').join(' ');
+    borderRadius = brSplitted.map((r) => (parseInt(r) / scaleX) + 'px').join(' ');
     if(!wasActive) {
       mover.style.borderRadius = borderRadius;
     }
@@ -852,7 +855,7 @@ export default class AppMediaViewerBase<
 
           // код ниже нужен только чтобы скрыть моргание до момента как сработает таймаут
           let d: string;
-          const br: [number, number, number, number] = borderRadius.split(' ').map(v => parseInt(v)) as any;
+          const br: [number, number, number, number] = borderRadius.split(' ').map((v) => parseInt(v)) as any;
           if(isOut) d = generatePathData(0, 0, width - 9 / scaleX, height, ...br);
           else d = generatePathData(9 / scaleX, 0, width - 9 / scaleX, height, ...br);
           path.setAttributeNS(null, 'd', d);
@@ -1047,7 +1050,7 @@ export default class AppMediaViewerBase<
     const {width, height} = rect;
     delay = delay / 2;
 
-    const br = borderRadius.split(' ').map(v => parseInt(v));
+    const br = borderRadius.split(' ').map((v) => parseInt(v));
 
     const step = () => {
       const diff = Date.now() - start;
@@ -1056,7 +1059,7 @@ export default class AppMediaViewerBase<
       if(progress > 1) progress = 1;
       if(upscale) progress = 1 - progress;
 
-      const _br: [number, number, number, number] = br.map(v => v * progress) as any;
+      const _br: [number, number, number, number] = br.map((v) => v * progress) as any;
 
       let d: string;
       if(isOut) d = generatePathData(0, 0, width - (9 / scaleX * progress), height, ..._br);
@@ -1159,34 +1162,40 @@ export default class AppMediaViewerBase<
   }
 
   protected setAuthorInfo(fromId: PeerId | string, timestamp: number) {
-    replaceContent(this.author.date, formatFullSentTime(timestamp));
-
     const isPeerId = fromId.isPeerId();
-    let title: HTMLElement;
+    let wrapTitlePromise: Promise<HTMLElement> | HTMLElement;
     if(isPeerId) {
-      title = new PeerTitle({
+      wrapTitlePromise = wrapPeerTitle({
         peerId: fromId as PeerId,
         dialog: false,
         onlyFirstName: false,
         plainText: false
-      }).element;
+      })
     } else {
-      title = document.createElement('span');
+      const title = wrapTitlePromise = document.createElement('span');
       title.append(wrapEmojiText(fromId));
       title.classList.add('peer-title');
     }
 
-    replaceContent(this.author.nameEl, title);
-
     let oldAvatar = this.author.avatarEl;
-    this.author.avatarEl = (oldAvatar.cloneNode() as AvatarElement);
-    (this.author.avatarEl as AvatarElement).updateWithOptions({
-      // @ts-ignore
-      peerId: fromId || NULL_PEER_ID,
-      peerTitle: isPeerId ? undefined : '' + fromId
-    });
+    const newAvatar = this.author.avatarEl = (oldAvatar.cloneNode() as AvatarElement);
 
-    oldAvatar.parentElement.replaceChild(this.author.avatarEl, oldAvatar);
+    return Promise.all([
+      (this.author.avatarEl as AvatarElement).updateWithOptions({
+        peerId: fromId as PeerId || NULL_PEER_ID,
+        peerTitle: isPeerId ? undefined : '' + fromId
+      }),
+
+      wrapTitlePromise
+    ]).then(([_, title]) => {
+      if(this.author.avatarEl !== newAvatar) {
+        return;
+      }
+
+      replaceContent(this.author.date, formatFullSentTime(timestamp));
+      replaceContent(this.author.nameEl, title);
+      oldAvatar.replaceWith(this.author.avatarEl);
+    });
   }
   
   protected async _openMedia(
@@ -1207,7 +1216,7 @@ export default class AppMediaViewerBase<
       this.log('openMedia:', media, fromId, prevTargets, nextTargets);
     } */
 
-    this.setAuthorInfo(fromId, timestamp);
+    const setAuthorPromise = this.setAuthorInfo(fromId, timestamp);
     
     const isDocument = media._ === 'document';
     const isVideo = isDocument && media.mime_type && ((['video', 'gif'] as MyDocument['type'][]).includes(media.type) || media.mime_type.indexOf('video/') === 0);
@@ -1258,6 +1267,7 @@ export default class AppMediaViewerBase<
     } else {
       this.toggleOverlay(true);
       this.setGlobalListeners();
+      await setAuthorPromise;
 
       if(!this.wholeDiv.parentElement) {
         this.pageEl.insertBefore(this.wholeDiv, document.getElementById('main-columns'));
@@ -1298,7 +1308,7 @@ export default class AppMediaViewerBase<
     let thumbPromise: Promise<any> = Promise.resolve();
     const size = setAttachmentSize(media, container, maxWidth, maxHeight, mediaSizes.isMobile ? false : true, undefined, !!(isDocument && media.w && media.h)).photoSize;
     if(useContainerAsTarget) {
-      const cacheContext = appDownloadManager.getCacheContext(media, size.type);
+      const cacheContext = await this.managers.thumbsStorage.getCacheContext(media, size.type);
       let img: HTMLImageElement | HTMLCanvasElement;
       if(cacheContext.downloaded) {
         img = new Image();
@@ -1324,6 +1334,10 @@ export default class AppMediaViewerBase<
 
     const supportsStreaming: boolean = !!(isDocument && media.supportsStreaming);
     const preloader = supportsStreaming ? this.preloaderStreamable : this.preloader;
+
+    const getCacheContext = () => {
+      return this.managers.thumbsStorage.getCacheContext(media, size?.type);
+    };
 
     let setMoverPromise: Promise<void>;
     if(isVideo) {
@@ -1518,29 +1532,28 @@ export default class AppMediaViewerBase<
         }
         
         //if(!video.src || media.url !== video.src) {
-          const load = () => {
+          const load = async() => {
             /* if(useController) {
               appMediaPlaybackController.resolveWaitingForLoadMedia(message.peerId, message.mid, message.pFlags.is_scheduled);
             } */
 
-            const cacheContext = appDownloadManager.getCacheContext(media);
-            const promise: Promise<any> = supportsStreaming ? Promise.resolve() : this.managers.appDocsManager.downloadDoc(media);
+            const promise: Promise<any> = supportsStreaming ? Promise.resolve() : appDownloadManager.downloadMediaURL({media});
             
             if(!supportsStreaming) {
-              onAnimationEnd.then(() => {
-                if(!cacheContext.url) {
+              onAnimationEnd.then(async() => {
+                if(!(await getCacheContext()).url) {
                   preloader.attach(mover, true, promise);
                 }
               });
             }
   
-            Promise.all([promise, onAnimationEnd]).then(() => {
+            Promise.all([promise, onAnimationEnd]).then(async() => {
               if(this.tempId !== tempId) {
                 this.log.warn('media viewer changed video');
                 return;
               }
 
-              const url = cacheContext.url;
+              const url = (await getCacheContext()).url;
               if(target instanceof SVGSVGElement/*  && (video.parentElement || !isSafari) */) { // if video exists
                 //if(!video.parentElement) {
                   div.firstElementChild.lastElementChild.append(video);
@@ -1581,18 +1594,17 @@ export default class AppMediaViewerBase<
       //if(wasActive) return;
         //return;
         
-        const load = () => {
-          const cacheContext = appDownloadManager.getCacheContext(media, size.type);
-          const cancellablePromise = isDocument ? this.managers.appDocsManager.downloadDoc(media) : this.managers.appPhotosManager.preloadPhoto(media, size);
+        const load = async() => {
+          const cancellablePromise = isDocument ? appDownloadManager.downloadMediaURL({media}) : appDownloadManager.downloadMediaURL({media, thumb: size});
   
-          onAnimationEnd.then(() => {
-            if(!cacheContext.url) {
+          onAnimationEnd.then(async() => {
+            if(!(await getCacheContext()).url) {
               this.preloader.attachPromise(cancellablePromise);
               //this.preloader.attach(mover, true, cancellablePromise);
             }
           });
           
-          Promise.all([onAnimationEnd, cancellablePromise]).then(() => {
+          Promise.all([onAnimationEnd, cancellablePromise]).then(async() => {
             if(this.tempId !== tempId) {
               this.log.warn('media viewer changed photo');
               return;
@@ -1600,7 +1612,7 @@ export default class AppMediaViewerBase<
             
             ///////this.log('indochina', blob);
     
-            const url = cacheContext.url;
+            const url = (await getCacheContext()).url;
             if(target instanceof SVGSVGElement) {
               this.updateMediaSource(target, url, 'img');
               this.updateMediaSource(mover, url, 'img');
@@ -1608,7 +1620,7 @@ export default class AppMediaViewerBase<
               if(mediaSizes.isMobile) {
                 const imgs = mover.querySelectorAll('img');
                 if(imgs && imgs.length) {
-                  imgs.forEach(img => {
+                  imgs.forEach((img) => {
                     img.classList.remove('thumbnail'); // может здесь это вообще не нужно
                   });
                 }
@@ -1637,7 +1649,7 @@ export default class AppMediaViewerBase<
             }
     
             //this.preloader.detach();
-          }).catch(err => {
+          }).catch((err) => {
             this.log.error(err);
             this.preloader.attach(mover);
             this.preloader.setManual();

@@ -23,12 +23,12 @@
   <meta name="msapplication-config" content="browserconfig.xml?v=jw3mK7G9Ry">
   <meta name="theme-color" content="#ffffff">
   <meta name="color-scheme" content="light">
-  {{# each htmlWebpackPlugin.files.css }}
-    <link rel="stylesheet" href="{{ this }}">
-  {{/ each }}
-  {{# each htmlWebpackPlugin.files.extracted.css }}
-    <link rel="stylesheet" href="{{ this.file }}" media="{{ this.query }}">
-  {{/ each }}
+  {{#each htmlWebpackPlugin.files.css}}
+    <link rel="stylesheet" href="{{this}}">
+  {{/each}}
+  {{#each htmlWebpackPlugin.files.extracted.css}}
+    <link rel="stylesheet" href="{{this.file}}" media="{{this.query}}">
+  {{/each}}
 </head>
 
 <body class="animation-level-2 is-left-column-shown">
@@ -153,10 +153,4 @@
       </div>
     </div>
   </div>
-  {{# each htmlWebpackPlugin.files.js }}
-    <script src="{{ this }}"></script>
-  {{/ each}}
-  {{# each htmlWebpackPlugin.files.extracted.js }}
-    <script src="{{ this.file }}"></script>
-  {{/ each}}
 </html>

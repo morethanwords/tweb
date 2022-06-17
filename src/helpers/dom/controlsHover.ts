@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { IS_TOUCH_SUPPORTED } from "../../environment/touchSupport";
+import IS_TOUCH_SUPPORTED from "../../environment/touchSupport";
 import EventListenerBase from "../eventListenerBase";
 import ListenerSetter from "../listenerSetter";
 import safeAssign from "../object/safeAssign";

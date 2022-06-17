@@ -10,11 +10,13 @@
  */
 
 import { MOUNT_CLASS_TO } from "../../config/debug";
+import IS_SHARED_WORKER_SUPPORTED from "../../environment/sharedWorkerSupport";
+import EventListenerBase from "../../helpers/eventListenerBase";
+import idleController from "../../helpers/idleController";
 import { nextRandomUint } from "../../helpers/random";
 import { logger } from "../logger";
 import rootScope from "../rootScope";
 import sessionStorage from "../sessionStorage";
-import apiManager from "./mtprotoworker";
 
 export type AppInstance = {
   id: number,
@@ -25,8 +27,12 @@ export type AppInstance = {
 const CHECK_INSTANCE_INTERVAL = 5000; 
 const DEACTIVATE_TIMEOUT = 30000;
 const MULTIPLE_TABS_THRESHOLD = 20000;
+const IS_MULTIPLE_INSTANCES_SUPPORTED = IS_SHARED_WORKER_SUPPORTED;
 
-export class SingleInstance {
+export class SingleInstance extends EventListenerBase<{
+  activated: () =>  void,
+  deactivated: () => void
+}> {
   private instanceID: number;
   private started: boolean;
   private masterInstance: boolean;
@@ -36,13 +42,13 @@ export class SingleInstance {
   private log = logger('INSTANCE');
 
   public start() {
-    if(!this.started/*  && !Config.Navigator.mobile && !Config.Modes.packed */) {
+    if(!this.started && !IS_MULTIPLE_INSTANCES_SUPPORTED/*  && !Config.Navigator.mobile && !Config.Modes.packed */) {
       this.started = true;
 
       this.reset();
       //IdleManager.start();
 
-      rootScope.addEventListener('idle', this.checkInstance);
+      idleController.addEventListener('change', this.checkInstance);
       setInterval(this.checkInstance, CHECK_INSTANCE_INTERVAL);
       this.checkInstance();
 
@@ -52,7 +58,8 @@ export class SingleInstance {
     }
   }
 
-  public reset() {
+  private reset() {
+    if(IS_MULTIPLE_INSTANCES_SUPPORTED) return;
     this.instanceID = nextRandomUint(32);
     this.masterInstance = false;
     if(this.deactivateTimeout) clearTimeout(this.deactivateTimeout);
@@ -61,24 +68,24 @@ export class SingleInstance {
     this.initial = false;
   }
 
-  public clearInstance = () => {
-    if(this.masterInstance && !this.deactivated) {
+  private clearInstance = () => {
+    if(this.masterInstance && !this.deactivated && !IS_MULTIPLE_INSTANCES_SUPPORTED) {
       this.log.warn('clear master instance');
       sessionStorage.delete('xt_instance');
     }
   };
 
   public activateInstance() {
-    if(this.deactivated) {
+    if(this.deactivated && !IS_MULTIPLE_INSTANCES_SUPPORTED) {
       this.reset();
       this.checkInstance(false);
-      rootScope.dispatchEvent('instance_activated');
+      this.dispatchEvent('activated');
     }
   }
 
-  public deactivateInstance = () => {
-    if(this.masterInstance || this.deactivated) {
-      return false;
+  private deactivateInstance = () => {
+    if(this.masterInstance || this.deactivated || IS_MULTIPLE_INSTANCES_SUPPORTED) {
+      return;
     }
 
     this.log('deactivate');
@@ -89,13 +96,13 @@ export class SingleInstance {
 
     //document.title = _('inactive_tab_title_raw')
 
-    rootScope.idle.deactivated = true;
-    rootScope.dispatchEvent('instance_deactivated');
+    idleController.idle.deactivated = true;
+    this.dispatchEvent('deactivated');
   };
 
-  public checkInstance = (idle = rootScope.idle && rootScope.idle.isIDLE) => {
-    if(this.deactivated) {
-      return false;
+  private checkInstance = (idle = idleController.idle?.isIDLE) => {
+    if(this.deactivated || IS_MULTIPLE_INSTANCES_SUPPORTED) {
+      return;
     }
     
     const time = Date.now();
@@ -114,7 +121,7 @@ export class SingleInstance {
         sessionStorage.set({xt_instance: newInstance});
 
         if(!this.masterInstance) {
-          apiManager.startAll();
+          rootScope.managers.networkerFactory.startAll();
           if(!this.initial) {
             this.initial = true;
           } else {
@@ -130,7 +137,7 @@ export class SingleInstance {
         }
       } else {
         if(this.masterInstance) {
-          apiManager.stopAll();
+          rootScope.managers.networkerFactory.stopAll();
           this.log.warn('now idle instance', newInstance);
           if(!this.deactivateTimeout) {
             this.deactivateTimeout = window.setTimeout(this.deactivateInstance, DEACTIVATE_TIMEOUT);

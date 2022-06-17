@@ -18,7 +18,7 @@ export default class SortedList<SortedElement extends SortedElementBase> {
   protected elements: Map<SortedElementId, SortedElement>;
   protected sorted: Array<SortedElement>;
 
-  protected getIndex: (element: SortedElement) => number;
+  protected getIndex: (element: SortedElement) => PromiseLike<number> | number;
   protected onDelete: (element: SortedElement) => void;
   protected onUpdate: (element: SortedElement) => void;
   protected onSort: (element: SortedElement, idx: number) => void;
@@ -52,7 +52,7 @@ export default class SortedList<SortedElement extends SortedElementBase> {
   }
 
   protected _updateList() {
-    this.elements.forEach(element => {
+    this.elements.forEach((element) => {
       this.update(element.id, true);
     });
 
@@ -88,7 +88,12 @@ export default class SortedList<SortedElement extends SortedElementBase> {
     return this.elements;
   }
 
-  public add(id: SortedElementId, batch = false, updateElementWith?: SortedList<SortedElement>['updateElementWith'], updateBatch = batch) {
+  public add(
+    id: SortedElementId, 
+    batch = false, 
+    updateElementWith?: SortedList<SortedElement>['updateElementWith'], 
+    updateBatch = batch
+  ) {
     let element = this.get(id);
     if(element) {
       return element;
@@ -137,12 +142,17 @@ export default class SortedList<SortedElement extends SortedElementBase> {
     return true;
   }
 
-  public update(id: SortedElementId, batch = false, element = this.get(id), updateElementWith?: SortedList<SortedElement>['updateElementWith']) {
+  public async update(
+    id: SortedElementId, 
+    batch = false, 
+    element = this.get(id), 
+    updateElementWith?: SortedList<SortedElement>['updateElementWith']
+  ) {
     if(!element) {
       return;
     }
 
-    element.index = this.getIndex(element);
+    element.index = await this.getIndex(element);
     this.onUpdate && this.onUpdate(element);
 
     const idx = insertInDescendSortedArray(this.sorted, element, 'index');

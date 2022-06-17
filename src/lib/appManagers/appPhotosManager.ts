@@ -9,19 +9,11 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import { CancellablePromise } from "../../helpers/cancellablePromise";
-import { getFileNameByLocation } from "../../helpers/fileName";
 import { Photo, PhotoSize, PhotosPhotos } from "../../layer";
-import apiManager from "../mtproto/mtprotoworker";
 import { ReferenceContext } from "../mtproto/referenceDatabase";
-import { MyDocument } from "./appDocsManager";
-import appDownloadManager from "./appDownloadManager";
-import windowSize from "../../helpers/windowSize";
 import isObject from "../../helpers/object/isObject";
 import safeReplaceArrayInObject from "../../helpers/object/safeReplaceArrayInObject";
 import { AppManager } from "./manager";
-import choosePhotoSize from "./utils/photos/choosePhotoSize";
-import getPhotoDownloadOptions from "./utils/photos/getPhotoDownloadOptions";
 
 export type MyPhoto = Photo.photo;
 
@@ -68,7 +60,7 @@ export class AppPhotosManager extends AppManager {
   
   public getUserPhotos(userId: UserId, maxId: Photo.photo['id'] = '0', limit: number = 20) {
     const inputUser = this.appUsersManager.getUserInput(userId);
-    return apiManager.invokeApiCacheable('photos.getUserPhotos', {
+    return this.apiManager.invokeApiCacheable('photos.getUserPhotos', {
       user_id: inputUser,
       offset: 0,
       limit,
@@ -115,62 +107,7 @@ export class AppPhotosManager extends AppManager {
     return isDownloaded;
   } */
   
-  public preloadPhoto(photoId: MyPhoto | MyDocument | string, photoSize?: PhotoSize, queueId?: number, onlyCache?: boolean): CancellablePromise<Blob> {
-    const photo = this.getPhoto(photoId);
-
-    // @ts-ignore
-    if(!photo || photo._ === 'photoEmpty') {
-      throw new Error('preloadPhoto photoEmpty!');
-    }
-
-    if(!photoSize) {
-      const fullWidth = windowSize.width;
-      const fullHeight = windowSize.height;
-      
-      photoSize = choosePhotoSize(photo, fullWidth, fullHeight);
-    }
-
-    const cacheContext = appDownloadManager.getCacheContext(photo, photoSize.type);
-    if(cacheContext.downloaded >= ('size' in photoSize ? photoSize.size : 0) && cacheContext.url) {
-      return Promise.resolve() as any;
-    }
-    
-    const downloadOptions = getPhotoDownloadOptions(photo, photoSize, queueId, onlyCache);
-    const fileName = getFileNameByLocation(downloadOptions.location);
-
-    let download = appDownloadManager.getDownload(fileName);
-    if(download) {
-      return download;
-    }
-
-    download = appDownloadManager.download(downloadOptions);
-    download.then(blob => {
-      if(!cacheContext.downloaded || cacheContext.downloaded < blob.size) {
-        const url = URL.createObjectURL(blob);
-        cacheContext.downloaded = blob.size;
-        cacheContext.url = url;
-
-        //console.log('wrote photo:', photo, photoSize, cacheContext, blob);
-      }
-
-      return blob;
-    }).catch(() => {});
-
-    return download;
-  }
-  
   public getPhoto(photoId: any/* MyPhoto | string */): MyPhoto {
     return isObject(photoId) ? photoId as MyPhoto : this.photos[photoId as any as string];
-  }
-
-  public savePhotoFile(photo: MyPhoto | MyDocument, queueId?: number) {
-    const fullPhotoSize = choosePhotoSize(photo, 0xFFFF, 0xFFFF);
-    if(!(fullPhotoSize._ === 'photoSize' || fullPhotoSize._ === 'photoSizeProgressive')) {
-      return;
-    }
-
-    const downloadOptions = getPhotoDownloadOptions(photo, fullPhotoSize, queueId);
-    downloadOptions.fileName = 'photo' + photo.id + '.jpg';
-    appDownloadManager.downloadToDisc(downloadOptions, downloadOptions.fileName);
   }
 }

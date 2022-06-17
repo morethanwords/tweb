@@ -5,23 +5,27 @@
  */
 
 import { fontFamily } from "../../components/middleEllipsis";
+import getPeerTitle from "../../components/wrappers/getPeerTitle";
 import wrapMessageForReply from "../../components/wrappers/messageForReply";
 import { MOUNT_CLASS_TO } from "../../config/debug";
 import { IS_MOBILE } from "../../environment/userAgent";
 import IS_VIBRATE_SUPPORTED from "../../environment/vibrateSupport";
 import deferredPromise, { CancellablePromise } from "../../helpers/cancellablePromise";
+import idleController from "../../helpers/idleController";
 import deepEqual from "../../helpers/object/deepEqual";
 import tsNow from "../../helpers/tsNow";
+import { Message, MessagePeerReaction, PeerNotifySettings } from "../../layer";
 import I18n, { FormatterArguments, LangPackKey } from "../langPack";
-import apiManager from "../mtproto/mtprotoworker";
+import apiManagerProxy from "../mtproto/mtprotoworker";
+import singleInstance from "../mtproto/singleInstance";
 import webPushApiManager, { PushSubscriptionNotify } from "../mtproto/webPushApiManager";
 import fixEmoji from "../richTextProcessor/fixEmoji";
 import wrapPlainText from "../richTextProcessor/wrapPlainText";
 import rootScope from "../rootScope";
 import stateStorage from "../stateStorage";
 import appRuntimeManager from "./appRuntimeManager";
-import appStateManager from "./appStateManager";
 import { AppManagers } from "./managers";
+import getPeerId from "./utils/peers/getPeerId";
 
 type MyNotification = Notification & {
   hidden?: boolean,
@@ -91,22 +95,22 @@ export class UiNotificationsManager {
 
     this.topMessagesDeferred = deferredPromise<void>();
 
-    rootScope.addEventListener('instance_deactivated', () => {
+    singleInstance.addEventListener('deactivated', () => {
       this.stop();
     });
 
-    rootScope.addEventListener('instance_activated', () => {
+    singleInstance.addEventListener('activated', () => {
       if(this.stopped) {
         this.start();
       }
     });
 
-    rootScope.addEventListener('idle', (newVal) => {
+    idleController.addEventListener('change', (idle) => {
       if(this.stopped) {
         return;
       }
 
-      if(!newVal) {
+      if(!idle) {
         this.clear();
       }
 
@@ -119,75 +123,6 @@ export class UiNotificationsManager {
 
     rootScope.addEventListener('notification_cancel', (str) => {
       this.cancel(str);
-    });
-
-    rootScope.addEventListener('notification_build', ({message, fwdCount, peerReaction, peerTypeNotifySettings}) => {
-      const peerId = message.peerId;
-      const isAnyChat = peerId.isAnyChat();
-      const notification: NotifyOptions = {};
-      const peerString = this.managers.appPeersManager.getPeerString(peerId);
-      let notificationMessage: string;
-
-      if(peerTypeNotifySettings.show_previews) {
-        if(message._ === 'message' && message.fwd_from && fwdCount > 1) {
-          notificationMessage = I18n.format('Notifications.Forwarded', true, [fwdCount]);
-        } else {
-          notificationMessage = wrapMessageForReply(message, undefined, undefined, true);
-
-          if(peerReaction) {
-            const langPackKey: LangPackKey = /* isAnyChat ? 'Notification.Group.Reacted' :  */'Notification.Contact.Reacted';
-            const args: FormatterArguments = [
-              fixEmoji(peerReaction.reaction), // can be plain heart
-              notificationMessage
-            ];
-    
-            /* if(isAnyChat) {
-              args.unshift(appPeersManager.getPeerTitle(message.fromId, true));
-            } */
-    
-            notificationMessage = I18n.format(langPackKey, true, args);
-          }
-        }
-      } else {
-        notificationMessage = I18n.format('Notifications.New', true);
-      }
-
-      if(peerReaction) {
-        notification.noIncrement = true;
-        notification.silent = true;
-      }
-
-      const notificationFromPeerId = peerReaction ? this.managers.appPeersManager.getPeerId(peerReaction.peer_id) : message.fromId;
-      notification.title = this.managers.appPeersManager.getPeerTitle(peerId, true);
-      if(isAnyChat && notificationFromPeerId !== message.peerId) {
-        notification.title = this.managers.appPeersManager.getPeerTitle(notificationFromPeerId, true) +
-          ' @ ' +
-          notification.title;
-      }
-
-      notification.title = wrapPlainText(notification.title);
-
-      notification.onclick = () => {
-        rootScope.dispatchEvent('history_focus', {peerId, mid: message.mid});
-      };
-
-      notification.message = notificationMessage;
-      notification.key = 'msg' + message.mid;
-      notification.tag = peerString;
-      notification.silent = true;//message.pFlags.silent || false;
-
-      const peerPhoto = this.managers.appPeersManager.getPeerPhoto(peerId);
-      if(peerPhoto) {
-        this.managers.appAvatarsManager.loadAvatar(peerId, peerPhoto, 'photo_small').loadPromise.then(url => {
-          // ! WARNING, message can be already read
-          if(message.pFlags.unread || peerReaction) {
-            notification.image = url;
-            this.notify(notification);
-          }
-        });
-      } else {
-        this.notify(notification);
-      }
     });
 
     rootScope.addEventListener('push_init', (tokenData) => {
@@ -228,7 +163,7 @@ export class UiNotificationsManager {
       }
 
       if(notificationData.action === 'mute1d') {
-        apiManager.invokeApi('account.updateDeviceLocked', {
+        this.managers.apiManager.invokeApi('account.updateDeviceLocked', {
           period: 86400
         }).then(() => {
           // var toastData = toaster.pop({
@@ -248,13 +183,13 @@ export class UiNotificationsManager {
       const peerId = notificationData.custom && notificationData.custom.peerId.toPeerId();
       console.log('click', notificationData, peerId);
       if(peerId) {
-        this.topMessagesDeferred.then(() => {
+        this.topMessagesDeferred.then(async() => {
           if(notificationData.custom.channel_id &&
-              !this.managers.appChatsManager.hasChat(notificationData.custom.channel_id)) {
+              !(await this.managers.appChatsManager.hasChat(notificationData.custom.channel_id))) {
             return;
           }
 
-          if(peerId.isUser() && !this.managers.appUsersManager.hasUser(peerId)) {
+          if(peerId.isUser() && !(await this.managers.appUsersManager.hasUser(peerId))) {
             return;
           }
 
@@ -267,7 +202,81 @@ export class UiNotificationsManager {
     });
   }
 
-  private toggleToggler(enable = rootScope.idle.isIDLE) {
+  public async buildNotification({message, fwdCount, peerReaction, peerTypeNotifySettings}: {
+    message: Message.message | Message.messageService,
+    fwdCount?: number,
+    peerReaction?: MessagePeerReaction,
+    peerTypeNotifySettings?: PeerNotifySettings
+  }) {
+    const peerId = message.peerId;
+    const isAnyChat = peerId.isAnyChat();
+    const notification: NotifyOptions = {};
+    const peerString = await this.managers.appPeersManager.getPeerString(peerId);
+    let notificationMessage: string;
+
+    if(peerTypeNotifySettings.show_previews) {
+      if(message._ === 'message' && message.fwd_from && fwdCount > 1) {
+        notificationMessage = I18n.format('Notifications.Forwarded', true, [fwdCount]);
+      } else {
+        notificationMessage = await wrapMessageForReply(message, undefined, undefined, true);
+
+        if(peerReaction) {
+          const langPackKey: LangPackKey = /* isAnyChat ? 'Notification.Group.Reacted' :  */'Notification.Contact.Reacted';
+          const args: FormatterArguments = [
+            fixEmoji(peerReaction.reaction), // can be plain heart
+            notificationMessage
+          ];
+  
+          /* if(isAnyChat) {
+            args.unshift(appPeersManager.getPeerTitle(message.fromId, true));
+          } */
+  
+          notificationMessage = I18n.format(langPackKey, true, args);
+        }
+      }
+    } else {
+      notificationMessage = I18n.format('Notifications.New', true);
+    }
+
+    if(peerReaction) {
+      notification.noIncrement = true;
+      notification.silent = true;
+    }
+
+    const notificationFromPeerId = peerReaction ? getPeerId(peerReaction.peer_id) : message.fromId;
+    notification.title = await getPeerTitle(peerId, true, undefined, undefined, this.managers);
+    if(isAnyChat && notificationFromPeerId !== message.peerId) {
+      notification.title = await getPeerTitle(notificationFromPeerId, true, undefined, undefined, this.managers) +
+        ' @ ' +
+        notification.title;
+    }
+
+    notification.title = wrapPlainText(notification.title);
+
+    notification.onclick = () => {
+      rootScope.dispatchEvent('history_focus', {peerId, mid: message.mid});
+    };
+
+    notification.message = notificationMessage;
+    notification.key = 'msg' + message.mid;
+    notification.tag = peerString;
+    notification.silent = true;//message.pFlags.silent || false;
+
+    const peerPhoto = await this.managers.appPeersManager.getPeerPhoto(peerId);
+    if(peerPhoto) {
+      this.managers.appAvatarsManager.loadAvatar(peerId, peerPhoto, 'photo_small').then((url) => {
+        // ! WARNING, message can be already read
+        if(message.pFlags.unread || peerReaction) {
+          notification.image = url;
+          this.notify(notification);
+        }
+      });
+    } else {
+      this.notify(notification);
+    }
+  }
+
+  private toggleToggler(enable = idleController.idle.isIDLE) {
     if(IS_MOBILE) return;
 
     const resetTitle = () => {
@@ -294,8 +303,8 @@ export class UiNotificationsManager {
           //this.setFavicon('assets/img/favicon_unread.ico');
 
           // fetch('assets/img/favicon.ico')
-          // .then(res => res.blob())
-          // .then(blob => {
+          // .then((res) => res.blob())
+          // .then((blob) => {
             // const img = document.createElement('img');
             // img.src = URL.createObjectURL(blob);
 
@@ -484,7 +493,7 @@ export class UiNotificationsManager {
   }
 
   public updateLocalSettings = () => {
-    Promise.all(['notify_nodesktop', 'notify_volume', 'notify_novibrate', 'notify_nopreview', 'notify_nopush'].map(k => stateStorage.get(k as any)))
+    Promise.all(['notify_nodesktop', 'notify_volume', 'notify_novibrate', 'notify_nopreview', 'notify_nopush'].map((k) => stateStorage.get(k as any)))
     .then((updSettings) => {
       this.settings.nodesktop = updSettings[0];
       this.settings.volume = updSettings[1] === undefined ? 0.5 : updSettings[1];
@@ -507,7 +516,7 @@ export class UiNotificationsManager {
       webPushApiManager.setSettings(this.settings);
     });
 
-    appStateManager.getState().then(state => {
+    apiManagerProxy.getState().then((state) => {
       this.settings.nosound = !state.settings.notifications.sound;
     });
   }
@@ -634,7 +643,7 @@ export class UiNotificationsManager {
       return false;
     }
 
-    apiManager.invokeApi('account.registerDevice', {
+    this.managers.apiManager.invokeApi('account.registerDevice', {
       token_type: tokenData.tokenType,
       token: tokenData.tokenValue,
       other_uids: [],
@@ -652,7 +661,7 @@ export class UiNotificationsManager {
       return false;
     }
 
-    apiManager.invokeApi('account.unregisterDevice', {
+    this.managers.apiManager.invokeApi('account.unregisterDevice', {
       token_type: tokenData.tokenType,
       token: tokenData.tokenValue,
       other_uids: []

@@ -8,7 +8,6 @@ import type Chat from "./chat";
 import debounce from "../../helpers/schedulers/debounce";
 import { WebDocument } from "../../layer";
 import { MyDocument } from "../../lib/appManagers/appDocsManager";
-import appDownloadManager from "../../lib/appManagers/appDownloadManager";
 import LazyLoadQueue from "../lazyLoadQueue";
 import Scrollable from "../scrollable";
 import { wrapPhoto } from "../wrappers";
@@ -27,6 +26,8 @@ import renderImageWithFadeIn from "../../helpers/dom/renderImageWithFadeIn";
 import { AppManagers } from "../../lib/appManagers/managers";
 import wrapEmojiText from "../../lib/richTextProcessor/wrapEmojiText";
 import wrapRichText from "../../lib/richTextProcessor/wrapRichText";
+import generateQId from "../../lib/appManagers/utils/inlineBots/generateQId";
+import appDownloadManager from "../../lib/appManagers/appDownloadManager";
 
 const ANIMATION_GROUP = 'INLINE-HELPER';
 // const GRID_ITEMS = 5;
@@ -54,7 +55,7 @@ export default class InlineHelper extends AutocompleteHelper {
         if(!target) return false; // can happen when there is only button
         const {peerId, botId, queryId} = this.list.dataset;
         return this.chat.input.getReadyToSend(() => {
-          const queryAndResultIds = this.managers.appInlineBotsManager.generateQId(queryId, (target as HTMLElement).dataset.resultId);
+          const queryAndResultIds = generateQId(queryId, (target as HTMLElement).dataset.resultId);
           this.managers.appInlineBotsManager.sendInlineResult(peerId.toPeerId(), botId, queryAndResultIds, {
             ...this.chat.getMessageSendingParams(),
             clearDraft: true,
@@ -95,7 +96,7 @@ export default class InlineHelper extends AutocompleteHelper {
       throw 'NOT_A_BOT';
     }
 
-    const renderPromise = this.managers.appInlineBotsManager.getInlineResults(peerId, peer.id, query).then(botResults => {
+    const renderPromise = this.managers.appInlineBotsManager.getInlineResults(peerId, peer.id, query).then((botResults) => {
       if(!middleware()) {
         throw 'PEER_CHANGED';
       }
@@ -182,10 +183,10 @@ export default class InlineHelper extends AutocompleteHelper {
                   },
                   size: item.thumb.size,
                   mimeType: item.thumb.mime_type
-                }).then(blob => {
+                }).then((blob) => {
                   const image = new Image();
                   image.classList.add('media-photo');
-                  readBlobAsDataURL(blob).then(dataURL => {
+                  readBlobAsDataURL(blob).then((dataURL) => {
                     renderImageWithFadeIn(mediaContainer, image, dataURL, true);
                   });
                 });

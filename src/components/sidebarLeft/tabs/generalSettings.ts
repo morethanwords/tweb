@@ -9,7 +9,6 @@ import RangeSelector from "../../rangeSelector";
 import Button from "../../button";
 import CheckboxField from "../../checkboxField";
 import RadioField from "../../radioField";
-import appStateManager, { State } from "../../../lib/appManagers/appStateManager";
 import rootScope from "../../../lib/rootScope";
 import { IS_APPLE } from "../../../environment/userAgent";
 import Row from "../../row";
@@ -26,6 +25,7 @@ import { SliderSuperTabEventable } from "../../sliderTab";
 import IS_GEOLOCATION_SUPPORTED from "../../../environment/geolocationSupport";
 import AppQuickReactionTab from "./quickReaction";
 import wrapEmojiText from "../../../lib/richTextProcessor/wrapEmojiText";
+import { State } from "../../../config/state";
 
 export class RangeSettingSelector {
   public container: HTMLDivElement;
@@ -98,7 +98,7 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
       
       const range = new RangeSettingSelector('TextSize', 1, rootScope.settings.messagesTextSize, 12, 20);
       range.onChange = (value) => {
-        appStateManager.setByKey('settings.messagesTextSize', value);
+        rootScope.managers.appStateManager.setByKey('settings.messagesTextSize', value);
       };
 
       const chatBackgroundButton = Button('btn-primary btn-transparent', {icon: 'image', text: 'ChatBackground'});
@@ -220,7 +220,7 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
 
       this.eventListener.addEventListener('destroy', cancel);
 
-      form.append(...rows.map(row => row.container));
+      form.append(...rows.map((row) => row.container));
       container.append(form);
     }
 
@@ -255,7 +255,7 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
       });
 
       const renderQuickReaction = () => {
-        Promise.resolve(this.managers.appReactionsManager.getQuickReaction()).then(reaction => {
+        Promise.resolve(this.managers.appReactionsManager.getQuickReaction()).then((reaction) => {
           wrapStickerToRow({
             row: reactionsRow,
             doc: reaction.static_icon,
@@ -317,7 +317,7 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
         stickersContent[method](row.container);
       };
 
-      this.managers.appStickersManager.getAllStickers().then(allStickers => {
+      this.managers.appStickersManager.getAllStickers().then((allStickers) => {
         assumeType<MessagesAllStickers.messagesAllStickers>(allStickers);
         for(const stickerSet of allStickers.sets) {
           renderStickerSet(stickerSet);

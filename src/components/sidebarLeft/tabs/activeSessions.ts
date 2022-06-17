@@ -4,17 +4,13 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { SliderSuperTab } from "../../slider";
 import { SettingSection } from "..";
 import Button from "../../button";
 import Row from "../../row";
 import { Authorization } from "../../../layer";
 import { formatDateAccordingToTodayNew } from "../../../helpers/date";
-import { attachContextMenuListener, openBtnMenu, positionMenu } from "../../misc";
 import ButtonMenu from "../../buttonMenu";
-import apiManager from "../../../lib/mtproto/mtprotoworker";
 import { toast } from "../../toast";
-import AppPrivacyAndSecurityTab from "./privacyAndSecurity";
 import I18n from "../../../lib/langPack";
 import PopupPeer from "../../popups/peer";
 import findUpClassName from "../../../helpers/dom/findUpClassName";
@@ -22,6 +18,9 @@ import { attachClickEvent } from "../../../helpers/dom/clickEvent";
 import toggleDisability from "../../../helpers/dom/toggleDisability";
 import { SliderSuperTabEventable } from "../../sliderTab";
 import findAndSplice from "../../../helpers/array/findAndSplice";
+import { attachContextMenuListener } from "../../../helpers/dom/attachContextMenuListener";
+import positionMenu from "../../../helpers/positionMenu";
+import contextMenuController from "../../../helpers/contextMenuController";
 
 export default class AppActiveSessionsTab extends SliderSuperTabEventable {
   public authorizations: Authorization.authorization[];
@@ -73,7 +72,7 @@ export default class AppActiveSessionsTab extends SliderSuperTabEventable {
               isDanger: true,
               callback: () => {
                 const toggle = toggleDisability([btnTerminate], true);
-                apiManager.invokeApi('auth.resetAuthorizations').then(value => {
+                this.managers.apiManager.invokeApi('auth.resetAuthorizations').then((value) => {
                   //toggleDisability([btnTerminate], false);
                   btnTerminate.remove();
                   otherSection.container.remove();
@@ -102,7 +101,7 @@ export default class AppActiveSessionsTab extends SliderSuperTabEventable {
       caption: 'SessionsListInfo'
     });
 
-    authorizations.forEach(auth => {
+    authorizations.forEach((auth) => {
       otherSection.content.append(Session(auth).container);
     });
 
@@ -123,8 +122,8 @@ export default class AppActiveSessionsTab extends SliderSuperTabEventable {
           langKey: 'Terminate',
           isDanger: true,
           callback: () => {
-            apiManager.invokeApi('account.resetAuthorization', {hash})
-            .then(value => {
+            this.managers.apiManager.invokeApi('account.resetAuthorization', {hash})
+            .then((value) => {
               if(value) {
                 target.remove();
               }
@@ -157,7 +156,7 @@ export default class AppActiveSessionsTab extends SliderSuperTabEventable {
       if(e instanceof MouseEvent) e.cancelBubble = true;
 
       positionMenu(e, element);
-      openBtnMenu(element);
+      contextMenuController.openBtnMenu(element);
     });
 
     attachClickEvent(this.scrollable.container, (e) => {

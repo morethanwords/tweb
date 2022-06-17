@@ -4,12 +4,12 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { IS_TOUCH_SUPPORTED } from "../../environment/touchSupport";
+import IS_TOUCH_SUPPORTED from "../../environment/touchSupport";
 import appImManager from "../../lib/appManagers/appImManager";
 import rootScope from "../../lib/rootScope";
 import animationIntersector from "../animationIntersector";
 import { horizontalMenu } from "../horizontalMenu";
-import LazyLoadQueue, { LazyLoadQueueIntersector } from "../lazyLoadQueue";
+import LazyLoadQueue from "../lazyLoadQueue";
 import Scrollable, { ScrollableX } from "../scrollable";
 import appSidebarRight from "../sidebarRight";
 import StickyIntersector from "../stickyIntersector";
@@ -28,6 +28,7 @@ import DropdownHover from "../../helpers/dropdownHover";
 import pause from "../../helpers/schedulers/pause";
 import { IS_APPLE_MOBILE } from "../../environment/userAgent";
 import { AppManagers } from "../../lib/appManagers/managers";
+import type LazyLoadQueueIntersector from "../lazyLoadQueueIntersector";
 
 export const EMOTICONSSTICKERGROUP = 'emoticons-dropdown';
 
@@ -180,7 +181,7 @@ export class EmoticonsDropdown extends DropdownHover {
       this.tabs[INIT_TAB_ID].init(); // onTransitionEnd не вызовется, т.к. это первая открытая вкладка
     }
 
-    rootScope.addEventListener('peer_changed', this.checkRights);
+    appImManager.addEventListener('peer_changed', this.checkRights);
     this.checkRights();
 
     return super.init();

@@ -48,6 +48,37 @@ $bubble-beside-button-width: 38px;
   // }
 }
 
+.bubbles-group {
+  position: relative;
+
+  &-avatar {
+    position: sticky !important;
+    top: 0;
+    bottom: $bubble-margin;
+    cursor: pointer;
+    pointer-events: all;
+
+    .bubbles.is-selecting & {
+      transform: translate3d(0, 0, 0) scale3d(1, 1, 1);
+      transform-origin: bottom;
+    }
+
+    &-container {
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      display: flex;
+      flex-direction: column-reverse;
+
+      // make avatar clickable
+      z-index: 2;
+      pointer-events: none;
+    }
+  }
+}
+
 .bubble {
   position: relative;
   z-index: 1;
@@ -105,8 +136,8 @@ $bubble-beside-button-width: 38px;
       left: -50%;
       /* top: 0;
       bottom: 0; */
-      top: -#{$bubble-margin / 2};
-      bottom: -#{$bubble-margin / 2};
+      top: -#{math.div($bubble-margin, 2)};
+      bottom: -#{math.div($bubble-margin, 2)};
       content: " ";
       z-index: -1;
     }
@@ -114,13 +145,13 @@ $bubble-beside-button-width: 38px;
 
   /* &.is-highlighted, &.is-selected {
     &:not(.is-group-last):after {
-      height: calc(100% + #{$bubble-margin / 2}) !important;
+      height: calc(100% + #{math.div($bubble-margin, 2)}) !important;
     }
 
     & + &:not(.is-group-last) {
       &:after {
         top: .125rem !important;
-        height: calc(100% - #{$bubble-margin / 2}) !important;
+        height: calc(100% - #{math.div($bubble-margin, 2)}) !important;
       }
     }
   } */
@@ -128,7 +159,7 @@ $bubble-beside-button-width: 38px;
   // ! if turn this on, there will be an empty space
   /* &.is-highlighted, &.is-selected {
     &.is-group-last:after {
-      bottom: #{$bubble-margin / 2} !important;
+      bottom: #{math.div($bubble-margin, 2)} !important;
     }
   } */
 
@@ -164,7 +195,7 @@ $bubble-beside-button-width: 38px;
 
     &.is-highlighted, &.is-selected {
       &:after {
-        top: calc(#{$bubble-margin / 2} + 30px);
+        top: calc(#{math.div($bubble-margin, 2)} + 30px);
       }
     }
   }
@@ -914,9 +945,9 @@ $bubble-beside-button-width: 38px;
     &.empty-bubble-placeholder {
       position: absolute;
       top: 50%;
-      transform: translateY(-50%);
-      // left: 50%;
-      // transform: translate(-50%, -50%);
+      // transform: translateY(-50%);
+      left: 50%;
+      transform: translate(-50%, -50%);
 
       &.has-description {
         .service-msg {
@@ -958,7 +989,7 @@ $bubble-beside-button-width: 38px;
         margin-right: .3125rem;
       }
 
-      &:not(:first-child:last-child) {
+      .bubbles.has-groups & {
         .bubble-content-wrapper {
           transform: scale3d(.8, .8, 1) translateX(0);
           //transform: scale(.8) translateX(0);
@@ -1225,7 +1256,7 @@ $bubble-beside-button-width: 38px;
       }
 
       &-border {
-        background: #fff;
+        background: #fff !important;
       }
     }
   }
@@ -1577,7 +1608,7 @@ $bubble-beside-button-width: 38px;
 
       &:first-of-type {
         .document-selection {
-          top: -#{$bubble-margin / 2}; // * padding inner + half padding outer
+          top: -#{math.div($bubble-margin, 2)}; // * padding inner + half padding outer
         }
 
         .document-wrapper {
@@ -1589,7 +1620,7 @@ $bubble-beside-button-width: 38px;
 
       &:last-of-type {
         .document-selection {
-          bottom: -#{$bubble-margin / 2};
+          bottom: -#{math.div($bubble-margin, 2)};
         }
 
         .document-wrapper {
@@ -2116,28 +2147,29 @@ $bubble-beside-button-width: 38px;
 
 // * fix scroll with only 1 bubble
 .bubbles-date-group:last-of-type {
-  .bubble:last-of-type {
-    margin-bottom: $bubble-margin;
-    /* &:after, .document-container:last-of-type .document-selection {
-      bottom: 0 !important;
-    } */
+  .bubbles-group:last-of-type {
+    .bubble:last-of-type {
+      margin-bottom: $bubble-margin;
+      /* &:after, .document-container:last-of-type .document-selection {
+        bottom: 0 !important;
+      } */
+    }
   }
 }
 
-.bubble-content-wrapper {
+// .bubble-content-wrapper,
+// .bubbles-group-avatar,
+.can-zoom-fade {
   transform: scale(1) translateX(0);
   transform-origin: center;
   opacity: 1;
 
-  display: flex;
-  flex-direction: column;
-  
   @include animation-level(2) {
-    transition: transform var(--transition-standard-out), opacity var(--transition-standard-out);
+    transition: var(--bubble-transition-out);
   }
 
   .bubbles-inner.zoom-fading & {
-    transition: transform var(--transition-standard-in), opacity var(--transition-standard-in);
+    transition: var(--bubble-transition-in);
     //transition: transform 10s ease-in-out, opacity 10s ease-in-out;
   }
 
@@ -2146,6 +2178,11 @@ $bubble-beside-button-width: 38px;
     //transform: scale(.8) translateX(0);
     opacity: 0;
   }
+}
+
+.bubble-content-wrapper {
+  display: flex;
+  flex-direction: column;
 
   .bubble:not(.service) & {
     @include respond-to(not-handhelds) {
@@ -2155,33 +2192,6 @@ $bubble-beside-button-width: 38px;
 
   @include respond-to(handhelds) {
     max-width: calc(100% - var(--message-handhelds-margin));
-  }
-
-  > .user-avatar {
-    position: absolute;
-    margin-left: -45px;
-    //left: -3rem; # DO JS3
-    bottom: 0;
-    cursor: pointer;
-
-    .bubbles.is-selecting & {
-      transform: scale3d(1, 1, 1);
-      transform-origin: bottom;
-      transition: transform var(--transition-standard-out);
-
-      body.animation-level-0 & {
-        transition: none;
-      }
-    }
-
-    .bubbles.is-selecting:not(.backwards) & {
-      transform: scale3d(.76, .76, 1);
-      transition: transform var(--transition-standard-in);
-    }
-
-    // @include respond-to(handhelds) {
-    //   left: -45px;
-    // }
   }
 }
 
@@ -2383,12 +2393,16 @@ $bubble-beside-button-width: 38px;
           transform: scale3d(.8, .8, 1) translateX(calc((var(--chat-input-size) + #{$btn-send-margin}) * -1));
         }
 
+        @include animation-level(2) {
+          transition: var(--bubble-transition-out);
+        }
+
         //@include respond-to(no-floating-left-sidebar) {
           body.is-right-column-shown & {
             transform: scale(1) translateX(0);
             
             @include animation-level(2) {
-              transition: transform var(--transition-standard-in), opacity var(--transition-standard-in);
+              transition: var(--bubble-transition-in);
             }
   
             &.zoom-fade {
@@ -2454,12 +2468,12 @@ $bubble-beside-button-width: 38px;
   &:not(.just-media) {
     .reply {
       &-border {
-        background-color: var(--message-out-primary-color);
+        background-color: var(--message-out-primary-color) !important;
       }
 
       &-title,
       i {
-        color: var(--message-out-primary-color);
+        color: var(--message-out-primary-color) !important;
       }
     }
   }

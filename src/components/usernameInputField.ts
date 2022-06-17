@@ -4,13 +4,12 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type { AppChatsManager } from "../lib/appManagers/appChatsManager";
-import type { ApiManagerProxy } from "../lib/mtproto/mtprotoworker";
 import ListenerSetter from "../helpers/listenerSetter";
 import debounce from "../helpers/schedulers/debounce";
 import { LangPackKey } from "../lib/langPack";
 import InputField, { InputFieldOptions, InputState } from "./inputField";
 import isUsernameValid from "../lib/richTextProcessor/isUsernameValid";
+import { AppManagers } from "../lib/appManagers/managers";
 
 export class UsernameInputField extends InputField {
   private checkUsernamePromise: Promise<any>;
@@ -27,8 +26,7 @@ export class UsernameInputField extends InputField {
 
   constructor(
     options: UsernameInputField['options'], 
-    private appChatsManager: AppChatsManager,
-    private apiManager: ApiManagerProxy
+    private managers: AppManagers
   ) {
     super(options);
 
@@ -71,12 +69,12 @@ export class UsernameInputField extends InputField {
     if(this.checkUsernamePromise) return;
 
     if(this.options.peerId) {
-      this.checkUsernamePromise = this.appChatsManager.checkUsername(this.options.peerId.toChatId(), username);
+      this.checkUsernamePromise = this.managers.appChatsManager.checkUsername(this.options.peerId.toChatId(), username);
     } else {
-      this.checkUsernamePromise = this.apiManager.invokeApi('account.checkUsername', {username});
+      this.checkUsernamePromise = this.managers.appUsersManager.checkUsername(username);
     }
 
-    this.checkUsernamePromise.then(available => {
+    this.checkUsernamePromise.then((available) => {
       if(this.getValue() !== username) return;
 
       if(available) {

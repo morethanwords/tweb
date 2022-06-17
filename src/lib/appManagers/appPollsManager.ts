@@ -7,10 +7,9 @@
 import copy from "../../helpers/object/copy";
 import { InputMedia, Message, MessageEntity, MessageMedia, Poll, PollResults } from "../../layer";
 import { logger, LogTypes } from "../logger";
-import apiManager from "../mtproto/mtprotoworker";
 import parseMarkdown from "../richTextProcessor/parseMarkdown";
-import rootScope from "../rootScope";
 import { AppManager } from "./manager";
+import getServerMessageId from "./utils/messageId/getServerMessageId";
 
 export class AppPollsManager extends AppManager {
   public polls: {[id: string]: Poll} = {};
@@ -19,10 +18,8 @@ export class AppPollsManager extends AppManager {
 
   private log = logger('POLLS', LogTypes.Error);
 
-  constructor() {
-    super();
-    
-    rootScope.addMultipleEventsListeners({
+  protected after() {
+    this.apiUpdatesManager.addMultipleEventsListeners({
       updateMessagePoll: (update) => {
         this.log('updateMessagePoll:', update);
 
@@ -36,7 +33,7 @@ export class AppPollsManager extends AppManager {
         poll = ret.poll;
         results = ret.results;
         
-        rootScope.dispatchEvent('poll_update', {poll, results: results as any});
+        this.rootScope.dispatchEvent('poll_update', {poll, results: results as any});
       }
     });
   }
@@ -134,7 +131,7 @@ export class AppPollsManager extends AppManager {
   public sendVote(message: any, optionIds: number[]): Promise<void> {
     const poll: Poll = message.media.poll;
 
-    const options: Uint8Array[] = optionIds.map(index => {
+    const options: Uint8Array[] = optionIds.map((index) => {
       return poll.answers[index].option;
     });
     
@@ -149,11 +146,11 @@ export class AppPollsManager extends AppManager {
       });
     }
 
-    return apiManager.invokeApi('messages.sendVote', {
+    return this.apiManager.invokeApi('messages.sendVote', {
       peer: inputPeer,
-      msg_id: this.appMessagesIdsManager.getServerMessageId(message.mid),
+      msg_id: getServerMessageId(message.mid),
       options
-    }).then(updates => {
+    }).then((updates) => {
       this.log('sendVote updates:', updates);
       this.apiUpdatesManager.processUpdateMessage(updates);
     });
@@ -162,19 +159,19 @@ export class AppPollsManager extends AppManager {
   public getResults(message: any) {
     const inputPeer = this.appPeersManager.getInputPeerById(message.peerId);
 
-    return apiManager.invokeApi('messages.getPollResults', {
+    return this.apiManager.invokeApi('messages.getPollResults', {
       peer: inputPeer,
-      msg_id: this.appMessagesIdsManager.getServerMessageId(message.mid)
-    }).then(updates => {
+      msg_id: getServerMessageId(message.mid)
+    }).then((updates) => {
       this.apiUpdatesManager.processUpdateMessage(updates);
       this.log('getResults updates:', updates);
     });
   }
 
   public getVotes(message: any, option?: Uint8Array, offset?: string, limit = 20) {
-    return apiManager.invokeApi('messages.getPollVotes', {
+    return this.apiManager.invokeApi('messages.getPollVotes', {
       peer: this.appPeersManager.getInputPeerById(message.peerId),
-      id: this.appMessagesIdsManager.getServerMessageId(message.mid),
+      id: getServerMessageId(message.mid),
       option,
       offset,
       limit

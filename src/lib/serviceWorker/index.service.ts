@@ -7,9 +7,8 @@
 /// #if MTPROTO_SW
 import '../mtproto/mtproto.worker';
 /// #endif
-//import CacheStorageController from '../cacheStorage';
+
 import type { Modify, WorkerTaskTemplate, WorkerTaskVoidTemplate } from '../../types';
-import type { InputFileLocation, InputWebFileLocation, UploadFile } from '../../layer';
 import type { WebPushApiManager } from '../mtproto/webPushApiManager';
 import type { PushNotificationObject } from './push';
 import type { ToggleStorageTask } from '../mtproto/mtprotoworker';
@@ -28,7 +27,12 @@ export const deferredPromises: Map<WindowClient['id'], {[taskId: string]: Cancel
 
 export interface RequestFilePartTask extends Modify<WorkerTaskTemplate, {id: string}> {
   type: 'requestFilePart',
-  payload: [number, InputFileLocation | InputWebFileLocation, number, number]
+  payload: {
+    docId: DocId,
+    dcId: number,
+    offset: number,
+    limit: number
+  }
 };
 
 export interface RequestFilePartTaskResponse extends Modify<WorkerTaskTemplate, {id: string}> {
@@ -114,11 +118,15 @@ export function incrementTaskId() {
 } */
 
 const onFetch = (event: FetchEvent): void => {
-  if(event.request.url.indexOf(location.origin + '/') === 0 
-    && event.request.url.match(/\.(js|css|jpe?g|json|wasm|png|mp3|svg|tgs|ico|woff2?|ttf|webmanifest?)(?:\?.*)?$/)
-    && !IS_SAFARI) {
+  /// #if !DEBUG
+  if(
+    !IS_SAFARI && 
+    event.request.url.indexOf(location.origin + '/') === 0 && 
+    event.request.url.match(/\.(js|css|jpe?g|json|wasm|png|mp3|svg|tgs|ico|woff2?|ttf|webmanifest?)(?:\?.*)?$/)
+  ) {
     return event.respondWith(requestCache(event));
   }
+  /// #endif
 
   try {
     const [, url, scope, params] = /http[:s]+\/\/.*?(\/(.*?)(?:$|\/(.*)$))/.exec(event.request.url) || [];

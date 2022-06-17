@@ -22,6 +22,7 @@ import { DocumentAttribute } from "../../layer";
 import MediaProgressLine from "../mediaProgressLine";
 import VolumeSelector from "../volumeSelector";
 import wrapEmojiText from "../../lib/richTextProcessor/wrapEmojiText";
+import { AppManagers } from "../../lib/appManagers/managers";
 
 export default class ChatAudio extends PinnedContainer {
   private toggleEl: HTMLElement;
@@ -30,7 +31,7 @@ export default class ChatAudio extends PinnedContainer {
   private fasterEl: HTMLElement;
   private repeatEl: HTMLButtonElement;
 
-  constructor(protected topbar: ChatTopbar, protected chat: Chat, protected appMessagesManager: AppMessagesManager) {
+  constructor(protected topbar: ChatTopbar, protected chat: Chat, protected managers: AppManagers) {
     super({
       topbar, 
       chat, 
@@ -114,10 +115,10 @@ export default class ChatAudio extends PinnedContainer {
     progressWrapper.append(this.progressLine.container);
     this.wrapper.insertBefore(progressWrapper, this.wrapperUtils);
 
-    this.topbar.listenerSetter.add(rootScope)('media_play', this.onMediaPlay);
-    this.topbar.listenerSetter.add(rootScope)('media_pause', this.onPause);
-    this.topbar.listenerSetter.add(rootScope)('media_stop', this.onStop);
-    this.topbar.listenerSetter.add(rootScope)('media_playback_params', this.onPlaybackParams);
+    this.topbar.listenerSetter.add(appMediaPlaybackController)('play', this.onMediaPlay);
+    this.topbar.listenerSetter.add(appMediaPlaybackController)('pause', this.onPause);
+    this.topbar.listenerSetter.add(appMediaPlaybackController)('stop', this.onStop);
+    this.topbar.listenerSetter.add(appMediaPlaybackController)('playbackParams', this.onPlaybackParams);
 
     const playingDetails = appMediaPlaybackController.getPlayingDetails();
     if(playingDetails) {

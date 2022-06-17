@@ -6,6 +6,7 @@
 
 import setInnerHTML from "../../helpers/dom/setInnerHTML";
 import { MediaSizeType } from "../../helpers/mediaSizes";
+import { Message } from "../../layer";
 import { AppManagers } from "../../lib/appManagers/managers";
 import wrapRichText from "../../lib/richTextProcessor/wrapRichText";
 import { MediaSearchContext } from "../appMediaPlaybackController";
@@ -13,7 +14,7 @@ import Chat from "../chat/chat";
 import LazyLoadQueue from "../lazyLoadQueue";
 import wrapDocument from "./document";
 
-export default function wrapGroupedDocuments({albumMustBeRenderedFull, message, bubble, messageDiv, chat, loadPromises, autoDownloadSize, lazyLoadQueue, searchContext, useSearch, sizeType, managers}: {
+export default async function wrapGroupedDocuments({albumMustBeRenderedFull, message, bubble, messageDiv, chat, loadPromises, autoDownloadSize, lazyLoadQueue, searchContext, useSearch, sizeType, managers}: {
   albumMustBeRenderedFull: boolean,
   message: any,
   messageDiv: HTMLElement,
@@ -29,14 +30,14 @@ export default function wrapGroupedDocuments({albumMustBeRenderedFull, message, 
   managers?: AppManagers
 }) {
   let nameContainer: HTMLElement;
-  const mids = albumMustBeRenderedFull ? chat.getMidsByMid(message.mid) : [message.mid];
+  const mids = albumMustBeRenderedFull ? await chat.getMidsByMid(message.mid) : [message.mid];
   /* if(isPending) {
     mids.reverse();
   } */
 
-  mids.forEach((mid, idx) => {
-    const message = chat.getMessage(mid);
-    const div = wrapDocument({
+  const promises = mids.map(async(mid, idx) => {
+    const message = (await chat.getMessage(mid)) as Message.message;
+    const div = await wrapDocument({
       message,
       loadPromises,
       autoDownloadSize,
@@ -80,8 +81,11 @@ export default function wrapGroupedDocuments({albumMustBeRenderedFull, message, 
 
     wrapper.append(div);
     container.append(wrapper);
-    messageDiv.append(container);
+    return container;
   });
+
+  const containers = await Promise.all(promises);
+  messageDiv.append(...containers);
 
   if(mids.length > 1) {
     bubble.classList.add('is-multiple-documents', 'is-grouped');

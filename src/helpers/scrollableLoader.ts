@@ -35,7 +35,7 @@ export default class ScrollableLoader {
     }
 
     this.loading = true;
-    this.promise = this.getPromise().then(done => {
+    this.promise = this.getPromise().then((done) => {
       this.loading = false;
       this.promise = undefined;
 

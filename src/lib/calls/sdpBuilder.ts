@@ -144,7 +144,7 @@ export class SDPBuilder extends StringFromLineBuilder {
 
     addMsid();
     if(sourceGroups?.length) {
-      sourceGroups.forEach(ssrcGroup => {
+      sourceGroups.forEach((ssrcGroup) => {
         if(ssrcGroup.sources.length) {
           const sources = ssrcGroup.sources.map(fromTelegramSource);
           this.add(`a=ssrc-group:${ssrcGroup.semantics} ${sources.join(' ')}`);
@@ -182,7 +182,7 @@ export class SDPBuilder extends StringFromLineBuilder {
     }
     
     const payloadTypes = !isApplication ? codec['payload-types'] : [{id: 5000} as PayloadType];
-    const ids = payloadTypes.map(type => type.id);
+    const ids = payloadTypes.map((type) => type.id);
     add(
       generateMediaFirstLine(type, port, ids),
       'c=IN IP4 0.0.0.0',
@@ -212,12 +212,12 @@ export class SDPBuilder extends StringFromLineBuilder {
     if(!isApplication) {
       const hdrexts = codec['rtp-hdrexts'];
       if(hdrexts?.length) {
-        hdrexts.forEach(hdrext => {
+        hdrexts.forEach((hdrext) => {
           add(`a=extmap:${hdrext.id} ${hdrext.uri}`);
         });
       }
   
-      payloadTypes.forEach(type => {
+      payloadTypes.forEach((type) => {
         add(`a=rtpmap:${type.id} ${type.name}/${type.clockrate}${type.channels && type.channels > 1 ? `/${type.channels}` : ''}`);
   
         const parameters = type.parameters;
@@ -235,7 +235,7 @@ export class SDPBuilder extends StringFromLineBuilder {
   
         const fbs = type['rtcp-fbs'];
         if(fbs?.length) {
-          fbs.forEach(fb => {
+          fbs.forEach((fb) => {
             add(`a=rtcp-fb:${type.id} ${fb.type}${fb.subtype ? ' ' + fb.subtype : ''}`);
           });
         }

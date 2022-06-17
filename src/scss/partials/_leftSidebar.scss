@@ -105,6 +105,10 @@
         .scrollable {
           padding-top: .5rem;
         }
+
+        .dialogs-placeholder-canvas {
+          top: .5rem;
+        }
   
         /* .chatlist {
           top: .5rem;
@@ -132,6 +136,10 @@
         display: none;
       }
     }
+  }
+
+  .folders-tabs-scrollable {
+    flex: 0 0 auto;
   }
 
   /* .folders-tabs-scrollable {
@@ -245,6 +253,8 @@
   }
 
   #folders-container {
+    flex: 1 1 auto;
+
     .scrollable-y {
       background-color: transparent;
       position: absolute;
@@ -253,6 +263,12 @@
         display: block;
       }
     }
+  }
+
+  .dialogs-placeholder-canvas {
+    position: absolute;
+    top: 0;
+    z-index: 2;
   }
 
   .sidebar-slider {
@@ -499,6 +515,9 @@
 
       transform: translateY(var(--offset-top));
       height: 100%;
+
+      display: flex;
+      flex-direction: column;
 
       /* transform: translateY(64px);
       height: calc(100% - 64px); */

@@ -5,7 +5,6 @@
  */
 
 import { SliderSuperTab } from "../../slider";
-import apiManager from "../../../lib/mtproto/mtprotoworker";
 import ButtonMenuToggle from "../../buttonMenuToggle";
 import Button from "../../button";
 import AppPrivacyAndSecurityTab from "./privacyAndSecurity";
@@ -47,7 +46,7 @@ export default class AppSettingsTab extends SliderSuperTab {
   private authorizations: Authorization.authorization[];
   private getAuthorizationsPromise: Promise<AccountAuthorizations.accountAuthorizations>;
 
-  protected init() {
+  protected async init() {
     this.container.classList.add('settings-container');
     this.setTitle('Settings');
     
@@ -61,7 +60,7 @@ export default class AppSettingsTab extends SliderSuperTab {
           buttons: [{
             langKey: 'LogOut',
             callback: () => {
-              apiManager.logOut();
+              this.managers.apiManager.logOut();
             },
             isDanger: true
           }]
@@ -76,21 +75,21 @@ export default class AppSettingsTab extends SliderSuperTab {
     this.profile = new PeerProfile(this.managers, this.scrollable, this.listenerSetter, false);
     this.profile.init();
     this.profile.setPeer(rootScope.myId);
-    this.profile.fillProfileElements();
+    const fillPromise = this.profile.fillProfileElements();
 
     const changeAvatarBtn = Button('btn-circle btn-corner z-depth-1 profile-change-avatar', {icon: 'cameraadd'});
     changeAvatarBtn.addEventListener('click', () => {
       const canvas = document.createElement('canvas');
       PopupElement.createPopup(PopupAvatar).open(canvas, (upload) => {
-        upload().then(inputFile => {
+        upload().then((inputFile) => {
           return this.managers.appProfileManager.uploadProfilePhoto(inputFile);
         });
       });
     });
     this.profile.element.lastElementChild.firstElementChild.append(changeAvatarBtn);
     
-    const updateChangeAvatarBtn = () => {
-      const user = this.managers.appUsersManager.getSelf();
+    const updateChangeAvatarBtn = async() => {
+      const user = await this.managers.appUsersManager.getSelf();
       changeAvatarBtn.classList.toggle('hide', user.photo?._ !== 'userProfilePhoto');
     };
     
@@ -159,7 +158,8 @@ export default class AppSettingsTab extends SliderSuperTab {
         titleLangKey: langPackKey,
         icon,
         clickable: () => {
-          new tabConstructor(this.slider, true).open();
+          this.slider.createTab(tabConstructor).open();
+          // new tabConstructor(this.slider, true).open();
         }
       });
     });
@@ -194,7 +194,7 @@ export default class AppSettingsTab extends SliderSuperTab {
       })
     );
 
-    buttonsDiv.append(...rows.map(row => row.container));
+    buttonsDiv.append(...rows.map((row) => row.container));
 
     // const profileSection = new SettingSection({fullWidth: true, noPaddingTop: true});
     // profileSection.content.append(this.profile.element);
@@ -204,10 +204,6 @@ export default class AppSettingsTab extends SliderSuperTab {
 
     this.scrollable.append(this.profile.element/* profileSection.container */, buttonsSection.container);
 
-    /* rootScope.$on('user_auth', (e) => {
-      this.fillElements();
-    }); */
-
     this.buttons.edit.addEventListener('click', () => {
       const tab = this.slider.createTab(AppEditProfileTab);
       tab.open();
@@ -216,12 +212,14 @@ export default class AppSettingsTab extends SliderSuperTab {
     lottieLoader.loadLottieWorkers();
 
     this.updateActiveSessions();
+
+    await fillPromise;
   }
 
   private getAuthorizations(overwrite?: boolean) {
     if(this.getAuthorizationsPromise && !overwrite) return this.getAuthorizationsPromise;
 
-    const promise = this.getAuthorizationsPromise = apiManager.invokeApi('account.getAuthorizations')
+    const promise = this.getAuthorizationsPromise = this.managers.apiManager.invokeApi('account.getAuthorizations')
     .finally(() => {
       if(this.getAuthorizationsPromise === promise) {
         this.getAuthorizationsPromise = undefined;
@@ -232,7 +230,7 @@ export default class AppSettingsTab extends SliderSuperTab {
   }
 
   public updateActiveSessions(overwrite?: boolean) {
-    return this.getAuthorizations(overwrite).then(auths => {
+    return this.getAuthorizations(overwrite).then((auths) => {
       this.authorizations = auths.authorizations;
       this.devicesRow.titleRight.textContent = '' + this.authorizations.length;
     });

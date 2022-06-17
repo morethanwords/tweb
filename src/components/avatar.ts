@@ -6,7 +6,7 @@
 
 import rootScope from "../lib/rootScope";
 import { Message, Photo } from "../layer";
-import type { LazyLoadQueueIntersector } from "./lazyLoadQueue";
+import type LazyLoadQueue from "./lazyLoadQueue";
 import { attachClickEvent } from "../helpers/dom/clickEvent";
 import cancelEvent from "../helpers/dom/cancelEvent";
 import AppMediaViewer from "./appMediaViewer";
@@ -14,17 +14,18 @@ import AppMediaViewerAvatar from "./appMediaViewerAvatar";
 import isObject from "../helpers/object/isObject";
 import { ArgumentTypes } from "../types";
 import putPhoto from "./putPhoto";
+import { recordPromise } from "../helpers/recordPromise";
 
 const onAvatarUpdate = (peerId: PeerId) => {
-  (Array.from(document.querySelectorAll('avatar-element[data-peer-id="' + peerId + '"]')) as AvatarElement[]).forEach(elem => {
+  (Array.from(document.querySelectorAll('avatar-element[data-peer-id="' + peerId + '"]')) as AvatarElement[]).forEach((elem) => {
     //console.log('updating avatar:', elem);
     elem.update();
   });
 };
 
 rootScope.addEventListener('avatar_update', onAvatarUpdate);
-rootScope.addEventListener('peer_title_edit', (peerId) => {
-  if(!rootScope.managers.appAvatarsManager.isAvatarCached(peerId)) {
+rootScope.addEventListener('peer_title_edit', async(peerId) => {
+  if(!(await rootScope.managers.appAvatarsManager.isAvatarCached(peerId))) {
     onAvatarUpdate(peerId);
   }
 });
@@ -43,7 +44,7 @@ export async function openAvatarViewer(
   }
 
   const getTarget = () => {
-    const good = Array.from(target.querySelectorAll('img')).find(img => !img.classList.contains('emoji'));
+    const good = Array.from(target.querySelectorAll('img')).find((img) => !img.classList.contains('emoji'));
     return good ? target : null;
   };
 
@@ -56,7 +57,7 @@ export async function openAvatarViewer(
         inputFilter: {_: inputFilter}, 
         maxId: 0, 
         limit: 1 
-      }).then(value => {
+      }).then((value) => {
         //console.log(lol);
         // ! by descend
         return value.history[0];
@@ -78,7 +79,7 @@ export async function openAvatarViewer(
         }
       }
 
-      const f = (arr: typeof prevTargets) => arr.map(el => ({
+      const f = (arr: typeof prevTargets) => arr.map((el) => ({
         element: el.element,
         mid: (el.item as Message.messageService).mid,
         peerId: (el.item as Message.messageService).peerId
@@ -97,15 +98,21 @@ export async function openAvatarViewer(
 
   if(photo) {
     if(!isObject(message) && message) {
-      photo = rootScope.managers.appPhotosManager.getPhoto(message);
+      photo = await rootScope.managers.appPhotosManager.getPhoto(message);
     }
     
-    const f = (arr: typeof prevTargets) => arr.map(el => ({
+    const f = (arr: typeof prevTargets) => arr.map((el) => ({
       element: el.element,
       photoId: el.item as string
     }));
 
-    new AppMediaViewerAvatar(peerId).openMedia(photo.id, getTarget(), undefined, prevTargets ? f(prevTargets) : undefined, nextTargets ? f(nextTargets) : undefined);
+    new AppMediaViewerAvatar(peerId).openMedia(
+      photo.id, 
+      getTarget(), 
+      undefined, 
+      prevTargets ? f(prevTargets) : undefined, 
+      nextTargets ? f(nextTargets) : undefined
+    );
   }
 }
 
@@ -117,7 +124,7 @@ export default class AvatarElement extends HTMLElement {
   public isDialog: boolean;
   public peerTitle: string;
   public loadPromises: Promise<any>[];
-  public lazyLoadQueue: LazyLoadQueueIntersector;
+  public lazyLoadQueue: LazyLoadQueue;
   public isBig: boolean;
   private addedToQueue = false;
 
@@ -162,7 +169,7 @@ export default class AvatarElement extends HTMLElement {
     isDialog?: boolean,
     isBig?: boolean,
     peerTitle?: string,
-    lazyLoadQueue?: LazyLoadQueueIntersector,
+    lazyLoadQueue?: LazyLoadQueue,
     loadPromises?: Promise<any>[]
   }) {
     const wasPeerId = this.peerId;
@@ -173,7 +180,7 @@ export default class AvatarElement extends HTMLElement {
       return;
     }
 
-    this.peerId = rootScope.managers.appPeersManager.getPeerMigratedTo(newPeerId) || newPeerId;
+    this.peerId = /* rootScope.managers.appPeersManager.getPeerMigratedTo(newPeerId) ||  */newPeerId;
     this.dataset.peerId = '' + newPeerId;
 
     if(wasPeerId) {
@@ -190,19 +197,18 @@ export default class AvatarElement extends HTMLElement {
   }
 
   private r(onlyThumb = false) {
-    const res = putPhoto(this, this.peerId, this.isDialog, this.peerTitle, onlyThumb, this.isBig);
-    const promise = res ? res.loadPromise : Promise.resolve();
+    const promise = putPhoto(this, this.peerId, this.isDialog, this.peerTitle, onlyThumb, this.isBig);
+    recordPromise(promise, 'avatar putPhoto-' + this.peerId);
+
     if(this.loadPromises) {
-      if(res && res.cached) {
-        this.loadPromises.push(promise);
-      }
+      this.loadPromises.push(promise);
 
       promise.finally(() => {
         this.loadPromises = undefined;
       });
     }
 
-    return res;
+    return promise;
   }
 
   public update() {
@@ -219,8 +225,6 @@ export default class AvatarElement extends HTMLElement {
   
         set.add(this);
 
-        this.r(true);
-
         this.lazyLoadQueue.push({
           div: this, 
           load: () => {
@@ -229,7 +233,7 @@ export default class AvatarElement extends HTMLElement {
           }
         });
 
-        return;
+        return this.r(true);
       } else if(this.addedToQueue) {
         this.lazyLoadQueue.unobserve(this);
       }
@@ -237,8 +241,7 @@ export default class AvatarElement extends HTMLElement {
     
     seen.add(this.peerId);
     
-    const res = this.r();
-    const promise = res ? res.loadPromise : Promise.resolve();
+    const promise = this.r();
 
     if(this.addedToQueue) {
       promise.finally(() => {

@@ -33,14 +33,14 @@ export default class SDP {
   }
 
   public get bundle() {
-    const bundleLine = this.session.lines.find(line => line.parsed?.key === 'group');
+    const bundleLine = this.session.lines.find((line) => line.parsed?.key === 'group');
     return bundleLine.value.split(' ').slice(1);
   }
 
   toString() {
     return this.session.lines
-    .concat(...this.media.map(section => section.lines))
-    .map(line => line.toString()).join('\r\n') + '\r\n';
+    .concat(...this.media.map((section) => section.lines))
+    .map((line) => line.toString()).join('\r\n') + '\r\n';
   }
 
   /* get buggedMedia() {

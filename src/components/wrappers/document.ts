@@ -10,15 +10,18 @@ import { formatFullSentTime } from "../../helpers/date";
 import { simulateClickEvent, attachClickEvent } from "../../helpers/dom/clickEvent";
 import formatBytes from "../../helpers/formatBytes";
 import { MediaSizeType } from "../../helpers/mediaSizes";
+import noop from "../../helpers/noop";
 import { Message, MessageMedia, WebPage } from "../../layer";
 import { MyDocument } from "../../lib/appManagers/appDocsManager";
-import appDownloadManager, { DownloadBlob } from "../../lib/appManagers/appDownloadManager";
+import appDownloadManager from "../../lib/appManagers/appDownloadManager";
 import appImManager from "../../lib/appManagers/appImManager";
 import { AppManagers } from "../../lib/appManagers/managers";
+import getDownloadMediaDetails from "../../lib/appManagers/utils/download/getDownloadMediaDetails";
 import choosePhotoSize from "../../lib/appManagers/utils/photos/choosePhotoSize";
 import { joinElementsWith } from "../../lib/langPack";
 import wrapPlainText from "../../lib/richTextProcessor/wrapPlainText";
 import rootScope from "../../lib/rootScope";
+import type { ThumbCache } from "../../lib/storages/thumbs";
 import { MediaSearchContext } from "../appMediaPlaybackController";
 import AudioElement from "../audio";
 import LazyLoadQueue from "../lazyLoadQueue";
@@ -28,16 +31,16 @@ import wrapPhoto from './photo';
 import wrapSenderToPeer from "./senderToPeer";
 import wrapSentTime from "./sentTime";
 
-rootScope.addEventListener('download_start', (docId) => {
+rootScope.addEventListener('document_downloading', (docId) => {
   const elements = Array.from(document.querySelectorAll(`.document[data-doc-id="${docId}"]`)) as HTMLElement[];
-  elements.forEach(element => {
+  elements.forEach((element) => {
     if(element.querySelector('.preloader-container.manual')) {
       simulateClickEvent(element);
     }
   });
 });
 
-export default function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showSender, searchContext, loadPromises, autoDownloadSize, lazyLoadQueue, sizeType, managers = rootScope.managers}: {
+export default async function wrapDocument({message, withTime, fontWeight, voiceAsMusic, showSender, searchContext, loadPromises, autoDownloadSize, lazyLoadQueue, sizeType, managers = rootScope.managers, cacheContext}: {
   message: Message.message, 
   withTime?: boolean,
   fontWeight?: number,
@@ -48,14 +51,15 @@ export default function wrapDocument({message, withTime, fontWeight, voiceAsMusi
   autoDownloadSize?: number,
   lazyLoadQueue?: LazyLoadQueue,
   sizeType?: MediaSizeType,
-  managers?: AppManagers
-}): HTMLElement {
+  managers?: AppManagers,
+  cacheContext?: ThumbCache
+}): Promise<HTMLElement> {
   if(!fontWeight) fontWeight = 500;
   if(!sizeType) sizeType = '' as any;
   const noAutoDownload = autoDownloadSize === 0;
 
   const doc = ((message.media as MessageMedia.messageMediaDocument).document || ((message.media as MessageMedia.messageMediaWebPage).webpage as WebPage.webPage).document) as MyDocument;
-  const uploading = message.pFlags.is_outgoing && (message.media as any)?.preloader;
+  const uploadFileName = message?.uploadingFileName;
   if(doc.type === 'audio' || doc.type === 'voice' || doc.type === 'round') {
     const audioElement = new AudioElement();
     audioElement.withTime = withTime;
@@ -67,11 +71,10 @@ export default function wrapDocument({message, withTime, fontWeight, voiceAsMusi
     if(voiceAsMusic) audioElement.voiceAsMusic = voiceAsMusic;
     if(searchContext) audioElement.searchContext = searchContext;
     if(showSender) audioElement.showSender = showSender;
-    if(uploading) audioElement.preloader = (message.media as any).preloader;
 
     audioElement.dataset.fontWeight = '' + fontWeight;
     audioElement.dataset.sizeType = sizeType;
-    audioElement.render();
+    await audioElement.render();
     return audioElement;
   }
 
@@ -85,10 +88,17 @@ export default function wrapDocument({message, withTime, fontWeight, voiceAsMusi
   docDiv.classList.add('document', `ext-${ext}`);
   docDiv.dataset.docId = '' + doc.id;
 
+  // return docDiv;
+
   const icoDiv = document.createElement('div');
   icoDiv.classList.add('document-ico');
 
-  const cacheContext = appDownloadManager.getCacheContext(doc);
+  const hadContext = !!cacheContext;
+  const getCacheContext = () => {
+    return hadContext ? cacheContext : managers.thumbsStorage.getCacheContext(doc);
+  };
+
+  cacheContext = await getCacheContext();
   if((doc.thumbs?.length || (message.pFlags.is_outgoing && cacheContext.url && doc.type === 'photo'))/*  && doc.mime_type !== 'image/gif' */) {
     docDiv.classList.add('document-with-thumb');
 
@@ -98,7 +108,8 @@ export default function wrapDocument({message, withTime, fontWeight, voiceAsMusi
       icoDiv.innerHTML = `<img src="${cacheContext.url}">`;
       imgs.push(icoDiv.firstElementChild as HTMLImageElement);
     } else {
-      const wrapped = wrapPhoto({
+      const perf = performance.now();
+      const wrapped = await wrapPhoto({
         photo: doc, 
         message: null, 
         container: icoDiv, 
@@ -110,12 +121,13 @@ export default function wrapDocument({message, withTime, fontWeight, voiceAsMusi
         size: choosePhotoSize(doc, 54, 54, true),
         managers
       });
+      console.log('was wrapping photo', performance.now() - perf);
       icoDiv.style.width = icoDiv.style.height = '';
       if(wrapped.images.thumb) imgs.push(wrapped.images.thumb);
       if(wrapped.images.full) imgs.push(wrapped.images.full);
     }
 
-    imgs.forEach(img => img.classList.add('document-thumb'));
+    imgs.forEach((img) => img.classList.add('document-thumb'));
   } else {
     icoDiv.innerText = ext;
   }
@@ -131,11 +143,11 @@ export default function wrapDocument({message, withTime, fontWeight, voiceAsMusi
   }
 
   if(showSender) {
-    descriptionParts.push(wrapSenderToPeer(message));
+    descriptionParts.push(await wrapSenderToPeer(message));
   }
 
   docDiv.innerHTML = `
-  ${(cacheContext.downloaded && !uploading) || !message.mid ? '' : `<div class="document-download"></div>`}
+  ${(cacheContext.downloaded && !uploadFileName) || !message.mid ? '' : `<div class="document-download"></div>`}
   <div class="document-name"></div>
   <div class="document-size"></div>
   `;
@@ -158,7 +170,7 @@ export default function wrapDocument({message, withTime, fontWeight, voiceAsMusi
 
   docDiv.prepend(icoDiv);
 
-  if(!uploading && message.pFlags.is_outgoing && !message.mid) {
+  if(!uploadFileName && message.pFlags.is_outgoing && !message.mid) {
     return docDiv;
   }
 
@@ -178,49 +190,51 @@ export default function wrapDocument({message, withTime, fontWeight, voiceAsMusi
     }
   };
 
-  const load = (e?: Event) => {
+  const load = async(e?: Event) => {
     const save = !e || e.isTrusted;
-    const doc = managers.appDocsManager.getDoc(docDiv.dataset.docId);
-    let download: DownloadBlob;
+    const doc = await managers.appDocsManager.getDoc(docDiv.dataset.docId);
+    let download: Promise<any>;
     const queueId = appImManager.chat.bubbles ? appImManager.chat.bubbles.lazyLoadQueue.queueId : undefined;
     if(!save) {
-      download = managers.appDocsManager.downloadDoc(doc, queueId);
+      download = appDownloadManager.downloadMediaVoid({media: doc, queueId});
     } else if(doc.type === 'pdf') {
-      const canOpenAfter = managers.appDocsManager.downloading.has(doc.id) || cacheContext.downloaded;
-      download = managers.appDocsManager.downloadDoc(doc, queueId);
+      const canOpenAfter = /* managers.appDocsManager.downloading.has(doc.id) ||  */!preloader || preloader.detached;
+      download = appDownloadManager.downloadMediaURL({media: doc, queueId});
       if(canOpenAfter) {
         download.then(() => {
-          setTimeout(() => { // wait for preloader animation end
-            const url = appDownloadManager.getCacheContext(doc).url;
+          setTimeout(async() => { // wait for preloader animation end
+            const url = (await getCacheContext()).url;
             window.open(url);
           }, rootScope.settings.animationsEnabled ? 250 : 0);
         });
       }
     } else if(MEDIA_MIME_TYPES_SUPPORTED.has(doc.mime_type) && doc.thumbs?.length) {
-      download = managers.appDocsManager.downloadDoc(doc, queueId);
+      download = appDownloadManager.downloadMediaURL({media: doc, queueId});
     } else {
-      download = managers.appDocsManager.saveDocFile(doc, queueId);
+      download = appDownloadManager.downloadToDisc({media: doc, queueId});
     }
 
     if(downloadDiv) {
-      download.then(onLoad);
+      download.then(onLoad, noop);
       preloader.attach(downloadDiv, true, download);
     }
-
-    return {download};
   };
 
-  if(managers.appDocsManager.downloading.has(doc.id)) {
+  const {fileName: downloadFileName} = getDownloadMediaDetails({media: doc});
+  if(await managers.apiFileManager.isDownloading(downloadFileName)) {
     downloadDiv = docDiv.querySelector('.document-download');
+    const promise = appDownloadManager.downloadMediaVoid({media: doc});
+
     preloader = new ProgressivePreloader();
-    preloader.attach(downloadDiv, false, managers.appDocsManager.downloading.get(doc.id));
-  } else if(!cacheContext.downloaded || uploading) {
+    preloader.attach(downloadDiv, false, promise);
+    preloader.setDownloadFunction(load);
+  } else if(!cacheContext.downloaded || uploadFileName) {
     downloadDiv = docDiv.querySelector('.document-download');
-    preloader = (message.media as any).preloader as ProgressivePreloader;
+    preloader = new ProgressivePreloader({
+      isUpload: !!uploadFileName
+    });
 
-    if(!preloader) {
-      preloader = new ProgressivePreloader();
-
+    if(!uploadFileName) {
       preloader.construct();
       preloader.setManual();
       preloader.attach(downloadDiv);
@@ -230,8 +244,10 @@ export default function wrapDocument({message, withTime, fontWeight, voiceAsMusi
         simulateClickEvent(preloader.preloader);
       }
     } else {
+      const uploadPromise = appDownloadManager.getUpload(uploadFileName);
+      preloader.attachPromise(uploadPromise);
       preloader.attach(downloadDiv);
-      (message.media as any).promise.then(onLoad);
+      uploadPromise.then(onLoad, noop);
     }
   }
 

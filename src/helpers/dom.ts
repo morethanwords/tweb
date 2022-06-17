@@ -83,7 +83,7 @@
 
 /* export const isSelectionSingle = (input: Element = document.activeElement) => {
   const nodes = getSelectedNodes();
-  const parents = [...new Set(nodes.map(node => node.parentNode))];
+  const parents = [...new Set(nodes.map((node) => node.parentNode))];
   const differentParents = parents.length > 1;
 
   let single = true;
@@ -100,7 +100,7 @@
 }; */
 
 /* export function radiosHandleChange(inputs: HTMLInputElement[], onChange: (value: string) => void) {
-  inputs.forEach(input => {
+  inputs.forEach((input) => {
     input.addEventListener('change', () => {
       if(input.checked) {
         onChange(input.value);

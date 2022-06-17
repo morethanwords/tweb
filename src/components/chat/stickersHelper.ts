@@ -5,6 +5,7 @@
  */
 
 import mediaSizes from "../../helpers/mediaSizes";
+import preloadAnimatedEmojiSticker from "../../helpers/preloadAnimatedEmojiSticker";
 import { MyDocument } from "../../lib/appManagers/appDocsManager";
 import { CHAT_ANIMATION_GROUP } from "../../lib/appManagers/appImManager";
 import { AppManagers } from "../../lib/appManagers/managers";
@@ -64,7 +65,7 @@ export default class StickersHelper extends AutocompleteHelper {
       this.lazyLoadQueue.clear();
     }
 
-    this.managers.appStickersManager.preloadAnimatedEmojiSticker(emoticon);
+    preloadAnimatedEmojiSticker(emoticon);
     this.managers.appStickersManager.getStickersByEmoticon(emoticon)
     .then((stickers) => {
       if(!middleware()) {
@@ -84,7 +85,7 @@ export default class StickersHelper extends AutocompleteHelper {
       if(stickers.length) {
         ready = new Promise<void>((resolve) => {
           const promises: Promise<any>[] = [];
-          stickers.forEach(sticker => {
+          stickers.forEach((sticker) => {
             container.append(this.superStickerRenderer.renderSticker(sticker as MyDocument, undefined, promises));
           });
 

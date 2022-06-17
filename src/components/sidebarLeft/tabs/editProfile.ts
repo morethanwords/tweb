@@ -12,7 +12,6 @@ import { i18n, i18n_ } from "../../../lib/langPack";
 import { attachClickEvent } from "../../../helpers/dom/clickEvent";
 import rootScope from "../../../lib/rootScope";
 import { generateSection, SettingSection } from "..";
-import apiManagerProxy from "../../../lib/mtproto/mtprotoworker";
 
 // TODO: аватарка не поменяется в этой вкладке после изменения почему-то (если поставить в другом клиенте, и потом тут проверить, для этого ещё вышел в чатлист)
 
@@ -38,6 +37,7 @@ export default class AppEditProfileTab extends SliderSuperTab {
       const inputWrapper = document.createElement('div');
       inputWrapper.classList.add('input-wrapper');
   
+      const appConfig = await this.managers.apiManager.getAppConfig();
       this.firstNameInputField = new InputField({
         label: 'EditProfile.FirstNameLabel',
         name: 'first-name',
@@ -51,7 +51,7 @@ export default class AppEditProfileTab extends SliderSuperTab {
       this.bioInputField = new InputField({
         label: 'EditProfile.BioLabel',
         name: 'bio',
-        maxLength: 70
+        maxLength: rootScope.premium ? appConfig.about_length_limit_premium : appConfig.about_length_limit_default
       });
   
       inputWrapper.append(this.firstNameInputField.container, this.lastNameInputField.container, this.bioInputField.container);
@@ -94,7 +94,7 @@ export default class AppEditProfileTab extends SliderSuperTab {
         availableText: 'EditProfile.Username.Available',
         takenText: 'EditProfile.Username.Taken',
         invalidText: 'EditProfile.Username.Invalid'
-      }, this.managers.appChatsManager, apiManagerProxy);
+      }, this.managers);
 
       inputWrapper.append(this.usernameInputField.container);
 
@@ -131,7 +131,7 @@ export default class AppEditProfileTab extends SliderSuperTab {
       }));
 
       if(this.editPeer.uploadAvatar) {
-        promises.push(this.editPeer.uploadAvatar().then(inputFile => {
+        promises.push(this.editPeer.uploadAvatar().then((inputFile) => {
           return this.managers.appProfileManager.uploadProfilePhoto(inputFile);
         }));
       }
@@ -145,7 +145,7 @@ export default class AppEditProfileTab extends SliderSuperTab {
       });
     }, {listenerSetter: this.listenerSetter});
 
-    const user = this.managers.appUsersManager.getSelf();
+    const user = await this.managers.appUsersManager.getSelf();
 
     const userFull = await this.managers.appProfileManager.getProfile(user.id, true);
 

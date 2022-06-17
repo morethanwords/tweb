@@ -8,12 +8,13 @@ import { SITE_HASHTAGS } from ".";
 import { EmojiVersions } from "../../config/emoji";
 import IS_EMOJI_SUPPORTED from "../../environment/emojiSupport";
 import { IS_SAFARI } from "../../environment/userAgent";
+import buildURLHash from "../../helpers/buildURLHash";
 import copy from "../../helpers/object/copy";
 import encodeEntities from "../../helpers/string/encodeEntities";
 import { MessageEntity } from "../../layer";
+import encodeSpoiler from "./encodeSpoiler";
 import parseEntities from "./parseEntities";
 import setBlankToAnchor from "./setBlankToAnchor";
-import spoiler from "./spoiler";
 import wrapUrl from "./wrapUrl";
 
 /**
@@ -352,7 +353,7 @@ export default function wrapRichText(text: string, options: Partial<{
       case 'messageEntityMentionName': {
         if(!(options.noLinks && !passEntities[entity._])) {
           element = document.createElement('a');
-          (element as HTMLAnchorElement).href = `#/im?p=${encodeURIComponent(entity.user_id)}`;
+          (element as HTMLAnchorElement).href = buildURLHash('' + entity.user_id);
           element.className = 'follow';
           element.dataset.follow = '' + entity.user_id;
         }
@@ -382,11 +383,9 @@ export default function wrapRichText(text: string, options: Partial<{
 
       case 'messageEntitySpoiler': {
         if(options.noTextFormat) {
-          const before = nasty.text.slice(0, entity.offset);
-          const spoilerBefore = nasty.text.slice(entity.offset, entity.offset + entity.length);
-          const spoilerAfter = partText = spoiler(spoilerBefore)/*  '▚'.repeat(entity.length) */;
-          const after = nasty.text.slice(entity.offset + entity.length);
-          nasty.text = before + spoilerAfter + after;
+          const encoded = encodeSpoiler(nasty.text, entity);
+          nasty.text = encoded.text;
+          partText = encoded.entityText;
         } else if(options.wrappingDraft) {
           element = document.createElement('span');
           element.style.fontFamily = 'spoiler';

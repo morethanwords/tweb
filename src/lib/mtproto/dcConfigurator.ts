@@ -13,7 +13,6 @@ import MTTransport, { MTConnectionConstructable } from './transports/transport';
 import Modes from '../../config/modes';
 import App from '../../config/app';
 import indexOfAndSplice from '../../helpers/array/indexOfAndSplice';
-import { MOUNT_CLASS_TO } from '../../config/debug';
 
 /// #if MTPROTO_HAS_HTTP
 import HTTP from './transports/http';
@@ -22,10 +21,14 @@ import HTTP from './transports/http';
 /// #if MTPROTO_HAS_WS
 import Socket from './transports/websocket';
 import TcpObfuscated from './transports/tcpObfuscated';
-import { IS_SAFARI } from '../../environment/userAgent';
 import { IS_WEB_WORKER } from '../../helpers/context';
-import SocketProxied from './transports/socketProxied';
 import { DcId } from '../../types';
+import { getEnvironment } from '../../environment/utils';
+
+/// #if !MTPROTO_SW
+import SocketProxied from './transports/socketProxied';
+/// #endif
+
 /// #endif
 
 export type TransportType = 'websocket' | 'https' | 'http';
@@ -39,6 +42,7 @@ type Servers = {
 };
 
 const TEST_SUFFIX = Modes.test ? '_test' : '';
+const PREMIUM_SUFFIX = '_premium';
 
 export class DcConfigurator {
   private sslSubdomains = ['pluto', 'venus', 'aurora', 'vesta', 'flora'];
@@ -60,21 +64,26 @@ export class DcConfigurator {
   public chosenServers: Servers = {} as any;
 
   /// #if MTPROTO_HAS_WS
-  private transportSocket = (dcId: DcId, connectionType: ConnectionType, suffix: string) => {
-    const path = 'apiws' + TEST_SUFFIX;
+  private transportSocket = (dcId: DcId, connectionType: ConnectionType, suffix: string, premium?: boolean) => {
+    const path = connectionType !== 'client' ? 'apiws' + (premium ? PREMIUM_SUFFIX : '') : ('apiws' + TEST_SUFFIX);
     const chosenServer = `wss://${App.suffix.toLowerCase()}ws${dcId}${suffix}.web.telegram.org/${path}`;
     const logSuffix = connectionType === 'upload' ? '-U' : connectionType === 'download' ? '-D' : '';
 
     const retryTimeout = connectionType === 'client' ? 10000 : 10000;
 
-    const oooohLetMeLive: MTConnectionConstructable = (IS_SAFARI && IS_WEB_WORKER && typeof(SocketProxied) !== 'undefined') /* || true */ ? SocketProxied : Socket;
+    let oooohLetMeLive: MTConnectionConstructable;
+    /// #if MTPROTO_SW
+    oooohLetMeLive = Socket;
+    /// #else
+    oooohLetMeLive = (getEnvironment().IS_SAFARI && IS_WEB_WORKER && typeof(SocketProxied) !== 'undefined') /* || true */ ? SocketProxied : Socket;
+    /// #endif
 
     return new TcpObfuscated(oooohLetMeLive, dcId, chosenServer, logSuffix, retryTimeout);
   };
   /// #endif
 
   /// #if MTPROTO_HAS_HTTP
-  private transportHTTP = (dcId: DcId, connectionType: ConnectionType, suffix: string) => {
+  private transportHTTP = (dcId: DcId, connectionType: ConnectionType, suffix: string, premium?: boolean) => {
     let chosenServer: string;
     if(Modes.ssl || !Modes.http) {
       const subdomain = this.sslSubdomains[dcId - 1] + (connectionType !== 'client' ? '-1' : '');
@@ -98,7 +107,8 @@ export class DcConfigurator {
     dcId: DcId, 
     connectionType: ConnectionType = 'client', 
     transportType: TransportType = Modes.transport, 
-    reuse = true
+    reuse = true,
+    premium?: boolean
   ) {
     /* if(transportType === 'websocket' && !Modes.multipleConnections) {
       connectionType = 'client';
@@ -126,11 +136,11 @@ export class DcConfigurator {
       const suffix = connectionType === 'client' ? '' : '-1';
 
       /// #if MTPROTO_HAS_WS && MTPROTO_HAS_HTTP
-      transport = (transportType === 'websocket' ? this.transportSocket : this.transportHTTP)(dcId, connectionType, suffix);
+      transport = (transportType === 'websocket' ? this.transportSocket : this.transportHTTP)(dcId, connectionType, suffix, premium);
       /// #elif !MTPROTO_HTTP
-      transport = this.transportSocket(dcId, connectionType, suffix);
+      transport = this.transportSocket(dcId, connectionType, suffix, premium);
       /// #else
-      transport = this.transportHTTP(dcId, connectionType, suffix);
+      transport = this.transportHTTP(dcId, connectionType, suffix, premium);
       /// #endif
   
       if(!transport) {
@@ -162,7 +172,3 @@ export class DcConfigurator {
     }
   }
 }
-
-const dcConfigurator = new DcConfigurator();
-MOUNT_CLASS_TO && (MOUNT_CLASS_TO.dcConfigurator = dcConfigurator);
-export default dcConfigurator;

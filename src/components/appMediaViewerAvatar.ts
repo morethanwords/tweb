@@ -6,6 +6,7 @@
 
 import AvatarListLoader from "../helpers/avatarListLoader";
 import { Photo } from "../layer";
+import appDownloadManager from "../lib/appManagers/appDownloadManager";
 import appImManager from "../lib/appManagers/appImManager";
 import rootScope from "../lib/rootScope";
 import AppMediaViewerBase from "./appMediaViewerBase";
@@ -42,14 +43,17 @@ export default class AppMediaViewerAvatar extends AppMediaViewerBase<'', 'delete
     this.openMedia(target.photoId, target.element, 1);
   };
 
-  onDownloadClick = () => {
-    this.managers.appPhotosManager.savePhotoFile(this.managers.appPhotosManager.getPhoto(this.target.photoId), appImManager.chat.bubbles.lazyLoadQueue.queueId);
+  onDownloadClick = async() => {
+    appDownloadManager.downloadToDisc({
+      media: await this.managers.appPhotosManager.getPhoto(this.target.photoId), 
+      queueId: appImManager.chat.bubbles.lazyLoadQueue.queueId
+    });
   };
 
   public async openMedia(photoId: Photo.photo['id'], target?: HTMLElement, fromRight = 0, prevTargets?: AppMediaViewerAvatarTargetType[], nextTargets?: AppMediaViewerAvatarTargetType[]) {
     if(this.setMoverPromise) return this.setMoverPromise;
 
-    const photo = this.managers.appPhotosManager.getPhoto(photoId);
+    const photo = await this.managers.appPhotosManager.getPhoto(photoId);
     const ret = super._openMedia(photo, photo.date, this.peerId, fromRight, target, false, prevTargets, nextTargets);
     this.target.photoId = photo.id;
 

@@ -9,12 +9,9 @@ import indexOfAndSplice from "../../helpers/array/indexOfAndSplice";
 import isObject from "../../helpers/object/isObject";
 import validateInitObject from "../../helpers/object/validateInitObject";
 import I18n from "../langPack";
-import apiManager from "../mtproto/mtprotoworker";
 import fixEmoji from "../richTextProcessor/fixEmoji";
-import rootScope from "../rootScope";
 import SearchIndex from "../searchIndex";
 import stateStorage from "../stateStorage";
-import appStateManager from "./appStateManager";
 import { AppManager } from "./manager";
 
 type EmojiLangPack = {
@@ -48,7 +45,7 @@ export class AppEmojiManager extends AppManager {
   private getRecentEmojisPromise: Promise<AppEmojiManager['recent']>;
 
   /* public getPopularEmoji() {
-    return stateStorage.get('emojis_popular').then(popEmojis => {
+    return stateStorage.get('emojis_popular').then((popEmojis) => {
       var result = []
       if (popEmojis && popEmojis.length) {
         for (var i = 0, len = popEmojis.length; i < len; i++) {
@@ -58,7 +55,7 @@ export class AppEmojiManager extends AppManager {
         return
       }
 
-      return stateStorage.get('emojis_recent').then(recentEmojis => {
+      return stateStorage.get('emojis_recent').then((recentEmojis) => {
         recentEmojis = recentEmojis || popular || []
         var shortcut
         var code
@@ -125,7 +122,7 @@ export class AppEmojiManager extends AppManager {
       pack.langCode = langCode;
       this.keywordLangPacks[langCode] = pack;
 
-      return apiManager.invokeApi('messages.getEmojiKeywordsDifference', {
+      return this.apiManager.invokeApi('messages.getEmojiKeywordsDifference', {
         lang_code: pack.langCode,
         from_version: pack.version
       }).then((keywordsDifference) => {
@@ -165,7 +162,7 @@ export class AppEmojiManager extends AppManager {
     return Promise.all(promises);
   }
 
-  public indexEmojis() {
+  private indexEmojis() {
     if(!this.index) {
       this.index = new SearchIndex(undefined, 2);
     }
@@ -215,22 +212,22 @@ export class AppEmojiManager extends AppManager {
 
   public getRecentEmojis() {
     if(this.getRecentEmojisPromise) return this.getRecentEmojisPromise;
-    return this.getRecentEmojisPromise = appStateManager.getState().then(state => {
+    return this.getRecentEmojisPromise = this.appStateManager.getState().then((state) => {
       return this.recent = Array.isArray(state.recentEmoji) ? state.recentEmoji : [];
     });
   }
 
   public pushRecentEmoji(emoji: string) {
     emoji = fixEmoji(emoji);
-    this.getRecentEmojis().then(recent => {
+    this.getRecentEmojis().then((recent) => {
       indexOfAndSplice(recent, emoji);
       recent.unshift(emoji);
       if(recent.length > RECENT_MAX_LENGTH) {
         recent.length = RECENT_MAX_LENGTH;
       }
 
-      appStateManager.pushToState('recentEmoji', recent);
-      rootScope.dispatchEvent('emoji_recent', emoji);
+      this.appStateManager.pushToState('recentEmoji', recent);
+      this.rootScope.dispatchEvent('emoji_recent', emoji);
     });
   }
 }

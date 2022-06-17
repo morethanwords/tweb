@@ -17,7 +17,7 @@ export default function fixEmoji(text: string, entities?: MessageEntity[]) {
       const length = match.length;
 
       offset += length;
-      entities.forEach(entity => {
+      entities.forEach((entity) => {
         const end = entity.offset + entity.length;
         if(end === offset) { // current entity
           entity.length += length;

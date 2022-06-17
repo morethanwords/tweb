@@ -48,7 +48,7 @@ export default class QueryableWorker extends EventListenerBase<{
       });
     } else {
       const transfer: (ArrayBuffer | OffscreenCanvas)[] = [];
-      args.forEach(arg => {
+      args.forEach((arg) => {
         if(arg instanceof ArrayBuffer) {
           transfer.push(arg);
         }

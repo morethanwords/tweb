@@ -7,7 +7,7 @@
 import { ReportReason } from "../../layer";
 import InputField from "../inputField";
 import { toastNew } from "../toast";
-import { wrapSticker } from "../wrappers";
+import wrapStickerEmoji from "../wrappers/stickerEmoji";
 import PopupPeer from "./peer";
 
 export default class PopupReportMessagesConfirm extends PopupPeer {
@@ -24,7 +24,7 @@ export default class PopupReportMessagesConfirm extends PopupPeer {
           }
 
           onConfirm && onConfirm();
-          this.managers.appMessagesManager.reportMessages(peerId, mids, reason, inputField.value).then(bool => {
+          this.managers.appMessagesManager.reportMessages(peerId, mids, reason, inputField.value).then((bool) => {
             if(!bool) return;
 
             toastNew({
@@ -37,17 +37,13 @@ export default class PopupReportMessagesConfirm extends PopupPeer {
     });
 
     const div = document.createElement('div');
-    const doc = this.managers.appStickersManager.getAnimatedEmojiSticker(PopupReportMessagesConfirm.STICKER_EMOJI);
     const size = 100;
-    wrapSticker({
-      doc,
+    wrapStickerEmoji({
       div,
       emoji: PopupReportMessagesConfirm.STICKER_EMOJI,
       width: size,
       height: size,
-      loop: false,
-      play: true
-    }).finally(() => {
+    }).then(({render}) => render).finally(() => {
       this.show();
     });
 

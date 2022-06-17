@@ -6,7 +6,7 @@
 
 import { SliderSuperTab } from "../../slider";
 import AppSelectPeers from "../../appSelectPeers";
-import { setButtonLoader } from "../../misc";
+import { setButtonLoader } from "../../putPreloader";
 import { LangPackKey, _i18n } from "../../../lib/langPack";
 import ButtonCorner from "../../buttonCorner";
 
@@ -24,7 +24,7 @@ export default class AppAddMembersTab extends SliderSuperTab {
     this.scrollable.container.remove();
     
     this.nextBtn.addEventListener('click', () => {
-      const peerIds = this.selector.getSelected().map(sel => sel.toPeerId());
+      const peerIds = this.selector.getSelected().map((sel) => sel.toPeerId());
 
       if(this.skippable) {
         this.takeOut(peerIds);

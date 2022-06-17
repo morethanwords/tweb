@@ -34,7 +34,7 @@ export default function parseSignalingData(sdp: SDP) {
     codec.ssrc = convertNumber(info.source);
     
     if(info.sourceGroups) {
-      codec.ssrcGroups = info.sourceGroups.map(sourceGroup => ({semantics: sourceGroup.semantics, ssrcs: sourceGroup.sources.map(convertNumber)}));
+      codec.ssrcGroups = info.sourceGroups.map((sourceGroup) => ({semantics: sourceGroup.semantics, ssrcs: sourceGroup.sources.map(convertNumber)}));
     }
     
     const rtpExtensions: P2PVideoCodec['rtpExtensions'] = codec.rtpExtensions = [];

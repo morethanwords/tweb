@@ -1,3 +1,9 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
 import assumeType from "../../helpers/assumeType";
 import htmlToDocumentFragment from "../../helpers/dom/htmlToDocumentFragment";
 import { getRestrictionReason } from "../../helpers/restrictions";
@@ -16,9 +22,9 @@ import wrapRichText from "../../lib/richTextProcessor/wrapRichText";
 import rootScope from "../../lib/rootScope";
 import wrapMessageActionTextNew from "./messageActionTextNew";
 
-export default function wrapMessageForReply(message: MyMessage | MyDraftMessage, text: string, usingMids: number[], plain: true, highlightWord?: string, withoutMediaType?: boolean): string;
-export default function wrapMessageForReply(message: MyMessage | MyDraftMessage, text?: string, usingMids?: number[], plain?: false, highlightWord?: string, withoutMediaType?: boolean): DocumentFragment;
-export default function wrapMessageForReply(message: MyMessage | MyDraftMessage, text: string = (message as Message.message).message, usingMids?: number[], plain?: boolean, highlightWord?: string, withoutMediaType?: boolean): DocumentFragment | string {
+export default async function wrapMessageForReply(message: MyMessage | MyDraftMessage, text: string, usingMids: number[], plain: true, highlightWord?: string, withoutMediaType?: boolean): Promise<string>;
+export default async function wrapMessageForReply(message: MyMessage | MyDraftMessage, text?: string, usingMids?: number[], plain?: false, highlightWord?: string, withoutMediaType?: boolean): Promise<DocumentFragment>;
+export default async function wrapMessageForReply(message: MyMessage | MyDraftMessage, text: string = (message as Message.message).message, usingMids?: number[], plain?: boolean, highlightWord?: string, withoutMediaType?: boolean): Promise<DocumentFragment | string> {
   const parts: (Node | string)[] = [];
 
   let hasAlbumKey = false;
@@ -52,7 +58,7 @@ export default function wrapMessageForReply(message: MyMessage | MyDraftMessage,
     let usingFullAlbum = true;
     if(message.grouped_id) {
       if(usingMids) {
-        const mids = appMessagesManager.getMidsByMessage(message);
+        const mids = await appMessagesManager.getMidsByMessage(message);
         if(usingMids.length === mids.length) {
           for(const mid of mids) {
             if(!usingMids.includes(mid)) {
@@ -66,7 +72,7 @@ export default function wrapMessageForReply(message: MyMessage | MyDraftMessage,
       }
 
       if(usingFullAlbum) {
-        const albumText = appMessagesManager.getAlbumText(message.grouped_id);
+        const albumText = await appMessagesManager.getAlbumText(message.grouped_id);
         text = albumText.message;
         entities = albumText.totalEntities;
 
@@ -142,7 +148,7 @@ export default function wrapMessageForReply(message: MyMessage | MyDraftMessage,
 
             text = '';
           } else if(document.type === 'audio') {
-            const attribute = document.attributes.find(attribute => attribute._ === 'documentAttributeAudio' && (attribute.title || attribute.performer)) as DocumentAttribute.documentAttributeAudio;
+            const attribute = document.attributes.find((attribute) => attribute._ === 'documentAttributeAudio' && (attribute.title || attribute.performer)) as DocumentAttribute.documentAttributeAudio;
             const f = '🎵' + ' ' + (attribute ? [attribute.title, attribute.performer].filter(Boolean).join(' - ') : document.file_name);
             addPart(undefined, plain ? f : wrapEmojiText(f));
           } else {
@@ -175,7 +181,7 @@ export default function wrapMessageForReply(message: MyMessage | MyDraftMessage,
   }
 
   if((message as Message.messageService).action) {
-    const actionWrapped = wrapMessageActionTextNew((message as Message.messageService), plain);
+    const actionWrapped = await wrapMessageActionTextNew((message as Message.messageService), plain);
     if(actionWrapped) {
       addPart(undefined, actionWrapped);
     }

@@ -4,7 +4,7 @@ export default function bufferConcats(...args: (ArrayBuffer | Uint8Array | numbe
   const tmp = new Uint8Array(length);
   
   let lastLength = 0;
-  args.forEach(b => {
+  args.forEach((b) => {
     tmp.set(b instanceof ArrayBuffer ? new Uint8Array(b) : b, lastLength);
     lastLength += (b as ArrayBuffer).byteLength || (b as Uint8Array).length;
   });

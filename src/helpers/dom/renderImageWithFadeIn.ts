@@ -4,7 +4,6 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { fastRaf } from "../schedulers";
 import sequentialDom from "../sequentialDom";
 import renderImageFromUrl from "./renderImageFromUrl";
 
@@ -20,7 +19,7 @@ export default function renderImageWithFadeIn(
     image.classList.add('fade-in');
   }
 
-  return new Promise<void>((resolve) => {
+  const promise = new Promise<void>((resolve) => {
     /* if(photo._ === 'document') {
       console.error('wrapPhoto: will render document', photo, size, cacheContext);
       return resolve();
@@ -30,9 +29,10 @@ export default function renderImageWithFadeIn(
       sequentialDom.mutateElement(container, () => {
         aspecter.append(image);
 
-        fastRaf(() => {
+        resolve();
+        /* fastRaf(() => {
           resolve();
-        });
+        }); */
 
         if(needFadeIn) {
           image.addEventListener('animationend', () => {
@@ -48,4 +48,8 @@ export default function renderImageWithFadeIn(
       });
     });
   });
+
+  // recordPromise(promise, 'renderImageWithFadeIn');
+
+  return promise;
 }

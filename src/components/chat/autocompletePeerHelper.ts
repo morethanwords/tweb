@@ -60,7 +60,7 @@ export default class AutocompletePeerHelper extends AutocompleteHelper {
 
     if(data.length) {
       this.list.innerHTML = '';
-      data.forEach(d => {
+      data.forEach((d) => {
         const div = AutocompletePeerHelper.listElement({
           className: this.className,
           peerId: d.peerId,

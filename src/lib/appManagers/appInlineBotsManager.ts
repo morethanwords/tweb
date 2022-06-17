@@ -13,12 +13,12 @@ import type { MyDocument } from "./appDocsManager";
 import type { MyPhoto } from "./appPhotosManager";
 import type { MyTopPeer } from "./appUsersManager";
 import { BotInlineResult, GeoPoint, InputGeoPoint, InputMedia, MessageEntity, MessagesBotResults, ReplyMarkup } from "../../layer";
-import apiManagerProxy from "../mtproto/mtprotoworker";
-import rootScope from "../rootScope";
-import appStateManager from "./appStateManager";
 import insertInDescendSortedArray from "../../helpers/array/insertInDescendSortedArray";
 import { AppManager } from "./manager";
 import getPhotoMediaInput from "./utils/photos/getPhotoMediaInput";
+import getServerMessageId from "./utils/messageId/getServerMessageId";
+import generateQId from "./utils/inlineBots/generateQId";
+import getDocumentMediaInput from "./utils/docs/getDocumentMediaInput";
 
 export class AppInlineBotsManager extends AppManager {
   private inlineResults: {[queryAndResultIds: string]: BotInlineResult} = {};
@@ -41,20 +41,20 @@ export class AppInlineBotsManager extends AppManager {
   }
 
   public getInlineResults(peerId: PeerId, botId: BotId, query = '', offset = '', geo?: GeoPoint) {
-    return apiManagerProxy.invokeApi('messages.getInlineBotResults', {
+    return this.apiManager.invokeApi('messages.getInlineBotResults', {
       bot: this.appUsersManager.getUserInput(botId),
       peer: this.appPeersManager.getInputPeerById(peerId),
       query,
       geo_point: geo ? this.getGeoInput(geo) : undefined,
       offset
-    }, {/* timeout: 1,  */stopTime: -1, noErrorBox: true}).then(botResults => {
+    }, {/* timeout: 1,  */stopTime: -1, noErrorBox: true}).then((botResults) => {
       const queryId = botResults.query_id;
 
       /* if(botResults.switch_pm) {
         botResults.switch_pm.rText = wrapRichText(botResults.switch_pm.text, {noLinebreaks: true, noLinks: true});
       } */
       
-      botResults.results.forEach(result => {
+      botResults.results.forEach((result) => {
         if(result._ === 'botInlineMediaResult') {
           if(result.document) {
             result.document = this.appDocsManager.saveDoc(result.document);
@@ -65,21 +65,17 @@ export class AppInlineBotsManager extends AppManager {
           }
         }
         
-        this.inlineResults[this.generateQId(queryId, result.id)] = result;
+        this.inlineResults[generateQId(queryId, result.id)] = result;
       });
 
       return botResults;
     });
   }
 
-  public generateQId(queryId: MessagesBotResults.messagesBotResults['query_id'], resultId: string) {
-    return queryId + '_' + resultId;
-  }
-
   private pushPopularBot(botId: BotId) {
     this.appUsersManager.getTopPeers('bots_inline').then((topPeers) => {
       const botPeerId = botId.toPeerId();
-      const index = topPeers.findIndex(topPeer => topPeer.id === botPeerId);
+      const index = topPeers.findIndex((topPeer) => topPeer.id === botPeerId);
       let topPeer: MyTopPeer;
       if(index !== -1) {
         topPeer = topPeers[index];
@@ -93,7 +89,7 @@ export class AppInlineBotsManager extends AppManager {
       ++topPeer.rating;
       insertInDescendSortedArray(topPeers, topPeer, 'rating');
 
-      appStateManager.setKeyValueToStorage('topPeersCache');
+      this.appStateManager.setKeyValueToStorage('topPeersCache');
       
       // rootScope.$broadcast('inline_bots_popular')
     });
@@ -101,7 +97,7 @@ export class AppInlineBotsManager extends AppManager {
 
   public switchToPM(fromPeerId: PeerId, botId: BotId, startParam: string) {
     this.setHash[botId] = {peerId: fromPeerId, time: Date.now()};
-    rootScope.dispatchEvent('history_focus', {peerId: botId.toPeerId()});
+    this.rootScope.dispatchEvent('history_focus', {peerId: botId.toPeerId()});
     return this.appMessagesManager.startBot(botId, undefined, startParam);
   }
   
@@ -228,14 +224,14 @@ export class AppInlineBotsManager extends AppManager {
   }
 
   public switchInlineQuery(peerId: PeerId, threadId: number, botId: BotId, query: string) {
-    rootScope.dispatchEvent('history_focus', {peerId, threadId});
+    this.rootScope.dispatchEvent('history_focus', {peerId, threadId});
     this.appDraftsManager.setDraft(peerId, threadId, '@' + this.appUsersManager.getUser(botId).username + ' ' + query);
   }
 
   public callbackButtonClick(peerId: PeerId, mid: number, button: any) {
-    return apiManagerProxy.invokeApi('messages.getBotCallbackAnswer', {
+    return this.apiManager.invokeApi('messages.getBotCallbackAnswer', {
       peer: this.appPeersManager.getInputPeerById(peerId),
-      msg_id: this.appMessagesIdsManager.getServerMessageId(mid),
+      msg_id: getServerMessageId(mid),
       data: button.data
     }, {/* timeout: 1,  */stopTime: -1, noErrorBox: true});
   }
@@ -301,7 +297,7 @@ export class AppInlineBotsManager extends AppManager {
           if(inlineResult._ === 'botInlineMediaResult') {
             const {document, photo} = inlineResult;
             if(document) {
-              inputMedia = this.appDocsManager.getMediaInput(document as MyDocument);
+              inputMedia = getDocumentMediaInput(document as MyDocument);
             } else {
               inputMedia = getPhotoMediaInput(photo as MyPhoto);
             }

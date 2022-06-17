@@ -11,7 +11,7 @@ export default function getAudioConstraints(): MediaTrackConstraints {
     'autoGainControl'
   ];
 
-  desirable.forEach(constraint => {
+  desirable.forEach((constraint) => {
     if(constraintSupported(constraint)) {
       // @ts-ignore
       constraints[constraint] = true;

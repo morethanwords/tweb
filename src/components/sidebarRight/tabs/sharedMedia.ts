@@ -22,18 +22,18 @@ import ButtonCorner from "../../buttonCorner";
 import { attachClickEvent } from "../../../helpers/dom/clickEvent";
 import PeerProfile from "../../peerProfile";
 
+const historiesStorage: {
+  [peerId: PeerId]: Partial<{
+    [type in SearchSuperType]: {mid: number, peerId: PeerId}[]
+  }>
+} = {};
+
 // TODO: отредактированное сообщение не изменится
 export default class AppSharedMediaTab extends SliderSuperTab {
   private editBtn: HTMLElement;
 
   private peerId: PeerId;
   private threadId = 0;
-
-  private historiesStorage: {
-    [peerId: PeerId]: Partial<{
-      [type in SearchSuperType]: {mid: number, peerId: PeerId}[]
-    }>
-  } = {};
 
   private searchSuper: AppSearchSuper;
 
@@ -144,30 +144,30 @@ export default class AppSharedMediaTab extends SliderSuperTab {
       }
     });
 
-    rootScope.addEventListener('contacts_update', (userId) => {
+    this.listenerSetter.add(rootScope)('contacts_update', (userId) => {
       if(this.peerId === userId) {
         this.toggleEditBtn();
       }
     });
 
-    rootScope.addEventListener('chat_update', (chatId) => {
+    this.listenerSetter.add(rootScope)('chat_update', (chatId) => {
       if(this.peerId === chatId.toPeerId(true)) {
         this.toggleEditBtn();
       }
     });
 
-    rootScope.addEventListener('history_multiappend', (msgIdsByPeer) => {
+    this.listenerSetter.add(rootScope)('history_multiappend', (msgIdsByPeer) => {
       for(const peerId in msgIdsByPeer) {
         this.renderNewMessages(peerId.toPeerId(), Array.from(msgIdsByPeer[peerId]));
       }
     });
     
-    rootScope.addEventListener('history_delete', ({peerId, msgs}) => {
+    this.listenerSetter.add(rootScope)('history_delete', ({peerId, msgs}) => {
       this.deleteDeletedMessages(peerId, Array.from(msgs));
     });
 
     // Calls when message successfully sent and we have an id
-    rootScope.addEventListener('message_sent', ({message}) => {
+    this.listenerSetter.add(rootScope)('message_sent', ({message}) => {
       this.renderNewMessages(message.peerId, [message.mid]);
     });
 
@@ -218,10 +218,10 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     const btnAddMembers = ButtonCorner({icon: 'addmember_filled'});
     this.content.append(btnAddMembers);
 
-    btnAddMembers.addEventListener('click', () => {
+    btnAddMembers.addEventListener('click', async() => {
       const peerId = this.peerId;
       const id = this.peerId.toChatId();
-      const isChannel = this.managers.appChatsManager.isChannel(id);
+      const isChannel = await this.managers.appChatsManager.isChannel(id);
 
       const showConfirmation = (peerIds: PeerId[], callback: (checked: PopupPeerButtonCallbackCheckboxes) => void) => {
         let titleLangKey: LangPackKey, titleLangArgs: any[],
@@ -232,7 +232,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
           titleLangKey = 'AddMembersAlertTitle';
           titleLangArgs = [i18n('Members', [peerIds.length])];
           descriptionLangKey = 'AddMembersAlertCountText';
-          descriptionLangArgs = peerIds.map(peerId => {
+          descriptionLangArgs = peerIds.map((peerId) => {
             const b = document.createElement('b');
             b.append(new PeerTitle({peerId}).element);
             return b;
@@ -321,20 +321,24 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     //console.log('construct shared media time:', performance.now() - perf);
   }
 
-  public renderNewMessages(peerId: PeerId, mids: number[]) {
+  public async renderNewMessages(peerId: PeerId, mids: number[]) {
     if(this.init) return; // * not inited yet
 
-    if(!this.historiesStorage[peerId]) return;
+    if(!historiesStorage[peerId]) return;
+
+    const messages = await Promise.all(mids.map((mid) => this.managers.appMessagesManager.getMessageByPeer(peerId, mid)));
     
     mids = mids.slice().reverse(); // ! because it will be ascend sorted array
     for(const mediaTab of this.searchSuper.mediaTabs) {
       const inputFilter = mediaTab.inputFilter;
-      const filtered = this.searchSuper.filterMessagesByType(mids.map(mid => this.managers.appMessagesManager.getMessageByPeer(peerId, mid)), inputFilter);
+      const history = historiesStorage[peerId][inputFilter];
+      if(!history) {
+        continue;
+      }
+
+      const filtered = this.searchSuper.filterMessagesByType(messages, inputFilter).filter((message) => !history.find((m) => m.mid === message.mid && m.peerId === message.peerId));
       if(filtered.length) {
-        const history = this.historiesStorage[peerId][inputFilter];
-        if(history) {
-          history.unshift(...filtered.map(message => ({mid: message.mid, peerId: message.peerId})));
-        }
+        history.unshift(...filtered.map((message) => ({mid: message.mid, peerId: message.peerId})));
 
         if(this.peerId === peerId && this.searchSuper.usedFromHistory[inputFilter] !== -1) {
           this.searchSuper.usedFromHistory[inputFilter] += filtered.length;
@@ -347,54 +351,52 @@ export default class AppSharedMediaTab extends SliderSuperTab {
   public deleteDeletedMessages(peerId: PeerId, mids: number[]) {
     if(this.init) return; // * not inited yet
 
-    if(!this.historiesStorage[peerId]) return;
+    if(!historiesStorage[peerId]) return;
 
     for(const mid of mids) {
       for(const type of this.searchSuper.mediaTabs) {
         const inputFilter = type.inputFilter;
 
-        const history = this.historiesStorage[peerId][inputFilter];
+        const history = historiesStorage[peerId][inputFilter];
         if(!history) continue;
 
-        const idx = history.findIndex(m => m.mid === mid);
-        if(idx !== -1) {
-          history.splice(idx, 1);
+        const idx = history.findIndex((m) => m.mid === mid);
+        if(idx === -1) {
+          continue;
+        }
 
-          if(this.peerId === peerId) {
-            const container = this.searchSuper.tabs[inputFilter];
-            const div = container.querySelector(`[data-mid="${mid}"][data-peer-id="${peerId}"]`) as HTMLElement;
-            if(div) {
-              if(this.searchSuper.selection.isSelecting) {
-                this.searchSuper.selection.toggleByElement(div);
-              }
+        history.splice(idx, 1);
 
-              div.remove();
+        if(this.peerId === peerId) {
+          const container = this.searchSuper.tabs[inputFilter];
+          const div = container.querySelector(`[data-mid="${mid}"][data-peer-id="${peerId}"]`) as HTMLElement;
+          if(div) {
+            if(this.searchSuper.selection.isSelecting) {
+              this.searchSuper.selection.toggleByElement(div);
             }
-  
-            if(this.searchSuper.usedFromHistory[inputFilter] >= (idx + 1)) {
-              this.searchSuper.usedFromHistory[inputFilter]--;
-            }
+
+            div.remove();
           }
 
-          // can have element in different tabs somehow
-          // break;
+          if(this.searchSuper.usedFromHistory[inputFilter] >= (idx + 1)) {
+            --this.searchSuper.usedFromHistory[inputFilter];
+          }
         }
+
+        // can have element in different tabs somehow
+        // break;
       }
     }
 
     this.scrollable.onScroll();
   }
 
-  public cleanupHTML() {
+  public async cleanupHTML() {
     // const perf = performance.now();
     this.profile.cleanupHTML();
-    
     this.editBtn.classList.add('hide');
-
     this.searchSuper.cleanupHTML(true);
-
-    this.container.classList.toggle('can-add-members', this.searchSuper.canViewMembers() && this.managers.appChatsManager.hasRights(this.peerId.toChatId(), 'invite_users'));
-
+    this.container.classList.toggle('can-add-members', await this.searchSuper.canViewMembers() && await this.managers.appChatsManager.hasRights(this.peerId.toChatId(), 'invite_users'));
     // console.log('cleanupHTML shared media time:', performance.now() - perf);
   }
 
@@ -417,7 +419,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     this.searchSuper.setQuery({
       peerId, 
       //threadId, 
-      historyStorage: this.historiesStorage[peerId] ?? (this.historiesStorage[peerId] = {})
+      historyStorage: historiesStorage[peerId] ??= {}
     });
 
     this.profile.setPeer(peerId, threadId);
@@ -425,38 +427,39 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     return true;
   }
 
-  public fillProfileElements() {
+  public async fillProfileElements() {
     if(!this.peerChanged) {
       return;
     }
 
     this.peerChanged = false;
-
-    this.cleanupHTML();
-
-    this.profile.fillProfileElements();
-
-    this.toggleEditBtn();
+    await this.cleanupHTML();
+    await this.toggleEditBtn();
+    await this.profile.fillProfileElements();
   }
 
-  private toggleEditBtn() {
+  private async toggleEditBtn() {
     let show: boolean;
     if(this.peerId.isUser()) {
-      show = this.peerId !== rootScope.myId && this.managers.appUsersManager.isContact(this.peerId.toUserId());
+      show = this.peerId !== rootScope.myId && await this.managers.appUsersManager.isContact(this.peerId.toUserId());
     } else {
-      show = this.managers.appChatsManager.hasRights(this.peerId.toChatId(), 'change_info');
+      show = await this.managers.appChatsManager.hasRights(this.peerId.toChatId(), 'change_info');
     }
 
     this.editBtn.classList.toggle('hide', !show);
   }
 
-  public loadSidebarMedia(single: boolean, justLoad = false) {
+  public loadSidebarMedia(single: boolean, justLoad?: boolean) {
     this.searchSuper.load(single, justLoad);
   }
 
   onOpenAfterTimeout() {
     this.scrollable.onScroll();
   }
-}
 
-// MOUNT_CLASS_TO && (MOUNT_CLASS_TO.AppSharedMediaTab = AppSharedMediaTab);
+  public destroy() {
+    this.destroyable = true;
+    this.onCloseAfterTimeout();
+    this.profile.destroy();
+  }
+}

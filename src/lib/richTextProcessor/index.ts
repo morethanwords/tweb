@@ -81,12 +81,13 @@ export const SITE_HASHTAGS: {[siteName: string]: string} = {
   'Google Plus': 'https://plus.google.com/explore/{1}'
 };
 
-export const SITE_MENTIONS: {[siteName: string]: string} = {
-  Telegram: '#/im?p=%40{1}',
-  Twitter: 'https://twitter.com/{1}',
-  Instagram: 'https://instagram.com/{1}/',
-  GitHub: 'https://github.com/{1}'
-};
+// export const SITE_MENTIONS: {[siteName in 'Telegram' | 'Twitter' | 'Instagram' | 'GitHub']: string} = {
+//   Telegram: '#{1}',
+//   Twitter: 'https://twitter.com/{1}',
+//   Instagram: 'https://instagram.com/{1}/',
+//   GitHub: 'https://github.com/{1}'
+// };
+
 export const MARKDOWN_ENTITIES: {[markdown: string]: MessageEntity['_']} = {
   '`': 'messageEntityCode',
   '``': 'messageEntityPre',

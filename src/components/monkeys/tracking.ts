@@ -95,7 +95,7 @@ export default class TrackingMonkey {
         autoplay: true,
         width: this.size,
         height: this.size
-      }, 'TwoFactorSetupMonkeyIdle').then(animation => {
+      }, 'TwoFactorSetupMonkeyIdle').then((animation) => {
         this.idleAnimation = animation;
 
         // ! animationIntersector will stop animation instantly
@@ -112,7 +112,7 @@ export default class TrackingMonkey {
         autoplay: false,
         width: this.size,
         height: this.size
-      }, 'TwoFactorSetupMonkeyTracking').then(_animation => {
+      }, 'TwoFactorSetupMonkeyTracking').then((_animation) => {
         this.animation = _animation;
 
         if(!this.inputField.value.length) {

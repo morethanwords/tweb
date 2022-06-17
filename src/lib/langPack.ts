@@ -4,12 +4,11 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import DEBUG, { MOUNT_CLASS_TO } from "../config/debug";
 import type lang from "../lang";
 import type langSign from "../langSign";
-import type { State } from "./appManagers/appStateManager";
+import type { State } from "../config/state";
+import DEBUG, { MOUNT_CLASS_TO } from "../config/debug";
 import { HelpCountriesList, HelpCountry, LangPackDifference, LangPackString } from "../layer";
-import apiManager from "./mtproto/mtprotoworker";
 import stateStorage from "./stateStorage";
 import App from "../config/app";
 import rootScope from "./rootScope";
@@ -139,7 +138,7 @@ namespace I18n {
     if(haveToUpdate) {
       cachedDateTimeFormats.clear();
       const elements = Array.from(document.querySelectorAll(`.i18n`)) as HTMLElement[];
-      elements.forEach(element => {
+      elements.forEach((element) => {
         const instance = weakMap.get(element);
 
         if(instance instanceof IntlDateElement) {
@@ -176,18 +175,19 @@ namespace I18n {
 
 	export function loadLangPack(langCode: string) {
 		requestedServerLanguage = true;
+    const managers = rootScope.managers;
 		return Promise.all([
-			apiManager.invokeApiCacheable('langpack.getLangPack', {
+			managers.apiManager.invokeApiCacheable('langpack.getLangPack', {
 				lang_code: langCode,
 				lang_pack: App.langPack
 			}),
-			apiManager.invokeApiCacheable('langpack.getLangPack', {
+			managers.apiManager.invokeApiCacheable('langpack.getLangPack', {
 				lang_code: langCode,
 				lang_pack: 'android'
 			}),
 			import('../lang'),
 			import('../langSign'),
-			apiManager.invokeApiCacheable('help.getCountriesList', {
+			managers.apiManager.invokeApiCacheable('help.getCountriesList', {
 				lang_code: langCode,
 				hash: 0
 			}) as Promise<HelpCountriesList.helpCountriesList>,
@@ -196,7 +196,7 @@ namespace I18n {
 	}
 
 	export function getStrings(langCode: string, strings: string[]) {
-		return apiManager.invokeApi('langpack.getStrings', {
+		return rootScope.managers.apiManager.invokeApi('langpack.getStrings', {
 			lang_pack: App.langPack,
 			lang_code: langCode,
 			keys: strings
@@ -230,7 +230,7 @@ namespace I18n {
 		return loadLangPack(langCode).then(([langPack1, langPack2, localLangPack1, localLangPack2, countries, _]) => {
 			let strings: LangPackString[] = [];
 
-			[localLangPack1, localLangPack2].forEach(l => {
+			[localLangPack1, localLangPack2].forEach((l) => {
 				formatLocalStrings(l.default as any, strings);
 			});
 
@@ -287,7 +287,7 @@ namespace I18n {
 			countriesList.length = 0;
 			countriesList.push(...langPack.countries.countries);
 
-			langPack.countries.countries.forEach(country => {
+			langPack.countries.countries.forEach((country) => {
 				if(country.name) {
 					const langPackKey: any = country.default_name;
 					strings.set(langPackKey, {
@@ -307,7 +307,7 @@ namespace I18n {
 		}
 
 		const elements = Array.from(document.querySelectorAll(`.i18n`)) as HTMLElement[];
-		elements.forEach(element => {
+		elements.forEach((element) => {
 			const instance = weakMap.get(element);
 
 			if(instance) {
@@ -414,7 +414,7 @@ namespace I18n {
 
     const result = superFormatter(input, args);
     if(plain) { // * let's try a hack now... (don't want to replace []() entity)
-      return result.map(item => item instanceof Node ? item.textContent : item).join('');
+      return result.map((item) => item instanceof Node ? item.textContent : item).join('');
     } else {
       return result;
     }

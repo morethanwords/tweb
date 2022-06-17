@@ -23,107 +23,142 @@ export type NavigationItem = {
 };
 
 export class AppNavigationController {
-  private navigations: Array<NavigationItem> = [];
-  private id = Date.now();
-  private manual = false;
-  private log = logger('NC');
-  private debug = true;
-  private currentHash = window.location.hash;
+  private navigations: Array<NavigationItem>;
+  private id: number;
+  private manual: boolean;
+  private log: ReturnType<typeof logger>;
+  private debug: boolean;
+  private currentHash: string; // have to start with # if not empty
+  private overriddenHash: string; // have to start with # if not empty
+  private isPossibleSwipe: boolean;
   public onHashChange: () => void;
 
   constructor() {
-    let isPossibleSwipe = false;
-    window.addEventListener('popstate', (e) => {
-      this.debug && this.log('popstate', e, isPossibleSwipe);
+    this.navigations = [];
+    this.id = Date.now();
+    this.manual = false;
+    this.log = logger('NC');
+    this.debug = true;
+    this.currentHash = window.location.hash;
+    this.overriddenHash = '';
+    this.isPossibleSwipe = false;
 
-      if(window.location.hash !== this.currentHash) {
-        this.onHashChange && this.onHashChange();
-        this.replaceState();
-        return;
-      }
-      this.currentHash = window.location.hash;
-
-      const id: number = e.state;
-      if(id !== this.id/*  && !this.navigations.length */) {
-        this.pushState();
-        return;
-      }
-
-      const item = this.navigations.pop();
-      if(!item) {
-        this.pushState();
-        return;
-      }
-
-      this.manual = !isPossibleSwipe;
-      this.handleItem(item);
-      //this.pushState(); // * prevent adding forward arrow
-    });
-
-    window.addEventListener('keydown', (e) => {
-      const item = this.navigations[this.navigations.length - 1];
-      if(!item) return;
-      if(e.key === 'Escape' && (item.onEscape ? item.onEscape() : true)) {
-        cancelEvent(e);
-        this.back(item.type);
-      }
-    }, {capture: true, passive: false});
+    window.addEventListener('popstate', this.onPopState);
+    window.addEventListener('keydown', this.onKeyDown, {capture: true, passive: false});
 
     if(IS_MOBILE_SAFARI) {
       const options = {passive: true};
-      window.addEventListener('touchstart', (e) => {
-        if(e.touches.length > 1) return;
-        this.debug && this.log('touchstart');
-
-        if(isSwipingBackSafari(e)) {
-          isPossibleSwipe = true;
-
-          window.addEventListener('touchend', () => {
-            setTimeout(() => {
-              isPossibleSwipe = false;
-            }, 100);
-          }, {passive: true, once: true});
-        }
-
-        /* const detach = () => {
-          window.removeEventListener('touchend', onTouchEnd);
-          window.removeEventListener('touchmove', onTouchMove);
-        };
-
-        let moved = false;
-        const onTouchMove = (e: TouchEvent) => {
-          this.debug && this.log('touchmove');
-          if(e.touches.length > 1) {
-            detach();
-            return;
-          }
-
-          moved = true;
-        };
-
-        const onTouchEnd = (e: TouchEvent) => {
-          this.debug && this.log('touchend');
-          if(e.touches.length > 1 || !moved) {
-            detach();
-            return;
-          }
-
-          isPossibleSwipe = true;
-          doubleRaf().then(() => {
-            isPossibleSwipe = false;
-          });
-
-          detach();
-        };
-
-        window.addEventListener('touchend', onTouchEnd, options);
-        window.addEventListener('touchmove', onTouchMove, options); */
-      }, options);
+      window.addEventListener('touchstart', this.onTouchStart, options);
     }
 
     history.scrollRestoration = 'manual';
 
     this.pushState(); // * push init state
+  }
+
+  private onPopState = (e: PopStateEvent) => {
+    let hash = window.location.hash;
+    const id: number = e.state;
+    this.debug && this.log('popstate', e, this.isPossibleSwipe, hash);
+    if(hash !== this.currentHash) {
+      this.debug && this.log.warn(`hash changed, new=${hash}, current=${this.currentHash}, overridden=${this.overriddenHash}`);
+      // fix for returning to wrong hash (e.g. chat -> archive -> chat -> 3x back)
+      if(id === this.id && this.overriddenHash && this.overriddenHash !== hash) {
+        this.overrideHash(this.overriddenHash);
+      } else if(id/*  === this.id */ && !this.overriddenHash && hash) {
+        this.overrideHash();
+      } else {
+        this.currentHash = hash;
+        this.onHashChange && this.onHashChange();
+        // this.replaceState();
+        return;
+      }
+    }
+
+    if(id !== this.id/*  && !this.navigations.length */) {
+      this.pushState();
+
+      if(!this.navigations.length) {
+        return;
+      }
+    }
+
+    const item = this.navigations.pop();
+    if(!item) {
+      this.pushState();
+      return;
+    }
+
+    this.manual = !this.isPossibleSwipe;
+    this.handleItem(item);
+    //this.pushState(); // * prevent adding forward arrow
+  };
+
+  private onKeyDown = (e: KeyboardEvent) => {
+    const item = this.navigations[this.navigations.length - 1];
+    if(!item) return;
+    if(e.key === 'Escape' && (item.onEscape ? item.onEscape() : true)) {
+      cancelEvent(e);
+      this.back(item.type);
+    }
+  };
+
+  private onTouchStart = (e: TouchEvent) => {
+    if(e.touches.length > 1) return;
+    this.debug && this.log('touchstart');
+
+    if(isSwipingBackSafari(e)) {
+      this.isPossibleSwipe = true;
+
+      window.addEventListener('touchend', () => {
+        setTimeout(() => {
+          this.isPossibleSwipe = false;
+        }, 100);
+      }, {passive: true, once: true});
+    }
+
+    /* const detach = () => {
+      window.removeEventListener('touchend', onTouchEnd);
+      window.removeEventListener('touchmove', onTouchMove);
+    };
+
+    let moved = false;
+    const onTouchMove = (e: TouchEvent) => {
+      this.debug && this.log('touchmove');
+      if(e.touches.length > 1) {
+        detach();
+        return;
+      }
+
+      moved = true;
+    };
+
+    const onTouchEnd = (e: TouchEvent) => {
+      this.debug && this.log('touchend');
+      if(e.touches.length > 1 || !moved) {
+        detach();
+        return;
+      }
+
+      isPossibleSwipe = true;
+      doubleRaf().then(() => {
+        isPossibleSwipe = false;
+      });
+
+      detach();
+    };
+
+    window.addEventListener('touchend', onTouchEnd, options);
+    window.addEventListener('touchmove', onTouchMove, options); */
+  };
+
+  public overrideHash(hash: string = '') {
+    if(hash && hash[0] !== '#') hash = '#' + hash;
+    else if(hash === '#') hash = '';
+
+    this.overriddenHash = this.currentHash = hash;
+    this.replaceState();
+    this.pushState();
   }
 
   private handleItem(item: NavigationItem) {
@@ -169,7 +204,7 @@ export class AppNavigationController {
   }
 
   private onItemAdded(item: NavigationItem) {
-    this.debug && this.log('pushstate', item, this.navigations);
+    this.debug && this.log('onItemAdded', item, this.navigations);
 
     if(!item.noHistory) {
       this.pushState();
@@ -194,12 +229,16 @@ export class AppNavigationController {
   }
 
   private pushState() {
+    this.debug && this.log('push');
     this.manual = false;
     history.pushState(this.id, '');
   }
 
   public replaceState() {
-    history.replaceState(this.id, '', location.origin + location.pathname);
+    this.debug && this.log.warn('replace');
+
+    const url = location.origin + location.pathname + this.overriddenHash;
+    history.replaceState(this.id, '', url);
   }
 
   public removeItem(item: NavigationItem) {

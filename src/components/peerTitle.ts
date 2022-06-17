@@ -4,7 +4,6 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { MOUNT_CLASS_TO } from "../config/debug";
 import rootScope from "../lib/rootScope";
 import { i18n } from "../lib/langPack";
 import replaceContent from "../helpers/dom/replaceContent";
@@ -13,6 +12,7 @@ import limitSymbols from "../helpers/string/limitSymbols";
 import setInnerHTML from "../helpers/dom/setInnerHTML";
 import { AppManagers } from "../lib/appManagers/managers";
 import wrapEmojiText from "../lib/richTextProcessor/wrapEmojiText";
+import getPeerTitle from "./wrappers/getPeerTitle";
 
 export type PeerTitleOptions = {
   peerId?: PeerId,
@@ -26,11 +26,9 @@ export type PeerTitleOptions = {
 
 const weakMap: WeakMap<HTMLElement, PeerTitle> = new WeakMap();
 
-MOUNT_CLASS_TO.peerTitleWeakMap = weakMap;
-
 rootScope.addEventListener('peer_title_edit', (peerId) => {
   const elements = Array.from(document.querySelectorAll(`.peer-title[data-peer-id="${peerId}"]`)) as HTMLElement[];
-  elements.forEach(element => {
+  elements.forEach((element) => {
     const peerTitle = weakMap.get(element);
     //console.log('in the summer silence i was doing nothing', peerTitle, peerId);
 
@@ -50,30 +48,39 @@ export default class PeerTitle {
   private limitSymbols: number;
   private managers: AppManagers;
 
-  constructor(options: PeerTitleOptions) {
+  constructor(options?: PeerTitleOptions) {
     this.element = document.createElement('span');
     this.element.classList.add('peer-title');
     this.element.setAttribute('dir', 'auto');
+
+    if(options) {
+      this.update(options);
+    }
     
-    this.update(options);
     weakMap.set(this.element, this);
   }
 
-  public update(options?: PeerTitleOptions) {
-    if(options) {
-      for(const i in options) {
-        // @ts-ignore
-        const value = options[i];
-
-        if(typeof(value) !== 'object') {
-          // @ts-ignore
-          this.element.dataset[i] = value ? '' + (typeof(value) === 'boolean' ? +value : value) : '0';
-        }
-
-        // @ts-ignore
-        this[i] = value;
-      }
+  public setOptions(options?: PeerTitleOptions) {
+    if(!options) {
+      return;
     }
+
+    for(const i in options) {
+      // @ts-ignore
+      const value = options[i];
+
+      if(typeof(value) !== 'object') {
+        // @ts-ignore
+        this.element.dataset[i] = value ? '' + (typeof(value) === 'boolean' ? +value : value) : '0';
+      }
+
+      // @ts-ignore
+      this[i] = value;
+    }
+  }
+
+  public async update(options?: PeerTitleOptions) {
+    this.setOptions(options);
 
     let fromName = this.fromName;
     if(fromName !== undefined) {
@@ -91,11 +98,7 @@ export default class PeerTitle {
 
     if(this.peerId !== rootScope.myId || !this.dialog) {
       const managers = this.managers ?? rootScope.managers;
-      if(this.peerId.isUser() && managers.appUsersManager.getUser(this.peerId).pFlags.deleted) {
-        replaceContent(this.element, i18n(this.onlyFirstName ? 'Deleted' : 'HiddenName'));
-      } else {
-        setInnerHTML(this.element, managers.appPeersManager.getPeerTitle(this.peerId, this.plainText, this.onlyFirstName, this.limitSymbols));
-      }
+      setInnerHTML(this.element, await getPeerTitle(this.peerId, this.plainText, this.onlyFirstName, this.limitSymbols, managers));
     } else {
       replaceContent(this.element, i18n(this.onlyFirstName ? 'Saved' : 'SavedMessages'));
     }

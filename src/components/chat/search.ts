@@ -20,6 +20,7 @@ import { attachClickEvent } from "../../helpers/dom/clickEvent";
 import appNavigationController, { NavigationItem } from "../appNavigationController";
 import { IS_MOBILE_SAFARI } from "../../environment/userAgent";
 import PopupElement from "../popups";
+import { DIALOG_LIST_ELEMENT_TAG } from "../../lib/appManagers/appDialogsManager";
 
 export default class ChatSearch {
   private element: HTMLElement;
@@ -79,7 +80,7 @@ export default class ChatSearch {
       if(!this.foundCount) {
         replaceContent(this.foundCountEl, this.inputSearch.value ? i18n('NoResult') : '');
         this.results.classList.remove('active');
-        this.chat.bubbles.bubblesContainer.classList.remove('search-results-active');
+        this.chat.bubbles.container.classList.remove('search-results-active');
         this.upBtn.setAttribute('disabled', 'true');
         this.downBtn.setAttribute('disabled', 'true');
       } else {
@@ -89,7 +90,7 @@ export default class ChatSearch {
     this.appSearch.beginSearch(this.chat.peerId, this.chat.threadId);
 
     //appImManager.topbar.parentElement.insertBefore(this.results, appImManager.bubblesContainer);
-    this.chat.bubbles.bubblesContainer.append(this.results);
+    this.chat.bubbles.container.append(this.results);
 
     // Footer
     this.footer = document.createElement('div');
@@ -155,7 +156,7 @@ export default class ChatSearch {
     this.results.remove();
     this.footer.remove();
     this.listenerSetter.removeAll();
-    this.chat.bubbles.bubblesContainer.classList.remove('search-results-active');
+    this.chat.bubbles.container.classList.remove('search-results-active');
     this.chat.search = undefined;
     appNavigationController.removeItem(this.navigationItem);
   }
@@ -190,7 +191,7 @@ export default class ChatSearch {
     }
 
     this.results.classList.remove('active');
-    this.chat.bubbles.bubblesContainer.classList.remove('search-results-active');
+    this.chat.bubbles.container.classList.remove('search-results-active');
 
     const res = this.chat.setPeer(peerId, lastMsgId);
     this.setPeerPromise = ((res instanceof Promise ? res : Promise.resolve(res)) as Promise<any>).then(() => {
@@ -207,7 +208,7 @@ export default class ChatSearch {
   }
 
   private onResultsClick = (e: MouseEvent) => {
-    const target = findUpTag(e.target, 'LI');
+    const target = findUpTag(e.target, DIALOG_LIST_ELEMENT_TAG);
     if(target) {
       this.selectResult(target);
     }
@@ -215,7 +216,7 @@ export default class ChatSearch {
 
   private onFooterClick = (e: MouseEvent) => {
     if(this.foundCount) {
-      this.chat.bubbles.bubblesContainer.classList.toggle('search-results-active');
+      this.chat.bubbles.container.classList.toggle('search-results-active');
       this.results.classList.toggle('active');
     }
   };

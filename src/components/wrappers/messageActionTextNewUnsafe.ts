@@ -1,3 +1,9 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
 import indexOfAndSplice from "../../helpers/array/indexOfAndSplice";
 import { formatTime } from "../../helpers/date";
 import htmlToSpan from "../../helpers/dom/htmlToSpan";
@@ -5,16 +11,17 @@ import setInnerHTML from "../../helpers/dom/setInnerHTML";
 import formatCallDuration from "../../helpers/formatCallDuration";
 import { MessageAction } from "../../layer";
 import { MyMessage } from "../../lib/appManagers/appMessagesManager";
-import I18n, { FormatterArguments, i18n, join, langPack, LangPackKey, _i18n } from "../../lib/langPack";
+import I18n, { FormatterArgument, FormatterArguments, i18n, join, langPack, LangPackKey, _i18n } from "../../lib/langPack";
 import wrapEmojiText from "../../lib/richTextProcessor/wrapEmojiText";
 import wrapPlainText from "../../lib/richTextProcessor/wrapPlainText";
 import wrapRichText from "../../lib/richTextProcessor/wrapRichText";
 import rootScope from "../../lib/rootScope";
 import PeerTitle from "../peerTitle";
+import getPeerTitle from "./getPeerTitle";
 import wrapJoinVoiceChatAnchor from "./joinVoiceChatAnchor";
 import wrapMessageForReply from "./messageForReply";
 
-export default function wrapMessageActionTextNewUnsafe(message: MyMessage, plain?: boolean) {
+export default async function wrapMessageActionTextNewUnsafe(message: MyMessage, plain?: boolean) {
   const element: HTMLElement = plain ? undefined : document.createElement('span');
   const action = 'action' in message && message.action;
 
@@ -32,12 +39,12 @@ export default function wrapMessageActionTextNewUnsafe(message: MyMessage, plain
     let _ = action._;
     //let suffix = '';
     let langPackKey: LangPackKey;
-    let args: any[];
+    let args: Array<FormatterArgument | Promise<FormatterArgument>>;
 
     const managers = rootScope.managers;
 
-    const getNameDivHTML = (peerId: PeerId, plain: boolean) => {
-      return plain ? managers.appPeersManager.getPeerTitle(peerId, plain) : (new PeerTitle({peerId})).element;
+    const getNameDivHTML = async(peerId: PeerId, plain: boolean) => {
+      return plain ? getPeerTitle(peerId, plain) : (new PeerTitle({peerId})).element;
     };
 
     switch(action._) {
@@ -68,13 +75,13 @@ export default function wrapMessageActionTextNewUnsafe(message: MyMessage, plain
       case 'messageActionInviteToGroupCall': {
         const peerIds = [message.fromId, action.users[0].toPeerId()];
         let a = 'Chat.Service.VoiceChatInvitation';
-        const myId = managers.appUsersManager.getSelf().id;
+        const myId = rootScope.myId;
         if(peerIds[0] === myId) a += 'ByYou';
         else if(peerIds[1] === myId) a += 'ForYou';
         indexOfAndSplice(peerIds, myId);
 
         langPackKey = a as LangPackKey;
-        args = peerIds.map(peerId => getNameDivHTML(peerId, plain));
+        args = peerIds.map((peerId) => getNameDivHTML(peerId, plain));
         args.push(wrapJoinVoiceChatAnchor(message as any));
         break;
       }
@@ -86,10 +93,10 @@ export default function wrapMessageActionTextNewUnsafe(message: MyMessage, plain
         const tomorrowDate = new Date(today);
         tomorrowDate.setDate(tomorrowDate.getDate() + 1);
 
-        const isBroadcast = managers.appPeersManager.isBroadcast(message.peerId);
+        const isBroadcast = await managers.appPeersManager.isBroadcast(message.peerId);
         langPackKey = isBroadcast ? 'ChatList.Service.VoiceChatScheduled.Channel' : 'ChatList.Service.VoiceChatScheduled';
         args = [];
-        const myId = managers.appUsersManager.getSelf().id;
+        const myId = rootScope.myId;
         if(message.fromId === myId) {
           langPackKey += 'You';
         } else if(!isBroadcast) {
@@ -121,7 +128,7 @@ export default function wrapMessageActionTextNewUnsafe(message: MyMessage, plain
       }
 
       case 'messageActionChatCreate': {
-        const myId = managers.appUsersManager.getSelf().id;
+        const myId = rootScope.myId;
         if(message.fromId === myId) {
           _ += 'You';
         } else {
@@ -133,27 +140,28 @@ export default function wrapMessageActionTextNewUnsafe(message: MyMessage, plain
 
       case 'messageActionPinMessage': {
         const peerId = message.peerId;
-        const pinnedMessage = managers.appMessagesManager.getMessageByPeer(peerId, message.reply_to_mid);
+        const pinnedMessage = await managers.appMessagesManager.getMessageByPeer(peerId, message.reply_to_mid);
 
         args = [
           getNameDivHTML(message.fromId, plain),
         ];
         
-        if(pinnedMessage.deleted/*  || true */) {
+        if(!pinnedMessage/*  || true */) {
           langPackKey = 'ActionPinnedNoText';
 
           if(message.reply_to_mid) { // refresh original message
-            managers.appMessagesManager.fetchMessageReplyTo(message).then(originalMessage => {
-              if(!originalMessage.deleted && !message.deleted) {
+            managers.appMessagesManager.fetchMessageReplyTo(message).then(async(originalMessage) => {
+              if(originalMessage && message) {
                 rootScope.dispatchEvent('message_edit', {
-                  storage: managers.appMessagesManager.getMessagesStorage(peerId),
+                  storageKey: `${peerId}_history`,
                   peerId: peerId,
-                  mid: message.mid
+                  mid: message.mid,
+                  message
                 });
 
                 if(managers.appMessagesManager.isMessageIsTopMessage(message)) {
                   rootScope.dispatchEvent('dialogs_multiupdate', {
-                    [peerId]: managers.appMessagesManager.getDialogOnly(peerId)
+                    [peerId]: await managers.appMessagesManager.getDialogOnly(peerId)
                   });
                 }
               }
@@ -163,7 +171,7 @@ export default function wrapMessageActionTextNewUnsafe(message: MyMessage, plain
           const a = document.createElement('i');
           a.dataset.savedFrom = pinnedMessage.peerId + '_' + pinnedMessage.mid;
           a.dir = 'auto';
-          a.append(wrapMessageForReply(pinnedMessage, undefined, undefined, plain as any));
+          a.append(await wrapMessageForReply(pinnedMessage, undefined, undefined, plain as any));
           args.push(a);
         }
 
@@ -171,7 +179,7 @@ export default function wrapMessageActionTextNewUnsafe(message: MyMessage, plain
       }
 
       case 'messageActionChatJoinedByRequest': {
-        const isBroadcast = managers.appPeersManager.isBroadcast(message.peerId);
+        const isBroadcast = await managers.appPeersManager.isBroadcast(message.peerId);
         if(message.pFlags.out) {
           langPackKey = isBroadcast ? 'RequestToJoinChannelApproved' : 'RequestToJoinGroupApproved';
         } else {
@@ -216,7 +224,7 @@ export default function wrapMessageActionTextNewUnsafe(message: MyMessage, plain
 
         if(users.length > 1) {
           const joined = join(
-            users.map((userId: UserId) => getNameDivHTML(userId.toPeerId(), plain)),
+            await Promise.all(users.map((userId: UserId) => getNameDivHTML(userId.toPeerId(), plain))),
             false,
             plain
           );
@@ -262,10 +270,12 @@ export default function wrapMessageActionTextNewUnsafe(message: MyMessage, plain
       }
     }
 
+    const waited = args && await Promise.all(args);
+
     if(plain) {
-      return I18n.format(langPackKey, true, args);
+      return I18n.format(langPackKey, true, waited);
     } else {
-      return _i18n(element, langPackKey, args);
+      return _i18n(element, langPackKey, waited);
     }
 
     //str = !langPackKey || langPackKey[0].toUpperCase() === langPackKey[0] ? langPackKey : getNameDivHTML(message.fromId) + langPackKey + (suffix ? ' ' : '');

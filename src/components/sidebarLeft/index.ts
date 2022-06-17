@@ -5,7 +5,6 @@
  */
 
 import appImManager from "../../lib/appManagers/appImManager";
-import appStateManager from "../../lib/appManagers/appStateManager";
 import rootScope from "../../lib/rootScope";
 import { SearchGroup } from "../appSearch";
 import "../avatar";
@@ -36,7 +35,6 @@ import ButtonMenuToggle from "../buttonMenuToggle";
 import replaceContent from "../../helpers/dom/replaceContent";
 import sessionStorage from "../../lib/sessionStorage";
 import { attachClickEvent, CLICK_EVENT_NAME } from "../../helpers/dom/clickEvent";
-import { closeBtnMenu } from "../misc";
 import ButtonIcon from "../buttonIcon";
 import confirmationPopup from "../confirmationPopup";
 import IS_GEOLOCATION_SUPPORTED from "../../environment/geolocationSupport";
@@ -48,6 +46,10 @@ import indexOfAndSplice from "../../helpers/array/indexOfAndSplice";
 import formatNumber from "../../helpers/number/formatNumber";
 import AvatarElement from "../avatar";
 import { AppManagers } from "../../lib/appManagers/managers";
+import themeController from "../../helpers/themeController";
+import contextMenuController from "../../helpers/contextMenuController";
+import { DIALOG_LIST_ELEMENT_TAG } from "../../lib/appManagers/appDialogsManager";
+import apiManagerProxy from "../../lib/mtproto/mtprotoworker";
 
 export const LEFT_COLUMN_ACTIVE_CLASSNAME = 'is-left-column-shown';
 
@@ -103,33 +105,32 @@ export class AppSidebarLeft extends SidebarSlider {
     //this.toolsBtn = this.sidebarEl.querySelector('.sidebar-tools-button') as HTMLButtonElement;
     this.backBtn = this.sidebarEl.querySelector('.sidebar-back-button') as HTMLButtonElement;
 
-    const btnArchive: ButtonMenuItemOptions & {verify?: () => boolean} = {
+    const btnArchive: typeof menuButtons[0] = {
       icon: 'archive',
       text: 'ArchivedChats',
       onClick: () => {
         this.createTab(AppArchivedTab).open();
       },
-      verify: () => {
-        const folder = this.managers.appMessagesManager.dialogsStorage.getFolderDialogs(1, false);
-        return !!folder.length || !this.managers.appMessagesManager.dialogsStorage.isDialogsLoaded(1);
+      verify: async() => {
+        const folder = await this.managers.dialogsStorage.getFolderDialogs(1, false);
+        return !!folder.length || !(await this.managers.dialogsStorage.isDialogsLoaded(1));
       }
     };
 
     const themeCheckboxField = new CheckboxField({
       toggle: true,
-      checked: rootScope.getTheme().name === 'night'
+      checked: themeController.getTheme().name === 'night'
     });
-    themeCheckboxField.input.addEventListener('change', () => {
-      rootScope.settings.theme = themeCheckboxField.input.checked ? 'night' : 'day';
-      appStateManager.pushToState('settings', rootScope.settings);
+    themeCheckboxField.input.addEventListener('change', async() => {
+      await this.managers.appStateManager.setByKey('settings.theme', themeCheckboxField.input.checked ? 'night' : 'day');
       rootScope.dispatchEvent('theme_change');
     });
 
     rootScope.addEventListener('theme_change', () => {
-      themeCheckboxField.setValueSilently(rootScope.getTheme().name === 'night');
+      themeCheckboxField.setValueSilently(themeController.getTheme().name === 'night');
     });
 
-    const menuButtons: (ButtonMenuItemOptions & {verify?: () => boolean})[] = [{
+    const menuButtons: (ButtonMenuItemOptions & {verify?: () => boolean | Promise<boolean>})[] = [{
       icon: 'saved',
       text: 'SavedMessages',
       onClick: () => {
@@ -218,12 +219,12 @@ export class AppSidebarLeft extends SidebarSlider {
 
     const filteredButtons = menuButtons.filter(Boolean);
 
-    this.toolsBtn = ButtonMenuToggle({}, 'bottom-right', filteredButtons, (e) => {
-      filteredButtons.forEach(button => {
+    this.toolsBtn = ButtonMenuToggle({}, 'bottom-right', filteredButtons, async(e) => {
+      await Promise.all(filteredButtons.map(async(button) => {
         if(button.verify) {
-          button.element.classList.toggle('hide', !button.verify());
+          button.element.classList.toggle('hide', !(await button.verify()));
         }
-      });
+      }));
     });
     this.toolsBtn.classList.remove('tgico-more');
     this.toolsBtn.classList.add('sidebar-tools-button', 'is-visible');
@@ -239,7 +240,7 @@ export class AppSidebarLeft extends SidebarSlider {
     btnMenuFooter.classList.add('btn-menu-footer');
     btnMenuFooter.addEventListener(CLICK_EVENT_NAME, (e) => {
       e.stopPropagation();
-      closeBtnMenu();
+      contextMenuController.closeBtnMenu();
     });
     const t = document.createElement('span');
     t.classList.add('btn-menu-footer-text');
@@ -327,17 +328,12 @@ export class AppSidebarLeft extends SidebarSlider {
     };
     appNavigationController.pushItem(navigationItem);
 
-    appStateManager.getState().then(state => {
-      const recentSearch = state.recentSearch || [];
-      for(let i = 0, length = recentSearch.length; i < length; ++i) {
-        appStateManager.requestPeer(recentSearch[i], 'recentSearch');
-      }
-
+    apiManagerProxy.getState().then((state) => {
       const CHECK_UPDATE_INTERVAL = 1800e3;
       const checkUpdateInterval = setInterval(() => {
         fetch('version', {cache: 'no-cache'})
-        .then(res => (res.status === 200 && res.ok && res.text()) || Promise.reject())
-        .then(text => {
+        .then((res) => (res.status === 200 && res.ok && res.text()) || Promise.reject())
+        .then((text) => {
           if(text !== App.versionFull) {
             this.hasUpdate = true;
             clearInterval(checkUpdateInterval);
@@ -515,7 +511,7 @@ export class AppSidebarLeft extends SidebarSlider {
     };
 
     this.inputSearch.onClear = () => {
-      pickedElements.forEach(el => {
+      pickedElements.forEach((el) => {
         unselectEntity(el);
       });
     };
@@ -539,14 +535,14 @@ export class AppSidebarLeft extends SidebarSlider {
       if(!selectedPeerId && value.trim()) {
         const middleware = searchSuper.middleware.get();
         Promise.all([
-          // appMessagesManager.getConversationsAll(value).then(dialogs => dialogs.map(d => d.peerId)),
-          this.managers.appMessagesManager.getConversations(value).promise.then(({dialogs}) => dialogs.map(d => d.peerId)),
+          // appMessagesManager.getConversationsAll(value).then((dialogs) => dialogs.map((d) => d.peerId)),
+          this.managers.appMessagesManager.getConversations(value).then(({dialogs}) => dialogs.map((d) => d.peerId)),
           this.managers.appUsersManager.getContactsPeerIds(value, true)
-        ]).then(results => {
+        ]).then((results) => {
           if(!middleware()) return;
           const peerIds = new Set(results[0].concat(results[1]));
   
-          peerIds.forEach(peerId => {
+          peerIds.forEach((peerId) => {
             helper.append(renderEntity(peerId));
           });
   
@@ -558,7 +554,7 @@ export class AppSidebarLeft extends SidebarSlider {
       if(!selectedMinDate && value.trim()) {
         const dates: DateData[] = [];
         fillTipDates(value, dates);
-        dates.forEach(dateData => {
+        dates.forEach((dateData) => {
           helper.append(renderEntity('date_' + dateData.minDate + '_' + dateData.maxDate, dateData.title));
         });
 
@@ -567,7 +563,7 @@ export class AppSidebarLeft extends SidebarSlider {
     };
 
     searchSuper.tabs.inputMessagesFilterEmpty.addEventListener('mousedown', (e) => {
-      const target = findUpTag(e.target, 'LI') as HTMLElement;
+      const target = findUpTag(e.target, DIALOG_LIST_ELEMENT_TAG) as HTMLElement;
       if(!target) {
         return;
       }
@@ -578,21 +574,7 @@ export class AppSidebarLeft extends SidebarSlider {
       }
 
       const peerId = target.getAttribute('data-peer-id').toPeerId();
-      appStateManager.getState().then(state => {
-        const recentSearch = state.recentSearch || [];
-        if(recentSearch[0] !== peerId) {
-          indexOfAndSplice(recentSearch, peerId);
-          recentSearch.unshift(peerId);
-          if(recentSearch.length > 20) {
-            recentSearch.length = 20;
-          }
-  
-          appStateManager.pushToState('recentSearch', recentSearch);
-          for(const peerId of recentSearch) {
-            appStateManager.requestPeer(peerId, 'recentSearch');
-          }
-        }
-      });
+      this.managers.appUsersManager.pushRecentSearch(peerId);
     }, {capture: true});
 
     let peopleContainer = document.createElement('div');
@@ -666,16 +648,8 @@ export class AppSidebarLeft extends SidebarSlider {
           isDanger: true
         }
       }).then(() => {
-        appStateManager.getState().then(state => {
+        return this.managers.appUsersManager.clearRecentSearch().then(() => {
           this.searchGroups.recent.clear();
-          
-          const recentSearch = state.recentSearch || [];
-          for(const peerId of recentSearch) {
-            appStateManager.releaseSinglePeer(peerId, 'recentSearch');
-          }
-
-          recentSearch.length = 0;
-          appStateManager.pushToState('recentSearch', recentSearch);
         });
       });
     });

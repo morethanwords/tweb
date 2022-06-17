@@ -13,6 +13,7 @@ import Modes from '../../../config/modes';
 
 /// #if MTPROTO_AUTO
 import transportController from './controller';
+import networkStats from '../networkStats';
 /// #endif
 
 export default class HTTP implements MTTransport {
@@ -43,11 +44,13 @@ export default class HTTP implements MTTransport {
   }
 
   public _send(body: Uint8Array, mode?: RequestMode) {
-    this.debug && this.log.debug('-> body length to send:', body.length);
+    const length = body.length;
+    this.debug && this.log.debug('-> body length to send:', length);
 
-    return fetch(this.url, {method: 'POST', body, mode}).then(response => {
+    networkStats.addSent(this.dcId, length);
+    return fetch(this.url, {method: 'POST', body, mode}).then((response) => {
       if(response.status !== 200 && !mode) {
-        response.arrayBuffer().then(buffer => {
+        response.arrayBuffer().then((buffer) => {
           this.log.error('not 200', 
             new TextDecoder("utf-8").decode(new Uint8Array(buffer)));
         });
@@ -62,7 +65,8 @@ export default class HTTP implements MTTransport {
       //   throw 'asd';
       // }
 
-      return response.arrayBuffer().then(buffer => {
+      return response.arrayBuffer().then((buffer) => {
+        networkStats.addReceived(this.dcId, buffer.byteLength);
         return new Uint8Array(buffer);
       }); 
     }, (err) => {
@@ -86,7 +90,7 @@ export default class HTTP implements MTTransport {
   public destroy() {
     this.setConnected(false);
     this.destroyed = true;
-    this.pending.forEach(pending => pending.reject());
+    this.pending.forEach((pending) => pending.reject());
     this.pending.length = 0;
   }
 

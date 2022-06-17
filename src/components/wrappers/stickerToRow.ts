@@ -32,7 +32,7 @@ export default function wrapStickerToRow({doc, row, size, managers}: {
     height: _size,
     loadPromises,
     managers
-  });
+  }).then(({render}) => render);
 
   loadPromises && Promise.all(loadPromises).then(() => {
     media.classList.remove('hide');

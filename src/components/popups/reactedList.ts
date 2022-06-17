@@ -4,7 +4,6 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type { AppMessagesManager } from "../../lib/appManagers/appMessagesManager";
 import PopupElement from ".";
 import { Message } from "../../layer";
 import { SettingSection } from "../sidebarLeft";
@@ -16,10 +15,10 @@ import appDialogsManager from "../../lib/appManagers/appDialogsManager";
 import replaceContent from "../../helpers/dom/replaceContent";
 import { wrapSticker } from "../wrappers";
 import ReactionElement from "../chat/reaction";
+import getUserStatusString from "../wrappers/getUserStatusString";
 
 export default class PopupReactedList extends PopupElement {
   constructor(
-    private appMessagesManager: AppMessagesManager, 
     private message: Message.message
   ) {
     super('popup-reacted-list', /* [{
@@ -31,9 +30,9 @@ export default class PopupReactedList extends PopupElement {
   }
 
   private async init() {
-    const message = this.appMessagesManager.getGroupsFirstMessage(this.message);
+    const message = await this.managers.appMessagesManager.getGroupsFirstMessage(this.message);
 
-    const canViewReadParticipants = this.appMessagesManager.canViewMessageReadParticipants(message);
+    const canViewReadParticipants = await this.managers.appMessagesManager.canViewMessageReadParticipants(message);
 
     // this.body.append(generateDelimiter());
 
@@ -53,7 +52,7 @@ export default class PopupReactedList extends PopupElement {
       }
     };
 
-    newMessage.reactions.results = newMessage.reactions.results.map(reactionCount => {
+    newMessage.reactions.results = newMessage.reactions.results.map((reactionCount) => {
       return {
         ...reactionCount,
         pFlags: {}
@@ -87,7 +86,7 @@ export default class PopupReactedList extends PopupElement {
     let hasReadParticipants = false;
     if(canViewReadParticipants) {
       try {
-        const readUserIds = await this.appMessagesManager.getMessageReadParticipants(message.peerId, message.mid);
+        const readUserIds = await this.managers.appMessagesManager.getMessageReadParticipants(message.peerId, message.mid);
         if(!readUserIds.length) {
           throw '';
         }
@@ -102,7 +101,7 @@ export default class PopupReactedList extends PopupElement {
       }
     }
     
-    newMessage.reactions.results.forEach(reactionCount => {
+    newMessage.reactions.results.forEach((reactionCount) => {
       const scrollable = new Scrollable(undefined);
       scrollable.container.classList.add('tabs-tab');
 
@@ -132,24 +131,23 @@ export default class PopupReactedList extends PopupElement {
       const loader = new ScrollableLoader({
         scrollable,
         getPromise: async() => {
-          const result = await this.appMessagesManager.getMessageReactionsListAndReadParticipants(message, undefined, reactionCount.reaction, nextOffset, skipReadParticipants, skipReactionsList);
+          const result = await this.managers.appMessagesManager.getMessageReactionsListAndReadParticipants(message, undefined, reactionCount.reaction, nextOffset, skipReadParticipants, skipReactionsList);
           nextOffset = result.nextOffset;
 
-          result.combined.forEach(({peerId, reaction}) => {
+          await Promise.all(result.combined.map(async({peerId, reaction}) => {
             const {dom} = appDialogsManager.addDialogNew({
-              dialog: peerId,
+              peerId: peerId,
               autonomous: true,
               container: chatlist,
               avatarSize: 54,
               rippleEnabled: false,
               meAsSaved: false,
-              drawStatus: false
             });
 
             if(reaction) {
               const stickerContainer = document.createElement('div');
               stickerContainer.classList.add('reacted-list-reaction-icon');
-              const availableReaction = this.managers.appReactionsManager.getReactionCached(reaction);
+              const availableReaction = await this.managers.appReactionsManager.getReactionCached(reaction);
 
               wrapSticker({
                 doc: availableReaction.static_icon,
@@ -161,8 +159,8 @@ export default class PopupReactedList extends PopupElement {
               dom.listEl.append(stickerContainer);
             }
 
-            replaceContent(dom.lastMessageSpan, this.managers.appUsersManager.getUserStatusString(peerId.toUserId()));
-          });
+            replaceContent(dom.lastMessageSpan, getUserStatusString(await this.managers.appUsersManager.getUser(peerId.toUserId())));
+          }));
 
           return !nextOffset;
         }

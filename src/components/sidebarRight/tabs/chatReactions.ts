@@ -23,7 +23,7 @@ export default class AppChatReactionsTab extends SliderSuperTabEventable {
     const enabledReactions = new Set(originalReactions);
 
     const toggleSection = new SettingSection({
-      caption: this.managers.appChatsManager.isBroadcast(this.chatId) ? 'EnableReactionsChannelInfo' : 'EnableReactionsGroupInfo'
+      caption: await this.managers.appChatsManager.isBroadcast(this.chatId) ? 'EnableReactionsChannelInfo' : 'EnableReactionsGroupInfo'
     });
 
     const toggleCheckboxField = new CheckboxField({toggle: true, checked: !!enabledReactions.size});
@@ -38,7 +38,7 @@ export default class AppChatReactionsTab extends SliderSuperTabEventable {
       name: 'AvailableReactions'
     });
 
-    const checkboxFields = availableReactions.map(availableReaction => {
+    const checkboxFields = availableReactions.map((availableReaction) => {
       const checkboxField = new CheckboxField({
         toggle: true, 
         checked: enabledReactions.has(availableReaction.reaction)
@@ -81,21 +81,21 @@ export default class AppChatReactionsTab extends SliderSuperTabEventable {
 
     this.listenerSetter.add(toggleRow.checkboxField.input)('change', () => {
       if(!toggleCheckboxField.checked) {
-        checkboxFields.forEach(checkboxField => checkboxField.checked = false);
+        checkboxFields.forEach((checkboxField) => checkboxField.checked = false);
         saveReactionsDebounced();
-      } else if(checkboxFields.every(checkboxField => !checkboxField.checked)) {
-        checkboxFields.forEach(checkboxField => checkboxField.checked = true);
+      } else if(checkboxFields.every((checkboxField) => !checkboxField.checked)) {
+        checkboxFields.forEach((checkboxField) => checkboxField.checked = true);
         saveReactionsDebounced();
       }
     });
 
-    const saveReactions = () => {
+    const saveReactions = async() => {
       const newReactions = Array.from(enabledReactions);
       if([...newReactions].sort().join() === [...originalReactions].sort().join()) {
         return;
       }
 
-      const chatFull = this.managers.appProfileManager.getCachedFullChat(this.chatId);
+      const chatFull = await this.managers.appProfileManager.getCachedFullChat(this.chatId);
       if(chatFull) {
         chatFull.available_reactions = newReactions;
       }

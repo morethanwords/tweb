@@ -6,7 +6,7 @@
 
 import findUpClassName from "../helpers/dom/findUpClassName";
 import sequentialDom from "../helpers/sequentialDom";
-import { IS_TOUCH_SUPPORTED } from "../environment/touchSupport";
+import IS_TOUCH_SUPPORTED from "../environment/touchSupport";
 import rootScope from "../lib/rootScope";
 import findUpAsChild from "../helpers/dom/findUpAsChild";
 

@@ -6,37 +6,40 @@
 
 import type ChatInput from "./input";
 import type { MessageEntity } from "../../layer";
-import type { AppProfileManager } from "../../lib/appManagers/appProfileManager";
-import type { AppUsersManager } from "../../lib/appManagers/appUsersManager";
 import AutocompleteHelperController from "./autocompleteHelperController";
 import AutocompletePeerHelper from "./autocompletePeerHelper";
+import { AppManagers } from "../../lib/appManagers/managers";
 
 export default class MentionsHelper extends AutocompletePeerHelper {
-  constructor(appendTo: HTMLElement, 
+  constructor(
+    appendTo: HTMLElement, 
     controller: AutocompleteHelperController, 
     chatInput: ChatInput, 
-    private appProfileManager: AppProfileManager,
-    private appUsersManager: AppUsersManager) {
-    super(appendTo, 
+    private managers: AppManagers
+  ) {
+    super(
+      appendTo, 
       controller,
       'mentions-helper',
       (target) => {
-        const user = appUsersManager.getUser((target as HTMLElement).dataset.peerId.toUserId());
-        let str = '', entity: MessageEntity;
-        if(user.username) {
-          str = '@' + user.username;
-        } else {
-          str = user.first_name || user.last_name;
-          entity = {
-            _: 'messageEntityMentionName',
-            length: str.length,
-            offset: 0,
-            user_id: user.id
-          };
-        }
-
-        str += ' ';
-        chatInput.insertAtCaret(str, entity);
+        const userId = (target as HTMLElement).dataset.peerId.toUserId();
+        const user = Promise.resolve(managers.appUsersManager.getUser(userId)).then((user) => {
+          let str = '', entity: MessageEntity;
+          if(user.username) {
+            str = '@' + user.username;
+          } else {
+            str = user.first_name || user.last_name;
+            entity = {
+              _: 'messageEntityMentionName',
+              length: str.length,
+              offset: 0,
+              user_id: user.id
+            };
+          }
+  
+          str += ' ';
+          chatInput.insertAtCaret(str, entity);
+        });
       }
     );
   }
@@ -46,12 +49,13 @@ export default class MentionsHelper extends AutocompletePeerHelper {
     if(query.length !== trimmed.length) return false;
 
     const middleware = this.controller.getMiddleware();
-    this.appProfileManager.getMentions(peerId && peerId.toChatId(), trimmed, topMsgId).then(peerIds => {
+    this.managers.appProfileManager.getMentions(peerId && peerId.toChatId(), trimmed, topMsgId).then(async(peerIds) => {
       if(!middleware()) return;
       
       const username = trimmed.slice(1).toLowerCase();
-      this.render(peerIds.map(peerId => {
-        const user = this.appUsersManager.getUser(peerId);
+
+      const p = peerIds.map(async(peerId) => {
+        const user = await this.managers.appUsersManager.getUser(peerId);
         if(user.username && user.username.toLowerCase() === username) { // hide full matched suggestion
           return;
         }
@@ -60,7 +64,9 @@ export default class MentionsHelper extends AutocompletePeerHelper {
           peerId,
           description: user.username ? '@' + user.username : undefined
         };
-      }).filter(Boolean));
+      });
+
+      this.render((await Promise.all(p)).filter(Boolean));
     });
 
     return true;

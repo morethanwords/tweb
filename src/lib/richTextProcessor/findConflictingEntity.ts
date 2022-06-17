@@ -8,7 +8,7 @@ import { PASS_CONFLICTING_ENTITIES } from ".";
 import { MessageEntity } from "../../layer";
 
 export default function findConflictingEntity(currentEntities: MessageEntity[], newEntity: MessageEntity) {
-  return currentEntities.find(currentEntity => {
+  return currentEntities.find((currentEntity) => {
     const isConflictingTypes = newEntity._ === currentEntity._ || 
       (!PASS_CONFLICTING_ENTITIES.has(newEntity._) && !PASS_CONFLICTING_ENTITIES.has(currentEntity._));
 

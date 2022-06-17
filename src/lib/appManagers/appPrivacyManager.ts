@@ -4,43 +4,32 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { MOUNT_CLASS_TO } from "../../config/debug";
-import { InputPrivacyKey, InputPrivacyRule, PrivacyRule, Update, PrivacyKey } from "../../layer";
-import apiManager from "../mtproto/mtprotoworker";
-import rootScope from "../rootScope";
+import { InputPrivacyKey, InputPrivacyRule, PrivacyRule, PrivacyKey } from "../../layer";
 import convertInputKeyToKey from "../../helpers/string/convertInputKeyToKey";
 import { AppManager } from "./manager";
-
-export enum PrivacyType {
-  Everybody = 2,
-  Contacts = 1,
-  Nobody = 0
-}
 
 export class AppPrivacyManager extends AppManager {
   private privacy: Partial<{
     [key in PrivacyKey['_']]: PrivacyRule[] | Promise<PrivacyRule[]>
   }> = {};
 
-  constructor() {
-    super();
-
-    rootScope.addMultipleEventsListeners({
+  protected after() {
+    this.apiUpdatesManager.addMultipleEventsListeners({
       updatePrivacy: (update) => {
         const key = update.key._;
         this.privacy[key] = update.rules;
-        rootScope.dispatchEvent('privacy_update', update);
+        this.rootScope.dispatchEvent('privacy_update', update);
       }
     });
   }
 
   public setPrivacy(inputKey: InputPrivacyKey['_'], rules: InputPrivacyRule[]) {
-    return apiManager.invokeApi('account.setPrivacy', {
+    return this.apiManager.invokeApi('account.setPrivacy', {
       key: {
         _: inputKey
       },
       rules
-    }).then(privacyRules => {
+    }).then((privacyRules) => {
       this.appUsersManager.saveApiUsers(privacyRules.users);
       this.appChatsManager.saveApiChats(privacyRules.chats);
 
@@ -49,7 +38,7 @@ export class AppPrivacyManager extends AppManager {
         key: {
           _: convertInputKeyToKey(inputKey)
         },
-        rules: rules.map(inputRule => {
+        rules: rules.map((inputRule) => {
           const rule: PrivacyRule = {} as any;
           Object.assign(rule, inputRule);
           rule._ = convertInputKeyToKey(rule._) as any;
@@ -70,11 +59,11 @@ export class AppPrivacyManager extends AppManager {
       return Promise.resolve(rules);
     }
     
-    return this.privacy[privacyKey] = apiManager.invokeApi('account.getPrivacy', {
+    return this.privacy[privacyKey] = this.apiManager.invokeApi('account.getPrivacy', {
       key: {
         _: inputKey
       }
-    }).then(privacyRules => {
+    }).then((privacyRules) => {
       this.appUsersManager.saveApiUsers(privacyRules.users);
       this.appChatsManager.saveApiChats(privacyRules.chats);
 
@@ -82,42 +71,5 @@ export class AppPrivacyManager extends AppManager {
 
       return this.privacy[privacyKey] = privacyRules.rules;
     });
-  }
-
-  public getPrivacyRulesDetails(rules: PrivacyRule[]) {
-    const types: PrivacyType[] = [];
-
-    type peers = {users: UserId[], chats: ChatId[]};
-    let allowPeers: peers = {users: [], chats: []}, disallowPeers: peers = {users: [], chats: []};
-    rules.forEach(rule => {
-      switch(rule._) {
-        case 'privacyValueAllowAll':
-          types.push(2);
-          break;
-        case 'privacyValueDisallowAll':
-          types.push(0);
-          break;
-        case 'privacyValueAllowContacts': 
-          types.push(1);
-          break;
-        /* case 'privacyValueDisallowContacts':
-          types.push('Except My Contacts');
-          break; */
-        case 'privacyValueAllowChatParticipants':
-          allowPeers.chats.push(...rule.chats);
-          break;
-        case 'privacyValueAllowUsers':
-          allowPeers.users.push(...rule.users);
-          break;
-        case 'privacyValueDisallowChatParticipants':
-          disallowPeers.chats.push(...rule.chats);
-          break;
-        case 'privacyValueDisallowUsers':
-          disallowPeers.users.push(...rule.users);
-          break;
-      }
-    });
-
-    return {type: types[0], disallowPeers, allowPeers};
   }
 }

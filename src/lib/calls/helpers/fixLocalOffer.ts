@@ -26,7 +26,7 @@ export default function fixLocalOffer(options: {
     hasMunged = addSimulcast(sdp) || hasMunged;
   }
 
-  // const bundleLine = parsedSdp.session.lines.find(line => line.Ha?.key === 'group');
+  // const bundleLine = parsedSdp.session.lines.find((line) => line.Ha?.key === 'group');
   // const bundleMids = bundleLine.value.split(' ').slice(1);
 
   forEachReverse(sdp.media, (section, idx, arr) => {
@@ -65,7 +65,7 @@ export default function fixLocalOffer(options: {
       }
     }); */
 
-    const codecIds = payloadTypes.map(payload => '' + payload.id);
+    const codecIds = payloadTypes.map((payload) => '' + payload.id);
     const correctMLine = generateMediaFirstLine(section.mediaType, undefined, codecIds);
     
     if(localMLine !== correctMLine) {

@@ -11,10 +11,10 @@ import { InputNotifyPeer, Update } from "../../../layer";
 import { SliderSuperTabEventable } from "../../sliderTab";
 import rootScope from "../../../lib/rootScope";
 import { LangPackKey } from "../../../lib/langPack";
-import appStateManager from "../../../lib/appManagers/appStateManager";
 import copy from "../../../helpers/object/copy";
 import convertKeyToInputKey from "../../../helpers/string/convertKeyToInputKey";
 import { MUTE_UNTIL } from "../../../lib/mtproto/mtproto_config";
+import apiManagerProxy from "../../../lib/mtproto/mtprotoworker";
 
 type InputNotifyKey = Exclude<InputNotifyPeer['_'], 'inputNotifyPeer'>;
 
@@ -50,8 +50,8 @@ export default class AppNotificationsTab extends SliderSuperTabEventable {
       const inputNotifyPeer = {_: options.inputKey};
       const ret = this.managers.appNotificationsManager.getNotifySettings(inputNotifyPeer);
       (ret instanceof Promise ? ret : Promise.resolve(ret)).then((notifySettings) => {
-        const applySettings = () => {
-          const muted = this.managers.appNotificationsManager.isMuted(notifySettings);
+        const applySettings = async() => {
+          const muted = await this.managers.appNotificationsManager.isMuted(notifySettings);
           enabledRow.checkboxField.checked = !muted;
           previewEnabledRow.checkboxField.checked = notifySettings.show_previews;
   
@@ -60,11 +60,11 @@ export default class AppNotificationsTab extends SliderSuperTabEventable {
         
         applySettings();
 
-        this.eventListener.addEventListener('destroy', () => {
+        this.eventListener.addEventListener('destroy', async() => {
           const mute = !enabledRow.checkboxField.checked;
           const showPreviews = previewEnabledRow.checkboxField.checked;
 
-          if(mute === this.managers.appNotificationsManager.isMuted(notifySettings) && showPreviews === notifySettings.show_previews) {
+          if(mute === (await this.managers.appNotificationsManager.isMuted(notifySettings)) && showPreviews === notifySettings.show_previews) {
             return;
           }
 
@@ -119,7 +119,7 @@ export default class AppNotificationsTab extends SliderSuperTabEventable {
         subtitleLangKey: 'Loading',
       });
 
-      appStateManager.getState().then(state => {
+      apiManagerProxy.getState().then((state) => {
         soundRow.checkboxField.checked = state.settings.notifications.sound;
       });
 
@@ -127,7 +127,7 @@ export default class AppNotificationsTab extends SliderSuperTabEventable {
 
       this.scrollable.append(section.container);
 
-      this.managers.appNotificationsManager.getContactSignUpNotification().then(enabled => {
+      this.managers.appNotificationsManager.getContactSignUpNotification().then((enabled) => {
         contactsSignUpRow.checkboxField.checked = enabled;
 
         this.eventListener.addEventListener('destroy', () => {

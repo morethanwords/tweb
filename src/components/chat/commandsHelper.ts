@@ -5,14 +5,13 @@
  */
 
 import type ChatInput from "./input";
-import type { AppProfileManager } from "../../lib/appManagers/appProfileManager";
-import type { AppUsersManager } from "../../lib/appManagers/appUsersManager";
 import type { BotInfo, ChatFull, UserFull } from "../../layer";
 import AutocompleteHelperController from "./autocompleteHelperController";
 import AutocompletePeerHelper from "./autocompletePeerHelper";
 import SearchIndex from "../../lib/searchIndex";
+import { AppManagers } from "../../lib/appManagers/managers";
 
-export function processPeerFullForCommands(full: ChatFull.chatFull | ChatFull.channelFull | UserFull.userFull, query?: string) {
+export function processPeerFullForCommands(peerId: PeerId, full: ChatFull.chatFull | ChatFull.channelFull | UserFull.userFull, query?: string) {
   const botInfos: BotInfo.botInfo[] = [].concat(full.bot_info);
   let index: SearchIndex<string>; 
   
@@ -24,19 +23,19 @@ export function processPeerFullForCommands(full: ChatFull.chatFull | ChatFull.ch
   
   type T = {peerId: PeerId, name: string, description: string, index: number, command: string};
   const commands: Map<string, T> = new Map();
-  botInfos.forEach(botInfo => {
-    botInfo.commands.forEach((botCommand, idx) => {
-      const c = '/' + botCommand.command;
-      commands.set(botCommand.command, {
-        peerId: botInfo.user_id.toPeerId(false), 
-        command: botCommand.command, 
+  botInfos.forEach((botInfo) => {
+    botInfo.commands.forEach(({command, description}, idx) => {
+      const c = '/' + command;
+      commands.set(command, {
+        peerId: botInfo.user_id ? botInfo.user_id.toPeerId(false) : peerId, 
+        command: command, 
         name: c, 
-        description: botCommand.description,
+        description: description,
         index: idx
       });
 
       if(index) {
-        index.indexObject(botCommand.command, c);
+        index.indexObject(command, c);
       }
     });
   });
@@ -46,7 +45,7 @@ export function processPeerFullForCommands(full: ChatFull.chatFull | ChatFull.ch
     out = [...commands.values()];
   } else {
     const found = index.search(query);
-    out = Array.from(found).map(command => commands.get(command));
+    out = Array.from(found).map((command) => commands.get(command));
   }
 
   out = out.sort((a, b) => commands.get(a.command).index - commands.get(b.command).index);
@@ -55,11 +54,12 @@ export function processPeerFullForCommands(full: ChatFull.chatFull | ChatFull.ch
 }
 
 export default class CommandsHelper extends AutocompletePeerHelper {
-  constructor(appendTo: HTMLElement, 
+  constructor(
+    appendTo: HTMLElement, 
     controller: AutocompleteHelperController, 
     chatInput: ChatInput, 
-    private appProfileManager: AppProfileManager,
-    private appUsersManager: AppUsersManager) {
+    private managers: AppManagers
+  ) {
     super(appendTo, 
       controller,
       'commands-helper',
@@ -73,18 +73,18 @@ export default class CommandsHelper extends AutocompletePeerHelper {
     );
   }
 
-  public checkQuery(query: string, peerId: PeerId) {
-    if(!this.appUsersManager.isBot(peerId)) {
+  public async checkQuery(query: string, peerId: PeerId) {
+    if(!(await this.managers.appUsersManager.isBot(peerId))) {
       return false;
     }
 
     const middleware = this.controller.getMiddleware();
-    Promise.resolve(this.appProfileManager.getProfileByPeerId(peerId)).then(full => {
+    this.managers.appProfileManager.getProfileByPeerId(peerId).then((full) => {
       if(!middleware()) {
         return;
       }
 
-      const filtered = processPeerFullForCommands(full, query);
+      const filtered = processPeerFullForCommands(peerId, full, query);
       this.render(filtered);
       // console.log('found commands', found, filtered);
     });

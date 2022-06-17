@@ -28,8 +28,8 @@ export default async function wrapStickerSetThumb({set, lazyLoadQueue, container
     container.classList.add('media-sticker-wrapper');
     lazyLoadQueue.push({
       div: container,
-      load: () => {
-        const downloadOptions = managers.appStickersManager.getStickerSetThumbDownloadOptions(set);
+      load: async() => {
+        const downloadOptions = await managers.appStickersManager.getStickerSetThumbDownloadOptions(set);
         const promise = appDownloadManager.download(downloadOptions);
 
         if(set.pFlags.animated && !set.pFlags.videos) {
@@ -59,7 +59,7 @@ export default async function wrapStickerSetThumb({set, lazyLoadQueue, container
 
           media.classList.add('media-sticker');
   
-          return promise.then(blob => {
+          return promise.then((blob) => {
             renderImageFromUrl(media, URL.createObjectURL(blob), () => {
               container.append(media);
             });

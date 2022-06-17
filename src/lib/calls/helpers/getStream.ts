@@ -2,7 +2,7 @@ export default async function getStream(constraints: MediaStreamConstraints, mut
   // console.log('getStream', constraints);
   
 	const stream = await navigator.mediaDevices.getUserMedia(constraints);
-	stream.getTracks().forEach(x => {
+	stream.getTracks().forEach((x) => {
 		/* x.onmute = x => {
 			console.log('track.onmute', x);
 		};

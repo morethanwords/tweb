@@ -9,14 +9,13 @@ import limitSymbols from "../../helpers/string/limitSymbols";
 import appImManager, { CHAT_ANIMATION_GROUP } from "../../lib/appManagers/appImManager";
 import choosePhotoSize from "../../lib/appManagers/utils/photos/choosePhotoSize";
 import wrapEmojiText from "../../lib/richTextProcessor/wrapEmojiText";
-import rootScope from "../../lib/rootScope";
 import DivAndCaption from "../divAndCaption";
 import { wrapPhoto, wrapSticker } from "../wrappers";
 import wrapMessageForReply from "../wrappers/messageForReply";
 
 const MEDIA_SIZE = 32;
 
-export function wrapReplyDivAndCaption(options: {
+export async function wrapReplyDivAndCaption(options: {
   title: string | HTMLElement | DocumentFragment,
   titleEl: HTMLElement,
   subtitle: string | HTMLElement | DocumentFragment,
@@ -45,7 +44,7 @@ export function wrapReplyDivAndCaption(options: {
   let middleware: () => boolean;
   if(media && mediaEl) {
     subtitleEl.textContent = '';
-    subtitleEl.append(wrapMessageForReply(message, undefined, undefined, undefined, undefined, true));
+    subtitleEl.append(await wrapMessageForReply(message, undefined, undefined, undefined, undefined, true));
 
     //console.log('wrap reply', media);
 
@@ -59,7 +58,7 @@ export function wrapReplyDivAndCaption(options: {
 
       if(media.document?.type === 'sticker') {
         setMedia = true;
-        wrapSticker({
+        await wrapSticker({
           doc: media.document,
           div: mediaEl,
           lazyLoadQueue,
@@ -76,7 +75,7 @@ export function wrapReplyDivAndCaption(options: {
         isRound = photo.type === 'round';
 
         try {
-          wrapPhoto({
+          await wrapPhoto({
             photo,
             container: mediaEl,
             boxWidth: MEDIA_SIZE,
@@ -97,7 +96,7 @@ export function wrapReplyDivAndCaption(options: {
   } else {
     if(message) {
       subtitleEl.textContent = '';
-      subtitleEl.append(wrapMessageForReply(message));
+      subtitleEl.append(await wrapMessageForReply(message));
     } else {
       if(typeof(subtitle) === 'string') {
         subtitle = limitSymbols(subtitle, 140);
@@ -110,7 +109,7 @@ export function wrapReplyDivAndCaption(options: {
 
   Promise.all(loadPromises).then(() => {
     if(middleware && !middleware()) return;
-    mediaChildren.forEach(child => child.remove());
+    mediaChildren.forEach((child) => child.remove());
 
     if(mediaEl) {
       mediaEl.classList.toggle('is-round', isRound);
@@ -120,17 +119,17 @@ export function wrapReplyDivAndCaption(options: {
   return setMedia;
 }
 
-export default class ReplyContainer extends DivAndCaption<(title: string | HTMLElement | DocumentFragment, subtitle: string | HTMLElement | DocumentFragment, message?: any) => void> {
+export default class ReplyContainer extends DivAndCaption<(title: string | HTMLElement | DocumentFragment, subtitle: string | HTMLElement | DocumentFragment, message?: any) => Promise<void>> {
   private mediaEl: HTMLElement;
 
   constructor(protected className: string) {
-    super(className, (title, subtitle = '', message?) => {
+    super(className, async(title, subtitle = '', message?) => {
       if(!this.mediaEl) {
         this.mediaEl = document.createElement('div');
         this.mediaEl.classList.add(this.className + '-media');
       }
 
-      const isMediaSet = wrapReplyDivAndCaption({
+      const isMediaSet = await wrapReplyDivAndCaption({
         title,
         titleEl: this.title,
         subtitle,

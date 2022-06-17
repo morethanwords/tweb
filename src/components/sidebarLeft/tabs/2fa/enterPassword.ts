@@ -13,10 +13,9 @@ import replaceContent from "../../../../helpers/dom/replaceContent";
 import setInnerHTML from "../../../../helpers/dom/setInnerHTML";
 import { AccountPassword } from "../../../../layer";
 import I18n, { i18n } from "../../../../lib/langPack";
-import passwordManager from "../../../../lib/mtproto/passwordManager";
 import wrapEmojiText from "../../../../lib/richTextProcessor/wrapEmojiText";
 import Button from "../../../button";
-import { putPreloader } from "../../../misc";
+import { putPreloader } from "../../../putPreloader";
 import PasswordMonkey from "../../../monkeys/password";
 import PasswordInputField from "../../../passwordInputField";
 import { SliderSuperTab } from "../../../slider";
@@ -89,7 +88,7 @@ export default class AppTwoStepVerificationEnterPasswordTab extends SliderSuperT
           getStateInterval = window.setInterval(getState, 10e3);
         }
   
-        return passwordManager.getState().then(_state => {
+        return this.managers.passwordManager.getState().then((_state) => {
           this.state = _state;
   
           if(this.state.hint) {
@@ -112,7 +111,7 @@ export default class AppTwoStepVerificationEnterPasswordTab extends SliderSuperT
         const preloader = putPreloader(btnContinue);
   
         const plainPassword = passwordInputField.value;
-        passwordManager.check(passwordInputField.value, this.state).then(auth => {
+        this.managers.passwordManager.check(passwordInputField.value, this.state).then((auth) => {
           console.log(auth);
   
           if(auth._ === 'auth.authorization') {

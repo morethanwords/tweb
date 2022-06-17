@@ -12,6 +12,7 @@ import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
 import Button from "../../button";
 import { SettingSection } from "../../sidebarLeft";
 import { SliderSuperTabEventable } from "../../sliderTab";
+import getUserStatusString from "../../wrappers/getUserStatusString";
 import { ChatPermissions } from "./groupPermissions";
 
 export default class AppUserPermissionsTab extends SliderSuperTabEventable {
@@ -19,7 +20,7 @@ export default class AppUserPermissionsTab extends SliderSuperTabEventable {
   public chatId: ChatId;
   public userId: UserId;
 
-  protected init() {
+  protected async init() {
     this.container.classList.add('edit-peer-container', 'user-permissions-container');
     this.setTitle('UserRestrictions');
 
@@ -38,14 +39,13 @@ export default class AppUserPermissionsTab extends SliderSuperTabEventable {
       div.append(list);
 
       const {dom} = appDialogsManager.addDialogNew({
-        dialog: this.userId.toPeerId(false),
+        peerId: this.userId.toPeerId(false),
         container: list,
-        drawStatus: false,
         rippleEnabled: true,
         avatarSize: 48
       });
 
-      dom.lastMessageSpan.append(this.managers.appUsersManager.getUserStatusString(this.userId));
+      dom.lastMessageSpan.append(getUserStatusString(await this.managers.appUsersManager.getUser(this.userId)));
 
       const p = new ChatPermissions({
         chatId: this.chatId,

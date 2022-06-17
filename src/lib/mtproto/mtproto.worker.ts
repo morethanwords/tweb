@@ -6,194 +6,102 @@
 
 // just to include
 import '../polyfill';
+import '../../helpers/peerIdPolyfill';
 
-import type { LocalStorageProxyTask } from '../localStorage';
-import type { WebpConvertTask } from '../webp/webpWorkerController';
-import type { ToggleStorageTask } from './mtprotoworker';
-import type { RefreshReferenceTaskResponse } from './apiFileManager';
-import apiManager from "./apiManager";
-import cryptoWorker from "../crypto/cryptoworker";
-import networkerFactory from "./networkerFactory";
-import apiFileManager from './apiFileManager';
-import { notifyAll } from '../../helpers/context';
+import cryptoWorker from "../crypto/cryptoMessagePort";
 import CacheStorageController from '../cacheStorage';
-import sessionStorage from '../sessionStorage';
-import { socketsProxied } from './transports/socketProxied';
-import ctx from '../../environment/ctx';
-import bytesToHex from '../../helpers/bytes/bytesToHex';
+import { setEnvironment } from '../../environment/utils';
+import appStateManager from '../appManagers/appStateManager';
+import transportController from './transports/controller';
+import MTProtoMessagePort from './mtprotoMessagePort';
+import RESET_STORAGES_PROMISE from '../appManagers/utils/storages/resetStoragesPromise';
+import appManagersManager from '../appManagers/appManagersManager';
+import listenMessagePort from '../../helpers/listenMessagePort';
 
-let webpSupported = false;
-export const isWebpSupported = () => {
-  return webpSupported;
-};
+let _isServiceWorkerOnline = true;
+export function isServiceWorkerOnline() {
+  return _isServiceWorkerOnline;
+}
 
-networkerFactory.setUpdatesProcessor((obj) => {
-  notifyAll({update: obj});
-});
-
-networkerFactory.onConnectionStatusChange = (status) => {
-  notifyAll({type: 'connectionStatusChange', payload: status});
-};
-
-const taskListeners = {
-  convertWebp: (task: WebpConvertTask) => {
-    const {fileName, bytes} = task.payload;
-    const deferred = apiFileManager.webpConvertPromises[fileName];
-    if(deferred) {
-      deferred.resolve(bytes);
-      delete apiFileManager.webpConvertPromises[fileName];
-    }
-  },
-
-  webpSupport: (task: any) => {
-    webpSupported = task.payload;
-  },
-
-  socketProxy: (task: any) => {
-    const socketTask = task.payload;
-    const id = socketTask.id;
+const port = new MTProtoMessagePort<false>();
+port.addMultipleEventsListeners({
+  environment: (environment) => {
+    setEnvironment(environment);
     
-    const socketProxied = socketsProxied.get(id);
-    if(socketTask.type === 'message') {
-      socketProxied.dispatchEvent('message', socketTask.payload);
-    } else if(socketTask.type === 'open') {
-      socketProxied.dispatchEvent('open');
-    } else if(socketTask.type === 'close') {
-      socketProxied.dispatchEvent('close');
-      socketsProxied.delete(id);
+    transportController.waitForWebSocket();
+  },
+
+  // windowSize: ({width, height}) => {
+  //   windowSize.width = width;
+  //   windowSize.height = height;
+  // },
+
+  crypto: ({method, args}) => {
+    return cryptoWorker.invokeCrypto(method as any, ...args as any);
+  },
+
+  state: ({state, resetStorages, pushedKeys, newVersion, oldVersion, userId}) => {
+    appStateManager.userId = userId;
+    appStateManager.newVersion = newVersion;
+    appStateManager.oldVersion = oldVersion;
+    appStateManager.setState(state);
+    for(const key of pushedKeys) {
+      appStateManager.setKeyValueToStorage(key);
     }
+
+    RESET_STORAGES_PROMISE.resolve(resetStorages);
   },
 
-  localStorageProxy: (task: LocalStorageProxyTask) => {
-    sessionStorage.finishTask(task.id, task.payload);
-  },
-
-  userAgent: (task: any) => {
-    networkerFactory.userAgent = task.payload;
-  },
-
-  online: () => {
-    networkerFactory.forceReconnectTimeout();
-  },
-
-  forceReconnect: () => {
-    networkerFactory.forceReconnect();
-  },
-
-  toggleStorage: (task: ToggleStorageTask) => {
-    const enabled = task.payload;
+  toggleStorage: (enabled) => {
     // AppStorage.toggleStorage(enabled);
     CacheStorageController.toggleStorage(enabled);
   },
 
-  refreshReference: (task: RefreshReferenceTaskResponse) => {
-    const hex = bytesToHex(task.originalPayload);
-    const r = apiFileManager.refreshReferencePromises[hex];
-    const deferred = r?.deferred;
-    if(deferred) {
-      if(task.error) {
-        deferred.reject(task.error);
-      } else {
-        deferred.resolve(task.payload);
-      }
-    }
+  event: (payload, source) => {
+    console.log('will redirect event', payload, source);
+    port.invokeExceptSource('event', payload, source);
   },
 
-  crypto: (task: any) => {
-    cryptoWorker.invokeCrypto(task.task, ...task.args as any).then(result => {
-      notifyAll({taskId: task.taskId, result});
-    });
+  serviceWorkerOnline: (online) => {
+    _isServiceWorkerOnline = online;
+  },
+
+  createObjectURL: (blob) => {
+    return URL.createObjectURL(blob);
   }
-};
 
-const onMessage = async(e: any) => {
-  try {
-    const task: {
-      task: string,
-      taskId: number,
-      args: any[],
-      type?: string
-    } = e.data;
-    const taskId = task.taskId;
+  // socketProxy: (task) => {
+  //   const socketTask = task.payload;
+  //   const id = socketTask.id;
+    
+  //   const socketProxied = socketsProxied.get(id);
+  //   if(socketTask.type === 'message') {
+  //     socketProxied.dispatchEvent('message', socketTask.payload);
+  //   } else if(socketTask.type === 'open') {
+  //     socketProxied.dispatchEvent('open');
+  //   } else if(socketTask.type === 'close') {
+  //     socketProxied.dispatchEvent('close');
+  //     socketsProxied.delete(id);
+  //   }
+  // },
 
-    // @ts-ignore
-    const f = taskListeners[task.type];
-    if(f) {
-      f(task);
-      return;
-    }
+  // refreshReference: (task: RefreshReferenceTaskResponse) => {
+  //   const hex = bytesToHex(task.originalPayload);
+  //   const r = apiFileManager.refreshReferencePromises[hex];
+  //   const deferred = r?.deferred;
+  //   if(deferred) {
+  //     if(task.error) {
+  //       deferred.reject(task.error);
+  //     } else {
+  //       deferred.resolve(task.payload);
+  //     }
+  //   }
+  // },
+});
 
-    if(!task.task) {
-      return;
-    }
+console.log('MTProto start');
 
-    switch(task.task) {
-      case 'requestFilePart':
-      case 'setQueueId':
-      case 'cancelDownload':
-      case 'uploadFile':
-      case 'downloadFile': {
-        try {
-          // @ts-ignore
-          let result: any = apiFileManager[task.task].apply(apiFileManager, task.args);
-  
-          if(result instanceof Promise) {
-            /* (result as ReturnType<ApiFileManager['downloadFile']>).notify = (progress: {done: number, total: number, offset: number}) => {
-              notify({progress: {fileName, ...progress}});
-            }; */
-            result = await result;
-          }
-  
-          notifyAll({taskId, result});
-        } catch(error) {
-          notifyAll({taskId, error});
-        }
+appManagersManager.start();
+appManagersManager.getManagers();
 
-        break;
-      }
-
-      case 'getNetworker': {
-        // @ts-ignore
-        apiManager[task.task].apply(apiManager, task.args).finally(() => {
-          notifyAll({taskId, result: null});
-        });
-        
-        break;
-      }
-
-      case 'setLanguage':
-      case 'startAll':
-      case 'stopAll': {
-        // @ts-ignore
-        networkerFactory[task.task].apply(networkerFactory, task.args);
-        break;
-      }
-  
-      default: {
-        try {
-          // @ts-ignore
-          let result = apiManager[task.task].apply(apiManager, task.args);
-  
-          if(result instanceof Promise) {
-            result = await result;
-          }
-
-          //console.log(notifyAll);
-  
-          notifyAll({taskId, result});
-        } catch(error) {
-          notifyAll({taskId, error});
-        }
-  
-        //throw new Error('Unknown task: ' + task.task);
-        break;
-      }
-    }
-  } catch(err) {
-    console.error('worker task error:', err);
-  }
-};
-
-//console.log('[WORKER] Will send ready', Date.now() / 1000);
-ctx.addEventListener('message', onMessage);
-notifyAll('ready');
+listenMessagePort(port);

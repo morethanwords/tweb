@@ -192,6 +192,7 @@ ul.chatlist {
     padding-left: 8.5px; */
     overflow: hidden;
     background: var(--background);
+    -webkit-user-drag: none;
 
     @include respond-to(handhelds) {
       border-radius: 0;
@@ -311,7 +312,7 @@ ul.chatlist {
 
   /* .user-title,
   .dialog-title-details,
-  .user-last-message */li span {
+  .user-last-message */&-chat span {
     //display: inline-block;
     white-space: nowrap;
     overflow: hidden;

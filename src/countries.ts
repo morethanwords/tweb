@@ -13,17 +13,17 @@ const Countries: HelpCountriesList.helpCountriesList = {
 };
 
 /* const PhoneCodesMain: {[phoneCode: string]: Country} = {
-  '1': Countries.find(c => c.name === 'United States'),
-  '44': Countries.find(c => c.name === 'United Kingdom'),
-  '61': Countries.find(c => c.name === 'Australia'),
-  '64': Countries.find(c => c.name === 'New Zealand'),
-  '246': Countries.find(c => c.name === 'Diego Garcia'),
-  '255': Countries.find(c => c.name === 'Tanzania'),
-  '262': Countries.find(c => c.name === 'Reunion'),
-  '500': Countries.find(c => c.name === 'Falkland Islands'),
-  '590': Countries.find(c => c.name === 'Guadeloupe'),
-  '672': Countries.find(c => c.name === 'Norfolk Island'),
-  '1 268': Countries.find(c => c.name === 'Antigua & Barbuda'),
+  '1': Countries.find((c) => c.name === 'United States'),
+  '44': Countries.find((c) => c.name === 'United Kingdom'),
+  '61': Countries.find((c) => c.name === 'Australia'),
+  '64': Countries.find((c) => c.name === 'New Zealand'),
+  '246': Countries.find((c) => c.name === 'Diego Garcia'),
+  '255': Countries.find((c) => c.name === 'Tanzania'),
+  '262': Countries.find((c) => c.name === 'Reunion'),
+  '500': Countries.find((c) => c.name === 'Falkland Islands'),
+  '590': Countries.find((c) => c.name === 'Guadeloupe'),
+  '672': Countries.find((c) => c.name === 'Norfolk Island'),
+  '1 268': Countries.find((c) => c.name === 'Antigua & Barbuda'),
 }; */
 
 /* 

@@ -6,7 +6,6 @@
 
 import type { MyDocument } from "../lib/appManagers/appDocsManager";
 import { wrapVideo } from "./wrappers";
-import { LazyLoadQueueRepeat2 } from "./lazyLoadQueue";
 import animationIntersector from "./animationIntersector";
 import Scrollable from "./scrollable";
 import deferredPromise, { CancellablePromise } from "../helpers/cancellablePromise";
@@ -15,6 +14,7 @@ import calcImageInBox from "../helpers/calcImageInBox";
 import { doubleRaf } from "../helpers/schedulers";
 import { AppManagers } from "../lib/appManagers/managers";
 import rootScope from "../lib/rootScope";
+import LazyLoadQueueRepeat2 from "./lazyLoadQueueRepeat2";
 
 const width = 400;
 const maxSingleWidth = width - 100;
@@ -47,7 +47,7 @@ export default class GifsMasonry {
       const players = animationIntersector.byGroups[group];
 
       if(players) {
-        console.log(`GIFS RENDERED IN ${group}:`, players.length, players.filter(p => !p.animation.paused).length, this.lazyLoadQueue.intersector.getVisible().length);
+        console.log(`GIFS RENDERED IN ${group}:`, players.length, players.filter((p) => !p.animation.paused).length, this.lazyLoadQueue.intersector.getVisible().length);
       }
     }, .25e3); */
 
@@ -94,10 +94,8 @@ export default class GifsMasonry {
 
     const load = () => {
       const docId = div.dataset.docId;
-      const doc = this.managers.appDocsManager.getDoc(docId);
-
-      const promise = this.scrollPromise.then(() => {
-        const res = wrapVideo({
+      const promise = Promise.all([this.managers.appDocsManager.getDoc(docId), this.scrollPromise]).then(async([doc]) => {
+        const res = await wrapVideo({
           doc,
           container: div as HTMLDivElement,
           lazyLoadQueue: null,
@@ -119,7 +117,7 @@ export default class GifsMasonry {
               video.src = '';
               video.load();
               const animations = animationIntersector.getAnimations(video);
-              animations.forEach(item => {
+              animations.forEach((item) => {
                 animationIntersector.checkAnimation(item, true, true);
               });
             }, 0);
@@ -172,7 +170,7 @@ export default class GifsMasonry {
         video.src = '';
         video.load();
         const animations = animationIntersector.getAnimations(video);
-        animations.forEach(item => {
+        animations.forEach((item) => {
           animationIntersector.checkAnimation(item, true, true);
         });
       }
@@ -217,28 +215,28 @@ export default class GifsMasonry {
 
     //let preloader = new ProgressivePreloader(div);
 
-    const gotThumb = this.managers.appDocsManager.getThumb(doc, false);
+    // const gotThumb = this.managers.appDocsManager.getThumb(doc, false);
 
-    const willBeAPoster = !!gotThumb;
-    let img: HTMLImageElement;
-    if(willBeAPoster) {
-      img = new Image();
-      img.classList.add('media-poster');
+    // const willBeAPoster = !!gotThumb;
+    // let img: HTMLImageElement;
+    // if(willBeAPoster) {
+    //   img = new Image();
+    //   img.classList.add('media-poster');
 
-      if(!gotThumb.cacheContext.url) {
-        gotThumb.promise.then(() => {
-          img.src = gotThumb.cacheContext.url;
-        });
-      }
-    }
+    //   if(!gotThumb.cacheContext.url) {
+    //     gotThumb.promise.then(() => {
+    //       img.src = gotThumb.cacheContext.url;
+    //     });
+    //   }
+    // }
 
-    const afterRender = () => {
-      if(img) {
-        div.append(img);
-        div.style.opacity = '';
-      }
-    };
+    // const afterRender = () => {
+    //   if(img) {
+    //     div.append(img);
+    //     div.style.opacity = '';
+    //   }
+    // };
 
-    (gotThumb?.cacheContext?.url ? renderImageFromUrl(img, gotThumb.cacheContext.url, afterRender) : afterRender());
+    // (gotThumb?.cacheContext?.url ? renderImageFromUrl(img, gotThumb.cacheContext.url, afterRender) : afterRender());
   }
 }

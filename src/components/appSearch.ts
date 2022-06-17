@@ -174,7 +174,7 @@ export default class AppSearch {
       maxId, 
       limit: 20,
       threadId: this.threadId
-    }).then(res => {
+    }).then((res) => {
       this.searchPromise = null;
       
       if(this.searchInput.value !== query) {
@@ -197,7 +197,6 @@ export default class AppSearch {
           appDialogsManager.addDialogAndSetLastMessage({
             peerId, 
             container: this.scrollable/* searchGroup.list */, 
-            drawStatus: false,
             avatarSize: 54,
             meAsSaved: false,
             message,
@@ -226,7 +225,7 @@ export default class AppSearch {
         
         this.onSearch && this.onSearch(this.foundCount);
       }
-    }).catch(err => {
+    }).catch((err) => {
       console.error('search error', err);
       this.searchPromise = null;
     });

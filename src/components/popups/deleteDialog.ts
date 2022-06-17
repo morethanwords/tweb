@@ -12,16 +12,21 @@ import PopupPeer, { PopupPeerButtonCallbackCheckboxes, PopupPeerOptions } from "
 
 export default class PopupDeleteDialog {
   constructor(
-    peerId: PeerId, 
+    private peerId: PeerId, 
     // actionType: 'leave' | 'delete', 
-    peerType?: PeerType, 
-    onSelect?: (promise: Promise<any>) => void
+    private peerType?: PeerType, 
+    private onSelect?: (promise: Promise<any>) => void
   ) {
+    this.construct();
+  }
+
+  private async construct() {
+    let {peerId, peerType, onSelect} = this;
     const peerTitleElement = new PeerTitle({peerId}).element;
 
     const managers = PopupElement.MANAGERS;
     if(peerType === undefined) {
-      peerType = managers.appPeersManager.getDialogType(peerId);
+      peerType = await managers.appPeersManager.getDialogType(peerId);
     }
 
     /* const callbackFlush = (checked: PopupPeerButtonCallbackCheckboxes) => {
@@ -60,8 +65,7 @@ export default class PopupDeleteDialog {
     let title: LangPackKey, description: LangPackKey, descriptionArgs: any[], buttons: PopupPeerOptions['buttons'], checkboxes: PopupPeerOptions['checkboxes'];
     switch(peerType) {
       case 'channel': {
-        if(/* actionType === 'delete' &&  */managers.appChatsManager.hasRights(peerId.toChatId(), 'delete_chat')) {
-          managers.appChatsManager.deleteChannel
+        if(/* actionType === 'delete' &&  */await managers.appChatsManager.hasRights(peerId.toChatId(), 'delete_chat')) {
           title = 'ChannelDeleteMenu';
           description = 'AreYouSureDeleteAndExitChannel';
           buttons = [{
@@ -134,7 +138,7 @@ export default class PopupDeleteDialog {
 
       case 'megagroup':
       case 'group': {
-        if(/* actionType === 'delete' &&  */managers.appChatsManager.hasRights(peerId.toChatId(), 'delete_chat')) {
+        if(/* actionType === 'delete' &&  */await managers.appChatsManager.hasRights(peerId.toChatId(), 'delete_chat')) {
           title = 'DeleteMegaMenu';
           description = 'AreYouSureDeleteAndExit';
           buttons = [{

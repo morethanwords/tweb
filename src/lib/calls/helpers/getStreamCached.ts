@@ -51,8 +51,8 @@ export default function getStreamCached() {
       }> = {};
 
       await Promise.all([
-        constraints.audio && cache.audio.then(stream => out.audio = stream),
-        constraints.video && cache.video.then(stream => out.video = stream)
+        constraints.audio && cache.audio.then((stream) => out.audio = stream),
+        constraints.video && cache.video.then((stream) => out.video = stream)
       ].filter(Boolean));
 
       return out; */

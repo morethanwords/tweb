@@ -8,13 +8,13 @@ import { SettingSection } from "../..";
 import { AccountPassword } from "../../../../layer";
 import Button from "../../../button";
 import { SliderSuperTab } from "../../../slider";
-import { wrapSticker } from "../../../wrappers";
 import InputField from "../../../inputField";
 import AppTwoStepVerificationEmailTab from "./email";
 import { toast } from "../../../toast";
 import I18n from "../../../../lib/langPack";
 import cancelEvent from "../../../../helpers/dom/cancelEvent";
 import { attachClickEvent } from "../../../../helpers/dom/clickEvent";
+import wrapStickerEmoji from "../../../wrappers/stickerEmoji";
 
 export default class AppTwoStepVerificationHintTab extends SliderSuperTab {
   public inputField: InputField;
@@ -31,24 +31,13 @@ export default class AppTwoStepVerificationHintTab extends SliderSuperTab {
     });
 
     const emoji = '💡';
-    const doc = this.managers.appStickersManager.getAnimatedEmojiSticker(emoji);
     const stickerContainer = document.createElement('div');
-
-    if(doc) {
-      wrapSticker({
-        doc,
-        div: stickerContainer,
-        loop: false,
-        play: true,
-        width: 160,
-        height: 160,
-        emoji
-      }).then(() => {
-        // this.animation = player;
-      });
-    } else {
-      stickerContainer.classList.add('media-sticker-wrapper');
-    }
+    wrapStickerEmoji({
+      div: stickerContainer,
+      width: 160,
+      height: 160,
+      emoji
+    });
 
     section.content.append(stickerContainer);
 

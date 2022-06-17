@@ -275,7 +275,7 @@ export default class ChatBackgroundGradientRenderer {
     }
 
     const colors = el.getAttribute('data-colors').split(',').reverse();
-    this._colors = colors.map(color => {
+    this._colors = colors.map((color) => {
       return this.hexToRgb(color);
     });
 

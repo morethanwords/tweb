@@ -1,4 +1,23 @@
+/*
+ * https://github.com/morethanwords/tweb
+ * Copyright (C) 2019-2021 Eduard Kuzmenko
+ * https://github.com/morethanwords/tweb/blob/master/LICENSE
+ */
+
+import type { CryptoMessagePort } from "../crypto/cryptoMessagePort";
+import type { ApiFileManager } from "../mtproto/apiFileManager";
+import type { ApiManager } from "../mtproto/apiManager";
+import type { Authorizer } from "../mtproto/authorizer";
+import type { DcConfigurator } from "../mtproto/dcConfigurator";
+import type { NetworkerFactory } from "../mtproto/networkerFactory";
+import type { PasswordManager } from "../mtproto/passwordManager";
 import type { ReferenceDatabase } from "../mtproto/referenceDatabase";
+import type { TimeManager } from "../mtproto/timeManager";
+import type { RootScope } from "../rootScope";
+import type DialogsStorage from "../storages/dialogs";
+import type FiltersStorage from "../storages/filters";
+import type PeersStorage from "../storages/peers";
+import type ThumbsStorage from "../storages/thumbs";
 import type { ApiUpdatesManager } from "./apiUpdatesManager";
 import type { AppAvatarsManager } from "./appAvatarsManager";
 import type { AppCallsManager } from "./appCallsManager";
@@ -17,36 +36,62 @@ import type { AppPollsManager } from "./appPollsManager";
 import type { AppPrivacyManager } from "./appPrivacyManager";
 import type { AppProfileManager } from "./appProfileManager";
 import type { AppReactionsManager } from "./appReactionsManager";
+import type { AppStateManager } from "./appStateManager";
 import type { AppStickersManager } from "./appStickersManager";
+import type { AppStoragesManager } from "./appStoragesManager";
 import type { AppUsersManager } from "./appUsersManager";
 import type { AppWebPagesManager } from "./appWebPagesManager";
 import type { AppManagers } from "./managers";
 
 export class AppManager {
-  public appPeersManager: AppPeersManager;
-  public appChatsManager: AppChatsManager;
-  public appDocsManager: AppDocsManager;
-  public appPhotosManager: AppPhotosManager;
-  public appPollsManager: AppPollsManager;
-  public appUsersManager: AppUsersManager;
-  public appWebPagesManager: AppWebPagesManager;
-  public appDraftsManager: AppDraftsManager;
-  public appProfileManager: AppProfileManager;
-  public appNotificationsManager: AppNotificationsManager;
-  public apiUpdatesManager: ApiUpdatesManager;
-  public appAvatarsManager: AppAvatarsManager;
-  public appGroupCallsManager: AppGroupCallsManager;
-  public appCallsManager: AppCallsManager;
-  public appReactionsManager: AppReactionsManager;
-  public appMessagesManager: AppMessagesManager;
-  public appMessagesIdsManager: AppMessagesIdsManager;
-  public appPrivacyManager: AppPrivacyManager;
-  public appInlineBotsManager: AppInlineBotsManager;
-  public appStickersManager: AppStickersManager;
-  public referenceDatabase: ReferenceDatabase;
-  public appEmojiManager: AppEmojiManager;
+  protected appPeersManager: AppPeersManager;
+  protected appChatsManager: AppChatsManager;
+  protected appDocsManager: AppDocsManager;
+  protected appPhotosManager: AppPhotosManager;
+  protected appPollsManager: AppPollsManager;
+  protected appUsersManager: AppUsersManager;
+  protected appWebPagesManager: AppWebPagesManager;
+  protected appDraftsManager: AppDraftsManager;
+  protected appProfileManager: AppProfileManager;
+  protected appNotificationsManager: AppNotificationsManager;
+  protected apiUpdatesManager: ApiUpdatesManager;
+  protected appAvatarsManager: AppAvatarsManager;
+  protected appGroupCallsManager: AppGroupCallsManager;
+  protected appCallsManager: AppCallsManager;
+  protected appReactionsManager: AppReactionsManager;
+  protected appMessagesManager: AppMessagesManager;
+  protected appMessagesIdsManager: AppMessagesIdsManager;
+  protected appPrivacyManager: AppPrivacyManager;
+  protected appInlineBotsManager: AppInlineBotsManager;
+  protected appStickersManager: AppStickersManager;
+  protected referenceDatabase: ReferenceDatabase;
+  protected appEmojiManager: AppEmojiManager;
+  protected dialogsStorage: DialogsStorage;
+  protected filtersStorage: FiltersStorage;
+  protected apiManager: ApiManager;
+  // protected apiManager: ApiManagerProxy;
+  protected passwordManager: PasswordManager;
+  protected cryptoWorker: CryptoMessagePort;
+  protected apiFileManager: ApiFileManager;
+  protected peersStorage: PeersStorage;
+  protected thumbsStorage: ThumbsStorage;
+  protected networkerFactory: NetworkerFactory;
+  protected rootScope: RootScope;
+  protected authorizer: Authorizer;
+  protected dcConfigurator: DcConfigurator;
+  protected timeManager: TimeManager;
+  protected appStoragesManager: AppStoragesManager;
+  protected appStateManager: AppStateManager;
+
+  public clear: (init?: boolean) => void;
   
   public setManagers(managers: AppManagers) {
     Object.assign(this, managers);
+    // this.after();
   }
+
+  protected after(): Promise<void> | void {
+
+  }
+
 }

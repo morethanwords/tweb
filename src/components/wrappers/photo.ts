@@ -6,9 +6,8 @@
 
 import renderImageWithFadeIn from "../../helpers/dom/renderImageWithFadeIn";
 import mediaSizes from "../../helpers/mediaSizes";
-import { PhotoSize } from "../../layer";
+import { Message, PhotoSize } from "../../layer";
 import { MyDocument } from "../../lib/appManagers/appDocsManager";
-import appDownloadManager, { ThumbCache } from "../../lib/appManagers/appDownloadManager";
 import { MyPhoto } from "../../lib/appManagers/appPhotosManager";
 import rootScope from "../../lib/rootScope";
 import LazyLoadQueue from "../lazyLoadQueue";
@@ -18,10 +17,12 @@ import { AppManagers } from "../../lib/appManagers/managers";
 import getStrippedThumbIfNeeded from "../../helpers/getStrippedThumbIfNeeded";
 import setAttachmentSize from "../../helpers/setAttachmentSize";
 import choosePhotoSize from "../../lib/appManagers/utils/photos/choosePhotoSize";
+import type { ThumbCache } from "../../lib/storages/thumbs";
+import appDownloadManager from "../../lib/appManagers/appDownloadManager";
 
-export default function wrapPhoto({photo, message, container, boxWidth, boxHeight, withTail, isOut, lazyLoadQueue, middleware, size, withoutPreloader, loadPromises, autoDownloadSize, noBlur, noThumb, noFadeIn, blurAfter, managers = rootScope.managers}: {
+export default async function wrapPhoto({photo, message, container, boxWidth, boxHeight, withTail, isOut, lazyLoadQueue, middleware, size, withoutPreloader, loadPromises, autoDownloadSize, noBlur, noThumb, noFadeIn, blurAfter, managers = rootScope.managers}: {
   photo: MyPhoto | MyDocument, 
-  message?: any, 
+  message?: Message.message | Message.messageService, 
   container: HTMLElement, 
   boxWidth?: number, 
   boxHeight?: number, 
@@ -89,7 +90,7 @@ export default function wrapPhoto({photo, message, container, boxWidth, boxHeigh
       } : undefined);
       size = set.photoSize;
       isFit = set.isFit;
-      cacheContext = appDownloadManager.getCacheContext(photo, size.type);
+      cacheContext = await managers.thumbsStorage.getCacheContext(photo, size.type);
 
       if(!isFit) {
         aspecter = document.createElement('div');
@@ -104,7 +105,7 @@ export default function wrapPhoto({photo, message, container, boxWidth, boxHeigh
           thumbImage.classList.add('media-photo');
           container.append(thumbImage);
         } else {
-          const res = wrapPhoto({
+          const res = await wrapPhoto({
             container,
             message,
             photo,
@@ -137,7 +138,7 @@ export default function wrapPhoto({photo, message, container, boxWidth, boxHeigh
         size = choosePhotoSize(photo, boxWidth, boxHeight, true);
       }
       
-      cacheContext = appDownloadManager.getCacheContext(photo, size?.type);
+      cacheContext = await managers.thumbsStorage.getCacheContext(photo, size?.type);
     }
 
     if(!noThumb) {
@@ -158,20 +159,34 @@ export default function wrapPhoto({photo, message, container, boxWidth, boxHeigh
   const needFadeIn = (thumbImage || !cacheContext.downloaded) && rootScope.settings.animationsEnabled && !noFadeIn;
 
   let preloader: ProgressivePreloader;
-  if(message?.media?.preloader && !withoutPreloader) { // means upload
-    preloader = message.media.preloader;
-    preloader.attach(container);
-    noAutoDownload = undefined;
-  } else if(!cacheContext.downloaded) {
-    preloader = new ProgressivePreloader({
-      attachMethod: 'prepend'
-    });
+  const uploadingFileName = (message as Message.message)?.uploadingFileName;
+  if(!withoutPreloader) {
+    if(!cacheContext.downloaded || uploadingFileName) {
+      preloader = new ProgressivePreloader({
+        attachMethod: 'prepend',
+        isUpload: !!uploadingFileName
+      });
+    }
+
+    if(uploadingFileName) { // means upload
+      preloader.attachPromise(appDownloadManager.getUpload(uploadingFileName));
+      preloader.attach(container);
+      noAutoDownload = undefined;
+    }
   }
+  
 
   const getDownloadPromise = () => {
-    const promise = isGif && !size ? 
-      managers.appDocsManager.downloadDoc(photo, /* undefined,  */lazyLoadQueue?.queueId) : 
-      managers.appPhotosManager.preloadPhoto(photo, size, lazyLoadQueue?.queueId, noAutoDownload);
+    // const promise = isGif && !size ? 
+    //   managers.appDocsManager.downloadDoc(photo, /* undefined,  */lazyLoadQueue?.queueId) : 
+    //   managers.appPhotosManager.preloadPhoto(photo, size, lazyLoadQueue?.queueId, noAutoDownload);
+    const haveToDownload = isGif && !size;
+    const promise = appDownloadManager.downloadMediaURL({
+      media: photo,
+      thumb: size,
+      queueId: lazyLoadQueue?.queueId,
+      onlyCache: haveToDownload ? undefined : noAutoDownload
+    });
 
     return promise;
   };
@@ -180,18 +195,18 @@ export default function wrapPhoto({photo, message, container, boxWidth, boxHeigh
     return renderImageWithFadeIn(container, image, url, needFadeIn, aspecter, thumbImage);
   };
 
-  const onLoad = (): Promise<void> => {
-    if(middleware && !middleware()) return Promise.resolve();
+  const onLoad = async(url: string) => {
+    if(middleware && !middleware()) return;
 
     if(blurAfter) {
-      const result = blur(cacheContext.url, 12);
+      const result = blur(url, 12);
       return result.promise.then(() => {
         // image = result.canvas;
         return renderOnLoad(result.canvas.toDataURL());
       });
     }
 
-    return renderOnLoad(cacheContext.url);
+    return renderOnLoad(url);
   };
 
   let loadPromise: Promise<any>;
@@ -199,15 +214,16 @@ export default function wrapPhoto({photo, message, container, boxWidth, boxHeigh
     (size as PhotoSize.photoSize).w >= 150 && 
     (size as PhotoSize.photoSize).h >= 150
     ) || noAutoDownload;
-  const load = () => {
+  const load = async() => {
     if(noAutoDownload && !withoutPreloader && preloader) {
       preloader.construct();
       preloader.setManual();
     }
 
     const promise = getDownloadPromise();
-
-    if(preloader && 
+    const cacheContext = await managers.thumbsStorage.getCacheContext(photo, size?.type);
+    if(
+      preloader && 
       !cacheContext.downloaded && 
       !withoutPreloader && 
       canAttachPreloader
@@ -227,18 +243,26 @@ export default function wrapPhoto({photo, message, container, boxWidth, boxHeigh
   }
   
   if(cacheContext.downloaded) {
-    loadThumbPromise = loadPromise = load().render;
+    loadThumbPromise = loadPromise = (await load()).render;
   } else {
-    if(!lazyLoadQueue) loadPromise = load().render;
+    if(!lazyLoadQueue) loadPromise = (await load()).render;
     /* else if(noAutoDownload) {
       preloader.construct();
       preloader.setManual();
       preloader.attach(container);
-    } */ else lazyLoadQueue.push({div: container, load: () => load().download});
+    } */ else lazyLoadQueue.push({div: container, load: () => load().then(({download}) => download)});
   }
 
   if(loadPromises && loadThumbPromise) {
     loadPromises.push(loadThumbPromise);
+  }
+
+  const perf = performance.now();
+  await loadThumbPromise;
+
+  const elapsedTime = performance.now() - perf;
+  if(elapsedTime > 4) {
+    console.log('wrapping photo thumb time', elapsedTime, photo, size);
   }
 
   return {

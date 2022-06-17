@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import cryptoWorker from '../../crypto/cryptoworker';
+import cryptoWorker from '../../crypto/cryptoMessagePort';
 import bigInt from 'big-integer';
 
 function readBigIntFromBytesBE(bytes: Uint8Array) {

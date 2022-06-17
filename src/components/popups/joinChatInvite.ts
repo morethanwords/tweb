@@ -22,14 +22,13 @@ import { wrapPhoto } from "../wrappers";
 
 export default class PopupJoinChatInvite extends PopupElement {
   constructor(
-    hash: string, 
-    chatInvite: ChatInvite.chatInvite, 
-    managers: AppManagers
+    private hash: string, 
+    private chatInvite: ChatInvite.chatInvite, 
   ) {
     super('popup-join-chat-invite', addCancelButton([{
       langKey: chatInvite.pFlags.request_needed ? 'RequestJoin.Button' : (chatInvite.pFlags.broadcast ? 'JoinByPeekChannelTitle' : 'JoinByPeekGroupTitle'),
       callback: () => {
-        managers.appChatsManager.importChatInvite(hash)
+        this.managers.appChatsManager.importChatInvite(hash)
         .then((chatId) => {
           const peerId = chatId.toPeerId(true);
           rootScope.dispatchEvent('history_focus', {peerId});
@@ -41,8 +40,11 @@ export default class PopupJoinChatInvite extends PopupElement {
       }
     }]), {closable: true, overlayClosable: true, body: true});
 
-    this.header.remove();
+    this.construct();
+  }
 
+  private async construct() {
+    this.header.remove();
     /* const fakeChat: Chat.channel | Chat.chat = {
       _: chatInvite.pFlags.channel ? 'channel' : 'chat',
       id: FAKE_CHAT_ID,
@@ -55,12 +57,14 @@ export default class PopupJoinChatInvite extends PopupElement {
     };
 
     appChatsManager.saveApiChat(fakeChat); */
+
+    const {chatInvite, managers, hash} = this;
     
     const avatarElem = new AvatarElement();
     avatarElem.classList.add('avatar-100');
     avatarElem.isDialog = false;
     if(chatInvite.photo._ === 'photo') {
-      chatInvite.photo = managers.appPhotosManager.savePhoto(chatInvite.photo);
+      chatInvite.photo = await managers.appPhotosManager.savePhoto(chatInvite.photo);
       wrapPhoto({
         container: avatarElem,
         message: null,
@@ -92,5 +96,7 @@ export default class PopupJoinChatInvite extends PopupElement {
 
       this.body.append(caption);
     }
+
+    this.show();
   }
 }

@@ -137,7 +137,7 @@
 }
 
 $scale-max: 1;
-$scale-step: 1 / 6;
+$scale-step: math.div(1, 6);
 $scale-mid: $scale-max - $scale-step;
 $scale-min: $scale-max - ($scale-step * 2);
 $opacity-max: 1;

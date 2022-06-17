@@ -7,8 +7,9 @@
 import replaceContent from "../helpers/dom/replaceContent";
 import { randomLong } from "../helpers/random";
 import { InputPrivacyKey, InputPrivacyRule } from "../layer";
-import { PrivacyType } from "../lib/appManagers/appPrivacyManager";
 import { AppManagers } from "../lib/appManagers/managers";
+import getPrivacyRulesDetails from "../lib/appManagers/utils/privacy/getPrivacyRulesDetails";
+import PrivacyType from "../lib/appManagers/utils/privacy/privacyType";
 import { i18n, join, LangPackKey, _i18n } from "../lib/langPack";
 import RadioField from "./radioField";
 import Row, { RadioFormFromRows } from "./row";
@@ -51,6 +52,8 @@ export default class PrivacySection {
       options.captions.reverse();
     }
 
+    const managers = options.managers;
+
     this.radioSection = new SettingSection({name: options.title, caption: true});
 
     this.radioRows = new Map();
@@ -67,7 +70,7 @@ export default class PrivacySection {
     }];
 
     if(options.skipTypes) {
-      r = r.filter(r => !options.skipTypes.includes(r.type));
+      r = r.filter((r) => !options.skipTypes.includes(r.type));
     }
     
     const random = randomLong();
@@ -145,17 +148,17 @@ export default class PrivacySection {
       this.setRadio(PrivacyType.Contacts);
     }, 0); */
 
-    const promise = this.options.managers.appPrivacyManager.getPrivacy(options.inputKey).then(rules => {
-      const details = this.options.managers.appPrivacyManager.getPrivacyRulesDetails(rules);
+    const promise = managers.appPrivacyManager.getPrivacy(options.inputKey).then((rules) => {
+      const details = getPrivacyRulesDetails(rules);
       this.setRadio(details.type);
 
       if(this.exceptions) {
         this.peerIds = {};
-        ['allow' as const, 'disallow' as const].forEach(k => {
+        ['allow' as const, 'disallow' as const].forEach((k) => {
           const arr = [];
           const from = k === 'allow' ? details.allowPeers : details.disallowPeers;
-          arr.push(...from.users.map(id => id.toPeerId()));
-          arr.push(...from.chats.map(id => id.toPeerId(true)));
+          arr.push(...from.users.map((id) => id.toPeerId()));
+          arr.push(...from.chats.map((id) => id.toPeerId(true)));
           this.peerIds[k] = arr;
           const s = this.exceptions.get(k).row.subtitle;
           s.innerHTML = '';
@@ -163,7 +166,7 @@ export default class PrivacySection {
         });
       }
 
-      options.tab.eventListener.addEventListener('destroy', () => {
+      options.tab.eventListener.addEventListener('destroy', async() => {
         const rules: InputPrivacyRule[] = [];
 
         switch(this.type) {
@@ -179,14 +182,15 @@ export default class PrivacySection {
         }
 
         if(this.exceptions) {
-          ([
+          const a = ([
             ['allow',     'inputPrivacyValueAllowChatParticipants',     'inputPrivacyValueAllowUsers'],
             ['disallow',  'inputPrivacyValueDisallowChatParticipants',  'inputPrivacyValueDisallowUsers']
           ] as Array<[
             'allow' | 'disallow', 
             'inputPrivacyValueAllowChatParticipants' | 'inputPrivacyValueDisallowChatParticipants', 
             'inputPrivacyValueAllowUsers' | 'inputPrivacyValueDisallowUsers'
-          ]>).forEach(([k, chatKey, usersKey], idx) => {
+          ]>);
+          for(const [k, chatKey, usersKey] of a) {
             if(this.exceptions.get(k).row.container.classList.contains('hide')) {
               return;
             }
@@ -199,13 +203,16 @@ export default class PrivacySection {
               }
   
               if(splitted.users.length) {
-                rules.push({_: usersKey, users: splitted.users.map(id => this.options.managers.appUsersManager.getUserInput(id))});
+                rules.push({
+                  _: usersKey, 
+                  users: await Promise.all(splitted.users.map((id) => managers.appUsersManager.getUserInput(id)))
+                });
               }
             }
-          });
+          }
         }
         
-        this.options.managers.appPrivacyManager.setPrivacy(options.inputKey, rules);
+        managers.appPrivacyManager.setPrivacy(options.inputKey, rules);
       }, {once: true});
     });
   }
@@ -241,7 +248,7 @@ export default class PrivacySection {
   
   private splitPeersByType(peerIds: PeerId[]) {
     const peers = {users: [] as UserId[], chats: [] as ChatId[]};
-    peerIds.forEach(peerId => {
+    peerIds.forEach((peerId) => {
       peers[peerId.isAnyChat() ? 'chats' : 'users'].push(peerId.isAnyChat() ? peerId.toChatId() : peerId);
     });
 

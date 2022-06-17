@@ -6,8 +6,6 @@
 
 import mediaSizes from '../helpers/mediaSizes';
 import { AuthSentCode, AuthSentCodeType, AuthSignIn } from '../layer';
-import appStateManager from '../lib/appManagers/appStateManager';
-import apiManager from '../lib/mtproto/mtprotoworker';
 import Page from './page';
 import pageSignIn from './pageSignIn';
 import TrackingMonkey from '../components/monkeys/tracking';
@@ -15,6 +13,7 @@ import CodeInputField from '../components/codeInputField';
 import { i18n, LangPackKey } from '../lib/langPack';
 import { randomLong } from '../helpers/random';
 import replaceContent from '../helpers/dom/replaceContent';
+import rootScope from '../lib/rootScope';
 
 let authCode: AuthSentCode.authSentCode = null;
 
@@ -61,15 +60,15 @@ let onFirstMount = (): Promise<any> => {
 
     //console.log('invoking auth.signIn with params:', params);
 
-    apiManager.invokeApi('auth.signIn', params, {ignoreErrors: true})
+    rootScope.managers.apiManager.invokeApi('auth.signIn', params, {ignoreErrors: true})
     .then((response) => {
       //console.log('auth.signIn response:', response);
       
       switch(response._) {
         case 'auth.authorization':
-          apiManager.setUser(response.user);
+          rootScope.managers.apiManager.setUser(response.user);
 
-          import('./pageIm').then(m => {
+          import('./pageIm').then((m) => {
             m.default.mount();
           });
           cleanup();
@@ -77,7 +76,7 @@ let onFirstMount = (): Promise<any> => {
         case 'auth.authorizationSignUpRequired':
           //console.log('Registration needed!');
 
-          import('./pageSignUp').then(m => {
+          import('./pageSignUp').then((m) => {
             m.default.mount({
               'phone_number': authCode.phone_number,
               'phone_code_hash': authCode.phone_code_hash
@@ -165,7 +164,7 @@ const page = new Page('page-authCode', true, onFirstMount, (_authCode: typeof au
 
   replaceContent(sentTypeElement, i18n(key, args));
 
-  appStateManager.pushToState('authState', {_: 'authStateAuthCode', sentCode: _authCode});
+  rootScope.managers.appStateManager.pushToState('authState', {_: 'authStateAuthCode', sentCode: _authCode});
 }, () => {
   codeInput.focus();
 });

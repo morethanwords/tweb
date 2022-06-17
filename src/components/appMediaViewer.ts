@@ -12,6 +12,7 @@ import mediaSizes from "../helpers/mediaSizes";
 import SearchListLoader from "../helpers/searchListLoader";
 import { Message } from "../layer";
 import type { MyDocument } from "../lib/appManagers/appDocsManager";
+import appDownloadManager from "../lib/appManagers/appDownloadManager";
 import appImManager from "../lib/appManagers/appImManager";
 import { MyMessage } from "../lib/appManagers/appMessagesManager";
 import { MyPhoto } from "../lib/appManagers/appPhotosManager";
@@ -164,12 +165,12 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     return this.searchContext.isScheduled ? this.managers.appMessagesManager.getScheduledMessageByPeer(peerId, mid) : this.managers.appMessagesManager.getMessageByPeer(peerId, mid);
   }
 
-  onPrevClick = (target: AppMediaViewerTargetType) => {
-    this.openMedia(this.getMessageByPeer(target.peerId, target.mid), target.element, -1);
+  onPrevClick = async(target: AppMediaViewerTargetType) => {
+    this.openMedia(await this.getMessageByPeer(target.peerId, target.mid), target.element, -1);
   };
 
-  onNextClick = (target: AppMediaViewerTargetType) => {
-    this.openMedia(this.getMessageByPeer(target.peerId, target.mid), target.element, 1);
+  onNextClick = async(target: AppMediaViewerTargetType) => {
+    this.openMedia(await this.getMessageByPeer(target.peerId, target.mid), target.element, 1);
   };
 
   onDeleteClick = () => {
@@ -192,21 +193,21 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     }
   };
 
-  onAuthorClick = (e: MouseEvent) => {
+  onAuthorClick = async(e: MouseEvent) => {
     const {mid, peerId} = this.target;
     if(mid && mid !== Number.MAX_SAFE_INTEGER) {
       const threadId = this.searchContext.threadId;
-      const message = this.getMessageByPeer(peerId, mid);
+      const message = await this.getMessageByPeer(peerId, mid);
       this.close(e)
       //.then(() => mediaSizes.isMobile ? appSidebarRight.sharedMediaTab.closeBtn.click() : Promise.resolve())
-      .then(() => {
+      .then(async() => {
         if(mediaSizes.isMobile) {
           const tab = appSidebarRight.getTab(AppSharedMediaTab);
           if(tab) {
             tab.close();
           }
         }
-
+        
         appImManager.setInnerPeer({
           peerId: message.peerId, 
           lastMsgId: mid, 
@@ -217,21 +218,15 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     }
   };
 
-  onDownloadClick = () => {
+  onDownloadClick = async() => {
     const {peerId, mid} = this.target;
-    const message = this.getMessageByPeer(peerId, mid);
-    if(message.media.photo) {
-      this.managers.appPhotosManager.savePhotoFile(message.media.photo, appImManager.chat.bubbles.lazyLoadQueue.queueId);
+    const message = await this.getMessageByPeer(peerId, mid);
+    const media = getMediaFromMessage(message);
+    if(!media) return;
+    if(media._ === 'photo') {
+      appDownloadManager.downloadToDisc({media, queueId: appImManager.chat.bubbles.lazyLoadQueue.queueId});
     } else {
-      let document: MyDocument = null;
-
-      if(message.media.webpage) document = message.media.webpage.document;
-      else document = message.media.document;
-
-      if(document) {
-        //console.log('will save document:', document);
-        this.managers.appDocsManager.saveDocFile(document, appImManager.chat.bubbles.lazyLoadQueue.queueId);
-      }
+      appDownloadManager.downloadToDisc({media, queueId: appImManager.chat.bubbles.lazyLoadQueue.queueId});
     }
   };
 
@@ -265,19 +260,19 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     const media = getMediaFromMessage(message);
 
     const cantForwardMessage = message._ === 'messageService' || !this.managers.appMessagesManager.canForward(message);
-    [this.buttons.forward, this.btnMenuForward.element].forEach(button => {
+    [this.buttons.forward, this.btnMenuForward.element].forEach((button) => {
       button.classList.toggle('hide', cantForwardMessage);
     });
 
     this.wholeDiv.classList.toggle('no-forwards', cantForwardMessage);
     
     const cantDownloadMessage = cantForwardMessage;
-    [this.buttons.download, this.btnMenuDownload.element].forEach(button => {
+    [this.buttons.download, this.btnMenuDownload.element].forEach((button) => {
       button.classList.toggle('hide', cantDownloadMessage);
     });
 
     const canDeleteMessage = this.managers.appMessagesManager.canDeleteMessage(message);
-    [this.buttons.delete, this.btnMenuDelete.element].forEach(button => {
+    [this.buttons.delete, this.btnMenuDelete.element].forEach((button) => {
       button.classList.toggle('hide', !canDeleteMessage);
     });
 

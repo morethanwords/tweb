@@ -3,11 +3,13 @@ const HtmlWebpackPlugin = require('html-webpack-plugin');
 const MediaQueryPlugin = require('media-query-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const postcssPresetEnv = require('postcss-preset-env');
-const ServiceWorkerWebpackPlugin = require('serviceworker-webpack-plugin');
+// const ServiceWorkerWebpackPlugin = require('serviceworker-webpack-plugin');
 const { RetryChunkLoadPlugin } = require('webpack-retry-chunk-load-plugin');
 const fs = require('fs');
 const Dotenv = require('dotenv-webpack');
 const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
+const keepAsset = require('./keepAsset');
+const HtmlWebpackInjectPreload = require('@principalstudio/html-webpack-inject-preload');
 
 const allowedIPs = ['127.0.0.1'];
 const devMode = process.env.NODE_ENV !== 'production';
@@ -30,6 +32,7 @@ const opts = {
   MTPROTO_HAS_HTTP: MTPROTO_AUTO || MTPROTO_HTTP,
   MTPROTO_HAS_WS: MTPROTO_AUTO || !MTPROTO_HTTP,
   DEBUG: devMode,
+
   version: 3,
   'ifdef-verbose': devMode,         // add this for verbose output
   'ifdef-triple-slash': true,       // add this to use double slash comment instead of default triple slash
@@ -37,7 +40,7 @@ const opts = {
 };
 
 const domain = 'yourdomain.com';
-const localIp = '10.77.0.84';
+const localIp = '192.168.92.78';
 
 const middleware = (req, res, next) => {
   let IP = '';
@@ -74,31 +77,31 @@ module.exports = {
           }, */
 
           // Webpack 4
-          'css-loader?url=false',
+          // 'css-loader?url=false',
           // Webpack 5
-          // {
-          //   loader: 'css-loader',
-          //   options: {
-          //     url: false
-          //   }
-          // },
+          {
+            loader: 'css-loader',
+            options: {
+              url: false
+            }
+          },
           
           devMode ? undefined : MediaQueryPlugin.loader,
           {
             loader: 'postcss-loader',
             options: {
               // Webpack 4
-              ident: 'postcss',
-              plugins: [
-                postcssPresetEnv(),
-              ],
+              // ident: 'postcss',
+              // plugins: [
+              //   postcssPresetEnv(),
+              // ],
 
               // Webpack 5
-              // postcssOptions: {
-              //   plugins: [
-              //     postcssPresetEnv(),
-              //   ]
-              // }
+              postcssOptions: {
+                plugins: [
+                  postcssPresetEnv(),
+                ]
+              }
             }
           },
           {
@@ -109,6 +112,13 @@ module.exports = {
           }
         ].filter(Boolean)
       },
+      // {
+      //   test: /\.worker\.ts$/i,
+      //   loader: "worker-loader",
+      //   // options: {
+      //   //   filename: "[name].[contenthash].worker.js",
+      //   // }
+      // },
       {
         test: /\.ts?$/,
         use: [
@@ -120,9 +130,14 @@ module.exports = {
       },
       {
         test: /\.hbs$/,
-        use: [
-          'handlebars-loader'
-        ]
+        loader: 'handlebars-loader',
+        options: {
+          helperDirs: __dirname + '/handlebarsHelpers'
+        }
+        // loader: 'handlebars-loader?helperDirs[]=' + __dirname + '/handlebarsHelpers',
+        // use: [
+        //   'handlebars-loader'
+        // ]
       }
     ],
   },
@@ -134,7 +149,7 @@ module.exports = {
   entry: './src/index.ts',
   // entry: {
   //   index: './src/index.ts',
-  //   sw: {import: './src/lib/serviceWorker/index.service.ts', filename: 'sw.js'}
+  //   // sw: {import: './src/lib/serviceWorker/index.service.ts', filename: 'sw.js'}
   // },
   /* entry: {
     index: './src/index.ts',
@@ -145,30 +160,29 @@ module.exports = {
   output: {
     globalObject: 'this',
     path: path.resolve(__dirname, 'public'),
-    filename: '[name].[chunkhash].bundle.js',
-    chunkFilename: '[name].[chunkhash].chunk.js',
+    filename: devMode ? '[name].bundle.js' : '[name].[chunkhash].bundle.js',
+    chunkFilename: devMode ? '[name].chunk.js' : '[name].[chunkhash].chunk.js',
 
     // Webpack 5
-    // clean: {
-    //   keep: keepAsset,
-    // }
+    clean: {
+      keep: keepAsset,
+    }
   },
 
   devServer: {
     // Webpack 4 options
-    contentBase: path.join(__dirname, 'public'),
-    watchContentBase: true,
-    before: useLocal ? undefined : function(app, server, compiler) {
-      app.use(middleware);
-    },
-    public: useLocal ? undefined : domain,
-    sockHost: useLocal ? undefined : domain,
-    overlay: true,
+    // contentBase: path.join(__dirname, 'public'),
+    // watchContentBase: true,
+    // before: useLocal ? undefined : function(app, server, compiler) {
+    //   app.use(middleware);
+    // },
+    // public: useLocal ? undefined : domain,
+    // sockHost: useLocal ? undefined : domain,
+    // overlay: true,
     
     // static: {
       // directory: path.join(__dirname, 'public')
     // },
-    // hot: false,
     compress: true,
     http2: useLocalNotLocal ? true : (useLocal ? undefined : true),
     https: useLocal ? undefined : {
@@ -181,18 +195,19 @@ module.exports = {
     host: useLocalNotLocal ? localIp : (useLocal ? undefined : '0.0.0.0'),
     //host: domain, // '0.0.0.0'
     port: useLocal ? undefined : 443,
-
+    
     
     // Webpack 5
-    // setupMiddlewares: useLocal ? undefined : (middlewares, devServer) => {
-    //   middlewares.push(middleware);
+    hot: false,
+    setupMiddlewares: useLocal ? undefined : (middlewares, devServer) => {
+      middlewares.push(middleware);
     
-    //   return middlewares;
-    // },
-    // client: {
-    //   overlay: true,
-    //   progress: true
-    // },
+      return middlewares;
+    },
+    client: {
+      overlay: true,
+      progress: false
+    },
   },
 
   plugins: [
@@ -205,32 +220,33 @@ module.exports = {
 
     new Dotenv(),
 
-    new ServiceWorkerWebpackPlugin({
-      entry: path.join(__dirname, 'src/lib/serviceWorker/index.service.ts'),
-      filename: 'sw.js',
-      //excludes: ['**/*'],
-      includes: [
-        '**/*.js', 
-        '**/*.css', 
-        '**/*.json', 
-        '**/*.wasm', 
-        '**/*.mp3', 
-        '**/*.svg', 
-        '**/*.tgs', 
-        '**/*.ico', 
-        '**/*.woff', 
-        '**/*.woff2', 
-        '**/*.ttf', 
-        '**/*.webmanifest'
-      ],
-    }),
+    // new ServiceWorkerWebpackPlugin({
+    //   entry: path.join(__dirname, 'src/lib/serviceWorker/index.service.ts'),
+    //   filename: 'sw.js',
+    //   //excludes: ['**/*'],
+    //   includes: [
+    //     '**/*.js', 
+    //     '**/*.css', 
+    //     '**/*.json', 
+    //     '**/*.wasm', 
+    //     '**/*.mp3', 
+    //     '**/*.svg', 
+    //     '**/*.tgs', 
+    //     '**/*.ico', 
+    //     '**/*.woff', 
+    //     '**/*.woff2', 
+    //     '**/*.ttf', 
+    //     '**/*.webmanifest'
+    //   ],
+    // }),
     
     new HtmlWebpackPlugin({
-      filename: `index.html`,
+      filename: 'index.html',
       //template: 'public/index_template.html',
       template: 'src/index.hbs',
-      inject: false, // true, 'head'
-      minify: {
+      inject: 'body', // true, 'head'
+      scriptLoading: 'blocking',
+      minify: devMode ? false : {
         removeComments: true,
         collapseWhitespace: true,
         removeRedundantAttributes: true,
@@ -241,11 +257,20 @@ module.exports = {
         minifyJS: true,
         minifyCSS: true,
         minifyURLs: true
-      },
+      }, 
       chunks: 'all',
-      excludeChunks: []
+      excludeChunks: [],
     }),
-    
+
+    new HtmlWebpackInjectPreload({
+      files: [
+        {
+          match: /(mtproto).*\.js$/,
+          attributes: {rel: 'modulepreload'},
+        },
+      ]
+    }),
+
     new MiniCssExtractPlugin({
       // Options similar to the same options in webpackOptions.output
       // both options are optional

@@ -7,9 +7,7 @@
 import emoticonsDropdown, { EmoticonsDropdown, EmoticonsTab, EMOTICONSSTICKERGROUP } from "..";
 import GifsMasonry from "../../gifsMasonry";
 import Scrollable from "../../scrollable";
-import { putPreloader } from "../../misc";
-import apiManager from "../../../lib/mtproto/mtprotoworker";
-import { MyDocument } from "../../../lib/appManagers/appDocsManager";
+import { putPreloader } from "../../putPreloader";
 import { AppManagers } from "../../../lib/appManagers/managers";
 
 export default class GifsTab implements EmoticonsTab {
@@ -28,16 +26,10 @@ export default class GifsTab implements EmoticonsTab {
     const masonry = new GifsMasonry(gifsContainer, EMOTICONSSTICKERGROUP, scroll);
     const preloader = putPreloader(this.content, true);
 
-    apiManager.invokeApi('messages.getSavedGifs', {hash: '0'}).then((res) => {
-      //console.log('getSavedGifs res:', res);
-
-      if(res._ === 'messages.savedGifs') {
-        res.gifs.forEach((doc, idx) => {
-          res.gifs[idx] = doc = this.managers.appDocsManager.saveDoc(doc);
-          //if(doc._ === 'documentEmpty') return;
-          masonry.add(doc as MyDocument);
-        });
-      }
+    this.managers.appDocsManager.getGifs().then((docs) => {
+      docs.forEach((doc) => {
+        masonry.add(doc);
+      });
 
       preloader.remove();
     });

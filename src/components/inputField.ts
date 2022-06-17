@@ -64,7 +64,7 @@ let init = () => {
         usePlainText = false;
   
         let entities2 = parseEntities(text);
-        entities2 = entities2.filter(e => e._ === 'messageEntityEmoji' || e._ === 'messageEntityLinebreak');
+        entities2 = entities2.filter((e) => e._ === 'messageEntityEmoji' || e._ === 'messageEntityLinebreak');
         mergeEntities(entities, entities2);
       }
     }
@@ -72,7 +72,7 @@ let init = () => {
     if(usePlainText) {
       text = plainText;
       entities = parseEntities(text);
-      entities = entities.filter(e => e._ === 'messageEntityEmoji' || e._ === 'messageEntityLinebreak');
+      entities = entities.filter((e) => e._ === 'messageEntityEmoji' || e._ === 'messageEntityLinebreak');
     }
 
     const fragment = wrapDraftText(text, {entities});

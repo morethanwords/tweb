@@ -8,7 +8,7 @@ import { attachClickEvent } from "./dom/clickEvent";
 import findUpAsChild from "./dom/findUpAsChild";
 import EventListenerBase from "./eventListenerBase";
 import ListenerSetter from "./listenerSetter";
-import { IS_TOUCH_SUPPORTED } from "../environment/touchSupport";
+import IS_TOUCH_SUPPORTED from "../environment/touchSupport";
 import safeAssign from "./object/safeAssign";
 
 const KEEP_OPEN = false;

@@ -5,19 +5,23 @@
  */
 
 import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
+import type { LOCAL_FOLDER_ID } from "../../../lib/storages/dialogs";
+import type { MyDialogFilter } from "../../../lib/storages/filters";
 import { SliderSuperTab } from "../../slider";
 
 export default class AppArchivedTab extends SliderSuperTab {
-  private static filterId = 1;
+  private static filterId: LOCAL_FOLDER_ID = 1;
   private wasFilterId: number;
 
-  init() {
+  protected init() {
+    this.wasFilterId = appDialogsManager.filterId;
+
     this.container.id = 'chats-archived-container';
     this.setTitle('ArchivedChats');
 
     if(!appDialogsManager.sortedLists[AppArchivedTab.filterId]) {
       const chatList = appDialogsManager.createChatList();
-      appDialogsManager.generateScrollable(chatList, AppArchivedTab.filterId).container.append(chatList);
+      appDialogsManager.generateScrollable(chatList, {id: AppArchivedTab.filterId, orderIndex: 1} as any as MyDialogFilter).container.append(chatList);
       appDialogsManager.setListClickListener(chatList, null, true);
       //appDialogsManager.setListClickListener(archivedChatList, null, true); // * to test peer changing
     }
@@ -25,17 +29,12 @@ export default class AppArchivedTab extends SliderSuperTab {
     const scrollable = appDialogsManager.scrollables[AppArchivedTab.filterId];
     this.scrollable.container.replaceWith(scrollable.container);
     this.scrollable = scrollable;
-  }
 
-  onOpen() {
-    if(this.init) {
-      this.init();
-      this.init = null;
-    }
-
-    this.wasFilterId = appDialogsManager.filterId;
-    appDialogsManager.setFilterId(AppArchivedTab.filterId);
-    appDialogsManager.onTabChange();
+    return appDialogsManager.setFilterIdAndChangeTab(AppArchivedTab.filterId).then(({cached, renderPromise}) => {
+      if(cached) {
+        return renderPromise;
+      }
+    });
   }
 
   // вообще, так делать нельзя, но нет времени чтобы переделать главный чатлист на слайд...
@@ -44,8 +43,7 @@ export default class AppArchivedTab extends SliderSuperTab {
   }
 
   onClose() {
-    appDialogsManager.setFilterId(this.wasFilterId);
-    appDialogsManager.onTabChange();
+    appDialogsManager.setFilterIdAndChangeTab(this.wasFilterId);
   }
 
   onCloseAfterTimeout() {

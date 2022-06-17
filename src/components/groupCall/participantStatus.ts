@@ -23,7 +23,7 @@ export default class GroupCallParticipantStatusElement {
 
   public setState(state: GROUP_CALL_PARTICIPANT_MUTED_STATE, participant: GroupCallParticipant) {
     const states = GROUP_CALL_PARTICIPANT_MUTED_STATE;
-    const icons = this.withIcons.filter(type => !!participant[type]).map(type => {
+    const icons = this.withIcons.filter((type) => !!participant[type]).map((type) => {
       const iconClassName = `tgico-${type === 'presentation' ? 'listscreenshare' : 'videocamera_filled'}`;
       const i = document.createElement('i');
       i.classList.add(className + '-icon', className + '-icon-' + type, iconClassName);

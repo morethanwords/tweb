@@ -5,9 +5,9 @@
  */
 
 import cancelEvent from "../helpers/dom/cancelEvent";
-import { IS_TOUCH_SUPPORTED } from "../environment/touchSupport";
-import rootScope from "../lib/rootScope";
+import IS_TOUCH_SUPPORTED from "../environment/touchSupport";
 import safeAssign from "../helpers/object/safeAssign";
+import contextMenuController from "../helpers/contextMenuController";
 
 const getEvent = (e: TouchEvent | MouseEvent) => {
   return (e as TouchEvent).touches ? (e as TouchEvent).touches[0] : e as MouseEvent;
@@ -16,7 +16,7 @@ const getEvent = (e: TouchEvent | MouseEvent) => {
 const attachGlobalListenerTo = window;
 
 let RESET_GLOBAL = false;
-rootScope.addEventListener('context_menu_toggle', (visible) => {
+contextMenuController.addEventListener('toggle', (visible) => {
   RESET_GLOBAL = visible;
 });
 
@@ -34,7 +34,7 @@ export type SwipeHandlerOptions = {
 export default class SwipeHandler {
   private element: HTMLElement;
   private onSwipe: (xDiff: number, yDiff: number, e: TouchEvent | MouseEvent) => boolean | void;
-  private verifyTouchTarget: (evt: TouchEvent | MouseEvent) => boolean;
+  private verifyTouchTarget: (evt: TouchEvent | MouseEvent) => boolean | Promise<boolean>;
   private onFirstSwipe: () => void;
   private onReset: () => void;
   private cursor: 'grabbing' | 'move' | 'row-resize' | 'col-resize' | 'nesw-resize' | 'nwse-resize' | 'ne-resize' | 'se-resize' | 'sw-resize' | 'nw-resize' | 'n-resize' | 'e-resize' | 's-resize' | 'w-resize' | '' = 'grabbing';
@@ -102,9 +102,9 @@ export default class SwipeHandler {
     this.hadMove = false;
   };
 
-  handleStart = (_e: TouchEvent | MouseEvent) => {
+  handleStart = async(_e: TouchEvent | MouseEvent) => {
     const e = getEvent(_e);
-    if(this.verifyTouchTarget && !this.verifyTouchTarget(_e)) {
+    if(this.verifyTouchTarget && !(await this.verifyTouchTarget(_e))) {
       return this.reset();
     }
 

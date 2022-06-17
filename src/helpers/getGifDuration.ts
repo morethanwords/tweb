@@ -5,8 +5,8 @@ export default function getGifDuration(image: HTMLImageElement) {
   const src = image.src;
 
   return fetch(src)
-  .then(response => response.arrayBuffer())
-  .then(arrayBuffer => {
+  .then((response) => response.arrayBuffer())
+  .then((arrayBuffer) => {
     const d = new Uint8Array(arrayBuffer);
     // Thanks to http://justinsomnia.org/2006/10/gif-animation-duration-calculation/
     // And http://www.w3.org/Graphics/GIF/spec-gif89a.txt

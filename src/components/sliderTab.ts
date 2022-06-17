@@ -71,7 +71,9 @@ export default class SliderSuperTab implements SliderTab {
 
     this.container.append(this.header, this.content);
 
-    this.slider.addTab(this);
+    if(this.slider) {
+      this.slider.addTab(this);
+    }
     
     this.listenerSetter = new ListenerSetter();
   }

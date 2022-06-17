@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { State } from "../lib/appManagers/appStateManager";
+import type { State } from "../config/state";
 import rootScope from "../lib/rootScope";
 
 export type ChatAutoDownloadSettings = {
@@ -13,7 +13,7 @@ export type ChatAutoDownloadSettings = {
   file: number
 };
 
-export default function getAutoDownloadSettingsByPeerId(peerId: PeerId): ChatAutoDownloadSettings {
+export default async function getAutoDownloadSettingsByPeerId(peerId: PeerId): Promise<ChatAutoDownloadSettings> {
   let type: keyof State['settings']['autoDownload'];
 
   let photoSizeMax = 0, videoSizeMax = 0, fileSizeMax = 0;
@@ -21,12 +21,12 @@ export default function getAutoDownloadSettingsByPeerId(peerId: PeerId): ChatAut
   const appPeersManager = rootScope.managers.appPeersManager;
   if(!settings.autoDownloadNew.pFlags.disabled && peerId) {
     if(peerId.isUser()) {
-      if(appPeersManager.isContact(peerId)) {
+      if(await appPeersManager.isContact(peerId)) {
         type = 'contacts';
       } else {
         type = 'private';
       }
-    } else if(appPeersManager.isBroadcast(peerId)) {
+    } else if(await appPeersManager.isBroadcast(peerId)) {
       type = 'channels';
     } else {
       type = 'groups';

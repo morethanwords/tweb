@@ -4,7 +4,6 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type { LazyLoadQueueIntersector } from "../lazyLoadQueue";
 import { Message } from "../../layer";
 import rootScope from "../../lib/rootScope";
 import ripple from "../ripple";
@@ -13,11 +12,13 @@ import replaceContent from "../../helpers/dom/replaceContent";
 import StackedAvatars from "../stackedAvatars";
 import formatNumber from "../../helpers/number/formatNumber";
 import { AppManagers } from "../../lib/appManagers/managers";
+import getPeerId from "../../lib/appManagers/utils/peers/getPeerId";
+import type LazyLoadQueue from "../lazyLoadQueue";
 
 const TAG_NAME = 'replies-element';
 
 rootScope.addEventListener('replies_updated', (message) => {
-  (Array.from(document.querySelectorAll(TAG_NAME + `[data-post-key="${message.peerId}_${message.mid}"]`)) as RepliesElement[]).forEach(element => {
+  (Array.from(document.querySelectorAll(TAG_NAME + `[data-post-key="${message.peerId}_${message.mid}"]`)) as RepliesElement[]).forEach((element) => {
     element.message = message;
     element.render();
   });
@@ -27,7 +28,7 @@ export default class RepliesElement extends HTMLElement {
   public message: Message.message;
   public type: 'footer' | 'beside';
   public loadPromises: Promise<any>[];
-  public lazyLoadQueue: LazyLoadQueueIntersector;
+  public lazyLoadQueue: LazyLoadQueue;
   public stackedAvatars: StackedAvatars;
   public text: I18n.IntlElement;
   public managers: AppManagers;
@@ -75,7 +76,7 @@ export default class RepliesElement extends HTMLElement {
 
         leftPart = this.stackedAvatars.container;
 
-        this.stackedAvatars.render(replies.recent_repliers.map(peer => this.managers.appPeersManager.getPeerId(peer)), this.loadPromises);
+        this.stackedAvatars.render(replies.recent_repliers.map((peer) => getPeerId(peer)), this.loadPromises);
       } else {
         if(leftPart && !leftPart.classList.contains('tgico-comments')) {
           leftPart.remove();

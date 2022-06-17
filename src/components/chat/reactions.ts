@@ -7,6 +7,7 @@
 import forEachReverse from "../../helpers/array/forEachReverse";
 import positionElementByIndex from "../../helpers/dom/positionElementByIndex";
 import { Message, ReactionCount } from "../../layer";
+import appImManager from "../../lib/appManagers/appImManager";
 import { AppManagers } from "../../lib/appManagers/managers";
 import rootScope from "../../lib/rootScope";
 import ReactionElement, { ReactionLayoutType, REACTION_DISPLAY_BLOCK_COUNTER_AT } from "./reaction";
@@ -15,7 +16,7 @@ const CLASS_NAME = 'reactions';
 const TAG_NAME = CLASS_NAME + '-element';
 
 const REACTIONS_ELEMENTS: Map<string, Set<ReactionsElement>> = new Map();
-export {REACTIONS_ELEMENTS};
+export { REACTIONS_ELEMENTS };
 
 export default class ReactionsElement extends HTMLElement {
   private message: Message.message;
@@ -100,14 +101,14 @@ export default class ReactionsElement extends HTMLElement {
       const counts = hasReactions ? (
         availableReactionsResult instanceof Promise ? 
           reactions.results : 
-          reactions.results.filter(reactionCount => {
+          reactions.results.filter((reactionCount) => {
             return this.managers.appReactionsManager.isReactionActive(reactionCount.reaction);
           })
       ) : [];
 
       forEachReverse(this.sorted, (reactionElement, idx, arr) => {
         const reaction = reactionElement.reactionCount.reaction;
-        const found = counts.some(reactionCount => reactionCount.reaction === reaction);
+        const found = counts.some((reactionCount) => reactionCount.reaction === reaction);
         if(!found) {
           arr.splice(idx, 1);
           reactionElement.remove();
@@ -117,7 +118,7 @@ export default class ReactionsElement extends HTMLElement {
       const totalReactions = counts.reduce((acc, c) => acc + c.count, 0);
       const canRenderAvatars = reactions && !!reactions.pFlags.can_see_list && totalReactions < REACTION_DISPLAY_BLOCK_COUNTER_AT;
       this.sorted = counts.map((reactionCount, idx) => {
-        const reactionElementIdx = this.sorted.findIndex(reactionElement => reactionElement.reactionCount.reaction === reactionCount.reaction);
+        const reactionElementIdx = this.sorted.findIndex((reactionElement) => reactionElement.reactionCount.reaction === reactionCount.reaction);
         let reactionElement = reactionElementIdx !== -1 && this.sorted[reactionElementIdx];
         if(!reactionElement) {
           reactionElement = new ReactionElement();
@@ -126,7 +127,7 @@ export default class ReactionsElement extends HTMLElement {
 
         positionElementByIndex(reactionElement, this, idx);
         
-        const recentReactions = reactions.recent_reactions ? reactions.recent_reactions.filter(reaction => reaction.reaction === reactionCount.reaction) : [];
+        const recentReactions = reactions.recent_reactions ? reactions.recent_reactions.filter((reaction) => reaction.reaction === reactionCount.reaction) : [];
         reactionElement.reactionCount = {...reactionCount};
         reactionElement.setCanRenderAvatars(canRenderAvatars);
         reactionElement.render(this.isPlaceholder);
@@ -175,10 +176,10 @@ export default class ReactionsElement extends HTMLElement {
 
   private handleChangedResults(changedResults: ReactionCount[]) {
     // ! temp
-    if(this.message.peerId !== rootScope.peerId) return;
+    if(this.message.peerId !== appImManager.chat.peerId) return;
 
-    changedResults.forEach(reactionCount => {
-      const reactionElement = this.sorted.find(reactionElement => reactionElement.reactionCount.reaction === reactionCount.reaction);
+    changedResults.forEach((reactionCount) => {
+      const reactionElement = this.sorted.find((reactionElement) => reactionElement.reactionCount.reaction === reactionCount.reaction);
       if(reactionElement) {
         reactionElement.fireAroundAnimation();
       }

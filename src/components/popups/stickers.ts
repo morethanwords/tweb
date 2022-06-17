@@ -9,7 +9,7 @@ import type { AppStickersManager } from "../../lib/appManagers/appStickersManage
 import Scrollable from "../scrollable";
 import { wrapSticker } from "../wrappers";
 import LazyLoadQueue from "../lazyLoadQueue";
-import { putPreloader } from "../misc";
+import { putPreloader } from "../putPreloader";
 import animationIntersector from "../animationIntersector";
 import appImManager from "../../lib/appManagers/appImManager";
 import { StickerSet } from "../../layer";
@@ -87,7 +87,7 @@ export default class PopupStickers extends PopupElement {
   };
 
   private loadStickerSet() {
-    return this.managers.appStickersManager.getStickerSet(this.stickerSetInput).then(set => {
+    return this.managers.appStickersManager.getStickerSet(this.stickerSetInput).then((set) => {
       if(!set) {
         toastNew({langPackKey: 'StickerSet.DontExist'});
         this.hide();

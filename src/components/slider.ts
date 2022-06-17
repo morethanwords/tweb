@@ -46,7 +46,7 @@ export default class SidebarSlider {
       this._selectTab(0);
     }
 
-    Array.from(this.sidebarEl.querySelectorAll('.sidebar-close-button') as any as HTMLElement[]).forEach(el => {
+    Array.from(this.sidebarEl.querySelectorAll('.sidebar-close-button') as any as HTMLElement[]).forEach((el) => {
       attachClickEvent(el, this.onCloseBtnClick);
     });
   }
@@ -131,7 +131,7 @@ export default class SidebarSlider {
   }
 
   public getTab<T extends SliderSuperTab>(tabConstructor: SliderSuperTabConstructable<T>) {
-    return this.historyTabIds.find(t => t instanceof tabConstructor) as T;
+    return this.historyTabIds.find((t) => t instanceof tabConstructor) as T;
   }
 
   public isTabExists(tabConstructor: SliderSuperTabConstructable) {
@@ -167,8 +167,8 @@ export default class SidebarSlider {
     }
   }
 
-  public createTab<T extends SliderSuperTab>(ctor: SliderSuperTabConstructable<T>) {
-    const tab = new ctor(this, true);
+  public createTab<T extends SliderSuperTab>(ctor: SliderSuperTabConstructable<T>, doNotAppend?: boolean) {
+    const tab = new ctor(doNotAppend ? undefined : this, true);
     tab.managers = this.managers;
     return tab;
   }

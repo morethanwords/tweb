@@ -6,8 +6,6 @@
 
 import { UserProfilePhoto, ChatPhoto, InputFileLocation } from "../../layer";
 import { DownloadOptions } from "../mtproto/apiFileManager";
-import rootScope from "../rootScope";
-import appDownloadManager from "./appDownloadManager";
 import { AppManager } from "./manager";
 
 export type PeerPhotoSize = 'photo_small' | 'photo_big';
@@ -19,16 +17,19 @@ export class AppAvatarsManager extends AppManager {
     }
   } = {};
   
-  constructor() {
-    super();
-
-    rootScope.addEventListener('avatar_update', (peerId) => {
+  protected after() {
+    this.rootScope.addEventListener('avatar_update', (peerId) => {
       this.removeFromAvatarsCache(peerId);
     });
   }
 
-  public isAvatarCached(peerId: PeerId) {
-    return !!this.savedAvatarURLs[peerId];
+  public isAvatarCached(peerId: PeerId, size?: PeerPhotoSize) {
+    const saved = this.savedAvatarURLs[peerId];
+    if(size === undefined) {
+      return !!saved;
+    }
+
+    return !!(saved && saved[size] && !(saved[size] instanceof Promise));
   }
   
   public removeFromAvatarsCache(peerId: PeerId) {
@@ -38,10 +39,6 @@ export class AppAvatarsManager extends AppManager {
   }
 
   public loadAvatar(peerId: PeerId, photo: UserProfilePhoto.userProfilePhoto | ChatPhoto.chatPhoto, size: PeerPhotoSize) {
-    const inputPeer = this.appPeersManager.getInputPeerById(peerId);
-
-    let cached = false;
-    let getAvatarPromise: Promise<string>;
     let saved = this.savedAvatarURLs[peerId];
     if(!saved || !saved[size]) {
       if(!saved) {
@@ -52,7 +49,7 @@ export class AppAvatarsManager extends AppManager {
       const peerPhotoFileLocation: InputFileLocation.inputPeerPhotoFileLocation = {
         _: 'inputPeerPhotoFileLocation', 
         pFlags: {},
-        peer: inputPeer, 
+        peer: this.appPeersManager.getInputPeerById(peerId), 
         photo_id: photo.photo_id
       };
 
@@ -68,21 +65,16 @@ export class AppAvatarsManager extends AppManager {
         str = `download avatar ${peerId}`;
       } */
 
-      const promise = appDownloadManager.download(downloadOptions);
-      getAvatarPromise = saved[size] = promise.then(blob => {
+      const promise = this.apiFileManager.download(downloadOptions);
+      return saved[size] = promise.then((blob) => {
         return saved[size] = URL.createObjectURL(blob);
 
         /* if(str) {
           console.log(str, Date.now() / 1000, Date.now() - time);
         } */
       });
-    } else if(typeof(saved[size]) !== 'string') {
-      getAvatarPromise = saved[size] as Promise<any>;
     } else {
-      getAvatarPromise = Promise.resolve(saved[size]);
-      cached = true;
+      return saved[size];
     }
-
-    return {cached, loadPromise: getAvatarPromise};
   }
 }

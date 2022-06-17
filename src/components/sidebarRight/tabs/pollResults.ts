@@ -25,16 +25,16 @@ export default class AppPollResultsTab extends SliderSuperTab {
     this.scrollable.append(this.resultsDiv);
   }
 
-  public open(message: any) {
+  public async open(message: any) {
     const ret = super.open();
-    const poll = this.managers.appPollsManager.getPoll(message.media.poll.id);
+    const poll = await this.managers.appPollsManager.getPoll(message.media.poll.id);
 
     this.setTitle(poll.poll.pFlags.quiz ? 'PollResults.Title.Quiz' : 'PollResults.Title.Poll');
 
     const title = document.createElement('h3');
     setInnerHTML(title, wrapEmojiText(poll.poll.question));
 
-    const percents = poll.results.results.map(v => v.voters / poll.results.total_voters * 100);
+    const percents = poll.results.results.map((v) => v.voters / poll.results.total_voters * 100);
     roundPercents(percents);
 
     const fragment = document.createDocumentFragment();
@@ -74,12 +74,11 @@ export default class AppPollResultsTab extends SliderSuperTab {
         if(loading) return;
         loading = true;
 
-        this.managers.appPollsManager.getVotes(message, answer.option, offset, limit).then(votesList => {
-          votesList.votes.forEach(vote => {
+        this.managers.appPollsManager.getVotes(message, answer.option, offset, limit).then((votesList) => {
+          votesList.votes.forEach((vote) => {
             const {dom} = appDialogsManager.addDialogNew({
-              dialog: vote.user_id.toPeerId(false),
+              peerId: vote.user_id.toPeerId(false),
               container: list,
-              drawStatus: false,
               rippleEnabled: false, 
               meAsSaved: false,
               avatarSize: 32
@@ -121,7 +120,7 @@ export default class AppPollResultsTab extends SliderSuperTab {
     this.resultsDiv.append(title, fragment);
 
     appSidebarRight.toggleSidebar(true).then(() => {
-      /* appPollsManager.getVotes(mid).then(votes => {
+      /* appPollsManager.getVotes(mid).then((votes) => {
         console.log('gOt VotEs', votes);
       }); */
     });

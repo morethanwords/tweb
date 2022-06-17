@@ -8,14 +8,17 @@ import getPreviewURLFromBytes from "../helpers/bytes/getPreviewURLFromBytes";
 import { renderImageFromUrlPromise } from "../helpers/dom/renderImageFromUrl";
 import replaceContent from "../helpers/dom/replaceContent";
 import setInnerHTML from "../helpers/dom/setInnerHTML";
+import { recordPromise } from "../helpers/recordPromise";
 import sequentialDom from "../helpers/sequentialDom";
 import { UserProfilePhoto, ChatPhoto } from "../layer";
 import type { PeerPhotoSize } from "../lib/appManagers/appAvatarsManager";
+import getPeerColorById from "../lib/appManagers/utils/peers/getPeerColorById";
 import { NULL_PEER_ID, REPLIES_PEER_ID } from "../lib/mtproto/mtproto_config";
 import getAbbreviation from "../lib/richTextProcessor/getAbbreviation";
 import rootScope from "../lib/rootScope";
+import getPeerInitials from "./wrappers/getPeerInitials";
 
-export function putAvatar(
+export async function putAvatar(
   div: HTMLElement, 
   peerId: PeerId, 
   photo: UserProfilePhoto.userProfilePhoto | ChatPhoto.chatPhoto, 
@@ -23,7 +26,9 @@ export function putAvatar(
   img = new Image(), 
   onlyThumb = false
 ) {
-  let {cached, loadPromise} = rootScope.managers.appAvatarsManager.loadAvatar(peerId, photo, size);
+  const r = await rootScope.managers.acknowledged.appAvatarsManager.loadAvatar(peerId, photo, size);
+  const loadPromise = r.result;
+  const cached = r.cached;
 
   img.classList.add('avatar-photo');
 
@@ -44,7 +49,7 @@ export function putAvatar(
 
     let isFullLoaded = false;
     if(size === 'photo_big') { // let's load small photo first
-      const res = putAvatar(div, peerId, photo, 'photo_small');
+      const res = await putAvatar(div, peerId, photo, 'photo_small');
       renderThumbPromise = res.loadPromise;
       thumbImage = res.thumbImage;
     } else if(photo.stripped_thumb) {
@@ -89,8 +94,10 @@ export function putAvatar(
   }
 
   const renderPromise = loadPromise
-  .then((url) => renderImageFromUrlPromise(img, url/* , false */))
+  .then((url) => renderImageFromUrlPromise(img, url, !cached))
   .then(callback);
+
+  await (renderThumbPromise || renderPromise);
 
   return {
     cached, 
@@ -99,7 +106,12 @@ export function putAvatar(
   };
 }
 
-function set(div: HTMLElement, innerHTML: Parameters<typeof setInnerHTML>[1], color: string, icon: string) {
+function set(
+  div: HTMLElement, 
+  innerHTML: Parameters<typeof setInnerHTML>[1], 
+  color: string, 
+  icon: string
+) {
   setInnerHTML(div, innerHTML);
   div.dataset.color = color;
   div.classList.remove('tgico-saved', 'tgico-deletedaccount', 'tgico-reply_filled');
@@ -107,30 +119,39 @@ function set(div: HTMLElement, innerHTML: Parameters<typeof setInnerHTML>[1], co
 }
 
 // peerId === peerId || title
-export default function putPhoto(div: HTMLElement, peerId: PeerId, isDialog = false, title = '', onlyThumb = false, isBig?: boolean) {
+export default async function putPhoto(
+  div: HTMLElement, 
+  peerId: PeerId, 
+  isDialog = false, 
+  title = '', 
+  onlyThumb = false, 
+  isBig?: boolean
+) {
   const myId = rootScope.myId;
   
-  //console.log('loadDialogPhoto location:', location, inputPeer);
   if(peerId === myId && isDialog) {
     set(div, '', '', 'tgico-saved');
     return;
   }
+
+  const managers = rootScope.managers;
   
   if(peerId !== NULL_PEER_ID && peerId.isUser()) {
-    const user = rootScope.managers.appUsersManager.getUser(peerId);
+    const user = await managers.appUsersManager.getUser(peerId);
     if(user && user.pFlags && user.pFlags.deleted) {
-      set(div, '', rootScope.managers.appPeersManager.getPeerColorById(peerId), 'tgico-deletedaccount');
+      set(div, '', getPeerColorById(peerId), 'tgico-deletedaccount');
       return;
     }
   }
   
-  const photo = rootScope.managers.appPeersManager.getPeerPhoto(peerId);
+  const size: PeerPhotoSize = isBig ? 'photo_big' : 'photo_small';
+  const photo = await managers.appPeersManager.getPeerPhoto(peerId);
   const avatarAvailable = !!photo;
   const avatarRendered = !!div.firstElementChild && !(div.firstElementChild as HTMLElement).classList.contains('emoji');
-  if(!avatarAvailable || !avatarRendered || !rootScope.managers.appAvatarsManager.isAvatarCached(peerId)) {
+  if(!avatarAvailable || !avatarRendered || !(await managers.appAvatarsManager.isAvatarCached(peerId, size))) {
     let color = '';
     if(peerId && (peerId !== myId || !isDialog)) {
-      color = rootScope.managers.appPeersManager.getPeerColorById(peerId);
+      color = getPeerColorById(peerId);
     }
 
     if(peerId === REPLIES_PEER_ID) {
@@ -138,13 +159,14 @@ export default function putPhoto(div: HTMLElement, peerId: PeerId, isDialog = fa
       return;
     }
 
-    const abbr = title ? getAbbreviation(title) : rootScope.managers.appPeersManager.getPeerInitials(peerId);
+    const abbr = await (title ? getAbbreviation(title) : getPeerInitials(peerId, managers));
     set(div, abbr, color, '');
     //return Promise.resolve(true);
   }
 
   if(avatarAvailable/*  && false */) {
-    const size: PeerPhotoSize = isBig ? 'photo_big' : 'photo_small';
-    return putAvatar(div, peerId, photo, size, undefined, onlyThumb);
+    const promise = putAvatar(div, peerId, photo, size, undefined, onlyThumb);
+    recordPromise(promise, 'putAvatar-' + peerId);
+    return promise;
   }
 }

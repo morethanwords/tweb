@@ -10,15 +10,14 @@ import { fastRaf } from "../../helpers/schedulers";
 import SortedList, { SortedElementBase } from "../../helpers/sortedList";
 import { GroupCallParticipant } from "../../layer";
 import appDialogsManager, { DialogDom, AppDialogsManager } from "../../lib/appManagers/appDialogsManager";
-import { LazyLoadQueueIntersector } from "../lazyLoadQueue";
 import { getGroupCallParticipantMutedState } from ".";
 import GroupCallParticipantMutedIcon from "./participantMutedIcon";
 import GroupCallParticipantStatusElement from "./participantStatus";
 import type GroupCallInstance from "../../lib/calls/groupCallInstance";
+import type LazyLoadQueue from "../lazyLoadQueue";
 
 interface SortedParticipant extends SortedElementBase {
   dom: DialogDom,
-  participant: GroupCallParticipant,
   mutedIcon: GroupCallParticipantMutedIcon,
   status: GroupCallParticipantStatusElement
 }
@@ -26,7 +25,7 @@ interface SortedParticipant extends SortedElementBase {
 export default class GroupCallParticipantsList extends SortedList<SortedParticipant> {
   public list: HTMLUListElement;
   
-  protected lazyLoadQueue: LazyLoadQueueIntersector;
+  protected lazyLoadQueue: LazyLoadQueue;
   protected avatarSize = 54;
   protected rippleEnabled = true;
   protected autonomous = true;
@@ -34,14 +33,13 @@ export default class GroupCallParticipantsList extends SortedList<SortedParticip
 
   constructor(private instance: GroupCallInstance) {
     super({
-      getIndex: (element) => element.participant.date,
+      getIndex: async(element) => (await this.instance.getParticipantByPeerId(element.id)).date,
       onDelete: (element) => {
         element.dom.listEl.remove();
         this.onElementDestroy(element);
       },
-      onUpdate: (element) => {
-        const {participant} = element;
-
+      onUpdate: async(element) => {
+        const participant = await this.instance.getParticipantByPeerId(element.id);
         const state = getGroupCallParticipantMutedState(participant);
 
         element.mutedIcon.setState(state);
@@ -52,9 +50,8 @@ export default class GroupCallParticipantsList extends SortedList<SortedParticip
       },
       onElementCreate: (base) => {
         const {dom} = appDialogsManager.addDialogNew({
-          dialog: base.id,
+          peerId: base.id,
           container: false,
-          drawStatus: false,
           avatarSize: this.avatarSize,
           autonomous: this.autonomous,
           meAsSaved: false,
@@ -65,22 +62,21 @@ export default class GroupCallParticipantsList extends SortedList<SortedParticip
         const className = 'group-call-participant';
         dom.listEl.classList.add(className);
 
-        const participant = instance.participants.get(base.id);
-        const mutedState = getGroupCallParticipantMutedState(participant);
-
         const mutedIcon = new GroupCallParticipantMutedIcon(true);
         const status = new GroupCallParticipantStatusElement(['presentation', 'video']);
-        
-        mutedIcon.setState(mutedState);
-        status.setState(mutedState, participant);
-
         replaceContent(dom.lastMessageSpan, status.container);
         dom.listEl.append(mutedIcon.container);
-
-        (base as SortedParticipant).dom = dom;
-        (base as SortedParticipant).participant = participant;
         (base as SortedParticipant).mutedIcon = mutedIcon;
         (base as SortedParticipant).status = status;
+
+        /* instance.getParticipantByPeerId(base.id).then((participant) => {
+          const mutedState = getGroupCallParticipantMutedState(participant);
+
+          mutedIcon.setState(mutedState);
+          status.setState(mutedState, participant);
+        }); */
+        
+        (base as SortedParticipant).dom = dom;
 
         return base as SortedParticipant;
       },

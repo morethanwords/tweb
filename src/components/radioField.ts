@@ -5,8 +5,9 @@
  */
 
 import getDeepProperty from "../helpers/object/getDeepProperty";
-import appStateManager from "../lib/appManagers/appStateManager";
 import { LangPackKey, _i18n } from "../lib/langPack";
+import apiManagerProxy from "../lib/mtproto/mtprotoworker";
+import rootScope from "../lib/rootScope";
 
 export default class RadioField {
   public input: HTMLInputElement;
@@ -36,12 +37,12 @@ export default class RadioField {
       input.value = options.value;
   
       if(options.stateKey) {
-        appStateManager.getState().then(state => {
+        apiManagerProxy.getState().then((state) => {
           input.checked = getDeepProperty(state, options.stateKey) === options.value;
         });
     
         input.addEventListener('change', () => {
-          appStateManager.setByKey(options.stateKey, options.value);
+          rootScope.managers.appStateManager.setByKey(options.stateKey, options.value);
         });
       }
     }

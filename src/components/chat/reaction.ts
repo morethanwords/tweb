@@ -9,11 +9,13 @@ import formatNumber from "../../helpers/number/formatNumber";
 import { fastRaf } from "../../helpers/schedulers";
 import { MessagePeerReaction, ReactionCount } from "../../layer";
 import { AppManagers } from "../../lib/appManagers/managers";
+import getPeerId from "../../lib/appManagers/utils/peers/getPeerId";
 import RLottiePlayer from "../../lib/rlottie/rlottiePlayer";
 import rootScope from "../../lib/rootScope";
 import SetTransition from "../singleTransition";
 import StackedAvatars from "../stackedAvatars";
 import { wrapSticker, wrapStickerAnimation } from "../wrappers";
+import { Awaited } from "../../types";
 
 const CLASS_NAME = 'reaction';
 const TAG_NAME = CLASS_NAME + '-element';
@@ -32,7 +34,7 @@ export default class ReactionElement extends HTMLElement {
   private stackedAvatars: StackedAvatars;
   private canRenderAvatars: boolean;
   private _reactionCount: ReactionCount;
-  private wrapStickerPromise: ReturnType<typeof wrapSticker>;
+  private wrapStickerPromise: Awaited<ReturnType<typeof wrapSticker>>['render'];
   private managers: AppManagers;
 
   constructor() {
@@ -90,7 +92,7 @@ export default class ReactionElement extends HTMLElement {
           height: size,
           static: true,
           managers: this.managers
-        }).finally(() => {
+        }).then(({render}) => render).finally(() => {
           if(this.wrapStickerPromise === wrapPromise) {
             this.wrapStickerPromise = undefined;
           }
@@ -144,7 +146,7 @@ export default class ReactionElement extends HTMLElement {
       this.append(this.stackedAvatars.container);
     }
 
-    this.stackedAvatars.render(recentReactions.map(reaction => this.managers.appPeersManager.getPeerId(reaction.peer_id)));
+    this.stackedAvatars.render(recentReactions.map((reaction) => getPeerId(reaction.peer_id)));
   }
 
   public setIsChosen(isChosen = !!this.reactionCount.pFlags.chosen) {
@@ -174,7 +176,7 @@ export default class ReactionElement extends HTMLElement {
           group: 'none',
           needFadeIn: false,
           managers: this.managers
-        }) as Promise<RLottiePlayer>,
+        }).then(({render}) => render as Promise<RLottiePlayer>),
 
         wrapStickerAnimation({
           doc: availableReaction.around_animation,

@@ -6,14 +6,13 @@
 
 import type bytesModPow from "../../helpers/bytes/bytesModPow";
 import type gzipUncompress from "../../helpers/gzipUncompress";
-import type { Awaited } from "../../types";
 import type getEmojisFingerprint from "../calls/helpers/getEmojisFingerprint";
+import type { aesCtrDestroy, aesCtrPrepare, aesCtrProcess } from "./aesCtrUtils";
 import type computeDhKey from "./computeDhKey";
 import type generateDh from "./generateDh";
 import type computeSRP from "./srp";
 import type { aesEncryptSync, aesDecryptSync } from "./utils/aesIGE";
 import type factorizeBrentPollardPQ from "./utils/factorize/BrentPollard";
-// import type factorizeTdlibPQ from "./utils/factorize/tdlib";
 import type pbkdf2 from "./utils/pbkdf2";
 import type rsaEncrypt from "./utils/rsa";
 import type sha1 from "./utils/sha1";
@@ -33,16 +32,8 @@ export type CryptoMethods = {
   'computeSRP': typeof computeSRP,
   'generate-dh': typeof generateDh,
   'compute-dh-key': typeof computeDhKey,
-  'get-emojis-fingerprint': typeof getEmojisFingerprint
+  'get-emojis-fingerprint': typeof getEmojisFingerprint,
+  'aes-ctr-prepare': typeof aesCtrPrepare,
+  'aes-ctr-process': typeof aesCtrProcess,
+  'aes-ctr-destroy': typeof aesCtrDestroy
 };
-
-export default abstract class CryptoWorkerMethods {
-  abstract performTaskWorker<T>(task: string, ...args: any[]): Promise<T>;
-
-  public invokeCrypto<Method extends keyof CryptoMethods>(
-    method: Method, 
-    ...args: Parameters<CryptoMethods[typeof method]>
-  ): Promise<Awaited<ReturnType<CryptoMethods[typeof method]>>> {
-    return this.performTaskWorker<Awaited<ReturnType<CryptoMethods[typeof method]>>>(method, ...args as any[]);
-  }
-}

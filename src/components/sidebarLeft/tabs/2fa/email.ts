@@ -8,10 +8,8 @@ import { SettingSection } from "../..";
 import { AccountPassword } from "../../../../layer";
 import Button from "../../../button";
 import { SliderSuperTab } from "../../../slider";
-import { wrapSticker } from "../../../wrappers";
 import InputField from "../../../inputField";
-import { putPreloader } from "../../../misc";
-import passwordManager from "../../../../lib/mtproto/passwordManager";
+import { putPreloader } from "../../../putPreloader";
 import AppTwoStepVerificationSetTab from "./passwordSet";
 import AppTwoStepVerificationEmailConfirmationTab from "./emailConfirmation";
 import PopupPeer from "../../../popups/peer";
@@ -19,6 +17,7 @@ import cancelEvent from "../../../../helpers/dom/cancelEvent";
 import { canFocus } from "../../../../helpers/dom/canFocus";
 import { attachClickEvent } from "../../../../helpers/dom/clickEvent";
 import matchEmail from "../../../../lib/richTextProcessor/matchEmail";
+import wrapStickerEmoji from "../../../wrappers/stickerEmoji";
 
 export default class AppTwoStepVerificationEmailTab extends SliderSuperTab {
   public inputField: InputField;
@@ -38,24 +37,14 @@ export default class AppTwoStepVerificationEmailTab extends SliderSuperTab {
     });
 
     const emoji = '💌';
-    const doc = this.managers.appStickersManager.getAnimatedEmojiSticker(emoji);
     const stickerContainer = document.createElement('div');
 
-    if(doc) {
-      wrapSticker({
-        doc,
-        div: stickerContainer,
-        loop: false,
-        play: true,
-        width: 160,
-        height: 160,
-        emoji
-      }).then(() => {
-        // this.animation = player;
-      });
-    } else {
-      stickerContainer.classList.add('media-sticker-wrapper');
-    }
+    wrapStickerEmoji({
+      div: stickerContainer,
+      width: 160,
+      height: 160,
+      emoji
+    });
 
     section.content.append(stickerContainer);
 
@@ -99,7 +88,7 @@ export default class AppTwoStepVerificationEmailTab extends SliderSuperTab {
       toggleButtons(true);
       const d = putPreloader(btnContinue);
 
-      passwordManager.updateSettings({
+      this.managers.passwordManager.updateSettings({
         hint: this.hint,
         currentPassword: this.plainPassword,
         newPassword: this.newPassword,
@@ -146,7 +135,7 @@ export default class AppTwoStepVerificationEmailTab extends SliderSuperTab {
             //inputContent.classList.add('sidebar-left-section-disabled');
             toggleButtons(true);
             putPreloader(btnSkip);
-            passwordManager.updateSettings({
+            this.managers.passwordManager.updateSettings({
               hint: this.hint, 
               currentPassword: this.plainPassword,
               newPassword: this.newPassword,

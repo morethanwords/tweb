@@ -21,6 +21,7 @@ import { attachClickEvent } from "../../../helpers/dom/clickEvent";
 import toggleDisability from "../../../helpers/dom/toggleDisability";
 import CheckboxField from "../../checkboxField";
 import AppChatReactionsTab from "./chatReactions";
+import hasRights from "../../../lib/appManagers/utils/chats/hasRights";
 
 export default class AppEditChatTab extends SliderSuperTab {
   private chatNameInputField: InputField;
@@ -41,9 +42,9 @@ export default class AppEditChatTab extends SliderSuperTab {
     
     let chatFull = await this.managers.appProfileManager.getChatFull(this.chatId, true);
 
-    const chat: Chat.chat | Chat.channel = this.managers.appChatsManager.getChat(this.chatId);
-    const isBroadcast = this.managers.appChatsManager.isBroadcast(this.chatId);
-    const isChannel = this.managers.appChatsManager.isChannel(this.chatId);
+    const chat: Chat.chat | Chat.channel = await this.managers.appChatsManager.getChat(this.chatId);
+    const isBroadcast = await this.managers.appChatsManager.isBroadcast(this.chatId);
+    const isChannel = await this.managers.appChatsManager.isChannel(this.chatId);
 
     const chatUpdateListeners: (() => void)[] = [];
     const addChatUpdateListener = (callback: () => void) => {
@@ -52,19 +53,19 @@ export default class AppEditChatTab extends SliderSuperTab {
 
     this.listenerSetter.add(rootScope)('chat_update', (chatId) => {
       if(this.chatId === chatId) {
-        chatUpdateListeners.forEach(callback => callback());
+        chatUpdateListeners.forEach((callback) => callback());
       }
     });
 
-    this.listenerSetter.add(rootScope)('chat_full_update', (chatId) => {
+    this.listenerSetter.add(rootScope)('chat_full_update', async(chatId) => {
       if(this.chatId === chatId) {
-        chatFull = this.managers.appProfileManager.getCachedFullChat(chatId) || chatFull;
+        chatFull = await this.managers.appProfileManager.getCachedFullChat(chatId) || chatFull;
       }
     });
 
     const peerId = this.chatId.toPeerId(true);
-    const canChangeType = this.managers.appChatsManager.hasRights(this.chatId, 'change_type');
-    const canChangePermissions = this.managers.appChatsManager.hasRights(this.chatId, 'change_permissions');
+    const canChangeType = await this.managers.appChatsManager.hasRights(this.chatId, 'change_type');
+    const canChangePermissions = await this.managers.appChatsManager.hasRights(this.chatId, 'change_permissions');
 
     {
       const section = new SettingSection({noDelimiter: true});
@@ -150,7 +151,7 @@ export default class AppEditChatTab extends SliderSuperTab {
         });
 
         const availableReactions = await this.managers.appReactionsManager.getAvailableReactions();
-        const availableReactionsLength = availableReactions.filter(availableReaction => !availableReaction.pFlags.inactive).length;
+        const availableReactionsLength = availableReactions.filter((availableReaction) => !availableReaction.pFlags.inactive).length;
         const setReactionsLength = () => {
           const reactions = chatFull.available_reactions ?? [];
           reactionsRow.subtitle.innerHTML = reactions.length + '/' + availableReactionsLength;
@@ -183,8 +184,9 @@ export default class AppEditChatTab extends SliderSuperTab {
           icon: 'permissions',
         });
 
-        const setPermissionsLength = () => {
-          permissionsRow.subtitle.innerHTML = flags.reduce((acc, f) => acc + +this.managers.appChatsManager.hasRights(this.chatId, f, chat.default_banned_rights), 0) + '/' + flags.length;
+        const setPermissionsLength = async() => {
+          const chat = await this.managers.appChatsManager.getChatTyped(this.chatId);
+          permissionsRow.subtitle.innerHTML = flags.reduce((acc, f) => acc + +hasRights(chat, f, (chat as Chat.chat).default_banned_rights), 0) + '/' + flags.length;
         };
 
         setPermissionsLength();        
@@ -223,7 +225,7 @@ export default class AppEditChatTab extends SliderSuperTab {
         }
 
         if(this.editPeer.uploadAvatar) {
-          promises.push(this.editPeer.uploadAvatar().then(inputFile => {
+          promises.push(this.editPeer.uploadAvatar().then((inputFile) => {
             return this.managers.appChatsManager.editPhoto(id, inputFile);
           }));
         }
@@ -255,7 +257,7 @@ export default class AppEditChatTab extends SliderSuperTab {
 
       section.content.append(administratorsRow.container); */
 
-      if(isBroadcast && this.managers.appChatsManager.hasRights(this.chatId, 'change_info')) {
+      if(isBroadcast && await this.managers.appChatsManager.hasRights(this.chatId, 'change_info')) {
         const signMessagesCheckboxField = new CheckboxField({
           text: 'PeerInfo.SignMessages',
           checked: !!(chat as Chat.channel).pFlags.signatures,
@@ -321,7 +323,7 @@ export default class AppEditChatTab extends SliderSuperTab {
       }
     }
 
-    if(this.managers.appChatsManager.hasRights(this.chatId, 'delete_chat')) {
+    if(await this.managers.appChatsManager.hasRights(this.chatId, 'delete_chat')) {
       const section = new SettingSection({});
 
       const btnDelete = Button('btn-primary btn-transparent danger', {icon: 'delete', text: isBroadcast ? 'PeerInfo.DeleteChannel' : 'DeleteAndExitButton'});

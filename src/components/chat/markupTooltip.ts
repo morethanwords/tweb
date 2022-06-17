@@ -6,7 +6,7 @@
 
 import type { AppImManager } from "../../lib/appManagers/appImManager";
 import ButtonIcon from "../buttonIcon";
-import { IS_TOUCH_SUPPORTED } from "../../environment/touchSupport";
+import IS_TOUCH_SUPPORTED from "../../environment/touchSupport";
 import { IS_APPLE, IS_MOBILE } from "../../environment/userAgent";
 import appNavigationController from "../appNavigationController";
 import { _i18n } from "../../lib/langPack";
@@ -52,7 +52,7 @@ export default class MarkupTooltip {
     tools2.classList.add('markup-tooltip-tools');
 
     const arr = ['bold', 'italic', 'underline', 'strikethrough', 'monospace', 'spoiler', 'link'] as (keyof MarkupTooltip['buttons'])[];
-    arr.forEach(c => {
+    arr.forEach((c) => {
       const button = ButtonIcon(c, {noRipple: true});
       tools1.append(this.buttons[c] = button);
 
@@ -215,11 +215,11 @@ export default class MarkupTooltip {
 
   public getActiveMarkupButton() {
     const nodes = getSelectedNodes();
-    const parents = [...new Set(nodes.map(node => node.parentNode))];
+    const parents = [...new Set(nodes.map((node) => node.parentNode))];
     //if(parents.length > 1 && parents) return [];
 
     const currentMarkups: Set<HTMLElement> = new Set();
-    (parents as HTMLElement[]).forEach(node => {
+    (parents as HTMLElement[]).forEach((node) => {
       for(const type in markdownTags) {
         const tag = markdownTags[type as MarkdownType];
         const closest = node.closest(tag.match + ', [contenteditable]');

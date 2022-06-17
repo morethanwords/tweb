@@ -37,7 +37,7 @@ export {};
 //     this.sendBtn = this.container.querySelector('.btn-circle') as HTMLButtonElement;
 
 //     this.sendBtn.addEventListener('click', () => {
-//       let peerIds = this.selector.getSelected().map(s => s.toPeerId());
+//       let peerIds = this.selector.getSelected().map((s) => s.toPeerId());
       
 //       if(this.mids.length && peerIds.length) {
 //         this.sendBtn.classList.remove('tgico-send');
@@ -46,7 +46,7 @@ export {};
 //         this.selector.freezed = true;
 
 //         let s = () => {
-//           let promises = peerIds.splice(0, 3).map(peerId => {
+//           let promises = peerIds.splice(0, 3).map((peerId) => {
 //             return appMessagesManager.forwardMessages(peerId, NULL_PEER_ID, this.mids);
 //           });
           

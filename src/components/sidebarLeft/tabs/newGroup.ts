@@ -12,6 +12,7 @@ import { SliderSuperTab } from "../../slider";
 import AvatarEdit from "../../avatarEdit";
 import I18n from "../../../lib/langPack";
 import ButtonCorner from "../../buttonCorner";
+import getUserStatusString from "../../wrappers/getUserStatusString";
 
 interface OpenStreetMapInterface {
   place_id?: number;
@@ -105,7 +106,7 @@ export default class AppNewGroupTab extends SliderSuperTab {
         });
       } else {
         this.nextBtn.disabled = true;
-        this.managers.appChatsManager.createChat(title, this.peerIds.map(peerId => peerId.toUserId())).then((chatId) => {
+        this.managers.appChatsManager.createChat(title, this.peerIds.map((peerId) => peerId.toUserId())).then((chatId) => {
           if(this.uploadAvatar) {
             this.uploadAvatar().then((inputFile) => {
               this.managers.appChatsManager.editPhoto(chatId, inputFile);
@@ -157,23 +158,22 @@ export default class AppNewGroupTab extends SliderSuperTab {
         this.groupLocationInputField.container.classList.add('hide');
       }
 
-      this.peerIds.forEach(userId => {
+      return Promise.all(this.peerIds.map(async(userId) => {
         const {dom} = appDialogsManager.addDialogNew({
-          dialog: userId,
+          peerId: userId,
           container: this.list,
-          drawStatus: false,
           rippleEnabled: false,
           avatarSize: 48
         });
 
-        dom.lastMessageSpan.append(this.managers.appUsersManager.getUserStatusString(userId));
-      });
+        dom.lastMessageSpan.append(getUserStatusString(await this.managers.appUsersManager.getUser(userId)));
+      }));
     });
     
     return result;
   }
 
-  private startLocating(){
+  private startLocating() {
     navigator.geolocation.getCurrentPosition((location) => {
       this.userLocationCoords = {
         lat: location.coords.latitude,

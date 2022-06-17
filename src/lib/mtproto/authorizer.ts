@@ -14,11 +14,10 @@ import transportController from "./transports/controller";
 /// #endif
 
 import { TLSerialization, TLDeserialization } from "./tl_utils";
-import dcConfigurator, { TransportType } from "./dcConfigurator";
+import { TransportType } from "./dcConfigurator";
 import rsaKeysManager from "./rsaKeysManager";
-import timeManager from "./timeManager";
 
-import CryptoWorker from "../crypto/cryptoworker";
+import CryptoWorker from "../crypto/cryptoMessagePort";
 
 import { logger, LogTypes } from "../logger";
 import DEBUG from "../../config/debug";
@@ -32,6 +31,7 @@ import bytesXor from "../../helpers/bytes/bytesXor";
 import { bigIntFromBytes } from "../../helpers/bigInt/bigIntConversion";
 import bigInt from "big-integer";
 import randomize from "../../helpers/array/randomize";
+import { AppManager } from "../appManagers/manager";
 
 /* let fNewNonce: any = bytesFromHex('8761970c24cb2329b5b2459752c502f3057cb7e8dbab200e526e8767fdc73b3c').reverse();
 let fNonce: any = bytesFromHex('b597720d11faa5914ef485c529cde414').reverse();
@@ -106,7 +106,7 @@ type req_DH_params = {
   encrypted_data: Uint8Array;
 };
 
-export class Authorizer {
+export class Authorizer extends AppManager {
   private cached: {
     [dcId: DcId]: Promise<AuthOptions>
   };
@@ -119,7 +119,7 @@ export class Authorizer {
   private getTransportTypePromise: Promise<void>;
   /// #endif
   
-  constructor() {
+  protected after() {
     this.cached = {};
     this.log = logger(`AUTHORIZER`, LogTypes.Error | LogTypes.Log);
   }
@@ -129,7 +129,7 @@ export class Authorizer {
     
     const header = new TLSerialization();
     header.storeLongP(0, 0, 'auth_key_id');
-    header.storeLong(timeManager.generateId(), 'msg_id');
+    header.storeLong(this.timeManager.generateId(), 'msg_id');
     header.storeInt(requestLength, 'request_length');
     
     const headerArray = header.getBytes(true) as Uint8Array;
@@ -137,7 +137,7 @@ export class Authorizer {
     resultArray.set(headerArray);
     resultArray.set(requestArray, headerArray.length);
 
-    const transport = dcConfigurator.chooseServer(dcId, 'client', this.transportType);
+    const transport = this.dcConfigurator.chooseServer(dcId, 'client', this.transportType);
     const baseError = {
       code: 406,
       type: 'NETWORK_BAD_RESPONSE'
@@ -148,7 +148,7 @@ export class Authorizer {
     }
     
     const promise = transport.send(resultArray) as any as Promise<Uint8Array>;
-    return promise.then(result => {
+    return promise.then((result) => {
       if(DEBUG) {
         this.log('mtpSendPlainRequest: in good sector', result);
       }
@@ -424,7 +424,7 @@ export class Authorizer {
       throw new Error('[MT] server_DH_inner_data SHA1 mismatch');
     }
     
-    timeManager.applyServerTime(auth.serverTime, auth.localTime);
+    this.timeManager.applyServerTime(auth.serverTime, auth.localTime);
   }
   
   private verifyDhParams(g: number, dhPrime: Uint8Array, gA: Uint8Array) {
@@ -629,5 +629,3 @@ export class Authorizer {
     return this.cached[dcId] = promise;
   }
 }
-
-export default new Authorizer();

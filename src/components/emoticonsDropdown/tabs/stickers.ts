@@ -15,8 +15,9 @@ import { i18n } from "../../../lib/langPack";
 import wrapEmojiText from "../../../lib/richTextProcessor/wrapEmojiText";
 import rootScope from "../../../lib/rootScope";
 import animationIntersector from "../../animationIntersector";
-import LazyLoadQueue, { LazyLoadQueueRepeat } from "../../lazyLoadQueue";
-import { putPreloader } from "../../misc";
+import LazyLoadQueue from "../../lazyLoadQueue";
+import LazyLoadQueueRepeat from "../../lazyLoadQueueRepeat";
+import { putPreloader } from "../../putPreloader";
 import PopupStickers from "../../popups/stickers";
 import Scrollable, { ScrollableX } from "../../scrollable";
 import StickyIntersector from "../../stickyIntersector";
@@ -77,7 +78,7 @@ export class SuperStickerRenderer {
   private checkAnimationContainer = (div: HTMLElement, visible: boolean) => {
     //console.error('checkAnimationContainer', div, visible);
     const players = animationIntersector.getAnimations(div);
-    players.forEach(player => {
+    players.forEach((player) => {
       if(!visible) {
         animationIntersector.checkAnimation(player, true, true);
       } else {
@@ -86,9 +87,9 @@ export class SuperStickerRenderer {
     });
   };
 
-  private processVisibleDiv = (div: HTMLElement) => {
+  private processVisibleDiv = async(div: HTMLElement) => {
     const docId = div.dataset.docId;
-    const doc = this.managers.appDocsManager.getDoc(docId);
+    const doc = await this.managers.appDocsManager.getDoc(docId);
     
     const size = mediaSizes.active.esgSticker.width;
 
@@ -104,7 +105,7 @@ export class SuperStickerRenderer {
       onlyThumb: false,
       play: true,
       loop: true
-    });
+    }).then(({render}) => render);
 
     promise.then(() => {
       //clearTimeout(timeout);
@@ -118,9 +119,9 @@ export class SuperStickerRenderer {
     return promise;
   };
 
-  public processInvisibleDiv = (div: HTMLElement) => {
+  public processInvisibleDiv = async(div: HTMLElement) => {
     const docId = div.dataset.docId;
-    const doc = this.managers.appDocsManager.getDoc(docId);
+    const doc = await this.managers.appDocsManager.getDoc(docId);
 
     //console.log('STICKER INvisible:', /* div,  */docId);
 
@@ -179,8 +180,8 @@ export default class StickersTab implements EmoticonsTab {
 
     this.queueCategoryPush.push({element: categoryDiv, prepend});
 
-    promise.then(documents => {
-      documents.forEach(doc => {
+    promise.then((documents) => {
+      documents.forEach((doc) => {
         //if(doc._ === 'documentEmpty') return;
         itemsDiv.append(this.superStickerRenderer.renderSticker(doc));
       });
@@ -227,7 +228,7 @@ export default class StickersTab implements EmoticonsTab {
     //stickersScroll.append(categoryDiv);
 
     const promise = this.managers.appStickersManager.getStickerSet(set);
-    this.categoryPush(categoryDiv, wrapEmojiText(set.title), promise.then(stickerSet => stickerSet.documents as MyDocument[]), prepend);
+    this.categoryPush(categoryDiv, wrapEmojiText(set.title), promise.then((stickerSet) => stickerSet.documents as MyDocument[]), prepend);
     const stickerSet = await promise;
 
     //console.log('got stickerSet', stickerSet, li);
@@ -329,7 +330,7 @@ export default class StickersTab implements EmoticonsTab {
     const preloader = putPreloader(this.content, true);
 
     Promise.all([
-      this.managers.appStickersManager.getRecentStickers().then(stickers => {
+      this.managers.appStickersManager.getRecentStickers().then((stickers) => {
         this.recentStickers = stickers.stickers.slice(0, 20) as MyDocument[];
   
         //stickersScroll.prepend(categoryDiv);
@@ -362,9 +363,9 @@ export default class StickersTab implements EmoticonsTab {
 
     /* setInterval(() => {
       // @ts-ignore
-      const players = Object.values(lottieLoader.players).filter(p => p.width === 80);
+      const players = Object.values(lottieLoader.players).filter((p) => p.width === 80);
       
-      console.log('STICKERS RENDERED IN PANEL:', players.length, players.filter(p => !p.paused).length, this.superStickerRenderer.lazyLoadQueue.intersector.getVisible().length);
+      console.log('STICKERS RENDERED IN PANEL:', players.length, players.filter((p) => !p.paused).length, this.superStickerRenderer.lazyLoadQueue.intersector.getVisible().length);
     }, .25e3); */
     
 
@@ -387,7 +388,7 @@ export default class StickersTab implements EmoticonsTab {
     items.prepend(div);
 
     if(items.childElementCount > 20) {
-      (Array.from(items.children) as HTMLElement[]).slice(20).forEach(el => el.remove());
+      (Array.from(items.children) as HTMLElement[]).slice(20).forEach((el) => el.remove());
     }
   }
 

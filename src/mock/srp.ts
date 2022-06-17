@@ -1,3 +1,5 @@
+import type { AccountPassword } from "../layer";
+
 export const salt1 = new Uint8Array([114, 47, 217, 190, 196, 217, 91, 15, 205, 209, 189, 57, 98, 19, 110, 40, 47, 211, 245, 29, 58, 194, 205, 57, 205, 200, 225, 139, 244, 230, 206, 138, 1, 216, 18, 99, 130, 133, 226, 167]);
 
 export const salt2 = new Uint8Array([124, 249, 139, 209, 240, 124, 2, 97, 93, 249, 218, 19, 86, 31, 57, 215]);
@@ -29,3 +31,20 @@ export const M1 = new Uint8Array([
 export const passwordHashed = new Uint8Array([
   66, 92, 210, 197, 237, 255, 209, 109, 38, 17, 14, 200, 177, 152, 124, 167, 92, 166, 132, 205, 195, 184, 24, 240, 111, 118, 45, 43, 66, 66, 248, 49
 ]);
+
+export const accountPassword: AccountPassword.accountPassword = {
+  _: 'account.password',
+  current_algo: {
+    _: 'passwordKdfAlgoSHA256SHA256PBKDF2HMACSHA512iter100000SHA256ModPow',
+    salt1, 
+    salt2,
+    p,
+    g
+  },
+  srp_id,
+  srp_B,
+  secure_random,
+  
+  new_algo: null,
+  new_secure_algo: null
+};

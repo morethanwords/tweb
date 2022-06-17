@@ -13,8 +13,8 @@ import { attachClickEvent } from "../../helpers/dom/clickEvent";
 import createVideo from "../../helpers/dom/createVideo";
 import isInDOM from "../../helpers/dom/isInDOM";
 import renderImageFromUrl from "../../helpers/dom/renderImageFromUrl";
-import { onMediaLoad } from "../../helpers/files";
 import mediaSizes, { ScreenSize } from "../../helpers/mediaSizes";
+import onMediaLoad from "../../helpers/onMediaLoad";
 import throttleWithRaf from "../../helpers/schedulers/throttleWithRaf";
 import sequentialDom from "../../helpers/sequentialDom";
 import toHHMMSS from "../../helpers/string/toHHMMSS";
@@ -25,6 +25,7 @@ import appImManager from "../../lib/appManagers/appImManager";
 import { AppManagers } from "../../lib/appManagers/managers";
 import { NULL_PEER_ID } from "../../lib/mtproto/mtproto_config";
 import rootScope from "../../lib/rootScope";
+import { ThumbCache } from "../../lib/storages/thumbs";
 import animationIntersector from "../animationIntersector";
 import appMediaPlaybackController, { MediaSearchContext } from "../appMediaPlaybackController";
 import { findMediaTargets } from "../audio";
@@ -42,7 +43,7 @@ mediaSizes.addEventListener('changeScreen', (from, to) => {
     const halfSize = width / 2;
     const radius = halfSize - 7;
     roundVideoCircumference = 2 * Math.PI * radius;
-    elements.forEach(element => {
+    elements.forEach((element) => {
       element.setAttributeNS(null, 'width', '' + width);
       element.setAttributeNS(null, 'height', '' + width);
 
@@ -57,7 +58,7 @@ mediaSizes.addEventListener('changeScreen', (from, to) => {
   }
 });
 
-export default function wrapVideo({doc, container, message, boxWidth, boxHeight, withTail, isOut, middleware, lazyLoadQueue, noInfo, group, onlyPreview, withoutPreloader, loadPromises, noPlayButton, size, searchContext, autoDownload, managers = rootScope.managers}: {
+export default async function wrapVideo({doc, container, message, boxWidth, boxHeight, withTail, isOut, middleware, lazyLoadQueue, noInfo, group, onlyPreview, withoutPreloader, loadPromises, noPlayButton, size, searchContext, autoDownload, managers = rootScope.managers}: {
   doc: MyDocument, 
   container?: HTMLElement, 
   message?: Message.message, 
@@ -129,7 +130,7 @@ export default function wrapVideo({doc, container, message, boxWidth, boxHeight,
   } = {} as any;
 
   if(doc.mime_type === 'image/gif') {
-    const photoRes = wrapPhoto({
+    const photoRes = await wrapPhoto({
       photo: doc, 
       message, 
       container, 
@@ -335,9 +336,9 @@ export default function wrapVideo({doc, container, message, boxWidth, boxHeight,
     video.autoplay = true; // для safari
   }
 
-  let photoRes: ReturnType<typeof wrapPhoto>;
+  let photoRes: Awaited<ReturnType<typeof wrapPhoto>>;
   if(message) {
-    photoRes = wrapPhoto({
+    photoRes = await wrapPhoto({
       photo: doc, 
       message, 
       container, 
@@ -368,23 +369,32 @@ export default function wrapVideo({doc, container, message, boxWidth, boxHeight,
       foreignObject.append(video);
     }
   } else { // * gifs masonry
-    const gotThumb = managers.appDocsManager.getThumb(doc, false);
-    if(gotThumb) {
-      gotThumb.promise.then(() => {
-        video.poster = gotThumb.cacheContext.url;
-      });
-    }
+    // const gotThumb = managers.appDocsManager.getThumb(doc, false);
+    // if(gotThumb) {
+    //   gotThumb.promise.then(() => {
+    //     video.poster = gotThumb.cacheContext.url;
+    //   });
+    // }
   }
 
   if(!video.parentElement && container) {
     (photoRes?.aspecter || container).append(video);
   }
 
-  const cacheContext = appDownloadManager.getCacheContext(doc);
+  let cacheContext: ThumbCache;
+  const getCacheContext = async() => {
+    return cacheContext = await managers.thumbsStorage.getCacheContext(doc);
+  };
 
-  const isUpload = !!(message?.media as any)?.preloader;
-  if(isUpload) { // means upload
-    preloader = (message.media as any).preloader as ProgressivePreloader;
+  await getCacheContext();
+
+  const uploadFileName = message?.uploadingFileName;
+  if(uploadFileName) { // means upload
+    preloader = new ProgressivePreloader({
+      attachMethod: 'prepend',
+      isUpload: true
+    });
+    preloader.attachPromise(appDownloadManager.getUpload(uploadFileName));
     preloader.attach(container, false);
     noAutoDownload = undefined;
   } else if(!cacheContext.downloaded && !doc.supportsStreaming && !withoutPreloader) {
@@ -404,7 +414,7 @@ export default function wrapVideo({doc, container, message, boxWidth, boxHeight,
       console.error("Error " + video.error.code + "; details: " + video.error.message);
     }
     
-    if(preloader && !isUpload) {
+    if(preloader && !uploadFileName) {
       preloader.detach();
     }
 
@@ -418,7 +428,7 @@ export default function wrapVideo({doc, container, message, boxWidth, boxHeight,
       animationIntersector.addAnimation(video, group);
     }
 
-    if(preloader && !isUpload) {
+    if(preloader && !uploadFileName) {
       preloader.detach();
     }
 
@@ -453,16 +463,17 @@ export default function wrapVideo({doc, container, message, boxWidth, boxHeight,
   video.autoplay = true;
 
   let loadPhotoThumbFunc = noAutoDownload && photoRes?.preloader?.loadFunc;
-  const load = () => {
+  const load = async() => {
     if(preloader && noAutoDownload && !withoutPreloader) {
       preloader.construct();
       preloader.setManual();
     }
 
+    await getCacheContext();
     let loadPromise: Promise<any> = Promise.resolve();
-    if((preloader && !isUpload) || withoutPreloader) {
+    if((preloader && !uploadFileName) || withoutPreloader) {
       if(!cacheContext.downloaded && !doc.supportsStreaming) {
-        const promise = loadPromise = managers.appDocsManager.downloadDoc(doc, lazyLoadQueue?.queueId, noAutoDownload);
+        const promise = loadPromise = managers.apiFileManager.downloadMediaURL({media: doc, queueId: lazyLoadQueue?.queueId, onlyCache: noAutoDownload});
         if(preloader) {
           preloader.attach(container, false, promise);
         }
@@ -485,7 +496,7 @@ export default function wrapVideo({doc, container, message, boxWidth, boxHeight,
 
     noAutoDownload = undefined;
 
-    loadPromise.then(() => {
+    loadPromise.then(async() => {
       if(middleware && !middleware()) {
         renderDeferred.resolve();
         return;
@@ -495,13 +506,14 @@ export default function wrapVideo({doc, container, message, boxWidth, boxHeight,
         appMediaPlaybackController.resolveWaitingForLoadMedia(message.peerId, message.mid, message.pFlags.is_scheduled);
       }
 
+      await getCacheContext();
       renderImageFromUrl(video, cacheContext.url);
     }, () => {});
 
     return {download: loadPromise, render: renderDeferred};
   };
 
-  if(preloader && !isUpload) {
+  if(preloader && !uploadFileName) {
     preloader.setDownloadFunction(load);
   }
 
@@ -530,7 +542,9 @@ export default function wrapVideo({doc, container, message, boxWidth, boxHeight,
       load();
     }, {capture: true, once: true});
   } else {
-    res.loadPromise = !lazyLoadQueue ? load().render : (lazyLoadQueue.push({div: container, load: () => load().render}), Promise.resolve());
+    res.loadPromise = !lazyLoadQueue ? 
+      (await load()).render : 
+      (lazyLoadQueue.push({div: container, load: () => load().then(({render}) => render)}), Promise.resolve());
   }
 
   return res;

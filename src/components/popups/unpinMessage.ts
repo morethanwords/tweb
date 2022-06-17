@@ -11,13 +11,18 @@ import { FormatterArguments, LangPackKey } from "../../lib/langPack";
 import PeerTitle from "../peerTitle";
 
 export default class PopupPinMessage {
-  constructor(peerId: PeerId, mid: number, unpin?: true, onConfirm?: () => void) {
+  constructor(private peerId: PeerId, private mid: number, private unpin?: true, private onConfirm?: () => void) {
+    this.construct();
+  }
+  
+  private async construct() {
+    const {peerId, mid, unpin, onConfirm} = this;
     let title: LangPackKey, description: LangPackKey, descriptionArgs: FormatterArguments, 
       buttons: PopupPeerOptions['buttons'] = [], checkboxes: PopupPeerOptions['checkboxes'] = [];
 
     const managers = PopupElement.MANAGERS;
 
-    const canUnpin = managers.appPeersManager.canPinMessage(peerId);
+    const canUnpin = await managers.appPeersManager.canPinMessage(peerId);
 
     const callback = (checked: PopupPeerButtonCallbackCheckboxes, oneSide?: boolean, silent?: boolean) => {
       setTimeout(() => { // * костыль, потому что document.elementFromPoint вернёт popup-peer пока он будет закрываться
@@ -44,7 +49,7 @@ export default class PopupPinMessage {
         if(canUnpin) {
           title = 'Popup.Unpin.AllTitle';
           description = 'Chat.UnpinAllMessagesConfirmation';
-          descriptionArgs = ['' + (managers.appMessagesManager.pinnedMessages[peerId]?.count || 1)];
+          descriptionArgs = ['' + ((await managers.appMessagesManager.getPinnedMessagesCount(peerId)) || 1)];
         } else {
           title = 'Popup.Unpin.HideTitle';
           description = 'Popup.Unpin.HideDescription';
@@ -70,7 +75,7 @@ export default class PopupPinMessage {
           callback: (checked) => callback(checked, false, !checked.size)
         });
 
-        if(managers.appChatsManager.isBroadcast(peerId.toChatId())) {
+        if(await managers.appChatsManager.isBroadcast(peerId.toChatId())) {
           description = 'PinMessageAlertChannel';
         } else {
           description = 'PinMessageAlert';

@@ -9,7 +9,7 @@ import findConflictingEntity from "./findConflictingEntity";
 import sortEntities from "./sortEntities";
 
 export default function mergeEntities(currentEntities: MessageEntity[], newEntities: MessageEntity[]) {
-  const filtered = newEntities.filter(e => {
+  const filtered = newEntities.filter((e) => {
     return !findConflictingEntity(currentEntities, e);
   });
 

@@ -5,13 +5,12 @@
  */
 
 import IS_PARALLAX_SUPPORTED from "../environment/parallaxSupport";
-import callbackify from "../helpers/callbackify";
 import { copyTextToClipboard } from "../helpers/clipboard";
 import replaceContent from "../helpers/dom/replaceContent";
 import setInnerHTML from "../helpers/dom/setInnerHTML";
 import ListenerSetter from "../helpers/listenerSetter";
 import { fastRaf } from "../helpers/schedulers";
-import { Chat, ChatFull, User } from "../layer";
+import { Chat, ChatFull, User, UserFull } from "../layer";
 import type { Channel } from "../lib/appManagers/appChatsManager";
 import appImManager from "../lib/appManagers/appImManager";
 import { AppManagers } from "../lib/appManagers/managers";
@@ -22,11 +21,12 @@ import AvatarElement from "./avatar";
 import CheckboxField from "./checkboxField";
 import generateTitleIcons from "./generateTitleIcons";
 import PeerProfileAvatars from "./peerProfileAvatars";
-import PeerTitle from "./peerTitle";
 import Row from "./row";
 import Scrollable from "./scrollable";
 import { SettingSection, generateDelimiter } from "./sidebarLeft";
 import { toast } from "./toast";
+import formatUserPhone from "./wrappers/formatUserPhone";
+import wrapPeerTitle from "./wrappers/peerTitle";
 
 let setText = (text: Parameters<typeof setInnerHTML>[1], row: Row) => {
   //fastRaf(() => {
@@ -97,15 +97,14 @@ export default class PeerProfile {
       title: ' ',
       subtitleLangKey: 'UserBio',
       icon: 'info',
-      clickable: (e) => {
+      clickable: async(e) => {
         if((e.target as HTMLElement).tagName === 'A') {
           return;
         }
         
-        Promise.resolve(this.managers.appProfileManager.getProfileByPeerId(this.peerId)).then(full => {
-          copyTextToClipboard(full.about);
-          toast(I18n.format('BioCopied', true));
-        });
+        const full = await this.managers.appProfileManager.getProfileByPeerId(this.peerId);
+        copyTextToClipboard(full.about);
+        toast(I18n.format('BioCopied', true));
       }
     });
 
@@ -115,8 +114,8 @@ export default class PeerProfile {
       title: ' ',
       subtitleLangKey: 'Username',
       icon: 'username',
-      clickable: () => {
-        const peer: Channel | User.user = this.managers.appPeersManager.getPeer(this.peerId);
+      clickable: async() => {
+        const peer: Channel | User.user = await this.managers.appPeersManager.getPeer(this.peerId);
         copyTextToClipboard('@' + peer.username);
         toast(I18n.format('UsernameCopied', true));
       }
@@ -126,8 +125,8 @@ export default class PeerProfile {
       title: ' ',
       subtitleLangKey: 'Phone',
       icon: 'phone',
-      clickable: () => {
-        const peer: User = this.managers.appUsersManager.getUser(this.peerId);
+      clickable: async() => {
+        const peer: User = await this.managers.appUsersManager.getUser(this.peerId);
         copyTextToClipboard('+' + peer.phone);
         toast(I18n.format('PhoneCopied', true));
       }
@@ -139,7 +138,7 @@ export default class PeerProfile {
       icon: 'link',
       clickable: () => {
         copyTextToClipboard(this.link.title.textContent);
-        // Promise.resolve(appProfileManager.getChatFull(this.peerId.toChatId())).then(chatFull => {
+        // Promise.resolve(appProfileManager.getChatFull(this.peerId.toChatId())).then((chatFull) => {
           // copyTextToClipboard(chatFull.exported_invite.link);
           toast(I18n.format('LinkCopied', true));
         // });
@@ -177,9 +176,9 @@ export default class PeerProfile {
         this.managers.appMessagesManager.togglePeerMute(this.peerId);
       });
 
-      listenerSetter.add(rootScope)('dialog_notify_settings', (dialog) => {
+      listenerSetter.add(rootScope)('dialog_notify_settings', async(dialog) => {
         if(this.peerId === dialog.peerId) {
-          const muted = this.managers.appNotificationsManager.isPeerLocalMuted(this.peerId, false);
+          const muted = await this.managers.appNotificationsManager.isPeerLocalMuted(this.peerId, false);
           this.notifications.checkboxField.checked = !muted;
         }
       });
@@ -217,9 +216,9 @@ export default class PeerProfile {
       }
     });
 
-    listenerSetter.add(rootScope)('contacts_update', (userId) => {
+    listenerSetter.add(rootScope)('contacts_update', async(userId) => {
       if(this.peerId === userId.toPeerId()) {
-        const user = this.managers.appUsersManager.getUser(userId);
+        const user = await this.managers.appUsersManager.getUser(userId);
         if(!user.pFlags.self || !this.isDialog) {
           this.fillUserPhone();
         }
@@ -238,12 +237,23 @@ export default class PeerProfile {
     this.setPeerStatusInterval = window.setInterval(this.setPeerStatus, 60e3);
   }
 
-  public setPeerStatus = (needClear = false) => {
+  private setPeerStatus = (needClear = false) => {
     const peerId = this.peerId;
     this.element.classList.toggle('is-me', peerId === rootScope.myId);
     if(!peerId || (rootScope.myId === peerId && this.isDialog)) return;
 
-    appImManager.setPeerStatus(this.peerId, this.subtitle, needClear, true, () => peerId === this.peerId, !this.isDialog);
+    return appImManager.setPeerStatus(
+      peerId, 
+      this.subtitle, 
+      needClear, 
+      true, 
+      () => peerId === this.peerId, 
+      !this.isDialog
+    ).then((callback) => {
+      if(callback) {
+        callback();
+      }
+    });
   };
 
   public cleanupHTML() {
@@ -253,7 +263,7 @@ export default class PeerProfile {
       this.username,
       this.location,
       this.link
-    ].forEach(row => {
+    ].forEach((row) => {
       row.container.style.display = 'none';
     });
 
@@ -262,24 +272,21 @@ export default class PeerProfile {
       this.notifications.checkboxField.checked = true;
     }
 
-    if(this.setMoreDetailsTimeout) {
-      window.clearTimeout(this.setMoreDetailsTimeout);
-      this.setMoreDetailsTimeout = 0;
-    }
+    this.clearSetMoreDetailsTimeout();
   }
 
   private canBeDetailed() {
     return this.peerId !== rootScope.myId || !this.isDialog;
   }
 
-  public setAvatar() {
+  private async setAvatar() {
     if(this.canBeDetailed()) {
-      const photo = this.managers.appPeersManager.getPeerPhoto(this.peerId);
+      const photo = await this.managers.appPeersManager.getPeerPhoto(this.peerId);
 
       if(photo) {
         const oldAvatars = this.avatars;
         this.avatars = new PeerProfileAvatars(this.scrollable, this.managers);
-        this.avatars.setPeer(this.peerId);
+        await this.avatars.setPeer(this.peerId);
         this.avatars.info.append(this.name, this.subtitle);
   
         this.avatar.remove();
@@ -305,35 +312,35 @@ export default class PeerProfile {
       this.avatars = undefined;
     }
 
-    this.avatar.updateWithOptions({peerId: this.peerId});
+    await this.avatar.updateWithOptions({peerId: this.peerId});
 
     this.section.content.prepend(this.avatar, this.name, this.subtitle);
   }
 
-  private fillUsername() {
+  private async fillUsername() {
     const {peerId} = this;
     if(peerId.isUser() && this.canBeDetailed()) {
-      const username = this.managers.appPeersManager.getPeerUsername(peerId);
-      setText(username, this.username);
+      const username = await this.managers.appPeersManager.getPeerUsername(peerId);
+      return setText(username, this.username);
     }
   }
 
-  private fillUserPhone() {
+  private async fillUserPhone() {
     const {peerId} = this;
     if(peerId.isUser() && this.canBeDetailed()) {
-      const user = this.managers.appUsersManager.getUser(peerId);
-      setText(user.phone ? this.managers.appUsersManager.formatUserPhone(user.phone) : undefined, this.phone);
+      const user = await this.managers.appUsersManager.getUser(peerId);
+      return setText(user.phone ? formatUserPhone(user.phone) : undefined, this.phone);
     }
   }
 
-  private fillNotifications() {
+  private async fillNotifications() {
     const notificationsRow = this.notifications;
     if(!notificationsRow) {
       return;
     }
 
     if(this.canBeDetailed()) {
-      const muted = this.managers.appNotificationsManager.isPeerLocalMuted(this.peerId, false);
+      const muted = await this.managers.appNotificationsManager.isPeerLocalMuted(this.peerId, false);
       notificationsRow.checkboxField.checked = !muted;
     } else {
       fastRaf(() => {
@@ -342,77 +349,89 @@ export default class PeerProfile {
     }
   }
 
-  private fillRows() {
+  private async fillRows() {
     const peerId = this.peerId;
 
-    this.fillUsername();
-    this.fillUserPhone();
-    this.fillNotifications();
-    this.setMoreDetails();
+    await Promise.all([
+      this.fillUsername(),
+      this.fillUserPhone(),
+      this.fillNotifications(),
+      this.setMoreDetails(),
+      (async() => {
+        const [element, icons] = await Promise.all([
+          wrapPeerTitle({
+            peerId,
+            dialog: this.isDialog,
+          }),
 
-    replaceContent(this.name, new PeerTitle({
-      peerId,
-      dialog: this.isDialog,
-    }).element);
-
-    this.name.append(...generateTitleIcons(peerId));
-
-    this.setPeerStatus(true);
+          generateTitleIcons(peerId)
+        ]);
+        replaceContent(this.name, element);
+        this.name.append(...icons);
+      })(),
+      this.setPeerStatus(true)
+    ]);
   }
 
-  public fillProfileElements() {
+  public async fillProfileElements() {
     if(!this.cleaned) return;
     this.cleaned = false;
     
     this.cleanupHTML();
-    this.setAvatar();
-    this.fillRows();
+    await Promise.all([
+      this.setAvatar(),
+      this.fillRows(),
+    ]);
   }
 
-  public setMoreDetails(override?: true) {
-    if(this.setMoreDetailsTimeout) {
-      window.clearTimeout(this.setMoreDetailsTimeout);
-      this.setMoreDetailsTimeout = 0;
+  private async _setMoreDetails(peerId: PeerId, peerFull: ChatFull | UserFull) {
+    // if(peerFull.about) {
+    setText(peerFull.about ? wrapRichText(peerFull.about) : undefined, this.bio);
+    // }
+
+    if(!peerId.isUser()) {
+      const chat: Chat.channel = await this.managers.appChatsManager.getChat(peerId.toChatId());
+      if(chat.username) {
+        setText('https://t.me/' + chat.username, this.link);
+      } else {
+        const exportedInvite = (peerFull as ChatFull.channelFull).exported_invite;
+        if(exportedInvite?._ === 'chatInviteExported') {
+          setText(exportedInvite.link, this.link);
+        }
+      }
     }
+
+    const location = (peerFull as ChatFull.channelFull).location;
+    if(location?._ == 'channelLocation') {
+      setText(location.address, this.location);
+    }
+
+    this.setMoreDetailsTimeout = window.setTimeout(() => this.setMoreDetails(true), 60e3);
+  }
+
+  private async setMoreDetails(override?: true) {
+    this.clearSetMoreDetailsTimeout();
 
     const peerId = this.peerId;
     const threadId = this.threadId;
 
-    if(!peerId || this.managers.appPeersManager.isRestricted(peerId) || !this.canBeDetailed()) {
+    if(!peerId || await this.managers.appPeersManager.isRestricted(peerId) || !this.canBeDetailed()) {
       return;
     }
 
-    callbackify(this.managers.appProfileManager.getProfileByPeerId(peerId, override), (peerFull) => {
-      if(this.peerId !== peerId || this.threadId !== threadId || this.managers.appPeersManager.isRestricted(peerId)) {
+    const result = await this.managers.acknowledged.appProfileManager.getProfileByPeerId(peerId, override);
+    const setPromise = result.result.then(async(peerFull) => {
+      if(this.peerId !== peerId || this.threadId !== threadId || await this.managers.appPeersManager.isRestricted(peerId)) {
         //this.log.warn('peer changed');
         return;
       }
       
-      //this.log('chatInfo res 2:', chatFull);
-      
-      // if(peerFull.about) {
-        setText(peerFull.about ? wrapRichText(peerFull.about) : undefined, this.bio);
-      // }
-
-      if(!peerId.isUser()) {
-        const chat: Chat.channel = this.managers.appChatsManager.getChat(peerId.toChatId());
-        if(chat.username) {
-          setText('https://t.me/' + chat.username, this.link);
-        } else {
-          const exportedInvite = (peerFull as ChatFull.channelFull).exported_invite;
-          if(exportedInvite) {
-            setText(exportedInvite.link, this.link);
-          }
-        }
-      }
-
-      const location = (peerFull as ChatFull.channelFull).location;
-      if(location?._ == 'channelLocation') {
-        setText(location.address, this.location);
-      }
-
-      this.setMoreDetailsTimeout = window.setTimeout(() => this.setMoreDetails(true), 60e3);
+      await this._setMoreDetails(peerId, peerFull);
     });
+
+    if(result.cached) {
+      await setPromise;
+    }
   }
 
   public setPeer(peerId: PeerId, threadId = 0) {
@@ -426,5 +445,17 @@ export default class PeerProfile {
     this.threadId = threadId;
     
     this.cleaned = true;
+  }
+
+  public clearSetMoreDetailsTimeout() {
+    if(this.setMoreDetailsTimeout !== undefined) {
+      clearTimeout(this.setMoreDetailsTimeout);
+      this.setMoreDetailsTimeout = undefined;
+    }
+  }
+
+  public destroy() {
+    this.clearSetMoreDetailsTimeout();
+    clearInterval(this.setPeerStatusInterval);
   }
 }

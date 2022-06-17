@@ -19,6 +19,7 @@ import EventListenerBase, { EventListenerListeners } from "../../helpers/eventLi
 import { addFullScreenListener, getFullScreenElement } from "../../helpers/dom/fullScreen";
 import indexOfAndSplice from "../../helpers/array/indexOfAndSplice";
 import { AppManagers } from "../../lib/appManagers/managers";
+import overlayCounter from "../../helpers/overlayCounter";
 
 export type PopupButton = {
   text?: string,
@@ -148,7 +149,7 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
         buttonsDiv.classList.add('popup-buttons-row');
       }
       
-      const buttonsElements = buttons.map(b => {
+      const buttonsElements = buttons.map((b) => {
         const button = document.createElement('button');
         button.className = 'btn' + (b.isDanger ? ' danger' : ' primary');
         
@@ -169,7 +170,7 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
       });
       
       if(!btnConfirmOnEnter && buttons.length === 2) {
-        const button = buttons.find(button => !button.isCancel);
+        const button = buttons.find((button) => !button.isCancel);
         if(button) {
           btnConfirmOnEnter = button.element;
         }
@@ -201,7 +202,7 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
     this.element.classList.add('active');
 
     if(!this.withoutOverlay) {
-      rootScope.isOverlayActive = true;
+      overlayCounter.isOverlayActive = true;
       animationIntersector.checkAnimations(true);
     }
 
@@ -229,7 +230,7 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
     this.listenerSetter.removeAll();
 
     if(!this.withoutOverlay) {
-      rootScope.isOverlayActive = false;
+      overlayCounter.isOverlayActive = false;
     }
 
     appNavigationController.removeItem(this.navigationItem);
@@ -252,7 +253,7 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
   }
 
   public static reAppend() {
-    this.POPUPS.forEach(popup => {
+    this.POPUPS.forEach((popup) => {
       const {element, container} = popup;
       const parentElement = element.parentElement;
       if(parentElement && parentElement !== appendPopupTo && appendPopupTo !== container) {
@@ -262,7 +263,7 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
   }
 
   public static getPopups<T extends PopupElement>(popupConstructor: PopupElementConstructable<T>) {
-    return this.POPUPS.filter(element => element instanceof popupConstructor) as T[];
+    return this.POPUPS.filter((element) => element instanceof popupConstructor) as T[];
   }
 
   public static createPopup<T extends PopupElement, A extends Array<any>>(ctor: {new(...args: A): T}, ...args: A) {
@@ -272,7 +273,7 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
 }
 
 export const addCancelButton = (buttons: PopupButton[]) => {
-  const button = buttons.find(b => b.isCancel);
+  const button = buttons.find((b) => b.isCancel);
   if(!button) {
     buttons.push({
       langKey: 'Cancel',

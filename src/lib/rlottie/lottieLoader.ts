@@ -4,15 +4,15 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import RLottieWorker from 'worker-loader!./rlottie.worker';
 import animationIntersector from "../../components/animationIntersector";
 import { MOUNT_CLASS_TO } from '../../config/debug';
 import pause from '../../helpers/schedulers/pause';
 import { logger, LogTypes } from "../logger";
-import apiManager from "../mtproto/mtprotoworker";
 import RLottiePlayer, { RLottieOptions } from './rlottiePlayer';
 import QueryableWorker from './queryableWorker';
 import blobConstruct from '../../helpers/blob/blobConstruct';
+import rootScope from '../rootScope';
+import apiManagerProxy from "../mtproto/mtprotoworker";
 
 export type LottieAssetName = 'EmptyFolder' | 'Folders_1' | 'Folders_2' | 
   'TwoFactorSetupMonkeyClose' | 'TwoFactorSetupMonkeyCloseAndPeek' | 
@@ -59,14 +59,15 @@ export class LottieLoader {
     return this.loadPromise = new Promise((resolve, reject) => {
       let remain = this.workersLimit;
       for(let i = 0; i < this.workersLimit; ++i) {
-        const worker = this.workers[i] = new QueryableWorker(new RLottieWorker());
+        const worker = new Worker(new URL('./rlottie.worker.ts', import.meta.url));
+        const queryableWorker = this.workers[i] = new QueryableWorker(worker);
 
-        worker.addEventListener('ready', () => {
+        queryableWorker.addEventListener('ready', () => {
           this.log('worker #' + i + ' ready');
 
-          worker.addEventListener('frame', this.onFrame);
-          worker.addEventListener('loaded', this.onPlayerLoaded);
-          worker.addEventListener('error', this.onPlayerError);
+          queryableWorker.addEventListener('frame', this.onFrame);
+          queryableWorker.addEventListener('loaded', this.onPlayerLoaded);
+          queryableWorker.addEventListener('error', this.onPlayerError);
 
           --remain;
           if(!remain) {
@@ -76,7 +77,7 @@ export class LottieLoader {
           }
         }, {once: true});
 
-        worker.addEventListener('workerError', (error) => {
+        queryableWorker.addEventListener('workerError', (error) => {
           reject('rlottie load error: ' + error.message);
           this.loaded = false;
         }, {once: true});
@@ -99,17 +100,17 @@ export class LottieLoader {
     }
 
     return fetch(url)
-    .then(res => {
+    .then((res) => {
       if(!res.headers || res.headers.get('content-type') === 'application/octet-stream') {
-        return res.arrayBuffer().then(data => apiManager.invokeCrypto('gzipUncompress', data)).then(arr => blobConstruct(arr as Uint8Array, ''))
+        return res.arrayBuffer().then((data) => apiManagerProxy.invokeCrypto('gzipUncompress', data)).then((arr) => blobConstruct(arr as Uint8Array, ''))
       } else {
         return res.blob();
       }
     })
-    /* .then(str => {
+    /* .then((str) => {
       return new Promise<string>((resolve) => setTimeout(() => resolve(str), 2e3));
     }) */
-    .then(blob => {
+    .then((blob) => {
       const newParams = Object.assign(params, {animationData: blob, needUpscale: true});
       if(!newParams.name) newParams.name = url;
       return this.loadAnimationWorker(newParams);
@@ -197,7 +198,7 @@ export class LottieLoader {
     if(rlPlayer) {
       // ! will need refactoring later, this is not the best way to remove the animation
       const animations = animationIntersector.getAnimations(rlPlayer.el);
-      animations.forEach(animation => {
+      animations.forEach((animation) => {
         animationIntersector.checkAnimation(animation, true, true);
       });
     }

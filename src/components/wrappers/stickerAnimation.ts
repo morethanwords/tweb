@@ -53,7 +53,7 @@ export default function wrapStickerAnimation({
     group: 'none',
     skipRatio,
     managers
-  }).then(animation => {
+  }).then(({render}) => render).then((animation) => {
     assumeType<RLottiePlayer>(animation);
     animation.addEventListener('enterFrame', (frameNo) => {
       if(frameNo === animation.maxFrame) {

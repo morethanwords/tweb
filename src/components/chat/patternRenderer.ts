@@ -184,7 +184,7 @@ export default class ChatBackgroundPatternRenderer {
   }
 
   public static resizeInstances(width: number, height: number) {
-    return Promise.all(this.INSTANCES.map(instance => instance.resize(width, height)));
+    return Promise.all(this.INSTANCES.map((instance) => instance.resize(width, height)));
   }
 
   /* public setResizeMode(resizing: boolean) {

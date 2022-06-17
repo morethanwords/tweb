@@ -10,7 +10,6 @@
  */
 
 import { ReferenceContext } from "../mtproto/referenceDatabase";
-import rootScope from "../rootScope";
 import { WebPage } from "../../layer";
 import safeReplaceObject from "../../helpers/object/safeReplaceObject";
 import { AppManager } from "./manager";
@@ -27,9 +26,8 @@ export class AppWebPagesManager extends AppManager {
     [webPageId: string]: Set<WebPageMessageKey>
   } = {};
   
-  constructor() {
-    super();
-    rootScope.addMultipleEventsListeners({
+  protected after() {
+    this.apiUpdatesManager.addMultipleEventsListeners({
       updateWebPage: (update) => {
         this.saveWebPage(update.webpage);
       }
@@ -100,7 +98,7 @@ export class AppWebPagesManager extends AppManager {
         });
       });
 
-      rootScope.dispatchEvent('webpage_updated', {
+      this.rootScope.dispatchEvent('webpage_updated', {
         id,
         msgs
       });
@@ -127,7 +125,19 @@ export class AppWebPagesManager extends AppManager {
     }
   }
 
-  public getWebPage(id: WebPage.webPage['id']) {
+  public getCachedWebPage(id: WebPage.webPage['id']) {
     return this.webpages[id];
+  }
+
+  public getWebPage(url: string) {
+    return this.apiManager.invokeApiHashable({
+      method: 'messages.getWebPage',
+      processResult: (webPage) => {
+        return this.saveWebPage(webPage);
+      },
+      params: {
+        url
+      },
+    });
   }
 }

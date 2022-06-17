@@ -5,7 +5,7 @@
  */
 
 import AvatarElement from "./avatar";
-import type { LazyLoadQueueIntersector } from "./lazyLoadQueue";
+import type LazyLoadQueue from "./lazyLoadQueue";
 
 const CLASS_NAME = 'stacked-avatars';
 const AVATAR_CLASS_NAME = CLASS_NAME + '-avatar';
@@ -13,12 +13,12 @@ const AVATAR_CONTAINER_CLASS_NAME = AVATAR_CLASS_NAME + '-container';
 
 export default class StackedAvatars {
   public container: HTMLElement;
-  private lazyLoadQueue: LazyLoadQueueIntersector;
+  private lazyLoadQueue: LazyLoadQueue;
   private avatarSize: number;
 
   constructor(options: {
-    lazyLoadQueue?: LazyLoadQueueIntersector,
-    avatarSize: number
+    lazyLoadQueue?: StackedAvatars['lazyLoadQueue'],
+    avatarSize: StackedAvatars['avatarSize']
   }) {
     this.lazyLoadQueue = options.lazyLoadQueue;
     this.avatarSize = options.avatarSize;
@@ -72,6 +72,6 @@ export default class StackedAvatars {
     });
 
     // if were 3 and became 2
-    (Array.from(children) as HTMLElement[]).slice(peerIds.length).forEach(el => el.remove());
+    (Array.from(children) as HTMLElement[]).slice(peerIds.length).forEach((el) => el.remove());
   }
 }

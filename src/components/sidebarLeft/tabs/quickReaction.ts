@@ -20,7 +20,7 @@ export default class AppQuickReactionTab extends SliderSuperTab {
       this.managers.appReactionsManager.getQuickReaction(),
       this.managers.appReactionsManager.getAvailableReactions()
     ]).then(([quickReaction, availableReactions]) => {
-      availableReactions = availableReactions.filter(reaction => !reaction.pFlags.inactive);
+      availableReactions = availableReactions.filter((reaction) => !reaction.pFlags.inactive);
 
       const section = new SettingSection();
 
@@ -46,7 +46,7 @@ export default class AppQuickReactionTab extends SliderSuperTab {
           size: 'small'
         });
 
-        if(availableReaction === quickReaction) {
+        if(availableReaction.reaction === quickReaction.reaction) {
           radioField.setValueSilently(true);
         }
 

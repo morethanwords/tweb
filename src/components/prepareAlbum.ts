@@ -18,10 +18,10 @@ export default function prepareAlbum(options: {
   const layouter = new Layouter(options.items, options.maxWidth, options.minWidth, options.spacing, options.maxHeight);
   const layout = layouter.layout();
 
-  const widthItem = layout.find(item => item.sides & RectPart.Right);
+  const widthItem = layout.find((item) => item.sides & RectPart.Right);
   const width = widthItem.geometry.width + widthItem.geometry.x;
 
-  const heightItem = layout.find(item => item.sides & RectPart.Bottom);
+  const heightItem = layout.find((item) => item.sides & RectPart.Bottom);
   const height = heightItem.geometry.height + heightItem.geometry.y;
 
   const container = options.container;

@@ -5,10 +5,10 @@
  */
 
 import { webp2png } from './webp';
-import type { WebpConvertTask } from './webpWorkerController';
+import type { ConvertWebPTask } from './webpWorkerController';
 
 const ctx = self as any as DedicatedWorkerGlobalScope;
-const tasks: WebpConvertTask[] = [];
+const tasks: ConvertWebPTask[] = [];
 //let isProcessing = false;
 
 function finishTask() {
@@ -53,7 +53,7 @@ function processTasks() {
   }
 }
 
-function scheduleTask(task: WebpConvertTask) {
+function scheduleTask(task: ConvertWebPTask) {
   tasks.push(task);
   /* if(task.payload.fileName.indexOf('main-') === 0) {
     tasks.push(task);

@@ -5,7 +5,7 @@
  */
 
 import { bigIntFromBytes } from "../../helpers/bigInt/bigIntConversion";
-import cryptoWorker from "./cryptoworker";
+import cryptoWorker from "./cryptoMessagePort";
 
 export default async function computeDhKey(g_b: Uint8Array, a: Uint8Array, p: Uint8Array) {
   const key = await cryptoWorker.invokeCrypto('mod-pow', g_b, a, p);

@@ -4,27 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type { AppNotificationsManager } from "../../lib/appManagers/appNotificationsManager";
-import type { AppChatsManager, ChatRights } from "../../lib/appManagers/appChatsManager";
-import type { AppDocsManager } from "../../lib/appManagers/appDocsManager";
+import type { ChatRights } from "../../lib/appManagers/appChatsManager";
 import type { AppImManager } from "../../lib/appManagers/appImManager";
-import type { AppInlineBotsManager } from "../../lib/appManagers/appInlineBotsManager";
-import type { AppMessagesManager } from "../../lib/appManagers/appMessagesManager";
-import type { AppPeersManager } from "../../lib/appManagers/appPeersManager";
-import type { AppPhotosManager } from "../../lib/appManagers/appPhotosManager";
-import type { AppPollsManager } from "../../lib/appManagers/appPollsManager";
-import type { AppProfileManager } from "../../lib/appManagers/appProfileManager";
-import type { AppStickersManager } from "../../lib/appManagers/appStickersManager";
-import type { AppUsersManager } from "../../lib/appManagers/appUsersManager";
-import type { AppWebPagesManager } from "../../lib/appManagers/appWebPagesManager";
-import type { ApiManagerProxy } from "../../lib/mtproto/mtprotoworker";
-import type { AppDraftsManager } from "../../lib/appManagers/appDraftsManager";
-import type { AppEmojiManager } from "../../lib/appManagers/appEmojiManager";
-import type { ServerTimeManager } from "../../lib/mtproto/serverTimeManager";
-import type { AppMessagesIdsManager } from "../../lib/appManagers/appMessagesIdsManager";
-import type { AppGroupCallsManager } from "../../lib/appManagers/appGroupCallsManager";
-import type { AppReactionsManager } from "../../lib/appManagers/appReactionsManager";
-import type stateStorage from '../../lib/stateStorage';
+import type { MessagesStorageKey } from "../../lib/appManagers/appMessagesManager";
 import EventListenerBase from "../../helpers/eventListenerBase";
 import { logger, LogTypes } from "../../lib/logger";
 import rootScope from "../../lib/rootScope";
@@ -37,14 +19,19 @@ import ChatTopbar from "./topbar";
 import { BOT_START_PARAM, NULL_PEER_ID, REPLIES_PEER_ID } from "../../lib/mtproto/mtproto_config";
 import SetTransition from "../singleTransition";
 import AppPrivateSearchTab from "../sidebarRight/tabs/search";
-import renderImageFromUrl, { renderImageFromUrlPromise } from "../../helpers/dom/renderImageFromUrl";
+import renderImageFromUrl from "../../helpers/dom/renderImageFromUrl";
 import mediaSizes from "../../helpers/mediaSizes";
 import ChatSearch from "./search";
-import { IS_TOUCH_SUPPORTED } from "../../environment/touchSupport";
+import IS_TOUCH_SUPPORTED from "../../environment/touchSupport";
 import getAutoDownloadSettingsByPeerId, { ChatAutoDownloadSettings } from "../../helpers/autoDownload";
 import ChatBackgroundGradientRenderer from "./gradientRenderer";
 import ChatBackgroundPatternRenderer from "./patternRenderer";
 import pause from "../../helpers/schedulers/pause";
+import { AppManagers } from "../../lib/appManagers/managers";
+import SlicedArray from "../../helpers/slicedArray";
+import themeController from "../../helpers/themeController";
+import AppSharedMediaTab from "../sidebarRight/tabs/sharedMedia";
+import noop from "../../helpers/noop";
 
 export type ChatType = 'chat' | 'pinned' | 'replies' | 'discussion' | 'scheduled';
 
@@ -71,6 +58,7 @@ export default class Chat extends EventListenerBase<{
   public log: ReturnType<typeof logger>;
 
   public type: ChatType;
+  public messagesStorageKey: MessagesStorageKey;
 
   public noForwards: boolean;
 
@@ -85,30 +73,14 @@ export default class Chat extends EventListenerBase<{
   public patternCanvas: HTMLCanvasElement;
   public backgroundTempId: number;
   public setBackgroundPromise: Promise<void>;
+  public sharedMediaTab: AppSharedMediaTab;
   // public renderDarkPattern: () => Promise<void>;
+
+  public isAnyGroup: boolean;
   
   constructor(
-    public appImManager: AppImManager, 
-    public appChatsManager: AppChatsManager, 
-    public appDocsManager: AppDocsManager, 
-    public appInlineBotsManager: AppInlineBotsManager, 
-    public appMessagesManager: AppMessagesManager, 
-    public appPeersManager: AppPeersManager, 
-    public appPhotosManager: AppPhotosManager, 
-    public appProfileManager: AppProfileManager, 
-    public appStickersManager: AppStickersManager, 
-    public appUsersManager: AppUsersManager, 
-    public appWebPagesManager: AppWebPagesManager, 
-    public appPollsManager: AppPollsManager, 
-    public apiManager: ApiManagerProxy, 
-    public appDraftsManager: AppDraftsManager, 
-    public serverTimeManager: ServerTimeManager, 
-    public storage: typeof stateStorage, 
-    public appNotificationsManager: AppNotificationsManager,
-    public appEmojiManager: AppEmojiManager,
-    public appMessagesIdsManager: AppMessagesIdsManager,
-    public appGroupCallsManager: AppGroupCallsManager,
-    public appReactionsManager: AppReactionsManager
+    public appImManager: AppImManager,
+    public managers: AppManagers
   ) {
     super();
 
@@ -134,7 +106,7 @@ export default class Chat extends EventListenerBase<{
   }
 
   public setBackground(url: string, skipAnimation?: boolean): Promise<void> {
-    const theme = rootScope.getTheme();
+    const theme = themeController.getTheme();
 
     let item: HTMLElement;
     const isColorBackground = !!theme.background.color && !theme.background.slug && !theme.background.intensity;
@@ -194,7 +166,7 @@ export default class Chat extends EventListenerBase<{
 
           // if(isDarkPattern) {
           //   this.renderDarkPattern = () => {
-          //     return patternRenderer.exportCanvasPatternToImage(patternCanvas).then(url => {
+          //     return patternRenderer.exportCanvasPatternToImage(patternCanvas).then((url) => {
           //       if(this.backgroundTempId !== tempId) {
           //         return;
           //       }
@@ -312,21 +284,16 @@ export default class Chat extends EventListenerBase<{
 
   public setType(type: ChatType) {
     this.type = type;
-
-    if(this.type === 'scheduled') {
-      this.getMessagesStorage = () => this.appMessagesManager.getScheduledMessagesStorage(this.peerId);
-      //this.getMessage = (mid) => this.appMessagesManager.getMessageFromStorage(this.appMessagesManager.getScheduledMessagesStorage(this.peerId), mid);
-    }
   }
 
   public init(/* peerId: PeerId */) {
     // this.initPeerId = peerId;
 
-    this.topbar = new ChatTopbar(this, appSidebarRight, this.appMessagesManager, this.appPeersManager, this.appChatsManager, this.appNotificationsManager, this.appProfileManager, this.appUsersManager, this.appGroupCallsManager);
-    this.bubbles = new ChatBubbles(this, this.appMessagesManager, this.appStickersManager, this.appUsersManager, this.appInlineBotsManager, this.appPhotosManager, this.appPeersManager, this.appProfileManager, this.appDraftsManager, this.appMessagesIdsManager, this.appChatsManager, this.appReactionsManager, this.appWebPagesManager);
-    this.input = new ChatInput(this, this.appMessagesManager, this.appMessagesIdsManager, this.appDocsManager, this.appChatsManager, this.appPeersManager, this.appWebPagesManager, this.appImManager, this.appDraftsManager, this.serverTimeManager, this.appNotificationsManager, this.appEmojiManager, this.appUsersManager, this.appInlineBotsManager, this.appProfileManager, this.appStickersManager);
-    this.selection = new ChatSelection(this, this.bubbles, this.input, this.appMessagesManager);
-    this.contextMenu = new ChatContextMenu(this.bubbles.bubblesContainer, this, this.appMessagesManager, this.appPeersManager, this.appPollsManager, this.appDocsManager, this.appMessagesIdsManager, this.appReactionsManager);
+    this.topbar = new ChatTopbar(this, appSidebarRight, this.managers);
+    this.bubbles = new ChatBubbles(this, this.managers);
+    this.input = new ChatInput(this, this.appImManager, this.managers);
+    this.contextMenu = new ChatContextMenu(this, this.managers);
+    this.selection = new ChatSelection(this, this.bubbles, this.input, this.managers);
 
     if(this.type === 'chat') {
       this.topbar.constructUtils();
@@ -359,8 +326,10 @@ export default class Chat extends EventListenerBase<{
       this.bubbles.setReactionsHoverListeners();
     }
 
+    this.bubbles.attachContainerListeners();
+
     this.container.classList.add('type-' + this.type);
-    this.container.append(this.topbar.container, this.bubbles.bubblesContainer, this.input.chatInput);
+    this.container.append(this.topbar.container, this.bubbles.container, this.input.chatInput);
 
     this.bubbles.listenerSetter.add(rootScope)('dialog_migrate', ({migrateFrom, migrateTo}) => {
       if(this.peerId === migrateFrom) {
@@ -399,6 +368,7 @@ export default class Chat extends EventListenerBase<{
     this.bubbles.destroy();
     this.input.destroy();
     this.contextMenu && this.contextMenu.destroy();
+    this.selection && this.selection.attachListeners(undefined, undefined);
 
     this.cleanupBackground();
 
@@ -415,10 +385,11 @@ export default class Chat extends EventListenerBase<{
 
   public cleanup(helperToo = true) {
     this.input.cleanup(helperToo);
+    this.topbar.cleanup();
     this.selection.cleanup();
   }
 
-  public setPeer(peerId: PeerId, lastMsgId?: number, startParam?: string) {
+  public async setPeer(peerId: PeerId, lastMsgId?: number, startParam?: string) {
     if(!peerId) {
       this.inited = undefined;
     } else if(!this.inited) {
@@ -432,25 +403,22 @@ export default class Chat extends EventListenerBase<{
 
     const samePeer = this.peerId === peerId;
     if(!samePeer) {
-      rootScope.dispatchEvent('peer_changing', this);
+      this.appImManager.dispatchEvent('peer_changing', this);
       this.peerId = peerId || NULL_PEER_ID;
+      this.messagesStorageKey = `${this.peerId}_${this.type === 'scheduled' ? 'scheduled' : 'history'}`;
     } else if(this.setPeerPromise) {
       return;
     }
 
-    //console.time('appImManager setPeer');
-    //console.time('appImManager setPeer pre promise');
-    ////console.time('appImManager: pre render start');
     if(!peerId) {
       appSidebarRight.toggleSidebar(false);
       this.cleanup(true);
-      this.topbar.setPeer(peerId);
-      this.bubbles.setPeer(peerId);
-      rootScope.dispatchEvent('peer_changed', peerId);
-
+      this.bubbles.setPeer(false, peerId);
+      this.appImManager.dispatchEvent('peer_changed', peerId);
       return;
     }
 
+    let sharedMediaTabs: AppSharedMediaTab[], sharedMediaTab = this.sharedMediaTab;
     // set new
     if(!samePeer) {
       const searchTab = appSidebarRight.getTab(AppPrivateSearchTab);
@@ -458,92 +426,135 @@ export default class Chat extends EventListenerBase<{
         searchTab.close();
       }
 
-      this.noForwards = this.appPeersManager.noForwards(peerId);
-      this.isRestricted = this.appPeersManager.isRestricted(peerId);
+      const [noForwards, isRestricted, isAnyGroup] = await Promise.all([
+        this.managers.appPeersManager.noForwards(peerId),
+        this.managers.appPeersManager.isRestricted(peerId),
+        this._isAnyGroup(peerId),
+        this.setAutoDownloadMedia()
+      ]);
+
+      this.noForwards = noForwards;
+      this.isRestricted = isRestricted;
+      this.isAnyGroup = isAnyGroup;
+
       this.container.classList.toggle('no-forwards', this.noForwards);
 
-      appSidebarRight.sharedMediaTab.setPeer(peerId, this.threadId);
+      sharedMediaTabs = [
+        sharedMediaTab, 
+        sharedMediaTab = this.sharedMediaTab = appSidebarRight.createSharedMediaTab()
+      ];
+
+      sharedMediaTab.setPeer(peerId, this.threadId);
       this.input.clearHelper(); // костыль
       this.selection.cleanup(); // TODO: REFACTOR !!!!!!
-      this.setAutoDownloadMedia();
     }
 
     this.peerChanged = samePeer;
 
-    if(startParam === undefined && this.isStartButtonNeeded()) {
+    if(startParam === undefined && await this.isStartButtonNeeded()) {
       startParam = BOT_START_PARAM;
     }
 
-    const result = this.bubbles.setPeer(peerId, lastMsgId, startParam);
-    if(!result) {
-      return;
-    }
+    const bubblesSetPeerPromise = this.bubbles.setPeer(samePeer, peerId, lastMsgId, startParam);
+    const setPeerPromise = this.setPeerPromise = bubblesSetPeerPromise.then((result) => {
+      if(!result) {
+        return;
+      }
 
-    const {promise} = result;
+      if(!samePeer) {
+        sharedMediaTab.setLoadMutex(setPeerPromise);
+        sharedMediaTab.loadSidebarMedia(true);
+      }
 
-    //console.timeEnd('appImManager setPeer pre promise');
-    
-    const setPeerPromise = this.setPeerPromise = promise.finally(() => {
+      return result.promise.catch(noop).finally(() => {
+        if(sharedMediaTabs) {
+          sharedMediaTabs.filter((tab) => tab && this.sharedMediaTab !== tab).forEach((tab) => this.destroySharedMediaTab(tab));
+        }
+      });
+    }).catch(noop).finally(() => {
       if(this.setPeerPromise === setPeerPromise) {
         this.setPeerPromise = null;
       }
     });
 
-    if(!samePeer) {
-      appSidebarRight.sharedMediaTab.setLoadMutex(this.setPeerPromise);
-      appSidebarRight.sharedMediaTab.loadSidebarMedia(true);
-    }
-    /* this.setPeerPromise.then(() => {
-      appSidebarRight.sharedMediaTab.loadSidebarMedia(false);
-    }); */
-
-    return result;
+    return bubblesSetPeerPromise;
   }
 
-  public setAutoDownloadMedia() {
-    this.autoDownload = getAutoDownloadSettingsByPeerId(this.peerId);
+  public destroySharedMediaTab(tab = this.sharedMediaTab) {
+    tab.destroy();
+  }
+
+  public async setAutoDownloadMedia() {
+    this.autoDownload = await getAutoDownloadSettingsByPeerId(this.peerId);
   }
 
   public setMessageId(messageId?: number) {
     return this.setPeer(this.peerId, messageId);
   }
 
-  public finishPeerChange(isTarget: boolean, isJump: boolean, lastMsgId: number, startParam?: string) {
+  public async finishPeerChange(isTarget: boolean, isJump: boolean, lastMsgId: number, startParam?: string) {
     if(this.peerChanged) return;
 
-    let peerId = this.peerId;
+    const peerId = this.peerId;
     this.peerChanged = true;
+    this.wasAlreadyUsed = true;
+
+    const middleware = this.bubbles.getMiddleware();
 
     this.cleanup(false);
 
-    this.topbar.setPeer(peerId);
-    this.topbar.finishPeerChange(isTarget, isJump, lastMsgId);
-    this.bubbles.finishPeerChange();
-    this.input.finishPeerChange(startParam);
+    const sharedMediaTab = this.sharedMediaTab;
 
-    appSidebarRight.sharedMediaTab.fillProfileElements();
+    const callbacksPromise = Promise.all([
+      this.topbar.finishPeerChange(isTarget),
+      this.bubbles.finishPeerChange(),
+      this.input.finishPeerChange(startParam),
+    ]);
+
+    const [callbacks] = await Promise.all([
+      callbacksPromise,
+      sharedMediaTab.fillProfileElements()
+    ]);
+
+    if(!middleware()) {
+      return;
+    }
+
+    callbacks.forEach((callback) => {
+      callback();
+    });
+
+    appSidebarRight.replaceSharedMediaTab(sharedMediaTab);
 
     this.log.setPrefix('CHAT-' + peerId + '-' + this.type);
 
-    rootScope.dispatchEvent('peer_changed', peerId);
-    this.wasAlreadyUsed = true;
-  }
-
-  public getMessagesStorage() {
-    return this.appMessagesManager.getMessagesStorage(this.peerId);
+    this.appImManager.dispatchEvent('peer_changed', peerId);
   }
 
   public getMessage(mid: number) {
-    return this.appMessagesManager.getMessageFromStorage(this.getMessagesStorage(), mid);
-    //return this.appMessagesManager.getMessageByPeer(this.peerId, mid);
+    return this.managers.appMessagesManager.getMessageFromStorage(this.messagesStorageKey, mid);
   }
 
-  public getMidsByMid(mid: number) {
-    return this.appMessagesManager.getMidsByMessage(this.getMessage(mid));
+  public async getMidsByMid(mid: number) {
+    return this.managers.appMessagesManager.getMidsByMessage(await this.getMessage(mid));
   }
 
-  public isAnyGroup() {
-    return this.peerId === rootScope.myId || this.peerId === REPLIES_PEER_ID || this.appPeersManager.isAnyGroup(this.peerId);
+  public getHistoryStorage(ignoreThreadId?: boolean) {
+    return this.managers.appMessagesManager.getHistoryStorageTransferable(this.peerId, ignoreThreadId ? undefined : this.threadId)
+    .then((historyStorageTransferable) => {
+      return {
+        ...historyStorageTransferable,
+        history: SlicedArray.fromJSON<number>(historyStorageTransferable.historySerialized)
+      }
+    });
+  }
+
+  public getHistoryMaxId() {
+    return this.getHistoryStorage().then((historyStorage) => historyStorage.maxId);
+  }
+
+  public async _isAnyGroup(peerId: PeerId) {
+    return peerId === rootScope.myId || peerId === REPLIES_PEER_ID || (await this.managers.appPeersManager.isAnyGroup(peerId));
   }
 
   public initSearch(query?: string) {
@@ -566,13 +577,17 @@ export default class Chat extends EventListenerBase<{
   }
 
   public canSend(action?: ChatRights) {
-    return this.appMessagesManager.canSendToPeer(this.peerId, this.threadId, action);
+    return this.managers.appMessagesManager.canSendToPeer(this.peerId, this.threadId, action);
   }
 
   public isStartButtonNeeded() {
-    return this.appPeersManager.isBot(this.peerId) && 
-      !this.appMessagesManager.getDialogOnly(this.peerId) && 
-      !this.appMessagesManager.getHistoryStorage(this.peerId).history.length;
+    return Promise.all([
+      this.managers.appPeersManager.isBot(this.peerId),
+      this.managers.appMessagesManager.getDialogOnly(this.peerId),
+      this.getHistoryStorage(true)
+    ]).then(([isBot, dialog, historyStorage]) => {
+      return isBot && !dialog && !historyStorage.history.length;
+    });
   }
 
   public getMessageSendingParams() {

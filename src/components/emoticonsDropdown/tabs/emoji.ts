@@ -13,7 +13,7 @@ import appImManager from "../../../lib/appManagers/appImManager";
 import { i18n, LangPackKey } from "../../../lib/langPack";
 import rootScope from "../../../lib/rootScope";
 import { emojiFromCodePoints } from "../../../vendor/emoji";
-import { putPreloader } from "../../misc";
+import { putPreloader } from "../../putPreloader";
 import Scrollable from "../../scrollable";
 import StickyIntersector from "../../stickyIntersector";
 import IS_EMOJI_SUPPORTED from "../../../environment/emojiSupport";
@@ -163,7 +163,7 @@ export default class EmojiTab implements EmoticonsTab {
 
     //console.log('emoticons sorted:', sorted);
 
-    //Object.keys(sorted).forEach(c => sorted[c].sort((a, b) => a - b));
+    //Object.keys(sorted).forEach((c) => sorted[c].sort((a, b) => a - b));
 
     sorted.delete(categories.pop());
 
@@ -181,7 +181,7 @@ export default class EmojiTab implements EmoticonsTab {
 
       div.append(titleDiv, itemsDiv);
 
-      emojis.forEach(unified => {
+      emojis.forEach((unified) => {
         /* if(emojiUnicode(emoji) === '1f481-200d-2642') {
           console.log('append emoji', emoji, emojiUnicode(emoji));
         } */
@@ -224,7 +224,7 @@ export default class EmojiTab implements EmoticonsTab {
 
     Promise.all([
       pause(200),
-      this.managers.appEmojiManager.getRecentEmojis().then(recent => {
+      this.managers.appEmojiManager.getRecentEmojis().then((recent) => {
         const hasRecent = !!recent.length;
         const activeId = hasRecent ? 0 : 1;
         this.menu.children[0].classList.toggle('hide', !hasRecent);
@@ -245,7 +245,7 @@ export default class EmojiTab implements EmoticonsTab {
       this.recentItemsDiv.parentElement.classList.toggle('hide', !this.recentItemsDiv.childElementCount);
 
       categories.unshift('Emoji.Recent');
-      categories.map(category => {
+      categories.map((category) => {
         const div = divs[category];
   
         if(!div) {

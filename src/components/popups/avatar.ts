@@ -4,12 +4,14 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import appDownloadManager from "../../lib/appManagers/appDownloadManager";
+import type { AppDownloadManager } from "../../lib/appManagers/appDownloadManager";
 import resizeableImage from "../../lib/cropper";
 import PopupElement from ".";
 import { _i18n } from "../../lib/langPack";
 import { attachClickEvent } from "../../helpers/dom/clickEvent";
 import readBlobAsDataURL from "../../helpers/blob/readBlobAsDataURL";
+import rootScope from "../../lib/rootScope";
+import appDownloadManager from "../../lib/appManagers/appDownloadManager";
 
 export default class PopupAvatar extends PopupElement {
   private cropContainer: HTMLElement;
@@ -25,7 +27,7 @@ export default class PopupAvatar extends PopupElement {
     removeHandlers: () => {}
   };
 
-  private onCrop: (upload: () => ReturnType<typeof appDownloadManager.upload>) => void;
+  private onCrop: (upload: () => ReturnType<AppDownloadManager['upload']>) => void;
 
   constructor() {
     super('popup-avatar', null, {closable: true, withConfirm: true});
@@ -50,7 +52,7 @@ export default class PopupAvatar extends PopupElement {
         return;
       }
 
-      readBlobAsDataURL(file).then(contents => {
+      readBlobAsDataURL(file).then((contents) => {
         this.image = new Image();
         this.cropContainer.append(this.image);
         this.image.src = contents;
@@ -72,7 +74,7 @@ export default class PopupAvatar extends PopupElement {
       this.cropper.crop();
       this.hide();
 
-      this.canvas.toBlob(blob => {
+      this.canvas.toBlob((blob) => {
         this.blob = blob; // save blob to send after reg
         this.darkenCanvas();
         this.resolve();

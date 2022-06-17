@@ -4,10 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { RefreshReferenceTask, RefreshReferenceTaskResponse } from "./apiFileManager";
 import { Photo } from "../../layer";
-import apiManager from "./mtprotoworker";
-import assumeType from "../../helpers/assumeType";
 import { logger } from "../logger";
 import bytesToHex from "../../helpers/bytes/bytesToHex";
 import deepEqual from "../../helpers/object/deepEqual";
@@ -47,22 +44,22 @@ export class ReferenceDatabase extends AppManager {
   private log = logger('RD', undefined, true);
   private refreshEmojiesSoundsPromise: Promise<any>;
 
-  constructor() {
-    super();
+  // constructor() {
+  //   super();
 
-    apiManager.addTaskListener('refreshReference', (task: RefreshReferenceTask) => {
-      const originalPayload = task.payload;
+    // apiManager.addTaskListener('refreshReference', (task: RefreshReferenceTask) => {
+    //   const originalPayload = task.payload;
 
-      assumeType<RefreshReferenceTaskResponse>(task);
-      task.originalPayload = originalPayload;
+    //   assumeType<RefreshReferenceTaskResponse>(task);
+    //   task.originalPayload = originalPayload;
 
-      this.refreshReference(originalPayload).then((bytes) => {
-        task.payload = bytes;
-      }, (err) => {
-        task.error = err;
-      }).then(() => apiManager.postMessage(task));
-    });
-  }
+    //   this.refreshReference(originalPayload).then((bytes) => {
+    //     task.payload = bytes;
+    //   }, (err) => {
+    //     task.error = err;
+    //   }).then(() => apiManager.postMessage(task));
+    // });
+  // }
 
   public saveContext(reference: ReferenceBytes, context: ReferenceContext, contexts?: ReferenceContexts) {
     [contexts, reference] = this.getContexts(reference);

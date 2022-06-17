@@ -10,7 +10,7 @@ const ignore = new Set();
 
 export function getRestrictionReason(reasons: RestrictionReason[]) {
   // return reasons[0];
-  return reasons.find(reason => platforms.has(reason.platform) && !ignore.has(reason.reason));
+  return reasons.find((reason) => platforms.has(reason.platform) && !ignore.has(reason.reason));
 }
 
 export function isRestricted(reasons: RestrictionReason[]) {
@@ -19,7 +19,7 @@ export function isRestricted(reasons: RestrictionReason[]) {
 
 export function ignoreRestrictionReasons(reasons: string[]) {
   ignore.clear();
-  reasons.forEach(reason => {
+  reasons.forEach((reason) => {
     ignore.add(reason);
   });
 }

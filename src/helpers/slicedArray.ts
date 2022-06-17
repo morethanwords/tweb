@@ -5,6 +5,7 @@
  */
 
 import { MOUNT_CLASS_TO } from "../config/debug";
+import indexOfAndSplice from "./array/indexOfAndSplice";
 import compareValue from "./compareValue";
 
 /**
@@ -27,6 +28,7 @@ export interface Slice<T extends ItemType> extends Array<T> {
   isEnd: (side: SliceEnd) => boolean;
   setEnd: (side: SliceEnd) => void;
   unsetEnd: (side: SliceEnd) => void;
+  getEnds: () => {top: boolean, bottom: boolean, both: boolean};
 
   slice: (from?: number, to?: number) => Slice<T>;
   splice: (start: number, deleteCount: number, ...items: ItemType[]) => Slice<T>;
@@ -36,6 +38,19 @@ export interface SliceConstructor<T extends ItemType> {
   // new(...items: T[]): Slice<T>;
   new(length: number): Slice<T>;
 }
+
+export type SliceSerialized<T extends ItemType> = {
+  values: Slice<T>,
+  isEnd: {
+    top: boolean,
+    bottom: boolean,
+    both: boolean
+  }
+};
+
+export type SlicedArraySerialized<T extends ItemType> = {
+  slices: SliceSerialized<T>[]
+};
 
 export default class SlicedArray<T extends ItemType> {
   private slices: Slice<T>[]/*  = [[7,6,5],[4,3,2],[1,0,-1]] */;
@@ -83,6 +98,14 @@ export default class SlicedArray<T extends ItemType> {
         }
   
         return isEnd;
+      }
+
+      getEnds() {
+        return {
+          top: this.isEnd(SliceEnd.Top),
+          bottom: this.isEnd(SliceEnd.Bottom),
+          both: this.isEnd(SliceEnd.Both)
+        };
       }
   
       setEnd(side: SliceEnd) {
@@ -349,7 +372,8 @@ export default class SlicedArray<T extends ItemType> {
     const topFulfilled = (slice.length - sliceOffset) >= topWasMeantToLoad || (slice.isEnd(SliceEnd.Top) ? (sliced.setEnd(SliceEnd.Top), true) : false);
     const bottomFulfilled = (sliceOffset - bottomWasMeantToLoad) >= 0 || (slice.isEnd(SliceEnd.Bottom) ? (sliced.setEnd(SliceEnd.Bottom), true) : false);
 
-    //console.log('sliceMe', topFulfilled, bottomFulfilled);
+    // if(topFulfilled) sliced.isEnd(SliceEnd.Top);
+    // if(bottomFulfilled) sliced.isEnd(SliceEnd.Bottom);
 
     return {
       slice: sliced, 
@@ -392,6 +416,37 @@ export default class SlicedArray<T extends ItemType> {
     }
 
     return false;
+  }
+
+  public deleteSlice(slice: Slice<T>) {
+    indexOfAndSplice(this.slices, slice);
+  }
+
+  public toJSON() {
+    const slices: SlicedArraySerialized<T>['slices'] = this.slices.map((slice) => {
+      return {
+        values: slice.slice(),
+        isEnd: slice.getEnds()
+      };
+    });
+
+    const serialized: SlicedArraySerialized<T> = {
+      slices
+    };
+
+    return JSON.stringify(serialized);
+  }
+
+  public static fromJSON<T extends ItemType>(json: string) {
+    const parsed: SlicedArraySerialized<T> = JSON.parse(json);
+    const sliced = new SlicedArray<T>();
+    parsed.slices.forEach((slice) => {
+      const inserted = sliced.insertSlice(slice.values) || sliced.first;
+      if(slice.isEnd.top) inserted.setEnd(SliceEnd.Top);
+      if(slice.isEnd.bottom) inserted.setEnd(SliceEnd.Bottom);
+    });
+
+    return sliced;
   }
 }
 

@@ -4,9 +4,9 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { MyDocument } from "../lib/appManagers/appDocsManager";
-import { ThumbCache } from "../lib/appManagers/appDownloadManager";
-import type { MyPhoto, AppPhotosManager } from "../lib/appManagers/appPhotosManager";
+import type { MyDocument } from "../lib/appManagers/appDocsManager";
+import type { MyPhoto } from "../lib/appManagers/appPhotosManager";
+import type { ThumbCache } from "../lib/storages/thumbs";
 import getImageFromStrippedThumb from "./getImageFromStrippedThumb";
 
 export default function getStrippedThumbIfNeeded(photo: MyPhoto | MyDocument, cacheContext: ThumbCache, useBlur: boolean, ignoreCache = false) {
@@ -16,7 +16,7 @@ export default function getStrippedThumbIfNeeded(photo: MyPhoto | MyDocument, ca
     }
 
     const sizes = (photo as MyPhoto).sizes || (photo as MyDocument).thumbs;
-    const thumb = sizes?.length ? sizes.find(size => size._ === 'photoStrippedSize') : null;
+    const thumb = sizes?.length ? sizes.find((size) => size._ === 'photoStrippedSize') : null;
     if(thumb && ('bytes' in thumb)) {
       return getImageFromStrippedThumb(photo, thumb as any, useBlur);
     }

@@ -10,7 +10,7 @@
  */
 
 import { TLSerialization } from "./tl_utils";
-import CryptoWorker from '../crypto/cryptoworker';
+import cryptoWorker from '../crypto/cryptoMessagePort';
 import Modes from "../../config/modes";
 import bytesFromHex from "../../helpers/bytes/bytesFromHex";
 import bytesToHex from "../../helpers/bytes/bytesToHex";
@@ -96,14 +96,14 @@ export class RSAKeysManager {
       return Promise.resolve();
     }
 
-    return this.preparePromise = Promise.all(this.publisKeysHex.map(keyParsed => {
+    return this.preparePromise = Promise.all(this.publisKeysHex.map((keyParsed) => {
       const RSAPublicKey = new TLSerialization();
       RSAPublicKey.storeBytes(bytesFromHex(keyParsed.modulus), 'n');
       RSAPublicKey.storeBytes(bytesFromHex(keyParsed.exponent), 'e');
 
       const buffer = RSAPublicKey.getBuffer();
 
-      return CryptoWorker.invokeCrypto('sha1', buffer).then(bytes => {
+      return cryptoWorker.invokeCrypto('sha1', buffer).then((bytes) => {
         const fingerprintBytes = bytes.slice(-8);
         fingerprintBytes.reverse();
   

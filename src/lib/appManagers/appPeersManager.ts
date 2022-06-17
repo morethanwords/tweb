@@ -11,18 +11,18 @@
 
 import type { Chat, ChatPhoto, DialogPeer, InputChannel, InputDialogPeer, InputNotifyPeer, InputPeer, Peer, Update, User, UserProfilePhoto } from "../../layer";
 import type { LangPackKey } from "../langPack";
-import rootScope from "../rootScope";
-import I18n from '../langPack';
 import { getRestrictionReason } from "../../helpers/restrictions";
 import isObject from "../../helpers/object/isObject";
-import limitSymbols from "../../helpers/string/limitSymbols";
 import { AppManager } from "./manager";
-import getAbbreviation from "../richTextProcessor/getAbbreviation";
-import wrapEmojiText from "../richTextProcessor/wrapEmojiText";
 import getPeerId from "./utils/peers/getPeerId";
+import isUser from "./utils/peers/isUser";
+import isAnyChat from "./utils/peers/isAnyChat";
 
 export type PeerType = 'channel' | 'chat' | 'megagroup' | 'group' | 'saved';
 export class AppPeersManager extends AppManager {
+  public get peerId() {
+    return this.appUsersManager.userId.toPeerId();
+  }
   /* public savePeerInstance(peerId: PeerId, instance: any) {
     if(peerId < 0) appChatsManager.saveApiChat(instance);
     else appUsersManager.saveApiUser(instance);
@@ -57,38 +57,6 @@ export class AppPeersManager extends AppManager {
     return false;
   }
 
-  public getPeerTitle(peerId: PeerId, plainText: true, onlyFirstName?: boolean, _limitSymbols?: number): string;
-  public getPeerTitle(peerId: PeerId, plainText?: false, onlyFirstName?: boolean, _limitSymbols?: number): DocumentFragment;
-  public getPeerTitle(peerId: PeerId, plainText: boolean, onlyFirstName?: boolean, _limitSymbols?: number): DocumentFragment | string;
-  public getPeerTitle(peerId: PeerId, plainText = false, onlyFirstName = false, _limitSymbols?: number): DocumentFragment | string {
-    if(!peerId) {
-      peerId = rootScope.myId;
-    }
-    
-    let title = '';
-    if(peerId.isUser()) {
-      const user = this.appUsersManager.getUser(peerId.toUserId());
-      if(user.first_name) title += user.first_name;
-      if(user.last_name && (!onlyFirstName || !title)) title += ' ' + user.last_name;
-  
-      if(!title) title = user.pFlags.deleted ? I18n.format('HiddenName', true) : user.username;
-      else title = title.trim();
-    } else {
-      const chat: Chat.chat = this.appChatsManager.getChat(peerId.toChatId());
-      title = chat.title;
-
-      if(onlyFirstName) {
-        title = title.split(' ')[0];
-      }
-    }
-
-    if(_limitSymbols !== undefined) {
-      title = limitSymbols(title, _limitSymbols, _limitSymbols);
-    }
-    
-    return plainText ? title : wrapEmojiText(title);
-  }
-
   public getOutputPeer(peerId: PeerId): Peer {
     if(peerId.isUser()) {
       return {_: 'peerUser', user_id: peerId.toUserId()};
@@ -117,13 +85,6 @@ export class AppPeersManager extends AppManager {
     return peerId.isUser()
       ? this.appUsersManager.getUser(peerId.toUserId())
       : this.appChatsManager.getChat(peerId.toChatId());
-  }
-
-  public getPeerInitials(peerId: PeerId) {
-    const peer: Chat | User = this.getPeer(peerId);
-    return getAbbreviation(
-      (peer as Chat.chat).title ?? [(peer as User.user).first_name, (peer as User.user).last_name].filter(Boolean).join(' ')
-    );
   }
 
   public getDialogPeer(peerId: PeerId): DialogPeer {
@@ -158,11 +119,11 @@ export class AppPeersManager extends AppManager {
   }
 
   public isUser(peerId: PeerId)/* : peerId is UserId */ {
-    return +peerId >= 0;
+    return isUser(peerId);
   }
   
   public isAnyChat(peerId: PeerId) {
-    return +peerId < 0;
+    return isAnyChat(peerId);
   }
 
   public isRestricted(peerId: PeerId) {
@@ -257,8 +218,6 @@ export class AppPeersManager extends AppManager {
     };
   }
 
-  
-
   public getPeerSearchText(peerId: PeerId) {
     let text: string;
     if(this.isUser(peerId)) {
@@ -279,7 +238,7 @@ export class AppPeersManager extends AppManager {
     } else if(!this.isUser(peerId)) {
       return 'group';
     } else {
-      return peerId === rootScope.myId ? 'saved' : 'chat';
+      return peerId === this.peerId ? 'saved' : 'chat';
     }
   }
 
@@ -307,34 +266,3 @@ export class AppPeersManager extends AppManager {
 }
 
 export type IsPeerType = 'isChannel' | 'isMegagroup' | 'isAnyGroup' | 'isBroadcast' | 'isBot' | 'isContact' | 'isUser' | 'isAnyChat';
-
-[
-  'isUser' as const,
-  'isAnyChat' as const,
-].forEach((value) => {
-  const newMethod = Array.isArray(value) ? value[0] : value;
-  const originMethod = Array.isArray(value) ? value[1] : value;
-  // @ts-ignore
-  String.prototype[newMethod] = function() {
-    // @ts-ignore
-    return AppPeersManager.prototype[originMethod].call(null, this.toString());
-  };
-
-  // @ts-ignore
-  Number.prototype[newMethod] = function() {
-    // @ts-ignore
-    return AppPeersManager.prototype[originMethod].call(null, this);
-  };
-});
-
-declare global {
-  interface String {
-    isUser(): boolean;
-    isAnyChat(): boolean;
-  }
-
-  interface Number {
-    isUser(): boolean;
-    isAnyChat(): boolean;
-  }
-}

@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import cryptoWorker from "../crypto/cryptoworker";
+import cryptoWorker from "./cryptoMessagePort";
 import { AccountPassword, InputCheckPasswordSRP, PasswordKdfAlgo } from "../../layer";
 import addPadding from "../../helpers/bytes/addPadding";
 import bufferConcats from "../../helpers/bytes/bufferConcats";

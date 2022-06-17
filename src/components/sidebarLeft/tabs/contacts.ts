@@ -42,8 +42,8 @@ export default class AppContactsTab extends SliderSuperTab {
       this.openContacts(value);
     });
 
-    this.listenerSetter.add(rootScope)('contacts_update', (userId) => {
-      const isContact = this.managers.appUsersManager.isContact(userId);
+    this.listenerSetter.add(rootScope)('contacts_update', async(userId) => {
+      const isContact = await this.managers.appUsersManager.isContact(userId);
       const peerId = userId.toPeerId();
       if(isContact) this.sortedUserList.add(peerId);
       else this.sortedUserList.delete(peerId);
@@ -59,7 +59,7 @@ export default class AppContactsTab extends SliderSuperTab {
 
   protected createList() {
     const sortedUserList = new SortedUserList({
-      appUsersManager: this.managers.appUsersManager
+      managers: this.managers
     });
     const list = sortedUserList.list;
     list.id = 'contacts';
@@ -74,7 +74,7 @@ export default class AppContactsTab extends SliderSuperTab {
     this.middleware.clean();
     /* // need to clear, and left 1 page for smooth slide
     let pageCount = appPhotosManager.windowH / 72 * 1.25 | 0;
-    (Array.from(this.list.children) as HTMLElement[]).slice(pageCount).forEach(el => el.remove()); */
+    (Array.from(this.list.children) as HTMLElement[]).slice(pageCount).forEach((el) => el.remove()); */
   }
 
   protected onOpenAfterTimeout() {
@@ -93,7 +93,7 @@ export default class AppContactsTab extends SliderSuperTab {
     this.scrollable.onScrolledBottom = null;
     this.scrollable.container.textContent = '';
 
-    this.managers.appUsersManager.getContactsPeerIds(query, undefined, 'online').then(contacts => {
+    this.managers.appUsersManager.getContactsPeerIds(query, undefined, 'online').then((contacts) => {
       if(!middleware()) {
         return;
       }

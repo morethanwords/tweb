@@ -16,7 +16,10 @@ import { toastNew } from "../toast";
 export default class PopupCreateContact extends PopupElement {
   constructor() {
     super('popup-create-contact popup-send-photo popup-new-media', null, {closable: true, withConfirm: 'Add'});
+    this.construct();
+  }
 
+  private async construct() {
     _i18n(this.title, 'AddContactTitle');
 
     attachClickEvent(this.btnConfirm, () => {
@@ -65,7 +68,7 @@ export default class PopupCreateContact extends PopupElement {
       return !!telInputField.value.match(/\d/);
     };
 
-    const user = this.managers.appUsersManager.getSelf();
+    const user = await this.managers.appUsersManager.getSelf();
     const formatted = formatPhoneNumber(user.phone);
     if(formatted.code) {
       telInputField.value = '+' + formatted.code.country_code;

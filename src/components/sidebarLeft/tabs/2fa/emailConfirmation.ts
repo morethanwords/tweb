@@ -8,17 +8,16 @@ import { SettingSection } from "../..";
 import { AccountPassword } from "../../../../layer";
 import Button from "../../../button";
 import { SliderSuperTab } from "../../../slider";
-import { wrapSticker } from "../../../wrappers";
-import passwordManager from "../../../../lib/mtproto/passwordManager";
 import AppTwoStepVerificationSetTab from "./passwordSet";
 import CodeInputField from "../../../codeInputField";
 import AppTwoStepVerificationEmailTab from "./email";
-import { putPreloader } from "../../../misc";
+import { putPreloader } from "../../../putPreloader";
 import { i18n, _i18n } from "../../../../lib/langPack";
 import { canFocus } from "../../../../helpers/dom/canFocus";
 import { attachClickEvent } from "../../../../helpers/dom/clickEvent";
 import replaceContent from "../../../../helpers/dom/replaceContent";
 import toggleDisability from "../../../../helpers/dom/toggleDisability";
+import wrapStickerEmoji from "../../../wrappers/stickerEmoji";
 
 export default class AppTwoStepVerificationEmailConfirmationTab extends SliderSuperTab {
   public codeInputField: CodeInputField;
@@ -39,24 +38,14 @@ export default class AppTwoStepVerificationEmailConfirmationTab extends SliderSu
     _i18n(section.caption, 'TwoStepAuth.ConfirmEmailCodeDesc', [this.email]);
 
     const emoji = '📬';
-    const doc = this.managers.appStickersManager.getAnimatedEmojiSticker(emoji);
     const stickerContainer = document.createElement('div');
 
-    if(doc) {
-      wrapSticker({
-        doc,
-        div: stickerContainer,
-        loop: false,
-        play: true,
-        width: 160,
-        height: 160,
-        emoji
-      }).then(() => {
-        // this.animation = player;
-      });
-    } else {
-      stickerContainer.classList.add('media-sticker-wrapper');
-    }
+    wrapStickerEmoji({
+      div: stickerContainer,
+      width: 160,
+      height: 160,
+      emoji
+    });
 
     section.content.append(stickerContainer);
 
@@ -72,15 +61,15 @@ export default class AppTwoStepVerificationEmailConfirmationTab extends SliderSu
       onFill: (code) => {
         freeze(true);
         
-        passwordManager.confirmPasswordEmail('' + code)
-        .then(value => {
+        this.managers.passwordManager.confirmPasswordEmail('' + code)
+        .then((value) => {
           if(!value) {
 
           }
 
           goNext();
         })
-        .catch(err => {
+        .catch((err) => {
           switch(err.type) {
             case 'CODE_INVALID':
               inputField.input.classList.add('error');
@@ -115,7 +104,7 @@ export default class AppTwoStepVerificationEmailConfirmationTab extends SliderSu
 
     attachClickEvent(btnChange, (e) => {
       freeze(true);
-      passwordManager.cancelPasswordEmail().then(value => {
+      this.managers.passwordManager.cancelPasswordEmail().then((value) => {
         this.slider.sliceTabsUntilTab(AppTwoStepVerificationEmailTab, this);
         this.close();
       }, () => {
@@ -126,7 +115,7 @@ export default class AppTwoStepVerificationEmailConfirmationTab extends SliderSu
     attachClickEvent(btnResend, (e) => {
       freeze(true);
       const d = putPreloader(btnResend);
-      passwordManager.resendPasswordEmail().then(value => {
+      this.managers.passwordManager.resendPasswordEmail().then((value) => {
         d.remove();
         freeze(false);
       });

@@ -4,17 +4,21 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type { DownloadOptions } from "../mtproto/apiFileManager";
-import type { ApiError } from "../mtproto/apiManager";
-import type { MyDocument } from "./appDocsManager";
-import type { MyPhoto } from "./appPhotosManager";
-import rootScope from "../rootScope";
-import apiManager from "../mtproto/mtprotoworker";
+import type { ApiFileManager, DownloadMediaOptions, DownloadOptions } from "../mtproto/apiFileManager";
 import deferredPromise, { CancellablePromise } from "../../helpers/cancellablePromise";
-import { InputFile } from "../../layer";
+import { Document, InputFile } from "../../layer";
 import { getFileNameByLocation } from "../../helpers/fileName";
-import CacheStorageController from "../cacheStorage";
+import getFileNameForUpload from "../../helpers/getFileNameForUpload";
+import { AppManagers } from "./managers";
+import rootScope from "../rootScope";
 import { MOUNT_CLASS_TO } from "../../config/debug";
+import getDocumentDownloadOptions from "./utils/docs/getDocumentDownloadOptions";
+import getPhotoDownloadOptions from "./utils/photos/getPhotoDownloadOptions";
+import createDownloadAnchor from "../../helpers/dom/createDownloadAnchor";
+import noop from "../../helpers/noop";
+import getDownloadMediaDetails from "./utils/download/getDownloadMediaDetails";
+import getDownloadFileNameFromOptions from "./utils/download/getDownloadFileNameFromOptions";
+import { AppMessagesManager } from "./appMessagesManager";
 
 export type ResponseMethodBlob = 'blob';
 export type ResponseMethodJson = 'json';
@@ -23,164 +27,148 @@ export type ResponseMethod = ResponseMethodBlob | ResponseMethodJson;
 /* export type DownloadBlob = {promise: Promise<Blob>, controller: AbortController};
 export type DownloadJson = {promise: Promise<any>, controller: AbortController}; */
 export type DownloadBlob = CancellablePromise<Blob>;
+export type DownloadUrl = CancellablePromise<string>;
 export type DownloadJson = CancellablePromise<any>;
 //export type Download = DownloadBlob/*  | DownloadJson */;
-export type Download = DownloadBlob/*  | DownloadJson */;
+export type Download = DownloadBlob | DownloadUrl/*  | DownloadJson */;
 
 export type Progress = {done: number, fileName: string, total: number, offset: number};
 export type ProgressCallback = (details: Progress) => void;
 
-export type ThumbCache = {
-  downloaded: number, 
-  url: string
-};
-
-export type ThumbsCache = {
-  [id: string]: {
-    [size: string]: ThumbCache
-  }
-};
+type DownloadType = 'url' | 'blob' | 'void';
 
 export class AppDownloadManager {
-  public cacheStorage = new CacheStorageController('cachedFiles');
-  private downloads: {[fileName: string]: Download} = {};
+  private downloads: {[fileName: string]: {main: Download, url?: Download, blob?: Download, void?: Download}} = {};
   private progress: {[fileName: string]: Progress} = {};
-  private progressCallbacks: {[fileName: string]: Array<ProgressCallback>} = {};
+  // private progressCallbacks: {[fileName: string]: Array<ProgressCallback>} = {};
+  private managers: AppManagers;
 
-  private uploadId = 0;
-
-  private thumbsCache: {
-    photo: ThumbsCache,
-    document: ThumbsCache
-  } = {
-    photo: {},
-    document: {}
-  };
-
-  constructor() {
-    rootScope.addEventListener('download_progress', (e) => {
-      const details = e as {done: number, fileName: string, total: number, offset: number};
+  public construct(managers: AppManagers) {
+    this.managers = managers;
+    rootScope.addEventListener('download_progress', (details) => {
       this.progress[details.fileName] = details;
 
-      const callbacks = this.progressCallbacks[details.fileName];
-      if(callbacks) {
-        callbacks.forEach(callback => callback(details));
-      }
+      // const callbacks = this.progressCallbacks[details.fileName];
+      // if(callbacks) {
+      //   callbacks.forEach((callback) => callback(details));
+      // }
 
       const download = this.downloads[details.fileName];
       if(download) {
-        download.notifyAll(details);
+        download.main.notifyAll(details);
       }
     });
   }
 
-  private getNewDeferred<T>(fileName: string) {
+  private getNewDeferred<T>(fileName: string, type?: DownloadType) {
     const deferred = deferredPromise<T>();
 
-    deferred.cancel = () => {
-      //try {
-        const error = new Error('Download canceled');
-        error.name = 'AbortError';
+    let download = this.downloads[fileName];
+    if(!download) {
+      download = this.downloads[fileName] = {
+        main: deferred as any
+      };
+
+      deferred.cancel = () => {
+        //try {
+          const error = new Error('Download canceled');
+          error.name = 'AbortError';
+          
+          this.managers.apiFileManager.cancelDownload(fileName);
+          
+          deferred.reject(error);
+          deferred.cancel = () => {};
+        /* } catch(err) {
+  
+        } */
+      };
+  
+      deferred.catch(() => {
+        this.clearDownload(fileName);
+      }).finally(() => {
+        delete this.progress[fileName];
+        // delete this.progressCallbacks[fileName];
+      });
+    } else {
+      const main = download.main;
+      (['cancel', 'addNotifyListener', 'notify', 'notifyAll'] as (keyof CancellablePromise<void>)[]).forEach((key) => {
+        if(!main[key]) {
+          return;
+        }
         
-        apiManager.cancelDownload(fileName);
-        
-        deferred.reject(error);
-        deferred.cancel = () => {};
-      /* } catch(err) {
+        // @ts-ignore
+        deferred[key] = main[key].bind(main);
+      });
+    }
 
-      } */
-    };
-
-    deferred.finally(() => {
-      delete this.progress[fileName];
-      delete this.progressCallbacks[fileName];
-    });
-
-    deferred.catch(() => {
-      this.clearDownload(fileName);
-    });
-
-    return this.downloads[fileName] = deferred as any;
+    return download[type] = deferred as any;
   }
 
   private clearDownload(fileName: string) {
     delete this.downloads[fileName];
   }
 
-  public fakeDownload(fileName: string, value: Blob | string) {
+  public getUpload(fileName: string): ReturnType<AppMessagesManager['sendFile']>['promise'] {
+    let deferred: CancellablePromise<any> = this.getDownload(fileName);
+    if(deferred) {
+      return deferred;
+    }
+    
+    deferred = this.getNewDeferred(fileName);
+    this.managers.appMessagesManager.getUploadPromise(fileName).then(deferred.resolve, deferred.reject);
+    return deferred;
+  }
+
+  /* public fakeDownload(fileName: string, value: Blob | string) {
     const deferred = this.getNewDeferred<Blob>(fileName);
     if(typeof(value) === 'string') {
       fetch(value)
-      .then(response => response.blob())
-      .then(blob => deferred.resolve(blob));
+      .then((response) => response.blob())
+      .then((blob) => deferred.resolve(blob));
     } else {
       deferred.resolve(value);
     }
 
     return deferred;
+  } */
+
+  private d(fileName: string, getPromise: () => Promise<any>, type?: DownloadType) {
+    let deferred = this.getDownload(fileName, type);
+    if(deferred) return deferred;
+
+    deferred = this.getNewDeferred<Blob>(fileName, type);
+    getPromise().then(deferred.resolve, deferred.reject);
+    return deferred;
   }
 
   public download(options: DownloadOptions): DownloadBlob {
-    const fileName = getFileNameByLocation(options.location, {fileName: options.fileName});
-    if(this.downloads.hasOwnProperty(fileName)) return this.downloads[fileName];
+    const fileName = getDownloadFileNameFromOptions(options);
+    return this.d(fileName, () => this.managers.apiFileManager.download(options), 'blob') as any;
+  }
 
-    const deferred = this.getNewDeferred<Blob>(fileName);
+  public downloadMedia(options: DownloadMediaOptions, type: DownloadType = 'blob'): DownloadBlob {
+    const {downloadOptions, fileName} = getDownloadMediaDetails(options);
+    return this.d(fileName, () => {
+      const cb = type === 'url' ? this.managers.apiFileManager.downloadMediaURL : (type === 'void' ? this.managers.apiFileManager.downloadMediaVoid : this.managers.apiFileManager.downloadMedia);
+      return cb(options);
+    }, type) as any;
+  }
 
-    const onError = (err: ApiError) => {
-      deferred.reject(err);
-    };
+  public downloadMediaURL(options: DownloadMediaOptions): DownloadUrl {
+    return this.downloadMedia(options, 'url') as any;
+  }
 
-    const tryDownload = (): Promise<unknown> => {
-      //return Promise.resolve();
-
-      if(!apiManager.worker || options.onlyCache) {
-        const promise = this.cacheStorage.getFile(fileName).then((blob) => {
-          if(blob.size < options.size) throw 'wrong size';
-          else deferred.resolve(blob);
-        });
-        
-        if(options.onlyCache) return promise.catch(onError);
-        return promise.catch(() => {
-          return apiManager.downloadFile(options).then(deferred.resolve, onError);
-        });
-      } else {
-        /* return apiManager.downloadFile(options).then(res => {
-          setTimeout(() => deferred.resolve(res), 5e3);
-        }, onError); */
-
-        return apiManager.downloadFile(options).then(deferred.resolve, onError);
-      }
-    };
-
-    tryDownload();
-
-    //console.log('Will download file:', fileName, url);
-    return deferred;
+  public downloadMediaVoid(options: DownloadMediaOptions): DownloadBlob {
+    return this.downloadMedia(options, 'void');
   }
 
   public upload(file: File | Blob, fileName?: string) {
     if(!fileName) {
-      const mimeType = file?.type;
-      if(mimeType) { // the same like apiFileName in appMessagesManager for upload!
-        const ext = this.uploadId++ + '.' + mimeType.split('/')[1];
-  
-        if(['image/jpeg', 'image/png', 'image/bmp'].indexOf(mimeType) >= 0) {
-          fileName = 'photo' + ext;
-        } else if(mimeType.indexOf('audio/') === 0 || ['video/ogg'].indexOf(mimeType) >= 0) {
-          fileName = 'audio' + ext;
-        } else if(mimeType.indexOf('video/') === 0) {
-          fileName = 'video' + ext;
-        } else {
-          fileName = 'document' + ext;
-        }
-        
-      } else {
-        fileName = 'upload-' + this.uploadId++;
-      }
+      fileName = getFileNameForUpload(file);
     }
 
     const deferred = this.getNewDeferred<InputFile>(fileName);
-    apiManager.uploadFile({file, fileName}).then(deferred.resolve, deferred.reject);
+    this.managers.apiFileManager.upload({file, fileName}).then(deferred.resolve, deferred.reject);
 
     deferred.finally(() => {
       this.clearDownload(fileName);
@@ -189,75 +177,33 @@ export class AppDownloadManager {
     return deferred as any as CancellablePromise<InputFile>;
   }
 
-  public getDownload(fileName: string) {
-    return this.downloads[fileName];
+  public getDownload(fileName: string, type?: DownloadType) {
+    const d = this.downloads[fileName];
+    return d && d[type];
   }
 
-  public addProgressCallback(fileName: string, callback: ProgressCallback) {
-    const progress = this.progress[fileName];
-    (this.progressCallbacks[fileName] ?? (this.progressCallbacks[fileName] = [])).push(callback);
+  // public addProgressCallback(fileName: string, callback: ProgressCallback) {
+  //   const progress = this.progress[fileName];
+  //   (this.progressCallbacks[fileName] ?? (this.progressCallbacks[fileName] = [])).push(callback);
 
-    if(progress) {
-      callback(progress);
-    }
-  }
+  //   if(progress) {
+  //     callback(progress);
+  //   }
+  // }
 
-  public createDownloadAnchor(url: string, fileName: string, onRemove?: () => void) {
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = fileName;
-    a.target = '_blank';
-    
-    a.style.position = 'absolute';
-    a.style.top = '1px';
-    a.style.left = '1px';
-    
-    document.body.append(a);
-  
-    try {
-      var clickEvent = document.createEvent('MouseEvents');
-      clickEvent.initMouseEvent('click', true, false, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null);
-      a.dispatchEvent(clickEvent);
-    } catch (e) {
-      console.error('Download click error', e);
-      try {
-        a.click();
-      } catch (e) {
-        window.open(url as string, '_blank');
-      }
-    }
-    
-    setTimeout(() => {
-      a.remove();
-      onRemove && onRemove();
-    }, 100);
-  }
-
-  /* public downloadToDisc(fileName: string, url: string) {
-    this.createDownloadAnchor(url);
-  
-    return this.download(fileName, url);
-  } */
-
-  public downloadToDisc(options: DownloadOptions, discFileName: string) {
-    const download = this.download(options);
-    download/* .promise */.then(blob => {
-      const objectURL = URL.createObjectURL(blob);
-      this.createDownloadAnchor(objectURL, discFileName, () => {
-        URL.revokeObjectURL(objectURL);
+  public downloadToDisc(options: DownloadMediaOptions) {
+    const promise = this.downloadMedia(options);
+    promise.then((blob) => {
+      const url = URL.createObjectURL(blob);
+      const media = options.media;
+      const downloadOptions = media._ === 'document' ? getDocumentDownloadOptions(media) : getPhotoDownloadOptions(media as any, {} as any);
+      const fileName = (options.media as Document.document).file_name || getFileNameByLocation(downloadOptions.location);
+      createDownloadAnchor(url, fileName, () => {
+        URL.revokeObjectURL(url);
       });
-    });
-  
-    return download;
-  }
+    }, noop);
 
-  public getCacheContext(media: MyPhoto | MyDocument, thumbSize: string = 'full'): ThumbCache {
-    /* if(media._ === 'photo' && thumbSize !== 'i') {
-      thumbSize = 'full';
-    } */
-
-    const cache = this.thumbsCache[media._][media.id] ?? (this.thumbsCache[media._][media.id] = {});
-    return cache[thumbSize] ?? (cache[thumbSize] = {downloaded: 0, url: ''});
+    return promise;
   }
 }
 

@@ -21,7 +21,7 @@ export default function confirmationPopup(options: PopupConfirmationOptions) {
     };
 
     const buttons = addCancelButton([button]);
-    const cancelButton = buttons.find(button => button.isCancel);
+    const cancelButton = buttons.find((button) => button.isCancel);
     cancelButton.callback = () => {
       reject();
     };

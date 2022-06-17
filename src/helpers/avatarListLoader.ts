@@ -19,8 +19,8 @@ export default class AvatarListLoader<Item extends {photoId: Photo.photo['id']}>
         if(this.peerId.isAnyChat() || !older) return Promise.resolve({count: 0, items: []}); // ! это значит, что открыло аватар чата, но следующих фотографий нет.
 
         const maxId = anchor?.photoId;
-        return this.managers.appPhotosManager.getUserPhotos(this.peerId, maxId, loadCount).then(value => {
-          const items = value.photos.map(photoId => {
+        return this.managers.appPhotosManager.getUserPhotos(this.peerId, maxId, loadCount).then((value) => {
+          const items = value.photos.map((photoId) => {
             return {element: null as HTMLElement, photoId} as any;
           });
 

@@ -7,7 +7,7 @@
 import { SliderSuperTabEventable } from "../../../sliderTab";
 import PrivacySection from "../../../privacySection";
 import { LangPackKey } from "../../../../lib/langPack";
-import { PrivacyType } from "../../../../lib/appManagers/appPrivacyManager";
+import PrivacyType from "../../../../lib/appManagers/utils/privacy/privacyType";
 
 export default class AppPrivacyAddToGroupsTab extends SliderSuperTabEventable {
   protected init() {

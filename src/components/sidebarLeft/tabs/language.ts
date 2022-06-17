@@ -7,7 +7,6 @@
 import { SettingSection } from "..";
 import { randomLong } from "../../../helpers/random";
 import I18n from "../../../lib/langPack";
-import apiManager from "../../../lib/mtproto/mtprotoworker";
 import RadioField from "../../radioField";
 import Row, { RadioFormFromRows } from "../../row";
 import { SliderSuperTab } from "../../slider"
@@ -22,7 +21,7 @@ export default class AppLanguageTab extends SliderSuperTab {
 
     const radioRows: Map<string, Row> = new Map();
 
-    const promise = apiManager.invokeApiCacheable('langpack.getLanguages', {
+    const promise = this.managers.apiManager.invokeApiCacheable('langpack.getLanguages', {
       lang_pack: 'macos'
     }).then((languages) => {
       const random = randomLong();
@@ -43,7 +42,7 @@ export default class AppLanguageTab extends SliderSuperTab {
         I18n.getLangPack(value);
       });
   
-      I18n.getCacheLangPack().then(langPack => {
+      I18n.getCacheLangPack().then((langPack) => {
         const row = radioRows.get(langPack.lang_code);
         if(!row) {
           console.error('no row', row, langPack);

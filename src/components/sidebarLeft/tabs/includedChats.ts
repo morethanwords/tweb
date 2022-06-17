@@ -39,7 +39,7 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
 
     this.header.append(this.confirmBtn);
 
-    this.confirmBtn.addEventListener('click', () => {
+    this.confirmBtn.addEventListener('click', async() => {
       const selected = this.selector.getSelected();
 
       //this.filter.pFlags = {};
@@ -98,18 +98,20 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
       });
       
       this.filter[this.type === 'included' ? 'includePeerIds' : 'excludePeerIds'] = peerIds;
-      this.filter[this.type === 'included' ? 'include_peers' : 'exclude_peers'] = peerIds.map(peerId => this.managers.appPeersManager.getInputPeerById(peerId));
-      //this.filter.pinned_peers = this.filter.pinned_peers.filter(peerId => this.filter.include_peers.includes(peerId));
+      this.filter[this.type === 'included' ? 'include_peers' : 'exclude_peers'] = await Promise.all(peerIds.map((peerId) => this.managers.appPeersManager.getInputPeerById(peerId)));
+      //this.filter.pinned_peers = this.filter.pinned_peers.filter((peerId) => this.filter.include_peers.includes(peerId));
 
       this.editFolderTab.setFilter(this.filter, false);
       this.close();
     });
 
     this.dialogsByFilters = new Map();
-    return this.managers.appMessagesManager.filtersStorage.getDialogFilters().then(filters => {
-      for(const filter of filters) {
-        this.dialogsByFilters.set(filter, new Set(this.managers.appMessagesManager.dialogsStorage.getFolderDialogs(filter.id).map(d => d.peerId)));
-      }
+    return this.managers.filtersStorage.getDialogFilters().then(async(filters) => {
+      await Promise.all(filters.map(async(filter) => {
+        const dialogs = await this.managers.dialogsStorage.getFolderDialogs(filter.id);
+        const peerIds = dialogs.map((d) => d.peerId);
+        this.dialogsByFilters.set(filter, new Set(peerIds));
+      }));
     });
   }
 
@@ -128,13 +130,12 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
     //const other = this.type === 'included' ? this.filter.exclude_peers : this.filter.include_peers;
 
     await this.managers.appUsersManager.getContacts();
-    peerIds.forEach(peerId => {
+    peerIds.forEach((peerId) => {
       //if(other.includes(peerId)) return;
 
       const {dom} = appDialogsManager.addDialogNew({
-        dialog: peerId,
+        peerId: peerId,
         container: this.selector.scrollable,
-        drawStatus: false,
         rippleEnabled: true,
         avatarSize: 46
       });
@@ -153,7 +154,7 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
       });
 
       const joined = join(foundInFilters, false);
-      joined.forEach(el => {
+      joined.forEach((el) => {
         dom.lastMessageSpan.append(el);
       });
     });

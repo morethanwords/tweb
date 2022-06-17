@@ -1,5 +1,5 @@
-import getManagers from "./getManagers";
-import { AppManager } from "./manager";
+import type getProxiedManagers from "./getProxiedManagers";
+import type { AppManager } from "./manager";
 
 // export type AppManagers = {
 //   appPeersManager: AppPeersManager;
@@ -21,4 +21,4 @@ import { AppManager } from "./manager";
 //   appPrivacyManager: AppPrivacyManager;
 // };
 // export type AppManagers = {[lol in keyof AppManager]: AppManager[lol]};
-export type AppManagers = ReturnType<typeof getManagers>;
+export type AppManagers = ReturnType<typeof getProxiedManagers>;

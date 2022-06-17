@@ -25,7 +25,7 @@ export default class ListLoader<T extends {}, P extends {}> {
   public reverse = false; // reverse means next = higher msgid
 
   protected loadMore: (anchor: T, older: boolean, loadCount: number) => Promise<ListLoaderResult<T>>;
-  protected processItem: (item: P) => T;
+  protected processItem: (item: P) => T | Promise<T>;
   protected loadCount = 50;
   protected loadWhenLeft = 20;
   
@@ -158,7 +158,7 @@ export default class ListLoader<T extends {}, P extends {}> {
     }
 
     anchor ??= this.current;
-    promise = this.loadMore(anchor, older, this.loadCount).then(result => {
+    promise = this.loadMore(anchor, older, this.loadCount).then(async(result) => {
       if((older ? this.loadPromiseDown : this.loadPromiseUp) !== promise) {
         return;
       }
@@ -171,20 +171,23 @@ export default class ListLoader<T extends {}, P extends {}> {
         this.count = result.count || result.items.length;
       }
 
+      const processedArr: (Promise<any> | any)[] = [];
       const method = older ? result.items.forEach.bind(result.items) : forEachReverse.bind(null, result.items);
       method((item: any) => {
         const processed = this.processItem ? this.processItem(item) : item;
 
         if(!processed) return;
-
-        if(older) {
-          if(this.reverse) this.previous.unshift(processed);
-          else this.next.push(processed);
-        } else {
-          if(this.reverse) this.next.push(processed);
-          else this.previous.unshift(processed);
-        }
+        processedArr.push(processed);
       });
+
+      const results = await Promise.all(processedArr);
+      if(older) {
+        if(this.reverse) this.previous.unshift(...results);
+        else this.next.push(...results);
+      } else {
+        if(this.reverse) this.next.push(...results);
+        else this.previous.unshift(...results);
+      }
 
       this.onLoadedMore && this.onLoadedMore();
     }, () => {}).then(() => {

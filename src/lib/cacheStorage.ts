@@ -132,7 +132,7 @@ export default class CacheStorageController {
   }
 
   public static toggleStorage(enabled: boolean) {
-    return Promise.all(this.STORAGES.map(storage => {
+    return Promise.all(this.STORAGES.map((storage) => {
       storage.useStorage = enabled;
       
       if(!enabled) {

@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { IS_TOUCH_SUPPORTED } from "../../environment/touchSupport";
+import IS_TOUCH_SUPPORTED from "../../environment/touchSupport";
 import AppSelectPeers from "../appSelectPeers";
 import PopupElement from ".";
 import { LangPackKey, _i18n } from "../../lib/langPack";

@@ -4,16 +4,14 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { putPreloader } from "../components/misc";
+import { putPreloader } from "../components/putPreloader";
 import Scrollable from '../components/scrollable';
-import appStateManager from "../lib/appManagers/appStateManager";
-import apiManager from "../lib/mtproto/mtprotoworker";
 import Page from "./page";
 import InputField from "../components/inputField";
 import CheckboxField from "../components/checkboxField";
 import Button from "../components/button";
 import fastSmoothScroll from "../helpers/fastSmoothScroll";
-import { IS_TOUCH_SUPPORTED } from "../environment/touchSupport";
+import IS_TOUCH_SUPPORTED from "../environment/touchSupport";
 import App from "../config/app";
 import I18n, { _i18n, i18n } from "../lib/langPack";
 import lottieLoader from "../lib/rlottie/lottieLoader";
@@ -41,6 +39,7 @@ import TelInputField from "../components/telInputField";
 import IS_EMOJI_SUPPORTED from "../environment/emojiSupport";
 import setInnerHTML from "../helpers/dom/setInnerHTML";
 import wrapEmojiText from "../lib/richTextProcessor/wrapEmojiText";
+import apiManagerProxy from "../lib/mtproto/mtprotoworker";
 
 //import _countries from '../countries_pretty.json';
 let btnNext: HTMLButtonElement = null, btnQr: HTMLButtonElement;
@@ -61,12 +60,12 @@ let onFirstMount = () => {
     console.log('Added test country to list!');
   } */
 
-  //const countries: Country[] = _countries.default.filter(c => c.emoji);
-  // const countries: Country[] = Countries.filter(c => c.emoji).sort((a, b) => a.name.localeCompare(b.name));
-  // const countries = I18n.countriesList.filter(country => !country.pFlags?.hidden);
+  //const countries: Country[] = _countries.default.filter((c) => c.emoji);
+  // const countries: Country[] = Countries.filter((c) => c.emoji).sort((a, b) => a.name.localeCompare(b.name));
+  // const countries = I18n.countriesList.filter((country) => !country.pFlags?.hidden);
   const setCountries = () => {
     countries = I18n.countriesList
-    .filter(country => !country.pFlags?.hidden)
+    .filter((country) => !country.pFlags?.hidden)
     .sort((a, b) => (a.name || a.default_name).localeCompare(b.name || b.default_name));
   };
   let countries: HelpCountry.helpCountry[]; 
@@ -161,8 +160,8 @@ let onFirstMount = () => {
 
     replaceContent(countryInput, i18n(defaultName as any));
     simulateEvent(countryInput, 'input');
-    lastCountrySelected = countries.find(c => c.default_name === defaultName);
-    lastCountryCodeSelected = lastCountrySelected.country_codes.find(_countryCode => _countryCode.country_code === countryCode);
+    lastCountrySelected = countries.find((c) => c.default_name === defaultName);
+    lastCountryCodeSelected = lastCountrySelected.country_codes.find((_countryCode) => _countryCode.country_code === countryCode);
     
     telInputField.value = telInputField.lastValue = phoneCode;
     hidePicker();
@@ -181,7 +180,7 @@ let onFirstMount = () => {
       initSelect();
     } else {
       countries.forEach((c) => {
-        liMap.get(c.iso2).forEach(li => li.style.display = '');
+        liMap.get(c.iso2).forEach((li) => li.style.display = '');
       });
     }
 
@@ -251,16 +250,16 @@ let onFirstMount = () => {
         c.iso2
       ];
 
-      names.filter(Boolean).forEach(name => {
-        const abbr = name.split(' ').filter(word => /\w/.test(word)).map(word => word[0]).join('');
+      names.filter(Boolean).forEach((name) => {
+        const abbr = name.split(' ').filter((word) => /\w/.test(word)).map((word) => word[0]).join('');
         if(abbr.length > 1) {
           names.push(abbr);
         }
       });
 
-      let good = !!names.filter(Boolean).find(str => str.toLowerCase().indexOf(_value) !== -1)/*  === 0 */;//i.test(c.name);
+      let good = !!names.filter(Boolean).find((str) => str.toLowerCase().indexOf(_value) !== -1)/*  === 0 */;//i.test(c.name);
 
-      liMap.get(c.iso2).forEach(li => li.style.display = good ? '' : 'none');
+      liMap.get(c.iso2).forEach((li) => li.style.display = good ? '' : 'none');
       if(good) matches.push(c);
     });
 
@@ -275,7 +274,7 @@ let onFirstMount = () => {
       return false;
     } else  */if(matches.length === 0) {
       countries.forEach((c) => {
-        liMap.get(c.iso2).forEach(li => li.style.display = '');
+        liMap.get(c.iso2).forEach((li) => li.style.display = '');
       });
     } else if(matches.length === 1 && key === 'Enter') {
       selectCountryByTarget(liMap.get(matches[0].iso2)[0]);
@@ -340,16 +339,16 @@ let onFirstMount = () => {
 
   signedCheckboxField.input.addEventListener('change', () => {
     const keepSigned = signedCheckboxField.checked;
-    appStateManager.pushToState('keepSigned', keepSigned);
+    rootScope.managers.appStateManager.pushToState('keepSigned', keepSigned);
     
     AppStorage.toggleStorage(keepSigned);
     CacheStorageController.toggleStorage(keepSigned);
-    apiManager.toggleStorage(keepSigned);
+    apiManagerProxy.toggleStorage(keepSigned);
     sessionStorage.toggleStorage(keepSigned);
   });
 
-  appStateManager.getState().then(state => {
-    if(!appStateManager.storage.isAvailable()) {
+  apiManagerProxy.getState().then((state) => {
+    if(!stateStorage.isAvailable()) {
       signedCheckboxField.checked = false;
       signedCheckboxField.label.classList.add('checkbox-disabled');
     } else {
@@ -373,7 +372,7 @@ let onFirstMount = () => {
     //return;
 
     let phone_number = telInputField.value;
-    apiManager.invokeApi('auth.sendCode', {
+    rootScope.managers.apiManager.invokeApi('auth.sendCode', {
       phone_number: phone_number,
       api_id: App.id,
       api_hash: App.hash,
@@ -384,8 +383,8 @@ let onFirstMount = () => {
     }).then((code) => {
       //console.log('got code', code);
 
-      import('./pageAuthCode').then(m => m.default.mount(Object.assign(code, {phone_number: phone_number})));
-    }).catch(err => {
+      import('./pageAuthCode').then((m) => m.default.mount(Object.assign(code, {phone_number: phone_number})));
+    }).catch((err) => {
       toggle();
 
       switch(err.type) {
@@ -419,7 +418,7 @@ let onFirstMount = () => {
       qrMounted = true;
     }
 
-    promise.then(module => {
+    promise.then((module) => {
       module.default.mount();
 
       setTimeout(() => {
@@ -444,7 +443,7 @@ let onFirstMount = () => {
   page.pageEl.querySelector('.container').append(h4, subtitle, inputWrapper);
 
   let tryAgain = () => {
-    apiManager.invokeApi('help.getNearestDc').then((nearestDcResult) => {
+    rootScope.managers.apiManager.invokeApi('help.getNearestDc').then((nearestDcResult) => {
       const langPack = stateStorage.getFromCache('langPack');
       if(langPack && !langPack.countries?.hash) {
         I18n.getLangPack(langPack.lang_code).then(() => {
@@ -457,13 +456,13 @@ let onFirstMount = () => {
 
       let promise: Promise<any>;
       if(nearestDcResult.nearest_dc !== nearestDcResult.this_dc) {
-        promise = apiManager.getNetworker(nearestDcResult.nearest_dc).then(() => {
+        promise = rootScope.managers.apiManager.getNetworkerVoid(nearestDcResult.nearest_dc).then(() => {
           done.push(nearestDcResult.nearest_dc);
         });
       }
 
       (promise || Promise.resolve()).then(() => {
-        done.forEach(dcId => {
+        done.forEach((dcId) => {
           dcs.delete(dcId);
         });
 
@@ -479,7 +478,7 @@ let onFirstMount = () => {
           }
 
           setTimeout(() => { // * если одновременно запросить все нетворкеры, не будет проходить запрос на код
-            apiManager.getNetworker(dcId/* , {fileDownload: true} */).finally(g);
+            rootScope.managers.apiManager.getNetworkerVoid(dcId/* , {fileDownload: true} */).finally(g);
           }, /* done.includes(dcId) ? 0 :  */3000);
         };
         
@@ -518,7 +517,7 @@ const page = new Page('page-sign', true, onFirstMount, () => {
     btnQr.removeAttribute('disabled');
   }
 
-  appStateManager.pushToState('authState', {_: 'authStateSignIn'});
+  rootScope.managers.appStateManager.pushToState('authState', {_: 'authStateSignIn'});
 });
 
 export default page;

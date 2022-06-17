@@ -9,7 +9,7 @@ import { AppManagers } from "../../lib/appManagers/managers";
 import rootScope from "../../lib/rootScope";
 import wrapSticker from "./sticker";
 
-export default function wrapLocalSticker({emoji, width, height, managers = rootScope.managers}: {
+export default async function wrapLocalSticker({emoji, width, height, managers = rootScope.managers}: {
   doc?: MyDocument,
   url?: string,
   emoji?: string,
@@ -19,7 +19,7 @@ export default function wrapLocalSticker({emoji, width, height, managers = rootS
 }) {
   const container = document.createElement('div');
 
-  const doc = managers.appStickersManager.getAnimatedEmojiSticker(emoji);
+  const doc = await managers.appStickersManager.getAnimatedEmojiSticker(emoji);
   if(doc) {
     wrapSticker({
       doc,

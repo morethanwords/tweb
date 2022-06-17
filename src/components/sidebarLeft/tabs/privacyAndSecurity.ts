@@ -8,10 +8,8 @@ import { SliderSuperTabEventable } from "../../sliderTab";
 import { SettingSection } from "..";
 import Row from "../../row";
 import { AccountPassword, Authorization, InputPrivacyKey, Updates } from "../../../layer";
-import { PrivacyType } from "../../../lib/appManagers/appPrivacyManager";
 import AppPrivacyPhoneNumberTab from "./privacy/phoneNumber";
 import AppTwoStepVerificationTab from "./2fa";
-import passwordManager from "../../../lib/mtproto/passwordManager";
 import AppTwoStepVerificationEnterPasswordTab from "./2fa/enterPassword";
 import AppTwoStepVerificationEmailConfirmationTab from "./2fa/emailConfirmation";
 import AppPrivacyLastSeenTab from "./privacy/lastSeen";
@@ -20,7 +18,6 @@ import AppPrivacyForwardMessagesTab from "./privacy/forwardMessages";
 import AppPrivacyAddToGroupsTab from "./privacy/addToGroups";
 import AppPrivacyCallsTab from "./privacy/calls";
 import AppActiveSessionsTab from "./activeSessions";
-import apiManager from "../../../lib/mtproto/mtprotoworker";
 import AppBlockedUsersTab from "./blockedUsers";
 import rootScope from "../../../lib/rootScope";
 import { i18n, LangPackKey, _i18n } from "../../../lib/langPack";
@@ -30,6 +27,8 @@ import PopupPeer from "../../popups/peer";
 import Button from "../../button";
 import toggleDisability from "../../../helpers/dom/toggleDisability";
 import convertKeyToInputKey from "../../../helpers/string/convertKeyToInputKey";
+import getPrivacyRulesDetails from "../../../lib/appManagers/utils/privacy/getPrivacyRulesDetails";
+import PrivacyType from "../../../lib/appManagers/utils/privacy/privacyType";
 
 export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
   private activeSessionsRow: Row;
@@ -72,7 +71,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
             tab.email = passwordState.email_unconfirmed_pattern;
             tab.length = 6;
             tab.isFirst = true;
-            passwordManager.resendPasswordEmail();
+            this.managers.passwordManager.resendPasswordEmail();
           } else {
             tab = this.slider.createTab(AppTwoStepVerificationTab);
           }
@@ -113,7 +112,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
 
       this.listenerSetter.add(rootScope)('peer_block', () => {
         /* const {blocked, peerId} = update;
-        if(!blocked) blockedPeerIds.findAndSplice(p => p === peerId);
+        if(!blocked) blockedPeerIds.findAndSplice((p) => p === peerId);
         else blockedPeerIds.unshift(peerId);
         blockedCount += blocked ? 1 : -1;
         setBlockedCount(blockedCount); */
@@ -121,7 +120,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
       });
 
       const updateBlocked = () => {
-        this.managers.appUsersManager.getBlocked().then(res => {
+        this.managers.appUsersManager.getBlocked().then((res) => {
           blockedUsersRow.freezed = false;
           setBlockedCount(res.count);
           blockedPeerIds = res.peerIds;
@@ -130,7 +129,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
 
       updateBlocked();
 
-      passwordManager.getState().then(state => {
+      this.managers.passwordManager.getState().then((state) => {
         passwordState = state;
         replaceContent(twoFactorRow.subtitle, i18n(state.pFlags.has_password ? 'PrivacyAndSecurity.Item.On' : 'PrivacyAndSecurity.Item.Off'));
         twoFactorRow.freezed = false;
@@ -204,8 +203,8 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
           return;
         }
 
-        this.managers.appPrivacyManager.getPrivacy(key).then(rules => {
-          const details = this.managers.appPrivacyManager.getPrivacyRulesDetails(rules);
+        this.managers.appPrivacyManager.getPrivacy(key).then((rules) => {
+          const details = getPrivacyRulesDetails(rules);
           const langKey = details.type === PrivacyType.Everybody ? 'PrivacySettingsController.Everbody' : (details.type === PrivacyType.Contacts ? 'PrivacySettingsController.MyContacts' : 'PrivacySettingsController.Nobody');
           const disallowLength = details.disallowPeers.users.length + details.disallowPeers.chats.length;
           const allowLength = details.allowPeers.users.length + details.allowPeers.chats.length;
@@ -243,7 +242,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
       const section = new SettingSection({name: 'Privacy.SensitiveContent'});
       section.container.classList.add('hide');
 
-      promises.push(apiManager.invokeApi('account.getContentSettings').then(settings => {
+      promises.push(this.managers.apiManager.invokeApi('account.getContentSettings').then((settings) => {
         if(!settings.pFlags.sensitive_can_change) {
           return;
         }
@@ -266,7 +265,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
             return;
           }
           
-          apiManager.invokeApi('account.setContentSettings', {
+          this.managers.apiManager.invokeApi('account.setContentSettings', {
             sensitive_enabled: _enabled
           });
         }, {once: true});
@@ -301,7 +300,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
       this.listenerSetter.add(deleteButton)('click', onDeleteClick);
       section.content.append(deleteButton);
 
-      /* promises.push(apiManager.invokeApi('messages.getAllDrafts').then(drafts => {
+      /* promises.push(apiManager.invokeApi('messages.getAllDrafts').then((drafts) => {
         const draftsRow = new Row({
           titleLangKey: 'PrivacyDeleteCloudDrafts',
           subtitleLangKey: 'Drafts',
@@ -320,7 +319,7 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
   }
 
   public updateActiveSessions() {
-    apiManager.invokeApi('account.getAuthorizations').then(auths => {
+    this.managers.apiManager.invokeApi('account.getAuthorizations').then((auths) => {
       this.activeSessionsRow.freezed = false;
       this.authorizations = auths.authorizations;
       _i18n(this.activeSessionsRow.subtitle, 'Privacy.Devices', [this.authorizations.length]);

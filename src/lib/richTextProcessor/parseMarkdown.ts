@@ -133,7 +133,7 @@ export default function parseMarkdown(raw: string, currentEntities: MessageEntit
 
     let diff = length - newText.length;
     if(diff) {
-      currentEntities.forEach(entity => {
+      currentEntities.forEach((entity) => {
         entity.offset = Math.max(0, entity.offset - diff);
       });
     }
@@ -143,7 +143,7 @@ export default function parseMarkdown(raw: string, currentEntities: MessageEntit
     diff = length - newText.length;
     length = newText.length;
     if(diff) {
-      currentEntities.forEach(entity => {
+      currentEntities.forEach((entity) => {
         if((entity.offset + entity.length) > length) {
           entity.length = length - entity.offset;
         }

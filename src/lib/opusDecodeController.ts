@@ -5,8 +5,12 @@
  */
 
 import { MOUNT_CLASS_TO } from "../config/debug";
+import IS_OPUS_SUPPORTED from "../environment/opusSupport";
 import { IS_SAFARI } from "../environment/userAgent";
+import { Modify } from "../types";
 import { logger, LogTypes } from "./logger";
+import apiManagerProxy from "./mtproto/mtprotoworker";
+import type { ConvertWebPTask } from "./webp/webpWorkerController";
 
 type Result = {
   bytes: Uint8Array, 
@@ -21,20 +25,20 @@ type Task = {
   timeout: number
 };
 
+export interface ConvertOpusTask extends Modify<ConvertWebPTask, {type: 'convertOpus'}> {
+  type: 'convertOpus'
+}
+
 export class OpusDecodeController {
   private worker: Worker;
-  private wavWorker : Worker;
+  private wavWorker: Worker;
   private sampleRate = 48000;
   private tasks: Array<Task> = [];
   private keepAlive = false;
-  private isPlaySupportedResult: boolean;
   private log = logger('OPUS', LogTypes.Error);
 
   public isPlaySupported() {
-    if(this.isPlaySupportedResult !== undefined) return this.isPlaySupportedResult;
-
-    const audio = document.createElement('audio');
-    return this.isPlaySupportedResult = !!(audio.canPlayType && audio.canPlayType('audio/ogg;').replace(/no/, ''))/*  && false */;
+    return IS_OPUS_SUPPORTED;
   }
 
   public loadWavWorker() {
@@ -171,9 +175,9 @@ export class OpusDecodeController {
   }
 
   public async decode(typedArray: Uint8Array, withWaveform = false) {
-    return this.pushDecodeTask(typedArray, withWaveform).then(result => {
+    return this.pushDecodeTask(typedArray, withWaveform).then(async(result) => {
       const dataBlob = new Blob([result.bytes], {type: "audio/wav"});
-      return {url: URL.createObjectURL(dataBlob), waveform: result.waveform};
+      return {url: await apiManagerProxy.invoke('createObjectURL', dataBlob), waveform: result.waveform};
     });
   }
 }
