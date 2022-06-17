@@ -35,6 +35,9 @@ import MovablePanel from "../../helpers/movablePanel";
 import findUpClassName from "../../helpers/dom/findUpClassName";
 import safeAssign from "../../helpers/object/safeAssign";
 import toggleClassName from "../../helpers/toggleClassName";
+import { AppManagers } from "../../lib/appManagers/managers";
+import themeController from "../../helpers/themeController";
+import groupCallsController from "../../lib/calls/groupCallsController";
 
 export enum GROUP_CALL_PARTICIPANT_MUTED_STATE {
   UNMUTED,
@@ -118,9 +121,6 @@ let previousState: MovableState = {
 const className = 'group-call';
 
 export default class PopupGroupCall extends PopupElement {
-  private appGroupCallsManager: AppGroupCallsManager;
-  private appPeersManager: AppPeersManager;
-  private appChatsManager: AppChatsManager;
   private instance: GroupCallInstance;
   private groupCallTitle: GroupCallTitleElement;
   private groupCallDescription: GroupCallDescriptionElement;
@@ -139,23 +139,17 @@ export default class PopupGroupCall extends PopupElement {
   private btnVideo: HTMLDivElement;
   private btnScreen: HTMLDivElement;
 
-  constructor(options: {
-    appGroupCallsManager: AppGroupCallsManager,
-    appPeersManager: AppPeersManager,
-    appChatsManager: AppChatsManager,
-  }) {
+  constructor() {
     super('popup-group-call', undefined, {
       body: true,
       withoutOverlay: true,
       closable: true
     });
 
-    safeAssign(this, options);
-
     this.videosCount = 0;
     this.container.classList.add(className, 'night');
 
-    const instance = this.instance = this.appGroupCallsManager.groupCall;
+    const instance = this.instance = groupCallsController.groupCall;
     const {listenerSetter} = this;
 
     if(!IS_APPLE_MOBILE) {
@@ -222,13 +216,13 @@ export default class PopupGroupCall extends PopupElement {
         this.videosCount = length;
         this.toggleBigLayout();
       },
-      ...options
+      managers: this.managers
     });
     this.groupCallParticipants = new GroupCallParticipantsElement({
       appendTo: this.body,
       instance,
       listenerSetter,
-      ...options
+      managers: this.managers
     });
 
     this.movablePanel = new MovablePanel({
@@ -372,12 +366,12 @@ export default class PopupGroupCall extends PopupElement {
     }
   };
   
-  private onLeaveClick = () => {
+  private onLeaveClick = async() => {
     const hangUp = (discard: boolean) => {
       this.instance.hangUp(discard);
     };
 
-    if(this.appChatsManager.hasRights(this.instance.chatId, 'manage_call')) {
+    if(await this.managers.appChatsManager.hasRights(this.instance.chatId, 'manage_call')) {
       new PopupPeer('popup-end-video-chat', {
         titleLangKey: 'VoiceChat.End.Title',
         descriptionLangKey: 'VoiceChat.End.Text',
@@ -416,7 +410,7 @@ export default class PopupGroupCall extends PopupElement {
     if(isFull !== wasFullScreen) {
       animationIntersector.checkAnimations(isFull);
 
-      rootScope.setThemeColor(isFull ? '#000000' : undefined);
+      themeController.setThemeColor(isFull ? '#000000' : undefined);
     }
   };
 
@@ -434,7 +428,7 @@ export default class PopupGroupCall extends PopupElement {
     let buttons: HTMLElement[];
     if(isBig && !wasBig) { // fix buttons transition to 0 opacity
       buttons = Array.from(this.buttonsContainer.children) as HTMLElement[];
-      buttons.forEach(element => {
+      buttons.forEach((element) => {
         element.style.opacity = '0';
       });
 
@@ -447,7 +441,7 @@ export default class PopupGroupCall extends PopupElement {
 
     if(buttons) {
       // window.requestAnimationFrame(() => {
-        buttons.forEach(element => {
+        buttons.forEach((element) => {
           element.style.opacity = '';
         });
       // });

@@ -59,11 +59,13 @@ export type EventListenerListeners = Record<string, Function>;
  * Should add listener callback only once
  */
 
+type ListenerObject<T> = {callback: T, options: boolean | AddEventListenerOptions};
+
 // type EventLitenerCallback<T> = (data: T) => 
 // export default class EventListenerBase<Listeners extends {[name: string]: Function}> {
 export default class EventListenerBase<Listeners extends EventListenerListeners> {
   protected listeners: Partial<{
-    [k in keyof Listeners]: Array<{callback: Listeners[k], options: boolean | AddEventListenerOptions}>
+    [k in keyof Listeners]: Array<ListenerObject<Listeners[k]>>
   }>;
   protected listenerResults: Partial<{
     [k in keyof Listeners]: ArgumentTypes<Listeners[k]>
@@ -111,7 +113,21 @@ export default class EventListenerBase<Listeners extends EventListenerListeners>
     //e.remove(this, name, callback);
   }
 
-  // * must be protected, but who cares
+  protected invokeListenerCallback<T extends keyof Listeners, L extends ListenerObject<any>>(name: T, listener: L, ...args: ArgumentTypes<L['callback']>) {
+    let result: any;
+    try {
+      result = listener.callback(...args);
+    } catch(err) {
+      console.error(err);
+    }
+
+    if((listener.options as AddEventListenerOptions)?.once) {
+      this.removeEventListener(name, listener.callback);
+    }
+
+    return result;
+  }
+
   private _dispatchEvent<T extends keyof Listeners>(name: T, collectResults: boolean, ...args: ArgumentTypes<Listeners[T]>) {
     if(this.reuseResults) {
       this.listenerResults[name] = args;
@@ -129,19 +145,9 @@ export default class EventListenerBase<Listeners extends EventListenerListeners>
           return;
         }
 
-        let result: any;
-        try {
-          result = listener.callback(...args);
-        } catch(err) {
-          console.error(err);
-        }
-
+        const result = this.invokeListenerCallback(name, listener, ...args);
         if(arr) {
           arr.push(result);
-        }
-
-        if((listener.options as AddEventListenerOptions)?.once) {
-          this.removeEventListener(name, listener.callback);
         }
       });
     }

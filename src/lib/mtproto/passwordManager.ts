@@ -10,13 +10,12 @@
  */
 
 import type { AccountPassword, AccountUpdatePasswordSettings, InputCheckPasswordSRP, PasswordKdfAlgo } from '../../layer';
-import { MOUNT_CLASS_TO } from '../../config/debug';
-import apiManager from './mtprotoworker';
 import randomize from '../../helpers/array/randomize';
+import { AppManager } from '../appManagers/manager';
 
-export class PasswordManager {
+export class PasswordManager extends AppManager {
   public getState(): Promise<AccountPassword> {
-    return apiManager.invokeApi('account.getPassword').then((result) => {
+    return this.apiManager.invokeApi('account.getPassword').then((result) => {
       return result;
     });
   }
@@ -30,7 +29,7 @@ export class PasswordManager {
     //state = Object.assign({}, state);
     //state.new_algo = Object.assign({}, state.new_algo);
 
-    return this.getState().then(state => {
+    return this.getState().then((state) => {
       let currentHashPromise: Promise<InputCheckPasswordSRP>;
       let newHashPromise: Promise<Uint8Array>;
       const params: AccountUpdatePasswordSettings = {
@@ -43,7 +42,7 @@ export class PasswordManager {
       };
   
       if(settings.currentPassword) {
-        currentHashPromise = apiManager.invokeCrypto('computeSRP', settings.currentPassword, state, false) as any;
+        currentHashPromise = this.cryptoWorker.invokeCrypto('computeSRP', settings.currentPassword, state, false) as any;
       } else {
         currentHashPromise = Promise.resolve({
           _: 'inputCheckPasswordEmpty'
@@ -58,7 +57,7 @@ export class PasswordManager {
       newAlgo.salt1 = salt1;
   
       if(settings.newPassword) {
-        newHashPromise = apiManager.invokeCrypto('computeSRP', settings.newPassword, state, true) as any;
+        newHashPromise = this.cryptoWorker.invokeCrypto('computeSRP', settings.newPassword, state, true) as any;
       } else {
         newHashPromise = Promise.resolve(new Uint8Array());
       }
@@ -68,19 +67,19 @@ export class PasswordManager {
         params.new_settings.new_algo = newAlgo;
         params.new_settings.new_password_hash = hashes[1];
   
-        return apiManager.invokeApi('account.updatePasswordSettings', params);
+        return this.apiManager.invokeApi('account.updatePasswordSettings', params);
       });
     });
   }
 
   public check(password: string, state: AccountPassword, options: any = {}) {
-    return apiManager.invokeCrypto('computeSRP', password, state, false).then((inputCheckPassword) => {
+    return this.cryptoWorker.invokeCrypto('computeSRP', password, state, false).then((inputCheckPassword) => {
       //console.log('SRP', inputCheckPassword);
-      return apiManager.invokeApi('auth.checkPassword', {
+      return this.apiManager.invokeApi('auth.checkPassword', {
         password: inputCheckPassword as InputCheckPasswordSRP.inputCheckPasswordSRP
-      }, options).then(auth => {
+      }, options).then((auth) => {
         if(auth._ === 'auth.authorization') {
-          apiManager.setUser(auth.user);
+          this.apiManager.setUser(auth.user);
         }
 
         return auth;
@@ -89,15 +88,15 @@ export class PasswordManager {
   }
 
   public confirmPasswordEmail(code: string) {
-    return apiManager.invokeApi('account.confirmPasswordEmail', {code});
+    return this.apiManager.invokeApi('account.confirmPasswordEmail', {code});
   }
 
   public resendPasswordEmail() {
-    return apiManager.invokeApi('account.resendPasswordEmail');
+    return this.apiManager.invokeApi('account.resendPasswordEmail');
   }
 
   public cancelPasswordEmail() {
-    return apiManager.invokeApi('account.cancelPasswordEmail');
+    return this.apiManager.invokeApi('account.cancelPasswordEmail');
   }
 
   /* public requestRecovery(options: any = {}) {
@@ -110,7 +109,3 @@ export class PasswordManager {
     }, options);
   } */
 }
-
-const passwordManager = new PasswordManager();
-MOUNT_CLASS_TO.passwordManager = passwordManager;
-export default passwordManager;

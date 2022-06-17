@@ -6,23 +6,20 @@
 
 import { SliderSuperTab } from "../../slider";
 import ButtonCorner from "../../buttonCorner";
-import appUsersManager from "../../../lib/appManagers/appUsersManager";
 import AppNewGroupTab from "./newGroup";
 import { toast } from "../../toast";
 import { ButtonMenuItemOptions } from "../../buttonMenu";
-import type { LazyLoadQueueIntersector } from "../../lazyLoadQueue";
 import { i18n, join, _i18n } from "../../../lib/langPack";
 import rootScope from '../../../lib/rootScope';
 import { wrapSticker } from "../../wrappers";
-import appStickersManager from "../../../lib/appManagers/appStickersManager";
 import SortedUserList from "../../sortedUserList";
 import { PeerLocated, Update, Updates } from "../../../layer";
-import appPeersManager from "../../../lib/appManagers/appPeersManager";
 import { SettingChatListSection } from "..";
-import appProfileManager from "../../../lib/appManagers/appProfileManager";
 import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
 import { attachClickEvent } from "../../../helpers/dom/clickEvent";
 import confirmationPopup from "../../confirmationPopup";
+import getPeerId from "../../../lib/appManagers/utils/peers/getPeerId";
+import type LazyLoadQueue from "../../lazyLoadQueue";
 
 export default class AppPeopleNearbyTab extends SliderSuperTab {
   private latestLocationSaved: {latitude: number, longitude: number, accuracy: number};
@@ -32,139 +29,140 @@ export default class AppPeopleNearbyTab extends SliderSuperTab {
   private btnOptions: HTMLButtonElement;
   private menuButtons: (ButtonMenuItemOptions & {verify?: () => boolean})[];
 
-  protected lazyLoadQueue: LazyLoadQueueIntersector;
+  protected lazyLoadQueue: LazyLoadQueue;
   protected peopleSection: SettingChatListSection;
   protected chatsSection: SettingChatListSection;
 
   protected locatedPeers: Map<PeerId, PeerLocated.peerLocated>;
 
-  protected init() {
-    this.container.classList.add('people-nearby-container');
-    this.setTitle('PeopleNearby');
+  // protected async init() {
+  //   this.container.classList.add('people-nearby-container');
+  //   this.setTitle('PeopleNearby');
 
-    this.errorCategory = document.createElement('div');
-    this.errorCategory.classList.add('text', 'hide', 'nearby-error');
+  //   this.errorCategory = document.createElement('div');
+  //   this.errorCategory.classList.add('text', 'hide', 'nearby-error');
 
-    this.retryBtn = ButtonCorner({icon: 'check'});
+  //   this.retryBtn = ButtonCorner({icon: 'check'});
 
-    const emoji = '🧭';
-    const doc = appStickersManager.getAnimatedEmojiSticker(emoji);
-    const stickerContainer = document.createElement('div');
-    stickerContainer.classList.add('sticker-container');
+  //   const emoji = '🧭';
+  //   const doc = await this.managers.appStickersManager.getAnimatedEmojiSticker(emoji);
+  //   const stickerContainer = document.createElement('div');
+  //   stickerContainer.classList.add('sticker-container');
 
-    if(doc) {
-      wrapSticker({
-        doc,
-        div: stickerContainer,
-        loop: false,
-        play: true,
-        width: 86,
-        height: 86,
-        emoji,
-        needUpscale: true
-      }).then(() => {
-        // this.animation = player;
-      });
-    } else {
-      stickerContainer.classList.add('media-sticker-wrapper');
-    }
+  //   if(doc) {
+  //     wrapSticker({
+  //       doc,
+  //       div: stickerContainer,
+  //       loop: false,
+  //       play: true,
+  //       width: 86,
+  //       height: 86,
+  //       emoji,
+  //       needUpscale: true
+  //     }).then(() => {
+  //       // this.animation = player;
+  //     });
+  //   } else {
+  //     stickerContainer.classList.add('media-sticker-wrapper');
+  //   }
 
-    const caption = document.createElement('div');
-    caption.classList.add('caption');
-    _i18n(caption, 'PeopleNearbyInfo2');
+  //   const caption = document.createElement('div');
+  //   caption.classList.add('caption');
+  //   _i18n(caption, 'PeopleNearbyInfo2');
 
-    this.locatedPeers = new Map();
+  //   this.locatedPeers = new Map();
 
-    const m = () => {
-      const sortedUserList = new SortedUserList({
-        avatarSize: 42, 
-        createChatListOptions: {
-          dialogSize: 48,
-          new: true
-        },
-        autonomous: false,
-        onUpdate: (element) => {
-          const peer = this.locatedPeers.get(element.id);
-          const elements: HTMLElement[] = [
-            this.parseDistance(peer.distance)
-          ];
+  //   const m = () => {
+  //     const sortedUserList = new SortedUserList({
+  //       avatarSize: 42, 
+  //       createChatListOptions: {
+  //         dialogSize: 48,
+  //         new: true
+  //       },
+  //       autonomous: false,
+  //       onUpdate: (element) => {
+  //         const peer = this.locatedPeers.get(element.id);
+  //         const elements: HTMLElement[] = [
+  //           this.parseDistance(peer.distance)
+  //         ];
 
-          if(!element.id.isUser()) {
-            elements.push(appProfileManager.getChatMembersString(element.id.toChatId()));
-          }
+  //         if(!element.id.isUser()) {
+  //           elements.push(this.managers.appProfileManager.getChatMembersString(element.id.toChatId()));
+  //         }
 
-          element.dom.lastMessageSpan.textContent = '';
-          element.dom.lastMessageSpan.append(...join(elements, false));
-        },
-        getIndex: (element) => {
-          const peer = this.locatedPeers.get(element.id);
-          return 0x7FFFFFFF - peer.distance;
-        }
-      });
+  //         element.dom.lastMessageSpan.textContent = '';
+  //         element.dom.lastMessageSpan.append(...join(elements, false));
+  //       },
+  //       getIndex: (element) => {
+  //         const peer = this.locatedPeers.get(element.id);
+  //         return 0x7FFFFFFF - peer.distance;
+  //       },
+  //       appUsersManager: this.managers.appUsersManager
+  //     });
 
-      appDialogsManager.setListClickListener(sortedUserList.list, undefined, undefined, false);
+  //     appDialogsManager.setListClickListener(sortedUserList.list, undefined, undefined, false);
       
-      return sortedUserList;
-    };
+  //     return sortedUserList;
+  //   };
     
-    const peopleSection = this.peopleSection = new SettingChatListSection({
-      name: 'PeopleNearbyHeader',
-      sortedList: m()
-    });
+  //   const peopleSection = this.peopleSection = new SettingChatListSection({
+  //     name: 'PeopleNearbyHeader',
+  //     sortedList: m()
+  //   });
 
-    const chatsSection = this.chatsSection = new SettingChatListSection({
-      name: 'ChatsNearbyHeader',
-      sortedList: m()
-    });
+  //   const chatsSection = this.chatsSection = new SettingChatListSection({
+  //     name: 'ChatsNearbyHeader',
+  //     sortedList: m()
+  //   });
 
-    const btnMakeVisible = peopleSection.makeButton({
-      text: 'MakeMyselfVisible',
-      icon: 'location'
-    });
+  //   const btnMakeVisible = peopleSection.makeButton({
+  //     text: 'MakeMyselfVisible',
+  //     icon: 'location'
+  //   });
 
-    const btnMakeInvisible = peopleSection.makeButton({
-      text: 'StopShowingMe',
-      icon: 'location'
-    });
+  //   const btnMakeInvisible = peopleSection.makeButton({
+  //     text: 'StopShowingMe',
+  //     icon: 'location'
+  //   });
 
-    const btnCreateGroup = chatsSection.makeButton({
-      text: 'NearbyCreateGroup',
-      icon: 'newgroup'
-    });
+  //   const btnCreateGroup = chatsSection.makeButton({
+  //     text: 'NearbyCreateGroup',
+  //     icon: 'newgroup'
+  //   });
 
-    attachClickEvent(btnMakeVisible, () => {
-      confirmationPopup({
-        titleLangKey: 'MakeMyselfVisibleTitle',
-        descriptionLangKey: 'MakeMyselfVisibleInfo',
-        button: {
-          langKey: 'OK'
-        }
-      }).then(() => {
-        this.startWatching();
-      });
-    }, {listenerSetter: this.listenerSetter});
+  //   attachClickEvent(btnMakeVisible, () => {
+  //     confirmationPopup({
+  //       titleLangKey: 'MakeMyselfVisibleTitle',
+  //       descriptionLangKey: 'MakeMyselfVisibleInfo',
+  //       button: {
+  //         langKey: 'OK'
+  //       }
+  //     }).then(() => {
+  //       this.startWatching();
+  //     });
+  //   }, {listenerSetter: this.listenerSetter});
 
-    attachClickEvent(btnMakeInvisible, () => {
-      this.stopWatching();
-    }, {listenerSetter: this.listenerSetter});
+  //   attachClickEvent(btnMakeInvisible, () => {
+  //     this.stopWatching();
+  //   }, {listenerSetter: this.listenerSetter});
 
-    attachClickEvent(btnCreateGroup, () => {
-      new AppNewGroupTab(this.slider).open([], true);
-    }, {listenerSetter: this.listenerSetter});
+  //   attachClickEvent(btnCreateGroup, () => {
+  //     this.slider.createTab(AppNewGroupTab).open([], true);
+  //   }, {listenerSetter: this.listenerSetter});
 
-    btnMakeVisible.classList.add('primary');
-    btnMakeInvisible.classList.add('danger');
-    btnCreateGroup.classList.add('primary');
+  //   btnMakeVisible.classList.add('primary');
+  //   btnMakeInvisible.classList.add('danger');
+  //   btnCreateGroup.classList.add('primary');
 
-    this.content.append(this.retryBtn);
-    this.scrollable.append(
-      stickerContainer,
-      caption,
-      peopleSection.container,
-      chatsSection.container,
-      this.errorCategory
-    );
-  }
+  //   this.content.append(this.retryBtn);
+  //   this.scrollable.append(
+  //     stickerContainer,
+  //     caption,
+  //     peopleSection.container,
+  //     chatsSection.container,
+  //     this.errorCategory
+  //   );
+  // }
 
   private parseDistance(distance: number) {
     if(rootScope.settings.distanceUnit === 'miles') {
@@ -195,7 +193,7 @@ export default class AppPeopleNearbyTab extends SliderSuperTab {
 
         console.log(this.latestLocationSaved);
 
-        appUsersManager.getLocated(
+        this.managers.appUsersManager.getLocated(
           location.coords.latitude,
           location.coords.longitude,
           location.coords.accuracy
@@ -205,8 +203,8 @@ export default class AppPeopleNearbyTab extends SliderSuperTab {
           const orderedPeers = peers.sort((a, b) => a.distance - b.distance);
           const groupsCounter = peers.filter((e) => e.peer._ == 'peerChannel').length;
           const usersCounter = peers.filter((e) => e.peer._ != 'peerChannel').length;
-          orderedPeers?.forEach(peer => {
-            const peerId = appPeersManager.getPeerId(peer.peer);
+          orderedPeers?.forEach((peer) => {
+            const peerId = getPeerId(peer.peer);
             const section = peerId.isUser() ? this.peopleSection : this.chatsSection;
             this.locatedPeers.set(peerId, peer);
             section.sortedList.add(peerId);
@@ -236,7 +234,7 @@ export default class AppPeopleNearbyTab extends SliderSuperTab {
 
     toast('Your position is now being shared. Do not close the page or it will be suspended.');
 
-    appUsersManager.getLocated(
+    this.managers.appUsersManager.getLocated(
       this.latestLocationSaved.latitude,
       this.latestLocationSaved.longitude,
       this.latestLocationSaved.accuracy,
@@ -253,7 +251,7 @@ export default class AppPeopleNearbyTab extends SliderSuperTab {
       ) > 100;
 
       if((isLatitudeDifferent || isLongitudeDifferent) && distanceCheck) {
-        appUsersManager.getLocated(
+        this.managers.appUsersManager.getLocated(
           result.coords.latitude,
           result.coords.longitude,
           result.coords.accuracy,
@@ -273,7 +271,7 @@ export default class AppPeopleNearbyTab extends SliderSuperTab {
     if(!this.isLocationWatched) return;
     this.isLocationWatched = false;
     toast('The sharing of your position has been stopped. You will no longer be visible to other users.');
-    appUsersManager.getLocated(
+    this.managers.appUsersManager.getLocated(
       0, // latitude parameter
       0, // longitude parameter
       0, // accuracy parameter

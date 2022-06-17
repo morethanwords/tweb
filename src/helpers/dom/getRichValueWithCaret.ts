@@ -10,7 +10,7 @@
  */
 
 import { MessageEntity } from "../../layer";
-import RichTextProcessor from "../../lib/richtextprocessor";
+import combineSameEntities from "../../lib/richTextProcessor/combineSameEntities";
 import getRichElementValue from "./getRichElementValue";
 
 export default function getRichValueWithCaret(field: HTMLElement, withEntities = true) {
@@ -65,7 +65,7 @@ export default function getRichValueWithCaret(field: HTMLElement, withEntities =
   value = value.replace(/\u00A0/g, ' ');
 
   if(entities) {
-    RichTextProcessor.combineSameEntities(entities);
+    combineSameEntities(entities);
   }
 
   return {value, entities, caretPos};

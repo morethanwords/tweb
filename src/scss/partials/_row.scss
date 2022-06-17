@@ -40,6 +40,12 @@
     }
   }
 
+  // &-title,
+  // &-title-row,
+  // &-subtitle {
+  //   pointer-events: none;
+  // }
+
   &-title {
     color: var(--primary-text-color);
     line-height: var(--line-height);

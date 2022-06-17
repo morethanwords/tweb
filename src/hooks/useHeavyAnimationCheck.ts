@@ -9,12 +9,16 @@
 import { AnyToVoidFunction } from '../types';
 import ListenerSetter from '../helpers/listenerSetter';
 import deferredPromise, { CancellablePromise } from '../helpers/cancellablePromise';
-import rootScope from '../lib/rootScope';
 import DEBUG from '../config/debug';
 import pause from '../helpers/schedulers/pause';
+import EventListenerBase from '../helpers/eventListenerBase';
 
-const ANIMATION_START_EVENT = 'event-heavy-animation-start';
-const ANIMATION_END_EVENT = 'event-heavy-animation-end';
+const eventListener = new EventListenerBase<{
+  start: () => void,
+  end: () => void
+}>();
+const ANIMATION_START_EVENT = 'start';
+const ANIMATION_END_EVENT = 'end';
 
 let isAnimating = false;
 let heavyAnimationPromise: CancellablePromise<void> = deferredPromise<void>();
@@ -27,7 +31,7 @@ const log = console.log.bind(console.log, '[HEAVY-ANIMATION]:');
 export function dispatchHeavyAnimationEvent(promise: Promise<any>, timeout?: number) {
   if(!isAnimating) {
     heavyAnimationPromise = deferredPromise<void>();
-    rootScope.dispatchEvent(ANIMATION_START_EVENT);
+    eventListener.dispatchEvent(ANIMATION_START_EVENT);
     isAnimating = true;
     DEBUG && log('start');
   }
@@ -64,7 +68,7 @@ function onHeavyAnimationEnd() {
 
   isAnimating = false;
   promisesInQueue = 0;
-  rootScope.dispatchEvent(ANIMATION_END_EVENT);
+  eventListener.dispatchEvent(ANIMATION_END_EVENT);
   heavyAnimationPromise.resolve();
 
   DEBUG && log('end');
@@ -88,8 +92,8 @@ export default function(
       handleAnimationStart();
     }
 
-    const add = listenerSetter ? listenerSetter.add(rootScope) : rootScope.addEventListener.bind(rootScope);
-    const remove = listenerSetter ? listenerSetter.removeManual.bind(listenerSetter, rootScope) : rootScope.removeEventListener.bind(rootScope);
+    const add = listenerSetter ? listenerSetter.add(eventListener) : eventListener.addEventListener.bind(eventListener);
+    const remove = listenerSetter ? listenerSetter.removeManual.bind(listenerSetter, eventListener) : eventListener.removeEventListener.bind(eventListener);
     add(ANIMATION_START_EVENT, handleAnimationStart);
     add(ANIMATION_END_EVENT, handleAnimationEnd);
 

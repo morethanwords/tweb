@@ -9,31 +9,6 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import type { UserAuth } from './mtproto_config';
-import sessionStorage from '../sessionStorage';
-import MTPNetworker, { MTMessage } from './networker';
-import networkerFactory from './networkerFactory';
-//import { telegramMeWebService } from './mtproto';
-import authorizer from './authorizer';
-import dcConfigurator, { ConnectionType, DcConfigurator, TransportType } from './dcConfigurator';
-import { logger } from '../logger';
-import type { DcAuthKey, DcId, DcServerSalt, InvokeApiOptions } from '../../types';
-import type { MethodDeclMap } from '../../layer';
-import deferredPromise, { CancellablePromise } from '../../helpers/cancellablePromise';
-//import { clamp } from '../../helpers/number';
-import { IS_SAFARI } from '../../environment/userAgent';
-import App from '../../config/app';
-import { MOUNT_CLASS_TO } from '../../config/debug';
-import IDBStorage from '../idb';
-import CryptoWorker from "../crypto/cryptoworker";
-import ctx from '../../environment/ctx';
-import noop from '../../helpers/noop';
-import Modes from '../../config/modes';
-import bytesFromHex from '../../helpers/bytes/bytesFromHex';
-import bytesToHex from '../../helpers/bytes/bytesToHex';
-import isObject from '../../helpers/object/isObject';
-import pause from '../../helpers/schedulers/pause';
-
 /// #if !MTPROTO_WORKER
 import rootScope from '../rootScope';
 /// #endif
@@ -43,13 +18,38 @@ import transportController from './transports/controller';
 import MTTransport from './transports/transport';
 /// #endif
 
+import type { UserAuth } from './mtproto_config';
+import sessionStorage from '../sessionStorage';
+import MTPNetworker, { MTMessage } from './networker';
+//import { telegramMeWebService } from './mtproto';
+import { ConnectionType, DcConfigurator, TransportType } from './dcConfigurator';
+import { logger } from '../logger';
+import type { DcAuthKey, DcId, DcServerSalt, InvokeApiOptions } from '../../types';
+import type { MethodDeclMap } from '../../layer';
+import deferredPromise, { CancellablePromise } from '../../helpers/cancellablePromise';
+//import { clamp } from '../../helpers/number';
+import App from '../../config/app';
+import { MOUNT_CLASS_TO } from '../../config/debug';
+import IDBStorage, { IDB } from '../idb';
+import CryptoWorker from "../crypto/cryptoMessagePort";
+import ctx from '../../environment/ctx';
+import noop from '../../helpers/noop';
+import Modes from '../../config/modes';
+import bytesFromHex from '../../helpers/bytes/bytesFromHex';
+import bytesToHex from '../../helpers/bytes/bytesToHex';
+import isObject from '../../helpers/object/isObject';
+import pause from '../../helpers/schedulers/pause';
+import ApiManagerMethods from './api_methods';
+import { getEnvironment } from '../../environment/utils';
+import AppStorage from '../storage';
+
 /* var networker = apiManager.cachedNetworkers.websocket.upload[2];
 networker.wrapMtpMessage({
   _: 'msgs_state_req',
   msg_ids: ["6888292542796810828"]
 }, {
   notContentRelated: true
-}).then(res => {
+}).then((res) => {
   console.log('status', res);
 }); */
 
@@ -77,9 +77,10 @@ export type ApiError = Partial<{
   }
 } */
 
-const FILE_NETWORKERS_COUNT = 3;
+const PREMIUM_FILE_NETWORKERS_COUNT = 6;
+const REGULAR_FILE_NETWORKERS_COUNT = 3;
 
-export class ApiManager {
+export class ApiManager extends ApiManagerMethods {
   private cachedNetworkers: {
     [transportType in TransportType]: {
       [connectionType in ConnectionType]: {
@@ -104,8 +105,13 @@ export class ApiManager {
   };
 
   private transportType: TransportType;
-  
+
+  private updatesProcessor: (obj: any) => void;
+
+  private loggingOut: boolean;
+
   constructor() {
+    super();
     this.log = logger('API');
 
     this.cachedNetworkers = {} as any;
@@ -145,7 +151,7 @@ export class ApiManager {
   private getTransportType(connectionType: ConnectionType) {
     /// #if MTPROTO_HTTP_UPLOAD
     // @ts-ignore
-    const transportType: TransportType = connectionType === 'upload' && IS_SAFARI ? 'https' : 'websocket';
+    const transportType: TransportType = connectionType === 'upload' && getEnvironment().IS_SAFARI ? 'https' : 'websocket';
     //const transportType: TransportType = connectionType !== 'client' ? 'https' : 'websocket';
     /// #else
     // @ts-ignore
@@ -178,7 +184,7 @@ export class ApiManager {
   }
 
   private chooseServer(dcId: DcId, connectionType: ConnectionType, transportType: TransportType) {
-    return dcConfigurator.chooseServer(dcId, connectionType, transportType, connectionType === 'client');
+    return this.dcConfigurator.chooseServer(dcId, connectionType, transportType, connectionType === 'client', this.rootScope.premium);
   }
 
   public changeTransportType(transportType: TransportType) {
@@ -230,7 +236,11 @@ export class ApiManager {
     return this.baseDcId;
   }
   
-  public async setUserAuth(userAuth: UserAuth) {
+  public async setUserAuth(userAuth: UserAuth | UserId) {
+    if(typeof(userAuth) === 'string' || typeof(userAuth) === 'number') {
+      userAuth = {dcID: 0, date: Date.now() / 1000 | 0, id: userAuth.toPeerId(false)};
+    }
+
     if(!userAuth.dcID) {
       const baseDcId = await this.getBaseDcId();
       userAuth.dcID = baseDcId;
@@ -242,15 +252,13 @@ export class ApiManager {
     
     //this.telegramMeNotify(true);
 
-    /// #if !MTPROTO_WORKER
-    rootScope.dispatchEvent('user_auth', userAuth);
-    /// #endif
+    this.rootScope.dispatchEvent('user_auth', userAuth);
   }
 
   public setBaseDcId(dcId: DcId) {
     const wasDcId = this.baseDcId;
     if(wasDcId) { // if migrated set ondrain
-      this.getNetworker(wasDcId).then(networker => {
+      this.getNetworker(wasDcId).then((networker) => {
         this.setOnDrainIfNeeded(networker);
       });
     }
@@ -263,6 +271,11 @@ export class ApiManager {
   }
   
   public async logOut() {
+    if(this.loggingOut) {
+      return;
+    }
+
+    this.loggingOut = true;
     const storageKeys: Array<DcAuthKey> = [];
     
     const prefix = 'dc';
@@ -271,7 +284,7 @@ export class ApiManager {
     }
     
     // WebPushApiManager.forceUnsubscribe(); // WARNING // moved to worker's master
-    const storageResult = await Promise.all(storageKeys.map(key => sessionStorage.get(key)));
+    const storageResult = await Promise.all(storageKeys.map((key) => sessionStorage.get(key)));
     
     const logoutPromises: Promise<any>[] = [];
     for(let i = 0; i < storageResult.length; i++) {
@@ -280,13 +293,12 @@ export class ApiManager {
       }
     }
 
-    const clear = () => {
-      //console.error('apiManager: logOut clear');
-      
+    const clear = async() => {
       this.baseDcId = undefined;
       //this.telegramMeNotify(false);
-      IDBStorage.closeDatabases();
-      self.postMessage({type: 'clear'});
+      await AppStorage.toggleStorage(false);
+      IDB.closeDatabases();
+      this.rootScope.dispatchEvent('logging_out');
     };
 
     setTimeout(clear, 1e3);
@@ -324,7 +336,7 @@ export class ApiManager {
     
     const networkers = cache[dcId];
     // @ts-ignore
-    const maxNetworkers = connectionType === 'client' || transportType === 'https' ? 1 : FILE_NETWORKERS_COUNT;
+    const maxNetworkers = connectionType === 'client' || transportType === 'https' ? 1 : (this.rootScope.premium ? PREMIUM_FILE_NETWORKERS_COUNT : REGULAR_FILE_NETWORKERS_COUNT);
     if(networkers.length >= maxNetworkers) {
       let i = networkers.length - 1, found = false;
       for(; i >= 0; --i) {
@@ -348,7 +360,7 @@ export class ApiManager {
     const ss: DcServerSalt = `dc${dcId}_server_salt` as any;
     
     let transport = this.chooseServer(dcId, connectionType, transportType);
-    return this.gettingNetworkers[getKey] = Promise.all([ak, ss].map(key => sessionStorage.get(key)))
+    return this.gettingNetworkers[getKey] = Promise.all([ak, ss].map((key) => sessionStorage.get(key)))
     .then(async([authKeyHex, serverSaltHex]) => {
       let networker: MTPNetworker, error: any;
       if(authKeyHex && authKeyHex.length === 512) {
@@ -360,17 +372,17 @@ export class ApiManager {
         const authKeyId = (await CryptoWorker.invokeCrypto('sha1', authKey)).slice(-8);
         const serverSalt = bytesFromHex(serverSaltHex);
         
-        networker = networkerFactory.getNetworker(dcId, authKey, authKeyId, serverSalt, options);
+        networker = this.networkerFactory.getNetworker(dcId, authKey, authKeyId, serverSalt, options);
       } else {
         try { // if no saved state
-          const auth = await authorizer.auth(dcId);
+          const auth = await this.authorizer.auth(dcId);
   
           sessionStorage.set({
             [ak]: bytesToHex(auth.authKey),
             [ss]: bytesToHex(auth.serverSalt)
           });
           
-          networker = networkerFactory.getNetworker(dcId, auth.authKey, auth.authKeyId, auth.serverSalt, options);
+          networker = this.networkerFactory.getNetworker(dcId, auth.authKey, auth.authKeyId, auth.serverSalt, options);
         } catch(_error) {
           error = _error;
         }
@@ -381,7 +393,7 @@ export class ApiManager {
       if(newTransportType !== transportType) {
         getKey = this.generateNetworkerGetKey(dcId, newTransportType, connectionType);
         transport.destroy();
-        DcConfigurator.removeTransport(dcConfigurator.chosenServers, transport);
+        DcConfigurator.removeTransport(this.dcConfigurator.chosenServers, transport);
 
         if(networker) {
           transport = this.chooseServer(dcId, connectionType, newTransportType);
@@ -408,10 +420,14 @@ export class ApiManager {
     });
   }
 
+  public getNetworkerVoid(dcId: DcId) {
+    return this.getNetworker(dcId).then(noop, noop);
+  }
+
   private changeNetworkerTransport(networker: MTPNetworker, transport?: MTTransport) {
     const oldTransport = networker.transport;
     if(oldTransport) {
-      DcConfigurator.removeTransport(dcConfigurator.chosenServers, oldTransport);
+      DcConfigurator.removeTransport(this.dcConfigurator.chosenServers, oldTransport);
     }
 
     networker.changeTransport(transport);
@@ -424,8 +440,8 @@ export class ApiManager {
     
     const checkPromise: Promise<boolean> = networker.isFileNetworker ? 
       Promise.resolve(true) : 
-      this.getBaseDcId().then(baseDcId => networker.dcId !== baseDcId);
-    checkPromise.then(canRelease => {
+      this.getBaseDcId().then((baseDcId) => networker.dcId !== baseDcId);
+    checkPromise.then((canRelease) => {
       if(networker.onDrain) {
         return;
       }
@@ -437,13 +453,18 @@ export class ApiManager {
           networker.onDrain = undefined;
           this.changeNetworkerTransport(networker);
           networker.destroy();
-          networkerFactory.removeNetworker(networker);
+          this.networkerFactory.removeNetworker(networker);
           DcConfigurator.removeTransport(this.cachedNetworkers, networker);
         };
 
         networker.setDrainTimeout();
       }
     });
+  }
+
+  public setUpdatesProcessor(callback: (obj: any) => void) {
+    this.updatesProcessor = callback;
+    this.networkerFactory.setUpdatesProcessor(callback);
   }
   
   public invokeApi<T extends keyof MethodDeclMap>(method: T, params: MethodDeclMap[T]['req'] = {}, options: InvokeApiOptions = {}): CancellablePromise<MethodDeclMap[T]["res"]> {
@@ -586,7 +607,7 @@ export class ApiManager {
             throw error;
           }
         } else if(error.code === 400 && error.type === 'CONNECTION_NOT_INITED') {
-          networkerFactory.unsetConnectionInited();
+          this.networkerFactory.unsetConnectionInited();
           return performRequest();
         } else if(!options.rawError && error.code === 420) {
           const waitTime = +error.type.match(/^FLOOD_WAIT_(\d+)/)[1] || 1;
@@ -642,7 +663,3 @@ export class ApiManager {
     return deferred;
   }
 }
-
-const apiManager = new ApiManager();
-MOUNT_CLASS_TO.apiManager = apiManager;
-export default apiManager;

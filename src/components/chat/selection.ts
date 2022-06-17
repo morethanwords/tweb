@@ -4,11 +4,11 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type { AppMessagesManager } from "../../lib/appManagers/appMessagesManager";
+import type { AppMessagesManager, MessagesStorageKey } from "../../lib/appManagers/appMessagesManager";
 import type ChatBubbles from "./bubbles";
 import type ChatInput from "./input";
 import type Chat from "./chat";
-import { IS_TOUCH_SUPPORTED } from "../../environment/touchSupport";
+import IS_TOUCH_SUPPORTED from "../../environment/touchSupport";
 import Button from "../button";
 import ButtonIcon from "../buttonIcon";
 import CheckboxField from "../checkboxField";
@@ -27,16 +27,17 @@ import cancelEvent from "../../helpers/dom/cancelEvent";
 import cancelSelection from "../../helpers/dom/cancelSelection";
 import getSelectedText from "../../helpers/dom/getSelectedText";
 import rootScope from "../../lib/rootScope";
-import { fastRaf } from "../../helpers/schedulers";
 import replaceContent from "../../helpers/dom/replaceContent";
 import AppSearchSuper from "../appSearchSuper.";
 import isInDOM from "../../helpers/dom/isInDOM";
 import { randomLong } from "../../helpers/random";
-import { attachContextMenuListener } from "../misc";
 import { attachClickEvent, AttachClickOptions } from "../../helpers/dom/clickEvent";
 import findUpAsChild from "../../helpers/dom/findUpAsChild";
 import EventListenerBase from "../../helpers/eventListenerBase";
 import safeAssign from "../../helpers/object/safeAssign";
+import { AppManagers } from "../../lib/appManagers/managers";
+import { attachContextMenuListener } from "../../helpers/dom/attachContextMenuListener";
+import filterUnique from "../../helpers/array/filterUnique";
 
 const accumulateMapSet = (map: Map<any, Set<number>>) => {
   return [...map.values()].reduce((acc, v) => acc + v.size, 0);
@@ -53,7 +54,6 @@ class AppSelection extends EventListenerBase<{
   public selectedText: string;
 
   protected listenerSetter: ListenerSetter;
-  protected appMessagesManager: AppMessagesManager;
   protected isScheduled: boolean;
   protected listenElement: HTMLElement;
 
@@ -74,11 +74,10 @@ class AppSelection extends EventListenerBase<{
   protected lookupBetweenElementsQuery: string;
 
   protected doNotAnimate: boolean;
+  protected managers: AppManagers;
 
   constructor(options: {
-    appMessagesManager: AppMessagesManager,
-    listenElement: HTMLElement,
-    listenerSetter: ListenerSetter,
+    managers: AppManagers,
     getElementFromTarget: AppSelection['getElementFromTarget'],
     verifyTarget?: AppSelection['verifyTarget'],
     verifyMouseMoveTarget?: AppSelection['verifyMouseMoveTarget'],
@@ -93,19 +92,32 @@ class AppSelection extends EventListenerBase<{
     safeAssign(this, options);
 
     this.navigationType = 'multiselect-' + randomLong() as any;
+  }
+
+  public attachListeners(listenElement: HTMLElement, listenerSetter: ListenerSetter) {
+    if(this.listenElement) {
+      this.listenerSetter.removeAll();
+    }
+
+    this.listenElement = listenElement;
+    this.listenerSetter = listenerSetter;
+
+    if(!listenElement) {
+      return;
+    }
 
     if(IS_TOUCH_SUPPORTED) {
-      this.listenerSetter.add(this.listenElement)('touchend', () => {
+      listenerSetter.add(listenElement)('touchend', () => {
         if(!this.isSelecting) return;
         this.selectedText = getSelectedText();
       });
 
-      attachContextMenuListener(this.listenElement, (e) => {
+      attachContextMenuListener(listenElement, (e) => {
         if(this.isSelecting || (this.verifyTouchLongPress && !this.verifyTouchLongPress())) return;
 
         // * these two lines will fix instant text selection on iOS Safari
         document.body.classList.add('no-select'); // * need no-select on body because chat-input transforms in channels
-        this.listenElement.addEventListener('touchend', (e) => {
+        listenElement.addEventListener('touchend', (e) => {
           cancelEvent(e); // ! this one will fix propagation to document loader button, etc
           document.body.classList.remove('no-select');
 
@@ -118,173 +130,177 @@ class AppSelection extends EventListenerBase<{
         if(element) {
           this.toggleByElement(element);
         }
-      }, this.listenerSetter);
+      }, listenerSetter);
 
       return;
     }
 
-    const getElementsBetween = (first: HTMLElement, last: HTMLElement) => { 
-      if(first === last) {
-        return [];
+    listenerSetter.add(listenElement)('mousedown', this.onMouseDown);
+  }
+
+  private onMouseDown = (e: MouseEvent) => {
+    //console.log('selection mousedown', e);
+    const element = findUpClassName(e.target, this.targetLookupClassName);
+    if(e.button !== 0) {
+      return;
+    }
+
+    if(this.verifyTarget && !this.verifyTarget(e, element)) {
+      return;
+    }
+
+    const seen: AppSelection['selectedMids'] = new Map();
+    let selecting: boolean;
+
+    /* let good = false;
+    const {x, y} = e; */
+
+    /* const bubbles = appImManager.bubbles;
+    for(const mid in bubbles) {
+      const bubble = bubbles[mid];
+      bubble.addEventListener('mouseover', () => {
+        console.log('mouseover');
+      }, {once: true});
+    } */
+
+    let firstTarget = element;
+
+    const processElement = (element: HTMLElement, checkBetween = true) => {
+      const mid = +element.dataset.mid;
+      if(!mid || !element.dataset.peerId) return;
+      const peerId = element.dataset.peerId.toPeerId();
+
+      if(!isInDOM(firstTarget)) {
+        firstTarget = element;
       }
 
-      const firstRect = first.getBoundingClientRect();
-      const lastRect = last.getBoundingClientRect();
-      const difference = (firstRect.top - lastRect.top) || (firstRect.left - lastRect.left);
-      const isHigher = difference < 0;
-
-      const parent = findUpClassName(first, this.lookupBetweenParentClassName);
-      if(!parent) {
-        return [];
+      let seenSet = seen.get(peerId);
+      if(!seenSet) {
+        seen.set(peerId, seenSet = new Set());
       }
 
-      const elements = Array.from(parent.querySelectorAll(this.lookupBetweenElementsQuery)) as HTMLElement[];
-      let firstIndex = elements.indexOf(first);
-      let lastIndex = elements.indexOf(last);
-
-      if(!isHigher) {
-        [lastIndex, firstIndex] = [firstIndex, lastIndex];
+      if(seenSet.has(mid)) {
+        return;
       }
 
-      const slice = elements.slice(firstIndex + 1, lastIndex);
+      const isSelected = this.isMidSelected(peerId, mid);
+      if(selecting === undefined) {
+        //bubblesContainer.classList.add('no-select');
+        selecting = !isSelected;
+      }
 
-      // console.log('getElementsBetween', first, last, slice, firstIndex, lastIndex, isHigher);
+      seenSet.add(mid);
 
-      return slice;
+      if((selecting && !isSelected) || (!selecting && isSelected)) {
+        const seenLength = accumulateMapSet(seen);
+        if(this.toggleByElement && checkBetween) {
+          if(seenLength < 2) {
+            if(findUpAsChild(element, firstTarget)) {
+              firstTarget = element;
+            }
+          }
+
+          const elementsBetween = this.getElementsBetween(firstTarget, element);
+          // console.log(elementsBetween);
+          if(elementsBetween.length) {
+            elementsBetween.forEach((element) => {
+              processElement(element, false);
+            });
+          }
+        }
+
+        if(!this.selectedMids.size) {
+          if(seenLength === 2 && this.toggleByMid) {
+            for(const [peerId, mids] of seen) {
+              for(const mid of mids) {
+                this.toggleByMid(peerId, mid);
+              }
+            }
+          }
+        } else if(this.toggleByElement) {
+          this.toggleByElement(element);
+        }
+      }
     };
 
-    this.listenerSetter.add(this.listenElement)('mousedown', (e) => {
-      //console.log('selection mousedown', e);
-      const element = findUpClassName(e.target, this.targetLookupClassName);
-      if(e.button !== 0) {
-        return;
+    //const foundTargets: Map<HTMLElement, true> = new Map();
+    let canceledSelection = false;
+    const onMouseMove = (e: MouseEvent) => {
+      if(!canceledSelection) {
+        cancelSelection();
+        canceledSelection = true;
       }
-
-      if(this.verifyTarget && !this.verifyTarget(e, element)) {
-        return;
-      }
-      
-      const seen: AppSelection['selectedMids'] = new Map();
-      let selecting: boolean;
-
-      /* let good = false;
-      const {x, y} = e; */
-
-      /* const bubbles = appImManager.bubbles;
-      for(const mid in bubbles) {
-        const bubble = bubbles[mid];
-        bubble.addEventListener('mouseover', () => {
-          console.log('mouseover');
-        }, {once: true});
+      /* if(!good) {
+        if(Math.abs(e.x - x) > MIN_CLICK_MOVE || Math.abs(e.y - y) > MIN_CLICK_MOVE) {
+          good = true;
+        } else {
+          return;
+        }
       } */
 
-      let firstTarget = element;
+      /* if(foundTargets.has(e.target as HTMLElement)) return;
+      foundTargets.set(e.target as HTMLElement, true); */
+      const element = this.getElementFromTarget(e.target as HTMLElement);
+      if(!element) {
+        //console.error('found no bubble', e);
+        return;
+      }
 
-      const processElement = (element: HTMLElement, checkBetween = true) => {
-        const mid = +element.dataset.mid;
-        if(!mid || !element.dataset.peerId) return;
-        const peerId = element.dataset.peerId.toPeerId();
-
-        if(!isInDOM(firstTarget)) {
-          firstTarget = element;
-        }
-
-        let seenSet = seen.get(peerId);
-        if(!seenSet) {
-          seen.set(peerId, seenSet = new Set());
-        }
-
-        if(!seenSet.has(mid)) {
-          const isSelected = this.isMidSelected(peerId, mid);
-          if(selecting === undefined) {
-            //bubblesContainer.classList.add('no-select');
-            selecting = !isSelected;
-          }
-
-          seenSet.add(mid);
-
-          if((selecting && !isSelected) || (!selecting && isSelected)) {
-            const seenLength = accumulateMapSet(seen);
-            if(this.toggleByElement && checkBetween) {
-              if(seenLength < 2) {
-                if(findUpAsChild(element, firstTarget)) {
-                  firstTarget = element;
-                }
-              }
-
-              const elementsBetween = getElementsBetween(firstTarget, element);
-              // console.log(elementsBetween);
-              if(elementsBetween.length) {
-                elementsBetween.forEach(element => {
-                  processElement(element, false);
-                });
-              }
-            }
-
-            if(!this.selectedMids.size) {
-              if(seenLength === 2 && this.toggleByMid) {
-                for(const [peerId, mids] of seen) {
-                  for(const mid of mids) {
-                    this.toggleByMid(peerId, mid);
-                  }
-                }
-              }
-            } else if(this.toggleByElement) {
-              this.toggleByElement(element);
-            }
-          }
-        }
-      };
-
-      //const foundTargets: Map<HTMLElement, true> = new Map();
-      let canceledSelection = false;
-      const onMouseMove = (e: MouseEvent) => {
-        if(!canceledSelection) {
-          cancelSelection();
-          canceledSelection = true;
-        }
-        /* if(!good) {
-          if(Math.abs(e.x - x) > MIN_CLICK_MOVE || Math.abs(e.y - y) > MIN_CLICK_MOVE) {
-            good = true;
-          } else {
-            return;
-          }
-        } */
-
-        /* if(foundTargets.has(e.target as HTMLElement)) return;
-        foundTargets.set(e.target as HTMLElement, true); */
-        const element = this.getElementFromTarget(e.target as HTMLElement);
-        if(!element) {
-          //console.error('found no bubble', e);
-          return;
-        }
-
-        if(this.verifyMouseMoveTarget && !this.verifyMouseMoveTarget(e, element, selecting)) {
-          this.listenerSetter.removeManual(this.listenElement, 'mousemove', onMouseMove);
-          this.listenerSetter.removeManual(document, 'mouseup', onMouseUp, documentListenerOptions);
-          return;
-        }
-
-        processElement(element);
-      };
-
-      const onMouseUp = (e: MouseEvent) => {
-        if(seen.size) {
-          attachClickEvent(window, cancelEvent, {capture: true, once: true, passive: false});
-        }
-
+      if(this.verifyMouseMoveTarget && !this.verifyMouseMoveTarget(e, element, selecting)) {
         this.listenerSetter.removeManual(this.listenElement, 'mousemove', onMouseMove);
-        //bubblesContainer.classList.remove('no-select');
+        this.listenerSetter.removeManual(document, 'mouseup', onMouseUp, documentListenerOptions);
+        return;
+      }
 
-        // ! CANCEL USER SELECTION !
-        cancelSelection();
-      };
+      processElement(element);
+    };
 
-      const documentListenerOptions = {once: true};
-      this.listenerSetter.add(this.listenElement)('mousemove', onMouseMove);
-      this.listenerSetter.add(document)('mouseup', onMouseUp, documentListenerOptions);
-    });
-  }
+    const onMouseUp = (e: MouseEvent) => {
+      if(seen.size) {
+        attachClickEvent(window, cancelEvent, {capture: true, once: true, passive: false});
+      }
+
+      this.listenerSetter.removeManual(this.listenElement, 'mousemove', onMouseMove);
+      //bubblesContainer.classList.remove('no-select');
+
+      // ! CANCEL USER SELECTION !
+      cancelSelection();
+    };
+
+    const documentListenerOptions = {once: true};
+    this.listenerSetter.add(this.listenElement)('mousemove', onMouseMove);
+    this.listenerSetter.add(document)('mouseup', onMouseUp, documentListenerOptions);
+  };
+
+  private getElementsBetween = (first: HTMLElement, last: HTMLElement) => { 
+    if(first === last) {
+      return [];
+    }
+
+    const firstRect = first.getBoundingClientRect();
+    const lastRect = last.getBoundingClientRect();
+    const difference = (firstRect.top - lastRect.top) || (firstRect.left - lastRect.left);
+    const isHigher = difference < 0;
+
+    const parent = findUpClassName(first, this.lookupBetweenParentClassName);
+    if(!parent) {
+      return [];
+    }
+
+    const elements = Array.from(parent.querySelectorAll(this.lookupBetweenElementsQuery)) as HTMLElement[];
+    let firstIndex = elements.indexOf(first);
+    let lastIndex = elements.indexOf(last);
+
+    if(!isHigher) {
+      [lastIndex, firstIndex] = [firstIndex, lastIndex];
+    }
+
+    const slice = elements.slice(firstIndex + 1, lastIndex);
+
+    // console.log('getElementsBetween', first, last, slice, firstIndex, lastIndex, isHigher);
+
+    return slice;
+  };
 
   protected isElementShouldBeSelected(element: HTMLElement) {
     return this.isMidSelected(element.dataset.peerId.toPeerId(), +element.dataset.mid);
@@ -327,7 +343,7 @@ class AppSelection extends EventListenerBase<{
       element.firstElementChild.firstElementChild as HTMLInputElement;
   }
 
-  protected updateContainer(forceSelection = false) {
+  protected async updateContainer(forceSelection = false) {
     const size = this.selectedMids.size;
     if(!size && !forceSelection) return;
     
@@ -335,19 +351,10 @@ class AppSelection extends EventListenerBase<{
       cantDelete = !size, 
       cantSend = !size;
     for(const [peerId, mids] of this.selectedMids) {
-      const storage = this.isScheduled ? this.appMessagesManager.getScheduledMessagesStorage(peerId) : this.appMessagesManager.getMessagesStorage(peerId);
-      for(const mid of mids) {
-        const message = this.appMessagesManager.getMessageFromStorage(storage, mid);
-        if(!cantForward) {
-          cantForward = !this.appMessagesManager.canForward(message);
-        }
-        
-        if(!cantDelete) {
-          cantDelete = !this.appMessagesManager.canDeleteMessage(message);
-        }
-
-        if(cantForward && cantDelete) break;
-      }
+      const storageKey: MessagesStorageKey = `${peerId}_${this.isScheduled ? 'scheduled' : 'history'}`;
+      const r = await this.managers.appMessagesManager.cantForwardDeleteMids(storageKey, Array.from(mids));
+      cantForward = r.cantForward;
+      cantDelete = r.cantDelete;
 
       if(cantForward && cantDelete) break;
     }
@@ -417,9 +424,9 @@ class AppSelection extends EventListenerBase<{
     return true;
   }
 
-  public cancelSelection = (doNotAnimate?: boolean) => {
+  public cancelSelection = async(doNotAnimate?: boolean) => {
     if(doNotAnimate) this.doNotAnimate = true;
-    this.onCancelSelection && this.onCancelSelection();
+    this.onCancelSelection && await this.onCancelSelection();
     this.selectedMids.clear();
     this.toggleSelection();
     cancelSelection();
@@ -463,24 +470,24 @@ class AppSelection extends EventListenerBase<{
         }
       }
     } else {
-      const diff = rootScope.config.forwarded_count_max - this.length() - 1;
-      if(diff < 0) {
-        toast(I18n.format('Chat.Selection.LimitToast', true));
-        return false;
-        /* const it = this.selectedMids.values();
-        do {
-          const mid = it.next().value;
-          const mounted = this.appImManager.getMountedBubble(mid);
-          if(mounted) {
-            this.toggleByBubble(mounted.bubble);
-          } else {
-            const mids = this.appMessagesManager.getMidsByMid(mid);
-            for(const mid of mids) {
-              this.selectedMids.delete(mid);
-            }
-          }
-        } while(this.selectedMids.size > MAX_SELECTION_LENGTH); */
-      }
+      // const diff = rootScope.config.forwarded_count_max - this.length() - 1;
+      // if(diff < 0) {
+      //   toast(I18n.format('Chat.Selection.LimitToast', true));
+      //   return false;
+      //   /* const it = this.selectedMids.values();
+      //   do {
+      //     const mid = it.next().value;
+      //     const mounted = this.appImManager.getMountedBubble(mid);
+      //     if(mounted) {
+      //       this.toggleByBubble(mounted.bubble);
+      //     } else {
+      //       const mids = this.appMessagesManager.getMidsByMid(mid);
+      //       for(const mid of mids) {
+      //         this.selectedMids.delete(mid);
+      //       }
+      //     }
+      //   } while(this.selectedMids.size > MAX_SELECTION_LENGTH); */
+      // }
 
       if(!set) {
         set = new Set();
@@ -502,7 +509,7 @@ class AppSelection extends EventListenerBase<{
       return;
     }
 
-    mids.forEach(mid => {
+    mids.forEach((mid) => {
       set.delete(mid);
     });
 
@@ -524,11 +531,9 @@ export class SearchSelection extends AppSelection {
 
   private isPrivate: boolean;
 
-  constructor(private searchSuper: AppSearchSuper, appMessagesManager: AppMessagesManager) {
+  constructor(private searchSuper: AppSearchSuper, managers: AppManagers) {
     super({
-      appMessagesManager,
-      listenElement: searchSuper.container,
-      listenerSetter: new ListenerSetter(),
+      managers,
       verifyTarget: (e, target) => !!target && this.isSelecting,
       getElementFromTarget: (target) => findUpClassName(target, 'search-super-item'),
       targetLookupClassName: 'search-super-item',
@@ -537,6 +542,7 @@ export class SearchSelection extends AppSelection {
     });
 
     this.isPrivate = !searchSuper.showSender;
+    this.attachListeners(searchSuper.container, new ListenerSetter());
   }
 
   /* public appendCheckbox(element: HTMLElement, checkboxField: CheckboxField) {
@@ -554,7 +560,7 @@ export class SearchSelection extends AppSelection {
 
     if(ret && toggleCheckboxes) {
       const elements = Array.from(this.searchSuper.tabsContainer.querySelectorAll('.search-super-item')) as HTMLElement[];
-      elements.forEach(element => {
+      elements.forEach((element) => {
         this.toggleElementCheckbox(element, this.isSelecting);
       });
     }
@@ -677,11 +683,14 @@ export default class ChatSelection extends AppSelection {
   private selectionLeft: HTMLDivElement;
   private selectionRight: HTMLDivElement;
 
-  constructor(private chat: Chat, private bubbles: ChatBubbles, private input: ChatInput, appMessagesManager: AppMessagesManager) {
+  constructor(
+    private chat: Chat, 
+    private bubbles: ChatBubbles, 
+    private input: ChatInput, 
+    managers: AppManagers
+  ) {
     super({
-      appMessagesManager,
-      listenElement: bubbles.bubblesContainer,
-      listenerSetter: bubbles.listenerSetter,
+      managers,
       getElementFromTarget: (target) => findUpClassName(target, 'grouped-item') || findUpClassName(target, 'bubble'),
       verifyTarget: (e, target) => {
         // LEFT BUTTON
@@ -723,6 +732,10 @@ export default class ChatSelection extends AppSelection {
 
     if(ret && toggleCheckboxes) {
       for(const mid in this.bubbles.bubbles) {
+        if(this.bubbles.skippedMids.has(+mid)) {
+          continue;
+        }
+        
         const bubble = this.bubbles.bubbles[mid];
         this.toggleElementCheckbox(bubble, this.isSelecting);
       }
@@ -738,14 +751,14 @@ export default class ChatSelection extends AppSelection {
     if(ret) {
       const isGrouped = bubble.classList.contains('is-grouped');
       if(isGrouped) {
-        this.bubbles.getBubbleGroupedItems(bubble).forEach(item => this.toggleElementCheckbox(item, show));
+        this.bubbles.getBubbleGroupedItems(bubble).forEach((item) => this.toggleElementCheckbox(item, show));
       }
     }
     
     return ret;
   }
 
-  public toggleByElement = (bubble: HTMLElement) => {
+  public toggleByElement = (bubble: HTMLElement): Promise<void> => {
     if(!this.canSelectBubble(bubble)) return;
 
     const mid = +bubble.dataset.mid;
@@ -753,18 +766,20 @@ export default class ChatSelection extends AppSelection {
     const isGrouped = bubble.classList.contains('is-grouped');
     if(isGrouped) {
       if(!this.isGroupedBubbleSelected(bubble)) {
-        const set = this.selectedMids.get(this.bubbles.peerId);
+        const set = this.selectedMids.get(this.chat.peerId);
         if(set) {
-          const mids = this.chat.getMidsByMid(mid);
-          mids.forEach(mid => set.delete(mid));
+          // const mids = await this.chat.getMidsByMid(mid);
+          const mids = this.getMidsFromGroupContainer(bubble);
+          mids.forEach((mid) => set.delete(mid));
         }
       }
 
-      this.bubbles.getBubbleGroupedItems(bubble).forEach(this.toggleByElement);
+      /* const promises =  */this.bubbles.getBubbleGroupedItems(bubble).map(this.toggleByElement);
+      // await Promise.all(promises);
       return;
     }
 
-    if(!this.toggleMid(this.bubbles.peerId, mid)) {
+    if(!this.toggleMid(this.chat.peerId, mid)) {
       return;
     }
 
@@ -772,7 +787,7 @@ export default class ChatSelection extends AppSelection {
     if(isGroupedItem) {
       const groupContainer = findUpClassName(bubble, 'bubble');
       const isGroupedSelected = this.isGroupedBubbleSelected(groupContainer);
-      const isGroupedMidsSelected = this.isGroupedMidsSelected(mid);
+      const isGroupedMidsSelected = this.isGroupedMidsSelected(groupContainer);
 
       const willChange = isGroupedMidsSelected || isGroupedSelected;
       if(willChange) {
@@ -780,11 +795,11 @@ export default class ChatSelection extends AppSelection {
       }
     }
 
-    this.updateElementSelection(bubble, this.isMidSelected(this.bubbles.peerId, mid));
+    this.updateElementSelection(bubble, this.isMidSelected(this.chat.peerId, mid));
   };
 
-  protected toggleByMid = (peerId: PeerId, mid: number) => {
-    const mounted = this.bubbles.getMountedBubble(mid);
+  protected toggleByMid = async(peerId: PeerId, mid: number) => {
+    const mounted = await this.bubbles.getMountedBubble(mid);
     if(mounted) {
       this.toggleByElement(mounted.bubble);
     }
@@ -792,7 +807,7 @@ export default class ChatSelection extends AppSelection {
 
   public isElementShouldBeSelected(element: HTMLElement) {
     const isGrouped = element.classList.contains('is-grouped');
-    return super.isElementShouldBeSelected(element) && (!isGrouped || this.isGroupedMidsSelected(+element.dataset.mid));
+    return super.isElementShouldBeSelected(element) && (!isGrouped || this.isGroupedMidsSelected(element));
   }
 
   protected isGroupedBubbleSelected(bubble: HTMLElement) {
@@ -800,9 +815,18 @@ export default class ChatSelection extends AppSelection {
     return groupedCheckboxInput?.checked;
   }
 
-  protected isGroupedMidsSelected(mid: number) {
-    const mids = this.chat.getMidsByMid(mid);
-    const selectedMids = mids.filter(mid => this.isMidSelected(this.bubbles.peerId, mid));
+  protected getMidsFromGroupContainer(groupContainer: HTMLElement) {
+    const elements = Array.from(groupContainer.querySelectorAll('.grouped-item')) as HTMLElement[];
+    if(!elements.length) {
+      elements.push(groupContainer);
+    }
+
+    return elements.map((element) => +element.dataset.mid);
+  }
+
+  protected isGroupedMidsSelected(groupContainer: HTMLElement) {
+    const mids = this.getMidsFromGroupContainer(groupContainer);
+    const selectedMids = mids.filter((mid) => this.isMidSelected(this.chat.peerId, mid));
     return mids.length === selectedMids.length;
   }
 
@@ -834,8 +858,8 @@ export default class ChatSelection extends AppSelection {
       !bubble.classList.contains('avoid-selection');
   }
 
-  protected onToggleSelection = (forwards: boolean, animate: boolean) => {
-    const {needTranslateX, widthFrom, widthTo} = this.chat.input.center(animate);
+  protected onToggleSelection = async(forwards: boolean, animate: boolean) => {
+    const {needTranslateX, widthFrom, widthTo} = await this.chat.input.center(animate);
 
     SetTransition(this.listenElement, 'is-selecting', forwards, animate ? 200 : 0, () => {
       if(!this.isSelecting) {
@@ -881,7 +905,7 @@ export default class ChatSelection extends AppSelection {
           this.selectionSendNowBtn = Button('btn-primary btn-transparent btn-short text-bold selection-container-send', {icon: 'send2'});
           this.selectionSendNowBtn.append(i18n('MessageScheduleSend'));
           attachClickEvent(this.selectionSendNowBtn, () => {
-            new PopupSendNow(this.bubbles.peerId, [...this.selectedMids.get(this.bubbles.peerId)], () => {
+            new PopupSendNow(this.chat.peerId, [...this.selectedMids.get(this.chat.peerId)], () => {
               this.cancelSelection();
             });
           }, attachClickOptions);
@@ -903,7 +927,7 @@ export default class ChatSelection extends AppSelection {
         this.selectionDeleteBtn = Button('btn-primary btn-transparent danger text-bold selection-container-delete', {icon: 'delete'});
         this.selectionDeleteBtn.append(i18n('Delete'));
         attachClickEvent(this.selectionDeleteBtn, () => {
-          new PopupDeleteMessages(this.bubbles.peerId, [...this.selectedMids.get(this.bubbles.peerId)], this.chat.type, () => {
+          new PopupDeleteMessages(this.chat.peerId, [...this.selectedMids.get(this.chat.peerId)], this.chat.type, () => {
             this.cancelSelection();
           });
         }, attachClickOptions);
@@ -951,19 +975,17 @@ export default class ChatSelection extends AppSelection {
     this.selectionDeleteBtn.toggleAttribute('disabled', cantDelete);
   };
 
-  protected onCancelSelection = () => {
+  protected onCancelSelection = async() => {
+    const promises: Promise<HTMLElement>[] = [];
     for(const [peerId, mids] of this.selectedMids) {
       for(const mid of mids) {
-        const mounted = this.bubbles.getMountedBubble(mid);
-        if(mounted) {
-          //this.toggleByBubble(mounted.message.grouped_id ? mounted.bubble.querySelector(`.grouped-item[data-mid="${mid}"]`) : mounted.bubble);
-          this.toggleByElement(mounted.bubble);
-        }
-        /* const bubble = this.appImManager.bubbles[mid];
-        if(bubble) {
-          this.toggleByBubble(bubble);
-        } */
+        promises.push(this.bubbles.getMountedBubble(mid).then((m) => m?.bubble));
       }
     }
+
+    const bubbles = filterUnique((await Promise.all(promises)).filter(Boolean));
+    bubbles.forEach((bubble) => {
+      this.toggleByElement(bubble);
+    });
   };
 }

@@ -8,12 +8,14 @@ import callbackify from "../../helpers/callbackify";
 import formatNumber from "../../helpers/number/formatNumber";
 import { fastRaf } from "../../helpers/schedulers";
 import { MessagePeerReaction, ReactionCount } from "../../layer";
-import appPeersManager from "../../lib/appManagers/appPeersManager";
-import appReactionsManager from "../../lib/appManagers/appReactionsManager";
+import { AppManagers } from "../../lib/appManagers/managers";
+import getPeerId from "../../lib/appManagers/utils/peers/getPeerId";
 import RLottiePlayer from "../../lib/rlottie/rlottiePlayer";
+import rootScope from "../../lib/rootScope";
 import SetTransition from "../singleTransition";
 import StackedAvatars from "../stackedAvatars";
 import { wrapSticker, wrapStickerAnimation } from "../wrappers";
+import { Awaited } from "../../types";
 
 const CLASS_NAME = 'reaction';
 const TAG_NAME = CLASS_NAME + '-element';
@@ -32,11 +34,13 @@ export default class ReactionElement extends HTMLElement {
   private stackedAvatars: StackedAvatars;
   private canRenderAvatars: boolean;
   private _reactionCount: ReactionCount;
-  private wrapStickerPromise: ReturnType<typeof wrapSticker>;
+  private wrapStickerPromise: Awaited<ReturnType<typeof wrapSticker>>['render'];
+  private managers: AppManagers;
 
   constructor() {
     super();
     this.classList.add(CLASS_NAME);
+    this.managers = rootScope.managers;
   }
 
   public get reactionCount() {
@@ -70,7 +74,7 @@ export default class ReactionElement extends HTMLElement {
     
     const reactionCount = this.reactionCount;
     if(!doNotRenderSticker && !hadStickerContainer) {
-      const availableReaction = appReactionsManager.getReaction(reactionCount.reaction);
+      const availableReaction = this.managers.appReactionsManager.getReaction(reactionCount.reaction);
       callbackify(availableReaction, (availableReaction) => {
         if(!availableReaction.center_icon) {
           this.stickerContainer.classList.add('is-static');
@@ -86,8 +90,9 @@ export default class ReactionElement extends HTMLElement {
           doc: availableReaction.center_icon ?? availableReaction.static_icon,
           width: size,
           height: size,
-          static: true
-        }).finally(() => {
+          static: true,
+          managers: this.managers
+        }).then(({render}) => render).finally(() => {
           if(this.wrapStickerPromise === wrapPromise) {
             this.wrapStickerPromise = undefined;
           }
@@ -141,7 +146,7 @@ export default class ReactionElement extends HTMLElement {
       this.append(this.stackedAvatars.container);
     }
 
-    this.stackedAvatars.render(recentReactions.map(reaction => appPeersManager.getPeerId(reaction.peer_id)));
+    this.stackedAvatars.render(recentReactions.map((reaction) => getPeerId(reaction.peer_id)));
   }
 
   public setIsChosen(isChosen = !!this.reactionCount.pFlags.chosen) {
@@ -153,7 +158,7 @@ export default class ReactionElement extends HTMLElement {
   }
 
   public fireAroundAnimation() {
-    callbackify(appReactionsManager.getReaction(this.reactionCount.reaction), (availableReaction) => {
+    callbackify(this.managers.appReactionsManager.getReaction(this.reactionCount.reaction), (availableReaction) => {
       const size = this.type === 'inline' ? REACTION_INLINE_SIZE + 14 : REACTION_BLOCK_SIZE + 18;
       const div = document.createElement('div');
       div.classList.add(CLASS_NAME + '-sticker-activate');
@@ -169,8 +174,9 @@ export default class ReactionElement extends HTMLElement {
           play: false,
           skipRatio: 1,
           group: 'none',
-          needFadeIn: false
-        }) as Promise<RLottiePlayer>,
+          needFadeIn: false,
+          managers: this.managers
+        }).then(({render}) => render as Promise<RLottiePlayer>),
 
         wrapStickerAnimation({
           doc: availableReaction.around_animation,
@@ -178,7 +184,8 @@ export default class ReactionElement extends HTMLElement {
           target: this.stickerContainer,
           side: 'center',
           skipRatio: 1,
-          play: false
+          play: false,
+          managers: this.managers
         }).stickerPromise
       ]).then(([iconPlayer, aroundPlayer]) => {
         const remove = () => {

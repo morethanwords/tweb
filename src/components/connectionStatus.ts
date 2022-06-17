@@ -7,7 +7,6 @@
 import App from "../config/app";
 import DEBUG from "../config/debug";
 import replaceContent from "../helpers/dom/replaceContent";
-import apiUpdatesManager from "../lib/appManagers/apiUpdatesManager";
 import { LangPackKey, i18n } from "../lib/langPack";
 import { logger } from "../lib/logger";
 import rootScope from "../lib/rootScope";
@@ -17,8 +16,8 @@ import SetTransition from "./singleTransition";
 import sessionStorage from '../lib/sessionStorage';
 import { ConnectionStatus } from "../lib/mtproto/connectionStatus";
 import cancelEvent from "../helpers/dom/cancelEvent";
-import apiManager from "../lib/mtproto/mtprotoworker";
 import { attachClickEvent } from "../helpers/dom/clickEvent";
+import { AppManagers } from "../lib/appManagers/managers";
 
 export default class ConnectionStatusComponent {
   public static CHANGE_STATE_DELAY = 1000;
@@ -40,7 +39,7 @@ export default class ConnectionStatusComponent {
   private setFirstConnectionTimeout: number;
   private setStateTimeout: number;
 
-  constructor(chatsContainer: HTMLElement) {
+  constructor(private managers: AppManagers, chatsContainer: HTMLElement) {
     this.log = logger('CS', undefined, undefined);
   
     this.statusContainer = document.createElement('div');
@@ -94,7 +93,10 @@ export default class ConnectionStatusComponent {
   }
 
   private setConnectionStatus = () => {
-    sessionStorage.get('dc').then(baseDcId => {
+    Promise.all([
+      sessionStorage.get('dc'),
+      rootScope.managers.rootScope.getConnectionStatus()
+    ]).then(([baseDcId, connectionStatus]) => {
       if(!baseDcId) {
         baseDcId = App.baseDcId;
       }
@@ -104,11 +106,11 @@ export default class ConnectionStatusComponent {
         this.setFirstConnectionTimeout = 0;
       }
 
-      const status = rootScope.connectionStatus['NET-' + baseDcId];
+      const status = connectionStatus['NET-' + baseDcId];
       const online = status && status.status === ConnectionStatus.Connected;
 
       if(this.connecting && online) {
-        apiUpdatesManager.forceGetDifference();
+        this.managers.apiUpdatesManager.forceGetDifference();
       }
 
       if(online && !this.hadConnect) {
@@ -146,7 +148,7 @@ export default class ConnectionStatusComponent {
     const timeout = ConnectionStatusComponent.CHANGE_STATE_DELAY;
     if(this.connecting) {
       if(this.timedOut) {
-        const a = this.getA('ConnectionStatus.ForceReconnect', () => apiManager.forceReconnect());
+        const a = this.getA('ConnectionStatus.ForceReconnect', () => this.managers.networkerFactory.forceReconnect());
         this.setStatusText('ConnectionStatus.TimedOut', [a]);
       } else if(this.hadConnect) {
         if(this.retryAt !== undefined) {
@@ -162,7 +164,7 @@ export default class ConnectionStatusComponent {
           const interval = setInterval(setTime, 1e3);
           setTime();
   
-          const a = this.getA('ConnectionStatus.Reconnect', () => apiManager.forceReconnectTimeout());
+          const a = this.getA('ConnectionStatus.Reconnect', () => this.managers.networkerFactory.forceReconnectTimeout());
           this.setStatusText('ConnectionStatus.ReconnectIn', [timerSpan, a]);
         } else {
           this.setStatusText('ConnectionStatus.Reconnecting');

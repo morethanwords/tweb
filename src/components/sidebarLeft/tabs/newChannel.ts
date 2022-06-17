@@ -6,7 +6,6 @@
 
 import appSidebarLeft, { SettingSection } from "..";
 import { InputFile } from "../../../layer";
-import appChatsManager from "../../../lib/appManagers/appChatsManager";
 import InputField from "../../inputField";
 import { SliderSuperTab } from "../../slider";
 import AvatarEdit from "../../avatarEdit";
@@ -65,25 +64,25 @@ export default class AppNewChannelTab extends SliderSuperTab {
       const about = this.channelDescriptionInputField.value;
 
       this.nextBtn.disabled = true;
-      appChatsManager.createChannel({
+      this.managers.appChatsManager.createChannel({
         title, 
         about,
         broadcast: true
       }).then((channelId) => {
         if(this.uploadAvatar) {
           this.uploadAvatar().then((inputFile) => {
-            appChatsManager.editPhoto(channelId, inputFile);
+            this.managers.appChatsManager.editPhoto(channelId, inputFile);
           });
         }
         
         appSidebarLeft.removeTabFromHistory(this);
-        new AppAddMembersTab(this.slider).open({
+        this.slider.createTab(AppAddMembersTab).open({
           type: 'channel',
           skippable: true,
           title: 'GroupAddMembers',
           placeholder: 'SendMessageTo',
           takeOut: (peerIds) => {
-            return appChatsManager.inviteToChannel(channelId, peerIds);
+            return this.managers.appChatsManager.inviteToChannel(channelId, peerIds);
           }
         });
       });

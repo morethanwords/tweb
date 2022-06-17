@@ -10,18 +10,20 @@ import { attachClickEvent } from "../../helpers/dom/clickEvent";
 import EditPeer from "../editPeer";
 import { _i18n } from "../../lib/langPack";
 import TelInputField from "../telInputField";
-import appUsersManager from "../../lib/appManagers/appUsersManager";
 import { formatPhoneNumber } from "../../helpers/formatPhoneNumber";
 import { toastNew } from "../toast";
 
 export default class PopupCreateContact extends PopupElement {
   constructor() {
     super('popup-create-contact popup-send-photo popup-new-media', null, {closable: true, withConfirm: 'Add'});
+    this.construct();
+  }
 
+  private async construct() {
     _i18n(this.title, 'AddContactTitle');
 
     attachClickEvent(this.btnConfirm, () => {
-      const promise = appUsersManager.importContact(nameInputField.value, lastNameInputField.value, telInputField.value);
+      const promise = this.managers.appUsersManager.importContact(nameInputField.value, lastNameInputField.value, telInputField.value);
 
       promise.then(() => {
         this.hide();
@@ -54,7 +56,7 @@ export default class PopupCreateContact extends PopupElement {
 
     const onInput = () => {
       const name = nameInputField.value + ' ' + lastNameInputField.value;
-      // const abbr = RichTextProcessor.getAbbreviation(name);
+      // const abbr = getAbbreviation(name);
       editPeer.avatarElem.peerTitle = name;
       editPeer.avatarElem.update();
     };
@@ -66,7 +68,7 @@ export default class PopupCreateContact extends PopupElement {
       return !!telInputField.value.match(/\d/);
     };
 
-    const user = appUsersManager.getSelf();
+    const user = await this.managers.appUsersManager.getSelf();
     const formatted = formatPhoneNumber(user.phone);
     if(formatted.code) {
       telInputField.value = '+' + formatted.code.country_code;

@@ -50,7 +50,7 @@ export class Layouter {
     if(!this.count) return [];
     //else if(this.count === 1) return this.layoutOne();
 
-    if(this.count >= 5 || this.ratios.find(r => r > 2)) {
+    if(this.count >= 5 || this.ratios.find((r) => r > 2)) {
       return new ComplexLayouter(this.ratios, this.averageRatio, this.maxWidth, this.minWidth, this.spacing).layout();
     }
 
@@ -298,11 +298,11 @@ export class Layouter {
   }
 
   private static countRatios(sizes: Size[]) {
-    return sizes.map(size => size.w / size.h);
+    return sizes.map((size) => size.w / size.h);
   }
 
   private static countProportions(ratios: number[]) {
-    return ratios.map(ratio => (ratio > 1.2) ? 'w' : (ratio < 0.8) ? 'n' : 'q').join('');
+    return ratios.map((ratio) => (ratio > 1.2) ? 'w' : (ratio < 0.8) ? 'n' : 'q').join('');
   }
 }
 
@@ -318,7 +318,7 @@ class ComplexLayouter {
   private static cropRatios(ratios: number[], averageRatio: number) {
     const kMaxRatio = 2.75;
     const kMinRatio = 0.6667;
-    return ratios.map(ratio => {
+    return ratios.map((ratio) => {
       return averageRatio > 1.1
 			  ? clamp(ratio, 1., kMaxRatio)
 			  : clamp(ratio, kMinRatio, 1.);

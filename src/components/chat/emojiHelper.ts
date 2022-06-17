@@ -5,19 +5,21 @@
  */
 
 import type ChatInput from "./input";
-import type { AppEmojiManager } from "../../lib/appManagers/appEmojiManager";
 import { appendEmoji, getEmojiFromElement } from "../emoticonsDropdown/tabs/emoji";
 import { ScrollableX } from "../scrollable";
 import AutocompleteHelper from "./autocompleteHelper";
 import AutocompleteHelperController from "./autocompleteHelperController";
+import { AppManagers } from "../../lib/appManagers/managers";
 
 export default class EmojiHelper extends AutocompleteHelper {
   private scrollable: ScrollableX;
 
-  constructor(appendTo: HTMLElement, 
+  constructor(
+    appendTo: HTMLElement, 
     controller: AutocompleteHelperController, 
     chatInput: ChatInput, 
-    private appEmojiManager: AppEmojiManager) {
+    private managers: AppManagers
+  ) {
     super({
       appendTo,
       controller, 
@@ -59,7 +61,7 @@ export default class EmojiHelper extends AutocompleteHelper {
 
     if(emojis.length) {
       this.list.innerHTML = '';
-      emojis.forEach(emoji => {
+      emojis.forEach((emoji) => {
         appendEmoji(emoji, this.list, false, true);
       });
     }
@@ -74,13 +76,17 @@ export default class EmojiHelper extends AutocompleteHelper {
 
   public checkQuery(query: string, firstChar: string) {
     const middleware = this.controller.getMiddleware();
-    this.appEmojiManager.getBothEmojiKeywords().then(() => {
+    this.managers.appEmojiManager.getBothEmojiKeywords().then(async() => {
       if(!middleware()) {
         return;
       }
 
       const q = query.replace(/^:/, '');
-      const emojis = this.appEmojiManager.searchEmojis(q);
+      const emojis = await this.managers.appEmojiManager.searchEmojis(q);
+      if(!middleware()) {
+        return;
+      }
+      
       this.render(emojis, firstChar !== ':');
       //console.log(emojis);
     });

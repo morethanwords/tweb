@@ -4,16 +4,13 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import type { GroupCallConnectionType, GroupCallId, GroupCallOutputSource } from "../appManagers/appGroupCallsManager";
 import { IS_SAFARI } from "../../environment/userAgent";
 import indexOfAndSplice from "../../helpers/array/indexOfAndSplice";
 import safeAssign from "../../helpers/object/safeAssign";
 import throttle from "../../helpers/schedulers/throttle";
-import { GroupCall, GroupCallParticipant, Updates } from "../../layer";
-import apiUpdatesManager from "../appManagers/apiUpdatesManager";
-import appGroupCallsManager, { GroupCallConnectionType, GroupCallId, GroupCallOutputSource } from "../appManagers/appGroupCallsManager";
-import appPeersManager from "../appManagers/appPeersManager";
+import { GroupCall, GroupCallParticipant } from "../../layer";
 import { logger } from "../logger";
-import apiManager from "../mtproto/mtprotoworker";
 import { NULL_PEER_ID } from "../mtproto/mtproto_config";
 import rootScope from "../rootScope";
 import CallInstanceBase, { TryAddTrackOptions } from "./callInstanceBase";
@@ -28,6 +25,9 @@ import localConferenceDescription from "./localConferenceDescription";
 import { WebRTCLineType } from "./sdpBuilder";
 import StreamManager from "./streamManager";
 import { Ssrc } from "./types";
+import getPeerId from "../appManagers/utils/peers/getPeerId";
+import { AppManagers } from "../appManagers/managers";
+import { generateSelfVideo, makeSsrcFromParticipant, makeSsrcsFromParticipant } from "./groupCallsController";
 
 export default class GroupCallInstance extends CallInstanceBase<{
   state: (state: GROUP_CALL_STATE) => void,
@@ -52,11 +52,14 @@ export default class GroupCallInstance extends CallInstanceBase<{
   private startVideoSharingPromise: Promise<void>;
   private startScreenSharingPromise: Promise<void>;
 
+  private managers: AppManagers;
+
   constructor(options: {
     id: GroupCallInstance['id'],
     chatId: GroupCallInstance['chatId'],
     isSpeakingMap?: GroupCallInstance['isSpeakingMap'],
-    connections?: GroupCallInstance['connections']
+    connections?: GroupCallInstance['connections'],
+    managers: AppManagers
   }) {
     super();
 
@@ -111,7 +114,7 @@ export default class GroupCallInstance extends CallInstanceBase<{
   }
 
   get participants() {
-    return appGroupCallsManager.getCachedParticipants(this.id);
+    return this.managers.appGroupCallsManager.getCachedParticipants(this.id);
   }
 
   get isSharingScreen() {
@@ -156,12 +159,21 @@ export default class GroupCallInstance extends CallInstanceBase<{
     this.dispatchPinnedThrottled();
   }
 
-  public getParticipantByPeerId(peerId: PeerId) {
-    return NULL_PEER_ID === peerId ? this.participant : this.participants.get(peerId);
+  public async getParticipantByPeerId(peerId: PeerId) {
+    return NULL_PEER_ID === peerId ? this.participant : (await this.participants).get(peerId);
   }
 
   public toggleMuted() {
-    return this.requestAudioSource(true).then(() => appGroupCallsManager.toggleMuted());
+    return this.requestAudioSource(true).then(() => this.changeUserMuted(NULL_PEER_ID));
+  }
+
+  public async changeUserMuted(peerId: PeerId, muted?: boolean) {
+    const participant = await this.getParticipantByPeerId(peerId);
+    if(NULL_PEER_ID === peerId && participant.pFlags.can_self_unmute) {
+      muted = muted === undefined ? !participant.pFlags.muted : muted;
+    }
+
+    return this.editParticipant(participant, {muted});
   }
 
   public getElement(endpoint: GroupCallOutputSource) {
@@ -194,12 +206,13 @@ export default class GroupCallInstance extends CallInstanceBase<{
     return this.connections[options.type] = new GroupCallConnectionInstance({
       groupCall: this,
       log: this.log.bindPrefix(options.type),
+      managers: this.managers,
       ...options
     });
   }
 
   public changeRaiseHand(raise: boolean) {
-    return appGroupCallsManager.editParticipant(this.id, this.participant, {raiseHand: raise});
+    return this.editParticipant(this.participant, {raiseHand: raise});
   }
 
   public async startScreenSharingInternal() {
@@ -236,9 +249,9 @@ export default class GroupCallInstance extends CallInstanceBase<{
   }
 
   public startScreenSharing() {
-    return this.startScreenSharingPromise || (this.startScreenSharingPromise = this.startScreenSharingInternal().finally(() => {
+    return this.startScreenSharingPromise ??= this.startScreenSharingInternal().finally(() => {
       this.startScreenSharingPromise = undefined;
-    }));
+    });
   }
 
   public stopScreenSharing() {
@@ -252,13 +265,9 @@ export default class GroupCallInstance extends CallInstanceBase<{
     connectionInstance.closeConnectionAndStream(true);
 
     delete this.participant.presentation;
-    appGroupCallsManager.saveApiParticipant(this.id, this.participant);
+    this.managers.appGroupCallsManager.saveApiParticipant(this.id, this.participant);
 
-    return apiManager.invokeApi('phone.leaveGroupCallPresentation', {
-      call: appGroupCallsManager.getGroupCallInput(this.id)
-    }).then(updates => {
-      apiUpdatesManager.processUpdateMessage(updates);
-    });
+    return this.managers.appGroupCallsManager.leaveGroupCallPresentation(this.id);
   }
 
   public toggleScreenSharing() {
@@ -279,7 +288,7 @@ export default class GroupCallInstance extends CallInstanceBase<{
       const connectionInstance = this.connections.main;
       connectionInstance.addInputVideoStream(stream);
 
-      await appGroupCallsManager.editParticipant(this.id, this.participant, {
+      await this.editParticipant(this.participant, {
         videoPaused: false,
         videoStopped: false
       });
@@ -289,9 +298,9 @@ export default class GroupCallInstance extends CallInstanceBase<{
   }
 
   public startVideoSharing() {
-    return this.startVideoSharingPromise || (this.startVideoSharingPromise = this.startVideoSharingInternal().finally(() => {
+    return this.startVideoSharingPromise ??= this.startVideoSharingInternal().finally(() => {
       this.startVideoSharingPromise = undefined;
-    }));
+    });
   }
 
   public async stopVideoSharing() {
@@ -304,7 +313,7 @@ export default class GroupCallInstance extends CallInstanceBase<{
     stopTrack(track);
     connectionInstance.streamManager.appendToConference(connectionInstance.description); // clear sender track
 
-    await appGroupCallsManager.editParticipant(this.id, this.participant, {
+    await this.editParticipant(this.participant, {
       videoStopped: true
     });
   }
@@ -330,37 +339,8 @@ export default class GroupCallInstance extends CallInstanceBase<{
     }
     
     if(!rejoin) {
-      let promise: Promise<Updates>;
-      const groupCallInput = appGroupCallsManager.getGroupCallInput(this.id);
-
-      if(discard) {
-        this.log(`[api] discardGroupCall id=${this.id}`);
-        promise = apiManager.invokeApi('phone.discardGroupCall', {
-          call: groupCallInput
-        });
-      } else if(this.joined) {
-        this.log(`[api] leaveGroupCall id=${this.id}`);
-        const connectionInstance = this.connections.main;
-        promise = apiManager.invokeApi('phone.leaveGroupCall', {
-          call: groupCallInput,
-          source: connectionInstance.sources.audio.source
-        });
-      } else {
-        this.log(`[api] id=${this.id} payload=null`);
-        promise = apiManager.invokeApi('phone.joinGroupCall', {
-          call: groupCallInput,
-          join_as: {_: 'inputPeerSelf'},
-          muted: true,
-          video_stopped: true,
-          params: {
-            _: 'dataJSON',
-            data: ''
-          }
-        });
-      }
-
-      const updates = await promise;
-      apiUpdatesManager.processUpdateMessage(updates);
+      let d = discard || (this.joined ? this.connections.main.sources.audio.source : undefined);
+      this.managers.appGroupCallsManager.hangUp(this.id, d);
     }
   }
 
@@ -370,25 +350,127 @@ export default class GroupCallInstance extends CallInstanceBase<{
     
     if(options.type === 'output') {
       const entry = description.getEntryBySource(+source);
-      const participant = this.participants.get(entry.peerId);
-      if(participant) {
-        rootScope.dispatchEvent('group_call_participant', {groupCallId: this.id, participant});
-      }
+      this.getParticipantByPeerId(entry.peerId).then((participant) => {
+        if(participant) {
+          rootScope.dispatchEvent('group_call_participant', {groupCallId: this.id, participant});
+        }
+      });
     }
 
     return source;
+  }
+
+  public async editParticipant(participant: GroupCallParticipant, options: Partial<{
+    muted: boolean,
+    volume: number,
+    raiseHand: boolean,
+    videoStopped: boolean,
+    videoPaused: boolean,
+    presentationPaused: boolean
+  }>) {
+    if(!Object.keys(options).length) {
+      return;
+    }
+
+    // let processUpdate = true;
+    if(participant) {
+      // const {currentGroupCall} = this;
+      // const isCurrentCall = currentGroupCall?.id === groupCallId;
+      const isCurrentCall = true;
+      const isUpdatingMeInCurrentCall = isCurrentCall && participant.pFlags.self;
+
+      if(isUpdatingMeInCurrentCall) {
+        if(options.muted !== undefined && !this.isSharingAudio) {
+          delete options.muted;
+
+          if(!Object.keys(options).length) {
+            return;
+          }
+        }
+      }
+
+      // if(isCurrentCall) {
+        const muted = options.muted;
+        if(muted !== undefined) {
+          /* const isAdmin = appChatsManager.hasRights(currentGroupCall.chatId, 'manage_call');
+          if(isAdmin) {
+            if(muted) {
+              participant.pFlags.muted = true;
+              delete participant.pFlags.can_self_unmute;
+            } else {
+              participant.pFlags.can_self_unmute = true;
+            }
+          } else  */if(participant.pFlags.self) {
+            if(muted) {
+              participant.pFlags.muted = true;
+            } else if(participant.pFlags.can_self_unmute) {
+              delete participant.pFlags.muted;
+            }
+          }/*  else {
+            if(muted) {
+              participant.pFlags.muted_by_you = true;
+            } else {
+              delete participant.pFlags.muted_by_you;
+            }
+          } */
+        }
+      // }
+
+      /* const a: [keyof GroupCallParticipant['pFlags'], keyof typeof options][] = [
+        ['muted', 'muted']
+      ];
+
+      a.forEach(([key, optionKey]) => {
+        const value = options[optionKey];
+        if(value === undefined) {
+          return;
+        }
+
+        if(value) {
+          participant.pFlags[key] = true;
+        } else {
+          delete participant.pFlags[key];
+        }
+      }); */
+
+      if(options.raiseHand !== undefined) {
+        if(options.raiseHand) participant.raise_hand_rating = '1';
+        else delete participant.raise_hand_rating;
+      }
+
+      if(isUpdatingMeInCurrentCall) {
+        if(options.videoStopped !== undefined) {
+          if(options.videoStopped) delete participant.video;
+          else participant.video = generateSelfVideo(this.connections.main.sources.video);
+        }
+
+        if(!participant.pFlags.muted && participant.pFlags.can_self_unmute) {
+          this.setMuted(false);
+        }
+
+        this.dispatchEvent('state', this.state);
+      }
+
+      // rootScope.dispatchEvent('group_call_participant', {groupCallId, participant});
+
+      /* if(participant.pFlags.self) {
+        processUpdate = false;
+      } */
+    }
+
+    return this.managers.appGroupCallsManager.editParticipant(this.id, participant, options);
   }
 
   public onParticipantUpdate(participant: GroupCallParticipant, doNotDispatchParticipantUpdate?: PeerId) {
     const connectionInstance = this.connections.main;
     const {connection, description} = connectionInstance;
 
-    const peerId = appPeersManager.getPeerId(participant.peer);
+    const peerId = getPeerId(participant.peer);
     const hasLeft = !!participant.pFlags.left;
     const oldSsrcs = this.participantsSsrcs.get(peerId) || [];
 
     if(participant.presentation && !hasLeft) {
-      const {source} = appGroupCallsManager.makeSsrcFromParticipant(participant, 'video', participant.presentation.source_groups, participant.presentation.endpoint);
+      const {source} = makeSsrcFromParticipant(participant, 'video', participant.presentation.source_groups, participant.presentation.endpoint);
       if(!this.hadAutoPinnedSources.has(source)) {
         this.hadAutoPinnedSources.add(source);
         this.pinSource(participant.pFlags.self ? 'presentation' : source);
@@ -422,7 +504,7 @@ export default class GroupCallInstance extends CallInstanceBase<{
       return;
     }
 
-    const ssrcs = hasLeft ? [] : appGroupCallsManager.makeSsrcsFromParticipant(participant);
+    const ssrcs = hasLeft ? [] : makeSsrcsFromParticipant(participant);
 
     if(!hasLeft) {
       this.participantsSsrcs.set(peerId, ssrcs);
@@ -433,9 +515,9 @@ export default class GroupCallInstance extends CallInstanceBase<{
     // const TEST_OLD = false;
 
     const modifiedTypes: Set<WebRTCLineType> = new Set();
-    oldSsrcs.forEach(oldSsrc => {
+    oldSsrcs.forEach((oldSsrc) => {
       const oldSource = oldSsrc.source;
-      const newSsrc = ssrcs.find(ssrc => ssrc.source === oldSource);
+      const newSsrc = ssrcs.find((ssrc) => ssrc.source === oldSource);
       if(!newSsrc) {
         this.unpinSource(oldSource);
 
@@ -447,7 +529,7 @@ export default class GroupCallInstance extends CallInstanceBase<{
       }
     });
 
-    ssrcs.forEach(ssrc => {
+    ssrcs.forEach((ssrc) => {
       let entry = description.getEntryBySource(ssrc.source);
       if(entry) {
         if(entry.direction === 'inactive') {

@@ -1,7 +1,7 @@
 process.env.NODE_ENV = 'production';
 
 const path = require('path');
-const merge = require('webpack-merge');
+const {merge} = require('webpack-merge');
 const common = require('./webpack.common.js');
 const keepAsset = require('./keepAsset.js');
 
@@ -59,39 +59,32 @@ module.exports = merge(common, {
       deleteOriginalAssets: false,
     }), */
 
-    new WebpackOnBuildPlugin(function(stats) {
-      const newlyCreatedAssets = stats.compilation.assets;
+    // new WebpackOnBuildPlugin(function(stats) {
+    //   const newlyCreatedAssets = stats.compilation.assets;
 
-      const unlinked = [];
-      fs.readdir(path.resolve(buildDir), (err, files) => {
-        files.forEach(file => {
-          //console.log('to unlink 1:', file);
+    //   const unlinked = [];
+    //   fs.readdir(path.resolve(buildDir), (err, files) => {
+    //     files.forEach(file => {
+    //       //console.log('to unlink 1:', file);
 
-          if(keepAsset(file)) {
-            return;
-          }
-          // if(file.includes('.xml') 
-          //   || file.includes('.webmanifest') 
-          //   || file.includes('.wasm')
-          //   || file.includes('rlottie-wasm')
-          //   || file.includes('Worker.min.js')
-          //   || file.includes('recorder.min.js')
-          //   || file.includes('.hbs')) return;
+    //       if(keepAsset(file)) {
+    //         return;
+    //       }
 
-          let p = path.resolve(buildDir + file);
-          if(!newlyCreatedAssets[file] && ['.gz', '.js', '.ts', '.map', '.css', '.txt'].find(ext => file.endsWith(ext)) !== undefined) {
+    //       let p = path.resolve(buildDir + file);
+    //       if(!newlyCreatedAssets[file] && ['.gz', '.js', '.ts', '.map', '.css', '.txt'].find(ext => file.endsWith(ext)) !== undefined) {
 
-            //console.log('to unlink 2:', file);
+    //         //console.log('to unlink 2:', file);
             
-            fs.unlinkSync(p);
-            unlinked.push(file);
-          }
-        });
+    //         fs.unlinkSync(p);
+    //         unlinked.push(file);
+    //       }
+    //     });
 
-        if(unlinked.length > 0) {
-          console.log('Removed old assets: ', unlinked);
-        }
-      });
-    })
+    //     if(unlinked.length > 0) {
+    //       console.log('Removed old assets: ', unlinked);
+    //     }
+    //   });
+    // })
   ]
 });

@@ -6,7 +6,6 @@
 
 import { MOUNT_CLASS_TO } from "../config/debug";
 import I18n, { i18n } from "../lib/langPack";
-import tsNow from './tsNow';
 
 export const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 export const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -124,8 +123,6 @@ export const getFullDate = (date: Date, options: Partial<{
     joiner + date.getFullYear() + 
     (options.noTime ? '' : ', ' + time);
 };
-
-export {tsNow};
 
 // https://github.com/DrKLO/Telegram/blob/d52b2c921abd3c1e8d6368858313ad0cb0468c07/TMessagesProj/src/main/java/org/telegram/ui/Adapters/FiltersView.java
 const minYear = 2013;

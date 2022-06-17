@@ -67,7 +67,7 @@ export class RLottieIconItem implements RLottieIconItemOptions {
 
     safeAssign(this, options);
 
-    this.parts = this.parts.map(options => this.createPart(options));
+    this.parts = this.parts.map((options) => this.createPart(options));
   }
 
   public load() {
@@ -89,9 +89,9 @@ export class RLottieIconItem implements RLottieIconItemOptions {
       skipFirstFrameRendering: this.initFrame === undefined,
       color: this.color,
       inverseColor: this.inverseColor
-    }, this.name).then(player => {
+    }, this.name).then((player) => {
       return lottieLoader.waitForFirstFrame(player);
-    }).then(player => {
+    }).then((player) => {
       this.player = player;
 
       if(this.onLoadForColor) {
@@ -116,7 +116,7 @@ export class RLottieIconItem implements RLottieIconItemOptions {
 
   public getPart(index: string | number | RLottieIconItemPart) {
     if(index instanceof RLottieIconItemPart) return index;
-    else if(typeof(index) === 'string') return this.parts.find(part => part.name === index);
+    else if(typeof(index) === 'string') return this.parts.find((part) => part.name === index);
     else return this.parts[index];
   }
 

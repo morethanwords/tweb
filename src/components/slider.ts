@@ -11,6 +11,7 @@ import SliderSuperTab, { SliderSuperTabConstructable, SliderTab } from "./slider
 import { attachClickEvent } from "../helpers/dom/clickEvent";
 import indexOfAndSplice from "../helpers/array/indexOfAndSplice";
 import safeAssign from "../helpers/object/safeAssign";
+import { AppManagers } from "../lib/appManagers/managers";
 
 const TRANSITION_TIME = 250;
 
@@ -24,7 +25,8 @@ export default class SidebarSlider {
   public sidebarEl: HTMLElement;
   public tabs: Map<any, SliderTab>; // * key is any, since right sidebar is ugly now
   private canHideFirst = false;
-  private navigationType: NavigationItem['type']
+  private navigationType: NavigationItem['type'];
+  protected managers: AppManagers;
 
   constructor(options: {
     sidebarEl: SidebarSlider['sidebarEl'],
@@ -44,7 +46,7 @@ export default class SidebarSlider {
       this._selectTab(0);
     }
 
-    Array.from(this.sidebarEl.querySelectorAll('.sidebar-close-button') as any as HTMLElement[]).forEach(el => {
+    Array.from(this.sidebarEl.querySelectorAll('.sidebar-close-button') as any as HTMLElement[]).forEach((el) => {
       attachClickEvent(el, this.onCloseBtnClick);
     });
   }
@@ -128,8 +130,8 @@ export default class SidebarSlider {
     }
   }
 
-  public getTab(tabConstructor: SliderSuperTabConstructable) {
-    return this.historyTabIds.find(t => t instanceof tabConstructor) as SliderSuperTab;
+  public getTab<T extends SliderSuperTab>(tabConstructor: SliderSuperTabConstructable<T>) {
+    return this.historyTabIds.find((t) => t instanceof tabConstructor) as T;
   }
 
   public isTabExists(tabConstructor: SliderSuperTabConstructable) {
@@ -163,5 +165,11 @@ export default class SidebarSlider {
         tab.closeBtn.addEventListener('click', this.onCloseBtnClick);
       }
     }
+  }
+
+  public createTab<T extends SliderSuperTab>(ctor: SliderSuperTabConstructable<T>, doNotAppend?: boolean) {
+    const tab = new ctor(doNotAppend ? undefined : this, true);
+    tab.managers = this.managers;
+    return tab;
   }
 }

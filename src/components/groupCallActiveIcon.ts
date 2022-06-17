@@ -8,7 +8,7 @@ import { animate } from "../helpers/animation";
 import customProperties from "../helpers/dom/customProperties";
 import easeInOutSine from "../helpers/easing/easeInOutSine";
 import mediaSizes from "../helpers/mediaSizes";
-import roundRect from "../helpers/roundRect";
+import roundRect from "../helpers/canvas/roundRect";
 
 const DPR = window.devicePixelRatio;
 const SIZE = 20 * DPR;

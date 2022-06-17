@@ -6,10 +6,9 @@
 
 import { SettingSection } from "../..";
 import { attachClickEvent } from "../../../../helpers/dom/clickEvent";
-import appStickersManager from "../../../../lib/appManagers/appStickersManager";
 import Button from "../../../button";
 import { SliderSuperTab } from "../../../slider";
-import { wrapSticker } from "../../../wrappers";
+import wrapStickerEmoji from "../../../wrappers/stickerEmoji";
 import AppSettingsTab from "../settings";
 
 export default class AppTwoStepVerificationSetTab extends SliderSuperTab {
@@ -23,23 +22,14 @@ export default class AppTwoStepVerificationSetTab extends SliderSuperTab {
     });
 
     const emoji = '🥳';
-    const doc = appStickersManager.getAnimatedEmojiSticker(emoji);
     const stickerContainer = document.createElement('div');
 
-    if(doc) {
-      wrapSticker({
-        doc,
-        div: stickerContainer,
-        loop: true,
-        play: true,
-        width: 160,
-        height: 160
-      }).then(() => {
-        // this.animation = player;
-      });
-    } else {
-      stickerContainer.classList.add('media-sticker-wrapper');
-    }
+    wrapStickerEmoji({
+      emoji,
+      div: stickerContainer,
+      width: 160,
+      height: 160
+    });
 
     section.content.append(stickerContainer);
 

@@ -234,7 +234,7 @@ export default abstract class CallInstanceBase<E extends EventListenerListeners>
         streamManager.appendToConference(description);
       }
     } else { // if call is declined earlier than stream appears
-      stream.getTracks().forEach(track => {
+      stream.getTracks().forEach((track) => {
         stopTrack(track);
       });
     }

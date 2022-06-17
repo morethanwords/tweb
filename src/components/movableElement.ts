@@ -69,7 +69,7 @@ export default class MovableElement extends EventListenerBase<{
     this.element.classList.remove(className);
 
     if(this.handlers) {
-      this.handlers.forEach(handler => {
+      this.handlers.forEach((handler) => {
         handler.remove();
       });
     }
@@ -82,7 +82,7 @@ export default class MovableElement extends EventListenerBase<{
 
   private addResizeHandlers() {
     const sides: ResizeSide[] = ['n', 'e', 's', 'w', 'ne', 'se', 'sw', 'nw'];
-    this.handlers = sides.map(side => {
+    this.handlers = sides.map((side) => {
       const div = document.createElement('div');
       div.dataset.side = side;
       div.classList.add(resizeHandlerClassName, resizeHandlerClassName + '-side-' + side);

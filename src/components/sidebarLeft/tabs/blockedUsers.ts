@@ -6,15 +6,18 @@
 
 import { SliderSuperTab } from "../../slider";
 import { SettingSection } from "..";
-import { attachContextMenuListener, openBtnMenu, positionMenu } from "../../misc";
 import ButtonMenu from "../../buttonMenu";
-import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
-import appUsersManager from "../../../lib/appManagers/appUsersManager";
+import appDialogsManager, { DIALOG_LIST_ELEMENT_TAG } from "../../../lib/appManagers/appDialogsManager";
 import PopupPickUser from "../../popups/pickUser";
 import rootScope from "../../../lib/rootScope";
 import findUpTag from "../../../helpers/dom/findUpTag";
 import ButtonCorner from "../../buttonCorner";
 import { attachClickEvent } from "../../../helpers/dom/clickEvent";
+import formatUserPhone from "../../wrappers/formatUserPhone";
+import getUserStatusString from "../../wrappers/getUserStatusString";
+import { attachContextMenuListener } from "../../../helpers/dom/attachContextMenuListener";
+import positionMenu from "../../../helpers/positionMenu";
+import contextMenuController from "../../../helpers/contextMenuController";
 
 export default class AppBlockedUsersTab extends SliderSuperTab {
   public peerIds: PeerId[];
@@ -42,7 +45,7 @@ export default class AppBlockedUsersTab extends SliderSuperTab {
         placeholder: 'BlockModal.Search.Placeholder',
         onSelect: (peerId) => {
           //console.log('block', peerId);
-          appUsersManager.toggleBlock(peerId, true);
+          this.managers.appUsersManager.toggleBlock(peerId, true);
         },
       });
     }, {listenerSetter: this.listenerSetter});
@@ -51,22 +54,21 @@ export default class AppBlockedUsersTab extends SliderSuperTab {
     this.scrollable.container.classList.add('chatlist-container');
     section.content.append(list);
 
-    const add = (peerId: PeerId, append: boolean) => {
+    const add = async(peerId: PeerId, append: boolean) => {
       const {dom} = appDialogsManager.addDialogNew({
-        dialog: peerId,
+        peerId: peerId,
         container: list,
-        drawStatus: false,
         rippleEnabled: true,
         avatarSize: 48,
         append
       });
 
-      const user = appUsersManager.getUser(peerId);
+      const user = await this.managers.appUsersManager.getUser(peerId);
       if(user.pFlags.bot) {
         dom.lastMessageSpan.append('@' + user.username);
       } else {
-        if(user.phone) dom.lastMessageSpan.innerHTML = appUsersManager.formatUserPhone(user.phone);
-        else dom.lastMessageSpan.append(user.username ? '@' + user.username : appUsersManager.getUserStatusString(peerId));
+        if(user.phone) dom.lastMessageSpan.innerHTML = formatUserPhone(user.phone);
+        else dom.lastMessageSpan.append(user.username ? '@' + user.username : getUserStatusString(user));
       }
 
       //dom.titleSpan.innerHTML = 'Raaid El Syed';
@@ -80,7 +82,7 @@ export default class AppBlockedUsersTab extends SliderSuperTab {
     let target: HTMLElement;
     const onUnblock = () => {
       const peerId = target.dataset.peerId.toPeerId();
-      appUsersManager.toggleBlock(peerId, false);
+      this.managers.appUsersManager.toggleBlock(peerId, false);
     };
 
     const element = this.menuElement = ButtonMenu([{
@@ -95,7 +97,7 @@ export default class AppBlockedUsersTab extends SliderSuperTab {
     document.getElementById('page-chats').append(element);
 
     attachContextMenuListener(this.scrollable.container, (e) => {
-      target = findUpTag(e.target, 'LI');
+      target = findUpTag(e.target, DIALOG_LIST_ELEMENT_TAG);
       if(!target) {
         return;
       }
@@ -105,7 +107,7 @@ export default class AppBlockedUsersTab extends SliderSuperTab {
       if(e instanceof MouseEvent) e.cancelBubble = true;
 
       positionMenu(e, element);
-      openBtnMenu(element);
+      contextMenuController.openBtnMenu(element);
     }, this.listenerSetter);
 
     this.listenerSetter.add(rootScope)('peer_block', (update) => {
@@ -130,7 +132,7 @@ export default class AppBlockedUsersTab extends SliderSuperTab {
       }
 
       loading = true;
-      appUsersManager.getBlocked(list.childElementCount, LOAD_COUNT).then(res => {
+      this.managers.appUsersManager.getBlocked(list.childElementCount, LOAD_COUNT).then((res) => {
         for(const peerId of res.peerIds) {
           add(peerId, true);
         }

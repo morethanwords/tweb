@@ -9,22 +9,24 @@ import InputField from "../inputField";
 import PopupElement from ".";
 import Scrollable from "../scrollable";
 import { toast } from "../toast";
-import { prepareAlbum, wrapDocument } from "../wrappers";
+import { wrapDocument } from "../wrappers";
 import CheckboxField from "../checkboxField";
 import SendContextMenu from "../chat/sendContextMenu";
-import { createPosterFromMedia, createPosterFromVideo, onMediaLoad } from "../../helpers/files";
+import { createPosterFromMedia, createPosterFromVideo } from "../../helpers/createPoster";
 import { MyDocument } from "../../lib/appManagers/appDocsManager";
 import I18n, { FormatterArguments, i18n, LangPackKey } from "../../lib/langPack";
-import appDownloadManager from "../../lib/appManagers/appDownloadManager";
 import calcImageInBox from "../../helpers/calcImageInBox";
 import placeCaretAtEnd from "../../helpers/dom/placeCaretAtEnd";
-import rootScope from "../../lib/rootScope";
-import { MediaSize } from "../../helpers/mediaSizes";
 import { attachClickEvent } from "../../helpers/dom/clickEvent";
 import MEDIA_MIME_TYPES_SUPPORTED from '../../environment/mediaMimeTypesSupport';
 import getGifDuration from "../../helpers/getGifDuration";
 import replaceContent from "../../helpers/dom/replaceContent";
 import createVideo from "../../helpers/dom/createVideo";
+import prepareAlbum from "../prepareAlbum";
+import { MediaSize } from "../../helpers/mediaSize";
+import { ThumbCache } from "../../lib/storages/thumbs";
+import onMediaLoad from "../../helpers/onMediaLoad";
+import apiManagerProxy from "../../lib/mtproto/mtprotoworker";
 
 type SendFileParams = Partial<{
   file: File,
@@ -61,15 +63,22 @@ export default class PopupNewMedia extends PopupElement {
     sendFileDetails: SendFileParams[]
   }>;
   private inputField: InputField;
+  private captionLengthMax: number;
 
   constructor(private chat: Chat, private files: File[], willAttachType: PopupNewMedia['willAttach']['type']) {
     super('popup-send-photo popup-new-media', null, {closable: true, withConfirm: 'Modal.Send', confirmShortcutIsSendShortcut: true, body: true});
+    this.construct(willAttachType);
+  }
 
+  private async construct(willAttachType: PopupNewMedia['willAttach']['type']) {
     this.willAttach = {
       type: willAttachType,
       sendFileDetails: [],
       group: false
     };
+
+    const config = await this.managers.apiManager.getConfig();
+    this.captionLengthMax = config.caption_length_max;
 
     attachClickEvent(this.btnConfirm, () => this.send(), {listenerSetter: this.listenerSetter});
 
@@ -103,7 +112,7 @@ export default class PopupNewMedia extends PopupElement {
       placeholder: 'PreviewSender.CaptionPlaceholder',
       label: 'Caption',
       name: 'photo-caption',
-      maxLength: rootScope.config.caption_length_max
+      maxLength: this.captionLengthMax
     });
     this.input = this.inputField.input;
 
@@ -160,7 +169,7 @@ export default class PopupNewMedia extends PopupElement {
   }
 
   private appendMediaCheckboxField() {
-    const good = !!this.files.find(file => MEDIA_MIME_TYPES_SUPPORTED.has(file.type));
+    const good = !!this.files.find((file) => MEDIA_MIME_TYPES_SUPPORTED.has(file.type));
     if(good && !this.mediaCheckboxField) {
       this.mediaCheckboxField = new CheckboxField({
         text: 'PreviewSender.CompressFile',
@@ -183,8 +192,8 @@ export default class PopupNewMedia extends PopupElement {
   }
 
   public addFiles(files: File[]) {
-    const toPush = files.filter(file => {
-      const found = this.files.find(_file => {
+    const toPush = files.filter((file) => {
+      const found = this.files.find((_file) => {
         return _file.lastModified === file.lastModified && _file.name === file.name && _file.size === file.size;
       });
       
@@ -219,7 +228,7 @@ export default class PopupNewMedia extends PopupElement {
     }
 
     let caption = this.inputField.value;
-    if(caption.length > rootScope.config.caption_length_max) {
+    if(caption.length > this.captionLengthMax) {
       toast(I18n.format('Error.PreviewSender.CaptionTooLong', true));
       return;
     }
@@ -233,7 +242,7 @@ export default class PopupNewMedia extends PopupElement {
 
     const {peerId, input} = this.chat;
 
-    sendFileDetails.forEach(d => {
+    sendFileDetails.forEach((d) => {
       d.itemDiv = undefined;
     });
 
@@ -241,7 +250,7 @@ export default class PopupNewMedia extends PopupElement {
     const sendingParams = this.chat.getMessageSendingParams();
     this.iterate((sendFileDetails) => {
       if(caption && sendFileDetails.length !== length) {
-        this.chat.appMessagesManager.sendText(peerId, caption, {
+        this.managers.appMessagesManager.sendText(peerId, caption, {
           ...sendingParams,
           clearDraft: true
         });
@@ -254,7 +263,7 @@ export default class PopupNewMedia extends PopupElement {
         sendFileDetails
       };
 
-      this.chat.appMessagesManager.sendAlbum(peerId, w.sendFileDetails.map(d => d.file), Object.assign({
+      this.managers.appMessagesManager.sendAlbum(peerId, w.sendFileDetails.map((d) => d.file), Object.assign({
         ...sendingParams,
         caption,
         isMedia: isMedia,
@@ -268,16 +277,17 @@ export default class PopupNewMedia extends PopupElement {
     input.onMessageSent();
   }
 
-  private attachMedia(file: File, params: SendFileParams, itemDiv: HTMLElement) {
+  private async attachMedia(params: SendFileParams, itemDiv: HTMLElement) {
     itemDiv.classList.add('popup-item-media');
 
+    const file = params.file;
     const isVideo = file.type.startsWith('video/');
 
     let promise: Promise<void>;
     if(isVideo) {
       const video = createVideo();
       const source = document.createElement('source');
-      source.src = params.objectURL = URL.createObjectURL(file);
+      source.src = params.objectURL = await apiManagerProxy.invoke('createObjectURL', file);
       video.autoplay = true;
       video.controls = false;
       video.muted = true;
@@ -286,7 +296,7 @@ export default class PopupNewMedia extends PopupElement {
         video.pause();
       }, {once: true});
 
-      promise = onMediaLoad(video).then(() => {
+      promise = onMediaLoad(video).then(async() => {
         params.width = video.videoWidth;
         params.height = video.videoHeight;
         params.duration = Math.floor(video.duration);
@@ -297,12 +307,11 @@ export default class PopupNewMedia extends PopupElement {
         }
 
         itemDiv.append(video);
-        return createPosterFromVideo(video).then(thumb => {
-          params.thumb = {
-            url: URL.createObjectURL(thumb.blob),
-            ...thumb
-          };
-        });
+        const thumb = await createPosterFromVideo(video);
+        params.thumb = {
+          url: await apiManagerProxy.invoke('createObjectURL', thumb.blob),
+          ...thumb
+        };
       });
 
       video.append(source);
@@ -319,13 +328,13 @@ export default class PopupNewMedia extends PopupElement {
             params.noSound = true;
             
             Promise.all([
-              getGifDuration(img).then(duration => {
+              getGifDuration(img).then((duration) => {
                 params.duration = Math.ceil(duration);
               }),
               
-              createPosterFromMedia(img).then(thumb => {
+              createPosterFromMedia(img).then(async(thumb) => {
                 params.thumb = {
-                  url: URL.createObjectURL(thumb.blob),
+                  url: await apiManagerProxy.invoke('createObjectURL', thumb.blob),
                   ...thumb
                 };
               })
@@ -338,19 +347,20 @@ export default class PopupNewMedia extends PopupElement {
         };
       });
       
-      img.src = params.objectURL = URL.createObjectURL(file);
+      img.src = params.objectURL = await apiManagerProxy.invoke('createObjectURL', file);
     }
 
     return promise;
   }
 
-  private attachDocument(file: File, params: SendFileParams, itemDiv: HTMLElement): ReturnType<PopupNewMedia['attachMedia']> {
+  private async attachDocument(params: SendFileParams, itemDiv: HTMLElement): ReturnType<PopupNewMedia['attachMedia']> {
     itemDiv.classList.add('popup-item-document');
+    const file = params.file;
 
     const isPhoto = file.type.startsWith('image/');
     const isAudio = file.type.startsWith('audio/');
     if(isPhoto || isAudio || file.size < 20e6) {
-      params.objectURL = URL.createObjectURL(file);
+      params.objectURL = await apiManagerProxy.invoke('createObjectURL', file);
     }
 
     const doc = {
@@ -361,13 +371,16 @@ export default class PopupNewMedia extends PopupElement {
       type: isPhoto ? 'photo' : 'doc'
     } as MyDocument;
 
+    let cacheContext: ThumbCache;
     if(params.objectURL) {
-      const cacheContext = appDownloadManager.getCacheContext(doc);
-      cacheContext.url = params.objectURL;
-      cacheContext.downloaded = file.size;
+      cacheContext = {
+        url: params.objectURL,
+        downloaded: file.size,
+        type: 'full'
+      };
     }
 
-    const docDiv = wrapDocument({
+    const docDiv = await wrapDocument({
       message: {
         _: 'message',
         pFlags: {
@@ -379,7 +392,8 @@ export default class PopupNewMedia extends PopupElement {
           _: 'messageMediaDocument',
           document: doc
         }
-      } as any
+      } as any,
+      cacheContext
     });
 
     const promise = new Promise<void>((resolve) => {
@@ -419,7 +433,7 @@ export default class PopupNewMedia extends PopupElement {
 
     params.itemDiv = itemDiv;
 
-    const promise = shouldCompress ? this.attachMedia(file, params, itemDiv) : this.attachDocument(file, params, itemDiv);
+    const promise = shouldCompress ? this.attachMedia(params, itemDiv) : this.attachDocument(params, itemDiv);
     willAttach.sendFileDetails.push(params);
     return promise;
   };
@@ -450,13 +464,13 @@ export default class PopupNewMedia extends PopupElement {
       args.push(files.length);
     } else {
       let foundPhotos = 0, foundVideos = 0, foundFiles = 0;
-      files.forEach(file => {
+      files.forEach((file) => {
         if(file.type.startsWith('image/')) ++foundPhotos;
         else if(file.type.startsWith('video/')) ++foundVideos;
         else ++foundFiles;
       });
 
-      if([foundPhotos, foundVideos, foundFiles].filter(n => n > 0).length > 1) {
+      if([foundPhotos, foundVideos, foundFiles].filter((n) => n > 0).length > 1) {
         key = 'PreviewSender.SendFile';
         args.push(files.length);
       } else 
@@ -491,7 +505,7 @@ export default class PopupNewMedia extends PopupElement {
   private iterate(cb: (sendFileDetails: SendFileParams[]) => void) {
     const {sendFileDetails} = this.willAttach;
     if(!this.willAttach.group) {
-      sendFileDetails.forEach(p => cb([p]));
+      sendFileDetails.forEach((p) => cb([p]));
       return;
     }
 
@@ -530,11 +544,11 @@ export default class PopupNewMedia extends PopupElement {
         if(this.shouldCompress(sendFileDetails[0].file.type) && sendFileDetails.length > 1) {
           const albumContainer = document.createElement('div');
           albumContainer.classList.add('popup-item-album', 'popup-item');
-          albumContainer.append(...sendFileDetails.map(s => s.itemDiv));
+          albumContainer.append(...sendFileDetails.map((s) => s.itemDiv));
 
           prepareAlbum({
             container: albumContainer,
-            items: sendFileDetails.map(o => ({w: o.width, h: o.height})),
+            items: sendFileDetails.map((o) => ({w: o.width, h: o.height})),
             maxWidth: 380,
             minWidth: 100,
             spacing: 4

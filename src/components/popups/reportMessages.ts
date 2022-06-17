@@ -7,8 +7,8 @@
 import { attachClickEvent } from "../../helpers/dom/clickEvent";
 import findUpClassName from "../../helpers/dom/findUpClassName";
 import whichChild from "../../helpers/dom/whichChild";
+import preloadAnimatedEmojiSticker from "../../helpers/preloadAnimatedEmojiSticker";
 import { ReportReason } from "../../layer";
-import appStickersManager from "../../lib/appManagers/appStickersManager";
 import { LangPackKey } from "../../lib/langPack";
 import Button from "../button";
 import PopupPeer from "./peer";
@@ -31,12 +31,12 @@ export default class PopupReportMessages extends PopupPeer {
     ];
 
     const className = 'btn-primary btn-transparent';
-    buttons.forEach(b => {
+    buttons.forEach((b) => {
       const button = Button(className, {/* icon: 'edit',  */text: b[0]});
       this.body.append(button);
     });
 
-    const preloadStickerPromise = appStickersManager.preloadAnimatedEmojiSticker(PopupReportMessagesConfirm.STICKER_EMOJI);
+    const preloadStickerPromise = preloadAnimatedEmojiSticker(PopupReportMessagesConfirm.STICKER_EMOJI);
 
     attachClickEvent(this.body, (e) => {
       const target = findUpClassName(e.target, 'btn-primary');

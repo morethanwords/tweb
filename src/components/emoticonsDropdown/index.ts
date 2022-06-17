@@ -4,12 +4,12 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { IS_TOUCH_SUPPORTED } from "../../environment/touchSupport";
+import IS_TOUCH_SUPPORTED from "../../environment/touchSupport";
 import appImManager from "../../lib/appManagers/appImManager";
 import rootScope from "../../lib/rootScope";
 import animationIntersector from "../animationIntersector";
 import { horizontalMenu } from "../horizontalMenu";
-import LazyLoadQueue, { LazyLoadQueueIntersector } from "../lazyLoadQueue";
+import LazyLoadQueue from "../lazyLoadQueue";
 import Scrollable, { ScrollableX } from "../scrollable";
 import appSidebarRight from "../sidebarRight";
 import StickyIntersector from "../stickyIntersector";
@@ -26,8 +26,9 @@ import whichChild from "../../helpers/dom/whichChild";
 import cancelEvent from "../../helpers/dom/cancelEvent";
 import DropdownHover from "../../helpers/dropdownHover";
 import pause from "../../helpers/schedulers/pause";
-import appMessagesManager from "../../lib/appManagers/appMessagesManager";
 import { IS_APPLE_MOBILE } from "../../environment/userAgent";
+import { AppManagers } from "../../lib/appManagers/managers";
+import type LazyLoadQueueIntersector from "../lazyLoadQueueIntersector";
 
 export const EMOTICONSSTICKERGROUP = 'emoticons-dropdown';
 
@@ -55,6 +56,7 @@ export class EmoticonsDropdown extends DropdownHover {
   private selectTab: ReturnType<typeof horizontalMenu>;
 
   private savedRange: Range;
+  private managers: AppManagers;
 
   constructor() {
     super({
@@ -110,9 +112,10 @@ export class EmoticonsDropdown extends DropdownHover {
   }
 
   protected init() {
-    this.emojiTab = new EmojiTab();
-    this.stickersTab = new StickersTab();
-    this.gifsTab = new GifsTab();
+    this.managers = rootScope.managers;
+    this.emojiTab = new EmojiTab(this.managers);
+    this.stickersTab = new StickersTab(this.managers);
+    this.gifsTab = new GifsTab(this.managers);
 
     this.tabs = {
       0: this.emojiTab,
@@ -136,11 +139,11 @@ export class EmoticonsDropdown extends DropdownHover {
     this.searchButton.addEventListener('click', () => {
       if(this.tabId === 1) {
         if(!appSidebarRight.isTabExists(AppStickersTab)) {
-          new AppStickersTab(appSidebarRight).open();
+          appSidebarRight.createTab(AppStickersTab).open();
         }
       } else {
         if(!appSidebarRight.isTabExists(AppGifsTab)) {
-          new AppGifsTab(appSidebarRight).open();
+          appSidebarRight.createTab(AppGifsTab).open();
         }
       }
     });
@@ -178,7 +181,7 @@ export class EmoticonsDropdown extends DropdownHover {
       this.tabs[INIT_TAB_ID].init(); // onTransitionEnd не вызовется, т.к. это первая открытая вкладка
     }
 
-    rootScope.addEventListener('peer_changed', this.checkRights);
+    appImManager.addEventListener('peer_changed', this.checkRights);
     this.checkRights();
 
     return super.init();
@@ -201,10 +204,10 @@ export class EmoticonsDropdown extends DropdownHover {
     const children = this.tabsEl.children;
     const tabsElements = Array.from(children) as HTMLElement[];
 
-    const canSendStickers = appMessagesManager.canSendToPeer(peerId, threadId, 'send_stickers');
+    const canSendStickers = this.managers.appMessagesManager.canSendToPeer(peerId, threadId, 'send_stickers');
     tabsElements[2].toggleAttribute('disabled', !canSendStickers);
 
-    const canSendGifs = appMessagesManager.canSendToPeer(peerId, threadId, 'send_gifs');
+    const canSendGifs = this.managers.appMessagesManager.canSendToPeer(peerId, threadId, 'send_gifs');
     tabsElements[3].toggleAttribute('disabled', !canSendGifs);
 
     const active = this.tabsEl.querySelector('.active');

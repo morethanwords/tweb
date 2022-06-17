@@ -12,7 +12,7 @@ export default class SDPSessionSection {
 
   constructor(lines: SDPLine[]) {
     this.#lines = lines;
-    this.#sessionId = lines.filter(line => line.key === 'o').map(line => line.value.split(' ')[1])[0];
+    this.#sessionId = lines.filter((line) => line.key === 'o').map((line) => line.value.split(' ')[1])[0];
   }
 
   public get lines() {

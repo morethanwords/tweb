@@ -21,7 +21,7 @@ export function parseSdp(str: string) {
   }
 
   let sessionSection: SDPSessionSection = null, mediaSections: SDPMediaSection[] = [], lines: SDPLine[] = [];
-  str.split(/\r?\n/).forEach(lineStr => {
+  str.split(/\r?\n/).forEach((lineStr) => {
     if(!isIncorrectSdpLine(lineStr)) {
       const line = parseSdpLine(lineStr);
       if(line.key === 'm') {
@@ -56,7 +56,7 @@ export function addSimulcast(sdp: SDP) {
 
       const originalSsrcs = section.attributes.get('ssrc-group').get('FID').value.split(' ');
       const lines = section.lines;
-      originalSsrcs.forEach(ssrc => generator.add(+ssrc)); // fix possible duplicates
+      originalSsrcs.forEach((ssrc) => generator.add(+ssrc)); // fix possible duplicates
       const ssrcs = [originalSsrcs[0], generator.generate(), generator.generate()];
       const ssrcs2 = [originalSsrcs[1], generator.generate(), generator.generate()];
 
@@ -69,11 +69,11 @@ export function addSimulcast(sdp: SDP) {
         if(idx > 0) {
           lines.push(parseSdpLine('a=ssrc-group:FID ' + ssrc + ' ' + ssrc2));
 
-          ssrcsStrLines.forEach(v => {
+          ssrcsStrLines.forEach((v) => {
             lines.push(parseSdpLine('a=ssrc:' + ssrc + ' ' + v));
           });
 
-          ssrcsStrLines.forEach(v => {
+          ssrcsStrLines.forEach((v) => {
             lines.push(parseSdpLine('a=ssrc:' + ssrc2 + ' ' + v));
           });
         }

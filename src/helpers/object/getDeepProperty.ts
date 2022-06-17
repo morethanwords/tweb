@@ -1,7 +1,7 @@
 export default function getDeepProperty(object: any, key: string) {
   const splitted = key.split('.');
   let o: any = object;
-  splitted.forEach(key => {
+  splitted.forEach((key) => {
     if(!key) {
       return;
     }

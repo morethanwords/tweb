@@ -9,15 +9,230 @@ import rootScope from "../../lib/rootScope";
 import { MyMessage } from "../../lib/appManagers/appMessagesManager";
 import type Chat from "./chat";
 import indexOfAndSplice from "../../helpers/array/indexOfAndSplice";
-import findAndSplice from "../../helpers/array/findAndSplice";
+import insertInDescendSortedArray from "../../helpers/array/insertInDescendSortedArray";
+import positionElementByIndex from "../../helpers/dom/positionElementByIndex";
+import AvatarElement from "../avatar";
+import { Message } from "../../layer";
+import { NULL_PEER_ID, REPLIES_PEER_ID } from "../../lib/mtproto/mtproto_config";
+import { SERVICE_AS_REGULAR, STICKY_OFFSET } from "./bubbles";
+import forEachReverse from "../../helpers/array/forEachReverse";
 
-type Group = {bubble: HTMLElement, mid: number, timestamp: number}[];
-type BubbleGroup = {timestamp: number, fromId: PeerId, mid: number, group: Group};
+type GroupItem = {
+  bubble: HTMLElement, 
+  fromId: PeerId, 
+  mid: number, 
+  timestamp: number, 
+  dateTimestamp: number, 
+  mounted: boolean, 
+  single: boolean, 
+  group?: BubbleGroup
+};
+
+class BubbleGroup {
+  container: HTMLElement;
+  chat: Chat;
+  groups: BubbleGroups;
+  items: GroupItem[]; // descend sorted
+  avatarContainer: HTMLElement;
+  avatarLoadPromise: ReturnType<AvatarElement['updateWithOptions']>;
+  avatar: AvatarElement;
+  mounted: boolean;
+  dateTimestamp: number;
+
+  constructor(chat: Chat, groups: BubbleGroups, dateTimestamp: number) {
+    this.container = document.createElement('div');
+    this.container.classList.add('bubbles-group');
+    this.chat = chat;
+    this.groups = groups;
+    this.items = [];
+    this.dateTimestamp = dateTimestamp;
+  }
+
+  createAvatar(message: Message.message | Message.messageService) {
+    if(this.avatarLoadPromise) {
+      return this.avatarLoadPromise;
+    } else if(message._ === 'messageService') {
+      return;
+    }
+
+    this.avatarContainer = document.createElement('div');
+    this.avatarContainer.classList.add('bubbles-group-avatar-container');
+
+    const fwdFrom = message.fwd_from;
+    const fwdFromId = message.fwdFromId;
+    const isForwardFromChannel = message.from_id && message.from_id._ === 'peerChannel' && message.fromId === fwdFromId;
+    const currentPeerId = this.chat.peerId;
+    this.avatar = new AvatarElement();
+    this.avatar.classList.add('bubbles-group-avatar', 'user-avatar', 'avatar-40'/* , 'can-zoom-fade' */);
+    this.avatarLoadPromise = this.avatar.updateWithOptions({
+      lazyLoadQueue: this.chat.bubbles.lazyLoadQueue,
+      peerId: ((fwdFrom && (currentPeerId === rootScope.myId || currentPeerId === REPLIES_PEER_ID)) || isForwardFromChannel ? fwdFromId : message.fromId) || NULL_PEER_ID,
+      peerTitle: !fwdFromId && fwdFrom && fwdFrom.from_name ? /* '🔥 FF 🔥' */fwdFrom.from_name : undefined,
+    });
+
+    this.avatarContainer.append(this.avatar);
+    this.container.append(this.avatarContainer);
+
+    return this.avatarLoadPromise;
+  }
+
+  get firstTimestamp() {
+    return this.firstItem.timestamp;
+  }
+
+  get firstItem() {
+    return this.items[this.items.length - 1];
+  }
+
+  get lastItem() {
+    return this.items[0];
+  }
+
+  updateClassNames() {
+    const items = this.items;
+    if(!items.length) {
+      return;
+    }
+    
+    const length = items.length;
+    const first = items[length - 1].bubble;
+
+    if(items.length === 1) {
+      first.classList.add('is-group-first', 'is-group-last');
+      //this.setClipIfNeeded(first);
+      return;
+    } else {
+      first.classList.remove('is-group-last');
+      first.classList.add('is-group-first');
+      //this.setClipIfNeeded(first, true);
+    }
+    
+    for(let i = length - 2; i > 0; --i) {
+      const bubble = items[i].bubble;
+      bubble.classList.remove('is-group-last', 'is-group-first');
+      //this.setClipIfNeeded(bubble, true);
+    }
+    
+    const last = items[0].bubble;
+    last.classList.remove('is-group-first');
+    last.classList.add('is-group-last');
+    //this.setClipIfNeeded(last);
+  }
+
+  insertItem(item: GroupItem) {
+    const {items} = this;
+    const {timestamp, mid} = item;
+    if(this.chat.type === 'scheduled') {
+      let foundMidOnSameTimestamp = 0;
+      let i = 0, length = items.length;
+      for(; i < length; ++i) {
+        const {timestamp: _timestamp, mid: _mid} = items[i];
+  
+        if(timestamp < _timestamp) {
+          break;
+        } else if(timestamp === _timestamp) {
+          foundMidOnSameTimestamp = _mid;
+        } 
+        
+        if(foundMidOnSameTimestamp && mid < foundMidOnSameTimestamp) {
+          break;
+        }
+      }
+
+      items.splice(i, 0, item);
+    } else {
+      insertInDescendSortedArray(items, item, 'mid');
+    }
+
+    if(items.length === 1) {
+      insertInDescendSortedArray(this.groups.groups, this, 'firstTimestamp');
+    }
+  }
+
+  mount() {
+    if(!this.groups.groups.includes(this)) { // group can be already removed
+      return;
+    }
+
+    const offset = this.avatar ? 1 : 0;
+    const items = this.items;
+
+    this.updateClassNames();
+
+    const {length} = items;
+    forEachReverse(items, (item, idx) => {
+      this.mountItem(item, length - 1 - idx, offset);
+    });
+
+    this.onItemMount();
+  }
+
+  mountItem(item: GroupItem, idx = this.items.indexOf(item), offset = this.avatar ? 1 : 0) {
+    if(item.mounted) {
+      return;
+    }
+
+    positionElementByIndex(item.bubble, this.container, offset + idx);
+    item.mounted = true;
+  }
+
+  unmountItem(item: GroupItem) {
+    if(item.mounted) {
+      item.bubble.remove();
+      item.mounted = false;
+      this.onItemUnmount();
+    }
+  }
+
+  onItemMount() {
+    if(this.mounted) {
+      return;
+    }
+
+    const dateContainer = this.chat.bubbles.getDateContainerByTimestamp(this.firstTimestamp);
+    // const idx = this.groups.indexOf(group);
+    const dateGroups = this.groups.groups.filter((_group) => _group.dateTimestamp === this.dateTimestamp);
+    const dateGroupsLength = dateGroups.length;
+    const idx = dateGroups.indexOf(this);
+    const unmountedLength = dateGroups.slice(idx + 1).reduce((acc, v) => acc + (v.mounted ? 0 : 1), 0);
+    positionElementByIndex(this.container, dateContainer.container, STICKY_OFFSET + dateGroupsLength - 1 - idx - unmountedLength);
+    this.mounted = true;
+  }
+
+  onItemUnmount() {
+    if(!this.mounted) {
+      return;
+    }
+
+    if(!this.items.length) {
+      this.container.remove();
+      this.chat.bubbles.deleteEmptyDateGroups();
+      this.mounted = false;
+    } else {
+      this.updateClassNames();
+    }
+  }
+}
+
+// class BubbleGroupItem implements GroupItem {
+//   bubble: HTMLElement;
+//   fromId: PeerId;
+//   mid: number;
+//   timestamp: number;
+//   dateTimestamp: number;
+//   mounted: boolean;
+//   single: boolean;
+//   group: BubbleGroup;
+
+//   constructor(details: GroupItem) {
+//     Object.assign(this, details);
+//   }
+// }
+
 export default class BubbleGroups {
-  private bubbles: Array<BubbleGroup> = []; // map to group
-  private detailsMap: Map<HTMLElement, BubbleGroup> = new Map();
-  private groups: Array<Group> = [];
-  //updateRAFs: Map<HTMLElement[], number> = new Map();
+  private itemsArr: Array<GroupItem> = []; // descend sorted
+  private itemsMap: Map<HTMLElement, GroupItem> = new Map();
+  public groups: Array<BubbleGroup> = []; // descend sorted
   private newGroupDiff = 121; // * 121 in scheduled messages
 
   constructor(private chat: Chat) {
@@ -25,118 +240,183 @@ export default class BubbleGroups {
   }
 
   removeBubble(bubble: HTMLElement) {
-    const details = this.detailsMap.get(bubble);
-    if(details) {
-      if(details.group.length) {
-        findAndSplice(details.group, d => d.bubble === bubble);
-        if(!details.group.length) {
-          indexOfAndSplice(this.groups, details.group);
-        } else {
-          this.updateGroup(details.group);
-        }
+    const item = this.getItemByBubble(bubble);
+    if(!item) {
+      return;
+    }
+
+    const group = item.group;
+    const items = group.items;
+    if(items.length) {
+      indexOfAndSplice(items, item);
+
+      if(!items.length) {
+        indexOfAndSplice(this.groups, group);
       }
-      
-      this.detailsMap.delete(bubble);
+    }
+
+    indexOfAndSplice(this.itemsArr, item);
+    this.itemsMap.delete(bubble);
+    
+    return item;
+  }
+
+  removeAndUnmountBubble(bubble: HTMLElement) {
+    const item = this.removeBubble(bubble);
+    if(item) {
+      item.group.unmountItem(item);
     }
   }
 
-  changeBubbleMid(bubble: HTMLElement, mid: number) {
-    const details = this.detailsMap.get(bubble);
-    if(details) {
-      details.mid = mid;
-    }
+  getItemByBubble(bubble: HTMLElement) {
+    return this.itemsMap.get(bubble);
+  }
+
+  getLastGroup() {
+    return this.groups[0];
+  }
+
+  // changeBubbleMid(bubble: HTMLElement, mid: number) {
+  //   const item = this.getItemByBubble(bubble);
+  //   if(!item) {
+  //     return;
+  //   }
+
+  //   item.mid = mid;
+
+  //   // indexOfAndSplice(item.group.items, item);
+  //   // item.group.insertItem(item);
+
+  //   indexOfAndSplice(this.itemsArr, item);
+  //   insertInDescendSortedArray(this.itemsArr, item, 'mid');
+  // }
+
+  changeItemBubble(item: GroupItem, bubble: HTMLElement) {
+    this.itemsMap.delete(item.bubble);
+    item.bubble = bubble;
+    this.itemsMap.set(bubble, item);
   }
   
-  addBubble(bubble: HTMLElement, message: MyMessage, reverse: boolean) {
-    //return;
+  changeBubbleByBubble(from: HTMLElement, to: HTMLElement) {
+    const item = this.getItemByBubble(from);
+    if(!item) {
+      return;
+    }
+    
+    this.changeItemBubble(item, to);
+  }
 
-    const timestamp = message.date;
-    const mid = message.mid;
+  /**
+   * 
+   * @param item 
+   * @param items expect descend sorted array
+   * @returns 
+   */
+  findIndexForItemInItems(item: GroupItem, items: GroupItem[]) {
+    let foundAtIndex = -1;
+    for(let i = 0, length = items.length; i < length; ++i) {
+      const _item = items[i];
+      const diff = Math.abs(_item.timestamp - item.timestamp);
+      const good = _item.fromId === item.fromId 
+        && diff <= this.newGroupDiff 
+        && item.dateTimestamp === _item.dateTimestamp 
+        && !item.single 
+        && !_item.single;
+
+      if(good) {
+        foundAtIndex = i;
+
+        if(this.chat.type === 'scheduled') {
+          break;
+        }
+      } else {
+        foundAtIndex = -1;
+      }
+
+      if(this.chat.type !== 'scheduled') {
+        if(item.mid > _item.mid) {
+          break;
+        }
+      }
+    }
+
+    return foundAtIndex;
+  }
+
+  addItemToGroup(item: GroupItem, group: BubbleGroup) {
+    item.group = group;
+    group.insertItem(item);
+    this.addItemToCache(item);
+  }
+
+  addItemToCache(item: GroupItem) {
+    insertInDescendSortedArray(this.itemsArr, item, 'mid');
+    this.itemsMap.set(item.bubble, item);
+  }
+
+  getMessageFromId(message: MyMessage) {
     let fromId = message.viaBotId || message.fromId;
-    let group: Group;
 
     // fix for saved messages forward to self
-    if(fromId === rootScope.myId && message.peerId === rootScope.myId && (message as any).fwdFromId === fromId) {
+    if(fromId === rootScope.myId && message.peerId === rootScope.myId && (message as Message.message).fwdFromId === fromId) {
       fromId = fromId.toPeerId(true);
     }
-    
-    // try to find added
-    this.removeBubble(bubble);
-    
-    const insertObject = {bubble, mid, timestamp};
-    if(this.bubbles.length) {
-      let foundBubble: BubbleGroup;
-      let foundAtIndex = -1;
-      for(let i = 0; i < this.bubbles.length; ++i) {
-        const bubble = this.bubbles[i];
-        const diff = Math.abs(bubble.timestamp - timestamp);
-        const good = bubble.fromId === fromId && diff <= this.newGroupDiff;
 
-        if(good) {
-          foundAtIndex = i;
+    return fromId;
+  }
 
-          if(this.chat.type === 'scheduled') {
-            break;
-          }
-        } else {
-          foundAtIndex = -1;
-        }
+  createItem(bubble: HTMLElement, message: MyMessage) {
+    const single = !(message._ === 'message' || (message.action && SERVICE_AS_REGULAR.has(message.action._)));
+    const {mid, date: timestamp} = message;
+    const {dateTimestamp} = this.chat.bubbles.getDateForDateContainer(timestamp);
+    const item: GroupItem = {
+      bubble, 
+      fromId: this.getMessageFromId(message), 
+      mid, 
+      timestamp, 
+      dateTimestamp, 
+      mounted: false, 
+      single: single
+    };
 
-        if(this.chat.type !== 'scheduled') {
-          if(mid > bubble.mid) {
-            break;
-          }
-        }
-      }
+    return item;
+  }
 
-      if(foundAtIndex !== -1) {
-        foundBubble = this.bubbles[foundAtIndex];
-      }
-      /* const foundBubble = this.bubbles.find(bubble => {
-        const diff = Math.abs(bubble.timestamp - timestamp);
-        return bubble.fromId === fromId && diff <= this.newGroupDiff;
-      }); */
+  // prepareForGrouping(bubble: HTMLElement, message: MyMessage) {
+  //   const item = this.createItem(bubble, message);
+  //   this.addItemToCache(item);
+  // }
 
-      if(!foundBubble) this.groups.push(group = [insertObject]);
-      else {
-        group = foundBubble.group;
-        
-        let i = 0, foundMidOnSameTimestamp = 0;
-        for(; i < group.length; ++i) {
-          const _timestamp = group[i].timestamp;
-          const _mid = group[i].mid;
+  // groupUngrouped() {
+  //   const items = this.itemsArr;
+  //   const length = items.length;
+  //   for(let i = length - 1; i >= 0; --i) {
+  //     const item = items[i];
+  //     if(item.gr)
+  //   }
+  // }
 
-          if(timestamp < _timestamp) {
-            break;
-          } else if(timestamp === _timestamp) {
-            foundMidOnSameTimestamp = _mid;
-          } 
-          
-          if(foundMidOnSameTimestamp && mid < foundMidOnSameTimestamp) {
-            break;
-          }
-        }
+  addBubble(bubble: HTMLElement, message: MyMessage, unmountIfFound?: boolean) {
+    const oldItem = this.getItemByBubble(bubble);
+    if(unmountIfFound) { // updating position
+      this.removeAndUnmountBubble(bubble);
+    } else if(oldItem) { // editing
+      const group = oldItem.group;
+      this.changeItemBubble(oldItem, bubble);
+      oldItem.mounted = false;
 
-        group.splice(i, 0, insertObject);
-      }
-    } else {
-      this.groups.push(group = [insertObject]);
+      return {item: oldItem, group};
     }
 
-    //console.log('[BUBBLE]: addBubble', bubble, message.mid, fromId, reverse, group);
+    const item = this.createItem(bubble, message);
 
-    const bubbleGroup = {timestamp, fromId, mid: message.mid, group};
-    let insertIndex = 0;
-    for(; insertIndex < this.bubbles.length; ++insertIndex) {
-      if(this.bubbles[insertIndex].mid < mid) {
-        break;
-      }
-    }
+    const foundAtIndex = this.findIndexForItemInItems(item, this.itemsArr);
+    const foundItem = this.itemsArr[foundAtIndex];
+
+    const group = foundItem?.group ?? new BubbleGroup(this.chat, this, item.dateTimestamp);
+    this.addItemToGroup(item, group);
     
-    this.bubbles.splice(insertIndex, 0, {timestamp, fromId, mid: message.mid, group});
-    this.updateGroup(group);
-
-    this.detailsMap.set(bubble, bubbleGroup);
+    return {item, group};
   }
 
   /* setClipIfNeeded(bubble: HTMLDivElement, remove = false) {
@@ -148,7 +428,7 @@ export default class BubbleGroups {
       if(!container) return;
 
       try {
-        Array.from(container.children).forEach(object => {
+        Array.from(container.children).forEach((object) => {
           if(object instanceof SVGDefsElement) return;
   
           if(remove) {
@@ -189,61 +469,16 @@ export default class BubbleGroups {
     }
   } */
   
-  updateGroup(group: Group) {
-    /* if(this.updateRAFs.has(group)) {
-      window.cancelAnimationFrame(this.updateRAFs.get(group));
-      this.updateRAFs.delete(group);
-    } */
-    
-    //this.updateRAFs.set(group, window.requestAnimationFrame(() => {
-      //this.updateRAFs.delete(group);
-      
-      if(!group.length) {
-        return;
-      }
-      
-      const first = group[0].bubble;
-
-      //console.log('[BUBBLE]: updateGroup', group, first);
-      
-      if(group.length === 1) {
-        first.classList.add('is-group-first', 'is-group-last');
-        //this.setClipIfNeeded(first);
-        return;
-      } else {
-        first.classList.remove('is-group-last');
-        first.classList.add('is-group-first');
-        //this.setClipIfNeeded(first, true);
-      }
-      
-      const length = group.length - 1;
-      for(let i = 1; i < length; ++i) {
-        const bubble = group[i].bubble;
-        bubble.classList.remove('is-group-last', 'is-group-first');
-        //this.setClipIfNeeded(bubble, true);
-      }
-      
-      const last = group[group.length - 1].bubble;
-      last.classList.remove('is-group-first');
-      last.classList.add('is-group-last');
-      //this.setClipIfNeeded(last);
-    //}));
-  }
-
-  updateGroupByMessageId(mid: number) {
-    const details = this.bubbles.find(g => g.mid === mid);
-    if(details) {
-      this.updateGroup(details.group);
-    }
-  }
+  // updateGroupByMessageId(mid: number) {
+  //   const item = this.itemsArr.find((g) => g.mid === mid);
+  //   if(item) {
+  //     item.group.updateGroup();
+  //   }
+  // }
   
   cleanup() {
-    this.bubbles = [];
+    this.itemsArr = [];
     this.groups = [];
-    this.detailsMap.clear();
-    /* for(let value of this.updateRAFs.values()) {
-      window.cancelAnimationFrame(value);
-    }
-    this.updateRAFs.clear(); */
+    this.itemsMap.clear();
   }
 }

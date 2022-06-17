@@ -11,7 +11,6 @@
 
 import { Database } from '../config/databases';
 import Modes from '../config/modes';
-import blobConstruct from '../helpers/blob/blobConstruct';
 import safeAssign from '../helpers/object/safeAssign';
 import { logger } from './logger';
 
@@ -38,82 +37,31 @@ export type IDBOptions = {
 
 const DEBUG = false;
 
-export default class IDBStorage<T extends Database<any>> {
-  private static STORAGES: IDBStorage<Database<any>>[] = [];
+export class IDB {
+  private static INSTANCES: IDB[] = [];
   private openDbPromise: Promise<IDBDatabase>;
   private db: IDBDatabase;
-  private storageIsAvailable = true;
-
+  private storageIsAvailable: boolean;
   private log: ReturnType<typeof logger>;
-  
   private name: string;
   private version: number;
   private stores: IDBStore[];
-  private storeName: T['stores'][0]['name'];
 
-  constructor(db: T, storeName: typeof db['stores'][0]['name']) {
+  constructor(db: Database<any>) {
     safeAssign(this, db);
 
     if(Modes.test) {
       this.name += '_test';
     }
 
-    this.storeName = storeName;
-
-    this.log = logger('IDB-' + this.storeName);
+    this.storageIsAvailable = true;
+    this.log = logger(['IDB', db.name].join('-'));
+    this.log('constructor');
 
     this.openDatabase(true);
 
-    IDBStorage.STORAGES.push(this);
+    IDB.INSTANCES.push(this);
   }
-
-  public static closeDatabases(preserve?: IDBStorage<Database<any>>) {
-    this.STORAGES.forEach(storage => {
-      if(preserve && preserve === storage) {
-        return;
-      }
-
-      const db = storage.db;
-      if(db) {
-        db.onclose = () => {};
-        db.close();
-      }
-    });
-  }
-
-  /**
-   * ! WARNING ! function requires at least one opened connection
-   */
-  /* public static clearObjectStores() {
-    const storage = this.STORAGES[0];
-    this.closeDatabases(storage);
-
-    const names = Array.from(storage.db.objectStoreNames);
-    const promises = names.map(name => storage.clear(name));
-    return Promise.all(promises);
-  } */
-
-  /* public static deleteDatabase() {
-    this.closeDatabases();
-
-    const storages = this.STORAGES;
-    const dbNames = Array.from(new Set(storages.map(storage => storage.name)));
-    const promises = dbNames.map(dbName => {
-      return new Promise<void>((resolve, reject) => {
-        const deleteRequest = indexedDB.deleteDatabase(dbName);
-  
-        deleteRequest.onerror = () => {
-          reject();
-        };
-  
-        deleteRequest.onsuccess = () => {
-          resolve();
-        };
-      });
-    });
-
-    return Promise.all(promises);
-  } */
 
   public isAvailable() {
     return this.storageIsAvailable;
@@ -124,14 +72,28 @@ export default class IDBStorage<T extends Database<any>> {
       return this.openDbPromise;
     }
 
+    const createIndexes = (os: IDBObjectStore, store: IDBStore) => {
+      const indexNames = Array.from(os.indexNames);
+      for(const indexName of indexNames) {
+        os.deleteIndex(indexName);
+      }
+
+      if(!store.indexes?.length) {
+        return;
+      }
+
+      for(const index of store.indexes) {
+        if(os.indexNames.contains(index.indexName)) {
+          continue;
+        }
+
+        os.createIndex(index.indexName, index.keyPath, index.objectParameters);
+      }
+    };
+
     const createObjectStore = (db: IDBDatabase, store: IDBStore) => {
       const os = db.createObjectStore(store.name);
-
-      if(store.indexes?.length) {
-        for(const index of store.indexes) {
-          os.createIndex(index.indexName, index.keyPath, index.objectParameters);
-        }
-      }
+      createIndexes(os, store);
     };
 
     try {
@@ -203,8 +165,8 @@ export default class IDBStorage<T extends Database<any>> {
         finished = true;
         this.log.warn('performing idb upgrade from', event.oldVersion, 'to', event.newVersion);
 
-        // @ts-ignore
-        var db = event.target.result as IDBDatabase;
+        const target = event.target as IDBOpenDBRequest;
+        const db = target.result;
         this.stores.forEach((store) => {
           /* if(db.objectStoreNames.contains(store.name)) {
             //if(event.oldVersion === 1) {
@@ -214,13 +176,81 @@ export default class IDBStorage<T extends Database<any>> {
     
           if(!db.objectStoreNames.contains(store.name)) {
             createObjectStore(db, store);
+          } else {
+            const txn = target.transaction;
+            const os = txn.objectStore(store.name);
+            createIndexes(os, store);
           }
         });
       };
     });
   }
 
-  public delete(entryName: string | string[]): Promise<void> {
+  public static create<T extends Database<any>>(db: T) {
+    return this.INSTANCES.find((instance) => instance.name === db.name) ?? new IDB(db);
+  }
+
+  public static closeDatabases(preserve?: IDB) {
+    this.INSTANCES.forEach((storage) => {
+      if(preserve && preserve === storage) {
+        return;
+      }
+
+      const db = storage.db;
+      if(db) {
+        db.onclose = () => {};
+        db.close();
+      }
+    });
+  }
+}
+
+export default class IDBStorage<T extends Database<any>, StoreName extends string = T['stores'][0]['name']> {
+  private log: ReturnType<typeof logger>;
+  private storeName: T['stores'][0]['name'];
+  private idb: IDB;
+
+  constructor(db: T, storeName: typeof db['stores'][0]['name']) {
+    this.storeName = storeName;
+    this.log = logger(['IDB', db.name, storeName].join('-'));
+    this.idb = IDB.create(db);
+  }
+
+  /**
+   * ! WARNING ! function requires at least one opened connection
+   */
+  /* public static clearObjectStores() {
+    const storage = this.STORAGES[0];
+    this.closeDatabases(storage);
+
+    const names = Array.from(storage.db.objectStoreNames);
+    const promises = names.map((name) => storage.clear(name));
+    return Promise.all(promises);
+  } */
+
+  /* public static deleteDatabase() {
+    this.closeDatabases();
+
+    const storages = this.STORAGES;
+    const dbNames = Array.from(new Set(storages.map((storage) => storage.name)));
+    const promises = dbNames.map((dbName) => {
+      return new Promise<void>((resolve, reject) => {
+        const deleteRequest = indexedDB.deleteDatabase(dbName);
+  
+        deleteRequest.onerror = () => {
+          reject();
+        };
+  
+        deleteRequest.onsuccess = () => {
+          resolve();
+        };
+      });
+    });
+
+    return Promise.all(promises);
+  } */
+
+  public delete(entryName: string | string[], storeName?: StoreName): Promise<void> {
     //return Promise.resolve();
     if(!Array.isArray(entryName)) {
       entryName = [].concat(entryName);
@@ -228,14 +258,14 @@ export default class IDBStorage<T extends Database<any>> {
 
     return this.getObjectStore('readwrite', (objectStore) => {
       return (entryName as string[]).map((entryName) => objectStore.delete(entryName));
-    }, DEBUG ? 'delete: ' + entryName.join(', ') : '');
+    }, DEBUG ? 'delete: ' + entryName.join(', ') : '', storeName);
   }
 
-  public clear(storeName?: IDBStorage<T>['storeName']) {
+  public clear(storeName?: StoreName) {
     return this.getObjectStore('readwrite', (objectStore) => objectStore.clear(), DEBUG ? 'clear' : '', storeName);
   }
 
-  public save(entryName: string | string[], value: any | any[]) {
+  public save(entryName: string | string[], value: any | any[], storeName?: StoreName) {
     // const handleError = (error: Error) => {
     //   this.log.error('save: transaction error:', entryName, value, db, error, error && error.name);
     //   if((!error || error.name === 'InvalidStateError')/*  && false */) {
@@ -254,17 +284,17 @@ export default class IDBStorage<T extends Database<any>> {
     
     return this.getObjectStore('readwrite', (objectStore) => {
       return (entryName as string[]).map((entryName, idx) => objectStore.put(value[idx], entryName));
-    }, DEBUG ? 'save: ' + entryName.join(', ') : '');
+    }, DEBUG ? 'save: ' + entryName.join(', ') : '', storeName);
   }
 
-  public saveFile(fileName: string, blob: Blob | Uint8Array) {
-    //return Promise.resolve(blobConstruct([blob]));
-    if(!(blob instanceof Blob)) {
-      blob = blobConstruct(blob);
-    }
+  // public saveFile(fileName: string, blob: Blob | Uint8Array) {
+  //   //return Promise.resolve(blobConstruct([blob]));
+  //   if(!(blob instanceof Blob)) {
+  //     blob = blobConstruct(blob);
+  //   }
 
-    return this.save(fileName, blob);
-  }
+  //   return this.save(fileName, blob);
+  // }
 
   /* public saveFileBase64(db: IDBDatabase, fileName: string, blob: Blob | any): Promise<Blob> {
     if(this.getBlobSize(blob) > 10 * 1024 * 1024) {
@@ -330,9 +360,9 @@ export default class IDBStorage<T extends Database<any>> {
     return blob.size || blob.byteLength || blob.length;
   } */
 
-  public get<T>(entryName: string[]): Promise<T[]>;
-  public get<T>(entryName: string): Promise<T>;
-  public get<T>(entryName: string | string[]): Promise<T> | Promise<T[]> {
+  public get<T>(entryName: string[], storeName?: StoreName): Promise<T[]>;
+  public get<T>(entryName: string, storeName?: StoreName): Promise<T>;
+  public get<T>(entryName: string | string[], storeName?: StoreName): Promise<T> | Promise<T[]> {
     //return Promise.reject();
 
     if(!Array.isArray(entryName)) {
@@ -341,10 +371,15 @@ export default class IDBStorage<T extends Database<any>> {
 
     return this.getObjectStore<T>('readonly', (objectStore) => {
       return (entryName as string[]).map((entryName) => objectStore.get(entryName));
-    }, DEBUG ? 'get: ' + entryName.join(', ') : '');
+    }, DEBUG ? 'get: ' + entryName.join(', ') : '', storeName);
   }
 
-  private getObjectStore<T>(mode: IDBTransactionMode, objectStore: (objectStore: IDBObjectStore) => IDBRequest | IDBRequest[], log?: string, storeName = this.storeName) {
+  private getObjectStore<T>(
+    mode: IDBTransactionMode, 
+    callback: (objectStore: IDBObjectStore) => IDBRequest | IDBRequest[], 
+    log?: string, 
+    storeName = this.storeName
+  ) {
     let perf: number;
 
     if(log) {
@@ -352,7 +387,7 @@ export default class IDBStorage<T extends Database<any>> {
       this.log(log + ': start');
     }
 
-    return this.openDatabase().then((db) => {
+    return this.idb.openDatabase().then((db) => {
       return new Promise<T>((resolve, reject) => {
         /* if(mode === 'readwrite') {
           return;
@@ -360,21 +395,30 @@ export default class IDBStorage<T extends Database<any>> {
 
         const transaction = db.transaction([storeName], mode);
 
-        transaction.onerror = (e) => {
+        const onError = () => {
           clearTimeout(timeout);
           reject(transaction.error);
         };
-  
-        transaction.oncomplete = (e) => {
+
+        // let resolved = false;
+        const onComplete = (/* what: string */) => {
           clearTimeout(timeout);
 
           if(log) {
-            this.log(log + ': end', performance.now() - perf);
+            this.log(log + ': end', performance.now() - perf/* , what */);
           }
 
-          const results = r.map(r => r.result);
+          // if(resolved) {
+          //   return;
+          // }
+
+          // resolved = true;
+          const results = requests.map((r) => r.result);
           resolve(isArray ? results : results[0]);
         };
+
+        transaction.onerror = onError;
+        // transaction.oncomplete = () => onComplete('transaction');
   
         const timeout = setTimeout(() => {
           this.log.error('transaction not finished', transaction);
@@ -385,37 +429,35 @@ export default class IDBStorage<T extends Database<any>> {
           this.log.error('IndexedDB: transaction abort!', transaction.error);
         }); */
   
-        const requests = objectStore(transaction.objectStore(storeName));
+        const callbackResult = callback(transaction.objectStore(storeName));
 
-        const isArray = Array.isArray(requests);
-        const r: IDBRequest[] = isArray ? requests : [].concat(requests) as any;
+        const isArray = Array.isArray(callbackResult);
+        const requests: IDBRequest[] = isArray ? callbackResult : [].concat(callbackResult) as any;
 
-        // const length = r.length;
-        // /* let left = length;
+        const length = requests.length;
+        let left = length;
 
-        // const onRequestFinished = (error?: Error) => {
-        //   if(!--left) {
-        //     resolve(result);
-        //     clearTimeout(timeout);
-        //   }
-        // }; */
+        const onRequestFinished = () => {
+          if(transaction.error) {
+            return;
+          }
 
-        // for(let i = 0; i < length; ++i) {
-        //   const request = r[i];
-        //   request.onsuccess = () => {
-        //     onRequestFinished();
-        //   };
+          if(!--left) {
+            onComplete(/* 'requests' */);
+          }
+        };
 
-        //   request.onerror = (e) => {
-        //     onRequestFinished(transaction.error);
-        //   };
-        // }
+        for(let i = 0; i < length; ++i) {
+          const request = requests[i];
+          request.onerror = onError;
+          request.onsuccess = onRequestFinished;
+        }
       });
     });
   }
 
-  public getAll<T>(): Promise<T[]> {
-    return this.getObjectStore<T[]>('readonly', (objectStore) => objectStore.getAll(), DEBUG ? 'getAll' : '');
+  public getAll<T>(storeName?: StoreName): Promise<T[]> {
+    return this.getObjectStore<T[]>('readonly', (objectStore) => objectStore.getAll(), DEBUG ? 'getAll' : '', storeName);
   }
 
   /* public getAllKeys(): Promise<Array<string>> {

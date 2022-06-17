@@ -35,5 +35,5 @@ export default async function pbkdf2(buffer: Parameters<SubtleCrypto['importKey'
     512
   );
 
-  return bits.then(buffer => new Uint8Array(buffer));
+  return bits.then((buffer) => new Uint8Array(buffer));
 }

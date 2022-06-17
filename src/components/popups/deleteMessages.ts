@@ -4,27 +4,34 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import appChatsManager from "../../lib/appManagers/appChatsManager";
-import appMessagesManager from "../../lib/appManagers/appMessagesManager";
 import rootScope from "../../lib/rootScope";
-import { addCancelButton } from ".";
+import PopupElement, { addCancelButton } from ".";
 import PopupPeer, { PopupPeerButtonCallbackCheckboxes, PopupPeerOptions } from "./peer";
 import { ChatType } from "../chat/chat";
 import { i18n, LangPackKey } from "../../lib/langPack";
 import PeerTitle from "../peerTitle";
-import appPeersManager from "../../lib/appManagers/appPeersManager";
+import hasRights from "../../lib/appManagers/utils/chats/hasRights";
+import filterAsync from "../../helpers/array/filterAsync";
 
 export default class PopupDeleteMessages {
-  constructor(peerId: PeerId, mids: number[], type: ChatType, onConfirm?: () => void) {
+  constructor(private peerId: PeerId, private mids: number[], private type: ChatType, private onConfirm?: () => void) {
+    this.construct();
+  }
+
+  private async construct() {
+    let {peerId, mids, type, onConfirm} = this;
+
     const peerTitleElement = new PeerTitle({peerId}).element;
+
+    const managers = PopupElement.MANAGERS;
 
     mids = mids.slice();
     const callback = (checked: PopupPeerButtonCallbackCheckboxes, revoke?: boolean) => {
       onConfirm && onConfirm();
       if(type === 'scheduled') {
-        appMessagesManager.deleteScheduledMessages(peerId, mids);
+        managers.appMessagesManager.deleteScheduledMessages(peerId, mids);
       } else {
-        appMessagesManager.deleteMessages(peerId, mids, !!checked.size || revoke);
+        managers.appMessagesManager.deleteMessages(peerId, mids, !!checked.size || revoke);
       }
     };
 
@@ -36,7 +43,7 @@ export default class PopupDeleteMessages {
       titleArgs = [i18n('messages', [mids.length])];
     }
     
-    if(appPeersManager.isMegagroup(peerId)) {
+    if(await managers.appPeersManager.isMegagroup(peerId)) {
       description = mids.length === 1 ? 'AreYouSureDeleteSingleMessageMega' : 'AreYouSureDeleteFewMessagesMega';
     } else {
       description = mids.length === 1 ? 'AreYouSureDeleteSingleMessage' : 'AreYouSureDeleteFewMessages';
@@ -57,12 +64,12 @@ export default class PopupDeleteMessages {
           textArgs: [peerTitleElement]
         });
       } else {
-        const chat = appChatsManager.getChat(peerId.toChatId());
+        const chat = await managers.appChatsManager.getChat(peerId.toChatId());
 
-        const hasRights = appChatsManager.hasRights(peerId.toChatId(), 'delete_messages');
+        const _hasRights = hasRights(chat, 'delete_messages');
         if(chat._ === 'chat') {
-          const canRevoke = hasRights ? mids.slice() : mids.filter(mid => {
-            const message = appMessagesManager.getMessageByPeer(peerId, mid);
+          const canRevoke = _hasRights ? mids.slice() : await filterAsync(mids, async(mid) => {
+            const message = await managers.appMessagesManager.getMessageByPeer(peerId, mid);
             return message.fromId === rootScope.myId;
           });
 

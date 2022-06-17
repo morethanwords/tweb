@@ -4,16 +4,13 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { putPreloader } from '../components/misc';
+import { putPreloader } from '../components/putPreloader';
 import mediaSizes from '../helpers/mediaSizes';
 import { AccountPassword } from '../layer';
-import appStateManager from '../lib/appManagers/appStateManager';
-import passwordManager from '../lib/mtproto/passwordManager';
 import Page from './page';
 import Button from '../components/button';
 import PasswordInputField from '../components/passwordInputField';
 import PasswordMonkey from '../components/monkeys/password';
-import RichTextProcessor from '../lib/richtextprocessor';
 import I18n from '../lib/langPack';
 import LoginPage from './loginPage';
 import cancelEvent from '../helpers/dom/cancelEvent';
@@ -21,6 +18,8 @@ import { attachClickEvent } from '../helpers/dom/clickEvent';
 import htmlToSpan from '../helpers/dom/htmlToSpan';
 import replaceContent from '../helpers/dom/replaceContent';
 import toggleDisability from '../helpers/dom/toggleDisability';
+import wrapEmojiText from '../lib/richTextProcessor/wrapEmojiText';
+import rootScope from '../lib/rootScope';
 
 const TEST = false;
 let passwordInput: HTMLInputElement;
@@ -55,11 +54,11 @@ let onFirstMount = (): Promise<any> => {
       getStateInterval = window.setInterval(getState, 10e3);
     }
 
-    return !TEST && passwordManager.getState().then(_state => {
+    return !TEST && rootScope.managers.passwordManager.getState().then((_state) => {
       state = _state;
 
       if(state.hint) {
-        replaceContent(passwordInputField.label, htmlToSpan(RichTextProcessor.wrapEmojiText(state.hint)));
+        replaceContent(passwordInputField.label, htmlToSpan(wrapEmojiText(state.hint)));
       } else {
         passwordInputField.setLabel();
       }
@@ -87,13 +86,13 @@ let onFirstMount = (): Promise<any> => {
     passwordInputField.setValueSilently('' + Math.random()); // prevent saving suggestion
     passwordInputField.setValueSilently(value); // prevent saving suggestion
 
-    passwordManager.check(value, state).then((response) => {
+    rootScope.managers.passwordManager.check(value, state).then((response) => {
       //console.log('passwordManager response:', response);
         
       switch(response._) {
         case 'auth.authorization':
           clearInterval(getStateInterval);
-          import('./pageIm').then(m => {
+          import('./pageIm').then((m) => {
             m.default.mount();
           });
           if(monkey) monkey.remove();
@@ -147,7 +146,7 @@ const page = new Page('page-password', true, onFirstMount, null, () => {
     passwordInput.focus();
   //}
 
-  appStateManager.pushToState('authState', {_: 'authStatePassword'});
+  rootScope.managers.appStateManager.pushToState('authState', {_: 'authStatePassword'});
 });
 
 export default page;

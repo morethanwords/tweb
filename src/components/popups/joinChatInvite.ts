@@ -7,31 +7,30 @@
 import PopupElement, { addCancelButton } from ".";
 import setInnerHTML from "../../helpers/dom/setInnerHTML";
 import numberThousandSplitter from "../../helpers/number/numberThousandSplitter";
-import { ChatInvite, Updates } from "../../layer";
-import apiUpdatesManager from "../../lib/appManagers/apiUpdatesManager";
-import appAvatarsManager from "../../lib/appManagers/appAvatarsManager";
-import appPhotosManager from "../../lib/appManagers/appPhotosManager";
+import { ChatInvite } from "../../layer";
+import { AppManagers } from "../../lib/appManagers/managers";
 import { i18n, _i18n } from "../../lib/langPack";
-import apiManager from "../../lib/mtproto/mtprotoworker";
 import { NULL_PEER_ID } from "../../lib/mtproto/mtproto_config";
-import RichTextProcessor from "../../lib/richtextprocessor";
+import wrapEmojiText from "../../lib/richTextProcessor/wrapEmojiText";
 import rootScope from "../../lib/rootScope";
 import AvatarElement from "../avatar";
+import putPhoto from "../putPhoto";
 import { toastNew } from "../toast";
 import { wrapPhoto } from "../wrappers";
 
 // const FAKE_CHAT_ID = Number.MAX_SAFE_INTEGER - 0x1000;
 
 export default class PopupJoinChatInvite extends PopupElement {
-  constructor(hash: string, chatInvite: ChatInvite.chatInvite) {
+  constructor(
+    private hash: string, 
+    private chatInvite: ChatInvite.chatInvite, 
+  ) {
     super('popup-join-chat-invite', addCancelButton([{
       langKey: chatInvite.pFlags.request_needed ? 'RequestJoin.Button' : (chatInvite.pFlags.broadcast ? 'JoinByPeekChannelTitle' : 'JoinByPeekGroupTitle'),
       callback: () => {
-        apiManager.invokeApi('messages.importChatInvite', {hash})
-        .then((updates) => {
-          apiUpdatesManager.processUpdateMessage(updates);
-          const chat = (updates as Updates.updates).chats[0];
-          const peerId = chat.id.toPeerId(true);
+        this.managers.appChatsManager.importChatInvite(hash)
+        .then((chatId) => {
+          const peerId = chatId.toPeerId(true);
           rootScope.dispatchEvent('history_focus', {peerId});
         }, (error) => {
           if(error.type === 'INVITE_REQUEST_SENT') {
@@ -41,8 +40,11 @@ export default class PopupJoinChatInvite extends PopupElement {
       }
     }]), {closable: true, overlayClosable: true, body: true});
 
-    this.header.remove();
+    this.construct();
+  }
 
+  private async construct() {
+    this.header.remove();
     /* const fakeChat: Chat.channel | Chat.chat = {
       _: chatInvite.pFlags.channel ? 'channel' : 'chat',
       id: FAKE_CHAT_ID,
@@ -55,12 +57,14 @@ export default class PopupJoinChatInvite extends PopupElement {
     };
 
     appChatsManager.saveApiChat(fakeChat); */
+
+    const {chatInvite, managers, hash} = this;
     
     const avatarElem = new AvatarElement();
     avatarElem.classList.add('avatar-100');
     avatarElem.isDialog = false;
     if(chatInvite.photo._ === 'photo') {
-      chatInvite.photo = appPhotosManager.savePhoto(chatInvite.photo);
+      chatInvite.photo = await managers.appPhotosManager.savePhoto(chatInvite.photo);
       wrapPhoto({
         container: avatarElem,
         message: null,
@@ -71,12 +75,12 @@ export default class PopupJoinChatInvite extends PopupElement {
       });
       avatarElem.style.width = avatarElem.style.height = '';
     } else {
-      appAvatarsManager.putPhoto(avatarElem, NULL_PEER_ID, false, chatInvite.title);
+      putPhoto(avatarElem, NULL_PEER_ID, false, chatInvite.title);
     }
 
     const title = document.createElement('div');
     title.classList.add('chat-title');
-    setInnerHTML(title, RichTextProcessor.wrapEmojiText(chatInvite.title));
+    setInnerHTML(title, wrapEmojiText(chatInvite.title));
     //avatarElem.setAttribute('peer', '' + -fakeChat.id);
     
     const isBroadcast = chatInvite.pFlags.broadcast;
@@ -92,5 +96,7 @@ export default class PopupJoinChatInvite extends PopupElement {
 
       this.body.append(caption);
     }
+
+    this.show();
   }
 }

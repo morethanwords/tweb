@@ -11,6 +11,8 @@ import isInDOM from "../helpers/dom/isInDOM";
 import RLottiePlayer from "../lib/rlottie/rlottiePlayer";
 import indexOfAndSplice from "../helpers/array/indexOfAndSplice";
 import forEachReverse from "../helpers/array/forEachReverse";
+import idleController from "../helpers/idleController";
+import appMediaPlaybackController from "./appMediaPlaybackController";
 
 export interface AnimationItem {
   el: HTMLElement,
@@ -42,7 +44,7 @@ export class AnimationIntersector {
             continue;
           }
 
-          const player = this.byGroups[group].find(p => p.el === target);
+          const player = this.byGroups[group].find((p) => p.el === target);
           if(player) {
             if(entry.isIntersecting) {
               this.visible.add(player);
@@ -75,18 +77,22 @@ export class AnimationIntersector {
 
     this.overrideIdleGroups = new Set();
 
-    rootScope.addEventListener('media_play', ({doc}) => {
+    appMediaPlaybackController.addEventListener('play', ({doc}) => {
       if(doc.type === 'round') {
         this.videosLocked = true;
         this.checkAnimations();
       }
     });
 
-    rootScope.addEventListener('media_pause', () => {
+    appMediaPlaybackController.addEventListener('pause', () => {
       if(this.videosLocked) {
         this.videosLocked = false;
         this.checkAnimations();
       }
+    });
+
+    idleController.addEventListener('change', (idle) => {
+      this.checkAnimations(idle);
     });
   }
 
@@ -185,7 +191,7 @@ export class AnimationIntersector {
       this.visible.has(player) && 
       animation.autoplay && 
       (!this.onlyOnePlayableGroup || this.onlyOnePlayableGroup === group) &&
-      (!rootScope.idle.isIDLE || this.overrideIdleGroups.has(player.group))
+      (!idleController.idle.isIDLE || this.overrideIdleGroups.has(player.group))
     ) {
       //console.warn('play animation:', animation);
       animation.play();
@@ -208,12 +214,12 @@ export class AnimationIntersector {
   public refreshGroup(group: string) {
     const animations = this.byGroups[group];
     if(animations && animations.length) {
-      animations.forEach(animation => {
+      animations.forEach((animation) => {
         this.observer.unobserve(animation.el);
       });
 
       window.requestAnimationFrame(() => {
-        animations.forEach(animation => {
+        animations.forEach((animation) => {
           this.observer.observe(animation.el);
         });
       });

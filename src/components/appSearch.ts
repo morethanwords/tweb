@@ -6,17 +6,25 @@
 
 import appDialogsManager from "../lib/appManagers/appDialogsManager";
 import Scrollable from "./scrollable";
-import appMessagesManager from "../lib/appManagers/appMessagesManager";
 import InputSearch from "./inputSearch";
 import replaceContent from "../helpers/dom/replaceContent";
 import { i18n, LangPackKey } from "../lib/langPack";
+import rootScope from "../lib/rootScope";
 
 export class SearchGroup {
   container: HTMLDivElement;
   nameEl: HTMLDivElement;
   list: HTMLUListElement;
 
-  constructor(public name: LangPackKey | boolean, public type: string, private clearable = true, className?: string, clickable = true, public autonomous = true, public onFound?: () => void) {
+  constructor(
+    public name: LangPackKey | boolean, 
+    public type: string, 
+    private clearable = true, 
+    className?: string, 
+    clickable = true, 
+    public autonomous = true, 
+    public onFound?: () => void
+  ) {
     this.list = appDialogsManager.createChatList();
     this.container = document.createElement('div');
     if(className) this.container.className = className;
@@ -159,14 +167,14 @@ export default class AppSearch {
     
     const maxId = this.minMsgId || 0;
 
-    return this.searchPromise = appMessagesManager.getSearch({
+    return this.searchPromise = rootScope.managers.appMessagesManager.getSearch({
       peerId: this.peerId, 
       query, 
       inputFilter: {_: 'inputMessagesFilterEmpty'}, 
       maxId, 
       limit: 20,
       threadId: this.threadId
-    }).then(res => {
+    }).then((res) => {
       this.searchPromise = null;
       
       if(this.searchInput.value !== query) {
@@ -189,7 +197,6 @@ export default class AppSearch {
           appDialogsManager.addDialogAndSetLastMessage({
             peerId, 
             container: this.scrollable/* searchGroup.list */, 
-            drawStatus: false,
             avatarSize: 54,
             meAsSaved: false,
             message,
@@ -218,7 +225,7 @@ export default class AppSearch {
         
         this.onSearch && this.onSearch(this.foundCount);
       }
-    }).catch(err => {
+    }).catch((err) => {
       console.error('search error', err);
       this.searchPromise = null;
     });

@@ -29,10 +29,10 @@ function bigStringInt(strNum: string) {
   return new BigInteger(strNum, 10)
 } */
 
-const boolFalse = +Schema.API.constructors.find(c => c.predicate === 'boolFalse').id;
-const boolTrue = +Schema.API.constructors.find(c => c.predicate === 'boolTrue').id;
-const vector = +Schema.API.constructors.find(c => c.predicate === 'vector').id;
-const gzipPacked = +Schema.MTProto.constructors.find(c => c.predicate === 'gzip_packed').id;
+const boolFalse = +Schema.API.constructors.find((c) => c.predicate === 'boolFalse').id;
+const boolTrue = +Schema.API.constructors.find((c) => c.predicate === 'boolTrue').id;
+const vector = +Schema.API.constructors.find((c) => c.predicate === 'vector').id;
+const gzipPacked = +Schema.MTProto.constructors.find((c) => c.predicate === 'gzip_packed').id;
 
 //console.log('boolFalse', boolFalse === 0xbc799737);
 
@@ -277,7 +277,7 @@ class TLSerialization {
   
   public storeMethod(methodName: string, params: any) {
     const schema = this.mtproto ? Schema.MTProto : Schema.API;
-    const methodData = schema.methods.find(m => m.method === methodName);
+    const methodData = schema.methods.find((m) => m.method === methodName);
 
     if(!methodData) {
       throw new Error('No method ' + methodName + ' found');
@@ -376,7 +376,7 @@ class TLSerialization {
     const schema = this.mtproto ? Schema.MTProto : Schema.API;
     const predicate = obj['_'];
     let isBare = false;
-    const constructorData: MTProtoConstructor = schema.constructors.find(c => c.predicate === predicate);
+    const constructorData: MTProtoConstructor = schema.constructors.find((c) => c.predicate === predicate);
   
     if(isBare = (type.charAt(0) === '%')) {
       type = type.substr(1);
@@ -691,12 +691,12 @@ class TLDeserialization<FetchLongAs extends Long> {
   
     if(type.charAt(0) === '%') {
       const checkType = type.substr(1);
-      constructorData = schema.constructors.find(c => c.type === checkType);
+      constructorData = schema.constructors.find((c) => c.type === checkType);
       if(!constructorData) {
         throw new Error('Constructor not found for type: ' + type);
       }
     }/*  else if(type.charAt(0) >= 97 && type.charAt(0) <= 122) {
-      constructorData = schema.constructors.find(c => c.predicate === type);
+      constructorData = schema.constructors.find((c) => c.predicate === type);
       if(!constructorData) {
         throw new Error('Constructor not found for predicate: ' + type);
       }

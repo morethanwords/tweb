@@ -11,7 +11,7 @@ $chat-helper-size: 45px;
 $chat-input-box-shadow: 0px 1px 8px 1px rgb(0 0 0 / 18%);
 
 $input-transition-time: .2s;
-$input-half-transition-time: $input-transition-time / 2;
+$input-half-transition-time: math.div($input-transition-time, 2);
 $background-transition-time: 0.05s;
 $background-transition-total-time: #{$input-transition-time - $background-transition-time};
 
@@ -772,7 +772,7 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
     --wrapper-padding: 15px;
   }
 
-  &.type-chat .bubbles.is-chat-input-hidden .bubbles-date-group:last-of-type .bubble:last-of-type {
+  &.type-chat .bubbles.is-chat-input-hidden .bubbles-date-group:last-of-type .bubbles-group:last-of-type .bubble:last-of-type {
     margin-bottom: 1.25rem;
   }
 
@@ -1551,9 +1551,29 @@ $background-transition-total-time: #{$input-transition-time - $background-transi
 	}
 
 	&.is-selecting {
-		&:not(.backwards) .is-in .bubble-content-wrapper {
-			transform: scale(1) translateX(2.5rem);
-		}
+    @include animation-level(2) {
+      .is-in .bubble-content-wrapper,
+      .bubbles-group-avatar {
+        transition: var(--bubble-transition-out);
+      }
+    }
+
+    &:not(.backwards) {
+      @include animation-level(2) {
+        .is-in .bubble-content-wrapper,
+        .bubbles-group-avatar {
+          transition: var(--bubble-transition-in);
+        }
+      }
+
+      .is-in .bubble-content-wrapper {
+        transform: translateX(2.5rem) scale(1);
+      }
+
+      .bubbles-group-avatar {
+        transform: translate3d(2.5rem, 0, 0) scale3d(.76, .76, 1);
+      }
+    }
 
 		// ! this animation will slow down chat input's animation due to count of elements
 		/* &.animating:not(.backwards) {

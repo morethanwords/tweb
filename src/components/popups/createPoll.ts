@@ -40,7 +40,10 @@ export default class PopupCreatePoll extends PopupElement {
 
   constructor(private chat: Chat) {
     super('popup-create-poll popup-new-media', null, {closable: true, withConfirm: 'Create', body: true});
-
+    this.construct();
+  }
+  
+  private async construct() {
     _i18n(this.title, 'NewPoll');
 
     this.questionInputField = new InputField({
@@ -93,7 +96,7 @@ export default class PopupCreatePoll extends PopupElement {
     settingsCaption.classList.add('caption');
     _i18n(settingsCaption, 'Settings');
 
-    if(!this.chat.appPeersManager.isBroadcast(this.chat.peerId)) {
+    if(!(await this.chat.managers.appPeersManager.isBroadcast(this.chat.peerId))) {
       this.anonymousCheckboxField = new CheckboxField({
         text: 'NewPoll.Anonymous', 
         name: 'anonymous'
@@ -119,7 +122,7 @@ export default class PopupCreatePoll extends PopupElement {
     this.listenerSetter.add(this.quizCheckboxField.input)('change', () => {
       const checked = this.quizCheckboxField.input.checked;
 
-      (Array.from(this.questions.children) as HTMLElement[]).map(el => {
+      (Array.from(this.questions.children) as HTMLElement[]).map((el) => {
         el.classList.toggle('radio-field', checked);
       });
 
@@ -128,7 +131,7 @@ export default class PopupCreatePoll extends PopupElement {
         this.quizSolutionField.setValueSilently('');
       }
 
-      quizElements.forEach(el => el.classList.toggle('hide', !checked));
+      quizElements.forEach((el) => el.classList.toggle('hide', !checked));
 
       this.multipleCheckboxField.input.toggleAttribute('disabled', checked);
       this.handleChange();
@@ -165,7 +168,7 @@ export default class PopupCreatePoll extends PopupElement {
     quizSolutionContainer.append(this.quizSolutionField.container, quizSolutionSubtitle);
 
     quizElements.push(quizHr, quizSolutionCaption, quizSolutionContainer);
-    quizElements.forEach(el => el.classList.add('hide'));
+    quizElements.forEach((el) => el.classList.add('hide'));
 
     this.body.parentElement.insertBefore(hr, this.body);
     this.body.append(d, this.questions, document.createElement('hr'), settingsCaption, dd, ...quizElements);
@@ -186,7 +189,7 @@ export default class PopupCreatePoll extends PopupElement {
     const answers = Array.from(this.questions.children).map((el, idx) => {
       const input = el.querySelector('.input-field-input') as HTMLElement;
       return input instanceof HTMLInputElement ? input.value : getRichValue(input, false).value;
-    }).filter(v => !!v.trim());
+    }).filter((v) => !!v.trim());
 
     return answers;
   }
@@ -214,7 +217,7 @@ export default class PopupCreatePoll extends PopupElement {
       return false;
     }
     
-    const tooLongOption = answers.find(a => a.length > MAX_LENGTH_OPTION);
+    const tooLongOption = answers.find((a) => a.length > MAX_LENGTH_OPTION);
     if(tooLongOption) {
       return false;
     }
@@ -232,7 +235,7 @@ export default class PopupCreatePoll extends PopupElement {
     this.btnConfirm.toggleAttribute('disabled', !valid);
   }
 
-  public send(force = false) {
+  public async send(force = false) {
     const question = this.questionInputField.value;
 
     const answers = this.getFilledAnswers();
@@ -281,11 +284,11 @@ export default class PopupCreatePoll extends PopupElement {
     };
     //poll.id = randomIDS;
 
-    const inputMediaPoll = this.chat.appPollsManager.getInputMediaPoll(poll, this.correctAnswers, quizSolution, quizSolutionEntities);
+    const inputMediaPoll = await this.chat.managers.appPollsManager.getInputMediaPoll(poll, this.correctAnswers, quizSolution, quizSolutionEntities);
 
     //console.log('Will try to create poll:', inputMediaPoll);
 
-    this.chat.appMessagesManager.sendOther(this.chat.peerId, inputMediaPoll, {
+    this.chat.managers.appMessagesManager.sendOther(this.chat.peerId, inputMediaPoll, {
       ...this.chat.getMessageSendingParams()
     });
 

@@ -9,16 +9,15 @@ import { attachClickEvent } from "../helpers/dom/clickEvent";
 import loadFonts from "../helpers/dom/loadFonts";
 import { Config, LangPackDifference, LangPackString } from "../layer";
 import I18n, { LangPackKey } from "../lib/langPack";
-import apiManager from "../lib/mtproto/mtprotoworker";
 import rootScope from "../lib/rootScope";
 import Button from "./button";
-import { putPreloader } from "./misc";
+import { putPreloader } from "./putPreloader";
 
 let set = false;
 
 function getLang(): Promise<[Config.config, LangPackString[], LangPackDifference.langPackDifference]> {
   if(cachedPromise) return cachedPromise;
-  return cachedPromise = apiManager.getConfig().then(config => {
+  return cachedPromise = rootScope.managers.apiManager.getConfig().then((config) => {
     if(config.suggested_lang_code !== I18n.lastRequestedLangCode) {
       //I18n.loadLangPack(config.suggested_lang_code);
 
@@ -43,7 +42,7 @@ export default function getLanguageChangeButton(appendTo: HTMLElement) {
     }
 
     const backup: LangPackString[] = [];
-    strings.forEach(string => {
+    strings.forEach((string) => {
       const backupString = I18n.strings.get(string.key as LangPackKey);
       if(!backupString) {
         return;
@@ -66,7 +65,7 @@ export default function getLanguageChangeButton(appendTo: HTMLElement) {
       btnChangeLanguage.remove();
     }, {once: true});
 
-    backup.forEach(string => {
+    backup.forEach((string) => {
       I18n.strings.set(string.key as LangPackKey, string);
     });
     

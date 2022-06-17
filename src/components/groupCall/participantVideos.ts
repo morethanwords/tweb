@@ -10,8 +10,9 @@ import findUpClassName from "../../helpers/dom/findUpClassName";
 import ListenerSetter from "../../helpers/listenerSetter";
 import safeAssign from "../../helpers/object/safeAssign";
 import { GroupCallParticipant } from "../../layer";
-import { AppGroupCallsManager, GroupCallOutputSource } from "../../lib/appManagers/appGroupCallsManager";
-import type { AppPeersManager } from "../../lib/appManagers/appPeersManager";
+import { GroupCallOutputSource } from "../../lib/appManagers/appGroupCallsManager";
+import { AppManagers } from "../../lib/appManagers/managers";
+import getPeerId from "../../lib/appManagers/utils/peers/getPeerId";
 import GroupCallInstance from "../../lib/calls/groupCallInstance";
 import rootScope from "../../lib/rootScope";
 import GroupCallParticipantVideoElement, { GroupCallParticipantVideoType } from "./participantVideo";
@@ -19,21 +20,19 @@ import GroupCallParticipantVideoElement, { GroupCallParticipantVideoType } from 
 export default class GroupCallParticipantsVideoElement extends ControlsHover {
   private container: HTMLDivElement;
   private instance: GroupCallInstance;
-  private appGroupCallsManager: AppGroupCallsManager;
-  private appPeersManager: AppPeersManager;
   private participantsElements: Map<PeerId, Map<GroupCallParticipantVideoType, GroupCallParticipantVideoElement>>;
   private displayPinned: boolean;
   private containers: Map<HTMLElement, GroupCallParticipantVideoElement>;
   private onLengthChange: (length: number) => void;
+  private managers: AppManagers;
 
   constructor(options: {
     appendTo: HTMLElement,
-    appGroupCallsManager: AppGroupCallsManager,
-    appPeersManager: AppPeersManager,
     instance: GroupCallInstance,
     listenerSetter: ListenerSetter,
     displayPinned: boolean,
-    onLengthChange?: GroupCallParticipantsVideoElement['onLengthChange']
+    onLengthChange?: GroupCallParticipantsVideoElement['onLengthChange'],
+    managers: AppManagers
   }) {
     super();
     safeAssign(this, options);
@@ -100,9 +99,9 @@ export default class GroupCallParticipantsVideoElement extends ControlsHover {
   }
 
   private updateParticipant(participant: GroupCallParticipant) {
-    const peerId = this.appPeersManager.getPeerId(participant.peer);
+    const peerId = getPeerId(participant.peer);
     const types: GroupCallParticipantVideoType[] = ['video', 'presentation'];
-    const hasAnyVideo = types.some(type => !!participant[type]);
+    const hasAnyVideo = types.some((type) => !!participant[type]);
     let participantElements = this.participantsElements.get(peerId);
     if(!hasAnyVideo && !participantElements) {
       return;
@@ -112,7 +111,7 @@ export default class GroupCallParticipantsVideoElement extends ControlsHover {
       this.participantsElements.set(peerId, participantElements = new Map());
     }
 
-    types.forEach(type => {
+    types.forEach((type) => {
       let element = participantElements.get(type);
       const participantVideo = participant[type];
       if(!!participantVideo === !!element) {
@@ -131,7 +130,7 @@ export default class GroupCallParticipantsVideoElement extends ControlsHover {
 
         const {video, source} = result;
 
-        element = new GroupCallParticipantVideoElement(this.appPeersManager, this.instance, source);
+        element = new GroupCallParticipantVideoElement(this.managers, this.instance, source);
 
         this.containers.set(element.container, element);
 
@@ -163,8 +162,8 @@ export default class GroupCallParticipantsVideoElement extends ControlsHover {
     this.onLengthChange && this.onLengthChange(length);
   }
 
-  public setInstance(instance: GroupCallInstance) {
-    instance.participants.forEach((participant) => {
+  public async setInstance(instance: GroupCallInstance) {
+    (await instance.participants).forEach((participant) => {
       this.updateParticipant(participant);
     });
   }

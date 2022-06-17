@@ -5,9 +5,8 @@
  */
 
 import type { AppImManager } from "../../lib/appManagers/appImManager";
-import RichTextProcessor from "../../lib/richtextprocessor";
 import ButtonIcon from "../buttonIcon";
-import { IS_TOUCH_SUPPORTED } from "../../environment/touchSupport";
+import IS_TOUCH_SUPPORTED from "../../environment/touchSupport";
 import { IS_APPLE, IS_MOBILE } from "../../environment/userAgent";
 import appNavigationController from "../appNavigationController";
 import { _i18n } from "../../lib/langPack";
@@ -18,6 +17,8 @@ import isSelectionEmpty from "../../helpers/dom/isSelectionEmpty";
 import { MarkdownType, markdownTags } from "../../helpers/dom/getRichElementValue";
 import getVisibleRect from "../../helpers/dom/getVisibleRect";
 import clamp from "../../helpers/number/clamp";
+import matchUrl from "../../lib/richTextProcessor/matchUrl";
+import matchUrlProtocol from "../../lib/richTextProcessor/matchUrlProtocol";
 //import { logger } from "../../lib/logger";
 
 export default class MarkupTooltip {
@@ -51,7 +52,7 @@ export default class MarkupTooltip {
     tools2.classList.add('markup-tooltip-tools');
 
     const arr = ['bold', 'italic', 'underline', 'strikethrough', 'monospace', 'spoiler', 'link'] as (keyof MarkupTooltip['buttons'])[];
-    arr.forEach(c => {
+    arr.forEach((c) => {
       const button = ButtonIcon(c, {noRipple: true});
       tools1.append(this.buttons[c] = button);
 
@@ -79,7 +80,7 @@ export default class MarkupTooltip {
     _i18n(this.linkInput, 'MarkupTooltip.LinkPlaceholder', undefined, 'placeholder');
     this.linkInput.classList.add('input-clear');
     this.linkInput.addEventListener('keydown', (e) => {
-      const valid = !this.linkInput.value.length || !!RichTextProcessor.matchUrl(this.linkInput.value);///^(http)|(https):\/\//i.test(this.linkInput.value);
+      const valid = !this.linkInput.value.length || !!matchUrl(this.linkInput.value);///^(http)|(https):\/\//i.test(this.linkInput.value);
 
       if(e.key === 'Enter') {
         if(!valid) {
@@ -172,7 +173,7 @@ export default class MarkupTooltip {
     cancelEvent(e);
     this.resetSelection();
     let url = this.linkInput.value;
-    if(url && !RichTextProcessor.matchUrlProtocol(url)) {
+    if(url && !matchUrlProtocol(url)) {
       url = 'https://' + url;
     }
     this.appImManager.chat.input.applyMarkdown('link', url);
@@ -182,7 +183,7 @@ export default class MarkupTooltip {
   }
 
   private isLinkValid() {
-    return !this.linkInput.value.length || !!RichTextProcessor.matchUrl(this.linkInput.value);
+    return !this.linkInput.value.length || !!matchUrl(this.linkInput.value);
   }
 
   private resetSelection(range: Range = this.savedRange) {
@@ -214,11 +215,11 @@ export default class MarkupTooltip {
 
   public getActiveMarkupButton() {
     const nodes = getSelectedNodes();
-    const parents = [...new Set(nodes.map(node => node.parentNode))];
+    const parents = [...new Set(nodes.map((node) => node.parentNode))];
     //if(parents.length > 1 && parents) return [];
 
     const currentMarkups: Set<HTMLElement> = new Set();
-    (parents as HTMLElement[]).forEach(node => {
+    (parents as HTMLElement[]).forEach((node) => {
       for(const type in markdownTags) {
         const tag = markdownTags[type as MarkdownType];
         const closest = node.closest(tag.match + ', [contenteditable]');

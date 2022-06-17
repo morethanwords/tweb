@@ -17,7 +17,7 @@ describe('Inserting', () => {
   };
     
   const arr = [100, 99, 98, 97, 96, 95].map(toSomething);
-  const distantArr = arr.slice(-2).map(v => toSomething(+v - 2));
+  const distantArr = arr.slice(-2).map((v) => toSomething(+v - 2));
   const missingArr = [arr[arr.length - 1], toSomething(+arr[arr.length - 1] - 1), distantArr[1]];
 
   const startValue = toSomething(90);

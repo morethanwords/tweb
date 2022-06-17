@@ -17,11 +17,11 @@ const CALL_DURATION_LANG_KEYS: {[type in DurationType]: LangPackKey} = {
 export default function formatCallDuration(duration: number, plain?: boolean) {
   const a = formatDuration(duration, 2);
   if(plain) {
-    const strings = a.map(d => I18n.format(CALL_DURATION_LANG_KEYS[d.type], true, [d.duration]));
+    const strings = a.map((d) => I18n.format(CALL_DURATION_LANG_KEYS[d.type], true, [d.duration]));
     return join(strings, false, plain);
   }
 
-  const elements = a.map(d => i18n(CALL_DURATION_LANG_KEYS[d.type], [d.duration]));
+  const elements = a.map((d) => i18n(CALL_DURATION_LANG_KEYS[d.type], [d.duration]));
 
   const fragment = document.createElement('span');
   fragment.append(...join(elements, false));

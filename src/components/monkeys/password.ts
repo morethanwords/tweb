@@ -28,8 +28,8 @@ export default class PasswordMonkey {
       width: this.size,
       height: this.size,
       noCache: true
-    //}, 'assets/img/TwoFactorSetupMonkeyClose.tgs').then(_animation => {
-    }, 'TwoFactorSetupMonkeyPeek').then(_animation => {
+    //}, 'assets/img/TwoFactorSetupMonkeyClose.tgs').then((_animation) => {
+    }, 'TwoFactorSetupMonkeyPeek').then((_animation) => {
       //return;
       this.animation = _animation;
       this.animation.addEventListener('enterFrame', currentFrame => {

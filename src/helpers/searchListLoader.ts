@@ -7,8 +7,9 @@
 import type { MediaSearchContext } from "../components/appMediaPlaybackController";
 import type { SearchSuperContext } from "../components/appSearchSuper.";
 import type { Message } from "../layer";
-import appMessagesIdsManager from "../lib/appManagers/appMessagesIdsManager";
-import appMessagesManager, { MyMessage } from "../lib/appManagers/appMessagesManager";
+import type { MessagesStorageKey, MyMessage } from "../lib/appManagers/appMessagesManager";
+import { AppManagers } from "../lib/appManagers/managers";
+import incrementMessageId from "../lib/appManagers/utils/messageId/incrementMessageId";
 import rootScope from "../lib/rootScope";
 import forEachReverse from "./array/forEachReverse";
 import filterChatPhotosMessages from "./filterChatPhotosMessages";
@@ -19,8 +20,13 @@ export default class SearchListLoader<Item extends {mid: number, peerId: PeerId}
   public onEmptied: () => void;
 
   private otherSideLoader: SearchListLoader<Item>;
+  private managers: AppManagers;
 
-  constructor(options: Omit<ListLoaderOptions<Item, Message.message>, 'loadMore'> & {onEmptied?: () => void, isInner?: boolean} = {}) {
+  constructor(options: Omit<ListLoaderOptions<Item, Message.message>, 'loadMore'> & {
+    onEmptied?: () => void, 
+    isInner?: boolean, 
+    managers?: AppManagers
+  } = {}) {
     super({
       ...options,
       loadMore: (anchor, older, loadCount) => {
@@ -28,15 +34,15 @@ export default class SearchListLoader<Item extends {mid: number, peerId: PeerId}
         let maxId = anchor?.mid;
 
         if(maxId === undefined) maxId = this.searchContext.maxId;
-        if(!older) maxId = appMessagesIdsManager.incrementMessageId(maxId, 1);
+        if(!older) maxId = incrementMessageId(maxId, 1);
 
-        return appMessagesManager.getSearch({
+        return this.managers.appMessagesManager.getSearch({
           ...this.searchContext,
           peerId: this.searchContext.peerId || anchor?.peerId,
           maxId,
           limit: backLimit ? 0 : loadCount,
           backLimit
-        }).then(value => {
+        }).then((value) => {
           /* if(DEBUG) {
             this.log('loaded more media by maxId:', maxId, value, older, this.reverse);
           } */
@@ -52,8 +58,8 @@ export default class SearchListLoader<Item extends {mid: number, peerId: PeerId}
           return {count: value.count, items: value.history};
         });
       },
-      processItem: (message) => {
-        const filtered = this.filterMids([message.mid]);
+      processItem: async(message) => {
+        const filtered = await this.filterMids([message.mid]);
         if(!filtered.length) {
           return;
         }
@@ -62,6 +68,7 @@ export default class SearchListLoader<Item extends {mid: number, peerId: PeerId}
       }
     });
 
+    this.managers ??= rootScope.managers;
     rootScope.addEventListener('history_delete', this.onHistoryDelete);
     rootScope.addEventListener('history_multiappend', this.onHistoryMultiappend);
     rootScope.addEventListener('message_sent', this.onMessageSent);
@@ -78,12 +85,10 @@ export default class SearchListLoader<Item extends {mid: number, peerId: PeerId}
     }
   }
 
-  protected filterMids(mids: number[]) {
-    const storage = this.searchContext.isScheduled ? 
-      appMessagesManager.getScheduledMessagesStorage(this.searchContext.peerId) : 
-      appMessagesManager.getMessagesStorage(this.searchContext.peerId);
-     const filtered = appMessagesManager.filterMessagesByInputFilterFromStorage(this.searchContext.inputFilter._, mids, storage, mids.length) as Message.message[];
-     return filtered;
+  protected async filterMids(mids: number[]) {
+    const storageKey: MessagesStorageKey = `${this.searchContext.peerId}_${this.searchContext.isScheduled ? 'scheduled' : 'history'}`;
+    const filtered = (await this.managers.appMessagesManager.filterMessagesByInputFilterFromStorage(this.searchContext.inputFilter._, mids, storageKey, mids.length)) as Message.message[];
+    return filtered;
   }
 
   protected onHistoryDelete = ({peerId, msgs}: {peerId: PeerId, msgs: Set<number>}) => {
@@ -109,7 +114,7 @@ export default class SearchListLoader<Item extends {mid: number, peerId: PeerId}
     }
   };
 
-  protected onHistoryMultiappend = (obj: {
+  protected onHistoryMultiappend = async(obj: {
     [peerId: string]: Set<number>;
   }) => {
     if(this.searchContext.folderId !== undefined) {
@@ -127,8 +132,8 @@ export default class SearchListLoader<Item extends {mid: number, peerId: PeerId}
     }
 
     const sorted = Array.from(mids).sort((a, b) => a - b);
-    const filtered = this.filterMids(sorted);
-    const targets = filtered.map(message => this.processItem(message)).filter(Boolean);
+    const filtered = await this.filterMids(sorted);
+    const targets = (await Promise.all(filtered.map((message) => this.processItem(message)))).filter(Boolean);
     if(targets.length) {
       /* const {previous, current, next} = this;
       const targets = previous.concat(current, next);

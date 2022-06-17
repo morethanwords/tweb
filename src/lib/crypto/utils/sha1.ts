@@ -3,7 +3,7 @@ import subtle from "../subtle";
 //import sha1 from '@cryptography/sha1';
 
 export default function sha1(bytes: Parameters<typeof convertToUint8Array>[0]) {
-  return subtle.digest('SHA-1', convertToUint8Array(bytes)).then(b => {
+  return subtle.digest('SHA-1', convertToUint8Array(bytes)).then((b) => {
     return new Uint8Array(b);
   });
   /* //console.trace(dT(), 'SHA-1 hash start', bytes);

@@ -9,12 +9,13 @@ import SidebarSlider from "../slider";
 import mediaSizes, { ScreenSize } from "../../helpers/mediaSizes";
 import AppSharedMediaTab from "./tabs/sharedMedia";
 import { MOUNT_CLASS_TO } from "../../config/debug";
+import { AppManagers } from "../../lib/appManagers/managers";
 
 export const RIGHT_COLUMN_ACTIVE_CLASSNAME = 'is-right-column-shown';
 
 export class AppSidebarRight extends SidebarSlider {
-  public sharedMediaTab: AppSharedMediaTab;
   private isColumnProportionSet = false;
+  private sharedMediaTab: AppSharedMediaTab;
 
   constructor() {
     super({
@@ -22,6 +23,10 @@ export class AppSidebarRight extends SidebarSlider {
       canHideFirst: true,
       navigationType: 'right'
     });
+  }
+
+  construct(managers: AppManagers) {
+    this.managers = managers;
 
     mediaSizes.addEventListener('changeScreen', (from, to) => {
       if(to === ScreenSize.medium && from !== ScreenSize.mobile) {
@@ -32,8 +37,29 @@ export class AppSidebarRight extends SidebarSlider {
     mediaSizes.addEventListener('resize', () => {
       this.setColumnProportion();
     });
+  }
 
-    this.sharedMediaTab = new AppSharedMediaTab(this);
+  public createSharedMediaTab() {
+    const tab = this.createTab(AppSharedMediaTab, true);
+    tab.slider = this;
+    // this.tabsContainer.prepend(tab.container);
+    return tab;
+  }
+
+  public replaceSharedMediaTab(tab: AppSharedMediaTab) {
+    let previousTab = this.sharedMediaTab;
+    if(previousTab) {
+      const wasActive = previousTab.container.classList.contains('active');
+      if(wasActive) {
+        tab.container.classList.add('active');
+      }
+      
+      previousTab.container.replaceWith(tab.container);
+    } else {
+      this.tabsContainer.prepend(tab.container);
+    }
+
+    this.sharedMediaTab = tab;
   }
 
   public onCloseTab(id: number, animate: boolean, isNavigation?: boolean) {
@@ -44,24 +70,12 @@ export class AppSidebarRight extends SidebarSlider {
     super.onCloseTab(id, animate, isNavigation);
   }
 
-  /* public selectTab(id: number) {
-    const res = super.selectTab(id);
-
-    if(id !== -1) {
-      this.toggleSidebar(true);
-    }
-
-    return res;
-  } */
-
   private setColumnProportion() {
     const proportion = this.sidebarEl.scrollWidth / this.sidebarEl.previousElementSibling.scrollWidth;
     document.documentElement.style.setProperty('--right-column-proportion', '' + proportion);
   }
 
   public toggleSidebar(enable?: boolean, animate?: boolean) {
-    /////this.log('sidebarEl', this.sidebarEl, enable, isElementInViewport(this.sidebarEl));
-
     const active = document.body.classList.contains(RIGHT_COLUMN_ACTIVE_CLASSNAME);
     let willChange: boolean;
     if(enable !== undefined) {
@@ -80,7 +94,6 @@ export class AppSidebarRight extends SidebarSlider {
 
     if(!active && !this.historyTabIds.length) {
       this.sharedMediaTab.open();
-      //this.selectTab(this.sharedMediaTab);
     }
 
     if(!this.isColumnProportionSet) {

@@ -10,10 +10,12 @@ import replaceContent from "../../../helpers/dom/replaceContent";
 import ListenerSetter from "../../../helpers/listenerSetter";
 import ScrollableLoader from "../../../helpers/scrollableLoader";
 import { ChannelParticipant, Chat, ChatBannedRights, Update } from "../../../layer";
-import appChatsManager, { ChatRights } from "../../../lib/appManagers/appChatsManager";
-import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
-import appPeersManager from "../../../lib/appManagers/appPeersManager";
-import appProfileManager from "../../../lib/appManagers/appProfileManager";
+import { ChatRights } from "../../../lib/appManagers/appChatsManager";
+import appDialogsManager, { DIALOG_LIST_ELEMENT_TAG } from "../../../lib/appManagers/appDialogsManager";
+import { AppManagers } from "../../../lib/appManagers/managers";
+import combineParticipantBannedRights from "../../../lib/appManagers/utils/chats/combineParticipantBannedRights";
+import hasRights from "../../../lib/appManagers/utils/chats/hasRights";
+import getPeerId from "../../../lib/appManagers/utils/peers/getPeerId";
 import I18n, { i18n, join, LangPackKey } from "../../../lib/langPack";
 import rootScope from "../../../lib/rootScope";
 import CheckboxField from "../../checkboxField";
@@ -33,12 +35,16 @@ export class ChatPermissions {
   }>;
   private toggleWith: Partial<{[chatRight in ChatRights]: ChatRights[]}>;
 
-  constructor(options: {
+  constructor(private options: {
     chatId: ChatId,
     listenerSetter: ListenerSetter,
     appendTo: HTMLElement,
     participant?: ChannelParticipant.channelParticipantBanned
-  }) {
+  }, private managers: AppManagers) {
+    this.construct();
+  }
+
+  public async construct() {
     this.v = [
       {flags: ['send_messages'], text: 'UserRestrictionsSend', exceptionText: 'UserRestrictionsNoSend'},
       {flags: ['send_media'], text: 'UserRestrictionsSendMedia', exceptionText: 'UserRestrictionsNoSendMedia'},
@@ -54,16 +60,17 @@ export class ChatPermissions {
       'send_messages': ['send_media', 'send_stickers', 'send_polls', 'embed_links']
     };
 
-    const chat: Chat.chat | Chat.channel = appChatsManager.getChat(options.chatId);
+    const options = this.options;
+    const chat: Chat.chat | Chat.channel = await this.managers.appChatsManager.getChat(options.chatId);
     const defaultBannedRights = chat.default_banned_rights;
-    const rights = options.participant ? appChatsManager.combineParticipantBannedRights(options.chatId, options.participant.banned_rights) : defaultBannedRights;
+    const rights = options.participant ? combineParticipantBannedRights(chat as Chat.channel, options.participant.banned_rights) : defaultBannedRights;
     
     const restrictionText: LangPackKey = options.participant ? 'UserRestrictionsDisabled' : 'EditCantEditPermissionsPublic';
     for(const info of this.v) {
       const mainFlag = info.flags[0];
       info.checkboxField = new CheckboxField({
         text: info.text,
-        checked: appChatsManager.hasRights(options.chatId, mainFlag, rights),
+        checked: hasRights(chat, mainFlag, rights),
         restriction: true,
         withRipple: true
       });
@@ -99,8 +106,8 @@ export class ChatPermissions {
       if(this.toggleWith[mainFlag]) {
         options.listenerSetter.add(info.checkboxField.input)('change', () => {
           if(!info.checkboxField.checked) {
-            const other = this.v.filter(i => this.toggleWith[mainFlag].includes(i.flags[0]));
-            other.forEach(info => {
+            const other = this.v.filter((i) => this.toggleWith[mainFlag].includes(i.flags[0]));
+            other.forEach((info) => {
               info.checkboxField.checked = false;
             });
           }
@@ -121,7 +128,7 @@ export class ChatPermissions {
     for(const info of this.v) {
       const banned = !info.checkboxField.checked;
       if(banned) {
-        info.flags.forEach(flag => {
+        info.flags.forEach((flag) => {
           // @ts-ignore
           rights.pFlags[flag] = true;
         });
@@ -149,10 +156,10 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
         chatId: this.chatId,
         listenerSetter: this.listenerSetter,
         appendTo: section.content,
-      });
+      }, this.managers);
 
       this.eventListener.addEventListener('destroy', () => {
-        appChatsManager.editChatDefaultBannedRights(this.chatId, chatPermissions.takeOut());
+        this.managers.appChatsManager.editChatDefaultBannedRights(this.chatId, chatPermissions.takeOut());
       }, {once: true});
 
       this.scrollable.append(section.container);
@@ -184,13 +191,13 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
       const openPermissions = async(peerId: PeerId) => {
         let participant: AppUserPermissionsTab['participant'];
         try {
-          participant = await appProfileManager.getChannelParticipant(this.chatId, peerId) as any;
+          participant = await this.managers.appProfileManager.getChannelParticipant(this.chatId, peerId) as any;
         } catch(err) {
           toast('User is no longer participant');
           return;
         }
 
-        const tab = new AppUserPermissionsTab(this.slider);
+        const tab = this.slider.createTab(AppUserPermissionsTab);
         tab.participant = participant;
         tab.chatId = this.chatId;
         tab.userId = peerId;
@@ -215,20 +222,20 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
       c.append(list);
 
       attachClickEvent(list, (e) => {
-        const target = findUpTag(e.target, 'LI');
+        const target = findUpTag(e.target, DIALOG_LIST_ELEMENT_TAG);
         if(!target) return;
 
         const peerId = target.dataset.peerId.toPeerId();
         openPermissions(peerId);
       }, {listenerSetter: this.listenerSetter});
 
-      const setSubtitle = (li: Element, participant: ChannelParticipant.channelParticipantBanned) => {
+      const setSubtitle = async(li: Element, participant: ChannelParticipant.channelParticipantBanned) => {
         const bannedRights = participant.banned_rights;//appChatsManager.combineParticipantBannedRights(this.chatId, participant.banned_rights);
-        const defaultBannedRights = (appChatsManager.getChat(this.chatId) as Chat.channel).default_banned_rights;
+        const defaultBannedRights = ((await this.managers.appChatsManager.getChat(this.chatId)) as Chat.channel).default_banned_rights;
         //const combinedRights = appChatsManager.combineParticipantBannedRights(this.chatId, bannedRights);
 
         const cantWhat: LangPackKey[] = []/* , canWhat: LangPackKey[] = [] */;
-        chatPermissions.v.forEach(info => {
+        chatPermissions.v.forEach((info) => {
           const mainFlag = info.flags[0];
           // @ts-ignore
           if(bannedRights.pFlags[mainFlag] && !defaultBannedRights.pFlags[mainFlag]) {
@@ -243,7 +250,7 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
 
         if(cantWhat.length) {
           el.innerHTML = '';
-          el.append(...join(cantWhat.map(t => i18n(t)), false));
+          el.append(...join(cantWhat.map((t) => i18n(t)), false));
         }/*  else if(canWhat.length) {
           str = 'Can ' + canWhat.join(canWhat.length === 2 ? ' and ' : ', ');
         } */
@@ -253,9 +260,8 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
 
       const add = (participant: ChannelParticipant.channelParticipantBanned, append: boolean) => {
         const {dom} = appDialogsManager.addDialogNew({
-          dialog: appPeersManager.getPeerId(participant.peer),
+          peerId: getPeerId(participant.peer),
           container: list,
-          drawStatus: false,
           rippleEnabled: true,
           avatarSize: 48,
           append
@@ -267,31 +273,31 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
         //dom.lastMessageSpan.innerHTML = 'Can Add Users and Pin Messages';
       };
 
-      this.listenerSetter.add(rootScope)('updateChannelParticipant', (update: Update.updateChannelParticipant) => {
-        const needAdd = update.new_participant?._ === 'channelParticipantBanned' && !update.new_participant.banned_rights.pFlags.view_messages;
-        const li = list.querySelector(`[data-peer-id="${update.user_id}"]`);
-        if(needAdd) {
-          if(!li) {
-            add(update.new_participant as ChannelParticipant.channelParticipantBanned, false);
-          } else {
-            setSubtitle(li, update.new_participant as ChannelParticipant.channelParticipantBanned);
-          }
+      // this.listenerSetter.add(rootScope)('updateChannelParticipant', (update: Update.updateChannelParticipant) => {
+      //   const needAdd = update.new_participant?._ === 'channelParticipantBanned' && !update.new_participant.banned_rights.pFlags.view_messages;
+      //   const li = list.querySelector(`[data-peer-id="${update.user_id}"]`);
+      //   if(needAdd) {
+      //     if(!li) {
+      //       add(update.new_participant as ChannelParticipant.channelParticipantBanned, false);
+      //     } else {
+      //       setSubtitle(li, update.new_participant as ChannelParticipant.channelParticipantBanned);
+      //     }
 
-          if(update.prev_participant?._ !== 'channelParticipantBanned') {
-            ++exceptionsCount;
-          }
-        } else {
-          if(li) {
-            li.remove();
-          }
+      //     if(update.prev_participant?._ !== 'channelParticipantBanned') {
+      //       ++exceptionsCount;
+      //     }
+      //   } else {
+      //     if(li) {
+      //       li.remove();
+      //     }
 
-          if(update.prev_participant?._ === 'channelParticipantBanned') {
-            --exceptionsCount;
-          }
-        }
+      //     if(update.prev_participant?._ === 'channelParticipantBanned') {
+      //       --exceptionsCount;
+      //     }
+      //   }
 
-        setLength();
-      });
+      //   setLength();
+      // });
 
       const setLength = () => {
         replaceContent(addExceptionRow.subtitle, i18n(exceptionsCount ? 'Permissions.ExceptionsCount' : 'Permissions.NoExceptions', [exceptionsCount]));
@@ -304,7 +310,7 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
         loader = new ScrollableLoader({
           scrollable: this.scrollable,
           getPromise: () => {
-            return appProfileManager.getChannelParticipants(this.chatId, {_: 'channelParticipantsBanned', q: ''}, LOAD_COUNT, list.childElementCount).then(res => {
+            return this.managers.appProfileManager.getChannelParticipants(this.chatId, {_: 'channelParticipantsBanned', q: ''}, LOAD_COUNT, list.childElementCount).then((res) => {
               for(const participant of res.participants) {
                 add(participant as ChannelParticipant.channelParticipantBanned, true);
               }
@@ -322,7 +328,7 @@ export default class AppGroupPermissionsTab extends SliderSuperTabEventable {
 
       this.scrollable.append(section.container);
 
-      if(appChatsManager.isChannel(this.chatId)) {
+      if(await this.managers.appChatsManager.isChannel(this.chatId)) {
         await setLoader();
       } else {
         setLength();

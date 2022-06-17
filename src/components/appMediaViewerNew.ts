@@ -15,8 +15,7 @@
 // import appPhotosManager from "../lib/appManagers/appPhotosManager";
 // import { logger } from "../lib/logger";
 // import VideoPlayer from "../lib/mediaPlayer";
-// import { RichTextProcessor } from "../lib/richtextprocessor";
-// import rootScope from "../lib/rootScope";
+// // import rootScope from "../lib/rootScope";
 // import { cancelEvent, fillPropertyValue, generatePathData } from "../helpers/dom";
 // import animationIntersector from "./animationIntersector";
 // import appMediaPlaybackController from "./appMediaPlaybackController";
@@ -142,7 +141,7 @@
 //     const buttonsDiv = document.createElement('div');
 //     buttonsDiv.classList.add(MEDIA_VIEWER_CLASSNAME + '-buttons');
 
-//     topButtons.concat(['download', 'close']).forEach(name => {
+//     topButtons.concat(['download', 'close']).forEach((name) => {
 //       const button = ButtonIcon(name);
 //       this.buttons[name] = button;
 //       buttonsDiv.append(button);
@@ -184,7 +183,7 @@
 
 //   protected setListeners() {
 //     this.buttons.download.addEventListener('click', this.onDownloadClick);
-//     [this.buttons.close, this.buttons["mobile-close"], this.preloaderStreamable.preloader].forEach(el => {
+//     [this.buttons.close, this.buttons["mobile-close"], this.preloaderStreamable.preloader].forEach((el) => {
 //       el.addEventListener('click', this.close.bind(this));
 //     });
 
@@ -316,7 +315,7 @@
 //     }
 
 //     let mover: HTMLElement = null;
-//     ['media-viewer-mover', 'media-viewer-buttons', 'media-viewer-author', 'media-viewer-caption'].find(s => {
+//     ['media-viewer-mover', 'media-viewer-buttons', 'media-viewer-author', 'media-viewer-caption'].find((s) => {
 //       try {
 //         mover = findUpClassName(target, s);
 //         if(mover) return true;
@@ -414,7 +413,7 @@
 
 //     let borderRadius: any = window.getComputedStyle(realParent).getPropertyValue('border-radius');
 //     const brSplitted = fillPropertyValue(borderRadius) as string[];
-//     borderRadius = brSplitted.map(v => parseInt(v));
+//     borderRadius = brSplitted.map((v) => parseInt(v));
 
 //     //let borderRadius = '0px 0px 0px 0px';
 
@@ -583,7 +582,7 @@
 //     const x = context.diffX - (context.diffX * percents);
 //     const y = context.diffY - (context.diffY * percents);
     
-//     const borderRadius = context.borderRadius.map(v => v - v * percents);
+//     const borderRadius = context.borderRadius.map((v) => v - v * percents);
 //     const [brTl, brTr, brBr, brBl] = borderRadius;
 
 //     /* ctx.clearRect(0, 0, context.width, context.height);
@@ -639,7 +638,7 @@
 //     const {width, height} = rect;
 //     delay = delay / 2;
 
-//     const br = borderRadius.split(' ').map(v => parseInt(v));
+//     const br = borderRadius.split(' ').map((v) => parseInt(v));
 
 //     const step = () => {
 //       const diff = Date.now() - start;
@@ -648,7 +647,7 @@
 //       if(progress > 1) progress = 1;
 //       if(upscale) progress = 1 - progress;
 
-//       const _br: [number, number, number, number] = br.map(v => v * progress) as any;
+//       const _br: [number, number, number, number] = br.map((v) => v * progress) as any;
 
 //       let d: string;
 //       if(isOut) d = generatePathData(0, 0, width - (9 / scaleX * progress), height, ..._br);
@@ -1037,7 +1036,7 @@
 //               if(mediaSizes.isMobile) {
 //                 const imgs = mover.querySelectorAll('img');
 //                 if(imgs && imgs.length) {
-//                   imgs.forEach(img => {
+//                   imgs.forEach((img) => {
 //                     img.classList.remove('thumbnail'); // может здесь это вообще не нужно
 //                   });
 //                 }
@@ -1058,7 +1057,7 @@
 //             }
   
 //             this.preloader.detach();
-//           }).catch(err => {
+//           }).catch((err) => {
 //             this.log.error(err);
 //           });
 
@@ -1234,7 +1233,7 @@
 //       nextRate: this.searchContext.nextRate,
 //       minDate: this.searchContext.minDate,
 //       maxDate: this.searchContext.maxDate
-//     }).then(value => {
+//     }).then((value) => {
 //       /* if(DEBUG) {
 //         this.log('loaded more media by maxId:', maxId, value, older, this.reverse);
 //       } */
@@ -1294,7 +1293,7 @@
 //     const caption = message.message;
 //     this.content.caption.classList.toggle('hide', !caption);
 //     if(caption) {
-//       this.content.caption.firstElementChild.innerHTML = RichTextProcessor.wrapRichText(caption, {
+//       this.content.caption.firstElementChild.innerHTML = wrapRichText(caption, {
 //         entities: message.totalEntities
 //       });
 //     } else {
@@ -1382,7 +1381,7 @@
 
 //     const maxId = this.nextTargets.length ? this.nextTargets[this.nextTargets.length - 1].photoId : this.currentPhotoId;
 
-//     const promise = appPhotosManager.getUserPhotos(peerId, maxId, loadCount).then(value => {
+//     const promise = appPhotosManager.getUserPhotos(peerId, maxId, loadCount).then((value) => {
 //       if(this.peerId !== peerId) {
 //         this.log.warn('peer changed');
 //         return;
@@ -1396,7 +1395,7 @@
 //         this.loadedAllMediaDown = true;
 //       }
 
-//       value.photos.forEach(photoId => {
+//       value.photos.forEach((photoId) => {
 //         if(this.currentPhotoId === photoId) return;
 //         this.nextTargets.push({element: null as HTMLElement, photoId: photoId});
 //       });

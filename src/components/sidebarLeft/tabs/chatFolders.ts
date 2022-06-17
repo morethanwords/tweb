@@ -6,15 +6,11 @@
 
 import { SliderSuperTab } from "../../slider";
 import lottieLoader, { LottieLoader } from "../../../lib/rlottie/lottieLoader";
-import { RichTextProcessor } from "../../../lib/richtextprocessor";
 import { toast } from "../../toast";
 import type { MyDialogFilter } from "../../../lib/storages/filters";
 import type { DialogFilterSuggested, DialogFilter } from "../../../layer";
 import type _rootScope from "../../../lib/rootScope";
 import Button from "../../button";
-import appMessagesManager from "../../../lib/appManagers/appMessagesManager";
-import appPeersManager from "../../../lib/appManagers/appPeersManager";
-import apiManager from "../../../lib/mtproto/mtprotoworker";
 import rootScope from "../../../lib/rootScope";
 import AppEditFolderTab from "./editFolder";
 import Row from "../../row";
@@ -24,6 +20,7 @@ import cancelEvent from "../../../helpers/dom/cancelEvent";
 import { attachClickEvent } from "../../../helpers/dom/clickEvent";
 import positionElementByIndex from "../../../helpers/dom/positionElementByIndex";
 import RLottiePlayer from "../../../lib/rlottie/rlottiePlayer";
+import wrapEmojiText from "../../../lib/richTextProcessor/wrapEmojiText";
 
 export default class AppChatFoldersTab extends SliderSuperTab {
   private createFolderBtn: HTMLElement;
@@ -35,18 +32,18 @@ export default class AppChatFoldersTab extends SliderSuperTab {
   private filtersRendered: {[filterId: number]: Row} = {};
   private loadAnimationPromise: ReturnType<LottieLoader['waitForFirstFrame']>;
 
-  private renderFolder(dialogFilter: DialogFilterSuggested | DialogFilter | MyDialogFilter, container?: HTMLElement, row?: Row) {
-    let filter: DialogFilter | MyDialogFilter;
+  private async renderFolder(dialogFilter: DialogFilterSuggested | MyDialogFilter, container?: HTMLElement, row?: Row) {
+    let filter: MyDialogFilter;
     let description = '';
     let d: HTMLElement[] = [];
     if(dialogFilter._ === 'dialogFilterSuggested') {
-      filter = dialogFilter.filter;
+      filter = dialogFilter.filter as MyDialogFilter;
       description = dialogFilter.description;
     } else {
       filter = dialogFilter;
 
       let enabledFilters = Object.keys(filter.pFlags).length;
-      /* (['include_peers', 'exclude_peers'] as ['include_peers', 'exclude_peers']).forEach(key => {
+      /* (['include_peers', 'exclude_peers'] as ['include_peers', 'exclude_peers']).forEach((key) => {
         enabledFilters += +!!filter[key].length;
       }); */
       
@@ -65,13 +62,13 @@ export default class AppChatFoldersTab extends SliderSuperTab {
       }
       
       if(!d.length) {
-        const folder = appMessagesManager.dialogsStorage.getFolderDialogs(filter.id);
+        const folder = await this.managers.dialogsStorage.getFolderDialogs(filter.id);
         let chats = 0, channels = 0, groups = 0;
-        for(const dialog of folder) {
-          if(appPeersManager.isAnyGroup(dialog.peerId)) groups++;
-          else if(appPeersManager.isBroadcast(dialog.peerId)) channels++;
+        await Promise.all(folder.map(async(dialog) => {
+          if(await this.managers.appPeersManager.isAnyGroup(dialog.peerId)) groups++;
+          else if(await this.managers.appPeersManager.isBroadcast(dialog.peerId)) channels++;
           else chats++;
-        }
+        }));
 
         if(chats) d.push(i18n('Chats', [chats]));
         if(channels) d.push(i18n('Channels', [channels]));
@@ -82,13 +79,13 @@ export default class AppChatFoldersTab extends SliderSuperTab {
     let div: HTMLElement;
     if(!row) {
       row = new Row({
-        title: RichTextProcessor.wrapEmojiText(filter.title),
+        title: wrapEmojiText(filter.title),
         subtitle: description,
         clickable: true
       });
 
       if(d.length) {
-        join(d).forEach(el => {
+        join(d).forEach((el) => {
           row.subtitle.append(el);
         });
       }
@@ -96,8 +93,8 @@ export default class AppChatFoldersTab extends SliderSuperTab {
       if(dialogFilter._ === 'dialogFilter') {
         const filterId = filter.id;
         if(!this.filtersRendered.hasOwnProperty(filter.id)) {
-          attachClickEvent(row.container, () => {
-            new AppEditFolderTab(this.slider).open(appMessagesManager.filtersStorage.getFilter(filterId));
+          attachClickEvent(row.container, async() => {
+            this.slider.createTab(AppEditFolderTab).open(await this.managers.filtersStorage.getFilter(filterId));
           }, {listenerSetter: this.listenerSetter});
         }
 
@@ -105,7 +102,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
       }
     } else {
       row.subtitle.textContent = '';
-      join(d).forEach(el => {
+      join(d).forEach((el) => {
         row.subtitle.append(el);
       });
     }
@@ -150,11 +147,12 @@ export default class AppChatFoldersTab extends SliderSuperTab {
 
     this.scrollable.append(this.stickerContainer, caption, this.createFolderBtn, this.foldersSection.container, this.suggestedSection.container);
 
-    attachClickEvent(this.createFolderBtn, () => {
-      if(Object.keys(this.filtersRendered).length >= 10) {
+    attachClickEvent(this.createFolderBtn, async() => {
+      const appConfig = await this.managers.apiManager.getAppConfig();
+      if(Object.keys(this.filtersRendered).length >= (rootScope.premium ? appConfig.dialog_filters_limit_premium : appConfig.dialog_filters_limit_default)) {
         toast('Sorry, you can\'t create more folders.');
       } else {
-        new AppEditFolderTab(this.slider).open();
+        this.slider.createTab(AppEditFolderTab).open();
       }
     }, {listenerSetter: this.listenerSetter});
 
@@ -162,19 +160,19 @@ export default class AppChatFoldersTab extends SliderSuperTab {
       this.foldersSection.container.style.display = Object.keys(this.filtersRendered).length ? '' : 'none';
     };
 
-    appMessagesManager.filtersStorage.getDialogFilters().then(filters => {
+    this.managers.filtersStorage.getDialogFilters().then(async(filters) => {
       for(const filter of filters) {
-        this.renderFolder(filter, this.foldersSection.content);
+        await this.renderFolder(filter, this.foldersSection.content);
       }
 
       onFiltersContainerUpdate();
     });
 
-    this.listenerSetter.add(rootScope)('filter_update', (filter) => {
+    this.listenerSetter.add(rootScope)('filter_update', async(filter) => {
       if(this.filtersRendered.hasOwnProperty(filter.id)) {
-        this.renderFolder(filter, null, this.filtersRendered[filter.id]);
+        await this.renderFolder(filter, null, this.filtersRendered[filter.id]);
       } else {
-        this.renderFolder(filter, this.foldersSection.content);
+        await this.renderFolder(filter, this.foldersSection.content);
       }
 
       onFiltersContainerUpdate();
@@ -211,7 +209,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
       autoplay: false,
       width: 86,
       height: 86
-    }, 'Folders_1').then(player => {
+    }, 'Folders_1').then((player) => {
       this.animation = player;
 
       return lottieLoader.waitForFirstFrame(player);
@@ -233,12 +231,12 @@ export default class AppChatFoldersTab extends SliderSuperTab {
   }
 
   private getSuggestedFilters() {
-    return apiManager.invokeApi('messages.getSuggestedDialogFilters').then(suggestedFilters => {
+    return this.managers.filtersStorage.getSuggestedDialogsFilters().then(async(suggestedFilters) => {
       this.suggestedSection.container.style.display = suggestedFilters.length ? '' : 'none';
-      Array.from(this.suggestedSection.content.children).slice(1).forEach(el => el.remove());
+      Array.from(this.suggestedSection.content.children).slice(1).forEach((el) => el.remove());
 
-      suggestedFilters.forEach(filter => {
-        const div = this.renderFolder(filter);
+      for(const filter of suggestedFilters) {
+        const div = await this.renderFolder(filter);
         const button = Button('btn-primary btn-color-primary', {text: 'Add'});
         div.append(button);
         this.suggestedSection.content.append(div);
@@ -258,7 +256,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
           f.excludePeerIds = [];
           f.pinnedPeerIds = [];
 
-          appMessagesManager.filtersStorage.createDialogFilter(f, true).then(bool => {
+          this.managers.filtersStorage.createDialogFilter(f, true).then((bool) => {
             if(bool) {
               div.remove();
             }
@@ -266,7 +264,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
             button.removeAttribute('disabled');
           });
         }, {listenerSetter: this.listenerSetter});
-      });
+      }
     });
   }
 }

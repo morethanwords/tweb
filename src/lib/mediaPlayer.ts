@@ -6,8 +6,7 @@
 
 import appMediaPlaybackController from "../components/appMediaPlaybackController";
 import { IS_APPLE_MOBILE, IS_MOBILE } from "../environment/userAgent";
-import { IS_TOUCH_SUPPORTED } from "../environment/touchSupport";
-import { onMediaLoad } from "../helpers/files";
+import IS_TOUCH_SUPPORTED from "../environment/touchSupport";
 import cancelEvent from "../helpers/dom/cancelEvent";
 import ListenerSetter, { Listener } from "../helpers/listenerSetter";
 import ButtonMenu from "../components/buttonMenu";
@@ -19,6 +18,8 @@ import toHHMMSS from "../helpers/string/toHHMMSS";
 import MediaProgressLine from "../components/mediaProgressLine";
 import VolumeSelector from "../components/volumeSelector";
 import debounce from "../helpers/schedulers/debounce";
+import overlayCounter from "../helpers/overlayCounter";
+import onMediaLoad from "../helpers/onMediaLoad";
 
 export default class VideoPlayer extends ControlsHover {
   private static PLAYBACK_RATES = [0.5, 1, 1.5, 2];
@@ -174,7 +175,7 @@ export default class VideoPlayer extends ControlsHover {
         });
 
         listenerSetter.add(document)('keydown', (e: KeyboardEvent) => {
-          if(rootScope.overlaysActive > 1 || document.pictureInPictureElement === video) { // forward popup is active, etc
+          if(overlayCounter.overlaysActive > 1 || document.pictureInPictureElement === video) { // forward popup is active, etc
             return;
           }
 
@@ -239,7 +240,7 @@ export default class VideoPlayer extends ControlsHover {
         this.showControls(false);
       });
 
-      listenerSetter.add(rootScope)('media_playback_params', () => {
+      listenerSetter.add(appMediaPlaybackController)('playbackParams', () => {
         this.setPlaybackRateIcon();
       });
     }

@@ -12,29 +12,33 @@ export const IS_WORKER = IS_WEB_WORKER || IS_SERVICE_WORKER;
 export const getWindowClients = () => {
   return (self as any as ServiceWorkerGlobalScope)
   .clients
-  .matchAll({ includeUncontrolled: false, type: 'window' });
+  .matchAll({includeUncontrolled: false, type: 'window'});
+};
+
+const postMessage = (listener: WindowClient | DedicatedWorkerGlobalScope, ...args: any[]) => {
+  try {
+    // @ts-ignore
+    listener.postMessage(...args);
+  } catch(err) {
+    console.error('[worker] postMessage error:', err, args);
+  }
 };
 
 const notifyServiceWorker = (all: boolean, ...args: any[]) => {
-  (self as any as ServiceWorkerGlobalScope)
-  .clients
-  .matchAll({ includeUncontrolled: false, type: 'window' })
-  .then((listeners) => {
+  getWindowClients().then((listeners) => {
     if(!listeners.length) {
       //console.trace('no listeners?', self, listeners);
       return;
     }
 
-    listeners.slice(all ? 0 : -1).forEach(listener => {
-      // @ts-ignore
-      listener.postMessage(...args);
+    listeners.slice(all ? 0 : -1).forEach((listener) => {
+      postMessage(listener, ...args);
     });
   });
 };
 
 const notifyWorker = (...args: any[]) => {
-  // @ts-ignore
-  (self as any as DedicatedWorkerGlobalScope).postMessage(...args);
+  postMessage(self as any as DedicatedWorkerGlobalScope, ...args);
 };
 
 const noop = () => {};

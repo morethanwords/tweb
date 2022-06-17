@@ -4,20 +4,19 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { PrivacyType } from "../../../../lib/appManagers/appPrivacyManager";
 import { SliderSuperTabEventable } from "../../../sliderTab";
 import PrivacySection from "../../../privacySection";
 import { i18n, LangPackKey } from "../../../../lib/langPack";
 import anchorCopy from "../../../../helpers/dom/anchorCopy";
-import appUsersManager from "../../../../lib/appManagers/appUsersManager";
+import PrivacyType from "../../../../lib/appManagers/utils/privacy/privacyType";
 
 export default class AppPrivacyPhoneNumberTab extends SliderSuperTabEventable {
-  protected init() {
+  protected async init() {
     this.header.classList.add('with-border');
     this.container.classList.add('privacy-tab', 'privacy-phone-number');
     this.setTitle('PrivacyPhone');
 
-    const formatted = '+' + appUsersManager.getSelf().phone;
+    const formatted = '+' + (await this.managers.appUsersManager.getSelf()).phone;
     const captionEl = document.createElement('div');
     captionEl.append(
       i18n('PrivacyPhoneInfo'), 
@@ -40,7 +39,8 @@ export default class AppPrivacyPhoneNumberTab extends SliderSuperTabEventable {
       onRadioChange: (type) => {
         s.setRadio(PrivacyType.Everybody);
         s.radioSection.container.classList.toggle('hide', type !== PrivacyType.Nobody);
-      }
+      },
+      managers: this.managers
     });
 
     const sCaption: LangPackKey = 'PrivacyPhoneInfo3';
@@ -50,7 +50,8 @@ export default class AppPrivacyPhoneNumberTab extends SliderSuperTabEventable {
       inputKey: 'inputPrivacyKeyAddedByPhone',
       captions: [sCaption, sCaption, ''],
       noExceptions: true,
-      skipTypes: [PrivacyType.Nobody]
+      skipTypes: [PrivacyType.Nobody],
+      managers: this.managers
     });
 
     this.scrollable.container.insertBefore(s.radioSection.container, phoneSection.radioSection.container.nextSibling);

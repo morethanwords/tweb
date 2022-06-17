@@ -5,15 +5,15 @@
  */
 
 export default function applyMixins(derivedCtor: any, constructors: any[]) {
-  const callbacks: Array<(...args: any[]) => any> = [];
+  // const callbacks: Array<(...args: any[]) => any> = [];
 
   constructors.forEach((baseCtor) => {
     Object.getOwnPropertyNames(baseCtor.prototype).forEach((name) => {
       const value: PropertyDescriptor = Object.getOwnPropertyDescriptor(baseCtor.prototype, name) || Object.create(null);
-      if(name === '_constructor') {
+      /* if(name === '_constructor') {
         callbacks.push(value.value);
         return;
-      } else if(name === 'constructor') {
+      } else  */if(name === 'constructor') {
         return;
       }
 
@@ -25,19 +25,19 @@ export default function applyMixins(derivedCtor: any, constructors: any[]) {
     });
   });
 
-  if(callbacks.length) {
-    function c(...args: any[]): any {
-      callbacks.forEach((cb, idx) => {
-        // @ts-ignore
-        cb.apply(this, args[idx] || []);
-      });
-    };
+  // if(callbacks.length) {
+  //   function c(...args: any[]): any {
+  //     callbacks.forEach((cb, idx) => {
+  //       // @ts-ignore
+  //       cb.apply(this, args[idx] || []);
+  //     });
+  //   };
 
-    Object.defineProperty(derivedCtor.prototype, 'superConstructor', {
-      configurable: true,
-      enumerable: true,
-      value: c,
-      writable: true
-    });
-  }
+  //   Object.defineProperty(derivedCtor.prototype, 'superConstructor', {
+  //     configurable: true,
+  //     enumerable: true,
+  //     value: c,
+  //     writable: true
+  //   });
+  // }
 }

@@ -5,7 +5,7 @@
  */
 
 import getTextWidth from "../helpers/canvas/getTextWidth";
-import mediaSizes, { MediaSize } from "../helpers/mediaSizes";
+import mediaSizes from "../helpers/mediaSizes";
 import clamp from "../helpers/number/clamp";
 import { fastRaf } from "../helpers/schedulers";
 

@@ -11,7 +11,8 @@
 
 import { MOUNT_CLASS_TO } from "../../config/debug";
 import { MessageEntity } from "../../layer";
-import RichTextProcessor from "../../lib/richtextprocessor";
+import combineSameEntities from "../../lib/richTextProcessor/combineSameEntities";
+import sortEntities from "../../lib/richTextProcessor/sortEntities";
 import getRichElementValue from "./getRichElementValue";
 
 export default function getRichValue(field: HTMLElement, withEntities = true) {
@@ -36,8 +37,8 @@ export default function getRichValue(field: HTMLElement, withEntities = true) {
       entity.length -= length - trimmedLength;
     } */
 
-    RichTextProcessor.combineSameEntities(entities);
-    RichTextProcessor.sortEntities(entities);
+    combineSameEntities(entities);
+    sortEntities(entities);
   }
 
   //console.log('getRichValue:', value, entities);

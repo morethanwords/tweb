@@ -6,10 +6,8 @@
 
 import forEachReverse from "../../helpers/array/forEachReverse";
 import throttle from "../../helpers/schedulers/throttle";
-import { Updates, PhoneJoinGroupCall, PhoneJoinGroupCallPresentation, Update } from "../../layer";
-import apiUpdatesManager from "../appManagers/apiUpdatesManager";
-import appGroupCallsManager, { GroupCallConnectionType, JoinGroupCallJsonPayload } from "../appManagers/appGroupCallsManager";
-import apiManager from "../mtproto/mtprotoworker";
+import { GroupCallConnectionType, JoinGroupCallJsonPayload } from "../appManagers/appGroupCallsManager";
+import { AppManagers } from "../appManagers/managers";
 import rootScope from "../rootScope";
 import CallConnectionInstanceBase, { CallConnectionInstanceOptions } from "./callConnectionInstanceBase";
 import GroupCallInstance from "./groupCallInstance";
@@ -38,10 +36,13 @@ export default class GroupCallConnectionInstance extends CallConnectionInstanceB
   private updateConstraintsInterval: number;
   public negotiateThrottled: () => void;
 
+  private managers: AppManagers;
+
   constructor(options: CallConnectionInstanceOptions & {
     groupCall: GroupCallConnectionInstance['groupCall'],
     type: GroupCallConnectionInstance['type'],
     options: GroupCallConnectionInstance['options'],
+    managers: AppManagers
   }) {
     super(options);
 
@@ -92,7 +93,7 @@ export default class GroupCallConnectionInstance extends CallConnectionInstanceB
     const types = ['audio' as const, 'video' as const];
     const count = types.length * perType;
     const init: RTCRtpTransceiverInit = {direction: 'recvonly'};
-    types.forEach(type => {
+    types.forEach((type) => {
       for(let i = 0; i < perType; ++i) {
         description.createEntry(type).createTransceiver(connection, init);
       }
@@ -116,7 +117,7 @@ export default class GroupCallConnectionInstance extends CallConnectionInstanceB
     const {groupCall, description} = this;
     const groupCallId = groupCall.id;
 
-    const processedChannels = mainChannels.map(section => {
+    const processedChannels = mainChannels.map((section) => {
       const processed = processMediaSection(localSdp, section);
 
       this.sources[processed.entry.type as 'video' | 'audio'] = processed.entry;
@@ -124,9 +125,8 @@ export default class GroupCallConnectionInstance extends CallConnectionInstanceB
       return processed;
     });
 
-    let promise: Promise<Updates>;
-    const audioChannel = processedChannels.find(channel => channel.media.mediaType === 'audio');
-    const videoChannel = processedChannels.find(channel => channel.media.mediaType === 'video');
+    const audioChannel = processedChannels.find((channel) => channel.media.mediaType === 'audio');
+    const videoChannel = processedChannels.find((channel) => channel.media.mediaType === 'video');
     let {source, params} = audioChannel || {};
     const useChannel = videoChannel || audioChannel;
 
@@ -135,7 +135,7 @@ export default class GroupCallConnectionInstance extends CallConnectionInstanceB
       video: videoChannel
     };
 
-    description.entries.forEach(entry => {
+    description.entries.forEach((entry) => {
       if(entry.direction === 'sendonly') {
         const channel = channels[entry.type];
         if(!channel) return;
@@ -156,32 +156,8 @@ export default class GroupCallConnectionInstance extends CallConnectionInstanceB
         data: JSON.stringify(data)
       };
     }
-    
-    const groupCallInput = appGroupCallsManager.getGroupCallInput(groupCallId);
-    if(options.type === 'main') {
-      const request: PhoneJoinGroupCall = {
-        call: groupCallInput,
-        join_as: {_: 'inputPeerSelf'},
-        params,
-        muted: options.isMuted,
-        video_stopped: !options.joinVideo
-      };
 
-      promise = apiManager.invokeApi('phone.joinGroupCall', request);
-      this.log(`[api] joinGroupCall id=${groupCallId}`, request);
-    } else {
-      const request: PhoneJoinGroupCallPresentation = {
-        call: groupCallInput,
-        params,
-      };
-
-      promise = apiManager.invokeApi('phone.joinGroupCallPresentation', request);
-      this.log(`[api] joinGroupCallPresentation id=${groupCallId}`, request);
-    }
-
-    const updates = await promise;
-    apiUpdatesManager.processUpdateMessage(updates);
-    const update = (updates as Updates.updates).updates.find(update => update._ === 'updateGroupCallConnection') as Update.updateGroupCallConnection;
+    const update = await this.managers.appGroupCallsManager.joinGroupCall(groupCallId, params, options);
 
     const data: UpdateGroupCallConnectionData = JSON.parse(update.params.data);
 
@@ -213,7 +189,7 @@ export default class GroupCallConnectionInstance extends CallConnectionInstanceB
     log('[sdp] setLocalDescription', offer.sdp);
     await connection.setLocalDescription(offer);
 
-    const mainChannels = localSdp.media.filter(media => {
+    const mainChannels = localSdp.media.filter((media) => {
       return media.mediaType !== 'application' && media.isSending;
     });
 
@@ -255,7 +231,7 @@ export default class GroupCallConnectionInstance extends CallConnectionInstanceB
     });
 
     /* forEachReverse(description.entries, (entry, idx, arr) => {
-      const mediaSection = _parsedSdp.media.find(section => section.oa.get('mid').oa === entry.mid);
+      const mediaSection = _parsedSdp.media.find((section) => section.oa.get('mid').oa === entry.mid);
       const deleted = !mediaSection;
       // const deleted = !_bundleMids.includes(entry.mid); // ! can't use it because certain mid can be missed in bundle
       if(deleted) {
@@ -283,7 +259,7 @@ export default class GroupCallConnectionInstance extends CallConnectionInstanceB
       })
     };
 
-    entriesToDelete.forEach(entry => {
+    entriesToDelete.forEach((entry) => {
       description.deleteEntry(entry);
     });
 
@@ -310,7 +286,7 @@ export default class GroupCallConnectionInstance extends CallConnectionInstanceB
 
     if(this.options.type === 'presentation') {
       promise.then(() => {
-        this.connection.getTransceivers().find(transceiver => {
+        this.connection.getTransceivers().find((transceiver) => {
           if(transceiver.sender?.track?.kind === 'video') {
             transceiver.sender.setParameters({
               ...transceiver.sender.getParameters(),

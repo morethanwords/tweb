@@ -8,13 +8,13 @@ import { SettingSection } from "..";
 import Row from "../../row";
 import CheckboxField from "../../checkboxField";
 import { InputNotifyPeer, Update } from "../../../layer";
-import appNotificationsManager from "../../../lib/appManagers/appNotificationsManager";
 import { SliderSuperTabEventable } from "../../sliderTab";
 import rootScope from "../../../lib/rootScope";
 import { LangPackKey } from "../../../lib/langPack";
-import appStateManager from "../../../lib/appManagers/appStateManager";
 import copy from "../../../helpers/object/copy";
 import convertKeyToInputKey from "../../../helpers/string/convertKeyToInputKey";
+import { MUTE_UNTIL } from "../../../lib/mtproto/mtproto_config";
+import apiManagerProxy from "../../../lib/mtproto/mtprotoworker";
 
 type InputNotifyKey = Exclude<InputNotifyPeer['_'], 'inputNotifyPeer'>;
 
@@ -48,10 +48,10 @@ export default class AppNotificationsTab extends SliderSuperTabEventable {
       this.scrollable.append(section.container);
 
       const inputNotifyPeer = {_: options.inputKey};
-      const ret = appNotificationsManager.getNotifySettings(inputNotifyPeer);
+      const ret = this.managers.appNotificationsManager.getNotifySettings(inputNotifyPeer);
       (ret instanceof Promise ? ret : Promise.resolve(ret)).then((notifySettings) => {
-        const applySettings = () => {
-          const muted = appNotificationsManager.isMuted(notifySettings);
+        const applySettings = async() => {
+          const muted = await this.managers.appNotificationsManager.isMuted(notifySettings);
           enabledRow.checkboxField.checked = !muted;
           previewEnabledRow.checkboxField.checked = notifySettings.show_previews;
   
@@ -60,20 +60,20 @@ export default class AppNotificationsTab extends SliderSuperTabEventable {
         
         applySettings();
 
-        this.eventListener.addEventListener('destroy', () => {
+        this.eventListener.addEventListener('destroy', async() => {
           const mute = !enabledRow.checkboxField.checked;
           const showPreviews = previewEnabledRow.checkboxField.checked;
 
-          if(mute === appNotificationsManager.isMuted(notifySettings) && showPreviews === notifySettings.show_previews) {
+          if(mute === (await this.managers.appNotificationsManager.isMuted(notifySettings)) && showPreviews === notifySettings.show_previews) {
             return;
           }
 
           const inputSettings: any = copy(notifySettings);
           inputSettings._ = 'inputPeerNotifySettings';
-          inputSettings.mute_until = mute ? 0x7FFFFFFF : 0;
+          inputSettings.mute_until = mute ? MUTE_UNTIL : 0;
           inputSettings.show_previews = showPreviews;
 
-          appNotificationsManager.updateNotifySettings(inputNotifyPeer, inputSettings);
+          this.managers.appNotificationsManager.updateNotifySettings(inputNotifyPeer, inputSettings);
         }, {once: true});
 
         this.listenerSetter.add(rootScope)('notify_settings', (update: Update.updateNotifySettings) => {
@@ -119,7 +119,7 @@ export default class AppNotificationsTab extends SliderSuperTabEventable {
         subtitleLangKey: 'Loading',
       });
 
-      appStateManager.getState().then(state => {
+      apiManagerProxy.getState().then((state) => {
         soundRow.checkboxField.checked = state.settings.notifications.sound;
       });
 
@@ -127,13 +127,13 @@ export default class AppNotificationsTab extends SliderSuperTabEventable {
 
       this.scrollable.append(section.container);
 
-      appNotificationsManager.getContactSignUpNotification().then(enabled => {
+      this.managers.appNotificationsManager.getContactSignUpNotification().then((enabled) => {
         contactsSignUpRow.checkboxField.checked = enabled;
 
         this.eventListener.addEventListener('destroy', () => {
           const _enabled = contactsSignUpRow.checkboxField.checked;
           if(enabled !== _enabled) {
-            appNotificationsManager.setContactSignUpNotification(!_enabled);
+            this.managers.appNotificationsManager.setContactSignUpNotification(!_enabled);
           }
         }, {once: true});
       });

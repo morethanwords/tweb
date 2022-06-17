@@ -10,7 +10,7 @@ export default function splitStringByLength(str: string, maxLength: number) {
     if(part.length > maxLength) {
       let overflowPart = part.slice(maxLength);
       const splitted = splitStringByLength(overflowPart, maxLength);
-      splitted.forEach(part => {
+      splitted.forEach((part) => {
         out[arrayIndex++] = part;
       });
 

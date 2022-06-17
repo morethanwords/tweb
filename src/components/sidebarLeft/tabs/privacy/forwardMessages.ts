@@ -21,7 +21,8 @@ export default class AppPrivacyForwardMessagesTab extends SliderSuperTabEventabl
       inputKey: 'inputPrivacyKeyForwards',
       captions: [caption, caption, caption],
       exceptionTexts: ['PrivacySettingsController.NeverAllow', 'PrivacySettingsController.AlwaysAllow'],
-      appendTo: this.scrollable
+      appendTo: this.scrollable,
+      managers: this.managers
     });
   }
 }

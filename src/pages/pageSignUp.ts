@@ -9,21 +9,20 @@ import type { InputFile } from '../layer';
 import type { AuthState } from '../types';
 import Button from '../components/button';
 import InputField from '../components/inputField';
-import { putPreloader } from '../components/misc';
+import { putPreloader } from '../components/putPreloader';
 import PopupAvatar from '../components/popups/avatar';
-import appStateManager from '../lib/appManagers/appStateManager';
 import I18n, { i18n } from '../lib/langPack';
-//import apiManager from '../lib/mtproto/apiManager';
-import apiManager from '../lib/mtproto/mtprotoworker';
-import RichTextProcessor from '../lib/richtextprocessor';
 import LoginPage from './loginPage';
 import Page from './page';
 import blurActiveElement from '../helpers/dom/blurActiveElement';
 import replaceContent from '../helpers/dom/replaceContent';
+import PopupElement from '../components/popups';
+import wrapEmojiText from '../lib/richTextProcessor/wrapEmojiText';
+import rootScope from '../lib/rootScope';
 
 let authCode: AuthState.signUp['authCode'] = null;
 
-const onFirstMount = () => import('../lib/appManagers/appProfileManager').then(imported => {
+const onFirstMount = () => {
   const page = new LoginPage({
     className: 'page-signUp',
     withInputWrapper: true,
@@ -44,11 +43,9 @@ const onFirstMount = () => import('../lib/appManagers/appProfileManager').then(i
 
   page.imageDiv.append(avatarPreview, addIco);
   
-  const appProfileManager = imported.default;
-
   let uploadAvatar: () => CancellablePromise<InputFile>;
   page.imageDiv.addEventListener('click', () => {
-    new PopupAvatar().open(avatarPreview, (_uploadAvatar) => {
+    PopupElement.createPopup(PopupAvatar).open(avatarPreview, (_uploadAvatar) => {
       uploadAvatar = _uploadAvatar;
     });
   });
@@ -61,7 +58,7 @@ const onFirstMount = () => import('../lib/appManagers/appProfileManager').then(i
       ? (name + ' ' + lastName).trim() 
       : '';
     
-    if(fullName) replaceContent(page.title, RichTextProcessor.wrapEmojiText(fullName));
+    if(fullName) replaceContent(page.title, wrapEmojiText(fullName));
     else replaceContent(page.title, i18n('YourName'));
   };
 
@@ -75,7 +72,7 @@ const onFirstMount = () => import('../lib/appManagers/appProfileManager').then(i
     uploadAvatar().then((inputFile) => {
       //console.log('uploaded smthn', inputFile);
   
-      appProfileManager.uploadProfilePhoto(inputFile).then(resolve, reject);
+      rootScope.managers.appProfileManager.uploadProfilePhoto(inputFile).then(resolve, reject);
     }, reject);
   });
 
@@ -125,16 +122,16 @@ const onFirstMount = () => import('../lib/appManagers/appProfileManager').then(i
     btnI18n.update({key: 'PleaseWait'});
     const preloader = putPreloader(this);
 
-    apiManager.invokeApi('auth.signUp', params)
+    rootScope.managers.apiManager.invokeApi('auth.signUp', params)
     .then((response) => {
       //console.log('auth.signUp response:', response);
       
       switch(response._) {
         case 'auth.authorization': // success
-          apiManager.setUser(response.user);
+          rootScope.managers.apiManager.setUser(response.user);
 
           sendAvatar().finally(() => {
-            import('./pageIm').then(m => {
+            import('./pageIm').then((m) => {
               m.default.mount();
             });
           });
@@ -149,7 +146,7 @@ const onFirstMount = () => import('../lib/appManagers/appProfileManager').then(i
 
       /* (document.body.getElementsByClassName('page-sign')[0] as HTMLDivElement).style.display = 'none';
       pageAuthCode(Object.assign(code, {phoneNumber})); */
-    }).catch(err => {
+    }).catch((err) => {
       this.removeAttribute('disabled');
       preloader.remove();
 
@@ -165,12 +162,12 @@ const onFirstMount = () => import('../lib/appManagers/appProfileManager').then(i
   return new Promise((resolve) => {
     window.requestAnimationFrame(resolve);
   });
-});
+};
 
 const page = new Page('page-signUp', true, onFirstMount, (_authCode: typeof authCode) => {
   authCode = _authCode;
 
-  appStateManager.pushToState('authState', {_: 'authStateSignUp', authCode: _authCode});
+  rootScope.managers.appStateManager.pushToState('authState', {_: 'authStateSignUp', authCode: _authCode});
 });
 
 export default page;

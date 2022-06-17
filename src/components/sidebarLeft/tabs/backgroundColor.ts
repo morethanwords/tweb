@@ -5,13 +5,14 @@
  */
 
 import { SettingSection } from "..";
+import { Theme } from "../../../config/state";
 import { hexaToRgba } from "../../../helpers/color";
 import { attachClickEvent } from "../../../helpers/dom/clickEvent";
 import findUpClassName from "../../../helpers/dom/findUpClassName";
 import highlightningColor from "../../../helpers/highlightningColor";
 import throttle from "../../../helpers/schedulers/throttle";
+import themeController from "../../../helpers/themeController";
 import appImManager from "../../../lib/appManagers/appImManager";
-import appStateManager, { Theme } from "../../../lib/appManagers/appStateManager";
 import rootScope from "../../../lib/rootScope";
 import ColorPicker, { ColorPickerColor } from "../../colorPicker";
 import { SliderSuperTab } from "../../slider";
@@ -27,7 +28,7 @@ export default class AppBackgroundColorTab extends SliderSuperTab {
     this.container.classList.add('background-container', 'background-color-container');
     this.setTitle('SetColor');
 
-    this.theme = rootScope.getTheme();
+    this.theme = themeController.getTheme();
 
     const section = new SettingSection({});
     this.colorPicker = new ColorPicker();
@@ -56,7 +57,7 @@ export default class AppBackgroundColorTab extends SliderSuperTab {
       '#DD8851'
     ];
 
-    colors.forEach(color => {
+    colors.forEach((color) => {
       const item = document.createElement('div');
       item.classList.add('grid-item');
       item.dataset.color = color.toLowerCase();
@@ -120,7 +121,7 @@ export default class AppBackgroundColorTab extends SliderSuperTab {
       background.slug = '';
       background.color = hex.toLowerCase();
       background.highlightningColor = hsla;
-      appStateManager.pushToState('settings', rootScope.settings);
+      this.managers.appStateManager.pushToState('settings', rootScope.settings);
     
       appImManager.applyCurrentTheme(undefined, undefined, true);
       this.setActive();

@@ -5,12 +5,11 @@
  */
 
 import PopupElement from ".";
-import appStickersManager, { AppStickersManager } from "../../lib/appManagers/appStickersManager";
-import { RichTextProcessor } from "../../lib/richtextprocessor";
+import type { AppStickersManager } from "../../lib/appManagers/appStickersManager";
 import Scrollable from "../scrollable";
 import { wrapSticker } from "../wrappers";
 import LazyLoadQueue from "../lazyLoadQueue";
-import { putPreloader } from "../misc";
+import { putPreloader } from "../putPreloader";
 import animationIntersector from "../animationIntersector";
 import appImManager from "../../lib/appManagers/appImManager";
 import { StickerSet } from "../../layer";
@@ -22,6 +21,7 @@ import toggleDisability from "../../helpers/dom/toggleDisability";
 import { attachClickEvent } from "../../helpers/dom/clickEvent";
 import { toastNew } from "../toast";
 import setInnerHTML from "../../helpers/dom/setInnerHTML";
+import wrapEmojiText from "../../lib/richTextProcessor/wrapEmojiText";
 
 const ANIMATION_GROUP = 'STICKERS-POPUP';
 
@@ -87,7 +87,7 @@ export default class PopupStickers extends PopupElement {
   };
 
   private loadStickerSet() {
-    return appStickersManager.getStickerSet(this.stickerSetInput).then(set => {
+    return this.managers.appStickersManager.getStickerSet(this.stickerSetInput).then((set) => {
       if(!set) {
         toastNew({langPackKey: 'StickerSet.DontExist'});
         this.hide();
@@ -99,7 +99,7 @@ export default class PopupStickers extends PopupElement {
 
       animationIntersector.setOnlyOnePlayableGroup(ANIMATION_GROUP);
 
-      setInnerHTML(this.h6, RichTextProcessor.wrapEmojiText(set.set.title));
+      setInnerHTML(this.h6, wrapEmojiText(set.set.title));
       this.stickersFooter.classList.toggle('add', !set.set.installed_date);
 
       let button: HTMLElement;
@@ -117,7 +117,7 @@ export default class PopupStickers extends PopupElement {
       attachClickEvent(button, () => {
         const toggle = toggleDisability([button], true);
 
-        appStickersManager.toggleStickerSet(this.set).then(() => {
+        this.managers.appStickersManager.toggleStickerSet(this.set).then(() => {
           this.hide();
         }).catch(() => {
           toggle();

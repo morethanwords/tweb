@@ -81,6 +81,8 @@ $chat-input-inner-padding-handhelds: .25rem;
   --messages-text-size: 16px;
   --messages-secondary-text-size: calc(var(--messages-text-size) - 2px);
   --messages-secondary-line-height: calc(var(--messages-secondary-text-size) + 4px);
+  --bubble-transition-in: transform var(--transition-standard-in), opacity var(--transition-standard-in);
+  --bubble-transition-out: transform var(--transition-standard-out), opacity var(--transition-standard-out);
   --line-height: 1.3125;
   --line-height-16: 21px;
   --line-height-14: 18px;
@@ -429,6 +431,8 @@ body {
   background-color: var(--body-background-color);
   color: var(--primary-text-color);
 }
+
+
 
 body.deactivated {
   animation: grayscale-in var(--transition-standard-in) forwards;
@@ -1226,6 +1230,14 @@ middle-ellipsis-element {
   height: 100%;
 }
 
+// .shimmer {
+//   &-canvas {
+//     position: absolute;
+//     width: 100%;
+//     height: 100%;
+//   }
+// }
+
 .media-photo, 
 .media-video, 
 .media-sticker, 
@@ -1542,6 +1554,14 @@ hr {
   width: 1.25rem;
   height: 1.25rem;
   margin-left: .125rem;
+}
+
+.premium-icon {
+  flex: 0 0 auto;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-left: .25rem;
+  line-height: 1 !important;
 }
 
 .badge-fake {

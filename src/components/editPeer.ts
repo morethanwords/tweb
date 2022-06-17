@@ -62,7 +62,7 @@ export default class EditPeer {
       }
     }
 
-    this.inputFields.forEach(inputField => {
+    this.inputFields.forEach((inputField) => {
       this.listenerSetter.add(inputField.input)('input', this.handleChange);
     });
 
@@ -75,7 +75,7 @@ export default class EditPeer {
 
   public set disabled(value) {
     this._disabled = value;
-    this.inputFields.forEach(inputField => inputField.input.toggleAttribute('disabled', value));
+    this.inputFields.forEach((inputField) => inputField.input.toggleAttribute('disabled', value));
     this.handleChange();
   }
 
@@ -96,7 +96,7 @@ export default class EditPeer {
     }
 
     let changedLength = 0, requiredLength = 0, requiredValidLength = 0;
-    this.inputFields.forEach(inputField => {
+    this.inputFields.forEach((inputField) => {
       if(inputField.isValid()) {
         if(inputField.isChanged()) {
           ++changedLength;

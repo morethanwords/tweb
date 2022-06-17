@@ -184,5 +184,5 @@ export default class Row {
 }
 
 export const RadioFormFromRows = (rows: Row[], onChange: (value: string) => void) => {
-  return RadioForm(rows.map(r => ({container: r.container, input: r.radioField.input})), onChange);
+  return RadioForm(rows.map((r) => ({container: r.container, input: r.radioField.input})), onChange);
 };

@@ -5,30 +5,8 @@
  */
 
 import { MOUNT_CLASS_TO } from "../config/debug";
-import calcImageInBox from "./calcImageInBox";
 import EventListenerBase from "./eventListenerBase";
-
-export class MediaSize {
-  constructor(public width = 0, public height = width) {
-
-  }
-
-  public aspect(boxSize: MediaSize, fitted: boolean) {
-    return calcImageInBox(this.width, this.height, boxSize.width, boxSize.height, fitted);
-  }
-
-  public aspectFitted(boxSize: MediaSize) {
-    return this.aspect(boxSize, true);
-  }
-
-  public aspectCovered(boxSize: MediaSize) {
-    return this.aspect(boxSize, false);
-  }
-}
-
-export function makeMediaSize(width?: number, height?: number): MediaSize {
-  return new MediaSize(width, height);
-}
+import { makeMediaSize, MediaSize } from "./mediaSize";
 
 type MediaTypeSizes = {
   regular: MediaSize,

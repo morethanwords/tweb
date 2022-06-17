@@ -5,7 +5,6 @@
  */
 
 import tsNow from "../../helpers/tsNow";
-import appMessagesManager from "../../lib/appManagers/appMessagesManager";
 import { LangPackKey } from "../../lib/langPack";
 import { MUTE_UNTIL } from "../../lib/mtproto/mtproto_config";
 import RadioField from "../radioField";
@@ -21,7 +20,7 @@ export default class PopupMute extends PopupPeer {
       buttons: [{
         langKey: 'ChatList.Context.Mute',
         callback: () => {
-          appMessagesManager.mutePeer(peerId, time === -1 ? MUTE_UNTIL : tsNow(true) + time);
+          this.managers.appMessagesManager.mutePeer(peerId, time === -1 ? MUTE_UNTIL : tsNow(true) + time);
         }
       }],
       body: true

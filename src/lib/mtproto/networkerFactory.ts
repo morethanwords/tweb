@@ -13,16 +13,20 @@ import type { ConnectionStatusChange } from "./connectionStatus";
 import MTPNetworker from "./networker";
 import { InvokeApiOptions } from "../../types";
 import App from "../../config/app";
-import { MOUNT_CLASS_TO } from "../../config/debug";
 import indexOfAndSplice from "../../helpers/array/indexOfAndSplice";
+import { AppManager } from "../appManagers/manager";
 
-export class NetworkerFactory {
+export class NetworkerFactory extends AppManager {
   private networkers: MTPNetworker[] = [];
   public language = navigator.language || App.langPackCode;
   public updatesProcessor: (obj: any) => void = null;
-  public onConnectionStatusChange: (info: ConnectionStatusChange) => void = null;
+  // public onConnectionStatusChange: (status: ConnectionStatusChange) => void = null;
   public akStopped = false;
-  public userAgent = navigator.userAgent;
+
+  public onConnectionStatusChange(status: ConnectionStatusChange) {
+    this.rootScope.dispatchEvent('connection_status_change', status);
+    //  ({type: 'connectionStatusChange', payload: status});
+  }
 
   public removeNetworker(networker: MTPNetworker) {
     indexOfAndSplice(this.networkers, networker);
@@ -34,14 +38,14 @@ export class NetworkerFactory {
 
   public getNetworker(dcId: number, authKey: Uint8Array, authKeyId: Uint8Array, serverSalt: Uint8Array, options: InvokeApiOptions) {
     //console.log('NetworkerFactory: creating new instance of MTPNetworker:', dcId, options);
-    const networker = new MTPNetworker(dcId, authKey, authKeyId, serverSalt, options);
+    const networker = new MTPNetworker(this, this.timeManager, dcId, authKey, authKeyId, serverSalt, options);
     this.networkers.push(networker);
     return networker;
   }
 
   public startAll() {
     if(this.akStopped) {
-      const stoppedNetworkers = this.networkers.filter(networker => networker.isStopped());
+      const stoppedNetworkers = this.networkers.filter((networker) => networker.isStopped());
 
       this.akStopped = false;
       this.updatesProcessor && this.updatesProcessor({_: 'new_session_created'});
@@ -86,7 +90,3 @@ export class NetworkerFactory {
     }
   }
 }
-
-const networkerFactory = new NetworkerFactory();
-MOUNT_CLASS_TO && (MOUNT_CLASS_TO.networkerFactory = networkerFactory);
-export default networkerFactory;

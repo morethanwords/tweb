@@ -5,21 +5,22 @@
  */
 
 import { Photo } from "../layer";
-import appPhotosManager from "../lib/appManagers/appPhotosManager";
+import { AppManagers } from "../lib/appManagers/managers";
 import ListLoader, { ListLoaderOptions } from "./listLoader";
 
 export default class AvatarListLoader<Item extends {photoId: Photo.photo['id']}> extends ListLoader<Item, any> {
   private peerId: PeerId;
+  private managers: AppManagers;
 
-  constructor(options: Omit<ListLoaderOptions<Item, any>, 'loadMore'> & {peerId: PeerId}) {
+  constructor(options: Omit<ListLoaderOptions<Item, any>, 'loadMore'> & {peerId: PeerId, managers: AppManagers}) {
     super({
       ...options,
       loadMore: (anchor, older, loadCount) => {
         if(this.peerId.isAnyChat() || !older) return Promise.resolve({count: 0, items: []}); // ! это значит, что открыло аватар чата, но следующих фотографий нет.
 
         const maxId = anchor?.photoId;
-        return appPhotosManager.getUserPhotos(this.peerId, maxId, loadCount).then(value => {
-          const items = value.photos.map(photoId => {
+        return this.managers.appPhotosManager.getUserPhotos(this.peerId, maxId, loadCount).then((value) => {
+          const items = value.photos.map((photoId) => {
             return {element: null as HTMLElement, photoId} as any;
           });
 

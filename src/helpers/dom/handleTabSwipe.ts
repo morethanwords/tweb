@@ -4,7 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { cancelContextMenuOpening } from "../../components/misc";
+import { cancelContextMenuOpening } from "./attachContextMenuListener";
 import handleHorizontalSwipe, { SwipeHandlerHorizontalOptions } from "./handleHorizontalSwipe";
 
 export default function handleTabSwipe(options: SwipeHandlerHorizontalOptions) {

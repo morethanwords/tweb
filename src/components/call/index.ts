@@ -10,18 +10,14 @@ import { attachClickEvent } from "../../helpers/dom/clickEvent";
 import ControlsHover from "../../helpers/dom/controlsHover";
 import findUpClassName from "../../helpers/dom/findUpClassName";
 import { addFullScreenListener, cancelFullScreen, isFullScreen, requestFullScreen } from "../../helpers/dom/fullScreen";
-import { onMediaLoad } from "../../helpers/files";
 import MovablePanel from "../../helpers/movablePanel";
-import safeAssign from "../../helpers/object/safeAssign";
+import onMediaLoad from "../../helpers/onMediaLoad";
+import themeController from "../../helpers/themeController";
 import toggleClassName from "../../helpers/toggleClassName";
-import type { AppAvatarsManager } from "../../lib/appManagers/appAvatarsManager";
-import type { AppCallsManager } from "../../lib/appManagers/appCallsManager";
-import type { AppPeersManager } from "../../lib/appManagers/appPeersManager";
 import CallInstance from "../../lib/calls/callInstance";
 import CALL_STATE from "../../lib/calls/callState";
 import I18n, { i18n } from "../../lib/langPack";
-import RichTextProcessor from "../../lib/richtextprocessor";
-import rootScope from "../../lib/rootScope";
+import wrapEmojiText from "../../lib/richTextProcessor/wrapEmojiText";
 import animationIntersector from "../animationIntersector";
 import AvatarElement from "../avatar";
 import ButtonIcon from "../buttonIcon";
@@ -47,10 +43,6 @@ const INIT_STATE: MovableState = {
 let previousState: MovableState = {...INIT_STATE};
 
 export default class PopupCall extends PopupElement {
-  private instance: CallInstance;
-  private appCallsManager: AppCallsManager;
-  private appAvatarsManager: AppAvatarsManager;
-  private appPeersManager: AppPeersManager;
   private peerId: PeerId;
 
   private description: CallDescriptionElement;
@@ -84,22 +76,15 @@ export default class PopupCall extends PopupElement {
 
   private controlsHover: ControlsHover;
 
-  constructor(options: {
-    appCallsManager: AppCallsManager,
-    appAvatarsManager: AppAvatarsManager,
-    appPeersManager: AppPeersManager,
-    instance: CallInstance
-  }) {
+  constructor(private instance: CallInstance) {
     super('popup-call', undefined, {
       withoutOverlay: true,
       closable: true
     });
 
-    safeAssign(this, options);
-
     this.videoContainers = {};
 
-    const {container, listenerSetter, instance} = this;
+    const {container, listenerSetter} = this;
     container.classList.add(className, 'night');
 
     const avatarContainer = document.createElement('div');
@@ -321,7 +306,7 @@ export default class PopupCall extends PopupElement {
     if(isFull !== wasFullScreen) {
       animationIntersector.checkAnimations(isFull);
 
-      rootScope.setThemeColor(isFull ? '#000000' : undefined);
+      themeController.setThemeColor(isFull ? '#000000' : undefined);
 
       this.resizeVideoContainers();
     }
@@ -342,7 +327,7 @@ export default class PopupCall extends PopupElement {
         return;
       }
 
-      const big = Object.values(this.videoContainers).find(container => !container.classList.contains('small'));
+      const big = Object.values(this.videoContainers).find((container) => !container.classList.contains('small'));
       big.classList.add('small');
       big.style.cssText = container.style.cssText;
       container.classList.remove('small');
@@ -408,7 +393,7 @@ export default class PopupCall extends PopupElement {
 
     const containers = this.videoContainers;
     const oldContainers = {...containers};
-    ['input' as const, 'output' as const].forEach(type => {
+    ['input' as const, 'output' as const].forEach((type) => {
       const mediaState = instance.getMediaState(type);
       const video = instance.getVideoElement(type) as HTMLVideoElement;
 
@@ -455,8 +440,8 @@ export default class PopupCall extends PopupElement {
     this.container.classList.toggle('no-video', !Object.keys(containers).length);
 
     if(!this.emojisSubtitle.textContent && connectionState < CALL_STATE.EXCHANGING_KEYS) {
-      Promise.resolve(instance.getEmojisFingerprint()).then(emojis => {
-        this.emojisSubtitle.append(RichTextProcessor.wrapEmojiText(emojis.join('')));
+      Promise.resolve(instance.getEmojisFingerprint()).then((emojis) => {
+        this.emojisSubtitle.append(wrapEmojiText(emojis.join('')));
       });
     }
 
@@ -464,7 +449,7 @@ export default class PopupCall extends PopupElement {
   }
 
   private resizeVideoContainers() {
-    Object.values(this.videoContainers).forEach(container => {
+    Object.values(this.videoContainers).forEach((container) => {
       const isSmall = container.classList.contains('small');
       if(isSmall) {
         const video = container.querySelector('video');

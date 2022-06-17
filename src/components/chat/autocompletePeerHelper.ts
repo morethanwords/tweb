@@ -5,7 +5,7 @@
  */
 
 import setInnerHTML from "../../helpers/dom/setInnerHTML";
-import RichTextProcessor from "../../lib/richtextprocessor";
+import wrapEmojiText from "../../lib/richTextProcessor/wrapEmojiText";
 import AvatarElement from "../avatar";
 import PeerTitle from "../peerTitle";
 import Scrollable from "../scrollable";
@@ -60,7 +60,7 @@ export default class AutocompletePeerHelper extends AutocompleteHelper {
 
     if(data.length) {
       this.list.innerHTML = '';
-      data.forEach(d => {
+      data.forEach((d) => {
         const div = AutocompletePeerHelper.listElement({
           className: this.className,
           peerId: d.peerId,
@@ -107,7 +107,7 @@ export default class AutocompletePeerHelper extends AutocompleteHelper {
         plainText: false
       }).element);
     } else {
-      setInnerHTML(name, RichTextProcessor.wrapEmojiText(options.name));
+      setInnerHTML(name, wrapEmojiText(options.name));
     }
   
     div.append(avatar, name);
@@ -115,7 +115,7 @@ export default class AutocompletePeerHelper extends AutocompleteHelper {
     if(options.description) {
       const description = document.createElement('div');
       description.classList.add(BASE + '-description', options.className + '-description');
-      setInnerHTML(description, RichTextProcessor.wrapEmojiText(options.description));
+      setInnerHTML(description, wrapEmojiText(options.description));
       div.append(description);
     }
   

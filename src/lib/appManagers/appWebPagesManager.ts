@@ -9,21 +9,16 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import appPhotosManager from "./appPhotosManager";
-import appDocsManager from "./appDocsManager";
-import { RichTextProcessor } from "../richtextprocessor";
 import { ReferenceContext } from "../mtproto/referenceDatabase";
-import rootScope from "../rootScope";
 import { WebPage } from "../../layer";
-import { MOUNT_CLASS_TO } from "../../config/debug";
 import safeReplaceObject from "../../helpers/object/safeReplaceObject";
-import limitSymbols from "../../helpers/string/limitSymbols";
+import { AppManager } from "./manager";
 
 const photoTypeSet = new Set(['photo', 'video', 'gif', 'document']);
 
 type WebPageMessageKey = `${PeerId}_${number}`;
 
-export class AppWebPagesManager {
+export class AppWebPagesManager extends AppManager {
   private webpages: {
     [webPageId: string]: WebPage
   } = {};
@@ -31,8 +26,8 @@ export class AppWebPagesManager {
     [webPageId: string]: Set<WebPageMessageKey>
   } = {};
   
-  constructor() {
-    rootScope.addMultipleEventsListeners({
+  protected after() {
+    this.apiUpdatesManager.addMultipleEventsListeners({
       updateWebPage: (update) => {
         this.saveWebPage(update.webpage);
       }
@@ -50,13 +45,13 @@ export class AppWebPagesManager {
 
     if(apiWebPage._ === 'webPage') {
       if(apiWebPage.photo?._ === 'photo') {
-        apiWebPage.photo = appPhotosManager.savePhoto(apiWebPage.photo, mediaContext);
+        apiWebPage.photo = this.appPhotosManager.savePhoto(apiWebPage.photo, mediaContext);
       } else {
         delete apiWebPage.photo;
       }
   
       if(apiWebPage.document?._ === 'document') {
-        apiWebPage.document = appDocsManager.saveDoc(apiWebPage.document, mediaContext);
+        apiWebPage.document = this.appDocsManager.saveDoc(apiWebPage.document, mediaContext);
       } else {
         if(apiWebPage.type === 'document') {
           delete apiWebPage.type;
@@ -103,35 +98,13 @@ export class AppWebPagesManager {
         });
       });
 
-      rootScope.dispatchEvent('webpage_updated', {
+      this.rootScope.dispatchEvent('webpage_updated', {
         id,
         msgs
       });
     }
 
     return apiWebPage;
-  }
-
-  public wrapTitle(webPage: WebPage.webPage) {
-    let shortTitle = webPage.title || webPage.author || webPage.site_name || '';
-    shortTitle = limitSymbols(shortTitle, 80, 100);
-    return RichTextProcessor.wrapRichText(shortTitle, {noLinks: true, noLinebreaks: true});
-  }
-
-  public wrapDescription(webPage: WebPage.webPage) {
-    const shortDescriptionText = limitSymbols(webPage.description || '', 150, 180);
-    // const siteName = webPage.site_name;
-    // let contextHashtag = '';
-    // if(siteName === 'GitHub') {
-    //   const matches = apiWebPage.url.match(/(https?:\/\/github\.com\/[^\/]+\/[^\/]+)/);
-    //   if(matches) {
-    //     contextHashtag = matches[0] + '/issues/{1}';
-    //   }
-    // }
-    return RichTextProcessor.wrapRichText(shortDescriptionText/* , {
-      contextSite: siteName || 'external',
-      contextHashtag: contextHashtag
-    } */);
   }
 
   public getMessageKeyForPendingWebPage(peerId: PeerId, mid: number, isScheduled?: boolean): WebPageMessageKey {
@@ -152,11 +125,19 @@ export class AppWebPagesManager {
     }
   }
 
-  public getWebPage(id: WebPage.webPage['id']) {
+  public getCachedWebPage(id: WebPage.webPage['id']) {
     return this.webpages[id];
   }
-}
 
-const appWebPagesManager = new AppWebPagesManager();
-MOUNT_CLASS_TO && (MOUNT_CLASS_TO.appWebPagesManager = appWebPagesManager);
-export default appWebPagesManager;
+  public getWebPage(url: string) {
+    return this.apiManager.invokeApiHashable({
+      method: 'messages.getWebPage',
+      processResult: (webPage) => {
+        return this.saveWebPage(webPage);
+      },
+      params: {
+        url
+      },
+    });
+  }
+}

@@ -4,17 +4,13 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type { AppInlineBotsManager } from "../../lib/appManagers/appInlineBotsManager";
-import type { AppUsersManager } from "../../lib/appManagers/appUsersManager";
 import type Chat from "./chat";
 import debounce from "../../helpers/schedulers/debounce";
 import { WebDocument } from "../../layer";
 import { MyDocument } from "../../lib/appManagers/appDocsManager";
-import appDownloadManager from "../../lib/appManagers/appDownloadManager";
-import RichTextProcessor from "../../lib/richtextprocessor";
 import LazyLoadQueue from "../lazyLoadQueue";
 import Scrollable from "../scrollable";
-import { renderImageWithFadeIn, wrapPhoto } from "../wrappers";
+import { wrapPhoto } from "../wrappers";
 import AutocompleteHelper from "./autocompleteHelper";
 import AutocompleteHelperController from "./autocompleteHelperController";
 import Button from "../button";
@@ -26,6 +22,12 @@ import { SuperStickerRenderer } from "../emoticonsDropdown/tabs/stickers";
 import mediaSizes from "../../helpers/mediaSizes";
 import readBlobAsDataURL from "../../helpers/blob/readBlobAsDataURL";
 import setInnerHTML from "../../helpers/dom/setInnerHTML";
+import renderImageWithFadeIn from "../../helpers/dom/renderImageWithFadeIn";
+import { AppManagers } from "../../lib/appManagers/managers";
+import wrapEmojiText from "../../lib/richTextProcessor/wrapEmojiText";
+import wrapRichText from "../../lib/richTextProcessor/wrapRichText";
+import generateQId from "../../lib/appManagers/utils/inlineBots/generateQId";
+import appDownloadManager from "../../lib/appManagers/appDownloadManager";
 
 const ANIMATION_GROUP = 'INLINE-HELPER';
 // const GRID_ITEMS = 5;
@@ -38,11 +40,12 @@ export default class InlineHelper extends AutocompleteHelper {
   private onChangeScreen: () => void;
   public checkQuery: (peerId: PeerId, username: string, query: string) => ReturnType<InlineHelper['_checkQuery']>;
 
-  constructor(appendTo: HTMLElement, 
+  constructor(
+    appendTo: HTMLElement, 
     controller: AutocompleteHelperController,
     private chat: Chat,
-    private appUsersManager: AppUsersManager,
-    private appInlineBotsManager: AppInlineBotsManager) {
+    private managers: AppManagers
+  ) {
     super({
       appendTo, 
       controller,
@@ -52,8 +55,8 @@ export default class InlineHelper extends AutocompleteHelper {
         if(!target) return false; // can happen when there is only button
         const {peerId, botId, queryId} = this.list.dataset;
         return this.chat.input.getReadyToSend(() => {
-          const queryAndResultIds = this.appInlineBotsManager.generateQId(queryId, (target as HTMLElement).dataset.resultId);
-          this.appInlineBotsManager.sendInlineResult(peerId.toPeerId(), botId, queryAndResultIds, {
+          const queryAndResultIds = generateQId(queryId, (target as HTMLElement).dataset.resultId);
+          this.managers.appInlineBotsManager.sendInlineResult(peerId.toPeerId(), botId, queryAndResultIds, {
             ...this.chat.getMessageSendingParams(),
             clearDraft: true,
           });
@@ -84,7 +87,7 @@ export default class InlineHelper extends AutocompleteHelper {
   public _checkQuery = async(peerId: PeerId, username: string, query: string) => {
     const middleware = this.controller.getMiddleware();
 
-    const peer = await this.appUsersManager.resolveUsername(username);
+    const peer = await this.managers.appUsersManager.resolveUsername(username);
     if(!middleware()) {
       throw 'PEER_CHANGED';
     }
@@ -93,7 +96,7 @@ export default class InlineHelper extends AutocompleteHelper {
       throw 'NOT_A_BOT';
     }
 
-    const renderPromise = this.appInlineBotsManager.getInlineResults(peerId, peer.id, query).then(botResults => {
+    const renderPromise = this.managers.appInlineBotsManager.getInlineResults(peerId, peer.id, query).then((botResults) => {
       if(!middleware()) {
         throw 'PEER_CHANGED';
       }
@@ -132,15 +135,15 @@ export default class InlineHelper extends AutocompleteHelper {
 
         if(!isGallery) {
           preview.classList.add('empty');
-          setInnerHTML(preview, RichTextProcessor.wrapEmojiText([...item.title.trim()][0]));
+          setInnerHTML(preview, wrapEmojiText([...item.title.trim()][0]));
 
           const title = document.createElement('div');
           title.classList.add('inline-helper-result-title');
-          setInnerHTML(title, RichTextProcessor.wrapEmojiText(item.title));
+          setInnerHTML(title, wrapEmojiText(item.title));
     
           const description = document.createElement('div');
           description.classList.add('inline-helper-result-description');
-          setInnerHTML(description, RichTextProcessor.wrapRichText(item.description, {
+          setInnerHTML(description, wrapRichText(item.description, {
             noCommands: true,
             noLinks: true
           }));
@@ -180,10 +183,10 @@ export default class InlineHelper extends AutocompleteHelper {
                   },
                   size: item.thumb.size,
                   mimeType: item.thumb.mime_type
-                }).then(blob => {
+                }).then((blob) => {
                   const image = new Image();
                   image.classList.add('media-photo');
-                  readBlobAsDataURL(blob).then(dataURL => {
+                  readBlobAsDataURL(blob).then((dataURL) => {
                     renderImageWithFadeIn(mediaContainer, image, dataURL, true);
                   });
                 });
@@ -240,9 +243,9 @@ export default class InlineHelper extends AutocompleteHelper {
         parent.textContent = '';
         if(botResults.switch_pm) {
           const btnSwitchToPM = Button('btn-primary btn-secondary btn-primary-transparent primary');
-          setInnerHTML(btnSwitchToPM, RichTextProcessor.wrapEmojiText(botResults.switch_pm.text));
+          setInnerHTML(btnSwitchToPM, wrapEmojiText(botResults.switch_pm.text));
           attachClickEvent(btnSwitchToPM, (e) => {
-            this.appInlineBotsManager.switchToPM(peerId, peer.id, botResults.switch_pm.start_param);
+            this.managers.appInlineBotsManager.switchToPM(peerId, peer.id, botResults.switch_pm.start_param);
           });
           parent.append(btnSwitchToPM);
         }
@@ -284,6 +287,6 @@ export default class InlineHelper extends AutocompleteHelper {
 
     this.scrollable = new Scrollable(this.container);
     this.lazyLoadQueue = new LazyLoadQueue();
-    this.superStickerRenderer = new SuperStickerRenderer(this.lazyLoadQueue, ANIMATION_GROUP);
+    this.superStickerRenderer = new SuperStickerRenderer(this.lazyLoadQueue, ANIMATION_GROUP, this.managers);
   }
 }

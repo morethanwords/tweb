@@ -6,9 +6,9 @@
 
 export default function toggleDisability(elements: HTMLElement[], disable: boolean): () => void {
   if(disable) {
-    elements.forEach(el => el.setAttribute('disabled', 'true'));
+    elements.forEach((el) => el.setAttribute('disabled', 'true'));
   } else {
-    elements.forEach(el => el.removeAttribute('disabled'));
+    elements.forEach((el) => el.removeAttribute('disabled'));
   }
 
   return () => toggleDisability(elements, !disable);

@@ -4,21 +4,21 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type { LazyLoadQueueIntersector } from "../lazyLoadQueue";
 import { Message } from "../../layer";
-import appMessagesManager from "../../lib/appManagers/appMessagesManager";
-import appPeersManager from "../../lib/appManagers/appPeersManager";
 import rootScope from "../../lib/rootScope";
 import ripple from "../ripple";
 import I18n from "../../lib/langPack";
 import replaceContent from "../../helpers/dom/replaceContent";
 import StackedAvatars from "../stackedAvatars";
 import formatNumber from "../../helpers/number/formatNumber";
+import { AppManagers } from "../../lib/appManagers/managers";
+import getPeerId from "../../lib/appManagers/utils/peers/getPeerId";
+import type LazyLoadQueue from "../lazyLoadQueue";
 
 const TAG_NAME = 'replies-element';
 
 rootScope.addEventListener('replies_updated', (message) => {
-  (Array.from(document.querySelectorAll(TAG_NAME + `[data-post-key="${message.peerId}_${message.mid}"]`)) as RepliesElement[]).forEach(element => {
+  (Array.from(document.querySelectorAll(TAG_NAME + `[data-post-key="${message.peerId}_${message.mid}"]`)) as RepliesElement[]).forEach((element) => {
     element.message = message;
     element.render();
   });
@@ -28,14 +28,16 @@ export default class RepliesElement extends HTMLElement {
   public message: Message.message;
   public type: 'footer' | 'beside';
   public loadPromises: Promise<any>[];
-  public lazyLoadQueue: LazyLoadQueueIntersector;
+  public lazyLoadQueue: LazyLoadQueue;
   public stackedAvatars: StackedAvatars;
   public text: I18n.IntlElement;
+  public managers: AppManagers;
   
   private updated = false;
 
   constructor() {
     super();
+    this.managers = rootScope.managers;
   }
 
   public init() {
@@ -74,7 +76,7 @@ export default class RepliesElement extends HTMLElement {
 
         leftPart = this.stackedAvatars.container;
 
-        this.stackedAvatars.render(replies.recent_repliers.map(peer => appPeersManager.getPeerId(peer)), this.loadPromises);
+        this.stackedAvatars.render(replies.recent_repliers.map((peer) => getPeerId(peer)), this.loadPromises);
       } else {
         if(leftPart && !leftPart.classList.contains('tgico-comments')) {
           leftPart.remove();
@@ -140,8 +142,8 @@ export default class RepliesElement extends HTMLElement {
     }
 
     if(replies && !this.updated && !this.message.pFlags.is_outgoing) {
-      appMessagesManager.subscribeRepliesThread(this.message.peerId, this.message.mid);
-      appMessagesManager.updateMessage(this.message.peerId, this.message.mid, 'replies_updated');
+      this.managers.appMessagesManager.subscribeRepliesThread(this.message.peerId, this.message.mid);
+      this.managers.appMessagesManager.updateMessage(this.message.peerId, this.message.mid, 'replies_updated');
       this.updated = true;
     }
 

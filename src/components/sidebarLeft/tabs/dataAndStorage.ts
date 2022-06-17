@@ -4,6 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import { AutoDownloadPeerTypeSettings, STATE_INIT } from "../../../config/state";
 import { SettingSection } from "..";
 import { attachClickEvent } from "../../../helpers/dom/clickEvent";
 import replaceContent from "../../../helpers/dom/replaceContent";
@@ -11,7 +12,6 @@ import toggleDisability from "../../../helpers/dom/toggleDisability";
 import formatBytes from "../../../helpers/formatBytes";
 import copy from "../../../helpers/object/copy";
 import deepEqual from "../../../helpers/object/deepEqual";
-import appStateManager, { AutoDownloadPeerTypeSettings, STATE_INIT } from "../../../lib/appManagers/appStateManager";
 import { FormatterArguments, i18n, join, LangPackKey } from "../../../lib/langPack";
 import rootScope from "../../../lib/rootScope";
 import Button from "../../button";
@@ -22,6 +22,7 @@ import { SliderSuperTabEventable, SliderSuperTabEventableConstructable } from ".
 import AppAutoDownloadFileTab from "./autoDownload/file";
 import AppAutoDownloadPhotoTab from "./autoDownload/photo";
 import AppAutoDownloadVideoTab from "./autoDownload/video";
+import apiManagerProxy from "../../../lib/mtproto/mtprotoworker";
 
 const AUTO_DOWNLOAD_FOR_KEYS: {[k in keyof AutoDownloadPeerTypeSettings]: LangPackKey} = {
   contacts: 'AutoDownloadContacts',
@@ -38,7 +39,7 @@ export default class AppDataAndStorageTab extends SliderSuperTabEventable {
     {
       const section = new SettingSection({name: 'AutomaticMediaDownload', caption: 'AutoDownloadAudioInfo'});
 
-      const state = await appStateManager.getState();
+      const state = await apiManagerProxy.getState();
 
       const autoCheckboxField = new CheckboxField({
         text: 'AutoDownloadMedia', 
@@ -102,10 +103,10 @@ export default class AppDataAndStorageTab extends SliderSuperTabEventable {
             langKey: 'Reset'
           }
         }).then(() => {
-          rootScope.settings.autoDownloadNew = copy(STATE_INIT.settings.autoDownloadNew);
-          rootScope.settings.autoDownload = copy(STATE_INIT.settings.autoDownload);
-          appStateManager.pushToState('settings', rootScope.settings);
-          rootScope.dispatchEvent('settings_updated', {key: 'settings', value: rootScope.settings});
+          const settings = rootScope.settings;
+          settings.autoDownloadNew = copy(STATE_INIT.settings.autoDownloadNew);
+          settings.autoDownload = copy(STATE_INIT.settings.autoDownload);
+          this.managers.appStateManager.setByKey('settings', settings);
 
           setSubtitles();
           autoCheckboxField.checked = !state.settings.autoDownloadNew.pFlags.disabled;
@@ -122,12 +123,11 @@ export default class AppDataAndStorageTab extends SliderSuperTabEventable {
           delete settings.autoDownloadNew.pFlags.disabled;
         }
 
-        [photoRow, videoRow, fileRow].forEach(row => {
+        [photoRow, videoRow, fileRow].forEach((row) => {
           row.container.classList.toggle('is-disabled', disabled);
         });
         
-        appStateManager.pushToState('settings', settings);
-        rootScope.dispatchEvent('settings_updated', {key: 'settings', value: settings});
+        this.managers.appStateManager.setByKey('settings', settings);
 
         onChange();
       };
@@ -173,7 +173,7 @@ export default class AppDataAndStorageTab extends SliderSuperTabEventable {
     let key: LangPackKey, args: FormatterArguments = [];
     
     const peerKeys = Object.keys(settings) as (keyof typeof AUTO_DOWNLOAD_FOR_KEYS)[];
-    const enabledKeys = peerKeys.map(key => settings[key] ? AUTO_DOWNLOAD_FOR_KEYS[key] : undefined).filter(Boolean);
+    const enabledKeys = peerKeys.map((key) => settings[key] ? AUTO_DOWNLOAD_FOR_KEYS[key] : undefined).filter(Boolean);
     if(!enabledKeys.length || sizeMax === 0) {
       key = 'AutoDownloadOff';
     } else {
@@ -187,7 +187,7 @@ export default class AppDataAndStorageTab extends SliderSuperTabEventable {
   
       if(!isAll) {
         const fragment = document.createElement('span');
-        fragment.append(...join(enabledKeys.map(key => i18n(key)), true, false));
+        fragment.append(...join(enabledKeys.map((key) => i18n(key)), true, false));
         args.push(fragment);
       }
     }

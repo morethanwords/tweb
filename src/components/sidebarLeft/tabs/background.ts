@@ -10,18 +10,14 @@ import blur from "../../../helpers/blur";
 import deferredPromise from "../../../helpers/cancellablePromise";
 import { attachClickEvent } from "../../../helpers/dom/clickEvent";
 import findUpClassName from "../../../helpers/dom/findUpClassName";
-import { requestFile } from "../../../helpers/files";
 import highlightningColor from "../../../helpers/highlightningColor";
 import copy from "../../../helpers/object/copy";
 import sequentialDom from "../../../helpers/sequentialDom";
 import ChatBackgroundGradientRenderer from "../../chat/gradientRenderer";
-import { AccountWallPapers, PhotoSize, WallPaper } from "../../../layer";
-import appDocsManager, { MyDocument } from "../../../lib/appManagers/appDocsManager";
-import appDownloadManager, { DownloadBlob } from "../../../lib/appManagers/appDownloadManager";
+import { Document, PhotoSize, WallPaper } from "../../../layer";
+import { MyDocument } from "../../../lib/appManagers/appDocsManager";
+import appDownloadManager, { AppDownloadManager, DownloadBlob } from "../../../lib/appManagers/appDownloadManager";
 import appImManager from "../../../lib/appManagers/appImManager";
-import appPhotosManager from "../../../lib/appManagers/appPhotosManager";
-import appStateManager, { Theme, STATE_INIT } from "../../../lib/appManagers/appStateManager";
-import apiManager from "../../../lib/mtproto/mtprotoworker";
 import rootScope from "../../../lib/rootScope";
 import Button from "../../button";
 import CheckboxField from "../../checkboxField";
@@ -29,6 +25,10 @@ import ProgressivePreloader from "../../preloader";
 import { SliderSuperTab } from "../../slider";
 import { wrapPhoto } from "../../wrappers";
 import AppBackgroundColorTab from "./backgroundColor";
+import choosePhotoSize from "../../../lib/appManagers/utils/photos/choosePhotoSize";
+import { STATE_INIT, Theme } from "../../../config/state";
+import themeController from "../../../helpers/themeController";
+import requestFile from "../../../helpers/files/requestFile";
 
 let uploadTempId = 0;
 
@@ -47,7 +47,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
     this.container.classList.add('background-container', 'background-image-container');
     this.setTitle('ChatBackground');
 
-    this.theme = rootScope.getTheme();
+    this.theme = themeController.getTheme();
 
     {
       const container = generateSection(this.scrollable);
@@ -59,7 +59,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
       attachClickEvent(uploadButton, this.onUploadClick, {listenerSetter: this.listenerSetter});
 
       attachClickEvent(colorButton, () => {
-        new AppBackgroundColorTab(this.slider).open();
+        this.slider.createTab(AppBackgroundColorTab).open();
       }, {listenerSetter: this.listenerSetter});
 
       attachClickEvent(resetButton, this.onResetClick, {listenerSetter: this.listenerSetter});
@@ -73,7 +73,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
 
       this.listenerSetter.add(blurCheckboxField.input)('change', () => {
         this.theme.background.blur = blurCheckboxField.input.checked;
-        appStateManager.pushToState('settings', rootScope.settings);
+        this.managers.appStateManager.pushToState('settings', rootScope.settings);
 
         // * wait for animation end
         setTimeout(() => {
@@ -94,13 +94,10 @@ export default class AppBackgroundTab extends SliderSuperTab {
 
     rootScope.addEventListener('background_change', this.setActive);
 
-    apiManager.invokeApiHashable({method: 'account.getWallPapers'}).then((accountWallpapers) => {
-      const wallpapers = (accountWallpapers as AccountWallPapers.accountWallPapers).wallpapers as WallPaper.wallPaper[];
-      wallpapers.forEach((wallpaper) => {
-        this.addWallPaper(wallpaper);
+    this.managers.appDocsManager.getWallPapers().then((wallPapers) => {
+      wallPapers.forEach((wallPaper) => {
+        this.addWallPaper(wallPaper);
       });
-
-      //console.log(accountWallpapers);
     });
 
     const gridContainer = generateSection(this.scrollable);
@@ -111,99 +108,99 @@ export default class AppBackgroundTab extends SliderSuperTab {
   }
 
   private onUploadClick = () => {
-    requestFile('image/x-png,image/png,image/jpeg').then(file => {
-      const id = 'wallpaper-upload-' + ++uploadTempId;
+    requestFile('image/x-png,image/png,image/jpeg').then(async(file) => {
+      // const id = 'wallpaper-upload-' + ++uploadTempId;
 
-      const thumb = {
-        _: 'photoSize',
-        h: 0,
-        w: 0,
-        location: {} as any,
-        size: file.size,
-        type: 'full',
-      } as PhotoSize.photoSize;
-      let document: MyDocument = {
-        _: 'document',
-        access_hash: '',
-        attributes: [],
-        dc_id: 0,
-        file_reference: [],
-        id,
-        mime_type: file.type,
-        size: file.size,
-        date: Date.now() / 1000,
-        pFlags: {},
-        thumbs: [thumb],
-        file_name: file.name
-      };
+      // const thumb = {
+      //   _: 'photoSize',
+      //   h: 0,
+      //   w: 0,
+      //   location: {} as any,
+      //   size: file.size,
+      //   type: 'full',
+      // } as PhotoSize.photoSize;
+      // let document: MyDocument = {
+      //   _: 'document',
+      //   access_hash: '',
+      //   attributes: [],
+      //   dc_id: 0,
+      //   file_reference: [],
+      //   id,
+      //   mime_type: file.type,
+      //   size: file.size,
+      //   date: Date.now() / 1000,
+      //   pFlags: {},
+      //   thumbs: [thumb],
+      //   file_name: file.name
+      // };
 
-      document = appDocsManager.saveDoc(document);
+      // document = await this.managers.appDocsManager.saveDoc(document);
 
-      const cacheContext = appDownloadManager.getCacheContext(document);
-      cacheContext.downloaded = file.size;
-      cacheContext.url = URL.createObjectURL(file);
+      // const cacheContext = appDownloadManager.getCacheContext(document);
+      // cacheContext.downloaded = file.size;
+      // cacheContext.url = URL.createObjectURL(file);
 
-      let wallpaper: WallPaper.wallPaper = {
-        _: 'wallPaper',
-        access_hash: '',
-        document: document,
-        id,
-        slug: id,
-        pFlags: {}
-      };
+      // let wallpaper: WallPaper.wallPaper = {
+      //   _: 'wallPaper',
+      //   access_hash: '',
+      //   document: document,
+      //   id,
+      //   slug: id,
+      //   pFlags: {}
+      // };
 
-      const upload = appDownloadManager.upload(file, file.name);
+      // const upload = appDownloadManager.upload(file, file.name);
 
-      const deferred = deferredPromise<void>();
-      deferred.addNotifyListener = upload.addNotifyListener;
-      deferred.cancel = upload.cancel;
+      // const deferred = deferredPromise<void>();
+      // deferred.addNotifyListener = upload.addNotifyListener;
+      // deferred.cancel = upload.cancel;
 
-      upload.then(inputFile => {
-        apiManager.invokeApi('account.uploadWallPaper', {
-          file: inputFile,
-          mime_type: file.type,
-          settings: {
-            _: 'wallPaperSettings'
-          }
-        }).then(_wallpaper => {
-          const newDoc = (_wallpaper as WallPaper.wallPaper).document as MyDocument;
-          const newCacheContext = appDownloadManager.getCacheContext(newDoc);
-          Object.assign(newCacheContext, cacheContext);
+      // upload.then((inputFile) => {
+      //   this.managers.apiManager.invokeApi('account.uploadWallPaper', {
+      //     file: inputFile,
+      //     mime_type: file.type,
+      //     settings: {
+      //       _: 'wallPaperSettings'
+      //     }
+      //   }).then(async(_wallpaper) => {
+      //     const newDoc = (_wallpaper as WallPaper.wallPaper).document as MyDocument;
+      //     const newCacheContext = appDownloadManager.getCacheContext(newDoc);
+      //     Object.assign(newCacheContext, cacheContext);
 
-          wallpaper = _wallpaper as WallPaper.wallPaper;
-          wallpaper.document = appDocsManager.saveDoc(wallpaper.document);
+      //     wallpaper = _wallpaper as WallPaper.wallPaper;
+      //     wallpaper.document = await this.managers.appDocsManager.saveDoc(wallpaper.document);
 
-          this.setBackgroundDocument(wallpaper).then(deferred.resolve, deferred.reject);
-        }, deferred.reject);
-      }, deferred.reject);
+      //     this.setBackgroundDocument(wallpaper).then(deferred.resolve, deferred.reject);
+      //   }, deferred.reject);
+      // }, deferred.reject);
 
-      const key = this.getWallpaperKey(wallpaper);
-      deferred.then(() => {
-        this.clicked.delete(key);
-      }, (err) => {
-        container.remove();
-        //console.error('i saw the body drop', err);
-      });
+      // const key = this.getWallpaperKey(wallpaper);
+      // deferred.then(() => {
+      //   this.clicked.delete(key);
+      // }, (err) => {
+      //   container.remove();
+      //   //console.error('i saw the body drop', err);
+      // });
 
-      const preloader = new ProgressivePreloader({
-        isUpload: true,
-        cancelable: true,
-        tryAgainOnFail: false
-      });
+      // const preloader = new ProgressivePreloader({
+      //   isUpload: true,
+      //   cancelable: true,
+      //   tryAgainOnFail: false
+      // });
 
-      const container = this.addWallPaper(wallpaper, false);
-      this.clicked.add(key);
+      // const container = this.addWallPaper(wallpaper, false);
+      // this.clicked.add(key);
 
-      preloader.attach(container, false, deferred);
+      // preloader.attach(container, false, deferred);
     });
   };
 
   private onResetClick = () => {
-    const defaultTheme = STATE_INIT.settings.themes.find(t => t.name === this.theme.name);
+    const defaultTheme = STATE_INIT.settings.themes.find((t) => t.name === this.theme.name);
     if(defaultTheme) {
       ++this.tempId;
       this.theme.background = copy(defaultTheme.background);
-      appStateManager.pushToState('settings', rootScope.settings);
+      this.managers.appStateManager.pushToState('settings', rootScope.settings);
       appImManager.applyCurrentTheme(undefined, undefined, true);
       this.blurCheckboxField.setValueSilently(this.theme.background.blur);
     }
@@ -215,7 +212,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
       wallpaper.settings.second_background_color,
       wallpaper.settings.third_background_color,
       wallpaper.settings.fourth_background_color
-    ].filter(Boolean).map(color => '#' + color.toString(16)).join(',') : '';
+    ].filter(Boolean).map((color) => '#' + color.toString(16)).join(',') : '';
   }
 
   private getWallpaperKey(wallpaper: WallPaper) {
@@ -226,7 +223,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
     return '' + theme.background.id;
   }
 
-  private addWallPaper(wallpaper: WallPaper, append = true) {
+  private async addWallPaper(wallpaper: WallPaper, append = true) {
     const colors = this.getColorsFromWallpaper(wallpaper);
     const hasFile = wallpaper._ === 'wallPaper';
     if((hasFile && wallpaper.pFlags.pattern && !colors)/*  || 
@@ -236,7 +233,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
 
     const isDark = !!wallpaper.pFlags.dark;
 
-    const doc: MyDocument = hasFile ? (wallpaper.document = appDocsManager.saveDoc(wallpaper.document)) : undefined;
+    const doc = hasFile ? wallpaper.document as Document.document : undefined;
 
     const container = document.createElement('div');
     container.classList.add('grid-item');
@@ -250,10 +247,10 @@ export default class AppBackgroundTab extends SliderSuperTab {
     const media = document.createElement('div');
     media.classList.add('grid-item-media');
 
-    let wrapped: ReturnType<typeof wrapPhoto>, size: PhotoSize;
+    let wrapped: Awaited<ReturnType<typeof wrapPhoto>>, size: PhotoSize;
     if(hasFile) {
-      size = appPhotosManager.choosePhotoSize(doc, 200, 200);
-      wrapped = wrapPhoto({
+      size = choosePhotoSize(doc, 200, 200);
+      wrapped = await wrapPhoto({
         photo: doc,
         message: null,
         container: media,
@@ -289,8 +286,8 @@ export default class AppBackgroundTab extends SliderSuperTab {
       canvas.classList.add('background-colors-canvas');
       
       if(isDark && hasFile) {
-        const cacheContext = appDownloadManager.getCacheContext(doc, size.type);
-        wrapped.loadPromises.full.then(() => {
+        wrapped.loadPromises.full.then(async() => {
+          const cacheContext = await this.managers.thumbsStorage.getCacheContext(doc, size.type);
           canvas.style.webkitMaskImage = `url(${cacheContext.url})`;
           canvas.style.opacity = '' + Math.abs(wallpaper.settings.intensity) / 100;
           media.append(canvas);
@@ -329,9 +326,9 @@ export default class AppBackgroundTab extends SliderSuperTab {
       tryAgainOnFail: false
     });
 
-    const load = () => {
+    const load = async() => {
       const promise = this.setBackgroundDocument(wallpaper);
-      const cacheContext = appDownloadManager.getCacheContext(doc);
+      const cacheContext = await this.managers.thumbsStorage.getCacheContext(doc);
       if(!cacheContext.url || this.theme.background.blur) {
         preloader.attach(target, true, promise);
       }
@@ -354,8 +351,8 @@ export default class AppBackgroundTab extends SliderSuperTab {
   };
 
   private saveToCache = (slug: string, url: string) => {
-    fetch(url).then(response => {
-      appDownloadManager.cacheStorage.save('backgrounds/' + slug, response);
+    fetch(url).then((response) => {
+      appImManager.cacheStorage.save('backgrounds/' + slug, response);
     });
   };
 
@@ -365,16 +362,16 @@ export default class AppBackgroundTab extends SliderSuperTab {
 
     const doc = (wallpaper as WallPaper.wallPaper).document as MyDocument;
     const deferred = deferredPromise<void>();
-    let download: Promise<void> | DownloadBlob;
+    let download: Promise<void> | ReturnType<AppDownloadManager['downloadMediaURL']>;
     if(doc) {
-      download = appDocsManager.downloadDoc(doc, appImManager.chat.bubbles ? appImManager.chat.bubbles.lazyLoadQueue.queueId : 0);
+      download = appDownloadManager.downloadMediaURL({media: doc, queueId: appImManager.chat.bubbles ? appImManager.chat.bubbles.lazyLoadQueue.queueId : 0});
       deferred.addNotifyListener = download.addNotifyListener;
       deferred.cancel = download.cancel;
     } else {
       download = Promise.resolve();
     }
 
-    download.then(() => {
+    download.then(async() => {
       if(!middleware()) {
         deferred.resolve();
         return;
@@ -407,7 +404,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
           background.color = this.getColorsFromWallpaper(wallpaper);
           background.slug = slug;
           background.highlightningColor = hsla;
-          appStateManager.pushToState('settings', rootScope.settings);
+          this.managers.appStateManager.pushToState('settings', rootScope.settings);
 
           if(slug) {
             this.saveToCache(slug, url);
@@ -422,7 +419,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
         return;
       }
 
-      const cacheContext = appDownloadManager.getCacheContext(doc);
+      const cacheContext = await this.managers.thumbsStorage.getCacheContext(doc);
       if(background.blur) {
         setTimeout(() => {
           const {canvas, promise} = blur(cacheContext.url, 12, 4)

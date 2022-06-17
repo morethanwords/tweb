@@ -12,9 +12,9 @@
     {"name": "stickerEmojiRaw", "type": "string"},
     {"name": "stickerSetInput", "type": "InputStickerSet.inputStickerSetID"},
     {"name": "stickerThumbConverted", "type": "true"},
-    {"name": "stickerCachedThumbs", "type": "{[toneIndex: number]: {url: string, w: number, h: number}}"},
     {"name": "animated", "type": "boolean"},
-    {"name": "supportsStreaming", "type": "boolean"}
+    {"name": "supportsStreaming", "type": "boolean"},
+    {"name": "size", "type": "number"}
   ]
 }, {
   "predicate": "photoSizeProgressive",
@@ -24,7 +24,7 @@
 }, {
   "predicate": "dialog",
   "params": [
-    {"name": "index", "type": "number"},
+    {"name": "folder_id", "type": "0 | 1"},
     {"name": "index_0", "type": "number"},
     {"name": "index_1", "type": "number"},
     {"name": "index_2", "type": "number"},
@@ -36,6 +36,17 @@
     {"name": "index_8", "type": "number"},
     {"name": "index_9", "type": "number"},
     {"name": "index_10", "type": "number"},
+    {"name": "index_11", "type": "number"},
+    {"name": "index_12", "type": "number"},
+    {"name": "index_13", "type": "number"},
+    {"name": "index_14", "type": "number"},
+    {"name": "index_15", "type": "number"},
+    {"name": "index_16", "type": "number"},
+    {"name": "index_17", "type": "number"},
+    {"name": "index_18", "type": "number"},
+    {"name": "index_19", "type": "number"},
+    {"name": "index_20", "type": "number"},
+    {"name": "index_21", "type": "number"},
     {"name": "peerId", "type": "PeerId"},
     {"name": "topMessage", "type": "any"},
     {"name": "migratedTo", "type": "PeerId"}
@@ -50,7 +61,7 @@
 }, {
   "predicate": "dialogFilter",
   "params": [
-    {"name": "orderIndex", "type": "0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10"},
+    {"name": "orderIndex", "type": "0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 | 21"},
     {"name": "peerId", "type": "PeerId"},
     {"name": "folder_id", "type": "number"}
   ]
@@ -79,7 +90,8 @@
     {"name": "sponsored", "type": "true"},
     {"name": "local", "type": "true"},
     {"name": "sponsoredMessage", "type": "SponsoredMessage.sponsoredMessage"},
-    {"name": "promise", "type": "CancellablePromise<void>"}
+    {"name": "promise", "type": "CancellablePromise<void>"},
+    {"name": "uploadingFileName", "type": "string"}
   ]
 }, {
   "predicate": "messageService",
@@ -151,12 +163,6 @@
   "predicate": "auth.sentCode",
   "params": [
     {"name": "phone_number", "type": "string"}
-  ]
-}, {
-  "predicate": "draftMessage",
-  "params": [
-    {"name": "rReply", "type": "string"},
-    {"name": "rMessage", "type": "string"}
   ]
 }, {
   "predicate": "messageActionDiscussionStarted",
@@ -325,5 +331,11 @@
     {"name": "pts", "type": "number"},
     {"name": "pts_count", "type": "number"},
     {"name": "local", "type": "boolean"}
+  ]
+}, {
+  "predicate": "autoDownloadSettings",
+  "params": [
+    {"name": "file_size_max", "type": "number"},
+    {"name": "video_size_max", "type": "number"}
   ]
 }]

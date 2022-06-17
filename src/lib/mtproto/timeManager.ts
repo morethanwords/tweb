@@ -11,10 +11,9 @@
 
 import sessionStorage from '../sessionStorage';
 import { nextRandomUint } from '../../helpers/random';
-import { MOUNT_CLASS_TO } from '../../config/debug';
 import { WorkerTaskVoidTemplate } from '../../types';
-import { notifySomeone } from '../../helpers/context';
 import longFromInts from '../../helpers/long/longFromInts';
+import { AppManager } from '../appManagers/manager';
 
 /*
 let lol: any = {};
@@ -28,16 +27,48 @@ export interface ApplyServerTimeOffsetTask extends WorkerTaskVoidTemplate {
   payload: TimeManager['timeOffset']
 };
 
-export class TimeManager {
-  private lastMessageId: [number, number] = [0, 0];
-  private timeOffset: number = 0;
+export class TimeManager extends AppManager {
+  private lastMessageId: [number, number];
+  private timeOffset: number;
 
-  constructor() {
+  /* private midnightNoOffset: number;
+  private midnightOffseted: Date;
+
+  private midnightOffset: number; */
+
+  /* private timeParams: {
+    midnightOffset: number,
+    serverTimeOffset: number
+  }; */
+
+  protected after() {
+    this.lastMessageId = [0, 0];
+    this.timeOffset = 0;
+
     sessionStorage.get('server_time_offset').then((to) => {
       if(to) {
         this.timeOffset = to;
       }
     });
+
+
+
+    // * migrated from ServerTimeManager
+    /* const timestampNow = tsNow(true);
+    this.midnightNoOffset = timestampNow - (timestampNow % 86400);
+    this.midnightOffseted = new Date();
+    this.midnightOffseted.setHours(0, 0, 0, 0);
+    
+    this.midnightOffset = this.midnightNoOffset - (Math.floor(+this.midnightOffseted / 1000)); */
+
+    /* this.timeParams = {
+      midnightOffset: this.midnightOffset,
+      serverTimeOffset: this.serverTimeOffset
+    }; */
+  }
+
+  public getServerTimeOffset() {
+    return this.timeOffset;
   }
 
   public generateId(): string {
@@ -78,14 +109,6 @@ export class TimeManager {
       });
 
       this.timeOffset = newTimeOffset;
-
-      /// #if MTPROTO_WORKER
-      const task: ApplyServerTimeOffsetTask = {
-        type: 'applyServerTimeOffset',
-        payload: newTimeOffset
-      };
-      notifySomeone(task);
-      /// #endif
     }
     
     //console.log('[TimeManager]: Apply server time', serverTime, localTime, newTimeOffset, changed);
@@ -93,7 +116,3 @@ export class TimeManager {
     return changed;
   }
 }
-
-const timeManager = new TimeManager();
-MOUNT_CLASS_TO.timeManager = timeManager;
-export default timeManager;

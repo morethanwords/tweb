@@ -7,15 +7,12 @@
 import cancelEvent from "../helpers/dom/cancelEvent";
 import { attachClickEvent } from "../helpers/dom/clickEvent";
 import ListenerSetter from "../helpers/listenerSetter";
-import type { AppGroupCallsManager } from "../lib/appManagers/appGroupCallsManager";
 import GROUP_CALL_STATE from "../lib/calls/groupCallState";
 import rootScope from "../lib/rootScope";
 import ButtonIcon from "./buttonIcon";
 import TopbarWeave from "./topbarWeave";
 import SetTransition from "./singleTransition";
 import PopupGroupCall from "./groupCall";
-import type { AppPeersManager } from "../lib/appManagers/appPeersManager";
-import type { AppChatsManager } from "../lib/appManagers/appChatsManager";
 import GroupCallDescriptionElement from "./groupCall/description";
 import GroupCallTitleElement from "./groupCall/title";
 import PopupElement from "./popups";
@@ -26,10 +23,12 @@ import replaceContent from "../helpers/dom/replaceContent";
 import PeerTitle from "./peerTitle";
 import CallDescriptionElement from "./call/description";
 import PopupCall from "./call";
-import type { AppAvatarsManager } from "../lib/appManagers/appAvatarsManager";
 import GroupCallMicrophoneIconMini from "./groupCall/microphoneIconMini";
 import CallInstance from "../lib/calls/callInstance";
-import type { AppCallsManager } from "../lib/appManagers/appCallsManager";
+import { AppManagers } from "../lib/appManagers/managers";
+import groupCallsController from "../lib/calls/groupCallsController";
+import StreamManager from "../lib/calls/streamManager";
+import callsController from "../lib/calls/callsController";
 
 function convertCallStateToGroupState(state: CALL_STATE, isMuted: boolean) {
   switch(state) {
@@ -61,38 +60,34 @@ export default class TopbarCall {
   private instanceListenerSetter: ListenerSetter;
   
   constructor(
-    private appGroupCallsManager: AppGroupCallsManager,
-    private appPeersManager: AppPeersManager,
-    private appChatsManager: AppChatsManager,
-    private appAvatarsManager: AppAvatarsManager,
-    private appCallsManager: AppCallsManager
+    private managers: AppManagers
   ) {
     const listenerSetter = this.listenerSetter = new ListenerSetter();
 
-    listenerSetter.add(rootScope)('call_instance', ({instance}) => {
+    listenerSetter.add(callsController)('instance', ({instance}) => {
       if(!this.instance) {
         this.updateInstance(instance);
       }
     });
 
-    listenerSetter.add(rootScope)('call_accepting', (instance) => {
+    listenerSetter.add(callsController)('accepting', (instance) => {
       if(this.instance !== instance) {
         this.updateInstance(instance);
       }
     });
 
-    listenerSetter.add(rootScope)('group_call_instance', (instance) => {
+    listenerSetter.add(groupCallsController)('instance', (instance) => {
       this.updateInstance(instance);
     });
     
     listenerSetter.add(rootScope)('group_call_update', (groupCall) => {
-      const instance = this.appGroupCallsManager.groupCall;
+      const instance = groupCallsController.groupCall;
       if(instance?.id === groupCall.id) {
         this.updateInstance(instance);
       }
     });
 
-    listenerSetter.add(rootScope)('group_call_amplitude', ({amplitudes, type}) => {
+    listenerSetter.add(StreamManager.ANALYSER_LISTENER)('amplitude', ({amplitudes, type}) => {
       const {weave} = this;
       if(!amplitudes.length || !weave/*  || type !== 'input' */) return;
 
@@ -262,23 +257,14 @@ export default class TopbarCall {
           return;
         }
         
-        new PopupGroupCall({
-          appGroupCallsManager: this.appGroupCallsManager,
-          appPeersManager: this.appPeersManager,
-          appChatsManager: this.appChatsManager
-        }).show();
+        new PopupGroupCall().show();
       } else if(this.instance instanceof CallInstance) {
-        const popups = PopupElement.getPopups(PopupCall) as PopupCall[];
-        if(popups.find(popup => popup.getCallInstance() === this.instance)) {
+        const popups = PopupElement.getPopups(PopupCall);
+        if(popups.find((popup) => popup.getCallInstance() === this.instance)) {
           return;
         }
 
-        new PopupCall({
-          appCallsManager: this.appCallsManager,
-          appAvatarsManager: this.appAvatarsManager,
-          appPeersManager: this.appPeersManager,
-          instance: this.instance
-        }).show();
+        new PopupCall(this.instance).show();
       }
     }, {listenerSetter});
     

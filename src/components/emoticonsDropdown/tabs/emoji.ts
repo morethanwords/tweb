@@ -9,19 +9,21 @@ import cancelEvent from "../../../helpers/dom/cancelEvent";
 import findUpClassName from "../../../helpers/dom/findUpClassName";
 import { fastRaf } from "../../../helpers/schedulers";
 import pause from "../../../helpers/schedulers/pause";
-import appEmojiManager from "../../../lib/appManagers/appEmojiManager";
 import appImManager from "../../../lib/appManagers/appImManager";
 import { i18n, LangPackKey } from "../../../lib/langPack";
-import { RichTextProcessor } from "../../../lib/richtextprocessor";
 import rootScope from "../../../lib/rootScope";
 import { emojiFromCodePoints } from "../../../vendor/emoji";
-import { putPreloader } from "../../misc";
+import { putPreloader } from "../../putPreloader";
 import Scrollable from "../../scrollable";
 import StickyIntersector from "../../stickyIntersector";
 import IS_EMOJI_SUPPORTED from "../../../environment/emojiSupport";
 import IS_TOUCH_SUPPORTED from "../../../environment/touchSupport";
 import blurActiveElement from "../../../helpers/dom/blurActiveElement";
 import Emoji from "../../../config/emoji";
+import { AppManagers } from "../../../lib/appManagers/managers";
+import fixEmoji from "../../../lib/richTextProcessor/fixEmoji";
+import wrapEmojiText from "../../../lib/richTextProcessor/wrapEmojiText";
+import wrapSingleEmoji from "../../../lib/richTextProcessor/wrapSingleEmoji";
 
 const loadedURLs: Set<string> = new Set();
 export function appendEmoji(emoji: string, container: HTMLElement, prepend = false, unify = false) {
@@ -34,10 +36,10 @@ export function appendEmoji(emoji: string, container: HTMLElement, prepend = fal
 
   let kek: DocumentFragment;
   if(unify && !IS_EMOJI_SUPPORTED) {
-    kek = RichTextProcessor.wrapSingleEmoji(emoji);
+    kek = wrapSingleEmoji(emoji);
   } else {
-    emoji = RichTextProcessor.fixEmoji(emoji);
-    kek = RichTextProcessor.wrapEmojiText(emoji);
+    emoji = fixEmoji(emoji);
+    kek = wrapEmojiText(emoji);
   }
 
   /* if(!kek.includes('emoji')) {
@@ -115,6 +117,10 @@ export default class EmojiTab implements EmoticonsTab {
   private closeScrollTop = 0;
   private setMenuActive: (id: number) => boolean;
 
+  constructor(private managers: AppManagers) {
+
+  }
+
   init() {
     this.content = document.getElementById('content-emoji') as HTMLDivElement;
 
@@ -157,7 +163,7 @@ export default class EmojiTab implements EmoticonsTab {
 
     //console.log('emoticons sorted:', sorted);
 
-    //Object.keys(sorted).forEach(c => sorted[c].sort((a, b) => a - b));
+    //Object.keys(sorted).forEach((c) => sorted[c].sort((a, b) => a - b));
 
     sorted.delete(categories.pop());
 
@@ -175,7 +181,7 @@ export default class EmojiTab implements EmoticonsTab {
 
       div.append(titleDiv, itemsDiv);
 
-      emojis.forEach(unified => {
+      emojis.forEach((unified) => {
         /* if(emojiUnicode(emoji) === '1f481-200d-2642') {
           console.log('append emoji', emoji, emojiUnicode(emoji));
         } */
@@ -218,7 +224,7 @@ export default class EmojiTab implements EmoticonsTab {
 
     Promise.all([
       pause(200),
-      appEmojiManager.getRecentEmojis().then(recent => {
+      this.managers.appEmojiManager.getRecentEmojis().then((recent) => {
         const hasRecent = !!recent.length;
         const activeId = hasRecent ? 0 : 1;
         this.menu.children[0].classList.toggle('hide', !hasRecent);
@@ -239,7 +245,7 @@ export default class EmojiTab implements EmoticonsTab {
       this.recentItemsDiv.parentElement.classList.toggle('hide', !this.recentItemsDiv.childElementCount);
 
       categories.unshift('Emoji.Recent');
-      categories.map(category => {
+      categories.map((category) => {
         const div = divs[category];
   
         if(!div) {
@@ -259,7 +265,7 @@ export default class EmojiTab implements EmoticonsTab {
       const children = Array.from(this.recentItemsDiv.children) as HTMLElement[];
       for(let i = 0, length = children.length; i < length; ++i) {
         const el = children[i];
-        const _emoji = RichTextProcessor.fixEmoji(getEmojiFromElement(el));
+        const _emoji = fixEmoji(getEmojiFromElement(el));
         if(emoji === _emoji) {
           if(i === 0) {
             return;

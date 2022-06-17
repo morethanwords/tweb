@@ -4,12 +4,11 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import WebpWorker from 'worker-loader!./webp.worker';
 import { MOUNT_CLASS_TO } from '../../config/debug';
 import deferredPromise, { CancellablePromise } from '../../helpers/cancellablePromise';
-import apiManagerProxy from '../mtproto/mtprotoworker';
+import { WorkerTaskVoidTemplate } from '../../types';
 
-export type WebpConvertTask = {
+export interface ConvertWebPTask extends WorkerTaskVoidTemplate {
   type: 'convertWebp', 
   payload: {
     fileName: string, 
@@ -22,23 +21,20 @@ export class WebpWorkerController {
   private convertPromises: {[fileName: string]: CancellablePromise<Uint8Array>} = {};
   
   private init() {
-    this.worker = new WebpWorker();
+    this.worker = new Worker(new URL('./webp.worker.ts', import.meta.url));
     this.worker.addEventListener('message', (e) => {
-      const payload = (e.data as WebpConvertTask).payload;
+      const task = e.data as ConvertWebPTask;
+      const payload = task.payload;
 
-      if(payload.fileName.indexOf('main-') === 0) {
-        const promise = this.convertPromises[payload.fileName];
-        if(promise) {
-          payload.bytes ? promise.resolve(payload.bytes) : promise.reject();
-          delete this.convertPromises[payload.fileName];
-        }
-      } else {
-        apiManagerProxy.postMessage(e.data);
+      const promise = this.convertPromises[payload.fileName];
+      if(promise) {
+        payload.bytes ? promise.resolve(payload.bytes) : promise.reject();
+        delete this.convertPromises[payload.fileName];
       }
     });
   }
 
-  public postMessage(data: WebpConvertTask) {
+  private postMessage(data: ConvertWebPTask) {
     if(this.init) {
       this.init();
       this.init = null;
@@ -48,8 +44,6 @@ export class WebpWorkerController {
   }
 
   public convert(fileName: string, bytes: Uint8Array) {
-    fileName = 'main-' + fileName;
-
     if(this.convertPromises.hasOwnProperty(fileName)) {
       return this.convertPromises[fileName];
     }

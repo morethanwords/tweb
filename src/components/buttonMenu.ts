@@ -4,20 +4,20 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import contextMenuController from "../helpers/contextMenuController";
 import cancelEvent from "../helpers/dom/cancelEvent";
 import { AttachClickOptions, attachClickEvent } from "../helpers/dom/clickEvent";
 import findUpClassName from "../helpers/dom/findUpClassName";
 import ListenerSetter from "../helpers/listenerSetter";
 import { FormatterArguments, i18n, LangPackKey } from "../lib/langPack";
 import CheckboxField from "./checkboxField";
-import { closeBtnMenu } from "./misc";
 
 export type ButtonMenuItemOptions = {
   icon?: string, 
   text?: LangPackKey, 
   textArgs?: FormatterArguments,
   regularText?: string, 
-  onClick: (e: MouseEvent | TouchEvent) => void | boolean, 
+  onClick: (e: MouseEvent | TouchEvent) => void | boolean | any, 
   element?: HTMLElement,
   textElement?: HTMLElement,
   options?: AttachClickOptions,
@@ -62,7 +62,7 @@ const ButtonMenuItem = (options: ButtonMenuItemOptions) => {
     }
 
     if(!keepOpen) {
-      closeBtnMenu();
+      contextMenuController.closeBtnMenu();
     }
 
     if(checkboxField && !noCheckboxClickListener/*  && result !== false */) {
@@ -82,7 +82,7 @@ const ButtonMenu = (buttons: ButtonMenuItemOptions[], listenerSetter?: ListenerS
   el.classList.add('btn-menu');
 
   if(listenerSetter) {
-    buttons.forEach(b => {
+    buttons.forEach((b) => {
       if(b.options) {
         b.options.listenerSetter = listenerSetter;
       } else {

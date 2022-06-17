@@ -18,6 +18,8 @@ import cancelEvent from "../../helpers/dom/cancelEvent";
 import EventListenerBase, { EventListenerListeners } from "../../helpers/eventListenerBase";
 import { addFullScreenListener, getFullScreenElement } from "../../helpers/dom/fullScreen";
 import indexOfAndSplice from "../../helpers/array/indexOfAndSplice";
+import { AppManagers } from "../../lib/appManagers/managers";
+import overlayCounter from "../../helpers/overlayCounter";
 
 export type PopupButton = {
   text?: string,
@@ -38,8 +40,8 @@ export type PopupOptions = Partial<{
   withoutOverlay: boolean
 }>;
 
-export interface PopupElementConstructable {
-  new(...args: any[]): PopupElement;
+export interface PopupElementConstructable<T extends PopupElement = any> {
+  new(...args: any[]): T;
 }
 
 const DEFAULT_APPEND_TO = document.body;
@@ -59,6 +61,8 @@ type PopupListeners = {
 
 export default class PopupElement<T extends EventListenerListeners = {}> extends EventListenerBase<PopupListeners & T> {
   private static POPUPS: PopupElement<any>[] = [];
+  public static MANAGERS: AppManagers;
+
   protected element = document.createElement('div');
   protected container = document.createElement('div');
   protected header = document.createElement('div');
@@ -79,6 +83,8 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
 
   protected withoutOverlay: boolean;
 
+  protected managers: AppManagers;
+
   constructor(className: string, protected buttons?: Array<PopupButton>, options: PopupOptions = {}) {
     super(false);
     this.element.classList.add('popup');
@@ -91,6 +97,7 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
     this.header.append(this.title);
 
     this.listenerSetter = new ListenerSetter();
+    this.managers = PopupElement.MANAGERS;
 
     this.confirmShortcutIsSendShortcut = options.confirmShortcutIsSendShortcut;
 
@@ -142,7 +149,7 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
         buttonsDiv.classList.add('popup-buttons-row');
       }
       
-      const buttonsElements = buttons.map(b => {
+      const buttonsElements = buttons.map((b) => {
         const button = document.createElement('button');
         button.className = 'btn' + (b.isDanger ? ' danger' : ' primary');
         
@@ -163,7 +170,7 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
       });
       
       if(!btnConfirmOnEnter && buttons.length === 2) {
-        const button = buttons.find(button => !button.isCancel);
+        const button = buttons.find((button) => !button.isCancel);
         if(button) {
           btnConfirmOnEnter = button.element;
         }
@@ -195,7 +202,7 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
     this.element.classList.add('active');
 
     if(!this.withoutOverlay) {
-      rootScope.isOverlayActive = true;
+      overlayCounter.isOverlayActive = true;
       animationIntersector.checkAnimations(true);
     }
 
@@ -223,7 +230,7 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
     this.listenerSetter.removeAll();
 
     if(!this.withoutOverlay) {
-      rootScope.isOverlayActive = false;
+      overlayCounter.isOverlayActive = false;
     }
 
     appNavigationController.removeItem(this.navigationItem);
@@ -246,7 +253,7 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
   }
 
   public static reAppend() {
-    this.POPUPS.forEach(popup => {
+    this.POPUPS.forEach((popup) => {
       const {element, container} = popup;
       const parentElement = element.parentElement;
       if(parentElement && parentElement !== appendPopupTo && appendPopupTo !== container) {
@@ -255,13 +262,18 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
     });
   }
 
-  public static getPopups(popupConstructor: PopupElementConstructable) {
-    return this.POPUPS.filter(element => element instanceof popupConstructor);
+  public static getPopups<T extends PopupElement>(popupConstructor: PopupElementConstructable<T>) {
+    return this.POPUPS.filter((element) => element instanceof popupConstructor) as T[];
+  }
+
+  public static createPopup<T extends PopupElement, A extends Array<any>>(ctor: {new(...args: A): T}, ...args: A) {
+    const popup = new ctor(...args);
+    return popup;
   }
 }
 
 export const addCancelButton = (buttons: PopupButton[]) => {
-  const button = buttons.find(b => b.isCancel);
+  const button = buttons.find((b) => b.isCancel);
   if(!button) {
     buttons.push({
       langKey: 'Cancel',

@@ -6,7 +6,6 @@
 
 import { GroupCallParticipant } from "../../layer";
 import type { GroupCallOutputSource } from "../../lib/appManagers/appGroupCallsManager";
-import type { AppPeersManager } from "../../lib/appManagers/appPeersManager";
 import { i18n } from "../../lib/langPack";
 import PeerTitle from "../peerTitle";
 import { getGroupCallParticipantMutedState } from ".";
@@ -14,6 +13,8 @@ import GroupCallParticipantMutedIcon from "./participantMutedIcon";
 import GroupCallParticipantStatusElement from "./participantStatus";
 import GroupCallInstance from "../../lib/calls/groupCallInstance";
 import callVideoCanvasBlur from "../call/videoCanvasBlur";
+import getPeerId from "../../lib/appManagers/utils/peers/getPeerId";
+import { AppManagers } from "../../lib/appManagers/managers";
 
 const className = 'group-call-participant-video';
 
@@ -29,7 +30,7 @@ export default class GroupCallParticipantVideoElement {
   private groupCallParticipantMutedIcon: GroupCallParticipantMutedIcon;
   private groupCallParticipantStatus: GroupCallParticipantStatusElement;
 
-  constructor(private appPeersManager: AppPeersManager, private instance: GroupCallInstance, public source: GroupCallOutputSource) {
+  constructor(private managers: AppManagers, private instance: GroupCallInstance, public source: GroupCallOutputSource) {
     this.container = document.createElement('div');
     this.container.classList.add(className + '-container');
 
@@ -80,7 +81,7 @@ export default class GroupCallParticipantVideoElement {
       peerTitleElement.classList.add('peer-title');
     } else {
       this.peerTitle = new PeerTitle({
-        peerId: this.appPeersManager.getPeerId(participant.peer)
+        peerId: getPeerId(participant.peer)
       });
 
       peerTitleElement = this.peerTitle.element;

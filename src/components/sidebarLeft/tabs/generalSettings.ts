@@ -9,25 +9,23 @@ import RangeSelector from "../../rangeSelector";
 import Button from "../../button";
 import CheckboxField from "../../checkboxField";
 import RadioField from "../../radioField";
-import appStateManager, { State } from "../../../lib/appManagers/appStateManager";
 import rootScope from "../../../lib/rootScope";
 import { IS_APPLE } from "../../../environment/userAgent";
 import Row from "../../row";
 import AppBackgroundTab from "./background";
 import { LangPackKey, _i18n } from "../../../lib/langPack";
 import { attachClickEvent } from "../../../helpers/dom/clickEvent";
-import appStickersManager from "../../../lib/appManagers/appStickersManager";
 import assumeType from "../../../helpers/assumeType";
 import { MessagesAllStickers, StickerSet } from "../../../layer";
-import RichTextProcessor from "../../../lib/richtextprocessor";
 import { wrapStickerSetThumb, wrapStickerToRow } from "../../wrappers";
 import LazyLoadQueue from "../../lazyLoadQueue";
 import PopupStickers from "../../popups/stickers";
 import eachMinute from "../../../helpers/eachMinute";
 import { SliderSuperTabEventable } from "../../sliderTab";
 import IS_GEOLOCATION_SUPPORTED from "../../../environment/geolocationSupport";
-import appReactionsManager from "../../../lib/appManagers/appReactionsManager";
 import AppQuickReactionTab from "./quickReaction";
+import wrapEmojiText from "../../../lib/richTextProcessor/wrapEmojiText";
+import { State } from "../../../config/state";
 
 export class RangeSettingSelector {
   public container: HTMLDivElement;
@@ -100,13 +98,13 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
       
       const range = new RangeSettingSelector('TextSize', 1, rootScope.settings.messagesTextSize, 12, 20);
       range.onChange = (value) => {
-        appStateManager.setByKey('settings.messagesTextSize', value);
+        rootScope.managers.appStateManager.setByKey('settings.messagesTextSize', value);
       };
 
       const chatBackgroundButton = Button('btn-primary btn-transparent', {icon: 'image', text: 'ChatBackground'});
 
       attachClickEvent(chatBackgroundButton, () => {
-        new AppBackgroundTab(this.slider).open();
+        this.slider.createTab(AppBackgroundTab).open();
       });
 
       const animationsCheckboxField = new CheckboxField({
@@ -222,7 +220,7 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
 
       this.eventListener.addEventListener('destroy', cancel);
 
-      form.append(...rows.map(row => row.container));
+      form.append(...rows.map((row) => row.container));
       container.append(form);
     }
 
@@ -252,12 +250,12 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
         titleLangKey: 'DoubleTapSetting',
         havePadding: true,
         clickable: () => {
-          new AppQuickReactionTab(this.slider).open();
+          this.slider.createTab(AppQuickReactionTab).open();
         }
       });
 
       const renderQuickReaction = () => {
-        Promise.resolve(appReactionsManager.getQuickReaction()).then(reaction => {
+        Promise.resolve(this.managers.appReactionsManager.getQuickReaction()).then((reaction) => {
           wrapStickerToRow({
             row: reactionsRow,
             doc: reaction.static_icon,
@@ -290,7 +288,7 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
       const lazyLoadQueue = new LazyLoadQueue();
       const renderStickerSet = (stickerSet: StickerSet.stickerSet, method: 'append' | 'prepend' = 'append') => {
         const row = new Row({
-          title: RichTextProcessor.wrapEmojiText(stickerSet.title),
+          title: wrapEmojiText(stickerSet.title),
           subtitleLangKey: 'Stickers',
           subtitleLangArgs: [stickerSet.count],
           havePadding: true,
@@ -319,7 +317,7 @@ export default class AppGeneralSettingsTab extends SliderSuperTabEventable {
         stickersContent[method](row.container);
       };
 
-      appStickersManager.getAllStickers().then(allStickers => {
+      this.managers.appStickersManager.getAllStickers().then((allStickers) => {
         assumeType<MessagesAllStickers.messagesAllStickers>(allStickers);
         for(const stickerSet of allStickers.sets) {
           renderStickerSet(stickerSet);

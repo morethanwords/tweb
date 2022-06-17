@@ -4,16 +4,14 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import appDocsManager, {MyDocument} from "../lib/appManagers/appDocsManager";
+import type { MyDocument } from "../lib/appManagers/appDocsManager";
 import { wrapPhoto } from "./wrappers";
 import ProgressivePreloader from "./preloader";
 import appMediaPlaybackController, { MediaItem, MediaSearchContext } from "./appMediaPlaybackController";
 import { DocumentAttribute, Message } from "../layer";
 import mediaSizes from "../helpers/mediaSizes";
 import { IS_SAFARI } from "../environment/userAgent";
-import appMessagesManager from "../lib/appManagers/appMessagesManager";
 import rootScope from "../lib/rootScope";
-import './middleEllipsis';
 import cancelEvent from "../helpers/dom/cancelEvent";
 import { attachClickEvent } from "../helpers/dom/clickEvent";
 import LazyLoadQueue from "./lazyLoadQueue";
@@ -23,7 +21,6 @@ import noop from "../helpers/noop";
 import findUpClassName from "../helpers/dom/findUpClassName";
 import { joinElementsWith } from "../lib/langPack";
 import { MiddleEllipsisElement } from "./middleEllipsis";
-import htmlToSpan from "../helpers/dom/htmlToSpan";
 import { formatFullSentTime } from "../helpers/date";
 import throttleWithRaf from "../helpers/schedulers/throttleWithRaf";
 import { NULL_PEER_ID } from "../lib/mtproto/mtproto_config";
@@ -32,13 +29,18 @@ import { animateSingle } from "../helpers/animation";
 import clamp from "../helpers/number/clamp";
 import toHHMMSS from "../helpers/string/toHHMMSS";
 import MediaProgressLine from "./mediaProgressLine";
-import RichTextProcessor from "../lib/richtextprocessor";
 import setInnerHTML from "../helpers/dom/setInnerHTML";
+import { AppManagers } from "../lib/appManagers/managers";
+import wrapEmojiText from "../lib/richTextProcessor/wrapEmojiText";
+import wrapSenderToPeer from "./wrappers/senderToPeer";
+import wrapSentTime from "./wrappers/sentTime";
+import getMediaFromMessage from "../lib/appManagers/utils/messages/getMediaFromMessage";
+import appDownloadManager from "../lib/appManagers/appDownloadManager";
 
 rootScope.addEventListener('messages_media_read', ({mids, peerId}) => {
-  mids.forEach(mid => {
+  mids.forEach((mid) => {
     const attr = `[data-mid="${mid}"][data-peer-id="${peerId}"]`;
-    (Array.from(document.querySelectorAll(`audio-element.is-unread${attr}, .media-round.is-unread${attr}`)) as AudioElement[]).forEach(elem => {
+    (Array.from(document.querySelectorAll(`audio-element.is-unread${attr}, .media-round.is-unread${attr}`)) as AudioElement[]).forEach((elem) => {
       elem.classList.remove('is-unread');
     });
   });
@@ -146,17 +148,17 @@ function createWaveformBars(waveform: Uint8Array, duration: number) {
   return {svg, container, availW};
 }
 
-function wrapVoiceMessage(audioEl: AudioElement) {
+async function wrapVoiceMessage(audioEl: AudioElement) {
   audioEl.classList.add('is-voice');
 
   const message = audioEl.message;
-  const doc = appMessagesManager.getMediaFromMessage(message) as MyDocument;
+  const doc = getMediaFromMessage(message) as MyDocument;
 
   if(message.pFlags.out) {
     audioEl.classList.add('is-out');
   }
 
-  let waveform = (doc.attributes.find(attribute => attribute._ === 'documentAttributeAudio') as DocumentAttribute.documentAttributeAudio).waveform || new Uint8Array([]);
+  let waveform = (doc.attributes.find((attribute) => attribute._ === 'documentAttributeAudio') as DocumentAttribute.documentAttributeAudio).waveform || new Uint8Array([]);
   waveform = decodeWaveform(waveform.slice(0, 63));
   
   const {svg, container: svgContainer, availW} = createWaveformBars(waveform, doc.duration);
@@ -257,11 +259,11 @@ function wrapVoiceMessage(audioEl: AudioElement) {
   return onLoad;
 }
 
-function wrapAudio(audioEl: AudioElement) {
+async function wrapAudio(audioEl: AudioElement) {
   const withTime = audioEl.withTime;
 
   const message = audioEl.message;
-  const doc: MyDocument = appMessagesManager.getMediaFromMessage(message);
+  const doc = getMediaFromMessage(message) as MyDocument;
 
   const isVoice = doc.type === 'voice' || doc.type === 'round';
   const descriptionEl = document.createElement('div');
@@ -272,7 +274,7 @@ function wrapAudio(audioEl: AudioElement) {
   if(!isVoice) {
     const parts: (Node | string)[] = [];
     if(audioAttribute?.performer) {
-      parts.push(RichTextProcessor.wrapEmojiText(audioAttribute.performer));
+      parts.push(wrapEmojiText(audioAttribute.performer));
     }
 
     if(withTime) {
@@ -282,7 +284,7 @@ function wrapAudio(audioEl: AudioElement) {
     }
 
     if(audioEl.showSender) {
-      parts.push(appMessagesManager.wrapSenderToPeer(message));
+      parts.push(await wrapSenderToPeer(message));
     }
 
     descriptionEl.append(...joinElementsWith(parts, ' • '));
@@ -301,15 +303,15 @@ function wrapAudio(audioEl: AudioElement) {
   middleEllipsisEl.dataset.fontWeight = audioEl.dataset.fontWeight;
   middleEllipsisEl.dataset.sizeType = audioEl.dataset.sizeType;
   if(isVoice) {
-    middleEllipsisEl.append(appMessagesManager.wrapSenderToPeer(message));
+    middleEllipsisEl.append(await wrapSenderToPeer(message));
   } else {
-    setInnerHTML(middleEllipsisEl, RichTextProcessor.wrapEmojiText(audioAttribute?.title ?? doc.file_name));
+    setInnerHTML(middleEllipsisEl, wrapEmojiText(audioAttribute?.title ?? doc.file_name));
   }
 
   titleEl.append(middleEllipsisEl);
 
   if(audioEl.showSender) {
-    titleEl.append(appMessagesManager.wrapSentTime(message));
+    titleEl.append(wrapSentTime(message));
   }
   
   const subtitleDiv = audioEl.querySelector('.audio-subtitle') as HTMLDivElement;
@@ -383,7 +385,7 @@ export const findMediaTargets = (anchor: HTMLElement, anchorMid: number/* , useS
 
       if(isBubbles) {
         const prefix = '.bubble:not(.webpage) ';
-        selectors = selectors.map(s => prefix + s);
+        selectors = selectors.map((s) => prefix + s);
       }
 
       const selector = selectors.join(', ');
@@ -391,7 +393,7 @@ export const findMediaTargets = (anchor: HTMLElement, anchorMid: number/* , useS
       const elements = Array.from(container.querySelectorAll(selector)) as HTMLElement[];
       const idx = elements.indexOf(anchor);
 
-      const mediaItems: MediaItem[] = elements.map(element => ({peerId: element.dataset.peerId.toPeerId(), mid: +element.dataset.mid}));
+      const mediaItems: MediaItem[] = elements.map((element) => ({peerId: element.dataset.peerId.toPeerId(), mid: +element.dataset.mid}));
 
       prev = mediaItems.slice(0, idx);
       next = mediaItems.slice(idx + 1);
@@ -418,23 +420,25 @@ export default class AudioElement extends HTMLElement {
   public noAutoDownload: boolean;
   public lazyLoadQueue: LazyLoadQueue;
   public loadPromises: Promise<any>[];
+  public managers: AppManagers;
 
   private listenerSetter = new ListenerSetter();
   private onTypeDisconnect: () => void;
   public onLoad: (autoload?: boolean) => void;
   public readyPromise: CancellablePromise<void>;
 
-  public render() {
+  public async render() {
     this.classList.add('audio');
+    this.managers = rootScope.managers;
 
     this.dataset.mid = '' + this.message.mid;
     this.dataset.peerId = '' + this.message.peerId;
 
-    const doc: MyDocument = appMessagesManager.getMediaFromMessage(this.message);
+    const doc = getMediaFromMessage(this.message) as MyDocument;
     const isRealVoice = doc.type === 'voice';
     const isVoice = !this.voiceAsMusic && isRealVoice;
     const isOutgoing = this.message.pFlags.is_outgoing;
-    const uploading = isOutgoing && this.preloader;
+    const uploadingFileName = this.message?.uploadingFileName;
 
     const durationStr = toHHMMSS(doc.duration | 0);
 
@@ -456,12 +460,12 @@ export default class AudioElement extends HTMLElement {
       this.classList.add('is-unread');
     }
 
-    if(uploading) {
+    if(uploadingFileName) {
       this.classList.add('is-outgoing');
       this.append(downloadDiv);
     }
 
-    const onTypeLoad = isVoice ? wrapVoiceMessage(this) : wrapAudio(this);
+    const onTypeLoad = await (isVoice ? wrapVoiceMessage(this) : wrapAudio(this));
     
     const audioTimeDiv = this.querySelector('.audio-time') as HTMLDivElement;
     audioTimeDiv.innerHTML = durationStr;
@@ -533,7 +537,7 @@ export default class AudioElement extends HTMLElement {
 
     if(doc.thumbs?.length) {
       const imgs: HTMLElement[] = [];
-      const wrapped = wrapPhoto({
+      const wrapped = await wrapPhoto({
         photo: doc, 
         message: null, 
         container: toggle, 
@@ -548,7 +552,7 @@ export default class AudioElement extends HTMLElement {
       if(wrapped.images.full) imgs.push(wrapped.images.full);
 
       this.classList.add('audio-with-thumb');
-      imgs.forEach(img => img.classList.add('audio-thumb'));
+      imgs.forEach((img) => img.classList.add('audio-thumb'));
     }
 
     if(!isOutgoing) {
@@ -623,7 +627,7 @@ export default class AudioElement extends HTMLElement {
             const load = () => {
               onDownloadInit();
 
-              const download = appDocsManager.downloadDoc(doc);
+              const download = appDownloadManager.downloadMediaURL({media: doc});
               
               if(!shouldPlay) {
                 download.then(() => {
@@ -674,7 +678,9 @@ export default class AudioElement extends HTMLElement {
           }, {once: true, capture: true, passive: false, listenerSetter: this.listenerSetter});
         }
       }
-    } else if(uploading) {
+    } else if(uploadingFileName) {
+      this.preloader = constructDownloadPreloader(false);
+      this.preloader.attachPromise(appDownloadManager.getUpload(uploadingFileName));
       this.dataset.isOutgoing = '1';
       this.preloader.attach(downloadDiv, false);
       //onLoad();

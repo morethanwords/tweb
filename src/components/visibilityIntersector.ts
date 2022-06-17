@@ -20,7 +20,7 @@ export default class VisibilityIntersector {
 
       const changed: {target: TargetType, visible: boolean}[] = [];
 
-      entries.forEach(entry => {
+      entries.forEach((entry) => {
         const target = entry.target as TargetType;
 
         if(this.items.get(target) === entry.isIntersecting) {
@@ -42,7 +42,7 @@ export default class VisibilityIntersector {
         //onVisibilityChange(target, entry.isIntersecting);
       });
 
-      changed.forEach(smth => {
+      changed.forEach((smth) => {
         onVisibilityChange(smth.target, smth.visible);
       });
     });

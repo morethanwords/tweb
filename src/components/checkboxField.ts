@@ -4,10 +4,11 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import appStateManager from "../lib/appManagers/appStateManager";
 import ripple from "./ripple";
 import { LangPackKey, _i18n } from "../lib/langPack";
 import getDeepProperty from "../helpers/object/getDeepProperty";
+import rootScope from "../lib/rootScope";
+import apiManagerProxy from "../lib/mtproto/mtprotoworker";
 
 export type CheckboxFieldOptions = {
   text?: LangPackKey,
@@ -56,7 +57,7 @@ export default class CheckboxField {
     }
 
     if(options.stateKey) {
-      appStateManager.getState().then(state => {
+      apiManagerProxy.getState().then((state) => {
         const stateValue = getDeepProperty(state, options.stateKey);
         let checked: boolean;
         if(options.stateValues) {
@@ -75,7 +76,7 @@ export default class CheckboxField {
             value = input.checked;
           }
 
-          appStateManager.setByKey(options.stateKey, value);
+          rootScope.managers.appStateManager.setByKey(options.stateKey, value);
         });
       });
     }

@@ -8,10 +8,11 @@ import { formatTime, getFullDate } from "../../helpers/date";
 import setInnerHTML from "../../helpers/dom/setInnerHTML";
 import formatNumber from "../../helpers/number/formatNumber";
 import { Message } from "../../layer";
-import appMessagesManager from "../../lib/appManagers/appMessagesManager";
+import getPeerId from "../../lib/appManagers/utils/peers/getPeerId";
 import { i18n, _i18n } from "../../lib/langPack";
-import RichTextProcessor from "../../lib/richtextprocessor";
-import { LazyLoadQueueIntersector } from "../lazyLoadQueue";
+import wrapEmojiText from "../../lib/richTextProcessor/wrapEmojiText";
+import rootScope from "../../lib/rootScope";
+import type LazyLoadQueue from "../lazyLoadQueue";
 import PeerTitle from "../peerTitle";
 import { wrapReply } from "../wrappers";
 import Chat, { ChatType } from "./chat";
@@ -34,9 +35,9 @@ export namespace MessageRender {
 
   }; */
 
-  export const setTime = (options: {
+  export const setTime = async(options: {
     chatType: ChatType, 
-    message: Message.message | Message.messageService,
+    message: Message.message | Message.messageService
   }) => {
     const {chatType, message} = options;
     const date = new Date(message.date * 1000);
@@ -63,7 +64,7 @@ export namespace MessageRender {
         args.push(postViewsSpan, channelViews);
         if(postAuthor) {
           const span = document.createElement('span');
-          setInnerHTML(span, RichTextProcessor.wrapEmojiText(postAuthor));
+          setInnerHTML(span, wrapEmojiText(postAuthor));
           span.insertAdjacentHTML('beforeend', ',' + NBSP)
           args.push(span);
         }
@@ -82,7 +83,7 @@ export namespace MessageRender {
       if(message.peer_id._ === 'peerUser'/*  && message.reactions?.results?.length */) {
         hasReactions = true;
 
-        reactionsMessage = appMessagesManager.getGroupsFirstMessage(message);
+        reactionsMessage = await rootScope.managers.appMessagesManager.getGroupsFirstMessage(message);
 
         reactionsElement = new ReactionsElement();
         reactionsElement.init(reactionsMessage, 'inline', true);
@@ -124,7 +125,7 @@ export namespace MessageRender {
       _reactionsElement.init(reactionsMessage, 'inline');
       _reactionsElement.render();
     }
-    clonedArgs = clonedArgs.map(a => a instanceof HTMLElement && !a.classList.contains('i18n') && !a.classList.contains('reactions') ? a.cloneNode(true) as HTMLElement : a);
+    clonedArgs = clonedArgs.map((a) => a instanceof HTMLElement && !a.classList.contains('i18n') && !a.classList.contains('reactions') ? a.cloneNode(true) as HTMLElement : a);
     if(time) {
       clonedArgs[clonedArgs.length - 1] = formatTime(date); // clone time
     }
@@ -141,7 +142,7 @@ export namespace MessageRender {
     message: Message.message,
     messageDiv: HTMLElement,
     loadPromises?: Promise<any>[],
-    lazyLoadQueue?: LazyLoadQueueIntersector
+    lazyLoadQueue?: LazyLoadQueue
   }) => {
     const isFooter = !bubble.classList.contains('sticker') && !bubble.classList.contains('emoji-big') && !bubble.classList.contains('round');
     const repliesFooter = new RepliesElement();
@@ -154,7 +155,7 @@ export namespace MessageRender {
     return isFooter;
   };
 
-  export const setReply = ({chat, bubble, bubbleContainer, message}: {
+  export const setReply = async({chat, bubble, bubbleContainer, message}: {
     chat: Chat,
     bubble: HTMLElement,
     bubbleContainer?: HTMLElement,
@@ -176,34 +177,38 @@ export namespace MessageRender {
     }
 
 
-    const replyToPeerId = message.reply_to.reply_to_peer_id ? chat.appPeersManager.getPeerId(message.reply_to.reply_to_peer_id) : chat.peerId;
+    const replyToPeerId = message.reply_to.reply_to_peer_id ? getPeerId(message.reply_to.reply_to_peer_id) : chat.peerId;
 
-    let originalMessage = chat.appMessagesManager.getMessageByPeer(replyToPeerId, message.reply_to_mid);
+    let originalMessage = await rootScope.managers.appMessagesManager.getMessageByPeer(replyToPeerId, message.reply_to_mid);
     let originalPeerTitle: string | HTMLElement;
     
     /////////this.log('message to render reply', originalMessage, originalPeerTitle, bubble, message);
     
+    let titlePeerId: PeerId;
     // need to download separately
-    if(originalMessage._ === 'messageEmpty') {
+    if(!originalMessage) {
       //////////this.log('message to render reply empty, need download', message, message.reply_to_mid);
-      chat.appMessagesManager.wrapSingleMessage(replyToPeerId, message.reply_to_mid);
+      rootScope.managers.appMessagesManager.fetchMessageReplyTo(message);
       chat.bubbles.needUpdate.push({replyToPeerId, replyMid: message.reply_to_mid, mid: message.mid});
       
       originalPeerTitle = i18n('Loading');
     } else {
+      const originalMessageFwdFromId = (originalMessage as Message.message).fwdFromId;
+      titlePeerId = message.fwdFromId && message.fwdFromId === originalMessageFwdFromId ? message.fwdFromId : originalMessage.fromId || originalMessageFwdFromId;
       originalPeerTitle = new PeerTitle({
-        peerId: originalMessage.fromId || originalMessage.fwdFromId,
+        peerId: titlePeerId,
         dialog: false,
         onlyFirstName: false,
         plainText: false
       }).element;
     }
 
-    const wrapped = wrapReply(originalPeerTitle, undefined, originalMessage);
+    const {container, fillPromise} = wrapReply(originalPeerTitle, undefined, originalMessage, chat.isAnyGroup ? titlePeerId : undefined);
+    await fillPromise;
     if(currentReplyDiv) {
-      currentReplyDiv.replaceWith(wrapped);
+      currentReplyDiv.replaceWith(container);
     } else {
-      bubbleContainer.append(wrapped);
+      bubbleContainer.append(container);
     }
     //bubbleContainer.insertBefore(, nameContainer);
     bubble.classList.add('is-reply');

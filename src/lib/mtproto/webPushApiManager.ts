@@ -9,16 +9,17 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import type { NotificationSettings } from "../appManagers/appNotificationsManager";
+import type { ServiceWorkerNotificationsClearTask, ServiceWorkerPingTask, ServiceWorkerPushClickTask } from "../serviceWorker/index.service";
 import { MOUNT_CLASS_TO } from "../../config/debug";
 import { logger } from "../logger";
 import rootScope from "../rootScope";
-import { ServiceWorkerNotificationsClearTask, ServiceWorkerPingTask, ServiceWorkerPushClickTask } from "../serviceWorker/index.service";
 import apiManager from "./mtprotoworker";
 import I18n, { LangPackKey } from "../langPack";
 import { IS_MOBILE } from "../../environment/userAgent";
 import appRuntimeManager from "../appManagers/appRuntimeManager";
 import copy from "../../helpers/object/copy";
+import type { NotificationSettings } from "../appManagers/uiNotificationsManager";
+import idleController from "../../helpers/idleController";
 
 export type PushSubscriptionNotifyType = 'init' | 'subscribe' | 'unsubscribe';
 export type PushSubscriptionNotifyEvent = `push_${PushSubscriptionNotifyType}`;
@@ -155,11 +156,11 @@ export class WebPushApiManager {
   }
 
   public isAliveNotify = () => {
-    if(!this.isAvailable || rootScope.idle && rootScope.idle.deactivated) {
+    if(!this.isAvailable || idleController.idle?.deactivated) {
       return;
     }
 
-    this.settings.baseUrl = (location.href || '').replace(/#.*$/, '') + '#/im';
+    this.settings.baseUrl = (location.href || '').replace(/#.*$/, '');
 
     const lang: ServiceWorkerPingTask['payload']['lang'] = {} as any;
     const ACTIONS_LANG_MAP: Record<keyof ServiceWorkerPingTask['payload']['lang'], LangPackKey> = {
@@ -207,7 +208,7 @@ export class WebPushApiManager {
     }
 
     apiManager.addServiceWorkerTaskListener('push_click', (task: ServiceWorkerPushClickTask) => {
-      if(rootScope.idle && rootScope.idle.deactivated) {
+      if(idleController.idle?.deactivated) {
         appRuntimeManager.reload();
         return;
       }
