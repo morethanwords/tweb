@@ -2359,6 +2359,20 @@ $bubble-beside-button-width: 38px;
   code {
     color: var(--monospace-text-color);
   }
+
+  .reply.is-overriding-color {
+    .reply-border {
+      background-color: rgb(var(--override-color));
+    }
+
+    .reply-title {
+      color: rgb(var(--override-color));
+    }
+
+    @include hover() {
+      background-color: rgba(var(--override-color), #{$hover-alpha});
+    }
+  }
 }
 
 .bubble.is-out {

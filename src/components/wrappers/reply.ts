@@ -4,6 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import { hexToRgb } from "../../helpers/color";
 import { Message } from "../../layer";
 import getPeerColorById from "../../lib/appManagers/utils/peers/getPeerColorById";
 import ReplyContainer from "../chat/replyContainer";
@@ -19,8 +20,11 @@ export default function wrapReply(
 
   if(setColorPeerId) {
     const hex = getPeerColorById(setColorPeerId, false);
-    replyContainer.border.style.backgroundColor = hex;
-    replyContainer.title.style.color = hex;
+    const [r, g, b] = hexToRgb(hex);
+    replyContainer.container.style.setProperty('--override-color', `${r}, ${g}, ${b}`);
+    replyContainer.container.classList.add('is-overriding-color');
+    // replyContainer.border.style.backgroundColor = hex;
+    // replyContainer.title.style.color = hex;
   }
 
   return {container: replyContainer.container, fillPromise};

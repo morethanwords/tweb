@@ -172,10 +172,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
 
     this.log('Passing environment:', ENVIRONMENT);
     this.invoke('environment', ENVIRONMENT);
-    this.sendState();
-    // setTimeout(() => {
-    //   this.getConfig();
-    // }, 5000);
+    // this.sendState();
   }
 
   private registerServiceWorker() {
@@ -318,61 +315,38 @@ class ApiManagerProxy extends MTProtoMessagePort {
     }
   }
 
-  // protected s() {
-  //   const originalPostMessage = this.postMessage;
-  //   const postQueue: any[] = [];
-  //   this.postMessage = (source, task) => {
-  //     if(task.type === 'invoke' && task.payload.type === 'state') {
-  //       this.postMessage = originalPostMessage;
-  //       postQueue.unshift(task);
-  //       postQueue.forEach((task) => this.postMessage(undefined, task));
-  //       postQueue.length = 0;
-  //     } else {
-  //       postQueue.push(task);
-  //     }
-  //   };
-  // }
-
   private onWorkerFirstMessage(worker: any) {
     this.log('set webWorker');
-    // return;
     
     this.worker = worker;
     /// #if MTPROTO_SW
     this.attachSendPort(worker);
     /// #else
     this.attachWorkerToPort(worker, this, 'mtproto');
-    // this.s();
-    // port.addEventListener('message', () => {
-    //   this.registerServiceWorker();
-    // }, {once: true});
     /// #endif
-
-    // this.startSendingWindowSize();
   }
 
   public addServiceWorkerTaskListener(name: keyof ApiManagerProxy['taskListenersSW'], callback: ApiManagerProxy['taskListenersSW'][typeof name]) {
     this.taskListenersSW[name] = callback;
   }
 
-  // private startSendingWindowSize() {
-  //   const sendWindowSize = () => {
-  //     this.invoke('windowSize', {width: windowSize.width, height: windowSize.height});
-  //   };
-
-  //   mediaSizes.addEventListener('resize', sendWindowSize);
-  //   sendWindowSize();
-  // }
-
-  private sendState() {
+  private loadState() {
     return Promise.all([
-      loadState(),
+      loadState().then((stateResult) => {
+        this.newVersion = stateResult.newVersion;
+        this.oldVersion = stateResult.oldVersion;
+        this.mirrors['state'] = stateResult.state;
+        return stateResult;
+      }),
       // loadStorages(createStorages()),
-    ]).then(([stateResult/* , storagesResults */]) => {
-      this.newVersion = stateResult.newVersion;
-      this.oldVersion = stateResult.oldVersion;
-      this.mirrors['state'] = stateResult.state;
+    ]);
+  }
+
+  public sendState() {
+    return this.loadState().then((result) => {
+      const [stateResult] = result;
       this.invoke('state', {...stateResult, userId: rootScope.myId.toUserId()});
+      return result;
     });
   }
 

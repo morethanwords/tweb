@@ -369,6 +369,10 @@ export default class IDBStorage<T extends Database<any>, StoreName extends strin
       entryName = [].concat(entryName);
     }
 
+    if(!entryName.length) {
+      return Promise.resolve([]) as any;
+    }
+
     return this.getObjectStore<T>('readonly', (objectStore) => {
       return (entryName as string[]).map((entryName) => objectStore.get(entryName));
     }, DEBUG ? 'get: ' + entryName.join(', ') : '', storeName);
@@ -421,7 +425,7 @@ export default class IDBStorage<T extends Database<any>, StoreName extends strin
         // transaction.oncomplete = () => onComplete('transaction');
   
         const timeout = setTimeout(() => {
-          this.log.error('transaction not finished', transaction);
+          this.log.error('transaction not finished', transaction, log);
         }, 10000);
   
         /* transaction.addEventListener('abort', (e) => {

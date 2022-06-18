@@ -1842,6 +1842,19 @@ export class AppImManager extends EventListenerBase<{
       return;
     }
 
+    let peerTitlePromise: Promise<any>;
+    let args: any[];
+    if(peerId.isAnyChat()) {
+      const peerTitle = new PeerTitle();
+      peerTitlePromise = peerTitle.update({peerId: typing.userId.toPeerId(false), onlyFirstName: true});
+      args = [
+        peerTitle.element,
+        typings.length - 1
+      ];
+
+      await peerTitlePromise;
+    }
+
     if(!container) {
       container = document.createElement('span');
       container.classList.add('online', 'peer-typing-container');
@@ -1857,17 +1870,6 @@ export class AppImManager extends EventListenerBase<{
       if(typingElement.dataset.action !== action._) {
         typingElement.replaceWith(this.getTypingElement(action));
       }
-    }
-
-    let peerTitlePromise: Promise<any>;
-    let args: any[];
-    if(peerId.isAnyChat()) {
-      const peerTitle = new PeerTitle();
-      peerTitlePromise = peerTitle.update({peerId: typing.userId.toPeerId(false), onlyFirstName: true});
-      args = [
-        peerTitle.element,
-        typings.length - 1
-      ];
     }
 
     if(action._ === 'sendMessageEmojiInteractionSeen') {
@@ -1886,10 +1888,6 @@ export class AppImManager extends EventListenerBase<{
 
     if(container.childElementCount > 1) container.lastElementChild.replaceWith(descriptionElement);
     else container.append(descriptionElement);
-
-    if(peerTitlePromise) {
-      await peerTitlePromise;
-    }
     
     // log('returning typing');
     return container;

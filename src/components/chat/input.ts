@@ -92,6 +92,7 @@ import contextMenuController from "../../helpers/contextMenuController";
 import { emojiFromCodePoints } from "../../vendor/emoji";
 import { modifyAckedPromise } from "../../helpers/modifyAckedResult";
 import ChatSendAs from "./sendAs";
+import filterAsync from "../../helpers/array/filterAsync";
 
 const RECORD_MIN_TIME = 500;
 const POSTING_MEDIA_NOT_ALLOWED = 'Posting media content isn\'t allowed in this group.';
@@ -1211,7 +1212,17 @@ export default class ChatInput {
     const previousSendAs = this.sendAs;
     const sendAs = this.createSendAs();
 
-    const [isBroadcast, canPinMessage, isBot, canSend, neededFakeContainer, ackedPeerFull, ackedScheduledMids, setSendAsCallback] = await Promise.all([
+    const [
+      isBroadcast, 
+      canPinMessage, 
+      isBot, 
+      canSend, 
+      neededFakeContainer, 
+      ackedPeerFull, 
+      ackedScheduledMids, 
+      setSendAsCallback,
+      filteredAttachMenuButtons
+    ] = await Promise.all([
       this.managers.appPeersManager.isBroadcast(peerId),
       this.managers.appPeersManager.canPinMessage(peerId),
       this.managers.appPeersManager.isBot(peerId),
@@ -1219,7 +1230,8 @@ export default class ChatInput {
       this.getNeededFakeContainer(),
       modifyAckedPromise(this.managers.acknowledged.appProfileManager.getProfileByPeerId(peerId)),
       btnScheduled ? modifyAckedPromise(this.managers.acknowledged.appMessagesManager.getScheduledMessages(peerId)) : undefined,
-      sendAs ? (sendAs.setPeerId(this.chat.peerId), sendAs.updateManual(true)) : undefined
+      sendAs ? (sendAs.setPeerId(this.chat.peerId), sendAs.updateManual(true)) : undefined,
+      this.filterAttachMenuButtons()
     ]);
 
     const placeholderKey = this.messageInput ? await this.getPlaceholderKey() : undefined;
@@ -1291,7 +1303,7 @@ export default class ChatInput {
       }
       
       if(this.messageInput) {
-        this.updateMessageInput(canSend, placeholderKey);
+        this.updateMessageInput(canSend, placeholderKey, filteredAttachMenuButtons);
       } else if(this.pinnedControlBtn) {
         this.pinnedControlBtn.append(i18n(canPinMessage ? 'Chat.Input.UnpinAll' : 'Chat.Pinned.DontShow'));
       }
@@ -1373,7 +1385,14 @@ export default class ChatInput {
     i.compareAndUpdate({key});
   }
 
-  public updateMessageInput(canSend: boolean, placeholderKey: LangPackKey) {
+  private filterAttachMenuButtons() {
+    const {peerId, threadId} = this.chat;
+    return filterAsync(this.attachMenuButtons, (button) => {
+      return button.verify(peerId, threadId);
+    });
+  }
+
+  public updateMessageInput(canSend: boolean, placeholderKey: LangPackKey, visible: ChatInput['attachMenuButtons']) {
     const {chatInput, attachMenu, messageInput} = this;
     const {peerId, threadId} = this.chat;
     const isHidden = chatInput.classList.contains('is-hidden');
@@ -1387,10 +1406,8 @@ export default class ChatInput {
 
     this.updateMessageInputPlaceholder(placeholderKey);
 
-    const visible = this.attachMenuButtons.filter((button) => {
-      const good = button.verify(peerId, threadId);
-      button.element.classList.toggle('hide', !good);
-      return good;
+    this.attachMenuButtons.forEach((button) => {
+      button.element.classList.toggle('hide', !visible.includes(button));
     });
 
     if(!canSend) {

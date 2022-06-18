@@ -294,7 +294,7 @@ export default class PollElement extends HTMLElement {
     setInnerHTML(this.firstElementChild, wrapEmojiText(poll.question));
 
     Array.from(this.querySelectorAll('.poll-answer-text')).forEach((el, idx) => {
-      setInnerHTML(el, RichTextProcessor.wrapEmojiText(poll.answers[idx].text));
+      setInnerHTML(el, wrapEmojiText(poll.answers[idx].text));
     });
 
     this.descDiv = this.firstElementChild.nextElementSibling as HTMLElement;

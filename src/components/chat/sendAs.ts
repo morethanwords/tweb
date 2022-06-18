@@ -141,7 +141,7 @@ export default class ChatSendAs {
     buttons.forEach((button, idx) => {
       const peerId = peerIds[idx];
       const avatar = new AvatarElement();
-      avatar.classList.add('avatar-32', 'btn-menu-item-icon');
+      avatar.classList.add('avatar-26', 'btn-menu-item-icon');
       avatar.updateWithOptions({peerId});
 
       if(!idx) {

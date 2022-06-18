@@ -22,7 +22,6 @@ import I18n from './lib/langPack';
 import './helpers/peerIdPolyfill';
 import './lib/polyfill';
 import apiManagerProxy from './lib/mtproto/mtprotoworker';
-import loadState from './lib/appManagers/utils/state/loadState';
 import getProxiedManagers from './lib/appManagers/getProxiedManagers';
 import themeController from './helpers/themeController';
 import overlayCounter from './helpers/overlayCounter';
@@ -32,7 +31,6 @@ document.addEventListener('DOMContentLoaded', async() => {
   toggleAttributePolyfill();
 
   rootScope.managers = getProxiedManagers();
-  apiManagerProxy;
 
   singleInstance.start();
 
@@ -193,7 +191,8 @@ document.addEventListener('DOMContentLoaded', async() => {
   const langPromise = I18n.getCacheLangPack();
   
   const [stateResult, langPack] = await Promise.all([
-    loadState(),
+    // loadState(),
+    apiManagerProxy.sendState().then(([stateResult]) => stateResult),
     langPromise
   ]);
   I18n.setTimeFormat(stateResult.state.settings.timeFormat);

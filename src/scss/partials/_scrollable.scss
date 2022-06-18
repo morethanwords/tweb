@@ -94,9 +94,12 @@ html:not(.is-safari):not(.is-ios) {
     overflow-y: overlay;
     scrollbar-width: thin; // Firefox only
     scrollbar-color: rgba(0, 0, 0, 0) rgba(0, 0, 0, 0);
-    transition: scrollbar-color .3s ease;
     -ms-overflow-style: none;
     transform: translateZ(0);
+    
+    // html.is-firefox & {
+    //   transition: scrollbar-color .3s ease;
+    // }
 
     /* html.is-safari & {
       overflow-y: scroll;

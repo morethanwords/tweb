@@ -304,8 +304,8 @@ export default function wrapRichText(text: string, options: Partial<{
           }
 
           const href = (currentContext || typeof electronHelpers === 'undefined') 
-            ? encodeEntities(url)
-            : `javascript:electronHelpers.openExternal('${encodeEntities(url)}');`;
+            ? url
+            : `javascript:electronHelpers.openExternal('${url}');`;
 
           element = document.createElement('a');
           element.className = 'anchor-url';

@@ -31,11 +31,6 @@ port.addMultipleEventsListeners({
     transportController.waitForWebSocket();
   },
 
-  // windowSize: ({width, height}) => {
-  //   windowSize.width = width;
-  //   windowSize.height = height;
-  // },
-
   crypto: ({method, args}) => {
     return cryptoWorker.invokeCrypto(method as any, ...args as any);
   },

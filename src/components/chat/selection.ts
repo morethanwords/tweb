@@ -333,6 +333,7 @@ class AppSelection extends EventListenerBase<{
       this.appendCheckbox(element, checkboxField);
     } else if(hasCheckbox) {
       this.getCheckboxInputFromElement(element).parentElement.remove();
+      SetTransition(element, 'is-selected', false, 200);
     }
 
     return true;
@@ -976,6 +977,7 @@ export default class ChatSelection extends AppSelection {
   };
 
   protected onCancelSelection = async() => {
+    return;
     const promises: Promise<HTMLElement>[] = [];
     for(const [peerId, mids] of this.selectedMids) {
       for(const mid of mids) {

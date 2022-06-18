@@ -38,6 +38,7 @@ import contextMenuController from "../../helpers/contextMenuController";
 import { attachContextMenuListener } from "../../helpers/dom/attachContextMenuListener";
 import filterAsync from "../../helpers/array/filterAsync";
 import appDownloadManager from "../../lib/appManagers/appDownloadManager";
+import { SERVICE_PEER_ID } from "../../lib/mtproto/mtproto_config";
 
 export default class ChatContextMenu {
   private buttons: (ButtonMenuItemOptions & {verify: () => boolean | Promise<boolean>, notDirect?: () => boolean, withSelection?: true, isSponsored?: true})[];
@@ -171,68 +172,76 @@ export default class ChatContextMenu {
         this.mid = mid;
       }
 
-    this.isSelected = this.chat.selection.isMidSelected(this.peerId, this.mid);
-    this.message = await this.chat.getMessage(this.mid);
-    this.noForwards = !isSponsored && !(await this.managers.appMessagesManager.canForward(this.message));
-    this.viewerPeerId = undefined;
-    this.canOpenReactedList = undefined;
-
-    const initResult = await this.init();
-    element = initResult.element;
-    const {cleanup, destroy, menuPadding, reactionsMenu, reactionsMenuPosition} = initResult;
-    let isReactionsMenuVisible = false;
-    if(reactionsMenu) {
-      const className = 'is-visible';
-      isReactionsMenuVisible = reactionsMenu.container.classList.contains(className);
-      if(isReactionsMenuVisible) reactionsMenu.container.classList.remove(className);
-
-      if(reactionsMenuPosition === 'horizontal') {
-        const offsetSize = element[/* reactionsMenuPosition === 'vertical' ? 'offsetHeight' :  */'offsetWidth'];
-        // if(reactionsMenu.scrollable.container.scrollWidth > offsetWidth) {
-          const INNER_CONTAINER_PADDING = 8;
-          const visibleLength = (offsetSize - INNER_CONTAINER_PADDING) / REACTION_CONTAINER_SIZE;
-          const nextVisiblePart = visibleLength % 1;
-          const MIN_NEXT_VISIBLE_PART = 0.65;
-          if(nextVisiblePart < MIN_NEXT_VISIBLE_PART) {
-            const minSize = (offsetSize + (MIN_NEXT_VISIBLE_PART - nextVisiblePart) * REACTION_CONTAINER_SIZE) | 0;
-            element.style[/* reactionsMenuPosition === 'vertical' ? 'minHeight' :  */'minWidth'] = minSize + 'px';
-          }
-        // }
-      }
-    }
-    
-    const side: 'left' | 'right' = bubble.classList.contains('is-in') ? 'left' : 'right';
-    //bubble.parentElement.append(element);
-    //appImManager.log('contextmenu', e, bubble, side);
-    positionMenu((e as TouchEvent).touches ? (e as TouchEvent).touches[0] : e as MouseEvent, element, side, menuPadding);
-
-    if(reactionsMenu) {
-      reactionsMenu.widthContainer.style.top = element.style.top;
-      reactionsMenu.widthContainer.style.left = element.style.left;
-      reactionsMenu.widthContainer.style.setProperty('--menu-width', element[reactionsMenuPosition === 'vertical' ? 'offsetHeight' : 'offsetWidth'] + 'px');
-      element.parentElement.append(reactionsMenu.widthContainer);
-      if(isReactionsMenuVisible) void reactionsMenu.container.offsetLeft; // reflow
-    }
-
-    openBtnMenu(element, () => {
-      if(reactionsMenu) {
-        reactionsMenu.container.classList.remove('is-visible');
-      }
-
-      this.mid = 0;
-      this.peerId = undefined;
-      this.target = null;
+      this.isSelected = this.chat.selection.isMidSelected(this.peerId, this.mid);
+      this.message = await this.chat.getMessage(this.mid);
+      this.noForwards = !isSponsored && !(await this.managers.appMessagesManager.canForward(this.message));
       this.viewerPeerId = undefined;
       this.canOpenReactedList = undefined;
 
-      setTimeout(() => {
-        destroy();
-      }, 300);
-    });
+      const initResult = await this.init();
+      if(!initResult) {
+        return;
+      }
+      
+      element = initResult.element;
+      const {cleanup, destroy, menuPadding, reactionsMenu, reactionsMenuPosition} = initResult;
+      let isReactionsMenuVisible = false;
+      if(reactionsMenu) {
+        const className = 'is-visible';
+        isReactionsMenuVisible = reactionsMenu.container.classList.contains(className);
+        if(isReactionsMenuVisible) reactionsMenu.container.classList.remove(className);
 
-    if(isReactionsMenuVisible) {
-      reactionsMenu.container.classList.add('is-visible');
-    }
+        if(reactionsMenuPosition === 'horizontal') {
+          const offsetSize = element[/* reactionsMenuPosition === 'vertical' ? 'offsetHeight' :  */'offsetWidth'];
+          // if(reactionsMenu.scrollable.container.scrollWidth > offsetWidth) {
+            const INNER_CONTAINER_PADDING = 8;
+            const visibleLength = (offsetSize - INNER_CONTAINER_PADDING) / REACTION_CONTAINER_SIZE;
+            const nextVisiblePart = visibleLength % 1;
+            const MIN_NEXT_VISIBLE_PART = 0.65;
+            if(nextVisiblePart < MIN_NEXT_VISIBLE_PART) {
+              const minSize = (offsetSize + (MIN_NEXT_VISIBLE_PART - nextVisiblePart) * REACTION_CONTAINER_SIZE) | 0;
+              element.style[/* reactionsMenuPosition === 'vertical' ? 'minHeight' :  */'minWidth'] = minSize + 'px';
+            }
+          // }
+        }
+      }
+      
+      const side: 'left' | 'right' = bubble.classList.contains('is-in') ? 'left' : 'right';
+      //bubble.parentElement.append(element);
+      //appImManager.log('contextmenu', e, bubble, side);
+      positionMenu((e as TouchEvent).touches ? (e as TouchEvent).touches[0] : e as MouseEvent, element, side, menuPadding);
+
+      if(reactionsMenu) {
+        reactionsMenu.widthContainer.style.top = element.style.top;
+        reactionsMenu.widthContainer.style.left = element.style.left;
+        reactionsMenu.widthContainer.style.setProperty('--menu-width', element[reactionsMenuPosition === 'vertical' ? 'offsetHeight' : 'offsetWidth'] + 'px');
+        element.parentElement.append(reactionsMenu.widthContainer);
+        if(isReactionsMenuVisible) void reactionsMenu.container.offsetLeft; // reflow
+      }
+
+      contextMenuController.openBtnMenu(element, () => {
+        if(reactionsMenu) {
+          reactionsMenu.container.classList.remove('is-visible');
+        }
+
+        this.mid = 0;
+        this.peerId = undefined;
+        this.target = null;
+        this.viewerPeerId = undefined;
+        this.canOpenReactedList = undefined;
+        cleanup();
+
+        setTimeout(() => {
+          destroy();
+        }, 300);
+      });
+
+      if(isReactionsMenuVisible) {
+        reactionsMenu.container.classList.add('is-visible');
+      }
+    };
+    
+    r();
   };
 
   public cleanup() {
@@ -425,7 +434,7 @@ export default class ChatContextMenu {
       icon: 'forward',
       text: 'Forward',
       onClick: this.onForwardClick, // let forward the message if it's outgoing but not ours (like a changelog)
-      verify: () => !this.noForwards && this.chat.type !== 'scheduled' && (!this.message.pFlags.is_outgoing || !this.message.pFlags.out) && this.message._ !== 'messageService'
+      verify: () => !this.noForwards && this.chat.type !== 'scheduled' && (!this.message.pFlags.is_outgoing || this.message.fromId === SERVICE_PEER_ID) && this.message._ !== 'messageService'
     }, {
       icon: 'forward',
       text: 'Message.Context.Selection.Forward',
@@ -500,6 +509,10 @@ export default class ChatContextMenu {
     this.setButtons();
     
     const filteredButtons = await this.filterButtons(this.buttons);
+    if(!filteredButtons.length) {
+      return;
+    }
+
     const element = this.element = ButtonMenu(filteredButtons, this.listenerSetter);
     element.id = 'bubble-contextmenu';
     element.classList.add('contextmenu');
@@ -540,8 +553,9 @@ export default class ChatContextMenu {
       fakeText.classList.add('btn-menu-item-text-fake');
       viewsButton.element.append(fakeText);
 
+      const AVATAR_SIZE = 22;
       const MAX_AVATARS = 3;
-      const PADDING_PER_AVATAR = .875;
+      const PADDING_PER_AVATAR = 1.125;
       i18nElem.element.style.visibility = 'hidden';
       i18nElem.element.style.paddingRight = isViewingReactions ? PADDING_PER_AVATAR * Math.min(MAX_AVATARS, recentReactions.length) + 'rem' : '1rem';
       const middleware = this.middleware.get();
@@ -595,7 +609,7 @@ export default class ChatContextMenu {
         }
 
         if(reactions.length) {
-          const avatars = new StackedAvatars({avatarSize: 24});
+          const avatars = new StackedAvatars({avatarSize: AVATAR_SIZE});
           avatars.render(recentReactions ? recentReactions.map((r) => getPeerId(r.peer_id)) : reactions.map((reaction) => reaction.peerId));
           viewsButton.element.append(avatars.container);
 
@@ -645,7 +659,7 @@ export default class ChatContextMenu {
       },
       destroy: () => {
         element.remove();
-        reactionsMenu.widthContainer.remove();
+        reactionsMenu && reactionsMenu.widthContainer.remove();
       },
       menuPadding,
       reactionsMenu,

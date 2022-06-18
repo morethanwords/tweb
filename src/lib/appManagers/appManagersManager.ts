@@ -54,6 +54,7 @@ export class AppManagersManager {
     const appStoragesManager = new AppStoragesManager();
     
     await Promise.all([
+      // new Promise(() => {}),
       appStoragesManager.loadStorages(),
       this.cryptoPortPromise
     ]);

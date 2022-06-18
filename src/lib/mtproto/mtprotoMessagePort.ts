@@ -21,7 +21,6 @@ type MTProtoBroadcastEvent = {
 
 export default class MTProtoMessagePort<Master extends boolean = true> extends SuperMessagePort<{
   environment: (environment: ReturnType<typeof getEnvironment>) => void,
-  // windowSize: (payload: {width: number, height: number}) => void,
   crypto: (payload: {method: string, args: any[]}) => Promise<any>,
   state: (payload: {userId: UserId} & Awaited<ReturnType<typeof loadState>> & {storagesResults?: StoragesResults}) => void,
   manager: (payload: MTProtoManagerTaskPayload) => any,
