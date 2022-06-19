@@ -35,9 +35,10 @@ export namespace MessageRender {
 
   }; */
 
-  export const setTime = async(options: {
+  export const setTime = (options: {
     chatType: ChatType, 
-    message: Message.message | Message.messageService
+    message: Message.message | Message.messageService,
+    reactionsMessage?: Message.message
   }) => {
     const {chatType, message} = options;
     const date = new Date(message.date * 1000);
@@ -83,8 +84,7 @@ export namespace MessageRender {
       if(message.peer_id._ === 'peerUser'/*  && message.reactions?.results?.length */) {
         hasReactions = true;
 
-        reactionsMessage = await rootScope.managers.appMessagesManager.getGroupsFirstMessage(message);
-
+        reactionsMessage = options.reactionsMessage;
         reactionsElement = new ReactionsElement();
         reactionsElement.init(reactionsMessage, 'inline', true);
         reactionsElement.render();

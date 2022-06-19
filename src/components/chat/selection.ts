@@ -817,7 +817,7 @@ export default class ChatSelection extends AppSelection {
   }
 
   protected getMidsFromGroupContainer(groupContainer: HTMLElement) {
-    const elements = Array.from(groupContainer.querySelectorAll('.grouped-item')) as HTMLElement[];
+    const elements = this.chat.bubbles.getBubbleGroupedItems(groupContainer);
     if(!elements.length) {
       elements.push(groupContainer);
     }

@@ -148,8 +148,6 @@ export type BroadcastEvents = {
 
   'quick_reaction': string,
 
-  'missed_reactions_element': {message: Message.message, changedResults: ReactionCount[]},
-
   'service_notification': Update.updateServiceNotification,
 
   'logging_out': void
