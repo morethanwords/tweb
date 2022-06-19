@@ -29,6 +29,9 @@ import choosePhotoSize from "../../../lib/appManagers/utils/photos/choosePhotoSi
 import { STATE_INIT, Theme } from "../../../config/state";
 import themeController from "../../../helpers/themeController";
 import requestFile from "../../../helpers/files/requestFile";
+import { renderImageFromUrlPromise } from "../../../helpers/dom/renderImageFromUrl";
+import scaleMediaElement from "../../../helpers/canvas/scaleMediaElement";
+import { MediaSize } from "../../../helpers/mediaSize";
 
 export default class AppBackgroundTab extends SliderSuperTab {
   private grid: HTMLElement;
@@ -108,6 +111,15 @@ export default class AppBackgroundTab extends SliderSuperTab {
 
   private onUploadClick = () => {
     requestFile('image/x-png,image/png,image/jpeg').then(async(file) => {
+      if(file.name.endsWith('.png')) {
+        const img = document.createElement('img');
+        const url = URL.createObjectURL(file);
+        await renderImageFromUrlPromise(img, url, false);
+        const mimeType = 'image/jpeg';
+        const {blob} = await scaleMediaElement({media: img, size: new MediaSize(img.naturalWidth, img.naturalHeight), mimeType});
+        file = new File([blob], file.name.replace(/\.png$/, '.jpg'), {type: mimeType});
+      }
+
       const wallPaper = await this.managers.appDocsManager.prepareWallPaperUpload(file);
       const uploadPromise = this.managers.appDocsManager.uploadWallPaper(wallPaper.id);
       const uploadDeferred: CancellablePromise<any> = appDownloadManager.getNewDeferredForUpload(file.name, uploadPromise);

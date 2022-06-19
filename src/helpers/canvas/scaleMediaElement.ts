@@ -2,14 +2,15 @@ import type { MediaSize } from "../mediaSize";
 
 export default function scaleMediaElement(options: {
   media: CanvasImageSource, 
-  mediaSize: MediaSize, 
-  boxSize: MediaSize, 
+  mediaSize?: MediaSize, 
+  boxSize?: MediaSize, 
   quality?: number,
-  mimeType?: 'image/jpeg' | 'image/png'
+  mimeType?: 'image/jpeg' | 'image/png',
+  size?: MediaSize
 }): Promise<{blob: Blob, size: MediaSize}> {
   return new Promise((resolve) => {
     const canvas = document.createElement('canvas');
-    const size = options.mediaSize.aspectFitted(options.boxSize);
+    const size = options.size ?? options.mediaSize.aspectFitted(options.boxSize);
     canvas.width = size.width * window.devicePixelRatio;
     canvas.height = size.height * window.devicePixelRatio;
     const ctx = canvas.getContext('2d');
