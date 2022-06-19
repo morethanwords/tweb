@@ -32,11 +32,11 @@ import ListenerSetter from "../../helpers/listenerSetter";
 import PollElement from "../poll";
 import AudioElement from "../audio";
 import { ChatInvite, Document, Message, MessageEntity,  MessageMedia,  MessageReplyHeader, Photo, PhotoSize, ReactionCount, ReplyMarkup, SponsoredMessage, Update, User, WebPage } from "../../layer";
-import { NULL_PEER_ID, REPLIES_PEER_ID } from "../../lib/mtproto/mtproto_config";
+import { BOT_START_PARAM, NULL_PEER_ID, REPLIES_PEER_ID } from "../../lib/mtproto/mtproto_config";
 import { FocusDirection, ScrollStartCallbackDimensions } from "../../helpers/fastSmoothScroll";
 import useHeavyAnimationCheck, { getHeavyAnimationPromise, dispatchHeavyAnimationEvent, interruptHeavyAnimation } from "../../hooks/useHeavyAnimationCheck";
 import { fastRaf, fastRafPromise } from "../../helpers/schedulers";
-import deferredPromise from "../../helpers/cancellablePromise";
+import deferredPromise, { CancellablePromise } from "../../helpers/cancellablePromise";
 import RepliesElement from "./replies";
 import DEBUG from "../../config/debug";
 import { SliceEnd } from "../../helpers/slicedArray";
@@ -250,6 +250,8 @@ export default class ChatBubbles {
   private bubblesToEject: Set<HTMLElement> = new Set();
   private updatePlaceholderPosition: () => void;
   private setPeerOptions: {lastMsgId: number; topMessage: number;};
+
+  private setPeerTempId: number = 0;
 
   // private reactions: Map<number, ReactionsElement>;
 
@@ -2522,6 +2524,8 @@ export default class ChatBubbles {
   }
 
   public async setPeer(samePeer: boolean, peerId: PeerId, lastMsgId?: number, startParam?: string): Promise<{cached?: boolean, promise: Chat['setPeerPromise']}> {
+    const tempId = ++this.setPeerTempId;
+
     if(!peerId) {
       this.cleanup(true);
       this.preloader.detach();
@@ -2531,6 +2535,16 @@ export default class ChatBubbles {
     const perf = performance.now();
     const log = this.log.bindPrefix('setPeer');
     log.warn('start');
+
+    const middleware = () => {
+      return this.setPeerTempId === tempId;
+    };
+
+    const m = middlewarePromise(middleware, PEER_CHANGED_ERROR);
+
+    if(!samePeer) {
+      await m(this.chat.onChangePeer(m));
+    }
 
     /* if(samePeer && this.chat.setPeerPromise) {
       return {cached: true, promise: this.chat.setPeerPromise};
@@ -2542,8 +2556,8 @@ export default class ChatBubbles {
       lastMsgId = 0;
     }
 
-    const historyStorage = await this.chat.getHistoryStorage();
-    let topMessage = chatType === 'pinned' ? await this.managers.appMessagesManager.getPinnedMessagesMaxId(peerId) : historyStorage.maxId ?? 0;
+    const historyStorage = await m(this.chat.getHistoryStorage());
+    let topMessage = chatType === 'pinned' ? await m(this.managers.appMessagesManager.getPinnedMessagesMaxId(peerId)) : historyStorage.maxId ?? 0;
     const isTarget = lastMsgId !== undefined;
 
     // * this one will fix topMessage for null message in history (e.g. channel comments with only 1 comment and it is a topMessage)
@@ -2561,8 +2575,8 @@ export default class ChatBubbles {
       if(savedPosition) {
         
       } else if(topMessage) {
-        readMaxId = await this.managers.appMessagesManager.getReadMaxIdIfUnread(peerId, this.chat.threadId);
-        const dialog = await this.managers.appMessagesManager.getDialogOnly(peerId);
+        readMaxId = await m(this.managers.appMessagesManager.getReadMaxIdIfUnread(peerId, this.chat.threadId));
+        const dialog = await m(this.managers.appMessagesManager.getDialogOnly(peerId));
         if(/* dialog.unread_count */readMaxId && !samePeer && (!dialog || dialog.unread_count !== 1)) {
           const foundSlice = historyStorage.history.findSliceOffset(readMaxId);
           if(foundSlice && foundSlice.slice.isEnd(SliceEnd.Bottom)) {
@@ -2580,8 +2594,12 @@ export default class ChatBubbles {
 
     const isJump = lastMsgId !== topMessage/*  && overrideAdditionMsgId === undefined */;
 
+    if(startParam === undefined && await m(this.chat.isStartButtonNeeded())) {
+      startParam = BOT_START_PARAM;
+    }
+
     if(samePeer) {
-      const mounted = await this.getMountedBubble(lastMsgId);
+      const mounted = await m(this.getMountedBubble(lastMsgId));
       if(mounted) {
         if(isTarget) {
           this.scrollToBubble(mounted.bubble, 'center');
@@ -2609,7 +2627,7 @@ export default class ChatBubbles {
       this.replyFollowHistory.length = 0;
 
       this.passEntities = {
-        messageEntityBotCommand: await this.managers.appPeersManager.isAnyGroup(peerId) || await this.managers.appUsersManager.isBot(peerId)
+        messageEntityBotCommand: await m(this.managers.appPeersManager.isAnyGroup(peerId)) || await m(this.managers.appUsersManager.isBot(peerId))
       };
     }
 
@@ -2636,13 +2654,9 @@ export default class ChatBubbles {
       this.destroyResizeObserver();
     }
 
-    // const oldContainer = this.container;
     const oldChatInner = this.chatInner;
     const oldPlaceholderBubble = this.emptyPlaceholderBubble;
     this.cleanup();
-    // this.constructBubbles();
-    // const container = this.container;
-    // const chatInner = this.chatInner;/*  = document.createElement('div'); */
     const chatInner = this.chatInner = document.createElement('div');
     if(samePeer) {
       chatInner.className = oldChatInner.className;
@@ -2667,7 +2681,7 @@ export default class ChatBubbles {
 
     let result: Awaited<ReturnType<ChatBubbles['getHistory']>>;
     if(!savedPosition) {
-      result = await this.getHistory1(lastMsgId, true, isJump, additionMsgId);
+      result = await m(this.getHistory1(lastMsgId, true, isJump, additionMsgId));
     } else {
       result = {
         promise: getHeavyAnimationPromise().then(() => {
@@ -2684,10 +2698,8 @@ export default class ChatBubbles {
 
     const {promise, cached} = result;
 
-    const middleware = this.getMiddleware();
     if(!cached && !samePeer) {
-      await this.chat.finishPeerChange(isTarget, isJump, lastMsgId, startParam);
-      if(!middleware()) throw PEER_CHANGED_ERROR;
+      await m(this.chat.finishPeerChange(isTarget, isJump, lastMsgId, startParam));
       this.scrollable.container.textContent = '';
       // oldContainer.textContent = '';
       //oldChatInner.remove();
@@ -2698,14 +2710,13 @@ export default class ChatBubbles {
     this.ladderDeferred = deferredPromise<void>(); */
 
     animationIntersector.lockGroup(CHAT_ANIMATION_GROUP);
-    const setPeerPromise = promise.then(async() => {
+    const setPeerPromise = m(promise).then(async() => {
       log.warn('promise fulfilled');
 
-      let mountedByLastMsgId = haveToScrollToBubble ? await (lastMsgId ? this.getMountedBubble(lastMsgId) : {bubble: this.getLastBubble()}) : undefined;
+      let mountedByLastMsgId = haveToScrollToBubble ? await m(lastMsgId ? this.getMountedBubble(lastMsgId) : {bubble: this.getLastBubble()}) : undefined;
       if(cached && !samePeer) {
         log.warn('finishing peer change');
-        await this.chat.finishPeerChange(isTarget, isJump, lastMsgId, startParam); // * костыль
-        if(!middleware()) throw PEER_CHANGED_ERROR;
+        await m(this.chat.finishPeerChange(isTarget, isJump, lastMsgId, startParam)); // * костыль
         log.warn('finished peer change');
       }
 
@@ -2838,7 +2849,7 @@ export default class ChatBubbles {
       }
 
       if(chatType === 'chat') {
-        const dialog = await this.managers.appMessagesManager.getDialogOnly(peerId);
+        const dialog = await m(this.managers.appMessagesManager.getDialogOnly(peerId));
         if(dialog?.pFlags.unread_mark) {
           this.managers.appMessagesManager.markDialogUnread(peerId, true);
         }

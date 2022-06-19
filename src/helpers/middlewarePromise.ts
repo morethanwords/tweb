@@ -6,6 +6,14 @@
 
 export default function middlewarePromise(middleware: () => boolean, throwWhat: any = '') {
   return <T>(promise: T): T => {
+    if(!(promise instanceof Promise)) {
+      if(promise instanceof Error) {
+        throw promise;
+      } else {
+        return promise;
+      }
+    }
+
     return (promise as any as Promise<any>).then((result) => {
       if(!middleware()) {
         throw throwWhat;

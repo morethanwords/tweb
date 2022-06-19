@@ -16,7 +16,7 @@ import ChatContextMenu from "./contextMenu";
 import ChatInput from "./input";
 import ChatSelection from "./selection";
 import ChatTopbar from "./topbar";
-import { BOT_START_PARAM, NULL_PEER_ID, REPLIES_PEER_ID } from "../../lib/mtproto/mtproto_config";
+import { NULL_PEER_ID, REPLIES_PEER_ID } from "../../lib/mtproto/mtproto_config";
 import SetTransition from "../singleTransition";
 import AppPrivateSearchTab from "../sidebarRight/tabs/search";
 import renderImageFromUrl from "../../helpers/dom/renderImageFromUrl";
@@ -32,6 +32,8 @@ import SlicedArray from "../../helpers/slicedArray";
 import themeController from "../../helpers/themeController";
 import AppSharedMediaTab from "../sidebarRight/tabs/sharedMedia";
 import noop from "../../helpers/noop";
+import middlewarePromise from "../../helpers/middlewarePromise";
+import indexOfAndSplice from "../../helpers/array/indexOfAndSplice";
 
 export type ChatType = 'chat' | 'pinned' | 'replies' | 'discussion' | 'scheduled';
 
@@ -74,6 +76,7 @@ export default class Chat extends EventListenerBase<{
   public backgroundTempId: number;
   public setBackgroundPromise: Promise<void>;
   public sharedMediaTab: AppSharedMediaTab;
+  public sharedMediaTabs: AppSharedMediaTab[];
   // public renderDarkPattern: () => Promise<void>;
 
   public isAnyGroup: boolean;
@@ -103,6 +106,7 @@ export default class Chat extends EventListenerBase<{
     this.appImManager.chatsContainer.append(this.container);
 
     this.backgroundTempId = 0;
+    this.sharedMediaTabs = [];
   }
 
   public setBackground(url: string, skipAnimation?: boolean): Promise<void> {
@@ -388,6 +392,35 @@ export default class Chat extends EventListenerBase<{
     this.topbar.cleanup();
     this.selection.cleanup();
   }
+  
+  public async onChangePeer(m: ReturnType<typeof middlewarePromise>) {
+    const {peerId} = this;
+
+    const searchTab = appSidebarRight.getTab(AppPrivateSearchTab);
+    if(searchTab) {
+      searchTab.close();
+    }
+
+    const [noForwards, isRestricted, isAnyGroup] = await m(Promise.all([
+      this.managers.appPeersManager.noForwards(peerId),
+      this.managers.appPeersManager.isRestricted(peerId),
+      this._isAnyGroup(peerId),
+      this.setAutoDownloadMedia()
+    ]));
+
+    this.noForwards = noForwards;
+    this.isRestricted = isRestricted;
+    this.isAnyGroup = isAnyGroup;
+
+    this.container.classList.toggle('no-forwards', this.noForwards);
+
+    this.sharedMediaTab = appSidebarRight.createSharedMediaTab();
+    this.sharedMediaTabs.push(this.sharedMediaTab);
+
+    this.sharedMediaTab.setPeer(peerId, this.threadId);
+    this.input.clearHelper(); // костыль
+    this.selection.cleanup(); // TODO: REFACTOR !!!!!!
+  }
 
   public async setPeer(peerId: PeerId, lastMsgId?: number, startParam?: string) {
     if(!peerId) {
@@ -418,59 +451,11 @@ export default class Chat extends EventListenerBase<{
       return;
     }
 
-    let sharedMediaTabs: AppSharedMediaTab[], sharedMediaTab = this.sharedMediaTab;
-    // set new
-    if(!samePeer) {
-      const searchTab = appSidebarRight.getTab(AppPrivateSearchTab);
-      if(searchTab) {
-        searchTab.close();
-      }
-
-      const [noForwards, isRestricted, isAnyGroup] = await Promise.all([
-        this.managers.appPeersManager.noForwards(peerId),
-        this.managers.appPeersManager.isRestricted(peerId),
-        this._isAnyGroup(peerId),
-        this.setAutoDownloadMedia()
-      ]);
-
-      this.noForwards = noForwards;
-      this.isRestricted = isRestricted;
-      this.isAnyGroup = isAnyGroup;
-
-      this.container.classList.toggle('no-forwards', this.noForwards);
-
-      sharedMediaTabs = [
-        sharedMediaTab, 
-        sharedMediaTab = this.sharedMediaTab = appSidebarRight.createSharedMediaTab()
-      ];
-
-      sharedMediaTab.setPeer(peerId, this.threadId);
-      this.input.clearHelper(); // костыль
-      this.selection.cleanup(); // TODO: REFACTOR !!!!!!
-    }
-
     this.peerChanged = samePeer;
-
-    if(startParam === undefined && await this.isStartButtonNeeded()) {
-      startParam = BOT_START_PARAM;
-    }
 
     const bubblesSetPeerPromise = this.bubbles.setPeer(samePeer, peerId, lastMsgId, startParam);
     const setPeerPromise = this.setPeerPromise = bubblesSetPeerPromise.then((result) => {
-      if(!result) {
-        return;
-      }
-
-      if(!samePeer) {
-        sharedMediaTab.setLoadMutex(setPeerPromise);
-        sharedMediaTab.loadSidebarMedia(true);
-      }
-
-      return result.promise.catch(noop).finally(() => {
-        if(sharedMediaTabs) {
-          sharedMediaTabs.filter((tab) => tab && this.sharedMediaTab !== tab).forEach((tab) => this.destroySharedMediaTab(tab));
-        }
-      });
+      return result.promise;
     }).catch(noop).finally(() => {
       if(this.setPeerPromise === setPeerPromise) {
         this.setPeerPromise = null;
@@ -481,6 +466,7 @@ export default class Chat extends EventListenerBase<{
   }
 
   public destroySharedMediaTab(tab = this.sharedMediaTab) {
+    indexOfAndSplice(this.sharedMediaTabs, tab);
     tab.destroy();
   }
 
@@ -504,6 +490,7 @@ export default class Chat extends EventListenerBase<{
     this.cleanup(false);
 
     const sharedMediaTab = this.sharedMediaTab;
+    sharedMediaTab.loadSidebarMedia(true);
 
     const callbacksPromise = Promise.all([
       this.topbar.finishPeerChange(isTarget),
@@ -525,6 +512,8 @@ export default class Chat extends EventListenerBase<{
     });
 
     appSidebarRight.replaceSharedMediaTab(sharedMediaTab);
+
+    this.sharedMediaTabs.filter((tab) => tab !== sharedMediaTab).forEach((tab) => this.destroySharedMediaTab(tab));
 
     this.log.setPrefix('CHAT-' + peerId + '-' + this.type);
 
