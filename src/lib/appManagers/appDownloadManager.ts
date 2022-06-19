@@ -104,6 +104,17 @@ export class AppDownloadManager {
     return download[type] = deferred as any;
   }
 
+  public getNewDeferredForUpload<T extends Promise<any>>(fileName: string, promise: T) {
+    const deferred = this.getNewDeferred<InputFile>(fileName);
+    promise.then(deferred.resolve, deferred.reject);
+
+    deferred.finally(() => {
+      this.clearDownload(fileName);
+    });
+
+    return deferred as CancellablePromise<Awaited<T>>;
+  }
+
   private clearDownload(fileName: string) {
     delete this.downloads[fileName];
   }
@@ -162,18 +173,16 @@ export class AppDownloadManager {
     return this.downloadMedia(options, 'void');
   }
 
-  public upload(file: File | Blob, fileName?: string) {
+  public upload(file: File | Blob, fileName?: string, promise?: Promise<any>) {
     if(!fileName) {
       fileName = getFileNameForUpload(file);
     }
 
-    const deferred = this.getNewDeferred<InputFile>(fileName);
-    this.managers.apiFileManager.upload({file, fileName}).then(deferred.resolve, deferred.reject);
-
-    deferred.finally(() => {
-      this.clearDownload(fileName);
-    });
-
+    if(!promise) {
+      promise = this.managers.apiFileManager.upload({file, fileName});
+    }
+    
+    const deferred = this.getNewDeferredForUpload(fileName, promise);
     return deferred as any as CancellablePromise<InputFile>;
   }
 

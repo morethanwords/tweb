@@ -22,7 +22,7 @@ import { isServiceWorkerOnline } from '../mtproto/mtproto.worker';
 import MTProtoMessagePort from '../mtproto/mtprotoMessagePort';
 import getDocumentInput from './utils/docs/getDocumentInput';
 import getDocumentURL from './utils/docs/getDocumentURL';
-import { CancellablePromise } from '../../helpers/cancellablePromise';
+import type { ThumbCache } from '../storages/thumbs';
 
 export type MyDocument = Document.document;
 
@@ -34,6 +34,8 @@ const EXTENSION_MIME_TYPE_MAP = {
   pdf: 'application/pdf',
 };
 
+type WallPaperId = WallPaper.wallPaper['id'];
+
 let uploadWallPaperTempId = 0;
 
 export class AppDocsManager extends AppManager {
@@ -41,9 +43,12 @@ export class AppDocsManager extends AppManager {
 
   private stickerCachedThumbs: {[docId: DocId]: {[toneIndex: number]: {url: string, w: number, h: number}}};
 
+  private uploadingWallPapers: {[id: WallPaperId]: {cacheContext: ThumbCache, file: File}};
+
   protected after() {
     this.docs = {};
     this.stickerCachedThumbs = {};
+    this.uploadingWallPapers = {};
 
     MTProtoMessagePort.getInstance<false>().addEventListener('serviceWorkerOnline', (online) => {
       if(!online) {
@@ -64,8 +69,8 @@ export class AppDocsManager extends AppManager {
   };
 
   public saveDoc(doc: Document, context?: ReferenceContext): MyDocument {
-    if(doc._ === 'documentEmpty') {
-      return undefined;
+    if(!doc || doc._ === 'documentEmpty') {
+      return;
     }
 
     const oldDoc = this.docs[doc.id];
@@ -313,7 +318,7 @@ export class AppDocsManager extends AppManager {
     });
   }
 
-  public uploadWallPaper(file: File) {
+  public prepareWallPaperUpload(file: File) {
     const id = 'wallpaper-upload-' + ++uploadWallPaperTempId;
 
     const thumb = {
@@ -343,7 +348,7 @@ export class AppDocsManager extends AppManager {
 
     const cacheContext = this.thumbsStorage.setCacheContextURL(document, undefined, URL.createObjectURL(file), file.size);
 
-    let wallpaper: WallPaper.wallPaper = {
+    const wallpaper: WallPaper.wallPaper = {
       _: 'wallPaper',
       access_hash: '',
       document: document,
@@ -352,25 +357,35 @@ export class AppDocsManager extends AppManager {
       pFlags: {}
     };
 
-    const upload = this.apiFileManager.upload({file, fileName: file.name});
+    this.uploadingWallPapers[id] = {
+      cacheContext,
+      file,
+    };
 
-    upload.then((inputFile) => {
-      this.apiManager.invokeApi('account.uploadWallPaper', {
+    return wallpaper;
+  }
+
+  public uploadWallPaper(id: WallPaperId) {
+    const {cacheContext, file} = this.uploadingWallPapers[id];
+    delete this.uploadingWallPapers[id];
+
+    const upload = this.apiFileManager.upload({file, fileName: file.name});
+    return upload.then((inputFile) => {
+      return this.apiManager.invokeApi('account.uploadWallPaper', {
         file: inputFile,
         mime_type: file.type,
         settings: {
-          _: 'wallPaperSettings'
+          _: 'wallPaperSettings',
+          
         }
-      }).then((_wallpaper) => {
-        const newDoc = (_wallpaper as WallPaper.wallPaper).document as MyDocument;
-        this.thumbsStorage.setCacheContextURL(newDoc, undefined, cacheContext.url, cacheContext.downloaded);
+      }).then((wallPaper) => {
+        assumeType<WallPaper.wallPaper>(wallPaper);
+        wallPaper.document = this.saveDoc(wallPaper.document);
+        this.thumbsStorage.setCacheContextURL(wallPaper.document, undefined, cacheContext.url, cacheContext.downloaded);
 
-        wallpaper = _wallpaper as WallPaper.wallPaper;
-        wallpaper.document = this.saveDoc(wallpaper.document);
+        return wallPaper;
       });
     });
-
-    return wallpaper;
   }
 
   public getGifs() {

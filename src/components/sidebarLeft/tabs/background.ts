@@ -7,7 +7,7 @@
 import { generateSection } from "..";
 import { averageColor, averageColorFromCanvas } from "../../../helpers/averageColor";
 import blur from "../../../helpers/blur";
-import deferredPromise from "../../../helpers/cancellablePromise";
+import deferredPromise, { CancellablePromise } from "../../../helpers/cancellablePromise";
 import { attachClickEvent } from "../../../helpers/dom/clickEvent";
 import findUpClassName from "../../../helpers/dom/findUpClassName";
 import highlightningColor from "../../../helpers/highlightningColor";
@@ -30,24 +30,23 @@ import { STATE_INIT, Theme } from "../../../config/state";
 import themeController from "../../../helpers/themeController";
 import requestFile from "../../../helpers/files/requestFile";
 
-let uploadTempId = 0;
-
 export default class AppBackgroundTab extends SliderSuperTab {
   private grid: HTMLElement;
   private tempId = 0;
-  private theme: Theme;
   private clicked: Set<DocId> = new Set();
   private blurCheckboxField: CheckboxField;
 
-  private wallpapersByElement: Map<HTMLElement, WallPaper> = new Map();
+  private wallPapersByElement: Map<HTMLElement, WallPaper> = new Map();
   private elementsByKey: Map<string, HTMLElement> = new Map();
+
+  private get theme() {
+    return themeController.getTheme();
+  }
 
   init() {
     this.header.classList.add('with-border');
     this.container.classList.add('background-container', 'background-image-container');
     this.setTitle('ChatBackground');
-
-    this.theme = themeController.getTheme();
 
     {
       const container = generateSection(this.scrollable);
@@ -71,16 +70,16 @@ export default class AppBackgroundTab extends SliderSuperTab {
         withRipple: true
       });
 
-      this.listenerSetter.add(blurCheckboxField.input)('change', () => {
+      this.listenerSetter.add(blurCheckboxField.input)('change', async() => {
         this.theme.background.blur = blurCheckboxField.input.checked;
-        this.managers.appStateManager.pushToState('settings', rootScope.settings);
+        await this.managers.appStateManager.pushToState('settings', rootScope.settings);
 
         // * wait for animation end
         setTimeout(() => {
           const active = grid.querySelector('.active') as HTMLElement;
           if(!active) return;
 
-          const wallpaper = this.wallpapersByElement.get(active);
+          const wallpaper = this.wallPapersByElement.get(active);
           if((wallpaper as WallPaper.wallPaper).pFlags.pattern || wallpaper._ === 'wallPaperNoFile') {
             return;
           }
@@ -109,89 +108,39 @@ export default class AppBackgroundTab extends SliderSuperTab {
 
   private onUploadClick = () => {
     requestFile('image/x-png,image/png,image/jpeg').then(async(file) => {
-      // const id = 'wallpaper-upload-' + ++uploadTempId;
+      const wallPaper = await this.managers.appDocsManager.prepareWallPaperUpload(file);
+      const uploadPromise = this.managers.appDocsManager.uploadWallPaper(wallPaper.id);
+      const uploadDeferred: CancellablePromise<any> = appDownloadManager.getNewDeferredForUpload(file.name, uploadPromise);
 
-      // const thumb = {
-      //   _: 'photoSize',
-      //   h: 0,
-      //   w: 0,
-      //   location: {} as any,
-      //   size: file.size,
-      //   type: 'full',
-      // } as PhotoSize.photoSize;
-      // let document: MyDocument = {
-      //   _: 'document',
-      //   access_hash: '',
-      //   attributes: [],
-      //   dc_id: 0,
-      //   file_reference: [],
-      //   id,
-      //   mime_type: file.type,
-      //   size: file.size,
-      //   date: Date.now() / 1000,
-      //   pFlags: {},
-      //   thumbs: [thumb],
-      //   file_name: file.name
-      // };
+      const deferred = deferredPromise<void>();
+      deferred.addNotifyListener = uploadDeferred.addNotifyListener;
+      deferred.cancel = uploadDeferred.cancel;
 
-      // document = await this.managers.appDocsManager.saveDoc(document);
+      uploadDeferred.then((wallPaper) => {
+        this.clicked.delete(key);
+        this.elementsByKey.delete(key);
+        this.wallPapersByElement.set(container, wallPaper);
+        const newKey = this.getWallPaperKey(wallPaper);
+        this.elementsByKey.set(newKey, container);
 
-      // const cacheContext = appDownloadManager.getCacheContext(document);
-      // cacheContext.downloaded = file.size;
-      // cacheContext.url = URL.createObjectURL(file);
+        this.setBackgroundDocument(wallPaper).then(deferred.resolve, deferred.reject);
+      }, deferred.reject);
 
-      // let wallpaper: WallPaper.wallPaper = {
-      //   _: 'wallPaper',
-      //   access_hash: '',
-      //   document: document,
-      //   id,
-      //   slug: id,
-      //   pFlags: {}
-      // };
+      const key = this.getWallPaperKey(wallPaper);
+      deferred.catch(() => {
+        container.remove();
+      });
 
-      // const upload = appDownloadManager.upload(file, file.name);
+      const preloader = new ProgressivePreloader({
+        isUpload: true,
+        cancelable: true,
+        tryAgainOnFail: false
+      });
 
-      // const deferred = deferredPromise<void>();
-      // deferred.addNotifyListener = upload.addNotifyListener;
-      // deferred.cancel = upload.cancel;
+      const container = this.addWallPaper(wallPaper, false);
+      this.clicked.add(key);
 
-      // upload.then((inputFile) => {
-      //   this.managers.apiManager.invokeApi('account.uploadWallPaper', {
-      //     file: inputFile,
-      //     mime_type: file.type,
-      //     settings: {
-      //       _: 'wallPaperSettings'
-      //     }
-      //   }).then(async(_wallpaper) => {
-      //     const newDoc = (_wallpaper as WallPaper.wallPaper).document as MyDocument;
-      //     const newCacheContext = appDownloadManager.getCacheContext(newDoc);
-      //     Object.assign(newCacheContext, cacheContext);
-
-      //     wallpaper = _wallpaper as WallPaper.wallPaper;
-      //     wallpaper.document = await this.managers.appDocsManager.saveDoc(wallpaper.document);
-
-      //     this.setBackgroundDocument(wallpaper).then(deferred.resolve, deferred.reject);
-      //   }, deferred.reject);
-      // }, deferred.reject);
-
-      // const key = this.getWallpaperKey(wallpaper);
-      // deferred.then(() => {
-      //   this.clicked.delete(key);
-      // }, (err) => {
-      //   container.remove();
-      //   //console.error('i saw the body drop', err);
-      // });
-
-      // const preloader = new ProgressivePreloader({
-      //   isUpload: true,
-      //   cancelable: true,
-      //   tryAgainOnFail: false
-      // });
-
-      // const container = this.addWallPaper(wallpaper, false);
-      // this.clicked.add(key);
-
-      // preloader.attach(container, false, deferred);
+      preloader.attach(container, false, deferred);
     });
   };
 
@@ -206,98 +155,105 @@ export default class AppBackgroundTab extends SliderSuperTab {
     }
   };
 
-  private getColorsFromWallpaper(wallpaper: WallPaper) {
-    return wallpaper.settings ? [
-      wallpaper.settings.background_color,
-      wallpaper.settings.second_background_color,
-      wallpaper.settings.third_background_color,
-      wallpaper.settings.fourth_background_color
+  private getColorsFromWallPaper(wallPaper: WallPaper) {
+    return wallPaper.settings ? [
+      wallPaper.settings.background_color,
+      wallPaper.settings.second_background_color,
+      wallPaper.settings.third_background_color,
+      wallPaper.settings.fourth_background_color
     ].filter(Boolean).map((color) => '#' + color.toString(16)).join(',') : '';
   }
 
-  private getWallpaperKey(wallpaper: WallPaper) {
-    return '' + wallpaper.id;
+  private getWallPaperKey(wallPaper: WallPaper) {
+    return '' + wallPaper.id;
   }
 
-  private getWallpaperKeyFromTheme(theme: Theme) {
+  private getWallPaperKeyFromTheme(theme: Theme) {
     return '' + theme.background.id;
   }
 
-  private async addWallPaper(wallpaper: WallPaper, append = true) {
-    const colors = this.getColorsFromWallpaper(wallpaper);
-    const hasFile = wallpaper._ === 'wallPaper';
-    if((hasFile && wallpaper.pFlags.pattern && !colors)/*  || 
+  private addWallPaper(wallPaper: WallPaper, append = true) {
+    const colors = this.getColorsFromWallPaper(wallPaper);
+    const hasFile = wallPaper._ === 'wallPaper';
+    if((hasFile && wallPaper.pFlags.pattern && !colors)/*  || 
       (wallpaper.document as MyDocument).mime_type.indexOf('application/') === 0 */) {
       return;
     }
 
-    const isDark = !!wallpaper.pFlags.dark;
+    const isDark = !!wallPaper.pFlags.dark;
 
-    const doc = hasFile ? wallpaper.document as Document.document : undefined;
+    const doc = hasFile ? wallPaper.document as Document.document : undefined;
 
     const container = document.createElement('div');
     container.classList.add('grid-item');
 
-    container.dataset.id = '' + wallpaper.id;
+    container.dataset.id = '' + wallPaper.id;
 
-    const key = this.getWallpaperKey(wallpaper);
-    this.wallpapersByElement.set(container, wallpaper);
+    const key = this.getWallPaperKey(wallPaper);
+    this.wallPapersByElement.set(container, wallPaper);
     this.elementsByKey.set(key, container);
 
     const media = document.createElement('div');
     media.classList.add('grid-item-media');
 
-    let wrapped: Awaited<ReturnType<typeof wrapPhoto>>, size: PhotoSize;
+    let wrapped: ReturnType<typeof wrapPhoto>, size: PhotoSize;
     if(hasFile) {
       size = choosePhotoSize(doc, 200, 200);
-      wrapped = await wrapPhoto({
+      wrapped = wrapPhoto({
         photo: doc,
         message: null,
         container: media,
         withoutPreloader: true,
         size: size,
-        noFadeIn: wallpaper.pFlags.pattern
+        noFadeIn: wallPaper.pFlags.pattern
       });
 
-      (wrapped.loadPromises.thumb || wrapped.loadPromises.full).then(() => {
+      if(wallPaper.pFlags.pattern) {
+        media.classList.add('is-pattern');
+      }
+
+      wrapped.then(async({loadPromises, images}) => {
+        await loadPromises.thumb || loadPromises.full;
+        return images;
+      }).then((images) => {
+        if(wallPaper.pFlags.pattern) {
+          if(isDark) {
+            images.full.style.display = 'none';
+            if(images.thumb) {
+              images.thumb.style.display = 'none';
+            }
+          } else if(wallPaper.settings?.intensity) {
+            images.full.style.opacity = '' + Math.abs(wallPaper.settings.intensity) / 100;
+          }
+        }
+
         sequentialDom.mutate(() => {
           container.append(media);
         });
       });
-
-      if(wallpaper.pFlags.pattern) {
-        media.classList.add('is-pattern');
-  
-        if(isDark) {
-          wrapped.images.full.style.display = 'none';
-          if(wrapped.images.thumb) {
-            wrapped.images.thumb.style.display = 'none';
-          }
-        } else if(wallpaper.settings?.intensity) {
-          wrapped.images.full.style.opacity = '' + Math.abs(wallpaper.settings.intensity) / 100;
-        }
-      }
     } else {
       container.append(media);
     }
 
-    if(wallpaper.settings && wallpaper.settings.background_color !== undefined) {
+    if(wallPaper.settings && wallPaper.settings.background_color !== undefined) {
       const {canvas} = ChatBackgroundGradientRenderer.create(colors);
       canvas.classList.add('background-colors-canvas');
       
       if(isDark && hasFile) {
-        wrapped.loadPromises.full.then(async() => {
-          const cacheContext = await this.managers.thumbsStorage.getCacheContext(doc, size.type);
-          canvas.style.webkitMaskImage = `url(${cacheContext.url})`;
-          canvas.style.opacity = '' + Math.abs(wallpaper.settings.intensity) / 100;
-          media.append(canvas);
+        wrapped.then(({loadPromises}) => {
+          loadPromises.full.then(async() => {
+            const cacheContext = await this.managers.thumbsStorage.getCacheContext(doc, size.type);
+            canvas.style.webkitMaskImage = `url(${cacheContext.url})`;
+            canvas.style.opacity = '' + Math.abs(wallPaper.settings.intensity) / 100;
+            media.append(canvas);
+          });
         });
       } else {
         media.append(canvas);
       }
     }
 
-    if(this.getWallpaperKeyFromTheme(this.theme) === key) {
+    if(this.getWallPaperKeyFromTheme(this.theme) === key) {
       container.classList.add('active');
     }
 
@@ -310,13 +266,13 @@ export default class AppBackgroundTab extends SliderSuperTab {
     const target = findUpClassName(e.target, 'grid-item') as HTMLElement;
     if(!target) return;
 
-    const wallpaper = this.wallpapersByElement.get(target);
+    const wallpaper = this.wallPapersByElement.get(target);
     if(wallpaper._ === 'wallPaperNoFile') {
       this.setBackgroundDocument(wallpaper);
       return;
     }
     
-    const key = this.getWallpaperKey(wallpaper);
+    const key = this.getWallPaperKey(wallpaper);
     if(this.clicked.has(key)) return;
     this.clicked.add(key);
     
@@ -356,11 +312,11 @@ export default class AppBackgroundTab extends SliderSuperTab {
     });
   };
 
-  private setBackgroundDocument = (wallpaper: WallPaper) => {
+  private setBackgroundDocument = (wallPaper: WallPaper) => {
     let _tempId = ++this.tempId;
     const middleware = () => _tempId === this.tempId;
 
-    const doc = (wallpaper as WallPaper.wallPaper).document as MyDocument;
+    const doc = (wallPaper as WallPaper.wallPaper).document as MyDocument;
     const deferred = deferredPromise<void>();
     let download: Promise<void> | ReturnType<AppDownloadManager['downloadMediaURL']>;
     if(doc) {
@@ -384,7 +340,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
         if(url && !this.theme.background.color) {
           getPixelPromise = averageColor(url);
         } else {
-          const {canvas} = ChatBackgroundGradientRenderer.create(this.getColorsFromWallpaper(wallpaper));
+          const {canvas} = ChatBackgroundGradientRenderer.create(this.getColorsFromWallPaper(wallPaper));
           getPixelPromise = Promise.resolve(averageColorFromCanvas(canvas));
         }
 
@@ -398,10 +354,10 @@ export default class AppBackgroundTab extends SliderSuperTab {
           // const hsla = 'rgba(0, 0, 0, 0.3)';
           //console.log(doc, hsla, performance.now() - perf);
 
-          const slug = (wallpaper as WallPaper.wallPaper).slug ?? '';
-          background.id = wallpaper.id;
-          background.intensity = wallpaper.settings?.intensity ?? 0;
-          background.color = this.getColorsFromWallpaper(wallpaper);
+          const slug = (wallPaper as WallPaper.wallPaper).slug ?? '';
+          background.id = wallPaper.id;
+          background.intensity = wallPaper.settings?.intensity ?? 0;
+          background.color = this.getColorsFromWallPaper(wallPaper);
           background.slug = slug;
           background.highlightningColor = hsla;
           this.managers.appStateManager.pushToState('settings', rootScope.settings);
@@ -442,7 +398,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
 
   private setActive = () => {
     const active = this.grid.querySelector('.active');
-    const target = this.elementsByKey.get(this.getWallpaperKeyFromTheme(this.theme));
+    const target = this.elementsByKey.get(this.getWallPaperKeyFromTheme(this.theme));
     if(active === target) {
       return;
     }
