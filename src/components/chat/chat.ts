@@ -422,7 +422,7 @@ export default class Chat extends EventListenerBase<{
     this.selection.cleanup(); // TODO: REFACTOR !!!!!!
   }
 
-  public async setPeer(peerId: PeerId, lastMsgId?: number, startParam?: string) {
+  public setPeer(peerId: PeerId, lastMsgId?: number, startParam?: string) {
     if(!peerId) {
       this.inited = undefined;
     } else if(!this.inited) {

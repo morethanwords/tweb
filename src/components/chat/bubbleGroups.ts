@@ -80,6 +80,10 @@ class BubbleGroup {
     return this.firstItem.timestamp;
   }
 
+  get firstMid() {
+    return this.firstItem.mid;
+  }
+
   get firstItem() {
     return this.items[this.items.length - 1];
   }
@@ -145,7 +149,7 @@ class BubbleGroup {
     }
 
     if(items.length === 1) {
-      insertInDescendSortedArray(this.groups.groups, this, 'firstTimestamp');
+      insertInDescendSortedArray(this.groups.groups, this, 'firstMid');
     }
   }
 

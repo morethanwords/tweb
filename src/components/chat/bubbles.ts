@@ -944,7 +944,7 @@ export default class ChatBubbles {
   }
 
   private createScrollSaver(reverse = true) {
-    const scrollSaver = new ScrollSaver(this.scrollable, '.bubbles-group .bubble', reverse);
+    const scrollSaver = new ScrollSaver(this.scrollable, '.bubble:not(.is-date)', reverse);
     return scrollSaver;
   }
 
@@ -2743,6 +2743,10 @@ export default class ChatBubbles {
 
       if(this.attachPlaceholderOnRender) {
         this.attachPlaceholderOnRender();
+      }
+
+      if(!isTarget && this.chat.type === 'chat') {
+        this.chat.topbar.pinnedMessage.setCorrectIndex(0);
       }
 
       this.container.classList.toggle('has-groups', !!Object.keys(this.dateMessages).length);

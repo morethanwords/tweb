@@ -697,13 +697,14 @@ export default class ChatTopbar {
       newAvatar = this.constructAvatar();
     }
 
-    const [isBroadcast, isAnyChat, chat, _, setTitleCallback, setStatusCallback] = await Promise.all([
+    const [isBroadcast, isAnyChat, chat, _, setTitleCallback, setStatusCallback, state] = await Promise.all([
       this.managers.appPeersManager.isBroadcast(peerId),
       this.managers.appPeersManager.isAnyChat(peerId),
       peerId.isAnyChat() ? this.managers.appChatsManager.getChat(peerId.toChatId()) : undefined,
       newAvatar ? newAvatar.updateWithOptions({peerId}) : undefined,
       this.setTitleManual(),
       this.setPeerStatusManual(true),
+      apiManagerProxy.getState()
     ]);
 
     return () => {
@@ -726,7 +727,6 @@ export default class ChatTopbar {
   
       this.verifyButtons();
   
-      const middleware = this.chat.bubbles.getMiddleware();
       if(this.pinnedMessage) { // * replace with new one
         if(this.chat.type === 'chat') {
           if(this.chat.wasAlreadyUsed) { // * change
@@ -737,15 +737,7 @@ export default class ChatTopbar {
             this.pinnedMessage = newPinnedMessage;
           }
           
-          apiManagerProxy.getState().then((state) => {
-            if(!middleware()) return;
-    
-            this.pinnedMessage.hidden = !!state.hiddenPinnedMessages[peerId];
-    
-            if(!isTarget) {
-              this.pinnedMessage.setCorrectIndex(0);
-            }
-          });
+          this.pinnedMessage.hidden = !!state.hiddenPinnedMessages[peerId];
         } else if(this.chat.type === 'discussion') {
           this.pinnedMessage.pinnedMid = this.chat.threadId;
           this.pinnedMessage.count = 1;
@@ -756,9 +748,7 @@ export default class ChatTopbar {
   
       setTitleCallback();
       setStatusCallback && setStatusCallback();
-      fastRaf(() => {
-        this.setMutedState();
-      });
+      this.setMutedState();
 
       this.container.classList.remove('hide');
     };

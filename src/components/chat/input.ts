@@ -1386,6 +1386,7 @@ export default class ChatInput {
   }
 
   private filterAttachMenuButtons() {
+    if(!this.attachMenuButtons) return;
     const {peerId, threadId} = this.chat;
     return filterAsync(this.attachMenuButtons, (button) => {
       return button.verify(peerId, threadId);
@@ -1406,7 +1407,7 @@ export default class ChatInput {
 
     this.updateMessageInputPlaceholder(placeholderKey);
 
-    this.attachMenuButtons.forEach((button) => {
+    this.attachMenuButtons && this.attachMenuButtons.forEach((button) => {
       button.element.classList.toggle('hide', !visible.includes(button));
     });
 
@@ -1421,8 +1422,11 @@ export default class ChatInput {
       }
     }
     
-    attachMenu.toggleAttribute('disabled', !visible.length);
-    attachMenu.classList.toggle('btn-disabled', !visible.length);
+    if(attachMenu) {
+      attachMenu.toggleAttribute('disabled', !visible.length);
+      attachMenu.classList.toggle('btn-disabled', !visible.length);
+    }
+    
     this.updateSendBtn();
   }
 

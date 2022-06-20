@@ -12,7 +12,7 @@ import reflowScrollableElement from "./dom/reflowScrollableElement";
 
 export default class ScrollSaver {
   private scrollHeight: number;
-  // private scrollHeightMinusTop: number;
+  private scrollHeightMinusTop: number;
   private scrollTop: number;
   private clientHeight: number;
   private anchor: HTMLElement;
@@ -60,6 +60,14 @@ export default class ScrollSaver {
       }
     }
 
+    if(!rect) {
+      const bubble = bubbles[0];
+      if(bubble) {
+        rect = bubble.getBoundingClientRect();
+        anchor = bubble;
+      }
+    }
+
     return {rect, anchor};
   }
 
@@ -83,7 +91,7 @@ export default class ScrollSaver {
     this.scrollHeight = scrollHeight;
     this.scrollTop = scrollTop;
     this.clientHeight = clientHeight;
-    // this.scrollHeightMinusTop = this.reverse ? scrollHeight - scrollTop : scrollTop;
+    this.scrollHeightMinusTop = this.reverse ? scrollHeight - scrollTop : scrollTop;
 
     //this.chatInner.style.paddingTop = padding + 'px';
     /* if(reverse) {
@@ -113,13 +121,13 @@ export default class ScrollSaver {
     const {scrollTop, scrollHeight} = this.scrollable;
     this.scrollHeight = scrollHeight;
 
-    // if(!this.anchor.parentElement) { // fallback to old method if element has disappeared (e.g. edited)
-    //   this._restore(useReflow);
-    //   return;
-    // }
-
-    if(!this.anchor.parentElement) { // try to find new anchor
+    if(!this.anchor?.parentElement) { // try to find new anchor
       this.findAndSetAnchor();
+
+      if(!this.anchor) { // fallback to old method if smth is really strange
+        this._restore(useReflow);
+        return;
+      }
     }
 
     const rect = this.rect;
@@ -129,47 +137,47 @@ export default class ScrollSaver {
     // console.warn('scroll restore', rect, diff, newRect);
   }
 
-  // public _restore(useReflow?: boolean) {
-  //   const {scrollHeightMinusTop: previousScrollHeightMinusTop, scrollable} = this;
-  //   // if(previousScrollHeightMinusTop === undefined) {
-  //   //   throw new Error('scroll was not saved');
-  //   // }
+  public _restore(useReflow?: boolean) {
+    const {scrollHeightMinusTop: previousScrollHeightMinusTop, scrollable} = this;
+    // if(previousScrollHeightMinusTop === undefined) {
+    //   throw new Error('scroll was not saved');
+    // }
 
-  //   // const scrollHeight = container.scrollHeight;
-  //   const scrollHeight = this.scrollHeight;
-  //   // if(scrollHeight === this.scrollHeight) {
-  //   //   return;
-  //   // }
+    // const scrollHeight = container.scrollHeight;
+    const scrollHeight = this.scrollHeight;
+    // if(scrollHeight === this.scrollHeight) {
+    //   return;
+    // }
 
-  //   // this.scrollHeight = scrollHeight;
+    // this.scrollHeight = scrollHeight;
 
-  //   /* const scrollHeight = container.scrollHeight;
-  //   const addedHeight = scrollHeight - previousScrollHeight;
+    /* const scrollHeight = container.scrollHeight;
+    const addedHeight = scrollHeight - previousScrollHeight;
     
-  //   this.chatInner.style.paddingTop = (10000 - addedHeight) + 'px'; */
-  //   /* const scrollHeight = scrollHeight;
-  //   const addedHeight = scrollHeight - previousScrollHeight;
+    this.chatInner.style.paddingTop = (10000 - addedHeight) + 'px'; */
+    /* const scrollHeight = scrollHeight;
+    const addedHeight = scrollHeight - previousScrollHeight;
     
-  //   this.chatInner.style.paddingTop = (padding - addedHeight) + 'px';
+    this.chatInner.style.paddingTop = (padding - addedHeight) + 'px';
     
-  //   //const newScrollTop = reverse ? scrollHeight - previousScrollHeightMinusTop : previousScrollHeightMinusTop;
-  //   const newScrollTop = reverse ? scrollHeight - addedHeight - previousScrollHeightMinusTop : previousScrollHeightMinusTop;
-  //   this.log('performHistoryResult: will set scrollTop', 
-  //   previousScrollHeightMinusTop, scrollHeight, 
-  //   newScrollTop, container.container.clientHeight); */
-  //   //const newScrollTop = reverse ? scrollHeight - previousScrollHeightMinusTop : previousScrollHeightMinusTop;
-  //   const newScrollTop = this.reverse ? scrollHeight - previousScrollHeightMinusTop : previousScrollHeightMinusTop;
+    //const newScrollTop = reverse ? scrollHeight - previousScrollHeightMinusTop : previousScrollHeightMinusTop;
+    const newScrollTop = reverse ? scrollHeight - addedHeight - previousScrollHeightMinusTop : previousScrollHeightMinusTop;
+    this.log('performHistoryResult: will set scrollTop', 
+    previousScrollHeightMinusTop, scrollHeight, 
+    newScrollTop, container.container.clientHeight); */
+    //const newScrollTop = reverse ? scrollHeight - previousScrollHeightMinusTop : previousScrollHeightMinusTop;
+    const newScrollTop = this.reverse ? scrollHeight - previousScrollHeightMinusTop : previousScrollHeightMinusTop;
     
-  //   /* if(DEBUG) {
-  //     this.log('performHistoryResult: will set up scrollTop:', newScrollTop, this.isHeavyAnimationInProgress);
-  //   } */
+    /* if(DEBUG) {
+      this.log('performHistoryResult: will set up scrollTop:', newScrollTop, this.isHeavyAnimationInProgress);
+    } */
 
-  //   this.setScrollTop(newScrollTop, useReflow);
+    this.setScrollTop(newScrollTop, useReflow);
 
-  //   /* if(DEBUG) {
-  //     this.log('performHistoryResult: have set up scrollTop:', newScrollTop, container.scrollTop, container.scrollHeight, this.isHeavyAnimationInProgress);
-  //   } */
-  // }
+    /* if(DEBUG) {
+      this.log('performHistoryResult: have set up scrollTop:', newScrollTop, container.scrollTop, container.scrollHeight, this.isHeavyAnimationInProgress);
+    } */
+  }
 }
 
 MOUNT_CLASS_TO && (MOUNT_CLASS_TO.ScrollSaver = ScrollSaver);
