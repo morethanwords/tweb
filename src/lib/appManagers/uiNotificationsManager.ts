@@ -22,7 +22,6 @@ import webPushApiManager, { PushSubscriptionNotify } from "../mtproto/webPushApi
 import fixEmoji from "../richTextProcessor/fixEmoji";
 import wrapPlainText from "../richTextProcessor/wrapPlainText";
 import rootScope from "../rootScope";
-import stateStorage from "../stateStorage";
 import appRuntimeManager from "./appRuntimeManager";
 import { AppManagers } from "./managers";
 import getPeerId from "./utils/peers/getPeerId";
@@ -493,7 +492,10 @@ export class UiNotificationsManager {
   }
 
   public updateLocalSettings = () => {
-    Promise.all(['notify_nodesktop', 'notify_volume', 'notify_novibrate', 'notify_nopreview', 'notify_nopush'].map((k) => stateStorage.get(k as any)))
+    const keys = ['notify_nodesktop', 'notify_volume', 'notify_novibrate', 'notify_nopreview', 'notify_nopush'];
+    const promises = keys.map(() => undefined);
+    // const promises = keys.map((k) => stateStorage.get(k as any));
+    Promise.all(promises)
     .then((updSettings) => {
       this.settings.nodesktop = updSettings[0];
       this.settings.volume = updSettings[1] === undefined ? 0.5 : updSettings[1];

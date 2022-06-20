@@ -15,7 +15,7 @@ import webPushApiManager from './webPushApiManager';
 import AppStorage from '../storage';
 import appRuntimeManager from '../appManagers/appRuntimeManager';
 import telegramMeWebManager from './telegramMeWebManager';
-import { CacheStorageDbName } from '../cacheStorage';
+import CacheStorageController, { CacheStorageDbName } from '../cacheStorage';
 import pause from '../../helpers/schedulers/pause';
 import isObject from '../../helpers/object/isObject';
 import ENVIRONMENT from '../../environment';
@@ -26,9 +26,10 @@ import cryptoMessagePort from '../crypto/cryptoMessagePort';
 import SuperMessagePort from './superMessagePort';
 import IS_SHARED_WORKER_SUPPORTED from '../../environment/sharedWorkerSupport';
 import type { State } from '../../config/state';
+import toggleStorages from '../../helpers/toggleStorages';
 
 export interface ToggleStorageTask extends WorkerTaskVoidTemplate {
-  type: 'toggleStorage',
+  type: 'toggleStorages',
   payload: boolean
 };
 
@@ -157,7 +158,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
     rootScope.addEventListener('logging_out', () => {
       const toClear: CacheStorageDbName[] = ['cachedFiles', 'cachedStreamChunks'];
       Promise.all([
-        AppStorage.toggleStorage(false), 
+        toggleStorages(false), 
         sessionStorage.clear(),
         Promise.race([
           telegramMeWebManager.setAuthorized(false),
@@ -356,9 +357,10 @@ class ApiManagerProxy extends MTProtoMessagePort {
   }
   /// #endif
 
-  public toggleStorage(enabled: boolean) {
-    const task: ToggleStorageTask = {type: 'toggleStorage', payload: enabled};
-    this.invoke('toggleStorage', enabled);
+  public async toggleStorages(enabled: boolean) {
+    await toggleStorages(enabled);
+    this.invoke('toggleStorages', enabled);
+    const task: ToggleStorageTask = {type: 'toggleStorages', payload: enabled};
     this.postSWMessage(task);
   }
 

@@ -93,7 +93,7 @@ const taskListeners: {
       delete promises[task.id];
     }
   },
-  toggleStorage: (task: ToggleStorageTask) => {
+  toggleStorages: (task: ToggleStorageTask) => {
     CacheStorageController.toggleStorage(task.payload);
   }
 };

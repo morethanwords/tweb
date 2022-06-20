@@ -17,11 +17,17 @@ import MTProtoMessagePort from './mtprotoMessagePort';
 import RESET_STORAGES_PROMISE from '../appManagers/utils/storages/resetStoragesPromise';
 import appManagersManager from '../appManagers/appManagersManager';
 import listenMessagePort from '../../helpers/listenMessagePort';
+import { logger } from '../logger';
+import { State } from '../../config/state';
+import AppStorage from '../storage';
+import toggleStorages from '../../helpers/toggleStorages';
 
 let _isServiceWorkerOnline = true;
 export function isServiceWorkerOnline() {
   return _isServiceWorkerOnline;
 }
+
+const log = logger('MTPROTO');
 
 const port = new MTProtoMessagePort<false>();
 port.addMultipleEventsListeners({
@@ -36,24 +42,23 @@ port.addMultipleEventsListeners({
   },
 
   state: ({state, resetStorages, pushedKeys, newVersion, oldVersion, userId}) => {
+    log('got state', state, pushedKeys);
+
     appStateManager.userId = userId;
     appStateManager.newVersion = newVersion;
     appStateManager.oldVersion = oldVersion;
-    appStateManager.setState(state);
-    for(const key of pushedKeys) {
-      appStateManager.setKeyValueToStorage(key);
-    }
+    
+    (Object.keys(state) as any as (keyof State)[]).forEach((key) => {
+      appStateManager.pushToState(key, state[key], true, !pushedKeys.includes(key));
+    });
 
     RESET_STORAGES_PROMISE.resolve(resetStorages);
   },
 
-  toggleStorage: (enabled) => {
-    // AppStorage.toggleStorage(enabled);
-    CacheStorageController.toggleStorage(enabled);
-  },
+  toggleStorages: (enabled) => toggleStorages(enabled),
 
   event: (payload, source) => {
-    console.log('will redirect event', payload, source);
+    log('will redirect event', payload, source);
     port.invokeExceptSource('event', payload, source);
   },
 
@@ -94,7 +99,7 @@ port.addMultipleEventsListeners({
   // },
 });
 
-console.log('MTProto start');
+log('MTProto start');
 
 appManagersManager.start();
 appManagersManager.getManagers();

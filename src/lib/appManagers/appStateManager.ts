@@ -11,7 +11,7 @@ import setDeepProperty from '../../helpers/object/setDeepProperty';
 import MTProtoMessagePort from '../mtproto/mtprotoMessagePort';
 
 export class AppStateManager {
-  private state: State;
+  private state: State = {} as any;
   private storage = stateStorage;
 
   // ! for mtproto worker use only
@@ -21,10 +21,6 @@ export class AppStateManager {
 
   public getState() {
     return Promise.resolve(this.state);
-  }
-
-  public setState(state: State) {
-    return this.state = state;
   }
 
   public setByKey(key: string, value: any) {
@@ -38,20 +34,20 @@ export class AppStateManager {
     this.pushToState(first, this.state[first]);
   }
 
-  public pushToState<T extends keyof State>(key: T, value: State[T], direct = true) {
+  public pushToState<T extends keyof State>(key: T, value: State[T], direct = true, onlyLocal?: boolean) {
     if(direct) {
       this.state[key] = value;
     }
 
-    this.setKeyValueToStorage(key, value);
+    this.setKeyValueToStorage(key, value, onlyLocal);
   }
 
-  public setKeyValueToStorage<T extends keyof State>(key: T, value: State[T] = this.state[key]) {
+  public setKeyValueToStorage<T extends keyof State>(key: T, value: State[T] = this.state[key], onlyLocal?: boolean) {
     MTProtoMessagePort.getInstance<false>().invoke('mirror', {name: 'state', key, value});
     
     this.storage.set({
       [key]: value
-    });
+    }, onlyLocal);
   }
 
   /* public resetState() {

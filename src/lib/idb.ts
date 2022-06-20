@@ -261,7 +261,7 @@ export default class IDBStorage<T extends Database<any>, StoreName extends strin
     }, DEBUG ? 'delete: ' + entryName.join(', ') : '', storeName);
   }
 
-  public clear(storeName?: StoreName) {
+  public clear(storeName?: StoreName): Promise<void> {
     return this.getObjectStore('readwrite', (objectStore) => objectStore.clear(), DEBUG ? 'clear' : '', storeName);
   }
 
@@ -422,7 +422,12 @@ export default class IDBStorage<T extends Database<any>, StoreName extends strin
         };
 
         transaction.onerror = onError;
-        // transaction.oncomplete = () => onComplete('transaction');
+
+        // * have to wait while clearing or setting something
+        const waitForTransactionComplete = mode === 'readwrite';
+        if(waitForTransactionComplete) {
+          transaction.oncomplete = () => onComplete(/* 'transaction' */);
+        }
   
         const timeout = setTimeout(() => {
           this.log.error('transaction not finished', transaction, log);
@@ -437,6 +442,10 @@ export default class IDBStorage<T extends Database<any>, StoreName extends strin
 
         const isArray = Array.isArray(callbackResult);
         const requests: IDBRequest[] = isArray ? callbackResult : [].concat(callbackResult) as any;
+
+        if(waitForTransactionComplete) {
+          return;
+        }
 
         const length = requests.length;
         let left = length;

@@ -13,6 +13,7 @@ import { Database } from "../config/databases";
 import { MOUNT_CLASS_TO } from "../config/debug";
 //import DATABASE_SESSION from "../config/databases/session";
 import deferredPromise, { CancellablePromise } from "../helpers/cancellablePromise";
+import { IS_WORKER } from "../helpers/context";
 import throttle from "../helpers/schedulers/throttle";
 //import { WorkerTaskTemplate } from "../types";
 import IDBStorage from "./idb";
@@ -295,6 +296,10 @@ export default class AppStorage<
     return Promise.all(this.STORAGES.map((storage) => {
       storage.useStorage = enabled;
       
+      if(!IS_WORKER) {
+        return;
+      }
+
       if(!enabled) {
         storage.keysToSet.clear();
         storage.keysToDelete.clear();

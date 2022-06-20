@@ -11,6 +11,7 @@ import type { StoragesResults } from "../appManagers/utils/storages/loadStorages
 import type { LocalStorageProxyTask } from "../localStorage";
 import type { Awaited } from "../../types";
 import type { Mirrors, MirrorTaskPayload } from "./mtprotoworker";
+import type toggleStorages from "../../helpers/toggleStorages";
 import SuperMessagePort from "./superMessagePort";
 
 export type MTProtoManagerTaskPayload = {name: string, method: string, args: any[]};
@@ -24,7 +25,7 @@ export default class MTProtoMessagePort<Master extends boolean = true> extends S
   crypto: (payload: {method: string, args: any[]}) => Promise<any>,
   state: (payload: {userId: UserId} & Awaited<ReturnType<typeof loadState>> & {storagesResults?: StoragesResults}) => void,
   manager: (payload: MTProtoManagerTaskPayload) => any,
-  toggleStorage: (enable: boolean) => void,
+  toggleStorages: typeof toggleStorages,
   serviceWorkerOnline: (online: boolean) => void,
   cryptoPort: (payload: void, source: MessageEventSource, event: MessageEvent) => void,
   createObjectURL: (blob: Blob) => string

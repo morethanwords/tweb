@@ -42,6 +42,7 @@ import pause from '../../helpers/schedulers/pause';
 import ApiManagerMethods from './api_methods';
 import { getEnvironment } from '../../environment/utils';
 import AppStorage from '../storage';
+import toggleStorages from '../../helpers/toggleStorages';
 
 /* var networker = apiManager.cachedNetworkers.websocket.upload[2];
 networker.wrapMtpMessage({
@@ -296,7 +297,7 @@ export class ApiManager extends ApiManagerMethods {
     const clear = async() => {
       this.baseDcId = undefined;
       //this.telegramMeNotify(false);
-      await AppStorage.toggleStorage(false);
+      await toggleStorages(false);
       IDB.closeDatabases();
       this.rootScope.dispatchEvent('logging_out');
     };
