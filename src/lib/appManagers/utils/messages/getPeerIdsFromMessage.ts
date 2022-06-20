@@ -49,5 +49,10 @@ export default function getPeerIdsFromMessage(message: Message.message | Message
     peerIds.push(...chatIds.filter(Boolean).map((chatId) => chatId.toPeerId(true)));
   }
 
+  const recentRepliers = ((message as Message.message).replies)?.recent_repliers;
+  if(recentRepliers?.length) {
+    peerIds.push(...recentRepliers.map((reply) => getPeerId(reply)));
+  }
+
   return new Set(peerIds.filter(Boolean));
 }
