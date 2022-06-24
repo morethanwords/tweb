@@ -298,7 +298,7 @@ async function loadStateInner() {
   let newVersion: string, oldVersion: string;
   if(state.version !== STATE_VERSION || state.build !== BUILD/*  || true */) {
     // reset filters and dialogs if version is older
-    if(compareVersion(state.version, '0.8.7') === -1) {
+    if(compareVersion(state.version, '0.8.7') === -1 || state.build < 179) {
       state.allDialogsLoaded = copy(STATE_INIT.allDialogsLoaded);
       state.filters = copy(STATE_INIT.filters);
 
