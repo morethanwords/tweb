@@ -498,8 +498,6 @@ export namespace User {
 			apply_min_photo?: true,
 			fake?: true,
 			bot_attach_menu?: true,
-			premium?: true,
-			attach_menu_enabled?: true,
 		}>,
 		id: string | number,
 		access_hash?: string | number,
@@ -1121,10 +1119,8 @@ export namespace MessageAction {
 
 	export type messageActionPaymentSent = {
 		_: 'messageActionPaymentSent',
-		flags?: number,
 		currency: string,
-		total_amount: string | number,
-		invoice_slug?: string
+		total_amount: string | number
 	};
 
 	export type messageActionPhoneCall = {
@@ -1994,7 +1990,7 @@ export namespace MessagesFilter {
 /**
  * @link https://core.telegram.org/type/Update
  */
-export type Update = Update.updateNewMessage | Update.updateMessageID | Update.updateDeleteMessages | Update.updateUserTyping | Update.updateChatUserTyping | Update.updateChatParticipants | Update.updateUserStatus | Update.updateUserName | Update.updateUserPhoto | Update.updateNewEncryptedMessage | Update.updateEncryptedChatTyping | Update.updateEncryption | Update.updateEncryptedMessagesRead | Update.updateChatParticipantAdd | Update.updateChatParticipantDelete | Update.updateDcOptions | Update.updateNotifySettings | Update.updateServiceNotification | Update.updatePrivacy | Update.updateUserPhone | Update.updateReadHistoryInbox | Update.updateReadHistoryOutbox | Update.updateWebPage | Update.updateReadMessagesContents | Update.updateChannelTooLong | Update.updateChannel | Update.updateNewChannelMessage | Update.updateReadChannelInbox | Update.updateDeleteChannelMessages | Update.updateChannelMessageViews | Update.updateChatParticipantAdmin | Update.updateNewStickerSet | Update.updateStickerSetsOrder | Update.updateStickerSets | Update.updateSavedGifs | Update.updateBotInlineQuery | Update.updateBotInlineSend | Update.updateEditChannelMessage | Update.updateBotCallbackQuery | Update.updateEditMessage | Update.updateInlineBotCallbackQuery | Update.updateReadChannelOutbox | Update.updateDraftMessage | Update.updateReadFeaturedStickers | Update.updateRecentStickers | Update.updateConfig | Update.updatePtsChanged | Update.updateChannelWebPage | Update.updateDialogPinned | Update.updatePinnedDialogs | Update.updateBotWebhookJSON | Update.updateBotWebhookJSONQuery | Update.updateBotShippingQuery | Update.updateBotPrecheckoutQuery | Update.updatePhoneCall | Update.updateLangPackTooLong | Update.updateLangPack | Update.updateFavedStickers | Update.updateChannelReadMessagesContents | Update.updateContactsReset | Update.updateChannelAvailableMessages | Update.updateDialogUnreadMark | Update.updateMessagePoll | Update.updateChatDefaultBannedRights | Update.updateFolderPeers | Update.updatePeerSettings | Update.updatePeerLocated | Update.updateNewScheduledMessage | Update.updateDeleteScheduledMessages | Update.updateTheme | Update.updateGeoLiveViewed | Update.updateLoginToken | Update.updateMessagePollVote | Update.updateDialogFilter | Update.updateDialogFilterOrder | Update.updateDialogFilters | Update.updatePhoneCallSignalingData | Update.updateChannelMessageForwards | Update.updateReadChannelDiscussionInbox | Update.updateReadChannelDiscussionOutbox | Update.updatePeerBlocked | Update.updateChannelUserTyping | Update.updatePinnedMessages | Update.updatePinnedChannelMessages | Update.updateChat | Update.updateGroupCallParticipants | Update.updateGroupCall | Update.updatePeerHistoryTTL | Update.updateChatParticipant | Update.updateChannelParticipant | Update.updateBotStopped | Update.updateGroupCallConnection | Update.updateBotCommands | Update.updatePendingJoinRequests | Update.updateBotChatInviteRequester | Update.updateMessageReactions | Update.updateAttachMenuBots | Update.updateWebViewResultSent | Update.updateBotMenuButton | Update.updateSavedRingtones | Update.updateTranscribeAudio | Update.updateNewDiscussionMessage | Update.updateDeleteDiscussionMessages | Update.updateChannelReload;
+export type Update = Update.updateNewMessage | Update.updateMessageID | Update.updateDeleteMessages | Update.updateUserTyping | Update.updateChatUserTyping | Update.updateChatParticipants | Update.updateUserStatus | Update.updateUserName | Update.updateUserPhoto | Update.updateNewEncryptedMessage | Update.updateEncryptedChatTyping | Update.updateEncryption | Update.updateEncryptedMessagesRead | Update.updateChatParticipantAdd | Update.updateChatParticipantDelete | Update.updateDcOptions | Update.updateNotifySettings | Update.updateServiceNotification | Update.updatePrivacy | Update.updateUserPhone | Update.updateReadHistoryInbox | Update.updateReadHistoryOutbox | Update.updateWebPage | Update.updateReadMessagesContents | Update.updateChannelTooLong | Update.updateChannel | Update.updateNewChannelMessage | Update.updateReadChannelInbox | Update.updateDeleteChannelMessages | Update.updateChannelMessageViews | Update.updateChatParticipantAdmin | Update.updateNewStickerSet | Update.updateStickerSetsOrder | Update.updateStickerSets | Update.updateSavedGifs | Update.updateBotInlineQuery | Update.updateBotInlineSend | Update.updateEditChannelMessage | Update.updateBotCallbackQuery | Update.updateEditMessage | Update.updateInlineBotCallbackQuery | Update.updateReadChannelOutbox | Update.updateDraftMessage | Update.updateReadFeaturedStickers | Update.updateRecentStickers | Update.updateConfig | Update.updatePtsChanged | Update.updateChannelWebPage | Update.updateDialogPinned | Update.updatePinnedDialogs | Update.updateBotWebhookJSON | Update.updateBotWebhookJSONQuery | Update.updateBotShippingQuery | Update.updateBotPrecheckoutQuery | Update.updatePhoneCall | Update.updateLangPackTooLong | Update.updateLangPack | Update.updateFavedStickers | Update.updateChannelReadMessagesContents | Update.updateContactsReset | Update.updateChannelAvailableMessages | Update.updateDialogUnreadMark | Update.updateMessagePoll | Update.updateChatDefaultBannedRights | Update.updateFolderPeers | Update.updatePeerSettings | Update.updatePeerLocated | Update.updateNewScheduledMessage | Update.updateDeleteScheduledMessages | Update.updateTheme | Update.updateGeoLiveViewed | Update.updateLoginToken | Update.updateMessagePollVote | Update.updateDialogFilter | Update.updateDialogFilterOrder | Update.updateDialogFilters | Update.updatePhoneCallSignalingData | Update.updateChannelMessageForwards | Update.updateReadChannelDiscussionInbox | Update.updateReadChannelDiscussionOutbox | Update.updatePeerBlocked | Update.updateChannelUserTyping | Update.updatePinnedMessages | Update.updatePinnedChannelMessages | Update.updateChat | Update.updateGroupCallParticipants | Update.updateGroupCall | Update.updatePeerHistoryTTL | Update.updateChatParticipant | Update.updateChannelParticipant | Update.updateBotStopped | Update.updateGroupCallConnection | Update.updateBotCommands | Update.updatePendingJoinRequests | Update.updateBotChatInviteRequester | Update.updateMessageReactions | Update.updateAttachMenuBots | Update.updateWebViewResultSent | Update.updateBotMenuButton | Update.updateSavedRingtones | Update.updateNewDiscussionMessage | Update.updateDeleteDiscussionMessages | Update.updateChannelReload;
 
 export namespace Update {
   export type updateNewMessage = {
@@ -2702,16 +2698,6 @@ export namespace Update {
 		_: 'updateSavedRingtones'
 	};
 
-	export type updateTranscribeAudio = {
-		_: 'updateTranscribeAudio',
-		flags?: number,
-		pFlags?: Partial<{
-			final?: true,
-		}>,
-		transcription_id: string | number,
-		text: string
-	};
-
 	export type updateNewDiscussionMessage = {
 		_: 'updateNewDiscussionMessage',
 		message?: Message
@@ -2950,7 +2936,6 @@ export namespace DcOption {
 			tcpo_only?: true,
 			cdn?: true,
 			static?: true,
-			this_port_only?: true,
 		}>,
 		id: number,
 		ip_address: string,
@@ -2976,7 +2961,6 @@ export namespace Config {
 			revoke_pm_inbox?: true,
 			blocked_mode?: true,
 			pfs_enabled?: true,
-			force_try_ipv6?: true,
 		}>,
 		date: number,
 		expires: number,
@@ -3157,7 +3141,7 @@ export namespace EncryptedFile {
 		_: 'encryptedFile',
 		id: string | number,
 		access_hash: string | number,
-		size: string | number,
+		size: number,
 		dc_id: number,
 		key_fingerprint: number
 	};
@@ -3944,7 +3928,7 @@ export namespace ReceivedNotifyMessage {
 /**
  * @link https://core.telegram.org/type/ExportedChatInvite
  */
-export type ExportedChatInvite = ExportedChatInvite.chatInviteExported | ExportedChatInvite.chatInvitePublicJoinRequests;
+export type ExportedChatInvite = ExportedChatInvite.chatInviteExported;
 
 export namespace ExportedChatInvite {
   export type chatInviteExported = {
@@ -3964,10 +3948,6 @@ export namespace ExportedChatInvite {
 		usage?: number,
 		requested?: number,
 		title?: string
-	};
-
-	export type chatInvitePublicJoinRequests = {
-		_: 'chatInvitePublicJoinRequests'
 	};
 }
 
@@ -4110,13 +4090,10 @@ export type BotInfo = BotInfo.botInfo;
 export namespace BotInfo {
   export type botInfo = {
 		_: 'botInfo',
-		flags?: number,
-		user_id?: string | number,
-		description?: string,
-		description_photo?: Photo,
-		description_document?: Document,
-		commands?: Array<BotCommand>,
-		menu_button?: BotMenuButton
+		user_id: string | number,
+		description: string,
+		commands: Array<BotCommand>,
+		menu_button: BotMenuButton
 	};
 }
 
@@ -4295,7 +4272,7 @@ export namespace ReplyMarkup {
 /**
  * @link https://core.telegram.org/type/MessageEntity
  */
-export type MessageEntity = MessageEntity.messageEntityUnknown | MessageEntity.messageEntityMention | MessageEntity.messageEntityHashtag | MessageEntity.messageEntityBotCommand | MessageEntity.messageEntityUrl | MessageEntity.messageEntityEmail | MessageEntity.messageEntityBold | MessageEntity.messageEntityItalic | MessageEntity.messageEntityCode | MessageEntity.messageEntityPre | MessageEntity.messageEntityTextUrl | MessageEntity.messageEntityMentionName | MessageEntity.inputMessageEntityMentionName | MessageEntity.messageEntityPhone | MessageEntity.messageEntityCashtag | MessageEntity.messageEntityUnderline | MessageEntity.messageEntityStrike | MessageEntity.messageEntityBlockquote | MessageEntity.messageEntityBankCard | MessageEntity.messageEntitySpoiler | MessageEntity.messageEntityAnimatedEmoji | MessageEntity.messageEntityEmoji | MessageEntity.messageEntityHighlight | MessageEntity.messageEntityLinebreak | MessageEntity.messageEntityCaret;
+export type MessageEntity = MessageEntity.messageEntityUnknown | MessageEntity.messageEntityMention | MessageEntity.messageEntityHashtag | MessageEntity.messageEntityBotCommand | MessageEntity.messageEntityUrl | MessageEntity.messageEntityEmail | MessageEntity.messageEntityBold | MessageEntity.messageEntityItalic | MessageEntity.messageEntityCode | MessageEntity.messageEntityPre | MessageEntity.messageEntityTextUrl | MessageEntity.messageEntityMentionName | MessageEntity.inputMessageEntityMentionName | MessageEntity.messageEntityPhone | MessageEntity.messageEntityCashtag | MessageEntity.messageEntityUnderline | MessageEntity.messageEntityStrike | MessageEntity.messageEntityBlockquote | MessageEntity.messageEntityBankCard | MessageEntity.messageEntitySpoiler | MessageEntity.messageEntityEmoji | MessageEntity.messageEntityHighlight | MessageEntity.messageEntityLinebreak | MessageEntity.messageEntityCaret;
 
 export namespace MessageEntity {
   export type messageEntityUnknown = {
@@ -4419,12 +4396,6 @@ export namespace MessageEntity {
 
 	export type messageEntitySpoiler = {
 		_: 'messageEntitySpoiler',
-		offset: number,
-		length: number
-	};
-
-	export type messageEntityAnimatedEmoji = {
-		_: 'messageEntityAnimatedEmoji',
 		offset: number,
 		length: number
 	};
@@ -5991,9 +5962,6 @@ export namespace PaymentsPaymentForm {
 		}>,
 		form_id: string | number,
 		bot_id: string | number,
-		title: string,
-		description: string,
-		photo?: WebDocument,
 		invoice: Invoice,
 		provider_id: string | number,
 		url: string,
@@ -6262,10 +6230,6 @@ export type PhoneConnection = PhoneConnection.phoneConnection | PhoneConnection.
 export namespace PhoneConnection {
   export type phoneConnection = {
 		_: 'phoneConnection',
-		flags?: number,
-		pFlags?: Partial<{
-			tcp?: true,
-		}>,
 		id: string | number,
 		ip: string,
 		ipv6: string,
@@ -6913,7 +6877,7 @@ export type FileHash = FileHash.fileHash;
 export namespace FileHash {
   export type fileHash = {
 		_: 'fileHash',
-		offset: string | number,
+		offset: number,
 		limit: number,
 		hash: Uint8Array
 	};
@@ -6986,7 +6950,7 @@ export namespace SecureFile {
 		_: 'secureFile',
 		id: string | number,
 		access_hash: string | number,
-		size: string | number,
+		size: number,
 		dc_id: number,
 		date: number,
 		file_hash: Uint8Array,
@@ -8365,7 +8329,7 @@ export namespace PaymentsBankCardData {
 /**
  * @link https://core.telegram.org/type/DialogFilter
  */
-export type DialogFilter = DialogFilter.dialogFilter | DialogFilter.dialogFilterDefault;
+export type DialogFilter = DialogFilter.dialogFilter;
 
 export namespace DialogFilter {
   export type dialogFilter = {
@@ -8390,10 +8354,6 @@ export namespace DialogFilter {
 		orderIndex?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 | 21,
 		peerId?: PeerId,
 		folder_id?: number
-	};
-
-	export type dialogFilterDefault = {
-		_: 'dialogFilterDefault'
 	};
 }
 
@@ -9235,9 +9195,6 @@ export namespace SponsoredMessage {
   export type sponsoredMessage = {
 		_: 'sponsoredMessage',
 		flags?: number,
-		pFlags?: Partial<{
-			recommended?: true,
-		}>,
 		random_id: Uint8Array,
 		from_id?: Peer,
 		chat_invite?: ChatInvite,
@@ -9446,7 +9403,6 @@ export namespace AvailableReaction {
 		flags?: number,
 		pFlags?: Partial<{
 			inactive?: true,
-			premium?: true,
 		}>,
 		reaction: string,
 		title: string,
@@ -9592,7 +9548,6 @@ export namespace AttachMenuBot {
 		}>,
 		bot_id: string | number,
 		short_name: string,
-		peer_types: Array<AttachMenuPeerType>,
 		icons: Array<AttachMenuBotIcon>
 	};
 }
@@ -9743,80 +9698,6 @@ export namespace AccountSavedRingtone {
 	export type accountSavedRingtoneConverted = {
 		_: 'account.savedRingtoneConverted',
 		document: Document
-	};
-}
-
-/**
- * @link https://core.telegram.org/type/AttachMenuPeerType
- */
-export type AttachMenuPeerType = AttachMenuPeerType.attachMenuPeerTypeSameBotPM | AttachMenuPeerType.attachMenuPeerTypeBotPM | AttachMenuPeerType.attachMenuPeerTypePM | AttachMenuPeerType.attachMenuPeerTypeChat | AttachMenuPeerType.attachMenuPeerTypeBroadcast;
-
-export namespace AttachMenuPeerType {
-  export type attachMenuPeerTypeSameBotPM = {
-		_: 'attachMenuPeerTypeSameBotPM'
-	};
-
-	export type attachMenuPeerTypeBotPM = {
-		_: 'attachMenuPeerTypeBotPM'
-	};
-
-	export type attachMenuPeerTypePM = {
-		_: 'attachMenuPeerTypePM'
-	};
-
-	export type attachMenuPeerTypeChat = {
-		_: 'attachMenuPeerTypeChat'
-	};
-
-	export type attachMenuPeerTypeBroadcast = {
-		_: 'attachMenuPeerTypeBroadcast'
-	};
-}
-
-/**
- * @link https://core.telegram.org/type/InputInvoice
- */
-export type InputInvoice = InputInvoice.inputInvoiceMessage | InputInvoice.inputInvoiceSlug;
-
-export namespace InputInvoice {
-  export type inputInvoiceMessage = {
-		_: 'inputInvoiceMessage',
-		peer: InputPeer,
-		msg_id: number
-	};
-
-	export type inputInvoiceSlug = {
-		_: 'inputInvoiceSlug',
-		slug: string
-	};
-}
-
-/**
- * @link https://core.telegram.org/type/payments.ExportedInvoice
- */
-export type PaymentsExportedInvoice = PaymentsExportedInvoice.paymentsExportedInvoice;
-
-export namespace PaymentsExportedInvoice {
-  export type paymentsExportedInvoice = {
-		_: 'payments.exportedInvoice',
-		url: string
-	};
-}
-
-/**
- * @link https://core.telegram.org/type/messages.TranscribedAudio
- */
-export type MessagesTranscribedAudio = MessagesTranscribedAudio.messagesTranscribedAudio;
-
-export namespace MessagesTranscribedAudio {
-  export type messagesTranscribedAudio = {
-		_: 'messages.transcribedAudio',
-		flags?: number,
-		pFlags?: Partial<{
-			pending?: true,
-		}>,
-		transcription_id: string | number,
-		text: string
 	};
 }
 
@@ -10803,19 +10684,6 @@ export interface ConstructorDeclMap {
 	'notificationSoundRingtone': NotificationSound.notificationSoundRingtone,
 	'account.savedRingtone': AccountSavedRingtone.accountSavedRingtone,
 	'account.savedRingtoneConverted': AccountSavedRingtone.accountSavedRingtoneConverted,
-	'attachMenuPeerTypeSameBotPM': AttachMenuPeerType.attachMenuPeerTypeSameBotPM,
-	'attachMenuPeerTypeBotPM': AttachMenuPeerType.attachMenuPeerTypeBotPM,
-	'attachMenuPeerTypePM': AttachMenuPeerType.attachMenuPeerTypePM,
-	'attachMenuPeerTypeChat': AttachMenuPeerType.attachMenuPeerTypeChat,
-	'attachMenuPeerTypeBroadcast': AttachMenuPeerType.attachMenuPeerTypeBroadcast,
-	'chatInvitePublicJoinRequests': ExportedChatInvite.chatInvitePublicJoinRequests,
-	'inputInvoiceMessage': InputInvoice.inputInvoiceMessage,
-	'inputInvoiceSlug': InputInvoice.inputInvoiceSlug,
-	'payments.exportedInvoice': PaymentsExportedInvoice.paymentsExportedInvoice,
-	'updateTranscribeAudio': Update.updateTranscribeAudio,
-	'messages.transcribedAudio': MessagesTranscribedAudio.messagesTranscribedAudio,
-	'dialogFilterDefault': DialogFilter.dialogFilterDefault,
-	'messageEntityAnimatedEmoji': MessageEntity.messageEntityAnimatedEmoji,
 	'messageEntityEmoji': MessageEntity.messageEntityEmoji,
 	'messageEntityHighlight': MessageEntity.messageEntityHighlight,
 	'messageEntityLinebreak': MessageEntity.messageEntityLinebreak,
@@ -11201,7 +11069,7 @@ export type UploadGetFile = {
 	precise?: boolean,
 	cdn_supported?: boolean,
 	location: InputFileLocation,
-	offset: string | number,
+	offset: number,
 	limit: number
 };
 
@@ -11626,7 +11494,7 @@ export type MessagesReorderStickerSets = {
 
 export type MessagesGetDocumentByHash = {
 	sha256: Uint8Array,
-	size: string | number,
+	size: number,
 	mime_type: string
 };
 
@@ -11925,7 +11793,8 @@ export type UploadGetWebFile = {
 
 export type PaymentsGetPaymentForm = {
 	flags?: number,
-	invoice: InputInvoice,
+	peer: InputPeer,
+	msg_id: number,
 	theme_params?: DataJSON
 };
 
@@ -11937,14 +11806,16 @@ export type PaymentsGetPaymentReceipt = {
 export type PaymentsValidateRequestedInfo = {
 	flags?: number,
 	save?: boolean,
-	invoice: InputInvoice,
+	peer: InputPeer,
+	msg_id: number,
 	info: PaymentRequestedInfo
 };
 
 export type PaymentsSendPaymentForm = {
 	flags?: number,
 	form_id: string | number,
-	invoice: InputInvoice,
+	peer: InputPeer,
+	msg_id: number,
 	requested_info_id?: string,
 	shipping_option_id?: string,
 	credentials: InputPaymentCredentials,
@@ -12066,7 +11937,7 @@ export type PhoneSaveCallDebug = {
 
 export type UploadGetCdnFile = {
 	file_token: Uint8Array,
-	offset: string | number,
+	offset: number,
 	limit: number
 };
 
@@ -12119,7 +11990,7 @@ export type ChannelsGetAdminLog = {
 
 export type UploadGetCdnFileHashes = {
 	file_token: Uint8Array,
-	offset: string | number
+	offset: number
 };
 
 export type MessagesSendScreenshotNotification = {
@@ -12225,7 +12096,7 @@ export type MessagesSearchStickerSets = {
 
 export type UploadGetFileHashes = {
 	location: InputFileLocation,
-	offset: string | number
+	offset: number
 };
 
 export type HelpGetTermsOfServiceUpdate = {
@@ -12312,7 +12183,7 @@ export type AccountInitTakeoutSession = {
 	message_megagroups?: boolean,
 	message_channels?: boolean,
 	files?: boolean,
-	file_max_size?: string | number
+	file_max_size?: number
 };
 
 export type AccountFinishTakeoutSession = {
@@ -13261,8 +13132,7 @@ export type MessagesRequestWebView = {
 	url?: string,
 	start_param?: string,
 	theme_params?: DataJSON,
-	reply_to_msg_id?: number,
-	send_as?: InputPeer
+	reply_to_msg_id?: number
 };
 
 export type MessagesProlongWebView = {
@@ -13271,8 +13141,7 @@ export type MessagesProlongWebView = {
 	peer: InputPeer,
 	bot: InputUser,
 	query_id: string | number,
-	reply_to_msg_id?: number,
-	send_as?: InputPeer
+	reply_to_msg_id?: number
 };
 
 export type MessagesRequestSimpleWebView = {
@@ -13324,45 +13193,6 @@ export type BotsSetBotBroadcastDefaultAdminRights = {
 
 export type BotsSetBotGroupDefaultAdminRights = {
 	admin_rights: ChatAdminRights
-};
-
-export type PhoneSaveCallLog = {
-	peer: InputPhoneCall,
-	file: InputFile
-};
-
-export type ChannelsToggleJoinToSend = {
-	channel: InputChannel,
-	enabled: boolean
-};
-
-export type ChannelsToggleJoinRequest = {
-	channel: InputChannel,
-	enabled: boolean
-};
-
-export type PaymentsExportInvoice = {
-	invoice_media: InputMedia
-};
-
-export type MessagesTranscribeAudio = {
-	peer: InputPeer,
-	msg_id: number
-};
-
-export type MessagesRateTranscribedAudio = {
-	peer: InputPeer,
-	msg_id: number,
-	transcription_id: string | number,
-	good: boolean
-};
-
-export type PaymentsAssignAppStoreTransaction = {
-	transaction_id: string
-};
-
-export type PaymentsAssignPlayMarketTransaction = {
-	purchase_token: string
 };
 
 export interface MethodDeclMap {
@@ -13800,13 +13630,5 @@ export interface MethodDeclMap {
 	'account.uploadRingtone': {req: AccountUploadRingtone, res: Document},
 	'bots.setBotBroadcastDefaultAdminRights': {req: BotsSetBotBroadcastDefaultAdminRights, res: boolean},
 	'bots.setBotGroupDefaultAdminRights': {req: BotsSetBotGroupDefaultAdminRights, res: boolean},
-	'phone.saveCallLog': {req: PhoneSaveCallLog, res: boolean},
-	'channels.toggleJoinToSend': {req: ChannelsToggleJoinToSend, res: Updates},
-	'channels.toggleJoinRequest': {req: ChannelsToggleJoinRequest, res: Updates},
-	'payments.exportInvoice': {req: PaymentsExportInvoice, res: PaymentsExportedInvoice},
-	'messages.transcribeAudio': {req: MessagesTranscribeAudio, res: MessagesTranscribedAudio},
-	'messages.rateTranscribedAudio': {req: MessagesRateTranscribedAudio, res: boolean},
-	'payments.assignAppStoreTransaction': {req: PaymentsAssignAppStoreTransaction, res: Updates},
-	'payments.assignPlayMarketTransaction': {req: PaymentsAssignPlayMarketTransaction, res: Updates},
 }
 

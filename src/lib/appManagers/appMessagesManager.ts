@@ -56,6 +56,8 @@ import getDocumentInputFileName from "./utils/docs/getDocumentInputFileName";
 import getFileNameForUpload from "../../helpers/getFileNameForUpload";
 import type { Progress } from "./appDownloadManager";
 import noop from "../../helpers/noop";
+import appTabsManager from "./appTabsManager";
+import MTProtoMessagePort from "../mtproto/mtprotoMessagePort";
 
 //console.trace('include');
 // TODO: если удалить диалог находясь в папке, то он не удалится из папки и будет виден в настройках
@@ -209,7 +211,7 @@ export class AppMessagesManager extends AppManager {
   private middleware: ReturnType<typeof getMiddleware>;
 
   private unreadMentions: {[peerId: PeerId]: SlicedArray<number>} = {};
-  private goToNextMentionPromises: {[peerId: PeerId]: Promise<any>} = {};
+  private goToNextMentionPromises: {[peerId: PeerId]: Promise<number>} = {};
   
   private batchUpdates: {
     [k in keyof BatchUpdates]?: {
@@ -3543,9 +3545,10 @@ export class AppMessagesManager extends AppManager {
 
   private handleNewMessage(peerId: PeerId, mid: number) {
     (this.newMessagesToHandle[peerId] ??= new Set()).add(mid);
-    if(!this.newMessagesHandleTimeout) {
-      this.newMessagesHandleTimeout = ctx.setTimeout(this.handleNewMessages, 0);
-    }
+    // if(!this.newMessagesHandleTimeout) {
+      // this.newMessagesHandleTimeout = ctx.setTimeout(this.handleNewMessages, 0);
+    // }
+    this.handleNewMessages();
   }
 
   private handleNewMessages = () => {
@@ -3822,7 +3825,7 @@ export class AppMessagesManager extends AppManager {
       const mid = last && last[last.length - 1];
       if(mid) {
         slicedArray.delete(mid);
-        this.rootScope.dispatchEvent('history_focus', {peerId, mid});
+        return mid;
       } else {
         this.fixUnreadMentionsCountIfNeeded(peerId, slicedArray);
       }
@@ -5104,10 +5107,22 @@ export class AppMessagesManager extends AppManager {
       return;
     }
 
-    this.rootScope.dispatchEvent('notification_build', {
+    const tabs = appTabsManager.getTabs();
+    let tab = tabs.find((tab) => {
+      const {chatPeerIds} = tab.state;
+      return chatPeerIds[chatPeerIds.length - 1] === peerId;
+    });
+
+    if(!tab) {
+      tabs.sort((a, b) => a.state.idleStartTime - b.state.idleStartTime);
+      tab = !tabs[0].state.idleStartTime ? tabs[0] : tabs[tabs.length - 1];
+    }
+
+    const port = MTProtoMessagePort.getInstance<false>();
+    port.invokeVoid('notificationBuild', {
       message,
       ...options
-    });
+    }, tab.source);
   }
 
   public getScheduledMessagesStorage(peerId: PeerId) {

@@ -12,15 +12,17 @@ const FOCUS_EVENT_NAME = IS_TOUCH_SUPPORTED ? 'touchstart' : 'mousemove';
 export class IdleController extends EventListenerBase<{
   change: (idle: boolean) => void
 }> {
-  public idle = {
-    isIDLE: true,
-    deactivated: false,
-    focusPromise: Promise.resolve(),
-    focusResolve: () => {}
-  };
+  private _isIdle: boolean;
+
+  private focusPromise: Promise<void>;
+  private focusResolve: () => void;
 
   constructor() {
     super();
+
+    this._isIdle = true;
+    this.focusPromise = Promise.resolve();
+    this.focusResolve = () => {};
 
     window.addEventListener('blur', () => {
       this.isIdle = true;
@@ -37,21 +39,29 @@ export class IdleController extends EventListenerBase<{
 
     this.addEventListener('change', (idle) => {
       if(idle) {
-        this.idle.focusPromise = new Promise((resolve) => {
-          this.idle.focusResolve = resolve;
+        this.focusPromise = new Promise((resolve) => {
+          this.focusResolve = resolve;
         });
       } else {
-        this.idle.focusResolve();
+        this.focusResolve();
       }
     });
   }
 
+  public getFocusPromise() {
+    return this.focusPromise;
+  }
+
+  public get isIdle() {
+    return this._isIdle;
+  }
+
   public set isIdle(value: boolean) {
-    if(this.idle.isIDLE === value) {
+    if(this._isIdle === value) {
       return;
     }
 
-    this.idle.isIDLE = value;
+    this._isIdle = value;
     this.dispatchEvent('change', value);
   }
 }

@@ -223,11 +223,7 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
     const message = await this.getMessageByPeer(peerId, mid);
     const media = getMediaFromMessage(message);
     if(!media) return;
-    if(media._ === 'photo') {
-      appDownloadManager.downloadToDisc({media, queueId: appImManager.chat.bubbles.lazyLoadQueue.queueId});
-    } else {
-      appDownloadManager.downloadToDisc({media, queueId: appImManager.chat.bubbles.lazyLoadQueue.queueId});
-    }
+    appDownloadManager.downloadToDisc({media, queueId: appImManager.chat.bubbles.lazyLoadQueue.queueId});
   };
 
   private setCaption(message: MyMessage) {

@@ -341,7 +341,7 @@ let onFirstMount = () => {
     const keepSigned = signedCheckboxField.checked;
     rootScope.managers.appStateManager.pushToState('keepSigned', keepSigned);
     
-    apiManagerProxy.toggleStorages(keepSigned);
+    apiManagerProxy.toggleStorages(keepSigned, true);
   });
 
   apiManagerProxy.getState().then((state) => {

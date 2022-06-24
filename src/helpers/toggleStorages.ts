@@ -9,10 +9,10 @@ import AppStorage from "../lib/storage";
 import sessionStorage from "../lib/sessionStorage";
 import noop from "./noop";
 
-export default function toggleStorages(enabled: boolean) {
+export default function toggleStorages(enabled: boolean, clearWrite: boolean) {
   return Promise.all([
-    AppStorage.toggleStorage(enabled),
-    CacheStorageController.toggleStorage(enabled),
-    sessionStorage.toggleStorage(enabled)
+    AppStorage.toggleStorage(enabled, clearWrite),
+    CacheStorageController.toggleStorage(enabled, clearWrite),
+    sessionStorage.toggleStorage(enabled, clearWrite)
   ]).then(noop, noop);
 }

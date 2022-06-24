@@ -19,6 +19,7 @@ import ScrollableLoader from "../../helpers/scrollableLoader";
 import { GroupCallParticipant } from "../../layer";
 import type { AppChatsManager } from "../../lib/appManagers/appChatsManager";
 import type { AppGroupCallsManager } from "../../lib/appManagers/appGroupCallsManager";
+import appImManager from "../../lib/appManagers/appImManager";
 import type { AppPeersManager } from "../../lib/appManagers/appPeersManager";
 import { AppManagers } from "../../lib/appManagers/managers";
 import getPeerId from "../../lib/appManagers/utils/peers/getPeerId";
@@ -157,9 +158,7 @@ export class GroupCallParticipantContextMenu {
       popup.hide();
     }
 
-    rootScope.dispatchEvent('history_focus', {
-      peerId: this.targetPeerId
-    });
+    appImManager.setInnerPeer({peerId: this.targetPeerId});
   };
 
   private toggleParticipantMuted = (muted: boolean) => {

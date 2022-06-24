@@ -134,6 +134,7 @@ export default class ScrollSaver {
     const newRect = this.anchor.getBoundingClientRect();
     const diff = newRect.bottom - rect.bottom;
     this.setScrollTop(scrollTop + diff, useReflow);
+    // if(diff) debugger;
     // console.warn('scroll restore', rect, diff, newRect);
   }
 

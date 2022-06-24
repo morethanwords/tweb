@@ -44,8 +44,7 @@ export class AppManagersManager {
       
       this.cryptoPortAttached = true;
       const port = event.ports[0];
-      cryptoMessagePort.attachListenPort(port);
-      cryptoMessagePort.attachSendPort(port);
+      cryptoMessagePort.attachPort(port);
       this.cryptoPortPromise.resolve();
     });
   }

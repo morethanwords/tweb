@@ -12,6 +12,7 @@ import AvatarEdit from "../../avatarEdit";
 import AppAddMembersTab from "./addMembers";
 import { _i18n } from "../../../lib/langPack";
 import ButtonCorner from "../../buttonCorner";
+import appImManager from "../../../lib/appManagers/appImManager";
 
 export default class AppNewChannelTab extends SliderSuperTab {
   private uploadAvatar: () => Promise<InputFile> = null;
@@ -74,6 +75,8 @@ export default class AppNewChannelTab extends SliderSuperTab {
             this.managers.appChatsManager.editPhoto(channelId, inputFile);
           });
         }
+
+        appImManager.setInnerPeer({peerId: channelId.toPeerId(true)});
         
         appSidebarLeft.removeTabFromHistory(this);
         this.slider.createTab(AppAddMembersTab).open({

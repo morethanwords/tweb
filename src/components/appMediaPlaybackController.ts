@@ -102,6 +102,7 @@ export class AppMediaPlaybackController extends EventListenerBase<{
 
   private pip: HTMLVideoElement;
   private managers: AppManagers;
+  private skipMediaPlayEvent: boolean;
 
   construct(managers: AppManagers) {
     this.managers = managers;
@@ -137,6 +138,17 @@ export class AppMediaPlaybackController extends EventListenerBase<{
         for(const media of set) {
           this.onMediaDocumentLoad(media);
         }
+      }
+    });
+
+    rootScope.addEventListener('media_play', () => {
+      if(this.skipMediaPlayEvent) {
+        this.skipMediaPlayEvent = false;
+        return;
+      }
+
+      if(!this.pause() && this.pip) {
+        this.pip.pause();
       }
     });
 
@@ -602,6 +614,7 @@ export class AppMediaPlaybackController extends EventListenerBase<{
       }
 
       this.dispatchEvent('play', this.getPlayingDetails());
+      this.pauseMediaInOtherTabs();
     }, 0);
   };
 
@@ -638,6 +651,11 @@ export class AppMediaPlaybackController extends EventListenerBase<{
       this.dispatchEvent('stop');
     }
   };
+
+  public pauseMediaInOtherTabs() {
+    this.skipMediaPlayEvent = true;
+    rootScope.dispatchEvent('media_play');
+  }
 
   // public get pip() {
   //   return document.pictureInPictureElement as HTMLVideoElement;
@@ -879,6 +897,8 @@ export class AppMediaPlaybackController extends EventListenerBase<{
         if(pip) {
           pip.pause();
         }
+
+        this.pauseMediaInOtherTabs();
       };
   
       if(!media.paused) {
@@ -886,6 +906,8 @@ export class AppMediaPlaybackController extends EventListenerBase<{
       }
   
       media.addEventListener('play', onPlay);
+    } else { // maybe it's voice recording
+      this.pauseMediaInOtherTabs();
     }
 
     this.willBePlayed(undefined);
@@ -952,6 +974,8 @@ export class AppMediaPlaybackController extends EventListenerBase<{
       if(this.playingMedia !== video) {
         this.pause();
       }
+
+      this.pauseMediaInOtherTabs();
       // if(this.pause()) {
       //   listenerSetter.add(video)('pause', () => {
       //     this.play();

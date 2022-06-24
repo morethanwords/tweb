@@ -22,8 +22,10 @@ import webPushApiManager, { PushSubscriptionNotify } from "../mtproto/webPushApi
 import fixEmoji from "../richTextProcessor/fixEmoji";
 import wrapPlainText from "../richTextProcessor/wrapPlainText";
 import rootScope from "../rootScope";
+import appImManager from "./appImManager";
 import appRuntimeManager from "./appRuntimeManager";
 import { AppManagers } from "./managers";
+import generateMessageId from "./utils/messageId/generateMessageId";
 import getPeerId from "./utils/peers/getPeerId";
 
 type MyNotification = Notification & {
@@ -124,7 +126,7 @@ export class UiNotificationsManager {
       this.cancel(str);
     });
 
-    rootScope.addEventListener('push_init', (tokenData) => {
+    webPushApiManager.addEventListener('push_init', (tokenData) => {
       this.pushInited = true;
       if(!this.settings.nodesktop && !this.settings.nopush) {
         if(tokenData) {
@@ -136,10 +138,10 @@ export class UiNotificationsManager {
         this.unregisterDevice(tokenData);
       }
     });
-    rootScope.addEventListener('push_subscribe', (tokenData) => {
+    webPushApiManager.addEventListener('push_subscribe', (tokenData) => {
       this.registerDevice(tokenData);
     });
-    rootScope.addEventListener('push_unsubscribe', (tokenData) => {
+    webPushApiManager.addEventListener('push_unsubscribe', (tokenData) => {
       this.unregisterDevice(tokenData);
     });
 
@@ -148,7 +150,7 @@ export class UiNotificationsManager {
       this.topMessagesDeferred.resolve();
     }, {once: true});
 
-    rootScope.addEventListener('push_notification_click', (notificationData) => {
+    webPushApiManager.addEventListener('push_notification_click', (notificationData) => {
       if(notificationData.action === 'push_settings') {
         /* this.topMessagesDeferred.then(() => {
           $modal.open({
@@ -192,9 +194,9 @@ export class UiNotificationsManager {
             return;
           }
 
-          rootScope.dispatchEvent('history_focus', {
+          appImManager.setInnerPeer({
             peerId,
-            mid: +notificationData.custom.msg_id
+            lastMsgId: generateMessageId(+notificationData.custom.msg_id)
           });
         });
       }
@@ -253,7 +255,7 @@ export class UiNotificationsManager {
     notification.title = wrapPlainText(notification.title);
 
     notification.onclick = () => {
-      rootScope.dispatchEvent('history_focus', {peerId, mid: message.mid});
+      appImManager.setInnerPeer({peerId, lastMsgId: message.mid});
     };
 
     notification.message = notificationMessage;
@@ -275,7 +277,7 @@ export class UiNotificationsManager {
     }
   }
 
-  private toggleToggler(enable = idleController.idle.isIDLE) {
+  private toggleToggler(enable = idleController.isIdle) {
     if(IS_MOBILE) return;
 
     const resetTitle = () => {

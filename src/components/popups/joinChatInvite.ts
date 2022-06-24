@@ -8,11 +8,10 @@ import PopupElement, { addCancelButton } from ".";
 import setInnerHTML from "../../helpers/dom/setInnerHTML";
 import numberThousandSplitter from "../../helpers/number/numberThousandSplitter";
 import { ChatInvite } from "../../layer";
-import { AppManagers } from "../../lib/appManagers/managers";
+import appImManager from "../../lib/appManagers/appImManager";
 import { i18n, _i18n } from "../../lib/langPack";
 import { NULL_PEER_ID } from "../../lib/mtproto/mtproto_config";
 import wrapEmojiText from "../../lib/richTextProcessor/wrapEmojiText";
-import rootScope from "../../lib/rootScope";
 import AvatarElement from "../avatar";
 import putPhoto from "../putPhoto";
 import { toastNew } from "../toast";
@@ -31,7 +30,7 @@ export default class PopupJoinChatInvite extends PopupElement {
         this.managers.appChatsManager.importChatInvite(hash)
         .then((chatId) => {
           const peerId = chatId.toPeerId(true);
-          rootScope.dispatchEvent('history_focus', {peerId});
+          appImManager.setInnerPeer({peerId});
         }, (error) => {
           if(error.type === 'INVITE_REQUEST_SENT') {
             toastNew({langPackKey: 'RequestToJoinSent'});

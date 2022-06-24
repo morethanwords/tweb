@@ -97,7 +97,6 @@ export class AppInlineBotsManager extends AppManager {
 
   public switchToPM(fromPeerId: PeerId, botId: BotId, startParam: string) {
     this.setHash[botId] = {peerId: fromPeerId, time: Date.now()};
-    this.rootScope.dispatchEvent('history_focus', {peerId: botId.toPeerId()});
     return this.appMessagesManager.startBot(botId, undefined, startParam);
   }
   
@@ -224,7 +223,6 @@ export class AppInlineBotsManager extends AppManager {
   }
 
   public switchInlineQuery(peerId: PeerId, threadId: number, botId: BotId, query: string) {
-    this.rootScope.dispatchEvent('history_focus', {peerId, threadId});
     this.appDraftsManager.setDraft(peerId, threadId, '@' + this.appUsersManager.getUser(botId).username + ' ' + query);
   }
 

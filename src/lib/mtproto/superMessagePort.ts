@@ -9,7 +9,6 @@ import ctx from "../../environment/ctx";
 import indexOfAndSplice from "../../helpers/array/indexOfAndSplice";
 import { IS_SERVICE_WORKER, IS_WORKER, notifyAll } from "../../helpers/context";
 import EventListenerBase from "../../helpers/eventListenerBase";
-import pause from "../../helpers/schedulers/pause";
 import { Awaited, WorkerTaskTemplate, WorkerTaskVoidTemplate } from "../../types";
 import { logger } from "../logger";
 
@@ -54,9 +53,13 @@ interface BatchTask extends SuperMessagePortTask {
   payload: Task[]
 }
 
-type Task = InvokeTask | ResultTask | AckTask | PingTask | PongTask | BatchTask;
+interface CloseTask extends SuperMessagePortTask {
+  type: 'close'
+}
+
+type Task = InvokeTask | ResultTask | AckTask | PingTask | PongTask | BatchTask | CloseTask;
 type TaskMap = {
-  [type in Task as type['type']]?: (task: Extract<Task, type>) => void | Promise<any>
+  [type in Task as type['type']]?: (task: Extract<Task, type>, source: MessageEventSource, event: MessageEvent<any>) => void | Promise<any>
 };
 
 export type AckedResult<T> = {
@@ -77,8 +80,8 @@ type SendPort = WindowProxy | MessagePort | ServiceWorker | Worker;
 type ListenerCallback = (payload: any, source: MessageEventSource, event: MessageEvent<any>) => any;
 type Listeners = Record<string, ListenerCallback>;
 
-const PING_INTERVAL = DEBUG || true ? 0x7FFFFFFF : 1000;
-const PING_TIMEOUT = DEBUG || true ? 0x7FFFFFFF : 5000;
+// const PING_INTERVAL = DEBUG && false ? 0x7FFFFFFF : 5000;
+// const PING_TIMEOUT = DEBUG && false ? 0x7FFFFFFF : 10000;
 
 export default class SuperMessagePort<
   Workers extends Listeners, 
@@ -105,6 +108,23 @@ export default class SuperMessagePort<
   protected debug: boolean;
   protected releasingPending: boolean;
 
+  protected processTaskMap: TaskMap;
+
+  protected onPortDisconnect: (source: MessageEventSource) => void;
+
+  constructor() {
+    super(false);
+
+    this.processTaskMap = {
+      result: this.processResultTask,
+      ack: this.processAckTask,
+      invoke: this.processInvokeTask,
+      ping: this.processPingTask,
+      pong: this.processPongTask,
+      close: this.processCloseTask
+    };
+  }
+
   public _constructor() {
     super._constructor(false);
 
@@ -116,6 +136,17 @@ export default class SuperMessagePort<
     this.pending = new Map();
     this.log = logger('MP');
     this.debug = DEBUG;
+
+    if(typeof(window) !== 'undefined') {
+      window.addEventListener('beforeunload', () => {
+        const task = this.createTask('close', undefined);
+        this.postMessage(undefined, task);
+      });
+    }
+  }
+
+  public setOnPortDisconnect(callback: (source: MessageEventSource) => void) {
+    this.onPortDisconnect = callback;
   }
 
   public attachPort(port: MessageEventSource) {
@@ -129,51 +160,64 @@ export default class SuperMessagePort<
   }
 
   public attachSendPort(port: SendPort) {
+    this.log.warn('attaching port');
+
     if((port as MessagePort).start) {
       (port as MessagePort).start();
     }
 
     this.sendPorts.push(port);
-    this.sendPing(port);
+    // this.sendPing(port);
   }
 
-  protected sendPing(port: SendPort, loop = IS_WORKER) {
-    let timeout: number;
-    const promise = new Promise<void>((resolve, reject) => {
-      this.pingResolves.set(port, resolve);
-      this.pushTask(this.createTask('ping', undefined), port);
+  // ! Can't rely on ping because timers can be suspended
+  // protected sendPing(port: SendPort, loop = IS_WORKER) {
+  //   let timeout: number;
+  //   const promise = new Promise<void>((resolve, reject) => {
+  //     this.pingResolves.set(port, resolve);
+  //     this.pushTask(this.createTask('ping', undefined), port);
 
-      timeout = ctx.setTimeout(() => {
-        reject();
-      }, PING_TIMEOUT);
-    });
+  //     timeout = ctx.setTimeout(() => {
+  //       reject();
+  //     }, PING_TIMEOUT);
+  //   });
 
-    promise.then(() => {
-      clearTimeout(timeout);
-      this.pingResolves.delete(port);
+  //   promise.then(() => {
+  //     // this.log('got pong');
 
-      if(loop) {
-        this.sendPingWithTimeout(port);
-      }
-    }, () => {
-      this.pingResolves.delete(port);
+  //     clearTimeout(timeout);
+  //     this.pingResolves.delete(port);
 
-      indexOfAndSplice(this.listenPorts, port);
-      indexOfAndSplice(this.sendPorts, port);
-      if((port as MessagePort).close) {
-        (port as MessagePort).close();
-      }
-    });
-  }
+  //     if(loop) {
+  //       this.sendPingWithTimeout(port);
+  //     }
+  //   }, () => {
+  //     this.pingResolves.delete(port);
+  //     this.detachPort(port);
+  //   });
+  // }
 
-  protected sendPingWithTimeout(port: SendPort, timeout = PING_INTERVAL) {
-    ctx.setTimeout(() => {
-      if(!this.sendPorts.includes(port)) {
-        return;
-      }
+  // protected sendPingWithTimeout(port: SendPort, timeout = PING_INTERVAL) {
+  //   ctx.setTimeout(() => {
+  //     if(!this.sendPorts.includes(port)) {
+  //       return;
+  //     }
 
-      this.sendPing(port);
-    }, timeout);
+  //     this.sendPing(port);
+  //   }, timeout);
+  // }
+
+  protected detachPort(port: SendPort) {
+    this.log.warn('disconnecting port');
+    
+    port.removeEventListener('message', this.onMessage as any);
+    indexOfAndSplice(this.listenPorts, port);
+    indexOfAndSplice(this.sendPorts, port);
+    if((port as MessagePort).close) {
+      (port as MessagePort).close();
+    }
+
+    this.onPortDisconnect && this.onPortDisconnect(port as any);
   }
 
   protected postMessage(port: SendPort | SendPort[], task: Task) {
@@ -188,27 +232,20 @@ export default class SuperMessagePort<
     // this.log('got message', task);
 
     const source: MessageEventSource = event.source || event.currentTarget as any; // can have no source
-    if(task.type === 'batch') {
+    /* if(task.type === 'batch') {
       const newEvent: MessageEvent = {data: event.data, source: event.source, currentTarget: event.currentTarget} as any;
       task.payload.forEach((task) => {
         // @ts-ignore
         newEvent.data = task;
         this.onMessage(newEvent);
       });
-    } else if(task.type === 'result') {
-      this.processResultTask(task);
-    } else if(task.type === 'ack') {
-      this.processAckTask(task);
-    } else if(task.type === 'invoke') {
-      this.processInvokeTask(task, source, event);
-    } else if(task.type === 'ping') {
-      this.processPingTask(task, source, event);
-    } else if(task.type === 'pong') {
-      this.processPongTask(task, source, event);
-    }
+    } */
+
+    // @ts-ignore
+    this.processTaskMap[task.type](task, source, event);
   };
 
-  protected async releasePending() {
+  protected /* async */ releasePending() {
     //return;
 
     if(!this.listenPorts.length || this.releasingPending) {
@@ -217,28 +254,28 @@ export default class SuperMessagePort<
 
     this.releasingPending = true;
     // const perf = performance.now();
-    await pause(0);
+    // await pause(0);
 
     this.debug && this.log.debug('releasing tasks, length:', this.pending.size/* , performance.now() - perf */);
 
     this.pending.forEach((portTasks, port) => {
-      let batchTask: BatchTask;
-      const tasks: Task[] = [];
-      portTasks.forEach((task) => {
-        if(task.transfer) {
-          batchTask = undefined;
-          tasks.push(task);
-        } else {
-          if(!batchTask) {
-            batchTask = this.createTask('batch', []);
-            tasks.push(batchTask);
-          }
+      // let batchTask: BatchTask;
+      // const tasks: Task[] = [];
+      // portTasks.forEach((task) => {
+      //   if(task.transfer) {
+      //     batchTask = undefined;
+      //     tasks.push(task);
+      //   } else {
+      //     if(!batchTask) {
+      //       batchTask = this.createTask('batch', []);
+      //       tasks.push(batchTask);
+      //     }
 
-          batchTask.payload.push(task);
-        }
-      });
+      //     batchTask.payload.push(task);
+      //   }
+      // });
 
-      // const tasks = portTasks;
+      const tasks = portTasks;
 
       tasks.forEach((task) => {
         // if(task.type === 'batch') {
@@ -263,7 +300,7 @@ export default class SuperMessagePort<
     this.releasingPending = false;
   }
 
-  protected processResultTask(task: ResultTask) {
+  protected processResultTask = (task: ResultTask) => {
     const {taskId, result, error} = task.payload;
     const deferred = this.awaiting[taskId];
     if(!deferred) {
@@ -271,11 +308,11 @@ export default class SuperMessagePort<
     }
 
     this.debug && this.log.debug('done', deferred.taskType, result, error);
-    error ? deferred.reject(error) : deferred.resolve(result);
+    'error' in task.payload ? deferred.reject(error) : deferred.resolve(result);
     delete this.awaiting[taskId];
-  }
+  };
 
-  protected processAckTask(task: AckTask) {
+  protected processAckTask = (task: AckTask) => {
     const payload = task.payload;
     const deferred = this.awaiting[payload.taskId];
     if(!deferred) {
@@ -316,21 +353,25 @@ export default class SuperMessagePort<
     };
 
     previousResolve(ret);
-  }
+  };
 
-  protected processPingTask(task: PingTask, source: MessageEventSource, event: MessageEvent) {
+  protected processPingTask = (task: PingTask, source: MessageEventSource, event: MessageEvent) => {
     this.pushTask(this.createTask('pong', undefined), event.source);
-  }
+  };
 
-  protected processPongTask(task: PongTask, source: MessageEventSource, event: MessageEvent) {
+  protected processPongTask = (task: PongTask, source: MessageEventSource, event: MessageEvent) => {
     const pingResolve = this.pingResolves.get(source);
     if(pingResolve) {
       this.pingResolves.delete(source);
       pingResolve();
     }
-  }
+  };
 
-  protected async processInvokeTask(task: InvokeTask, source: MessageEventSource, event: MessageEvent) {
+  protected processCloseTask = (task: CloseTask, source: MessageEventSource, event: MessageEvent) => {
+    this.detachPort(source);
+  };
+
+  protected processInvokeTask = async(task: InvokeTask, source: MessageEventSource, event: MessageEvent) => {
     const id = task.id;
     const innerTask = task.payload;
     
@@ -397,7 +438,7 @@ export default class SuperMessagePort<
     }
 
     this.pushTask(resultTask, source);
-  }
+  };
 
   protected createTask<T extends Task['type'], K extends Task = Parameters<TaskMap[T]>[0]>(type: T, payload: K['payload'], transfer?: Transferable[]): K {
     return {

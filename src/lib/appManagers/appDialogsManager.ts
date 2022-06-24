@@ -1618,7 +1618,7 @@ export class AppDialogsManager {
       }
 
       lastMessage = dialog.topMessage;
-      if(!lastMessage) {
+      if(!lastMessage || lastMessage.mid !== dialog.top_message) {
         const promise = this.managers.appMessagesManager.getMessageByPeer(dialog.peerId, dialog.top_message);
         lastMessage = await middleware(promise);
       }

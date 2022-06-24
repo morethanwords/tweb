@@ -245,6 +245,7 @@ export default class InlineHelper extends AutocompleteHelper {
           const btnSwitchToPM = Button('btn-primary btn-secondary btn-primary-transparent primary');
           setInnerHTML(btnSwitchToPM, wrapEmojiText(botResults.switch_pm.text));
           attachClickEvent(btnSwitchToPM, (e) => {
+            this.chat.appImManager.setInnerPeer({peerId});
             this.managers.appInlineBotsManager.switchToPM(peerId, peer.id, botResults.switch_pm.start_param);
           });
           parent.append(btnSwitchToPM);

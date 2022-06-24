@@ -9,7 +9,7 @@ import type { IDBIndex } from '../../lib/idb';
 
 const DATABASE_STATE: Database<'session' | 'stickerSets' | 'users' | 'chats' | 'messages' | 'dialogs'> = {
   name: 'tweb',
-  version: 11,
+  version: 7,
   stores: [{
     name: 'session'
   }, {
@@ -20,18 +20,18 @@ const DATABASE_STATE: Database<'session' | 'stickerSets' | 'users' | 'chats' | '
     name: 'chats'
   }, {
     name: 'dialogs',
-    indexes: [
-      ...(new Array(20 + 2).fill(0)).map((_, idx) => {
-        const name = `index_${idx}`;
-        const index: IDBIndex = {
-          indexName: name,
-          keyPath: name,
-          objectParameters: {}
-        };
+    // indexes: [
+    //   ...(new Array(20 + 2).fill(0)).map((_, idx) => {
+    //     const name = `index_${idx}`;
+    //     const index: IDBIndex = {
+    //       indexName: name,
+    //       keyPath: name,
+    //       objectParameters: {}
+    //     };
 
-        return index
-      })
-    ]
+    //     return index
+    //   })
+    // ]
   }, {
     name: 'messages'
   }]

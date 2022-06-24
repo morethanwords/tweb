@@ -292,11 +292,11 @@ export default class AppStorage<
     return this.storage.clear().catch(noop);
   }
 
-  public static toggleStorage(enabled: boolean) {
+  public static toggleStorage(enabled: boolean, clearWrite: boolean) {
     return Promise.all(this.STORAGES.map((storage) => {
       storage.useStorage = enabled;
       
-      if(!IS_WORKER) {
+      if(!IS_WORKER || !clearWrite) {
         return;
       }
 

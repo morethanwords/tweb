@@ -38,6 +38,7 @@ import safeAssign from "../../helpers/object/safeAssign";
 import { AppManagers } from "../../lib/appManagers/managers";
 import { attachContextMenuListener } from "../../helpers/dom/attachContextMenuListener";
 import filterUnique from "../../helpers/array/filterUnique";
+import appImManager from "../../lib/appManagers/appImManager";
 
 const accumulateMapSet = (map: Map<any, Set<number>>) => {
   return [...map.values()].reduce((acc, v) => acc + v.size, 0);
@@ -627,10 +628,7 @@ export class SearchSelection extends AppSelection {
           const mid = [...this.selectedMids.get(peerId)][0];
           this.cancelSelection();
 
-          rootScope.dispatchEvent('history_focus', {
-            peerId,
-            mid
-          });
+          appImManager.setInnerPeer({peerId, lastMsgId: mid});
         }, attachClickOptions);
 
         this.selectionForwardBtn = ButtonIcon(`forward ${BASE_CLASS}-forward`);

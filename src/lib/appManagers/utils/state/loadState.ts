@@ -44,7 +44,11 @@ async function loadStateInner() {
   const recordPromise = recordPromiseBound(log);
 
   const promises = ALL_KEYS.map((key) => recordPromise(stateStorage.get(key), 'state ' + key))
-  .concat(recordPromise(sessionStorage.get('user_auth'), 'auth'), recordPromise(sessionStorage.get('state_id'), 'auth'))
+  .concat(
+    recordPromise(sessionStorage.get('user_auth'), 'auth'), 
+    recordPromise(sessionStorage.get('state_id'), 'auth'),
+    recordPromise(sessionStorage.get('k_build'), 'auth')
+  )
   .concat(recordPromise(stateStorage.get('user_auth'), 'old auth')); // support old webk format
 
   const arr = await Promise.all(promises);
@@ -119,6 +123,7 @@ async function loadStateInner() {
   // * Read auth
   let auth = arr.shift() as UserAuth | number;
   const stateId = arr.shift() as number;
+  const sessionBuild = arr.shift() as number;
   const shiftedWebKAuth = arr.shift() as UserAuth | number;
   if(!auth && shiftedWebKAuth) { // support old webk auth
     auth = shiftedWebKAuth;
@@ -333,6 +338,10 @@ async function loadStateInner() {
 
     pushToState('version', STATE_VERSION);
     pushToState('build', BUILD);
+  }
+
+  if(sessionBuild !== BUILD && (!sessionBuild || sessionBuild < BUILD)) {
+    sessionStorage.set({k_build: BUILD});
   }
 
   // ! probably there is better place for it

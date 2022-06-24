@@ -16,16 +16,19 @@ import { Message } from "../../layer";
 import { NULL_PEER_ID, REPLIES_PEER_ID } from "../../lib/mtproto/mtproto_config";
 import { SERVICE_AS_REGULAR, STICKY_OFFSET } from "./bubbles";
 import forEachReverse from "../../helpers/array/forEachReverse";
+import partition from "../../helpers/array/partition";
 
 type GroupItem = {
   bubble: HTMLElement, 
   fromId: PeerId, 
   mid: number, 
+  groupMid?: number, 
   timestamp: number, 
   dateTimestamp: number, 
   mounted: boolean, 
   single: boolean, 
-  group?: BubbleGroup
+  group?: BubbleGroup,
+  message: Message.message | Message.messageService // use it only to set avatar
 };
 
 class BubbleGroup {
@@ -38,6 +41,7 @@ class BubbleGroup {
   avatar: AvatarElement;
   mounted: boolean;
   dateTimestamp: number;
+  offset: number;
 
   constructor(chat: Chat, groups: BubbleGroups, dateTimestamp: number) {
     this.container = document.createElement('div');
@@ -46,6 +50,7 @@ class BubbleGroup {
     this.groups = groups;
     this.items = [];
     this.dateTimestamp = dateTimestamp;
+    this.offset = 0;
   }
 
   createAvatar(message: Message.message | Message.messageService) {
@@ -57,6 +62,7 @@ class BubbleGroup {
 
     this.avatarContainer = document.createElement('div');
     this.avatarContainer.classList.add('bubbles-group-avatar-container');
+    ++this.offset;
 
     const fwdFrom = message.fwd_from;
     const fwdFromId = message.fwdFromId;
@@ -88,17 +94,29 @@ class BubbleGroup {
     return this.items[this.items.length - 1];
   }
 
+  get lastMid() {
+    return this.lastItem.mid;
+  }
+
   get lastItem() {
     return this.items[0];
   }
 
   updateClassNames() {
     const items = this.items;
-    if(!items.length) {
+    const length = items.length;
+    if(!length) {
       return;
     }
     
-    const length = items.length;
+    // const elements = Array.from(this.container.children);
+    // if(this.offset) elements.splice(0, this.offset);
+
+    // const length = elements.length;
+    // if(!length) {
+    //   return;
+    // }
+
     const first = items[length - 1].bubble;
 
     if(items.length === 1) {
@@ -111,7 +129,7 @@ class BubbleGroup {
       //this.setClipIfNeeded(first, true);
     }
     
-    for(let i = length - 2; i > 0; --i) {
+    for(let i = 1, _length = length - 1; i < _length; ++i) {
       const bubble = items[i].bubble;
       bubble.classList.remove('is-group-last', 'is-group-first');
       //this.setClipIfNeeded(bubble, true);
@@ -145,33 +163,51 @@ class BubbleGroup {
 
       items.splice(i, 0, item);
     } else {
-      insertInDescendSortedArray(items, item, 'mid');
+      // insertInDescendSortedArray(items, item, 'mid');
+      insertInDescendSortedArray(items, item, 'groupMid');
     }
 
+    item.group = this;
     if(items.length === 1) {
-      insertInDescendSortedArray(this.groups.groups, this, 'firstMid');
+      insertInDescendSortedArray(this.groups.groups, this, 'lastMid');
     }
   }
 
-  mount() {
-    if(!this.groups.groups.includes(this)) { // group can be already removed
+  removeItem(item: GroupItem) {
+    indexOfAndSplice(this.items, item);
+
+    if(!this.items.length) {
+      indexOfAndSplice(this.groups.groups, this);
+    }
+
+    item.group = undefined;
+  }
+
+  mount(updateClassNames?: boolean) {
+    if(!this.groups.groups.includes(this) || !this.items.length) { // group can be already removed
+      debugger;
+
+      if(this.mounted) {
+        this.onItemUnmount();
+      }
+
       return;
     }
 
-    const offset = this.avatar ? 1 : 0;
-    const items = this.items;
-
-    this.updateClassNames();
-
+    const {offset, items} = this;
     const {length} = items;
     forEachReverse(items, (item, idx) => {
       this.mountItem(item, length - 1 - idx, offset);
     });
+    
+    if(updateClassNames) {
+      this.updateClassNames();
+    }
 
     this.onItemMount();
   }
 
-  mountItem(item: GroupItem, idx = this.items.indexOf(item), offset = this.avatar ? 1 : 0) {
+  mountItem(item: GroupItem, idx = this.items.indexOf(item), offset = this.offset) {
     if(item.mounted) {
       return;
     }
@@ -181,11 +217,13 @@ class BubbleGroup {
   }
 
   unmountItem(item: GroupItem) {
-    if(item.mounted) {
-      item.bubble.remove();
-      item.mounted = false;
-      this.onItemUnmount();
+    if(!item.mounted) {
+      return;
     }
+
+    item.bubble.remove();
+    item.mounted = false;
+    this.onItemUnmount();
   }
 
   onItemMount() {
@@ -234,7 +272,7 @@ class BubbleGroup {
 // }
 
 export default class BubbleGroups {
-  private itemsArr: Array<GroupItem> = []; // descend sorted
+  public itemsArr: Array<GroupItem> = []; // descend sorted
   private itemsMap: Map<HTMLElement, GroupItem> = new Map();
   public groups: Array<BubbleGroup> = []; // descend sorted
   private newGroupDiff = 121; // * 121 in scheduled messages
@@ -243,32 +281,69 @@ export default class BubbleGroups {
 
   }
 
-  removeBubble(bubble: HTMLElement) {
+  removeItem(item: GroupItem) {
+    item.group.removeItem(item);
+    this.removeItemFromCache(item);
+  }
+
+  removeAndUnmountBubble(bubble: HTMLElement) {
     const item = this.getItemByBubble(bubble);
     if(!item) {
       return;
     }
 
+    const items = this.itemsArr;
+    const index = items.indexOf(item);
+    const siblings = this.getSiblingsAtIndex(index, items);
+    
     const group = item.group;
-    const items = group.items;
-    if(items.length) {
-      indexOfAndSplice(items, item);
+    this.removeItem(item);
+    group.unmountItem(item);
 
-      if(!items.length) {
-        indexOfAndSplice(this.groups, group);
-      }
+    const modifiedGroups: Set<BubbleGroup> = new Set();
+    modifiedGroups.add(group);
+
+    const [previousSibling, nextSibling] = siblings;
+    if(
+      previousSibling 
+      && nextSibling 
+      && this.canItemsBeGrouped(previousSibling, nextSibling) 
+      && previousSibling.group !== nextSibling.group
+    ) {
+      const group = nextSibling.group;
+      this.f(nextSibling.group.items);
+      group.onItemUnmount();
+      modifiedGroups.add(previousSibling.group);
+      this.groupUngrouped();
     }
 
-    indexOfAndSplice(this.itemsArr, item);
-    this.itemsMap.delete(bubble);
-    
-    return item;
+    this.mountUnmountGroups(Array.from(modifiedGroups));
   }
 
-  removeAndUnmountBubble(bubble: HTMLElement) {
-    const item = this.removeBubble(bubble);
-    if(item) {
-      item.group.unmountItem(item);
+  mountUnmountGroups(groups: BubbleGroup[]) {
+    // groups.sort((a, b) => (b.lastItem?.mid ?? 0) - (a.lastItem?.mid ?? 0));
+
+    const [toMount, toUnmount] = partition(groups, (group) => !!group.items.length);
+    toUnmount.forEach((group) => {
+      group.onItemUnmount();
+    })
+
+    toMount.forEach((group) => {
+      group.mount(true);
+    });
+
+    // toMount.forEach((group) => {
+    //   group.updateClassNames();
+    // });
+  }
+
+  f(items: GroupItem[], index: number = 0, length = items.length) {
+    for(; index < length; ++index) {
+      const item = items[index];
+      item.mounted = false;
+      item.group.removeItem(item);
+      --length;
+      --index;
     }
   }
 
@@ -280,20 +355,22 @@ export default class BubbleGroups {
     return this.groups[0];
   }
 
-  // changeBubbleMid(bubble: HTMLElement, mid: number) {
-  //   const item = this.getItemByBubble(bubble);
-  //   if(!item) {
-  //     return;
-  //   }
+  changeBubbleMid(bubble: HTMLElement, mid: number) {
+    const item = this.getItemByBubble(bubble);
+    if(!item) {
+      return;
+    }
 
-  //   item.mid = mid;
-
-  //   // indexOfAndSplice(item.group.items, item);
-  //   // item.group.insertItem(item);
-
-  //   indexOfAndSplice(this.itemsArr, item);
-  //   insertInDescendSortedArray(this.itemsArr, item, 'mid');
-  // }
+    item.mid = mid;
+    
+    // indexOfAndSplice(item.group.items, item);
+    // // const canChangeGroupMid = !item.group.items.length || item.group.items.every((item) => item.groupMid === item.mid);
+    // // if(canChangeGroupMid) item.groupMid = mid;
+    // item.group.insertItem(item);
+    
+    indexOfAndSplice(this.itemsArr, item);
+    insertInDescendSortedArray(this.itemsArr, item, 'mid');
+  }
 
   changeItemBubble(item: GroupItem, bubble: HTMLElement) {
     this.itemsMap.delete(item.bubble);
@@ -310,45 +387,51 @@ export default class BubbleGroups {
     this.changeItemBubble(item, to);
   }
 
-  /**
-   * 
-   * @param item 
-   * @param items expect descend sorted array
-   * @returns 
-   */
-  findIndexForItemInItems(item: GroupItem, items: GroupItem[]) {
-    let foundAtIndex = -1;
-    for(let i = 0, length = items.length; i < length; ++i) {
-      const _item = items[i];
-      const diff = Math.abs(_item.timestamp - item.timestamp);
-      const good = _item.fromId === item.fromId 
-        && diff <= this.newGroupDiff 
-        && item.dateTimestamp === _item.dateTimestamp 
-        && !item.single 
-        && !_item.single;
+  canItemsBeGrouped(item1: GroupItem, item2: GroupItem) { 
+    return item2.fromId === item1.fromId 
+      && Math.abs(item2.timestamp - item1.timestamp) <= this.newGroupDiff 
+      && item1.dateTimestamp === item2.dateTimestamp 
+      && !item1.single 
+      && !item2.single;
+  }
 
-      if(good) {
-        foundAtIndex = i;
+  getSiblingsAtIndex(itemIndex: number, items: GroupItem[]) {
+    return [items[itemIndex - 1], items[itemIndex + 1]] as const;
+  }
 
-        if(this.chat.type === 'scheduled') {
-          break;
-        }
-      } else {
-        foundAtIndex = -1;
-      }
+  // findGroupSiblingInSiblings(item: GroupItem, siblings: ReturnType<BubbleGroups['getSiblingsAtIndex']>) {
+  //   return siblings.find((sibling) => sibling && this.canItemsBeGrouped(item, sibling));
+  // }
 
-      if(this.chat.type !== 'scheduled') {
-        if(item.mid > _item.mid) {
+  findGroupSiblingByItem(item: GroupItem, items: GroupItem[]) {
+    items = items.slice();
+    const idx = insertInDescendSortedArray(items, item, 'mid');
+    // return this.findGroupSiblingInSiblings(item, this.getSiblingsAtIndex(idx, items));
+    return this.findGroupSiblingInItems(item, items, idx);
+  }
+
+  findGroupSiblingInItems(item: GroupItem, items: GroupItem[], index = items.indexOf(item), length = items.length) {
+    const previousItem = items[index - 1];
+    let siblingGroupedItem: GroupItem;
+    if(previousItem?.group && this.canItemsBeGrouped(item, previousItem)) {
+      siblingGroupedItem = previousItem;
+    } else {
+      for(let k = index + 1; k < length; ++k) {
+        const nextItem = items[k];
+        if(this.canItemsBeGrouped(item, nextItem)) {
+          if(nextItem.group) {
+            siblingGroupedItem = nextItem;
+          }
+        } else {
           break;
         }
       }
     }
 
-    return foundAtIndex;
+    return siblingGroupedItem;
   }
 
   addItemToGroup(item: GroupItem, group: BubbleGroup) {
-    item.group = group;
     group.insertItem(item);
     this.addItemToCache(item);
   }
@@ -356,6 +439,11 @@ export default class BubbleGroups {
   addItemToCache(item: GroupItem) {
     insertInDescendSortedArray(this.itemsArr, item, 'mid');
     this.itemsMap.set(item.bubble, item);
+  }
+
+  removeItemFromCache(item: GroupItem) {
+    indexOfAndSplice(this.itemsArr, item);
+    this.itemsMap.delete(item.bubble);
   }
 
   getMessageFromId(message: MyMessage) {
@@ -374,54 +462,112 @@ export default class BubbleGroups {
     const {mid, date: timestamp} = message;
     const {dateTimestamp} = this.chat.bubbles.getDateForDateContainer(timestamp);
     const item: GroupItem = {
-      bubble, 
-      fromId: this.getMessageFromId(message), 
       mid, 
+      groupMid: mid, 
+      fromId: this.getMessageFromId(message), 
+      bubble, 
       timestamp, 
       dateTimestamp, 
       mounted: false, 
-      single: single
+      single,
+      message
     };
 
     return item;
   }
 
-  // prepareForGrouping(bubble: HTMLElement, message: MyMessage) {
-  //   const item = this.createItem(bubble, message);
-  //   this.addItemToCache(item);
-  // }
+  splitSiblingsOnGrouping(siblings: ReturnType<BubbleGroups['getSiblingsAtIndex']>) {
+    const [previousSibling, nextSibling] = siblings;
+    const previousGroup = previousSibling?.group;
+    const nextGroup = nextSibling?.group;
 
-  // groupUngrouped() {
-  //   const items = this.itemsArr;
-  //   const length = items.length;
-  //   for(let i = length - 1; i >= 0; --i) {
-  //     const item = items[i];
-  //     if(item.gr)
-  //   }
-  // }
+    if(!previousGroup) {
+      return;
+    }
 
-  addBubble(bubble: HTMLElement, message: MyMessage, unmountIfFound?: boolean) {
-    const oldItem = this.getItemByBubble(bubble);
-    if(unmountIfFound) { // updating position
-      this.removeAndUnmountBubble(bubble);
-    } else if(oldItem) { // editing
-      const group = oldItem.group;
-      this.changeItemBubble(oldItem, bubble);
-      oldItem.mounted = false;
+    // will refresh group
+    // if(previousGroup === nextGroup) {
+      const items = previousGroup.items;
+      const index = items.indexOf(previousSibling) + 1;
+      const length = items.length;
+      if(index === length) {
+        return;
+      }
 
-      return {item: oldItem, group};
+      const modifiedGroups: BubbleGroup[] = [previousGroup];
+      // if(previousGroup !== nextGroup && nextGroup) {
+      //   modifiedGroups.push(nextGroup);
+      // }
+
+      this.f(items, index, length);
+      return modifiedGroups;
+    // }
+  }
+
+  prepareForGrouping(bubble: HTMLElement, message: MyMessage) {
+    if(this.getItemByBubble(bubble)) {
+      debugger;
+      return;
     }
 
     const item = this.createItem(bubble, message);
-
-    const foundAtIndex = this.findIndexForItemInItems(item, this.itemsArr);
-    const foundItem = this.itemsArr[foundAtIndex];
-
-    const group = foundItem?.group ?? new BubbleGroup(this.chat, this, item.dateTimestamp);
-    this.addItemToGroup(item, group);
-    
-    return {item, group};
+    this.addItemToCache(item);
   }
+
+  groupUngrouped() {
+    const items = this.itemsArr;
+    const length = items.length;
+    const modifiedGroups: Set<BubbleGroup> = new Set();
+    // for(let i = length - 1; i >= 0; --i) {
+    for(let i = 0; i < length; ++i) {
+      const item = items[i];
+      if(item.group) {
+        continue;
+      }
+
+      let hadGroup = true;
+      const siblings = this.getSiblingsAtIndex(i, items);
+      const siblingGroupedItem = this.findGroupSiblingInItems(item, items, i, length);
+
+      // const foundItem = this.findGroupSiblingInSiblings(item, siblings);
+      const foundItem = siblingGroupedItem;
+      const group = foundItem?.group ?? (hadGroup = false, new BubbleGroup(this.chat, this, item.dateTimestamp));
+
+      modifiedGroups.add(group);
+      group.insertItem(item);
+
+      if(!hadGroup) {
+        const splittedGroups = this.splitSiblingsOnGrouping(siblings);
+        if(splittedGroups) {
+          splittedGroups.forEach((group) => modifiedGroups.add(group));
+        }
+      }
+    }
+
+    return modifiedGroups;
+  }
+
+  // addBubble(bubble: HTMLElement, message: MyMessage, unmountIfFound?: boolean) {
+  //   const oldItem = this.getItemByBubble(bubble);
+  //   if(unmountIfFound) { // updating position
+  //     this.removeAndUnmountBubble(bubble);
+  //   } else if(oldItem) { // editing
+  //     const group = oldItem.group;
+  //     this.changeItemBubble(oldItem, bubble);
+  //     oldItem.mounted = false;
+
+  //     return {item: oldItem, group};
+  //   }
+
+  //   const item = this.createItem(bubble, message);
+
+  //   const foundItem = this.findSameGroupItem(item, this.itemsArr);
+
+  //   const group = foundItem?.group ?? new BubbleGroup(this.chat, this, item.dateTimestamp);
+  //   this.addItemToGroup(item, group);
+    
+  //   return {item, group};
+  // }
 
   /* setClipIfNeeded(bubble: HTMLDivElement, remove = false) {
     //console.log('setClipIfNeeded', bubble, remove);
@@ -485,4 +631,18 @@ export default class BubbleGroups {
     this.groups = [];
     this.itemsMap.clear();
   }
+
+  // findIncorrentPositions() {
+  //   var bubbles = Array.from(this.chat.bubbles.chatInner.querySelectorAll('.bubbles-group .bubble')).reverse();
+  //   var items = this.itemsArr;
+  //   for(var i = 0, length = items.length; i < length; ++i) {
+  //     const item = items[i];
+  //     const foundBubble = bubbles[i];
+  //     if(item.bubble !== foundBubble) {
+  //       console.log('incorrect position', i, item, foundBubble);
+  //       // debugger;
+  //       // break;
+  //     }
+  //   }
+  // }
 }

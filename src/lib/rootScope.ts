@@ -10,8 +10,6 @@ import type { MyDialogFilter } from "./storages/filters";
 import type { Folder } from "./storages/dialogs";
 import type { UserTyping } from "./appManagers/appProfileManager";
 import type { MyDraftMessage } from "./appManagers/appDraftsManager";
-import type { PushSubscriptionNotify } from "./mtproto/webPushApiManager";
-import type { PushNotificationObject } from "./serviceWorker/push";
 import type { ConnectionStatusChange } from "./mtproto/connectionStatus";
 import type { GroupCallId } from "./appManagers/appGroupCallsManager";
 import type { AppManagers } from "./appManagers/managers";
@@ -67,7 +65,6 @@ export type BroadcastEvents = {
   'history_delete': {peerId: PeerId, msgs: Set<number>},
   'history_forbidden': PeerId,
   'history_reload': PeerId,
-  'history_focus': {peerId: PeerId, threadId?: number, mid?: number, startParam?: string},
   //'history_request': void,
   
   'message_edit': {storageKey: MessagesStorageKey, peerId: PeerId, mid: number, message: MyMessage},
@@ -104,8 +101,6 @@ export type BroadcastEvents = {
   'settings_updated': {key: string, value: any, settings: State['settings']},
   'draft_updated': {peerId: PeerId, threadId: number, draft: MyDraftMessage | undefined, force?: boolean},
   
-  'im_tab_change': number,
-  
   'background_change': void,
   
   'privacy_update': Update.updatePrivacy,
@@ -115,21 +110,12 @@ export type BroadcastEvents = {
 
   'notification_reset': string,
   'notification_cancel': string,
-  'notification_build': {
-    message: Message.message | Message.messageService,
-    fwdCount?: number,
-    peerReaction?: MessagePeerReaction,
-    peerTypeNotifySettings?: PeerNotifySettings
-  },
   
   'language_change': string,
   
   'theme_change': void,
-  
-  'push_notification_click': PushNotificationObject,
-  'push_init': PushSubscriptionNotify,
-  'push_subscribe': PushSubscriptionNotify,
-  'push_unsubscribe': PushSubscriptionNotify,
+
+  'media_play': void,
   
   'emoji_recent': string,
   
@@ -153,9 +139,11 @@ export type BroadcastEvents = {
   'logging_out': void
 };
 
-export class RootScope extends EventListenerBase<{
+export type BroadcastEventsListeners = {
   [name in keyof BroadcastEvents]: (e: BroadcastEvents[name]) => void
-}> {
+};
+
+export class RootScope extends EventListenerBase<BroadcastEventsListeners> {
   public myId: PeerId = NULL_PEER_ID;
   private connectionStatus: {[name: string]: ConnectionStatusChange} = {};
   public settings: State['settings'];

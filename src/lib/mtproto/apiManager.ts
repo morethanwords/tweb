@@ -297,7 +297,7 @@ export class ApiManager extends ApiManagerMethods {
     const clear = async() => {
       this.baseDcId = undefined;
       //this.telegramMeNotify(false);
-      await toggleStorages(false);
+      await toggleStorages(false, true);
       IDB.closeDatabases();
       this.rootScope.dispatchEvent('logging_out');
     };

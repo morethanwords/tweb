@@ -113,7 +113,7 @@ class LocalStorage<Storage extends Record<string, any>> {
   } */
 
   public clear() {
-    const keys: string[] = ['dc', 'server_time_offset', 'xt_instance', 'user_auth', 'state_id'];
+    const keys: string[] = ['dc', 'server_time_offset', 'xt_instance', 'user_auth', 'state_id', 'k_build'];
     for(let i = 1; i <= 5; ++i) {
       keys.push(`dc${i}_server_salt`);
       keys.push(`dc${i}_auth_key`);
@@ -124,8 +124,12 @@ class LocalStorage<Storage extends Record<string, any>> {
     }
   }
 
-  public toggleStorage(enabled: boolean) {
+  public toggleStorage(enabled: boolean, clearWrite: boolean) {
     this.useStorage = enabled;
+
+    if(!clearWrite) {
+      return;
+    }
 
     if(!enabled) {
       this.clear();
@@ -191,7 +195,7 @@ export default class LocalStorageController<Storage extends Record<string, any>>
     return this.proxy<void>('clear'/* , preserveKeys */);
   }
 
-  public toggleStorage(enabled: boolean) {
-    return this.proxy<void>('toggleStorage', enabled);
+  public toggleStorage(enabled: boolean, clearWrite: boolean) {
+    return this.proxy<void>('toggleStorage', enabled, clearWrite);
   }
 }

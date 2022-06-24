@@ -156,7 +156,7 @@ function getMainMidForGrouped(mids: number[]) {
 
 export default class ChatBubbles {
   public container: HTMLDivElement;
-  private chatInner: HTMLDivElement;
+  public chatInner: HTMLDivElement;
   public scrollable: Scrollable;
 
   private getHistoryTopPromise: Promise<boolean>;
@@ -248,10 +248,13 @@ export default class ChatBubbles {
   private attachPlaceholderOnRender: () => void;
 
   private bubblesToEject: Set<HTMLElement> = new Set();
+  private bubblesToReplace: Set<HTMLElement> = new Set();
   private updatePlaceholderPosition: () => void;
   private setPeerOptions: {lastMsgId: number; topMessage: number;};
 
   private setPeerTempId: number = 0;
+
+  private renderNewPromises: Set<Promise<any>> = new Set();
 
   // private reactions: Map<number, ReactionsElement>;
 
@@ -280,62 +283,104 @@ export default class ChatBubbles {
     // * events
 
     // will call when sent for update pos
-    this.listenerSetter.add(rootScope)('history_update', ({storageKey, peerId, mid, message, sequential}) => {
+    this.listenerSetter.add(rootScope)('history_update', async({storageKey, mid, message}) => {
       if(this.chat.messagesStorageKey !== storageKey) {
         return;
       }
 
+      const log = false ? this.log.bindPrefix('history_update-' + mid) : undefined;
+      log && log('start');
+
       const bubble = this.bubbles[mid];
       if(!bubble) return;
+
+      if(this.renderNewPromises.size) {
+        log && log.error('will await new messages render');
+        await Promise.all(Array.from(this.renderNewPromises));
+      }
+
+      if(this.messagesQueuePromise) {
+        log && log.error('messages render in process');
+        await this.messagesQueuePromise;
+      }
+
+      if(this.bubbles[mid] !== bubble) return;
+
+      // await getHeavyAnimationPromise();
       
       const item = this.bubbleGroups.getItemByBubble(bubble);
-      if(!item) return; // probably a group item
+      if(!item) { // probably a group item
+        log && log.error('no item by bubble', bubble);
+        return;
+      } else if(item.mid === mid) {
+        log && log.warn('wow what', item, mid);
+        return;
+      }
 
-      const unmountIfFound = !sequential || this.bubbleGroups.getLastGroup() !== item.group;
-      if(unmountIfFound) {
-        const groupIndex = this.bubbleGroups.groups.indexOf(item.group);
-        this.bubbleGroups.removeAndUnmountBubble(bubble);
-        if(!item.group.items.length) { // group has collapsed, next message can have higher mid so have to reposition them too
-          const nearbyGroups = this.bubbleGroups.groups.slice(0, groupIndex + 1);
-          for(let length = nearbyGroups.length, i = length - 2; i >= 0; --i) {
-            const group = nearbyGroups[i];
-            const groupItems = group.items;
-            const nextGroup = nearbyGroups[i + 1];
-            const nextGroupItems = nextGroup.items;
-
-            let _break = false, moved = false;
-            for(let j = groupItems.length - 1; j >= 0; --j) {
-              const groupItem = groupItems[j];
-              const possibleIndex = this.bubbleGroups.findIndexForItemInItems(groupItem, nextGroupItems);
-              if(possibleIndex === -1) {
-                _break = true;
-                break;
-              }
-
-              this.bubbleGroups.removeAndUnmountBubble(groupItem.bubble);
-              this.bubbleGroups.addItemToGroup(groupItem, nextGroup);
-              moved = true;
-            }
-
-            if(moved) {
-              nextGroup.mount();
-            }
-
-            if(_break) {
-              break;
-            }
-          }
-        }
-
-        const {group} = this.setBubblePosition(bubble, message, unmountIfFound);
-        group.mount();
-
-        if(this.scrollingToBubble) {
-          this.scrollToEnd();
-        }
-      }/*  else {
+      const group = item.group;
+      const newItem = this.bubbleGroups.createItem(bubble, message);
+      // newItem.mid = item.mid;
+      const _items = this.bubbleGroups.itemsArr.slice();
+      indexOfAndSplice(_items, item);
+      const foundItem = this.bubbleGroups.findGroupSiblingByItem(newItem, _items);
+      if(group === foundItem?.group/*  && false */) {
+        log && log('item has correct position', item);
         this.bubbleGroups.changeBubbleMid(bubble, mid);
-      } */
+        return;
+      }
+
+      // return;
+
+      // await fastRafPromise();
+      // if(this.bubbles[mid] !== bubble) return;
+
+      // const groupIndex = this.bubbleGroups.groups.indexOf(group);
+      this.bubbleGroups.removeAndUnmountBubble(bubble);
+      // if(!group.items.length) { // group has collapsed, next message can have higher mid so have to reposition them too
+      //   log && log('group has collapsed', item);
+
+      //   const siblingGroups = this.bubbleGroups.groups.slice(0, groupIndex + 1);
+      //   for(let length = siblingGroups.length, i = length - 2; i >= 0; --i) {
+      //     const siblingGroup = siblingGroups[i];
+      //     const siblingItems = siblingGroup.items;
+      //     const nextGroup = siblingGroups[i + 1];
+      //     const nextItems = nextGroup.items;
+
+      //     let _break = false, moved = false;
+      //     for(let j = siblingItems.length - 1; j >= 0; --j) {
+      //       const siblingItem = siblingItems[j];
+      //       const foundItem = this.bubbleGroups.findGroupSiblingByItem(siblingItem, nextItems);
+      //       if(!foundItem) {
+      //         _break = true;
+      //         break;
+      //       }
+
+      //       log('will move item', siblingItem, nextGroup);
+      //       this.bubbleGroups.removeAndUnmountBubble(siblingItem.bubble);
+      //       this.bubbleGroups.addItemToGroup(siblingItem, nextGroup);
+      //       moved = true;
+      //     }
+
+      //     if(moved) {
+      //       nextGroup.mount();
+      //     }
+
+      //     if(_break) {
+      //       break;
+      //     }
+      //   }
+      // }
+
+      const {groups} = this.groupBubbles([{bubble, message}]);
+      this.bubbleGroups.mountUnmountGroups(groups);
+
+      if(this.scrollingToBubble) {
+        this.scrollToEnd();
+      }
+
+      log && log('end');
+
+      // this.bubbleGroups.findIncorrentPositions();
     });
 
     this.listenerSetter.add(rootScope)('dialog_flush', ({peerId}) => {
@@ -358,6 +403,7 @@ export default class ChatBubbles {
       if(_bubble) {
         const bubble = bubbles[tempId];
         bubbles[mid] = bubble;
+        bubble.dataset.mid = '' + mid;
         delete bubbles[tempId];
 
         fastRaf(() => {
@@ -367,8 +413,6 @@ export default class ChatBubbles {
             bubble.classList.add((this.peerId === rootScope.myId && this.chat.type !== 'scheduled') || !this.unreadOut.has(mid) ? 'is-read' : 'is-sent');
           }
         });
-
-        bubble.dataset.mid = '' + mid;
       }
 
       if(this.unreadOut.has(tempId)) {
@@ -383,6 +427,10 @@ export default class ChatBubbles {
         if(timestamp >= maxTimestamp) {
           this.deleteMessagesByIds([mid]);
         }
+      }
+
+      if(!_bubble) {
+        return;
       }
 
       let messages: (Message.message | Message.messageService)[], tempIds: number[];
@@ -1261,7 +1309,7 @@ export default class ChatBubbles {
     if(this.readPromise) return;
 
     const middleware = this.getMiddleware();
-    this.readPromise = idleController.idle.focusPromise.then(async() => {
+    this.readPromise = idleController.getFocusPromise().then(async() => {
       if(!middleware()) return;
       let maxId = Math.max(...Array.from(this.unreadedSeen));
 
@@ -2112,8 +2160,17 @@ export default class ChatBubbles {
       } : undefined
     };
   }
+
+  private renderNewMessagesByIds(mids: number[], scrolledDown?: boolean) {
+    const promise = this._renderNewMessagesByIds(mids, scrolledDown);
+    this.renderNewPromises.add(promise);
+    promise.catch(noop).finally(() => {
+      this.renderNewPromises.delete(promise);
+    });
+    return promise;
+  }
   
-  public async renderNewMessagesByIds(mids: number[], scrolledDown?: boolean) {
+  private async _renderNewMessagesByIds(mids: number[], scrolledDown?: boolean) {
     if(!this.scrollable.loadedAll.bottom) { // seems search active or sliced
       //this.log('renderNewMessagesByIds: seems search is active, skipping render:', mids);
       const setPeerPromise = this.chat.setPeerPromise;
@@ -2131,7 +2188,7 @@ export default class ChatBubbles {
     if(this.chat.threadId) {
       mids = await filterAsync(mids, async(mid) => {
         const message = await this.chat.getMessage(mid);
-        const replyTo = message.reply_to as MessageReplyHeader;
+        const replyTo = message?.reply_to as MessageReplyHeader;
         return replyTo && (replyTo.reply_to_top_id || replyTo.reply_to_msg_id) === this.chat.threadId;
       });
     }
@@ -2179,6 +2236,8 @@ export default class ChatBubbles {
         }, 10); */
       });
     }
+
+    return promise;
   }
 
   public getLastBubble() {
@@ -2193,6 +2252,10 @@ export default class ChatBubbles {
     forceDuration?: number
   ) {
     const bubble = findUpClassName(element, 'bubble');
+
+    if(!element.parentElement) {
+      this.log.error('element is not connected', bubble);
+    }
 
     let fallbackToElementStartWhenCentering: HTMLElement;
     // * if it's a start, then scroll to start of the group
@@ -2454,6 +2517,7 @@ export default class ChatBubbles {
     this.unreadOut.clear();
     this.needUpdate.length = 0;
     this.lazyLoadQueue.clear();
+    this.renderNewPromises.clear();
     
     // clear messages
     if(bubblesToo) {
@@ -2501,6 +2565,7 @@ export default class ChatBubbles {
 
     this.renderingMessages.clear();
     this.bubblesToEject.clear();
+    this.bubblesToReplace.clear();
 
     // this.reactions.clear();
 
@@ -3012,7 +3077,9 @@ export default class ChatBubbles {
     const possibleError = PEER_CHANGED_ERROR;
     const m = middlewarePromise(middleware, possibleError);
 
-    const promise = this.messagesQueuePromise = m(pause(0)).then(async() => {
+    const processQueue = async(): Promise<void> => {
+      log('start');
+
       const renderQueue = this.messagesQueue.slice();
       this.messagesQueue.length = 0;
 
@@ -3025,15 +3092,27 @@ export default class ChatBubbles {
         return promise;
       });
 
-      const loadQueue = (await m(Promise.all(renderQueuePromises))).filter(Boolean);
-      log.warn('messages rendered');
+      let loadQueue = await m(Promise.all(renderQueuePromises));
+      const filterQueue = (queue: typeof loadQueue) => {
+        return queue.filter((details) => {
+          // message can be deleted during rendering
+          return details && this.bubbles[details.bubble.dataset.mid] === details.bubble;
+        });
+      };
 
-      const groups: Set<BubbleGroups['groups'][0]> = new Set();
+      loadQueue = filterQueue(loadQueue);
+
+      log('messages rendered');
+
+      const reverse = loadQueue[0]?.reverse;
+
+      const {groups, avatarPromises} = this.groupBubbles(loadQueue.filter((details) => details.updatePosition));
+
+      // if(groups.length > 2 && loadQueue.length === 1) {
+      //   debugger;
+      // }
+      
       const promises = loadQueue.reduce((acc, details) => {
-        if(!details || this.bubbles[details.message.mid] !== details.bubble) {
-          return acc; // message was deleted during rendering
-        }
-
         const perf = performance.now();
 
         const promises = details.promises.slice();
@@ -3046,32 +3125,34 @@ export default class ChatBubbles {
           log.groupEnd();
         });
 
-        if(details.updatePosition) {
-          const res = this.setBubblePosition(details.bubble, details.message, false);
-          if(res) {
-            groups.add(res.group);
-            if(details.needAvatar) {
-              details.promises.push(res.group.createAvatar(details.message));
-            }
-          }
-        }
+        // if(details.updatePosition) {
+        //   if(res) {
+        //     groups.add(res.group);
+        //     if(details.needAvatar) {
+        //       details.promises.push(res.group.createAvatar(details.message));
+        //     }
+        //   }
+        // }
 
         acc.push(...details.promises);
         return acc;
       }, [] as Promise<any>[]);
 
+      promises.push(...avatarPromises);
       // promises.push(pause(200));
 
       // * это нужно для того, чтобы если захочет подгрузить reply или какое-либо сообщение, то скролл не прервался
       // * если добавить этот промис - в таком случае нужно сделать, чтобы скроллило к последнему сообщению после рендера
       // promises.push(getHeavyAnimationPromise());
 
-      log.warn('media promises to call', promises, loadQueue, this.isHeavyAnimationInProgress);
+      log('media promises to call', promises, loadQueue, this.isHeavyAnimationInProgress);
       await m(Promise.all([...promises, this.setUnreadDelimiter()])); // не нашёл места лучше
       await m(fastRafPromise()); // have to be the last
-      log.warn('media promises end');
+      log('media promises end');
 
-      this.prepareToSaveScroll(loadQueue[0] && loadQueue[0].reverse);
+      loadQueue = filterQueue(loadQueue);
+
+      const restoreScroll = this.prepareToSaveScroll(reverse);
       // if(this.messagesQueueOnRender) {
         // this.messagesQueueOnRender();
       // }
@@ -3081,35 +3162,58 @@ export default class ChatBubbles {
       }
 
       this.ejectBubbles();
+      for(const bubble of this.bubblesToReplace) {
+        if(!loadQueue.find((details) => details.bubble === bubble)) {
+          continue;
+        }
+
+        const item = this.bubbleGroups.getItemByBubble(bubble);
+        item.mounted = false;
+        if(!groups.includes(item.group)) {
+          groups.push(item.group);
+        }
+
+        this.bubblesToReplace.delete(bubble);
+      }
       
       if(this.chat.selection.isSelecting) {
-        loadQueue.forEach(({message, bubble}) => {
-          if(this.bubbles[message.mid] !== bubble) { // maybe message was deleted during rendering
-            return;
-          }
-          
+        loadQueue.forEach(({bubble}) => {
           this.chat.selection.toggleElementCheckbox(bubble, true);
         });
       }
 
-      // const sortedGroups = Array.from(groups).sort((a, b) => a.firstTimestamp - b.firstTimestamp);
-      // for(const group of sortedGroups) {
-      for(const group of groups) {
-        group.mount();
-      }
+      loadQueue.forEach(({message, bubble, updatePosition}) => {
+        if(message.pFlags.local && updatePosition) {
+          this.chatInner[(message as Message.message).pFlags.sponsored ? 'append' : 'prepend'](bubble);
+          return;
+        }
+      });
+
+      this.bubbleGroups.mountUnmountGroups(groups);
+      // this.bubbleGroups.findIncorrentPositions();
 
       if(this.updatePlaceholderPosition) {
         this.updatePlaceholderPosition();
       }
 
+      if(restoreScroll) {
+        restoreScroll();
+      }
+
       // this.setStickyDateManually();
-    }).finally(() => {
+      
+      if(this.messagesQueue.length) {
+        log('have new messages to render');
+        return processQueue();
+      } else {
+        log('end');
+      }
+    };
+
+    log('setting pause');
+    const promise = this.messagesQueuePromise = m(pause(0)).then(processQueue).finally(() => {
       if(this.messagesQueuePromise === promise) {
         this.messagesQueuePromise = null;
-
-        if(this.messagesQueue.length) {
-          this.setMessagesQueuePromise();
-        }
       }
     });
 
@@ -3121,16 +3225,35 @@ export default class ChatBubbles {
       bubble.remove();
       // this.bubbleGroups.removeAndUnmountBubble(bubble);
     }
+
+    this.bubblesToEject.clear();
   }
 
-  public setBubblePosition(bubble: HTMLElement, message: Message.message | Message.messageService, unmountIfFound: boolean) {
-    if(message.pFlags.local) {
-      this.chatInner[(message as Message.message).pFlags.sponsored ? 'append' : 'prepend'](bubble);
-      return;
-    }
+  public groupBubbles(items: Array<{
+    // Awaited<ReturnType<ChatBubbles['safeRenderMessage']>> & 
+    bubble: HTMLElement, 
+    message: Message.message | Message.messageService
+  }/*  & {
+    unmountIfFound?: boolean
+  } */>) {
+    items.forEach(({bubble, message}) => {
+      this.bubbleGroups.prepareForGrouping(bubble, message);
+    });
 
-    const result = this.bubbleGroups.addBubble(bubble, message, unmountIfFound);
-    return result;
+    const groups = this.bubbleGroups.groupUngrouped();
+
+    const avatarPromises = Array.from(groups).map((group) => {
+      if(group.avatar) return;
+      const firstItem = group.firstItem;
+      if(this.chat.isAvatarNeeded(firstItem.message)) {
+        return group.createAvatar(firstItem.message);
+      }
+    }).filter(Boolean);
+
+    return {
+      groups: [...groups], 
+      avatarPromises
+    };
   }
 
   public getMiddleware(additionalCallback?: () => boolean) {
@@ -3156,6 +3279,9 @@ export default class ChatBubbles {
 
       // const groupedId = (message as Message.message).grouped_id;
       const newBubble = document.createElement('div');
+      newBubble.dataset.mid = '' + message.mid;
+      newBubble.dataset.peerId = '' + message.peerId;
+      newBubble.dataset.timestamp = '' + message.date;
 
       // const bubbleNew: Bubble = this.bubblesNew[message.mid] ??= {
       //   bubble: newBubble, 
@@ -3167,7 +3293,10 @@ export default class ChatBubbles {
 
       if(bubble) {
         this.skippedMids.delete(message.mid);
+
         this.bubblesToEject.add(bubble);
+        this.bubblesToReplace.delete(bubble);
+        this.bubblesToReplace.add(newBubble);
         this.bubbleGroups.changeBubbleByBubble(bubble, newBubble);
       }
 
@@ -3215,6 +3344,8 @@ export default class ChatBubbles {
     //   return;
     // }
 
+    // await pause(1000);
+
     const isMessage = message._ === 'message';
     const groupedId = isMessage && message.grouped_id;
     let albumMids: number[], reactionsMessage: Message.message;
@@ -3232,96 +3363,42 @@ export default class ChatBubbles {
       reactionsMessage = groupedId ? await this.managers.appMessagesManager.getGroupsFirstMessage(message) : message;
     }
     
-    const peerId = this.peerId;
     // * can't use 'message.pFlags.out' here because this check will be used to define side of message (left-right)
-    const our = message.fromId === rootScope.myId || (message.pFlags.out && await this.managers.appPeersManager.isMegagroup(peerId));
+    const our = this.chat.isOurMessage(message);
     
     const messageDiv = document.createElement('div');
     messageDiv.classList.add('message');
     
-    //messageDiv.innerText = message.message;
-
     let bubbleContainer: HTMLDivElement;
     let contentWrapper: HTMLElement;
     
-    // bubble
-    // if(!bubble) {
-      contentWrapper = document.createElement('div');
-      contentWrapper.classList.add('bubble-content-wrapper');
-      
-      bubbleContainer = document.createElement('div');
-      bubbleContainer.classList.add('bubble-content');
-      
-      // bubble = document.createElement('div');
-      bubble.classList.add('bubble');
-      contentWrapper.appendChild(bubbleContainer);
-      bubble.appendChild(contentWrapper);
+    contentWrapper = document.createElement('div');
+    contentWrapper.classList.add('bubble-content-wrapper');
+    
+    bubbleContainer = document.createElement('div');
+    bubbleContainer.classList.add('bubble-content');
+    
+    bubble.classList.add('bubble');
+    contentWrapper.append(bubbleContainer);
+    bubble.append(contentWrapper);
 
-      if(!our && !message.pFlags.out && this.observer) {
-        //this.log('not our message', message, message.pFlags.unread);
-        const isUnread = message.pFlags.unread || 
-          isMentionUnread(message)/*  || 
-          (this.historyStorage.readMaxId !== undefined && this.historyStorage.readMaxId < message.mid) */;
-        if(isUnread) {
-          this.observer.observe(bubble, this.unreadedObserverCallback);
-          this.unreaded.set(bubble, message.mid);
-        }
+    if(!our && !message.pFlags.out && this.observer) {
+      //this.log('not our message', message, message.pFlags.unread);
+      const isUnread = message.pFlags.unread || 
+        isMentionUnread(message)/*  || 
+        (this.historyStorage.readMaxId !== undefined && this.historyStorage.readMaxId < message.mid) */;
+      if(isUnread) {
+        this.observer.observe(bubble, this.unreadedObserverCallback);
+        this.unreaded.set(bubble, message.mid);
       }
-    // } else {
-    //   const save = ['is-highlighted', 'is-group-first', 'is-group-last'];
-    //   const wasClassNames = bubble.className.split(' ');
-    //   const classNames = ['bubble'].concat(save.filter((c) => wasClassNames.includes(c)));
-    //   bubble.className = classNames.join(' ');
-
-    //   contentWrapper = bubble.lastElementChild as HTMLElement;
-    //   if(!contentWrapper.classList.contains('bubble-content-wrapper')) {
-    //     contentWrapper = bubble.querySelector('.bubble-content-wrapper');
-    //   }
-      
-    //   bubbleContainer = contentWrapper.firstElementChild as HTMLDivElement;
-    //   bubbleContainer.innerHTML = '';
-    //   bubbleContainer.style.cssText = '';
-    //   contentWrapper.innerHTML = '';
-    //   contentWrapper.appendChild(bubbleContainer);
-    //   //bubbleContainer.style.marginBottom = '';
-    //   const transitionDelay = contentWrapper.style.transitionDelay;
-    //   contentWrapper.style.cssText = '';
-    //   contentWrapper.style.transitionDelay = transitionDelay;
-
-    //   if(bubble === this.firstUnreadBubble) {
-    //     bubble.classList.add('is-first-unread');
-    //   }
-
-    //   // * Нужно очистить прошлую информацию, полезно если удалить последний элемент из альбома в ПОСЛЕДНЕМ БАББЛЕ ГРУППЫ (видно по аватару)
-    //   const originalMid = +bubble.dataset.mid;
-    //   const sameMid = +message.mid === originalMid;
-    //   /* if(updatePosition) {
-    //     bubble.remove(); // * for positionElementByIndex
-    //   } */
-
-    // ! WARNING
-    //   if(!sameMid) {
-    //     delete this.bubbles[originalMid];
-    //     this.skippedMids.delete(originalMid);
-    //   }
-
-    //   //bubble.innerHTML = '';
-    // }
-
-    // ! reset due to album edit or delete item
-    // this.bubbles[+message.mid] = bubble;
-    bubble.dataset.mid = '' + message.mid;
-    bubble.dataset.peerId = '' + message.peerId;
-    bubble.dataset.timestamp = '' + message.date;
+    }
 
     const loadPromises: Promise<any>[] = [];
     const ret = {
       bubble,
       promises: loadPromises,
       message,
-      reverse,
-      needAvatar: undefined as boolean,
-      isOut: undefined as boolean
+      reverse
     };
 
     if(message._ === 'messageService' && (!message.action || !SERVICE_AS_REGULAR.has(message.action._))) {
@@ -3339,10 +3416,15 @@ export default class ChatBubbles {
       const s = document.createElement('div');
       s.classList.add('service-msg');
       if(action) {
+        let promise: Promise<any>;
         if(action._ === 'messageActionChannelMigrateFrom') {
-          s.append(i18n('ChatMigration.From', [new PeerTitle({peerId: action.chat_id.toPeerId(true)}).element]));
+          const peerTitle = new PeerTitle();
+          promise = peerTitle.update({peerId: action.chat_id.toPeerId(true)});
+          s.append(i18n('ChatMigration.From', [peerTitle.element]));
         } else if(action._ === 'messageActionChatMigrateTo') {
-          s.append(i18n('ChatMigration.To', [new PeerTitle({peerId: action.channel_id.toPeerId(true)}).element]));
+          const peerTitle = new PeerTitle();
+          promise = peerTitle.update({peerId: action.channel_id.toPeerId(true)});
+          s.append(i18n('ChatMigration.To', [peerTitle.element]));
         } else {
           s.append(await wrapMessageActionTextNew(message));
         }
@@ -3524,6 +3606,7 @@ export default class ChatBubbles {
                 
                 promise.then((peerId) => {
                   const threadId = this.peerId === peerId ? this.chat.threadId : undefined;
+                  this.chat.appImManager.setInnerPeer({peerId});
                   this.managers.appInlineBotsManager.switchInlineQuery(peerId, threadId, botId, button.query);
                 });
               });
@@ -3605,7 +3688,7 @@ export default class ChatBubbles {
     const fwdFrom = isMessage && message.fwd_from;
     const fwdFromId = isMessage && message.fwdFromId;
 
-    const isOut = ret.isOut = our && (!fwdFrom || this.peerId !== rootScope.myId);
+    const isOut = this.chat.isOutMessage(message);
     let nameContainer: HTMLElement = bubbleContainer;
 
     const canHideNameIfMedia = !message.viaBotId && (message.fromId === rootScope.myId || !message.pFlags.out);
@@ -3674,9 +3757,9 @@ export default class ChatBubbles {
         case 'messageMediaWebPage': {
           processingWebPage = true;
           
-          let webpage: WebPage = messageMedia.webpage;
+          let webPage: WebPage = messageMedia.webpage;
           ////////this.log('messageMediaWebPage', webpage);
-          if(webpage._ !== 'webPage') {
+          if(webPage._ !== 'webPage') {
             break;
           } 
           
@@ -3689,8 +3772,8 @@ export default class ChatBubbles {
           quote.classList.add('quote');
 
           let previewResizer: HTMLDivElement, preview: HTMLDivElement;
-          const photo: Photo.photo = webpage.photo as any;
-          if(photo || webpage.document) {
+          const photo: Photo.photo = webPage.photo as any;
+          if(photo || webPage.document) {
             previewResizer = document.createElement('div');
             previewResizer.classList.add('preview-resizer');
             preview = document.createElement('div');
@@ -3701,7 +3784,7 @@ export default class ChatBubbles {
           let quoteTextDiv = document.createElement('div');
           quoteTextDiv.classList.add('quote-text');
           
-          const doc = webpage.document as MyDocument;
+          const doc = webPage.document as MyDocument;
           if(doc) {
             if(doc.type === 'gif' || doc.type === 'video' || doc.type === 'round') {
               //if(doc.size <= 20e6) {
@@ -3754,19 +3837,19 @@ export default class ChatBubbles {
           }
 
           let t: HTMLElement;
-          if(webpage.site_name) {
-            const html = wrapRichText(webpage.url);
+          if(webPage.site_name) {
+            const html = wrapRichText(webPage.url);
             const a: HTMLAnchorElement = htmlToDocumentFragment(html).firstElementChild as any;
             a.classList.add('webpage-name');
             const strong = document.createElement('strong');
-            setInnerHTML(strong, wrapEmojiText(webpage.site_name));
+            setInnerHTML(strong, wrapEmojiText(webPage.site_name));
             a.textContent = '';
             a.append(strong);
             quoteTextDiv.append(a);
             t = a;
           }
 
-          const title = wrapWebPageTitle(webpage);
+          const title = wrapWebPageTitle(webPage);
           if(title.textContent) {
             let titleDiv = document.createElement('div');
             titleDiv.classList.add('title');
@@ -3777,7 +3860,7 @@ export default class ChatBubbles {
             t = titleDiv;
           }
 
-          const description = wrapWebPageDescription(webpage);
+          const description = wrapWebPageDescription(webPage);
           if(description.textContent) {
             let textDiv = document.createElement('div');
             textDiv.classList.add('text');
@@ -4098,7 +4181,7 @@ export default class ChatBubbles {
     let savedFrom = '';
     
     // const needName = ((peerId.isAnyChat() && (peerId !== message.fromId || our)) && message.fromId !== rootScope.myId) || message.viaBotId;
-    const needName = (message.fromId !== rootScope.myId && await this.managers.appPeersManager.isAnyGroup(peerId)) || message.viaBotId || (message as Message.message).pFlags.sponsored;
+    const needName = (message.fromId !== rootScope.myId && this.chat.isAnyGroup) || message.viaBotId || (message as Message.message).pFlags.sponsored;
     if(needName || fwdFrom || message.reply_to_mid) { // chat
       let title: HTMLElement | DocumentFragment;
       let titleVia: typeof title;
@@ -4200,8 +4283,6 @@ export default class ChatBubbles {
         nameDiv.classList.add('name');
         nameContainer.append(nameDiv);
       }
-
-      ret.needAvatar = this.chat.isAnyGroup && !isOut;
     } else {
       bubble.classList.add('hide-name');
     }
@@ -4315,7 +4396,8 @@ export default class ChatBubbles {
       return;
     }
 
-    this.log.warn('onRender');
+    const log = this.log.bindPrefix('prepareToSaveScroll');
+    log('save');
     const scrollSaver = this.createScrollSaver(reverse);
     scrollSaver.save(); // * let's save scroll position by point before the slicing, not after
     
@@ -4328,16 +4410,17 @@ export default class ChatBubbles {
     // const saved = scrollSaver.getSaved();
     // const hadScroll = saved.scrollHeight !== saved.clientHeight;
 
-    (this.messagesQueuePromise || Promise.resolve()).then(() => {
+    return () => {
+      log('restore');
       // scrollSaver.restore(_history.length === 1 && !reverse ? false : true);
       scrollSaver.restore(reverse);
       this.onRenderScrollSet(scrollSaver.getSaved());
-    });
+    };
   }
 
   public async performHistoryResult(historyResult: HistoryResult | {history: (Message.message | Message.messageService | number)[]}, reverse: boolean) {
-    const log = this.log.bindPrefix('perform-' + (Math.random() * 1000 | 0));
-    log.warn('start', this.chatInner.parentElement);
+    const log = false ? this.log.bindPrefix('perform-' + (Math.random() * 1000 | 0)) : undefined;
+    log && log('start', this.chatInner.parentElement);
 
     let history = historyResult.history;
     history = history.slice(); // need
@@ -4393,9 +4476,10 @@ export default class ChatBubbles {
     await Promise.all(setLoadedPromises);
 
     // ! it is important to insert bubbles to group reversed way
-    const length = history.length, promises: Promise<any>[] = [];
-    if(reverse) for(let i = 0; i < length; ++i) promises.push(cb(messages[i]));
-    else for(let i = length - 1; i >= 0; --i) promises.push(cb(messages[i]));
+    // const length = history.length, promises: Promise<any>[] = [];
+    // if(reverse) for(let i = 0; i < length; ++i) promises.push(cb(messages[i]));
+    // else for(let i = length - 1; i >= 0; --i) promises.push(cb(messages[i]));
+    const promises = messages.map(cb);
 
     // cannot combine them into one promise
     await Promise.all(promises);
@@ -4409,7 +4493,7 @@ export default class ChatBubbles {
       }
     }
 
-    log.warn('performHistoryResult end');
+    log && log('performHistoryResult end');
   }
 
   private onRenderScrollSet(state?: {scrollHeight: number, clientHeight: number}) {
@@ -4823,9 +4907,9 @@ export default class ChatBubbles {
           };
         } else {
           callback = () => {
-            rootScope.dispatchEvent('history_focus', {
+            this.chat.appImManager.setInnerPeer({
               peerId,
-              mid,
+              lastMsgId: mid,
               startParam
             });
           };
@@ -5268,7 +5352,7 @@ export default class ChatBubbles {
           // * filter last album, because we don't know is it the last item
           for(let i = additionMsgIds.length - 1; i >= 0; --i) {
             const message = await this.chat.getMessage(additionMsgIds[i]);
-            if((message as Message.message).grouped_id) additionMsgIds.splice(i, 1);
+            if((message as Message.message)?.grouped_id) additionMsgIds.splice(i, 1);
             else break;
           }
 

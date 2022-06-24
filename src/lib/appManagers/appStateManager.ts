@@ -43,7 +43,7 @@ export class AppStateManager {
   }
 
   public setKeyValueToStorage<T extends keyof State>(key: T, value: State[T] = this.state[key], onlyLocal?: boolean) {
-    MTProtoMessagePort.getInstance<false>().invoke('mirror', {name: 'state', key, value});
+    MTProtoMessagePort.getInstance<false>().invokeVoid('mirror', {name: 'state', key, value});
     
     this.storage.set({
       [key]: value

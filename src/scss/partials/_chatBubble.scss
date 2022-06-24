@@ -946,6 +946,12 @@ $bubble-beside-button-width: 38px;
       left: 50%;
       transform: translate(-50%, -50%);
 
+      @include animation-level(2) {
+        .bubble-content-wrapper {
+          transition: var(--bubble-transition-in);
+        }
+      }
+
       &.has-description {
         .service-msg {
           flex-direction: column;

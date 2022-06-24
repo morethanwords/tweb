@@ -34,6 +34,7 @@ import AppSharedMediaTab from "../sidebarRight/tabs/sharedMedia";
 import noop from "../../helpers/noop";
 import middlewarePromise from "../../helpers/middlewarePromise";
 import indexOfAndSplice from "../../helpers/array/indexOfAndSplice";
+import { Message } from "../../layer";
 
 export type ChatType = 'chat' | 'pinned' | 'replies' | 'discussion' | 'scheduled';
 
@@ -80,6 +81,7 @@ export default class Chat extends EventListenerBase<{
   // public renderDarkPattern: () => Promise<void>;
 
   public isAnyGroup: boolean;
+  public isMegagroup: boolean;
   
   constructor(
     public appImManager: AppImManager,
@@ -401,16 +403,18 @@ export default class Chat extends EventListenerBase<{
       searchTab.close();
     }
 
-    const [noForwards, isRestricted, isAnyGroup] = await m(Promise.all([
+    const [noForwards, isRestricted, isAnyGroup, _, isMegagroup] = await m(Promise.all([
       this.managers.appPeersManager.noForwards(peerId),
       this.managers.appPeersManager.isRestricted(peerId),
       this._isAnyGroup(peerId),
-      this.setAutoDownloadMedia()
+      this.setAutoDownloadMedia(),
+      this.managers.appPeersManager.isMegagroup(peerId)
     ]));
 
     this.noForwards = noForwards;
     this.isRestricted = isRestricted;
     this.isAnyGroup = isAnyGroup;
+    this.isMegagroup = isMegagroup;
 
     this.container.classList.toggle('no-forwards', this.noForwards);
 
@@ -587,5 +591,19 @@ export default class Chat extends EventListenerBase<{
       sendSilent: this.input.sendSilent,
       sendAsPeerId: this.input.sendAsPeerId
     };
+  }
+
+  public isOurMessage(message: Message.message | Message.messageService) {
+    return message.fromId === rootScope.myId || (message.pFlags.out && this.isMegagroup);
+  }
+
+  public isOutMessage(message: Message.message | Message.messageService) {
+    const fwdFrom = (message as Message.message).fwd_from;
+    const isOut = this.isOurMessage(message) && (!fwdFrom || this.peerId !== rootScope.myId);
+    return isOut;
+  }
+
+  public isAvatarNeeded(message: Message.message | Message.messageService) {
+    return this.isAnyGroup && !this.isOutMessage(message);
   }
 }

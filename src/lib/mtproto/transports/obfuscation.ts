@@ -17,6 +17,8 @@ export default class Obfuscation {
   private dec: aesjs.ModeOfOperation.ModeOfOperationCTR; */
 
   private id: number;
+  private idPromise: Promise<Obfuscation['id']>;
+  private process: (data: Uint8Array, operation: 'encrypt' | 'decrypt') => ReturnType<Obfuscation['_process']>;
 
   // private cryptoEncKey: CryptoKey;
   // private cryptoDecKey: CryptoKey;
@@ -28,7 +30,7 @@ export default class Obfuscation {
   // private decIvCounter: Counter;
 
   public async init(codec: Codec) {
-    if(this.id !== undefined) {
+    if(this.idPromise !== undefined) {
       this.release();
     }
 
@@ -69,12 +71,21 @@ export default class Obfuscation {
     // console.log('encKey', encKey.hex, encIv.hex);
     // console.log('decKey', decKey.hex, decIv.hex);
 
-    this.id = await cryptoMessagePort.invokeCrypto('aes-ctr-prepare', {
+    const idPromise = this.idPromise = cryptoMessagePort.invokeCrypto('aes-ctr-prepare', {
       encKey,
       encIv,
       decKey,
       decIv
     });
+
+    this.process = async(data, operation) => {
+      await idPromise;
+      return this._process(data, operation);
+    };
+
+    this.id = await idPromise;
+    
+    this.process = this._process;
     
     // this.decIvCounter = new Counter(this.decIv);
     /* const key = this.cryptoEncKey = await subtle.importKey(
@@ -145,12 +156,12 @@ export default class Obfuscation {
     return res;
   } */
 
-  private process(data: Uint8Array, operation: 'encrypt' | 'decrypt') {
+  private _process = (data: Uint8Array, operation: 'encrypt' | 'decrypt') => {
     return cryptoMessagePort.invoke('invoke', {
       method: 'aes-ctr-process',
       args: [{id: this.id, data, operation}],
     }, undefined, undefined, [data.buffer]) as Promise<Uint8Array>;
-  }
+  };
 
   public encode(payload: Uint8Array) {
     /* return subtle.encrypt({
@@ -168,13 +179,17 @@ export default class Obfuscation {
     return this.process(payload, 'decrypt');
   }
 
-  public release() {
-    if(this.id === undefined) {
+  public async release() {
+    const idPromise = this.idPromise;
+    if(idPromise === undefined) {
       return;
     }
 
-    cryptoMessagePort.invokeCrypto('aes-ctr-destroy', this.id);
     this.id = undefined;
+    this.idPromise = undefined;
+
+    const id = await idPromise;
+    cryptoMessagePort.invokeCrypto('aes-ctr-destroy', id);
   }
 
   public destroy() {

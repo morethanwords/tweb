@@ -6,7 +6,7 @@
 
 import type { ApiFileManager, DownloadMediaOptions, DownloadOptions } from "../mtproto/apiFileManager";
 import deferredPromise, { CancellablePromise } from "../../helpers/cancellablePromise";
-import { Document, InputFile } from "../../layer";
+import { Document, InputFile, Photo, PhotoSize } from "../../layer";
 import { getFileNameByLocation } from "../../helpers/fileName";
 import getFileNameForUpload from "../../helpers/getFileNameForUpload";
 import { AppManagers } from "./managers";
@@ -201,11 +201,18 @@ export class AppDownloadManager {
   // }
 
   public downloadToDisc(options: DownloadMediaOptions) {
+    const media = options.media;
+    const isDocument = media._ === 'document';
+    if(!isDocument && !options.thumb) {
+      options.thumb = (media as Photo.photo).sizes.slice().pop() as PhotoSize.photoSize;
+    }
+    
     const promise = this.downloadMedia(options);
     promise.then((blob) => {
       const url = URL.createObjectURL(blob);
-      const media = options.media;
-      const downloadOptions = media._ === 'document' ? getDocumentDownloadOptions(media) : getPhotoDownloadOptions(media as any, {} as any);
+      const downloadOptions = isDocument ? 
+        getDocumentDownloadOptions(media) : 
+        getPhotoDownloadOptions(media as any, options.thumb);
       const fileName = (options.media as Document.document).file_name || getFileNameByLocation(downloadOptions.location);
       createDownloadAnchor(url, fileName, () => {
         URL.revokeObjectURL(url);

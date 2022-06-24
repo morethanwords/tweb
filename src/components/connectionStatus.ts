@@ -18,6 +18,7 @@ import { ConnectionStatus } from "../lib/mtproto/connectionStatus";
 import cancelEvent from "../helpers/dom/cancelEvent";
 import { attachClickEvent } from "../helpers/dom/clickEvent";
 import { AppManagers } from "../lib/appManagers/managers";
+import singleInstance from "../lib/mtproto/singleInstance";
 
 export default class ConnectionStatusComponent {
   public static CHANGE_STATE_DELAY = 1000;
@@ -145,6 +146,10 @@ export default class ConnectionStatusComponent {
   }
 
   private setState = () => {
+    if(singleInstance.deactivatedReason) {
+      return;
+    }
+
     const timeout = ConnectionStatusComponent.CHANGE_STATE_DELAY;
     if(this.connecting) {
       if(this.timedOut) {

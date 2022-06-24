@@ -13,6 +13,7 @@ import AvatarEdit from "../../avatarEdit";
 import I18n from "../../../lib/langPack";
 import ButtonCorner from "../../buttonCorner";
 import getUserStatusString from "../../wrappers/getUserStatusString";
+import appImManager from "../../../lib/appManagers/appImManager";
 
 interface OpenStreetMapInterface {
   place_id?: number;
@@ -79,9 +80,10 @@ export default class AppNewGroupTab extends SliderSuperTab {
     this.nextBtn.addEventListener('click', () => {
       const title = this.groupNameInputField.value;
 
-      if(this.isGeoChat){
+      let promise: Promise<ChatId>;
+      if(this.isGeoChat) {
         if(!this.userLocationAddress || !this.userLocationCoords) return;
-        this.managers.appChatsManager.createChannel({
+        promise = this.managers.appChatsManager.createChannel({
           title, 
           about: '', 
           geo_point: {
@@ -97,26 +99,35 @@ export default class AppNewGroupTab extends SliderSuperTab {
             });
           }
 
-          if(this.peerIds.length){
+          if(this.peerIds.length) {
             this.managers.appChatsManager.inviteToChannel(chatId, this.peerIds);
           }
-          
-          appSidebarLeft.removeTabFromHistory(this);
-          appSidebarLeft.selectTab(0);
+
+          return chatId;
         });
       } else {
         this.nextBtn.disabled = true;
-        this.managers.appChatsManager.createChat(title, this.peerIds.map((peerId) => peerId.toUserId())).then((chatId) => {
+        promise = this.managers.appChatsManager.createChat(title, this.peerIds.map((peerId) => peerId.toUserId())).then((chatId) => {
           if(this.uploadAvatar) {
             this.uploadAvatar().then((inputFile) => {
               this.managers.appChatsManager.editPhoto(chatId, inputFile);
             });
           }
           
-          appSidebarLeft.removeTabFromHistory(this);
-          appSidebarLeft.selectTab(0);
+          return chatId;
         });
       }
+
+      if(!promise) {
+        return;
+      }
+
+      promise.then((chatId) => {
+        appSidebarLeft.removeTabFromHistory(this);
+        appSidebarLeft.selectTab(0);
+
+        appImManager.setInnerPeer({peerId: chatId.toPeerId(true)});
+      });
     });
 
     const chatsSection = new SettingSection({

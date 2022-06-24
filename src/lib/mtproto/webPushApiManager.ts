@@ -12,14 +12,15 @@
 import type { ServiceWorkerNotificationsClearTask, ServiceWorkerPingTask, ServiceWorkerPushClickTask } from "../serviceWorker/index.service";
 import { MOUNT_CLASS_TO } from "../../config/debug";
 import { logger } from "../logger";
-import rootScope from "../rootScope";
-import apiManager from "./mtprotoworker";
+import apiManagerProxy from "./mtprotoworker";
 import I18n, { LangPackKey } from "../langPack";
 import { IS_MOBILE } from "../../environment/userAgent";
 import appRuntimeManager from "../appManagers/appRuntimeManager";
 import copy from "../../helpers/object/copy";
 import type { NotificationSettings } from "../appManagers/uiNotificationsManager";
-import idleController from "../../helpers/idleController";
+import singleInstance from "./singleInstance";
+import EventListenerBase from "../../helpers/eventListenerBase";
+import type { PushNotificationObject } from "../serviceWorker/push";
 
 export type PushSubscriptionNotifyType = 'init' | 'subscribe' | 'unsubscribe';
 export type PushSubscriptionNotifyEvent = `push_${PushSubscriptionNotifyType}`;
@@ -29,7 +30,12 @@ export type PushSubscriptionNotify = {
   tokenValue: string
 };
 
-export class WebPushApiManager {
+export class WebPushApiManager extends EventListenerBase<{
+  push_notification_click: (n: PushNotificationObject) => void,
+  push_init: (n: PushSubscriptionNotify) => void,
+  push_subscribe: (n: PushSubscriptionNotify) => void,
+  push_unsubscribe: (n: PushSubscriptionNotify) => void
+}> {
   public isAvailable = true;
   private isPushEnabled = false;
   private localNotificationsAvailable = true;
@@ -41,6 +47,8 @@ export class WebPushApiManager {
   private log = logger('PM');
 
   constructor() {
+    super(false);
+
     if(!('PushManager' in window) ||
       !('Notification' in window) ||
       !('serviceWorker' in navigator)) {
@@ -156,7 +164,7 @@ export class WebPushApiManager {
   }
 
   public isAliveNotify = () => {
-    if(!this.isAvailable || idleController.idle?.deactivated) {
+    if(!this.isAvailable || singleInstance.deactivatedReason) {
       return;
     }
 
@@ -182,7 +190,7 @@ export class WebPushApiManager {
       }
     };
 
-    apiManager.postSWMessage(task);
+    apiManagerProxy.postSWMessage(task);
 
     this.isAliveTO = setTimeout(this.isAliveNotify, 10000);
   }
@@ -199,7 +207,7 @@ export class WebPushApiManager {
     }
 
     const task: ServiceWorkerNotificationsClearTask = {type: 'notifications_clear'};
-    apiManager.postSWMessage(task);
+    apiManagerProxy.postSWMessage(task);
   }
 
   public setUpServiceWorkerChannel() {
@@ -207,13 +215,13 @@ export class WebPushApiManager {
       return;
     }
 
-    apiManager.addServiceWorkerTaskListener('push_click', (task: ServiceWorkerPushClickTask) => {
-      if(idleController.idle?.deactivated) {
+    apiManagerProxy.addServiceWorkerTaskListener('push_click', (task: ServiceWorkerPushClickTask) => {
+      if(singleInstance.deactivatedReason) {
         appRuntimeManager.reload();
         return;
       }
 
-      rootScope.dispatchEvent('push_notification_click', task.payload);
+      this.dispatchEvent('push_notification_click', task.payload);
     });
 
     navigator.serviceWorker.ready.then(this.isAliveNotify);
@@ -235,13 +243,13 @@ export class WebPushApiManager {
       }
       
       this.log.warn('Push', event, subscriptionObj);
-      rootScope.dispatchEvent(('push_' + event) as PushSubscriptionNotifyEvent, {
+      this.dispatchEvent(('push_' + event) as PushSubscriptionNotifyEvent, {
         tokenType: 10,
         tokenValue: JSON.stringify(subscriptionObj)
       });
     } else {
       this.log.warn('Push', event, false);
-      rootScope.dispatchEvent(('push_' + event) as PushSubscriptionNotifyEvent, false as any);
+      this.dispatchEvent(('push_' + event) as PushSubscriptionNotifyEvent, false as any);
     }
   }
 }

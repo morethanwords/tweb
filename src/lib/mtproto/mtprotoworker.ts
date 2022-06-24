@@ -6,16 +6,17 @@
 
 import type { RequestFilePartTask, RequestFilePartTaskResponse, ServiceWorkerTask } from '../serviceWorker/index.service';
 import type { Awaited, WorkerTaskVoidTemplate } from '../../types';
+import type { CacheStorageDbName } from '../cacheStorage';
+import type { State } from '../../config/state';
+import type { Message, MessagePeerReaction, PeerNotifySettings } from '../../layer';
 import { CryptoMethods } from '../crypto/crypto_methods';
 import rootScope from '../rootScope';
 import webpWorkerController from '../webp/webpWorkerController';
 import { MOUNT_CLASS_TO } from '../../config/debug';
 import sessionStorage from '../sessionStorage';
 import webPushApiManager from './webPushApiManager';
-import AppStorage from '../storage';
 import appRuntimeManager from '../appManagers/appRuntimeManager';
 import telegramMeWebManager from './telegramMeWebManager';
-import CacheStorageController, { CacheStorageDbName } from '../cacheStorage';
 import pause from '../../helpers/schedulers/pause';
 import isObject from '../../helpers/object/isObject';
 import ENVIRONMENT from '../../environment';
@@ -25,12 +26,12 @@ import MTProtoMessagePort from './mtprotoMessagePort';
 import cryptoMessagePort from '../crypto/cryptoMessagePort';
 import SuperMessagePort from './superMessagePort';
 import IS_SHARED_WORKER_SUPPORTED from '../../environment/sharedWorkerSupport';
-import type { State } from '../../config/state';
 import toggleStorages from '../../helpers/toggleStorages';
+import idleController from '../../helpers/idleController';
 
 export interface ToggleStorageTask extends WorkerTaskVoidTemplate {
   type: 'toggleStorages',
-  payload: boolean
+  payload: {enabled: boolean, clearWrite: boolean}
 };
 
 export type Mirrors = {
@@ -43,6 +44,18 @@ export type MirrorTaskPayload<T extends keyof Mirrors = keyof Mirrors, K extends
   value: any
 };
 
+export type NotificationBuildTaskPayload = {
+  message: Message.message | Message.messageService,
+  fwdCount?: number,
+  peerReaction?: MessagePeerReaction,
+  peerTypeNotifySettings?: PeerNotifySettings
+};
+
+export type TabState = {
+  chatPeerIds: PeerId[],
+  idleStartTime: number,
+};
+
 class ApiManagerProxy extends MTProtoMessagePort {
   private worker: /* Window */Worker;
   private isSWRegistered: boolean;
@@ -53,12 +66,18 @@ class ApiManagerProxy extends MTProtoMessagePort {
   public newVersion: string;
   public oldVersion: string;
 
+  private tabState: TabState;
+
   constructor() {
     super();
 
     this.isSWRegistered = true;
     this.taskListenersSW = {};
     this.mirrors = {} as any;
+    this.tabState = {
+      chatPeerIds: [],
+      idleStartTime: 0
+    };
 
     this.log('constructor');
 
@@ -158,7 +177,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
     rootScope.addEventListener('logging_out', () => {
       const toClear: CacheStorageDbName[] = ['cachedFiles', 'cachedStreamChunks'];
       Promise.all([
-        toggleStorages(false), 
+        toggleStorages(false, true), 
         sessionStorage.clear(),
         Promise.race([
           telegramMeWebManager.setAuthorized(false),
@@ -170,6 +189,11 @@ class ApiManagerProxy extends MTProtoMessagePort {
         appRuntimeManager.reload();
       });
     });
+
+    idleController.addEventListener('change', (idle) => {
+      this.updateTabStateIdle(idle);
+    });
+    this.updateTabStateIdle(idleController.isIdle);
 
     this.log('Passing environment:', ENVIRONMENT);
     this.invoke('environment', ENVIRONMENT);
@@ -357,10 +381,10 @@ class ApiManagerProxy extends MTProtoMessagePort {
   }
   /// #endif
 
-  public async toggleStorages(enabled: boolean) {
-    await toggleStorages(enabled);
-    this.invoke('toggleStorages', enabled);
-    const task: ToggleStorageTask = {type: 'toggleStorages', payload: enabled};
+  public async toggleStorages(enabled: boolean, clearWrite: boolean) {
+    await toggleStorages(enabled, clearWrite);
+    this.invoke('toggleStorages', {enabled, clearWrite});
+    const task: ToggleStorageTask = {type: 'toggleStorages', payload: {enabled, clearWrite}};
     this.postSWMessage(task);
   }
 
@@ -371,6 +395,15 @@ class ApiManagerProxy extends MTProtoMessagePort {
 
   public getState() {
     return this.getMirror('state');
+  }
+
+  public updateTabState<T extends keyof TabState>(key: T, value: TabState[T]) {
+    this.tabState[key] = value;
+    this.invokeVoid('tabState', this.tabState);
+  }
+
+  public updateTabStateIdle(idle: boolean) {
+    this.updateTabState('idleStartTime', idle ? Date.now() : 0);
   }
 
   private onMirrorTask = (payload: MirrorTaskPayload) => {

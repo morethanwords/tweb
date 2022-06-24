@@ -11,52 +11,52 @@ import { AckedResult } from "../mtproto/superMessagePort";
 import noop from "../../helpers/noop";
 import dT from "../../helpers/dT";
 
-let stats: {
-  [manager: string]: {
-    [method: string]: {
-      times: number[],
-      byArgs: {
-        [args: string]: number[]
-      }
-    }
-  }
-} = {};
+// let stats: {
+//   [manager: string]: {
+//     [method: string]: {
+//       times: number[],
+//       byArgs: {
+//         [args: string]: number[]
+//       }
+//     }
+//   }
+// } = {};
 
-let sentCount = 0;
-let sentMethods: {[key: string]: number} = {};
-let sentMethods2: {[key: string]: number} = {};
-function collectStats(manager: string, method: string, args: any[], promise: Promise<any>) {
-  ++sentCount;
+// let sentCount = 0;
+// let sentMethods: {[key: string]: number} = {};
+// let sentMethods2: {[key: string]: number} = {};
+// function collectStats(manager: string, method: string, args: any[], promise: Promise<any>) {
+//   ++sentCount;
 
-  const key = [manager, method].join('-');
-  if(!sentMethods[key]) sentMethods[key] = 0;
-  ++sentMethods[key];
+//   const key = [manager, method].join('-');
+//   if(!sentMethods[key]) sentMethods[key] = 0;
+//   ++sentMethods[key];
 
-  const key2 = [('00000' + sentCount).slice(-5), key].join('-');
+//   const key2 = [('00000' + sentCount).slice(-5), key].join('-');
 
-  let byManager = stats[manager] ??= {};
-  let byMethod = byManager[method] ??= {times: [], byArgs: {}};
+//   let byManager = stats[manager] ??= {};
+//   let byMethod = byManager[method] ??= {times: [], byArgs: {}};
 
-  const perf = performance.now();
-  promise.catch(noop).finally(() => {
-    const time = performance.now() - perf;
-    byMethod.times.push(time);
+//   const perf = performance.now();
+//   promise.catch(noop).finally(() => {
+//     const time = performance.now() - perf;
+//     byMethod.times.push(time);
 
-    sentMethods2[key2] = time;
+//     sentMethods2[key2] = time;
 
-    try {
-      const argsString = JSON.stringify(args);
-      byMethod.byArgs[argsString].push(time);
-    } catch(err) {}
-  });
-}
+//     try {
+//       const argsString = JSON.stringify(args);
+//       byMethod.byArgs[argsString].push(time);
+//     } catch(err) {}
+//   });
+// }
 
-setInterval(() => {
-  console.log(dT(), '[PROXY] stats', stats, sentCount, sentMethods, sentMethods2);
-  sentCount = 0;
-  sentMethods = {};
-  sentMethods2 = {};
-}, 2000);
+// setInterval(() => {
+//   // console.log(dT(), '[PROXY] stats', stats, sentCount, sentMethods, sentMethods2);
+//   sentCount = 0;
+//   sentMethods = {};
+//   sentMethods2 = {};
+// }, 2000);
 
 function createProxy(/* source: T,  */name: string, ack?: boolean) {
   const proxy = new Proxy({}, {
@@ -75,7 +75,7 @@ function createProxy(/* source: T,  */name: string, ack?: boolean) {
           args
         }, ack as any);
 
-        collectStats(name, p as string, args, promise);
+        // collectStats(name, p as string, args, promise);
 
         return promise;
 
@@ -114,7 +114,6 @@ export default function getProxiedManagers() {
   proxied = createProxyProxy({}, false);
 
   proxied.acknowledged = createProxyProxy({}, true);
-  proxied.acknowledged.apiFileManager.cancelDownload('asd');
 
   return proxied;
 }

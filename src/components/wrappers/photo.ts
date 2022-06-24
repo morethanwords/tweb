@@ -257,13 +257,13 @@ export default async function wrapPhoto({photo, message, container, boxWidth, bo
     loadPromises.push(loadThumbPromise);
   }
 
-  const perf = performance.now();
+  // const perf = performance.now();
   await loadThumbPromise;
 
-  const elapsedTime = performance.now() - perf;
-  if(elapsedTime > 4) {
-    console.log('wrapping photo thumb time', elapsedTime, photo, size);
-  }
+  // const elapsedTime = performance.now() - perf;
+  // if(elapsedTime > 4) {
+  //   console.log('wrapping photo thumb time', elapsedTime, photo, size);
+  // }
 
   return {
     loadPromises: {

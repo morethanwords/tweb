@@ -191,7 +191,7 @@ export class AnimationIntersector {
       this.visible.has(player) && 
       animation.autoplay && 
       (!this.onlyOnePlayableGroup || this.onlyOnePlayableGroup === group) &&
-      (!idleController.idle.isIDLE || this.overrideIdleGroups.has(player.group))
+      (!idleController.isIdle || this.overrideIdleGroups.has(player.group))
     ) {
       //console.warn('play animation:', animation);
       animation.play();

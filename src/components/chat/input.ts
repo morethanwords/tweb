@@ -482,7 +482,16 @@ export default class ChatInput {
 
       attachClickEvent(this.goMentionBtn, (e) => {
         cancelEvent(e);
-        this.managers.appMessagesManager.goToNextMention(this.chat.peerId);
+        const middleware = this.chat.bubbles.getMiddleware();
+        this.managers.appMessagesManager.goToNextMention(this.chat.peerId).then((mid) => {
+          if(!middleware()) {
+            return;
+          }
+          
+          if(mid) {
+            this.chat.setMessageId(mid);
+          }
+        });
       }, {listenerSetter: this.listenerSetter});
 
       this.btnScheduled = ButtonIcon('scheduled btn-scheduled float hide', {noRipple: true});

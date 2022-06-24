@@ -55,6 +55,8 @@ const lang = {
   },
   "Deactivated.Title": "Too many tabs...",
   "Deactivated.Subtitle": "Telegram supports only one active tab with the app.\nClick anywhere to continue using this tab.",
+  "Deactivated.Version.Title": "WebK has updated...",
+  "Deactivated.Version.Subtitle": "Another tab is running a newer version of Telegram.\nClick anywhere to reload this tab.",
   // "Drafts": {
   //   "one_value": "%d draft",
   //   "other_value": "%d drafts",

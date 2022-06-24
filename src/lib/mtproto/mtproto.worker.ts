@@ -9,7 +9,6 @@ import '../polyfill';
 import '../../helpers/peerIdPolyfill';
 
 import cryptoWorker from "../crypto/cryptoMessagePort";
-import CacheStorageController from '../cacheStorage';
 import { setEnvironment } from '../../environment/utils';
 import appStateManager from '../appManagers/appStateManager';
 import transportController from './transports/controller';
@@ -19,8 +18,8 @@ import appManagersManager from '../appManagers/appManagersManager';
 import listenMessagePort from '../../helpers/listenMessagePort';
 import { logger } from '../logger';
 import { State } from '../../config/state';
-import AppStorage from '../storage';
 import toggleStorages from '../../helpers/toggleStorages';
+import appTabsManager from '../appManagers/appTabsManager';
 
 let _isServiceWorkerOnline = true;
 export function isServiceWorkerOnline() {
@@ -55,7 +54,9 @@ port.addMultipleEventsListeners({
     RESET_STORAGES_PROMISE.resolve(resetStorages);
   },
 
-  toggleStorages: (enabled) => toggleStorages(enabled),
+  toggleStorages: ({enabled, clearWrite}) => {
+    return toggleStorages(enabled, clearWrite);
+  },
 
   event: (payload, source) => {
     log('will redirect event', payload, source);
@@ -68,7 +69,7 @@ port.addMultipleEventsListeners({
 
   createObjectURL: (blob) => {
     return URL.createObjectURL(blob);
-  }
+  },
 
   // socketProxy: (task) => {
   //   const socketTask = task.payload;
@@ -84,24 +85,16 @@ port.addMultipleEventsListeners({
   //     socketsProxied.delete(id);
   //   }
   // },
-
-  // refreshReference: (task: RefreshReferenceTaskResponse) => {
-  //   const hex = bytesToHex(task.originalPayload);
-  //   const r = apiFileManager.refreshReferencePromises[hex];
-  //   const deferred = r?.deferred;
-  //   if(deferred) {
-  //     if(task.error) {
-  //       deferred.reject(task.error);
-  //     } else {
-  //       deferred.resolve(task.payload);
-  //     }
-  //   }
-  // },
 });
 
 log('MTProto start');
 
 appManagersManager.start();
 appManagersManager.getManagers();
+appTabsManager.start();
 
-listenMessagePort(port);
+listenMessagePort(port, (source) => {
+  appTabsManager.addTab(source);
+}, (source) => {
+  appTabsManager.deleteTab(source);
+});

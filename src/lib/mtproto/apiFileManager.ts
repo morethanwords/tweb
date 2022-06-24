@@ -596,11 +596,16 @@ export class ApiFileManager extends AppManager {
   }
 
   public downloadMedia(options: DownloadMediaOptions): DownloadPromise {
-    const {media, thumb} = options;
-    const isPhoto = media?._ === 'photo';
+    let {media, thumb} = options;
+    const isPhoto = media._ === 'photo';
     if(media._ === 'photoEmpty' || (isPhoto && !thumb)) {
       return Promise.reject('preloadPhoto photoEmpty!');
     }
+
+    // get original instance with correct file_reference instead of using copies
+    const isDocument = media._ === 'document';
+    if(isDocument) media = this.appDocsManager.getDoc(media.id);
+    else if(isPhoto) media = this.appPhotosManager.getPhoto(media.id);
 
     const {fileName, downloadOptions} = getDownloadMediaDetails(options);
 
@@ -608,7 +613,7 @@ export class ApiFileManager extends AppManager {
     if(!promise) {
       promise = this.download(downloadOptions);
       
-      if(media._ === 'document') {
+      if(isDocument) {
         this.rootScope.dispatchEvent('document_downloading', media.id);
         promise.catch(noop).finally(() => {
           this.rootScope.dispatchEvent('document_downloaded', media.id);

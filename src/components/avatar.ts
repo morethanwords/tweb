@@ -198,7 +198,7 @@ export default class AvatarElement extends HTMLElement {
 
   private r(onlyThumb = false) {
     const promise = putPhoto(this, this.peerId, this.isDialog, this.peerTitle, onlyThumb, this.isBig);
-    recordPromise(promise, 'avatar putPhoto-' + this.peerId);
+    // recordPromise(promise, 'avatar putPhoto-' + this.peerId);
 
     if(this.loadPromises) {
       this.loadPromises.push(promise);

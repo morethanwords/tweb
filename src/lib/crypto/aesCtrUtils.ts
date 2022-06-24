@@ -5,7 +5,6 @@
  */
 
 import CTR from "./utils/aesCTR";
-import bytesToHex from "../../helpers/bytes/bytesToHex";
 import subtle from "./subtle";
 
 const aesCTRs: Map<number, K> = new Map();

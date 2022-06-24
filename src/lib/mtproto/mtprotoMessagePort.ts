@@ -10,7 +10,7 @@ import type loadState from "../appManagers/utils/state/loadState";
 import type { StoragesResults } from "../appManagers/utils/storages/loadStorages";
 import type { LocalStorageProxyTask } from "../localStorage";
 import type { Awaited } from "../../types";
-import type { Mirrors, MirrorTaskPayload } from "./mtprotoworker";
+import type { Mirrors, MirrorTaskPayload, NotificationBuildTaskPayload, TabState } from "./mtprotoworker";
 import type toggleStorages from "../../helpers/toggleStorages";
 import SuperMessagePort from "./superMessagePort";
 
@@ -25,20 +25,22 @@ export default class MTProtoMessagePort<Master extends boolean = true> extends S
   crypto: (payload: {method: string, args: any[]}) => Promise<any>,
   state: (payload: {userId: UserId} & Awaited<ReturnType<typeof loadState>> & {storagesResults?: StoragesResults}) => void,
   manager: (payload: MTProtoManagerTaskPayload) => any,
-  toggleStorages: typeof toggleStorages,
+  toggleStorages: (payload: {enabled: boolean, clearWrite: boolean}) => ReturnType<typeof toggleStorages>,
   serviceWorkerOnline: (online: boolean) => void,
   cryptoPort: (payload: void, source: MessageEventSource, event: MessageEvent) => void,
-  createObjectURL: (blob: Blob) => string
+  createObjectURL: (blob: Blob) => string,
+  tabState: (payload: TabState, source: MessageEventSource) => void,
 } & MTProtoBroadcastEvent, {
   convertWebp: (payload: {fileName: string, bytes: Uint8Array}) => Promise<Uint8Array>,
   convertOpus: (payload: {fileName: string, bytes: Uint8Array}) => Promise<Uint8Array>,
   localStorageProxy: (payload: LocalStorageProxyTask['payload']) => Promise<any>,
-  mirror: (payload: MirrorTaskPayload) => void
+  mirror: (payload: MirrorTaskPayload) => void,
+  notificationBuild: (payload: NotificationBuildTaskPayload) => void
 } & MTProtoBroadcastEvent, Master> {
   private static INSTANCE: MTProtoMessagePort;
 
   constructor() {
-    super(false);
+    super();
 
     MTProtoMessagePort.INSTANCE = this;
 

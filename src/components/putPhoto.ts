@@ -94,7 +94,7 @@ export async function putAvatar(
   }
 
   const renderPromise = loadPromise
-  .then((url) => renderImageFromUrlPromise(img, url, !cached))
+  .then((url) => renderImageFromUrlPromise(img, url/* , !cached */))
   .then(callback);
 
   await (renderThumbPromise || renderPromise);
@@ -166,7 +166,7 @@ export default async function putPhoto(
 
   if(avatarAvailable/*  && false */) {
     const promise = putAvatar(div, peerId, photo, size, undefined, onlyThumb);
-    recordPromise(promise, 'putAvatar-' + peerId);
+    // recordPromise(promise, 'putAvatar-' + peerId);
     return promise;
   }
 }

@@ -442,11 +442,11 @@ export default class FiltersStorage extends AppManager {
   public saveDialogFilter(filter: DialogFilter, update = true) {
     // defineNotNumerableProperties(filter, ['includePeerIds', 'excludePeerIds', 'pinnedPeerIds']);
 
-    if(filter._ === 'dialogFilterDefault') {
-      return;
-      // filter = this.getLocalFilter(0);
-      // delete filter.orderIndex;
-    }
+    // if(filter._ === 'dialogFilterDefault') {
+    //   return;
+    //   // filter = this.getLocalFilter(0);
+    //   // delete filter.orderIndex;
+    // }
 
     assumeType<MyDialogFilter>(filter);
     convertment.forEach(([from, to]) => {

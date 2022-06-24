@@ -282,6 +282,10 @@ export class AppSidebarLeft extends SidebarSlider {
     // this.updateBtn.prepend(weaveContainer);
 
     attachClickEvent(this.updateBtn, () => {
+      if(this.updateBtn.classList.contains('is-hidden')) {
+        return;
+      }
+      
       location.reload();
     });
     

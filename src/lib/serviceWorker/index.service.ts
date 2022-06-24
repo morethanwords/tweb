@@ -94,7 +94,8 @@ const taskListeners: {
     }
   },
   toggleStorages: (task: ToggleStorageTask) => {
-    CacheStorageController.toggleStorage(task.payload);
+    const {enabled, clearWrite} = task.payload;
+    CacheStorageController.toggleStorage(enabled, clearWrite);
   }
 };
 ctx.addEventListener('message', (e) => {

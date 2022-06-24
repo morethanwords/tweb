@@ -32,10 +32,10 @@ export type PopupButton = {
 };
 
 export type PopupOptions = Partial<{
-  closable: true, 
-  overlayClosable: true, 
-  withConfirm: LangPackKey | true, 
-  body: true,
+  closable: boolean, 
+  overlayClosable: boolean, 
+  withConfirm: LangPackKey | boolean, 
+  body: boolean,
   confirmShortcutIsSendShortcut: boolean,
   withoutOverlay: boolean
 }>;

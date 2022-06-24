@@ -213,9 +213,9 @@ class SearchContextMenu {
   }
 
   private onGotoClick = () => {
-    rootScope.dispatchEvent('history_focus', {
+    appImManager.setInnerPeer({
       peerId: this.peerId,
-      mid: this.mid,
+      lastMsgId: this.mid,
       threadId: this.searchSuper.searchContext.threadId
     });
   };
@@ -597,13 +597,26 @@ export default class AppSearchSuper {
   }
 
   private processEmptyFilter({message, searchGroup}: ProcessSearchSuperResult) {
+    const loadPromises: Promise<any>[] = [];
     const {dom} = appDialogsManager.addDialogNew({
       peerId: message.peerId, 
       container: searchGroup.list, 
-      avatarSize: 54
+      avatarSize: 54,
+      loadPromises
     });
 
-    // appDialogsManager.setLastMessage(dialog, message, dom, this.searchContext.query);
+    const setLastMessagePromise = appDialogsManager.setLastMessageN({
+      dialog: {
+        _: 'dialog',
+        peerId: message.peerId
+      } as any,  
+      lastMessage: message, 
+      dom, 
+      highlightWord: this.searchContext.query
+    });
+
+    loadPromises.push(setLastMessagePromise);
+    return Promise.all(loadPromises);
   }
 
   private async processPhotoVideoFilter({message, promises, middleware}: ProcessSearchSuperResult) {

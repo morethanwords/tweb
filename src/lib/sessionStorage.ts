@@ -30,7 +30,8 @@ const sessionStorage = new LocalStorageController<{
   tgme_sync: {
     canRedirect: boolean,
     ts: number
-  }
+  },
+  k_build: number
 }>(/* ['kz_version'] */);
 MOUNT_CLASS_TO.appStorage = sessionStorage;
 export default sessionStorage;

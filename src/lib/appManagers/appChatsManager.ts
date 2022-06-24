@@ -377,8 +377,6 @@ export class AppChatsManager extends AppManager {
       this.apiUpdatesManager.processUpdateMessage(updates);
 
       const channelId = (updates as any).chats[0].id;
-      this.rootScope.dispatchEvent('history_focus', {peerId: channelId.toPeerId(true)});
-
       return channelId;
     });
   }
@@ -401,8 +399,6 @@ export class AppChatsManager extends AppManager {
       this.apiUpdatesManager.processUpdateMessage(updates);
 
       const chatId = (updates as any as Updates.updates).chats[0].id;
-      this.rootScope.dispatchEvent('history_focus', {peerId: chatId.toPeerId(true)});
-
       return chatId;
     });
   }

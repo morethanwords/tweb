@@ -100,14 +100,14 @@ document.addEventListener('DOMContentLoaded', async() => {
     };
 
     let tabId: number;
-    rootScope.addEventListener('im_tab_change', (id) => {
+    (window as any).onImTabChange = (id: number) => {
       const wasTabId = tabId !== undefined;
       tabId = id;
 
       if(wasTabId || tabId === 1) {
         toggleResizeMode();
       }
-    });
+    };
     
     overlayCounter.addEventListener('change', () => {
       toggleResizeMode();

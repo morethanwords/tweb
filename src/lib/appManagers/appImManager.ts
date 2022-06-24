@@ -35,7 +35,7 @@ import placeCaretAtEnd from '../../helpers/dom/placeCaretAtEnd';
 import replaceContent from '../../helpers/dom/replaceContent';
 import whichChild from '../../helpers/dom/whichChild';
 import PopupElement from '../../components/popups';
-import singleInstance from '../mtproto/singleInstance';
+import singleInstance, { InstanceDeactivateReason, SingleInstance } from '../mtproto/singleInstance';
 import PopupStickers from '../../components/popups/stickers';
 import PopupJoinChatInvite from '../../components/popups/joinChatInvite';
 import { toast, toastNew } from '../../components/toast';
@@ -88,6 +88,7 @@ import callsController from '../calls/callsController';
 import getFilesFromEvent from '../../helpers/files/getFilesFromEvent';
 import apiManagerProxy from '../mtproto/mtprotoworker';
 import wrapPeerTitle from '../../components/wrappers/peerTitle';
+import appRuntimeManager from './appRuntimeManager';
 
 export const CHAT_ANIMATION_GROUP = 'chat';
 
@@ -244,20 +245,6 @@ export class AppImManager extends EventListenerBase<{
       });
     });
 
-    rootScope.addEventListener('history_focus', (e) => {
-      let {peerId, threadId, mid, startParam} = e;
-      if(threadId) threadId = generateMessageId(threadId);
-      if(mid) mid = generateMessageId(mid); // because mid can come from notification, i.e. server message id
-      
-      this.setInnerPeer({
-        peerId, 
-        lastMsgId: mid, 
-        type: threadId ? 'discussion' : undefined, 
-        threadId,
-        startParam
-      });
-    });
-
     this.addEventListener('peer_changing', (chat) => {
       this.saveChatPosition(chat);
     });
@@ -305,7 +292,8 @@ export class AppImManager extends EventListenerBase<{
       }
     });
 
-    singleInstance.addEventListener('deactivated', () => {
+    const onInstanceDeactivated = (reason: InstanceDeactivateReason) => {
+      const isUpdated = reason === 'version';
       const popup = new PopupElement('popup-instance-deactivated', undefined, {overlayClosable: true});
       const c = document.createElement('div');
       c.classList.add('instance-deactivated-container');
@@ -313,17 +301,19 @@ export class AppImManager extends EventListenerBase<{
 
       const header = document.createElement('div');
       header.classList.add('header');
-      header.append(i18n('Deactivated.Title'));
+      header.append(i18n(isUpdated ? 'Deactivated.Version.Title' : 'Deactivated.Title'));
 
       const subtitle = document.createElement('div');
       subtitle.classList.add('subtitle');
-      subtitle.append(i18n('Deactivated.Subtitle'));
+      subtitle.append(i18n(isUpdated ? 'Deactivated.Version.Subtitle' : 'Deactivated.Subtitle'));
 
       c.append(header, subtitle);
 
       document.body.classList.add('deactivated');
 
-      popup.addEventListener('close', () => {
+      const onClose = isUpdated ? () => {
+        appRuntimeManager.reload();
+      } : () => {
         document.body.classList.add('deactivated-backwards');
 
         singleInstance.activateInstance();
@@ -331,10 +321,16 @@ export class AppImManager extends EventListenerBase<{
         setTimeout(() => {
           document.body.classList.remove('deactivated', 'deactivated-backwards');
         }, 333);
-      });
+      };
 
+      popup.addEventListener('close', onClose);
       popup.show();
-    });
+    };
+
+    singleInstance.addEventListener('deactivated', onInstanceDeactivated);
+    if(singleInstance.deactivatedReason) {
+      onInstanceDeactivated(singleInstance.deactivatedReason);
+    }
 
     // remove scroll listener when setting chat to tray
     this.addEventListener('chat_changing', ({to}) => {
@@ -348,8 +344,8 @@ export class AppImManager extends EventListenerBase<{
       });
     });
     
-    rootScope.addEventListener('notification_build', (options) => {
-      if(this.chat.peerId === options.message.peerId && !idleController.idle.isIDLE) {
+    apiManagerProxy.addEventListener('notificationBuild', (options) => {
+      if(this.chat.peerId === options.message.peerId && !idleController.isIdle) {
         return;
       }
       
@@ -366,6 +362,8 @@ export class AppImManager extends EventListenerBase<{
       }
 
       appNavigationController.overrideHash(str);
+
+      apiManagerProxy.updateTabState('chatPeerIds', this.chats.map((chat) => chat.peerId).filter(Boolean));
     });
 
     // stateStorage.get('chatPositions').then((c) => {
@@ -1502,7 +1500,8 @@ export class AppImManager extends EventListenerBase<{
       }
     }
 
-    rootScope.dispatchEvent('im_tab_change', id);
+    const onImTabChange = (window as any).onImTabChange;
+    onImTabChange && onImTabChange(id);
 
     //this._selectTab(id, mediaSizes.isMobile);
     //document.body.classList.toggle(RIGHT_COLUMN_ACTIVE_CLASSNAME, id === 2);
@@ -1662,6 +1661,10 @@ export class AppImManager extends EventListenerBase<{
     const {peerId} = options;
     if(peerId === NULL_PEER_ID || !peerId) {
       return;
+    }
+
+    if(options.threadId) {
+      options.type = 'discussion';
     }
 
     const type = options.type ??= 'chat';
