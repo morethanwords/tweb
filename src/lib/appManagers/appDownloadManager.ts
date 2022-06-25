@@ -159,6 +159,10 @@ export class AppDownloadManager {
 
   public downloadMedia(options: DownloadMediaOptions, type: DownloadType = 'blob'): DownloadBlob {
     const {downloadOptions, fileName} = getDownloadMediaDetails(options);
+    if(fileName === 'document_5307720352468571676') {
+      debugger;
+    }
+    
     return this.d(fileName, () => {
       const cb = type === 'url' ? this.managers.apiFileManager.downloadMediaURL : (type === 'void' ? this.managers.apiFileManager.downloadMediaVoid : this.managers.apiFileManager.downloadMedia);
       return cb(options);

@@ -1965,7 +1965,7 @@ export class AppDialogsManager {
       peerId,
     });
 
-    // this.setLastMessage(ret.dialog, message, ret.dom, query);
+    this.setLastMessage({_: 'dialog', peerId} as any, message, ret.dom, query);
 
     if(message.peerId !== peerId) {
       ret.dom.listEl.dataset.peerId = '' + message.peerId;
@@ -2060,7 +2060,7 @@ export class AppDialogsManager {
 
     const li = document.createElement(DIALOG_LIST_ELEMENT_TAG);
     li.classList.add('chatlist-chat');
-    (li as HTMLAnchorElement).href = '#' + peerId;
+    if(!autonomous) (li as HTMLAnchorElement).href = '#' + peerId;
     if(rippleEnabled) {
       ripple(li);
     }

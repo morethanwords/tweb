@@ -271,8 +271,8 @@ export class AppStickersManager extends AppManager {
     ]).then(([doc, a]) => {
       return {
         doc: doc,
-        animation: a.doc,
-        sound: a.sound
+        animation: a?.doc,
+        sound: a?.sound
       };
     });
   }

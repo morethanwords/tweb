@@ -613,7 +613,7 @@ export class ApiFileManager extends AppManager {
     if(!promise) {
       promise = this.download(downloadOptions);
       
-      if(isDocument) {
+      if(isDocument && !thumb) {
         this.rootScope.dispatchEvent('document_downloading', media.id);
         promise.catch(noop).finally(() => {
           this.rootScope.dispatchEvent('document_downloaded', media.id);

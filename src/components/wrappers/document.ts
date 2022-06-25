@@ -121,7 +121,7 @@ export default async function wrapDocument({message, withTime, fontWeight, voice
         size: choosePhotoSize(doc, 54, 54, true),
         managers
       });
-      console.log('was wrapping photo', performance.now() - perf);
+      // console.log('was wrapping photo', performance.now() - perf);
       icoDiv.style.width = icoDiv.style.height = '';
       if(wrapped.images.thumb) imgs.push(wrapped.images.thumb);
       if(wrapped.images.full) imgs.push(wrapped.images.full);
