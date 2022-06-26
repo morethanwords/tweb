@@ -132,7 +132,7 @@ export default class ChatBackgroundPatternRenderer {
 
     let imageWidth = img.width, imageHeight = img.height;
     // if(imageHeight < height) {
-      let patternHeight = 2960;
+      let patternHeight = 1480 * canvas.dpr;
       // * correct
       // if(+canvas.dataset.originalHeight !== height) hhh *= 2 / 3;
       // * but have to make it good
@@ -186,6 +186,7 @@ export default class ChatBackgroundPatternRenderer {
     let width = this.options.width * devicePixelRatio, 
       height = this.options.height * devicePixelRatio;
 
+    canvas.dpr = devicePixelRatio;
     canvas.dataset.originalHeight = '' + height;
     if(mediaSizes.activeScreen === ScreenSize.large) height *= 1.5;
     canvas.width = width;
