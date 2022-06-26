@@ -39,6 +39,7 @@ import { attachContextMenuListener } from "../../helpers/dom/attachContextMenuLi
 import filterAsync from "../../helpers/array/filterAsync";
 import appDownloadManager from "../../lib/appManagers/appDownloadManager";
 import { SERVICE_PEER_ID } from "../../lib/mtproto/mtproto_config";
+import { MessagesStorageKey } from "../../lib/appManagers/appMessagesManager";
 
 export default class ChatContextMenu {
   private buttons: (ButtonMenuItemOptions & {verify: () => boolean | Promise<boolean>, notDirect?: () => boolean, withSelection?: true, isSponsored?: true})[];
@@ -340,8 +341,9 @@ export default class ChatContextMenu {
         }
 
         for(const [peerId, mids] of this.chat.selection.selectedMids) {
+          const storageKey: MessagesStorageKey = `${peerId}_${this.chat.type === 'scheduled' ? 'scheduled' : 'history'}`;
           for(const mid of mids) {
-            const message = (await this.managers.appMessagesManager.getMessageByPeer(peerId, mid)) as Message.message;
+            const message = (await this.managers.appMessagesManager.getMessageFromStorage(storageKey, mid)) as Message.message;
             if(!!message.message) {
               return true;
             }

@@ -284,7 +284,7 @@ export default class ChatBubbles {
 
     // will call when sent for update pos
     this.listenerSetter.add(rootScope)('history_update', async({storageKey, mid, message}) => {
-      if(this.chat.messagesStorageKey !== storageKey) {
+      if(this.chat.messagesStorageKey !== storageKey || this.chat.type === 'scheduled') {
         return;
       }
 
@@ -741,95 +741,95 @@ export default class ChatBubbles {
       });
     }
 
-    if(!IS_MOBILE && this.chat.type !== 'pinned') {
-      this.listenerSetter.add(container)('dblclick', async(e) => {
-        if(this.chat.selection.isSelecting || 
-          !(await this.chat.canSend())) {
-          return;
-        }
-        
-        const target = e.target as HTMLElement;
-        const bubble = target.classList.contains('bubble') ? 
-          target : 
-          (target.classList.contains('document-selection') ? target.parentElement : null);
-        if(bubble && !bubble.classList.contains('bubble-first')) {
-          const mid = +bubble.dataset.mid;
-          const message = await this.chat.getMessage(mid);
-          if(message.pFlags.is_outgoing) {
+    if(this.chat.type !== 'pinned' && this.chat.type !== 'scheduled') {
+      if(!IS_MOBILE) {
+        this.listenerSetter.add(container)('dblclick', async(e) => {
+          if(this.chat.selection.isSelecting || 
+            !(await this.chat.canSend())) {
             return;
           }
           
-          this.chat.input.initMessageReply(mid);
-        }
-      });
-    }
-
-    if(IS_TOUCH_SUPPORTED) {
-      const className = 'is-gesturing-reply';
-      const MAX = 64;
-      const replyAfter = MAX * .75;
-      let shouldReply = false;
-      let target: HTMLElement;
-      let icon: HTMLElement;
-      handleHorizontalSwipe({
-        element: container,
-        verifyTouchTarget: async(e) => {
-          if(this.chat.selection.isSelecting || !(await this.chat.canSend())) {
-            return false;
-          }
-
-          // cancelEvent(e);
-          target = findUpClassName(e.target, 'bubble');
-          if(target) {
-            SetTransition(target, className, true, 250);
-            void target.offsetLeft; // reflow
-
-            if(!icon) {
-              icon = document.createElement('span');
-              icon.classList.add('tgico-reply_filled', 'bubble-gesture-reply-icon');
-            } else {
-              icon.classList.remove('is-visible');
-              icon.style.opacity = '';
+          const target = e.target as HTMLElement;
+          const bubble = target.classList.contains('bubble') ? 
+            target : 
+            (target.classList.contains('document-selection') ? target.parentElement : null);
+          if(bubble && !bubble.classList.contains('bubble-first')) {
+            const mid = +bubble.dataset.mid;
+            const message = await this.chat.getMessage(mid);
+            if(message.pFlags.is_outgoing) {
+              return;
             }
-
-            target/* .querySelector('.bubble-content') */.append(icon);
+            
+            this.chat.input.initMessageReply(mid);
           }
-
-          return !!target;
-        },
-        onSwipe: (xDiff, yDiff) => {
-          shouldReply = xDiff >= replyAfter;
-
-          if(shouldReply && !icon.classList.contains('is-visible')) {
-            icon.classList.add('is-visible');
-          }
-          icon.style.opacity = '' + Math.min(1, xDiff / replyAfter);
-
-          const x = -Math.max(0, Math.min(MAX, xDiff));
-          target.style.transform = `translateX(${x}px)`;
-          cancelContextMenuOpening();
-        },
-        onReset: () => {
-          const _target = target;
-          SetTransition(_target, className, false, 250, () => {
-            if(icon.parentElement === _target) {
-              icon.classList.remove('is-visible');
-              icon.remove();
+        });
+      } else if(IS_TOUCH_SUPPORTED) {
+        const className = 'is-gesturing-reply';
+        const MAX = 64;
+        const replyAfter = MAX * .75;
+        let shouldReply = false;
+        let target: HTMLElement;
+        let icon: HTMLElement;
+        handleHorizontalSwipe({
+          element: container,
+          verifyTouchTarget: async(e) => {
+            if(this.chat.selection.isSelecting || !(await this.chat.canSend())) {
+              return false;
             }
-          });
-
-          fastRaf(() => {
-            _target.style.transform = ``;
-
-            if(shouldReply) {
-              const {mid} = _target.dataset;
-              this.chat.input.initMessageReply(+mid);
-              shouldReply = false;
+  
+            // cancelEvent(e);
+            target = findUpClassName(e.target, 'bubble');
+            if(target) {
+              SetTransition(target, className, true, 250);
+              void target.offsetLeft; // reflow
+  
+              if(!icon) {
+                icon = document.createElement('span');
+                icon.classList.add('tgico-reply_filled', 'bubble-gesture-reply-icon');
+              } else {
+                icon.classList.remove('is-visible');
+                icon.style.opacity = '';
+              }
+  
+              target/* .querySelector('.bubble-content') */.append(icon);
             }
-          });
-        },
-        listenerOptions: {capture: true}
-      });
+  
+            return !!target;
+          },
+          onSwipe: (xDiff, yDiff) => {
+            shouldReply = xDiff >= replyAfter;
+  
+            if(shouldReply && !icon.classList.contains('is-visible')) {
+              icon.classList.add('is-visible');
+            }
+            icon.style.opacity = '' + Math.min(1, xDiff / replyAfter);
+  
+            const x = -Math.max(0, Math.min(MAX, xDiff));
+            target.style.transform = `translateX(${x}px)`;
+            cancelContextMenuOpening();
+          },
+          onReset: () => {
+            const _target = target;
+            SetTransition(_target, className, false, 250, () => {
+              if(icon.parentElement === _target) {
+                icon.classList.remove('is-visible');
+                icon.remove();
+              }
+            });
+  
+            fastRaf(() => {
+              _target.style.transform = ``;
+  
+              if(shouldReply) {
+                const {mid} = _target.dataset;
+                this.chat.input.initMessageReply(+mid);
+                shouldReply = false;
+              }
+            });
+          },
+          listenerOptions: {capture: true}
+        });
+      }
     }
   }
 
@@ -2121,14 +2121,15 @@ export default class ChatBubbles {
     this.deleteEmptyDateGroups();
 
     if(!ignoreOnScroll) {
-      this.onScroll();
+      this.scrollable.onScroll();
+      // this.onScroll();
     }
   }
 
   private setTopPadding(middleware = this.getMiddleware()) {
     let isPaddingNeeded = false;
     let setPaddingTo: HTMLElement;
-    if(!this.isTopPaddingSet) {
+    if(!this.isTopPaddingSet && this.chat.type !== 'scheduled') {
       const {clientHeight, scrollHeight} = this.scrollable.container;
       isPaddingNeeded = clientHeight === scrollHeight;
       /* const firstEl = this.chatInner.firstElementChild as HTMLElement;
@@ -3236,6 +3237,20 @@ export default class ChatBubbles {
   }/*  & {
     unmountIfFound?: boolean
   } */>) {
+    let modifiedGroups: typeof groups;
+
+    if(this.chat.type === 'scheduled') {
+      modifiedGroups = new Set();
+      items.forEach(({bubble, message}) => {
+        const item = this.bubbleGroups.getItemByBubble(bubble);
+        const group = item?.group;
+        if(group && item.message.date !== message.date) {
+          this.bubbleGroups.removeItem(item);
+          modifiedGroups.add(group);
+        }
+      });
+    }
+    
     items.forEach(({bubble, message}) => {
       this.bubbleGroups.prepareForGrouping(bubble, message);
     });
@@ -3245,10 +3260,16 @@ export default class ChatBubbles {
     const avatarPromises = Array.from(groups).map((group) => {
       if(group.avatar) return;
       const firstItem = group.firstItem;
-      if(this.chat.isAvatarNeeded(firstItem.message)) {
+      if(firstItem && this.chat.isAvatarNeeded(firstItem.message)) {
         return group.createAvatar(firstItem.message);
       }
     }).filter(Boolean);
+
+    if(modifiedGroups) {
+      for(const group of modifiedGroups) {
+        groups.add(group);
+      }
+    }
 
     return {
       groups: [...groups], 

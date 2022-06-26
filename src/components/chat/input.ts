@@ -2384,7 +2384,11 @@ export default class ChatInput {
         clearDraft: true
       });
 
-      this.onMessageSent(false, false);
+      if(this.chat.type === 'scheduled') {
+        this.onMessageSent(true);
+      } else {
+        this.onMessageSent(false, false);
+      }
       // this.onMessageSent();
     }
 

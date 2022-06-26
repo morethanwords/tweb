@@ -94,6 +94,10 @@ class BubbleGroup {
     return this.items[this.items.length - 1];
   }
 
+  get lastTimestamp() {
+    return this.lastItem.timestamp;
+  }
+
   get lastMid() {
     return this.lastItem.mid;
   }
@@ -143,33 +147,11 @@ class BubbleGroup {
 
   insertItem(item: GroupItem) {
     const {items} = this;
-    const {timestamp, mid} = item;
-    if(this.chat.type === 'scheduled') {
-      let foundMidOnSameTimestamp = 0;
-      let i = 0, length = items.length;
-      for(; i < length; ++i) {
-        const {timestamp: _timestamp, mid: _mid} = items[i];
-  
-        if(timestamp < _timestamp) {
-          break;
-        } else if(timestamp === _timestamp) {
-          foundMidOnSameTimestamp = _mid;
-        } 
-        
-        if(foundMidOnSameTimestamp && mid < foundMidOnSameTimestamp) {
-          break;
-        }
-      }
-
-      items.splice(i, 0, item);
-    } else {
-      // insertInDescendSortedArray(items, item, 'mid');
-      insertInDescendSortedArray(items, item, 'groupMid');
-    }
+    insertInDescendSortedArray(items, item, this.groups.sortGroupItemsKey);
 
     item.group = this;
     if(items.length === 1) {
-      insertInDescendSortedArray(this.groups.groups, this, 'lastMid');
+      this.groups.insertGroup(this);
     }
   }
 
@@ -231,7 +213,7 @@ class BubbleGroup {
       return;
     }
 
-    const dateContainer = this.chat.bubbles.getDateContainerByTimestamp(this.firstTimestamp);
+    const dateContainer = this.chat.bubbles.getDateContainerByTimestamp(this.dateTimestamp / 1000);
     // const idx = this.groups.indexOf(group);
     const dateGroups = this.groups.groups.filter((_group) => _group.dateTimestamp === this.dateTimestamp);
     const dateGroupsLength = dateGroups.length;
@@ -276,9 +258,14 @@ export default class BubbleGroups {
   private itemsMap: Map<HTMLElement, GroupItem> = new Map();
   public groups: Array<BubbleGroup> = []; // descend sorted
   private newGroupDiff = 121; // * 121 in scheduled messages
+  private sortItemsKey: Extract<keyof GroupItem, 'timestamp' | 'mid'>;
+  private sortGroupsKey: Extract<keyof BubbleGroup, 'lastMid' | 'lastTimestamp'>;
+  public sortGroupItemsKey: Extract<keyof GroupItem, 'groupMid' | 'timestamp'>;
 
   constructor(private chat: Chat) {
-
+    this.sortItemsKey = chat.type === 'scheduled' ? 'timestamp' : 'mid';
+    this.sortGroupsKey = chat.type === 'scheduled' ? 'lastTimestamp' : 'lastMid';
+    this.sortGroupItemsKey = /* chat.type === 'scheduled' ? 'timestamp' :  */'groupMid';
   }
 
   removeItem(item: GroupItem) {
@@ -369,7 +356,7 @@ export default class BubbleGroups {
     // item.group.insertItem(item);
     
     indexOfAndSplice(this.itemsArr, item);
-    insertInDescendSortedArray(this.itemsArr, item, 'mid');
+    this.insertItemToArray(item, this.itemsArr);
   }
 
   changeItemBubble(item: GroupItem, bubble: HTMLElement) {
@@ -405,7 +392,7 @@ export default class BubbleGroups {
 
   findGroupSiblingByItem(item: GroupItem, items: GroupItem[]) {
     items = items.slice();
-    const idx = insertInDescendSortedArray(items, item, 'mid');
+    const idx = this.insertItemToArray(item, items);
     // return this.findGroupSiblingInSiblings(item, this.getSiblingsAtIndex(idx, items));
     return this.findGroupSiblingInItems(item, items, idx);
   }
@@ -436,8 +423,16 @@ export default class BubbleGroups {
     this.addItemToCache(item);
   }
 
+  insertItemToArray(item: GroupItem, array: GroupItem[]) {
+    return insertInDescendSortedArray(array, item, this.sortItemsKey);
+  }
+
+  insertGroup(group: BubbleGroup) {
+    return insertInDescendSortedArray(this.groups, group, this.sortGroupsKey);
+  }
+
   addItemToCache(item: GroupItem) {
-    insertInDescendSortedArray(this.itemsArr, item, 'mid');
+    this.insertItemToArray(item, this.itemsArr);
     this.itemsMap.set(item.bubble, item);
   }
 
@@ -463,10 +458,11 @@ export default class BubbleGroups {
     const {dateTimestamp} = this.chat.bubbles.getDateForDateContainer(timestamp);
     const item: GroupItem = {
       mid, 
-      groupMid: mid, 
+      groupMid: this.chat.type === 'scheduled' ? +`${(timestamp * 1000 - dateTimestamp) / 1000}.${mid}` : mid, 
       fromId: this.getMessageFromId(message), 
       bubble, 
-      timestamp, 
+      // timestamp: this.chat.type === 'scheduled' ? +`${(timestamp * 1000 - dateTimestamp) / 1000}.${mid}` : timestamp, 
+      timestamp,
       dateTimestamp, 
       mounted: false, 
       single,
@@ -505,7 +501,8 @@ export default class BubbleGroups {
   }
 
   prepareForGrouping(bubble: HTMLElement, message: MyMessage) {
-    if(this.getItemByBubble(bubble)) {
+    const foundItem = this.getItemByBubble(bubble);
+    if(foundItem) { // should happen only on edit
       debugger;
       return;
     }
