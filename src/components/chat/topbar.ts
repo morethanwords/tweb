@@ -781,41 +781,18 @@ export default class ChatTopbar {
         });
       }
     } else if(this.chat.type === 'scheduled') {
-      if(peerId === rootScope.myId) {
-        //title = [count > 1 ? count : false, 'Reminders'].filter(Boolean).join(' ');
-        titleEl = i18n('Reminders');
-      } else {
-        titleEl = i18n('ScheduledMessages');
-        //title = [count > 1 ? count : false, 'Scheduled Messages'].filter(Boolean).join(' ');
-      }
-      
-      if(count === undefined) {
-        this.managers.appMessagesManager.getScheduledMessages(peerId).then((mids) => {
-          if(!middleware()) return;
-          this.setTitle(mids.length);
-        });
-      }
+      titleEl = i18n(peerId === rootScope.myId ? 'Reminders' : 'ScheduledMessages');
     } else if(this.chat.type === 'discussion') {
+      if(count === undefined) {
+        const result = await this.managers.acknowledged.appMessagesManager.getHistory(peerId, 0, 1, 0, this.chat.threadId);
+        if(result.cached) {
+          const historyResult = await result.result;
+          count = historyResult.count;
+        } else result.result.then((historyResult) => this.setTitle(historyResult.count));
+      }
+
       if(count === undefined) titleEl = i18n('Loading');
       else titleEl = i18n('Chat.Title.Comments', [count]);
-
-      if(count === undefined) {
-        Promise.all([
-          this.managers.appMessagesManager.getHistory(peerId, 0, 1, 0, this.chat.threadId),
-          Promise.resolve()
-        ]).then(([historyResult]) => {
-          if(!middleware()) return;
-          const count = historyResult?.count;
-          if(typeof(count) !== 'number') {
-            setTimeout(() => {
-              if(!middleware()) return;
-              this.setTitle();
-            }, 30);
-          } else {
-            this.setTitle(count);
-          }
-        });
-      }
     } else if(this.chat.type === 'chat') {
       [titleEl, icons] = await Promise.all([
         wrapPeerTitle({

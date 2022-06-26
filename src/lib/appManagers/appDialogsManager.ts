@@ -1495,8 +1495,10 @@ export class AppDialogsManager {
         return;
       }
 
+      const peerId = elem.dataset.peerId.toPeerId();
+
       if(e.ctrlKey || e.metaKey) {
-        window.open((elem as HTMLAnchorElement).href, '_blank');
+        window.open((elem as HTMLAnchorElement).href || ('#' + peerId), '_blank');
         cancelEvent(e);
         return;
       }
@@ -1517,7 +1519,6 @@ export class AppDialogsManager {
       if(elem) {
         if(onFound) onFound();
 
-        const peerId = elem.dataset.peerId.toPeerId();
         const lastMsgId = +elem.dataset.mid || undefined;
 
         setPeerFunc({
