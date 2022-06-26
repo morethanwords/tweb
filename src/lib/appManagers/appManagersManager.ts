@@ -58,13 +58,7 @@ export class AppManagersManager {
       this.cryptoPortPromise
     ]);
 
-    const managers = await createManagers(appStoragesManager);
-
-    // костыль
-    if(appStateManager.userId) {
-      managers.apiManager.setUserAuth(appStateManager.userId);
-    }
-    
+    const managers = await createManagers(appStoragesManager, appStateManager.userId);
     return this.managers = managers;
   }
 

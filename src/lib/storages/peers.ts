@@ -22,7 +22,7 @@ class PeersStorage {
 
   protected after() {
     this.rootScope.addEventListener('user_auth', () => {
-      this.requestPeer(this.appUsersManager.userId.toPeerId(), 'self');
+      this.requestPeer(this.appPeersManager.peerId, 'self');
     });
   }
 

@@ -1374,16 +1374,6 @@ export default class AppMediaViewerBase<
           }
         });
 
-        video.addEventListener('error', () => {
-          if(video.error.code !== 4) {
-            this.log.error("Error " + video.error.code + "; details: " + video.error.message);
-          }
-
-          if(preloader) {
-            preloader.detach();
-          }
-        }, {once: true});
-
         this.addEventListener('setMoverAfter', () => {
           video.src = '';
           video.load();
@@ -1491,6 +1481,7 @@ export default class AppMediaViewerBase<
         if(supportsStreaming) {
           onAnimationEnd.then(() => {
             if(video.readyState < video.HAVE_FUTURE_DATA) {
+              console.log('ppp 1');
               preloader.attach(mover, true);
             }
   
@@ -1501,7 +1492,7 @@ export default class AppMediaViewerBase<
   
           const attachCanPlay = () => {
             video.addEventListener('canplay', () => {
-              //this.log('video waited and progress loaded');
+              console.log('ppp 2');
               preloader.detach();
               video.parentElement.classList.remove('is-buffering');
             }, {once: true});
@@ -1515,6 +1506,7 @@ export default class AppMediaViewerBase<
             if(loading && isntEnoughData) {
               attachCanPlay();
   
+              console.log('ppp 3');
               preloader.attach(mover, true);
   
               // поставлю класс для плеера, чтобы убрать большую иконку пока прелоадер на месте
@@ -1542,6 +1534,7 @@ export default class AppMediaViewerBase<
             if(!supportsStreaming) {
               onAnimationEnd.then(async() => {
                 if(!(await getCacheContext()).url) {
+                  console.log('ppp 4');
                   preloader.attach(mover, true, promise);
                 }
               });
@@ -1554,6 +1547,17 @@ export default class AppMediaViewerBase<
               }
 
               const url = (await getCacheContext()).url;
+
+              video.addEventListener('error', () => {
+                if(video.error.code !== 4) {
+                  this.log.error("Error " + video.error.code + "; details: " + video.error.message);
+                }
+      
+                if(preloader) {
+                  preloader.detach();
+                }
+              }, {once: true});
+
               if(target instanceof SVGSVGElement/*  && (video.parentElement || !isSafari) */) { // if video exists
                 //if(!video.parentElement) {
                   div.firstElementChild.lastElementChild.append(video);

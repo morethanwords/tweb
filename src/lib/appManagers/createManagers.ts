@@ -42,8 +42,9 @@ import { TimeManager } from "../mtproto/timeManager";
 import { AppStoragesManager } from "./appStoragesManager";
 import cryptoMessagePort from "../crypto/cryptoMessagePort";
 import appStateManager from "./appStateManager";
+import filterUnique from "../../helpers/array/filterUnique";
 
-export default function createManagers(appStoragesManager: AppStoragesManager) {
+export default function createManagers(appStoragesManager: AppStoragesManager, userId: UserId) {
   const managers = {
     appPeersManager: new AppPeersManager,
     appChatsManager: new AppChatsManager,
@@ -101,13 +102,26 @@ export default function createManagers(appStoragesManager: AppStoragesManager) {
     ctx[name] = manager;
   }
 
-  const promises: Array<Promise<any> | void>[] = [];
-  for(const name in managers) {
-    const manager = managers[name as keyof T];
+  if(userId) {
+    managers.apiManager.setUserAuth(userId);
+  }
+
+  const promises: Array<Promise<(() => void) | void> | void>[] = [];
+  let names = Object.keys(managers) as (keyof T)[];
+  names.unshift('appUsersManager', 'appChatsManager', 'appMessagesManager', 'dialogsStorage');
+  names = filterUnique(names);
+  for(const name of names) {
+    const manager = managers[name];
     if((manager as any)?.after) {
+      // console.log('injecting after', name);
       const result = (manager as any).after();
       promises.push(result);
-      delete (manager as any).after;
+
+      // if(result instanceof Promise) {
+      //   result.then(() => {
+      //     console.log('injected after', name);
+      //   });
+      // }
     }
   }
 

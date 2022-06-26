@@ -33,6 +33,7 @@ import getFileNameForUpload from "../../helpers/getFileNameForUpload";
 import type { Progress } from "../appManagers/appDownloadManager";
 import getDownloadMediaDetails from "../appManagers/utils/download/getDownloadMediaDetails";
 import networkStats from "./networkStats";
+import pause from "../../helpers/schedulers/pause";
 
 type Delayed = {
   offset: number, 

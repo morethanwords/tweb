@@ -2634,7 +2634,9 @@ export class AppMessagesManager extends AppManager {
         message.reply_to.reply_to_msg_id = message.reply_to_mid = generateMessageId(message.reply_to.reply_to_msg_id);
       } 
 
-      if(message.reply_to.reply_to_top_id) message.reply_to.reply_to_top_id = generateMessageId(message.reply_to.reply_to_top_id);
+      if(message.reply_to.reply_to_top_id) {
+        message.reply_to.reply_to_top_id = generateMessageId(message.reply_to.reply_to_top_id);
+      }
     }
 
     const replies = isMessage && message.replies;
@@ -2649,9 +2651,9 @@ export class AppMessagesManager extends AppManager {
     }
     
     //storage.generateIndex(message);
-    const myId = this.appUsersManager.getSelf().id.toPeerId();
+    const myId = this.appPeersManager.peerId;
 
-    const fwdHeader = isMessage && (message as Message.message).fwd_from as MessageFwdHeader;
+    const fwdHeader = isMessage && (message as Message.message).fwd_from;
 
     message.peerId = peerId;
     if(peerId === myId/*  && !message.from_id && !message.fwd_from */) {

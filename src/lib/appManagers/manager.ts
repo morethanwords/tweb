@@ -89,9 +89,4 @@ export class AppManager {
     Object.assign(this, managers);
     // this.after();
   }
-
-  protected after(): Promise<void> | void {
-
-  }
-
 }

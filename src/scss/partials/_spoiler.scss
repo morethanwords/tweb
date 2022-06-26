@@ -67,6 +67,10 @@
   &:not(.is-spoiler-visible) {
     .spoiler {
       cursor: pointer;
+
+      &-text {
+        pointer-events: none;
+      }
     }
   }
 }

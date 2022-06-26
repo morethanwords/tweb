@@ -242,6 +242,8 @@ export class ApiManager extends ApiManagerMethods {
       userAuth = {dcID: 0, date: Date.now() / 1000 | 0, id: userAuth.toPeerId(false)};
     }
 
+    this.rootScope.dispatchEvent('user_auth', userAuth);
+
     if(!userAuth.dcID) {
       const baseDcId = await this.getBaseDcId();
       userAuth.dcID = baseDcId;
@@ -252,8 +254,6 @@ export class ApiManager extends ApiManagerMethods {
     });
     
     //this.telegramMeNotify(true);
-
-    this.rootScope.dispatchEvent('user_auth', userAuth);
   }
 
   public setBaseDcId(dcId: DcId) {
