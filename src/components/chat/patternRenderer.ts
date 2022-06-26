@@ -122,42 +122,75 @@ export default class ChatBackgroundPatternRenderer {
 
   public fillCanvas(canvas: HTMLCanvasElement) {
     const context = canvas.getContext('2d');
-    if(context.fillStyle instanceof CanvasPattern) {
-      context.clearRect(0, 0, canvas.width, canvas.height);
-    }
-
+    const {width, height} = canvas;
     // const perf = performance.now();
+    // if(context.fillStyle instanceof CanvasPattern) {
+    //   context.clearRect(0, 0, width, height);
+    // }
+
     const img = this.img;
 
     let imageWidth = img.width, imageHeight = img.height;
-    // if(imageHeight < canvas.height) {
-      const ratio = canvas.height / imageHeight;
+    // if(imageHeight < height) {
+      let patternHeight = 2960;
+      // * correct
+      // if(+canvas.dataset.originalHeight !== height) hhh *= 2 / 3;
+      // * but have to make it good
+      if(+canvas.dataset.originalHeight !== height) patternHeight *= .875;
+      const ratio = patternHeight / imageHeight;
       imageWidth *= ratio;
-      imageHeight = canvas.height;
+      imageHeight = patternHeight;
     // }
 
     if(this.options.mask) {
       context.fillStyle = '#000';
-      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.fillRect(0, 0, width, height);
       context.globalCompositeOperation = 'destination-out';
     } else {
       context.globalCompositeOperation = 'source-over';
     }
 
-    for(let x = 0; x < canvas.width; x += imageWidth) {
-      for(let y = 0; y < canvas.height; y += imageHeight) {
+    const d = (y: number) => {
+      for(let x = 0; x < width; x += imageWidth) {
         context.drawImage(img, x, y, imageWidth, imageHeight);
       }
+    };
+
+    const centerY = height / 2 - imageHeight / 2;
+    d(centerY);
+
+    if(centerY > 0) {
+      let topY = centerY;
+      do {
+        d(topY -= imageHeight);
+      } while(topY >= 0);
     }
+
+    const endY = height - 1;
+    for(let bottomY = centerY + imageHeight; bottomY < endY; bottomY += imageHeight) {
+      d(bottomY);
+    }
+
+    // for(let x = 0; x < width; x += imageWidth) {
+    //   for(let y = 0; y < height; y += imageHeight) {
+    //     context.drawImage(img, x, y, imageWidth, imageHeight);
+    //   }
+    // }
     // context.fillStyle = this.pattern;
-    // context.fillRect(0, 0, canvas.width, canvas.height);
+    // context.fillRect(0, 0, width, height);
     // console.warn('fill canvas time', performance.now() - perf);
   }
 
   public setCanvasDimensions(canvas: HTMLCanvasElement) {
     const devicePixelRatio = Math.min(2, window.devicePixelRatio);
-    canvas.width = this.options.width * devicePixelRatio;
-    canvas.height = this.options.height * devicePixelRatio * (mediaSizes.activeScreen === ScreenSize.large ? 1.5 : 1);
+    let width = this.options.width * devicePixelRatio, 
+      height = this.options.height * devicePixelRatio;
+
+    canvas.dataset.originalHeight = '' + height;
+    if(mediaSizes.activeScreen === ScreenSize.large) height *= 1.5;
+    canvas.width = width;
+    canvas.height = height;
+
   }
 
   public createCanvas() {
