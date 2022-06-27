@@ -4,6 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import type { EMOJI_VERSION } from "../../environment/emojiVersionsSupport";
 import { SITE_HASHTAGS } from ".";
 import { EmojiVersions } from "../../config/emoji";
 import IS_EMOJI_SUPPORTED from "../../environment/emojiSupport";
@@ -16,6 +17,7 @@ import encodeSpoiler from "./encodeSpoiler";
 import parseEntities from "./parseEntities";
 import setBlankToAnchor from "./setBlankToAnchor";
 import wrapUrl from "./wrapUrl";
+import EMOJI_VERSIONS_SUPPORTED from "../../environment/emojiVersionsSupport";
 
 /**
  * * Expecting correctly sorted nested entities (RichTextProcessor.sortEntities)
@@ -219,8 +221,8 @@ export default function wrapRichText(text: string, options: Partial<{
         if(isSupported) {
           for(const version in EmojiVersions) {
             if(version) {
-              const emojiData = EmojiVersions[version];
-              if(emojiData.hasOwnProperty(entity.unicode)) {
+              const emojiData = EmojiVersions[version as EMOJI_VERSION];
+              if(emojiData.hasOwnProperty(entity.unicode) && !EMOJI_VERSIONS_SUPPORTED[version as EMOJI_VERSION]) {
                 isSupported = false;
                 break;
               }
