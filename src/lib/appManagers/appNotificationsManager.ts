@@ -17,6 +17,7 @@ import convertInputKeyToKey from "../../helpers/string/convertInputKeyToKey";
 import { AppManager } from "./manager";
 import getPeerId from "./utils/peers/getPeerId";
 import ctx from "../../environment/ctx";
+import assumeType from "../../helpers/assumeType";
 
 type ImSadAboutIt = Promise<PeerNotifySettings> | PeerNotifySettings;
 export class AppNotificationsManager extends AppManager {
@@ -48,6 +49,18 @@ export class AppNotificationsManager extends AppManager {
           settings: update.notify_settings
         });
         this.rootScope.dispatchEvent('notify_settings', update);
+      }
+    });
+
+    return this.appStateManager.getState().then((state) => {
+      if(state.notifySettings) {
+        for(const key in state.notifySettings) {
+          assumeType<Exclude<NotifyPeer['_'], 'notifyPeer'>>(key);
+          this.savePeerSettings({
+            key,
+            settings: state.notifySettings[key]
+          });
+        }
       }
     });
   }

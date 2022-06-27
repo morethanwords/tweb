@@ -3,26 +3,45 @@
 
 <head>
   <meta charset="utf-8">
-  <title>Telegram Web</title>
-  <meta name="description" content="Telegram is a cloud-based mobile and desktop messaging app with a focus on security and speed.">
+  <title>{{htmlWebpackPlugin.options.title}}</title>
+  <meta name="description" content="{{htmlWebpackPlugin.options.description}}">
   <!--<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />-->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"> 
-
-  <!-- do not paste other icons here, only change these. 'icon' type must be single -->
-  <link rel="apple-touch-icon" sizes="180x180" href="assets/img/apple-touch-icon.png?v=jw3mK7G9Ry">
-  <link rel="icon" type="image/png" sizes="32x32" href="assets/img/favicon-32x32.png?v=jw3mK7G9Ry">
-  <!--<link rel="icon" type="image/png" sizes="192x192" href="assets/img/android-chrome-192x192.png?v=jw3mK7G9Ry">
-  <link rel="icon" type="image/png" sizes="16x16" href="assets/img/favicon-16x16.png?v=jw3mK7G9Ry">-->
-  <link rel="manifest" href="site.webmanifest?v=jw3mK7G9Aq">
-  <link rel="mask-icon" href="assets/img/safari-pinned-tab.svg?v=jw3mK7G9Ry" color="#3390ec">
-  <!--<link rel="shortcut icon" href="assets/img/favicon.ico?v=jw3mK7G9Ry">-->
-  <meta name="apple-mobile-web-app-title" content="Telegram WebK">
-  <meta name="application-name" content="Telegram WebK">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-title" content="{{htmlWebpackPlugin.options.title}}">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="{{htmlWebpackPlugin.options.title}}">
+  <meta name="application-name" content="{{htmlWebpackPlugin.options.title}}">
   <meta name="msapplication-TileColor" content="#2d89ef">
   <meta name="msapplication-TileImage" content="assets/img/mstile-144x144.png?v=jw3mK7G9Ry">
   <meta name="msapplication-config" content="browserconfig.xml?v=jw3mK7G9Ry">
   <meta name="theme-color" content="#ffffff">
   <meta name="color-scheme" content="light">
+  <meta name="google" content="notranslate">
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="{{htmlWebpackPlugin.options.url}}">
+  <meta property="og:title" content="{{htmlWebpackPlugin.options.title}}">
+  <meta property="og:description" content="{{htmlWebpackPlugin.options.description}}">
+  <meta property="og:image" content="assets/img/android-chrome-192x192.png?v=jw3mK7G9Ry">
+
+  <!-- Twitter -->
+  <meta property="twitter:card" content="summary_large_image">
+  <meta property="twitter:url" content="{{htmlWebpackPlugin.options.url}}">
+  <meta property="twitter:title" content="{{htmlWebpackPlugin.options.title}}">
+  <meta property="twitter:description" content="{{htmlWebpackPlugin.options.description}}">
+  <meta property="twitter:image" content="assets/img/android-chrome-192x192.png?v=jw3mK7G9Ry">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="assets/img/apple-touch-icon.png?v=jw3mK7G9Ry">
+  <link rel="icon" type="image/png" sizes="16x16" href="assets/img/favicon-16x16.png?v=jw3mK7G9Ry">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/img/favicon-32x32.png?v=jw3mK7G9Ry">
+  <link rel="icon" type="image/png" sizes="192x192" href="assets/img/android-chrome-192x192.png?v=jw3mK7G9Ry">
+  <link rel="alternate icon" href="assets/img/favicon.ico?v=jw3mK7G9Ry" type="image/x-icon">
+  <link rel="mask-icon" href="assets/img/safari-pinned-tab.svg?v=jw3mK7G9Ry" color="#3390ec">
+
+  <link rel="manifest" id="manifest">
+
   {{#each htmlWebpackPlugin.files.css}}
     <link rel="stylesheet" href="{{this}}">
   {{/each}}

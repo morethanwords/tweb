@@ -205,7 +205,6 @@ export class AppDialogsManager {
     }
   } = {};
   private showFiltersPromise: Promise<void>;
-  private allUnreadCount: HTMLElement;
 
   private sliceTimeout: number;
 
@@ -236,8 +235,6 @@ export class AppDialogsManager {
 
     this.contextMenu = new DialogsContextMenu(managers);
 
-    this.allUnreadCount = this.folders.menu.querySelector('.badge');
-    
     this.folders.menuScrollContainer = this.folders.menu.parentElement;
 
     this.onListLengthChange = debounce(this._onListLengthChange, 100, false, true);
@@ -524,7 +521,6 @@ export class AppDialogsManager {
     rootScope.addEventListener('dialog_notify_settings', (dialog) => {
       this.validateDialogForFilter(dialog);
       this.setUnreadMessagesN({dialog}); // возможно это не нужно, но нужно менять is-muted
-      this.setFiltersUnreadCount();
     });
 
     rootScope.addEventListener('dialog_draft', ({dialog, drop, peerId}) => {
@@ -667,20 +663,6 @@ export class AppDialogsManager {
       }
     }
 
-    if(state.notifySettings) {
-      const promises: Promise<any>[] = [];
-      for(const key in state.notifySettings) {
-        assumeType<Exclude<NotifyPeer['_'], 'notifyPeer'>>(key);
-        const promise = this.managers.appNotificationsManager.savePeerSettings({
-          key,
-          settings: state.notifySettings[key]
-        });
-        promises.push(promise);
-      }
-
-      await Promise.all(promises);
-    }
-
     this.managers.appNotificationsManager.getNotifyPeerTypeSettings();
 
     await (await loadDialogsPromise).renderPromise;
@@ -755,13 +737,17 @@ export class AppDialogsManager {
   };
 
   private async setFilterUnreadCount(filterId: number) {
-    const unreadSpan = filterId === 0 ? this.allUnreadCount : this.filtersRendered[filterId]?.unread;
+    if(filterId === 0) {
+      return;
+    }
+
+    const unreadSpan = this.filtersRendered[filterId]?.unread;
     if(!unreadSpan) {
       return;
     }
 
-    const {foundUnmuted, unreadCount} = await this.managers.dialogsStorage.getFolderUnreadCount(filterId);
-    unreadSpan.classList.toggle('badge-gray', !foundUnmuted);
+    const {unreadUnmutedCount, unreadCount} = await this.managers.dialogsStorage.getFolderUnreadCount(filterId);
+    unreadSpan.classList.toggle('badge-gray', !unreadUnmutedCount);
     unreadSpan.innerText = unreadCount ? '' + unreadCount : '';
   }
 

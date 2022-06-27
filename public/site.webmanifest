@@ -1,6 +1,6 @@
 {
-    "name": "Telegram WebK",
-    "short_name": "Telegram WebK",
+    "name": "Telegram Web",
+    "short_name": "Telegram Web",
     "start_url": "./",
     "description": "Telegram is a cloud-based mobile and desktop messaging app with a focus on security and speed.",
     "icons": [

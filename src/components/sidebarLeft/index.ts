@@ -310,7 +310,7 @@ export class AppSidebarLeft extends SidebarSlider {
     rootScope.addEventListener('folder_unread', (folder) => {
       if(folder.id === 1) {
         // const count = folder.unreadMessagesCount;
-        const count = folder.unreadDialogsCount;
+        const count = folder.unreadPeerIds.size;
         this.archivedCount.innerText = '' + formatNumber(count, 1);
         this.archivedCount.classList.toggle('hide', !count);
       }

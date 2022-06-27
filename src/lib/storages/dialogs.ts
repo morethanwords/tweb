@@ -45,7 +45,8 @@ export type Folder = {
   dialogs: Dialog[],
   id: number,
   unreadMessagesCount: number,
-  unreadDialogsCount: number,
+  unreadPeerIds: Set<PeerId>,
+  unreadUnmutedPeerIds: Set<PeerId>,
   dispatchUnreadTimeout?: number
 };
 
@@ -131,6 +132,7 @@ export default class DialogsStorage extends AppManager {
 
     this.rootScope.addEventListener('dialog_notify_settings', (dialog) => {
       this.processDialogForFilters(dialog);
+      this.prepareDialogUnreadCountModifying(dialog)();
     });
 
     this.rootScope.addEventListener('chat_update', (chatId) => {
@@ -287,7 +289,14 @@ export default class DialogsStorage extends AppManager {
   public getFolder(id: number) {
     let folder = this.folders[id];
     if(!folder) {
-      folder = this.folders[id] = {dialogs: [], id, unreadMessagesCount: 0, unreadDialogsCount: 0};
+      folder = this.folders[id] = {
+        dialogs: [], 
+        id, 
+        unreadMessagesCount: 0, 
+        unreadPeerIds: new Set(), 
+        unreadUnmutedPeerIds: new Set()
+      };
+
       defineNotNumerableProperties(folder, ['dispatchUnreadTimeout']);
     }
 
@@ -326,14 +335,14 @@ export default class DialogsStorage extends AppManager {
     const filter = this.filtersStorage.getFilter(filterId);
     return getDialogIndexKey(filter.orderIndex);
   }
+  
+  public isPeerUnmuted(peerId: PeerId) {
+    return !this.appNotificationsManager.isPeerLocalMuted(peerId, true);
+  }
 
   public getFolderUnreadCount(filterId: number) {
     const folder = this.getFolder(filterId);
-    const foundUnmuted = filterId === 0 || !!folder.dialogs.find((dialog) => {
-      return (dialog.unread_count || dialog.pFlags.unread_mark) && !this.appNotificationsManager.isPeerLocalMuted(dialog.peerId, true);
-    });
-    
-    return {foundUnmuted, unreadCount: folder.unreadDialogsCount};
+    return {unreadUnmutedCount: folder.unreadUnmutedPeerIds.size, unreadCount: folder.unreadPeerIds.size};
   }
 
   public getCachedDialogs(skipMigrated?: boolean) {
@@ -435,7 +444,7 @@ export default class DialogsStorage extends AppManager {
     const newDialogIndex = this.setDialogIndexInFilter(dialog, indexKey, filter);
 
     if(wasDialogIndex === newDialogIndex) {
-      return;
+      return false;
     }
 
     if((!wasDialogIndex && newDialogIndex) || (wasIndex && !newDialogIndex)) {
@@ -449,6 +458,8 @@ export default class DialogsStorage extends AppManager {
     if(newDialogIndex) {
       insertInDescendSortedArray(dialogs, dialog, (dialog) => this.getDialogIndex(dialog, indexKey), -1);
     }
+
+    return true;
   }
 
   public prepareDialogUnreadCountModifying(dialog: Dialog) {
@@ -469,32 +480,46 @@ export default class DialogsStorage extends AppManager {
 
   public prepareFolderUnreadCountModifyingByDialog(folderId: number, dialog: Dialog, toggle?: boolean) {
     const wasUnreadCount = this.appMessagesManager.getDialogUnreadCount(dialog);
+    const wasUnmuted = this.isPeerUnmuted(dialog.peerId);
     
     if(toggle !== undefined) {
-      this.modifyFolderUnreadCount(folderId, toggle ? wasUnreadCount : -wasUnreadCount, wasUnreadCount ? (toggle ? 1 : -1) : 0);
+      const addMessagesCount = toggle ? wasUnreadCount : -wasUnreadCount;
+      this.modifyFolderUnreadCount(folderId, addMessagesCount, !!wasUnreadCount, wasUnreadCount && wasUnmuted, dialog);
       return;
     }
 
     return () => {
       const newUnreadCount = this.appMessagesManager.getDialogUnreadCount(dialog);
+      const newUnmuted = this.isPeerUnmuted(dialog.peerId);
+
       const addMessagesCount = newUnreadCount - wasUnreadCount;
-      const addDialogsCount = (newUnreadCount && !wasUnreadCount) || (!newUnreadCount && wasUnreadCount) ? (wasUnreadCount ? -1 : 1) : 0;
-      this.modifyFolderUnreadCount(folderId, addMessagesCount, addDialogsCount);
+      this.modifyFolderUnreadCount(folderId, addMessagesCount, !!newUnreadCount, newUnreadCount && newUnmuted, dialog);
     };
   }
 
-  public modifyFolderUnreadCount(folderId: number, addMessagesCount: number, addDialogsCount: number) {
-    if(!addMessagesCount && !addDialogsCount) {
-      return;
-    }
-
+  public modifyFolderUnreadCount(
+    folderId: number, 
+    addMessagesCount: number, 
+    toggleDialog: boolean, 
+    toggleUnmuted: boolean, 
+    dialog: Dialog
+  ) {
     const folder = this.getFolder(folderId);
     if(addMessagesCount) {
       folder.unreadMessagesCount = Math.max(0, folder.unreadMessagesCount + addMessagesCount);
     }
     
-    if(addDialogsCount) {
-      folder.unreadDialogsCount = Math.max(0, folder.unreadDialogsCount + addDialogsCount);
+    const {peerId} = dialog;
+    if(toggleDialog) {
+      folder.unreadPeerIds.add(peerId);
+    } else {
+      folder.unreadPeerIds.delete(peerId);
+    }
+
+    if(toggleUnmuted) {
+      folder.unreadUnmutedPeerIds.add(peerId);
+    } else {
+      folder.unreadUnmutedPeerIds.delete(peerId);
     }
 
     if(folder.dispatchUnreadTimeout === undefined) {

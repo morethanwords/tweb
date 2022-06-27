@@ -32,6 +32,9 @@ document.addEventListener('DOMContentLoaded', async() => {
 
   rootScope.managers = getProxiedManagers();
 
+  const manifest = document.getElementById('manifest') as HTMLLinkElement;
+  manifest.href = `site${IS_APPLE && !IS_APPLE_MOBILE ? '_apple' : ''}.webmanifest?v=jw3mK7G9Aq`;
+
   singleInstance.start();
 
   // We listen to the resize event (https://css-tricks.com/the-trick-to-viewport-units-on-mobile/)

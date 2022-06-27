@@ -82,11 +82,14 @@ export class UiNotificationsManager {
   private pushInited = false;
   
   private managers: AppManagers;
+  private setAppBadge: (contents?: any) => Promise<void>;
 
   construct(managers: AppManagers) {
     this.managers = managers;
 
     navigator.vibrate = navigator.vibrate || (navigator as any).mozVibrate || (navigator as any).webkitVibrate;
+    this.setAppBadge = (navigator as any).setAppBadge && (navigator as any).setAppBadge.bind(navigator);
+    this.setAppBadge && this.setAppBadge(0);
 
     this.notificationsUiSupport = ('Notification' in window) || ('mozNotification' in navigator);
 
@@ -125,6 +128,14 @@ export class UiNotificationsManager {
     rootScope.addEventListener('notification_cancel', (str) => {
       this.cancel(str);
     });
+    
+    if(this.setAppBadge) {
+      rootScope.addEventListener('folder_unread', (folder) => {
+        if(folder.id === 0) {
+          this.setAppBadge(folder.unreadUnmutedPeerIds.size);
+        }
+      });
+    }
 
     webPushApiManager.addEventListener('push_init', (tokenData) => {
       this.pushInited = true;
@@ -280,7 +291,7 @@ export class UiNotificationsManager {
   private toggleToggler(enable = idleController.isIdle) {
     if(IS_MOBILE) return;
 
-    const resetTitle = () => {
+    const resetTitle = (isBlink?: boolean) => {
       this.titleChanged = false;
       document.title = this.titleBackup;
       this.setFavicon();
@@ -297,7 +308,7 @@ export class UiNotificationsManager {
         if(!count) {
           this.toggleToggler(false);
         } else if(this.titleChanged) {
-          resetTitle();
+          resetTitle(true);
         } else {
           this.titleChanged = true;
           document.title = I18n.format('Notifications.Count', true, [count]);

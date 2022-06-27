@@ -241,6 +241,9 @@ module.exports = {
     // }),
     
     new HtmlWebpackPlugin({
+      title: 'Telegram Web',
+      description: 'Telegram is a cloud-based mobile and desktop messaging app with a focus on security and speed.',
+      url: 'https://web.telegram.org/k/',
       filename: 'index.html',
       //template: 'public/index_template.html',
       template: 'src/index.hbs',

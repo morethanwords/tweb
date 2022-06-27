@@ -108,7 +108,7 @@ export default function createManagers(appStoragesManager: AppStoragesManager, u
 
   const promises: Array<Promise<(() => void) | void> | void>[] = [];
   let names = Object.keys(managers) as (keyof T)[];
-  names.unshift('appUsersManager', 'appChatsManager', 'appMessagesManager', 'dialogsStorage');
+  names.unshift('appUsersManager', 'appChatsManager', 'appNotificationsManager', 'appMessagesManager', 'dialogsStorage');
   names = filterUnique(names);
   for(const name of names) {
     const manager = managers[name];

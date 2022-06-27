@@ -3113,18 +3113,14 @@ export class AppMessagesManager extends AppManager {
     if(!this.migratedFromTo[migrateFrom] &&
       !this.migratedToFrom[migrateTo] &&
       this.appChatsManager.hasChat(migrateTo.toChatId())) {
-      const fromChat = this.appChatsManager.getChat(migrateFrom.toChatId());
-      if(fromChat &&
-        fromChat.migrated_to &&
-        fromChat.migrated_to.channel_id === migrateTo.toChatId()) {
-          this.migratedFromTo[migrateFrom] = migrateTo;
-          this.migratedToFrom[migrateTo] = migrateFrom;
+      const fromChat: Chat.chat = this.appChatsManager.getChat(migrateFrom.toChatId());
+      if(fromChat?.migrated_to && (fromChat.migrated_to as InputChannel.inputChannel).channel_id === migrateTo.toChatId()) {
+        this.migratedFromTo[migrateFrom] = migrateTo;
+        this.migratedToFrom[migrateTo] = migrateFrom;
 
-        //setTimeout(() => {
-          this.rootScope.dispatchEvent('dialog_migrate', {migrateFrom, migrateTo});
+        this.rootScope.dispatchEvent('dialog_migrate', {migrateFrom, migrateTo});
 
-          this.dialogsStorage.dropDialogWithEvent(migrateFrom);
-        //}, 100);
+        this.dialogsStorage.dropDialogWithEvent(migrateFrom);
       }
     }
   }
