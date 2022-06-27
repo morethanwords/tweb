@@ -27,6 +27,7 @@ export function isServiceWorkerOnline() {
 }
 
 const log = logger('MTPROTO');
+// let haveState = false;
 
 const port = new MTProtoMessagePort<false>();
 port.addMultipleEventsListeners({
@@ -41,6 +42,10 @@ port.addMultipleEventsListeners({
   },
 
   state: ({state, resetStorages, pushedKeys, newVersion, oldVersion, userId}) => {
+    // if(haveState) {
+    //   return;
+    // }
+
     log('got state', state, pushedKeys);
 
     appStateManager.userId = userId;
@@ -52,6 +57,7 @@ port.addMultipleEventsListeners({
     });
 
     RESET_STORAGES_PROMISE.resolve(resetStorages);
+    // haveState = true;
   },
 
   toggleStorages: ({enabled, clearWrite}) => {

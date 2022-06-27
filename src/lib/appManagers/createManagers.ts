@@ -102,10 +102,6 @@ export default function createManagers(appStoragesManager: AppStoragesManager, u
     ctx[name] = manager;
   }
 
-  if(userId) {
-    managers.apiManager.setUserAuth(userId);
-  }
-
   const promises: Array<Promise<(() => void) | void> | void>[] = [];
   let names = Object.keys(managers) as (keyof T)[];
   names.unshift('appUsersManager', 'appChatsManager', 'appNotificationsManager', 'appMessagesManager', 'dialogsStorage');
@@ -123,6 +119,10 @@ export default function createManagers(appStoragesManager: AppStoragesManager, u
       //   });
       // }
     }
+  }
+
+  if(userId) {
+    managers.apiManager.setUserAuth(userId);
   }
 
   return Promise.all(promises).then(() => managers);
