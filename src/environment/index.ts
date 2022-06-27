@@ -18,9 +18,11 @@ import IS_WEBRTC_SUPPORTED from "./webrtcSupport";
 import * as userAgent from "./userAgent";
 import IS_OPUS_SUPPORTED from "./opusSupport";
 import IS_SHARED_WORKER_SUPPORTED from "./sharedWorkerSupport";
+import IS_APPLE_MX from "./appleMx";
 
 const ENVIRONMENT = {
   CAN_USE_TRANSFERABLES,
+  IS_APPLE_MX,
   IS_CALL_SUPPORTED,
   IS_CANVAS_FILTER_SUPPORTED,
   IS_EMOJI_SUPPORTED,

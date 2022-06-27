@@ -5,6 +5,7 @@
  */
 
 import CAN_USE_TRANSFERABLES from "../../environment/canUseTransferables";
+import IS_APPLE_MX from "../../environment/appleMx";
 import { IS_ANDROID, IS_APPLE_MOBILE, IS_APPLE, IS_SAFARI } from "../../environment/userAgent";
 import EventListenerBase from "../../helpers/eventListenerBase";
 import mediaSizes from "../../helpers/mediaSizes";
@@ -175,7 +176,7 @@ export default class RLottiePlayer extends EventListenerBase<{
     // * Skip ratio (30fps)
     let skipRatio: number;
     if(options.skipRatio !== undefined) skipRatio = options.skipRatio;
-    else if((IS_ANDROID || IS_APPLE_MOBILE || (IS_APPLE && !IS_SAFARI)) && this.width < 100 && this.height < 100 && !options.needUpscale) {
+    else if((IS_ANDROID || IS_APPLE_MOBILE || (IS_APPLE && !IS_SAFARI && !IS_APPLE_MX)) && this.width < 100 && this.height < 100 && !options.needUpscale) {
       skipRatio = 0.5;
     }
 
