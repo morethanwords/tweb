@@ -434,7 +434,15 @@ export default function wrapRichText(text: string, options: Partial<{
     //   (lastElement || fragment).append(element ?? partText);
     // }
 
-    if(entity.length > partText.length && element) {
+    if(nasty.usedLength <= endOffset) {
+      if(nasty.usedLength < endOffset) {
+        (element || fragment).append(nasty.text.slice(nasty.usedLength, endOffset));
+        nasty.usedLength = endOffset;
+      }
+      
+      lastElement = fragment;
+      nasty.lastEntity = undefined;
+    } else if(entity.length > partText.length && element) {
       lastElement = element;
     } else {
       lastElement = fragment;
@@ -455,3 +463,5 @@ export default function wrapRichText(text: string, options: Partial<{
 
   return fragment;
 }
+
+(window as any).wrapRichText = wrapRichText;

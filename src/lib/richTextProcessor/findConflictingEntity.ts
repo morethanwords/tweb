@@ -7,11 +7,22 @@
 import { PASS_CONFLICTING_ENTITIES } from ".";
 import { MessageEntity } from "../../layer";
 
-export default function findConflictingEntity(currentEntities: MessageEntity[], newEntity: MessageEntity) {
-  return currentEntities.find((currentEntity) => {
-    const isConflictingTypes = newEntity._ === currentEntity._ || 
-      (!PASS_CONFLICTING_ENTITIES.has(newEntity._) && !PASS_CONFLICTING_ENTITIES.has(currentEntity._));
+const SINGLE_ENTITIES: Set<MessageEntity['_']> = new Set(['messageEntityPre', 'messageEntityCode']);
 
+export default function findConflictingEntity(currentEntities: MessageEntity[], newEntity: MessageEntity) {
+  let singleEnd = -1;
+  return currentEntities.find((currentEntity) => {
+    if(SINGLE_ENTITIES.has(currentEntity._)) {
+      singleEnd = currentEntity.offset + currentEntity.length;
+    }
+
+    if(newEntity.offset < singleEnd && !PASS_CONFLICTING_ENTITIES.has(newEntity._)) {
+      return true;
+    }
+    
+    const isConflictingTypes = newEntity._ === currentEntity._ || 
+    (!PASS_CONFLICTING_ENTITIES.has(newEntity._) && !PASS_CONFLICTING_ENTITIES.has(currentEntity._));
+    
     if(!isConflictingTypes) {
       return false;
     }

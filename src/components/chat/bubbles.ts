@@ -4178,13 +4178,14 @@ export default class ChatBubbles {
         }
         
         default:
+          attachmentDiv = undefined;
           bubble.classList.remove('is-message-empty');
           messageDiv.append(i18n(UNSUPPORTED_LANG_PACK_KEY), timeSpan);
           this.log.warn('unrecognized media type:', messageMedia._, message);
           break;
       }
       
-      if(!processingWebPage) {
+      if(!processingWebPage && attachmentDiv) {
         bubbleContainer.append(attachmentDiv);
       }
 
