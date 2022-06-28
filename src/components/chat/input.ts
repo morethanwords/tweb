@@ -169,7 +169,7 @@ export default class ChatInput {
   // private scrollDiff = 0;
 
   public helperType: Exclude<ChatInputHelperType, 'webpage'>;
-  private helperFunc: () => void;
+  private helperFunc: () => void | Promise<void>;
   private helperWaitingForward: boolean;
 
   public willAttachType: 'document' | 'media';
@@ -2172,7 +2172,7 @@ export default class ChatInput {
     }
   };
 
-  private onHelperCancel = (e?: Event, force?: boolean) => {
+  private onHelperCancel = async(e?: Event, force?: boolean) => {
     if(e) {
       cancelEvent(e);
     }
@@ -2182,7 +2182,7 @@ export default class ChatInput {
       let needReturn = false;
       if(this.helperType) {
         //if(this.helperFunc) {
-          this.helperFunc();
+          await this.helperFunc();
         //}
 
         needReturn = true;
