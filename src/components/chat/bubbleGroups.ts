@@ -503,7 +503,7 @@ export default class BubbleGroups {
   prepareForGrouping(bubble: HTMLElement, message: MyMessage) {
     const foundItem = this.getItemByBubble(bubble);
     if(foundItem) { // should happen only on edit
-      debugger;
+      // debugger;
       return;
     }
 

@@ -248,7 +248,7 @@ export default class ChatBubbles {
   private attachPlaceholderOnRender: () => void;
 
   private bubblesToEject: Set<HTMLElement> = new Set();
-  private bubblesToReplace: Set<HTMLElement> = new Set();
+  private bubblesToReplace: Map<HTMLElement, HTMLElement> = new Map(); // TO -> FROM
   private updatePlaceholderPosition: () => void;
   private setPeerOptions: {lastMsgId: number; topMessage: number;};
 
@@ -3153,7 +3153,7 @@ export default class ChatBubbles {
 
       loadQueue = filterQueue(loadQueue);
 
-      const restoreScroll = this.prepareToSaveScroll(reverse);
+      const {restoreScroll, scrollSaver} = this.prepareToSaveScroll(reverse);
       // if(this.messagesQueueOnRender) {
         // this.messagesQueueOnRender();
       // }
@@ -3163,7 +3163,9 @@ export default class ChatBubbles {
       }
 
       this.ejectBubbles();
-      for(const bubble of this.bubblesToReplace) {
+      for(const [bubble, oldBubble] of this.bubblesToReplace) {
+        scrollSaver.replaceSaved(oldBubble, bubble);
+        
         if(!loadQueue.find((details) => details.bubble === bubble)) {
           continue;
         }
@@ -3317,7 +3319,7 @@ export default class ChatBubbles {
 
         this.bubblesToEject.add(bubble);
         this.bubblesToReplace.delete(bubble);
-        this.bubblesToReplace.add(newBubble);
+        this.bubblesToReplace.set(newBubble, bubble);
         this.bubbleGroups.changeBubbleByBubble(bubble, newBubble);
       }
 
@@ -4414,7 +4416,7 @@ export default class ChatBubbles {
   private prepareToSaveScroll(reverse?: boolean) {
     const isMounted = !!this.chatInner.parentElement;
     if(!isMounted) {
-      return;
+      return {};
     }
 
     const log = this.log.bindPrefix('prepareToSaveScroll');
@@ -4431,11 +4433,14 @@ export default class ChatBubbles {
     // const saved = scrollSaver.getSaved();
     // const hadScroll = saved.scrollHeight !== saved.clientHeight;
 
-    return () => {
-      log('restore');
-      // scrollSaver.restore(_history.length === 1 && !reverse ? false : true);
-      scrollSaver.restore(reverse);
-      this.onRenderScrollSet(scrollSaver.getSaved());
+    return {
+      restoreScroll: () => {
+        log('restore');
+        // scrollSaver.restore(_history.length === 1 && !reverse ? false : true);
+        scrollSaver.restore(reverse);
+        this.onRenderScrollSet(scrollSaver.getSaved());
+      },
+      scrollSaver
     };
   }
 

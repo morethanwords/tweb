@@ -15,8 +15,7 @@ export default class ScrollSaver {
   private scrollHeightMinusTop: number;
   private scrollTop: number;
   private clientHeight: number;
-  private anchor: HTMLElement;
-  private rect: DOMRect;
+  private elements: {element: HTMLElement, rect: DOMRect}[];
 
   /**
    * 
@@ -43,43 +42,50 @@ export default class ScrollSaver {
     };
   }
 
-  public findAnchor() {
+  public findElements() {
     const {container} = this;
     const containerRect = container.getBoundingClientRect();
     const bubbles = Array.from(container.querySelectorAll(this.query)) as HTMLElement[];
-    let rect: DOMRect, anchor: HTMLElement;
+    const elements: ScrollSaver['elements'] = [];
     for(const bubble of bubbles) {
       const elementRect = bubble.getBoundingClientRect();
       const visibleRect = getVisibleRect(bubble, container, undefined, elementRect, containerRect);
       if(visibleRect) {
-        rect = elementRect;
-        anchor = bubble;
+        elements.push({element: bubble, rect: elementRect});
         // break; // find first
-      } else if(anchor) { // find last
+      } else if(elements.length) { // find last
         break;
       }
     }
 
-    if(!rect) {
+    if(!elements.length) {
       const bubble = bubbles[0];
       if(bubble) {
-        rect = bubble.getBoundingClientRect();
-        anchor = bubble;
+        elements.push({element: bubble, rect: bubble.getBoundingClientRect()});
       }
     }
 
-    return {rect, anchor};
+    return elements;
   }
 
-  public findAndSetAnchor() {
-    const {rect, anchor} = this.findAnchor();
-    this.rect = rect;
-    this.anchor = anchor;
+  public replaceSaved(from: HTMLElement, to: HTMLElement) {
+    if(!this.elements) {
+      return;
+    }
+
+    const idx = this.elements.findIndex(({element}) => from === element);
+    if(idx !== -1) {
+      this.elements[idx].element = to;
+    }
+  }
+
+  public findAndSetElements() {
+    this.elements = this.findElements();
   }
 
   public save() {
-    this.findAndSetAnchor();
-    // console.warn('scroll save', this.anchor, this.rect);
+    this.findAndSetElements();
+    console.warn('scroll save', this.elements);
     this._save();
   }
 
@@ -121,21 +127,32 @@ export default class ScrollSaver {
     const {scrollTop, scrollHeight} = this.scrollable;
     this.scrollHeight = scrollHeight;
 
-    if(!this.anchor?.parentElement) { // try to find new anchor
-      this.findAndSetAnchor();
+    let anchor: ScrollSaver['elements'][0];
+    // for(let i = this.elements.length - 1; i >= 0; --i) {
+    //   const _anchor = this.elements[i];
+    //   if(_anchor.element.parentElement) {
+    //     anchor = _anchor;
+    //     break;
+    //   }
+    // }
+    anchor = this.elements[this.elements.length - 1];
+    
+    if(!anchor?.element?.parentElement) { // try to find new anchor
+      this.findAndSetElements();
+      anchor = this.elements[this.elements.length - 1];
 
-      if(!this.anchor) { // fallback to old method if smth is really strange
+      if(!anchor) { // fallback to old method if smth is really strange
         this._restore(useReflow);
         return;
       }
     }
 
-    const rect = this.rect;
-    const newRect = this.anchor.getBoundingClientRect();
+    const {element, rect} = anchor;
+    const newRect = element.getBoundingClientRect();
     const diff = newRect.bottom - rect.bottom;
     this.setScrollTop(scrollTop + diff, useReflow);
     // if(diff) debugger;
-    // console.warn('scroll restore', rect, diff, newRect);
+    console.warn('scroll restore', rect, diff, newRect);
   }
 
   public _restore(useReflow?: boolean) {

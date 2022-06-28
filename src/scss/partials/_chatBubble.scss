@@ -2367,7 +2367,7 @@ $bubble-beside-button-width: 38px;
     color: var(--monospace-text-color);
   }
 
-  .reply.is-overriding-color {
+  &:not(.just-media) .reply.is-overriding-color {
     .reply-border {
       background-color: rgb(var(--override-color));
     }
