@@ -979,11 +979,11 @@ export default class ChatInput {
     this.center(true);
   }
 
-  public async getNeededFakeContainer() {
+  public async getNeededFakeContainer(startParam = this.startParam) {
     if(this.chat.selection.isSelecting) {
       return this.fakeSelectionWrapper;
     } else if(
-      this.startParam !== undefined || 
+      startParam !== undefined || 
       !(await this.chat.canSend()) || 
       this.chat.type === 'pinned' || 
       await this.chat.isStartButtonNeeded()
@@ -1236,7 +1236,7 @@ export default class ChatInput {
       this.managers.appPeersManager.canPinMessage(peerId),
       this.managers.appPeersManager.isBot(peerId),
       this.chat.canSend(),
-      this.getNeededFakeContainer(),
+      this.getNeededFakeContainer(startParam),
       modifyAckedPromise(this.managers.acknowledged.appProfileManager.getProfileByPeerId(peerId)),
       btnScheduled ? modifyAckedPromise(this.managers.acknowledged.appMessagesManager.getScheduledMessages(peerId)) : undefined,
       sendAs ? (sendAs.setPeerId(this.chat.peerId), sendAs.updateManual(true)) : undefined,
