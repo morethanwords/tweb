@@ -85,7 +85,7 @@ export default class ScrollSaver {
 
   public save() {
     this.findAndSetElements();
-    console.warn('scroll save', this.elements);
+    // console.warn('scroll save', this.elements);
     this._save();
   }
 
@@ -152,7 +152,7 @@ export default class ScrollSaver {
     const diff = newRect.bottom - rect.bottom;
     this.setScrollTop(scrollTop + diff, useReflow);
     // if(diff) debugger;
-    console.warn('scroll restore', rect, diff, newRect);
+    // console.warn('scroll restore', rect, diff, newRect);
   }
 
   public _restore(useReflow?: boolean) {

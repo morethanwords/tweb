@@ -323,7 +323,7 @@ export default class ChatBubbles {
       const _items = this.bubbleGroups.itemsArr.slice();
       indexOfAndSplice(_items, item);
       const foundItem = this.bubbleGroups.findGroupSiblingByItem(newItem, _items);
-      if(group === foundItem?.group/*  && false */) {
+      if(group === foundItem?.group || (group === this.bubbleGroups.getLastGroup() && group.items.length === 1)/*  && false */) {
         log && log('item has correct position', item);
         this.bubbleGroups.changeBubbleMid(bubble, mid);
         return;
@@ -2902,21 +2902,22 @@ export default class ChatBubbles {
 
       this.chat.dispatchEvent('setPeer', lastMsgId, !isJump);
 
-      this.setFetchReactionsInterval(afterSetPromise);
-      this.setFetchHistoryInterval({
-        afterSetPromise,
-        lastMsgId,
-        samePeer,
-        savedPosition,
-        topMessage
+      Promise.all([
+        this.setFetchReactionsInterval(afterSetPromise),
+        this.setFetchHistoryInterval({
+          afterSetPromise,
+          lastMsgId,
+          samePeer,
+          savedPosition,
+          topMessage
+        }),
+      ]).then(() => {
+        log('scrolledAllDown:', scrollable.loadedAll.bottom);
+        //if(!this.unreaded.length && dialog) { // lol
+        if(scrollable.loadedAll.bottom && topMessage && !this.unreaded.size) { // lol
+          this.onScrolledAllDown();
+        }
       });
-      
-      log('scrolledAllDown:', scrollable.loadedAll.bottom);
-
-      //if(!this.unreaded.length && dialog) { // lol
-      if(scrollable.loadedAll.bottom && topMessage && !this.unreaded.size) { // lol
-        this.onScrolledAllDown();
-      }
 
       if(chatType === 'chat') {
         const dialog = await m(this.managers.appMessagesManager.getDialogOnly(peerId));

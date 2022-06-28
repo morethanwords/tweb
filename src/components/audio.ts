@@ -692,23 +692,29 @@ export default class AudioElement extends HTMLElement {
   }
 
   disconnectedCallback() {
-    if(this.isConnected) {
-      return;
-    }
-    
-    if(this.onTypeDisconnect) {
-      this.onTypeDisconnect();
-      this.onTypeDisconnect = null;
-    }
-
-    if(this.readyPromise) {
-      this.readyPromise.reject();
-    }
-
-    this.listenerSetter.removeAll();
-    this.listenerSetter = null;
-
-    this.preloader = null;
+    setTimeout(() => {
+      if(this.isConnected) {
+        return;
+      }
+      
+      if(this.onTypeDisconnect) {
+        this.onTypeDisconnect();
+        this.onTypeDisconnect = null;
+      }
+  
+      if(this.readyPromise) {
+        this.readyPromise.reject();
+      }
+  
+      if(this.listenerSetter) {
+        this.listenerSetter.removeAll();
+        this.listenerSetter = null;
+      }
+  
+      if(this.preloader) {
+        this.preloader = null;
+      }
+    }, 100);
   }
 }
 
