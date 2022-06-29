@@ -3165,7 +3165,9 @@ export default class ChatBubbles {
 
       this.ejectBubbles();
       for(const [bubble, oldBubble] of this.bubblesToReplace) {
-        scrollSaver.replaceSaved(oldBubble, bubble);
+        if(scrollSaver) {
+          scrollSaver.replaceSaved(oldBubble, bubble);
+        }
         
         if(!loadQueue.find((details) => details.bubble === bubble)) {
           continue;
