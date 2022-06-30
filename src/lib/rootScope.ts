@@ -15,12 +15,12 @@ import type { GroupCallId } from "./appManagers/appGroupCallsManager";
 import type { AppManagers } from "./appManagers/managers";
 import type { State } from "../config/state";
 import type { Progress } from "./appManagers/appDownloadManager";
+import type { CallId } from "./appManagers/appCallsManager";
 import { NULL_PEER_ID, UserAuth } from "./mtproto/mtproto_config";
 import EventListenerBase from "../helpers/eventListenerBase";
 import { MOUNT_CLASS_TO } from "../config/debug";
 import MTProtoMessagePort from "./mtproto/mtprotoMessagePort";
 import { IS_WORKER } from "../helpers/context";
-import { CallId } from "./appManagers/appCallsManager";
 
 export type BroadcastEvents = {
   'chat_full_update': ChatId,
@@ -58,10 +58,10 @@ export type BroadcastEvents = {
   // 'dialog_order': {dialog: Dialog, pos: number},
   'dialogs_multiupdate': {[peerId: PeerId]: Dialog},
   
-  'history_append': {storageKey: MessagesStorageKey, peerId: PeerId, mid: number},
-  'history_update': {storageKey: MessagesStorageKey, peerId: PeerId, mid: number, message: MyMessage, sequential?: boolean},
+  'history_append': {storageKey: MessagesStorageKey, message: Message.message},
+  'history_update': {storageKey: MessagesStorageKey, message: MyMessage, sequential?: boolean},
   'history_reply_markup': {peerId: PeerId},
-  'history_multiappend': AppMessagesManager['newMessagesToHandle'],
+  'history_multiappend': MyMessage,
   'history_delete': {peerId: PeerId, msgs: Set<number>},
   'history_forbidden': PeerId,
   'history_reload': PeerId,
@@ -78,7 +78,7 @@ export type BroadcastEvents = {
 
   'replies_updated': Message.message,
 
-  'scheduled_new': {peerId: PeerId, mid: number},
+  'scheduled_new': Message.message,
   'scheduled_delete': {peerId: PeerId, mids: number[]},
 
   'album_edit': {peerId: PeerId, groupId: string, deletedMids: number[], messages: Message.message[]},

@@ -21,6 +21,7 @@ import PopupPeer, { PopupPeerButtonCallbackCheckboxes, PopupPeerCheckboxOptions 
 import ButtonCorner from "../../buttonCorner";
 import { attachClickEvent } from "../../../helpers/dom/clickEvent";
 import PeerProfile from "../../peerProfile";
+import { Message } from "../../../layer";
 
 const historiesStorage: {
   [peerId: PeerId]: Partial<{
@@ -156,10 +157,8 @@ export default class AppSharedMediaTab extends SliderSuperTab {
       }
     });
 
-    this.listenerSetter.add(rootScope)('history_multiappend', (msgIdsByPeer) => {
-      for(const peerId in msgIdsByPeer) {
-        this.renderNewMessages(peerId.toPeerId(), Array.from(msgIdsByPeer[peerId]));
-      }
+    this.listenerSetter.add(rootScope)('history_multiappend', (message) => {
+      this.renderNewMessages(message);
     });
     
     this.listenerSetter.add(rootScope)('history_delete', ({peerId, msgs}) => {
@@ -168,7 +167,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
 
     // Calls when message successfully sent and we have an id
     this.listenerSetter.add(rootScope)('message_sent', ({message}) => {
-      this.renderNewMessages(message.peerId, [message.mid]);
+      this.renderNewMessages(message);
     });
 
     //this.container.prepend(this.closeBtn.parentElement);
@@ -321,14 +320,12 @@ export default class AppSharedMediaTab extends SliderSuperTab {
     //console.log('construct shared media time:', performance.now() - perf);
   }
 
-  public async renderNewMessages(peerId: PeerId, mids: number[]) {
+  public async renderNewMessages(message: Message.message | Message.messageService) {
     if(this.init) return; // * not inited yet
 
+    const {peerId} = message;
     if(!historiesStorage[peerId]) return;
 
-    const messages = await Promise.all(mids.map((mid) => this.managers.appMessagesManager.getMessageByPeer(peerId, mid)));
-    
-    mids = mids.slice().reverse(); // ! because it will be ascend sorted array
     for(const mediaTab of this.searchSuper.mediaTabs) {
       const inputFilter = mediaTab.inputFilter;
       const history = historiesStorage[peerId][inputFilter];
@@ -336,7 +333,7 @@ export default class AppSharedMediaTab extends SliderSuperTab {
         continue;
       }
 
-      const filtered = this.searchSuper.filterMessagesByType(messages, inputFilter).filter((message) => !history.find((m) => m.mid === message.mid && m.peerId === message.peerId));
+      const filtered = this.searchSuper.filterMessagesByType([message], inputFilter).filter((message) => !history.find((m) => m.mid === message.mid && m.peerId === message.peerId));
       if(filtered.length) {
         history.unshift(...filtered.map((message) => ({mid: message.mid, peerId: message.peerId})));
 
