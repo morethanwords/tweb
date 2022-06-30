@@ -6,7 +6,7 @@
 
 import { ChatAutoDownloadSettings } from "../../helpers/autoDownload";
 import mediaSizes from "../../helpers/mediaSizes";
-import { PhotoSize } from "../../layer";
+import { Message, PhotoSize } from "../../layer";
 import { AppManagers } from "../../lib/appManagers/managers";
 import getMediaFromMessage from "../../lib/appManagers/utils/messages/getMediaFromMessage";
 import choosePhotoSize from "../../lib/appManagers/utils/photos/choosePhotoSize";
@@ -17,8 +17,8 @@ import prepareAlbum from "../prepareAlbum";
 import wrapPhoto from "./photo";
 import wrapVideo from "./video";
 
-export default async function wrapAlbum({groupId, attachmentDiv, middleware, uploading, lazyLoadQueue, isOut, chat, loadPromises, autoDownload, managers = rootScope.managers}: {
-  groupId: string, 
+export default function wrapAlbum({messages, attachmentDiv, middleware, uploading, lazyLoadQueue, isOut, chat, loadPromises, autoDownload, managers = rootScope.managers}: {
+  messages: Message.message[],
   attachmentDiv: HTMLElement,
   middleware?: () => boolean,
   lazyLoadQueue?: LazyLoadQueue,
@@ -32,8 +32,6 @@ export default async function wrapAlbum({groupId, attachmentDiv, middleware, upl
   const items: {size: PhotoSize.photoSize, media: any, message: any}[] = [];
 
   // !lowest msgID will be the FIRST in album
-  const storage = await managers.appMessagesManager.getMidsByAlbum(groupId);
-  const messages = await Promise.all(storage.map((mid) => chat.getMessage(mid)));
   for(const message of messages) {
     const media = getMediaFromMessage(message);
 
@@ -63,8 +61,9 @@ export default async function wrapAlbum({groupId, attachmentDiv, middleware, upl
     div.dataset.peerId = '' + message.peerId;
     const mediaDiv = div.firstElementChild as HTMLElement;
     const isPhoto = media._ === 'photo';
+    let thumbPromise: Promise<any>;
     if(isPhoto) {
-      wrapPhoto({
+      thumbPromise = wrapPhoto({
         photo: media,
         message,
         container: mediaDiv,
@@ -79,7 +78,7 @@ export default async function wrapAlbum({groupId, attachmentDiv, middleware, upl
         managers
       });
     } else {
-      wrapVideo({
+      thumbPromise = wrapVideo({
         doc: message.media.document,
         container: mediaDiv,
         message,
@@ -93,6 +92,10 @@ export default async function wrapAlbum({groupId, attachmentDiv, middleware, upl
         autoDownload,
         managers
       });
+    }
+
+    if(thumbPromise && loadPromises) {
+      loadPromises.push(thumbPromise);
     }
   });
 }

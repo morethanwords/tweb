@@ -36,7 +36,7 @@ import { BOT_START_PARAM, NULL_PEER_ID, REPLIES_PEER_ID } from "../../lib/mtprot
 import { FocusDirection, ScrollStartCallbackDimensions } from "../../helpers/fastSmoothScroll";
 import useHeavyAnimationCheck, { getHeavyAnimationPromise, dispatchHeavyAnimationEvent, interruptHeavyAnimation } from "../../hooks/useHeavyAnimationCheck";
 import { fastRaf, fastRafPromise } from "../../helpers/schedulers";
-import deferredPromise, { CancellablePromise } from "../../helpers/cancellablePromise";
+import deferredPromise from "../../helpers/cancellablePromise";
 import RepliesElement from "./replies";
 import DEBUG from "../../config/debug";
 import { SliceEnd } from "../../helpers/slicedArray";
@@ -49,7 +49,6 @@ import { getMiddleware } from "../../helpers/middleware";
 import cancelEvent from "../../helpers/dom/cancelEvent";
 import { attachClickEvent, simulateClickEvent } from "../../helpers/dom/clickEvent";
 import htmlToDocumentFragment from "../../helpers/dom/htmlToDocumentFragment";
-import positionElementByIndex from "../../helpers/dom/positionElementByIndex";
 import reflowScrollableElement from "../../helpers/dom/reflowScrollableElement";
 import replaceContent from "../../helpers/dom/replaceContent";
 import setInnerHTML from "../../helpers/dom/setInnerHTML";
@@ -98,7 +97,6 @@ import getPeerId from "../../lib/appManagers/utils/peers/getPeerId";
 import getServerMessageId from "../../lib/appManagers/utils/messageId/getServerMessageId";
 import generateMessageId from "../../lib/appManagers/utils/messageId/generateMessageId";
 import { AppManagers } from "../../lib/appManagers/managers";
-import filterAsync from "../../helpers/array/filterAsync";
 import { Awaited } from "../../types";
 import idleController from "../../helpers/idleController";
 import overlayCounter from "../../helpers/overlayCounter";
@@ -106,10 +104,10 @@ import { cancelContextMenuOpening } from "../../helpers/dom/attachContextMenuLis
 import contextMenuController from "../../helpers/contextMenuController";
 import { AckedResult } from "../../lib/mtproto/superMessagePort";
 import middlewarePromise from "../../helpers/middlewarePromise";
-import findAndSplice from "../../helpers/array/findAndSplice";
 import { EmoticonsDropdown } from "../emoticonsDropdown";
 import indexOfAndSplice from "../../helpers/array/indexOfAndSplice";
 import noop from "../../helpers/noop";
+import getAlbumText from "../../lib/appManagers/utils/messages/getAlbumText";
 
 const USE_MEDIA_TAILS = false;
 const IGNORE_ACTIONS: Set<Message.messageService['action']['_']> = new Set([
@@ -283,11 +281,12 @@ export default class ChatBubbles {
     // * events
 
     // will call when sent for update pos
-    this.listenerSetter.add(rootScope)('history_update', async({storageKey, mid, message}) => {
+    this.listenerSetter.add(rootScope)('history_update', async({storageKey, sequential, message}) => {
       if(this.chat.messagesStorageKey !== storageKey || this.chat.type === 'scheduled') {
         return;
       }
 
+      const {mid} = message;
       const log = false ? this.log.bindPrefix('history_update-' + mid) : undefined;
       log && log('start');
 
@@ -317,16 +316,22 @@ export default class ChatBubbles {
         return;
       }
 
-      const group = item.group;
-      const newItem = this.bubbleGroups.createItem(bubble, message);
-      // newItem.mid = item.mid;
-      const _items = this.bubbleGroups.itemsArr.slice();
-      indexOfAndSplice(_items, item);
-      const foundItem = this.bubbleGroups.findGroupSiblingByItem(newItem, _items);
-      if(group === foundItem?.group || (group === this.bubbleGroups.getLastGroup() && group.items.length === 1)/*  && false */) {
-        log && log('item has correct position', item);
-        this.bubbleGroups.changeBubbleMid(bubble, mid);
-        return;
+      if(sequential) {
+        const group = item.group;
+        const newItem = this.bubbleGroups.createItem(bubble, message);
+        // newItem.mid = item.mid;
+        const _items = this.bubbleGroups.itemsArr.slice();
+        indexOfAndSplice(_items, item);
+        const foundItem = this.bubbleGroups.findGroupSiblingByItem(newItem, _items);
+        if(
+          group === foundItem?.group 
+          || (group === this.bubbleGroups.getLastGroup() && group.items.length === 1 && newItem.dateTimestamp === item.dateTimestamp) 
+          || (this.peerId === rootScope.myId && sequential && newItem.dateTimestamp === item.dateTimestamp)
+        ) {
+          log && log('item has correct position', item);
+          this.bubbleGroups.changeBubbleMid(bubble, mid);
+          return;
+        }
       }
 
       // return;
@@ -436,12 +441,12 @@ export default class ChatBubbles {
       let messages: (Message.message | Message.messageService)[], tempIds: number[];
       const groupedId = (message as Message.message).grouped_id;
       if(groupedId) {
-        const mids = await this.managers.appMessagesManager.getMidsByMessage(message);
+        messages = await this.managers.appMessagesManager.getMessagesByAlbum(groupedId);
+        const mids = messages.map(({mid}) => mid);
         if(!mids.length || getMainMidForGrouped(mids) !== mid || bubbles[mid] !== _bubble) {
           return;
         }
   
-        messages = await Promise.all(mids.map((mid) => this.chat.getMessage(mid)));
         if(bubbles[mid] !== _bubble) {
           return;
         }
@@ -835,13 +840,13 @@ export default class ChatBubbles {
 
   public constructPeerHelpers() {
     // will call when message is sent (only 1)
-    this.listenerSetter.add(rootScope)('history_append', async({storageKey, mid}) => {
+    this.listenerSetter.add(rootScope)('history_append', async({storageKey, message}) => {
       if(storageKey !== this.chat.messagesStorageKey) return;
 
       if(!this.scrollable.loadedAll.bottom) {
         this.chat.setMessageId();
       } else {
-        this.renderNewMessagesByIds([mid], true);
+        this.renderNewMessage(message, true);
       }
 
       if(rootScope.settings.animationsEnabled) {
@@ -852,10 +857,9 @@ export default class ChatBubbles {
       }
     });
 
-    this.listenerSetter.add(rootScope)('history_multiappend', (msgIdsByPeer) => {
-      if(!(this.peerId in msgIdsByPeer)) return;
-      const msgIds = Array.from(msgIdsByPeer[this.peerId]).slice().sort((a, b) => b - a);
-      this.renderNewMessagesByIds(msgIds);
+    this.listenerSetter.add(rootScope)('history_multiappend', (message) => {
+      if(this.peerId !== message.peerId) return;
+      this.renderNewMessage(message);
     });
     
     this.listenerSetter.add(rootScope)('history_delete', ({peerId, msgs}) => {
@@ -1377,10 +1381,10 @@ export default class ChatBubbles {
       this.chat.topbar.setTitle((await this.managers.appMessagesManager.getScheduledMessagesStorage(this.peerId)).size);
     };
 
-    this.listenerSetter.add(rootScope)('scheduled_new', ({peerId, mid}) => {
-      if(peerId !== this.peerId) return;
+    this.listenerSetter.add(rootScope)('scheduled_new', (message) => {
+      if(message.peerId !== this.peerId) return;
 
-      this.renderNewMessagesByIds([mid]);
+      this.renderNewMessage(message);
       onUpdate();
     });
 
@@ -2162,8 +2166,8 @@ export default class ChatBubbles {
     };
   }
 
-  private renderNewMessagesByIds(mids: number[], scrolledDown?: boolean) {
-    const promise = this._renderNewMessagesByIds(mids, scrolledDown);
+  private renderNewMessage(message: MyMessage, scrolledDown?: boolean) {
+    const promise = this._renderNewMessage(message, scrolledDown);
     this.renderNewPromises.add(promise);
     promise.catch(noop).finally(() => {
       this.renderNewPromises.delete(promise);
@@ -2171,15 +2175,17 @@ export default class ChatBubbles {
     return promise;
   }
   
-  private async _renderNewMessagesByIds(mids: number[], scrolledDown?: boolean) {
+  private async _renderNewMessage(message: MyMessage, scrolledDown?: boolean) {
     if(!this.scrollable.loadedAll.bottom) { // seems search active or sliced
       //this.log('renderNewMessagesByIds: seems search is active, skipping render:', mids);
       const setPeerPromise = this.chat.setPeerPromise;
       if(setPeerPromise) {
         const middleware = this.getMiddleware();
-        setPeerPromise.then(() => {
+        setPeerPromise.then(async() => {
           if(!middleware()) return;
-          this.renderNewMessagesByIds(mids);
+          const newMessage = await this.chat.getMessage(message.mid);
+          if(!middleware()) return;
+          this.renderNewMessage(newMessage);
         });
       }
 
@@ -2187,14 +2193,15 @@ export default class ChatBubbles {
     }
 
     if(this.chat.threadId) {
-      mids = await filterAsync(mids, async(mid) => {
-        const message = await this.chat.getMessage(mid);
-        const replyTo = message?.reply_to as MessageReplyHeader;
-        return replyTo && (replyTo.reply_to_top_id || replyTo.reply_to_msg_id) === this.chat.threadId;
-      });
+      const replyTo = message?.reply_to as MessageReplyHeader;
+      if(!(replyTo && (replyTo.reply_to_top_id || replyTo.reply_to_msg_id) === this.chat.threadId)) {
+        return;
+      }
     }
 
-    mids = mids.filter((mid) => !this.bubbles[mid]);
+    if(this.bubbles[message.mid]) {
+      return;
+    }
     // ! should scroll even without new messages
     /* if(!mids.length) {
       return;
@@ -2211,7 +2218,7 @@ export default class ChatBubbles {
     const middleware = this.getMiddleware();
     const {isPaddingNeeded, unsetPadding} = this.setTopPadding(middleware);
 
-    const promise = this.performHistoryResult({history: mids}, false);
+    const promise = this.performHistoryResult({history: [message]}, false);
     if(scrolledDown) {
       promise.then(() => {
         if(!middleware()) return;
@@ -2221,7 +2228,7 @@ export default class ChatBubbles {
 
         let bubble: HTMLElement;
         if(this.chat.type === 'scheduled') {
-          bubble = this.bubbles[Math.max(...mids)];
+          bubble = this.bubbles[message.mid];
         }
 
         const promise = bubble ? this.scrollToBubbleEnd(bubble) : this.scrollToEnd();
@@ -3373,10 +3380,12 @@ export default class ChatBubbles {
     const isMessage = message._ === 'message';
     const groupedId = isMessage && message.grouped_id;
     let albumMids: number[], reactionsMessage: Message.message;
+    const albumMessages = groupedId ? await this.managers.appMessagesManager.getMessagesByAlbum(groupedId) : undefined;
 
     const albumMustBeRenderedFull = this.chat.type !== 'pinned';
+
     if(groupedId && albumMustBeRenderedFull) { // will render only last album's message
-      albumMids = await this.managers.appMessagesManager.getMidsByAlbum(groupedId);
+      albumMids = albumMessages.map((message) => message.mid);
       const mainMid = getMainMidForGrouped(albumMids);
       if(message.mid !== mainMid) {
         return;
@@ -3384,7 +3393,7 @@ export default class ChatBubbles {
     }
 
     if(isMessage) {
-      reactionsMessage = groupedId ? await this.managers.appMessagesManager.getGroupsFirstMessage(message) : message;
+      reactionsMessage = groupedId ? albumMessages[0] : message;
     }
     
     // * can't use 'message.pFlags.out' here because this check will be used to define side of message (left-right)
@@ -3470,7 +3479,7 @@ export default class ChatBubbles {
         !['video', 'gif'].includes(((messageMedia as MessageMedia.messageMediaDocument).document as MyDocument).type)) {
         // * just filter these cases for documents caption
       } else if(groupedId && albumMustBeRenderedFull) {
-        const t = await this.managers.appMessagesManager.getAlbumText(groupedId);
+        const t = getAlbumText(albumMessages);
         messageMessage = t.message;
         //totalEntities = t.entities;
         totalEntities = t.totalEntities;
@@ -3745,8 +3754,8 @@ export default class ChatBubbles {
           
           if(albumMustBeRenderedFull && groupedId && albumMids.length !== 1) {
             bubble.classList.add('is-album', 'is-grouped');
-            const promise = wrapAlbum({
-              groupId: groupedId, 
+            wrapAlbum({
+              messages: albumMessages,
               attachmentDiv,
               middleware: this.getMiddleware(),
               isOut: our,
@@ -3756,8 +3765,6 @@ export default class ChatBubbles {
               autoDownload: this.chat.autoDownload,
             });
 
-            loadPromises.push(promise);
-            
             break;
           }
           
@@ -4001,8 +4008,8 @@ export default class ChatBubbles {
             if(albumMustBeRenderedFull && groupedId && albumMids.length !== 1) {
               bubble.classList.add('is-album', 'is-grouped');
   
-              await wrapAlbum({
-                groupId: groupedId, 
+              wrapAlbum({
+                messages: albumMessages,
                 attachmentDiv,
                 middleware: this.getMiddleware(),
                 isOut: our,

@@ -2395,7 +2395,7 @@ export default class ChatInput {
     // * wait for sendText set messageId for invokeAfterMsg
     if(this.forwarding) {
       const forwarding = copy(this.forwarding);
-      setTimeout(() => {
+      // setTimeout(() => {
         for(const fromPeerId in forwarding) {
           this.managers.appMessagesManager.forwardMessages(peerId, fromPeerId.toPeerId(), forwarding[fromPeerId], {
             ...sendingParams,
@@ -2407,7 +2407,7 @@ export default class ChatInput {
         if(!value) {
           this.onMessageSent();
         }
-      }, 0);
+      // }, 0);
     }
 
     // this.onMessageSent();

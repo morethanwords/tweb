@@ -114,9 +114,7 @@ export default class SearchListLoader<Item extends {mid: number, peerId: PeerId}
     }
   };
 
-  protected onHistoryMultiappend = async(obj: {
-    [peerId: string]: Set<number>;
-  }) => {
+  protected onHistoryMultiappend = async(message: Message.message | Message.messageService) => {
     if(this.searchContext.folderId !== undefined) {
       return;
     }
@@ -126,13 +124,11 @@ export default class SearchListLoader<Item extends {mid: number, peerId: PeerId}
       return;
     }
 
-    const mids = obj[this.searchContext.peerId];
-    if(!mids) {
+    if(message.peerId !== this.searchContext.peerId) {
       return;
     }
 
-    const sorted = Array.from(mids).sort((a, b) => a - b);
-    const filtered = await this.filterMids(sorted);
+    const filtered = await this.filterMids([message.mid]);
     const targets = (await Promise.all(filtered.map((message) => this.processItem(message)))).filter(Boolean);
     if(targets.length) {
       /* const {previous, current, next} = this;
@@ -159,9 +155,7 @@ export default class SearchListLoader<Item extends {mid: number, peerId: PeerId}
   };
 
   protected onMessageSent = ({message}: {message: MyMessage}) => {
-    this.onHistoryMultiappend({
-      [message.peerId]: new Set([message.mid])
-    });
+    this.onHistoryMultiappend(message);
   };
 
   public setSearchContext(context: SearchSuperContext) {
