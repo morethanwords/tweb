@@ -31,6 +31,7 @@ const opts = {
   MTPROTO_AUTO: MTPROTO_AUTO,       // use HTTPS when WS is unavailable
   MTPROTO_HAS_HTTP: MTPROTO_AUTO || MTPROTO_HTTP,
   MTPROTO_HAS_WS: MTPROTO_AUTO || !MTPROTO_HTTP,
+  SAFARI_PROXY_WEBSOCKET: false,
   DEBUG: devMode,
 
   version: 3,

@@ -25,7 +25,7 @@ import { IS_WEB_WORKER } from '../../helpers/context';
 import { DcId } from '../../types';
 import { getEnvironment } from '../../environment/utils';
 
-/// #if !MTPROTO_SW
+/// #if !MTPROTO_SW && SAFARI_PROXY_WEBSOCKET
 import SocketProxied from './transports/socketProxied';
 /// #endif
 
@@ -72,7 +72,7 @@ export class DcConfigurator {
     const retryTimeout = connectionType === 'client' ? 10000 : 10000;
 
     let oooohLetMeLive: MTConnectionConstructable;
-    /// #if MTPROTO_SW
+    /// #if MTPROTO_SW || !SAFARI_PROXY_WEBSOCKET
     oooohLetMeLive = Socket;
     /// #else
     oooohLetMeLive = (getEnvironment().IS_SAFARI && IS_WEB_WORKER && typeof(SocketProxied) !== 'undefined') /* || true */ ? SocketProxied : Socket;
