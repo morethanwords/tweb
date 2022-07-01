@@ -43,6 +43,7 @@ import { AppStoragesManager } from "./appStoragesManager";
 import cryptoMessagePort from "../crypto/cryptoMessagePort";
 import appStateManager from "./appStateManager";
 import filterUnique from "../../helpers/array/filterUnique";
+import AppWebDocsManager from "./appWebDocsManager";
 
 export default function createManagers(appStoragesManager: AppStoragesManager, userId: UserId) {
   const managers = {
@@ -82,7 +83,8 @@ export default function createManagers(appStoragesManager: AppStoragesManager, u
     dcConfigurator: new DcConfigurator,
     timeManager: new TimeManager,
     appStoragesManager: appStoragesManager,
-    appStateManager: appStateManager
+    appStateManager: appStateManager,
+    appWebDocsManager: new AppWebDocsManager
   };
 
   type T = typeof managers;

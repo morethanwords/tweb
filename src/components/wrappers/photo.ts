@@ -6,7 +6,7 @@
 
 import renderImageWithFadeIn from "../../helpers/dom/renderImageWithFadeIn";
 import mediaSizes from "../../helpers/mediaSizes";
-import { Message, PhotoSize } from "../../layer";
+import { Message, PhotoSize, WebDocument } from "../../layer";
 import { MyDocument } from "../../lib/appManagers/appDocsManager";
 import { MyPhoto } from "../../lib/appManagers/appPhotosManager";
 import rootScope from "../../lib/rootScope";
@@ -19,9 +19,10 @@ import setAttachmentSize from "../../helpers/setAttachmentSize";
 import choosePhotoSize from "../../lib/appManagers/utils/photos/choosePhotoSize";
 import type { ThumbCache } from "../../lib/storages/thumbs";
 import appDownloadManager from "../../lib/appManagers/appDownloadManager";
+import isWebDocument from "../../lib/appManagers/utils/webDocs/isWebDocument";
 
 export default async function wrapPhoto({photo, message, container, boxWidth, boxHeight, withTail, isOut, lazyLoadQueue, middleware, size, withoutPreloader, loadPromises, autoDownloadSize, noBlur, noThumb, noFadeIn, blurAfter, managers = rootScope.managers}: {
-  photo: MyPhoto | MyDocument, 
+  photo: MyPhoto | MyDocument | WebDocument, 
   message?: Message.message | Message.messageService, 
   container: HTMLElement, 
   boxWidth?: number, 
@@ -40,7 +41,8 @@ export default async function wrapPhoto({photo, message, container, boxWidth, bo
   blurAfter?: boolean,
   managers?: AppManagers,
 }) {
-  if(!((photo as MyPhoto).sizes || (photo as MyDocument).thumbs)) {
+  const isWebDoc = isWebDocument(photo);
+  if(!((photo as MyPhoto).sizes || (photo as MyDocument).thumbs) && !isWebDoc) {
     if(boxWidth && boxHeight && !size && photo._ === 'document') {
       setAttachmentSize(photo, container, boxWidth, boxHeight, undefined, message);
     }
@@ -92,7 +94,7 @@ export default async function wrapPhoto({photo, message, container, boxWidth, bo
       isFit = set.isFit;
       cacheContext = await managers.thumbsStorage.getCacheContext(photo, size.type);
 
-      if(!isFit) {
+      if(!isFit && !isWebDoc) {
         aspecter = document.createElement('div');
         aspecter.classList.add('media-container-aspecter');
         aspecter.style.width = set.size.width + 'px';
@@ -141,7 +143,7 @@ export default async function wrapPhoto({photo, message, container, boxWidth, bo
       cacheContext = await managers.thumbsStorage.getCacheContext(photo, size?.type);
     }
 
-    if(!noThumb) {
+    if(!noThumb && !isWebDoc) {
       const gotThumb = getStrippedThumbIfNeeded(photo, cacheContext, !noBlur);
       if(gotThumb) {
         loadThumbPromise = Promise.all([loadThumbPromise, gotThumb.loadPromise]);

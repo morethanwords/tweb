@@ -49,7 +49,6 @@ import { getMiddleware } from "../../helpers/middleware";
 import cancelEvent from "../../helpers/dom/cancelEvent";
 import { attachClickEvent, simulateClickEvent } from "../../helpers/dom/clickEvent";
 import htmlToDocumentFragment from "../../helpers/dom/htmlToDocumentFragment";
-import positionElementByIndex from "../../helpers/dom/positionElementByIndex";
 import reflowScrollableElement from "../../helpers/dom/reflowScrollableElement";
 import replaceContent from "../../helpers/dom/replaceContent";
 import setInnerHTML from "../../helpers/dom/setInnerHTML";
@@ -106,10 +105,10 @@ import { cancelContextMenuOpening } from "../../helpers/dom/attachContextMenuLis
 import contextMenuController from "../../helpers/contextMenuController";
 import { AckedResult } from "../../lib/mtproto/superMessagePort";
 import middlewarePromise from "../../helpers/middlewarePromise";
-import findAndSplice from "../../helpers/array/findAndSplice";
 import { EmoticonsDropdown } from "../emoticonsDropdown";
 import indexOfAndSplice from "../../helpers/array/indexOfAndSplice";
 import noop from "../../helpers/noop";
+import paymentsWrapCurrencyAmount from "../../helpers/paymentsWrapCurrencyAmount";
 
 const USE_MEDIA_TAILS = false;
 const IGNORE_ACTIONS: Set<Message.messageService['action']['_']> = new Set([
@@ -3580,7 +3579,7 @@ export default class ChatBubbles {
         rowDiv.classList.add('reply-markup-row');
 
         buttons.forEach((button) => {
-          const text = wrapRichText(button.text, {noLinks: true, noLinebreaks: true});
+          let text: DocumentFragment | HTMLElement | string = wrapRichText(button.text, {noLinks: true, noLinebreaks: true});
 
           let buttonEl: HTMLButtonElement | HTMLAnchorElement;
           
@@ -3596,14 +3595,14 @@ export default class ChatBubbles {
               });
 
               buttonEl = htmlToDocumentFragment(r).firstElementChild as HTMLAnchorElement;
-              buttonEl.classList.add('is-link', 'tgico');
+              buttonEl.classList.add('is-link');
 
               break;
             }
 
             case 'keyboardButtonSwitchInline': {
               buttonEl = document.createElement('button');
-              buttonEl.classList.add('is-switch-inline', 'tgico');
+              buttonEl.classList.add('is-switch-inline');
               attachClickEvent(buttonEl, (e) => {
                 cancelEvent(e);
 
@@ -3637,13 +3636,26 @@ export default class ChatBubbles {
               break;
             }
 
+            case 'keyboardButtonBuy': {
+              buttonEl = document.createElement('button');
+              buttonEl.classList.add('is-buy');
+
+              if(messageMedia?._ === 'messageMediaInvoice') {
+                if(messageMedia.receipt_msg_id) {
+                  text = i18n('Message.ReplyActionButtonShowReceipt');
+                }
+              }
+
+              break;
+            }
+
             default: {
               buttonEl = document.createElement('button');
               break;
             }
           }
           
-          buttonEl.classList.add('reply-markup-button', 'rp');
+          buttonEl.classList.add('reply-markup-button', 'rp', 'tgico');
           if(typeof(text) === 'string') {
             buttonEl.insertAdjacentHTML('beforeend', text);
           } else {
@@ -4174,6 +4186,61 @@ export default class ChatBubbles {
           const pollElement = wrapPoll(message);
           messageDiv.prepend(pollElement);
           messageDiv.classList.add('poll-message');
+
+          break;
+        }
+
+        case 'messageMediaInvoice': {
+          const isTest = messageMedia.pFlags.test;
+          const photo = messageMedia.photo;
+
+          const priceEl = document.createElement(photo ? 'span' : 'div');
+          const f = document.createDocumentFragment();
+          const l = i18n(messageMedia.receipt_msg_id ? 'PaymentReceipt' : (isTest ? 'PaymentTestInvoice' : 'PaymentInvoice'));
+          l.classList.add('text-uppercase');
+          const joiner = ' ‎';
+          const p = document.createElement('span');
+          p.classList.add('text-bold');
+          p.textContent = paymentsWrapCurrencyAmount(messageMedia.total_amount, messageMedia.currency) + joiner;
+          f.append(p, l);
+          if(isTest && messageMedia.receipt_msg_id) {
+            const a = document.createElement('span');
+            a.classList.add('text-uppercase', 'pre-wrap');
+            a.append(joiner + '(Test)');
+            f.append(a);
+          }
+          setInnerHTML(priceEl, f);
+
+          if(photo) {
+            const mediaSize = mediaSizes.active.invoice;
+            wrapPhoto({
+              photo, 
+              container: attachmentDiv,
+              withTail: false, 
+              isOut, 
+              lazyLoadQueue: this.lazyLoadQueue,
+              middleware: this.getMiddleware(),
+              loadPromises,
+              boxWidth: mediaSize.width,
+              boxHeight: mediaSize.height
+            });
+
+            bubble.classList.add('photo');
+
+            priceEl.classList.add('video-time');
+            attachmentDiv.append(priceEl);
+          } else {
+            attachmentDiv = undefined;
+          }
+
+          const titleDiv = document.createElement('div');
+          titleDiv.classList.add('bubble-primary-color');
+          setInnerHTML(titleDiv, wrapRichText(messageMedia.title));
+          
+          const richText = wrapRichText(messageMedia.description);
+          messageDiv.prepend(...[titleDiv, !photo && priceEl, richText].filter(Boolean));
+
+          bubble.classList.remove('is-message-empty');
 
           break;
         }

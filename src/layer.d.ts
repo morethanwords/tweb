@@ -5881,7 +5881,9 @@ export namespace WebDocument {
 		access_hash: string | number,
 		size: number,
 		mime_type: string,
-		attributes: Array<DocumentAttribute>
+		attributes: Array<DocumentAttribute>,
+		h?: number,
+		w?: number
 	};
 
 	export type webDocumentNoProxy = {
@@ -5889,7 +5891,9 @@ export namespace WebDocument {
 		url: string,
 		size: number,
 		mime_type: string,
-		attributes: Array<DocumentAttribute>
+		attributes: Array<DocumentAttribute>,
+		h?: number,
+		w?: number
 	};
 }
 

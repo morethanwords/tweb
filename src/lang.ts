@@ -695,6 +695,13 @@ const lang = {
   "ScamMessage": "SCAM",
   "FakeMessage": "FAKE",
   "TextCopied": "Text copied to clipboard",
+  "PaymentInvoice": "INVOICE",
+  "PaymentTestInvoice": "TEST INVOICE",
+  "PaymentReceipt": "Receipt",
+  "PaymentSuccessfullyPaid": "You successfully transferred %1$s to %2$s for %3$s",
+  "PaymentSuccessfullyPaidNoItem": "You successfully transferred %1$s to %2$s",
+  // "PaymentSuccessfullyPaidRecurrent": "You successfully transferred %1$s to %2$s for %3$s and allowed future recurring payments",
+  // "PaymentSuccessfullyPaidNoItemRecurrent": "You successfully transferred %1$s to %2$s and allowed future recurring payments",
 
   // * macos
   "AccountSettings.Filters": "Chat Folders",
@@ -913,6 +920,7 @@ const lang = {
   "Message.Context.Pin": "Pin",
   "Message.Context.Unpin": "Unpin",
   "Message.Context.Goto": "Show Message",
+  "Message.ReplyActionButtonShowReceipt": "Show Receipt",
   "MessageContext.CopyMessageLink1": "Copy Message Link",
   "Modal.Send": "Send",
   "NewPoll.Anonymous": "Anonymous Voting",

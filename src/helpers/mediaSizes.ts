@@ -18,7 +18,8 @@ type MediaTypeSizes = {
   emojiSticker: MediaSize,
   poll: MediaSize,
   round: MediaSize,
-  documentName: MediaSize
+  documentName: MediaSize,
+  invoice: MediaSize
 };
 
 export type MediaSizeType = keyof MediaTypeSizes;
@@ -54,7 +55,8 @@ class MediaSizes extends EventListenerBase<{
       emojiSticker: makeMediaSize(112, 112),
       poll: makeMediaSize(240, 0),
       round: makeMediaSize(200, 200),
-      documentName: makeMediaSize(200, 0)
+      documentName: makeMediaSize(200, 0),
+      invoice: makeMediaSize(240, 240)
     },
     desktop: {
       regular: makeMediaSize(420, 340),
@@ -66,7 +68,8 @@ class MediaSizes extends EventListenerBase<{
       emojiSticker: makeMediaSize(112, 112),
       poll: makeMediaSize(330, 0),
       round: makeMediaSize(280, 280),
-      documentName: makeMediaSize(240, 0)
+      documentName: makeMediaSize(240, 0),
+      invoice: makeMediaSize(320, 260)
     }
   };
 

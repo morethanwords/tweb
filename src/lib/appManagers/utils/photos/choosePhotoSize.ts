@@ -6,11 +6,11 @@
 
 import type { MyDocument } from "../../appDocsManager";
 import type { MyPhoto } from "../../appPhotosManager";
+import type { PhotoSize, WebDocument } from "../../../../layer";
 import calcImageInBox from "../../../../helpers/calcImageInBox";
-import { PhotoSize } from "../../../../layer";
 
 export default function choosePhotoSize(
-  photo: MyPhoto | MyDocument, 
+  photo: MyPhoto | MyDocument | WebDocument, 
   boxWidth = 0, 
   boxHeight = 0, 
   useBytes = false, 
@@ -34,12 +34,12 @@ export default function choosePhotoSize(
 
   let bestPhotoSize: PhotoSize = {_: 'photoSizeEmpty', type: ''};
   let sizes = (photo as MyPhoto).sizes || (photo as MyDocument).thumbs as PhotoSize[];
-  if(pushDocumentSize && sizes && photo._ === 'document') {
+  if(pushDocumentSize && sizes && photo._ !== 'photo') {
     sizes = sizes.concat({
       _: 'photoSize', 
-      w: (photo as MyDocument).w, 
-      h: (photo as MyDocument).h, 
-      size: (photo as MyDocument).size, 
+      w: photo.w, 
+      h: photo.h, 
+      size: photo.size, 
       type: undefined
     });
   }

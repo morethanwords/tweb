@@ -6,7 +6,7 @@
 
 import type { ApiFileManager, DownloadMediaOptions, DownloadOptions } from "../mtproto/apiFileManager";
 import deferredPromise, { CancellablePromise } from "../../helpers/cancellablePromise";
-import { Document, InputFile, Photo, PhotoSize } from "../../layer";
+import { Document, InputFile, Photo, PhotoSize, WebDocument } from "../../layer";
 import { getFileNameByLocation } from "../../helpers/fileName";
 import getFileNameForUpload from "../../helpers/getFileNameForUpload";
 import { AppManagers } from "./managers";

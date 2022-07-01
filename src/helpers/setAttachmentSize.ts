@@ -4,15 +4,16 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { PhotoSize } from "../layer";
+import { PhotoSize, WebDocument } from "../layer";
 import { REPLIES_HIDDEN_CHANNEL_ID } from "../lib/mtproto/mtproto_config";
 import { MyDocument } from "../lib/appManagers/appDocsManager";
 import { MyPhoto } from "../lib/appManagers/appPhotosManager";
 import choosePhotoSize from "../lib/appManagers/utils/photos/choosePhotoSize";
 import { MediaSize, makeMediaSize } from "./mediaSize";
+import isWebDocument from "../lib/appManagers/utils/webDocs/isWebDocument";
 
 export default function setAttachmentSize(
-  photo: MyPhoto | MyDocument, 
+  photo: MyPhoto | MyDocument | WebDocument, 
   element: HTMLElement | SVGForeignObjectElement, 
   boxWidth: number, 
   boxHeight: number, 
@@ -21,6 +22,11 @@ export default function setAttachmentSize(
   pushDocumentSize?: boolean,
   photoSize?: ReturnType<typeof choosePhotoSize>
 ) {
+  const _isWebDocument = isWebDocument(photo);
+  // if(_isWebDocument && pushDocumentSize === undefined) {
+  //   pushDocumentSize = true;
+  // }
+
   if(!photoSize) {
     photoSize = choosePhotoSize(photo, boxWidth, boxHeight, undefined, pushDocumentSize);
   }
@@ -28,8 +34,8 @@ export default function setAttachmentSize(
   
   let size: MediaSize;
   const isDocument = photo._ === 'document';
-  if(isDocument) {
-    size = makeMediaSize((photo as MyDocument).w || (photoSize as PhotoSize.photoSize).w || 512, (photo as MyDocument).h || (photoSize as PhotoSize.photoSize).h || 512);
+  if(isDocument || _isWebDocument) {
+    size = makeMediaSize(photo.w || (photoSize as PhotoSize.photoSize).w || 512, photo.h || (photoSize as PhotoSize.photoSize).h || 512);
   } else {
     size = makeMediaSize((photoSize as PhotoSize.photoSize).w || 100, (photoSize as PhotoSize.photoSize).h || 100);
   }
@@ -40,7 +46,7 @@ export default function setAttachmentSize(
 
   let isFit = true;
 
-  if(!isDocument || ['video', 'gif'].includes((photo as MyDocument).type)) {
+  if(!isDocument || ['video', 'gif'].includes(photo.type) || _isWebDocument) {
     if(boxSize.width < 200 && boxSize.height < 200) { // make at least one side this big
       boxSize = size = size.aspectCovered(makeMediaSize(200, 200));
     }

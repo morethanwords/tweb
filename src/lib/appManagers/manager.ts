@@ -40,6 +40,7 @@ import type { AppStateManager } from "./appStateManager";
 import type { AppStickersManager } from "./appStickersManager";
 import type { AppStoragesManager } from "./appStoragesManager";
 import type { AppUsersManager } from "./appUsersManager";
+import type AppWebDocsManager from "./appWebDocsManager";
 import type { AppWebPagesManager } from "./appWebPagesManager";
 import type { AppManagers } from "./managers";
 
@@ -82,6 +83,7 @@ export class AppManager {
   protected timeManager: TimeManager;
   protected appStoragesManager: AppStoragesManager;
   protected appStateManager: AppStateManager;
+  protected appWebDocsManager: AppWebDocsManager;
 
   public clear: (init?: boolean) => void;
   

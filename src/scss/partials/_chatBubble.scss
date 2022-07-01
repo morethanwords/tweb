@@ -2856,3 +2856,8 @@ $bubble-beside-button-width: 38px;
     }
   }
 }
+
+.bubble-primary-color {
+  color: var(--message-primary-color);
+  font-weight: var(--font-weight-bold);
+}

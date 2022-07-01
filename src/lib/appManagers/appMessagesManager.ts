@@ -2759,8 +2759,7 @@ export class AppMessagesManager extends AppManager {
           break; */
 
         case 'messageMediaInvoice': {
-          unsupported = true;
-          message.media = {_: 'messageMediaUnsupported'};
+          message.media.photo = this.appWebDocsManager.saveWebDocument(message.media.photo);
           break;
         }
 
@@ -5628,6 +5627,22 @@ export class AppMessagesManager extends AppManager {
       if(!originalMessage) { // ! break the infinite loop
         message = this.getMessageByPeer(message.peerId, message.mid); // message can come from other thread
         delete message.reply_to_mid; // ! WARNING!
+      }
+
+      if(message._ === 'messageService') {
+        const peerId = message.peerId;
+        this.rootScope.dispatchEvent('message_edit', {
+          storageKey: `${peerId}_history`,
+          peerId: peerId,
+          mid: message.mid,
+          message
+        });
+
+        if(this.isMessageIsTopMessage(message)) {
+          this.rootScope.dispatchEvent('dialogs_multiupdate', {
+            [peerId]: this.getDialogOnly(peerId)
+          });
+        }
       }
 
       return originalMessage;
