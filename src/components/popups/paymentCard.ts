@@ -355,7 +355,7 @@ export default class PopupPaymentCard extends PopupElement<{
           const previousInputField = switchFocusOrder[switchFocusOrder.indexOf(inputField) - 1];
           if(previousInputField) {
             // previousInputField.value = previousInputField.value.slice(0, -1);
-            placeCaretAtEnd(previousInputField.input);
+            placeCaretAtEnd(previousInputField.input, true);
           }
         }
       };
@@ -375,7 +375,7 @@ export default class PopupPaymentCard extends PopupElement<{
                 !nextInputField.validateNew(undefined, undefined, true) : 
                 !nextInputField.value
               ) {
-                placeCaretAtEnd(nextInputField.input);
+                placeCaretAtEnd(nextInputField.input, true);
                 break;
               }
             }

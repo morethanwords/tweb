@@ -752,8 +752,6 @@ export default class PopupPayment extends PopupElement {
               onConfirmed();
             });
           }
-
-          this.hide();
         } catch(err) {
           if((err as ApiError).type === 'BOT_PRECHECKOUT_TIMEOUT') {
             toastNew({langPackKey: 'Error.AnError'});
