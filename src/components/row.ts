@@ -40,7 +40,8 @@ export default class Row {
     clickable: boolean | ((e: Event) => void),
     navigationTab: SliderSuperTab,
     havePadding: boolean,
-    noRipple: boolean
+    noRipple: boolean,
+    noWrap: boolean
   }> = {}) {
     this.container = document.createElement(options.radioField || options.checkboxField ? 'label' : 'div');
     this.container.classList.add('row');
@@ -104,6 +105,7 @@ export default class Row {
       this.title = document.createElement('div');
       this.title.classList.add('row-title');
       this.title.setAttribute('dir', 'auto');
+      if(options.noWrap) this.title.classList.add('no-wrap');
       if(options.title) {
         if(typeof(options.title) === 'string') {
           this.title.innerHTML = options.title;

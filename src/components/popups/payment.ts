@@ -480,6 +480,7 @@ export default class PopupPayment extends PopupElement {
         options.subtitleLangKey = options.titleLangKey;
       }
 
+      options.noWrap = true;
       const row = new Row(options);
       row.container.classList.add(className + '-row');
 
