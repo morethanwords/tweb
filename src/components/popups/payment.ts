@@ -736,6 +736,7 @@ export default class PopupPayment extends PopupElement {
             popupPaymentVerification = new PopupPaymentVerification(paymentResult.url);
             await new Promise<void>((resolve, reject) => {
               popupPaymentVerification.addEventListener('close', () => {
+                popupPaymentVerification = undefined;
                 if(confirmed) {
                   resolve();
                 } else {
@@ -747,6 +748,7 @@ export default class PopupPayment extends PopupElement {
             });
 
             popupPaymentVerification.addEventListener('finish', () => {
+              popupPaymentVerification = undefined;
               onConfirmed();
             });
           }

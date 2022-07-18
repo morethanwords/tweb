@@ -1479,13 +1479,14 @@ export default class ChatBubbles {
 
     const buyButton: HTMLElement = findUpClassName(target, 'is-buy');
     if(buyButton) {
+      cancelEvent(e);
+      
       const message = await this.chat.getMessage(+bubble.dataset.mid);
       if(!message) {
         return;
       }
 
       new PopupPayment(message as Message.message);
-
       return;
     }
 
@@ -1636,17 +1637,18 @@ export default class ChatBubbles {
       || (documentDiv && !documentDiv.querySelector('.preloader-container'))
       || target.classList.contains('canvas-thumbnail')) {
       const groupedItem = findUpClassName(target, 'album-item') || findUpClassName(target, 'document-container');
-      const messageId = +(groupedItem || bubble).dataset.mid;
-      const message = await this.chat.getMessage(messageId);
-      if(!message) {
-        this.log.warn('no message by messageId:', messageId);
-        return;
-      }
-
       const preloader = (groupedItem || bubble).querySelector<HTMLElement>('.preloader-container');
       if(preloader) {
         simulateClickEvent(preloader);
         cancelEvent(e);
+        return;
+      }
+
+      cancelEvent(e);
+      const messageId = +(groupedItem || bubble).dataset.mid;
+      const message = await this.chat.getMessage(messageId);
+      if(!message) {
+        this.log.warn('no message by messageId:', messageId);
         return;
       }
 
@@ -1736,7 +1738,6 @@ export default class ChatBubbles {
       })
       .openMedia(message, targets[idx].element, 0, true, targets.slice(0, idx), targets.slice(idx + 1));
       
-      cancelEvent(e);
       //appMediaViewer.openMedia(message, target as HTMLImageElement);
       return;
     }

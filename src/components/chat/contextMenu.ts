@@ -99,7 +99,8 @@ export default class ChatContextMenu {
           'replies-element',
           '[data-saved-from]:not(.bubble)',
           'poll-element',
-          'attachment'
+          '.attachment',
+          '.reply-markup-button'
         ];
         let good = !(e.target as HTMLElement).closest(badSelectors.join(', '));
         if(good) {
