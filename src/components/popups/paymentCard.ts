@@ -23,6 +23,7 @@ import Row from "../row";
 import { SettingSection } from "../sidebarLeft";
 import { getPaymentBrandIconPath, PaymentButton, PaymentsCredentialsToken } from "./payment";
 import { createVerificationIframe } from "./paymentVerification";
+// import { putPreloader } from "../putPreloader";
 
 export type PaymentCardDetails = {
   cardNumber: string;
@@ -254,6 +255,7 @@ export default class PopupPaymentCard extends PopupElement<{
         }
       });
 
+      // putPreloader(this.body, true);
       this.body.append(iframe);
       this.show();
     }

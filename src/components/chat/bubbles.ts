@@ -1588,11 +1588,17 @@ export default class ChatBubbles {
       if(typeof(peerIdStr) === 'string' || savedFrom) {
         if(savedFrom) {
           const [peerId, mid] = savedFrom.split('_');
-  
-          this.chat.appImManager.setInnerPeer({
-            peerId: peerId.toPeerId(), 
-            lastMsgId: +mid
-          });
+          if(target.classList.contains('is-receipt-link')) {
+            const message = await this.managers.appMessagesManager.getMessageByPeer(peerId.toPeerId(), +mid);
+            if(message) {
+              new PopupPayment(message as Message.message, this.peerId, +bubble.dataset.mid);
+            }
+          } else {
+            this.chat.appImManager.setInnerPeer({
+              peerId: peerId.toPeerId(), 
+              lastMsgId: +mid
+            });
+          }
         } else {
           const peerId = peerIdStr.toPeerId();
           if(peerId !== NULL_PEER_ID) {

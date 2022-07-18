@@ -25,49 +25,58 @@ function number_format(number: any, decimals: any, dec_point: any, thousands_sep
   return s.join(dec);
 }
 
-export default function paymentsWrapCurrencyAmount($amount: number | string, $currency: string, $skipSymbol?: boolean) {
-  $amount = +$amount;
+export default function paymentsWrapCurrencyAmount(amount: number | string, currency: string, skipSymbol?: boolean) {
+  amount = +amount;
 
-  const $currency_data = Currencies[$currency]; // вытащить из json
-  if(!$currency_data) {
+  const isNegative = amount < 0;
+
+  const currencyData = Currencies[currency];
+  if(!currencyData) {
     throw new Error('CURRENCY_WRAP_INVALID');
   }
 
-  const $amount_exp = $amount / Math.pow(10, $currency_data['exp']);
+  const amountExp = amount / Math.pow(10, currencyData.exp);
 
-  let $decimals = $currency_data['exp'];
-  if($currency == 'IRR' &&
-    Math.floor($amount_exp) == $amount_exp) {
-    $decimals = 0; // у иранцев копейки почти всегда = 0 и не показываются в UI
+  let decimals = currencyData.exp;
+  if(currency == 'IRR' && Math.floor(amountExp) == amountExp) {
+    decimals = 0; // у иранцев копейки почти всегда = 0 и не показываются в UI
   }
 
-  const $formatted = number_format($amount_exp, $decimals, $currency_data['decimal_sep'], $currency_data['thousands_sep']);
-  if($skipSymbol) {
-    return $formatted;
+  let formatted = number_format(amountExp, decimals, currencyData.decimal_sep, currencyData.thousands_sep);
+  if(skipSymbol) {
+    return formatted;
   }
-
-  const $splitter = $currency_data['space_between'] ? " " : '';
-  let $formatted_intern: string;
-  if($currency_data['symbol_left']) {
-    $formatted_intern = $currency_data['symbol'] + $splitter + $formatted;
+  
+  let symbol = currencyData.symbol;
+  if(isNegative && !currencyData.space_between && currencyData.symbol_left) {
+    symbol = '-' + symbol;
+    formatted = formatted.replace('-', '');
+  }
+  
+  let out: string;
+  const splitter = currencyData.space_between ? " " : '';
+  if(currencyData.symbol_left) {
+    out = symbol + splitter + formatted;
   } else {
-    $formatted_intern = $formatted + $splitter + $currency_data['symbol'];
+    out = formatted + splitter + symbol;
   }
-  return $formatted_intern;
+  return out;
 }
 
-function paymentsGetCurrencyExp($currency: string) {
-  if($currency == 'CLF') {
-    return 4;
-  }
-  if(['BHD','IQD','JOD','KWD','LYD','OMR','TND'].includes($currency)) {
-    return 3;
-  }
-  if(['BIF','BYR','CLP','CVE','DJF','GNF','ISK','JPY','KMF','KRW','MGA', 'PYG','RWF','UGX','UYI','VND','VUV','XAF','XOF','XPF'].includes($currency)) {
-    return 0;
-  }
-  if($currency == 'MRO') {
-    return 1;
-  }
-  return 2;
-}
+(window as any).p = paymentsWrapCurrencyAmount;
+
+// function paymentsGetCurrencyExp($currency: string) {
+//   if($currency == 'CLF') {
+//     return 4;
+//   }
+//   if(['BHD','IQD','JOD','KWD','LYD','OMR','TND'].includes($currency)) {
+//     return 3;
+//   }
+//   if(['BIF','BYR','CLP','CVE','DJF','GNF','ISK','JPY','KMF','KRW','MGA', 'PYG','RWF','UGX','UYI','VND','VUV','XAF','XOF','XPF'].includes($currency)) {
+//     return 0;
+//   }
+//   if($currency == 'MRO') {
+//     return 1;
+//   }
+//   return 2;
+// }

@@ -3,14 +3,15 @@ import replaceNonNumber from "../string/replaceNonNumber";
 
 const CARD_BRAND_REGEXP: {[brand: string]: RegExp} = {
   visa: /^4/,
-  mastercard: /^(51|52|53|54|55|22|23|24|25|26|27)/,
+  mastercard: /^(51|52|53|54|55|222|23|24|25|26|27)/,
   amex: /^(34|37)/,
   discover: /^(60|64|65)/,
   diners: /^(30|38|39)/,
   diners14: /^(36)/,
   jcb: /^(35)/,
   unionpay: /^(62[0-6,8-9]|627[0-6,8-9]|6277[0-7,9]|62778[1-9]|81)/,
-  elo: /^(5067|509|636368|627780)/
+  elo: /^(5067|509|636368|627780)/,
+  mir: /^(220[0-4])/
 };
 
 // * taken from Stripe
@@ -69,6 +70,12 @@ export const CARD_BRANDS: {[b: string]: {
     cvcMinLength: null
   },
   elo: {
+    minLength: 16,
+    maxLength: 16,
+    cvcMaxLength: 3,
+    cvcMinLength: null
+  },
+  mir: {
     minLength: 16,
     maxLength: 16,
     cvcMaxLength: 3,

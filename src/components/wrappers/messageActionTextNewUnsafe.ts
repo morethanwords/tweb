@@ -264,7 +264,10 @@ export default async function wrapMessageActionTextNewUnsafe(message: MyMessage,
             managers.appMessagesManager.fetchMessageReplyTo(message);
           } else {
             langPackKey = 'PaymentSuccessfullyPaid';
-            args.push(wrapLinkToMessage(invoiceMessage, plain));
+            args.push(wrapLinkToMessage(invoiceMessage, plain).then((el) => {
+              el.classList.add('is-receipt-link');
+              return el;
+            }));
           }
         }
 
