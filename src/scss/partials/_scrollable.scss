@@ -96,6 +96,23 @@ html:not(.is-safari):not(.is-ios) {
     scrollbar-color: rgba(0, 0, 0, 0) rgba(0, 0, 0, 0);
     -ms-overflow-style: none;
     transform: translateZ(0);
+
+    &.scrollable-y-bordered {
+      border-top: 1px solid transparent;
+      border-bottom: 1px solid transparent;
+
+      @include animation-level(2) {
+        transition: border-top-color var(--transition-standard-in), border-bottom-color var(--transition-standard-in);
+      }
+  
+      &:not(.scrolled-top) {
+        border-top-color: var(--border-color);
+      }
+  
+      &:not(.scrolled-bottom) {
+        border-bottom-color: var(--border-color);
+      }
+    }
     
     // html.is-firefox & {
     //   transition: scrollbar-color .3s ease;

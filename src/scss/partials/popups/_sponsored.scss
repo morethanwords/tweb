@@ -12,15 +12,5 @@
     width: calc(100% + 3rem);
     padding: .5rem 1.5rem;
     user-select: text;
-    border-top: 1px solid transparent;
-    border-bottom: 1px solid transparent;
-
-    &:not(.scrolled-top) {
-      border-top: 1px solid var(--border-color);
-    }
-
-    &:not(.scrolled-bottom) {
-      border-bottom: 1px solid var(--border-color);
-    }
   }
 }

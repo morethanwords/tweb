@@ -77,7 +77,7 @@ export default class PopupCall extends PopupElement {
   private controlsHover: ControlsHover;
 
   constructor(private instance: CallInstance) {
-    super('popup-call', undefined, {
+    super('popup-call', {
       withoutOverlay: true,
       closable: true
     });

@@ -6,6 +6,7 @@
 
 .checkbox-field {
   --size: 1.25rem;
+  --offset-left: 0px;
   margin: 1.5rem 1.1875rem;
   display: block;
   text-align: left;
@@ -29,19 +30,21 @@
 
   .checkbox-box {
     position: absolute;
-    left: 0;
+    left: var(--offset-left);
     top: 50%;
     transform: translateY(-50%);
     width: var(--size);
     height: var(--size);
-    border-radius: .25rem;
+    border-radius: .3125rem;
     overflow: hidden;
 
     html.is-safari & {
       -webkit-mask-image: -webkit-radial-gradient(circle, white 100%, black 100%); // fix safari overflow
     }
 
-    &-check, &-background, &-border {
+    &-check, 
+    &-background, 
+    &-border {
       position: absolute;
       top: 0;
       left: 0;
@@ -73,7 +76,7 @@
     }
 
     &-check {
-      --offset: 3px;
+      --offset: 7px;
       width: calc(var(--size) - var(--offset));
       height: calc(var(--size) - var(--offset));
       top: 50%;
@@ -82,7 +85,7 @@
   
       use {
         stroke: #fff;
-        stroke-width: 2.75;
+        stroke-width: 3.75;
         stroke-linecap: round;
         stroke-dasharray: 24.19, 24.19;
         stroke-dashoffset: 0;
@@ -99,15 +102,10 @@
   .checkbox-caption {
     position: relative;
     padding-left: 3.375rem;
-    cursor: pointer;
-    display: inline-block;
-    min-height: 24px;
-    margin-top: 1px;
-    line-height: 26px;
-    user-select: none;
     transition: .2s opacity;
-    // color: var(--primary-text-color);
     color: inherit;
+    pointer-events: none;
+    line-height: var(--line-height);
 
     @include animation-level(0) {
       transition: none;
@@ -168,6 +166,7 @@
 
 .radio-field {
   --size: 1.375rem;
+  --offset-left: 0px;
 	position: relative;
 	text-align: left;
 	margin: 1.25rem 0;
@@ -210,7 +209,7 @@
       content: '';
       display: block;
       position: absolute;
-      left: 0;
+      left: var(--offset-left);
       top: 50%;
       width: var(--size);
       height: var(--size);
@@ -228,7 +227,7 @@
     }
 
     &::after {
-      left: .3125rem;
+      left: calc(var(--offset-left) + .3125rem);
       width: .75rem;
       height: .75rem;
       border-radius: 50%;

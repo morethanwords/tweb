@@ -24,20 +24,25 @@ export default class PopupJoinChatInvite extends PopupElement {
     private hash: string, 
     private chatInvite: ChatInvite.chatInvite, 
   ) {
-    super('popup-join-chat-invite', addCancelButton([{
-      langKey: chatInvite.pFlags.request_needed ? 'RequestJoin.Button' : (chatInvite.pFlags.broadcast ? 'JoinByPeekChannelTitle' : 'JoinByPeekGroupTitle'),
-      callback: () => {
-        this.managers.appChatsManager.importChatInvite(hash)
-        .then((chatId) => {
-          const peerId = chatId.toPeerId(true);
-          appImManager.setInnerPeer({peerId});
-        }, (error) => {
-          if(error.type === 'INVITE_REQUEST_SENT') {
-            toastNew({langPackKey: 'RequestToJoinSent'});
-          }
-        });
-      }
-    }]), {closable: true, overlayClosable: true, body: true});
+    super('popup-join-chat-invite', {
+      closable: true, 
+      overlayClosable: true, 
+      body: true,
+      buttons: addCancelButton([{
+        langKey: chatInvite.pFlags.request_needed ? 'RequestJoin.Button' : (chatInvite.pFlags.broadcast ? 'JoinByPeekChannelTitle' : 'JoinByPeekGroupTitle'),
+        callback: () => {
+          this.managers.appChatsManager.importChatInvite(hash)
+          .then((chatId) => {
+            const peerId = chatId.toPeerId(true);
+            appImManager.setInnerPeer({peerId});
+          }, (error) => {
+            if(error.type === 'INVITE_REQUEST_SENT') {
+              toastNew({langPackKey: 'RequestToJoinSent'});
+            }
+          });
+        }
+      }])
+    });
 
     this.construct();
   }

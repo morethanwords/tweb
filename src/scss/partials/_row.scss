@@ -4,10 +4,12 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+$row-border-radius: $border-radius-medium;
+
 .row {
   min-height: 3.5rem;
   position: relative;
-  padding: .6875rem 1rem;
+  padding: .4375rem 1rem;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -80,7 +82,7 @@
       margin-top: -.125rem;
     }
 
-    .row-subtitle:not(:empty) + .row-title.tgico:before {
+    .row-subtitle:not(:empty):not(.hide) + .row-title.tgico:before {
       margin-top: .25rem;
     }
   }
@@ -90,7 +92,7 @@
     overflow: hidden;
     
     @include respond-to(not-handhelds) {
-      border-radius: $border-radius-medium;
+      border-radius: $row-border-radius;
     }
   }
 
@@ -98,6 +100,22 @@
   .checkbox-field {
     padding-left: 3.375rem;
     margin-left: -3.375rem;
+  }
+
+  .radio-field,
+  .radio-field-main,
+  .checkbox-field {
+    position: unset;
+  }
+
+  .radio-field,
+  .checkbox-field {
+    --offset-left: 1rem;
+  }
+
+  .radio-field {
+    margin-top: 0;
+    margin-bottom: 0;
   }
 
   .checkbox-field {
@@ -134,6 +152,9 @@
     position: absolute !important;
     margin: 0 !important;
     left: .5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 
     &-small {
       width: 2rem !important;

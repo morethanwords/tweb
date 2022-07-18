@@ -4,10 +4,10 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { fontFamily } from "../../components/middleEllipsis";
 import getPeerTitle from "../../components/wrappers/getPeerTitle";
 import wrapMessageForReply from "../../components/wrappers/messageForReply";
 import { MOUNT_CLASS_TO } from "../../config/debug";
+import { FontFamily } from "../../config/font";
 import { IS_MOBILE } from "../../environment/userAgent";
 import IS_VIBRATE_SUPPORTED from "../../environment/vibrateSupport";
 import deferredPromise, { CancellablePromise } from "../../helpers/cancellablePromise";
@@ -343,7 +343,7 @@ export class UiNotificationsManager {
 
             fontSize *= window.devicePixelRatio;
             
-            ctx.font = `700 ${fontSize}px ${fontFamily}`;
+            ctx.font = `700 ${fontSize}px ${FontFamily}`;
             ctx.textBaseline = 'middle';
             ctx.textAlign = 'center';
             ctx.fillStyle = 'white';

@@ -66,7 +66,7 @@ export default class PopupNewMedia extends PopupElement {
   private captionLengthMax: number;
 
   constructor(private chat: Chat, private files: File[], willAttachType: PopupNewMedia['willAttach']['type']) {
-    super('popup-send-photo popup-new-media', null, {closable: true, withConfirm: 'Modal.Send', confirmShortcutIsSendShortcut: true, body: true});
+    super('popup-send-photo popup-new-media', {closable: true, withConfirm: 'Modal.Send', confirmShortcutIsSendShortcut: true, body: true, title: true});
     this.construct(willAttachType);
   }
 
@@ -112,7 +112,8 @@ export default class PopupNewMedia extends PopupElement {
       placeholder: 'PreviewSender.CaptionPlaceholder',
       label: 'Caption',
       name: 'photo-caption',
-      maxLength: this.captionLengthMax
+      maxLength: this.captionLengthMax,
+      withLinebreaks: true
     });
     this.input = this.inputField.input;
 

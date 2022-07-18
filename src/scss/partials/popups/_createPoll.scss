@@ -29,7 +29,8 @@
     }
   }
 
-  .hidden-widget, .radio-field:first-child:last-child {
+  .hidden-widget, 
+  .radio-field:first-child:last-child {
     .btn-icon {
       pointer-events: none;
       opacity: 0 !important;
@@ -96,5 +97,9 @@
   .menu-send {
     top: 54px;
     right: 20px;
+  }
+
+  hr:not(.hide) {
+    display: block !important;
   }
 }

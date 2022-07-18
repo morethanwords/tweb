@@ -64,7 +64,7 @@ export const langPack: {[actionType: string]: LangPackKey} = {
 	"messageActionGroupCall.ended_by": "Chat.Service.VoiceChatFinished",
 	"messageActionGroupCall.ended_byYou": "Chat.Service.VoiceChatFinishedYou",
 
-	"messageActionBotAllowed": "Chat.Service.BotPermissionAllowed"
+	"messageActionBotAllowed": "Chat.Service.BotPermissionAllowed",
 };
 
 export type LangPackKey = /* string |  */keyof typeof lang | keyof typeof langSign;

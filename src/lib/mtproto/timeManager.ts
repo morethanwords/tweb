@@ -12,7 +12,7 @@
 import sessionStorage from '../sessionStorage';
 import { nextRandomUint } from '../../helpers/random';
 import { WorkerTaskVoidTemplate } from '../../types';
-import longFromInts from '../../helpers/long/longFromInts';
+import ulongFromInts from '../../helpers/long/ulongFromInts';
 import { AppManager } from '../appManagers/manager';
 
 /*
@@ -85,7 +85,7 @@ export class TimeManager extends AppManager {
 
     this.lastMessageId = messageId;
 
-    const ret = longFromInts(messageId[0], messageId[1]);
+    const ret = ulongFromInts(messageId[0], messageId[1]).toString(10);
 
     // if(lol[ret]) {
     //   console.error('[TimeManager]: Generated SAME msg id', messageId, this.timeOffset, ret);

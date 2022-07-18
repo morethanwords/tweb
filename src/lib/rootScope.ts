@@ -136,7 +136,9 @@ export type BroadcastEvents = {
 
   'service_notification': Update.updateServiceNotification,
 
-  'logging_out': void
+  'logging_out': void,
+
+  'payment_sent': {peerId: PeerId, mid: number}
 };
 
 export type BroadcastEventsListeners = {

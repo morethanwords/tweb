@@ -9,8 +9,10 @@ import { formatTime } from "../../helpers/date";
 import htmlToSpan from "../../helpers/dom/htmlToSpan";
 import setInnerHTML from "../../helpers/dom/setInnerHTML";
 import formatCallDuration from "../../helpers/formatCallDuration";
-import { MessageAction } from "../../layer";
+import paymentsWrapCurrencyAmount from "../../helpers/paymentsWrapCurrencyAmount";
+import { Message, MessageAction } from "../../layer";
 import { MyMessage } from "../../lib/appManagers/appMessagesManager";
+import getPeerId from "../../lib/appManagers/utils/peers/getPeerId";
 import I18n, { FormatterArgument, FormatterArguments, i18n, join, langPack, LangPackKey, _i18n } from "../../lib/langPack";
 import wrapEmojiText from "../../lib/richTextProcessor/wrapEmojiText";
 import wrapPlainText from "../../lib/richTextProcessor/wrapPlainText";
@@ -20,6 +22,14 @@ import PeerTitle from "../peerTitle";
 import getPeerTitle from "./getPeerTitle";
 import wrapJoinVoiceChatAnchor from "./joinVoiceChatAnchor";
 import wrapMessageForReply from "./messageForReply";
+
+async function wrapLinkToMessage(message: Message.message | Message.messageService, plain?: boolean) {
+  const a = document.createElement('i');
+  a.dataset.savedFrom = message.peerId + '_' + message.mid;
+  a.dir = 'auto';
+  a.append(await wrapMessageForReply(message, undefined, undefined, plain as any));
+  return a;
+}
 
 export default async function wrapMessageActionTextNewUnsafe(message: MyMessage, plain?: boolean) {
   const element: HTMLElement = plain ? undefined : document.createElement('span');
@@ -150,29 +160,10 @@ export default async function wrapMessageActionTextNewUnsafe(message: MyMessage,
           langPackKey = 'ActionPinnedNoText';
 
           if(message.reply_to_mid) { // refresh original message
-            managers.appMessagesManager.fetchMessageReplyTo(message).then(async(originalMessage) => {
-              if(originalMessage && message) {
-                rootScope.dispatchEvent('message_edit', {
-                  storageKey: `${peerId}_history`,
-                  peerId: peerId,
-                  mid: message.mid,
-                  message
-                });
-
-                if(managers.appMessagesManager.isMessageIsTopMessage(message)) {
-                  rootScope.dispatchEvent('dialogs_multiupdate', {
-                    [peerId]: await managers.appMessagesManager.getDialogOnly(peerId)
-                  });
-                }
-              }
-            });
+            managers.appMessagesManager.fetchMessageReplyTo(message);
           }
         } else {
-          const a = document.createElement('i');
-          a.dataset.savedFrom = pinnedMessage.peerId + '_' + pinnedMessage.mid;
-          a.dir = 'auto';
-          a.append(await wrapMessageForReply(pinnedMessage, undefined, undefined, plain as any));
-          args.push(a);
+          args.push(wrapLinkToMessage(pinnedMessage, plain));
         }
 
         break;
@@ -255,6 +246,28 @@ export default async function wrapMessageActionTextNewUnsafe(message: MyMessage,
         const node = htmlToSpan(anchorHTML);
 
         args = [node];
+        break;
+      }
+
+      case 'messageActionPaymentSent': {
+        langPackKey = 'PaymentSuccessfullyPaidNoItem';
+        const price = paymentsWrapCurrencyAmount(action.total_amount, action.currency);
+        args = [price, getNameDivHTML(message.peerId, plain)];
+
+        if(message.reply_to_mid) {
+          const invoiceMessage = await managers.appMessagesManager.getMessageByPeer(
+            message.reply_to?.reply_to_peer_id ? getPeerId(message.reply_to.reply_to_peer_id) : message.peerId, 
+            message.reply_to_mid
+          );
+          
+          if(!invoiceMessage) {
+            managers.appMessagesManager.fetchMessageReplyTo(message);
+          } else {
+            langPackKey = 'PaymentSuccessfullyPaid';
+            args.push(wrapLinkToMessage(invoiceMessage, plain));
+          }
+        }
+
         break;
       }
 

@@ -12,6 +12,7 @@
 import App from "../../config/app";
 import { MOUNT_CLASS_TO } from "../../config/debug";
 import Modes from "../../config/modes";
+import loadScript from "../../helpers/dom/loadScript";
 import tsNow from "../../helpers/tsNow";
 import sessionStorage from '../sessionStorage';
 
@@ -47,16 +48,9 @@ export class TelegramMeWebManager {
       ];
 
       const promises = urls.map((url) => {
-        const script = document.createElement('script');
-        const promise = new Promise<void>((resolve) => {
-          script.onload = script.onerror = () => {
-            script.remove();
-            resolve();
-          };
+        return loadScript(url).then((script) => {
+          script.remove();
         });
-        script.src = url;
-        document.body.appendChild(script);
-        return promise;
       });
 
       return Promise.all(promises);

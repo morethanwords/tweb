@@ -9,8 +9,28 @@ import { LangPackKey } from "../../lib/langPack";
 import { MUTE_UNTIL } from "../../lib/mtproto/mtproto_config";
 import RadioField from "../radioField";
 import Row, { RadioFormFromRows } from "../row";
-import { SettingSection } from "../sidebarLeft";
 import PopupPeer from "./peer";
+
+const ONE_HOUR = 3600;
+const times: {time: number, langKey: LangPackKey}[] = [{
+  time: ONE_HOUR, 
+  langKey: 'ChatList.Mute.1Hour'
+}, {
+  time: ONE_HOUR * 4, 
+  langKey: 'ChatList.Mute.4Hours'
+}, {
+  time: ONE_HOUR * 8, 
+  langKey: 'ChatList.Mute.8Hours'
+}, {
+  time: ONE_HOUR * 24, 
+  langKey: 'ChatList.Mute.1Day'
+}, {
+  time: ONE_HOUR * 24 * 3,
+  langKey: 'ChatList.Mute.3Days'
+}, {
+  time: -1,
+  langKey: 'ChatList.Mute.Forever'
+}];
 
 export default class PopupMute extends PopupPeer {
   constructor(peerId: PeerId) {
@@ -26,27 +46,6 @@ export default class PopupMute extends PopupPeer {
       body: true
     });
 
-    const ONE_HOUR = 3600;
-    const times: {time: number, langKey: LangPackKey}[] = [{
-      time: ONE_HOUR, 
-      langKey: 'ChatList.Mute.1Hour'
-    }, {
-      time: ONE_HOUR * 4, 
-      langKey: 'ChatList.Mute.4Hours'
-    }, {
-      time: ONE_HOUR * 8, 
-      langKey: 'ChatList.Mute.8Hours'
-    }, {
-      time: ONE_HOUR * 24, 
-      langKey: 'ChatList.Mute.1Day'
-    }, {
-      time: ONE_HOUR * 24 * 3,
-      langKey: 'ChatList.Mute.3Days'
-    }, {
-      time: -1,
-      langKey: 'ChatList.Mute.Forever'
-    }];
-  
     const name = 'mute-time';
     const rows = times.map((time) => {
       const row = new Row({
@@ -65,11 +64,9 @@ export default class PopupMute extends PopupPeer {
       time = +value;
     });
 
-    rows[rows.length - 1].radioField.checked = true;
+    this.body.append(radioForm);
 
-    const section = new SettingSection({noShadow: true, noDelimiter: true});
-    section.content.append(radioForm);
-    this.body.append(section.container);
+    rows[rows.length - 1].radioField.checked = true;
 
     this.show();
   }

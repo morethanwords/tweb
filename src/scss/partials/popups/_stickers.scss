@@ -8,16 +8,7 @@
   $parent: ".popup";
   user-select: none;
 
-  h6 {
-    padding: 0 2rem 0 1.5rem;
-    margin: 0;
-    font-size: 1.25rem;
-    font-weight: var(--font-weight-bold);
-    line-height: var(--line-height);
-  }
-
   .sticker-set-footer {
-    border-top: 1px solid var(--border-color);
     text-align: center;
     color: var(--primary-color);
 
@@ -48,14 +39,13 @@
     }
   
     &-header {
-      margin-bottom: 12px;
+      margin: .625rem 0;
       flex: 0 0 auto;
-      margin-top: 10px;
     }
   }
 
   .sticker-set {
-    margin-bottom: 8px;
+    margin: .0625rem 0;
 
     &-stickers {    
       padding: 0 5px;

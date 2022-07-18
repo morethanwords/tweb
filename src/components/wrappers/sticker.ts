@@ -168,11 +168,48 @@ export default async function wrapSticker({doc, div, middleware, lazyLoadQueue, 
       if(thumb._ === 'photoPathSize') {
         if(thumb.bytes.length) {
           const d = getPathFromBytes(thumb.bytes);
-          const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+          const ns = 'http://www.w3.org/2000/svg';
+          const svg = document.createElementNS(ns, 'svg');
           svg.classList.add('rlottie-vector', 'media-sticker', 'thumbnail');
           svg.setAttributeNS(null, 'viewBox', `0 0 ${doc.w || 512} ${doc.h || 512}`);
-          const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+          
+          // const defs = document.createElementNS(ns, 'defs');
+          // const linearGradient = document.createElementNS(ns, 'linearGradient');
+          // linearGradient.setAttributeNS(null, 'id', 'g');
+          // linearGradient.setAttributeNS(null, 'x1', '-300%');
+          // linearGradient.setAttributeNS(null, 'x2', '-200%');
+          // linearGradient.setAttributeNS(null, 'y1', '0');
+          // linearGradient.setAttributeNS(null, 'y2', '0');
+          // const stops = [
+          //   ['-10%', '.1'],
+          //   ['30%', '.07'],
+          //   ['70%', '.07'],
+          //   ['110%', '.1']
+          // ].map(([offset, stopOpacity]) => {
+          //   const stop = document.createElementNS(ns, 'stop');
+          //   stop.setAttributeNS(null, 'offset', offset);
+          //   stop.setAttributeNS(null, 'stop-opacity', stopOpacity);
+          //   return stop;
+          // });
+          // const animates = [
+          //   ['-300%', '1200%'],
+          //   ['-200%', '1300%']
+          // ].map(([from, to], idx) => {
+          //   const animate = document.createElementNS(ns, 'animate');
+          //   animate.setAttributeNS(null, 'attributeName', 'x' + (idx + 1));
+          //   animate.setAttributeNS(null, 'from', from);
+          //   animate.setAttributeNS(null, 'to', to);
+          //   animate.setAttributeNS(null, 'dur', '3s');
+          //   animate.setAttributeNS(null, 'repeatCount', 'indefinite');
+          //   return animate;
+          // });
+          // linearGradient.append(...stops, ...animates);
+          // defs.append(linearGradient);
+          // svg.append(defs);
+
+          const path = document.createElementNS(ns, 'path');
           path.setAttributeNS(null, 'd', d);
+          if(rootScope.settings.animationsEnabled) path.setAttributeNS(null, 'fill', 'url(#g)');
           svg.append(path);
           div.append(svg);
         } else {
@@ -237,7 +274,7 @@ export default async function wrapSticker({doc, div, middleware, lazyLoadQueue, 
     loadPromises.push(loadThumbPromise);
   }
 
-  if(onlyThumb) { // for sticker panel
+  if(onlyThumb/*  || true */) { // for sticker panel
     return;
   }
   

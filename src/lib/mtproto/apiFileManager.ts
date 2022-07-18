@@ -14,7 +14,7 @@ import Modes from "../../config/modes";
 import deferredPromise, { CancellablePromise } from "../../helpers/cancellablePromise";
 import { getFileNameByLocation } from "../../helpers/fileName";
 import { randomLong } from "../../helpers/random";
-import { Document, InputFile, InputFileLocation, InputWebFileLocation, Photo, PhotoSize, UploadFile, UploadWebFile } from "../../layer";
+import { Document, InputFile, InputFileLocation, InputWebFileLocation, Photo, PhotoSize, UploadFile, UploadWebFile, WebDocument } from "../../layer";
 import { DcId } from "../../types";
 import CacheStorageController from "../cacheStorage";
 import fileManager from "../fileManager";
@@ -54,7 +54,7 @@ export type DownloadOptions = {
 };
 
 export type DownloadMediaOptions = {
-  media: Photo | Document.document,
+  media: Photo.photo | Document.document | WebDocument,
   thumb?: PhotoSize,
   queueId?: number,
   onlyCache?: boolean
@@ -275,6 +275,10 @@ export class ApiFileManager extends AppManager {
   }
 
   private getLimitPart(size: number): number {
+    if(!size) { // * sometimes size can be 0 (e.g. avatars, webDocuments)
+      return 512 * 1024;
+    }
+
     let bytes = 128 * 1024;
 
     while((size / bytes) > 2000) {
@@ -599,14 +603,15 @@ export class ApiFileManager extends AppManager {
   public downloadMedia(options: DownloadMediaOptions): DownloadPromise {
     let {media, thumb} = options;
     const isPhoto = media._ === 'photo';
-    if(media._ === 'photoEmpty' || (isPhoto && !thumb)) {
+    if(isPhoto && !thumb) {
       return Promise.reject('preloadPhoto photoEmpty!');
     }
 
     // get original instance with correct file_reference instead of using copies
     const isDocument = media._ === 'document';
-    if(isDocument) media = this.appDocsManager.getDoc(media.id);
-    else if(isPhoto) media = this.appPhotosManager.getPhoto(media.id);
+    // const isWebDocument = media._ === 'webDocument';
+    if(isDocument) media = this.appDocsManager.getDoc((media as Photo.photo).id);
+    else if(isPhoto) media = this.appPhotosManager.getPhoto((media as Document.document).id);
 
     const {fileName, downloadOptions} = getDownloadMediaDetails(options);
 
@@ -615,9 +620,9 @@ export class ApiFileManager extends AppManager {
       promise = this.download(downloadOptions);
       
       if(isDocument && !thumb) {
-        this.rootScope.dispatchEvent('document_downloading', media.id);
+        this.rootScope.dispatchEvent('document_downloading', (media as Document.document).id);
         promise.catch(noop).finally(() => {
-          this.rootScope.dispatchEvent('document_downloaded', media.id);
+          this.rootScope.dispatchEvent('document_downloaded', (media as Document.document).id);
         });
       }
     }

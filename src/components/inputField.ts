@@ -4,6 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import cancelEvent from "../helpers/dom/cancelEvent";
 import simulateEvent from "../helpers/dom/dispatchEvent";
 import documentFragmentToHTML from "../helpers/dom/documentFragmentToHTML";
 import findUpAttribute from "../helpers/dom/findUpAttribute";
@@ -16,14 +17,15 @@ import { i18n, LangPackKey, _i18n } from "../lib/langPack";
 import mergeEntities from "../lib/richTextProcessor/mergeEntities";
 import parseEntities from "../lib/richTextProcessor/parseEntities";
 import wrapDraftText from "../lib/richTextProcessor/wrapDraftText";
-import SetTransition from "./singleTransition";
 
 let init = () => {
   document.addEventListener('paste', (e) => {
-    if(!findUpAttribute(e.target, 'contenteditable="true"')) {
+    const input = findUpAttribute(e.target, 'contenteditable="true"');
+    if(!input) {
       return;
     }
 
+    const noLinebreaks = !!input.dataset.noLinebreaks;
     e.preventDefault();
     let text: string, entities: MessageEntity[];
 
@@ -33,6 +35,14 @@ let init = () => {
 
     // @ts-ignore
     let html: string = (e.originalEvent || e).clipboardData.getData('text/html');
+
+    const filterEntity = (e: MessageEntity) => e._ === 'messageEntityEmoji' || (e._ === 'messageEntityLinebreak' && !noLinebreaks);
+    if(noLinebreaks) {
+      const regExp = /[\r\n]/g;
+      plainText = plainText.replace(regExp, '');
+      html = html.replace(regExp, '');
+    }
+
     if(html.trim()) {
       html = html.replace(/<style([\s\S]*)<\/style>/, '');
       html = html.replace(/<!--([\s\S]*)-->/, '');
@@ -64,7 +74,7 @@ let init = () => {
         usePlainText = false;
   
         let entities2 = parseEntities(text);
-        entities2 = entities2.filter((e) => e._ === 'messageEntityEmoji' || e._ === 'messageEntityLinebreak');
+        entities2 = entities2.filter(filterEntity);
         mergeEntities(entities, entities2);
       }
     }
@@ -72,7 +82,7 @@ let init = () => {
     if(usePlainText) {
       text = plainText;
       entities = parseEntities(text);
-      entities = entities.filter((e) => e._ === 'messageEntityEmoji' || e._ === 'messageEntityLinebreak');
+      entities = entities.filter(filterEntity);
     }
 
     const fragment = wrapDraftText(text, {entities});
@@ -116,26 +126,23 @@ export type InputFieldOptions = {
   maxLength?: number, 
   showLengthOn?: number,
   plainText?: true,
-  animate?: boolean,
   required?: boolean,
   canBeEdited?: boolean,
-  validate?: () => boolean
+  validate?: () => boolean,
+  inputMode?: 'tel' | 'numeric',
+  withLinebreaks?: boolean,
+  autocomplete?: string
 };
 
-class InputField {
+export default class InputField {
   public container: HTMLElement;
   public input: HTMLElement;
-  public inputFake: HTMLElement;
   public label: HTMLLabelElement;
 
   public originalValue: string;
 
   public required: boolean;
   public validate: () => boolean;
-
-  //public onLengthChange: (length: number, isOverflow: boolean) => void;
-  // protected wasInputFakeClientHeight: number;
-  // protected showScrollDebounced: () => void;
 
   constructor(public options: InputFieldOptions = {}) {
     this.container = document.createElement('div');
@@ -148,10 +155,10 @@ class InputField {
       options.showLengthOn = Math.min(40, Math.round(options.maxLength / 3));
     }
 
-    const {placeholder, maxLength, showLengthOn, name, plainText, canBeEdited = true} = options;
+    const {placeholder, maxLength, showLengthOn, name, plainText, canBeEdited = true, autocomplete} = options;
+    const label = options.label || options.labelText;
 
-    let label = options.label || options.labelText;
-
+    const onInputCallbacks: Array<() => void> = [];
     let input: HTMLElement;
     if(!plainText) {
       if(init) {
@@ -163,40 +170,26 @@ class InputField {
       `;
 
       input = this.container.firstElementChild as HTMLElement;
-      const observer = new MutationObserver(() => {
-        //checkAndSetRTL(input);
+      // const observer = new MutationObserver(() => {
+      //   //checkAndSetRTL(input);
 
-        if(processInput) {
-          processInput();
-        }
-      });
+      //   if(processInput) {
+      //     processInput();
+      //   }
+      // });
 
-      // * because if delete all characters there will br left
-      input.addEventListener('input', () => {
+      onInputCallbacks.push(() => {
+        // * because if delete all characters there will br left
         if(isInputEmpty(input)) {
-          input.innerHTML = '';
-        }
-
-        if(this.inputFake) {
-          this.inputFake.innerHTML = input.innerHTML;
-          this.onFakeInput();
+          input.textContent = '';
         }
       });
-      
-      // ! childList for paste first symbol
-      observer.observe(input, {characterData: true, childList: true, subtree: true});
 
-      if(options.animate) {
-        input.classList.add('scrollable', 'scrollable-y');
-        // this.wasInputFakeClientHeight = 0;
-        // this.showScrollDebounced = debounce(() => this.input.classList.remove('no-scrollbar'), 150, false, true);
-        this.inputFake = document.createElement('div');
-        this.inputFake.setAttribute('contenteditable', 'true');
-        this.inputFake.className = input.className + ' input-field-input-fake';
-      }
+      // ! childList for paste first symbol
+      // observer.observe(input, {characterData: true, childList: true, subtree: true});
     } else {
       this.container.innerHTML = `
-      <input type="text" ${name ? `name="${name}"` : ''} autocomplete="off" ${label ? 'required=""' : ''} class="input-field-input">
+      <input type="text" ${name ? `name="${name}"` : ''} autocomplete="${autocomplete ?? 'off'}" ${label ? 'required=""' : ''} class="input-field-input">
       `;
 
       input = this.container.firstElementChild as HTMLElement;
@@ -204,13 +197,13 @@ class InputField {
     }
 
     input.setAttribute('dir', 'auto');
+    
+    if(options.inputMode) {
+      input.inputMode = options.inputMode;
+    }
 
     if(placeholder) {
       _i18n(input, placeholder, undefined, 'placeholder');
-
-      if(this.inputFake) {
-        _i18n(this.inputFake, placeholder, undefined, 'placeholder');
-      }
     }
 
     if(label || placeholder) {
@@ -225,12 +218,11 @@ class InputField {
       this.container.append(this.label);
     }
 
-    let processInput: () => void;
     if(maxLength) {
       const labelEl = this.container.lastElementChild as HTMLLabelElement;
       let showingLength = false;
 
-      processInput = () => {
+      const onInput = () => {
         const wasError = input.classList.contains('error');
         // * https://stackoverflow.com/a/54369605 #2 to count emoji as 1 symbol
         const inputLength = plainText ? (input as HTMLInputElement).value.length : [...getRichValue(input, false).value].length;
@@ -250,7 +242,24 @@ class InputField {
         }
       };
 
-      input.addEventListener('input', processInput);
+      onInputCallbacks.push(onInput);
+    }
+
+    const noLinebreaks = !options.withLinebreaks;
+    if(noLinebreaks && !plainText) {
+      input.dataset.noLinebreaks = '1';
+      input.addEventListener('keypress', (e) => {
+        if(e.key === 'Enter') {
+          e.preventDefault();
+          return false;
+        }
+      });
+    }
+
+    if(onInputCallbacks.length) {
+      input.addEventListener('input', () => {
+        onInputCallbacks.forEach((callback) => callback());
+      });
     }
 
     this.input = input;
@@ -277,60 +286,22 @@ class InputField {
     }
   }
 
-  public onFakeInput(setHeight = true) {
-    const {scrollHeight: newHeight/* , clientHeight */} = this.inputFake;
-    /* if(this.wasInputFakeClientHeight && this.wasInputFakeClientHeight !== clientHeight) {
-      this.input.classList.add('no-scrollbar'); // ! в сафари может вообще не появиться скролл после анимации, так как ему нужен полный reflow блока с overflow.
-      this.showScrollDebounced();
-    } */
-
-    const currentHeight = +this.input.style.height.replace('px', '');
-    if(currentHeight === newHeight) {
-      return;
-    }
-
-    const TRANSITION_DURATION_FACTOR = 50;
-    const transitionDuration = Math.round(
-      TRANSITION_DURATION_FACTOR * Math.log(Math.abs(newHeight - currentHeight)),
-    );
-
-    // this.wasInputFakeClientHeight = clientHeight;
-    this.input.style.transitionDuration = `${transitionDuration}ms`;
-
-    if(setHeight) {
-      this.input.style.height = newHeight ? newHeight + 'px' : '';
-    }
-
-    const className = 'is-changing-height';
-    SetTransition(this.input, className, true, transitionDuration, () => {
-      this.input.classList.remove(className);
-    });
-  }
-
   get value() {
     return this.options.plainText ? (this.input as HTMLInputElement).value : getRichValue(this.input, false).value;
     //return getRichValue(this.input);
   }
 
   set value(value: string) {
-    this.setValueSilently(value, false);
+    this.setValueSilently(value, true);
 
     simulateEvent(this.input, 'input');
   }
 
-  public setValueSilently(value: string, fireFakeInput = true) {
+  public setValueSilently(value: string, fromSet?: boolean) {
     if(this.options.plainText) {
       (this.input as HTMLInputElement).value = value;
     } else {
       this.input.innerHTML = value;
-      
-      if(this.inputFake) {
-        this.inputFake.innerHTML = value;
-
-        if(fireFakeInput) {
-          this.onFakeInput();
-        }
-      }
     }
   }
 
@@ -348,7 +319,7 @@ class InputField {
     return this.isValid() && this.isChanged();
   }
 
-  public setDraftValue(value = '', silent = false) {
+  public setDraftValue(value = '', silent?: boolean) {
     if(!this.options.plainText) {
       value = documentFragmentToHTML(wrapDraftText(value));
     }
@@ -360,7 +331,7 @@ class InputField {
     }
   }
 
-  public setOriginalValue(value: InputField['originalValue'] = '', silent = false) {
+  public setOriginalValue(value: InputField['originalValue'] = '', silent?: boolean) {
     this.originalValue = value;
     this.setDraftValue(value, silent);
   }
@@ -369,6 +340,8 @@ class InputField {
     if(label) {
       this.label.textContent = '';
       this.label.append(i18n(label, this.options.labelOptions));
+    } else {
+      this.setLabel();
     }
 
     this.input.classList.toggle('error', !!(state & InputState.Error));
@@ -379,5 +352,3 @@ class InputField {
     this.setState(InputState.Error, label);
   }
 }
-
-export default InputField;

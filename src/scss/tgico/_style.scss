@@ -3,9 +3,9 @@
 @font-face {
   font-family: '#{$tgico-font-family}';
   src:
-    url('#{$tgico-font-path}/#{$tgico-font-family}.ttf?5o4186') format('truetype'),
-    url('#{$tgico-font-path}/#{$tgico-font-family}.woff?5o4186') format('woff'),
-    url('#{$tgico-font-path}/#{$tgico-font-family}.svg?5o4186##{$tgico-font-family}') format('svg');
+    url('#{$tgico-font-path}/#{$tgico-font-family}.ttf?js2svd') format('truetype'),
+    url('#{$tgico-font-path}/#{$tgico-font-family}.woff?js2svd') format('woff'),
+    url('#{$tgico-font-path}/#{$tgico-font-family}.svg?js2svd##{$tgico-font-family}') format('svg');
   font-weight: normal;
   font-style: normal;
   font-display: block;
@@ -165,6 +165,16 @@
 .tgico-car {
   &:before {
     content: $tgico-car; 
+  }
+}
+.tgico-card {
+  &:before {
+    content: $tgico-card; 
+  }
+}
+.tgico-card_outline {
+  &:before {
+    content: $tgico-card_outline; 
   }
 }
 .tgico-channel {
@@ -825,6 +835,11 @@
 .tgico-sharescreen_filled {
   &:before {
     content: $tgico-sharescreen_filled; 
+  }
+}
+.tgico-shipping {
+  &:before {
+    content: $tgico-shipping; 
   }
 }
 .tgico-shuffle {

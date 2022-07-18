@@ -338,4 +338,16 @@
     {"name": "file_size_max", "type": "number"},
     {"name": "video_size_max", "type": "number"}
   ]
+}, {
+  "predicate": "webDocument",
+  "params": [
+    {"name": "h", "type": "number"},
+    {"name": "w", "type": "number"}
+  ]
+}, {
+  "predicate": "webDocumentNoProxy",
+  "params": [
+    {"name": "h", "type": "number"},
+    {"name": "w", "type": "number"}
+  ]
 }]

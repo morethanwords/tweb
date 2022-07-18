@@ -20,7 +20,7 @@ export default class PopupPickUser extends PopupElement {
     peerId?: number,
     selfPresence?: LangPackKey
   }) {
-    super('popup-forward', null, {closable: true, overlayClosable: true, body: true});
+    super('popup-forward', {closable: true, overlayClosable: true, body: true, title: true});
 
     this.selector = new AppSelectPeers({
       appendTo: this.body, 

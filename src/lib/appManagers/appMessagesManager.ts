@@ -1268,7 +1268,7 @@ export class AppMessagesManager extends AppManager {
     return this.sendOther(peerId, this.appUsersManager.getContactMediaInput(contactPeerId));
   }
 
-  public sendOther(peerId: PeerId, inputMedia: InputMedia, options: Partial<{
+  public sendOther(peerId: PeerId, inputMedia: InputMedia | {_: 'messageMediaPending', messageMedia: MessageMedia}, options: Partial<{
     replyToMsgId: number,
     threadId: number,
     viaBotId: BotId,
@@ -1363,9 +1363,8 @@ export class AppMessagesManager extends AppManager {
         break;
       }
       
-      // @ts-ignore
       case 'messageMediaPending': {
-        media = inputMedia;
+        media = (inputMedia as any).messageMedia;
         break;
       }
     }
@@ -1411,7 +1410,7 @@ export class AppMessagesManager extends AppManager {
       } else {
         apiPromise = this.apiManager.invokeApiAfter('messages.sendMedia', {
           peer: this.appPeersManager.getInputPeerById(peerId),
-          media: inputMedia,
+          media: inputMedia as InputMedia,
           random_id: message.random_id,
           reply_to_msg_id: replyToMsgId || undefined,
           message: '',
@@ -2770,8 +2769,7 @@ export class AppMessagesManager extends AppManager {
           break; */
 
         case 'messageMediaInvoice': {
-          unsupported = true;
-          message.media = {_: 'messageMediaUnsupported'};
+          message.media.photo = this.appWebDocsManager.saveWebDocument(message.media.photo);
           break;
         }
 
@@ -4029,6 +4027,13 @@ export class AppMessagesManager extends AppManager {
       this.onUpdateNewMessage(update);
     }
 
+    if(message._ === 'messageService' && message.action._ === 'messageActionPaymentSent') {
+      this.rootScope.dispatchEvent('payment_sent', {
+        peerId: message.reply_to.reply_to_peer_id ? getPeerId(message.reply_to.reply_to_peer_id) : message.peerId,
+        mid: message.reply_to_mid
+      });
+    }
+
     if(!dialog && !isLocalThreadUpdate) {
       let good = true;
       if(peerId.isAnyChat()) {
@@ -4968,6 +4973,16 @@ export class AppMessagesManager extends AppManager {
 
     const tempMessage = this.getMessageFromStorage(storage, tempId);
     storage.delete(tempId);
+
+    if(!(tempMessage as Message.message).reply_markup && (message as Message.message).reply_markup) {
+      setTimeout(() => { // TODO: refactor it to normal buttons adding
+        if(!this.getMessageFromStorage(storage, message.mid)) {
+          return;
+        }
+
+        this.rootScope.dispatchEvent('message_edit', {storageKey: storage.key, peerId: message.peerId, mid: message.mid, message});
+      }, 0);
+    }
     
     this.handleReleasingMessage(tempMessage, storage);
 
@@ -5621,6 +5636,22 @@ export class AppMessagesManager extends AppManager {
       if(!originalMessage) { // ! break the infinite loop
         message = this.getMessageByPeer(message.peerId, message.mid); // message can come from other thread
         delete message.reply_to_mid; // ! WARNING!
+      }
+
+      if(message._ === 'messageService') {
+        const peerId = message.peerId;
+        this.rootScope.dispatchEvent('message_edit', {
+          storageKey: `${peerId}_history`,
+          peerId: peerId,
+          mid: message.mid,
+          message
+        });
+
+        if(this.isMessageIsTopMessage(message)) {
+          this.rootScope.dispatchEvent('dialogs_multiupdate', {
+            [peerId]: this.getDialogOnly(peerId)
+          });
+        }
       }
 
       return originalMessage;

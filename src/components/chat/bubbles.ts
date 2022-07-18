@@ -108,6 +108,8 @@ import { EmoticonsDropdown } from "../emoticonsDropdown";
 import indexOfAndSplice from "../../helpers/array/indexOfAndSplice";
 import noop from "../../helpers/noop";
 import getAlbumText from "../../lib/appManagers/utils/messages/getAlbumText";
+import paymentsWrapCurrencyAmount from "../../helpers/paymentsWrapCurrencyAmount";
+import PopupPayment from "../popups/payment";
 
 const USE_MEDIA_TAILS = false;
 const IGNORE_ACTIONS: Set<Message.messageService['action']['_']> = new Set([
@@ -546,11 +548,14 @@ export default class ChatBubbles {
       });
     });
 
-    this.listenerSetter.add(rootScope)('message_edit', ({storageKey, message}) => {
+    this.listenerSetter.add(rootScope)('message_edit', async({storageKey, message}) => {
       if(storageKey !== this.chat.messagesStorageKey) return;
 
       const bubble = this.bubbles[message.mid];
       if(!bubble) return;
+
+      await getHeavyAnimationPromise();
+      if(this.bubbles[message.mid] !== bubble) return;
 
       this.safeRenderMessage(message, true, bubble);
     });
@@ -1472,6 +1477,18 @@ export default class ChatBubbles {
       return;
     }
 
+    const buyButton: HTMLElement = findUpClassName(target, 'is-buy');
+    if(buyButton) {
+      const message = await this.chat.getMessage(+bubble.dataset.mid);
+      if(!message) {
+        return;
+      }
+
+      new PopupPayment(message as Message.message);
+
+      return;
+    }
+
     const spoiler: HTMLElement = findUpClassName(target, 'spoiler');
     if(spoiler) {
       const messageDiv = findUpClassName(spoiler, 'message');
@@ -1903,8 +1920,6 @@ export default class ChatBubbles {
   }
 
   public loadMoreHistory(top: boolean, justLoad = false) {
-    // return;
-
     //this.log('loadMoreHistory', top);
     if(
       !this.peerId || 
@@ -3089,6 +3104,10 @@ export default class ChatBubbles {
     const processQueue = async(): Promise<void> => {
       log('start');
 
+      // if(!this.chat.setPeerPromise) {
+      //   await pause(10000000);
+      // }
+
       const renderQueue = this.messagesQueue.slice();
       this.messagesQueue.length = 0;
 
@@ -3591,7 +3610,7 @@ export default class ChatBubbles {
         rowDiv.classList.add('reply-markup-row');
 
         buttons.forEach((button) => {
-          const text = wrapRichText(button.text, {noLinks: true, noLinebreaks: true});
+          let text: DocumentFragment | HTMLElement | string = wrapRichText(button.text, {noLinks: true, noLinebreaks: true});
 
           let buttonEl: HTMLButtonElement | HTMLAnchorElement;
           
@@ -3607,14 +3626,14 @@ export default class ChatBubbles {
               });
 
               buttonEl = htmlToDocumentFragment(r).firstElementChild as HTMLAnchorElement;
-              buttonEl.classList.add('is-link', 'tgico');
+              buttonEl.classList.add('is-link');
 
               break;
             }
 
             case 'keyboardButtonSwitchInline': {
               buttonEl = document.createElement('button');
-              buttonEl.classList.add('is-switch-inline', 'tgico');
+              buttonEl.classList.add('is-switch-inline');
               attachClickEvent(buttonEl, (e) => {
                 cancelEvent(e);
 
@@ -3648,13 +3667,26 @@ export default class ChatBubbles {
               break;
             }
 
+            case 'keyboardButtonBuy': {
+              buttonEl = document.createElement('button');
+              buttonEl.classList.add('is-buy');
+
+              if(messageMedia?._ === 'messageMediaInvoice') {
+                if(messageMedia.receipt_msg_id) {
+                  text = i18n('Message.ReplyActionButtonShowReceipt');
+                }
+              }
+
+              break;
+            }
+
             default: {
               buttonEl = document.createElement('button');
               break;
             }
           }
           
-          buttonEl.classList.add('reply-markup-button', 'rp');
+          buttonEl.classList.add('reply-markup-button', 'rp', 'tgico');
           if(typeof(text) === 'string') {
             buttonEl.insertAdjacentHTML('beforeend', text);
           } else {
@@ -3673,7 +3705,12 @@ export default class ChatBubbles {
         let target = e.target as HTMLElement;
         
         if(!target.classList.contains('reply-markup-button')) target = findUpClassName(target, 'reply-markup-button');
-        if(!target || target.classList.contains('is-link') || target.classList.contains('is-switch-inline')) return;
+        if(
+          !target 
+          || target.classList.contains('is-link') 
+          || target.classList.contains('is-switch-inline')
+          || target.classList.contains('is-buy')
+        ) return;
 
         cancelEvent(e);
 
@@ -4183,6 +4220,62 @@ export default class ChatBubbles {
           const pollElement = wrapPoll(message);
           messageDiv.prepend(pollElement);
           messageDiv.classList.add('poll-message');
+
+          break;
+        }
+
+        case 'messageMediaInvoice': {
+          const isTest = messageMedia.pFlags.test;
+          const photo = messageMedia.photo;
+
+          const priceEl = document.createElement(photo ? 'span' : 'div');
+          const f = document.createDocumentFragment();
+          const l = i18n(messageMedia.receipt_msg_id ? 'PaymentReceipt' : (isTest ? 'PaymentTestInvoice' : 'PaymentInvoice'));
+          l.classList.add('text-uppercase');
+          const joiner = ' ‎';
+          const p = document.createElement('span');
+          p.classList.add('text-bold');
+          p.textContent = paymentsWrapCurrencyAmount(messageMedia.total_amount, messageMedia.currency) + joiner;
+          f.append(p, l);
+          if(isTest && messageMedia.receipt_msg_id) {
+            const a = document.createElement('span');
+            a.classList.add('text-uppercase', 'pre-wrap');
+            a.append(joiner + '(Test)');
+            f.append(a);
+          }
+          setInnerHTML(priceEl, f);
+
+          if(photo) {
+            const mediaSize = mediaSizes.active.invoice;
+            wrapPhoto({
+              photo, 
+              container: attachmentDiv,
+              withTail: false, 
+              isOut, 
+              lazyLoadQueue: this.lazyLoadQueue,
+              middleware: this.getMiddleware(),
+              loadPromises,
+              boxWidth: mediaSize.width,
+              boxHeight: mediaSize.height
+            });
+
+            bubble.classList.add('photo');
+
+            priceEl.classList.add('video-time');
+            attachmentDiv.append(priceEl);
+          } else {
+            attachmentDiv = undefined;
+          }
+
+          const titleDiv = document.createElement('div');
+          titleDiv.classList.add('bubble-primary-color');
+          setInnerHTML(titleDiv, wrapEmojiText(messageMedia.title));
+          
+          const richText = wrapEmojiText(messageMedia.description);
+          messageDiv.prepend(...[titleDiv, !photo && priceEl, richText].filter(Boolean));
+
+          bubble.classList.remove('is-message-empty');
+          bubble.classList.add('is-invoice');
 
           break;
         }
@@ -4885,7 +4978,7 @@ export default class ChatBubbles {
     const isSponsored = !!(message as Message.message).pFlags.sponsored;
     const middleware = this.getMiddleware();
     const m = middlewarePromise(middleware);
-    return this.safeRenderMessage(message, isSponsored ? false : true, undefined, false, async(result) => {
+    return this.safeRenderMessage(message, isSponsored ? false : true, undefined, isSponsored, async(result) => {
       const {bubble} = await m(result);
       if(!bubble) {
         return result;

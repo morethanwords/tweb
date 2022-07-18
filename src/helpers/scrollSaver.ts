@@ -43,6 +43,8 @@ export default class ScrollSaver {
   }
 
   public findElements() {
+    if(!this.query) return [];
+
     const {container} = this;
     const containerRect = container.getBoundingClientRect();
     const bubbles = Array.from(container.querySelectorAll(this.query)) as HTMLElement[];

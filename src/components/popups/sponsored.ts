@@ -5,7 +5,6 @@
  */
 
 import I18n, { i18n } from "../../lib/langPack";
-import Scrollable from "../scrollable";
 import PopupPeer from "./peer";
 
 export default class PopupSponsored extends PopupPeer {
@@ -23,19 +22,11 @@ export default class PopupSponsored extends PopupPeer {
           window.open(I18n.format('Chat.Message.Sponsored.Link', true));
         },
         isCancel: true
-      }]
+      }],
+      scrollable: true
     });
 
-    const scrollable = new Scrollable(undefined);
-    scrollable.onAdditionalScroll = () => {
-      scrollable.container.classList.toggle('scrolled-top', !scrollable.scrollTop);
-      scrollable.container.classList.toggle('scrolled-bottom', scrollable.isScrolledDown);
-    };
-
-    this.description.replaceWith(scrollable.container);
-
-    scrollable.container.append(this.description);
-    scrollable.container.classList.add('scrolled-top');
+    this.scrollable.append(this.description);
 
     this.show();
   }

@@ -158,6 +158,11 @@ export default async function wrapMessageForReply(message: MyMessage | MyDraftMe
           break;
         }
 
+        case 'messageMediaInvoice': {
+          addPart(undefined, plain ? media.title : wrapEmojiText(media.title));
+          break;
+        }
+
         case 'messageMediaUnsupported': {
           addPart(UNSUPPORTED_LANG_PACK_KEY);
           break;

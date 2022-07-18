@@ -140,10 +140,11 @@ export default class PopupGroupCall extends PopupElement {
   private btnScreen: HTMLDivElement;
 
   constructor() {
-    super('popup-group-call', undefined, {
+    super('popup-group-call', {
       body: true,
       withoutOverlay: true,
-      closable: true
+      closable: true,
+      title: true
     });
 
     this.videosCount = 0;

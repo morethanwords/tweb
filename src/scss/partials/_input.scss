@@ -81,6 +81,18 @@
       transition: opacity .2s;
     }
   }
+
+  &-icon {
+    position: absolute;
+    right: 1rem;
+    z-index: 1;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: .375rem;
+    pointer-events: none;
+  }
   
   &-input {
     --padding: 1rem;
@@ -90,7 +102,7 @@
     border-radius: var(--border-radius);
     background-color: var(--surface-color);
     //padding: 0 1rem;
-    padding: calc(var(--padding) - var(--border-width));
+    padding: calc(var(--padding) - var(--border-width)) calc(var(--padding-horizontal) - var(--border-width));
     box-sizing: border-box;
     width: 100%;
     min-height: var(--height);
@@ -123,6 +135,7 @@
 
     @include respond-to(handhelds) {
       --padding: .9375rem;
+      --padding-horizontal: .9375rem;
     }
 
     @include animation-level(0) {
@@ -215,8 +228,8 @@
     &:valid ~ label, 
     &:not(:empty) ~ label, 
     &:disabled ~ label {
-      transform: translate(-.25rem, calc(var(--height) / -2 + .125rem)) scale(.75);
-      padding: 0 6px;
+      transform: translate(-.1875rem, calc(var(--height) / -2 + .0625rem)) scale(.75);
+      padding: 0 .3125rem;
       opacity: 1;
     }
   }
@@ -234,6 +247,19 @@
     height: auto!important;
 
     z-index: -3;
+  }
+}
+
+.input-fields-row {
+  display: flex;
+
+  .input-field {
+    flex: 1 1 auto;
+    width: 1%; // fix width because of contenteditable
+
+    // &:not(:first-child) {
+    //   margin-left: 1rem;
+    // }
   }
 }
 
