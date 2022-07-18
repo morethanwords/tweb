@@ -12,13 +12,14 @@
 import type { MyDocument } from "./appDocsManager";
 import type { MyPhoto } from "./appPhotosManager";
 import type { MyTopPeer } from "./appUsersManager";
-import { BotInlineResult, GeoPoint, InputGeoPoint, InputMedia, MessageEntity, MessagesBotResults, ReplyMarkup } from "../../layer";
+import { BotInlineResult, GeoPoint, InputGeoPoint, InputMedia, MessageEntity, MessageMedia, MessagesBotResults, ReplyMarkup } from "../../layer";
 import insertInDescendSortedArray from "../../helpers/array/insertInDescendSortedArray";
 import { AppManager } from "./manager";
 import getPhotoMediaInput from "./utils/photos/getPhotoMediaInput";
 import getServerMessageId from "./utils/messageId/getServerMessageId";
 import generateQId from "./utils/inlineBots/generateQId";
 import getDocumentMediaInput from "./utils/docs/getDocumentMediaInput";
+import { AppMessagesManager } from "./appMessagesManager";
 
 export class AppInlineBotsManager extends AppManager {
   private inlineResults: {[queryAndResultIds: string]: BotInlineResult} = {};
@@ -286,7 +287,7 @@ export class AppInlineBotsManager extends AppManager {
       this.appMessagesManager.sendText(peerId, inlineResult.send_message.message, options);
     } else {
       let caption = '';
-      let inputMedia: InputMedia;
+      let inputMedia: Parameters<AppMessagesManager['sendOther']>[1], messageMedia: MessageMedia;
       const sendMessage = inlineResult.send_message;
       switch(sendMessage._) {
         case 'botInlineMessageMediaAuto': {
@@ -342,18 +343,50 @@ export class AppInlineBotsManager extends AppManager {
 
           break;
         }
+
+        case 'botInlineMessageMediaInvoice': {
+          // const photo = sendMessage.photo;
+          // inputMedia = {
+          //   _: 'inputMediaInvoice',
+          //   description: sendMessage.description,
+          //   title: sendMessage.title,
+          //   photo: photo && {
+          //     _: 'inputWebDocument',
+          //     attributes: photo.attributes,
+          //     mime_type: photo.mime_type,
+          //     size: photo.size,
+          //     url: photo.url
+          //   },
+          //   invoice: undefined,
+          //   payload: undefined,
+          //   provider: undefined,
+          //   provider_data: undefined,
+          //   start_param: undefined
+          // };
+
+          messageMedia = {
+            _: 'messageMediaInvoice',
+            title: sendMessage.title,
+            description: sendMessage.description,
+            photo: sendMessage.photo,
+            currency: sendMessage.currency,
+            total_amount: sendMessage.total_amount,
+            pFlags: {
+              shipping_address_requested: sendMessage.pFlags.shipping_address_requested,
+              test: sendMessage.pFlags.test
+            },
+            start_param: undefined
+          };
+
+          break;
+        }
       }
 
-      if(!inputMedia) {
+      if(!inputMedia && messageMedia) {
         inputMedia = {
           _: 'messageMediaPending',
-          type: inlineResult.type,
-          file_name: inlineResult.title || 
-            (inlineResult as BotInlineResult.botInlineResult).content?.url || 
-            (inlineResult as BotInlineResult.botInlineResult).url,
-          size: 0,
-          progress: {percent: 30, total: 0}
-        } as any;
+          messageMedia
+        };
       }
 
       this.appMessagesManager.sendOther(peerId, inputMedia, options);

@@ -39,17 +39,23 @@ export default class PopupDatePicker extends PopupElement {
     withTime: true,
     showOverflowMonths: true
   }> & PopupOptions = {}) {
-    super('popup-date-picker', options.noButtons ? [] : [{
-      langKey: 'JumpToDate',
-      callback: () => {
-        if(this.onPick) {
-          this.onPick(this.selectedDate.getTime() / 1000 | 0);
+    super('popup-date-picker', {
+      body: true, 
+      overlayClosable: true, 
+      buttons: options.noButtons ? [] : [{
+        langKey: 'JumpToDate',
+        callback: () => {
+          if(this.onPick) {
+            this.onPick(this.selectedDate.getTime() / 1000 | 0);
+          }
         }
-      }
-    }, {
-      langKey: 'Cancel',
-      isCancel: true
-    }], {body: true, overlayClosable: true, ...options});
+      }, {
+        langKey: 'Cancel',
+        isCancel: true
+      }],
+      title: true,
+      ...options
+    });
 
     this.minDate = options.minDate || new Date('2013-08-01T00:00:00');
 

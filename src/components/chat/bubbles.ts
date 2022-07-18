@@ -109,6 +109,7 @@ import { EmoticonsDropdown } from "../emoticonsDropdown";
 import indexOfAndSplice from "../../helpers/array/indexOfAndSplice";
 import noop from "../../helpers/noop";
 import paymentsWrapCurrencyAmount from "../../helpers/paymentsWrapCurrencyAmount";
+import PopupPayment from "../popups/payment";
 
 const USE_MEDIA_TAILS = false;
 const IGNORE_ACTIONS: Set<Message.messageService['action']['_']> = new Set([
@@ -540,11 +541,14 @@ export default class ChatBubbles {
       });
     });
 
-    this.listenerSetter.add(rootScope)('message_edit', ({storageKey, message}) => {
+    this.listenerSetter.add(rootScope)('message_edit', async({storageKey, message}) => {
       if(storageKey !== this.chat.messagesStorageKey) return;
 
       const bubble = this.bubbles[message.mid];
       if(!bubble) return;
+
+      await getHeavyAnimationPromise();
+      if(this.bubbles[message.mid] !== bubble) return;
 
       this.safeRenderMessage(message, true, bubble);
     });
@@ -1467,6 +1471,18 @@ export default class ChatBubbles {
       return;
     }
 
+    const buyButton: HTMLElement = findUpClassName(target, 'is-buy');
+    if(buyButton) {
+      const message = await this.chat.getMessage(+bubble.dataset.mid);
+      if(!message) {
+        return;
+      }
+
+      new PopupPayment(message as Message.message);
+
+      return;
+    }
+
     const spoiler: HTMLElement = findUpClassName(target, 'spoiler');
     if(spoiler) {
       const messageDiv = findUpClassName(spoiler, 'message');
@@ -1898,8 +1914,6 @@ export default class ChatBubbles {
   }
 
   public loadMoreHistory(top: boolean, justLoad = false) {
-    // return;
-
     //this.log('loadMoreHistory', top);
     if(
       !this.peerId || 
@@ -3081,6 +3095,10 @@ export default class ChatBubbles {
     const processQueue = async(): Promise<void> => {
       log('start');
 
+      // if(!this.chat.setPeerPromise) {
+      //   await pause(10000000);
+      // }
+
       const renderQueue = this.messagesQueue.slice();
       this.messagesQueue.length = 0;
 
@@ -3164,7 +3182,9 @@ export default class ChatBubbles {
 
       this.ejectBubbles();
       for(const [bubble, oldBubble] of this.bubblesToReplace) {
-        scrollSaver.replaceSaved(oldBubble, bubble);
+        if(scrollSaver) {
+          scrollSaver.replaceSaved(oldBubble, bubble);
+        }
         
         if(!loadQueue.find((details) => details.bubble === bubble)) {
           continue;
@@ -3674,7 +3694,12 @@ export default class ChatBubbles {
         let target = e.target as HTMLElement;
         
         if(!target.classList.contains('reply-markup-button')) target = findUpClassName(target, 'reply-markup-button');
-        if(!target || target.classList.contains('is-link') || target.classList.contains('is-switch-inline')) return;
+        if(
+          !target 
+          || target.classList.contains('is-link') 
+          || target.classList.contains('is-switch-inline')
+          || target.classList.contains('is-buy')
+        ) return;
 
         cancelEvent(e);
 
@@ -4235,12 +4260,13 @@ export default class ChatBubbles {
 
           const titleDiv = document.createElement('div');
           titleDiv.classList.add('bubble-primary-color');
-          setInnerHTML(titleDiv, wrapRichText(messageMedia.title));
+          setInnerHTML(titleDiv, wrapEmojiText(messageMedia.title));
           
-          const richText = wrapRichText(messageMedia.description);
+          const richText = wrapEmojiText(messageMedia.description);
           messageDiv.prepend(...[titleDiv, !photo && priceEl, richText].filter(Boolean));
 
           bubble.classList.remove('is-message-empty');
+          bubble.classList.add('is-invoice');
 
           break;
         }
@@ -4943,7 +4969,7 @@ export default class ChatBubbles {
     const isSponsored = !!(message as Message.message).pFlags.sponsored;
     const middleware = this.getMiddleware();
     const m = middlewarePromise(middleware);
-    return this.safeRenderMessage(message, isSponsored ? false : true, undefined, false, async(result) => {
+    return this.safeRenderMessage(message, isSponsored ? false : true, undefined, isSponsored, async(result) => {
       const {bubble} = await m(result);
       if(!bubble) {
         return result;

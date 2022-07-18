@@ -2147,6 +2147,12 @@ $bubble-beside-button-width: 38px;
   code {
     cursor: pointer;
   }
+
+  &.is-invoice {
+    .attachment {
+      background-color: inherit !important;
+    }
+  }
 }
 
 // * fix scroll with only 1 bubble
@@ -2849,6 +2855,10 @@ $bubble-beside-button-width: 38px;
     &.is-link:before {
       content: $tgico-arrow-next;
       transform: rotate(-45deg);
+    }
+
+    &.is-buy:before {
+      content: $tgico-card;
     }
 
     &.is-switch-inline:before {

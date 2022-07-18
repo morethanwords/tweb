@@ -664,6 +664,8 @@ export type SettingSectionOptions = {
   name?: LangPackKey, 
   nameArgs?: FormatterArguments,
   caption?: LangPackKey | true,
+  captionArgs?: FormatterArguments,
+  captionOld?: SettingSectionOptions['caption'],
   noDelimiter?: boolean,
   fakeGradientDelimiter?: boolean,
   noShadow?: boolean,
@@ -721,13 +723,17 @@ export class SettingSection {
 
     container.append(innerContainer);
 
-    if(options.caption) {
-      const caption = this.caption = this.generateContentElement();
-      caption.classList.add(className + '-caption');
-      container.append(caption);
+    const caption = options.caption ?? options.captionOld;
+    if(caption) {
+      const el = this.caption = this.generateContentElement();
+      el.classList.add(className + '-caption');
 
-      if(options.caption !== true) {
-        i18n_({element: caption, key: options.caption});
+      if(!options.captionOld) {
+        container.append(el);
+      }
+
+      if(caption !== true) {
+        i18n_({element: el, key: caption, args: options.captionArgs});
       }
     }
   }

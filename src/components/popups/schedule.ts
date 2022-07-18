@@ -38,7 +38,8 @@ export default class PopupSchedule extends PopupDatePicker {
       maxDate: getMaxDate(),
       withTime: true,
       showOverflowMonths: true,
-      confirmShortcutIsSendShortcut: true
+      confirmShortcutIsSendShortcut: true,
+      title: true
     });
 
     this.element.classList.add('popup-schedule');

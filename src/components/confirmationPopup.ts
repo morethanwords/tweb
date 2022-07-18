@@ -8,7 +8,7 @@ import { addCancelButton } from "./popups";
 import PopupPeer, { PopupPeerOptions } from "./popups/peer";
 
 // type PopupConfirmationOptions = Pick<PopupPeerOptions, 'titleLangKey'>;
-type PopupConfirmationOptions = PopupPeerOptions & {
+export type PopupConfirmationOptions = PopupPeerOptions & {
   button: PopupPeerOptions['buttons'][0],
   checkbox?: PopupPeerOptions['checkboxes'][0]
 };
@@ -20,14 +20,14 @@ export default function confirmationPopup(options: PopupConfirmationOptions) {
       resolve(set ? !!set.size : undefined);
     };
 
-    const buttons = addCancelButton([button]);
+    const buttons = addCancelButton(options.buttons || [button]);
     const cancelButton = buttons.find((button) => button.isCancel);
     cancelButton.callback = () => {
       reject();
     };
 
     options.buttons = buttons;
-    options.checkboxes = checkbox && [checkbox];
+    options.checkboxes ??= checkbox && [checkbox];
 
     new PopupPeer('popup-confirmation', options).show();
   });

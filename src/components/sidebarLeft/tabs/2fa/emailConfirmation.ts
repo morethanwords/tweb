@@ -31,7 +31,7 @@ export default class AppTwoStepVerificationEmailConfirmationTab extends SliderSu
     this.setTitle('TwoStepAuth.RecoveryTitle');
 
     const section = new SettingSection({
-      caption: true,
+      captionOld: true,
       noDelimiter: true
     });
 

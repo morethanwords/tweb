@@ -1,6 +1,5 @@
 const lang = {
   "Login.Title": "Sign in to Telegram",
-  "Login.CountrySelectorLabel": "Country",
   "Login.PhoneLabel": "Phone Number",
   "Login.PhoneLabelInvalid": "Phone Number Invalid",
   "Login.KeepSigned": "Keep me signed in",
@@ -21,6 +20,7 @@ const lang = {
   "FirstName": "First name (required)",
   "LastName": "Last name (optional)",
   "StartMessaging": "Start Messaging",
+  "Country": "Country",
 
   // * macos
   "Contacts.PhoneNumber.Placeholder": "Phone Number",

@@ -30,6 +30,7 @@ import type { AppInlineBotsManager } from "./appInlineBotsManager";
 import type { AppMessagesIdsManager } from "./appMessagesIdsManager";
 import type { AppMessagesManager } from "./appMessagesManager";
 import type { AppNotificationsManager } from "./appNotificationsManager";
+import type AppPaymentsManager from "./appPaymentsManager";
 import type { AppPeersManager } from "./appPeersManager";
 import type { AppPhotosManager } from "./appPhotosManager";
 import type { AppPollsManager } from "./appPollsManager";
@@ -84,6 +85,7 @@ export class AppManager {
   protected appStoragesManager: AppStoragesManager;
   protected appStateManager: AppStateManager;
   protected appWebDocsManager: AppWebDocsManager;
+  protected appPaymentsManager: AppPaymentsManager;
 
   public clear: (init?: boolean) => void;
   

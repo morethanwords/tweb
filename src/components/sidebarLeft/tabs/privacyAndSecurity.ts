@@ -29,6 +29,9 @@ import toggleDisability from "../../../helpers/dom/toggleDisability";
 import convertKeyToInputKey from "../../../helpers/string/convertKeyToInputKey";
 import getPrivacyRulesDetails from "../../../lib/appManagers/utils/privacy/getPrivacyRulesDetails";
 import PrivacyType from "../../../lib/appManagers/utils/privacy/privacyType";
+import confirmationPopup, { PopupConfirmationOptions } from "../../confirmationPopup";
+import noop from "../../../helpers/noop";
+import { toastNew } from "../../toast";
 
 export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
   private activeSessionsRow: Row;
@@ -311,6 +314,48 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
         
         section.content.append(draftsRow.container);
       })); */
+
+      this.scrollable.append(section.container);
+    }
+
+    {
+      const section = new SettingSection({name: 'PrivacyPayments', caption: 'PrivacyPaymentsClearInfo'});
+
+      const onClearClick = () => {
+        const options: PopupConfirmationOptions = {
+          titleLangKey: 'PrivacyPaymentsClearAlertTitle',
+          descriptionLangKey: 'PrivacyPaymentsClearAlertText',
+          button: {
+            langKey: 'Clear'
+          },
+          checkboxes: [{
+            text: 'PrivacyClearShipping', 
+            checked: true
+          }, {
+            text: 'PrivacyClearPayment', 
+            checked: true
+          }]
+        };
+
+        confirmationPopup(options).then(() => {
+          const [info, payment] = options.checkboxes.map((c) => c.checkboxField.checked);
+          const toggle = toggleDisability([clearButton], true);
+          this.managers.appPaymentsManager.clearSavedInfo(info, payment).then(() => {
+            if(!info && !payment) {
+              return;
+            }
+
+            toggle();
+            toastNew({
+              langPackKey: info && payment ? 'PrivacyPaymentsPaymentShippingCleared' : (info ? 'PrivacyPaymentsShippingInfoCleared' : 'PrivacyPaymentsPaymentInfoCleared')
+            });
+          });
+        }, noop);
+      };
+
+      const clearButton = Button('btn-primary btn-transparent', {icon: 'delete', text: 'PrivacyPaymentsClear'});
+      this.listenerSetter.add(clearButton)('click', onClearClick);
+      section.content.append(clearButton);
 
       this.scrollable.append(section.container);
     }

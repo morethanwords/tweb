@@ -242,7 +242,7 @@ export class AppPeersManager extends AppManager {
     }
   }
 
-  public getDeleteButtonText(peerId: PeerId): LangPackKey {
+  public getDeleteButtonText(peerId: PeerId): Extract<LangPackKey, 'ChannelDelete' | 'ChatList.Context.LeaveChannel' | 'DeleteMega' | 'ChatList.Context.LeaveGroup' | 'ChatList.Context.DeleteChat'> {
     switch(this.getDialogType(peerId)) {
       case 'channel':
         return this.appChatsManager.hasRights(peerId.toChatId(), 'delete_chat') ? 'ChannelDelete' : 'ChatList.Context.LeaveChannel';

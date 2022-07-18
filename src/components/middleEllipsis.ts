@@ -4,6 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import { FontFamily, FontSize, FontWeight } from "../config/font";
 import getTextWidth from "../helpers/canvas/getTextWidth";
 import mediaSizes from "../helpers/mediaSizes";
 import clamp from "../helpers/number/clamp";
@@ -33,7 +34,6 @@ const map: Map<HTMLElement, {
 }> = new Map();
 
 const testQueue: Set<HTMLElement> = new Set();
-export const fontFamily = 'Roboto, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif';
 const fontSize = '16px';
 let pendingTest = false;
 
@@ -90,7 +90,7 @@ function testElement(element: HTMLElement) {
     multiplier = from > 0 && from / 100;
 
     //const perf = performance.now();
-    font = `${element.dataset.fontWeight || 400} ${fontSize} ${fontFamily}`;
+    font = `${element.dataset.fontWeight || FontWeight} ${FontSize} ${FontFamily}`;
     /* const computedStyle = window.getComputedStyle(elm, null);
     font = `${computedStyle.getPropertyValue('font-weight')} ${computedStyle.getPropertyValue('font-size')} ${computedStyle.getPropertyValue('font-family')}`; */
     //console.log('testMiddleEllipsis get computed style:', performance.now() - perf, font);

@@ -15,13 +15,11 @@ import { toastNew } from "../toast";
 
 export default class PopupCreateContact extends PopupElement {
   constructor() {
-    super('popup-create-contact popup-send-photo popup-new-media', null, {closable: true, withConfirm: 'Add'});
+    super('popup-create-contact popup-send-photo popup-new-media', {closable: true, withConfirm: 'Add', title: 'AddContactTitle'});
     this.construct();
   }
 
   private async construct() {
-    _i18n(this.title, 'AddContactTitle');
-
     attachClickEvent(this.btnConfirm, () => {
       const promise = this.managers.appUsersManager.importContact(nameInputField.value, lastNameInputField.value, telInputField.value);
 

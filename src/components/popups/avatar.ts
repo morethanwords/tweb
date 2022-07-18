@@ -30,7 +30,7 @@ export default class PopupAvatar extends PopupElement {
   private onCrop: (upload: () => ReturnType<AppDownloadManager['upload']>) => void;
 
   constructor() {
-    super('popup-avatar', null, {closable: true, withConfirm: true});
+    super('popup-avatar', {closable: true, withConfirm: true});
 
     this.h6 = document.createElement('h6');
     _i18n(this.h6, 'Popup.Avatar.Title');

@@ -93,6 +93,7 @@ import { emojiFromCodePoints } from "../../vendor/emoji";
 import { modifyAckedPromise } from "../../helpers/modifyAckedResult";
 import ChatSendAs from "./sendAs";
 import filterAsync from "../../helpers/array/filterAsync";
+import InputFieldAnimated from "../inputFieldAnimated";
 
 const RECORD_MIN_TIME = 500;
 const POSTING_MEDIA_NOT_ALLOWED = 'Posting media content isn\'t allowed in this group.';
@@ -103,7 +104,7 @@ export default class ChatInput {
   // private static AUTO_COMPLETE_REG_EXP = /(\s|^)((?::|.)(?!.*[:@]).*|(?:[@\/]\S*))$/;
   private static AUTO_COMPLETE_REG_EXP = /(\s|^)((?:(?:@|^\/)\S*)|(?::|^[^:@\/])(?!.*[:@\/]).*)$/;
   public messageInput: HTMLElement;
-  public messageInputField: InputField;
+  public messageInputField: InputFieldAnimated;
   private fileInput: HTMLInputElement;
   private inputMessageContainer: HTMLDivElement;
   private btnSend: HTMLButtonElement;
@@ -1441,10 +1442,10 @@ export default class ChatInput {
 
   private attachMessageInputField() {
     const oldInputField = this.messageInputField;
-    this.messageInputField = new InputField({
+    this.messageInputField = new InputFieldAnimated({
       placeholder: 'Message',
       name: 'message',
-      animate: true
+      withLinebreaks: true
     });
 
     this.messageInputField.input.classList.replace('input-field-input', 'input-message-input');
@@ -1907,7 +1908,7 @@ export default class ChatInput {
     //const saveExecuted = this.prepareDocumentExecute();
     // can't exec .value here because it will instantly check for autocomplete
     const value = documentFragmentToHTML(wrapDraftText(newValue, {entities}));
-    this.messageInputField.setValueSilently(value, true);
+    this.messageInputField.setValueSilently(value);
 
     const caret = this.messageInput.querySelector('.composer-sel');
     if(caret) {

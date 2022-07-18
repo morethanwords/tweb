@@ -12,6 +12,7 @@ import formatCallDuration from "../../helpers/formatCallDuration";
 import paymentsWrapCurrencyAmount from "../../helpers/paymentsWrapCurrencyAmount";
 import { Message, MessageAction } from "../../layer";
 import { MyMessage } from "../../lib/appManagers/appMessagesManager";
+import getPeerId from "../../lib/appManagers/utils/peers/getPeerId";
 import I18n, { FormatterArgument, FormatterArguments, i18n, join, langPack, LangPackKey, _i18n } from "../../lib/langPack";
 import wrapEmojiText from "../../lib/richTextProcessor/wrapEmojiText";
 import wrapPlainText from "../../lib/richTextProcessor/wrapPlainText";
@@ -254,7 +255,11 @@ export default async function wrapMessageActionTextNewUnsafe(message: MyMessage,
         args = [price, getNameDivHTML(message.peerId, plain)];
 
         if(message.reply_to_mid) {
-          const invoiceMessage = await managers.appMessagesManager.getMessageByPeer(message.peerId, message.reply_to_mid);
+          const invoiceMessage = await managers.appMessagesManager.getMessageByPeer(
+            message.reply_to?.reply_to_peer_id ? getPeerId(message.reply_to.reply_to_peer_id) : message.peerId, 
+            message.reply_to_mid
+          );
+          
           if(!invoiceMessage) {
             managers.appMessagesManager.fetchMessageReplyTo(message);
           } else {

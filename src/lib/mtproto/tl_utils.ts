@@ -16,25 +16,16 @@ import bytesToHex from '../../helpers/bytes/bytesToHex';
 import isObject from '../../helpers/object/isObject';
 import gzipUncompress from '../../helpers/gzipUncompress';
 import bigInt from 'big-integer';
-import longFromInts from '../../helpers/long/longFromInts';
-
-// @ts-ignore
-/* import {BigInteger} from 'jsbn';
-
-export function bigint(num: number) {
-  return new BigInteger(num.toString(16), 16);
-}
-
-function bigStringInt(strNum: string) {
-  return new BigInteger(strNum, 10)
-} */
+import ulongFromInts from '../../helpers/long/ulongFromInts';
 
 const boolFalse = +Schema.API.constructors.find((c) => c.predicate === 'boolFalse').id;
 const boolTrue = +Schema.API.constructors.find((c) => c.predicate === 'boolTrue').id;
 const vector = +Schema.API.constructors.find((c) => c.predicate === 'vector').id;
 const gzipPacked = +Schema.MTProto.constructors.find((c) => c.predicate === 'gzip_packed').id;
 
-//console.log('boolFalse', boolFalse === 0xbc799737);
+const safeBigInt = bigInt(Number.MAX_SAFE_INTEGER);
+const ulongBigInt = bigInt(bigInt[2]).pow(64);
+const longBigInt = ulongBigInt.divide(bigInt[2]);
 
 class TLSerialization {
   private maxLength = 2048; // 2Kb
@@ -159,12 +150,13 @@ class TLSerialization {
         return this.storeIntBytes(sLong, 64, field);
       }
     }
-  
-    if(typeof sLong !== 'string') {
-      sLong = sLong ? sLong.toString() : '0';
+
+    let _bigInt = bigInt(sLong as string);
+    if(_bigInt.isNegative()) { // make it unsigned
+      _bigInt = ulongBigInt.add(_bigInt);
     }
 
-    const {quotient, remainder} = bigInt(sLong).divmod(0x100000000);
+    const {quotient, remainder} = _bigInt.divmod(0x100000000);
     const high = quotient.toJSNumber();
     const low = remainder.toJSNumber();
 
@@ -506,23 +498,25 @@ class TLDeserialization<FetchLongAs extends Long> {
     return doubleView[0];
   }
   
+  // ! it should've been signed
   public fetchLong(field?: string): FetchLongAs {
     const iLow = this.readInt((field || '') + ':long[low]');
     const iHigh = this.readInt((field || '') + ':long[high]');
-  
-    //const longDec = bigint(iHigh).shiftLeft(32).add(bigint(iLow)).toString();
-    const longDec = longFromInts(iHigh, iLow);
+
+    let ulong = ulongFromInts(iHigh, iLow);
+    if(/* !unsigned &&  */!this.mtproto && ulong.greater(longBigInt)) { // make it signed
+      ulong = ulong.minus(ulongBigInt);
+    }
 
     if(!this.mtproto) {
-      const num = +longDec;
-      if(Number.isSafeInteger(num)) {
+      if(safeBigInt.greaterOrEquals(ulong.abs())) {
         // @ts-ignore
-        return num;
+        return ulong.toJSNumber();
       }
     }
   
     // @ts-ignore
-    return longDec;
+    return ulong.toString(10);
   }
   
   public fetchBool(field?: string): boolean {

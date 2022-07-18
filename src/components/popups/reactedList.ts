@@ -21,10 +21,7 @@ export default class PopupReactedList extends PopupElement {
   constructor(
     private message: Message.message
   ) {
-    super('popup-reacted-list', /* [{
-      langKey: 'Close',
-      isCancel: true
-    }] */null, {closable: true, overlayClosable: true, body: true});
+    super('popup-reacted-list', {closable: true, overlayClosable: true, body: true});
 
     this.init();
   }

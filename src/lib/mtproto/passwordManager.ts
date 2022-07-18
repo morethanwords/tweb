@@ -72,8 +72,12 @@ export class PasswordManager extends AppManager {
     });
   }
 
+  public getInputCheckPassword(password: string, state: AccountPassword) {
+    return this.cryptoWorker.invokeCrypto('computeSRP', password, state, false) as Promise<InputCheckPasswordSRP.inputCheckPasswordSRP>;
+  }
+
   public check(password: string, state: AccountPassword, options: any = {}) {
-    return this.cryptoWorker.invokeCrypto('computeSRP', password, state, false).then((inputCheckPassword) => {
+    return this.getInputCheckPassword(password, state).then((inputCheckPassword) => {
       //console.log('SRP', inputCheckPassword);
       return this.apiManager.invokeApi('auth.checkPassword', {
         password: inputCheckPassword as InputCheckPasswordSRP.inputCheckPasswordSRP

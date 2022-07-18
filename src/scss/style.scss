@@ -86,9 +86,11 @@ $chat-input-inner-padding-handhelds: .25rem;
   --bubble-transition-in: transform var(--transition-standard-in), opacity var(--transition-standard-in);
   --bubble-transition-out: transform var(--transition-standard-out), opacity var(--transition-standard-out);
   --line-height: 1.3125;
+  --line-height-20: 23px;
   --line-height-16: 21px;
   --line-height-14: 18px;
   --line-height-12: 16px;
+  --font-size-20: 20px;
   --font-size-16: 16px;
   --font-size-14: 14px;
   --font-size-12: 12px;
@@ -369,6 +371,11 @@ $chat-input-inner-padding-handhelds: .25rem;
 @import "partials/popups/sponsored";
 @import "partials/popups/mute";
 @import "partials/popups/reactedList";
+@import "partials/popups/payment";
+@import "partials/popups/paymentCard";
+@import "partials/popups/paymentShippingMethods";
+@import "partials/popups/paymentVerification";
+@import "partials/popups/paymentCardConfirmation";
 
 @import "partials/pages/pages";
 @import "partials/pages/authCode";
@@ -548,6 +555,11 @@ input::-webkit-credentials-auto-fill-button {
   visibility: hidden;
   position: absolute;
   right: 0;
+}
+
+input:-webkit-autofill::first-line {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Ubuntu, Arial, sans-serif;
+  font-size: 16px
 }
 
 /* input:-webkit-autofill,
@@ -1255,6 +1267,16 @@ middle-ellipsis-element {
 //     height: 100%;
 //   }
 // }
+
+.media-container-cover {
+  position: relative;
+
+  .media-photo {
+    object-fit: cover;
+    width: 100%;
+    height: 100%;
+  }
+}
 
 .media-photo, 
 .media-video, 

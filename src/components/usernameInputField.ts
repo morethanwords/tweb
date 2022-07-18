@@ -37,7 +37,7 @@ export class UsernameInputField extends InputField {
 
       //console.log('userNameInput:', value);
       if(value === this.originalValue || !value.length) {
-        this.setState(InputState.Neutral, this.options.label);
+        this.setState(InputState.Neutral);
         this.options.onChange && this.options.onChange();
         return;
       } else if(!isUsernameValid(value)) { // does not check the last underscore

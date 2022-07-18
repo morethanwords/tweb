@@ -27,7 +27,7 @@ const MAX_LENGTH_SOLUTION = 200;
 export default class PopupCreatePoll extends PopupElement {
   private questionInputField: InputField;
   private questions: HTMLElement;
-  private scrollable: Scrollable;
+  protected scrollable: Scrollable;
   private tempId = 0;
 
   private anonymousCheckboxField: CheckboxField;
@@ -39,13 +39,11 @@ export default class PopupCreatePoll extends PopupElement {
   private optionInputFields: InputField[];
 
   constructor(private chat: Chat) {
-    super('popup-create-poll popup-new-media', null, {closable: true, withConfirm: 'Create', body: true});
+    super('popup-create-poll popup-new-media', {closable: true, withConfirm: 'Create', body: true, title: 'NewPoll'});
     this.construct();
   }
   
   private async construct() {
-    _i18n(this.title, 'NewPoll');
-
     this.questionInputField = new InputField({
       placeholder: 'AskAQuestion',
       label: 'AskAQuestion', 

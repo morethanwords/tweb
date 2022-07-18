@@ -120,3 +120,28 @@ export type SendMessageEmojiInteractionData = {
   a: {t: number, i: 1}[],
   v: 1
 };
+
+/**
+ * @link https://core.telegram.org/api/web-events#postmessage-api
+ */
+ export type TelegramWebviewEventMap = {
+  payment_form_submit: {
+    credentials: any,
+    title: string
+  },
+  web_app_open_tg_link: {
+    path_full: string // '/username'
+  }
+};
+
+export type TelegramWebviewSerializedEvent<T extends keyof TelegramWebviewEventMap> = {
+  eventType: T,
+  eventData: TelegramWebviewEventMap[T]
+};
+
+export type TelegramWebviewSerializedEvents = {
+  [type in keyof TelegramWebviewEventMap]: TelegramWebviewSerializedEvent<type>
+};
+
+export type TelegramWebviewEvent = TelegramWebviewSerializedEvents[keyof TelegramWebviewEventMap];
+export type TelegramWebviewEventCallback = (event: TelegramWebviewEvent) => void;

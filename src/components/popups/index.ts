@@ -4,11 +4,10 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import rootScope from "../../lib/rootScope";
 import ripple from "../ripple";
 import animationIntersector from "../animationIntersector";
 import appNavigationController, { NavigationItem } from "../appNavigationController";
-import { i18n, LangPackKey } from "../../lib/langPack";
+import { i18n, LangPackKey, _i18n } from "../../lib/langPack";
 import findUpClassName from "../../helpers/dom/findUpClassName";
 import blurActiveElement from "../../helpers/dom/blurActiveElement";
 import ListenerSetter from "../../helpers/listenerSetter";
@@ -20,6 +19,7 @@ import { addFullScreenListener, getFullScreenElement } from "../../helpers/dom/f
 import indexOfAndSplice from "../../helpers/array/indexOfAndSplice";
 import { AppManagers } from "../../lib/appManagers/managers";
 import overlayCounter from "../../helpers/overlayCounter";
+import Scrollable from "../scrollable";
 
 export type PopupButton = {
   text?: string,
@@ -37,7 +37,10 @@ export type PopupOptions = Partial<{
   withConfirm: LangPackKey | boolean, 
   body: boolean,
   confirmShortcutIsSendShortcut: boolean,
-  withoutOverlay: boolean
+  withoutOverlay: boolean,
+  scrollable: boolean,
+  buttons: Array<PopupButton>,
+  title: boolean | LangPackKey
 }>;
 
 export interface PopupElementConstructable<T extends PopupElement = any> {
@@ -79,22 +82,32 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
   protected listenerSetter: ListenerSetter;
 
   protected confirmShortcutIsSendShortcut: boolean;
-  protected btnConfirmOnEnter: HTMLButtonElement;
+  protected btnConfirmOnEnter: HTMLElement;
 
   protected withoutOverlay: boolean;
 
   protected managers: AppManagers;
 
-  constructor(className: string, protected buttons?: Array<PopupButton>, options: PopupOptions = {}) {
+  protected scrollable: Scrollable;
+  
+  protected buttons: Array<PopupButton>;
+
+  constructor(className: string, options: PopupOptions = {}) {
     super(false);
     this.element.classList.add('popup');
     this.element.className = 'popup' + (className ? ' ' + className : '');
     this.container.classList.add('popup-container', 'z-depth-1');
 
     this.header.classList.add('popup-header');
-    this.title.classList.add('popup-title');
 
-    this.header.append(this.title);
+    if(options.title) {
+      this.title.classList.add('popup-title');
+      if(typeof(options.title) === 'string') {
+        _i18n(this.title, options.title);
+      }
+      
+      this.header.append(this.title);
+    }
 
     this.listenerSetter = new ListenerSetter();
     this.managers = PopupElement.MANAGERS;
@@ -140,14 +153,25 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
       this.container.append(this.body);
     }
 
+    if(options.scrollable) {
+      const scrollable = this.scrollable = new Scrollable(this.body);
+      scrollable.onAdditionalScroll = () => {
+        scrollable.container.classList.toggle('scrolled-top', !scrollable.scrollTop);
+        scrollable.container.classList.toggle('scrolled-bottom', scrollable.isScrolledDown);
+      };
+
+      scrollable.container.classList.add('scrolled-top', 'scrolled-bottom', 'scrollable-y-bordered');
+
+      if(!this.body) {
+        this.container.insertBefore(scrollable.container, this.header.nextSibling);
+      }
+    }
+
     let btnConfirmOnEnter = this.btnConfirm;
+    const buttons = this.buttons = options.buttons;
     if(buttons?.length) {
       const buttonsDiv = this.buttonsEl = document.createElement('div');
       buttonsDiv.classList.add('popup-buttons');
-
-      if(buttons.length === 2) {
-        buttonsDiv.classList.add('popup-buttons-row');
-      }
       
       const buttonsElements = buttons.map((b) => {
         const button = document.createElement('button');
@@ -187,6 +211,12 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
     PopupElement.POPUPS.push(this);
   }
 
+  protected onContentUpdate() {
+    if(this.scrollable) {
+      this.scrollable.onAdditionalScroll();
+    }
+  }
+
   public show() {
     this.navigationItem = {
       type: 'popup',
@@ -201,22 +231,32 @@ export default class PopupElement<T extends EventListenerListeners = {}> extends
     void this.element.offsetWidth; // reflow
     this.element.classList.add('active');
 
+    this.onContentUpdate();
+
     if(!this.withoutOverlay) {
       overlayCounter.isOverlayActive = true;
       animationIntersector.checkAnimations(true);
     }
 
     // cannot add event instantly because keydown propagation will fire it
-    if(this.btnConfirmOnEnter) {
+    // if(this.btnConfirmOnEnter) {
       setTimeout(() => {
+        if(!this.element.classList.contains('active')) {
+          return;
+        }
+
         this.listenerSetter.add(document.body)('keydown', (e) => {
+          if(PopupElement.POPUPS[PopupElement.POPUPS.length - 1] !== this) {
+            return;
+          }
+          
           if(this.confirmShortcutIsSendShortcut ? isSendShortcutPressed(e) : e.key === 'Enter') {
             simulateClickEvent(this.btnConfirmOnEnter);
             cancelEvent(e);
           }
         });
       }, 0);
-    }
+    // }
   }
 
   public hide = () => {

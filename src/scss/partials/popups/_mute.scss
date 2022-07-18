@@ -6,19 +6,6 @@
 
 .popup-mute {
   .popup-container {
-    width: 16rem;
-  }
-
-  .popup-body {
-    margin: 0 -.625rem;
-  }
-
-  .sidebar-left-section {
-    margin-bottom: 0 !important;
-    padding: 0 !important;
-
-    &-content {
-      margin: 0 !important;
-    }
+    min-width: 16rem;
   }
 }

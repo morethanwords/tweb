@@ -6,13 +6,11 @@
 
 import PopupElement from ".";
 import type { AppStickersManager } from "../../lib/appManagers/appStickersManager";
-import Scrollable from "../scrollable";
 import { wrapSticker } from "../wrappers";
 import LazyLoadQueue from "../lazyLoadQueue";
 import { putPreloader } from "../putPreloader";
 import animationIntersector from "../animationIntersector";
 import appImManager from "../../lib/appManagers/appImManager";
-import { StickerSet } from "../../layer";
 import mediaSizes from "../../helpers/mediaSizes";
 import { i18n } from "../../lib/langPack";
 import Button from "../button";
@@ -28,17 +26,11 @@ const ANIMATION_GROUP = 'STICKERS-POPUP';
 export default class PopupStickers extends PopupElement {
   private stickersFooter: HTMLElement;
   private stickersDiv: HTMLElement;
-  private h6: HTMLElement;
-
-  private set: StickerSet.stickerSet;
 
   constructor(private stickerSetInput: Parameters<AppStickersManager['getStickerSet']>[0]) {
-    super('popup-stickers', null, {closable: true, overlayClosable: true, body: true});
+    super('popup-stickers', {closable: true, overlayClosable: true, body: true, scrollable: true, title: true});
 
-    this.h6 = document.createElement('h6');
-    this.h6.append(i18n('Loading'));
-
-    this.header.append(this.h6);
+    this.title.append(i18n('Loading'));
 
     this.addEventListener('close', () => {
       animationIntersector.setOnlyOnePlayableGroup('');
@@ -62,8 +54,7 @@ export default class PopupStickers extends PopupElement {
     const btn = Button('btn-primary btn-primary-transparent disable-hover', {noRipple: true, text: 'Loading'});
     this.stickersFooter.append(btn);
 
-    this.body.append(div);
-    const scrollable = new Scrollable(this.body);
+    this.scrollable.append(div);
     this.body.append(this.stickersFooter);
     
     // const editButton = document.createElement('button');
@@ -87,37 +78,29 @@ export default class PopupStickers extends PopupElement {
   };
 
   private loadStickerSet() {
-    return this.managers.appStickersManager.getStickerSet(this.stickerSetInput).then((set) => {
+    return this.managers.appStickersManager.getStickerSet(this.stickerSetInput).then(async(set) => {
       if(!set) {
         toastNew({langPackKey: 'StickerSet.DontExist'});
         this.hide();
         return;
       }
-      //console.log('PopupStickers loadStickerSet got set:', set);
-
-      this.set = set.set;
 
       animationIntersector.setOnlyOnePlayableGroup(ANIMATION_GROUP);
 
-      setInnerHTML(this.h6, wrapEmojiText(set.set.title));
-      this.stickersFooter.classList.toggle('add', !set.set.installed_date);
-
       let button: HTMLElement;
+      const s = i18n('Stickers', [set.set.count]);
       if(set.set.installed_date) {
         button = Button('btn-primary btn-primary-transparent danger', {noRipple: true});
-        button.append(i18n('RemoveStickersCount', [i18n('Stickers', [set.set.count])]));
+        button.append(i18n('RemoveStickersCount', [s]));
       } else {
         button = Button('btn-primary btn-color-primary', {noRipple: true});
-        button.append(i18n('AddStickersCount', [i18n('Stickers', [set.set.count])]));
+        button.append(i18n('AddStickersCount', [s]));
       }
-
-      this.stickersFooter.textContent = '';
-      this.stickersFooter.append(button);
 
       attachClickEvent(button, () => {
         const toggle = toggleDisability([button], true);
 
-        this.managers.appStickersManager.toggleStickerSet(this.set).then(() => {
+        this.managers.appStickersManager.toggleStickerSet(set.set).then(() => {
           this.hide();
         }).catch(() => {
           toggle();
@@ -125,12 +108,9 @@ export default class PopupStickers extends PopupElement {
       });
 
       const lazyLoadQueue = new LazyLoadQueue();
-      
-      this.stickersDiv.classList.remove('is-loading');
-      this.stickersDiv.innerHTML = '';
-      for(let doc of set.documents) {
+      const divs = await Promise.all(set.documents.map(async(doc) => {
         if(doc._ === 'documentEmpty') {
-          continue;
+          return;
         }
         
         const div = document.createElement('div');
@@ -138,7 +118,7 @@ export default class PopupStickers extends PopupElement {
 
         const size = mediaSizes.active.esgSticker.width;
         
-        wrapSticker({
+        await wrapSticker({
           doc, 
           div, 
           lazyLoadQueue, 
@@ -149,8 +129,19 @@ export default class PopupStickers extends PopupElement {
           height: size
         });
 
-        this.stickersDiv.append(div);
-      }
+        return div;
+      }));
+
+      setInnerHTML(this.title, wrapEmojiText(set.set.title));
+      this.stickersFooter.classList.toggle('add', !set.set.installed_date);
+      this.stickersFooter.textContent = '';
+      this.stickersFooter.append(button);
+
+      this.stickersDiv.classList.remove('is-loading');
+      this.stickersDiv.innerHTML = '';
+      this.stickersDiv.append(...divs.filter(Boolean));
+
+      this.scrollable.onAdditionalScroll();
     });
   }
 }

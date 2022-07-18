@@ -17,7 +17,7 @@ export default class AppTwoStepVerificationSetTab extends SliderSuperTab {
     this.setTitle('TwoStepVerificationPasswordSet');
 
     const section = new SettingSection({
-      caption: 'TwoStepVerificationPasswordSetInfo',
+      captionOld: 'TwoStepVerificationPasswordSetInfo',
       noDelimiter: true
     });
 

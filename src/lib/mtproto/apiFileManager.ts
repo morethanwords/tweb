@@ -275,6 +275,10 @@ export class ApiFileManager extends AppManager {
   }
 
   private getLimitPart(size: number): number {
+    if(!size) { // * sometimes size can be 0 (e.g. avatars, webDocuments)
+      return 512 * 1024;
+    }
+
     let bytes = 128 * 1024;
 
     while((size / bytes) > 2000) {

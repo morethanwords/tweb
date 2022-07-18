@@ -130,7 +130,7 @@ export default class AppTwoStepVerificationEnterPasswordTab extends SliderSuperT
           switch(err.type) {
             default:
               //btnContinue.innerText = err.type;
-              textEl.key = 'TwoStepAuth.InvalidPassword';
+              textEl.key = 'PASSWORD_HASH_INVALID';
               textEl.update();
               preloader.remove();
               passwordInputField.select();

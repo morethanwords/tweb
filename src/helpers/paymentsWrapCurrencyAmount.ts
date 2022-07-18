@@ -1,7 +1,7 @@
 import Currencies from "../config/currencies";
 
 // https://stackoverflow.com/a/34141813
-function number_format(number: any, decimals: any, dec_point: any, thousands_sep: any) {
+function number_format(number: any, decimals: any, dec_point: any, thousands_sep: any): string {
   // Strip all characters but numerical ones.
   number = (number + '').replace(/[^0-9+\-Ee.]/g, '');
   var n = !isFinite(+number) ? 0 : +number,
@@ -25,7 +25,7 @@ function number_format(number: any, decimals: any, dec_point: any, thousands_sep
   return s.join(dec);
 }
 
-export default function paymentsWrapCurrencyAmount($amount: number | string, $currency: string) {
+export default function paymentsWrapCurrencyAmount($amount: number | string, $currency: string, $skipSymbol?: boolean) {
   $amount = +$amount;
 
   const $currency_data = Currencies[$currency]; // вытащить из json
@@ -42,8 +42,11 @@ export default function paymentsWrapCurrencyAmount($amount: number | string, $cu
   }
 
   const $formatted = number_format($amount_exp, $decimals, $currency_data['decimal_sep'], $currency_data['thousands_sep']);
+  if($skipSymbol) {
+    return $formatted;
+  }
 
-  const $splitter = $currency_data['space_between'] ? "\xc2\xa0" : '';
+  const $splitter = $currency_data['space_between'] ? " " : '';
   let $formatted_intern: string;
   if($currency_data['symbol_left']) {
     $formatted_intern = $currency_data['symbol'] + $splitter + $formatted;

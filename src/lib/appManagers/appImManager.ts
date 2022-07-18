@@ -294,7 +294,7 @@ export class AppImManager extends EventListenerBase<{
 
     const onInstanceDeactivated = (reason: InstanceDeactivateReason) => {
       const isUpdated = reason === 'version';
-      const popup = new PopupElement('popup-instance-deactivated', undefined, {overlayClosable: true});
+      const popup = new PopupElement('popup-instance-deactivated', {overlayClosable: true});
       const c = document.createElement('div');
       c.classList.add('instance-deactivated-container');
       (popup as any).container.replaceWith(c);
