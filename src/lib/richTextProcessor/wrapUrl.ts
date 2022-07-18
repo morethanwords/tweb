@@ -18,6 +18,12 @@ export default function wrapUrl(url: string, unsafe?: number | boolean): {url: s
     url = 'tg://unsafe_url?url=' + encodeURIComponent(url);
   } else  */if((tgMeMatch = url.match(/^(?:https?:\/\/)?t(?:elegram)?\.me\/(.+)/))) {
     const fullPath = tgMeMatch[1];
+    const path = fullPath.split('/');
+
+    if(path[0] && path[0][0] === '$' && path[0].length > 1) {
+      onclick = 'invoice';
+      return {url, onclick};
+    }
 
     // second regexp is for phone numbers (t.me/+38050...)
     if(/^\W/.test(fullPath) && !PHONE_NUMBER_REG_EXP.test(fullPath)) {
@@ -25,11 +31,11 @@ export default function wrapUrl(url: string, unsafe?: number | boolean): {url: s
       return {url, onclick};
     }
 
-    const path = fullPath.split('/');
     switch(path[0]) {
       case 'joinchat':
       case 'addstickers':
       case 'voicechat':
+      case 'invoice':
         onclick = path[0];
         break;
 

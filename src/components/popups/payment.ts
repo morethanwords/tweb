@@ -23,7 +23,7 @@ import { formatPhoneNumber } from "../../helpers/formatPhoneNumber";
 import paymentsWrapCurrencyAmount from "../../helpers/paymentsWrapCurrencyAmount";
 import ScrollSaver from "../../helpers/scrollSaver";
 import tsNow from "../../helpers/tsNow";
-import { AccountTmpPassword, InputPaymentCredentials, LabeledPrice, Message, MessageMedia, PaymentRequestedInfo, PaymentSavedCredentials, PaymentsPaymentForm, PaymentsPaymentReceipt, PaymentsValidatedRequestedInfo, PostAddress, ShippingOption } from "../../layer";
+import { AccountTmpPassword, InputInvoice, InputPaymentCredentials, LabeledPrice, Message, MessageMedia, PaymentRequestedInfo, PaymentSavedCredentials, PaymentsPaymentForm, PaymentsPaymentReceipt, PaymentsValidatedRequestedInfo, PostAddress, ShippingOption } from "../../layer";
 import I18n, { i18n, LangPackKey, _i18n } from "../../lib/langPack";
 import { ApiError } from "../../lib/mtproto/apiManager";
 import wrapEmojiText from "../../lib/richTextProcessor/wrapEmojiText";
@@ -99,10 +99,13 @@ export function PaymentButton(options: {
 export type PaymentsCredentialsToken = {type: 'card', token?: string, id?: string};
 
 export default class PopupPayment extends PopupElement {
-  private currency: string;
   private tipButtonsMap: Map<number, HTMLElement>;
 
-  constructor(private message: Message.message) {
+  constructor(
+    private message: Message.message, 
+    private inputInvoice: InputInvoice, 
+    private paymentForm?: PaymentsPaymentForm | PaymentsPaymentReceipt
+  ) {
     super('popup-payment', {
       closable: true,
       overlayClosable: true,
@@ -139,22 +142,31 @@ export default class PopupPayment extends PopupElement {
         langPackKey: 'PaymentInfoHint',
         langPackArguments: [
           paymentsWrapCurrencyAmount(getTotalTotal(), currency),
-          wrapEmojiText(mediaInvoice.title)
+          wrapEmojiText(title)
         ]
       });
     };
 
-    this.listenerSetter.add(rootScope)('payment_sent', ({peerId, mid}) => {
-      if(this.message.peerId === peerId && this.message.mid === mid) {
-        onConfirmed();
-      }
-    });
+    let {paymentForm, message} = this;
 
-    const {message} = this;
-    const mediaInvoice = message.media as MessageMedia.messageMediaInvoice;
+    if(message) {
+      this.listenerSetter.add(rootScope)('payment_sent', ({peerId, mid}) => {
+        if(message.peerId === peerId && message.mid === mid) {
+          onConfirmed();
+        }
+      });
+    }
 
-    _i18n(this.title, mediaInvoice.receipt_msg_id ? 'PaymentReceipt' : 'PaymentCheckout');
-    if(mediaInvoice.pFlags.test) {
+    const mediaInvoice = message?.media as MessageMedia.messageMediaInvoice;
+    const isReceipt = mediaInvoice ? !!mediaInvoice.receipt_msg_id : paymentForm._ === 'payments.paymentReceipt';
+    const isTest = mediaInvoice ? mediaInvoice.pFlags.test : paymentForm.invoice.pFlags.test;
+    
+    const photo = mediaInvoice ? mediaInvoice.photo : paymentForm.photo;
+    const title = mediaInvoice ? mediaInvoice.title : paymentForm.title;
+    const description = mediaInvoice ? mediaInvoice.description : paymentForm.description;
+
+    _i18n(this.title, isReceipt ? 'PaymentReceipt' : 'PaymentCheckout');
+    if(isTest) {
       this.title.append(' (Test)');
     }
 
@@ -168,11 +180,11 @@ export default class PopupPayment extends PopupElement {
     details.classList.add(detailsClassName);
 
     let photoEl: HTMLElement;
-    if(mediaInvoice.photo) {
+    if(photo) {
       photoEl = document.createElement('div');
       photoEl.classList.add(detailsClassName + '-photo', 'media-container-cover');
       wrapPhoto({
-        photo: mediaInvoice.photo,
+        photo: photo,
         container: photoEl,
         boxWidth: 100,
         boxHeight: 100,
@@ -182,27 +194,27 @@ export default class PopupPayment extends PopupElement {
     }
 
     const linesClassName = detailsClassName + '-lines';
-    const lines = document.createElement('div');
-    lines.classList.add(linesClassName);
+    const linesEl = document.createElement('div');
+    linesEl.classList.add(linesClassName);
 
-    const title = document.createElement('div');
-    title.classList.add(linesClassName + '-title');
+    const titleEl = document.createElement('div');
+    titleEl.classList.add(linesClassName + '-title');
 
-    const description = document.createElement('div');
-    description.classList.add(linesClassName + '-description');
+    const descriptionEl = document.createElement('div');
+    descriptionEl.classList.add(linesClassName + '-description');
 
     const botName = document.createElement('div');
     botName.classList.add(linesClassName + '-bot-name');
 
-    lines.append(title, description, botName);
+    linesEl.append(titleEl, descriptionEl, botName);
 
-    setInnerHTML(title, wrapEmojiText(mediaInvoice.title));
-    setInnerHTML(description, wrapEmojiText(mediaInvoice.description));
+    setInnerHTML(titleEl, wrapEmojiText(title));
+    setInnerHTML(descriptionEl, wrapEmojiText(description));
 
     const peerTitle = new PeerTitle();
     botName.append(peerTitle.element);
     
-    details.append(lines);
+    details.append(linesEl);
     itemEl.append(details);
     this.scrollable.append(itemEl);
 
@@ -211,16 +223,17 @@ export default class PopupPayment extends PopupElement {
     const preloader = putPreloader(preloaderContainer, true);
     this.scrollable.container.append(preloaderContainer);
 
-    let paymentForm: PaymentsPaymentForm | PaymentsPaymentReceipt;
-    const isReceipt = !!mediaInvoice.receipt_msg_id;
-
-    if(isReceipt) paymentForm = await this.managers.appPaymentsManager.getPaymentReceipt(message.peerId, mediaInvoice.receipt_msg_id);
-    else paymentForm = await this.managers.appPaymentsManager.getPaymentForm(message.peerId, message.mid);
+    const inputInvoice = this.inputInvoice;
+    if(!paymentForm) {
+      if(isReceipt) paymentForm = await this.managers.appPaymentsManager.getPaymentReceipt(message.peerId, mediaInvoice.receipt_msg_id);
+      else paymentForm = await this.managers.appPaymentsManager.getPaymentForm(inputInvoice);
+      this.paymentForm = paymentForm;
+    }
     
     let savedInfo = (paymentForm as PaymentsPaymentForm).saved_info || (paymentForm as PaymentsPaymentReceipt).info;
     const savedCredentials = (paymentForm as PaymentsPaymentForm).saved_credentials;
     let [lastRequestedInfo, passwordState, providerPeerTitle] = await Promise.all([
-      !isReceipt && savedInfo && this.managers.appPaymentsManager.validateRequestedInfo(message.peerId, message.mid, savedInfo),
+      !isReceipt && savedInfo && this.managers.appPaymentsManager.validateRequestedInfo(inputInvoice, savedInfo),
       savedCredentials && this.managers.passwordManager.getState(),
       wrapPeerTitle({peerId: paymentForm.provider_id.toPeerId()})
     ]);
@@ -236,7 +249,7 @@ export default class PopupPayment extends PopupElement {
     };
 
     const {invoice} = paymentForm;
-    const currency = this.currency = invoice.currency;
+    const currency = invoice.currency;
 
     const makeLabel = () => {
       const labelEl = document.createElement('div');
@@ -326,7 +339,7 @@ export default class PopupPayment extends PopupElement {
       };
 
       const tipsLabel = makeLabel();
-      _i18n(tipsLabel.left, mediaInvoice.receipt_msg_id ? 'PaymentTip' : 'PaymentTipOptional');
+      _i18n(tipsLabel.left, isReceipt ? 'PaymentTip' : 'PaymentTipOptional');
       const input = document.createElement('input');
       input.type = 'tel';
       // const input: HTMLElement = document.createElement('div');
@@ -555,7 +568,7 @@ export default class PopupPayment extends PopupElement {
 
     if(!isReceipt) {
       onShippingAddressClick = (focus) => {
-        new PopupPaymentShipping(paymentForm as PaymentsPaymentForm, message, focus).addEventListener('finish', ({shippingAddress, requestedInfo}) => {
+        new PopupPaymentShipping(paymentForm as PaymentsPaymentForm, inputInvoice, focus).addEventListener('finish', ({shippingAddress, requestedInfo}) => {
           lastRequestedInfo = requestedInfo;
           savedInfo = (paymentForm as PaymentsPaymentForm).saved_info = shippingAddress;
           setShippingInfo(shippingAddress);
@@ -721,8 +734,7 @@ export default class PopupPayment extends PopupElement {
 
         try {
           const paymentResult = await this.managers.appPaymentsManager.sendPaymentForm(
-            message.peerId, 
-            message.mid, 
+            inputInvoice, 
             (paymentForm as PaymentsPaymentForm).form_id, 
             lastRequestedInfo?.id, 
             lastShippingOption?.id, 

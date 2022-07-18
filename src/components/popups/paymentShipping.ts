@@ -8,7 +8,7 @@ import PopupElement from ".";
 import { attachClickEvent } from "../../helpers/dom/clickEvent";
 import placeCaretAtEnd from "../../helpers/dom/placeCaretAtEnd";
 import toggleDisability from "../../helpers/dom/toggleDisability";
-import { Message, PaymentRequestedInfo, PaymentsPaymentForm, PaymentsValidatedRequestedInfo } from "../../layer";
+import { InputInvoice, Message, PaymentRequestedInfo, PaymentsPaymentForm, PaymentsValidatedRequestedInfo } from "../../layer";
 import getServerMessageId from "../../lib/appManagers/utils/messageId/getServerMessageId";
 import { ApiError } from "../../lib/mtproto/apiManager";
 import matchEmail from "../../lib/richTextProcessor/matchEmail";
@@ -31,7 +31,7 @@ export default class PopupPaymentShipping extends PopupElement<{
 }> {
   constructor(
     private paymentForm: PaymentsPaymentForm, 
-    private message: Message.message,
+    private inputInvoice: InputInvoice,
     private focus?: ShippingFocusField
   ) {
     super('popup-payment popup-payment-shipping', {
@@ -143,7 +143,7 @@ export default class PopupPaymentShipping extends PopupElement<{
         };
   
         try {
-          const requestedInfo = await this.managers.appPaymentsManager.validateRequestedInfo(this.message.peerId, this.message.mid, data, saveCheckboxField?.checked);
+          const requestedInfo = await this.managers.appPaymentsManager.validateRequestedInfo(this.inputInvoice, data, saveCheckboxField?.checked);
     
           this.dispatchEvent('finish', {
             shippingAddress: data,

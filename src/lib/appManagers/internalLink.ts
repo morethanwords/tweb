@@ -10,10 +10,11 @@ export enum INTERNAL_LINK_TYPE {
   STICKER_SET,
   JOIN_CHAT,
   VOICE_CHAT,
-  USER_PHONE_NUMBER
+  USER_PHONE_NUMBER,
+  INVOICE
 };
 
-export type InternalLink = InternalLink.InternalLinkMessage | InternalLink.InternalLinkPrivatePost | InternalLink.InternalLinkStickerSet | InternalLink.InternalLinkJoinChat | InternalLink.InternalLinkVoiceChat | InternalLink.InternalLinkUserPhoneNumber;
+export type InternalLink = InternalLink.InternalLinkMessage | InternalLink.InternalLinkPrivatePost | InternalLink.InternalLinkStickerSet | InternalLink.InternalLinkJoinChat | InternalLink.InternalLinkVoiceChat | InternalLink.InternalLinkUserPhoneNumber | InternalLink.InternalLinkInvoice;
 
 export namespace InternalLink {
   export interface InternalLinkMessage {
@@ -56,6 +57,11 @@ export namespace InternalLink {
     _: INTERNAL_LINK_TYPE.USER_PHONE_NUMBER,
     phone: string
   }
+
+  export interface InternalLinkInvoice {
+    _: INTERNAL_LINK_TYPE.INVOICE,
+    slug: string
+  }
 }
 
 export type InternalLinkTypeMap = {
@@ -64,5 +70,6 @@ export type InternalLinkTypeMap = {
   [INTERNAL_LINK_TYPE.STICKER_SET]: InternalLink.InternalLinkStickerSet,
   [INTERNAL_LINK_TYPE.JOIN_CHAT]: InternalLink.InternalLinkJoinChat,
   [INTERNAL_LINK_TYPE.VOICE_CHAT]: InternalLink.InternalLinkVoiceChat,
-  [INTERNAL_LINK_TYPE.USER_PHONE_NUMBER]: InternalLink.InternalLinkUserPhoneNumber
+  [INTERNAL_LINK_TYPE.USER_PHONE_NUMBER]: InternalLink.InternalLinkUserPhoneNumber,
+  [INTERNAL_LINK_TYPE.INVOICE]: InternalLink.InternalLinkInvoice
 };

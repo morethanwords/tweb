@@ -24,7 +24,7 @@ import { MOUNT_CLASS_TO } from '../../config/debug';
 import appNavigationController from '../../components/appNavigationController';
 import AppPrivateSearchTab from '../../components/sidebarRight/tabs/search';
 import I18n, { i18n, join, LangPackKey } from '../langPack';
-import { ChatFull, ChatInvite, ChatParticipant, ChatParticipants, SendMessageAction } from '../../layer';
+import { ChatFull, ChatInvite, ChatParticipant, ChatParticipants, Message, SendMessageAction } from '../../layer';
 import { hslaStringToHex } from '../../helpers/color';
 import PeerTitle from '../../components/peerTitle';
 import PopupPeer from '../../components/popups/peer';
@@ -89,6 +89,7 @@ import getFilesFromEvent from '../../helpers/files/getFilesFromEvent';
 import apiManagerProxy from '../mtproto/mtprotoworker';
 import wrapPeerTitle from '../../components/wrappers/peerTitle';
 import appRuntimeManager from './appRuntimeManager';
+import PopupPayment from '../../components/popups/payment';
 
 export const CHAT_ANIMATION_GROUP = 'chat';
 
@@ -486,6 +487,20 @@ export class AppImManager extends EventListenerBase<{
       }
     });
 
+    // * t.me/invoice/asdasdad
+    // * t.me/$asdasdad
+    this.addAnchorListener<{pathnameParams: ['invoice', string] | string}>({
+      name: 'invoice',
+      callback: ({pathnameParams}) => {
+        const link: InternalLink = {
+          _: INTERNAL_LINK_TYPE.INVOICE,
+          slug: pathnameParams.length > 1 ? pathnameParams[1] : pathnameParams[0].slice(1)
+        };
+
+        this.processInternalLink(link);
+      }
+    });
+
     // Support old t.me/joinchat/asd and new t.me/+asd
     this.addAnchorListener<{pathnameParams: ['joinchat', string]}>({
       name: 'joinchat', 
@@ -615,6 +630,19 @@ export class AppImManager extends EventListenerBase<{
       protocol: 'tg',
       callback: ({uriParams}) => {
         const link = this.makeLink(INTERNAL_LINK_TYPE.STICKER_SET, uriParams);
+        this.processInternalLink(link);
+      }
+    });
+
+    this.addAnchorListener<{
+      uriParams: {
+        slug: string
+      }
+    }>({
+      name: 'invoice',
+      protocol: 'tg',
+      callback: ({uriParams}) => {
+        const link = this.makeLink(INTERNAL_LINK_TYPE.INVOICE, uriParams);
         this.processInternalLink(link);
       }
     });
@@ -841,6 +869,29 @@ export class AppImManager extends EventListenerBase<{
         break;
       }
 
+      case INTERNAL_LINK_TYPE.INVOICE: {
+        this.managers.appPaymentsManager.getInputInvoiceBySlug(link.slug).then((inputInvoice) => {
+          this.managers.appPaymentsManager.getPaymentForm(inputInvoice).then((paymentForm) => {
+            // const message: Message.message = {
+            //   _: 'message',
+            //   date: 0,
+            //   id: 0,
+            //   peerId: 0,
+            //   peer_id: undefined,
+            //   message: '',
+            //   media: {
+            //     _: 'messageMediaInvoice',
+            //     currency: paymentForm.invoice.currency,
+            //     description: paymentForm.description,
+
+            //   }
+            // };
+            new PopupPayment(undefined, inputInvoice, paymentForm);
+          });
+        });
+        break;
+      }
+
       default: {
         this.log.warn('Not supported internal link:', link);
         break;
@@ -858,7 +909,7 @@ export class AppImManager extends EventListenerBase<{
 
   private addAnchorListener<Params extends {pathnameParams?: any, uriParams?: any}>(options: {
     name: 'showMaskedAlert' | 'execBotCommand' | 'searchByHashtag' | 'addstickers' | 'im' |
-          'resolve' | 'privatepost' | 'addstickers' | 'voicechat' | 'joinchat' | 'join', 
+          'resolve' | 'privatepost' | 'addstickers' | 'voicechat' | 'joinchat' | 'join' | 'invoice', 
     protocol?: 'tg',
     callback: (params: Params, element?: HTMLAnchorElement) => boolean | any, 
     noPathnameParams?: boolean,

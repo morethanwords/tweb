@@ -4,15 +4,29 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import { InputPaymentCredentials, PaymentRequestedInfo, PaymentsPaymentForm } from "../../layer";
+import { InputInvoice, InputPaymentCredentials, PaymentRequestedInfo, PaymentsPaymentForm } from "../../layer";
 import { AppManager } from "./manager";
 import getServerMessageId from "./utils/messageId/getServerMessageId";
 
 export default class AppPaymentsManager extends AppManager {
-  public getPaymentForm(peerId: PeerId, mid: number) {
-    return this.apiManager.invokeApi('payments.getPaymentForm', {
+  public getInputInvoiceBySlug(slug: string): InputInvoice.inputInvoiceSlug {
+    return {
+      _: 'inputInvoiceSlug',
+      slug
+    };
+  }
+  
+  public getInputInvoiceByPeerId(peerId: PeerId, mid: number): InputInvoice.inputInvoiceMessage {
+    return {
+      _: 'inputInvoiceMessage',
       peer: this.appPeersManager.getInputPeerById(peerId),
       msg_id: getServerMessageId(mid)
+    };
+  }
+
+  public getPaymentForm(invoice: InputInvoice) {
+    return this.apiManager.invokeApi('payments.getPaymentForm', {
+      invoice
     }).then((paymentForm) => {
       this.appUsersManager.saveApiUsers(paymentForm.users);
       
@@ -31,18 +45,16 @@ export default class AppPaymentsManager extends AppManager {
     });
   }
 
-  public validateRequestedInfo(peerId: PeerId, mid: number, info: PaymentRequestedInfo, save?: boolean) {
+  public validateRequestedInfo(invoice: InputInvoice, info: PaymentRequestedInfo, save?: boolean) {
     return this.apiManager.invokeApi('payments.validateRequestedInfo', {
       save,
-      peer: this.appPeersManager.getInputPeerById(peerId),
-      msg_id: getServerMessageId(mid),
+      invoice,
       info
     });
   }
 
   public sendPaymentForm(
-    peerId: PeerId, 
-    mid: number,
+    invoice: InputInvoice,
     formId: PaymentsPaymentForm['form_id'],
     requestedInfoId: string,
     shippingOptionId: string,
@@ -51,8 +63,7 @@ export default class AppPaymentsManager extends AppManager {
   ) {
     return this.apiManager.invokeApi('payments.sendPaymentForm', {
       form_id: formId,
-      peer: this.appPeersManager.getInputPeerById(peerId),
-      msg_id: getServerMessageId(mid),
+      invoice,
       requested_info_id: requestedInfoId,
       shipping_option_id: shippingOptionId,
       credentials,

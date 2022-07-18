@@ -1486,7 +1486,10 @@ export default class ChatBubbles {
         return;
       }
 
-      new PopupPayment(message as Message.message);
+      new PopupPayment(
+        message as Message.message, 
+        await this.managers.appPaymentsManager.getInputInvoiceByPeerId(message.peerId, message.mid)
+      );
       return;
     }
 
