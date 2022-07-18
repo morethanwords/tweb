@@ -225,7 +225,7 @@ export default class PopupPayment extends PopupElement {
       wrapPeerTitle({peerId: paymentForm.provider_id.toPeerId()})
     ]);
 
-    console.log(paymentForm, lastRequestedInfo);
+    // console.log(paymentForm, lastRequestedInfo);
     
     await peerTitle.update({peerId: paymentForm.bot_id.toPeerId()});
     preloaderContainer.remove();
