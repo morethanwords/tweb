@@ -15,8 +15,13 @@ export default function setWorkerProxy() {
     }
   };
 
-  const workerProxy = new Proxy(Worker, workerHandler);
-  Worker = workerProxy;
+  [
+    Worker, 
+    typeof(SharedWorker) !== 'undefined' && SharedWorker
+  ].forEach((w) => {
+    if(!w) return;
+    window[w.name as any] = new Proxy(w, workerHandler);
+  });
 }
 
 setWorkerProxy();

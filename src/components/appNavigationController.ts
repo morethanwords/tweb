@@ -237,7 +237,7 @@ export class AppNavigationController {
   public replaceState() {
     this.debug && this.log.warn('replace');
 
-    const url = location.origin + location.pathname + this.overriddenHash;
+    const url = location.origin + location.pathname + location.search + this.overriddenHash;
     history.replaceState(this.id, '', url);
   }
 
