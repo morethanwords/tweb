@@ -22,7 +22,8 @@ export function createVerificationIframe(url: string, callback: TelegramWebviewE
   const iframe = document.createElement('iframe');
   // iframe.title = 'Complete Payment';
   iframe.allow = 'payment';
-  iframe.setAttribute('sandbox', 'allow-forms allow-scripts allow-same-origin allow-top-navigation allow-modals');
+  // iframe.setAttribute('sandbox', 'allow-forms allow-scripts allow-same-origin allow-top-navigation allow-modals');
+  iframe.setAttribute('sandbox', 'allow-forms allow-scripts allow-same-origin allow-modals');
   iframe.classList.add('payment-verification');
   iframe.src = url;
 
