@@ -4030,7 +4030,8 @@ export class AppMessagesManager extends AppManager {
     if(message._ === 'messageService' && message.action._ === 'messageActionPaymentSent') {
       this.rootScope.dispatchEvent('payment_sent', {
         peerId: message.reply_to.reply_to_peer_id ? getPeerId(message.reply_to.reply_to_peer_id) : message.peerId,
-        mid: message.reply_to_mid
+        mid: message.reply_to_mid,
+        receiptMessage: message
       });
     }
 

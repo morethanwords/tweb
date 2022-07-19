@@ -24,8 +24,7 @@ import { MOUNT_CLASS_TO } from '../../config/debug';
 import appNavigationController from '../../components/appNavigationController';
 import AppPrivateSearchTab from '../../components/sidebarRight/tabs/search';
 import I18n, { i18n, join, LangPackKey } from '../langPack';
-import { ChatFull, ChatInvite, ChatParticipant, ChatParticipants, SendMessageAction } from '../../layer';
-import { hslaStringToHex } from '../../helpers/color';
+import { ChatFull, ChatInvite, ChatParticipants, Message, MessageAction, MessageMedia, SendMessageAction } from '../../layer';
 import PeerTitle from '../../components/peerTitle';
 import PopupPeer from '../../components/popups/peer';
 import blurActiveElement from '../../helpers/dom/blurActiveElement';
@@ -87,8 +86,8 @@ import groupCallsController from '../calls/groupCallsController';
 import callsController from '../calls/callsController';
 import getFilesFromEvent from '../../helpers/files/getFilesFromEvent';
 import apiManagerProxy from '../mtproto/mtprotoworker';
-import wrapPeerTitle from '../../components/wrappers/peerTitle';
 import appRuntimeManager from './appRuntimeManager';
+import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount';
 
 export const CHAT_ANIMATION_GROUP = 'chat';
 
@@ -341,6 +340,22 @@ export class AppImManager extends EventListenerBase<{
       confirmationPopup({
         button: {langKey: 'OK', isCancel: true},
         description: wrapRichText(update.message)
+      });
+    });
+
+    rootScope.addEventListener('payment_sent', async({peerId, mid, receiptMessage}) => {
+      const message = await this.managers.appMessagesManager.getMessageByPeer(peerId, mid);
+      if(!message) {
+        return;
+      }
+
+      const action = receiptMessage.action as MessageAction.messageActionPaymentSent;
+      toastNew({
+        langPackKey: 'PaymentInfoHint',
+        langPackArguments: [
+          paymentsWrapCurrencyAmount(action.total_amount, action.currency),
+          wrapEmojiText(((message as Message.message).media as MessageMedia.messageMediaInvoice).title)
+        ]
       });
     });
     

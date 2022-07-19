@@ -136,17 +136,6 @@ export default class PopupPayment extends PopupElement {
       }
 
       this.hide();
-      showSuccessToast();
-    };
-
-    const showSuccessToast = () => {
-      toastNew({
-        langPackKey: 'PaymentInfoHint',
-        langPackArguments: [
-          paymentsWrapCurrencyAmount(getTotalTotal(), currency),
-          wrapEmojiText(mediaInvoice.title)
-        ]
-      });
     };
 
     this.listenerSetter.add(rootScope)('payment_sent', ({peerId, mid}) => {
