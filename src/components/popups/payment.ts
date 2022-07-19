@@ -618,7 +618,7 @@ export default class PopupPayment extends PopupElement {
       
       let lastShippingPricesElements: HTMLElement[];
       shippingMethodRow = createRow({
-        icon: 'car',
+        icon: 'shipping',
         titleLangKey: 'PaymentCheckoutShippingMethod',
         clickable: !isReceipt && (onShippingMethodClick = () => {
           new PopupPaymentShippingMethods(paymentForm as PaymentsPaymentForm, lastRequestedInfo, lastShippingOption).addEventListener('finish', (shippingOption) => {

@@ -4260,8 +4260,8 @@ export class AppMessagesManager extends AppManager {
       }
 
       releaseUnreadCount();
-      this.rootScope.dispatchEvent('dialogs_multiupdate', {[peerId]: dialog});
       this.dialogsStorage.setDialogToState(dialog);
+      this.rootScope.dispatchEvent('dialogs_multiupdate', {[peerId]: dialog});
     }
   };
 
@@ -4321,8 +4321,8 @@ export class AppMessagesManager extends AppManager {
       if(isTopMessage || (message as Message.message).grouped_id) {
         const updatedDialogs: {[peerId: PeerId]: Dialog} = {};
         updatedDialogs[peerId] = dialog;
-        this.rootScope.dispatchEvent('dialogs_multiupdate', updatedDialogs);
         this.dialogsStorage.setDialogToState(dialog);
+        this.rootScope.dispatchEvent('dialogs_multiupdate', updatedDialogs);
       }
     }
   };
