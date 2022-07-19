@@ -81,9 +81,16 @@ namespace I18n {
 
 	let cacheLangPackPromise: Promise<LangPackDifference>;
 	export let lastRequestedLangCode: string;
+  export let lastRequestedNormalizedLangCode: string;
 	export let lastAppliedLangCode: string;
 	export let requestedServerLanguage = false;
   export let timeFormat: State['settings']['timeFormat'];
+
+  function setLangCode(langCode: string) {
+    lastRequestedLangCode = langCode;
+    lastRequestedNormalizedLangCode = langCode.split('-')[0];
+  }
+
 	export function getCacheLangPack(): Promise<LangPackDifference> {
 		if(cacheLangPackPromise) return cacheLangPackPromise;
 		return cacheLangPackPromise = Promise.all([
@@ -99,7 +106,7 @@ namespace I18n {
 			} */
 			
 			if(!lastRequestedLangCode) {
-				lastRequestedLangCode = langPack.lang_code;
+        setLangCode(langPack.lang_code);
 			}
 			
 			applyLangPack(langPack);
@@ -150,7 +157,7 @@ namespace I18n {
 
 	export function loadLocalLangPack() {
 		const defaultCode = App.langPackCode;
-		lastRequestedLangCode = defaultCode;
+    setLangCode(defaultCode);
 		return Promise.all([
 			import('../lang'),
 			import('../langSign'),
@@ -173,15 +180,15 @@ namespace I18n {
 		});
 	}
 
-	export function loadLangPack(langCode: string) {
+	export function loadLangPack(langCode: string, web?: boolean) {
 		requestedServerLanguage = true;
     const managers = rootScope.managers;
 		return Promise.all([
 			managers.apiManager.invokeApiCacheable('langpack.getLangPack', {
 				lang_code: langCode,
-				lang_pack: App.langPack
+				lang_pack: web ? 'web' : App.langPack
 			}),
-			managers.apiManager.invokeApiCacheable('langpack.getLangPack', {
+			!web && managers.apiManager.invokeApiCacheable('langpack.getLangPack', {
 				lang_code: langCode,
 				lang_pack: 'android'
 			}),
@@ -225,20 +232,16 @@ namespace I18n {
 		return pushTo;
 	}
 
-	export function getLangPack(langCode: string) {
-		lastRequestedLangCode = langCode;
-		return loadLangPack(langCode).then(([langPack1, langPack2, localLangPack1, localLangPack2, countries, _]) => {
+	export function getLangPack(langCode: string, web?: boolean) {
+    setLangCode(langCode);
+		return loadLangPack(langCode, web).then(([langPack1, langPack2, localLangPack1, localLangPack2, countries, _]) => {
 			let strings: LangPackString[] = [];
 
 			[localLangPack1, localLangPack2].forEach((l) => {
 				formatLocalStrings(l.default as any, strings);
 			});
 
-			strings = strings.concat(langPack1.strings);
-
-			for(const string of langPack2.strings) {
-				strings.push(string);
-			}
+			strings = strings.concat(...[langPack1.strings, langPack2.strings].filter(Boolean));
 
 			langPack1.strings = strings;
 			langPack1.countries = countries;
@@ -266,15 +269,16 @@ namespace I18n {
 	})();
 	
 	export function applyLangPack(langPack: LangPackDifference) {
-		if(langPack.lang_code !== lastRequestedLangCode) {
+    const currentLangCode = lastRequestedLangCode;
+		if(langPack.lang_code !== currentLangCode) {
 			return;
 		}
 
 		try {
-			pluralRules = new Intl.PluralRules(langPack.lang_code);
+			pluralRules = new Intl.PluralRules(lastRequestedNormalizedLangCode);
 		} catch(err) {
 			console.error('pluralRules error', err);
-			pluralRules = new Intl.PluralRules(langPack.lang_code.split('-', 1)[0]);
+			pluralRules = new Intl.PluralRules(lastRequestedNormalizedLangCode.split('-', 1)[0]);
 		}
 
 		strings.clear();
@@ -299,9 +303,9 @@ namespace I18n {
 			});
 		}
 
-		if(lastAppliedLangCode !== langPack.lang_code) {
-			rootScope.dispatchEvent('language_change', langPack.lang_code);
-			lastAppliedLangCode = langPack.lang_code;
+		if(lastAppliedLangCode !== currentLangCode) {
+			rootScope.dispatchEvent('language_change', currentLangCode);
+			lastAppliedLangCode = currentLangCode;
       cachedDateTimeFormats.clear();
       updateAmPm();
 		}
@@ -500,10 +504,11 @@ namespace I18n {
 
   const cachedDateTimeFormats: Map<string, Intl.DateTimeFormat> = new Map();
   function getDateTimeFormat(options: Intl.DateTimeFormatOptions = {}) {
-    let json = JSON.stringify(options);
+    const json = JSON.stringify(options);
     let dateTimeFormat = cachedDateTimeFormats.get(json);
     if(!dateTimeFormat) {
-      cachedDateTimeFormats.set(json, dateTimeFormat = new Intl.DateTimeFormat(lastRequestedLangCode + '-u-hc-' + timeFormat, options));
+      dateTimeFormat = new Intl.DateTimeFormat(lastRequestedNormalizedLangCode + '-u-hc-' + timeFormat, options);
+      cachedDateTimeFormats.set(json, dateTimeFormat);
     }
 
     return dateTimeFormat;
