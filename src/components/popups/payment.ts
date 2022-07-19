@@ -761,6 +761,13 @@ export default class PopupPayment extends PopupElement {
             onConfirmed();
           } else {
             popupPaymentVerification = new PopupPaymentVerification(paymentResult.url);
+            popupPaymentVerification.addEventListener('finish', () => {
+              popupPaymentVerification = undefined;
+
+              // setTimeout(() => {
+                onConfirmed();
+              // }, 0);
+            });
             await new Promise<void>((resolve, reject) => {
               popupPaymentVerification.addEventListener('close', () => {
                 popupPaymentVerification = undefined;
@@ -772,11 +779,6 @@ export default class PopupPayment extends PopupElement {
                   reject(err);
                 }
               });
-            });
-
-            popupPaymentVerification.addEventListener('finish', () => {
-              popupPaymentVerification = undefined;
-              onConfirmed();
             });
           }
         } catch(err) {
