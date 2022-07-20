@@ -541,9 +541,9 @@ input, [contenteditable=true] {
   background-color: transparent;
 }
 
-[contenteditable] [style*="bold"] {
-  font-weight: var(--font-weight-bold) !important;
-}
+// [contenteditable] [style*="bold"] {
+//   font-weight: var(--font-weight-bold) !important;
+// }
 
 input, textarea {
 	-webkit-appearance: none;
