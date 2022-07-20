@@ -80,6 +80,7 @@ import noop from "../../helpers/noop";
 import DialogsPlaceholder from "../../helpers/dialogsPlaceholder";
 import pause from "../../helpers/schedulers/pause";
 import apiManagerProxy from "../mtproto/mtprotoworker";
+import filterAsync from "../../helpers/array/filterAsync";
 
 export const DIALOG_LIST_ELEMENT_TAG = 'A';
 
@@ -1287,10 +1288,12 @@ export class AppDialogsManager {
 
       this.loadContacts = () => {
         const pageCount = windowSize.height / 60 | 0;
-        const arr = contacts.splice(0, pageCount).filter(this.verifyPeerIdForContacts);
+        const promise = filterAsync(contacts.splice(0, pageCount), this.verifyPeerIdForContacts);
 
-        arr.forEach((peerId) => {
-          sortedUserList.add(peerId);
+        promise.then((arr) => {
+          arr.forEach((peerId) => {
+            sortedUserList.add(peerId);
+          });
         });
 
         if(!contacts.length) {
@@ -1300,12 +1303,12 @@ export class AppDialogsManager {
 
       this.loadContacts();
 
-      this.processContact = (peerId) => {
+      this.processContact = async(peerId) => {
         if(peerId.isAnyChat()) {
           return;
         }
 
-        const good = this.verifyPeerIdForContacts(peerId);
+        const good = await this.verifyPeerIdForContacts(peerId);
         const added = sortedUserList.has(peerId);
         if(!added && good) sortedUserList.add(peerId);
         else if(added && !good) sortedUserList.delete(peerId);

@@ -368,6 +368,11 @@ namespace I18n {
           a.target = '_blank';
 				} else {
           a = args[indexHolder.i++] as HTMLAnchorElement;
+          
+          if(a instanceof DocumentFragment) { // right after wrapRichText
+            a = a.firstChild as any;
+          }
+
           a.textContent = ''; // reset content
         }
 

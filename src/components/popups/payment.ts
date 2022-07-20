@@ -27,9 +27,11 @@ import { AccountTmpPassword, InputInvoice, InputPaymentCredentials, LabeledPrice
 import I18n, { i18n, LangPackKey, _i18n } from "../../lib/langPack";
 import { ApiError } from "../../lib/mtproto/apiManager";
 import wrapEmojiText from "../../lib/richTextProcessor/wrapEmojiText";
+import wrapRichText from "../../lib/richTextProcessor/wrapRichText";
 import rootScope from "../../lib/rootScope";
 import AvatarElement from "../avatar";
 import Button from "../button";
+import CheckboxField from "../checkboxField";
 import PeerTitle from "../peerTitle";
 import { putPreloader } from "../putPreloader";
 import Row from "../row";
@@ -240,16 +242,19 @@ export default class PopupPayment extends PopupElement {
 
     // console.log(paymentForm, lastRequestedInfo);
     
-    await peerTitle.update({peerId: paymentForm.bot_id.toPeerId()});
-    preloaderContainer.remove();
-    this.element.classList.remove('is-loading');
-
     const wrapAmount = (amount: string | number, skipSymbol?: boolean) => {
       return paymentsWrapCurrencyAmount(amount, currency, skipSymbol);
     };
 
     const {invoice} = paymentForm;
     const currency = invoice.currency;
+
+    const isRecurring = invoice.pFlags.recurring && !isReceipt;
+
+    await peerTitle.update({peerId: paymentForm.bot_id.toPeerId()});
+    const peerTitle2 = isRecurring ? await wrapPeerTitle({peerId: paymentForm.bot_id.toPeerId()}) : undefined;
+    preloaderContainer.remove();
+    this.element.classList.remove('is-loading');
 
     const makeLabel = () => {
       const labelEl = document.createElement('div');
@@ -669,9 +674,23 @@ export default class PopupPayment extends PopupElement {
       shippingEmailRow,
       shippingPhoneRow,
     ].filter(Boolean);
+
+    const acceptTermsCheckboxField = isRecurring && new CheckboxField({
+      text: 'Payments.Recurrent.Accept',
+      textArgs: [wrapRichText(invoice.recurring_terms_url), peerTitle2]
+    });
+
+    const acceptTermsRow = isRecurring && createRow({
+      checkboxField: acceptTermsCheckboxField,
+      noCheckboxSubtitle: true
+    });
+
+    const recurringElements = isRecurring ? [document.createElement('hr'), acceptTermsRow.container] : [];
+
     this.scrollable.append(...[
       document.createElement('hr'),
-      ...rows.map((row) => row.container)
+      ...rows.map((row) => row.container),
+      ...recurringElements
     ].filter(Boolean));
     
     ///
@@ -779,7 +798,11 @@ export default class PopupPayment extends PopupElement {
       });
     };
 
-    let payButton: HTMLElement;
+    const onChange = () => {
+      payButton.disabled = !!(acceptTermsCheckboxField && !acceptTermsCheckboxField.checked);
+    };
+
+    let payButton: HTMLButtonElement;
     if(isReceipt) {
       payButton = PaymentButton({
         onClick: () => this.hide(),
@@ -790,6 +813,11 @@ export default class PopupPayment extends PopupElement {
         onClick: onClick,
         textEl: payI18n
       });
+    }
+
+    onChange();
+    if(acceptTermsCheckboxField) {
+      acceptTermsCheckboxField.input.addEventListener('change', onChange);
     }
 
     this.body.append(this.btnConfirmOnEnter = payButton);

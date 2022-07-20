@@ -250,7 +250,9 @@ export default async function wrapMessageActionTextNewUnsafe(message: MyMessage,
       }
 
       case 'messageActionPaymentSent': {
-        langPackKey = 'PaymentSuccessfullyPaidNoItem';
+        const isRecurringInit = action.pFlags.recurring_init;
+        const isRecurringUsed = action.pFlags.recurring_used;
+        langPackKey = isRecurringUsed ? 'Chat.Service.PaymentSentRecurringUsedNoTitle' : (isRecurringInit ? 'Chat.Service.PaymentSentRecurringInitNoTitle' : 'Chat.Service.PaymentSent1NoTitle');
         const price = paymentsWrapCurrencyAmount(action.total_amount, action.currency);
         args = [price, getNameDivHTML(message.peerId, plain)];
 
@@ -263,7 +265,7 @@ export default async function wrapMessageActionTextNewUnsafe(message: MyMessage,
           if(!invoiceMessage) {
             managers.appMessagesManager.fetchMessageReplyTo(message);
           } else {
-            langPackKey = 'PaymentSuccessfullyPaid';
+            langPackKey = isRecurringUsed ? 'Chat.Service.PaymentSentRecurringUsed' : (isRecurringInit ? 'Chat.Service.PaymentSentRecurringInit' : 'Chat.Service.PaymentSent1');
             args.push(wrapLinkToMessage(invoiceMessage, plain));
           }
         }

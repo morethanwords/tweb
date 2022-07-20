@@ -36,6 +36,8 @@
 
   hr {
     display: block !important;
+    margin: .5rem 0 !important;
+    padding: 0 !important;
   }
 
   .input-field {
@@ -158,7 +160,7 @@
   &-prices {
     display: flex;
     flex-direction: column;
-    margin: 1rem .25rem;
+    margin: 1rem .25rem .5rem;
 
     &-price {
       color: var(--secondary-text-color);

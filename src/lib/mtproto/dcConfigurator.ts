@@ -65,7 +65,7 @@ export class DcConfigurator {
 
   /// #if MTPROTO_HAS_WS
   private transportSocket = (dcId: DcId, connectionType: ConnectionType, suffix: string, premium?: boolean) => {
-    const path = connectionType !== 'client' ? 'apiws' + (premium ? PREMIUM_SUFFIX : '') : ('apiws' + TEST_SUFFIX);
+    const path = connectionType !== 'client' ? 'apiws' + (premium ? PREMIUM_SUFFIX : TEST_SUFFIX) : ('apiws' + TEST_SUFFIX);
     const chosenServer = `wss://${App.suffix.toLowerCase()}ws${dcId}${suffix}.web.telegram.org/${path}`;
     const logSuffix = connectionType === 'upload' ? '-U' : connectionType === 'download' ? '-D' : '';
 
