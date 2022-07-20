@@ -19,6 +19,7 @@ import getPeerId from "./utils/peers/getPeerId";
 import getPhotoInput from "./utils/photos/getPhotoInput";
 import getParticipantPeerId from "./utils/chats/getParticipantPeerId";
 import ctx from "../../environment/ctx";
+import { ReferenceContext } from "../mtproto/referenceDatabase";
 
 export type UserTyping = Partial<{userId: UserId, action: SendMessageAction, timeout: number}>;
 
@@ -178,6 +179,13 @@ export class AppProfileManager extends AppManager {
         const peerId = id.toPeerId(false);
         if(userFull.profile_photo) {
           userFull.profile_photo = this.appPhotosManager.savePhoto(userFull.profile_photo, {type: 'profilePhoto', peerId});
+        }
+
+        const botInfo = userFull.bot_info;
+        if(botInfo) {
+          const referenceContext: ReferenceContext = {type: 'userFull', userId: id};
+          botInfo.description_document = this.appDocsManager.saveDoc(botInfo.description_document, referenceContext);
+          botInfo.description_photo = this.appPhotosManager.savePhoto(botInfo.description_photo, referenceContext);
         }
 
         this.appNotificationsManager.savePeerSettings({

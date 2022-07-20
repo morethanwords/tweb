@@ -3881,6 +3881,7 @@ export default class ChatBubbles {
                 group: CHAT_ANIMATION_GROUP,
                 loadPromises,
                 autoDownload: this.chat.autoDownload,
+                noInfo: message.mid < 0
               });
               //}
             } else {
@@ -4084,6 +4085,7 @@ export default class ChatBubbles {
                   useSearch: !(message as Message.message).pFlags.is_scheduled,
                   isScheduled: (message as Message.message).pFlags.is_scheduled
                 } : undefined,
+                noInfo: message.mid < 0
               });
             }
           } else {
@@ -5336,7 +5338,10 @@ export default class ChatBubbles {
       }
 
       const message = await this.generateLocalFirstMessage(false, (message) => {
-        message.message = userFull.bot_info.description;
+        const botInfo = userFull.bot_info;
+        message.message = botInfo.description;
+        if(botInfo.description_document) message.media = {_: 'messageMediaDocument', document: botInfo.description_document};
+        if(botInfo.description_photo) message.media = {_: 'messageMediaPhoto', photo: botInfo.description_photo};
       });
 
       if(!middleware()) {

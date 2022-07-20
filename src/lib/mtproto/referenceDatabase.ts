@@ -10,7 +10,7 @@ import bytesToHex from "../../helpers/bytes/bytesToHex";
 import deepEqual from "../../helpers/object/deepEqual";
 import { AppManager } from "../appManagers/manager";
 
-export type ReferenceContext = ReferenceContext.referenceContextProfilePhoto | ReferenceContext.referenceContextMessage | ReferenceContext.referenceContextEmojiesSounds | ReferenceContext.referenceContextReactions;
+export type ReferenceContext = ReferenceContext.referenceContextProfilePhoto | ReferenceContext.referenceContextMessage | ReferenceContext.referenceContextEmojiesSounds | ReferenceContext.referenceContextReactions | ReferenceContext.referenceContextUserFull;
 export namespace ReferenceContext {
   export type referenceContextProfilePhoto = {
     type: 'profilePhoto',
@@ -29,6 +29,11 @@ export namespace ReferenceContext {
 
   export type referenceContextReactions = {
     type: 'reactions'
+  };
+
+  export type referenceContextUserFull = {
+    type: 'userFull',
+    userId: UserId
   };
 }
 
@@ -136,6 +141,11 @@ export class ReferenceDatabase extends AppManager {
         promise = this.refreshEmojiesSoundsPromise || this.appStickersManager.getAnimatedEmojiSounds(true).then(() => {
           this.refreshEmojiesSoundsPromise = undefined;
         });
+        break;
+      }
+
+      case 'userFull': {
+        promise = Promise.resolve(this.appProfileManager.getProfile(context.userId, true));
         break;
       }
 

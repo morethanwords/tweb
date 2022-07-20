@@ -26,7 +26,7 @@ export class AppPhotosManager extends AppManager {
   } = {};
 
   public savePhoto(photo: Photo, context?: ReferenceContext) {
-    if(photo._ === 'photoEmpty') return undefined;
+    if(!photo || photo._ === 'photoEmpty') return;
 
     /* if(photo.id === TEST_FILE_REFERENCE) {
       console.warn('Testing FILE_REFERENCE_EXPIRED');

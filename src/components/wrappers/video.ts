@@ -68,7 +68,7 @@ export default async function wrapVideo({doc, container, message, boxWidth, boxH
   isOut?: boolean,
   middleware?: () => boolean,
   lazyLoadQueue?: LazyLoadQueue,
-  noInfo?: true,
+  noInfo?: boolean,
   noPlayButton?: boolean,
   group?: string,
   onlyPreview?: boolean,

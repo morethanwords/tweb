@@ -935,6 +935,10 @@ $bubble-beside-button-width: 38px;
       flex: 1 1 auto;
     }
 
+    .attachment {
+      pointer-events: none;
+    }
+
     .bubble-content-wrapper {
       max-width: 100%;
     }
