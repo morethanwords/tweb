@@ -388,7 +388,7 @@ video::-webkit-media-controls-enclosure {
   }
 
   &.is-focused .progress-line__filled:not(.progress-line__loaded):after {
-    transform: translateX(calc(var(--thumb-size) / 2)) scale(1.25);
+    transform: translateX(calc(var(--thumb-size) / 2)) scale(1.125);
   }
 
   &__loaded, &:before {
