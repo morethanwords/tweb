@@ -419,7 +419,7 @@ export default function wrapRichText(text: string, options: Partial<{
       (lastElement || fragment).append(element);
     }
 
-    while(nextEntity && nextEntity.offset < (endOffset - 1)) {
+    while(nextEntity && nextEntity.offset < endOffset) {
       ++nasty.i;
 
       (element || fragment).append(wrapRichText(nasty.text, {
