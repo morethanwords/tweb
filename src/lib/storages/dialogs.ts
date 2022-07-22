@@ -15,7 +15,7 @@ import tsNow from "../../helpers/tsNow";
 import SearchIndex from "../searchIndex";
 import { SliceEnd } from "../../helpers/slicedArray";
 import { MyDialogFilter } from "./filters";
-import { NULL_PEER_ID } from "../mtproto/mtproto_config";
+import { FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, NULL_PEER_ID, REAL_FOLDERS, REAL_FOLDER_ID } from "../mtproto/mtproto_config";
 import { NoneToVoidFunction } from "../../types";
 import ctx from "../../environment/ctx";
 import AppStorage from "../storage";
@@ -50,8 +50,7 @@ export type Folder = {
   dispatchUnreadTimeout?: number
 };
 
-export const GLOBAL_FOLDER_ID: LOCAL_FOLDER_ID = undefined;
-export type LOCAL_FOLDER_ID = 0 | 1;
+export const GLOBAL_FOLDER_ID: REAL_FOLDER_ID = undefined;
 
 // let spentTime = 0;
 export default class DialogsStorage extends AppManager {
@@ -159,9 +158,15 @@ export default class DialogsStorage extends AppManager {
       this.storage = storage;
       this.dialogs = this.storage.getCache();
 
-      this.pinnedOrders = state.pinnedOrders || {};
-      if(!this.pinnedOrders[0]) this.pinnedOrders[0] = [];
-      if(!this.pinnedOrders[1]) this.pinnedOrders[1] = [];
+      for(const folderId of REAL_FOLDERS) {
+        const order = state.pinnedOrders[folderId];
+        if(!order) {
+          continue;
+        }
+
+        const _order = this.pinnedOrders[folderId];
+        _order.splice(0, _order.length, ...order);
+      }
       
       if(dialogs.length) {
         AppStorage.freezeSaving<typeof DATABASE_STATE>(this.setDialogsFromState.bind(this, dialogs), ['chats', 'dialogs', 'messages', 'users']);
@@ -212,13 +217,13 @@ export default class DialogsStorage extends AppManager {
 
   public setDialogsLoaded(folderId: number, loaded: boolean) {
     if(folderId === GLOBAL_FOLDER_ID && loaded) {
-      this.allDialogsLoaded[0] = loaded;
-      this.allDialogsLoaded[1] = loaded;
+      this.allDialogsLoaded[FOLDER_ID_ALL] = loaded;
+      this.allDialogsLoaded[FOLDER_ID_ARCHIVE] = loaded;
     } else {
       this.allDialogsLoaded[folderId] = loaded;
     }
 
-    if(this.allDialogsLoaded[0] && this.allDialogsLoaded[1]) {
+    if(Array.from(REAL_FOLDERS).every((folderId) => this.allDialogsLoaded[folderId])) {
       this.allDialogsLoaded[GLOBAL_FOLDER_ID] = true;
     }
 
@@ -226,20 +231,23 @@ export default class DialogsStorage extends AppManager {
   }
 
   public clear = (init = false) => {
-    this.pinnedOrders = {
-      0: [],
-      1: []
-    };
-
     if(!init) {
       this.storage.clear();
 
-      this.setDialogsLoaded(0, false);
-      this.setDialogsLoaded(1, false);
+      this.setDialogsLoaded(FOLDER_ID_ALL, false);
+      this.setDialogsLoaded(FOLDER_ID_ARCHIVE, false);
       this.setDialogsLoaded(GLOBAL_FOLDER_ID, false);
+
+      for(const folderId of REAL_FOLDERS) {
+        this.resetPinnedOrder(folderId);
+      }
       this.savePinnedOrders();
     } else {
       this.allDialogsLoaded = {};
+      this.pinnedOrders = {};
+      for(const folderId of REAL_FOLDERS) {
+        this.pinnedOrders[folderId] = [];
+      }
     }
 
     this.folders = {};
@@ -270,7 +278,7 @@ export default class DialogsStorage extends AppManager {
   }
 
   public resetPinnedOrder(folderId: number) {
-    this.pinnedOrders[folderId] = [];
+    this.pinnedOrders[folderId].length = 0;
   }
 
   public getPinnedOrders(folderId: number) {
@@ -280,27 +288,28 @@ export default class DialogsStorage extends AppManager {
   public getOffsetDate(folderId: number): number {
     const offsetDate = this.dialogsOffsetDate[folderId] || 0;
     if(folderId === GLOBAL_FOLDER_ID && !offsetDate) { // make request not from beginning if we have loaded some dialogs
-      return Math.min(this.getOffsetDate(0), this.getOffsetDate(1));
+      return Math.min(...Array.from(REAL_FOLDERS).sort((a, b) => a - b));
     }
 
     return offsetDate;
   }
 
-  public getFolder(id: number) {
-    let folder = this.folders[id];
-    if(!folder) {
-      folder = this.folders[id] = {
-        dialogs: [], 
-        id, 
-        unreadMessagesCount: 0, 
-        unreadPeerIds: new Set(), 
-        unreadUnmutedPeerIds: new Set()
-      };
+  private generateFolder(id: number) {
+    const folder: Folder = {
+      dialogs: [], 
+      id, 
+      unreadMessagesCount: 0, 
+      unreadPeerIds: new Set(), 
+      unreadUnmutedPeerIds: new Set()
+    };
 
-      defineNotNumerableProperties(folder, ['dispatchUnreadTimeout']);
-    }
+    defineNotNumerableProperties(folder, ['dispatchUnreadTimeout']);
 
     return folder;
+  }
+
+  public getFolder(id: number) {
+    return this.folders[id] ??= this.generateFolder(id);
   }
 
   public getFolderDialogs(id: number, skipMigrated = true): Dialog[] {
@@ -331,9 +340,9 @@ export default class DialogsStorage extends AppManager {
   }
 
   public getDialogIndexKeyByFilterId(filterId: number) {
-    if(filterId <= 1) return getDialogIndexKey(filterId as LOCAL_FOLDER_ID);
+    if(REAL_FOLDERS.has(filterId)) return getDialogIndexKey(filterId as REAL_FOLDER_ID);
     const filter = this.filtersStorage.getFilter(filterId);
-    return getDialogIndexKey(filter.orderIndex);
+    return getDialogIndexKey(filter.localId);
   }
   
   public isPeerUnmuted(peerId: PeerId) {
@@ -346,18 +355,19 @@ export default class DialogsStorage extends AppManager {
   }
 
   public getCachedDialogs(skipMigrated?: boolean) {
-    return this.getFolderDialogs(0, skipMigrated).concat(this.getFolderDialogs(1, skipMigrated));
+    const arrays = Array.from(REAL_FOLDERS).map((folderId) => this.getFolderDialogs(folderId, skipMigrated));
+    return [].concat(...arrays) as typeof arrays[0];
   }
 
   private setDialogIndexInFilter(dialog: Dialog, indexKey: ReturnType<typeof getDialogIndexKey>, filter: MyDialogFilter) {
     let index: number;
 
-    /* if(filter.id <= 1) {
-      index = getDialogIndex(dialog, getDialogIndexKey(filter.id));
-    } else  */if(this.filtersStorage.testDialogForFilter(dialog, filter)) {
+    if(REAL_FOLDERS.has(filter.id)) {
+      index = getDialogIndex(dialog, indexKey);
+    } else if(this.filtersStorage.testDialogForFilter(dialog, filter)) {
       const pinnedIndex = filter.pinnedPeerIds.indexOf(dialog.peerId);
       if(pinnedIndex !== -1) {
-        index = this.generateDialogIndex(this.generateDialogPinnedDateByIndex(filter.pinned_peers.length - 1 - pinnedIndex), true);
+        index = this.generateDialogIndex(this.generateDialogPinnedDateByIndex(filter.pinnedPeerIds.length - 1 - pinnedIndex), true);
       } else if(dialog.pFlags?.pinned) {
         index = this.generateIndexForDialog(dialog, true);
       } else {
@@ -376,7 +386,7 @@ export default class DialogsStorage extends AppManager {
     const folders: Dialog[][] = [];
 
     if(folderId === undefined) {
-      folders.push(this.getFolder(0).dialogs, this.getFolder(1).dialogs);
+      folders.push(...Array.from(REAL_FOLDERS).map((folderId) => this.getFolder(folderId).dialogs));
     } else {
       folders.push(this.getFolderDialogs(folderId, false));
     }
@@ -533,6 +543,10 @@ export default class DialogsStorage extends AppManager {
   }
 
   public generateIndexForDialog(dialog: Dialog, justReturn = false, message?: MyMessage) {
+    // if(!justReturn) {
+    //   return;
+    // }
+    
     let topDate = 0, isPinned: boolean;
     if(dialog.pFlags.pinned && !justReturn) {
       topDate = this.generateDialogPinnedDate(dialog);
@@ -577,14 +591,14 @@ export default class DialogsStorage extends AppManager {
   public generateDialogPinnedDate(dialog: Dialog) {
     const order = this.pinnedOrders[dialog.folder_id];
 
-    const foundIndex = order.indexOf(dialog.peerId);
-    let pinnedIndex = foundIndex;
-    if(foundIndex === -1) {
-      pinnedIndex = order.push(dialog.peerId) - 1;
+    let pinnedIndex = order.indexOf(dialog.peerId);
+    if(pinnedIndex === -1) {
+      order.unshift(dialog.peerId);
+      pinnedIndex = 0;
       this.savePinnedOrders();
     }
 
-    return this.generateDialogPinnedDateByIndex(pinnedIndex);
+    return this.generateDialogPinnedDateByIndex(order.length - 1 - pinnedIndex);
   }
 
   /* public generateDialog(peerId: PeerId) {
@@ -658,11 +672,11 @@ export default class DialogsStorage extends AppManager {
 
   public pushDialog(dialog: Dialog, offsetDate?: number, ignoreOffsetDate?: boolean, saveGlobalOffset?: boolean) {
     const {folder_id, peerId} = dialog;
-    const dialogs = this.getFolderDialogs(folder_id, false);
-    const pos = dialogs.findIndex((d) => d.peerId === peerId);
-    if(pos !== -1) {
-      dialogs.splice(pos, 1);
-    }
+    // const dialogs = this.getFolderDialogs(folder_id, false);
+    // const pos = dialogs.findIndex((d) => d.peerId === peerId);
+    // if(pos !== -1) {
+    //   dialogs.splice(pos, 1);
+    // }
     
     //if(!this.dialogs[peerId]) {
       this.dialogs[peerId] = dialog;
@@ -696,12 +710,12 @@ export default class DialogsStorage extends AppManager {
       }
     }
 
-    if(pos === -1) {
-      this.prepareFolderUnreadCountModifyingByDialog(folder_id, dialog, true);
-    }
+    // if(pos === -1) {
+      // this.prepareFolderUnreadCountModifyingByDialog(folder_id, dialog, true);
+    // }
 
-    const indexKey = getDialogIndexKey(folder_id);
-    /* const newPos =  */insertInDescendSortedArray(dialogs, dialog, (dialog) => getDialogIndex(dialog, indexKey), -1);
+    // const indexKey = getDialogIndexKey(folder_id);
+    // /* const newPos =  */insertInDescendSortedArray(dialogs, dialog, (dialog) => getDialogIndex(dialog, indexKey), -1);
     /* if(pos !== -1 && pos !== newPos) {
       rootScope.dispatchEvent('dialog_order', {dialog, pos: newPos});
     } */
@@ -823,7 +837,7 @@ export default class DialogsStorage extends AppManager {
   /**
    * Won't save migrated from peer, forbidden peers, left and kicked
    */
-  public saveDialog(dialog: Dialog, folderId = dialog.folder_id ?? 0, ignoreOffsetDate?: boolean, saveGlobalOffset?: boolean) {
+  public saveDialog(dialog: Dialog, folderId = dialog.folder_id ?? FOLDER_ID_ALL, ignoreOffsetDate?: boolean, saveGlobalOffset?: boolean) {
     const peerId = getPeerId(dialog.peer);
     if(!peerId) {
       console.error('saveConversation no peerId???', dialog, folderId);
@@ -914,6 +928,10 @@ export default class DialogsStorage extends AppManager {
     dialog.peerId = peerId;
     // dialog.indexes ??= {} as any;
 
+    // if(dialog.peerId === -) {
+    //   debugger;
+    // }
+
     // Because we saved message without dialog present
     if(message && message.pFlags.is_outgoing) {
       const isOut = message.pFlags.out;
@@ -983,7 +1001,7 @@ export default class DialogsStorage extends AppManager {
     isTopEnd: boolean,
     isEnd: boolean
   }> {
-    if(folderId > 1) {
+    if(!REAL_FOLDERS.has(folderId)) {
       const promises: Promise<any>[] = [];
 
       const fillContactsResult = this.appUsersManager.fillContacts();
@@ -1004,7 +1022,7 @@ export default class DialogsStorage extends AppManager {
     }
 
     // let's load only first pages by certain folderId. next pages will load without folder filtering
-    const realFolderId: LOCAL_FOLDER_ID = folderId > 1 || this.getOffsetDate(folderId) ? GLOBAL_FOLDER_ID : folderId as LOCAL_FOLDER_ID;
+    const realFolderId: REAL_FOLDER_ID = !REAL_FOLDERS.has(folderId) || this.getOffsetDate(folderId) ? GLOBAL_FOLDER_ID : folderId as REAL_FOLDER_ID;
     let curDialogStorage = this.getFolderDialogs(folderId, skipMigrated);
 
     const indexKey = this.getDialogIndexKeyByFilterId(folderId);
@@ -1098,7 +1116,7 @@ export default class DialogsStorage extends AppManager {
           this.handleDialogUnpinning(dialog, folder_id);
         }
 
-        dialog.folder_id = folder_id as LOCAL_FOLDER_ID;
+        dialog.folder_id = folder_id as REAL_FOLDER_ID;
         this.generateIndexForDialog(dialog);
         this.pushDialog(dialog); // need for simultaneously updatePinnedDialogs
       }
@@ -1108,7 +1126,7 @@ export default class DialogsStorage extends AppManager {
   };
 
   private onUpdateDialogPinned = (update: Update.updateDialogPinned) => {
-    const folderId = update.folder_id ?? 0;
+    const folderId = update.folder_id ?? FOLDER_ID_ALL;
     //this.log('updateDialogPinned', update);
     const peerId = getPeerId((update.peer as DialogPeer.dialogPeer).peer);
     const dialog = this.getDialogOnly(peerId);
@@ -1137,10 +1155,10 @@ export default class DialogsStorage extends AppManager {
   };
 
   private onUpdatePinnedDialogs = (update: Update.updatePinnedDialogs) => {
-    const folderId = update.folder_id ?? 0;
-        
+    const folderId = update.folder_id ?? FOLDER_ID_ALL;
+    
     const handleOrder = (order: PeerId[]) => {
-      this.pinnedOrders[folderId].length = 0;
+      this.resetPinnedOrder(folderId);
       order.reverse(); // index must be higher
       order.forEach((peerId) => {
         newPinned[peerId] = true;

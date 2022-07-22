@@ -45,7 +45,7 @@ import isInDOM from "../../helpers/dom/isInDOM";
 import { setSendingStatus } from "../../components/sendingStatus";
 import SortedList, { SortedElementBase } from "../../helpers/sortedList";
 import debounce from "../../helpers/schedulers/debounce";
-import { NULL_PEER_ID } from "../mtproto/mtproto_config";
+import { FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, NULL_PEER_ID, REAL_FOLDERS, REAL_FOLDER_ID } from "../mtproto/mtproto_config";
 import groupCallActiveIcon from "../../components/groupCallActiveIcon";
 import { Chat, Message, NotifyPeer } from "../../layer";
 import IS_GROUP_CALL_SUPPORTED from "../../environment/groupCallSupport";
@@ -81,6 +81,7 @@ import DialogsPlaceholder from "../../helpers/dialogsPlaceholder";
 import pause from "../../helpers/schedulers/pause";
 import apiManagerProxy from "../mtproto/mtprotoworker";
 import filterAsync from "../../helpers/array/filterAsync";
+import forEachReverse from "../../helpers/array/forEachReverse";
 
 export const DIALOG_LIST_ELEMENT_TAG = 'A';
 
@@ -315,11 +316,11 @@ export class AppDialogsManager {
       })//, 5000);
     });
 
-    this.setFilterId(0, 0);
+    this.setFilterId(FOLDER_ID_ALL, FOLDER_ID_ALL);
     this.addFilter({
-      id: this.filterId,
+      id: FOLDER_ID_ALL,
       title: '',
-      orderIndex: 0
+      localId: FOLDER_ID_ALL
     });
 
     const foldersScrollable = new ScrollableX(this.folders.menuScrollContainer);
@@ -329,7 +330,7 @@ export class AppDialogsManager {
         id += 1;
       } */
 
-      id = +tabContent.dataset.filterId || 0;
+      id = +tabContent.dataset.filterId || FOLDER_ID_ALL;
 
       if(!IS_MOBILE_SAFARI) {
         if(id) {
@@ -420,15 +421,15 @@ export class AppDialogsManager {
     this.scroll = this.scrollables[this.filterId];
 
     //selectTab(0);
-    (this.folders.menu.firstElementChild as HTMLElement).click();
+    // (this.folders.menu.firstElementChild as HTMLElement).click();
   }
 
   public get chatList() {
     return this.sortedList.list;
   }
 
-  public setFilterId(filterId: number, orderIndex: MyDialogFilter['orderIndex']) {
-    this.indexKey = getDialogIndexKey(orderIndex);
+  public setFilterId(filterId: number, localId: MyDialogFilter['localId']) {
+    this.indexKey = getDialogIndexKey(localId);
     this.filterId = filterId;
   }
 
@@ -552,6 +553,10 @@ export class AppDialogsManager {
     });
 
     rootScope.addEventListener('filter_update', async(filter) => {
+      if(REAL_FOLDERS.has(filter.id)) {
+        return;
+      }
+
       if(!this.filtersRendered[filter.id]) {
         this.addFilter(filter);
         return;
@@ -602,8 +607,8 @@ export class AppDialogsManager {
         const sortedList = this.sortedLists[filterId];
         sortedList.indexKey = indexKey;
 
-        positionElementByIndex(renderedFilter.menu, containerToAppend, filter.orderIndex);
-        positionElementByIndex(renderedFilter.container, this.folders.container, filter.orderIndex);
+        positionElementByIndex(renderedFilter.menu, containerToAppend, filter.localId);
+        positionElementByIndex(renderedFilter.container, this.folders.container, filter.localId);
       });
 
       this.indexKey = await this.managers.dialogsStorage.getDialogIndexKeyByFilterId(this.filterId);
@@ -642,6 +647,27 @@ export class AppDialogsManager {
   }
 
   private async onStateLoaded(state: State) {
+    const filtersArr = state.filtersArr;
+    const haveFilters = filtersArr.length > REAL_FOLDERS.size;
+    const filter = filtersArr.find((filter) => filter.id !== FOLDER_ID_ARCHIVE);
+
+    const addFilters = (filters: MyDialogFilter[]) => {
+      // forEachReverse(filters, (filter) => {
+      //   this.addFilter(filter);
+      // });
+      for(const filter of filters) {
+        this.addFilter(filter);
+      }
+    };
+
+    if(haveFilters) {
+      addFilters(filtersArr);
+    } else {
+      this.managers.filtersStorage.getDialogFilters().then(addFilters);
+    }
+    
+    (this.folders.menu.firstElementChild as HTMLElement).click();
+
     const loadDialogsPromise = this.onChatsScroll();
 
     if(!this.initedListeners) {
@@ -649,19 +675,8 @@ export class AppDialogsManager {
       this.initedListeners = true;
     }
 
-    const haveFilters = !!(state.filters && Object.keys(state.filters).length);
-    const getDialogsFiltersPromise = haveFilters ? Promise.resolve(Object.values(state.filters).sort((a, b) => a.orderIndex - b.orderIndex)) : this.managers.filtersStorage.getDialogFilters();
-    const renderFiltersPromise = getDialogsFiltersPromise.then((filters) => {
-      for(const filter of filters) {
-        this.addFilter(filter);
-      }
-    });
-
-    if(haveFilters) {
-      await renderFiltersPromise;
-      if(this.showFiltersPromise) {
-        await this.showFiltersPromise;
-      }
+    if(haveFilters && this.showFiltersPromise) {
+      await this.showFiltersPromise;
     }
 
     this.managers.appNotificationsManager.getNotifyPeerTypeSettings();
@@ -738,7 +753,7 @@ export class AppDialogsManager {
   };
 
   private async setFilterUnreadCount(filterId: number) {
-    if(filterId === 0) {
+    if(filterId === FOLDER_ID_ALL) {
       return;
     }
 
@@ -786,7 +801,7 @@ export class AppDialogsManager {
   public testDialogForFilter(dialog: Dialog) {
     if(
       !dialog || 
-      (this.filterId > 1 ? getDialogIndex(dialog, this.indexKey) === undefined : this.filterId !== dialog.folder_id)
+      (!REAL_FOLDERS.has(this.filterId) ? getDialogIndex(dialog, this.indexKey) === undefined : this.filterId !== dialog.folder_id)
       // (filter && !(await this.managers.filtersStorage.testDialogForFilter(dialog, filter)))
     ) {
       return false;
@@ -807,7 +822,7 @@ export class AppDialogsManager {
     const sortedDialogList = new SortedDialogList(
       this.managers,
       list, 
-      getDialogIndexKey(filter.orderIndex),
+      getDialogIndexKey(filter.localId),
       this.onListLengthChange
     );
 
@@ -820,16 +835,16 @@ export class AppDialogsManager {
     return scrollable;
   }
 
-  private addFilter(filter: Pick<DialogFilter, 'title' | 'id' | 'orderIndex'>) {
-    if(filter.id === 1) {
+  private addFilter(filter: Pick<DialogFilter, 'title' | 'id' | 'localId'>) {
+    if(filter.id === FOLDER_ID_ARCHIVE) {
       return;
     }
 
     const containerToAppend = this.folders.menu as HTMLElement;
     const renderedFilter = this.filtersRendered[filter.id];
     if(renderedFilter) {
-      positionElementByIndex(renderedFilter.menu, containerToAppend, filter.orderIndex);
-      positionElementByIndex(renderedFilter.container, this.folders.container, filter.orderIndex);
+      positionElementByIndex(renderedFilter.menu, containerToAppend, filter.localId);
+      positionElementByIndex(renderedFilter.container, this.folders.container, filter.localId);
       return;
     }
 
@@ -838,7 +853,7 @@ export class AppDialogsManager {
     const span = document.createElement('span');
     const titleSpan = document.createElement('span');
     titleSpan.classList.add('text-super');
-    if(filter.id === 0) titleSpan.append(this.allChatsIntlElement.element);
+    if(filter.id === FOLDER_ID_ALL) titleSpan.append(this.allChatsIntlElement.element);
     else setInnerHTML(titleSpan, wrapEmojiText(filter.title));
     const unreadSpan = document.createElement('div');
     unreadSpan.classList.add('badge', 'badge-20', 'badge-primary');
@@ -847,7 +862,9 @@ export class AppDialogsManager {
     ripple(menuTab);
     menuTab.append(span);
 
-    positionElementByIndex(menuTab, containerToAppend, filter.orderIndex);
+    menuTab.dataset.filterId = '' + filter.id;
+
+    positionElementByIndex(menuTab, containerToAppend, filter.localId);
     //containerToAppend.append(li);
 
     const ul = this.createChatList();
@@ -871,7 +888,7 @@ export class AppDialogsManager {
     
     const div = scrollable.container;
     //this.folders.container.append(div);
-    positionElementByIndex(scrollable.container, this.folders.container, filter.orderIndex);
+    positionElementByIndex(scrollable.container, this.folders.container, filter.localId);
 
     this.setListClickListener(ul, null, true);
 
@@ -969,7 +986,7 @@ export class AppDialogsManager {
           )
         ) {
           placeholder = this.placeholders[filterId] = new DialogsPlaceholder();
-          const getRectFrom = filterId === 1 ? this.chatsContainer : this.folders.container;
+          const getRectFrom = filterId === FOLDER_ID_ARCHIVE ? this.chatsContainer : this.folders.container;
           placeholder.attach({
             container: chatList.parentElement, 
             getRectFrom, 
@@ -1104,7 +1121,7 @@ export class AppDialogsManager {
   }
 
   private checkIfPlaceholderNeeded() {
-    if(this.filterId === 1) {
+    if(this.filterId === FOLDER_ID_ARCHIVE) {
       return;
     }
 
@@ -1239,7 +1256,7 @@ export class AppDialogsManager {
 
     this.checkIfPlaceholderNeeded();
 
-    if(this.filterId > 0) return;
+    if(this.filterId !== FOLDER_ID_ALL) return;
 
     const chatList = this.chatList;
     const count = chatList.childElementCount;

@@ -11,5 +11,5 @@ export default function getDialogIndex(
   dialog: Dialog.dialog, 
   indexKey: ReturnType<typeof getDialogIndexKey> = getDialogIndexKey(dialog.folder_id)
 ) {
-  return dialog && dialog[indexKey];
+  return dialog?.[indexKey];
 }

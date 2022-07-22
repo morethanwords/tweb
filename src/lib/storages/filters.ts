@@ -5,23 +5,16 @@
  */
 
 import type { DialogFilter, Update } from "../../layer";
-import { Modify } from "../../types";
 import type { Dialog } from '../appManagers/appMessagesManager';
 import forEachReverse from "../../helpers/array/forEachReverse";
 import copy from "../../helpers/object/copy";
-import safeReplaceObject from "../../helpers/object/safeReplaceObject";
 import getPeerId from "../appManagers/utils/peers/getPeerId";
 import { AppManager } from "../appManagers/manager";
+import findAndSplice from "../../helpers/array/findAndSplice";
 import assumeType from "../../helpers/assumeType";
+import { FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, REAL_FOLDERS, REAL_FOLDER_ID } from "../mtproto/mtproto_config";
 
-export type MyDialogFilter = Modify<DialogFilter.dialogFilter, {
-  /* pinned_peers: PeerId[],
-  include_peers: PeerId[],
-  exclude_peers: PeerId[], */
-  pinnedPeerIds: PeerId[],
-  includePeerIds: PeerId[],
-  excludePeerIds: PeerId[]
-}>;
+export type MyDialogFilter = DialogFilter.dialogFilter;
 
 const convertment = [
   ['pinned_peers', 'pinnedPeerIds'], 
@@ -29,29 +22,32 @@ const convertment = [
   ['include_peers', 'includePeerIds']
 ] as ['pinned_peers' | 'exclude_peers' | 'include_peers', 'pinnedPeerIds' | 'excludePeerIds' | 'includePeerIds'][];
 
-const START_ORDER_INDEX = 2;
+const START_LOCAL_ID = Math.max(...Array.from(REAL_FOLDERS)) + 1 as MyDialogFilter['localId'];
+const PREPENDED_FILTERS = REAL_FOLDERS.size;
 
-// const LOCAL_FILTER: MyDialogFilter = {
-//   _: 'dialogFilter',
-//   id: 0,
-//   title: '',
-//   exclude_peers: [],
-//   include_peers: [],
-//   pinned_peers: [],
-//   excludePeerIds: [],
-//   includePeerIds: [],
-//   pinnedPeerIds: [],
-//   pFlags: {}
-// };
+const LOCAL_FILTER: MyDialogFilter = {
+  _: 'dialogFilter',
+  pFlags: {},
+  flags: 0,
+  id: 0,
+  title: '',
+  exclude_peers: [],
+  include_peers: [],
+  pinned_peers: [],
+  excludePeerIds: [],
+  includePeerIds: [],
+  pinnedPeerIds: [],
+};
 
 export default class FiltersStorage extends AppManager {
   private filters: {[filterId: string]: MyDialogFilter};
-  private orderIndex: number;
+  private filtersArr: Array<MyDialogFilter>;
+  private localFilters: {[filterId: string]: MyDialogFilter};
+  private localId: number;
   private reloadedPeerIds: Set<PeerId>;
 
   protected after() {
     this.clear(true);
-    this.filters = {};
 
     this.apiUpdatesManager.addMultipleEventsListeners({
       updateDialogFilter: this.onUpdateDialogFilter,
@@ -97,28 +93,50 @@ export default class FiltersStorage extends AppManager {
     }); */
 
     return this.appStateManager.getState().then((state) => {
-      safeReplaceObject(this.filters, state.filters);
-
-      for(const filterId in this.filters) {
-        const filter = this.filters[filterId];
-        if(filter.hasOwnProperty('orderIndex') && filter.orderIndex >= this.orderIndex) {
-          this.orderIndex = filter.orderIndex + 1;
-        }
-
-        /* this.appMessagesManager.dialogsStorage.folders[+filterId] = {
-          dialogs: []
-        }; */
-      }
-
-      // delete this.filters[0];
-      // delete this.filters[1];
-      // this.getLocalFilter(0);
-      // this.getLocalFilter(1);
+      const filtersArr = this.prependFilters(state.filtersArr);
+      filtersArr.map((filter) => {
+        delete filter.localId;
+        this.saveDialogFilter(filter, false, true);
+      });
     });
   }
 
+  /**
+   * ! use it only with saving
+   */
+  private prependFilters(filters: DialogFilter[]) {
+    filters = filters.slice();
+
+    const allChatsFilter = this.localFilters[FOLDER_ID_ALL];
+    const archiveFilter = this.localFilters[FOLDER_ID_ARCHIVE];
+
+    const allChatsFilterIndex = filters.findIndex((filter) => filter._ === 'dialogFilterDefault' || filter.id === FOLDER_ID_ALL);
+    if(allChatsFilterIndex !== -1) filters[allChatsFilterIndex] = allChatsFilter;
+    else filters.unshift(allChatsFilter);
+
+    findAndSplice(filters, (filter) => (filter as MyDialogFilter).id === FOLDER_ID_ARCHIVE);
+    filters.splice(/* 1 */filters[0] === allChatsFilter ? 1 : 0, 0, archiveFilter);
+
+    return filters;
+  }
+
+  private generateLocalFilter(id: REAL_FOLDER_ID) {
+    const filter: MyDialogFilter = {...copy(LOCAL_FILTER), id};
+    if(id === FOLDER_ID_ALL) {
+      filter.pFlags.exclude_archived = true;
+    } else if(id === FOLDER_ID_ARCHIVE) {
+      filter.pFlags.exclude_unarchived = true;
+    }
+
+    if(REAL_FOLDERS.has(id)) {
+      filter.pinnedPeerIds = this.dialogsStorage.getPinnedOrders(id);
+    }
+
+    return filter;
+  }
+
   // private getLocalFilter(id: number) {
-  //   return this.filters[id] ??= {...copy(LOCAL_FILTER), id};
+  //   return this.filters[id] ??= this.generateLocalFilter(id);
   // }
 
   public clear = (init?: boolean) => {
@@ -128,10 +146,16 @@ export default class FiltersStorage extends AppManager {
       this.clearFilters();
     } else {
       this.filters = {};
+      this.filtersArr = [];
       this.reloadedPeerIds = new Set();
+      
+      this.localFilters = {};
+      for(const filterId of REAL_FOLDERS) {
+        this.localFilters[filterId] = this.generateLocalFilter(filterId as REAL_FOLDER_ID);
+      }
     }
 
-    this.orderIndex = START_ORDER_INDEX;
+    this.localId = START_LOCAL_ID;
   };
 
   private onUpdateDialogFilter = (update: Update.updateDialogFilter) => {
@@ -141,28 +165,33 @@ export default class FiltersStorage extends AppManager {
       //this.getDialogFilters(true);
       this.rootScope.dispatchEvent('filter_delete', this.filters[update.id]);
       delete this.filters[update.id];
+      findAndSplice(this.filtersArr, (filter) => (filter as DialogFilter.dialogFilter).id === update.id);
     }
 
-    this.appStateManager.pushToState('filters', this.filters);
+    this.pushToState();
   };
 
   private onUpdateDialogFilterOrder = (update: Update.updateDialogFilterOrder) => {
     //console.log('updateDialogFilterOrder', update);
 
-    this.orderIndex = START_ORDER_INDEX;
+    this.localId = START_LOCAL_ID;
     update.order.forEach((filterId, idx) => {
       const filter = this.filters[filterId];
-      delete filter.orderIndex;
-      this.setOrderIndex(filter);
+      delete filter.localId;
+      this.setLocalId(filter);
     });
 
     this.rootScope.dispatchEvent('filter_order', update.order);
 
-    this.appStateManager.pushToState('filters', this.filters);
+    this.pushToState();
   };
 
+  private pushToState() {
+    this.appStateManager.pushToState('filtersArr', this.filtersArr);
+  }
+
   public testDialogForFilter(dialog: Dialog, filter: MyDialogFilter) {
-    if(filter.id <= 1) {
+    if(REAL_FOLDERS.has(filter.id)) {
       return dialog.folder_id === filter.id;
     }
 
@@ -186,7 +215,7 @@ export default class FiltersStorage extends AppManager {
     const pFlags = filter.pFlags;
 
     // exclude_archived
-    if(pFlags.exclude_archived && dialog.folder_id === 1) {
+    if(pFlags.exclude_archived && dialog.folder_id === FOLDER_ID_ARCHIVE) {
       return false;
     }
 
@@ -247,6 +276,10 @@ export default class FiltersStorage extends AppManager {
   public clearFilters() {
     const filters = this.getFilters();
     for(const filterId in filters) { // delete filters
+      if(REAL_FOLDERS.has(+filterId)) {
+        continue;
+      }
+
       this.onUpdateDialogFilter({
         _: 'updateDialogFilter',
         id: +filterId,
@@ -311,13 +344,13 @@ export default class FiltersStorage extends AppManager {
           const f: MyDialogFilter[] = [];
           for(const filterId in this.filters) {
             const filter = this.filters[filterId];
-            ++filter.orderIndex;
+            ++filter.localId;
             f.push(filter);
           }
 
-          filter.orderIndex = START_ORDER_INDEX;
+          filter.localId = START_LOCAL_ID;
 
-          const order = f.sort((a, b) => a.orderIndex - b.orderIndex).map((filter) => filter.id);
+          const order = f.sort((a, b) => a.localId - b.localId).map((filter) => filter.id);
           this.onUpdateDialogFilterOrder({
             _: 'updateDialogFilterOrder',
             order
@@ -427,37 +460,37 @@ export default class FiltersStorage extends AppManager {
 
   public async getDialogFilters(overwrite = false): Promise<MyDialogFilter[]> {
     const keys = Object.keys(this.filters);
-    if(keys.length && !overwrite) {
-      return keys.map((filterId) => this.filters[filterId]).sort((a, b) => a.orderIndex - b.orderIndex);
+    if(keys.length > PREPENDED_FILTERS && !overwrite) {
+      return keys.map((filterId) => this.filters[filterId]).sort((a, b) => a.localId - b.localId);
     }
 
     const filters = await this.apiManager.invokeApiSingle('messages.getDialogFilters');
-    return filters.map((filter) => this.saveDialogFilter(filter, overwrite)).filter(Boolean);
+    return this.prependFilters(filters).map((filter) => this.saveDialogFilter(filter, overwrite)).filter(Boolean);
   }
 
   public getSuggestedDialogsFilters() {
     return this.apiManager.invokeApi('messages.getSuggestedDialogFilters');
   }
 
-  public saveDialogFilter(filter: DialogFilter, update = true) {
+  public saveDialogFilter(filter: DialogFilter, update = true, silent?: boolean) {
     // defineNotNumerableProperties(filter, ['includePeerIds', 'excludePeerIds', 'pinnedPeerIds']);
 
-    // if(filter._ === 'dialogFilterDefault') {
-    //   return;
-    //   // filter = this.getLocalFilter(0);
-    //   // delete filter.orderIndex;
-    // }
+    if(filter._ === 'dialogFilterDefault') {
+      filter = this.localFilters[FOLDER_ID_ALL];
+    }
 
     assumeType<MyDialogFilter>(filter);
-    convertment.forEach(([from, to]) => {
-      assumeType<MyDialogFilter>(filter);
-      filter[to] = filter[from].map((peer) => getPeerId(peer));
-    });
+    if(!REAL_FOLDERS.has(filter.id)) {
+      convertment.forEach(([from, to]) => {
+        assumeType<MyDialogFilter>(filter);
+        filter[to] = filter[from].map((peer) => getPeerId(peer));
+      });
 
-    this.filterIncludedPinnedPeers(filter);
+      this.filterIncludedPinnedPeers(filter);
     
-    filter.include_peers = filter.pinned_peers.concat(filter.include_peers);
-    filter.includePeerIds = filter.pinnedPeerIds.concat(filter.includePeerIds);
+      filter.include_peers = filter.pinned_peers.concat(filter.include_peers);
+      filter.includePeerIds = filter.pinnedPeerIds.concat(filter.includePeerIds);
+    }
 
     const oldFilter = this.filters[filter.id];
     if(oldFilter) {
@@ -466,26 +499,29 @@ export default class FiltersStorage extends AppManager {
       this.filters[filter.id] = filter;
     }
     
-    this.setOrderIndex(filter);
+    this.setLocalId(filter);
     
-    if(update) {
-      this.rootScope.dispatchEvent('filter_update', filter);
-    } else if(!oldFilter) {
-      this.rootScope.dispatchEvent('filter_new', filter);
+    if(!silent) {
+      if(update) {
+        this.rootScope.dispatchEvent('filter_update', filter);
+      } else if(!oldFilter) {
+        this.rootScope.dispatchEvent('filter_new', filter);
+      }
     }
 
     return filter;
   }
 
-  public setOrderIndex(filter: MyDialogFilter) {
-    if(filter.hasOwnProperty('orderIndex')) {
-      if(filter.orderIndex >= this.orderIndex) {
-        this.orderIndex = filter.orderIndex + 1;
+  private setLocalId(filter: MyDialogFilter) {
+    if(filter.localId !== undefined) {
+      if(filter.localId >= this.localId) {
+        this.localId = filter.localId + 1;
       }
     } else {
-      filter.orderIndex = this.orderIndex++ as MyDialogFilter['orderIndex'];
+      filter.localId = this.localId++ as MyDialogFilter['localId'];
+      findAndSplice(this.filtersArr, (_filter) => _filter.id === filter.id);
+      this.filtersArr.push(filter);
+      this.pushToState();
     }
-
-    this.appStateManager.pushToState('filters', this.filters);
   }
 }

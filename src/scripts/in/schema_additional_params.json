@@ -61,9 +61,16 @@
 }, {
   "predicate": "dialogFilter",
   "params": [
-    {"name": "orderIndex", "type": "0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 | 21"},
-    {"name": "peerId", "type": "PeerId"},
-    {"name": "folder_id", "type": "number"}
+    {"name": "localId", "type": "0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 | 21"},
+    {"name": "pinnedPeerIds", "type": "PeerId[]"},
+    {"name": "includePeerIds", "type": "PeerId[]"},
+    {"name": "excludePeerIds", "type": "PeerId[]"},
+    {"name": "exclude_unarchived", "type": "true"}
+  ]
+}, {
+  "predicate": "dialogFilterDefault",
+  "params": [
+    {"name": "localId", "type": "0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 | 21"}
   ]
 }, {
   "predicate": "message",

@@ -50,7 +50,8 @@ export type State = {
     pts: number,
     date: number
   }>,
-  filters: FiltersStorage['filters'],
+  // filters?: FiltersStorage['filters'], // ! DEPRECATED
+  filtersArr?: FiltersStorage['filtersArr'],
   maxSeenMsgId: number,
   stateCreatedTime: number,
   recentEmoji: string[],
@@ -151,7 +152,7 @@ export const STATE_INIT: State = {
   // contactsList: [],
   contactsListCachedTime: 0,
   updates: {},
-  filters: {},
+  filtersArr: [],
   maxSeenMsgId: 0,
   stateCreatedTime: Date.now(),
   recentEmoji: [],

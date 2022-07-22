@@ -8399,6 +8399,7 @@ export namespace DialogFilter {
 			exclude_muted?: true,
 			exclude_read?: true,
 			exclude_archived?: true,
+			exclude_unarchived?: true,
 		}>,
 		id: number,
 		title: string,
@@ -8406,13 +8407,15 @@ export namespace DialogFilter {
 		pinned_peers: Array<InputPeer>,
 		include_peers: Array<InputPeer>,
 		exclude_peers: Array<InputPeer>,
-		orderIndex?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 | 21,
-		peerId?: PeerId,
-		folder_id?: number
+		localId?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 | 21,
+		pinnedPeerIds?: PeerId[],
+		includePeerIds?: PeerId[],
+		excludePeerIds?: PeerId[]
 	};
 
 	export type dialogFilterDefault = {
-		_: 'dialogFilterDefault'
+		_: 'dialogFilterDefault',
+		localId?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20 | 21
 	};
 }
 

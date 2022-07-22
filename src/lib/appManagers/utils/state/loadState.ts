@@ -32,7 +32,7 @@ const REFRESH_KEYS: Array<keyof State> = [
   'contactsListCachedTime', 
   'stateCreatedTime',
   'maxSeenMsgId', 
-  'filters'
+  'filtersArr'
 ];
 
 //const REFRESH_KEYS_WEEK = ['dialogs', 'allDialogsLoaded', 'updates', 'pinnedOrders'] as any as Array<keyof State>;
@@ -300,7 +300,7 @@ async function loadStateInner() {
     // reset filters and dialogs if version is older
     if(compareVersion(state.version, '0.8.7') === -1 || state.build < 179) {
       state.allDialogsLoaded = copy(STATE_INIT.allDialogsLoaded);
-      state.filters = copy(STATE_INIT.filters);
+      // state.filters = copy(STATE_INIT.filters);
 
       resetStorages.add('dialogs');
     }

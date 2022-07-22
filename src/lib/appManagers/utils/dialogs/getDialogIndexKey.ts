@@ -6,8 +6,8 @@
 
 import type { DialogFilter } from "../../../../layer";
 
-export default function getDialogIndexKey(orderIndex?: DialogFilter.dialogFilter['orderIndex']) {
-  return `index_${orderIndex}` as const;
+export default function getDialogIndexKey(localId?: DialogFilter.dialogFilter['localId']) {
+  return `index_${localId}` as const;
   // return filterId !== undefined && filterId > 1 ? `filter_${filterId}` as const : 'main' as const;
   // const indexStr = filterId > 1 ? 
   //   `index_${filterId}` as const : 

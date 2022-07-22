@@ -18,14 +18,14 @@ import { ArgumentTypes, InvokeApiOptions } from "../../types";
 import { logger, LogTypes } from "../logger";
 import type { ApiFileManager } from '../mtproto/apiFileManager';
 import { ReferenceContext } from "../mtproto/referenceDatabase";
-import { GLOBAL_FOLDER_ID, LOCAL_FOLDER_ID } from "../storages/dialogs";
+import { GLOBAL_FOLDER_ID } from "../storages/dialogs";
 import { ChatRights } from "./appChatsManager";
 import { MyDocument } from "./appDocsManager";
 import { MyPhoto } from "./appPhotosManager";
 import { getFileNameByLocation } from "../../helpers/fileName";
 import DEBUG from "../../config/debug";
 import SlicedArray, { Slice, SliceEnd } from "../../helpers/slicedArray";
-import { MUTE_UNTIL, NULL_PEER_ID, REPLIES_HIDDEN_CHANNEL_ID, REPLIES_PEER_ID, SERVICE_PEER_ID } from "../mtproto/mtproto_config";
+import { FOLDER_ID_ALL, MUTE_UNTIL, NULL_PEER_ID, REAL_FOLDER_ID, REPLIES_HIDDEN_CHANNEL_ID, REPLIES_PEER_ID, SERVICE_PEER_ID } from "../mtproto/mtproto_config";
 import telegramMeWebManager from "../mtproto/telegramMeWebManager";
 import { getMiddleware } from "../../helpers/middleware";
 import assumeType from "../../helpers/assumeType";
@@ -1852,7 +1852,7 @@ export class AppMessagesManager extends AppManager {
   }
 
   // public lolSet = new Set();
-  public getTopMessages(limit: number, folderId: LOCAL_FOLDER_ID, offsetDate?: number) {
+  public getTopMessages(limit: number, folderId: REAL_FOLDER_ID, offsetDate?: number) {
     //const dialogs = this.dialogsStorage.getFolder(folderId);
     let offsetId = 0;
     let offsetPeerId: PeerId;
@@ -1913,7 +1913,7 @@ export class AppMessagesManager extends AppManager {
       let maxSeenIdIncremented = offsetDate ? true : false;
       let hasPrepend = false;
       const noIdsDialogs: {[peerId: PeerId]: Dialog} = {};
-      const setFolderId: LOCAL_FOLDER_ID = folderId === GLOBAL_FOLDER_ID ? 0 : folderId;
+      const setFolderId: REAL_FOLDER_ID = folderId === GLOBAL_FOLDER_ID ? FOLDER_ID_ALL : folderId;
       const saveGlobalOffset = folderId === GLOBAL_FOLDER_ID;
       forEachReverse((dialogsResult.dialogs as Dialog[]), (dialog) => {
         //const d = Object.assign({}, dialog);

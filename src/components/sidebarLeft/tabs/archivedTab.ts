@@ -5,12 +5,11 @@
  */
 
 import appDialogsManager from "../../../lib/appManagers/appDialogsManager";
-import type { LOCAL_FOLDER_ID } from "../../../lib/storages/dialogs";
-import type { MyDialogFilter } from "../../../lib/storages/filters";
 import { SliderSuperTab } from "../../slider";
+import { FOLDER_ID_ARCHIVE, REAL_FOLDER_ID } from "../../../lib/mtproto/mtproto_config";
 
 export default class AppArchivedTab extends SliderSuperTab {
-  private static filterId: LOCAL_FOLDER_ID = 1;
+  private static filterId: REAL_FOLDER_ID = FOLDER_ID_ARCHIVE;
   private wasFilterId: number;
 
   protected init() {
@@ -21,7 +20,12 @@ export default class AppArchivedTab extends SliderSuperTab {
 
     if(!appDialogsManager.sortedLists[AppArchivedTab.filterId]) {
       const chatList = appDialogsManager.createChatList();
-      appDialogsManager.generateScrollable(chatList, {id: AppArchivedTab.filterId, orderIndex: 1} as any as MyDialogFilter).container.append(chatList);
+      const scrollable = appDialogsManager.generateScrollable(chatList, {
+        title: undefined, 
+        id: AppArchivedTab.filterId, 
+        localId: FOLDER_ID_ARCHIVE
+      });
+      scrollable.container.append(chatList);
       appDialogsManager.setListClickListener(chatList, null, true);
       //appDialogsManager.setListClickListener(archivedChatList, null, true); // * to test peer changing
     }

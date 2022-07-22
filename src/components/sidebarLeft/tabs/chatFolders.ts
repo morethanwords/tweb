@@ -109,9 +109,9 @@ export default class AppChatFoldersTab extends SliderSuperTab {
 
     div = row.container;
 
-    if((filter as MyDialogFilter).hasOwnProperty('orderIndex')) {
+    if((filter as MyDialogFilter).localId !== undefined) {
        // ! header will be at 0 index
-      positionElementByIndex(div, div.parentElement || container, (filter as MyDialogFilter).orderIndex);
+      positionElementByIndex(div, div.parentElement || container, (filter as MyDialogFilter).localId);
     } else if(container) container.append(div);
     
     return div;
