@@ -88,6 +88,7 @@ import getFilesFromEvent from '../../helpers/files/getFilesFromEvent';
 import apiManagerProxy from '../mtproto/mtprotoworker';
 import appRuntimeManager from './appRuntimeManager';
 import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount';
+import findUpClassName from '../../helpers/dom/findUpClassName';
 
 export const CHAT_ANIMATION_GROUP = 'chat';
 
@@ -358,6 +359,39 @@ export class AppImManager extends EventListenerBase<{
         ]
       });
     });
+
+    (window as any).onSpoilerClick = (e: MouseEvent) => {
+      const spoiler = findUpClassName(e.target, 'spoiler');
+      const parentElement = findUpClassName(spoiler, 'message') || spoiler.parentElement;
+
+      const className = 'is-spoiler-visible';
+      const isVisible = parentElement.classList.contains(className);
+      if(!isVisible) {
+        cancelEvent(e);
+      }
+
+      const duration = 400 / 2;
+      const showDuration = 5000;
+      const useRafs = !isVisible ? 2 : 0;
+      if(useRafs) {
+        parentElement.classList.add('will-change');
+      }
+
+      const spoilerTimeout = parentElement.dataset.spoilerTimeout;
+      if(spoilerTimeout !== null) {
+        clearTimeout(+spoilerTimeout);
+        delete parentElement.dataset.spoilerTimeout;
+      }
+
+      SetTransition(parentElement, className, true, duration, () => {
+        parentElement.dataset.spoilerTimeout = '' + window.setTimeout(() => {
+          SetTransition(parentElement, className, false, duration, () => {
+            parentElement.classList.remove('will-change');
+            delete parentElement.dataset.spoilerTimeout;
+          });
+        }, showDuration);
+      }, useRafs);
+    };
     
     apiManagerProxy.addEventListener('notificationBuild', (options) => {
       if(this.chat.peerId === options.message.peerId && !idleController.isIdle) {
