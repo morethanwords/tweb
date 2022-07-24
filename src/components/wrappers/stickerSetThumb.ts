@@ -63,7 +63,10 @@ export default async function wrapStickerSetThumb({set, lazyLoadQueue, container
           return promise.then((blob) => {
             renderImageFromUrl(media, URL.createObjectURL(blob), () => {
               container.append(media);
-              animationIntersector.addAnimation(media as HTMLVideoElement, group);
+
+              if(set.pFlags.videos) {
+                animationIntersector.addAnimation(media as HTMLVideoElement, group);
+              }
             });
           });
         }
