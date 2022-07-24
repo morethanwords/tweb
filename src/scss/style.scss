@@ -968,13 +968,13 @@ img.emoji {
   width: 100%;
 	display: grid;
 	grid-template-columns: repeat(auto-fill, var(--esg-sticker-size)); // 64px
-	grid-column-gap: 1px;
+	// grid-column-gap: 1px;
 	justify-content: space-between;
 }
 
 .super-sticker {
   @include hover-background-effect() {
-    border-radius: 10px;
+    border-radius: $border-radius-medium;
   }
   
   /* &:nth-child(5n+5) {

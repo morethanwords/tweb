@@ -187,6 +187,10 @@ export class EmoticonsDropdown extends DropdownHover {
     return super.init();
   }
 
+  public getElement() {
+    return this.element;
+  }
+
   private onSelectTabClick = (id: number) => {
     if(this.tabId === id) {
       return;
@@ -248,11 +252,11 @@ export class EmoticonsDropdown extends DropdownHover {
       setActive(which);
 
       if(menuScroll) {
-        if(which < menu.childElementCount - 4) {
-          menuScroll.container.scrollLeft = (which - 3) * 47;
-        } else {
-          menuScroll.container.scrollLeft = which * 47;
-        }
+        menuScroll.scrollIntoViewNew({
+          element: menu.children[which] as HTMLElement,
+          position: 'center',
+          axis: 'x'
+        });
       }
     });
 

@@ -203,8 +203,8 @@ export default class InlineHelper extends AutocompleteHelper {
             } else if(media.type === 'sticker') {
               container.classList.add('super-sticker');
               this.superStickerRenderer.renderSticker(media, container, loadPromises);
-              if(media.sticker === 2) {
-                this.superStickerRenderer.observeAnimatedDiv(container);
+              if(media.animated) {
+                this.superStickerRenderer.observeAnimated(container);
               }
             }
           } else if(media) {

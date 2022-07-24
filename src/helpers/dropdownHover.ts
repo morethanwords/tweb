@@ -61,9 +61,8 @@ export default class DropdownHover extends EventListenerBase<{
   }
 
   private onMouseOut = (e: MouseEvent) => {
-    if(KEEP_OPEN) return;
+    if(KEEP_OPEN || !this.isActive()) return;
     clearTimeout(this.displayTimeout);
-    if(!this.isActive()) return;
 
     const toElement = (e as any).toElement as Element;
     if(toElement && findUpAsChild(toElement, this.element)) {

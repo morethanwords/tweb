@@ -11,6 +11,7 @@ import appDownloadManager from "../../lib/appManagers/appDownloadManager";
 import { AppManagers } from "../../lib/appManagers/managers";
 import lottieLoader from "../../lib/rlottie/lottieLoader";
 import rootScope from "../../lib/rootScope";
+import animationIntersector from "../animationIntersector";
 import LazyLoadQueue from "../lazyLoadQueue";
 import wrapSticker from "./sticker";
 
@@ -62,6 +63,7 @@ export default async function wrapStickerSetThumb({set, lazyLoadQueue, container
           return promise.then((blob) => {
             renderImageFromUrl(media, URL.createObjectURL(blob), () => {
               container.append(media);
+              animationIntersector.addAnimation(media as HTMLVideoElement, group);
             });
           });
         }
@@ -79,7 +81,9 @@ export default async function wrapStickerSetThumb({set, lazyLoadQueue, container
       div: container, 
       group: group,
       lazyLoadQueue,
-      managers
+      managers,
+      width,
+      height
     }); // kostil
   }
 }
