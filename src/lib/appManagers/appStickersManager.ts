@@ -72,6 +72,12 @@ export class AppStickersManager extends AppManager {
         const stickerSet = update.stickerset as MyMessagesStickerSet;
         this.saveStickerSet(stickerSet, stickerSet.set.id);
         this.rootScope.dispatchEvent('stickers_installed', stickerSet.set);
+      },
+
+      updateRecentStickers: () => {
+        this.getRecentStickers().then(({stickers}) => {
+          this.rootScope.dispatchEvent('stickers_recent', stickers as MyDocument[]);
+        });
       }
     });
   }
@@ -575,5 +581,10 @@ export class AppStickersManager extends AppManager {
         }
       });
     }
+  }
+
+  public clearRecentStickers() {
+    this.rootScope.dispatchEvent('stickers_recent', []);
+    return this.apiManager.invokeApi('messages.clearRecentStickers');
   }
 }

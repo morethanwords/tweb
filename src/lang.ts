@@ -750,6 +750,8 @@ const lang = {
   "Clear": "Clear",
   "Save": "Save",
   "PaymentCheckoutName": "Name",
+  "ClearRecentStickersAlertTitle": "Clear recent stickers",
+  "ClearRecentStickersAlertMessage": "Do you want to clear all your recent stickers?",
 
   // * macos
   "AccountSettings.Filters": "Chat Folders",

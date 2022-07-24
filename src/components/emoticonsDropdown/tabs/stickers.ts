@@ -25,6 +25,9 @@ import ButtonIcon from "../../buttonIcon";
 import positionElementByIndex from "../../../helpers/dom/positionElementByIndex";
 import VisibilityIntersector, { OnVisibilityChange } from "../../visibilityIntersector";
 import findAndSplice from "../../../helpers/array/findAndSplice";
+import { attachClickEvent } from "../../../helpers/dom/clickEvent";
+import confirmationPopup from "../../confirmationPopup";
+import noop from "../../../helpers/noop";
 
 export class SuperStickerRenderer {
   public lazyLoadQueue: LazyLoadQueueRepeat;
@@ -213,35 +216,47 @@ export default class StickersTab implements EmoticonsTab {
     this.categoriesMap.set(container, category);
 
     this.categoriesIntersector.observe(container);
+    this.stickyIntersector.observeStickyHeaderChanges(container);
 
     return category;
   }
 
-  private categoryPush(
+  private categoryAppendStickers(
     category: StickersTabCategory, 
     promise: Promise<MyDocument[]>
   ) {
-    const {container, items} = category.elements;
-    this.stickyIntersector.observeStickyHeaderChanges(container);
+    const {container} = category.elements;
 
     promise.then((documents) => {
+      const isVisible = this.isCategoryVisible(category);
+
       documents.forEach((document) => {
         const element = this.superStickerRenderer.renderSticker(document);
         category.items.push({document, element});
-        // items.append(element);
+
+        if(isVisible) {
+          category.elements.items.append(element);
+        }
       });
 
-      const containerWidth = 410;
-      const stickerSize = mediaSizes.active.esgSticker.width;
-
-      const itemsPerRow = Math.floor(containerWidth / stickerSize);
-      const rows = Math.ceil(documents.length / itemsPerRow);
-      const height = rows * stickerSize;
-      
-      items.style.height = height + 'px';
-
+      this.setCategoryItemsHeight(category);
       container.classList.remove('hide');
     });
+  }
+
+  private isCategoryVisible(category: StickersTabCategory) {
+    return this.categoriesIntersector.getVisible().includes(category.elements.container);
+  }
+
+  private setCategoryItemsHeight(category: StickersTabCategory) {
+    const containerWidth = this.content.getBoundingClientRect().width - 10;
+    const stickerSize = mediaSizes.active.esgSticker.width;
+
+    const itemsPerRow = Math.floor(containerWidth / stickerSize);
+    const rows = Math.ceil(category.items.length / itemsPerRow);
+    const height = rows * stickerSize;
+    
+    category.elements.items.style.minHeight = height + 'px';
   }
 
   private async renderStickerSet(set: StickerSet.stickerSet, prepend = false) {
@@ -251,7 +266,7 @@ export default class StickersTab implements EmoticonsTab {
     positionElementByIndex(menuTab, this.menu, prepend ? 1 : 0xFFFF);
 
     const promise = this.managers.appStickersManager.getStickerSet(set);
-    this.categoryPush(
+    this.categoryAppendStickers(
       category,
       promise.then((stickerSet) => stickerSet.documents as MyDocument[])
     );
@@ -313,29 +328,21 @@ export default class StickersTab implements EmoticonsTab {
     const intersectionOptions: IntersectionObserverInit = {root: emoticonsDropdown.getElement()};
     this.categoriesIntersector = new VisibilityIntersector(onCategoryVisibility, intersectionOptions);
 
-    rootScope.addEventListener('stickers_installed', (set) => {
-      if(!this.categories[set.id] && this.mounted) {
-        this.renderStickerSet(set, true);
-      }
-    });
-
-    rootScope.addEventListener('stickers_deleted', ({id}) => {
-      const set = this.categories[id];
-      if(set && this.mounted) {
-        set.elements.container.remove();
-        set.elements.menuTab.remove();
-        this.categoriesIntersector.unobserve(set.elements.container);
-        set.items.forEach(({element}) => this.superStickerRenderer.unobserveAnimated(element));
-        delete this.categories[id];
-        this.categoriesMap.delete(set.elements.container);
-      }
-    });
+    const clearCategoryItems = (category: StickersTabCategory) => {
+      category.elements.items.textContent = '';
+      category.items.forEach(({element}) => this.superStickerRenderer.unobserveAnimated(element));
+      category.items.length = 0;
+    };
 
     this.scroll.container.addEventListener('click', (e) => {
       const target = e.target as HTMLElement;
       if(findUpClassName(target, 'category-title')) {
         const container = findUpClassName(target, 'emoji-category');
         const category = this.categoriesMap.get(container);
+        if(category.set.id === 'recent') {
+          return;
+        }
+
         new PopupStickers({id: category.set.id, access_hash: category.set.access_hash}).show();
         return;
       }
@@ -355,7 +362,8 @@ export default class StickersTab implements EmoticonsTab {
       setTyping();
     });
 
-    this.stickyIntersector = EmoticonsDropdown.menuOnClick(this.menu, this.scroll, menuScroll).stickyIntersector;
+    const {stickyIntersector, setActive} = EmoticonsDropdown.menuOnClick(this.menu, this.scroll, menuScroll);
+    this.stickyIntersector = stickyIntersector;
 
     const preloader = putPreloader(this.content, true);
 
@@ -363,15 +371,34 @@ export default class StickersTab implements EmoticonsTab {
     recentCategory.elements.title.classList.add('disable-hover');
     recentCategory.elements.menuTab.classList.add('tgico-recent', 'active');
     recentCategory.elements.menuTabPadding.remove();
-    positionElementByIndex(recentCategory.elements.container, this.scroll.container, 0);
-    positionElementByIndex(recentCategory.elements.menuTab, this.menu, 0);
+    this.toggleRecentCategory(recentCategory, false);
+
+    const clearButton = ButtonIcon('close', {noRipple: true});
+    recentCategory.elements.title.append(clearButton);
+    attachClickEvent(clearButton, () => {
+      confirmationPopup({
+        titleLangKey: 'ClearRecentStickersAlertTitle',
+        descriptionLangKey: 'ClearRecentStickersAlertMessage',
+        button: {
+          langKey: 'Clear'
+        }
+      }).then(() => {
+        this.managers.appStickersManager.clearRecentStickers();
+      }, noop);
+    });
+
+    const onRecentStickers = (stickers: MyDocument[]) => {
+      const sliced = stickers.slice(0, RECENT_STICKERS_COUNT) as MyDocument[];
+
+      clearCategoryItems(recentCategory);
+      this.toggleRecentCategory(recentCategory, !!sliced.length);
+      this.categoryAppendStickers(recentCategory, Promise.resolve(sliced));
+    };
 
     Promise.all([
       this.managers.appStickersManager.getRecentStickers().then((stickers) => {
-        const sliced = stickers.stickers.slice(0, RECENT_STICKERS_COUNT) as MyDocument[];
-  
         preloader.remove();
-        this.categoryPush(recentCategory, Promise.resolve(sliced));
+        onRecentStickers(stickers.stickers as MyDocument[]);
       }),
 
       this.managers.appStickersManager.getAllStickers().then((res) => {
@@ -384,6 +411,7 @@ export default class StickersTab implements EmoticonsTab {
     ]).finally(() => {
       this.mounted = true;
       setTyping();
+      setActive(0);
     });
 
     this.superStickerRenderer = new SuperStickerRenderer(EmoticonsDropdown.lazyLoadQueue, EMOTICONSSTICKERGROUP, this.managers, intersectionOptions);
@@ -416,20 +444,66 @@ export default class StickersTab implements EmoticonsTab {
     //     rendererLazyLoadQueue.intersector.getVisible().length
     //   );
     // }, .25e3);
+
+    rootScope.addEventListener('stickers_installed', (set) => {
+      if(!this.categories[set.id] && this.mounted) {
+        this.renderStickerSet(set, true);
+      }
+    });
+
+    rootScope.addEventListener('stickers_deleted', ({id}) => {
+      const category = this.categories[id];
+      if(category && this.mounted) {
+        category.elements.container.remove();
+        category.elements.menuTab.remove();
+        this.categoriesIntersector.unobserve(category.elements.container);
+        clearCategoryItems(category);
+        delete this.categories[id];
+        this.categoriesMap.delete(category.elements.container);
+      }
+    });
+
+    rootScope.addEventListener('stickers_recent', (stickers) => {
+      if(this.mounted) {
+        onRecentStickers(stickers);
+      }
+    });
+
+    const resizeCategories = () => {
+      for(const [container, category] of this.categoriesMap) {
+        this.setCategoryItemsHeight(category);
+      }
+    };
+
+    mediaSizes.addEventListener('resize', resizeCategories);
+
+    emoticonsDropdown.addEventListener('opened', resizeCategories);
     
     this.init = null;
+  }
+
+  private toggleRecentCategory(category: StickersTabCategory, visible: boolean) {
+    if(!visible) {
+      category.elements.menuTab.remove();
+      category.elements.container.remove();
+    } else {
+      positionElementByIndex(category.elements.menuTab, this.menu, 0);
+      positionElementByIndex(category.elements.container, this.scroll.container, 0);
+    }
+    
+    // category.elements.container.classList.toggle('hide', !visible);
   }
 
   public pushRecentSticker(doc: MyDocument) {
     this.managers.appStickersManager.pushRecentSticker(doc.id);
     
-    const set = this.categories['recent'];
-    if(!set) {
+    const category = this.categories['recent'];
+    if(!category) {
       return;
     }
 
-    const items = set.elements.items;
-    let item = findAndSplice(set.items, (item) => item.document.id === doc.id);
+    const items = category.elements.items;
+    let item = findAndSplice(category.items, (item) => item.document.id === doc.id);
     if(!item) {
       item = {
         element: this.superStickerRenderer.renderSticker(doc),
@@ -437,11 +511,14 @@ export default class StickersTab implements EmoticonsTab {
       };
     }
 
-    set.items.unshift(item);
+    category.items.unshift(item);
     if(items.childElementCount) items.prepend(item.element);
     if(items.childElementCount > RECENT_STICKERS_COUNT) {
       (Array.from(items.children) as HTMLElement[]).slice(RECENT_STICKERS_COUNT).forEach((el) => el.remove());
     }
+
+    this.setCategoryItemsHeight(category);
+    this.toggleRecentCategory(category, true);
   }
 
   onClose() {

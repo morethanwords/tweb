@@ -16,6 +16,7 @@ import type { AppManagers } from "./appManagers/managers";
 import type { State } from "../config/state";
 import type { Progress } from "./appManagers/appDownloadManager";
 import type { CallId } from "./appManagers/appCallsManager";
+import type { MyDocument } from "./appManagers/appDocsManager";
 import { NULL_PEER_ID, UserAuth } from "./mtproto/mtproto_config";
 import EventListenerBase from "../helpers/eventListenerBase";
 import { MOUNT_CLASS_TO } from "../config/debug";
@@ -85,6 +86,7 @@ export type BroadcastEvents = {
 
   'stickers_installed': StickerSet.stickerSet,
   'stickers_deleted': StickerSet.stickerSet,
+  'stickers_recent': MyDocument[],
 
   'state_cleared': void,
   'state_synchronized': ChatId | void,

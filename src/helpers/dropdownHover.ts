@@ -48,7 +48,10 @@ export default class DropdownHover extends EventListenerBase<{
       listenerSetter.add(button)('mouseover', (e) => {
         //console.log('onmouseover button');
         if(firstTime) {
-          listenerSetter.add(button)('mouseout', this.onMouseOut);
+          listenerSetter.add(button)('mouseout', (e) => {
+            clearTimeout(this.displayTimeout);
+            this.onMouseOut(e);
+          });
           firstTime = false;
         }
 

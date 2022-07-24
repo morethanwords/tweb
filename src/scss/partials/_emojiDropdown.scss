@@ -84,6 +84,17 @@
     color: var(--secondary-text-color);
     padding: .8125rem .875rem .6875rem;
     width: 100%;
+    position: relative;
+
+    .btn-icon {
+      position: absolute;
+      right: 0.5rem;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 1.25rem;
+      z-index: 1;
+      pointer-events: all;
+    }
   }
 	
 	.tabs-container {
@@ -152,10 +163,6 @@
 		}
 
 		.category-items {
-			width: 100%;
-			display: grid;
-			grid-template-columns: repeat(auto-fill, var(--esg-sticker-size)); // 64px
-			justify-content: space-between;
       padding: 0 .3125rem;
 		}
 
