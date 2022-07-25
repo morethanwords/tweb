@@ -10,6 +10,7 @@ import { attachClickEvent } from "../../helpers/dom/clickEvent";
 import ControlsHover from "../../helpers/dom/controlsHover";
 import findUpClassName from "../../helpers/dom/findUpClassName";
 import { addFullScreenListener, cancelFullScreen, isFullScreen, requestFullScreen } from "../../helpers/dom/fullScreen";
+import replaceContent from "../../helpers/dom/replaceContent";
 import MovablePanel from "../../helpers/movablePanel";
 import onMediaLoad from "../../helpers/onMediaLoad";
 import themeController from "../../helpers/themeController";
@@ -441,7 +442,7 @@ export default class PopupCall extends PopupElement {
 
     if(!this.emojisSubtitle.textContent && connectionState < CALL_STATE.EXCHANGING_KEYS) {
       Promise.resolve(instance.getEmojisFingerprint()).then((emojis) => {
-        this.emojisSubtitle.append(wrapEmojiText(emojis.join('')));
+        replaceContent(this.emojisSubtitle, wrapEmojiText(emojis.join('')));
       });
     }
 

@@ -115,7 +115,8 @@ export class CallsController extends EventListenerBase<{
 
           const {key, key_fingerprint} = await this.managers.appCallsManager.computeKey(g_a, dh.b, dh.p);
           if(call.key_fingerprint !== key_fingerprint) {
-            this.log.error('Incorrect key fingerprint', call.key_fingerprint, key_fingerprint);
+            this.log.error('Incorrect key fingerprint', call.key_fingerprint, key_fingerprint, g_a, dh);
+            instance.hangUp('phoneCallDiscardReasonDisconnect');
             break;
           }
 
