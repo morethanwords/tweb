@@ -1523,9 +1523,10 @@ export class AppImManager extends EventListenerBase<{
 
     document.body.classList.toggle(LEFT_COLUMN_ACTIVE_CLASSNAME, id === 0);
 
-    this.overrideHash(id > 0 ? this.chat?.peerId : undefined);
-
     const prevTabId = this.tabId;
+    if(prevTabId !== -1) {
+      this.overrideHash(id > 0 ? this.chat?.peerId : undefined);
+    }
 
     this.log('selectTab', id, prevTabId);
 
