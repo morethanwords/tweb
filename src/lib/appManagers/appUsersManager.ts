@@ -133,6 +133,8 @@ export class AppUsersManager extends AppManager {
             this.users[user.id] = user;
             this.setUserNameToCache(user);
 
+            this.checkPremium(user);
+
             if(state.contactsListCachedTime && (user.pFlags.contact || user.pFlags.mutual_contact)) {
               this.pushContact(user.id);
 
@@ -540,7 +542,18 @@ export class AppUsersManager extends AppManager {
       this.rootScope.dispatchEvent('peer_title_edit', user.id.toPeerId());
     }
 
+    this.checkPremium(user);
     this.setUserToStateIfNeeded(user);
+  }
+
+  private checkPremium(user: User) {
+    if(user.pFlags.self) {
+      const isPremium = !!user.pFlags.premium;
+      if(this.rootScope.premium !== isPremium) {
+        this.rootScope.premium = isPremium;
+        this.rootScope.dispatchEvent('premium_toggle', isPremium);
+      }
+    }
   }
 
   private setUserToStateIfNeeded(user: User) {

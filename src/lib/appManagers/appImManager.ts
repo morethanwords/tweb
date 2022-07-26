@@ -205,6 +205,10 @@ export class AppImManager extends EventListenerBase<{
     this.setSettings();
     rootScope.addEventListener('settings_updated', this.setSettings);
 
+    rootScope.addEventListener('premium_toggle', (isPremium) => {
+      document.body.classList.toggle('is-premium', isPremium);
+    });
+
     useHeavyAnimationCheck(() => {
       animationIntersector.setOnlyOnePlayableGroup('lock');
       animationIntersector.checkAnimations(true);

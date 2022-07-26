@@ -610,6 +610,15 @@
   }
 }
 
+// #folders-tabs {
+//   @include premium(true) {
+//     .menu-horizontal-div-item:nth-child(n+12) {
+//       pointer-events: none;
+//       opacity: .2;
+//     }
+//   }
+// }
+
 .edit-profile-container {
   .scroll-wrapper {
     width: 100%;

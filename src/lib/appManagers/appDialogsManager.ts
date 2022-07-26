@@ -83,6 +83,7 @@ import apiManagerProxy from "../mtproto/mtprotoworker";
 import filterAsync from "../../helpers/array/filterAsync";
 import forEachReverse from "../../helpers/array/forEachReverse";
 import indexOfAndSplice from "../../helpers/array/indexOfAndSplice";
+import whichChild from "../../helpers/dom/whichChild";
 
 export const DIALOG_LIST_ELEMENT_TAG = 'A';
 
@@ -299,6 +300,17 @@ export class AppDialogsManager {
       (window as any).addElement = add;
     } */
 
+    rootScope.addEventListener('premium_toggle', async(isPremium) => {
+      if(isPremium) {
+        return;
+      }
+
+      const isFolderAvailable = await this.managers.filtersStorage.isFilterIdAvailable(this.filterId);
+      if(!isFolderAvailable) {
+        selectTab(whichChild(this.filtersRendered[FOLDER_ID_ALL].menu), false);
+      }
+    });
+
     rootScope.addEventListener('state_cleared', () => {
       const clearCurrent = REAL_FOLDERS.has(this.filterId);
       //setTimeout(() => 
@@ -331,12 +343,18 @@ export class AppDialogsManager {
 
     const foldersScrollable = new ScrollableX(this.folders.menuScrollContainer);
     bottomPart.prepend(this.folders.menuScrollContainer);
-    const selectTab = this.selectTab = horizontalMenu(this.folders.menu, this.folders.container, (id, tabContent, animate) => {
+    const selectTab = this.selectTab = horizontalMenu(this.folders.menu, this.folders.container, async(id, tabContent) => {
       /* if(id !== 0) {
         id += 1;
       } */
 
+      
       id = +tabContent.dataset.filterId || FOLDER_ID_ALL;
+
+      const isFilterAvailable = REAL_FOLDERS.has(id) || await this.managers.filtersStorage.isFilterIdAvailable(id);
+      if(!isFilterAvailable) {
+        return false;
+      }
 
       const wasFilterId = this.filterId;
       if(!IS_MOBILE_SAFARI) {

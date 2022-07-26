@@ -138,7 +138,9 @@ export type BroadcastEvents = {
 
   'logging_out': void,
 
-  'payment_sent': {peerId: PeerId, mid: number}
+  'payment_sent': {peerId: PeerId, mid: number},
+
+  'premium_toggle': boolean
 };
 
 export type BroadcastEventsListeners = {

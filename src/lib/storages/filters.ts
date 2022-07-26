@@ -51,22 +51,7 @@ export default class FiltersStorage extends AppManager {
     this.apiUpdatesManager.addMultipleEventsListeners({
       updateDialogFilter: this.onUpdateDialogFilter,
 
-      updateDialogFilters: (update) => {
-        //console.warn('updateDialogFilters', update);
-
-        const oldFilters = copy(this.filters);
-
-        this.getDialogFilters(true).then((filters) => {
-          for(const _filterId in oldFilters) {
-            const filterId = +_filterId;
-            if(!filters.find((filter) => filter.id === filterId)) { // * deleted
-              this.onUpdateDialogFilter({_: 'updateDialogFilter', id: filterId});
-            }
-          }
-
-          this.onUpdateDialogFilterOrder({_: 'updateDialogFilterOrder', order: filters.map((filter) => filter.id)});
-        });
-      },
+      updateDialogFilters: this.onUpdateDialogFilters,
 
       updateDialogFilterOrder: this.onUpdateDialogFilterOrder
     });
@@ -90,6 +75,10 @@ export default class FiltersStorage extends AppManager {
         }
       }
     }); */
+
+    this.rootScope.addEventListener('premium_toggle', () => {
+      this.onUpdateDialogFilters({_: 'updateDialogFilters'});
+    });
 
     return this.appStateManager.getState().then((state) => {
       const filtersArr = this.prependFilters(state.filtersArr);
@@ -172,6 +161,23 @@ export default class FiltersStorage extends AppManager {
     }
 
     this.pushToState();
+  };
+
+  private onUpdateDialogFilters = (update: Update.updateDialogFilters) => {
+    //console.warn('updateDialogFilters', update);
+
+    const oldFilters = copy(this.filters);
+
+    this.getDialogFilters(true).then((filters) => {
+      for(const _filterId in oldFilters) {
+        const filterId = +_filterId;
+        if(!filters.find((filter) => filter.id === filterId)) { // * deleted
+          this.onUpdateDialogFilter({_: 'updateDialogFilter', id: filterId});
+        }
+      }
+
+      this.onUpdateDialogFilterOrder({_: 'updateDialogFilterOrder', order: filters.map((filter) => filter.id)});
+    });
   };
 
   private onUpdateDialogFilterOrder = (update: Update.updateDialogFilterOrder) => {
@@ -532,5 +538,21 @@ export default class FiltersStorage extends AppManager {
       this.filtersArr.push(filter);
       this.pushToState();
     }
+  }
+
+  public async isFilterIdAvailable(filterId: number) {
+    if(REAL_FOLDERS.has(filterId)) {
+      return true;
+    }
+
+    const isPremium = this.rootScope.premium;
+    let isFolderAvailable = isPremium;
+    if(!isPremium) {
+      const config = await this.apiManager.getAppConfig();
+      const limit = config.dialog_filters_limit_default;
+      isFolderAvailable = this.filtersArr.filter((filter) => !REAL_FOLDERS.has(filter.id)).slice(0, limit).some((filter) => filter.id === filterId);
+    }
+
+    return isFolderAvailable;
   }
 }

@@ -130,6 +130,15 @@ export class ApiManager extends ApiManagerMethods {
     /// #endif
   }
 
+  protected after() {
+    this.apiUpdatesManager.addMultipleEventsListeners({
+      updateConfig: () => {
+        this.getConfig();
+        this.getAppConfig(true);
+      }
+    });
+  }
+
   //private lol = false;
   
   // constructor() {

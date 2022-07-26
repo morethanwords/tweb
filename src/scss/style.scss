@@ -48,6 +48,7 @@ $chat-input-inner-padding-handhelds: .25rem;
 @import "mixins/respondTo";
 @import "mixins/textOverflow";
 @import "mixins/animationLevel";
+@import "mixins/premium";
 
 :root {
   --vh: 1vh;
