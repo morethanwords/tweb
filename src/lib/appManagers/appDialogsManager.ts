@@ -1516,7 +1516,8 @@ export class AppDialogsManager {
     }, {capture: true});
 
     // cancel link click
-    attachClickEvent(list, (e) => {
+    // ! do not change it to attachClickEvent
+    list.addEventListener('click', (e) => {
       if(e.button === 0) {
         cancelEvent(e);
       }
