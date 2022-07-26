@@ -650,9 +650,10 @@ export class AppUsersManager extends AppManager {
 
   public getUserInputPeer(id: UserId): InputPeer.inputPeerSelf | InputPeer.inputPeerUser {
     const user = this.getUser(id);
-    if(user.pFlags && user.pFlags.self) {
-      return {_: 'inputPeerSelf'};
-    }
+    // ! do not use it, there are places that don't support it. need explicit peer id
+    // if(user.pFlags?.self) {
+    //   return {_: 'inputPeerSelf'};
+    // }
 
     return {
       _: 'inputPeerUser',

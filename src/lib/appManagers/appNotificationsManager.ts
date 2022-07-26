@@ -15,7 +15,6 @@ import { MUTE_UNTIL } from "../mtproto/mtproto_config";
 import throttle from "../../helpers/schedulers/throttle";
 import convertInputKeyToKey from "../../helpers/string/convertInputKeyToKey";
 import { AppManager } from "./manager";
-import getPeerId from "./utils/peers/getPeerId";
 import ctx from "../../environment/ctx";
 import assumeType from "../../helpers/assumeType";
 
@@ -41,7 +40,7 @@ export class AppNotificationsManager extends AppManager {
 
     this.apiUpdatesManager.addMultipleEventsListeners({
       updateNotifySettings: (update) => {
-        const peerId = update.peer._ === 'notifyPeer' && getPeerId(update.peer.peer);
+        const peerId = update.peer._ === 'notifyPeer' && this.appPeersManager.getPeerId(update.peer.peer);
         const key = update.peer._ !== 'notifyPeer' ? update.peer._ : undefined;
         this.savePeerSettings({
           key,
@@ -71,7 +70,7 @@ export class AppNotificationsManager extends AppManager {
 
     let peerId: PeerId;
     if(peer._ === 'inputNotifyPeer') {
-      peerId = key = getPeerId(peer.peer);
+      peerId = key = this.appPeersManager.getPeerId(peer.peer);
       obj = obj[key];
     }
 

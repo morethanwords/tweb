@@ -328,7 +328,7 @@ export class AppGroupCallsManager extends AppManager {
     } else {
       promise = this.apiManager.invokeApi('phone.joinGroupCall', {
         call: groupCallInput,
-        join_as: {_: 'inputPeerSelf'},
+        join_as: this.appPeersManager.getInputPeerSelf(),
         muted: true,
         video_stopped: true,
         params: {
@@ -349,7 +349,7 @@ export class AppGroupCallsManager extends AppManager {
     if(options.type === 'main') {
       const request: PhoneJoinGroupCall = {
         call: groupCallInput,
-        join_as: {_: 'inputPeerSelf'},
+        join_as: this.appPeersManager.getInputPeerSelf(),
         params,
         muted: options.isMuted,
         video_stopped: !options.joinVideo

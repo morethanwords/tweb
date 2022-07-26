@@ -45,7 +45,6 @@ import parseEntities from "../richTextProcessor/parseEntities";
 import parseMarkdown from "../richTextProcessor/parseMarkdown";
 import getServerMessageId from "./utils/messageId/getServerMessageId";
 import generateMessageId from "./utils/messageId/generateMessageId";
-import getPeerId from "./utils/peers/getPeerId";
 import filterMessagesByInputFilter from "./utils/messages/filterMessagesByInputFilter";
 import ctx from "../../environment/ctx";
 import { getEnvironment } from "../../environment/utils";
@@ -1925,7 +1924,7 @@ export class AppMessagesManager extends AppManager {
         this.dialogsStorage.saveDialog(dialog, undefined, true, saveGlobalOffset);
 
         if(!maxSeenIdIncremented &&
-          !this.appPeersManager.isChannel(dialog.peerId || getPeerId(dialog.peer))) {
+          !this.appPeersManager.isChannel(dialog.peerId || this.appPeersManager.getPeerId(dialog.peer))) {
           this.incrementMaxSeenId(dialog.top_message);
           maxSeenIdIncremented = true;
         }
@@ -2248,7 +2247,7 @@ export class AppMessagesManager extends AppManager {
   }
 
   public getMessagePeer(message: any): PeerId {
-    const toId = message.peer_id && getPeerId(message.peer_id) || NULL_PEER_ID;
+    const toId = message.peer_id && this.appPeersManager.getPeerId(message.peer_id) || NULL_PEER_ID;
 
     return toId;
   }
@@ -2284,7 +2283,7 @@ export class AppMessagesManager extends AppManager {
   public reloadConversation(inputPeer: PeerId | InputPeer) {
     let promise: CancellablePromise<Dialog>;
     if(inputPeer !== undefined) {
-      const peerId = getPeerId(inputPeer);
+      const peerId = this.appPeersManager.getPeerId(inputPeer);
       let obj = this.reloadConversationsPeers.get(peerId);
       if(obj) {
         promise = obj.promise;
@@ -2667,10 +2666,10 @@ export class AppMessagesManager extends AppManager {
 
     message.peerId = peerId;
     if(peerId === myId/*  && !message.from_id && !message.fwd_from */) {
-      message.fromId = fwdHeader ? (fwdHeader.from_id ? getPeerId(fwdHeader.from_id) : NULL_PEER_ID) : myId;
+      message.fromId = fwdHeader ? (fwdHeader.from_id ? this.appPeersManager.getPeerId(fwdHeader.from_id) : NULL_PEER_ID) : myId;
     } else {
       //message.fromId = message.pFlags.post || (!message.pFlags.out && !message.from_id) ? peerId : appPeersManager.getPeerId(message.from_id);
-      message.fromId = message.pFlags.post || !message.from_id ? peerId : getPeerId(message.from_id);
+      message.fromId = message.pFlags.post || !message.from_id ? peerId : this.appPeersManager.getPeerId(message.from_id);
     }
 
     if(fwdHeader) {
@@ -2681,7 +2680,7 @@ export class AppMessagesManager extends AppManager {
         const peer = fwdHeader.saved_from_peer || fwdHeader.from_id;
         const msgId = fwdHeader.saved_from_msg_id || fwdHeader.channel_post;
         if(peer && msgId) {
-          const savedFromPeerId = getPeerId(peer);
+          const savedFromPeerId = this.appPeersManager.getPeerId(peer);
           const savedFromMid = generateMessageId(msgId);
           message.savedFrom = savedFromPeerId + '_' + savedFromMid;
         }
@@ -2693,7 +2692,7 @@ export class AppMessagesManager extends AppManager {
         apiMessage.fwdPostID = fwdHeader.channel_post;
       } */
 
-      message.fwdFromId = getPeerId(fwdHeader.from_id);
+      message.fwdFromId = this.appPeersManager.getPeerId(fwdHeader.from_id);
 
       if(!overwriting) {
         fwdHeader.date -= this.timeManager.getServerTimeOffset();
@@ -3241,7 +3240,7 @@ export class AppMessagesManager extends AppManager {
       }, messageReplyMarkup); */
 
       if(messageReplyMarkup._ !== 'replyKeyboardHide') {
-        messageReplyMarkup.fromId = getPeerId(message.from_id);
+        messageReplyMarkup.fromId = this.appPeersManager.getPeerId(message.from_id);
       }
 
       historyStorage.replyMarkup = messageReplyMarkup;
@@ -4029,7 +4028,7 @@ export class AppMessagesManager extends AppManager {
 
     if(message._ === 'messageService' && message.action._ === 'messageActionPaymentSent' && message.reply_to) {
       this.rootScope.dispatchEvent('payment_sent', {
-        peerId: message.reply_to.reply_to_peer_id ? getPeerId(message.reply_to.reply_to_peer_id) : message.peerId,
+        peerId: message.reply_to.reply_to_peer_id ? this.appPeersManager.getPeerId(message.reply_to.reply_to_peer_id) : message.peerId,
         mid: message.reply_to_mid
       });
     }
@@ -4201,7 +4200,7 @@ export class AppMessagesManager extends AppManager {
   private onUpdateMessageReactions = (update: Update.updateMessageReactions) => {
     const {peer, msg_id, reactions} = update;
     const mid = generateMessageId(msg_id);
-    const peerId = getPeerId(peer);
+    const peerId = this.appPeersManager.getPeerId(peer);
     const message: MyMessage = this.getMessageByPeer(peerId, mid);
 
     if(message?._ !== 'message') {
@@ -4214,7 +4213,7 @@ export class AppMessagesManager extends AppManager {
       const previousReactions = message.reactions;
       const previousRecentReactions = previousReactions?.recent_reactions;
       if(
-        getPeerId(recentReaction.peer_id) !== this.appPeersManager.peerId && (
+        this.appPeersManager.getPeerId(recentReaction.peer_id) !== this.appPeersManager.peerId && (
           !previousRecentReactions ||
           previousRecentReactions.length <= recentReactions.length
         ) && (
@@ -4244,7 +4243,7 @@ export class AppMessagesManager extends AppManager {
 
   private onUpdateDialogUnreadMark = (update: Update.updateDialogUnreadMark) => {
     //this.log('updateDialogUnreadMark', update);
-    const peerId = getPeerId((update.peer as DialogPeer.dialogPeer).peer);
+    const peerId = this.appPeersManager.getPeerId((update.peer as DialogPeer.dialogPeer).peer);
     const dialog = this.getDialogOnly(peerId);
 
     if(!dialog) {
@@ -4332,7 +4331,7 @@ export class AppMessagesManager extends AppManager {
     const channelId = (update as Update.updateReadChannelInbox).channel_id;
     const maxId = generateMessageId((update as Update.updateReadChannelInbox).max_id || (update as Update.updateReadChannelDiscussionInbox).read_max_id);
     const threadId = generateMessageId((update as Update.updateReadChannelDiscussionInbox).top_msg_id);
-    const peerId = channelId ? channelId.toPeerId(true) : getPeerId((update as Update.updateReadHistoryInbox).peer);
+    const peerId = channelId ? channelId.toPeerId(true) : this.appPeersManager.getPeerId((update as Update.updateReadHistoryInbox).peer);
 
     const isOut = update._ === 'updateReadHistoryOutbox' || update._ === 'updateReadChannelOutbox' || update._ === 'updateReadChannelDiscussionOutbox' ? true : undefined;
 
@@ -4503,7 +4502,7 @@ export class AppMessagesManager extends AppManager {
     }
 
     this.apiManager.clearCache('messages.getSearchCounters', (params) => {
-      return getPeerId(params.peer) === peerId;
+      return this.appPeersManager.getPeerId(params.peer) === peerId;
     });
 
     const threadKeys: Set<string> = new Set();
@@ -4662,7 +4661,7 @@ export class AppMessagesManager extends AppManager {
 
   private onUpdatePinnedMessages = (update: Update.updatePinnedMessages | Update.updatePinnedChannelMessages) => {
     const channelId = update._ === 'updatePinnedChannelMessages' ? update.channel_id : undefined;
-    const peerId = channelId ? channelId.toPeerId(true) : getPeerId((update as Update.updatePinnedMessages).peer);
+    const peerId = channelId ? channelId.toPeerId(true) : this.appPeersManager.getPeerId((update as Update.updatePinnedMessages).peer);
 
     /* const storage = this.getSearchStorage(peerId, 'inputMessagesFilterPinned');
     if(storage.count !== storage.history.length) {
@@ -4718,7 +4717,7 @@ export class AppMessagesManager extends AppManager {
   private onUpdateNotifySettings = (update: Update.updateNotifySettings) => {
     const {peer, notify_settings} = update;
     if(peer._ === 'notifyPeer') {
-      const peerId = getPeerId((peer as NotifyPeer.notifyPeer).peer);
+      const peerId = this.appPeersManager.getPeerId((peer as NotifyPeer.notifyPeer).peer);
     
       const dialog = this.getDialogOnly(peerId);
       if(dialog) {
@@ -4756,7 +4755,7 @@ export class AppMessagesManager extends AppManager {
   };
 
   private onUpdateDeleteScheduledMessages = (update: Update.updateDeleteScheduledMessages) => {
-    const peerId = getPeerId(update.peer);
+    const peerId = this.appPeersManager.getPeerId(update.peer);
 
     const storage = this.scheduledMessagesStorage[peerId];
     if(storage) {
@@ -5032,12 +5031,12 @@ export class AppMessagesManager extends AppManager {
       
       const filteredReadParticipants = readParticipantsPeerIds.slice();
       forEachReverse(filteredReadParticipants, (peerId, idx, arr) => {
-        if(messageReactionsList.reactions.some((reaction) => getPeerId(reaction.peer_id) === peerId)) {
+        if(messageReactionsList.reactions.some((reaction) => this.appPeersManager.getPeerId(reaction.peer_id) === peerId)) {
           arr.splice(idx, 1);
         }
       });
 
-      let combined: {peerId: PeerId, reaction?: string}[] = messageReactionsList.reactions.map((reaction) => ({peerId: getPeerId(reaction.peer_id), reaction: reaction.reaction}));
+      let combined: {peerId: PeerId, reaction?: string}[] = messageReactionsList.reactions.map((reaction) => ({peerId: this.appPeersManager.getPeerId(reaction.peer_id), reaction: reaction.reaction}));
       combined = combined.concat(filteredReadParticipants.map((readPeerId) => ({peerId: readPeerId})));
       
       return {
@@ -5631,7 +5630,7 @@ export class AppMessagesManager extends AppManager {
 
   public fetchMessageReplyTo(message: MyMessage) {
     if(!message.reply_to_mid) return Promise.resolve(this.generateEmptyMessage(0));
-    const replyToPeerId = message.reply_to.reply_to_peer_id ? getPeerId(message.reply_to.reply_to_peer_id) : message.peerId;
+    const replyToPeerId = message.reply_to.reply_to_peer_id ? this.appPeersManager.getPeerId(message.reply_to.reply_to_peer_id) : message.peerId;
     return this.wrapSingleMessage(replyToPeerId, message.reply_to_mid).then((originalMessage) => {
       if(!originalMessage) { // ! break the infinite loop
         message = this.getMessageByPeer(message.peerId, message.mid); // message can come from other thread

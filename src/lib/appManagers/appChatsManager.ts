@@ -15,7 +15,6 @@ import safeReplaceObject from "../../helpers/object/safeReplaceObject";
 import { ChannelParticipant, ChannelsCreateChannel, Chat, ChatAdminRights, ChatBannedRights, ChatInvite, ChatPhoto, InputChannel, InputChatPhoto, InputFile, InputPeer, SponsoredMessage, Update, Updates } from "../../layer";
 import { isRestricted } from "../../helpers/restrictions";
 import { AppManager } from "./manager";
-import getPeerId from "./utils/peers/getPeerId";
 import hasRights from "./utils/chats/hasRights";
 import getParticipantPeerId from "./utils/chats/getParticipantPeerId";
 import { AppStoragesManager } from "./appStoragesManager";
@@ -48,7 +47,7 @@ export class AppChatsManager extends AppManager {
       },
 
       updateChatDefaultBannedRights: (update) => {
-        const chatId = getPeerId(update.peer).toChatId();
+        const chatId = this.appPeersManager.getPeerId(update.peer).toChatId();
         const chat: Chat.chat = this.chats[chatId];
         if(chat) {
           chat.default_banned_rights = update.default_banned_rights;

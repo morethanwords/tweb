@@ -8,7 +8,6 @@ import type { DialogFilter, Update } from "../../layer";
 import type { Dialog } from '../appManagers/appMessagesManager';
 import forEachReverse from "../../helpers/array/forEachReverse";
 import copy from "../../helpers/object/copy";
-import getPeerId from "../appManagers/utils/peers/getPeerId";
 import { AppManager } from "../appManagers/manager";
 import findAndSplice from "../../helpers/array/findAndSplice";
 import assumeType from "../../helpers/assumeType";
@@ -95,7 +94,6 @@ export default class FiltersStorage extends AppManager {
     return this.appStateManager.getState().then((state) => {
       const filtersArr = this.prependFilters(state.filtersArr);
       filtersArr.map((filter) => {
-        delete filter.localId;
         this.saveDialogFilter(filter, false, true);
       });
     });
@@ -116,6 +114,11 @@ export default class FiltersStorage extends AppManager {
 
     findAndSplice(filters, (filter) => (filter as MyDialogFilter).id === FOLDER_ID_ARCHIVE);
     filters.splice(/* 1 */filters[0] === allChatsFilter ? 1 : 0, 0, archiveFilter);
+
+    this.localId = START_LOCAL_ID;
+    filters.forEach((filter) => {
+      delete filter.localId;
+    });
 
     return filters;
   }
@@ -174,14 +177,19 @@ export default class FiltersStorage extends AppManager {
   private onUpdateDialogFilterOrder = (update: Update.updateDialogFilterOrder) => {
     //console.log('updateDialogFilterOrder', update);
 
+    const order = update.order.slice();
+    if(!order.includes(FOLDER_ID_ARCHIVE)) {
+      order.splice(order[0] === FOLDER_ID_ALL ? 1 : 0, 0, FOLDER_ID_ARCHIVE);
+    }
+
     this.localId = START_LOCAL_ID;
-    update.order.forEach((filterId, idx) => {
+    order.forEach((filterId) => {
       const filter = this.filters[filterId];
       delete filter.localId;
       this.setLocalId(filter);
     });
 
-    this.rootScope.dispatchEvent('filter_order', update.order);
+    this.rootScope.dispatchEvent('filter_order', order);
 
     this.pushToState();
   };
@@ -415,7 +423,7 @@ export default class FiltersStorage extends AppManager {
 
     // const missingPeerIds: PeerId[] = [];
     const reloadDialogs = peers.filter((inputPeer) => {
-      const peerId = getPeerId(inputPeer);
+      const peerId = this.appPeersManager.getPeerId(inputPeer);
       const isAlreadyReloaded = this.reloadedPeerIds.has(peerId);
       const dialog = this.appMessagesManager.getDialogOnly(peerId);
       // if(isAlreadyReloaded && !dialog) {
@@ -435,7 +443,7 @@ export default class FiltersStorage extends AppManager {
     }
 
     const reloadPromises = reloadDialogs.map((inputPeer) => {
-      const peerId = getPeerId(inputPeer);
+      const peerId = this.appPeersManager.getPeerId(inputPeer);
       const promise = this.appMessagesManager.reloadConversation(inputPeer)
       .then((dialog) => {
         this.reloadedPeerIds.add(peerId);
@@ -465,7 +473,8 @@ export default class FiltersStorage extends AppManager {
     }
 
     const filters = await this.apiManager.invokeApiSingle('messages.getDialogFilters');
-    return this.prependFilters(filters).map((filter) => this.saveDialogFilter(filter, overwrite)).filter(Boolean);
+    const prepended = this.prependFilters(filters);
+    return prepended.map((filter) => this.saveDialogFilter(filter, overwrite)).filter(Boolean);
   }
 
   public getSuggestedDialogsFilters() {
@@ -483,7 +492,7 @@ export default class FiltersStorage extends AppManager {
     if(!REAL_FOLDERS.has(filter.id)) {
       convertment.forEach(([from, to]) => {
         assumeType<MyDialogFilter>(filter);
-        filter[to] = filter[from].map((peer) => getPeerId(peer));
+        filter[to] = filter[from].map((peer) => this.appPeersManager.getPeerId(peer));
       });
 
       this.filterIncludedPinnedPeers(filter);

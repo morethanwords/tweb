@@ -19,6 +19,7 @@ import copy from "../../../helpers/object/copy";
 import forEachReverse from "../../../helpers/array/forEachReverse";
 import setInnerHTML from "../../../helpers/dom/setInnerHTML";
 import wrapEmojiText from "../../../lib/richTextProcessor/wrapEmojiText";
+import { REAL_FOLDERS } from "../../../lib/mtproto/mtproto_config";
 
 export default class AppIncludedChatsTab extends SliderSuperTab {
   private editFolderTab: AppEditFolderTab;
@@ -107,7 +108,7 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
 
     this.dialogsByFilters = new Map();
     return this.managers.filtersStorage.getDialogFilters().then(async(filters) => {
-      await Promise.all(filters.map(async(filter) => {
+      await Promise.all(filters.filter((filter) => !REAL_FOLDERS.has(filter.id)).map(async(filter) => {
         const dialogs = await this.managers.dialogsStorage.getFolderDialogs(filter.id);
         const peerIds = dialogs.map((d) => d.peerId);
         this.dialogsByFilters.set(filter, new Set(peerIds));

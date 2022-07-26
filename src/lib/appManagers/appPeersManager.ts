@@ -87,6 +87,10 @@ export class AppPeersManager extends AppManager {
       : this.appChatsManager.getChat(peerId.toChatId());
   }
 
+  public getPeerId(...args: Parameters<typeof getPeerId>) {
+    return getPeerId(...args) || this.peerId;
+  }
+
   public getDialogPeer(peerId: PeerId): DialogPeer {
     return {
       _: 'dialogPeer',
@@ -207,6 +211,9 @@ export class AppPeersManager extends AppManager {
     return this.appUsersManager.getUserInputPeer(userId);
   }
 
+  /**
+   * ! use it only in safe places like requests
+   */
   public getInputPeerSelf(): InputPeer.inputPeerSelf {
     return {_: 'inputPeerSelf'};
   }

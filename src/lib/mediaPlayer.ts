@@ -118,7 +118,7 @@ export default class VideoPlayer extends ControlsHover {
       const fullScreenButton = wrapper.querySelector('.fullscreen') as HTMLElement;
       const timeElapsed = wrapper.querySelector('#time-elapsed');
       timeDuration = wrapper.querySelector('#time-duration') as HTMLElement;
-      timeDuration.innerHTML = toHHMMSS(video.duration | 0);
+      timeDuration.textContent = toHHMMSS(video.duration | 0);
 
       const volumeSelector = new VolumeSelector(listenerSetter);
 
@@ -223,7 +223,7 @@ export default class VideoPlayer extends ControlsHover {
       addFullScreenListener(wrapper, this.onFullScreen.bind(this, fullScreenButton), listenerSetter);
 
       listenerSetter.add(video)('timeupdate', () => {
-        timeElapsed.innerHTML = toHHMMSS(video.currentTime | 0);
+        timeElapsed.textContent = toHHMMSS(video.currentTime | 0);
       });
 
       listenerSetter.add(video)('play', () => {
@@ -254,10 +254,10 @@ export default class VideoPlayer extends ControlsHover {
     });
 
     if(video.duration || initDuration) {
-      timeDuration.innerHTML = toHHMMSS(Math.round(video.duration || initDuration));
+      timeDuration.textContent = toHHMMSS(Math.round(video.duration || initDuration));
     } else {
       onMediaLoad(video).then(() => {
-        timeDuration.innerHTML = toHHMMSS(Math.round(video.duration));
+        timeDuration.textContent = toHHMMSS(Math.round(video.duration));
       });
     }
   }

@@ -16,7 +16,6 @@ import assumeType from "../../helpers/assumeType";
 import isObject from "../../helpers/object/isObject";
 import deepEqual from "../../helpers/object/deepEqual";
 import { AppManager } from "./manager";
-import getPeerId from "./utils/peers/getPeerId";
 import generateMessageId from "./utils/messageId/generateMessageId";
 import getServerMessageId from "./utils/messageId/getServerMessageId";
 
@@ -29,7 +28,7 @@ export class AppDraftsManager extends AppManager {
   protected after() {
     this.apiUpdatesManager.addMultipleEventsListeners({
       updateDraftMessage: (update) => {
-        const peerId = getPeerId(update.peer);
+        const peerId = this.appPeersManager.getPeerId(update.peer);
         this.saveDraft(peerId, update.threadId, update.draft, {notify: true});
       }
     });

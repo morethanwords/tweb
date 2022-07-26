@@ -40,7 +40,8 @@ export function horizontalMenu(
     const tabContent = content.children[id] as HTMLDivElement;
 
     if(onClick) {
-      const canChange = await onClick(id, tabContent, animate);
+      const result1 = onClick(id, tabContent, animate);
+      const canChange = result1 instanceof Promise ? await result1 : result1;
       if(canChange !== undefined && !canChange) {
         return;
       }

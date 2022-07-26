@@ -17,7 +17,6 @@ import App from '../../config/app';
 import filterUnique from '../../helpers/array/filterUnique';
 import { AppManager } from './manager';
 import parseMarkdown from '../richTextProcessor/parseMarkdown';
-import getPeerId from './utils/peers/getPeerId';
 import ctx from '../../environment/ctx';
 import EventListenerBase from '../../helpers/eventListenerBase';
 import applyMixins from '../../helpers/applyMixins';
@@ -468,7 +467,7 @@ class ApiUpdatesManager {
     switch(update._) {
       case 'updateNewChannelMessage':
       case 'updateEditChannelMessage':
-        channelId = getPeerId(update.message.peer_id).toChatId();
+        channelId = this.appPeersManager.getPeerId(update.message.peer_id).toChatId();
         break;
       /* case 'updateDeleteChannelMessages':
         channelId = update.channel_id;
@@ -509,11 +508,11 @@ class ApiUpdatesManager {
         update._ === 'updateNewChannelMessage' ||
         update._ === 'updateEditChannelMessage') {
       const message = update.message as Message.message;
-      const toPeerId = getPeerId(message.peer_id);
+      const toPeerId = this.appPeersManager.getPeerId(message.peer_id);
       const fwdHeader: MessageFwdHeader.messageFwdHeader = message.fwd_from || {} as any;
       let reason: string;
-      if(message.from_id && !this.appUsersManager.hasUser(getPeerId(message.from_id), message.pFlags.post/* || channelId*/) && (reason = 'author') ||
-          fwdHeader.from_id && !this.appUsersManager.hasUser(getPeerId(fwdHeader.from_id), !!(fwdHeader.from_id as Peer.peerChannel).channel_id) && (reason = 'fwdAuthor') ||
+      if(message.from_id && !this.appUsersManager.hasUser(this.appPeersManager.getPeerId(message.from_id), message.pFlags.post/* || channelId*/) && (reason = 'author') ||
+          fwdHeader.from_id && !this.appUsersManager.hasUser(this.appPeersManager.getPeerId(fwdHeader.from_id), !!(fwdHeader.from_id as Peer.peerChannel).channel_id) && (reason = 'fwdAuthor') ||
           (fwdHeader.from_id as Peer.peerChannel)?.channel_id && !this.appChatsManager.hasChat((fwdHeader.from_id as Peer.peerChannel).channel_id, true) && (reason = 'fwdChannel') ||
           toPeerId.isUser() && !this.appUsersManager.hasUser(toPeerId) && (reason = 'toPeer User') ||
           toPeerId.isAnyChat() && !this.appChatsManager.hasChat(toPeerId.toChatId()) && (reason = 'toPeer Chat')) {

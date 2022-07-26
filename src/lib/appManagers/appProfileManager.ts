@@ -15,7 +15,6 @@ import { ChannelParticipantsFilter, ChannelsChannelParticipants, ChannelParticip
 import SearchIndex from "../searchIndex";
 import { AppManager } from "./manager";
 import getServerMessageId from "./utils/messageId/getServerMessageId";
-import getPeerId from "./utils/peers/getPeerId";
 import getPhotoInput from "./utils/photos/getPhotoInput";
 import getParticipantPeerId from "./utils/chats/getParticipantPeerId";
 import ctx from "../../environment/ctx";
@@ -632,12 +631,12 @@ export class AppProfileManager extends AppManager {
   private onUpdateUserTyping = (update: Update.updateUserTyping | Update.updateChatUserTyping | Update.updateChannelUserTyping) => {
     const fromId = (update as Update.updateUserTyping).user_id ? 
       (update as Update.updateUserTyping).user_id.toPeerId() : 
-      getPeerId((update as Update.updateChatUserTyping).from_id);
+      this.appPeersManager.getPeerId((update as Update.updateChatUserTyping).from_id);
     if(this.appPeersManager.peerId === fromId || update.action._ === 'speakingInGroupCallAction') {
       return;
     }
     
-    const peerId = getPeerId(update);
+    const peerId = this.appPeersManager.getPeerId(update);
     const typings = this.typingsInPeer[peerId] ?? (this.typingsInPeer[peerId] = []);
     let typing = typings.find((t) => t.userId === fromId);
 
@@ -706,7 +705,7 @@ export class AppProfileManager extends AppManager {
   };
 
   private onUpdatePeerBlocked = (update: Update.updatePeerBlocked) => {
-    const peerId = getPeerId(update.peer_id);
+    const peerId = this.appPeersManager.getPeerId(update.peer_id);
     if(this.appPeersManager.isUser(peerId)) {
       const userId = peerId.toUserId();
       const userFull = this.usersFull[userId];

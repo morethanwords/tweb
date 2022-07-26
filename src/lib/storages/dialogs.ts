@@ -25,7 +25,6 @@ import indexOfAndSplice from "../../helpers/array/indexOfAndSplice";
 import insertInDescendSortedArray from "../../helpers/array/insertInDescendSortedArray";
 import safeReplaceObject from "../../helpers/object/safeReplaceObject";
 import getServerMessageId from "../appManagers/utils/messageId/getServerMessageId";
-import getPeerId from "../appManagers/utils/peers/getPeerId";
 import generateMessageId from "../appManagers/utils/messageId/generateMessageId";
 import { AppManager } from "../appManagers/manager";
 import getDialogIndexKey from "../appManagers/utils/dialogs/getDialogIndexKey";
@@ -787,7 +786,7 @@ export default class DialogsStorage extends AppManager {
 
     const updatedDialogs: {[peerId: PeerId]: Dialog} = {};
     (dialogsResult.dialogs as Dialog[]).forEach((dialog) => {
-      const peerId = getPeerId(dialog.peer);
+      const peerId = this.appPeersManager.getPeerId(dialog.peer);
       let topMessage = dialog.top_message;
 
       const topPendingMessage = this.appMessagesManager.pendingTopMsgs[peerId];
@@ -838,7 +837,7 @@ export default class DialogsStorage extends AppManager {
    * Won't save migrated from peer, forbidden peers, left and kicked
    */
   public saveDialog(dialog: Dialog, folderId = dialog.folder_id ?? FOLDER_ID_ALL, ignoreOffsetDate?: boolean, saveGlobalOffset?: boolean) {
-    const peerId = getPeerId(dialog.peer);
+    const peerId = this.appPeersManager.getPeerId(dialog.peer);
     if(!peerId) {
       console.error('saveConversation no peerId???', dialog, folderId);
       return;
@@ -902,7 +901,7 @@ export default class DialogsStorage extends AppManager {
     if(!channelId && peerId.isAnyChat()) {
       const chat = this.appChatsManager.getChat(peerId.toChatId());
       if(chat && chat.migrated_to && chat.pFlags.deactivated) {
-        const migratedToPeer = getPeerId(chat.migrated_to);
+        const migratedToPeer = this.appPeersManager.getPeerId(chat.migrated_to);
         this.appMessagesManager.migratedFromTo[peerId] = migratedToPeer;
         this.appMessagesManager.migratedToFrom[migratedToPeer] = peerId;
         dialog.migratedTo = migratedToPeer;
@@ -1109,7 +1108,7 @@ export default class DialogsStorage extends AppManager {
     peers.forEach((folderPeer) => {
       const {folder_id, peer} = folderPeer;
 
-      const peerId = getPeerId(peer);
+      const peerId = this.appPeersManager.getPeerId(peer);
       const dialog = this.dropDialog(peerId)[0];
       if(dialog) {
         if(dialog.pFlags?.pinned) {
@@ -1128,7 +1127,7 @@ export default class DialogsStorage extends AppManager {
   private onUpdateDialogPinned = (update: Update.updateDialogPinned) => {
     const folderId = update.folder_id ?? FOLDER_ID_ALL;
     //this.log('updateDialogPinned', update);
-    const peerId = getPeerId((update.peer as DialogPeer.dialogPeer).peer);
+    const peerId = this.appPeersManager.getPeerId((update.peer as DialogPeer.dialogPeer).peer);
     const dialog = this.getDialogOnly(peerId);
 
     // этот код внизу никогда не сработает, в папках за пиннед отвечает updateDialogFilter
@@ -1217,6 +1216,6 @@ export default class DialogsStorage extends AppManager {
 
     //this.log('before order:', this.dialogsStorage[0].map((d) => d.peerId));
 
-    handleOrder(update.order.map((peer) => getPeerId((peer as DialogPeer.dialogPeer).peer)));
+    handleOrder(update.order.map((peer) => this.appPeersManager.getPeerId((peer as DialogPeer.dialogPeer).peer)));
   };
 }

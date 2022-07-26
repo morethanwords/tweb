@@ -13,7 +13,6 @@ import { AvailableReaction, Message, MessagePeerReaction, MessagesAvailableReact
 import { ReferenceContext } from "../mtproto/referenceDatabase";
 import { AppManager } from "./manager";
 import getServerMessageId from "./utils/messageId/getServerMessageId";
-import getPeerId from "./utils/peers/getPeerId";
 
 const SAVE_DOC_KEYS = [
   'static_icon' as const,
@@ -243,7 +242,7 @@ export class AppReactionsManager extends AppManager {
       } */
 
       if(reactions.recent_reactions) {
-        findAndSplice(reactions.recent_reactions, (recentReaction) => getPeerId(recentReaction.peer_id) === myPeerId);
+        findAndSplice(reactions.recent_reactions, (recentReaction) => this.appPeersManager.getPeerId(recentReaction.peer_id) === myPeerId);
       }
 
       if(!reactions.results.length) {

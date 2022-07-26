@@ -82,6 +82,7 @@ import pause from "../../helpers/schedulers/pause";
 import apiManagerProxy from "../mtproto/mtprotoworker";
 import filterAsync from "../../helpers/array/filterAsync";
 import forEachReverse from "../../helpers/array/forEachReverse";
+import indexOfAndSplice from "../../helpers/array/indexOfAndSplice";
 
 export const DIALOG_LIST_ELEMENT_TAG = 'A';
 
@@ -168,7 +169,7 @@ class SortedDialogList extends SortedList<SortedDialog> {
   }
 
   public clear() {
-    this.list.innerHTML = '';
+    this.list.textContent = '';
     super.clear();
   }
 }
@@ -231,6 +232,7 @@ export class AppDialogsManager {
   private filtersNavigationItem: NavigationItem;
 
   private managers: AppManagers;
+  private selectTab: ReturnType<typeof horizontalMenu>;
 
   constructor() {
     const managers = this.managers = getProxiedManagers();
@@ -298,6 +300,7 @@ export class AppDialogsManager {
     } */
 
     rootScope.addEventListener('state_cleared', () => {
+      const clearCurrent = REAL_FOLDERS.has(this.filterId);
       //setTimeout(() => 
       apiManagerProxy.getState().then(async(state) => {
         this.loadedDialogsAtLeastOnce = false;
@@ -310,8 +313,11 @@ export class AppDialogsManager {
           clearPromises.push(storage.clear());
         } */
 
-        this.sortedList.clear();
-        this.onTabChange();
+        if(clearCurrent) {
+          this.sortedList.clear();
+          this.onTabChange();
+        }
+
         this.onStateLoaded(state);
       })//, 5000);
     });
@@ -325,13 +331,14 @@ export class AppDialogsManager {
 
     const foldersScrollable = new ScrollableX(this.folders.menuScrollContainer);
     bottomPart.prepend(this.folders.menuScrollContainer);
-    const selectTab = horizontalMenu(this.folders.menu, this.folders.container, (id, tabContent) => {
+    const selectTab = this.selectTab = horizontalMenu(this.folders.menu, this.folders.container, (id, tabContent, animate) => {
       /* if(id !== 0) {
         id += 1;
       } */
 
       id = +tabContent.dataset.filterId || FOLDER_ID_ALL;
 
+      const wasFilterId = this.filterId;
       if(!IS_MOBILE_SAFARI) {
         if(id) {
           if(!this.filtersNavigationItem) {
@@ -351,14 +358,18 @@ export class AppDialogsManager {
         }
       }
 
-      if(this.filterId === id) return;
+      if(wasFilterId === id) return;
 
       this.sortedLists[id].clear();
-      return this.setFilterIdAndChangeTab(id).then(({cached, renderPromise}) => {
+      const promise = this.setFilterIdAndChangeTab(id).then(({cached, renderPromise}) => {
         if(cached) {
           return renderPromise;
         }
       });
+
+      if(wasFilterId !== -1) {
+        return promise;
+      }
     }, () => {
       for(const folderId in this.sortedLists) {
         if(+folderId !== this.filterId) {
@@ -420,8 +431,7 @@ export class AppDialogsManager {
     this.sortedList = this.sortedLists[this.filterId];
     this.scroll = this.scrollables[this.filterId];
 
-    //selectTab(0);
-    // (this.folders.menu.firstElementChild as HTMLElement).click();
+    // selectTab(0, false);
   }
 
   public get chatList() {
@@ -429,13 +439,13 @@ export class AppDialogsManager {
   }
 
   public setFilterId(filterId: number, localId: MyDialogFilter['localId']) {
-    this.indexKey = getDialogIndexKey(localId);
     this.filterId = filterId;
+    this.indexKey = getDialogIndexKey(REAL_FOLDERS.has(filterId) ? filterId as REAL_FOLDER_ID : localId);
   }
 
   public async setFilterIdAndChangeTab(filterId: number) {
-    this.indexKey = await this.managers.dialogsStorage.getDialogIndexKeyByFilterId(filterId);
     this.filterId = filterId;
+    this.indexKey = await this.managers.dialogsStorage.getDialogIndexKeyByFilterId(filterId);
     return this.onTabChange();
   }
 
@@ -579,19 +589,24 @@ export class AppDialogsManager {
 
       // set tab
       //(this.folders.menu.firstElementChild.children[Math.max(0, filter.id - 2)] as HTMLElement).click();
-      (this.folders.menu.firstElementChild as HTMLElement).click();
-
       elements.container.remove();
       elements.menu.remove();
       
       delete this.sortedLists[filter.id];
       delete this.scrollables[filter.id];
       delete this.filtersRendered[filter.id];
-
+      
       this.onFiltersLengthChange();
+
+      if(this.filterId === filter.id) {
+        this.selectTab(0, false);
+      }
     });
 
     rootScope.addEventListener('filter_order', async(order) => {
+      order = order.slice();
+      indexOfAndSplice(order, FOLDER_ID_ARCHIVE);
+
       const containerToAppend = this.folders.menu as HTMLElement;
       const r = await Promise.all(order.map(async(filterId) => {
         return {
@@ -649,39 +664,41 @@ export class AppDialogsManager {
   private async onStateLoaded(state: State) {
     const filtersArr = state.filtersArr;
     const haveFilters = filtersArr.length > REAL_FOLDERS.size;
-    const filter = filtersArr.find((filter) => filter.id !== FOLDER_ID_ARCHIVE);
+    // const filter = filtersArr.find((filter) => filter.id !== FOLDER_ID_ARCHIVE);
 
     const addFilters = (filters: MyDialogFilter[]) => {
-      // forEachReverse(filters, (filter) => {
-      //   this.addFilter(filter);
-      // });
       for(const filter of filters) {
         this.addFilter(filter);
       }
     };
 
+    let addFiltersPromise: Promise<any>;
     if(haveFilters) {
       addFilters(filtersArr);
     } else {
-      this.managers.filtersStorage.getDialogFilters().then(addFilters);
+      addFiltersPromise = this.managers.filtersStorage.getDialogFilters().then(addFilters);
     }
     
-    (this.folders.menu.firstElementChild as HTMLElement).click();
-
     const loadDialogsPromise = this.onChatsScroll();
+    await loadDialogsPromise;
+    this.loadDialogsRenderPromise = undefined;
+
+    addFiltersPromise && await addFiltersPromise;
+    // this.folders.menu.children[0].classList.add('active');
+    
+    this.filterId = -1;
+    this.selectTab(0, false);
 
     if(!this.initedListeners) {
       this.initListeners();
       this.initedListeners = true;
     }
 
-    if(haveFilters && this.showFiltersPromise) {
-      await this.showFiltersPromise;
-    }
+    haveFilters && this.showFiltersPromise && await this.showFiltersPromise;
 
     this.managers.appNotificationsManager.getNotifyPeerTypeSettings();
 
-    await (await loadDialogsPromise).renderPromise;
+    await (await loadDialogsPromise).renderPromise.catch(noop);
     this.managers.appMessagesManager.fillConversations();
   }
 
@@ -940,6 +957,8 @@ export class AppDialogsManager {
     /* if(testScroll) {
       return;
     } */
+
+    this.log.warn('load', side);
 
     if(this.loadDialogsPromise || this.loadDialogsRenderPromise/*  || 1 === 1 */) return this.loadDialogsPromise;
     else if(this.scroll.loadedAll[side]) {
