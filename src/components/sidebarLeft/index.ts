@@ -34,7 +34,7 @@ import App from "../../config/app";
 import ButtonMenuToggle from "../buttonMenuToggle";
 import replaceContent from "../../helpers/dom/replaceContent";
 import sessionStorage from "../../lib/sessionStorage";
-import { attachClickEvent, CLICK_EVENT_NAME } from "../../helpers/dom/clickEvent";
+import { attachClickEvent, CLICK_EVENT_NAME, simulateClickEvent } from "../../helpers/dom/clickEvent";
 import ButtonIcon from "../buttonIcon";
 import confirmationPopup from "../confirmationPopup";
 import IS_GEOLOCATION_SUPPORTED from "../../environment/geolocationSupport";
@@ -359,7 +359,7 @@ export class AppSidebarLeft extends SidebarSlider {
 
     const close = () => {
       //setTimeout(() => {
-        this.backBtn.click();
+        simulateClickEvent(this.backBtn);
       //}, 0);
     };
 
@@ -632,7 +632,7 @@ export class AppSidebarLeft extends SidebarSlider {
     this.inputSearch.input.addEventListener('focus', onFocus);
     onFocus();
 
-    this.backBtn.addEventListener('click', (e) => {
+    attachClickEvent(this.backBtn, (e) => {
       this.toolsBtn.classList.add(activeClassName);
       this.backBtn.classList.remove(activeClassName);
       this.toolsBtn.parentElement.firstElementChild.classList.toggle('state-back', false);

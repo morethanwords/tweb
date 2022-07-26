@@ -31,7 +31,7 @@ import lottieLoader from "../rlottie/lottieLoader";
 import { wrapPhoto } from "../../components/wrappers";
 import AppEditFolderTab from "../../components/sidebarLeft/tabs/editFolder";
 import appSidebarLeft, { SettingSection } from "../../components/sidebarLeft";
-import { attachClickEvent } from "../../helpers/dom/clickEvent";
+import { attachClickEvent, simulateClickEvent } from "../../helpers/dom/clickEvent";
 import positionElementByIndex from "../../helpers/dom/positionElementByIndex";
 import replaceContent from "../../helpers/dom/replaceContent";
 import ConnectionStatusComponent from "../../components/connectionStatus";
@@ -419,7 +419,7 @@ export class AppDialogsManager {
     this.scroll = this.scrollables[this.filterId];
 
     //selectTab(0);
-    (this.folders.menu.firstElementChild as HTMLElement).click();
+    simulateClickEvent(this.folders.menu.firstElementChild as HTMLElement);
   }
 
   public get chatList() {
@@ -573,7 +573,7 @@ export class AppDialogsManager {
 
       // set tab
       //(this.folders.menu.firstElementChild.children[Math.max(0, filter.id - 2)] as HTMLElement).click();
-      (this.folders.menu.firstElementChild as HTMLElement).click();
+      simulateClickEvent(this.folders.menu.firstElementChild as HTMLElement);
 
       elements.container.remove();
       elements.menu.remove();

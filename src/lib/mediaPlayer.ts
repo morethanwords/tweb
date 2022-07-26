@@ -97,7 +97,6 @@ export default class VideoPlayer extends ControlsHover {
       }).finally(() => { // due to autoplay, play will not call
         this.wrapper.classList.toggle('is-playing', !this.video.paused);
       });
-      //(this.wrapper.querySelector('.toggle') as HTMLButtonElement).click();
     }
   }
 

@@ -409,13 +409,7 @@ export class AppImManager extends EventListenerBase<{
     this.addEventListener('peer_changed', async(peerId) => {
       document.body.classList.toggle('has-chat', !!peerId);
 
-      let str: string;
-      if(peerId) {
-        const username = await this.managers.appPeersManager.getPeerUsername(peerId);
-        str = username ? '@' + username : '' + peerId;
-      }
-
-      appNavigationController.overrideHash(str);
+      this.overrideHash(peerId);
 
       apiManagerProxy.updateTabState('chatPeerIds', this.chats.map((chat) => chat.peerId).filter(Boolean));
     });
@@ -1512,12 +1506,24 @@ export class AppImManager extends EventListenerBase<{
     }
   };
 
+  private async overrideHash(peerId?: PeerId) {
+    let str: string;
+    if(peerId) {
+      const username = await this.managers.appPeersManager.getPeerUsername(peerId);
+      str = username ? '@' + username : '' + peerId;
+    }
+
+    appNavigationController.overrideHash(str);
+  }
+
   public selectTab(id: number, animate?: boolean) {
     if(animate === false) { // * will be used for Safari iOS history swipe
       disableTransition([appSidebarLeft.sidebarEl, this.columnEl, appSidebarRight.sidebarEl]);
     }
 
     document.body.classList.toggle(LEFT_COLUMN_ACTIVE_CLASSNAME, id === 0);
+
+    this.overrideHash(id > 0 ? this.chat?.peerId : undefined);
 
     const prevTabId = this.tabId;
 

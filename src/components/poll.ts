@@ -16,7 +16,7 @@ import { fastRaf } from "../helpers/schedulers";
 import SetTransition from "./singleTransition";
 import findUpClassName from "../helpers/dom/findUpClassName";
 import cancelEvent from "../helpers/dom/cancelEvent";
-import { attachClickEvent, detachClickEvent } from "../helpers/dom/clickEvent";
+import { attachClickEvent, detachClickEvent, simulateClickEvent } from "../helpers/dom/clickEvent";
 import replaceContent from "../helpers/dom/replaceContent";
 import windowSize from "../helpers/windowSize";
 import { Message, MessageMedia, Poll, PollResults } from "../layer";
@@ -470,7 +470,7 @@ export default class PollElement extends HTMLElement {
       if(this.sentVote) {
         const correctResult = results.results.find((r) => r.pFlags.correct);
         if(correctResult && !correctResult.pFlags.chosen) {
-          toggleHint.click();
+          simulateClickEvent(toggleHint);
         }
       }
     }
