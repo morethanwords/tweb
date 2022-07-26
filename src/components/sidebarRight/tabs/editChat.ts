@@ -113,7 +113,8 @@ export default class AppEditChatTab extends SliderSuperTab {
 
             this.listenerSetter.add(tab.eventListener)('destroy', setChatTypeSubtitle);
           },
-          icon: 'lock'
+          icon: 'lock',
+          listenerSetter: this.listenerSetter
         });
 
         const setChatTypeSubtitle = () => {
@@ -147,7 +148,8 @@ export default class AppEditChatTab extends SliderSuperTab {
               
               this.listenerSetter.add(tab.eventListener)('destroy', setReactionsLength);
             });
-          }
+          },
+          listenerSetter: this.listenerSetter
         });
 
         const availableReactions = await this.managers.appReactionsManager.getAvailableReactions();
@@ -182,6 +184,7 @@ export default class AppEditChatTab extends SliderSuperTab {
             tab.open();
           },
           icon: 'permissions',
+          listenerSetter: this.listenerSetter
         });
 
         const setPermissionsLength = async() => {

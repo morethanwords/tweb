@@ -56,7 +56,8 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
           const tab = this.slider.createTab(AppBlockedUsersTab);
           tab.peerIds = blockedPeerIds;
           tab.open();
-        }
+        },
+        listenerSetter: this.listenerSetter
       });
       blockedUsersRow.freezed = true;
 
@@ -81,7 +82,8 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
           
           tab.state = passwordState;
           tab.open();
-        }
+        },
+        listenerSetter: this.listenerSetter
       };
       
       const twoFactorRow = new Row(twoFactorRowOptions);
@@ -98,7 +100,8 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
             this.updateActiveSessions();
           }, {once: true});
           tab.open();
-        }
+        },
+        listenerSetter: this.listenerSetter
       });
       activeSessionsRow.freezed = true;
 
@@ -157,7 +160,8 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
         subtitleLangKey: SUBTITLE,
         clickable: () => {
           this.slider.createTab(AppPrivacyPhoneNumberTab).open();
-        }
+        },
+        listenerSetter: this.listenerSetter
       });
 
       const lastSeenTimeRow = rowsByKeys['inputPrivacyKeyStatusTimestamp'] = new Row({
@@ -165,7 +169,8 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
         subtitleLangKey: SUBTITLE,
         clickable: () => {
           this.slider.createTab(AppPrivacyLastSeenTab).open();
-        }
+        },
+        listenerSetter: this.listenerSetter
       });
 
       const photoVisibilityRow = rowsByKeys['inputPrivacyKeyProfilePhoto'] = new Row({
@@ -173,7 +178,8 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
         subtitleLangKey: SUBTITLE,
         clickable: () => {
           this.slider.createTab(AppPrivacyProfilePhotoTab).open();
-        }
+        },
+        listenerSetter: this.listenerSetter
       });
 
       const callRow = rowsByKeys['inputPrivacyKeyPhoneCall'] = new Row({
@@ -181,7 +187,8 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
         subtitleLangKey: SUBTITLE,
         clickable: () => {
           this.slider.createTab(AppPrivacyCallsTab).open();
-        }
+        },
+        listenerSetter: this.listenerSetter
       });
 
       const linkAccountRow = rowsByKeys['inputPrivacyKeyForwards'] = new Row({
@@ -189,7 +196,8 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
         subtitleLangKey: SUBTITLE,
         clickable: () => {
           this.slider.createTab(AppPrivacyForwardMessagesTab).open();
-        }
+        },
+        listenerSetter: this.listenerSetter
       });
 
       const groupChatsAddRow = rowsByKeys['inputPrivacyKeyChatInvite'] = new Row({
@@ -197,7 +205,8 @@ export default class AppPrivacyAndSecurityTab extends SliderSuperTabEventable {
         subtitleLangKey: SUBTITLE,
         clickable: () => {
           this.slider.createTab(AppPrivacyAddToGroupsTab).open();
-        }
+        },
+        listenerSetter: this.listenerSetter
       });
 
       const updatePrivacyRow = (key: InputPrivacyKey['_']) => {

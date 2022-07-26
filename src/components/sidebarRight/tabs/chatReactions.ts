@@ -29,7 +29,8 @@ export default class AppChatReactionsTab extends SliderSuperTabEventable {
     const toggleCheckboxField = new CheckboxField({toggle: true, checked: !!enabledReactions.size});
     const toggleRow = new Row({
       checkboxField: toggleCheckboxField,
-      titleLangKey: 'EnableReactions'
+      titleLangKey: 'EnableReactions',
+      listenerSetter: this.listenerSetter
     });
 
     toggleSection.content.append(toggleRow.container);
@@ -65,7 +66,8 @@ export default class AppChatReactionsTab extends SliderSuperTabEventable {
       const row = new Row({
         checkboxField,
         title: availableReaction.title,
-        havePadding: true
+        havePadding: true,
+        listenerSetter: this.listenerSetter
       });
 
       wrapStickerToRow({

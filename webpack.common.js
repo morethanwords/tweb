@@ -185,7 +185,8 @@ module.exports = {
       // directory: path.join(__dirname, 'public')
     // },
     compress: true,
-    http2: useLocalNotLocal ? true : (useLocal ? undefined : true),
+    // http2: useLocalNotLocal ? true : (useLocal ? undefined : true),
+    http2: true,
     https: useLocal ? undefined : {
       key: fs.readFileSync(__dirname + '/certs/server-key.pem', 'utf8'),
       cert: fs.readFileSync(__dirname + '/certs/server-cert.pem', 'utf8')

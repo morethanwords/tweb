@@ -19,6 +19,7 @@ import copy from "../../../helpers/object/copy";
 import forEachReverse from "../../../helpers/array/forEachReverse";
 import setInnerHTML from "../../../helpers/dom/setInnerHTML";
 import wrapEmojiText from "../../../lib/richTextProcessor/wrapEmojiText";
+import { attachClickEvent } from "../../../helpers/dom/clickEvent";
 
 export default class AppIncludedChatsTab extends SliderSuperTab {
   private editFolderTab: AppEditFolderTab;
@@ -39,7 +40,7 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
 
     this.header.append(this.confirmBtn);
 
-    this.confirmBtn.addEventListener('click', async() => {
+    attachClickEvent(this.confirmBtn, async() => {
       const selected = this.selector.getSelected();
 
       //this.filter.pFlags = {};
@@ -103,7 +104,7 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
 
       this.editFolderTab.setFilter(this.filter, false);
       this.close();
-    });
+    }, {listenerSetter: this.listenerSetter});
 
     this.dialogsByFilters = new Map();
     return this.managers.filtersStorage.getDialogFilters().then(async(filters) => {

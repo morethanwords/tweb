@@ -12,7 +12,7 @@ export default class AppAutoDownloadVideoTab extends SliderSuperTabEventable {
     this.header.classList.add('with-border');
     this.setTitle('AutoDownloadVideos');
 
-    const section = autoDownloadPeerTypeSection('video', 'AutoDownloadVideosTitle');
+    const section = autoDownloadPeerTypeSection('video', 'AutoDownloadVideosTitle', this.listenerSetter);
     this.scrollable.append(section.container);
   }
 }

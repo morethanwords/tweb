@@ -38,12 +38,11 @@ export default function renderImageWithFadeIn(
           image.addEventListener('animationend', () => {
             sequentialDom.mutate(() => {
               image.classList.remove('fade-in');
-  
-              if(thumbImage) {
-                thumbImage.remove();
-              }
+              thumbImage?.remove();
             });
           }, {once: true});
+        } else {
+          thumbImage?.remove();
         }
       });
     });

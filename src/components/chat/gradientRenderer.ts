@@ -283,11 +283,11 @@ export default class ChatBackgroundGradientRenderer {
       this._hc = document.createElement('canvas');
       this._hc.width = this._width;
       this._hc.height = this._height;
-      this._hctx = this._hc.getContext('2d');
+      this._hctx = this._hc.getContext('2d', {alpha: false});
     }
 
     this._canvas = el;
-    this._ctx = this._canvas.getContext('2d');
+    this._ctx = this._canvas.getContext('2d', {alpha: false});
     this.update();
   }
 

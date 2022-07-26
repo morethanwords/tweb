@@ -13,7 +13,7 @@ export default function callVideoCanvasBlur(video: HTMLVideoElement) {
   canvas.width = size;
   canvas.height = size;
 
-  const ctx = canvas.getContext('2d');
+  const ctx = canvas.getContext('2d', {alpha: false});
   ctx.filter = 'blur(2px)';
   const renderFrame = () => {
     ctx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight, 0, 0, canvas.width, canvas.height);

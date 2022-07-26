@@ -458,6 +458,11 @@ export default class Chat extends EventListenerBase<{
       this.cleanup(true);
       this.bubbles.setPeer(false, peerId);
       this.appImManager.dispatchEvent('peer_changed', peerId);
+
+      appSidebarRight.replaceSharedMediaTab();
+      this.destroySharedMediaTab();
+      this.sharedMediaTab = undefined;
+
       return;
     }
 

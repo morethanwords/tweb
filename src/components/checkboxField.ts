@@ -9,6 +9,7 @@ import { LangPackKey, _i18n } from "../lib/langPack";
 import getDeepProperty from "../helpers/object/getDeepProperty";
 import rootScope from "../lib/rootScope";
 import apiManagerProxy from "../lib/mtproto/mtprotoworker";
+import ListenerSetter from "../helpers/listenerSetter";
 
 export type CheckboxFieldOptions = {
   text?: LangPackKey,
@@ -23,6 +24,7 @@ export type CheckboxFieldOptions = {
   restriction?: boolean,
   withRipple?: boolean,
   withHover?: boolean,
+  listenerSetter?: ListenerSetter
 };
 export default class CheckboxField {
   public input: HTMLInputElement;
@@ -57,7 +59,24 @@ export default class CheckboxField {
     }
 
     if(options.stateKey) {
+      let loaded = false;
+      const onChange = () => {
+        if(!loaded) {
+          return;
+        }
+
+        let value: any;
+        if(options.stateValues) {
+          value = options.stateValues[input.checked ? 1 : 0];
+        } else {
+          value = input.checked;
+        }
+
+        rootScope.managers.appStateManager.setByKey(options.stateKey, value);
+      };
+
       apiManagerProxy.getState().then((state) => {
+        loaded = true;
         const stateValue = getDeepProperty(state, options.stateKey);
         let checked: boolean;
         if(options.stateValues) {
@@ -67,18 +86,10 @@ export default class CheckboxField {
         }
 
         this.setValueSilently(checked);
-
-        input.addEventListener('change', () => {
-          let value: any;
-          if(options.stateValues) {
-            value = options.stateValues[input.checked ? 1 : 0];
-          } else {
-            value = input.checked;
-          }
-
-          rootScope.managers.appStateManager.setByKey(options.stateKey, value);
-        });
       });
+
+      if(options.listenerSetter) options.listenerSetter.add(input)('change', onChange);
+      else input.addEventListener('change', onChange);
     }
 
     let span: HTMLSpanElement;

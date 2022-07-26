@@ -24,6 +24,7 @@ import deepEqual from "../../../helpers/object/deepEqual";
 import documentFragmentToHTML from "../../../helpers/dom/documentFragmentToHTML";
 import wrapDraftText from "../../../lib/richTextProcessor/wrapDraftText";
 import filterAsync from "../../../helpers/array/filterAsync";
+import { attachClickEvent } from "../../../helpers/dom/clickEvent";
 
 const MAX_FOLDER_NAME_LENGTH = 12;
 
@@ -79,7 +80,7 @@ export default class AppEditFolderTab extends SliderSuperTab {
         }).show();
       }
     };
-    this.menuBtn = ButtonMenuToggle({}, 'bottom-left', [deleteFolderButton]);
+    this.menuBtn = ButtonMenuToggle({listenerSetter: this.listenerSetter}, 'bottom-left', [deleteFolderButton]);
     this.menuBtn.classList.add('hide');
 
     this.header.append(this.confirmBtn, this.menuBtn);
@@ -174,15 +175,15 @@ export default class AppEditFolderTab extends SliderSuperTab {
     const includedFlagsContainer = this.includePeerIds.container.querySelector('.folder-categories');
     const excludedFlagsContainer = this.excludePeerIds.container.querySelector('.folder-categories');
 
-    includedFlagsContainer.querySelector('.btn').addEventListener('click', () => {
+    attachClickEvent(includedFlagsContainer.querySelector('.btn') as HTMLElement, () => {
       this.slider.createTab(AppIncludedChatsTab).open(this.filter, 'included', this);
-    });
+    }, {listenerSetter: this.listenerSetter});
 
-    excludedFlagsContainer.querySelector('.btn').addEventListener('click', () => {
+    attachClickEvent(excludedFlagsContainer.querySelector('.btn') as HTMLElement, () => {
       this.slider.createTab(AppIncludedChatsTab).open(this.filter, 'excluded', this);
-    });
+    }, {listenerSetter: this.listenerSetter});
 
-    this.confirmBtn.addEventListener('click', () => {
+    attachClickEvent(this.confirmBtn, () => {
       if(this.nameInputField.input.classList.contains('error')) {
         return;
       }
@@ -222,9 +223,9 @@ export default class AppEditFolderTab extends SliderSuperTab {
       }).finally(() => {
         this.confirmBtn.removeAttribute('disabled');
       });
-    });
+    }, {listenerSetter: this.listenerSetter});
     
-    this.nameInputField.input.addEventListener('input', () => {
+    this.listenerSetter.add(this.nameInputField.input)('input', () => {
       this.filter.title = this.nameInputField.value;
       this.editCheckForChange();
     });
@@ -336,7 +337,7 @@ export default class AppEditFolderTab extends SliderSuperTab {
         const content = section.generateContentElement();
         showMore = Button('folder-category-button btn btn-primary btn-transparent', {icon: 'down'});
         showMore.classList.add('load-more', 'rp-overflow');
-        showMore.addEventListener('click', () => renderMore(20));
+        attachClickEvent(showMore, () => renderMore(20), {listenerSetter: this.listenerSetter});
         showMore.append(i18n('FilterShowMoreChats', [peers.length]));
 
         content.append(showMore);

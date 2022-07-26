@@ -11,6 +11,8 @@ import { fastRaf } from "../helpers/schedulers";
 import { FocusDirection } from "../helpers/fastSmoothScroll";
 import findUpAsChild from "../helpers/dom/findUpAsChild";
 import whichChild from "../helpers/dom/whichChild";
+import ListenerSetter from "../helpers/listenerSetter";
+import { attachClickEvent } from "../helpers/dom/clickEvent";
 
 export function horizontalMenu(
   tabs: HTMLElement, 
@@ -18,9 +20,10 @@ export function horizontalMenu(
   onClick?: (id: number, tabContent: HTMLDivElement, animate: boolean) => void | boolean | Promise<void | boolean>, 
   onTransitionEnd?: () => void, 
   transitionTime = 250, 
-  scrollableX?: ScrollableX
+  scrollableX?: ScrollableX,
+  listenerSetter?: ListenerSetter
 ) {
-  const selectTab = TransitionSlider(content, tabs || content.dataset.animation === 'tabs' ? 'tabs' : 'navigation', transitionTime, onTransitionEnd);
+  const selectTab = TransitionSlider(content, tabs || content.dataset.animation === 'tabs' ? 'tabs' : 'navigation', transitionTime, onTransitionEnd, undefined, listenerSetter);
 
   if(!tabs) {
     return selectTab;
@@ -109,7 +112,7 @@ export function horizontalMenu(
 
   //const tagName = tabs.classList.contains('menu-horizontal-div') ? 'BUTTON' : 'LI';
   const tagName = tabs.firstElementChild.tagName;
-  tabs.addEventListener('click', function(e) {
+  attachClickEvent(tabs, (e) => {
     let target = e.target as HTMLElement;
     
     target = findUpAsChild(target, tabs);
@@ -129,7 +132,7 @@ export function horizontalMenu(
     }
 
     selectTarget(target, id);
-  });
+  }, {listenerSetter});
 
   return proxy;
 }

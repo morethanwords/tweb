@@ -36,11 +36,13 @@ export default class AppNotificationsTab extends SliderSuperTabEventable {
       const enabledRow = new Row({
         checkboxField: new CheckboxField({text: options.typeText, checked: true}),
         subtitleLangKey: 'Loading',
+        listenerSetter: this.listenerSetter
       });
       
       const previewEnabledRow = new Row({
         checkboxField: new CheckboxField({text: 'MessagePreview', checked: true}),
         subtitleLangKey: 'Loading',
+        listenerSetter: this.listenerSetter
       });
 
       section.content.append(enabledRow.container, previewEnabledRow.container);
@@ -112,11 +114,13 @@ export default class AppNotificationsTab extends SliderSuperTabEventable {
       const contactsSignUpRow = new Row({
         checkboxField: new CheckboxField({text: 'ContactJoined', checked: true}),
         subtitleLangKey: 'Loading',
+        listenerSetter: this.listenerSetter
       });
       
       const soundRow = new Row({
-        checkboxField: new CheckboxField({text: 'Notifications.Sound', checked: true, stateKey: 'settings.notifications.sound'}),
+        checkboxField: new CheckboxField({text: 'Notifications.Sound', checked: true, stateKey: 'settings.notifications.sound', listenerSetter: this.listenerSetter}),
         subtitleLangKey: 'Loading',
+        listenerSetter: this.listenerSetter
       });
 
       apiManagerProxy.getState().then((state) => {

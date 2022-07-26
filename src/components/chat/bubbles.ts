@@ -1937,7 +1937,7 @@ export default class ChatBubbles {
   }
 
   public onScroll = (ignoreHeavyAnimation?: boolean, scrollDimensions?: ScrollStartCallbackDimensions) => {
-    //return;
+    // return;
 
     if(this.isHeavyAnimationInProgress) {
       if(this.sliceViewportDebounced) {
@@ -2470,8 +2470,7 @@ export default class ChatBubbles {
   }
 
   private destroyScrollable() {
-    this.scrollable.removeListeners();
-    this.scrollable.onScrolledTop = this.scrollable.onScrolledBottom = this.scrollable.onAdditionalScroll = null;
+    this.scrollable.destroy();
   }
 
   public destroy() {
@@ -2517,6 +2516,7 @@ export default class ChatBubbles {
     // clear messages
     if(bubblesToo) {
       this.scrollable.container.textContent = '';
+      this.chatInner.textContent = '';
       this.cleanupPlaceholders();
     }
     
@@ -2805,7 +2805,7 @@ export default class ChatBubbles {
         this.attachPlaceholderOnRender();
       }
 
-      if(!isTarget && this.chat.type === 'chat') {
+      if(!isTarget && this.chat.type === 'chat' && this.chat.topbar.pinnedMessage) {
         this.chat.topbar.pinnedMessage.setCorrectIndex(0);
       }
 

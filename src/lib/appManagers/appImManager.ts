@@ -89,6 +89,7 @@ import apiManagerProxy from '../mtproto/mtprotoworker';
 import appRuntimeManager from './appRuntimeManager';
 import paymentsWrapCurrencyAmount from '../../helpers/paymentsWrapCurrencyAmount';
 import findUpClassName from '../../helpers/dom/findUpClassName';
+import { CLICK_EVENT_NAME } from '../../helpers/dom/clickEvent';
 
 export const CHAT_ANIMATION_GROUP = 'chat';
 
@@ -368,6 +369,10 @@ export class AppImManager extends EventListenerBase<{
       const isVisible = parentElement.classList.contains(className);
       if(!isVisible) {
         cancelEvent(e);
+
+        if(CLICK_EVENT_NAME !== 'click') {
+          window.addEventListener('click', cancelEvent, {capture: true, once: true});
+        }
       }
 
       const duration = 400 / 2;

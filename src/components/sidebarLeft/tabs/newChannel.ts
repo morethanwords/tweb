@@ -13,6 +13,7 @@ import AppAddMembersTab from "./addMembers";
 import { _i18n } from "../../../lib/langPack";
 import ButtonCorner from "../../buttonCorner";
 import appImManager from "../../../lib/appManagers/appImManager";
+import { attachClickEvent } from "../../../helpers/dom/clickEvent";
 
 export default class AppNewChannelTab extends SliderSuperTab {
   private uploadAvatar: () => Promise<InputFile> = null;
@@ -60,7 +61,7 @@ export default class AppNewChannelTab extends SliderSuperTab {
 
     this.nextBtn = ButtonCorner({icon: 'arrow_next'});
 
-    this.nextBtn.addEventListener('click', () => {
+    attachClickEvent(this.nextBtn, () => {
       const title = this.channelNameInputField.value;
       const about = this.channelDescriptionInputField.value;
 
@@ -89,7 +90,7 @@ export default class AppNewChannelTab extends SliderSuperTab {
           }
         });
       });
-    });
+    }, {listenerSetter: this.listenerSetter});
 
     this.content.append(this.nextBtn);
     section.content.append(this.avatarEdit.container, inputWrapper);

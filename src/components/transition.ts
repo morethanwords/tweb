@@ -9,6 +9,7 @@ import deferredPromise, { CancellablePromise } from "../helpers/cancellablePromi
 import { dispatchHeavyAnimationEvent } from "../hooks/useHeavyAnimationCheck";
 import whichChild from "../helpers/dom/whichChild";
 import cancelEvent from "../helpers/dom/cancelEvent";
+import ListenerSetter from "../helpers/listenerSetter";
 
 function slideNavigation(tabContent: HTMLElement, prevTabContent: HTMLElement, toRight: boolean) {
   const width = prevTabContent.getBoundingClientRect().width;
@@ -84,7 +85,8 @@ export const TransitionSlider = (
   type: 'tabs' | 'navigation' | 'zoom-fade' | 'slide-fade' | 'none'/*  | 'counter' */, 
   transitionTime: number, 
   onTransitionEnd?: (id: number) => void, 
-  isHeavy = true
+  isHeavy = true,
+  listenerSetter?: ListenerSetter
 ) => {
   let animationFunction: TransitionFunction = null;
 
@@ -101,7 +103,7 @@ export const TransitionSlider = (
 
   content.dataset.animation = type;
   
-  return Transition(content, animationFunction, transitionTime, onTransitionEnd, isHeavy);
+  return Transition(content, animationFunction, transitionTime, onTransitionEnd, isHeavy, undefined, undefined, listenerSetter);
 };
 
 type TransitionFunction = (tabContent: HTMLElement, prevTabContent: HTMLElement, toRight: boolean) => void | (() => void);
@@ -113,7 +115,8 @@ const Transition = (
   onTransitionEnd?: (id: number) => void, 
   isHeavy = true,
   once = false,
-  withAnimationListener = true
+  withAnimationListener = true,
+  listenerSetter?: ListenerSetter
 ) => {
   const onTransitionEndCallbacks: Map<HTMLElement, Function> = new Map();
   let animationDeferred: CancellablePromise<void>;
@@ -133,7 +136,7 @@ const Transition = (
       //console.log('Transition: transitionend', /* content, */ e, selectTab.prevId, performance.now() - animationStarted);
   
       const callback = onTransitionEndCallbacks.get(e.target as HTMLElement);
-      if(callback) callback();
+      callback?.();
   
       if(e.target !== from) {
         return;
@@ -153,14 +156,16 @@ const Transition = (
       content.classList.remove('animating', 'backwards', 'disable-hover');
   
       if(once) {
-        content.removeEventListener(listenerName, onEndEvent/* , {capture: false} */);
+        if(listenerSetter) listenerSetter.removeManual(content, listenerName, onEndEvent);
+        else content.removeEventListener(listenerName, onEndEvent/* , {capture: false} */);
         from = animationDeferred = undefined;
         onTransitionEndCallbacks.clear();
       }
     };
   
     // TODO: check for transition type (transform, etc) using by animationFunction
-    content.addEventListener(listenerName, onEndEvent/* , {passive: true, capture: false} */);
+    if(listenerSetter) listenerSetter.add(content)(listenerName, onEndEvent);
+    else content.addEventListener(listenerName, onEndEvent/* , {passive: true, capture: false} */);
   }
 
   function selectTab(id: number | HTMLElement, animate = true, overrideFrom?: typeof from) {
@@ -196,9 +201,7 @@ const Transition = (
       if(from) from.classList.remove('active', 'to', 'from');
       else if(to) { // fix instant opening back from closed slider (e.g. instant closening and opening right sidebar)
         const callback = onTransitionEndCallbacks.get(to);
-        if(callback) {
-          callback();
-        }
+        callback?.();
       }
 
       if(to) {
@@ -254,21 +257,24 @@ const Transition = (
     }
 
     if(from/*  && false */) {
+      let timeout: number;
       const _from = from;
       const callback = () => {
+        clearTimeout(timeout);
         _from.classList.remove('active', 'from');
 
         if(onTransitionEndCallback) {
-          onTransitionEndCallback();
+          onTransitionEndCallback?.();
         }
 
         onTransitionEndCallbacks.delete(_from);
       };
 
       if(to) {
+        timeout = window.setTimeout(callback, transitionTime + 100); // something happened to container
         onTransitionEndCallbacks.set(_from, callback);
       } else {
-        const timeout = window.setTimeout(callback, transitionTime);
+        timeout = window.setTimeout(callback, transitionTime);
         onTransitionEndCallbacks.set(_from, () => {
           clearTimeout(timeout);
           onTransitionEndCallbacks.delete(_from);
@@ -290,7 +296,7 @@ const Transition = (
 
   //selectTab.prevId = -1;
   selectTab.prevId = () => from ? whichChild(from) : -1;
-  
+
   return selectTab;
 };
 

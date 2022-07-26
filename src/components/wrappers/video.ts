@@ -15,7 +15,8 @@ import isInDOM from "../../helpers/dom/isInDOM";
 import renderImageFromUrl from "../../helpers/dom/renderImageFromUrl";
 import mediaSizes, { ScreenSize } from "../../helpers/mediaSizes";
 import onMediaLoad from "../../helpers/onMediaLoad";
-import throttleWithRaf from "../../helpers/schedulers/throttleWithRaf";
+import { fastRaf } from "../../helpers/schedulers";
+import throttle from "../../helpers/schedulers/throttle";
 import sequentialDom from "../../helpers/sequentialDom";
 import toHHMMSS from "../../helpers/string/toHHMMSS";
 import { Message, PhotoSize } from "../../layer";
@@ -245,7 +246,9 @@ export default async function wrapVideo({doc, container, message, boxWidth, boxH
         spanTime.innerText = toHHMMSS(globalVideo.duration - globalVideo.currentTime, false);
       };
 
-      const throttledTimeUpdate = throttleWithRaf(onTimeUpdate);
+      const throttledTimeUpdate = throttle(() => {
+        fastRaf(onTimeUpdate);
+      }, 1000, false);
   
       const onPlay = () => {
         video.classList.add('hide');
@@ -437,14 +440,16 @@ export default async function wrapVideo({doc, container, message, boxWidth, boxH
 
   if(doc.type === 'video') {
     const onTimeUpdate = () => {
-      if(!video.videoWidth) {
+      if(!video.duration) {
         return;
       }
       
       spanTime.innerText = toHHMMSS(video.duration - video.currentTime, false);
     };
 
-    const throttledTimeUpdate = throttleWithRaf(onTimeUpdate);
+    const throttledTimeUpdate = throttle(() => {
+      fastRaf(onTimeUpdate);
+    }, 1e3, false);
 
     video.addEventListener('timeupdate', throttledTimeUpdate);
 

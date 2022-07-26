@@ -14,6 +14,7 @@ import I18n from "../../../lib/langPack";
 import ButtonCorner from "../../buttonCorner";
 import getUserStatusString from "../../wrappers/getUserStatusString";
 import appImManager from "../../../lib/appManagers/appImManager";
+import { attachClickEvent } from "../../../helpers/dom/clickEvent";
 
 interface OpenStreetMapInterface {
   place_id?: number;
@@ -68,7 +69,7 @@ export default class AppNewGroupTab extends SliderSuperTab {
       this.groupLocationInputField.container
     );
 
-    this.groupNameInputField.input.addEventListener('input', () => {
+    this.listenerSetter.add(this.groupNameInputField.input)('input', () => {
       const value = this.groupNameInputField.value;
       let valueCheck = !!value.length && !this.groupNameInputField.input.classList.contains('error');
       if(this.isGeoChat) valueCheck = valueCheck && !!this.userLocationCoords && !!this.userLocationAddress;
@@ -77,7 +78,7 @@ export default class AppNewGroupTab extends SliderSuperTab {
 
     this.nextBtn = ButtonCorner({icon: 'arrow_next'});
 
-    this.nextBtn.addEventListener('click', () => {
+    attachClickEvent(this.nextBtn, () => {
       const title = this.groupNameInputField.value;
 
       let promise: Promise<ChatId>;
@@ -128,7 +129,7 @@ export default class AppNewGroupTab extends SliderSuperTab {
 
         appImManager.setInnerPeer({peerId: chatId.toPeerId(true)});
       });
-    });
+    }, {listenerSetter: this.listenerSetter});
 
     const chatsSection = new SettingSection({
       name: 'Members',
