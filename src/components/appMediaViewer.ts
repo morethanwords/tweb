@@ -7,6 +7,7 @@
 import MEDIA_MIME_TYPES_SUPPORTED from "../environment/mediaMimeTypesSupport";
 import cancelEvent from "../helpers/dom/cancelEvent";
 import { attachClickEvent, detachClickEvent } from "../helpers/dom/clickEvent";
+import findUpClassName from "../helpers/dom/findUpClassName";
 import findUpTag from "../helpers/dom/findUpTag";
 import setInnerHTML from "../helpers/dom/setInnerHTML";
 import mediaSizes from "../helpers/mediaSizes";
@@ -131,7 +132,8 @@ export default class AppMediaViewer extends AppMediaViewerBase<'caption', 'delet
 
     const onCaptionClick = (e: MouseEvent) => {
       const a = findUpTag(e.target, 'A');
-      if(a instanceof HTMLAnchorElement) { // close viewer if it's t.me/ redirect
+      const spoiler = findUpClassName(e.target, 'spoiler');
+      if(a instanceof HTMLAnchorElement && (!spoiler || this.content.caption.classList.contains('is-spoiler-visible'))) { // close viewer if it's t.me/ redirect
         const onclick = a.getAttribute('onclick');
         if(!onclick || onclick.includes('showMaskedAlert')) {
           return;

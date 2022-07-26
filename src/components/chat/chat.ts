@@ -7,7 +7,7 @@
 import type { ChatRights } from "../../lib/appManagers/appChatsManager";
 import type { AppImManager } from "../../lib/appManagers/appImManager";
 import type { MessagesStorageKey } from "../../lib/appManagers/appMessagesManager";
-import type AppMediaViewerBase from "../appMediaViewerBase";
+// import type AppMediaViewerBase from "../appMediaViewerBase";
 import EventListenerBase from "../../helpers/eventListenerBase";
 import { logger, LogTypes } from "../../lib/logger";
 import rootScope from "../../lib/rootScope";
@@ -439,10 +439,10 @@ export default class Chat extends EventListenerBase<{
       this.inited = true;
     }
 
-    const appMediaViewer = (window as any).appMediaViewer as AppMediaViewerBase<any, any, any>;
-    if(appMediaViewer) {
-      appMediaViewer.close();
-    }
+    // const appMediaViewer = (window as any).appMediaViewer as AppMediaViewerBase<any, any, any>;
+    // if(appMediaViewer) {
+    //   appMediaViewer.close();
+    // }
 
     const samePeer = this.peerId === peerId;
     if(!samePeer) {
