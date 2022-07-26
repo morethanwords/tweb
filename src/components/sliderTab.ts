@@ -108,10 +108,7 @@ export default class SliderSuperTab implements SliderTab {
       this.slider.tabs.delete(this);
       this.container.remove();
       this.scrollable.destroy();
-    }
-
-    if(this.listenerSetter) {
-      this.listenerSetter.removeAll();
+      this.listenerSetter?.removeAll();
     }
   }
 
