@@ -21,7 +21,7 @@ import debounce from "../helpers/schedulers/debounce";
 import windowSize from "../helpers/windowSize";
 import type { IsPeerType } from "../lib/appManagers/appPeersManager";
 import { generateDelimiter, SettingSection } from "./sidebarLeft";
-import { attachClickEvent } from "../helpers/dom/clickEvent";
+import { attachClickEvent, simulateClickEvent } from "../helpers/dom/clickEvent";
 import filterUnique from "../helpers/array/filterUnique";
 import indexOfAndSplice from "../helpers/array/indexOfAndSplice";
 import safeAssign from "../helpers/object/safeAssign";
@@ -187,7 +187,7 @@ export default class AppSelectPeers {
         if(!li) {
           this.remove(peerId.toPeerId());
         } else {
-          li.click();
+          simulateClickEvent(li);
         }
       });
 

@@ -19,7 +19,7 @@ import copy from "../../../helpers/object/copy";
 import forEachReverse from "../../../helpers/array/forEachReverse";
 import setInnerHTML from "../../../helpers/dom/setInnerHTML";
 import wrapEmojiText from "../../../lib/richTextProcessor/wrapEmojiText";
-import { attachClickEvent } from "../../../helpers/dom/clickEvent";
+import { attachClickEvent, simulateClickEvent } from "../../../helpers/dom/clickEvent";
 
 export default class AppIncludedChatsTab extends SliderSuperTab {
   private editFolderTab: AppEditFolderTab;
@@ -251,7 +251,7 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
     for(const flag in filter.pFlags) {
       // @ts-ignore
       if(details.hasOwnProperty(flag) && !!filter.pFlags[flag]) {
-        (categoriesSection.content.querySelector(`[data-peer-id="${flag}"]`) as HTMLElement).click();
+        simulateClickEvent(categoriesSection.content.querySelector(`[data-peer-id="${flag}"]`) as HTMLElement);
       }
     }
   }
