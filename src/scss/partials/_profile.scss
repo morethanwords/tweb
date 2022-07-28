@@ -111,11 +111,27 @@
         --color: #fff;
       }
 
+      .premium-icon {
+        color: #fff;
+      }
+
+      .verified-icon {
+        &-background {
+          fill: #fff;
+        }
+
+        &-check {
+          visibility: hidden;
+        }
+      }
+
       .profile-name {
         margin-bottom: -1px;
       }
 
-      .profile-subtitle {
+      .profile-subtitle,
+      .verified-icon,
+      .premium-icon {
         opacity: .7;
       }
 
@@ -302,9 +318,9 @@
       @include text-overflow(false);
     }
 
-    .verified-icon {
-      margin-bottom: 3px;
-    }
+    // .verified-icon {
+    //   margin-bottom: 3px;
+    // }
 
     .sidebar-left-section-content > & {
       justify-content: center;

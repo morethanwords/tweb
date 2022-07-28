@@ -19,7 +19,6 @@ import wrapRichText from "../lib/richTextProcessor/wrapRichText";
 import rootScope from "../lib/rootScope";
 import AvatarElement from "./avatar";
 import CheckboxField from "./checkboxField";
-import generateTitleIcons from "./generateTitleIcons";
 import PeerProfileAvatars from "./peerProfileAvatars";
 import Row from "./row";
 import Scrollable from "./scrollable";
@@ -358,16 +357,17 @@ export default class PeerProfile {
       this.fillNotifications(),
       this.setMoreDetails(),
       (async() => {
-        const [element, icons] = await Promise.all([
+        const [element/* , icons */] = await Promise.all([
           wrapPeerTitle({
             peerId,
             dialog: this.isDialog,
+            withIcons: true
           }),
 
-          generateTitleIcons(peerId)
+          // generateTitleIcons(peerId)
         ]);
         replaceContent(this.name, element);
-        this.name.append(...icons);
+        // this.name.append(...icons);
       })(),
       this.setPeerStatus(true)
     ]);

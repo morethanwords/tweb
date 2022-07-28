@@ -151,31 +151,30 @@ export class AppChatsManager extends AppManager {
       this.usernames[searchUsername] = chat.id;
     } */
 
-    let changedPhoto = false, changedTitle = false;
+    const peerId = chat.id.toPeerId(true);
     if(oldChat === undefined) {
       this.chats[chat.id] = chat;
     } else {
       const oldPhotoId = ((oldChat as Chat.chat).photo as ChatPhoto.chatPhoto)?.photo_id;
       const newPhotoId = ((chat as Chat.chat).photo as ChatPhoto.chatPhoto)?.photo_id;
-      if(oldPhotoId !== newPhotoId) {
-        changedPhoto = true;
-      }
+      const changedPhoto = oldPhotoId !== newPhotoId;
 
-      if(oldChat.title !== chat.title) {
-        changedTitle = true;
-      }
+      const changedTitle = oldChat.title !== chat.title;
+
+      const changedAnyBadge = (oldChat as Chat.channel).pFlags.verified !== (chat as Chat.channel).pFlags.verified ||
+        (oldChat as Chat.channel).pFlags.scam !== (chat as Chat.channel).pFlags.scam ||
+        (oldChat as Chat.channel).pFlags.fake !== (chat as Chat.channel).pFlags.fake;
 
       safeReplaceObject(oldChat, chat);
       this.rootScope.dispatchEvent('chat_update', chat.id);
-    }
 
-    const peerId = chat.id.toPeerId(true);
-    if(changedPhoto) {
-      this.rootScope.dispatchEvent('avatar_update', peerId);
-    }
-
-    if(changedTitle) {
-      this.rootScope.dispatchEvent('peer_title_edit', peerId);
+      if(changedPhoto) {
+        this.rootScope.dispatchEvent('avatar_update', peerId);
+      }
+  
+      if(changedTitle || changedAnyBadge) {
+        this.rootScope.dispatchEvent('peer_title_edit', peerId);
+      }
     }
 
     if(this.peersStorage.isPeerNeeded(peerId)) {

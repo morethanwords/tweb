@@ -3,9 +3,9 @@
 @font-face {
   font-family: '#{$tgico-font-family}';
   src:
-    url('#{$tgico-font-path}/#{$tgico-font-family}.ttf?js2svd') format('truetype'),
-    url('#{$tgico-font-path}/#{$tgico-font-family}.woff?js2svd') format('woff'),
-    url('#{$tgico-font-path}/#{$tgico-font-family}.svg?js2svd##{$tgico-font-family}') format('svg');
+    url('#{$tgico-font-path}/#{$tgico-font-family}.ttf?h1cbu') format('truetype'),
+    url('#{$tgico-font-path}/#{$tgico-font-family}.woff?h1cbu') format('woff'),
+    url('#{$tgico-font-path}/#{$tgico-font-family}.svg?h1cbu##{$tgico-font-family}') format('svg');
   font-weight: normal;
   font-style: normal;
   font-display: block;
@@ -487,6 +487,36 @@
     content: $tgico-left; 
   }
 }
+.tgico-limit_chat {
+  &:before {
+    content: $tgico-limit_chat; 
+  }
+}
+.tgico-limit_chats {
+  &:before {
+    content: $tgico-limit_chats; 
+  }
+}
+.tgico-limit_file {
+  &:before {
+    content: $tgico-limit_file; 
+  }
+}
+.tgico-limit_folders {
+  &:before {
+    content: $tgico-limit_folders; 
+  }
+}
+.tgico-limit_link {
+  &:before {
+    content: $tgico-limit_link; 
+  }
+}
+.tgico-limit_pin {
+  &:before {
+    content: $tgico-limit_pin; 
+  }
+}
 .tgico-link {
   &:before {
     content: $tgico-link; 
@@ -712,6 +742,26 @@
     content: $tgico-poll; 
   }
 }
+.tgico-premium_addone {
+  &:before {
+    content: $tgico-premium_addone; 
+  }
+}
+.tgico-premium_double {
+  &:before {
+    content: $tgico-premium_double; 
+  }
+}
+.tgico-premium_lock {
+  &:before {
+    content: $tgico-premium_lock; 
+  }
+}
+.tgico-premium_unlock {
+  &:before {
+    content: $tgico-premium_unlock; 
+  }
+}
 .tgico-previous {
   &:before {
     content: $tgico-previous; 
@@ -865,6 +915,11 @@
 .tgico-sport {
   &:before {
     content: $tgico-sport; 
+  }
+}
+.tgico-star {
+  &:before {
+    content: $tgico-star; 
   }
 }
 .tgico-stickers {

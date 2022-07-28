@@ -34,14 +34,12 @@ import replaceContent from "../../helpers/dom/replaceContent";
 import { ChatFull, Chat as MTChat, GroupCall } from "../../layer";
 import PopupPickUser from "../popups/pickUser";
 import PopupPeer from "../popups/peer";
-import { fastRaf } from "../../helpers/schedulers";
 import AppEditContactTab from "../sidebarRight/tabs/editContact";
 import appMediaPlaybackController from "../appMediaPlaybackController";
 import IS_GROUP_CALL_SUPPORTED from "../../environment/groupCallSupport";
 import IS_CALL_SUPPORTED from "../../environment/callSupport";
 import { CallType } from "../../lib/calls/types";
 import PopupMute from "../popups/mute";
-import generateTitleIcons from "../generateTitleIcons";
 import { AppManagers } from "../../lib/appManagers/managers";
 import hasRights from "../../lib/appManagers/utils/chats/hasRights";
 import wrapPeerTitle from "../wrappers/peerTitle";
@@ -794,12 +792,13 @@ export default class ChatTopbar {
       if(count === undefined) titleEl = i18n('Loading');
       else titleEl = i18n('Chat.Title.Comments', [count]);
     } else if(this.chat.type === 'chat') {
-      [titleEl, icons] = await Promise.all([
+      [titleEl/* , icons */] = await Promise.all([
         wrapPeerTitle({
           peerId,
-          dialog: true
+          dialog: true,
+          withIcons: true
         }),
-        generateTitleIcons(peerId)
+        // generateTitleIcons(peerId)
       ]);
 
       if(!middleware()) {
@@ -809,9 +808,9 @@ export default class ChatTopbar {
 
     return () => {
       replaceContent(this.title, titleEl);
-      if(icons) {
-        this.title.append(...icons);
-      }
+      // if(icons) {
+      //   this.title.append(...icons);
+      // }
     };
   }
 

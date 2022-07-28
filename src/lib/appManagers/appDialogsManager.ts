@@ -52,7 +52,6 @@ import IS_GROUP_CALL_SUPPORTED from "../../environment/groupCallSupport";
 import mediaSizes from "../../helpers/mediaSizes";
 import appNavigationController, { NavigationItem } from "../../components/appNavigationController";
 import assumeType from "../../helpers/assumeType";
-import generateTitleIcons from "../../components/generateTitleIcons";
 import appMediaPlaybackController from "../../components/appMediaPlaybackController";
 import setInnerHTML from "../../helpers/dom/setInnerHTML";
 import { AppManagers } from "./managers";
@@ -2070,7 +2069,8 @@ export class AppDialogsManager {
       fromName,
       dialog: meAsSaved,
       onlyFirstName,
-      plainText: false
+      plainText: false,
+      withIcons: true
     });
 
     if(loadPromises) {
@@ -2086,13 +2086,13 @@ export class AppDialogsManager {
       // for muted icon
       titleSpanContainer.classList.add('tgico'); // * эта строка будет актуальна только для !container, но ладно
       
-      const titleIconsPromise = generateTitleIcons(peerId).then((elements) => {
-        titleSpanContainer.append(...elements);
-      });
+      // const titleIconsPromise = generateTitleIcons(peerId).then((elements) => {
+      //   titleSpanContainer.append(...elements);
+      // });
 
-      if(loadPromises) {
-        loadPromises.push(titleIconsPromise);
-      }
+      // if(loadPromises) {
+      //   loadPromises.push(titleIconsPromise);
+      // }
     //}
     
     const span = document.createElement('span');

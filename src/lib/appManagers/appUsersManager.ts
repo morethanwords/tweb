@@ -503,21 +503,21 @@ export class AppUsersManager extends AppManager {
 
     //user.sortStatus = user.pFlags.bot ? -1 : this.getUserStatusForSort(user.status);
 
-    let changedPhoto = false, changedTitle = false;
     if(oldUser === undefined) {
       this.users[userId] = user;
     } else {
-      if(user.first_name !== oldUser.first_name 
+      const changedTitle = user.first_name !== oldUser.first_name 
         || user.last_name !== oldUser.last_name 
-        || user.username !== oldUser.username) {
-        changedTitle = true;
-      }
+        || user.username !== oldUser.username;
 
       const oldPhotoId = (oldUser.photo as UserProfilePhoto.userProfilePhoto)?.photo_id;
       const newPhotoId = (user.photo as UserProfilePhoto.userProfilePhoto)?.photo_id;
-      if(oldPhotoId !== newPhotoId) {
-        changedPhoto = true;
-      }
+      const changedPhoto = oldPhotoId !== newPhotoId;
+
+      const changedAnyBadge = oldUser.pFlags.premium !== user.pFlags.premium || 
+        oldUser.pFlags.verified !== user.pFlags.verified || 
+        oldUser.pFlags.scam !== user.pFlags.scam || 
+        oldUser.pFlags.fake !== user.pFlags.fake;
 
       /* if(user.pFlags.bot && user.bot_info_version !== oldUser.bot_info_version) {
         
@@ -532,14 +532,14 @@ export class AppUsersManager extends AppManager {
       if(wasContact !== newContact) {
         this.onContactUpdated(userId, newContact, wasContact);
       }
-    }
 
-    if(changedPhoto) {
-      this.rootScope.dispatchEvent('avatar_update', user.id.toPeerId());
-    }
-
-    if(changedTitle) {
-      this.rootScope.dispatchEvent('peer_title_edit', user.id.toPeerId());
+      if(changedPhoto) {
+        this.rootScope.dispatchEvent('avatar_update', user.id.toPeerId());
+      }
+      
+      if(changedTitle || changedAnyBadge) {
+        this.rootScope.dispatchEvent('peer_title_edit', user.id.toPeerId());
+      }
     }
 
     this.checkPremium(user);

@@ -1468,14 +1468,6 @@ hr {
   z-index: -1;
 }
 
-.verified-check {
-  fill: #fff;
-}
-
-.verified-background {
-  fill: #33a8e5;
-}
-
 .navigable-list {
   .active {
     background-color: var(--light-secondary-text-color);
@@ -1591,18 +1583,35 @@ hr {
 }
 
 .verified-icon {
+  &-svg {
+    width: 1rem;
+    height: 1rem;
+  }
+
+  &-check {
+    fill: #fff;
+  }
+  
+  &-background {
+    fill: var(--primary-color);
+  }
+}
+
+.verified-icon,
+.premium-icon {
   flex: 0 0 auto;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: .125rem;
   width: 1.25rem;
   height: 1.25rem;
-  margin-left: .125rem;
 }
 
 .premium-icon {
-  flex: 0 0 auto;
-  width: 1.25rem;
-  height: 1.25rem;
-  margin-left: .25rem;
-  line-height: 1 !important;
+  color: var(--primary-color);
+  margin-top: -.0625rem;
 }
 
 .badge-fake {
@@ -1615,6 +1624,17 @@ hr {
   font-weight: var(--font-weight-bold);
   line-height: 1 !important;
   margin: 0 .25rem;
+}
+
+.peer-title {
+  &.with-icons {
+    display: flex;
+    align-items: center;
+  }
+
+  &-inner {
+    @include text-overflow();
+  }
 }
 
 .movable-element {

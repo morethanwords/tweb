@@ -13,6 +13,7 @@ import setInnerHTML from "../helpers/dom/setInnerHTML";
 import { AppManagers } from "../lib/appManagers/managers";
 import wrapEmojiText from "../lib/richTextProcessor/wrapEmojiText";
 import getPeerTitle from "./wrappers/getPeerTitle";
+import generateTitleIcons from "./generateTitleIcons";
 
 export type PeerTitleOptions = {
   peerId?: PeerId,
@@ -21,7 +22,8 @@ export type PeerTitleOptions = {
   onlyFirstName?: boolean,
   dialog?: boolean,
   limitSymbols?: number,
-  managers?: AppManagers
+  managers?: AppManagers,
+  withIcons?: boolean
 };
 
 const weakMap: WeakMap<HTMLElement, PeerTitle> = new WeakMap();
@@ -47,6 +49,8 @@ export default class PeerTitle {
   private dialog = false;
   private limitSymbols: number;
   private managers: AppManagers;
+  private hasInner: boolean;
+  private withIcons: boolean;
 
   constructor(options?: PeerTitleOptions) {
     this.element = document.createElement('span');
@@ -92,15 +96,35 @@ export default class PeerTitle {
       return;
     }
 
-    if(this.peerId === undefined) {
-      this.peerId = NULL_PEER_ID;
-    }
+    this.peerId ??= NULL_PEER_ID;
 
+    let hasInner: boolean;
     if(this.peerId !== rootScope.myId || !this.dialog) {
       const managers = this.managers ?? rootScope.managers;
-      setInnerHTML(this.element, await getPeerTitle(this.peerId, this.plainText, this.onlyFirstName, this.limitSymbols, managers));
+      const [title, icons] = await Promise.all([
+        getPeerTitle(this.peerId, this.plainText, this.onlyFirstName, this.limitSymbols, managers),
+        this.withIcons && generateTitleIcons(this.peerId)
+      ]);
+
+      if(icons?.length) {
+        const inner = document.createElement('span');
+        inner.classList.add('peer-title-inner');
+        hasInner = true;
+        setInnerHTML(inner, title);
+        
+        const fragment = document.createDocumentFragment();
+        fragment.append(inner, ...icons);
+        setInnerHTML(this.element, fragment);
+      } else {
+        setInnerHTML(this.element, title);
+      }
     } else {
       replaceContent(this.element, i18n(this.onlyFirstName ? 'Saved' : 'SavedMessages'));
+    }
+
+    if(this.hasInner !== hasInner) {
+      this.hasInner = hasInner;
+      this.element.classList.toggle('with-icons', hasInner);
     }
   }
 }

@@ -266,7 +266,9 @@ ul.chatlist {
         //.user-title:after,
         .user-title,
         .message-status,
-        .text-highlight {
+        .text-highlight,
+        .premium-icon,
+        .verified-icon {
           color: #fff;
         }
 
@@ -283,12 +285,15 @@ ul.chatlist {
           color: rgba(255, 255, 255, .7);
         }
 
-        .verified-background {
-          fill: #fff !important;
-        }
-
-        .verified-check {
-          fill: var(--primary-color) !important;
+        .verified-icon {
+          &-background {
+            fill: #fff !important;
+          }
+  
+          &-check {
+            // fill: var(--primary-color) !important;
+            visibility: hidden;
+          }
         }
 
         .dialog-avatar.is-online:after,
