@@ -17,6 +17,7 @@ import { AppManager } from "./manager";
 import getPeerId from "./utils/peers/getPeerId";
 import isUser from "./utils/peers/isUser";
 import isAnyChat from "./utils/peers/isAnyChat";
+import { NULL_PEER_ID } from "../mtproto/mtproto_config";
 
 export type PeerType = 'channel' | 'chat' | 'megagroup' | 'group' | 'saved';
 export class AppPeersManager extends AppManager {
@@ -87,8 +88,8 @@ export class AppPeersManager extends AppManager {
       : this.appChatsManager.getChat(peerId.toChatId());
   }
 
-  public getPeerId(...args: Parameters<typeof getPeerId>) {
-    return getPeerId(...args) || this.peerId;
+  public getPeerId(peerId: Parameters<typeof getPeerId>[0]) {
+    return getPeerId(peerId) || (isObject<InputPeer>(peerId) && peerId._ === 'inputPeerSelf' && this.peerId) || NULL_PEER_ID;
   }
 
   public getDialogPeer(peerId: PeerId): DialogPeer {

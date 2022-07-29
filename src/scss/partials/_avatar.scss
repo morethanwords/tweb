@@ -88,6 +88,19 @@ avatar-element {
   &.media-container {
     position: relative;
   }
+
+  &.is-premium {
+    &:before {
+      font-size: .6875rem;
+      color: #fff;
+      position: absolute;
+      right: 0;
+      bottom: -.0625rem;
+      line-height: 1 !important;
+      z-index: 1;
+      pointer-events: none;
+    }
+  }
   
   img {
     //width: 100% !important;

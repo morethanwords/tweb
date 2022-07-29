@@ -68,12 +68,24 @@ class BubbleGroup {
     const fwdFromId = message.fwdFromId;
     const isForwardFromChannel = message.from_id && message.from_id._ === 'peerChannel' && message.fromId === fwdFromId;
     const currentPeerId = this.chat.peerId;
-    this.avatar = new AvatarElement();
+    const avatar = this.avatar = new AvatarElement();
     this.avatar.classList.add('bubbles-group-avatar', 'user-avatar', 'avatar-40'/* , 'can-zoom-fade' */);
-    this.avatarLoadPromise = this.avatar.updateWithOptions({
+    const peerId = ((fwdFrom && (currentPeerId === rootScope.myId || currentPeerId === REPLIES_PEER_ID)) || isForwardFromChannel ? fwdFromId : message.fromId) || NULL_PEER_ID;
+    const avatarLoadPromise = this.avatar.updateWithOptions({
       lazyLoadQueue: this.chat.bubbles.lazyLoadQueue,
-      peerId: ((fwdFrom && (currentPeerId === rootScope.myId || currentPeerId === REPLIES_PEER_ID)) || isForwardFromChannel ? fwdFromId : message.fromId) || NULL_PEER_ID,
+      peerId,
       peerTitle: !fwdFromId && fwdFrom && fwdFrom.from_name ? /* '🔥 FF 🔥' */fwdFrom.from_name : undefined,
+    });
+
+    this.avatarLoadPromise = Promise.all([
+      avatarLoadPromise,
+      peerId && peerId.isUser() ? this.chat.managers.appUsersManager.getUser(peerId.toUserId()) : undefined
+    ]).then(([result, user]) => {
+      if(user?.pFlags?.premium) {
+        avatar.classList.add('is-premium', 'tgico-star');
+      }
+
+      return result;
     });
 
     this.avatarContainer.append(this.avatar);
