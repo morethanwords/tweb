@@ -576,6 +576,21 @@ export default class ChatBubbles {
       this.safeRenderMessage(message, true, bubble);
     });
 
+    this.listenerSetter.add(rootScope)('peer_title_edit', async(peerId) => {
+      if(peerId.isUser()) {
+        const middleware = this.getMiddleware();
+        const user = await this.managers.appUsersManager.getUser(peerId.toUserId());
+        if(!middleware()) return;
+
+        const isPremium = user?.pFlags?.premium;
+        const groups = this.bubbleGroups.groups.filter((group) => group.avatar?.peerId === peerId);
+        groups.forEach((group) => {
+          group.avatar.classList.toggle('is-premium', isPremium);
+          group.avatar.classList.toggle('tgico-star', isPremium);
+        });
+      }
+    });
+
     if(this.chat.type !== 'scheduled' && !DO_NOT_UPDATE_MESSAGE_REACTIONS/*  && false */) {
       this.listenerSetter.add(rootScope)('messages_reactions', async(arr) => {
         let scrollSaver: ScrollSaver;
