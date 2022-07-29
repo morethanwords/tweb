@@ -44,6 +44,20 @@ type Servers = {
 const TEST_SUFFIX = Modes.test ? '_test' : '';
 const PREMIUM_SUFFIX = '_premium';
 
+export function getTelegramConnectionSuffix(connectionType: ConnectionType) {
+  return connectionType === 'client' ? '' : '-1';
+}
+
+/// #if MTPROTO_HAS_WS
+export function constructTelegramWebSocketUrl(dcId: DcId, connectionType: ConnectionType, premium?: boolean) {
+  const suffix = getTelegramConnectionSuffix(connectionType);
+  const path = connectionType !== 'client' ? 'apiws' + (premium ? PREMIUM_SUFFIX : TEST_SUFFIX) : ('apiws' + TEST_SUFFIX);
+  const chosenServer = `wss://${App.suffix.toLowerCase()}ws${dcId}${suffix}.web.telegram.org/${path}`;
+
+  return chosenServer;
+}
+/// #endif
+
 export class DcConfigurator {
   private sslSubdomains = ['pluto', 'venus', 'aurora', 'vesta', 'flora'];
 
@@ -64,9 +78,8 @@ export class DcConfigurator {
   public chosenServers: Servers = {} as any;
 
   /// #if MTPROTO_HAS_WS
-  private transportSocket = (dcId: DcId, connectionType: ConnectionType, suffix: string, premium?: boolean) => {
-    const path = connectionType !== 'client' ? 'apiws' + (premium ? PREMIUM_SUFFIX : TEST_SUFFIX) : ('apiws' + TEST_SUFFIX);
-    const chosenServer = `wss://${App.suffix.toLowerCase()}ws${dcId}${suffix}.web.telegram.org/${path}`;
+  private transportSocket = (dcId: DcId, connectionType: ConnectionType, premium?: boolean) => {
+    const chosenServer = constructTelegramWebSocketUrl(dcId, connectionType, premium);
     const logSuffix = connectionType === 'upload' ? '-U' : connectionType === 'download' ? '-D' : '';
 
     const retryTimeout = connectionType === 'client' ? 10000 : 10000;
@@ -83,10 +96,11 @@ export class DcConfigurator {
   /// #endif
 
   /// #if MTPROTO_HAS_HTTP
-  private transportHTTP = (dcId: DcId, connectionType: ConnectionType, suffix: string, premium?: boolean) => {
+  private transportHTTP = (dcId: DcId, connectionType: ConnectionType, premium?: boolean) => {
     let chosenServer: string;
     if(Modes.ssl || !Modes.http) {
-      const subdomain = this.sslSubdomains[dcId - 1] + (connectionType !== 'client' ? '-1' : '');
+      const suffix = getTelegramConnectionSuffix(connectionType);
+      const subdomain = this.sslSubdomains[dcId - 1] + suffix;
       const path = Modes.test ? 'apiw_test1' : 'apiw1';
       chosenServer = 'https://' + subdomain + '.web.telegram.org/' + path;
     } else {
@@ -133,14 +147,12 @@ export class DcConfigurator {
     if(!transports.length || !reuse/*  || (upload && transports.length < 1) */) {
       let transport: MTTransport;
 
-      const suffix = connectionType === 'client' ? '' : '-1';
-
       /// #if MTPROTO_HAS_WS && MTPROTO_HAS_HTTP
-      transport = (transportType === 'websocket' ? this.transportSocket : this.transportHTTP)(dcId, connectionType, suffix, premium);
+      transport = (transportType === 'websocket' ? this.transportSocket : this.transportHTTP)(dcId, connectionType, premium);
       /// #elif !MTPROTO_HTTP
-      transport = this.transportSocket(dcId, connectionType, suffix, premium);
+      transport = this.transportSocket(dcId, connectionType, premium);
       /// #else
-      transport = this.transportHTTP(dcId, connectionType, suffix, premium);
+      transport = this.transportHTTP(dcId, connectionType, premium);
       /// #endif
   
       if(!transport) {

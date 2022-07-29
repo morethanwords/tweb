@@ -9,10 +9,6 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-/// #if !MTPROTO_WORKER
-import rootScope from '../rootScope';
-/// #endif
-
 /// #if MTPROTO_AUTO
 import transportController from './transports/controller';
 import MTTransport from './transports/transport';
@@ -21,16 +17,14 @@ import MTTransport from './transports/transport';
 import type { UserAuth } from './mtproto_config';
 import sessionStorage from '../sessionStorage';
 import MTPNetworker, { MTMessage } from './networker';
-//import { telegramMeWebService } from './mtproto';
-import { ConnectionType, DcConfigurator, TransportType } from './dcConfigurator';
+import { ConnectionType, constructTelegramWebSocketUrl, DcConfigurator, TransportType } from './dcConfigurator';
 import { logger } from '../logger';
 import type { DcAuthKey, DcId, DcServerSalt, InvokeApiOptions } from '../../types';
 import type { MethodDeclMap } from '../../layer';
 import deferredPromise, { CancellablePromise } from '../../helpers/cancellablePromise';
-//import { clamp } from '../../helpers/number';
 import App from '../../config/app';
 import { MOUNT_CLASS_TO } from '../../config/debug';
-import IDBStorage, { IDB } from '../idb';
+import { IDB } from '../idb';
 import CryptoWorker from "../crypto/cryptoMessagePort";
 import ctx from '../../environment/ctx';
 import noop from '../../helpers/noop';
@@ -41,21 +35,8 @@ import isObject from '../../helpers/object/isObject';
 import pause from '../../helpers/schedulers/pause';
 import ApiManagerMethods from './api_methods';
 import { getEnvironment } from '../../environment/utils';
-import AppStorage from '../storage';
 import toggleStorages from '../../helpers/toggleStorages';
-
-/* var networker = apiManager.cachedNetworkers.websocket.upload[2];
-networker.wrapMtpMessage({
-  _: 'msgs_state_req',
-  msg_ids: ["6888292542796810828"]
-}, {
-  notContentRelated: true
-}).then((res) => {
-  console.log('status', res);
-}); */
-
-//console.error('apiManager included!');
-// TODO: если запрос словил флуд, нужно сохранять его параметры и возвращать тот же промис на новый такой же запрос, например - загрузка истории
+import type TcpObfuscated from './transports/tcpObfuscated';
 
 export type ApiError = Partial<{
   code: number,
@@ -136,6 +117,25 @@ export class ApiManager extends ApiManagerMethods {
         this.getConfig();
         this.getAppConfig(true);
       }
+    });
+
+    this.rootScope.addEventListener('premium_toggle', (isPremium) => {
+      this.iterateNetworkers(({networker, connectionType, dcId, transportType}) => {
+        if(connectionType === 'client' || transportType !== 'websocket') {
+          return;
+        }
+
+        const transport = networker.transport;
+        if(!transport) {
+          this.log.error('wow what, no transport?', networker);
+          return;
+        }
+
+        if((transport as TcpObfuscated).connection) {
+          const url = constructTelegramWebSocketUrl(dcId, connectionType, isPremium);
+          (transport as TcpObfuscated).changeUrl(url);
+        }
+      });
     });
   }
 
@@ -348,7 +348,7 @@ export class ApiManager extends ApiManagerMethods {
     // @ts-ignore
     const maxNetworkers = connectionType === 'client' || transportType === 'https' ? 1 : (this.rootScope.premium ? PREMIUM_FILE_NETWORKERS_COUNT : REGULAR_FILE_NETWORKERS_COUNT);
     if(networkers.length >= maxNetworkers) {
-      let i = networkers.length - 1, found = false;
+      let i = maxNetworkers - 1, found = false;
       for(; i >= 0; --i) {
         if(networkers[i].isOnline) {
           found = true;
@@ -356,7 +356,7 @@ export class ApiManager extends ApiManagerMethods {
         }
       }
       
-      const networker = found ? networkers.splice(i, 1)[0] : networkers.pop();
+      const networker = networkers.splice(found ? i : maxNetworkers - 1, 1)[0];
       networkers.unshift(networker);
       return Promise.resolve(networker);
     }
@@ -443,6 +443,15 @@ export class ApiManager extends ApiManagerMethods {
     networker.changeTransport(transport);
   }
 
+  private onNetworkerDrain(networker: MTPNetworker) {
+    this.log('networker drain', networker.dcId);
+    networker.onDrain = undefined;
+    this.changeNetworkerTransport(networker);
+    networker.destroy();
+    this.networkerFactory.removeNetworker(networker);
+    DcConfigurator.removeTransport(this.cachedNetworkers, networker);
+  }
+
   public setOnDrainIfNeeded(networker: MTPNetworker) {
     if(networker.onDrain) {
       return;
@@ -457,16 +466,7 @@ export class ApiManager extends ApiManagerMethods {
       }
       
       if(canRelease) {
-        networker.onDrain = () => {
-          this.log('networker drain', networker.dcId);
-
-          networker.onDrain = undefined;
-          this.changeNetworkerTransport(networker);
-          networker.destroy();
-          this.networkerFactory.removeNetworker(networker);
-          DcConfigurator.removeTransport(this.cachedNetworkers, networker);
-        };
-
+        networker.onDrain = () => this.onNetworkerDrain(networker);
         networker.setDrainTimeout();
       }
     });
@@ -645,7 +645,7 @@ export class ApiManager extends ApiManagerMethods {
           
           options.waitTime = options.waitTime ? Math.min(60, options.waitTime * 1.5) : 1;
           return pause(options.waitTime * 1000).then(() => performRequest());
-        } else if(error.type === 'UNKNOWN') {
+        } else if(error.type === 'UNKNOWN' || error.type === 'MTPROTO_CLUSTER_INVALID') { // cluster invalid - request from regular user to premium endpoint
           return pause(1000).then(() => performRequest());
         } else {
           throw error;

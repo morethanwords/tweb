@@ -234,14 +234,14 @@ export class ApiFileManager extends AppManager {
       const invoke = async(): Promise<MyUploadFile> => {
         checkCancel && checkCancel(); // do not remove async, because checkCancel will throw an error
 
-        const promise = this.apiManager.invokeApi('upload.getFile', {
+        const promise = /* pause(1000).then(() =>  */this.apiManager.invokeApi('upload.getFile', {
           location,
           offset,
           limit
         }, {
           dcId,
           fileDownload: true
-        }) as Promise<MyUploadFile>;
+        }) as Promise<MyUploadFile>/* ) */;
 
         return promise.catch((err) => {
           if(err.type === 'FILE_REFERENCE_EXPIRED') {

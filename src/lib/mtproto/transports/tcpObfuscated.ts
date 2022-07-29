@@ -265,6 +265,15 @@ export default class TcpObfuscated implements MTTransport {
     this.connection.addEventListener('message', this.onMessage);
   }
 
+  public changeUrl(url: string) {
+    if(this.url === url) {
+      return;
+    }
+    
+    this.url = url;
+    this.forceReconnect();
+  }
+
   private encodeBody(body: Uint8Array) {
     const toEncode = this.codec.encodePacket(body);
 
