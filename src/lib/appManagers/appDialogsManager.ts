@@ -347,7 +347,7 @@ export class AppDialogsManager {
         id += 1;
       } */
 
-      
+      const _id = id;
       id = +tabContent.dataset.filterId || FOLDER_ID_ALL;
 
       const isFilterAvailable = REAL_FOLDERS.has(id) || await this.managers.filtersStorage.isFilterIdAvailable(id);
@@ -357,7 +357,7 @@ export class AppDialogsManager {
 
       const wasFilterId = this.filterId;
       if(!IS_MOBILE_SAFARI) {
-        if(id) {
+        if(_id) {
           if(!this.filtersNavigationItem) {
             this.filtersNavigationItem = {
               type: 'filters',

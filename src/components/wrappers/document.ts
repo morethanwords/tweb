@@ -5,15 +5,17 @@
  */
 
 import MEDIA_MIME_TYPES_SUPPORTED from "../../environment/mediaMimeTypesSupport";
+import { CancellablePromise } from "../../helpers/cancellablePromise";
 import { clearBadCharsAndTrim } from "../../helpers/cleanSearchText";
 import { formatFullSentTime } from "../../helpers/date";
 import { simulateClickEvent, attachClickEvent } from "../../helpers/dom/clickEvent";
+import replaceContent from "../../helpers/dom/replaceContent";
 import formatBytes from "../../helpers/formatBytes";
 import { MediaSizeType } from "../../helpers/mediaSizes";
 import noop from "../../helpers/noop";
 import { Message, MessageMedia, WebPage } from "../../layer";
 import { MyDocument } from "../../lib/appManagers/appDocsManager";
-import appDownloadManager from "../../lib/appManagers/appDownloadManager";
+import appDownloadManager, { Progress } from "../../lib/appManagers/appDownloadManager";
 import appImManager from "../../lib/appManagers/appImManager";
 import { AppManagers } from "../../lib/appManagers/managers";
 import getDownloadMediaDetails from "../../lib/appManagers/utils/download/getDownloadMediaDetails";
@@ -136,7 +138,8 @@ export default async function wrapDocument({message, withTime, fontWeight, voice
   let fileName = doc.file_name ? wrapPlainText(doc.file_name) : 'Unknown.file';
   const descriptionEl = document.createElement('div');
   descriptionEl.classList.add('document-description');
-  const descriptionParts: (HTMLElement | string | DocumentFragment)[] = [formatBytes(doc.size)];
+  const bytesEl = formatBytes(doc.size);
+  const descriptionParts: (HTMLElement | string | DocumentFragment)[] = [bytesEl];
   
   if(withTime) {
     descriptionParts.push(formatFullSentTime(message.date));
@@ -190,10 +193,29 @@ export default async function wrapDocument({message, withTime, fontWeight, voice
     }
   };
 
+  const addByteProgress = (promise: CancellablePromise<any>) => {
+    const sizeContainer = document.createElement('span');
+    promise.then(() => {
+      onLoad();
+      sizeContainer.replaceWith(bytesEl);
+    }, () => {
+      replaceContent(sizeContainer, bytesEl);
+    });
+    
+    let d = formatBytes(0);
+    bytesEl.replaceWith(sizeContainer);
+    sizeContainer.append(d, ' / ', bytesEl);
+    promise.addNotifyListener((progress: Progress) => {
+      const _d = formatBytes(progress.done);
+      d.replaceWith(_d);
+      d = _d;
+    });
+  };
+
   const load = async(e?: Event) => {
     const save = !e || e.isTrusted;
     const doc = await managers.appDocsManager.getDoc(docDiv.dataset.docId);
-    let download: Promise<any>;
+    let download: CancellablePromise<any>;
     const queueId = appImManager.chat.bubbles ? appImManager.chat.bubbles.lazyLoadQueue.queueId : undefined;
     if(!save) {
       download = appDownloadManager.downloadMediaVoid({media: doc, queueId});
@@ -215,8 +237,8 @@ export default async function wrapDocument({message, withTime, fontWeight, voice
     }
 
     if(downloadDiv) {
-      download.then(onLoad, noop);
       preloader.attach(downloadDiv, true, download);
+      addByteProgress(download);
     }
   };
 
@@ -247,7 +269,7 @@ export default async function wrapDocument({message, withTime, fontWeight, voice
       const uploadPromise = appDownloadManager.getUpload(uploadFileName);
       preloader.attachPromise(uploadPromise);
       preloader.attach(downloadDiv);
-      uploadPromise.then(onLoad, noop);
+      addByteProgress(uploadPromise);
     }
   }
 

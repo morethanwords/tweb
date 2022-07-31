@@ -256,7 +256,7 @@ export default class AppBackgroundTab extends SliderSuperTab {
           loadPromises.full.then(async() => {
             const cacheContext = await this.managers.thumbsStorage.getCacheContext(doc, size.type);
             canvas.style.webkitMaskImage = `url(${cacheContext.url})`;
-            canvas.style.opacity = '' + Math.abs(wallPaper.settings.intensity) / 100;
+            canvas.style.opacity = '' + (wallPaper.pFlags.dark ? 100 + wallPaper.settings.intensity : wallPaper.settings.intensity) / 100;
             media.append(canvas);
           });
         });
