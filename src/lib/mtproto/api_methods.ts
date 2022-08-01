@@ -241,6 +241,7 @@ export default abstract class ApiManagerMethods extends AppManager {
       
       this.appConfig = config;
       ignoreRestrictionReasons(config.ignore_restriction_reasons ?? []);
+      this.rootScope.dispatchEvent('app_config', config);
       return config;
     });
 

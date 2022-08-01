@@ -4,12 +4,12 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import type { MyDialogFilter } from "../../../lib/storages/filters";
+import type { DialogFilterSuggested } from "../../../layer";
+import type _rootScope from "../../../lib/rootScope";
 import { SliderSuperTab } from "../../slider";
 import lottieLoader, { LottieLoader } from "../../../lib/rlottie/lottieLoader";
 import { toast } from "../../toast";
-import type { MyDialogFilter } from "../../../lib/storages/filters";
-import type { DialogFilterSuggested, DialogFilter } from "../../../layer";
-import type _rootScope from "../../../lib/rootScope";
 import Button from "../../button";
 import rootScope from "../../../lib/rootScope";
 import AppEditFolderTab from "./editFolder";
@@ -22,6 +22,7 @@ import positionElementByIndex from "../../../helpers/dom/positionElementByIndex"
 import RLottiePlayer from "../../../lib/rlottie/rlottiePlayer";
 import wrapEmojiText from "../../../lib/richTextProcessor/wrapEmojiText";
 import { FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, REAL_FOLDERS } from "../../../lib/mtproto/mtproto_config";
+import replaceContent from "../../../helpers/dom/replaceContent";
 
 export default class AppChatFoldersTab extends SliderSuperTab {
   private createFolderBtn: HTMLElement;
@@ -33,7 +34,12 @@ export default class AppChatFoldersTab extends SliderSuperTab {
   private filtersRendered: {[filterId: number]: Row} = {};
   private loadAnimationPromise: ReturnType<LottieLoader['waitForFirstFrame']>;
 
-  private async renderFolder(dialogFilter: DialogFilterSuggested | MyDialogFilter, container?: HTMLElement, row?: Row) {
+  private async renderFolder(
+    dialogFilter: DialogFilterSuggested | MyDialogFilter, 
+    container?: HTMLElement, 
+    row?: Row,
+    append?: boolean
+  ) {
     let filter: MyDialogFilter;
     let description = '';
     let d: HTMLElement[] = [];
@@ -86,14 +92,12 @@ export default class AppChatFoldersTab extends SliderSuperTab {
       });
 
       if(d.length) {
-        join(d).forEach((el) => {
-          row.subtitle.append(el);
-        });
+        row.subtitle.append(...join(d));
       }
   
       if(dialogFilter._ === 'dialogFilter') {
         const filterId = filter.id;
-        if(!this.filtersRendered.hasOwnProperty(filter.id) && filter.id !== FOLDER_ID_ALL) {
+        if(!this.filtersRendered[filter.id] && filter.id !== FOLDER_ID_ALL) {
           attachClickEvent(row.container, async() => {
             this.slider.createTab(AppEditFolderTab).open(await this.managers.filtersStorage.getFilter(filterId));
           }, {listenerSetter: this.listenerSetter});
@@ -102,18 +106,25 @@ export default class AppChatFoldersTab extends SliderSuperTab {
         this.filtersRendered[filter.id] = row;
       }
     } else {
+      if(filter.id !== FOLDER_ID_ALL) {
+        replaceContent(row.title, wrapEmojiText(filter.title));
+      }
+
       row.subtitle.textContent = '';
-      join(d).forEach((el) => {
-        row.subtitle.append(el);
-      });
+      row.subtitle.append(...join(d));
     }
 
     div = row.container;
 
-    if((filter as MyDialogFilter).localId !== undefined) {
-       // ! header will be at 0 index
-      positionElementByIndex(div, div.parentElement || container, (filter as MyDialogFilter).localId);
-    } else if(container) container.append(div);
+    if(append) {
+      const localId = (filter as MyDialogFilter).localId;
+      if(localId !== undefined) {
+         // ! header will be at 0 index
+        positionElementByIndex(div, div.parentElement || container, localId);
+      } else if(container) {
+        container.append(div);
+      }
+    }
     
     return div;
   }
@@ -166,17 +177,20 @@ export default class AppChatFoldersTab extends SliderSuperTab {
           continue;
         }
 
-        await this.renderFolder(filter, this.foldersSection.content);
+        await this.renderFolder(filter, this.foldersSection.content, undefined, true);
       }
+
+      this.toggleAllChats();
 
       onFiltersContainerUpdate();
     });
 
     this.listenerSetter.add(rootScope)('filter_update', async(filter) => {
-      if(this.filtersRendered.hasOwnProperty(filter.id)) {
-        await this.renderFolder(filter, null, this.filtersRendered[filter.id]);
-      } else {
-        await this.renderFolder(filter, this.foldersSection.content);
+      const filterRendered = this.filtersRendered[filter.id];
+      if(filterRendered) {
+        await this.renderFolder(filter, null, filterRendered);
+      } else if(filter.id !== FOLDER_ID_ARCHIVE) {
+        await this.renderFolder(filter, this.foldersSection.content, undefined, true);
       }
 
       onFiltersContainerUpdate();
@@ -185,7 +199,8 @@ export default class AppChatFoldersTab extends SliderSuperTab {
     });
 
     this.listenerSetter.add(rootScope)('filter_delete', (filter) => {
-      if(this.filtersRendered.hasOwnProperty(filter.id)) {
+      const filterRendered = this.filtersRendered[filter.id];
+      if(filterRendered) {
         /* for(const suggested of this.suggestedFilters) {
           if(deepEqual(suggested.filter, filter)) {
             
@@ -193,7 +208,7 @@ export default class AppChatFoldersTab extends SliderSuperTab {
         } */
         this.getSuggestedFilters();
 
-        this.filtersRendered[filter.id].container.remove();
+        filterRendered.container.remove();
         delete this.filtersRendered[filter.id];
       }
 
@@ -201,10 +216,15 @@ export default class AppChatFoldersTab extends SliderSuperTab {
     });
 
     this.listenerSetter.add(rootScope)('filter_order', (order) => {
-      order.forEach((filterId, idx) => {
-        const container = this.filtersRendered[filterId].container;
+      order.filter((filterId) => !!this.filtersRendered[filterId]).forEach((filterId, idx) => {
+        const filterRendered = this.filtersRendered[filterId];
+        const container = filterRendered.container;
         positionElementByIndex(container, container.parentElement, idx + 1); // ! + 1 due to header 
       });
+    });
+
+    this.listenerSetter.add(rootScope)('premium_toggle', () => {
+      this.toggleAllChats();
     });
 
     this.loadAnimationPromise = lottieLoader.loadAnimationAsAsset({
@@ -232,6 +252,11 @@ export default class AppChatFoldersTab extends SliderSuperTab {
       this.animation.autoplay = true;
       this.animation.play();
     });
+  }
+
+  private toggleAllChats() {
+    const filterRendered = this.filtersRendered[FOLDER_ID_ALL];
+    filterRendered.container.classList.toggle('hide', !rootScope.premium);
   }
 
   private async canCreateFolder() {

@@ -550,7 +550,6 @@ export class AppUsersManager extends AppManager {
     if(user.pFlags.self) {
       const isPremium = !!user.pFlags.premium;
       if(this.rootScope.premium !== isPremium) {
-        this.rootScope.premium = isPremium;
         this.rootScope.dispatchEvent('premium_toggle', isPremium);
       }
     }

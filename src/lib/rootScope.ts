@@ -21,6 +21,7 @@ import EventListenerBase from "../helpers/eventListenerBase";
 import { MOUNT_CLASS_TO } from "../config/debug";
 import MTProtoMessagePort from "./mtproto/mtprotoMessagePort";
 import { IS_WORKER } from "../helpers/context";
+import { MTAppConfig } from "./mtproto/appConfig";
 
 export type BroadcastEvents = {
   'chat_full_update': ChatId,
@@ -140,7 +141,9 @@ export type BroadcastEvents = {
 
   'payment_sent': {peerId: PeerId, mid: number},
 
-  'premium_toggle': boolean
+  'premium_toggle': boolean,
+
+  'app_config': MTAppConfig
 };
 
 export type BroadcastEventsListeners = {
@@ -148,8 +151,8 @@ export type BroadcastEventsListeners = {
 };
 
 export class RootScope extends EventListenerBase<BroadcastEventsListeners> {
-  public myId: PeerId = NULL_PEER_ID;
-  private connectionStatus: {[name: string]: ConnectionStatusChange} = {};
+  public myId: PeerId;
+  private connectionStatus: {[name: string]: ConnectionStatusChange};
   public settings: State['settings'];
   public managers: AppManagers;
   public premium: boolean;
@@ -157,10 +160,16 @@ export class RootScope extends EventListenerBase<BroadcastEventsListeners> {
   constructor() {
     super();
 
+    this.myId = NULL_PEER_ID;
+    this.connectionStatus = {};
     this.premium = false;
 
     this.addEventListener('user_auth', ({id}) => {
       this.myId = id.toPeerId();
+    });
+
+    this.addEventListener('premium_toggle', (isPremium) => {
+      this.premium = isPremium;
     });
 
     this.addEventListener('connection_status_change', (status) => {

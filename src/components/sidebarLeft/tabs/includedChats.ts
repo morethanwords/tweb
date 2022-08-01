@@ -20,6 +20,8 @@ import forEachReverse from "../../../helpers/array/forEachReverse";
 import setInnerHTML from "../../../helpers/dom/setInnerHTML";
 import wrapEmojiText from "../../../lib/richTextProcessor/wrapEmojiText";
 import { REAL_FOLDERS } from "../../../lib/mtproto/mtproto_config";
+import rootScope from "../../../lib/rootScope";
+import { MTAppConfig } from "../../../lib/mtproto/appConfig";
 
 export default class AppIncludedChatsTab extends SliderSuperTab {
   private editFolderTab: AppEditFolderTab;
@@ -31,6 +33,7 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
   private originalFilter: DialogFilter;
 
   private dialogsByFilters: Map<DialogFilter, Set<PeerId>>;
+  private limit: number;
 
   protected init() {
     this.content.remove();
@@ -106,14 +109,26 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
       this.close();
     });
 
+    const onAppConfig = (appConfig: MTAppConfig) => {
+      this.limit = rootScope.premium ? appConfig.dialog_filters_chats_limit_premium : appConfig.dialog_filters_chats_limit_default;
+    };
+
+    this.listenerSetter.add(rootScope)('app_config', onAppConfig);
+
     this.dialogsByFilters = new Map();
-    return this.managers.filtersStorage.getDialogFilters().then(async(filters) => {
-      await Promise.all(filters.filter((filter) => !REAL_FOLDERS.has(filter.id)).map(async(filter) => {
-        const dialogs = await this.managers.dialogsStorage.getFolderDialogs(filter.id);
-        const peerIds = dialogs.map((d) => d.peerId);
-        this.dialogsByFilters.set(filter, new Set(peerIds));
-      }));
-    });
+    return Promise.all([
+      this.managers.filtersStorage.getDialogFilters().then(async(filters) => {
+        await Promise.all(filters.filter((filter) => !REAL_FOLDERS.has(filter.id)).map(async(filter) => {
+          const dialogs = await this.managers.dialogsStorage.getFolderDialogs(filter.id);
+          const peerIds = dialogs.map((d) => d.peerId);
+          this.dialogsByFilters.set(filter, new Set(peerIds));
+        }));
+      }),
+
+      this.managers.apiManager.getAppConfig().then((appConfig) => {
+        onAppConfig(appConfig);
+      })
+    ]);
   }
 
   checkbox(selected?: boolean) {
@@ -223,7 +238,7 @@ export default class AppIncludedChatsTab extends SliderSuperTab {
     let addedInitial = false;
     const _add = this.selector.add.bind(this.selector);
     this.selector.add = (peerId, title, scroll) => {
-      if(this.selector.selected.size >= 100 && addedInitial && !details[peerId]) {
+      if(this.selector.selected.size >= this.limit && addedInitial && !details[peerId]) {
         const el: HTMLInputElement = this.selector.list.querySelector(`[data-peer-id="${peerId}"] [type="checkbox"]`);
         if(el) {
           setTimeout(() => {

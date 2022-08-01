@@ -11,7 +11,7 @@ import copy from "../../helpers/object/copy";
 import { AppManager } from "../appManagers/manager";
 import findAndSplice from "../../helpers/array/findAndSplice";
 import assumeType from "../../helpers/assumeType";
-import { FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, REAL_FOLDERS, REAL_FOLDER_ID } from "../mtproto/mtproto_config";
+import { FOLDER_ID_ALL, FOLDER_ID_ARCHIVE, REAL_FOLDERS, REAL_FOLDER_ID, START_LOCAL_ID } from "../mtproto/mtproto_config";
 
 export type MyDialogFilter = DialogFilter.dialogFilter;
 
@@ -21,7 +21,6 @@ const convertment = [
   ['include_peers', 'includePeerIds']
 ] as ['pinned_peers' | 'exclude_peers' | 'include_peers', 'pinnedPeerIds' | 'excludePeerIds' | 'includePeerIds'][];
 
-const START_LOCAL_ID = Math.max(...Array.from(REAL_FOLDERS)) + 1 as MyDialogFilter['localId'];
 const PREPENDED_FILTERS = REAL_FOLDERS.size;
 
 const LOCAL_FILTER: MyDialogFilter = {
