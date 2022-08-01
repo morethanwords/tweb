@@ -6,17 +6,19 @@
 
 import readBlobAsUint8Array from "../../helpers/blob/readBlobAsUint8Array";
 import deferredPromise, { CancellablePromise } from "../../helpers/cancellablePromise";
-import { getWindowClients } from "../../helpers/context";
 import debounce from "../../helpers/schedulers/debounce";
-import { InputFileLocation, UploadFile } from "../../layer";
+import { InputFileLocation } from "../../layer";
 import CacheStorageController from "../cacheStorage";
-import { DownloadOptions } from "../mtproto/apiFileManager";
-import { RequestFilePartTask, deferredPromises, log } from "./index.service";
+import { DownloadOptions, MyUploadFile } from "../mtproto/apiFileManager";
+import { getMtprotoMessagePort, log, serviceMessagePort } from "./index.service";
+import { ServiceRequestFilePartTaskPayload } from "./serviceMessagePort";
 import timeout from "./timeout";
 
+const deferredPromises: Map<MessagePort, {[taskId: string]: CancellablePromise<MyUploadFile>}> = new Map();
 const cacheStorage = new CacheStorageController('cachedStreamChunks');
 const CHUNK_TTL = 86400;
 const CHUNK_CACHED_TIME_HEADER = 'Time-Cached';
+const USE_CACHE = false;
 
 const clearOldChunks = () => {
   return cacheStorage.timeoutOperation((cache) => {
@@ -49,18 +51,17 @@ const clearOldChunks = () => {
 
 setInterval(clearOldChunks, 1800e3);
 setInterval(() => {
-  getWindowClients().then((clients) => {
-    for(const [clientId, promises] of deferredPromises) {
-      if(!clients.find((client) => client.id === clientId)) {
-        for(const taskId in promises) {
-          const promise = promises[taskId];
-          promise.reject();
-        }
-
-        deferredPromises.delete(clientId);
+  const mtprotoMessagePort = getMtprotoMessagePort();
+  for(const [messagePort, promises] of deferredPromises) {
+    if(messagePort !== mtprotoMessagePort) {
+      for(const taskId in promises) {
+        const promise = promises[taskId];
+        promise.reject();
       }
+
+      deferredPromises.delete(messagePort);
     }
-  });
+  }
 }, 120e3);
 
 type StreamRange = [number, number];
@@ -86,54 +87,56 @@ class Stream {
   };
 
   private async requestFilePartFromWorker(alignedOffset: number, limit: number, fromPreload = false) {
-    const task: Omit<RequestFilePartTask, 'id'> = {
-      type: 'requestFilePart',
-      payload: {
-        docId: this.id,
-        dcId: this.info.dcId,
-        offset: alignedOffset,
-        limit
-      }
+    const payload: ServiceRequestFilePartTaskPayload = {
+      docId: this.id,
+      dcId: this.info.dcId,
+      offset: alignedOffset,
+      limit
     };
 
-    const taskId = JSON.stringify(task);
-    (task as RequestFilePartTask).id = taskId;
+    const taskId = JSON.stringify(payload);
 
-    const windowClient = await getWindowClients().then((clients) => {
-      if(!clients.length) {
-        return;
-      }
-
-      return clients.find((client) => deferredPromises.has(client.id)) || clients[0];
-    });
-
-    if(!windowClient) {
-      throw new Error('no window');
-    }
-
-    let promises = deferredPromises.get(windowClient.id);
+    const mtprotoMessagePort = getMtprotoMessagePort();
+    let promises = deferredPromises.get(mtprotoMessagePort);
     if(!promises) {
-      deferredPromises.set(windowClient.id, promises = {});
+      deferredPromises.set(mtprotoMessagePort, promises = {});
     }
     
-    let deferred = promises[taskId] as CancellablePromise<UploadFile.uploadFile>;
+    let deferred = promises[taskId];
     if(deferred) {
       return deferred.then((uploadFile) => uploadFile.bytes);
     }
     
-    windowClient.postMessage(task);
     this.loadedOffsets.add(alignedOffset);
-    
-    deferred = promises[taskId] = deferredPromise<UploadFile.uploadFile>();
+
+    deferred = promises[taskId] = deferredPromise();
+
+    serviceMessagePort.invoke('requestFilePart', payload, undefined, mtprotoMessagePort)
+    .then(deferred.resolve, deferred.reject).finally(() => {
+      if(promises[taskId] === deferred) {
+        delete promises[taskId];
+
+        if(!Object.keys(promises).length) {
+          deferredPromises.delete(mtprotoMessagePort);
+        }
+      }
+    });
+
     const bytesPromise = deferred.then((uploadFile) => uploadFile.bytes);
 
-    this.saveChunkToCache(bytesPromise, alignedOffset, limit);
-    !fromPreload && this.preloadChunks(alignedOffset, alignedOffset + (this.limitPart * 15));
+    if(USE_CACHE) {
+      this.saveChunkToCache(bytesPromise, alignedOffset, limit);
+      !fromPreload && this.preloadChunks(alignedOffset, alignedOffset + (this.limitPart * 15));
+    }
 
     return bytesPromise;
   }
 
   private requestFilePartFromCache(alignedOffset: number, limit: number, fromPreload?: boolean) {
+    if(!USE_CACHE) {
+      return Promise.resolve();
+    }
+    
     const key = this.getChunkKey(alignedOffset, limit);
     return cacheStorage.getFile(key).then((blob: Blob) => {
       return fromPreload ? new Uint8Array() : readBlobAsUint8Array(blob);

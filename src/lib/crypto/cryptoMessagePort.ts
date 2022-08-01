@@ -16,6 +16,10 @@ type CryptoEvent = {
 };
 
 export class CryptoMessagePort<Master extends boolean = false> extends SuperMessagePort<CryptoEvent, CryptoEvent, Master> {
+  constructor() {
+    super('CRYPTO');
+  }
+  
   public invokeCrypto<T extends keyof CryptoMethods>(method: T, ...args: Parameters<CryptoMethods[T]>): Promise<Awaited<ReturnType<CryptoMethods[T]>>> {
     const payload = {method, args};
     const listeners = this.listeners['invoke'];

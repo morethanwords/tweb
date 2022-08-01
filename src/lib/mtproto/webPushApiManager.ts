@@ -9,7 +9,9 @@
  * https://github.com/zhukov/webogram/blob/master/LICENSE
  */
 
-import type { ServiceWorkerNotificationsClearTask, ServiceWorkerPingTask, ServiceWorkerPushClickTask } from "../serviceWorker/index.service";
+import type { PushNotificationObject } from "../serviceWorker/push";
+import type { ServicePushPingTaskPayload } from "../serviceWorker/serviceMessagePort";
+import type { NotificationSettings } from "../appManagers/uiNotificationsManager";
 import { MOUNT_CLASS_TO } from "../../config/debug";
 import { logger } from "../logger";
 import apiManagerProxy from "./mtprotoworker";
@@ -17,10 +19,8 @@ import I18n, { LangPackKey } from "../langPack";
 import { IS_MOBILE } from "../../environment/userAgent";
 import appRuntimeManager from "../appManagers/appRuntimeManager";
 import copy from "../../helpers/object/copy";
-import type { NotificationSettings } from "../appManagers/uiNotificationsManager";
 import singleInstance from "./singleInstance";
 import EventListenerBase from "../../helpers/eventListenerBase";
-import type { PushNotificationObject } from "../serviceWorker/push";
 
 export type PushSubscriptionNotifyType = 'init' | 'subscribe' | 'unsubscribe';
 export type PushSubscriptionNotifyEvent = `push_${PushSubscriptionNotifyType}`;
@@ -170,8 +170,8 @@ export class WebPushApiManager extends EventListenerBase<{
 
     this.settings.baseUrl = (location.href || '').replace(/#.*$/, '');
 
-    const lang: ServiceWorkerPingTask['payload']['lang'] = {} as any;
-    const ACTIONS_LANG_MAP: Record<keyof ServiceWorkerPingTask['payload']['lang'], LangPackKey> = {
+    const lang: ServicePushPingTaskPayload['lang'] = {} as any;
+    const ACTIONS_LANG_MAP: Record<keyof ServicePushPingTaskPayload['lang'], LangPackKey> = {
       push_action_mute1d: IS_MOBILE ? 'PushNotification.Action.Mute1d.Mobile' : 'PushNotification.Action.Mute1d',
       push_action_settings: IS_MOBILE ? 'PushNotification.Action.Settings.Mobile' : 'PushNotification.Action.Settings',
       push_message_nopreview: 'PushNotification.Message.NoPreview'
@@ -181,16 +181,11 @@ export class WebPushApiManager extends EventListenerBase<{
       lang[action as keyof typeof ACTIONS_LANG_MAP] = I18n.format(ACTIONS_LANG_MAP[action as keyof typeof ACTIONS_LANG_MAP], true);
     }
 
-    const task: ServiceWorkerPingTask = {
-      type: 'ping',
-      payload: {
-        localNotifications: this.localNotificationsAvailable,
-        lang: lang,
-        settings: this.settings
-      }
-    };
-
-    apiManagerProxy.postSWMessage(task);
+    apiManagerProxy.serviceMessagePort.invokeVoid('pushPing', {
+      localNotifications: this.localNotificationsAvailable,
+      lang: lang,
+      settings: this.settings
+    });
 
     this.isAliveTO = setTimeout(this.isAliveNotify, 10000);
   }
@@ -206,8 +201,7 @@ export class WebPushApiManager extends EventListenerBase<{
       return;
     }
 
-    const task: ServiceWorkerNotificationsClearTask = {type: 'notifications_clear'};
-    apiManagerProxy.postSWMessage(task);
+    apiManagerProxy.serviceMessagePort.invokeVoid('notificationsClear', undefined);
   }
 
   public setUpServiceWorkerChannel() {
@@ -215,13 +209,13 @@ export class WebPushApiManager extends EventListenerBase<{
       return;
     }
 
-    apiManagerProxy.addServiceWorkerTaskListener('push_click', (task: ServiceWorkerPushClickTask) => {
+    apiManagerProxy.serviceMessagePort.addEventListener('pushClick', (payload) => {
       if(singleInstance.deactivatedReason) {
         appRuntimeManager.reload();
         return;
       }
 
-      this.dispatchEvent('push_notification_click', task.payload);
+      this.dispatchEvent('push_notification_click', payload);
     });
 
     navigator.serviceWorker.ready.then(this.isAliveNotify);

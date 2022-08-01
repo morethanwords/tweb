@@ -4,24 +4,27 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
+import type SuperMessagePort from "../lib/mtproto/superMessagePort";
 import ctx from "../environment/ctx";
-import SuperMessagePort from "../lib/mtproto/superMessagePort";
 
 export default function listenMessagePort(
   messagePort: SuperMessagePort<any, any, any>, 
   onConnect?: (source: MessageEventSource) => void,
   onDisconnect?: (source: MessageEventSource) => void
 ) {
-  const attachPort = (s: any) => {
-    messagePort.attachPort(s);
-    onConnect && onConnect(s);
+  const attachPort = (listenPort: any, sendPort: any) => {
+    messagePort.attachListenPort(listenPort);
+    sendPort && messagePort.attachSendPort(sendPort);
+    onConnect?.(listenPort);
   };
 
-  onDisconnect && messagePort.setOnPortDisconnect(onDisconnect);
+  messagePort.setOnPortDisconnect(onDisconnect);
 
   if(typeof(SharedWorkerGlobalScope) !== 'undefined') {
-    (ctx as any as SharedWorkerGlobalScope).addEventListener('connect', (e) => attachPort(e.source));
+    (ctx as any as SharedWorkerGlobalScope).addEventListener('connect', (e) => attachPort(e.source, e.source));
+  } else if(typeof(ServiceWorkerGlobalScope) !== 'undefined') {
+    attachPort(ctx, null);
   } else {
-    attachPort(ctx);
+    attachPort(ctx, ctx);
   }
 }

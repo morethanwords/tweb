@@ -14,7 +14,8 @@ import DATABASE_STATE from "../../config/databases/state";
 import { IS_FIREFOX } from "../../environment/userAgent";
 import deepEqual from "../../helpers/object/deepEqual";
 import IDBStorage from "../idb";
-import { log, ServiceWorkerPingTask, ServiceWorkerPushClickTask } from "./index.service";
+import { log, serviceMessagePort } from "./index.service";
+import { ServicePushPingTaskPayload } from "./serviceMessagePort";
 
 const ctx = self as any as ServiceWorkerGlobalScope;
 const defaultBaseUrl = location.protocol + '//' + location.hostname + location.pathname.split('/').slice(0, -1).join('/') + '/';
@@ -96,8 +97,8 @@ class SomethingGetter<T extends Database<any>, Storage extends Record<string, an
 
 type PushStorage = {
   push_mute_until: number,
-  push_lang: Partial<ServiceWorkerPingTask['payload']['lang']>
-  push_settings: Partial<ServiceWorkerPingTask['payload']['settings']>
+  push_lang: Partial<ServicePushPingTaskPayload['lang']>
+  push_settings: Partial<ServicePushPingTaskPayload['settings']>
 };
 
 const getter = new SomethingGetter<typeof DATABASE_STATE, PushStorage>(DATABASE_STATE, 'session', {
@@ -192,12 +193,12 @@ ctx.addEventListener('notificationclick', (event) => {
     type: 'window'
   }).then((clientList) => {
     data.action = action;
-    pendingNotification = {type: 'push_click', payload: data};
+    pendingNotification = data;
     for(let i = 0; i < clientList.length; i++) {
       const client = clientList[i];
       if('focus' in client) {
         client.focus();
-        client.postMessage(pendingNotification);
+        serviceMessagePort.invokeVoid('pushClick', pendingNotification, client);
         pendingNotification = undefined;
         return;
       }
@@ -218,7 +219,7 @@ ctx.addEventListener('notificationclick', (event) => {
 ctx.addEventListener('notificationclose', onCloseNotification);
 
 let notifications: Set<Notification> = new Set();
-let pendingNotification: ServiceWorkerPushClickTask;
+let pendingNotification: PushNotificationObject;
 function pushToNotifications(notification: Notification) {
   if(!notifications.has(notification)) {
     notifications.add(notification);
@@ -311,7 +312,7 @@ function fireNotification(obj: PushNotificationObject, settings: PushStorage['pu
 
   return notificationPromise.then((event) => {
     // @ts-ignore
-    if(event && event.notification) {
+    if(event?.notification) {
       // @ts-ignore
       pushToNotifications(event.notification);
     }
@@ -320,14 +321,9 @@ function fireNotification(obj: PushNotificationObject, settings: PushStorage['pu
   });
 }
 
-export function onPing(task: ServiceWorkerPingTask, event: ExtendableMessageEvent) {
-  const client = event.ports && event.ports[0] || event.source;
-  const payload = task.payload;
-
-  if(pendingNotification &&
-      client &&
-      'postMessage' in client) {
-    client.postMessage(pendingNotification, []);
+export function onPing(payload: ServicePushPingTaskPayload, source?: MessageEventSource) {
+  if(pendingNotification && source) {
+    serviceMessagePort.invokeVoid('pushClick', pendingNotification, source);
     pendingNotification = undefined;
   }
 

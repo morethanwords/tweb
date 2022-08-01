@@ -8,115 +8,85 @@
 import '../mtproto/mtproto.worker';
 /// #endif
 
-import type { Modify, WorkerTaskTemplate, WorkerTaskVoidTemplate } from '../../types';
-import type { WebPushApiManager } from '../mtproto/webPushApiManager';
-import type { PushNotificationObject } from './push';
-import type { ToggleStorageTask } from '../mtproto/mtprotoworker';
-import type { MyUploadFile } from '../mtproto/apiFileManager';
 import { logger, LogTypes } from '../logger';
-import { CancellablePromise } from '../../helpers/cancellablePromise';
 import { CACHE_ASSETS_NAME, requestCache } from './cache';
 import onStreamFetch from './stream';
 import { closeAllNotifications, onPing } from './push';
 import CacheStorageController from '../cacheStorage';
 import { IS_SAFARI } from '../../environment/userAgent';
+import ServiceMessagePort from './serviceMessagePort';
+import listenMessagePort from '../../helpers/listenMessagePort';
+import { getWindowClients } from '../../helpers/context';
+import { MessageSendPort } from '../mtproto/superMessagePort';
 
 export const log = logger('SW', LogTypes.Error | LogTypes.Debug | LogTypes.Log | LogTypes.Warn);
 const ctx = self as any as ServiceWorkerGlobalScope;
-export const deferredPromises: Map<WindowClient['id'], {[taskId: string]: CancellablePromise<any>}> = new Map();
-
-export interface RequestFilePartTask extends Modify<WorkerTaskTemplate, {id: string}> {
-  type: 'requestFilePart',
-  payload: {
-    docId: DocId,
-    dcId: number,
-    offset: number,
-    limit: number
-  }
-};
-
-export interface RequestFilePartTaskResponse extends Modify<WorkerTaskTemplate, {id: string}> {
-  type: 'requestFilePart',
-  payload?: MyUploadFile,
-  originalPayload?: RequestFilePartTask['payload']
-};
-
-export interface ServiceWorkerPingTask extends WorkerTaskVoidTemplate {
-  type: 'ping',
-  payload: {
-    localNotifications: boolean,
-    lang: {
-      push_action_mute1d: string
-      push_action_settings: string
-      push_message_nopreview: string
-    },
-    settings: WebPushApiManager['settings']
-  }
-};
-
-export interface ServiceWorkerNotificationsClearTask extends WorkerTaskVoidTemplate {
-  type: 'notifications_clear'
-};
-
-export interface ServiceWorkerPushClickTask extends WorkerTaskVoidTemplate {
-  type: 'push_click',
-  payload: PushNotificationObject
-};
-
-export type ServiceWorkerTask = RequestFilePartTaskResponse | ServiceWorkerPingTask | ServiceWorkerNotificationsClearTask | ToggleStorageTask;
 
 /// #if !MTPROTO_SW
-const taskListeners: {
-  [type in ServiceWorkerTask['type']]: (task: any, event: ExtendableMessageEvent) => void
-} = {
-  notifications_clear: () => {
-    closeAllNotifications();
-  },
-  ping: (task: ServiceWorkerPingTask, event) => {
-    onPing(task, event);
-  },
-  requestFilePart: (task: RequestFilePartTaskResponse, e: ExtendableMessageEvent) => {
-    const windowClient = e.source as WindowClient;
-    const promises = deferredPromises.get(windowClient.id);
-    if(!promises) {
-      return;
-    }
+let _mtprotoMessagePort: MessagePort;
+export const getMtprotoMessagePort = () => _mtprotoMessagePort;
 
-    const promise = promises[task.id];
-    if(promise) {
-      if(task.error) {
-        promise.reject(task.error);
-      } else {
-        promise.resolve(task.payload);
-      }
-  
-      delete promises[task.id];
-    }
-  },
-  toggleStorages: (task: ToggleStorageTask) => {
-    const {enabled, clearWrite} = task.payload;
-    CacheStorageController.toggleStorage(enabled, clearWrite);
+const sendMessagePort = (source: MessageSendPort) => {
+  const channel = new MessageChannel();
+  serviceMessagePort.attachPort(_mtprotoMessagePort = channel.port1);
+  serviceMessagePort.invokeVoid('port', undefined, source, [channel.port2]);
+};
+
+const sendMessagePortIfNeeded = (source: MessageSendPort) => {
+  if(!connectedWindows && !_mtprotoMessagePort) {
+    sendMessagePort(source);
   }
 };
-ctx.addEventListener('message', (e) => {
-  const task = e.data as ServiceWorkerTask;
-  const callback = taskListeners[task.type];
-  if(callback) {
-    callback(task, e);
+
+const onWindowConnected = (source: MessageSendPort) => {
+  sendMessagePortIfNeeded(source);
+
+  ++connectedWindows;
+  log('window connected');
+};
+
+export const serviceMessagePort = new ServiceMessagePort<false>();
+serviceMessagePort.addMultipleEventsListeners({
+  notificationsClear: closeAllNotifications,
+
+  toggleStorages: ({enabled, clearWrite}) => {
+    CacheStorageController.toggleStorage(enabled, clearWrite);
+  },
+
+  pushPing: (payload, source) => {
+    onPing(payload, source);
+  },
+
+  hello: (payload, source) => {
+    onWindowConnected(source);
+  }
+});
+
+// * service worker can be killed, so won't get 'hello' event
+getWindowClients().then((windowClients) => {
+  windowClients.forEach((windowClient) => {
+    onWindowConnected(windowClient);
+  });
+});
+
+let connectedWindows = 0;
+listenMessagePort(serviceMessagePort, undefined, (source) => {
+  if(source === _mtprotoMessagePort) {
+    return;
+  }
+
+  log('window disconnected');
+  connectedWindows = Math.max(0, connectedWindows - 1);
+  if(!connectedWindows) {
+    log.warn('no windows left');
+
+    if(_mtprotoMessagePort) {
+      serviceMessagePort.detachPort(_mtprotoMessagePort);
+      _mtprotoMessagePort = undefined;
+    }
   }
 });
 /// #endif
-
-//const cacheStorage = new CacheStorageController('cachedAssets');
-/* let taskId = 0;
-
-export function getTaskId() {
-  return taskId;
-}
-
-export function incrementTaskId() {
-  return taskId++;
-} */
 
 const onFetch = (event: FetchEvent): void => {
   /// #if !DEBUG

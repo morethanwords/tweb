@@ -27,6 +27,7 @@ export default class MTProtoMessagePort<Master extends boolean = true> extends S
   manager: (payload: MTProtoManagerTaskPayload) => any,
   toggleStorages: (payload: {enabled: boolean, clearWrite: boolean}) => ReturnType<typeof toggleStorages>,
   serviceWorkerOnline: (online: boolean) => void,
+  serviceWorkerPort: (payload: void, source: MessageEventSource, event: MessageEvent) => void,
   cryptoPort: (payload: void, source: MessageEventSource, event: MessageEvent) => void,
   createObjectURL: (blob: Blob) => string,
   tabState: (payload: TabState, source: MessageEventSource) => void,
@@ -35,12 +36,13 @@ export default class MTProtoMessagePort<Master extends boolean = true> extends S
   convertOpus: (payload: {fileName: string, bytes: Uint8Array}) => Promise<Uint8Array>,
   localStorageProxy: (payload: LocalStorageProxyTask['payload']) => Promise<any>,
   mirror: (payload: MirrorTaskPayload) => void,
-  notificationBuild: (payload: NotificationBuildTaskPayload) => void
+  notificationBuild: (payload: NotificationBuildTaskPayload) => void,
+  // hello: () => void
 } & MTProtoBroadcastEvent, Master> {
   private static INSTANCE: MTProtoMessagePort;
 
   constructor() {
-    super();
+    super('MTPROTO');
 
     MTProtoMessagePort.INSTANCE = this;
 

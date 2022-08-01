@@ -7,7 +7,7 @@
 import DEBUG from "../../config/debug";
 import ctx from "../../environment/ctx";
 import indexOfAndSplice from "../../helpers/array/indexOfAndSplice";
-import { IS_SERVICE_WORKER, IS_WORKER, notifyAll } from "../../helpers/context";
+import { IS_WORKER } from "../../helpers/context";
 import EventListenerBase from "../../helpers/eventListenerBase";
 import { Awaited, WorkerTaskTemplate, WorkerTaskVoidTemplate } from "../../types";
 import { logger } from "../logger";
@@ -57,7 +57,11 @@ interface CloseTask extends SuperMessagePortTask {
   type: 'close'
 }
 
-type Task = InvokeTask | ResultTask | AckTask | PingTask | PongTask | BatchTask | CloseTask;
+// interface OpenTask extends SuperMessagePortTask {
+//   type: 'open'
+// }
+
+type Task = InvokeTask | ResultTask | AckTask | PingTask | PongTask | BatchTask | CloseTask/*  | OpenTask */;
 type TaskMap = {
   [type in Task as type['type']]?: (task: Extract<Task, type>, source: MessageEventSource, event: MessageEvent<any>) => void | Promise<any>
 };
@@ -75,7 +79,10 @@ export type AckedResult<T> = {
 // };
 
 type ListenPort = WindowProxy | MessagePort | ServiceWorker | Worker | ServiceWorkerContainer;
-type SendPort = WindowProxy | MessagePort | ServiceWorker | Worker;
+type SendPort = Pick<MessageEventSource, 'postMessage'>/* WindowProxy | MessagePort | ServiceWorker | Worker */;
+
+export type MessageListenPort = ListenPort;
+export type MessageSendPort = SendPort;
 
 type ListenerCallback = (payload: any, source: MessageEventSource, event: MessageEvent<any>) => any;
 type Listeners = Record<string, ListenerCallback>;
@@ -99,7 +106,8 @@ export default class SuperMessagePort<
     [id: number]: {
       resolve: any,
       reject: any,
-      taskType: string
+      taskType: string,
+      port?: SendPort
     }
   };
   protected pending: Map<SendPort, Task[]>;
@@ -111,22 +119,10 @@ export default class SuperMessagePort<
   protected processTaskMap: TaskMap;
 
   protected onPortDisconnect: (source: MessageEventSource) => void;
+  // protected onPortConnect: (source: MessageEventSource) => void;
 
-  constructor() {
+  constructor(logSuffix?: string) {
     super(false);
-
-    this.processTaskMap = {
-      result: this.processResultTask,
-      ack: this.processAckTask,
-      invoke: this.processInvokeTask,
-      ping: this.processPingTask,
-      pong: this.processPongTask,
-      close: this.processCloseTask
-    };
-  }
-
-  public _constructor() {
-    super._constructor(false);
 
     this.listenPorts = [];
     this.sendPorts = [];
@@ -134,7 +130,7 @@ export default class SuperMessagePort<
     this.taskId = 0;
     this.awaiting = {};
     this.pending = new Map();
-    this.log = logger('MP');
+    this.log = logger('MP' + (logSuffix ? '-' + logSuffix : ''));
     this.debug = DEBUG;
 
     if(typeof(window) !== 'undefined') {
@@ -143,11 +139,25 @@ export default class SuperMessagePort<
         this.postMessage(undefined, task);
       });
     }
+
+    this.processTaskMap = {
+      result: this.processResultTask,
+      ack: this.processAckTask,
+      invoke: this.processInvokeTask,
+      ping: this.processPingTask,
+      pong: this.processPongTask,
+      close: this.processCloseTask,
+      // open: this.processOpenTask
+    };
   }
 
   public setOnPortDisconnect(callback: (source: MessageEventSource) => void) {
     this.onPortDisconnect = callback;
   }
+
+  // public setOnPortConnect(callback: (source: MessageEventSource) => void) {
+  //   this.onPortConnect = callback;
+  // }
 
   public attachPort(port: MessageEventSource) {
     this.attachListenPort(port);
@@ -160,14 +170,17 @@ export default class SuperMessagePort<
   }
 
   public attachSendPort(port: SendPort) {
-    this.log.warn('attaching port');
+    this.log.warn('attaching send port');
 
-    if((port as MessagePort).start) {
-      (port as MessagePort).start();
-    }
+    (port as MessagePort).start?.();
 
     this.sendPorts.push(port);
     // this.sendPing(port);
+
+    // const task = this.createTask('open', undefined);
+    // this.postMessage(port, task);
+
+    this.releasePending();
   }
 
   // ! Can't rely on ping because timers can be suspended
@@ -207,17 +220,25 @@ export default class SuperMessagePort<
   //   }, timeout);
   // }
 
-  protected detachPort(port: SendPort) {
+  public detachPort(port: ListenPort) {
     this.log.warn('disconnecting port');
     
-    port.removeEventListener('message', this.onMessage as any);
     indexOfAndSplice(this.listenPorts, port);
-    indexOfAndSplice(this.sendPorts, port);
-    if((port as MessagePort).close) {
-      (port as MessagePort).close();
-    }
+    indexOfAndSplice(this.sendPorts, port as any);
 
-    this.onPortDisconnect && this.onPortDisconnect(port as any);
+    port.removeEventListener?.('message', this.onMessage as any);
+    (port as MessagePort).close?.();
+
+    this.onPortDisconnect?.(port as any);
+
+    const error = new Error('PORT_DISCONNECTED');
+    for(const id in this.awaiting) {
+      const task = this.awaiting[id];
+      if(task.port === port) {
+        task.reject(error);
+        delete this.awaiting[id];
+      }
+    }
   }
 
   protected postMessage(port: SendPort | SendPort[], task: Task) {
@@ -248,7 +269,7 @@ export default class SuperMessagePort<
   protected /* async */ releasePending() {
     //return;
 
-    if(!this.listenPorts.length || this.releasingPending) {
+    if(/* !this.listenPorts.length || !this.sendPorts.length ||  */this.releasingPending) {
       return;
     }
 
@@ -276,6 +297,10 @@ export default class SuperMessagePort<
       // });
 
       const tasks = portTasks;
+      const ports = port ? [port] : this.sendPorts;
+      if(!ports.length) {
+        return;
+      }
 
       tasks.forEach((task) => {
         // if(task.type === 'batch') {
@@ -283,19 +308,20 @@ export default class SuperMessagePort<
         // }
 
         try {
-          if(IS_SERVICE_WORKER) {
-            notifyAll(task);
-          } else {
-            this.postMessage(port, task);
-          }
+          // if(IS_SERVICE_WORKER && !port) {
+          //   notifyAll(task);
+          // } else {
+            this.postMessage(ports, task);
+          // }
         } catch(err) {
-          this.log.error('postMessage error:', err, task, port);
+          this.log.error('postMessage error:', err, task, ports);
         }
       });
+
+      this.pending.delete(port);
     });
 
     this.debug && this.log.debug('released tasks');
-    this.pending.clear();
 
     this.releasingPending = false;
   }
@@ -353,6 +379,10 @@ export default class SuperMessagePort<
     };
 
     previousResolve(ret);
+
+    if(payload.cached) {
+      delete this.awaiting[payload.taskId];
+    }
   };
 
   protected processPingTask = (task: PingTask, source: MessageEventSource, event: MessageEvent) => {
@@ -370,6 +400,11 @@ export default class SuperMessagePort<
   protected processCloseTask = (task: CloseTask, source: MessageEventSource, event: MessageEvent) => {
     this.detachPort(source);
   };
+
+  // * it's just an 'open' callback, DO NOT attach port from here
+  // protected processOpenTask = (task: OpenTask, source: MessageEventSource, event: MessageEvent) => {
+  //   this.onPortConnect?.(source);
+  // };
 
   protected processInvokeTask = async(task: InvokeTask, source: MessageEventSource, event: MessageEvent) => {
     const id = task.id;
@@ -481,7 +516,7 @@ export default class SuperMessagePort<
     let task: InvokeTask;
     const promise = new Promise<Awaited<ReturnType<Send[T]>>>((resolve, reject) => {
       task = this.createInvokeTask(type as string, payload, withAck, undefined, transfer);
-      this.awaiting[task.id] = {resolve, reject, taskType: type as string};
+      this.awaiting[task.id] = {resolve, reject, taskType: type as string, port};
       this.pushTask(task, port);
     });
 

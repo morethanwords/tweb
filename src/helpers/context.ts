@@ -15,6 +15,8 @@ export const getWindowClients = () => {
   .matchAll({includeUncontrolled: false, type: 'window'});
 };
 
+export const getLastWindowClient = () => getWindowClients().then((windowClients) => windowClients.slice(-1)[0]);
+
 const postMessage = (listener: WindowClient | DedicatedWorkerGlobalScope, ...args: any[]) => {
   try {
     // @ts-ignore

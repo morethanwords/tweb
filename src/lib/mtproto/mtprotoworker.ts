@@ -4,8 +4,7 @@
  * https://github.com/morethanwords/tweb/blob/master/LICENSE
  */
 
-import type { RequestFilePartTask, RequestFilePartTaskResponse, ServiceWorkerTask } from '../serviceWorker/index.service';
-import type { Awaited, WorkerTaskVoidTemplate } from '../../types';
+import type { Awaited } from '../../types';
 import type { CacheStorageDbName } from '../cacheStorage';
 import type { State } from '../../config/state';
 import type { Message, MessagePeerReaction, PeerNotifySettings } from '../../layer';
@@ -18,7 +17,6 @@ import webPushApiManager from './webPushApiManager';
 import appRuntimeManager from '../appManagers/appRuntimeManager';
 import telegramMeWebManager from './telegramMeWebManager';
 import pause from '../../helpers/schedulers/pause';
-import isObject from '../../helpers/object/isObject';
 import ENVIRONMENT from '../../environment';
 import loadState from '../appManagers/utils/state/loadState';
 import opusDecodeController from '../opusDecodeController';
@@ -28,11 +26,7 @@ import SuperMessagePort from './superMessagePort';
 import IS_SHARED_WORKER_SUPPORTED from '../../environment/sharedWorkerSupport';
 import toggleStorages from '../../helpers/toggleStorages';
 import idleController from '../../helpers/idleController';
-
-export interface ToggleStorageTask extends WorkerTaskVoidTemplate {
-  type: 'toggleStorages',
-  payload: {enabled: boolean, clearWrite: boolean}
-};
+import ServiceMessagePort from '../serviceWorker/serviceMessagePort';
 
 export type Mirrors = {
   state: State
@@ -57,10 +51,8 @@ export type TabState = {
 };
 
 class ApiManagerProxy extends MTProtoMessagePort {
-  private worker: /* Window */Worker;
-  private isSWRegistered: boolean;
+  // private worker: /* Window */Worker;
   // private sockets: Map<number, Socket> = new Map();
-  private taskListenersSW: {[taskType: string]: (task: any) => void};
   private mirrors: Mirrors;
 
   public newVersion: string;
@@ -68,11 +60,12 @@ class ApiManagerProxy extends MTProtoMessagePort {
 
   private tabState: TabState;
 
+  public serviceMessagePort: ServiceMessagePort<true>;
+  private lastServiceWorker: ServiceWorker;
+
   constructor() {
     super();
 
-    this.isSWRegistered = true;
-    this.taskListenersSW = {};
     this.mirrors = {} as any;
     this.tabState = {
       chatPeerIds: [],
@@ -200,77 +193,79 @@ class ApiManagerProxy extends MTProtoMessagePort {
     // this.sendState();
   }
 
-  private registerServiceWorker() {
-    if(!('serviceWorker' in navigator)) return;
-    
-    // ! I hate webpack - it won't load it by using worker.register, only navigator.serviceWork will do it.
-    const worker = navigator.serviceWorker;
+  private attachServiceWorker(serviceWorker: ServiceWorker) {
+    this.lastServiceWorker && this.serviceMessagePort.detachPort(this.lastServiceWorker);
+    this.serviceMessagePort.attachSendPort(this.lastServiceWorker = serviceWorker);
+    this.serviceMessagePort.invokeVoid('hello', undefined);
+  }
+
+  private _registerServiceWorker() {
     navigator.serviceWorker.register(
       /* webpackChunkName: "sw" */
       new URL('../serviceWorker/index.service', import.meta.url), 
       {scope: './'}
     ).then((registration) => {
       this.log('SW registered', registration);
-      this.isSWRegistered = true;
+
+      // ! doubtful fix for hard refresh
+      if(registration.active && !navigator.serviceWorker.controller) {
+        return registration.unregister().then(() => {
+          window.location.reload();
+        });
+      }
 
       const sw = registration.installing || registration.waiting || registration.active;
       sw.addEventListener('statechange', (e) => {
         this.log('SW statechange', e);
       });
 
-      //this.postSWMessage = worker.controller.postMessage.bind(worker.controller);
-
+      const controller = navigator.serviceWorker.controller || registration.installing || registration.waiting || registration.active;
+      this.attachServiceWorker(controller);
+      
       /// #if MTPROTO_SW
-      const controller = worker.controller || registration.installing || registration.waiting || registration.active;
       this.onWorkerFirstMessage(controller);
       /// #endif
     }, (err) => {
-      this.isSWRegistered = false;
       this.log.error('SW registration failed!', err);
 
       this.invokeVoid('serviceWorkerOnline', false);
     });
+  }
+
+  private registerServiceWorker() {
+    if(!('serviceWorker' in navigator)) return;
+
+    this.serviceMessagePort = new ServiceMessagePort<true>();
+
+    // this.addMultipleEventsListeners({
+    //   hello: () => {
+    //     // this.serviceMessagePort.invokeVoid('port', undefined);
+    //   }
+    // });
+    
+    // ! I hate webpack - it won't load it by using worker.register, only navigator.serviceWorker will do it.
+    const worker = navigator.serviceWorker;
+    this._registerServiceWorker();
 
     worker.addEventListener('controllerchange', () => {
       this.log.warn('controllerchange');
 
-      worker.controller.addEventListener('error', (e) => {
+      const controller = worker.controller;
+      this.attachServiceWorker(controller);
+
+      controller.addEventListener('error', (e) => {
         this.log.error('controller error:', e);
       });
     });
 
     /// #if MTPROTO_SW
     this.attachListenPort(worker);
-    // this.s();
     /// #else
-    worker.addEventListener('message', (e) => {
-      const task: ServiceWorkerTask = e.data;
-      if(!isObject(task)) {
-        return;
+    this.serviceMessagePort.attachListenPort(worker);
+    this.serviceMessagePort.addMultipleEventsListeners({
+      port: (payload, source, event) => {
+        this.invokeVoid('serviceWorkerPort', undefined, undefined, [event.ports[0]]);
       }
-
-      const callback = this.taskListenersSW[task.type];
-      if(callback) {
-        callback(task);
-      }
-    });
-
-    this.addServiceWorkerTaskListener('requestFilePart', (task: RequestFilePartTask) => {
-      const responseTask: RequestFilePartTaskResponse = {
-        type: task.type,
-        id: task.id
-      };
-
-      const {docId, dcId, offset, limit} = task.payload;
-      rootScope.managers.appDocsManager.requestDocPart(docId, dcId, offset, limit)
-      .then((uploadFile) => {
-        responseTask.payload = uploadFile;
-        this.postSWMessage(responseTask);
-      }, (err) => {
-        responseTask.originalPayload = task.payload;
-        responseTask.error = err;
-        this.postSWMessage(responseTask);
-      });
     });
     /// #endif
 
@@ -334,25 +329,15 @@ class ApiManagerProxy extends MTProtoMessagePort {
     });
   }
 
-  public postSWMessage(message: any) {
-    if(navigator.serviceWorker.controller) {
-      navigator.serviceWorker.controller.postMessage(message);
-    }
-  }
-
   private onWorkerFirstMessage(worker: any) {
     this.log('set webWorker');
     
-    this.worker = worker;
+    // this.worker = worker;
     /// #if MTPROTO_SW
     this.attachSendPort(worker);
     /// #else
     this.attachWorkerToPort(worker, this, 'mtproto');
     /// #endif
-  }
-
-  public addServiceWorkerTaskListener(name: keyof ApiManagerProxy['taskListenersSW'], callback: ApiManagerProxy['taskListenersSW'][typeof name]) {
-    this.taskListenersSW[name] = callback;
   }
 
   private loadState() {
@@ -384,8 +369,7 @@ class ApiManagerProxy extends MTProtoMessagePort {
   public async toggleStorages(enabled: boolean, clearWrite: boolean) {
     await toggleStorages(enabled, clearWrite);
     this.invoke('toggleStorages', {enabled, clearWrite});
-    const task: ToggleStorageTask = {type: 'toggleStorages', payload: {enabled, clearWrite}};
-    this.postSWMessage(task);
+    this.serviceMessagePort.invokeVoid('toggleStorages', {enabled, clearWrite});
   }
 
   public async getMirror<T extends keyof Mirrors>(name: T) {
